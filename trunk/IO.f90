@@ -7,6 +7,8 @@
 !---------------------------
 ! function IO_open_file(unit,relPath)
 ! function IO_open_inputFile(unit)
+! FUNCTION IO_hybridIA(Nast,ODFfileName)
+! private FUNCTION hybridIA_reps(dV_V,steps,C)
 ! function IO_stringPos(line,N)
 ! function IO_stringValue(line,positions,pos)
 ! function IO_floatValue(line,positions,pos)
@@ -284,6 +286,24 @@
 
 
 !********************************************************************
+! read string value at pos from line
+!********************************************************************
+ FUNCTION IO_fixedStringValue (line,ends,pos)
+ 
+ use prec, only: pReal,pInt
+ implicit none
+ 
+ character(len=*) line
+ integer(pInt) ends(*),pos
+ character(len=positions(pos)-positions(pos-1)) IO_stringValue
+
+ IO_fixedStringValue = line(ends(pos-1)+1:ends(pos))
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
 ! read float value at pos from line
 !********************************************************************
  FUNCTION IO_floatValue (line,positions,pos)
@@ -304,6 +324,54 @@
 
 
 !********************************************************************
+! read float value at pos from line
+!********************************************************************
+ FUNCTION IO_fixedFloatValue (line,ends,pos)
+ 
+ use prec, only: pReal,pInt
+ implicit none
+ 
+ character(len=*) line
+ real(pReal) IO_fixedFloatValue
+ integer(pInt) ends(*),pos
+
+ READ(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(F)') IO_fixedFloatValue
+ return
+100 IO_fixedFloatValue = -1.0_pReal
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+! read float value at pos from line
+!********************************************************************
+ FUNCTION IO_fixedFloatValue (line,ends,pos)
+ 
+ use prec, only: pReal,pInt
+ implicit none
+ 
+ character(len=*) line
+ real(pReal) IO_fixedFloatValue,base,expon
+ integer(pInt) ends(*),pos,pos_exp
+ 
+ pos_exp = scan(line(ends(pos-1)+1:ends(pos),'+-',back=.true.)
+ if (pos_exp > 1) then
+   READ(UNIT=line(ends(pos-1)+1:ends(pos-1)+pos_exp-1),ERR=100,FMT='(F)') base
+   READ(UNIT=line(ends(pos-1)+pos_exp:ends(pos)),ERR=100,FMT='(F)') expon
+ else
+   READ(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(F)') base
+   expon = 0.0_pReal
+ endif
+ IO_fixedNoEFloatValue = base*10.0_pReal**expon
+ return
+100 IO_fixedNoEFloatValue = -1.0_pReal
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
 ! read int value at pos from line
 !********************************************************************
  FUNCTION IO_intValue (line,positions,pos)
@@ -318,6 +386,26 @@
  READ(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(I)') IO_intValue
  return
 100 IO_intValue = -1_pInt
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+! read int value at pos from fixed format line
+!********************************************************************
+ FUNCTION IO_fixedIntValue (line,ends,pos)
+ 
+ use prec, only: pReal,pInt
+ implicit none
+ 
+ character(len=*) line
+ integer(pInt) IO_fixedIntValue
+ integer(pInt) ends(*),pos
+
+ READ(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(I)') IO_fixedIntValue
+ return
+100 IO_fixedIntValue = -1_pInt
  return
 
  END FUNCTION
