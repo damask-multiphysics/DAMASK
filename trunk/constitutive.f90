@@ -1,121 +1,281 @@
+!************************************
+!*      Module: CONSTITUTIVE        *
+!************************************
+!* contains:                        *
+!* - constitutive equations         *
+!* - Schmid matrices calculation    *
+!* - Hardening matrices definition  *
+!* - Parameters definition          *
+!* - orientations?                  *
+!************************************
 
-!    ---------------------------
- MODULE constitutive 
-!    ---------------------------
-!    *** constitutive equations ***
+MODULE constitutive
 
- use prec, only: pRe,pIn
- implicit none
+!*** Include other modules ***
+use prec, only: pReal,pInt
+! NB: 'only'-commend may not be needed
+implicit none
 
-! ***************************
-! *** Material parameters ***
-! ***************************  
- real(pRe), allocatable :: Cslip_66(:,:,:),Cslip_3333(:,:,:,:,:)
- real(pRe), allocatable :: s0_slip(:),gdot0_slip(:)
- real(pRe), allocatable :: h0(:),w0(:),s_sat(:),q0(:),n_slip(:)
- real(pRe), allocatable :: hardening_matrix(:,:,:)
- character*80, allocatable :: TCfile(:), ODFfile(:)
- real(pRe), parameter :: latent=1.4_pRe
- integer(pIn), parameter :: Nslip(3)
- integer(pIn) Nmats
+!*****************************
+!*     Material parameters   *
+!*****************************
+!* Character *
+character*80, allocatble :: TCfile(:),ODFfile(:)
+! NB: orientation files  TCfile(number of material)
 
- real(pRe) sn(3,48,3),sd(3,48,3)
- real(pRe) Sslip(3,48,3,3),Sslip_v(3,48,6)
-!    *** Vectors n and d for each fcc slip systems ***
-! MISSING needs to be generalized to fcc and bcc (and hcp?)
-! 1: fcc, 2: bcc, 3: hcp
-! the respective crystal structure has to be defined
-! via material parameter 'crystal_structure' in [material]
- data sd( 1,:)/ 0, 1,-1/ ; data sn( 1,:)/ 1, 1, 1/
- data sd( 2,:)/-1, 0, 1/ ; data sn( 2,:)/ 1, 1, 1/
- data sd( 3,:)/ 1,-1, 0/ ; data sn( 3,:)/ 1, 1, 1/
- data sd( 4,:)/ 0,-1,-1/ ; data sn( 4,:)/-1,-1, 1/
- data sd( 5,:)/ 1, 0, 1/ ; data sn( 5,:)/-1,-1, 1/
- data sd( 6,:)/-1, 1, 0/ ; data sn( 6,:)/-1,-1, 1/
- data sd( 7,:)/ 0,-1, 1/ ; data sn( 7,:)/ 1,-1,-1/
- data sd( 8,:)/-1, 0,-1/ ; data sn( 8,:)/ 1,-1,-1/
- data sd( 9,:)/ 1, 1, 0/ ; data sn( 9,:)/ 1,-1,-1/
- data sd(10,:)/ 0, 1, 1/ ; data sn(10,:)/-1, 1,-1/
- data sd(11,:)/ 1, 0,-1/ ; data sn(11,:)/-1, 1,-1/
- data sd(12,:)/-1,-1, 0/ ; data sn(12,:)/-1, 1,-1/
+!* Integer *
+integer(pInt) Nmats
+! NB: Number of materials (read in material file)
+integer(pInt), allocatable :: crystal_structure(:)
+! NB: crystal_structure(number of material)=1-3
+integer(pInt) Nslip(3)
+! NB: Number of systems for each crystal structure (3) 
 
- contains
+!* Real *
+real(pReal), allocatable :: Cslip_66(:,:,:)
+! NB: Cslip_66(1:6,1:6,number of materials)
+real(pReal), allocatable :: s0_slip(:),gdot0_slip(:),n_slip(:)
+real(pReal), allocatable :: h0(:),w0(:),s_sat(:)
+! NB: Parameters(number of materials)
+real(pReal), allocatable :: hardening_matrix(:,:,:)
+! NB: hardening_matrix(48,48,3)
+real(pReal), parameter :: latent_hardening=1.4_pReal
+real(pReal) sn(3,48,3),sd(3,48,3)
+! NB: slip normale and slip direction for 3 crystal structures
+!     Is 48 always the maximum number of systems?
+real(pReal) Sslip(3,3,48,3),Sslip_v(6,48,3)
+! NB: Schmid matrices and corresponding Schmid vectors
+
+!*** Slip systems for FCC structures (1) ***
+Nslip(1)=12_pInt
+!* System {111}<110>  Sort according Eisenlohr&Hantcherli
+data sd(:, 1,1)/ 0, 1,-1/ ; data sn(:, 1,1)/ 1, 1, 1/
+data sd(:, 2,1)/-1, 0, 1/ ; data sn(:, 2,1)/ 1, 1, 1/
+data sd(:, 3,1)/ 1,-1, 0/ ; data sn(:, 3,1)/ 1, 1, 1/
+data sd(:, 4,1)/ 0,-1,-1/ ; data sn(:, 4,1)/-1,-1, 1/
+data sd(:, 5,1)/ 1, 0, 1/ ; data sn(:, 5,1)/-1,-1, 1/
+data sd(:, 6,1)/-1, 1, 0/ ; data sn(:, 6,1)/-1,-1, 1/
+data sd(:, 7,1)/ 0,-1, 1/ ; data sn(:, 7,1)/ 1,-1,-1/
+data sd(:, 8,1)/-1, 0,-1/ ; data sn(:, 8,1)/ 1,-1,-1/
+data sd(:, 9,1)/ 1, 1, 0/ ; data sn(:, 9,1)/ 1,-1,-1/
+data sd(:,10,1)/ 0, 1, 1/ ; data sn(:,10,1)/-1, 1,-1/
+data sd(:,11,1)/ 1, 0,-1/ ; data sn(:,11,1)/-1, 1,-1/
+data sd(:,12,1)/-1,-1, 0/ ; data sn(:,12,1)/-1, 1,-1/
+
+!*** Slip systems for BCC structures (2) ***
+Nslip(2)=48_pInt
+!* System {110}<111>
+!* Sort?
+data sd(:, 1,2)/ 1,-1, 1/ ; data sn(:, 1,2)/ 0, 1, 1/
+data sd(:, 2,2)/-1,-1, 1/ ; data sn(:, 2,2)/ 0, 1, 1/
+data sd(:, 3,2)/ 1, 1, 1/ ; data sn(:, 3,2)/ 0,-1, 1/
+data sd(:, 4,2)/-1, 1, 1/ ; data sn(:, 4,2)/ 0,-1, 1/
+data sd(:, 5,2)/-1, 1, 1/ ; data sn(:, 5,2)/ 1, 0, 1/
+data sd(:, 6,2)/-1,-1, 1/ ; data sn(:, 6,2)/ 1, 0, 1/
+data sd(:, 7,2)/ 1, 1, 1/ ; data sn(:, 7,2)/-1, 0, 1/
+data sd(:, 8,2)/ 1,-1, 1/ ; data sn(:, 8,2)/-1, 0, 1/
+data sd(:, 9,2)/-1, 1, 1/ ; data sn(:, 9,2)/ 1, 1, 0/
+data sd(:,10,2)/-1, 1,-1/ ; data sn(:,10,2)/ 1, 1, 0/
+data sd(:,11,2)/ 1, 1, 1/ ; data sn(:,11,2)/-1, 1, 0/
+data sd(:,12,2)/ 1, 1,-1/ ; data sn(:,12,2)/-1, 1, 0/
+!* System {112}<111>
+!* Sort?
+data sd(:,13,2)/-1, 1, 1/ ; data sn(:,13,2)/ 2, 1, 1/
+data sd(:,14,2)/ 1, 1, 1/ ; data sn(:,14,2)/-2, 1, 1/
+data sd(:,15,2)/ 1, 1,-1/ ; data sn(:,15,2)/ 2,-1, 1/
+data sd(:,16,2)/ 1,-1, 1/ ; data sn(:,16,2)/ 2, 1,-1/
+data sd(:,17,2)/ 1,-1, 1/ ; data sn(:,17,2)/ 1, 2, 1/
+data sd(:,18,2)/ 1, 1,-1/ ; data sn(:,18,2)/-1, 2, 1/
+data sd(:,19,2)/ 1, 1, 1/ ; data sn(:,19,2)/ 1,-2, 1/
+data sd(:,20,2)/-1, 1, 1/ ; data sn(:,20,2)/ 1, 2,-1/
+data sd(:,21,2)/ 1, 1,-1/ ; data sn(:,21,2)/ 1, 1, 2/
+data sd(:,22,2)/ 1,-1, 1/ ; data sn(:,22,2)/-1, 1, 2/
+data sd(:,23,2)/-1, 1, 1/ ; data sn(:,23,2)/ 1,-1, 2/
+data sd(:,24,2)/ 1, 1, 1/ ; data sn(:,24,2)/ 1, 1,-2/
+!* System {123}<111>
+!* Sort?
+data sd(:,25,2)/ 1, 1,-1/ ; data sn(:,25,2)/ 1, 2, 3/
+data sd(:,26,2)/ 1,-1, 1/ ; data sn(:,26,2)/-1, 2, 3/
+data sd(:,27,2)/-1, 1, 1/ ; data sn(:,27,2)/ 1,-2, 3/
+data sd(:,28,2)/ 1, 1, 1/ ; data sn(:,28,2)/ 1, 2,-3/
+data sd(:,29,2)/ 1,-1, 1/ ; data sn(:,29,2)/ 1, 3, 2/
+data sd(:,30,2)/ 1, 1,-1/ ; data sn(:,30,2)/-1, 3, 2/
+data sd(:,31,2)/ 1, 1, 1/ ; data sn(:,31,2)/ 1,-3, 2/
+data sd(:,32,2)/-1, 1, 1/ ; data sn(:,32,2)/ 1, 3,-2/
+data sd(:,33,2)/ 1, 1,-1/ ; data sn(:,33,2)/ 2, 1, 3/
+data sd(:,34,2)/ 1,-1, 1/ ; data sn(:,34,2)/-2, 1, 3/
+data sd(:,35,2)/-1, 1, 1/ ; data sn(:,35,2)/ 2,-1, 3/
+data sd(:,36,2)/ 1, 1, 1/ ; data sn(:,36,2)/ 2, 1,-3/
+data sd(:,37,2)/ 1,-1, 1/ ; data sn(:,37,2)/ 2, 3, 1/
+data sd(:,38,2)/ 1, 1,-1/ ; data sn(:,38,2)/-2, 3, 1/
+data sd(:,39,2)/ 1, 1, 1/ ; data sn(:,39,2)/ 2,-3, 1/
+data sd(:,40,2)/-1, 1, 1/ ; data sn(:,40,2)/ 2, 3,-1/
+data sd(:,41,2)/-1, 1, 1/ ; data sn(:,41,2)/ 3, 1, 2/
+data sd(:,42,2)/ 1, 1, 1/ ; data sn(:,42,2)/-3, 1, 2/
+data sd(:,43,2)/ 1, 1,-1/ ; data sn(:,43,2)/ 3,-1, 2/
+data sd(:,44,2)/ 1,-1, 1/ ; data sn(:,44,2)/ 3, 1,-2/
+data sd(:,45,2)/-1, 1, 1/ ; data sn(:,45,2)/ 3, 2, 1/
+data sd(:,46,2)/ 1, 1, 1/ ; data sn(:,46,2)/-3, 2, 1/
+data sd(:,47,2)/ 1, 1,-1/ ; data sn(:,47,2)/ 3,-2, 1/
+data sd(:,48,2)/ 1,-1, 1/ ; data sn(:,48,2)/ 3, 2,-1/
+
+!*** Slip systems for HCP structures (3) ***
+Nslip(3)=12_pInt
+!* Basal systems {0001}<1120>
+!* 1- (0 0 0 1)[-2  1  1  0]
+!* 2- (0 0 0 1)[ 1 -2  1  0]
+!* 3- (0 0 0 1)[ 1  1 -2  0]
+!* Plane (hkil)->(hkl)
+!* Direction [uvtw]->[(u-t) (v-t) w]
+!* Automatical transformation from Bravais to Miller
+!* not done for the moment
+!* Sort?
+data sd(:, 1,3)/-1, 0, 0/ ; data sn(:, 1,3)/ 0, 0, 1/
+data sd(:, 2,3)/ 0,-1, 0/ ; data sn(:, 2,3)/ 0, 0, 1/
+data sd(:, 3,3)/ 1, 1, 0/ ; data sn(:, 3,3)/ 0, 0, 1/
+!* 1st type prismatic systems {1010}<1120> 
+!* 1- ( 0  1 -1  0)[-2  1  1  0]
+!* 2- ( 1  0 -1  0)[ 1 -2  1  0]
+!* 3- (-1  1  0  0)[ 1  1 -2  0]
+!* Sort?
+data sd(:, 4,3)/-1, 0, 0/ ; data sn(:, 4,3)/ 0, 1, 0/
+data sd(:, 5,3)/ 0,-1, 0/ ; data sn(:, 5,3)/ 1, 0, 0/
+data sd(:, 6,3)/ 1, 1, 0/ ; data sn(:, 6,3)/-1, 1, 0/
+!* 1st type 1st order pyramidal systems {1011}<1120>
+!* 1- ( 0 -1  1  1)[-2  1  1  0]
+!* 2- ( 0  1 -1  1)[-2  1  1  0]
+!* 3- (-1  0  1  1)[ 1 -2  1  0]
+!* 4- ( 1  0 -1  1)[ 1 -2  1  0]
+!* 5- (-1  1  0  1)[ 1  1 -2  0]
+!* 6- ( 1 -1  0  1)[ 1  1 -2  0]
+!* Sort?
+data sd(:, 7,3)/-1, 0, 0/ ; data sn(:, 7,3)/ 0,-1, 1/
+data sd(:, 8,3)/ 0,-1, 0/ ; data sn(:, 8,3)/ 0, 1, 1/
+data sd(:, 9,3)/ 1, 1, 0/ ; data sn(:, 9,3)/-1, 0, 1/
+data sd(:,10,3)/-1, 0, 0/ ; data sn(:,10,3)/ 1, 0, 1/
+data sd(:,11,3)/ 0,-1, 0/ ; data sn(:,11,3)/-1, 1, 1/
+data sd(:,12,3)/ 1, 1, 0/ ; data sn(:,12,3)/ 1,-1, 1/
+
+
+contains
+!****************************************
+!* - constitutive_init                  *
+!* - constitutive_calc_SchmidM          *
+!* - constitutive_calc_HardeningM       *
+!* - constitutive_parse_materialDat     *
+!* - orientation reading????            *
+!* - constitutive_calc_SlipRates        *
+!* - constitutive_calc_Hardening        *
+!* - consistutive_calc_PlasVeloGradient *
+!* - CPFEM_CauchyStress???????          *
+!****************************************
+
+
+subroutine constitutive_init()
+!**************************************
+!***      Module initialization     ***
+!**************************************
+call constitutive_calc_SchmidM()
+call constitutive_calc_hardeningM()
+call constitutive_parse_materialDat()
+end subroutine
  
-! **************************************
-! ***     module Init      ***
-! **************************************
- subroutine constitutive_init()
- 
- call constitutive_calc_SchmidM()
- call constitutive_calc_hardeningM()
- call constitutive_parse_materialDat()
- 
- end subroutine
- 
-! **************************************
-! *** Calculation of Schmid matrices ***
-! **************************************
- subroutine constitutive_calc_SchmidM()
 
- use prec, only: pRe,pIn
- implicit none
+subroutine constitutive_calc_SchmidM()
+!**************************************
+!*** Calculation of Schmid matrices ***
+!**************************************
+use prec, only: pReal,pInt
+implicit none
 
- integer(pIn) i,j,k,l
- real(pRe) invNorm
- 
- do j=1,3  ! iterate over crystal system
-   do i=1,Nslip(j)  ! iterate over slip systems
-     do k=1,3
-  do l=1,3
-    Sslip(j,i,k,l)=sd(j,i,k)*sn(j,i,l)
-  enddo
-     enddo
-     invNorm = dsqrt(1.0_pRe/
-     &    (sn(j,i,1)**2+sn(j,1,2)**2+sn(j,i,3)**2)/
-     &    (sd(j,i,1)**2+sd(j,1,2)**2+sd(j,i,3)**2))
-     Sslip(j,i,:,:) = Sslip(j,i,:,:)*invNorm
-     Sslip_v(j,i,1)=Sslip(j,i,1,1)
-     Sslip_v(j,i,2)=Sslip(j,i,2,2)
-     Sslip_v(j,i,3)=Sslip(j,i,3,3)
-     Sslip_v(j,i,4)=Sslip(j,i,1,2)+Sslip(j,i,2,1)
-     Sslip_v(j,i,5)=Sslip(j,i,2,3)+Sslip(j,i,3,2)
-     Sslip_v(j,i,6)=Sslip(j,i,1,3)+Sslip(j,i,3,1)
+!* Definition of variables
+integer(pInt) i,j,k,l
+real(pReal) invNorm
+
+!* Iteration over the crystal structures 
+do l=1,3  
+!* Iteration over the systems
+   do k=1,Nslip(l)
+!* Defintion of Schmid matrix  
+      forall (i=1:3,j=1:3) 
+	         Sslip(i,j,k,l)=sd(i,k,l)*sn(j,k,l)
+      endforall
+!* Normalization of Schmid matrix
+      invNorm = dsqrt(1.0_pReal/
+&              (sn(1,k,l)**2+sn(2,k,l)**2+sn(3,k,l)**2)*
+&              (sd(1,k,l)**2+sd(2,k,l)**2+sd(3,k,l)**2))
+      Sslip(:,:,k,l)=Sslip(:,:,k,l)*invNorm
+!* Vectorization of normalized Schmid matrix
+!* according MARC component order 11,22,33,12,23,13
+      Sslip_v(1,k,l)=Sslip(1,1,k,l)
+      Sslip_v(2,k,l)=Sslip(2,2,k,l)
+      Sslip_v(3,k,l)=Sslip(3,3,k,l)
+      Sslip_v(4,k,l)=Sslip(1,2,k,l)+Sslip(2,1,k,l)
+      Sslip_v(5,k,l)=Sslip(2,3,k,l)+Sslip(3,3,k,l)
+      Sslip_v(6,k,l)=Sslip(1,3,k,l)+Sslip(3,1,k,l)
    enddo
- enddo
- end subroutine
- 
-! ****************************************
-! *** Hardening matrix (see Kalidindi) ***
-! ****************************************
- subroutine constitutive_calc_hardeningM()
+enddo
 
- use prec, only: pRe,pIn
- implicit none
+end subroutine
 
- integer(pIn) i,j,k,l
 
-! MISSING iteration over crystal systems
-! PE does not understand the j,k looping
+subroutine constitutive_calc_HardeningM()
+!****************************************
+!*** Hardening matrix (see Kalidindi) ***
+!****************************************
+use prec, only: pReal,pInt
+implicit none
 
- hardening_matrix=latent
- do i=1,10,3
-   do j=1,3
-     do k=1,3
-  hardening_matrix(i-1+j,i-1+k)=1.0_ZdRe
-     enddo
+!* Definition of variables
+integer(pInt) i,j,k,l
+
+!* Initialization of the hardening matrix
+hardening_matrix=latent_hardening
+!* Iteration over the crystal structures 
+do l=1,3
+   select case(l) 
+!* Hardening matrix for FCC structures    
+   case (1)
+   do k=1,10,3
+      forall (i=1:3,j=1:3)
+             hardening_matrix(k-1+i,k-1+j,l)=1.0_pReal
+      endforall
    enddo
- enddo
+!* Hardening matrix for BCC structures
+   case (2)
+   do k=1,11,2
+      forall (i=1:2,j=1:2)
+             hardening_matrix(k-1+i,k-1+j,l)=1.0_pReal
+      endforall
+   enddo
+   do k=13,48
+      hardening_matrix(k,k,l)=1.0_pReal
+   enddo
+!* Hardening matrix for HCP structures
+   case (3)
+   forall (i=1:3,j=1:3)
+          hardening_matrix(i,j,l)=1.0_pReal
+   endforall
+   do k=4,12
+      hardening_matrix(k,k,l)=1.0_ZdRe
+   enddo
+   end select
+enddo
 
-! ****************************************
-! ***    Reading 'material.mpie'  ***     
-! ****************************************
- subroutine constitutive_parse_materialDat()
+end subroutine
 
- use prec, only: pRe,pIn
- implicit none
 
- character*80 line
- integer(pIn) i,j,k,l,positions(4)
+!* NOT YET IMPLEMENTED *!
+subroutine constitutive_parse_materialDat()
+!****************************************
+!***      Reading parameter files     ***
+!****************************************
+use prec, only: pReal,pInt
+implicit none
+
+!* Definition of variables
+character*80 line
+integer(pIn) i,j,k,l,positions(4)
 
 ! MISSING: needs to be 2 pass
 ! first pass to count Nmats and allocate
@@ -224,6 +384,7 @@
  end
 
 
+!* NOT YET IMPLEMENTED *!
  subroutine READ_ORIENTATIONS
 !***********************************************************************
 !*** This routine reads orientations from 'orientations.mpie'    ***
@@ -305,60 +466,85 @@
 
 
 
- subroutine slip_rate (tau_slip,tauc_slip_new,gdot_slip,
-     &       dgdot_dtaucslip)
-C ********************************************************************
-C Subroutine contains the constitutive equation for the slip
-C    rate on each slip system
-C Input: tau_slip      : shear stress on each slip system 
-C   tauc_slip_new   : critical shear stress on each slip system
-C Output: gdot_slip      : slip rate on each slip system
-C    dgdot_dtaucslip: derivative of slip rate on each slip system
-C ********************************************************************
- use mpie
- use Zahlendarstellung
- implicit none
-
- real(ZdRe) tau_slip(nslip),tauc_slip_new(nslip),
-     &      gdot_slip(nslip),dgdot_dtaucslip(nslip)
- integer(ZdIn) i
+subroutine constitutive_calc_SlipRates(
+& matID,
+& tau_slip,
+& tauc_slip,
+& gdot_slip,
+& dgdot_dtaucslip
+& )
+!*********************************************************************
+!* This subroutine contains the constitutive equation for the slip   *
+!* rate on each slip system                                          *
+!* INPUT:                                                            *
+!*  - matID           : material identifier                          *
+!*  - tau_slip        : applied shear stress on each slip system     *
+!*  - tauc_slip       : critical shear stress on each slip system    *
+!* OUTPUT:                                                           *
+!*  - gdot_slip       : slip rate on each slip system                *
+!*  - dgdot_dtaucslip : derivative of slip rate on each slip system  *
+!*********************************************************************
+use prec, only: pReal,pInt
+implicit none
  
- do i=1,nslip
-   gdot_slip(i)=g0_slip*(abs(tau_slip(i))/tauc_slip_new(i))
-     &    **n_slip*sign(1.0_ZdRe,tau_slip(i))
-   dgdot_dtaucslip(i)=g0_slip*(abs(tau_slip(i))/tauc_slip_new(i))
-     &     **(n_slip-1) *n_slip/tauc_slip_new(i)
- enddo
+!* Definition of variables
+integer(pInt) matID,i
+real(pReal), tau_slip(Nslip(crystal_structure(matID)))
+real(pReal), tauc_slip_new(Nslip(crystal_structure(matID)))
+real(pReal), gdot_slip(Nslip(crystal_structure(matID)))
+real(pReal), dgdot_dtaucslip(Nslip(crystal_structure(matID)))
 
- return
- end
+!* Iteration over the systems 
+do i=1,Nslip(crystal_structure(matID))
+   gdot_slip(i)=gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))
+&               **n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+   dgdot_dtaucslip(i)=gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))
+&                     **(n_slip(matID)-1.0_pReal)
+&                     *n_slip(matID)/tauc_slip(i)
+enddo
 
- subroutine hardening (tauc_slip_new,gdot_slip,dtauc_slip)
-C *********************************************************************
-C Subroutine calculates the increment in critical shear stress due 
-C   to plastic deformation on each slip system
-C Input: tauc_slip_new :critical shear stress needed for slip on each 
-C        slip system
-C   gdot_slip    :slip rate on each slip system
-C Output: dtauc_slip   :increment of hardening due to slip on each 
-C        slip system
-C Local : selfhr
-C *********************************************************************
- use mpie
- use Zahlendarstellung
- implicit none
+return
+end subroutine
 
- real(ZdRe) tauc_slip_new(nslip),gdot_slip(nslip),
-     &      dtauc_slip(nslip)
- real(ZdRe) selfhr(nslip)
- integer(ZdIn) i
 
- do i=1,nslip
-   selfhr(i)=h0*(1.0_ZdRe-tauc_slip_new(i)/
-     &  tauc_sat)**w0
-     &  *abs(gdot_slip(i))
- enddo
- dtauc_slip=matmul(hardening_matrix,selfhr)
+subroutine constitutive_calc_Hardening(
+& matID,
+& tauc_slip,
+& gdot_slip,
+& dtauc_slip
+& )
+!*********************************************************************
+!* This subroutine calculates the increment in critical shear stress *
+!* due to plastic deformation on each slip system                    *
+!* INPUT:                                                            *
+!*  - matID      : material identifier                               *
+!*  - tauc_slip  : critical shear stress on each slip system         *
+!*  - gdot_slip  : slip rate on each slip system                     *
+!* OUTPUT:                                                           *
+!*  - dtauc_slip : increment of hardening due to slip on each system *
+!*********************************************************************
+use prec, only: pReal,pInt
+implicit none
+
+!* Definition of variables
+integer(pInt) matID,i,j
+real(pReal) tauc_slip_new(Nslip(crystal_structure(matID)))
+real(pReal) gdot_slip(Nslip(crystal_structure(matID)))
+real(pReal) dtauc_slip(Nslip(crystal_structure(matID)))
+real(pReal) self_hardening(Nslip(crystal_structure(matID)))
+
+!* Self-Hardening of each system
+do i=1,Nslip(crystal_structure(matID))
+   self_hardening(i)=h0(matID)*(1.0_pReal-tauc_slip(i)/
+&                    s_sat(matID))**w0(matID)*abs(gdot_slip(i))
+enddo
+
+!* Hardening for all systems
+i=Nslip(crystal_structure(matID))
+j=crystal_structure(matID)
+
+
+dtauc_slip=matmul(hardening_matrix(i,i,j),selfhr)
 
  return
  end
