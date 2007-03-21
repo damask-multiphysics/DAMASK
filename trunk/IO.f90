@@ -37,7 +37,7 @@
  return
 100 IO_open_file = .false.
  return
- END FUNTION
+ END FUNCTION
 
 
 !********************************************************************
@@ -66,6 +66,174 @@
  return
 
  END FUNCTION
+
+
+!********************************************************************
+! hybrid IA repetition counter
+!********************************************************************
+ FUNCTION hybridIA_reps(dV_V,steps,C)
+
+ use prec, only: pReal, pInt
+ implicit none
+ 
+ integer(pInt), intent(in), dimension(3) :: steps
+ integer(pInt) hybridIA_reps, phi1,Phi,phi2
+ real(pReal), intent(in), dimension(steps(3),steps(2),steps(1)) :: dV_V
+ real(pReal), intent(in) :: C
+ 
+ hybridIA_reps = 0_pInt
+ do phi1=1,steps(1)
+   do Phi =1,steps(2)
+     do phi2=1,steps(3)
+       hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
+     end do
+   end do
+ end do
+ return
+ 
+ END FUNCTION
+
+
+!********************************************************************
+! hybrid IA sampling of ODFfile
+!********************************************************************
+ FUNCTION IO_hybridIA(Nast,ODFfileName)
+
+ use prec, only: pReal, pInt
+ use math, only: inRad
+
+ implicit none
+ 
+ character(len=*) ODFfileName
+ character(len=80) line
+ character(len=*), parameter :: fileFormat = '(A80)'
+ integer(pInt) i,j,bin,pos(7),Nast,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
+ integer(pInt), dimension(3) :: steps
+ integer(pInt), dimension(:), allocatable :: binSet
+ real(pReal) center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
+ real(pReal), dimension(3) :: limits,deltas
+ real(pReal), dimension(:,:,:), allocatable :: dV_V
+ real(pReal), dimension(:,:), allocatable :: IO_hybridIA
+
+ if (.not. IO_open_file(999,ODFfileName)) goto 100
+ 
+!--- parse header of ODF file ---
+!--- limits in phi1, Phi, phi2 ---
+ read(999,fmt=fileFormat,end=100) line
+ pos = IO_stringPos(line,3)
+ if (pos(1).ne.3) goto 100
+ do i=1,3
+   limits(i) = IO_intValue(line,pos,i)*inRad
+ end do
+
+!--- deltas in phi1, Phi, phi2 ---
+ read(999,fmt=fileFormat,end=100) line
+ pos = IO_stringPos(line,3)
+ if (pos(1).ne.3) goto 100
+ do i=1,3
+   deltas(i) = IO_intValue(line,pos,i)*inRad
+ end do
+ steps = nint(limits/deltas,pInt)
+ allocate(dV_V(steps(3),steps(2),steps(1)))
+
+!--- box boundary/center at origin? ---
+ read(999,fmt=fileFormat,end=100) line
+ if (index(IO_lc(line),'bound')>0) then
+   center = 0.5_pReal
+ else
+   center = 0.0_pReal
+ end if
+ 
+!--- skip blank line ---
+ read(999,fmt=fileFormat,end=100) line
+
+ sum_dV_V = 0.0_pReal
+ dV_V = 0.0_pReal
+ dg_0 = deltas(1)*deltas(3)*2.0_pReal*sin(deltas(2)/2.0_pReal)
+ NnonZero = 0_pInt
+ 
+ do phi1=1,steps(1)
+   do Phi=1,steps(2)
+     do phi2=1,steps(3)
+       read(999,fmt='(F)',end=100) prob
+       if (prob > 0.0_pReal) then
+         NnonZero = NnonZero+1
+         sum_dV_V = sum_dV_V+prob
+       else
+         prob = 0.0_pReal
+       end if
+       dV_V(phi2,Phi,phi1) = prob*dg_0*sin((Phi-1.0_pReal+center)*deltas(2))
+     end do
+   end do
+ end do  
+ 
+ dV_V = dV_V/sum_dV_V  ! normalize to 1
+ 
+!--- now fix bounds ---
+ Nset = max(Nast,NnonZero)
+ lowerC = 0.0_pReal
+ upperC = real(Nset, pReal)
+ 
+ do while (hybridIA_reps(dV_V,steps,upperC) < Nset)
+   lowerC = upperC
+   upperC = upperC*2.0_pReal
+ end do
+!--- binary search for best C ---
+ do
+   C = (upperC+lowerC)/2.0_pReal
+   Nreps = hybridIA_reps(dV_V,steps,C)
+   if (abs(upperC-lowerC) < upperC*1.0e-14_pReal) then
+     C = upperC
+     Nreps = hybridIA_reps(dV_V,steps,C)
+     exit
+   elseif (Nreps < Nset) then
+     lowerC = C
+   elseif (Nreps > Nset) then
+     upperC = C
+   else
+     exit
+   end if
+ end do
+ 
+ allocate(binSet(Nreps))
+ bin = 0 ! bin counter
+ i = 1 ! set counter
+ do phi1=1,steps(1)
+   do Phi=1,steps(2)
+     do phi2=1,steps(3)
+       reps = nint(C*dV_V(phi2,Phi,phi1), pInt)
+       binSet(i:i+reps-1) = bin
+       bin = bin+1 ! advance bin
+       i = i+reps ! advance set
+     end do
+   end do
+ end do
+
+ allocate(IO_hybridIA(3,Nast))
+ do i=1,Nast
+   if (i < Nast) then
+     call random_number(rnd)
+     j = nint(rnd*(Nast-i)+i+0.5_pReal,pInt)
+   else
+     j = i
+   end if
+   bin = binSet(j)
+   IO_hybridIA(1,i) = deltas(1)*(mod(bin/(steps(3)*steps(2)),steps(1))+center)  ! phi1
+   IO_hybridIA(2,i) = deltas(2)*(mod(bin/ steps(3)          ,steps(2))+center)  ! Phi
+   IO_hybridIA(3,i) = deltas(3)*(mod(bin                    ,steps(3))+center)  ! phi2
+   binSet(j) = binSet(i)
+ end do
+ close(999)
+ return
+
+! on error
+100 if (allocated(IO_hybridIA)) deallocate(IO_hybridIA)
+ allocate(IO_hybridIA(1,1))
+ IO_hybridIA = -1
+ close(999)
+ return
+ 
+ END FUNCTION 
 
 
 !********************************************************************
@@ -158,26 +326,26 @@
 !********************************************************************
 ! change character in line to lower case
 !********************************************************************
- FUNCTION IO_lowercase (line)
+ FUNCTION IO_lc (line)
 
  use prec, only: pInt
  implicit none
 
  character (len=*) line
- character (len=len(line)) IO_lowercase
+ character (len=len(line)) IO_lc
  integer(pInt) i
 
- IO_lowercase = line
- forall (i=1:len(line),64<ichar(line(i:i)).and.ichar(line(i:i))<91) IO_lowercase(i:i)=achar(ichar(line(i:i))+32)
+ IO_lc = line
+ forall (i=1:len(line),64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
  return 
 
  END FUNCTION
 
 
 !********************************************************************
-! in place change character in line to lower case
+! in place change of character in line to lower case
 !********************************************************************
- SUBROUTINE IO_lowercaseInplace (line)
+ SUBROUTINE IO_lcInplace (line)
 
  use prec, only: pInt
  implicit none
@@ -185,7 +353,7 @@
  character (len=*) line
  integer(pInt) i
 
- forall (i=1:len(line),64<ichar(line(i:i)).and.ichar(line(i:i))<91) line(i:i)=achar(ichar(line(i:i))+32)
+ forall (i=1:len(line),64<iachar(line(i:i)) .and. iachar(line(i:i))<91) line(i:i)=achar(iachar(line(i:i))+32)
  return 
 
  END SUBROUTINE
