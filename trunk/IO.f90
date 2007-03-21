@@ -7,8 +7,8 @@
 !---------------------------
 ! function IO_open_file(unit,relPath)
 ! function IO_open_inputFile(unit)
-! FUNCTION IO_hybridIA(Nast,ODFfileName)
-! private FUNCTION hybridIA_reps(dV_V,steps,C)
+! function IO_hybridIA(Nast,ODFfileName)
+! private function hybridIA_reps(dV_V,steps,C)
 ! function IO_stringPos(line,N)
 ! function IO_stringValue(line,positions,pos)
 ! function IO_floatValue(line,positions,pos)
@@ -39,6 +39,7 @@
  return
 100 IO_open_file = .false.
  return
+ 
  END FUNCTION
 
 
@@ -315,7 +316,7 @@
  real(pReal) IO_floatValue
  integer(pInt) positions(*),pos
 
- READ(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(F)') IO_floatValue
+ read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(F)') IO_floatValue
  return
 100 IO_floatValue = -1.0_pReal
  return
@@ -335,7 +336,7 @@
  real(pReal) IO_fixedFloatValue
  integer(pInt) ends(*),pos
 
- READ(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(F)') IO_fixedFloatValue
+ read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(F)') IO_fixedFloatValue
  return
 100 IO_fixedFloatValue = -1.0_pReal
  return
@@ -352,16 +353,16 @@
  implicit none
  
  character(len=*) line
- real(pReal) IO_fixedNoEFloatValue,base,expon
- integer(pInt) ends(*),pos,pos_exp
+ real(pReal) IO_fixedNoEFloatValue,base
+ integer(pInt) ends(*),pos,pos_exp,expon
  
  pos_exp = scan(line(ends(pos-1)+1:ends(pos)),'+-',back=.true.)
  if (pos_exp > 1) then
-   READ(UNIT=line(ends(pos-1)+1:ends(pos-1)+pos_exp-1),ERR=100,FMT='(F)') base
-   READ(UNIT=line(ends(pos-1)+pos_exp:ends(pos)),ERR=100,FMT='(F)') expon
+   read(UNIT=line(ends(pos-1)+1:ends(pos-1)+pos_exp-1),ERR=100,FMT='(F)') base
+   read(UNIT=line(ends(pos-1)+pos_exp:ends(pos)),ERR=100,FMT='(I)') expon
  else
-   READ(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(F)') base
-   expon = 0.0_pReal
+   read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(F)') base
+   expon = 0_pInt
  endif
  IO_fixedNoEFloatValue = base*10.0_pReal**expon
  return
@@ -383,7 +384,7 @@
  integer(pInt) IO_intValue
  integer(pInt) positions(*),pos
 
- READ(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(I)') IO_intValue
+ read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(I)') IO_intValue
  return
 100 IO_intValue = -1_pInt
  return
@@ -403,7 +404,7 @@
  integer(pInt) IO_fixedIntValue
  integer(pInt) ends(*),pos
 
- READ(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(I)') IO_fixedIntValue
+ read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(I)') IO_fixedIntValue
  return
 100 IO_fixedIntValue = -1_pInt
  return
