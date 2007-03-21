@@ -24,103 +24,109 @@ character*80, allocatble :: TCfile(:),ODFfile(:)
 ! NB: orientation files  TCfile(number of material)
 
 !* Integer *
-integer(pInt) Nmats
+integer(pInt) constitutive_Nmats
 ! NB: Number of materials (read in material file)
-integer(pInt), allocatable :: crystal_structure(:)
+integer(pInt), allocatable :: constitutive_crystal_structure(:)
 ! NB: crystal_structure(number of material)=1-3
-integer(pInt) Nslip(3)
-! NB: Number of systems for each crystal structure (3) 
+integer(pInt) constitutive_Nslip(3)
+! NB: Number of systems for each crystal structure (3)
+! NB: not forget a MaxSlip variable that give the effective number
+!     of slip system I have  
 
 !* Real *
-real(pReal), allocatable :: Cslip_66(:,:,:)
+real(pReal), allocatable :: constitutive_Cslip_66(:,:,:)
 ! NB: Cslip_66(1:6,1:6,number of materials)
-real(pReal), allocatable :: s0_slip(:),gdot0_slip(:),n_slip(:)
-real(pReal), allocatable :: h0(:),w0(:),s_sat(:)
+real(pReal), allocatable :: constitutive_s0_slip(:)
+real(pReal), allocatable :: constitutive_gdot0_slip(:)
+real(pReal), allocatable :: constitutive_n_slip(:)
+real(pReal), allocatable :: constitutive_h0(:)
+real(pReal), allocatable :: constitutive_w0(:)
+real(pReal), allocatable :: constitutive_s_sat(:)
 ! NB: Parameters(number of materials)
-real(pReal), allocatable :: hardening_matrix(:,:,:)
+real(pReal), allocatable :: constitutive_hardening_matrix(:,:,:)
 ! NB: hardening_matrix(48,48,3)
-real(pReal), parameter :: latent_hardening=1.4_pReal
-real(pReal) sn(3,48,3),sd(3,48,3)
+real(pReal), parameter :: constitutive_latent_hardening=1.4_pReal
+real(pReal) constitutive_sn(3,48,3),constitutive_sd(3,48,3)
 ! NB: slip normale and slip direction for 3 crystal structures
 !     Is 48 always the maximum number of systems?
-real(pReal) Sslip(3,3,48,3),Sslip_v(6,48,3)
+real(pReal) constitutive_Sslip(3,3,48,3),constitutive_Sslip_v(6,48,3)
 ! NB: Schmid matrices and corresponding Schmid vectors
 
 !*** Slip systems for FCC structures (1) ***
-Nslip(1)=12_pInt
+constitutive_Nslip(1)=12_pInt
 !* System {111}<110>  Sort according Eisenlohr&Hantcherli
-data sd(:, 1,1)/ 0, 1,-1/ ; data sn(:, 1,1)/ 1, 1, 1/
-data sd(:, 2,1)/-1, 0, 1/ ; data sn(:, 2,1)/ 1, 1, 1/
-data sd(:, 3,1)/ 1,-1, 0/ ; data sn(:, 3,1)/ 1, 1, 1/
-data sd(:, 4,1)/ 0,-1,-1/ ; data sn(:, 4,1)/-1,-1, 1/
-data sd(:, 5,1)/ 1, 0, 1/ ; data sn(:, 5,1)/-1,-1, 1/
-data sd(:, 6,1)/-1, 1, 0/ ; data sn(:, 6,1)/-1,-1, 1/
-data sd(:, 7,1)/ 0,-1, 1/ ; data sn(:, 7,1)/ 1,-1,-1/
-data sd(:, 8,1)/-1, 0,-1/ ; data sn(:, 8,1)/ 1,-1,-1/
-data sd(:, 9,1)/ 1, 1, 0/ ; data sn(:, 9,1)/ 1,-1,-1/
-data sd(:,10,1)/ 0, 1, 1/ ; data sn(:,10,1)/-1, 1,-1/
-data sd(:,11,1)/ 1, 0,-1/ ; data sn(:,11,1)/-1, 1,-1/
-data sd(:,12,1)/-1,-1, 0/ ; data sn(:,12,1)/-1, 1,-1/
+data constitutive_sd(:, 1,1)/ 0, 1,-1/ ; data constitutive_sn(:, 1,1)/ 1, 1, 1/
+data constitutive_sd(:, 2,1)/-1, 0, 1/ ; data constitutive_sn(:, 2,1)/ 1, 1, 1/
+data constitutive_sd(:, 3,1)/ 1,-1, 0/ ; data constitutive_sn(:, 3,1)/ 1, 1, 1/
+data constitutive_sd(:, 4,1)/ 0,-1,-1/ ; data constitutive_sn(:, 4,1)/-1,-1, 1/
+data constitutive_sd(:, 5,1)/ 1, 0, 1/ ; data constitutive_sn(:, 5,1)/-1,-1, 1/
+data constitutive_sd(:, 6,1)/-1, 1, 0/ ; data constitutive_sn(:, 6,1)/-1,-1, 1/
+data constitutive_sd(:, 7,1)/ 0,-1, 1/ ; data constitutive_sn(:, 7,1)/ 1,-1,-1/
+data constitutive_sd(:, 8,1)/-1, 0,-1/ ; data constitutive_sn(:, 8,1)/ 1,-1,-1/
+data constitutive_sd(:, 9,1)/ 1, 1, 0/ ; data constitutive_sn(:, 9,1)/ 1,-1,-1/
+data constitutive_sd(:,10,1)/ 0, 1, 1/ ; data constitutive_sn(:,10,1)/-1, 1,-1/
+data constitutive_sd(:,11,1)/ 1, 0,-1/ ; data constitutive_sn(:,11,1)/-1, 1,-1/
+data constitutive_sd(:,12,1)/-1,-1, 0/ ; data constitutive_sn(:,12,1)/-1, 1,-1/
 
 !*** Slip systems for BCC structures (2) ***
-Nslip(2)=48_pInt
+constitutive_Nslip(2)=48_pInt
 !* System {110}<111>
 !* Sort?
-data sd(:, 1,2)/ 1,-1, 1/ ; data sn(:, 1,2)/ 0, 1, 1/
-data sd(:, 2,2)/-1,-1, 1/ ; data sn(:, 2,2)/ 0, 1, 1/
-data sd(:, 3,2)/ 1, 1, 1/ ; data sn(:, 3,2)/ 0,-1, 1/
-data sd(:, 4,2)/-1, 1, 1/ ; data sn(:, 4,2)/ 0,-1, 1/
-data sd(:, 5,2)/-1, 1, 1/ ; data sn(:, 5,2)/ 1, 0, 1/
-data sd(:, 6,2)/-1,-1, 1/ ; data sn(:, 6,2)/ 1, 0, 1/
-data sd(:, 7,2)/ 1, 1, 1/ ; data sn(:, 7,2)/-1, 0, 1/
-data sd(:, 8,2)/ 1,-1, 1/ ; data sn(:, 8,2)/-1, 0, 1/
-data sd(:, 9,2)/-1, 1, 1/ ; data sn(:, 9,2)/ 1, 1, 0/
-data sd(:,10,2)/-1, 1,-1/ ; data sn(:,10,2)/ 1, 1, 0/
-data sd(:,11,2)/ 1, 1, 1/ ; data sn(:,11,2)/-1, 1, 0/
-data sd(:,12,2)/ 1, 1,-1/ ; data sn(:,12,2)/-1, 1, 0/
+data constitutive_sd(:, 1,2)/ 1,-1, 1/ ; data constitutive_sn(:, 1,2)/ 0, 1, 1/
+data constitutive_sd(:, 2,2)/-1,-1, 1/ ; data constitutive_sn(:, 2,2)/ 0, 1, 1/
+data constitutive_sd(:, 3,2)/ 1, 1, 1/ ; data constitutive_sn(:, 3,2)/ 0,-1, 1/
+data constitutive_sd(:, 4,2)/-1, 1, 1/ ; data constitutive_sn(:, 4,2)/ 0,-1, 1/
+data constitutive_sd(:, 5,2)/-1, 1, 1/ ; data constitutive_sn(:, 5,2)/ 1, 0, 1/
+data constitutive_sd(:, 6,2)/-1,-1, 1/ ; data constitutive_sn(:, 6,2)/ 1, 0, 1/
+data constitutive_sd(:, 7,2)/ 1, 1, 1/ ; data constitutive_sn(:, 7,2)/-1, 0, 1/
+data constitutive_sd(:, 8,2)/ 1,-1, 1/ ; data constitutive_sn(:, 8,2)/-1, 0, 1/
+data constitutive_sd(:, 9,2)/-1, 1, 1/ ; data constitutive_sn(:, 9,2)/ 1, 1, 0/
+data constitutive_sd(:,10,2)/-1, 1,-1/ ; data constitutive_sn(:,10,2)/ 1, 1, 0/
+data constitutive_sd(:,11,2)/ 1, 1, 1/ ; data constitutive_sn(:,11,2)/-1, 1, 0/
+data constitutive_sd(:,12,2)/ 1, 1,-1/ ; data constitutive_sn(:,12,2)/-1, 1, 0/
 !* System {112}<111>
 !* Sort?
-data sd(:,13,2)/-1, 1, 1/ ; data sn(:,13,2)/ 2, 1, 1/
-data sd(:,14,2)/ 1, 1, 1/ ; data sn(:,14,2)/-2, 1, 1/
-data sd(:,15,2)/ 1, 1,-1/ ; data sn(:,15,2)/ 2,-1, 1/
-data sd(:,16,2)/ 1,-1, 1/ ; data sn(:,16,2)/ 2, 1,-1/
-data sd(:,17,2)/ 1,-1, 1/ ; data sn(:,17,2)/ 1, 2, 1/
-data sd(:,18,2)/ 1, 1,-1/ ; data sn(:,18,2)/-1, 2, 1/
-data sd(:,19,2)/ 1, 1, 1/ ; data sn(:,19,2)/ 1,-2, 1/
-data sd(:,20,2)/-1, 1, 1/ ; data sn(:,20,2)/ 1, 2,-1/
-data sd(:,21,2)/ 1, 1,-1/ ; data sn(:,21,2)/ 1, 1, 2/
-data sd(:,22,2)/ 1,-1, 1/ ; data sn(:,22,2)/-1, 1, 2/
-data sd(:,23,2)/-1, 1, 1/ ; data sn(:,23,2)/ 1,-1, 2/
-data sd(:,24,2)/ 1, 1, 1/ ; data sn(:,24,2)/ 1, 1,-2/
+data constitutive_sd(:,13,2)/-1, 1, 1/ ; data constitutive_sn(:,13,2)/ 2, 1, 1/
+data constitutive_sd(:,14,2)/ 1, 1, 1/ ; data constitutive_sn(:,14,2)/-2, 1, 1/
+data constitutive_sd(:,15,2)/ 1, 1,-1/ ; data constitutive_sn(:,15,2)/ 2,-1, 1/
+data constitutive_sd(:,16,2)/ 1,-1, 1/ ; data constitutive_sn(:,16,2)/ 2, 1,-1/
+data constitutive_sd(:,17,2)/ 1,-1, 1/ ; data constitutive_sn(:,17,2)/ 1, 2, 1/
+data constitutive_sd(:,18,2)/ 1, 1,-1/ ; data constitutive_sn(:,18,2)/-1, 2, 1/
+data constitutive_sd(:,19,2)/ 1, 1, 1/ ; data constitutive_sn(:,19,2)/ 1,-2, 1/
+data constitutive_sd(:,20,2)/-1, 1, 1/ ; data constitutive_sn(:,20,2)/ 1, 2,-1/
+data constitutive_sd(:,21,2)/ 1, 1,-1/ ; data constitutive_sn(:,21,2)/ 1, 1, 2/
+data constitutive_sd(:,22,2)/ 1,-1, 1/ ; data constitutive_sn(:,22,2)/-1, 1, 2/
+data constitutive_sd(:,23,2)/-1, 1, 1/ ; data constitutive_sn(:,23,2)/ 1,-1, 2/
+data constitutive_sd(:,24,2)/ 1, 1, 1/ ; data constitutive_sn(:,24,2)/ 1, 1,-2/
 !* System {123}<111>
 !* Sort?
-data sd(:,25,2)/ 1, 1,-1/ ; data sn(:,25,2)/ 1, 2, 3/
-data sd(:,26,2)/ 1,-1, 1/ ; data sn(:,26,2)/-1, 2, 3/
-data sd(:,27,2)/-1, 1, 1/ ; data sn(:,27,2)/ 1,-2, 3/
-data sd(:,28,2)/ 1, 1, 1/ ; data sn(:,28,2)/ 1, 2,-3/
-data sd(:,29,2)/ 1,-1, 1/ ; data sn(:,29,2)/ 1, 3, 2/
-data sd(:,30,2)/ 1, 1,-1/ ; data sn(:,30,2)/-1, 3, 2/
-data sd(:,31,2)/ 1, 1, 1/ ; data sn(:,31,2)/ 1,-3, 2/
-data sd(:,32,2)/-1, 1, 1/ ; data sn(:,32,2)/ 1, 3,-2/
-data sd(:,33,2)/ 1, 1,-1/ ; data sn(:,33,2)/ 2, 1, 3/
-data sd(:,34,2)/ 1,-1, 1/ ; data sn(:,34,2)/-2, 1, 3/
-data sd(:,35,2)/-1, 1, 1/ ; data sn(:,35,2)/ 2,-1, 3/
-data sd(:,36,2)/ 1, 1, 1/ ; data sn(:,36,2)/ 2, 1,-3/
-data sd(:,37,2)/ 1,-1, 1/ ; data sn(:,37,2)/ 2, 3, 1/
-data sd(:,38,2)/ 1, 1,-1/ ; data sn(:,38,2)/-2, 3, 1/
-data sd(:,39,2)/ 1, 1, 1/ ; data sn(:,39,2)/ 2,-3, 1/
-data sd(:,40,2)/-1, 1, 1/ ; data sn(:,40,2)/ 2, 3,-1/
-data sd(:,41,2)/-1, 1, 1/ ; data sn(:,41,2)/ 3, 1, 2/
-data sd(:,42,2)/ 1, 1, 1/ ; data sn(:,42,2)/-3, 1, 2/
-data sd(:,43,2)/ 1, 1,-1/ ; data sn(:,43,2)/ 3,-1, 2/
-data sd(:,44,2)/ 1,-1, 1/ ; data sn(:,44,2)/ 3, 1,-2/
-data sd(:,45,2)/-1, 1, 1/ ; data sn(:,45,2)/ 3, 2, 1/
-data sd(:,46,2)/ 1, 1, 1/ ; data sn(:,46,2)/-3, 2, 1/
-data sd(:,47,2)/ 1, 1,-1/ ; data sn(:,47,2)/ 3,-2, 1/
-data sd(:,48,2)/ 1,-1, 1/ ; data sn(:,48,2)/ 3, 2,-1/
+data constitutive_sd(:,25,2)/ 1, 1,-1/ ; data constitutive_sn(:,25,2)/ 1, 2, 3/
+data constitutive_sd(:,26,2)/ 1,-1, 1/ ; data constitutive_sn(:,26,2)/-1, 2, 3/
+data constitutive_sd(:,27,2)/-1, 1, 1/ ; data constitutive_sn(:,27,2)/ 1,-2, 3/
+data constitutive_sd(:,28,2)/ 1, 1, 1/ ; data constitutive_sn(:,28,2)/ 1, 2,-3/
+data constitutive_sd(:,29,2)/ 1,-1, 1/ ; data constitutive_sn(:,29,2)/ 1, 3, 2/
+data constitutive_sd(:,30,2)/ 1, 1,-1/ ; data constitutive_sn(:,30,2)/-1, 3, 2/
+data constitutive_sd(:,31,2)/ 1, 1, 1/ ; data constitutive_sn(:,31,2)/ 1,-3, 2/
+data constitutive_sd(:,32,2)/-1, 1, 1/ ; data constitutive_sn(:,32,2)/ 1, 3,-2/
+data constitutive_sd(:,33,2)/ 1, 1,-1/ ; data constitutive_sn(:,33,2)/ 2, 1, 3/
+data constitutive_sd(:,34,2)/ 1,-1, 1/ ; data constitutive_sn(:,34,2)/-2, 1, 3/
+data constitutive_sd(:,35,2)/-1, 1, 1/ ; data constitutive_sn(:,35,2)/ 2,-1, 3/
+data constitutive_sd(:,36,2)/ 1, 1, 1/ ; data constitutive_sn(:,36,2)/ 2, 1,-3/
+data constitutive_sd(:,37,2)/ 1,-1, 1/ ; data constitutive_sn(:,37,2)/ 2, 3, 1/
+data constitutive_sd(:,38,2)/ 1, 1,-1/ ; data constitutive_sn(:,38,2)/-2, 3, 1/
+data constitutive_sd(:,39,2)/ 1, 1, 1/ ; data constitutive_sn(:,39,2)/ 2,-3, 1/
+data constitutive_sd(:,40,2)/-1, 1, 1/ ; data constitutive_sn(:,40,2)/ 2, 3,-1/
+data constitutive_sd(:,41,2)/-1, 1, 1/ ; data constitutive_sn(:,41,2)/ 3, 1, 2/
+data constitutive_sd(:,42,2)/ 1, 1, 1/ ; data constitutive_sn(:,42,2)/-3, 1, 2/
+data constitutive_sd(:,43,2)/ 1, 1,-1/ ; data constitutive_sn(:,43,2)/ 3,-1, 2/
+data constitutive_sd(:,44,2)/ 1,-1, 1/ ; data constitutive_sn(:,44,2)/ 3, 1,-2/
+data constitutive_sd(:,45,2)/-1, 1, 1/ ; data constitutive_sn(:,45,2)/ 3, 2, 1/
+data constitutive_sd(:,46,2)/ 1, 1, 1/ ; data constitutive_sn(:,46,2)/-3, 2, 1/
+data constitutive_sd(:,47,2)/ 1, 1,-1/ ; data constitutive_sn(:,47,2)/ 3,-2, 1/
+data constitutive_sd(:,48,2)/ 1,-1, 1/ ; data constitutive_sn(:,48,2)/ 3, 2,-1/
 
 !*** Slip systems for HCP structures (3) ***
-Nslip(3)=12_pInt
+constitutive_Nslip(3)=12_pInt
 !* Basal systems {0001}<1120>
 !* 1- (0 0 0 1)[-2  1  1  0]
 !* 2- (0 0 0 1)[ 1 -2  1  0]
@@ -130,17 +136,17 @@ Nslip(3)=12_pInt
 !* Automatical transformation from Bravais to Miller
 !* not done for the moment
 !* Sort?
-data sd(:, 1,3)/-1, 0, 0/ ; data sn(:, 1,3)/ 0, 0, 1/
-data sd(:, 2,3)/ 0,-1, 0/ ; data sn(:, 2,3)/ 0, 0, 1/
-data sd(:, 3,3)/ 1, 1, 0/ ; data sn(:, 3,3)/ 0, 0, 1/
+data constitutive_sd(:, 1,3)/-1, 0, 0/ ; data constitutive_sn(:, 1,3)/ 0, 0, 1/
+data constitutive_sd(:, 2,3)/ 0,-1, 0/ ; data constitutive_sn(:, 2,3)/ 0, 0, 1/
+data constitutive_sd(:, 3,3)/ 1, 1, 0/ ; data constitutive_sn(:, 3,3)/ 0, 0, 1/
 !* 1st type prismatic systems {1010}<1120> 
 !* 1- ( 0  1 -1  0)[-2  1  1  0]
 !* 2- ( 1  0 -1  0)[ 1 -2  1  0]
 !* 3- (-1  1  0  0)[ 1  1 -2  0]
 !* Sort?
-data sd(:, 4,3)/-1, 0, 0/ ; data sn(:, 4,3)/ 0, 1, 0/
-data sd(:, 5,3)/ 0,-1, 0/ ; data sn(:, 5,3)/ 1, 0, 0/
-data sd(:, 6,3)/ 1, 1, 0/ ; data sn(:, 6,3)/-1, 1, 0/
+data constitutive_sd(:, 4,3)/-1, 0, 0/ ; data constitutive_sn(:, 4,3)/ 0, 1, 0/
+data constitutive_sd(:, 5,3)/ 0,-1, 0/ ; data constitutive_sn(:, 5,3)/ 1, 0, 0/
+data constitutive_sd(:, 6,3)/ 1, 1, 0/ ; data constitutive_sn(:, 6,3)/-1, 1, 0/
 !* 1st type 1st order pyramidal systems {1011}<1120>
 !* 1- ( 0 -1  1  1)[-2  1  1  0]
 !* 2- ( 0  1 -1  1)[-2  1  1  0]
@@ -149,15 +155,15 @@ data sd(:, 6,3)/ 1, 1, 0/ ; data sn(:, 6,3)/-1, 1, 0/
 !* 5- (-1  1  0  1)[ 1  1 -2  0]
 !* 6- ( 1 -1  0  1)[ 1  1 -2  0]
 !* Sort?
-data sd(:, 7,3)/-1, 0, 0/ ; data sn(:, 7,3)/ 0,-1, 1/
-data sd(:, 8,3)/ 0,-1, 0/ ; data sn(:, 8,3)/ 0, 1, 1/
-data sd(:, 9,3)/ 1, 1, 0/ ; data sn(:, 9,3)/-1, 0, 1/
-data sd(:,10,3)/-1, 0, 0/ ; data sn(:,10,3)/ 1, 0, 1/
-data sd(:,11,3)/ 0,-1, 0/ ; data sn(:,11,3)/-1, 1, 1/
-data sd(:,12,3)/ 1, 1, 0/ ; data sn(:,12,3)/ 1,-1, 1/
+data constitutive_sd(:, 7,3)/-1, 0, 0/ ; data constitutive_sn(:, 7,3)/ 0,-1, 1/
+data constitutive_sd(:, 8,3)/ 0,-1, 0/ ; data constitutive_sn(:, 8,3)/ 0, 1, 1/
+data constitutive_sd(:, 9,3)/ 1, 1, 0/ ; data constitutive_sn(:, 9,3)/-1, 0, 1/
+data constitutive_sd(:,10,3)/-1, 0, 0/ ; data constitutive_sn(:,10,3)/ 1, 0, 1/
+data constitutive_sd(:,11,3)/ 0,-1, 0/ ; data constitutive_sn(:,11,3)/-1, 1, 1/
+data constitutive_sd(:,12,3)/ 1, 1, 0/ ; data constitutive_sn(:,12,3)/ 1,-1, 1/
 
 
-contains
+CONTAINS
 !****************************************
 !* - constitutive_init                  *
 !* - constitutive_calc_SchmidM          *
@@ -195,24 +201,22 @@ real(pReal) invNorm
 !* Iteration over the crystal structures 
 do l=1,3  
 !* Iteration over the systems
-   do k=1,Nslip(l)
+   do k=1,constitutive_Nslip(l)
 !* Defintion of Schmid matrix  
       forall (i=1:3,j=1:3) 
-	         Sslip(i,j,k,l)=sd(i,k,l)*sn(j,k,l)
+	         constitutive_Sslip(i,j,k,l)=constitutive_sd(i,k,l)*constitutive_sn(j,k,l)
       endforall
 !* Normalization of Schmid matrix
-      invNorm = dsqrt(1.0_pReal/
-&              (sn(1,k,l)**2+sn(2,k,l)**2+sn(3,k,l)**2)*
-&              (sd(1,k,l)**2+sd(2,k,l)**2+sd(3,k,l)**2))
-      Sslip(:,:,k,l)=Sslip(:,:,k,l)*invNorm
+      invNorm=dsqrt(1.0_pReal/((constitutive_sn(1,k,l)**2+constitutive_sn(2,k,l)**2+constitutive_sn(3,k,l)**2)*(constitutive_sd(1,k,l)**2+constitutive_sd(2,k,l)**2+constitutive_sd(3,k,l)**2)))
+      constitutive_Sslip(:,:,k,l)=constitutive_Sslip(:,:,k,l)*invNorm
 !* Vectorization of normalized Schmid matrix
 !* according MARC component order 11,22,33,12,23,13
-      Sslip_v(1,k,l)=Sslip(1,1,k,l)
-      Sslip_v(2,k,l)=Sslip(2,2,k,l)
-      Sslip_v(3,k,l)=Sslip(3,3,k,l)
-      Sslip_v(4,k,l)=Sslip(1,2,k,l)+Sslip(2,1,k,l)
-      Sslip_v(5,k,l)=Sslip(2,3,k,l)+Sslip(3,3,k,l)
-      Sslip_v(6,k,l)=Sslip(1,3,k,l)+Sslip(3,1,k,l)
+      constitutive_Sslip_v(1,k,l)=constitutive_Sslip(1,1,k,l)
+      constitutive_Sslip_v(2,k,l)=constitutive_Sslip(2,2,k,l)
+      constitutive_Sslip_v(3,k,l)=constitutive_Sslip(3,3,k,l)
+      constitutive_Sslip_v(4,k,l)=constitutive_Sslip(1,2,k,l)+constitutive_Sslip(2,1,k,l)
+      constitutive_Sslip_v(5,k,l)=constitutive_Sslip(2,3,k,l)+constitutive_Sslip(3,3,k,l)
+      constitutive_Sslip_v(6,k,l)=constitutive_Sslip(1,3,k,l)+constitutive_Sslip(3,1,k,l)
    enddo
 enddo
 
@@ -230,7 +234,7 @@ implicit none
 integer(pInt) i,j,k,l
 
 !* Initialization of the hardening matrix
-hardening_matrix=latent_hardening
+constitutive_hardening_matrix=constitutive_latent_hardening
 !* Iteration over the crystal structures 
 do l=1,3
    select case(l) 
@@ -238,31 +242,35 @@ do l=1,3
    case (1)
    do k=1,10,3
       forall (i=1:3,j=1:3)
-             hardening_matrix(k-1+i,k-1+j,l)=1.0_pReal
+             constitutive_hardening_matrix(k-1+i,k-1+j,l)=1.0_pReal
       endforall
    enddo
 !* Hardening matrix for BCC structures
    case (2)
    do k=1,11,2
       forall (i=1:2,j=1:2)
-             hardening_matrix(k-1+i,k-1+j,l)=1.0_pReal
+             constitutive_hardening_matrix(k-1+i,k-1+j,l)=1.0_pReal
       endforall
    enddo
    do k=13,48
-      hardening_matrix(k,k,l)=1.0_pReal
+      constitutive_hardening_matrix(k,k,l)=1.0_pReal
    enddo
 !* Hardening matrix for HCP structures
    case (3)
    forall (i=1:3,j=1:3)
-          hardening_matrix(i,j,l)=1.0_pReal
+          constitutive_hardening_matrix(i,j,l)=1.0_pReal
    endforall
    do k=4,12
-      hardening_matrix(k,k,l)=1.0_ZdRe
+      constitutive_hardening_matrix(k,k,l)=1.0_ZdRe
    enddo
    end select
 enddo
 
 end subroutine
+
+
+
+
 
 
 !* NOT YET IMPLEMENTED *!
@@ -466,13 +474,9 @@ integer(pIn) i,j,k,l,positions(4)
 
 
 
-subroutine constitutive_calc_SlipRates(
-& matID,
-& tau_slip,
-& tauc_slip,
-& gdot_slip,
-& dgdot_dtaucslip
-& )
+
+
+subroutine constitutive_calc_SlipRates(matID,tau_slip,tauc_slip,gdot_slip,dgdot_dtaucslip)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for the slip   *
 !* rate on each slip system                                          *
@@ -489,30 +493,22 @@ implicit none
  
 !* Definition of variables
 integer(pInt) matID,i
-real(pReal), tau_slip(Nslip(crystal_structure(matID)))
-real(pReal), tauc_slip_new(Nslip(crystal_structure(matID)))
-real(pReal), gdot_slip(Nslip(crystal_structure(matID)))
-real(pReal), dgdot_dtaucslip(Nslip(crystal_structure(matID)))
+real(pReal) tau_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) tauc_slip_new(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) gdot_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) dgdot_dtaucslip(constitutive_Nslip(constitutive_crystal_structure(matID)))
 
 !* Iteration over the systems 
-do i=1,Nslip(crystal_structure(matID))
-   gdot_slip(i)=gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))
-&               **n_slip(matID)*sign(1.0_pReal,tau_slip(i))
-   dgdot_dtaucslip(i)=gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))
-&                     **(n_slip(matID)-1.0_pReal)
-&                     *n_slip(matID)/tauc_slip(i)
+do i=1,constitutive_Nslip(constitutive_crystal_structure(matID))
+   gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+   dgdot_dtaucslip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**(constitutive_n_slip(matID)-1.0_pReal)*constitutive_n_slip(matID)/tauc_slip(i)
 enddo
 
 return
 end subroutine
 
 
-subroutine constitutive_calc_Hardening(
-& matID,
-& tauc_slip,
-& gdot_slip,
-& dtauc_slip
-& )
+subroutine constitutive_calc_Hardening(matID,tauc_slip,gdot_slip,dtauc_slip)
 !*********************************************************************
 !* This subroutine calculates the increment in critical shear stress *
 !* due to plastic deformation on each slip system                    *
@@ -528,82 +524,81 @@ implicit none
 
 !* Definition of variables
 integer(pInt) matID,i,j
-real(pReal) tauc_slip_new(Nslip(crystal_structure(matID)))
-real(pReal) gdot_slip(Nslip(crystal_structure(matID)))
-real(pReal) dtauc_slip(Nslip(crystal_structure(matID)))
-real(pReal) self_hardening(Nslip(crystal_structure(matID)))
+real(pReal) tauc_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) gdot_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) dtauc_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) self_hardening(constitutive_Nslip(constitutive_crystal_structure(matID)))
 
 !* Self-Hardening of each system
-do i=1,Nslip(crystal_structure(matID))
-   self_hardening(i)=h0(matID)*(1.0_pReal-tauc_slip(i)/
-&                    s_sat(matID))**w0(matID)*abs(gdot_slip(i))
+do i=1,constitutive_Nslip(constitutive_crystal_structure(matID))
+   self_hardening(i)=constitutive_h0(matID)*(1.0_pReal-tauc_slip(i)/constitutive_s_sat(matID))**constitutive_w0(matID)*abs(gdot_slip(i))
 enddo
 
 !* Hardening for all systems
 i=Nslip(crystal_structure(matID))
 j=crystal_structure(matID)
+dtauc_slip=matmul(constitutive_hardening_matrix(1:i,1:i,j),self_hardening)
+
+return
+end subroutine
 
 
-dtauc_slip=matmul(hardening_matrix(i,i,j),selfhr)
+subroutine constitutive_calc_PlasVeloGradient(dt,tau_slip,tauc_slip_new,Lp)
+!*********************************************************************
+!* This subroutine calculates the plastic velocity gradient given    *
+!* the slip rates                                                    *
+!* INPUT:                                                            *
+!*  - matID      : material identifier                               *
+!*  - dt         : time step                                         *
+!*  - tau_slip   : applied shear stress on each slip system          *
+!*  - tauc_slip  : critical shear stress on each slip system         *
+!* OUTPUT:                                                           *
+!*  - Lp         : plastic velocity gradient                         *
+!*********************************************************************
+use prec, only: pReal,pInt
+implicit none
 
- return
- end
-
-
- subroutine plastic_vel_grad(dt,tau_slip,tauc_slip_new,Lp)
-C *************************************************************
-C Subroutine calculates the plastic velocity gradient given the
-C   slip rates
-C Input: dt     : time step
-C   tau_slip    : shear stress on each slip system on each 
-C         slip system
-C   tauc_slip_new : critical shear stress needed for slip on each 
-C         slip system
-C Output: Lp     : plastic velocity gradient
-C    gdot_slip    : slip rate on each slip system
-C *************************************************************
- use mpie
- use Zahlendarstellung
- implicit none
-
- real(ZdRe) dt,tau_slip(nslip),tauc_slip_new(nslip),
-     &      Lp(3,3),gdot_slip(nslip)
- integer(ZdIn) i
-
- Lp=0
- do i=1,nslip
-   gdot_slip(i)=g0_slip*(abs(tau_slip(i))/tauc_slip_new(i))
-     &     **n_slip*sign(1.0_ZdRe,tau_slip(i))
-   Lp=Lp+gdot_slip(i)*Sslip(i,:,:)
- enddo
-
- return
- end
-
-
- function CPFEM_Cauchy(Estar_v,Fe,C66)
-C ***************************************************************
-C Subroutine calculates the cauchy from the elastic strain tensor
-C Input: Estar_v : elastic strain tensor (in vector form)
-C   Fe    : elastic deformation gradient
-C   C66    : Stiffness Tensor
-C Output: cs    : cauchy stress
-C Local: Tstar_v,Tstar,mm,det
-C ***************************************************************
- use math
- use prec
- implicit none
-
- real(pRe) Estar_v(6),Fe(3,3),C66(6,6),CPFEM_Cauchy(6)
- real(pRe) det,mm(3,3),Tstar(3,3)
- integer(pIn) i
-
- det = math_det(Fe)
- Tstar = math_6to33(matmul(C66,Estar_v))
- mm=matmul(matmul(Fe,Tstar),transpose(Fe))/det
- CPFEM_Cauchy = math_33to6(mm)
-
- return
- end function
+!* Definition of variables
+integer(pInt) matID,i
+real(pReal) dt,Lp(3,3)
+real(pReal) tau_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) tauc_slip_new(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) gdot_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
  
- end module
+!* Calculation of Lp
+Lp=0.0_pReal
+do i=1,constitutive_Nslip(constitutive_crystal_structure(matID))
+   gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+   Lp=Lp+gdot_slip(i)*constitutive_Sslip(:,:,i,constitutive_crystal_structure(matID))
+enddo
+
+return
+end subroutine
+
+
+!function CPFEM_Cauchy(Estar_v,Fe,C66)
+! ***************************************************************
+! Subroutine calculates the cauchy from the elastic strain tensor
+! Input: Estar_v : elastic strain tensor (in vector form)
+!   Fe    : elastic deformation gradient
+!   C66    : Stiffness Tensor
+! Output: cs    : cauchy stress
+! Local: Tstar_v,Tstar,mm,det
+! ***************************************************************
+!use math
+!use prec
+!implicit none
+
+!real(pRe) Estar_v(6),Fe(3,3),C66(6,6),CPFEM_Cauchy(6)
+!real(pRe) det,mm(3,3),Tstar(3,3)
+!integer(pIn) i
+
+!det = math_det(Fe)
+!Tstar = math_6to33(matmul(C66,Estar_v))
+!mm=matmul(matmul(Fe,Tstar),transpose(Fe))/det
+!CPFEM_Cauchy = math_33to6(mm)
+
+!return
+!end function
+ 
+END MODULE
