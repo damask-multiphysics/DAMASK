@@ -13,35 +13,45 @@ MODULE constitutive
 
 !*** Include other modules ***
 use prec, only: pReal,pInt
-! NB: 'only'-commend may not be needed
 implicit none
 
 !*****************************
-!*     Material parameters   *
+!*     Module parameters     *
 !*****************************
 !* Character *
-character*80, allocatble :: TCfile(:),ODFfile(:)
-! NB: orientation files  TCfile(number of material)
+character(len=80), allocatable :: constitutive_ODFfile(:)
+! NB: ODFfile(number of texture)
+character(len=80), allocatable :: constitutive_symmetry(:)
+! NB: symmetry(number of texture)
 
 !* Integer *
 integer(pInt) constitutive_Nmats
 ! NB: Number of materials (read in material file)
+integer(pInt) constitutive_Ntexts
+! NB: Number of textures (read in material file)
 integer(pInt), allocatable :: constitutive_crystal_structure(:)
 ! NB: crystal_structure(number of material)=1-3
-integer(pInt) constitutive_Nslip(3)
-! NB: Number of systems for each crystal structure (3)
-! NB: not forget a MaxSlip variable that give the effective number
-!     of slip system I have  
-
+integer(pInt), allocatable :: constitutive_Nslip(:)
+! NB: Number of systems for each material
+integer(pInt) constitutive_Nslip_max(3)
+! NB: Number of defines slip systems
+integer(pInt), allocatable :: constitutive_Ngrains(:)
+! NB: Ngrains(number of texture)
+ 
 !* Real *
+real(pReal), allocatable :: constitutive_C11(:)
+real(pReal), allocatable :: constitutive_C12(:)
+real(pReal), allocatable :: constitutive_C13(:)
+real(pReal), allocatable :: constitutive_C33(:)
+real(pReal), allocatable :: constitutive_C44(:)
 real(pReal), allocatable :: constitutive_Cslip_66(:,:,:)
 ! NB: Cslip_66(1:6,1:6,number of materials)
 real(pReal), allocatable :: constitutive_s0_slip(:)
 real(pReal), allocatable :: constitutive_gdot0_slip(:)
 real(pReal), allocatable :: constitutive_n_slip(:)
 real(pReal), allocatable :: constitutive_h0(:)
-real(pReal), allocatable :: constitutive_w0(:)
 real(pReal), allocatable :: constitutive_s_sat(:)
+real(pReal), allocatable :: constitutive_w0(:)
 ! NB: Parameters(number of materials)
 real(pReal), allocatable :: constitutive_hardening_matrix(:,:,:)
 ! NB: hardening_matrix(48,48,3)
@@ -53,7 +63,7 @@ real(pReal) constitutive_Sslip(3,3,48,3),constitutive_Sslip_v(6,48,3)
 ! NB: Schmid matrices and corresponding Schmid vectors
 
 !*** Slip systems for FCC structures (1) ***
-constitutive_Nslip(1)=12_pInt
+data constitutive_Nslip_max(1)/12/
 !* System {111}<110>  Sort according Eisenlohr&Hantcherli
 data constitutive_sd(:, 1,1)/ 0, 1,-1/ ; data constitutive_sn(:, 1,1)/ 1, 1, 1/
 data constitutive_sd(:, 2,1)/-1, 0, 1/ ; data constitutive_sn(:, 2,1)/ 1, 1, 1/
@@ -69,7 +79,7 @@ data constitutive_sd(:,11,1)/ 1, 0,-1/ ; data constitutive_sn(:,11,1)/-1, 1,-1/
 data constitutive_sd(:,12,1)/-1,-1, 0/ ; data constitutive_sn(:,12,1)/-1, 1,-1/
 
 !*** Slip systems for BCC structures (2) ***
-constitutive_Nslip(2)=48_pInt
+data constitutive_Nslip_max(2)/48/
 !* System {110}<111>
 !* Sort?
 data constitutive_sd(:, 1,2)/ 1,-1, 1/ ; data constitutive_sn(:, 1,2)/ 0, 1, 1/
@@ -126,8 +136,8 @@ data constitutive_sd(:,47,2)/ 1, 1,-1/ ; data constitutive_sn(:,47,2)/ 3,-2, 1/
 data constitutive_sd(:,48,2)/ 1,-1, 1/ ; data constitutive_sn(:,48,2)/ 3, 2,-1/
 
 !*** Slip systems for HCP structures (3) ***
-constitutive_Nslip(3)=12_pInt
-!* Basal systems {0001}<1120>
+data constitutive_Nslip_max(3)/12/
+!* Basal systems {0001}<1120> (independent of c/a-ratio)
 !* 1- (0 0 0 1)[-2  1  1  0]
 !* 2- (0 0 0 1)[ 1 -2  1  0]
 !* 3- (0 0 0 1)[ 1  1 -2  0]
@@ -139,7 +149,7 @@ constitutive_Nslip(3)=12_pInt
 data constitutive_sd(:, 1,3)/-1, 0, 0/ ; data constitutive_sn(:, 1,3)/ 0, 0, 1/
 data constitutive_sd(:, 2,3)/ 0,-1, 0/ ; data constitutive_sn(:, 2,3)/ 0, 0, 1/
 data constitutive_sd(:, 3,3)/ 1, 1, 0/ ; data constitutive_sn(:, 3,3)/ 0, 0, 1/
-!* 1st type prismatic systems {1010}<1120> 
+!* 1st type prismatic systems {1010}<1120>  (independent of c/a-ratio)
 !* 1- ( 0  1 -1  0)[-2  1  1  0]
 !* 2- ( 1  0 -1  0)[ 1 -2  1  0]
 !* 3- (-1  1  0  0)[ 1  1 -2  0]
@@ -147,7 +157,8 @@ data constitutive_sd(:, 3,3)/ 1, 1, 0/ ; data constitutive_sn(:, 3,3)/ 0, 0, 1/
 data constitutive_sd(:, 4,3)/-1, 0, 0/ ; data constitutive_sn(:, 4,3)/ 0, 1, 0/
 data constitutive_sd(:, 5,3)/ 0,-1, 0/ ; data constitutive_sn(:, 5,3)/ 1, 0, 0/
 data constitutive_sd(:, 6,3)/ 1, 1, 0/ ; data constitutive_sn(:, 6,3)/-1, 1, 0/
-!* 1st type 1st order pyramidal systems {1011}<1120>
+!* 1st type 1st order pyramidal systems {1011}<1120> 
+!* plane normales depend on the c/a-ratio
 !* 1- ( 0 -1  1  1)[-2  1  1  0]
 !* 2- ( 0  1 -1  1)[-2  1  1  0]
 !* 3- (-1  0  1  1)[ 1 -2  1  0]
@@ -179,7 +190,7 @@ CONTAINS
 
 subroutine constitutive_init()
 !**************************************
-!***      Module initialization     ***
+!*      Module initialization         *
 !**************************************
 call constitutive_calc_SchmidM()
 call constitutive_calc_hardeningM()
@@ -189,7 +200,7 @@ end subroutine
 
 subroutine constitutive_calc_SchmidM()
 !**************************************
-!*** Calculation of Schmid matrices ***
+!*   Calculation of Schmid matrices   *
 !**************************************
 use prec, only: pReal,pInt
 implicit none
@@ -201,7 +212,7 @@ real(pReal) invNorm
 !* Iteration over the crystal structures 
 do l=1,3  
 !* Iteration over the systems
-   do k=1,constitutive_Nslip(l)
+   do k=1,constitutive_Nslip_max(l)
 !* Defintion of Schmid matrix  
       forall (i=1:3,j=1:3) 
 	         constitutive_Sslip(i,j,k,l)=constitutive_sd(i,k,l)*constitutive_sn(j,k,l)
@@ -225,7 +236,7 @@ end subroutine
 
 subroutine constitutive_calc_HardeningM()
 !****************************************
-!*** Hardening matrix (see Kalidindi) ***
+!* Hardening matrix (see Kalidindi)     *
 !****************************************
 use prec, only: pReal,pInt
 implicit none
@@ -261,7 +272,7 @@ do l=1,3
           constitutive_hardening_matrix(i,j,l)=1.0_pReal
    endforall
    do k=4,12
-      constitutive_hardening_matrix(k,k,l)=1.0_ZdRe
+      constitutive_hardening_matrix(k,k,l)=1.0_pReal
    enddo
    end select
 enddo
@@ -269,78 +280,160 @@ enddo
 end subroutine
 
 
-
-
-
-
-!* NOT YET IMPLEMENTED *!
-subroutine constitutive_parse_materialDat()
-!****************************************
-!***      Reading parameter files     ***
-!****************************************
+subroutine constitutive_parse_MatTexDat()
+!***********************************************************
+!* Reading material parameters and texture components file *
+!***********************************************************
 use prec, only: pReal,pInt
+use IO
 implicit none
 
 !* Definition of variables
-character*80 line
-integer(pIn) i,j,k,l,positions(4)
+character(len=*) line
+integer(pInt) i_pass,i,j,k,l
+integer(pInt) start_positions(3)
+integer(pInt) material_positions(5)
+integer(pInt) texture_positions
 
-! MISSING: needs to be 2 pass
-! first pass to count Nmats and allocate
-! 2nd pass to read actual parameters
+!* Open materials_textures.mpie file
+open(200,FILE='materials_textures.mpie',ACTION='READ',STATUS='OLD',ERR=100)
 
- write(6,*) '## constitutive_parse_materialDat ##'
- write(6,*)
+!* Reading file
+!* Reading in 2 passes:
+!* - 1rt: to get Nmats and Ntexts | to allocate arrays
+!* - 2nd: to store material parameters and texture components
+do i_pass=1,2
+!* Allocation of arrays
+   if (i_pass.EQ.2) then
+      allocate(constitutive_ODFfile(constitutive_Ntexts))          ; constitutive_ODFfile=''
+	  allocate(constitutive_Ngrains(constitutive_Ntexts))          ; constitutive_Ngrains=0_pInt
+	  allocate(constitutive_symmetry(constitutive_Ntexts))         ; constitutive_symmetry=''
+      allocate(constitutive_crystal_structure(constitutive_Nmats)) ; constitutive_crystal_structure=0_pInt
+	  allocate(constitutive_Nslip(constitutive_Nmats))             ; constitutive_Nslip=0_pInt
+	  allocate(constitutive_C11(constitutive_Nmats))               ; constitutive_C11=0.0_pReal
+	  allocate(constitutive_C12(constitutive_Nmats))               ; constitutive_C12=0.0_pReal
+	  allocate(constitutive_C13(constitutive_Nmats))               ; constitutive_C13=0.0_pReal
+      allocate(constitutive_C33(constitutive_Nmats))               ; constitutive_C33=0.0_pReal
+	  allocate(constitutive_C44(constitutive_Nmats))               ; constitutive_C44=0.0_pReal
+	  allocate(constitutive_s0_slip(constitutive_Nmats))           ; constitutive_s0_slip=0.0_pReal
+	  allocate(constitutive_gdot0_slip(constitutive_Nmats))        ; constitutive_gdot0_slip=0.0_pReal
+	  allocate(constitutive_n_slip(constitutive_Nmats))            ; constitutive_n_slip=0.0_pReal
+	  allocate(constitutive_h0(constitutive_Nmats))                ; constitutive_h0=0.0_pReal
+	  allocate(constitutive_s_sat(constitutive_Nmats))             ; constitutive_s_sat=0.0_pReal
+	  allocate(constitutive_w0(constitutive_Nmats))                ; constitutive_w0=0.0_pReal
+   endif
+!* Initialisation of numbers of materials and textures
+   constitutive_Nmats=0_pInt
+   constitutive_Ntexts=0_pInt
+!* Reading first line
+   read(200,610,ERR=200,END=200) line
+   start_positions=IO_stringPos(line,1)
+   select case(IO_stringValue(line,start_positions,1))
+   !* CASE1-1: First line contains <MATERIALS> 
+   case ('<MATERIALS>')
+        do while(.true.)
+		   read(200,610,END=220) line
+		   select case(line(1:1))
+           !* CASE2-1: Current line contains <TEXTURE>
+           case ('<')
+                do while(.true.)
+                   read(200,610,END=220) line
+				   select case(line(1:1))
+				   !* CASE4-1: Current line contains [comments]
+				   case ('[')
+				        constitutive_Ntexts=constitutive_Ntexts+1
+				   !* CASE4-2: Current line contains texture parameters
+				   case default
+				        if (i_pass.EQ.2) then
+						   texture_positions=IO_stringPos(line,2)
+						   select case(IO_stringValue(line,texture_positions,1))
+						   !* CASE5-1: Reading ODF file
+						   case ('HybridIA')
+                                constitutive_ODFfile(constitutive_Ntexts)=IO_stringValue(line,texture_positions,2)
+						   !* CASE5-2: Reading Gauss component
+						   case ('Gauss')
+						   !* CASE5-3: Reading Fiber component
+						   case ('Fiber')
+						   !* CASE5-4: Reading number of grains
+						   case ('Ngrains')
+						        constitutive_Ngrains(constitutive_Ntexts)=IO_intValue(line,texture_positions,2)
+						   !* CASE5-5: Reading symmetry
+						   case ('Symmetry')
+						        constitutive_symmetry(constitutive_Ntexts)=IO_stringValue(line,texture_positions,2)
+						   !* CASE5-6: Reading unknown texture parameter
+                           case default
+                                write(6,*) 'Unknown texture parameter ',line
+						   end select
+						endif
+				   end select
+                enddo
+           !* CASE2-2: Current line contains [comments]
+		   case ('[')
+		        constitutive_Nmats=constitutive_Nmats+1
+           !* CASE2-3: Current line contains material parameters 
+		   case default
+		        if (i_pass.EQ.2) then
+		           material_positions=IO_stringPos(line,2)
+                   select case(IO_stringValue(line,material_positions,1))
+                   !* CASE3-1: Reading crystal structure
+				   case ('crystal_structure')
+                        constitutive_crystal_structure(constitutive_Nmats)=IO_intValue(line,material_positions,2)
+                   !* CASE3-2: Reading number of slip systems
+				   case ('Nslip')
+				        constitutive_Nslip(constitutive_Nmats)=IO_intValue(line,material_positions,2)
+				   !* CASE3-3: Reading C11 elastic constant
+				   case ('C11')
+                        constitutive_C11(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-4: Reading C12 elastic constant
+				   case ('C12')
+                        constitutive_C12(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-5: Reading C13 elastic constant
+				   case ('C13')
+                        constitutive_C13(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-6: Reading C33 elastic constant
+				   case ('C33')
+                        constitutive_C33(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-7: Reading C44 elastic constant
+				   case ('C44')
+                        constitutive_C44(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+				   !* CASE3-8: Reading initial slip resistance
+                   case ('s0_slip')
+                        constitutive_s0_slip(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-9: Reading slip rate reference
+				   case ('gdot0_slip')
+                        constitutive_gdot0_slip(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-10: Reading slip rate sensitivity
+				   case ('n_slip')
+                        constitutive_n_slip(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-11: Reading initial hardening slope
+				   case ('h0')
+                        constitutive_h0(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-12: Reading saturation stress value
+				   case ('s_sat')
+                        constitutive_s_sat(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-13: Reading hardening sensitivity
+				   case ('w0')
+                        constitutive_w0(constitutive_Nmats)=IO_floatValue(line,material_positions,2)
+                   !* CASE3-14: Reading unknown parameter
+                   case default
+                        write(6,*) 'Unknown material parameter ',line
+				   end select
+				endif
+           end select
+        enddo
+   !* CASE1-2: First line does not contains <MATERIALS> or <TEXTURES>
+   case default
+        write(6,*) 'Problem with materials_textures.mpie file:'
+        write(6,*) 'No material in the first line! '
+   end select  
+enddo
 
- constitutive_Nmats = 1
- open(200,FILE='material.mpie',ACTION='READ',STATUS='OLD',ERR=100)
- read(200,610,ERR=200,END=200) line
+!* Close file
+220 continue
+close(200)
 
- IF( line(1:1).ne.'[' )THEN
-   WRITE(6,*) 'Problem with mat file: no mat. in 1st line'
- ELSE
-   WRITE(6,*) 'Reading mat. data'
-   DO WHILE( .true. )
-     READ(200,610,END=220) line
-     IF( line(1:1).eq.'[' )THEN
-  constitutive_Nmats = constitutive_Nmats+1
-     ELSE
-  positions = IO_stringPos(line,2) ! parse 2 parts
-  SELECT CASE (IO_stringValue(line,positions,1))
-  CASE ('s0_slip')
-    s0_slip(mat) = IO_floatValue(line,positions,2)
-  CASE ('g0_slip')
-    g0_slip(mat) = IO_floatValue(line,positions,2)
-  CASE ('n_slip')
-    n_slip(mat) = IO_intValue(line,positions,2)
-  CASE ('h0')
-    h0(mat) = IO_floatValue(line,positions,2)
-  CASE ('w0')
-    w0(mat) = IO_floatValue(line,positions,2)
-  CASE ('tauc_sat')
-    tauc_sat(mat) = IO_floatValue(line,positions,2)
-  CASE ('C11')
-    C11(mat) = IO_floatValue(line,positions,2)
-  CASE ('C12')
-    C12(mat) = IO_floatValue(line,positions,2)
-  CASE ('C44')
-    C44(mat) = IO_floatValue(line,positions,2)
-  CASE ('TCfile')
-    TCfile(mat) = IO_stringValue(line,positions,2)
-  CASE ('ODFfile')
-    ODFfile(mat) = IO_stringValue(line,positions,2)
-  CASE ('Ngrains')
-    Ngrains(mat) = IO_intValue(line,positions,2)
 
-  CASE DEFAULT
-    WRITE(6,*) 'Unknown mat. parameter ',line
-     END IF
-   END DO
- END IF
-
-  220 continue
- close(200)
-
+!* NOT IMPLEMENTED YET *!
 ! ** Defintion of stiffness matrices **
 ! MISSING: this needs to be iterated over the materials 
  Cslip_66 = 0.0_pRe
@@ -368,112 +461,10 @@ integer(pIn) i,j,k,l,positions(4)
  Cslip_66(:,5)=2.0d0*temp 
 
 
-!    *** Output to MARC output file ***  
- write(6,*) 'Material data:'
- write(6,*) 'Slip parameter:(s0_slip,g0_slip,n_slip)'
- write(6,*) s0_slip,g0_slip,n_slip
- write(6,*) 'Slip hardening parameter:(h0,tauc_sat,w0)'
- write(6,*) h0,tauc_sat,w0
- write(6,*) 'Elasticity matrix:'
- write(6,*) Cslip_66(1,:)
- write(6,*) Cslip_66(2,:)
- write(6,*) Cslip_66(3,:)
- write(6,*) Cslip_66(4,:)/2.0d0
- write(6,*) Cslip_66(5,:)/2.0d0
- write(6,*) Cslip_66(6,:)/2.0d0 
- write(6,*)
- call flush(6)
-
-! END OF MISSING mat iterations
-
- return
- 100 call _error(110)
- 200 call _error(210)
- end
-
-
-!* NOT YET IMPLEMENTED *!
- subroutine READ_ORIENTATIONS
-!***********************************************************************
-!*** This routine reads orientations from 'orientations.mpie'    ***
-!***********************************************************************
- use mpie
- use Zahlendarstellung, only: ZdRe,ZdIn
- implicit none
-
-!    *** Definition of variables ***
- integer(ZdIn) i,j
-
-!    *** Read 'orientations.mpie' file ***
- open(100,FILE='orientations.mpie',ACTION='READ',STATUS='OLD',
-     &     ERR=100)
- read(100,*,ERR=200,END=200)
-
-!    *** Read number of states, maximum of components over the states ***
- read(100,*,ERR=200,END=200) mpie_nmat,mpie_norimx
-!    *** Allocate memory for the arrays ***
- allocate(mpie_mat(mpie_nmat,2+7*mpie_norimx))
- allocate(mpie_cko(mpie_nmat,4:35,3,0:35,2))
- allocate(mpie_ckofile(mpie_nmat,80))
- allocate(mpie_odfmax(mpie_nmat))
- mpie_mat=0.0_ZdRe
- mpie_cko=0.0_ZdRe
- mpie_ckofile=''
- mpie_odfmax=0.0_ZdRe
-
-!    *** Read the different states ***
- do i=1,mpie_nmat
-    read(100,*,ERR=200,END=200)
-!    *** Number of component and symmetry ***
-    read(100,*,ERR=200,END=200) mpie_mat(i,1),mpie_mat(i,2)
-!    *** If symmetry = 2, use direct ODF sampling,i.e. read coefficience ***
-    if (mpie_mat(i,2)==2_ZdIn) then
-  read(100,'(80A)',ERR=200,END=201) mpie_ckofile(i,:)
- 201  call mpie_read_ckofile(mpie_cko(i,:,:,:,:),
-     &         mpie_ckofile(i,:))
-  call mpie_odf_max(mpie_cko(i,:,:,:,:),mpie_odfmax(i))
-!    *** Set volume fraction to inverse of orientation number for each orientation ***
-  do j=1,int(mpie_mat(i,1),ZdIn)
-     mpie_mat(i,2+7*j)=1/mpie_mat(i,1)
-  enddo
-    else
-!    *** Read for every component:          ***
-!    *** gauss: euler angles (phi1, PHI, phi2), dummy, scatter, volume fraction ***
-!    *** fiber: alpha1, alpha2, beta1, beta2, scatter, volume fraction    ***
-  do j=1,int(mpie_mat(i,1),ZdIn)
-     read(100,*,ERR=200,END=200) mpie_mat(i,7*j-4),
-     &    mpie_mat(i,7*j-3),mpie_mat(i,7*j-2),
-     &    mpie_mat(i,7*j-1),mpie_mat(i,7*j),
-     &    mpie_mat(i,7*j+1),mpie_mat(i,7*j+2)
-  enddo
-     endif
- enddo
- close(100)
-
-!    *** Output to MARC output file ***
- write(6,*) 'MPIE Material Routine Ver. 0.1 by L. Hantcherli'
- write(6,*)
- write(6,*) 'Orientations data:'
- write(6,*) 'Number of materials:  ', mpie_nmat
- write(6,*) 'Maximum number of components: ', mpie_norimx
- write(6,*)
- do i=1,mpie_nmat
-    write(6,*) 'State', i
-    if (mpie_mat(i,2)==2_ZdIn) then
-  write(6,*) mpie_ckofile(i,:),mpie_mat(i,9),mpie_odfmax(i)
-    else
-  write(6,*) mpie_mat(i,:)
-    endif
-    write(6,*)
- enddo
- call flush(6)
- return
- 100 call _error(100)
- 200 call _error(200)
- end
-
-
-
+return
+100 call IO_error(110)
+200 call IO_error(210)
+end subroutine
 
 
 subroutine constitutive_calc_SlipRates(matID,tau_slip,tauc_slip,gdot_slip,dgdot_dtaucslip)
@@ -493,13 +484,13 @@ implicit none
  
 !* Definition of variables
 integer(pInt) matID,i
-real(pReal) tau_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
-real(pReal) tauc_slip_new(constitutive_Nslip(constitutive_crystal_structure(matID)))
-real(pReal) gdot_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
-real(pReal) dgdot_dtaucslip(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) tau_slip(constitutive_Nslip(matID))
+real(pReal) tauc_slip(constitutive_Nslip(matID))
+real(pReal) gdot_slip(constitutive_Nslip(matID))
+real(pReal) dgdot_dtaucslip(constitutive_Nslip(matID))
 
 !* Iteration over the systems 
-do i=1,constitutive_Nslip(constitutive_crystal_structure(matID))
+do i=1,constitutive_Nslip(matID)
    gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
    dgdot_dtaucslip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**(constitutive_n_slip(matID)-1.0_pReal)*constitutive_n_slip(matID)/tauc_slip(i)
 enddo
@@ -524,19 +515,19 @@ implicit none
 
 !* Definition of variables
 integer(pInt) matID,i,j
-real(pReal) tauc_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
-real(pReal) gdot_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
-real(pReal) dtauc_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
-real(pReal) self_hardening(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) tauc_slip(constitutive_Nslip(matID))
+real(pReal) gdot_slip(constitutive_Nslip(matID))
+real(pReal) dtauc_slip(constitutive_Nslip(matID))
+real(pReal) self_hardening(constitutive_Nslip(matID))
 
 !* Self-Hardening of each system
-do i=1,constitutive_Nslip(constitutive_crystal_structure(matID))
+do i=1,constitutive_Nslip(matID)
    self_hardening(i)=constitutive_h0(matID)*(1.0_pReal-tauc_slip(i)/constitutive_s_sat(matID))**constitutive_w0(matID)*abs(gdot_slip(i))
 enddo
 
 !* Hardening for all systems
-i=Nslip(crystal_structure(matID))
-j=crystal_structure(matID)
+i=constitutive_Nslip(matID)
+j=constitutive_crystal_structure(matID)
 dtauc_slip=matmul(constitutive_hardening_matrix(1:i,1:i,j),self_hardening)
 
 return
@@ -561,13 +552,13 @@ implicit none
 !* Definition of variables
 integer(pInt) matID,i
 real(pReal) dt,Lp(3,3)
-real(pReal) tau_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
-real(pReal) tauc_slip_new(constitutive_Nslip(constitutive_crystal_structure(matID)))
-real(pReal) gdot_slip(constitutive_Nslip(constitutive_crystal_structure(matID)))
+real(pReal) tau_slip(constitutive_Nslip(matID))
+real(pReal) tauc_slip_new(constitutive_Nslip(matID))
+real(pReal) gdot_slip(constitutive_Nslip(matID))
  
 !* Calculation of Lp
 Lp=0.0_pReal
-do i=1,constitutive_Nslip(constitutive_crystal_structure(matID))
+do i=1,constitutive_Nslip(matID)
    gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
    Lp=Lp+gdot_slip(i)*constitutive_Sslip(:,:,i,constitutive_crystal_structure(matID))
 enddo
