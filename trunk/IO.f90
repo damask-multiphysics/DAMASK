@@ -286,7 +286,7 @@
 
 
 !********************************************************************
-! read string value at pos from line
+! read string value at pos from fixed format line
 !********************************************************************
  FUNCTION IO_fixedStringValue (line,ends,pos)
  
@@ -295,7 +295,7 @@
  
  character(len=*) line
  integer(pInt) ends(*),pos
- character(len=positions(pos)-positions(pos-1)) IO_stringValue
+ character(len=ends(pos)-ends(pos-1)) IO_fixedStringValue
 
  IO_fixedStringValue = line(ends(pos-1)+1:ends(pos))
  return
@@ -324,7 +324,7 @@
 
 
 !********************************************************************
-! read float value at pos from line
+! read float value at pos from fixed format line
 !********************************************************************
  FUNCTION IO_fixedFloatValue (line,ends,pos)
  
@@ -344,18 +344,18 @@
 
 
 !********************************************************************
-! read float value at pos from line
+! read float x.y+z value at pos from format line line
 !********************************************************************
- FUNCTION IO_fixedFloatValue (line,ends,pos)
+ FUNCTION IO_fixedNoEFloatValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
  
  character(len=*) line
- real(pReal) IO_fixedFloatValue,base,expon
+ real(pReal) IO_fixedNoEFloatValue,base,expon
  integer(pInt) ends(*),pos,pos_exp
  
- pos_exp = scan(line(ends(pos-1)+1:ends(pos),'+-',back=.true.)
+ pos_exp = scan(line(ends(pos-1)+1:ends(pos)),'+-',back=.true.)
  if (pos_exp > 1) then
    READ(UNIT=line(ends(pos-1)+1:ends(pos-1)+pos_exp-1),ERR=100,FMT='(F)') base
    READ(UNIT=line(ends(pos-1)+pos_exp:ends(pos)),ERR=100,FMT='(F)') expon
