@@ -7,23 +7,73 @@
  implicit none
 
 ! ---------------------------
-! _Nelems : total number of elements in mesh
-! _Nnodes : total number of nodes in mesh
+! _Nelems    : total number of elements in mesh
+! _NcpElems  : total number of elements in mesh
+! _Nnodes    : total number of nodes in mesh
 ! _maxNnodes : max number of nodes in any element
-! _maxNips : max number of IPs in any element
-! _mapFEtoCPelement : [sorted FEid, corresponding CPid]
-! _element : FEid, type, material, texture, node indices
-! _node  : x,y,z coordinates (initially!)
+! _maxNips   : max number of IPs in any element
+!
+! _element   : FEid, type, material, texture, node indices
+! _node      : x,y,z coordinates (initially!)
 ! _nodeIndex : count of elements containing node,
 !     [element_num, node_index], ...
-! _envIP : 6 neighboring IPs as [element_num, IP_index]
-!     order is +x, +y,+z, -x, -y, -z in local coord
+!
+! _mapFEtoCPelement : [sorted FEid, corresponding CPid]
+!
+! MISSING: these definitions should actually reside in the
+! FE-solver specific part (different for MARC/ABAQUS)..!
+! Hence, I suggest to prefix with "FE_"
+!
+! _mapElementtype   : map MARC/ABAQUS elemtype to 1-maxN 
+!
+! _NipsInElementtype : IPs in a specific type of element
+! _NipNeighbors      : count of IP neighbors in a specific type of element
+! _ipNeighborhood    : +x,-x,+y,-y,+z,-z list of intra-element IPs and
+!     (negative) neighbor faces per own IP in a specific type of element
+! _NnodesPerFace     : count of nodes per face in a specific type of element
+! _nodesOnFace       : list of node indices on each face of a specific type of element
+! _ipAtNode          : map node index to IP index in a specific type of element
+! _nodeAtIP          : map IP index to node index in a specific type of element
+! _envIP             : 6 or less neighboring IPs as [element_num, IP_index]
+!     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
  integer(pInt) mesh_Nelems, mesh_Nnodes, mesh_maxNnodes,mesh_maxNips
- integer(pInt), dimension(2,:), allocatable :: mesh_mapFEtoCPelement
+ integer(pInt), dimension(:,:), allocatable :: mesh_mapFEtoCPelement
  integer(pInt), dimension(:,:), allocatable :: mesh_element, mesh_nodeIndex, mesh_envIP
  real(pReal), allocatable :: mesh_node (:,:)
 
+ integer(pInt), parameter :: FE_Nelemtypes = 1
+ integer(pInt), parameter :: FE_maxNnodes = 8
+ integer(pInt), parameter :: FE_maxNips = 8
+ integer(pInt), parameter :: FE_maxNfaceNodes = 4
+ integer(pInt), parameter :: FE_maxNfaces = 6
+ integer(pInt), dimension(200) :: FE_mapElemtype 
+ integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipsInElement = &
+ (/8/)
+ integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipNeighbors = &
+ (/ 6 /)
+ integer(pInt), dimension(FE_maxNfaces,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
+ reshape((/&
+  4,4,4,4,4,4 &
+   /),(/FE_maxNfaces,FE_Nelemtypes/))
+ integer(pInt), dimension(FE_maxNips,FE_Nelemtypes), parameter :: FE_nodeAtIP = &
+ reshape((/&
+  1,2,4,3,5,6,8,7 &
+   /),(/FE_maxNips,FE_Nelemtypes/))
+ integer(pInt), dimension(FE_maxNnodes,FE_Nelemtypes), parameter :: FE_ipAtNode = &
+ reshape((/&
+  1,2,4,3,5,6,8,7 &
+   /),(/FE_maxNnodes,FE_Nelemtypes/))
+ integer(pInt), dimension(FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes), parameter :: FE_nodesOnFace = &
+ reshape((/&
+  1,2,3,4 , &
+  2,1,5,6 , &
+  3,2,6,7 , &
+  3,4,8,7 , &
+  4,1,5,8 , &
+  8,7,6,5 &
+   /),(/FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes/))
+   
  CONTAINS
 ! ---------------------------
 ! subroutine mesh_init()
