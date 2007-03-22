@@ -1,3 +1,5 @@
+! MISSING agree on Rad as standard in/out
+! MISSING inverse 3x3 and 6x6
 
 !##############################################################
  MODULE math   
@@ -9,6 +11,11 @@
  real(pReal), parameter :: pi = (2.0_pReal)*dasin(1.0_pReal)
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
+ real(pReal), dimension(3,3), parameter :: math_I3 = &
+ reshape( (/ &
+ 1.0_pReal,0.0_pReal,0.0_pReal, &
+ 0.0_pReal,1.0_pReal,0.0_pReal, &
+ 0.0_pReal,0.0_pReal,1.0_pReal /),(/3,3/))
 
  CONTAINS
 
@@ -559,8 +566,8 @@
 
  HI1M=M(1,1)+M(2,2)+M(3,3)
  HI2M=(M(1,1)+M(2,2)+M(3,3))**2/2.0_pReal-(M(1,1)**2+M(2,2)**2+M(3,3)**2)/2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
- HI3M=M(1,1)*M(2,2)*M(3,3)-M(1,1)*M(2,3)*M(3,2)-M(2,1)*M(1,2)*M(3,3)+M(2,1)*M(1,3)*M(3,2)+M(3,1)*M(1,2)*M(2,3)-M(3,1)*M(1,3)*M(2,2)
-! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det
+ HI3M=math_det3x3(M)
+! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
  return  
 
  END SUBROUTINE
