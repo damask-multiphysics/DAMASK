@@ -9,7 +9,7 @@
 !    ****************************************************************
 !    *** General variables for the material behaviour calculation ***
 !    ****************************************************************  
- real(pReal), allocatable :: CPFEM_stress_all       (:,:,:)
+ real(pReal), dimension (:,:,:), allocatable :: CPFEM_stress_all      
  real(pReal), allocatable :: CPFEM_jacobi_all       (:,:,:,:)
  real(pReal), allocatable :: CPFEM_ffn_all          (:,:,:,:)
  real(pReal), allocatable :: CPFEM_ffn1_all         (:,:,:,:)
@@ -21,14 +21,11 @@
  real(pReal), allocatable :: CPFEM_Fp_new           (:,:,:,:,:)
  real(pReal), allocatable :: constitutive_state_old (:,:,:,:)
  real(pReal), allocatable :: constitutive_state_new (:,:,:,:)
- real(pReal), allocatable :: CPFEM_g_old            (:,:,:,:)
- real(pReal), allocatable :: CPFEM_g_new            (:,:,:,:)
  real(pReal), allocatable :: CPFEM_jaco_old         (:,:,:,:)
- real(pReal), allocatable :: CPFEM_mat              (:,:)
  integer(pInt) :: CPFEM_inc_old    = 0_pInt
  integer(pInt) :: CPFEM_subinc_old = 1_pInt
- integer(pInt) :: CPFEM_first_call = 1_pInt
  integer(pInt) :: CPFEM_Nresults   = 4_pInt
+ logical :: CPFEM_first_call = .true.
 
  CONTAINS
 
@@ -36,7 +33,7 @@
 !***    This routine checks for initialization, variables update and ***
 !***    calls the actual material model                              ***
 !***********************************************************************
- subroutine cpfem_general(ffn, ffn1, ndi, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, CPFEM_en, CPFEM_in)
+ subroutine cpfem_general(ffn, ffn1, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
 !
  use prec, only: pReal,pInt
  use CPFEM, only: CPFEM_ffn_all, CPFEM_ffn1_all, CPFEM_inc_old
@@ -44,21 +41,17 @@
  implicit none
 !
  real(pReal)   ffn(3,3), ffn1(3,3), CPFEM_dt
- integer(pInt) ndi, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in
+ integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, cp_en, CPFEM_in
 !
 ! initialization step
- if (CPFEM_first_call==1_pInt) then
+ if (CPFEM_first_call) then
 ! three dimensional stress state ?
-    if (CPFEM_ndi/=3_pInt) then
-        call IO_error(300)
-    endif
-    call IO_allocation()
-    call mesh_allocation()
-    call constitutive_allocation()
-    call math_allocation()
-    call IO_allocation()
-    call CPFEM_allocation()
-    CPFEM_first_call=0_pInt
+    call IO_init()
+    call mesh_init()
+    call constitutive_init()
+    call math_init()
+    call CPFEM_init()
+    CPFEM_first_call=.false.
  endif
 ! not a new increment
  if (CPFEM_inc==CPFEM_inc_old) then
@@ -67,23 +60,19 @@
         CPFEM_sigma_old        = CPFEM_sigma_new
         CPFEM_Fp_old           = CPFEM_Fp_new
         constitutive_state_old = constitutive_state_new
-        CPFEM_g_old            = CPFEM_g_new
         CPFEM_subinc_old       = CPFEM_subinc
     endif
-    return
 ! case of a new increment
  else
     CPFEM_sigma_old         = CPFEM_sigma_new
     CPFEM_Fp_old            = CPFEM_Fp_new
     constitutive_state_old  = constitutive_state_new
-    CPFEM_g_old             = CPFEM_g_new
     CPFEM_inc_old           = CPFEM_inc
     CPFEM_subinc_old        = 1_pInt
     CPFEM_timefactor_max    = 0.0_pReal
  endif
 !
 ! get cp element number for fe element number
- cp_en=mesh_??(CPFEM_en)!ÄÄÄ
  CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
  CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
  call CPFEM_general_material(CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
@@ -95,7 +84,7 @@
 !***    This routine allocates the arrays defined in module CPFEM    ***
 !***    and initializes them                                         ***
 !***********************************************************************
- subroutine CPFEM_allocation()
+ subroutine CPFEM_init()
 !
  use prec, only: pReal,pInt
  use IO, only: IO_error
@@ -108,10 +97,10 @@
  integer(pInt) i
 !
 !    *** mpie.marc parameters ***
- allocate(CPFEM_ffn_all(3,3,mesh_Nips,mesh_Nelems))
- allocate(CPFEM_ffn1_all(3,3,mesh_Nips,mesh_Nelems))
- allocate(CPFEM_stress_all(6,mesh_Nips,mesh_Nelems))
- allocate(CPFEM_jacobi_all(6,6,mesh_Nips,mesh_Nelems))
+ allocate(CPFEM_ffn_all(3,3,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_ffn1_all(3,3,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_stress_all(6,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_jacobi_all(6,6,mesh_maxNips,mesh_NcpElems))
  CPFEM_ffn_all    = 0.0_pReal
  CPFEM_ffn1_all   = 0.0_pReal
  forall(i=1:3)
@@ -121,23 +110,23 @@
  CPFEM_stress_all = 0.0_pReal
  CPFEM_jacobi_all = 0.0_pReal
 !
-!    *** User defined results ***
- allocate(CPFEM_results(CPFEM_Nresults,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
+!    *** User defined results !!! MISSING incorporate consti_Nresults ***
+ allocate(CPFEM_results(CPFEM_Nresults+constitutive_Nresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_results = 0.0_pReal
 !
 !    *** Initial orientations ***
-! allocate(CPFEM_ini_ori(3,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
+! allocate(CPFEM_ini_ori(3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 ! CPFEM_ini_ori = 0.0_pReal
 !
 !    *** Second Piola-Kirchoff stress tensor at (t=t0) and (t=t1) ***
- allocate(CPFEM_sigma_old(6,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
- allocate(CPFEM_sigma_new(6,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
+ allocate(CPFEM_sigma_old(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_sigma_new(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_sigma_old = 0.0_pReal
  CPFEM_sigma_new = 0.0_pReal
 !
 !    *** Plastic deformation gradient at (t=t0) and (t=t1) ***  
- allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
- allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
+ allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_Fp_old = 0.0_pReal 
  CPFEM_Fp_new = 0.0_pReal 
  forall(i=1:3)
@@ -145,22 +134,15 @@
     CPFEM_Fp_new(i,i,:,:,:) = 1.0_pReal
  endforall 
 !    
-! QUESTION: would it be wise to outsource these to _constitutive_ ??
+! QUESTION: would it be wise to outsource these to _constitutive_ ?? YES!
 !    *** Slip resistances at (t=t0) and (t=t1) ***  
- allocate(constitutive_state_old(constitutive_Nstatevars,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
- allocate(constitutive_state_new(constitutive_Nstatevars,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
+ allocate(constitutive_state_old(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_state_new(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  state_tauc_slip_old = 0.0_pReal
  state_tauc_slip_new = 0.0_pReal
 
-!    *** Cumulative shear at (t=t0) and (t=t1) *** 
-! QUESTION which nslip to use here ?!?
- allocate(CPFEM_g_old(constitutive_maxNslip,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))  
- allocate(CPFEM_g_new(constitutive_maxNslip,constitutive_maxNgrains,mesh_Nips,mesh_Nelems))
- CPFEM_g_old = 0.0_pReal
- CPFEM_g_new = 0.0_pReal
-!
 !    *** Old jacobian (consistent tangent) ***
- allocate(CPFEM_jaco_old(6,6,mesh_Nips,mesh_Nelems))
+ allocate(CPFEM_jaco_old(6,6,mesh_maxNips,mesh_NcpElems))
  CPFEM_jaco_old = 0.0_pReal
 !
 !    *** Output to MARC output file ***
@@ -179,19 +161,17 @@
  write(6,*) 'CPFEM_Fp_new:        ', shape(CPFEM_Fp_new)
  write(6,*) 'constitutive_state_old: ', shape(constitutive_state_old)
  write(6,*) 'constitutive_state_new: ', shape(constitutive_state_new)
- write(6,*) 'CPFEM_g_old:         ', shape(CPFEM_g_old)
- write(6,*) 'CPFEM_g_new:         ', shape(CPFEM_g_new)
  write(6,*) 'CPFEM_jaco_old:      ', shape(CPFEM_jaco_old)
  write(6,*)
  call flush(6)
  return
- end     
+ end subroutine  
 !
 !
  subroutine CPFEM_general_material(&
      CPFEM_cn,&       ! Cycle number
      CPFEM_dt,&       ! Time increment (dt)
-     CPFEM_en,&       ! Element number
+     cp_en,&          ! Element number
      CPFEM_in)        ! Integration point number
 !***********************************************************************
 !***    This routine calculates the material behaviour    ***
@@ -205,7 +185,7 @@
  implicit none
 !
 !    *** Definition of variables ***
- integer(pInt) CPFEM_cn, CPFEM_en ,CPFEM_in
+ integer(pInt) CPFEM_cn, cp_en ,CPFEM_in
  real(pReal) CPFEM_dt, CPFEM_s(6), CPFEM_d(6, 6), CPFEM_ffn(3,3),CPFEM_ffn1(3,3)
 ! QUESTION which nslip to use?
  real(pReal) Fp_old(3,3), tauc_slip_old(constitutive_maxNslip), tauc_slip_new(constitutive_maxNslip), g_old(constitutive_maxNslip)
@@ -224,11 +204,10 @@
 !
 !    *** Flag for recalculation of jacobian ***
  jpara = 1_pInt      
-! get cp element number for fe element number
- cp_en=mesh_??(CPFEM_en)!ÄÄÄ
 ! get number of grains from cp element number and integration point number
- nori = constitutive_???(cp_en, CPFEM_in)  !ÄÄÄ
+ nori = constitutive_Ngrains(CPFEM_in,cp_en)  !ÄÄÄ
 ! 
+ CPFEM_en = mesh_element(1,cp_en) ! remap back to FE id
 !
  CPFEM_s=0
  CPFEM_d=0
@@ -243,10 +222,11 @@
 !    g_old         = CPFEM_g_old(:,iori,CPFEM_in,cp_en)
 !    Tstar_v       = CPFEM_sigma_old(:,iori,CPFEM_in,cp_en)
 ! data from constitutive?
-    vf            = constitutive_vol(iori,CPFEM_in,cp_en) !ÄÄÄ
+    vf            = constitutive_volfrac(iori,CPFEM_in,cp_en) !ÄÄÄ
 
 !    *** Calculation of the solution at t=t1 ***
-    if (modulo(CPFEM_cn,ijaco)==0) then !ÄÄÄ
+!	QUESTION use the mod() as flag parameter in the call ??
+    if (mod(CPFEM_cn,ijaco)==0) then !ÄÄÄ
         call CPFEM_stress(cs, cd, CPFEM_dt,cp_en,CPFEM_in, iori, ising, icut, iconv, dgmaxc, 1_pInt)
 !
 !
@@ -271,7 +251,7 @@
        jpara=0
     endif
 !    *** Cases of unsuccessful calculations *** 
-!    ***   Evaluation od ising  ***
+!    ***   Evaluation of ising  ***
 !    *** ising!=0 => singular matrix ***
     if (ising==1) then
         write(6,*) 'Singular matrix!'
@@ -294,14 +274,14 @@
 !    ***  Evaluation of iconv ***
 !    *** iconv!=0 => no convergence ***
     if (iconv==1) then
-        write(6,*) 'Inner loop did not converged!'
+        write(6,*) 'Inner loop did not converge!'
         write(6,*) 'Integration point: ',CPFEM_in
         write(6,*) 'Element:           ',CPFEM_en
         call IO_error(600)
         CPFEM_timefactor=1.e5_pReal
         return
     else if (iconv==2) then
-        write(6,*) 'Outer loop did not converged!'
+        write(6,*) 'Outer loop did not converge!'
         write(6,*) 'Integration point: ',CPFEM_in
         write(6,*) 'Element:           ',CPFEM_en
         call IO_error(600)
@@ -349,7 +329,7 @@
  CPFEM_timefactor=dgmax/dgs
 !
  return
- end
+ end subroutine
 
 
 !call CPFEM_stress(cs, cd, CPFEM_dt,cp_en,CPFEM_in, ising, icut, iconv, dgmaxc, 1)
@@ -394,8 +374,8 @@
     Fp_new     = 0_pReal
     state_old  = constitutive_state_old(:,iori,CPFEM_in,cp_en)
     state_new  = state_old
-    g_old      = CPFEM_g_old(:,iori,CPFEM_in,cp_en)
-    g_new      = 0_pReal
+!    g_old      = CPFEM_g_old(:,iori,CPFEM_in,cp_en)
+!    g_new      = 0_pReal
     Tstar_v    = CPFEM_sigma_old(:,iori,CPFEM_in,cp_en)
     CPFEM_ffn  = CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
     CPFEM_ffn1 = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en)
@@ -430,7 +410,7 @@
 !    *** Start time ***
  time=dt_i
  do while (time<=CPFEM_dt)
-    call CPFEM_stress_int(cs, cd, dt_i, cp_en,CPFEM_in, ising, icut, iconv, dgmaxc, isjaco, phi1, PHI, phi2,&
+    call CPFEM_stress_int(cs, cd, time, cp_en,CPFEM_in, ising, icut, iconv, dgmaxc, isjaco, phi1, PHI, phi2,&
                        CPFEM_ffn, Fg_i,Fp_old,Fp_new,g_old,g_new,state_old, state_new_i, Tstar_v)
 !    call CPFEM_stress_int(time,CPFEM_ffn,Fg_i,Fp_old,Fp_new,g_old,
 !     &    g_new,tauc_slip_old,
@@ -458,7 +438,7 @@
     endif
  enddo
 !
-!    *** Final calculation of stress and resistences withb full timestep ***
+!    *** Final calculation of stress and resistences with full timestep ***
  state_new=state_new_i
  call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, ising, icut, iconv, dgmaxc, isjaco, phi1, PHI, phi2,&
                        CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,g_old,g_new,state_old, state_new, Tstar_v)
@@ -478,7 +458,7 @@
  CPFEM_results(3,iori,CPFEM_in,cp_en) = phi2
  CPFEM_results(4,iori,CPFEM_in,cp_en) = sum(g_new)
  return
- end
+ end subroutine
 
 
 ! call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, ising, icut, iconv, dgmaxc, isjaco,&
@@ -582,7 +562,7 @@
  enddo
 !
  return
- end
+ end subroutine
 !
 !
  subroutine NEWTON_RAPHSON(
@@ -761,8 +741,7 @@
 !    *** Calculation of Fp(t+dt) (see Kalidindi) ***
  dLp=I3+Lp*dt
  Fp_new=matmul(dLp,Fp_old)
- call math_determ(Fp_new,det)
- Fp_new=Fp_new/det**(1.0_pReal/3.0_pReal)
+ Fp_new=Fp_new/math_det3x3(Fp_new)**(1.0_pReal/3.0_pReal)
 !
 !    *** Calculation of F*(t+dt) (see Kalidindi) ***
  invFp_new=Fp_new
