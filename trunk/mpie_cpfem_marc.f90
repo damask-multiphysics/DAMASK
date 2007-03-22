@@ -185,12 +185,15 @@
 !********************************************************************
 ! CPFEM_ffn_all(:,:, n(1), nn)=ffn
 ! CPFEM_ffn1_all(:,:, n(1), nn)=ffn1
+ cp_en=mesh_mapFEtoCPelement(n(1))
  if ((lovl==6).or.(inc==0)) then
-    call cpfem_general(ffn, ffn1, ndi, inc, subinc, ncycle, timinc, n(1), nn)
+    call cpfem_general(ffn, ffn1, ndi, inc, subinc, ncycle, timinc, cp_en, nn)
  endif
 !     return stress and jacobi
- s=CPFEM_stress_all(1:ngens,n(1), nn)
- d=CPFEM_jaco_old(1:ngens,1:ngens, n(1), nn)
+ s=CPFEM_stress_all(1:ngens, nn, cp_en)
+ d=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
+ 
+! FE_en = mesh_element(1,cp_en)
  return
  end
 !
@@ -217,30 +220,27 @@
 !
 !********************************************************************
  use prec, only: pReal,pInt
- use CPFEM, only: CPFEM_results
- use constitutive, only: constitutive_Nresults
+ use CPFEM, only: CPFEM_results, CPFEM_Nresults
  implicit none
 !
  real(pReal) s(*),etot(*),eplas(*),ecreep(*),sp(*)
  real(pReal) v, t(*)
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
- real(pReal) orientation_no, result_no
 !
-! calculate position in CPFEM_results
- orientation_no=int(jpltcd/constitutive_Nresults)
- result_no=modulo(jpltcd, constitutive_Nresults)
 ! assign result variable
- v=CPFEM_result(result_no, grain_no, m, n)
+ v=CPFEM_result(mod(jpltcd, CPFEM_Nresults),&
+                int(jpltcd/CPFEM_Nresults),&
+                nn, mesh_mapFEtoCPelement(m))
  return
  end
 !
 !
- subroutine utimestep(timestep,timestepold,icall, time,timeloadcase)
+ subroutine utimestep(timestep,timestepold,icall,time,timeloadcase)
 !********************************************************************
 !     This routine modifies the addaptive time step of Marc
 !********************************************************************
- use CPFEM, only : CPFEM_timefactor_max
  use prec, only: pReal,pInt
+ use CPFEM, only : CPFEM_timefactor_max
  implicit none
 !
  real(pReal) timestep, timestepold, time,timeloadcase 
