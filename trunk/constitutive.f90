@@ -193,7 +193,7 @@ subroutine constitutive_init()
 !**************************************
 call constitutive_calc_SchmidM()
 call constitutive_calc_hardeningM()
-call constitutive_parse_materialDat()
+call constitutive_parse_MatTexDat('materials_textures.mpie')
 end subroutine
  
 
@@ -279,192 +279,187 @@ enddo
 end subroutine
 
 
-function constitutive_parse_MaterialPart(pass)
 !***********************************************************
-!*  INPUT: i_pass                                          *
-!*  OUTPUT: constitutive_Nmats,next_part                   *
 !***********************************************************
-use prec, only: pReal,pInt
-use IO
+SUBROUTINE constitutive_countSections(file,count,part)
+
+use prec, only: pInt
+use IO, only: IO_stringPos,IO_stringValue,IO_lc
 implicit none
 
-!* Definition of variables
-character(len=*) line
-character(len=*) consititutive_parse_MaterialPart
-integer(pInt) pass,positions(5)
+integer(pInt) file,count,pos
+integer(pInt), dimension(3) :: positions
+character(len=80) part,line,tag
 
-!* Reading line of the opened file
-do while(.true.)
-   read(200,610,END=220) line
-   select case(line(1:1))
-   !* CASE1-1: A new part beginns
-   case ('<')
-        if (line(1:1).EQ.'<')
-           positions=IO_stringPos(line,1)
-           consititutive_parse_MaterialPart=IO_lc(IO_stringValue(line,positions,1))
-	       return
-        endif
-   !* CASE1-2: Current line contains [comments]
-   case ('[')
-        constitutive_Nmats=constitutive_Nmats+1
-   !* CASE1-3: Current line contains material parameters
-   case default
-        if (pass.EQ.2) then
-		   positions=IO_stringPos(line,2)
-           select case(IO_lc(IO_stringValue(line,positions,1)))
-           !* CASE2-1: Reading crystal structure
-		   case ('crystal_structure')
-                constitutive_crystal_structure(constitutive_Nmats)=IO_intValue(line,positions,2)
-           !* CASE2-2: Reading number of slip systems
-	       case ('nslip')
-				constitutive_Nslip(constitutive_Nmats)=IO_intValue(line,positions,2)
-		   !* CASE2-3: Reading C11 elastic constant
-		   case ('C11')
-                constitutive_C11(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-4: Reading C12 elastic constant
-		   case ('C12')
-                constitutive_C12(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-5: Reading C13 elastic constant
-		   case ('C13')
-                constitutive_C13(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-6: Reading C33 elastic constant
-		   case ('C33')
-                constitutive_C33(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-7: Reading C44 elastic constant
-		   case ('C44')
-                constitutive_C44(constitutive_Nmats)=IO_floatValue(line,positions,2)
-		   !* CASE2-8: Reading initial slip resistance
-           case ('s0_slip')
-                constitutive_s0_slip(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-9: Reading slip rate reference
-		   case ('gdot0_slip')
-                constitutive_gdot0_slip(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE32-10: Reading slip rate sensitivity
-		   case ('n_slip')
-                constitutive_n_slip(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-11: Reading initial hardening slope
-		   case ('h0')
-                constitutive_h0(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-12: Reading saturation stress value
-		   case ('s_sat')
-                constitutive_s_sat(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-13: Reading hardening sensitivity
-		   case ('w0')
-                constitutive_w0(constitutive_Nmats)=IO_floatValue(line,positions,2)
-           !* CASE2-14: Reading unknown parameter
-           case default
-                write(6,*) 'Unknown material parameter ',line
-		   end select
-		endif
-   end select
-enddo
+count = 0
+part = ''
 
-consititutive_parse_MaterialPart='NoOtherPart'
-return
-220 call IO_error(220)
-end function
+do
+  read(unit=file,fmt='(a80)',end=100) line
+  positions = IO_stringPos(line,1)
+  tag = IO_lc(IO_stringValue(line,positions,1))
+  if (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
+    part = tag(2:len(tag)-1)
+	exit
+  elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
+    count = count+1
+  endif
+end do
+100 return
+
+END SUBROUTINE
 
 
-function constitutive_parse_TexturePart(pass)
 !***********************************************************
-!*                                                         *
 !***********************************************************
-use prec, only: pReal,pInt
-use IO
+character(len=80) function constitutive_parse_unknownPart(file)
+
+use prec, only: pInt
+use IO, only: IO_stringPos,IO_stringValue,IO_lc
 implicit none
 
-!* Definition of variables
-character(len=*) line
-character(len=*) constitutive_parse_TexturePart
-integer(pInt) positions(3)
+integer(pInt), parameter :: maxNchunks = 1
+integer(pInt) file
+integer(pInt), dimension(1+2*maxNchunks) :: positions 
+character(len=80) line,tag
 
-!* Reading line of the opened file
-do while(.true.)
-   read(200,610,END=220) line
-   select case(line(1:1))
-   !* CASE1-1: A new part beginns
-   case ('<')
-        if (line(1:1).EQ.'<')
-           positions=IO_stringPos(line,1)
-           consititutive_parse_TexturePart=IO_lc(IO_stringValue(line,positions,1))
-	       return
-        endif
-   !* CASE1-2: Current line contains [comments]
-   case ('[')
-        constitutive_Ntexts=constitutive_Ntexts+1
-   !* CASE1-3: Current line contains material parameters
-   case default
-        if (pass.EQ.2) then
-		   positions=IO_stringPos(line,2)
-		   select case(IO_lc(IO_stringValue(line,positions,1)))
-		   !* CASE5-1: Reading ODF file
-		   case ('hybridIA')
-                constitutive_ODFfile(constitutive_Ntexts)=IO_stringValue(line,positions,2)
-           !* CASE5-2: Reading Gauss component
-		   case ('gauss')
-		   !* CASE5-3: Reading Fiber component
-		   case ('fiber')
-		   !* CASE5-4: Reading number of grains
-		   case ('ngrains')
-				constitutive_Ngrains(constitutive_Ntexts)=IO_intValue(line,positions,2)
-		   !* CASE5-5: Reading symmetry
-		   case ('symmetry')
-			    constitutive_symmetry(constitutive_Ntexts)=IO_stringValue(line,positions,2)
-		   !* CASE5-6: Reading unknown texture parameter
-           case default
-                write(6,*) 'Unknown texture parameter ',line
-		   end select
-	    endif   				 				       				   
-   end select
-enddo
+constitutive_parse_unknownPart = ''
 
-consititutive_parse_TexturePart='NoOtherPart'
-return
-220 call IO_error(220)
-end function
+do
+  read(unit=file,fmt='(a80)',end=100) line
+  positions = IO_stringPos(line,maxNchunks)
+  tag = IO_lc(IO_stringValue(line,positions,1))
+  if (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
+    constitutive_parse_unknownPart = tag(2:len(tag)-1)
+	exit
+  endif
+end do
+
+100 return
+
+END FUNCTION
 
 
-function constitutive_parse_UnknownPart()
 !***********************************************************
-!*  OUTPUT: next_part                                      *
 !***********************************************************
-use prec, only: pReal,pInt
-use IO
+character(len=80) function constitutive_parse_materialPart(file)
+
+use prec, only: pInt
+use IO, only: IO_stringPos,IO_stringValue,IO_lc
 implicit none
 
-!* Definition of variables
-character(len=*) line
-character(len=*) constitutive_parse_UnknownPart
-integer(pInt) positions(3)
+integer(pInt), parameter :: maxNchunks = 2! may be more than 2 chunks ..?
+integer(pInt) file,section
+integer(pInt), dimension(1+2*maxNchunks) :: positions 
+character(len=80) line,tag
 
-!* Reading line of the opened file
-do while(.true.)
-   read(200,610,END=220) line
-   if (line(1:1).EQ.'<')
-      positions=IO_stringPos(line,1)
-      constitutive_parse_UnknownPart=IO_lc(IO_stringValue(line,positions,1))
-	  return
-   endif
-enddo
+section = 0
+constitutive_parse_materialPart = ''
 
-constitutive_parse_UnknownPart='NoOtherPart'
-return
-220 call IO_error(220)
-end function
+do
+  read(unit=file,fmt='(a80)',end=100) line
+  positions = IO_stringPos(line,maxNchunks) ! parse leading chunks
+  tag = IO_lc(IO_stringValue(line,positions,1))
+  if (tag(1:1)=='#') then  ! skip comment line
+    cycle
+  elseif (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
+    constitutive_parse_materialPart = tag(2:len(tag)-1)
+	exit
+  elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
+    section = section+1
+  else
+    if (section>0) then
+      select case(tag)
+	    case ('crystal_structure') ! crystal structure
+          constitutive_crystal_structure(section)=IO_intValue(line,positions,2)
+	    case ('nslip')
+		  constitutive_Nslip(section)=IO_intValue(line,positions,2)
+		case ('C11')
+          constitutive_C11(section)=IO_floatValue(line,positions,2)
+		case ('C12')
+          constitutive_C12(section)=IO_floatValue(line,positions,2)
+		case ('C13')
+          constitutive_C13(section)=IO_floatValue(line,positions,2)
+		case ('C33')
+          constitutive_C33(section)=IO_floatValue(line,positions,2)
+		case ('C44')
+          constitutive_C44(section)=IO_floatValue(line,positions,2)
+        case ('s0_slip')
+          constitutive_s0_slip(section)=IO_floatValue(line,positions,2)
+		case ('gdot0_slip')
+          constitutive_gdot0_slip(section)=IO_floatValue(line,positions,2)
+		case ('n_slip')
+          constitutive_n_slip(section)=IO_floatValue(line,positions,2)
+		case ('h0')
+          constitutive_h0(section)=IO_floatValue(line,positions,2)
+		case ('s_sat')
+          constitutive_s_sat(section)=IO_floatValue(line,positions,2)
+		case ('w0')
+          constitutive_w0(section)=IO_floatValue(line,positions,2)
+        case default
+          write(6,*) 'Unknown material parameter ',line
+      end select
+    endif
+  endif
+end do
+
+100 return
+
+END FUNCTION
+
+
+!***********************************************************
+!***********************************************************
+character(len=80) function constitutive_parse_texturePart(file)
+
+use prec, only: pInt
+use IO, only: IO_stringPos,IO_stringValue,IO_lc
+implicit none
+
+integer(pInt), parameter :: maxNchunks = 10 ! may be more than 10 chunks ..?
+integer(pInt) file,pos,section
+integer(pInt), dimension(1+2*maxNchunks) :: positions 
+character(len=80) line,tag
+
+section = 0
+constitutive_parse_texturePart = ''
+
+do
+  read(unit=file,fmt='(a80)',end=100) line
+  positions = IO_stringPos(line,maxNchunks)  ! parse leading chunks
+  tag = IO_lc(IO_stringValue(line,positions,1))
+  if (tag(1:1)=='#') then  ! skip comment line
+    cycle
+  elseif (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
+    constitutive_parse_texturePart = tag(2:len(tag)-1)
+	exit
+  elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
+    section = section+1
+  else
+    if (section>0) then
+      select case(tag)
+  		case ('hybridIA')
+          constitutive_ODFfile(section)=IO_stringValue(line,positions,2)
+		case ('gauss')
+		case ('fiber')
+		case ('ngrains')
+		  constitutive_Ngrains(section)=IO_intValue(line,positions,2)
+        case ('symmetry')
+		  constitutive_symmetry(section)=IO_stringValue(line,positions,2)
+        case default
+          write(6,*) 'Unknown texture parameter ',line
+      end select
+    endif
+  endif
+end do
+
+100 return
+
+END FUNCTION
 
 
 
-
-
-
-
-
-
-
-
-
-
-subroutine constitutive_parse_MatTexDat()
+subroutine constitutive_parse_MatTexDat(filename)
 !***********************************************************
 !* Reading material parameters and texture components file *
 !***********************************************************
@@ -472,77 +467,78 @@ use prec, only: pReal,pInt
 use IO
 implicit none
 
-!* Definition of variables
-character(len=*) line
-integer(pInt) pass,i,j,k,l
-integer(pInt) positions(3)
+character(len=*) filename
+character(len=80) part,formerPart
+integer(pInt) sectionCount,i,j,m
 
 
-!* Open materials_textures.mpie file
-open(200,FILE='materials_textures.mpie',ACTION='READ',STATUS='OLD',ERR=100)
+open(200,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
 
-!* Reading file
-!* Reading in 2 passes:
-!* - 1rt: to get Nmats and Ntexts | to allocate arrays
-!* - 2nd: to store material parameters and texture components
-do pass=1,2
-!* Allocation of arrays
-   if (pass.EQ.2) then
-      allocate(constitutive_ODFfile(constitutive_Ntexts))          ; constitutive_ODFfile=''
-	  allocate(constitutive_Ngrains(constitutive_Ntexts))          ; constitutive_Ngrains=0_pInt
-	  allocate(constitutive_symmetry(constitutive_Ntexts))         ; constitutive_symmetry=''
-      allocate(constitutive_crystal_structure(constitutive_Nmats)) ; constitutive_crystal_structure=0_pInt
-	  allocate(constitutive_Nslip(constitutive_Nmats))             ; constitutive_Nslip=0_pInt
-	  allocate(constitutive_C11(constitutive_Nmats))               ; constitutive_C11=0.0_pReal
-	  allocate(constitutive_C12(constitutive_Nmats))               ; constitutive_C12=0.0_pReal
-	  allocate(constitutive_C13(constitutive_Nmats))               ; constitutive_C13=0.0_pReal
-      allocate(constitutive_C33(constitutive_Nmats))               ; constitutive_C33=0.0_pReal
-	  allocate(constitutive_C44(constitutive_Nmats))               ; constitutive_C44=0.0_pReal
-	  allocate(constitutive_s0_slip(constitutive_Nmats))           ; constitutive_s0_slip=0.0_pReal
-	  allocate(constitutive_gdot0_slip(constitutive_Nmats))        ; constitutive_gdot0_slip=0.0_pReal
-	  allocate(constitutive_n_slip(constitutive_Nmats))            ; constitutive_n_slip=0.0_pReal
-	  allocate(constitutive_h0(constitutive_Nmats))                ; constitutive_h0=0.0_pReal
-	  allocate(constitutive_s_sat(constitutive_Nmats))             ; constitutive_s_sat=0.0_pReal
-	  allocate(constitutive_w0(constitutive_Nmats))                ; constitutive_w0=0.0_pReal
-   endif
-!* Initialisation of numbers of materials and textures
-   constitutive_Nmats=0_pInt
-   constitutive_Ntexts=0_pInt
-!* Reading first line
-!* use functions parse_MaterialPart/TexturePart/UnknownPart
-   next_part=constitutive_parse_UnknownPart()
-   do while()
-      select case(next_part)
-	  !* CASE1-1: the new part is <MATERIALS>
-	  case ('<material>')
-	       next_part=constitutive_parse_MaterialPart(pass)
-	  !* CASE1-2: the new part is <TEXTURES>
-	  case ('<textures>')
-	       next_part=constitutive_parse_TexturePart(pass)
-	  !* CASE1-3: the new part is unknown
-	  case default
-      end select
-   enddo  
-enddo
+part = '_dummy_'
+do while (part/='')
+  formerPart = part
+  call constitutive_countSections(200,sectionCount,part)
+  select case (formerPart)
+    case ('materials')
+      materials_maxN = sectionCount
+    case ('textures')
+      textures_maxN = sectionCount
+  end select
+end do
 
-!* Close file
-220 continue
+allocate(constitutive_ODFfile(constitutive_Ntexts))          ; constitutive_ODFfile=''
+allocate(constitutive_Ngrains(constitutive_Ntexts))          ; constitutive_Ngrains=0_pInt
+allocate(constitutive_symmetry(constitutive_Ntexts))         ; constitutive_symmetry=''
+allocate(constitutive_crystal_structure(constitutive_Nmats)) ; constitutive_crystal_structure=0_pInt
+allocate(constitutive_Nslip(constitutive_Nmats))             ; constitutive_Nslip=0_pInt
+allocate(constitutive_C11(constitutive_Nmats))               ; constitutive_C11=0.0_pReal
+allocate(constitutive_C12(constitutive_Nmats))               ; constitutive_C12=0.0_pReal
+allocate(constitutive_C13(constitutive_Nmats))               ; constitutive_C13=0.0_pReal
+allocate(constitutive_C33(constitutive_Nmats))               ; constitutive_C33=0.0_pReal
+allocate(constitutive_C44(constitutive_Nmats))               ; constitutive_C44=0.0_pReal
+allocate(constitutive_s0_slip(constitutive_Nmats))           ; constitutive_s0_slip=0.0_pReal
+allocate(constitutive_gdot0_slip(constitutive_Nmats))        ; constitutive_gdot0_slip=0.0_pReal
+allocate(constitutive_n_slip(constitutive_Nmats))            ; constitutive_n_slip=0.0_pReal
+allocate(constitutive_h0(constitutive_Nmats))                ; constitutive_h0=0.0_pReal
+allocate(constitutive_s_sat(constitutive_Nmats))             ; constitutive_s_sat=0.0_pReal
+allocate(constitutive_w0(constitutive_Nmats))                ; constitutive_w0=0.0_pReal
+
+part = '_dummy_'
+do while (part/='')
+  select case (part)
+    case ('materials')
+	  part = constitutive_parse_materialPart(200)
+    case ('textures')
+	  part = constitutive_parse_texturePart(200)
+	case default
+      part = constitutive_parse_unknownPart(200)
+  end select
+end do
 close(200)
 
 
-!* NOT IMPLEMENTED YET *!
-! ** Defintion of stiffness matrices **
-! MISSING: this needs to be iterated over the materials 
- Cslip_66 = 0.0_pRe
- do i=1,3
-   do j=1,3
-     Cslip_66(i,j)   = C12
-   enddo
-   Cslip_66(i,i)   = C11
-   Cslip_66(i+3,i+3) = C44
- enddo
-
- Cslip_3333(:,:,:,:) = math_66to3333(Cslip_66(:,:))   
+do m=1,material_maxN
+  material_Cslip_66(:,:,m) = 0.0_pReal
+  select case (material_crystal_structure)
+    case (1:2) ! cubic structure
+      do i=1,3
+        do j=1,3
+          material_Cslip_66(i,j,m)   = C12
+        enddo
+        material_Cslip_66(i,i,m)     = C11
+        material_Cslip_66(i+3,i+3,m) = C44
+      enddo
+    case (3)   ! hcp structure MISSING correct
+      do i=1,3
+        do j=1,3
+          material_Cslip_66(i,j,m)   = C12
+        enddo
+        material_Cslip_66(i,i,m)     = C11
+        material_Cslip_66(i+3,i+3,m) = C44
+      enddo
+  end select
+  material_Cslip_3333(:,:,:,:,m) = math_66to3333(Cslip_66(:,:,m))   
+end do
 
 ! *** Transformation to get the MARC order ***
 ! ***    11,22,33,12,23,13      ***
@@ -557,10 +553,10 @@ close(200)
  Cslip_66(:,6)=2.0d0*Cslip_66(:,5)    
  Cslip_66(:,5)=2.0d0*temp 
 
+! MISSING some consistency checks may be..?
 
 return
-100 call IO_error(110)
-200 call IO_error(210)
+100 call IO_error(110) ! corrupt matarials_textures file
 end subroutine
 
 
