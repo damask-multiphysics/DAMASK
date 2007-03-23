@@ -15,55 +15,46 @@ MODULE constitutive
 use prec, only: pReal,pInt
 implicit none
 
-!*****************************
-!*     Module parameters     *
-!*****************************
-!* Character *
-character(len=80), allocatable :: constitutive_ODFfile(:)
-! NB: ODFfile(number of texture)
-character(len=80), allocatable :: constitutive_symmetry(:)
-! NB: symmetry(number of texture)
 
-!* Integer *
-integer(pInt) constitutive_Nmats
-! NB: Number of materials (read in material file)
-integer(pInt) constitutive_Ntexts
-! NB: Number of textures (read in material file)
-integer(pInt), allocatable :: constitutive_crystal_structure(:)
-! NB: crystal_structure(number of material)=1-3
-integer(pInt), allocatable :: constitutive_Nslip(:)
-! NB: Number of systems for each material
-integer(pInt) constitutive_Nslip_max(3)
-! NB: Number of defines slip systems
-integer(pInt), allocatable :: constitutive_Ngrains(:)
-! NB: Ngrains(number of texture)
- 
-!* Real *
-real(pReal), allocatable :: constitutive_C11(:)
-real(pReal), allocatable :: constitutive_C12(:)
-real(pReal), allocatable :: constitutive_C13(:)
-real(pReal), allocatable :: constitutive_C33(:)
-real(pReal), allocatable :: constitutive_C44(:)
-real(pReal), allocatable :: constitutive_Cslip_66(:,:,:)
-! NB: Cslip_66(1:6,1:6,number of materials)
-real(pReal), allocatable :: constitutive_s0_slip(:)
-real(pReal), allocatable :: constitutive_gdot0_slip(:)
-real(pReal), allocatable :: constitutive_n_slip(:)
-real(pReal), allocatable :: constitutive_h0(:)
-real(pReal), allocatable :: constitutive_s_sat(:)
-real(pReal), allocatable :: constitutive_w0(:)
-! NB: Parameters(number of materials)
-real(pReal), allocatable :: constitutive_hardening_matrix(:,:,:)
-! NB: hardening_matrix(48,48,3)
-real(pReal), parameter :: constitutive_latent_hardening=1.4_pReal
-real(pReal) constitutive_sn(3,48,3),constitutive_sd(3,48,3)
-! NB: slip normale and slip direction for 3 crystal structures
-!     Is 48 always the maximum number of systems?
-real(pReal) constitutive_Sslip(3,3,48,3),constitutive_Sslip_v(6,48,3)
-! NB: Schmid matrices and corresponding Schmid vectors
+! QUESTION: would it be wise to outsource these to _constitutive_ ?? YES!
+!    *** Slip resistances at (t=t0) and (t=t1) ***  
+! allocate(constitutive_state_old(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ !allocate(constitutive_state_new(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ !state_tauc_slip_old = 0.0_pReal
+ !state_tauc_slip_new = 0.0_pReal
+
+! *** Transformation to get the MARC order ***
+! ***    11,22,33,12,23,13      ***
+! MISSING this should be outsourced to FEM-spec
+
+!temp=Cslip_66(4,:)
+!Cslip_66(4,:)=Cslip_66(6,:)    
+!Cslip_66(6,:)=Cslip_66(5,:)    
+!Cslip_66(5,:)=temp
+!temp=Cslip_66(:,4)
+!Cslip_66(:,4)=2.0d0*Cslip_66(:,6)    
+!Cslip_66(:,6)=2.0d0*Cslip_66(:,5)    
+!Cslip_66(:,5)=2.0d0*temp 
+
+
+!***********************************************
+!* Definition of crystal structures properties *
+!***********************************************
+!* Number of crystal structures (1-FCC,2-BCC,3-HCP)
+integer(pInt), parameter :: constitutive_MaxCrystalStructure = 3
+!* Total number of slip systems per crystal structure
+!* (as to be changed according the definition of slip systems)
+integer(pInt), dimension(constitutive_MaxCrystalStructure), parameter :: constitutive_MaxNslipOfStructure = &
+reshape((/12,48,12/),(/constitutive_MaxCrystalStructure/))
+!* Maximum number of slip systems over crystal structures
+integer(pInt), parameter :: constitutive_MaxMaxNslipOfStructure = 48 
+!* Slip direction, slip normales and Schmid matrices
+real(pReal), dimension(3,3,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: constitutive_Sslip
+real(pReal), dimension(6,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: constitutive_Sslip_v
+real(pReal), dimension(3,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: constitutive_sn
+real(pReal), dimension(3,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: constitutive_sd
 
 !*** Slip systems for FCC structures (1) ***
-data constitutive_Nslip_max(1)/12/
 !* System {111}<110>  Sort according Eisenlohr&Hantcherli
 data constitutive_sd(:, 1,1)/ 0, 1,-1/ ; data constitutive_sn(:, 1,1)/ 1, 1, 1/
 data constitutive_sd(:, 2,1)/-1, 0, 1/ ; data constitutive_sn(:, 2,1)/ 1, 1, 1/
@@ -79,7 +70,6 @@ data constitutive_sd(:,11,1)/ 1, 0,-1/ ; data constitutive_sn(:,11,1)/-1, 1,-1/
 data constitutive_sd(:,12,1)/-1,-1, 0/ ; data constitutive_sn(:,12,1)/-1, 1,-1/
 
 !*** Slip systems for BCC structures (2) ***
-data constitutive_Nslip_max(2)/48/
 !* System {110}<111>
 !* Sort?
 data constitutive_sd(:, 1,2)/ 1,-1, 1/ ; data constitutive_sn(:, 1,2)/ 0, 1, 1/
@@ -136,7 +126,6 @@ data constitutive_sd(:,47,2)/ 1, 1,-1/ ; data constitutive_sn(:,47,2)/ 3,-2, 1/
 data constitutive_sd(:,48,2)/ 1,-1, 1/ ; data constitutive_sn(:,48,2)/ 3, 2,-1/
 
 !*** Slip systems for HCP structures (3) ***
-data constitutive_Nslip_max(3)/12/
 !* Basal systems {0001}<1120> (independent of c/a-ratio)
 !* 1- (0 0 0 1)[-2  1  1  0]
 !* 2- (0 0 0 1)[ 1 -2  1  0]
@@ -173,17 +162,64 @@ data constitutive_sd(:,10,3)/-1, 0, 0/ ; data constitutive_sn(:,10,3)/ 1, 0, 1/
 data constitutive_sd(:,11,3)/ 0,-1, 0/ ; data constitutive_sn(:,11,3)/-1, 1, 1/
 data constitutive_sd(:,12,3)/ 1, 1, 0/ ; data constitutive_sn(:,12,3)/ 1,-1, 1/
 
+!* Slip-slip interactions matrices
+!* (defined for the moment as crystal structure property and not as material property)
+!* (may be changed in the future)
+real(pReal), dimension(constitutive_MaxMaxNslipOfStructure,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: constitutive_hardening_matrix
+real(pReal), parameter :: constitutive_latent_hardening=1.4
+
+!*************************************
+!* Definition of material properties *
+!*************************************
+!* Number of materials
+integer(pInt) materials_maxN
+!* Crystal structure and number of selected slip systems per material
+integer(pInt), dimension(:)  , allocatable :: materials_CrystalStructure
+integer(pInt), dimension(:)  , allocatable :: materials_Nslip
+!* Maximum number of selected slip systems over materials
+integer(pInt), allocatable :: materials_MaxNslip
+!* Elastic constants and matrices
+real(pReal), dimension(:)    , allocatable :: materials_C11
+real(pReal), dimension(:)    , allocatable :: materials_C12
+real(pReal), dimension(:)    , allocatable :: materials_C13
+real(pReal), dimension(:)    , allocatable :: materials_C33
+real(pReal), dimension(:)    , allocatable :: materials_C44
+real(pReal), dimension(:,:,:), allocatable :: materials_Cslip_66
+! NB: Cslip_66(1:6,1:6,number of materials)
+!* Visco-plastic material parameters
+real(pReal), dimension(:)    , allocatable :: materials_s0_slip
+real(pReal), dimension(:)    , allocatable :: materials_gdot0_slip
+real(pReal), dimension(:)    , allocatable :: materials_n_slip
+real(pReal), dimension(:)    , allocatable :: materials_h0
+real(pReal), dimension(:)    , allocatable :: materials_s_sat
+real(pReal), dimension(:)    , allocatable :: materials_w0
+! NB: Parameters(number of materials)
+
+!************************************
+!* Definition of texture properties *
+!************************************
+!* Number of textures
+integer(pInt) textures_maxN
+!* Textures definition
+character(len=80), dimension(:), allocatable :: textures_ODFfile
+character(len=80), dimension(:), allocatable :: textures_symmetry
+integer(pInt), dimension(:)    , allocatable :: textures_Ngrains
+! NB: symmetry(number of texture)
+
 
 CONTAINS
 !****************************************
-!* - constitutive_init                  *
-!* - constitutive_calc_SchmidM          *
-!* - constitutive_calc_HardeningM       *
-!* - constitutive_parse_MatTexDat       *            
-!* - constitutive_calc_SlipRates        *
-!* - constitutive_calc_Hardening        *
-!* - consistutive_calc_PlasVeloGradient *
-!* - CPFEM_CauchyStress???????          *
+!* - constitutive_init                  
+!* - constitutive_SchmidMatrices          
+!* - constitutive_HardeningMatrices
+!* - constitutive_CountSections 
+!* - constitutive_Parse_UnknownPart 
+!* - constitutive_Parse_MaterialPart
+!* - constitutive_Parse_TexturePart     
+!* - constitutive_Parse_MatTexDat                    
+!* - constitutive_Lp        
+!* - constitutive_TangentLp      
+!* - consistutive_DotState          
 !****************************************
 
 
@@ -191,13 +227,13 @@ subroutine constitutive_init()
 !**************************************
 !*      Module initialization         *
 !**************************************
-call constitutive_calc_SchmidM()
-call constitutive_calc_hardeningM()
+call constitutive_calc_SchmidMatrices()
+call constitutive_calc_HardeningMatrices()
 call constitutive_parse_MatTexDat('materials_textures.mpie')
 end subroutine
  
 
-subroutine constitutive_calc_SchmidM()
+subroutine constitutive_SchmidMatrices()
 !**************************************
 !*   Calculation of Schmid matrices   *
 !**************************************
@@ -211,7 +247,7 @@ real(pReal) invNorm
 !* Iteration over the crystal structures 
 do l=1,3  
 !* Iteration over the systems
-   do k=1,constitutive_Nslip_max(l)
+   do k=1,constitutive_MaxNslipOfStructure(l)
 !* Defintion of Schmid matrix  
       forall (i=1:3,j=1:3) 
 	         constitutive_Sslip(i,j,k,l)=constitutive_sd(i,k,l)*constitutive_sn(j,k,l)
@@ -233,7 +269,7 @@ enddo
 end subroutine
 
 
-subroutine constitutive_calc_HardeningM()
+subroutine constitutive_HardeningMatrices()
 !****************************************
 !* Hardening matrix (see Kalidindi)     *
 !****************************************
@@ -279,230 +315,250 @@ enddo
 end subroutine
 
 
-!***********************************************************
-!***********************************************************
-SUBROUTINE constitutive_countSections(file,count,part)
-
+subroutine constitutive_CountSections(file,count,part)
+!*********************************************************************
+!* This subroutine reads a "part" from the input file until the next *
+!* part is reached and counts the number of "sections" in the part   *
+!* INPUT:                                                            *
+!*  - file  : file ID                                                *
+!* OUTPUT:                                                           *
+!*  - part  : name of the next "part"                                *
+!*  - count : number of sections inside the current "part"           *
+!*********************************************************************
 use prec, only: pInt
-use IO, only: IO_stringPos,IO_stringValue,IO_lc
+use IO,   only: IO_stringPos,IO_stringValue,IO_lc
 implicit none
 
+!* Definition of variables
+character(len=80) part,line,tag
 integer(pInt) file,count,pos
 integer(pInt), dimension(3) :: positions
-character(len=80) part,line,tag
 
-count = 0
-part = ''
-
-do
-  read(unit=file,fmt='(a80)',end=100) line
-  positions = IO_stringPos(line,1)
-  tag = IO_lc(IO_stringValue(line,positions,1))
-  if (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
-    part = tag(2:len(tag)-1)
-	exit
-  elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
-    count = count+1
-  endif
-end do
+count=0
+part=''
+do while(.true.)
+   read(unit=file,fmt='(a80)',END=100) line
+   positions=IO_stringPos(line,1)
+   tag=IO_lc(IO_stringValue(line,positions,1))
+   if (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
+      part=tag(2:len(tag)-1)
+	  exit
+   elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
+      count=count+1
+   endif
+enddo
 100 return
 
-END SUBROUTINE
+end subroutine
 
 
-!***********************************************************
-!***********************************************************
-character(len=80) function constitutive_parse_unknownPart(file)
-
+character(len=80) function constitutive_Parse_UnknownPart(file)
+!*********************************************************************
+!* This function reads a unknown "part" from the input file until    *
+!* the next part is reached                                          *
+!* INPUT:                                                            *
+!*  - file  : file ID                                                *
+!*********************************************************************
 use prec, only: pInt
 use IO, only: IO_stringPos,IO_stringValue,IO_lc
 implicit none
 
+!* Definition of variables
+character(len=80) line,tag
 integer(pInt), parameter :: maxNchunks = 1
 integer(pInt) file
 integer(pInt), dimension(1+2*maxNchunks) :: positions 
-character(len=80) line,tag
 
 constitutive_parse_unknownPart = ''
-
-do
-  read(unit=file,fmt='(a80)',end=100) line
-  positions = IO_stringPos(line,maxNchunks)
-  tag = IO_lc(IO_stringValue(line,positions,1))
-  if (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
-    constitutive_parse_unknownPart = tag(2:len(tag)-1)
-	exit
-  endif
-end do
-
+do while(.true.)
+   read(unit=file,fmt='(a80)',end=100) line
+   positions = IO_stringPos(line,maxNchunks)
+   tag = IO_lc(IO_stringValue(line,positions,1))
+   if (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
+      constitutive_parse_unknownPart = tag(2:len(tag)-1)
+	  exit
+   endif
+enddo
 100 return
 
-END FUNCTION
+end function
 
 
-!***********************************************************
-!***********************************************************
-character(len=80) function constitutive_parse_materialPart(file)
-
+character(len=80) function constitutive_Parse_MaterialPart(file)
+!*********************************************************************
+!* This function reads a material "part" from the input file until   *
+!* the next part is reached                                          *
+!* INPUT:                                                            *
+!*  - file  : file ID                                                *
+!*********************************************************************
 use prec, only: pInt
 use IO, only: IO_stringPos,IO_stringValue,IO_lc
 implicit none
 
+!* Definition of variables
+character(len=80) line,tag
 integer(pInt), parameter :: maxNchunks = 2! may be more than 2 chunks ..?
 integer(pInt) file,section
 integer(pInt), dimension(1+2*maxNchunks) :: positions 
-character(len=80) line,tag
 
 section = 0
 constitutive_parse_materialPart = ''
 
-do
-  read(unit=file,fmt='(a80)',end=100) line
-  positions = IO_stringPos(line,maxNchunks) ! parse leading chunks
-  tag = IO_lc(IO_stringValue(line,positions,1))
-  if (tag(1:1)=='#') then  ! skip comment line
-    cycle
-  elseif (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
-    constitutive_parse_materialPart = tag(2:len(tag)-1)
-	exit
-  elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
-    section = section+1
-  else
-    if (section>0) then
-      select case(tag)
-	    case ('crystal_structure') ! crystal structure
-          constitutive_crystal_structure(section)=IO_intValue(line,positions,2)
-	    case ('nslip')
-		  constitutive_Nslip(section)=IO_intValue(line,positions,2)
-		case ('C11')
-          constitutive_C11(section)=IO_floatValue(line,positions,2)
-		case ('C12')
-          constitutive_C12(section)=IO_floatValue(line,positions,2)
-		case ('C13')
-          constitutive_C13(section)=IO_floatValue(line,positions,2)
-		case ('C33')
-          constitutive_C33(section)=IO_floatValue(line,positions,2)
-		case ('C44')
-          constitutive_C44(section)=IO_floatValue(line,positions,2)
-        case ('s0_slip')
-          constitutive_s0_slip(section)=IO_floatValue(line,positions,2)
-		case ('gdot0_slip')
-          constitutive_gdot0_slip(section)=IO_floatValue(line,positions,2)
-		case ('n_slip')
-          constitutive_n_slip(section)=IO_floatValue(line,positions,2)
-		case ('h0')
-          constitutive_h0(section)=IO_floatValue(line,positions,2)
-		case ('s_sat')
-          constitutive_s_sat(section)=IO_floatValue(line,positions,2)
-		case ('w0')
-          constitutive_w0(section)=IO_floatValue(line,positions,2)
-        case default
-          write(6,*) 'Unknown material parameter ',line
-      end select
-    endif
-  endif
-end do
-
+do while(.true.)
+   read(unit=file,fmt='(a80)',end=100) line
+   positions = IO_stringPos(line,maxNchunks) ! parse leading chunks
+   tag = IO_lc(IO_stringValue(line,positions,1))
+   if (tag(1:1)=='#') then  ! skip comment line
+      cycle
+   elseif (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
+      constitutive_parse_materialPart = tag(2:len(tag)-1)
+	  exit
+   elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
+      section = section+1
+   else
+      if (section>0) then
+         select case(tag)
+	     case ('crystal_structure') 
+              materials_CrystalStructure(section)=IO_intValue(line,positions,2)
+	     case ('nslip')
+		      materials_Nslip(section)=IO_intValue(line,positions,2)
+		 case ('C11')
+              materials_C11(section)=IO_floatValue(line,positions,2)
+		 case ('C12')
+              materials_C12(section)=IO_floatValue(line,positions,2)
+		 case ('C13')
+              materials_C13(section)=IO_floatValue(line,positions,2)
+		 case ('C33')
+              materials_C33(section)=IO_floatValue(line,positions,2)
+		 case ('C44')
+              materials_C44(section)=IO_floatValue(line,positions,2)
+         case ('s0_slip')
+              materials_s0_slip(section)=IO_floatValue(line,positions,2)
+		 case ('gdot0_slip')
+              materials_gdot0_slip(section)=IO_floatValue(line,positions,2)
+		 case ('n_slip')
+              materials_n_slip(section)=IO_floatValue(line,positions,2)
+		 case ('h0')
+              materials_h0(section)=IO_floatValue(line,positions,2)
+		 case ('s_sat')
+              materials_s_sat(section)=IO_floatValue(line,positions,2)
+		 case ('w0')
+              materials_w0(section)=IO_floatValue(line,positions,2)
+         case default
+              write(6,*) 'Unknown material parameter ',line
+         end select
+      endif
+   endif
+enddo
 100 return
 
-END FUNCTION
+end function
 
 
-!***********************************************************
-!***********************************************************
-character(len=80) function constitutive_parse_texturePart(file)
-
+character(len=80) function constitutive_Parse_TexturePart(file)
+!*********************************************************************
+!* This function reads a texture "part" from the input file until    *
+!* the next part is reached                                          *
+!* INPUT:                                                            *
+!*  - file  : file ID                                                *
+!*********************************************************************
 use prec, only: pInt
 use IO, only: IO_stringPos,IO_stringValue,IO_lc
 implicit none
 
+!* Definition of variables
+character(len=80) line,tag
 integer(pInt), parameter :: maxNchunks = 10 ! may be more than 10 chunks ..?
 integer(pInt) file,pos,section
 integer(pInt), dimension(1+2*maxNchunks) :: positions 
-character(len=80) line,tag
 
 section = 0
 constitutive_parse_texturePart = ''
 
-do
-  read(unit=file,fmt='(a80)',end=100) line
-  positions = IO_stringPos(line,maxNchunks)  ! parse leading chunks
-  tag = IO_lc(IO_stringValue(line,positions,1))
-  if (tag(1:1)=='#') then  ! skip comment line
-    cycle
-  elseif (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
-    constitutive_parse_texturePart = tag(2:len(tag)-1)
-	exit
-  elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
-    section = section+1
-  else
-    if (section>0) then
-      select case(tag)
-  		case ('hybridIA')
-          constitutive_ODFfile(section)=IO_stringValue(line,positions,2)
-		case ('gauss')
-		case ('fiber')
-		case ('ngrains')
-		  constitutive_Ngrains(section)=IO_intValue(line,positions,2)
-        case ('symmetry')
-		  constitutive_symmetry(section)=IO_stringValue(line,positions,2)
-        case default
-          write(6,*) 'Unknown texture parameter ',line
-      end select
-    endif
-  endif
-end do
+do while(.true.)
+   read(unit=file,fmt='(a80)',end=100) line
+   positions = IO_stringPos(line,maxNchunks)  ! parse leading chunks
+   tag = IO_lc(IO_stringValue(line,positions,1))
+   if (tag(1:1)=='#') then  ! skip comment line
+      cycle
+   elseif (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
+      constitutive_parse_texturePart = tag(2:len(tag)-1)
+	  exit
+   elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
+      section = section+1
+   else
+      if (section>0) then
+         select case(tag)
+  		 case ('hybridIA')
+              textures_ODFfile(section)=IO_stringValue(line,positions,2)
+		 case ('gauss')
 
+		 case ('fiber')
+
+		 case ('ngrains')
+		      textures_Ngrains(section)=IO_intValue(line,positions,2)
+         case ('symmetry')
+		      textures_symmetry(section)=IO_stringValue(line,positions,2)
+         case default
+              write(6,*) 'Unknown texture parameter ',line
+         end select
+      endif
+   endif
+enddo
 100 return
 
-END FUNCTION
+end function
 
 
-
-subroutine constitutive_parse_MatTexDat(filename)
-!***********************************************************
-!* Reading material parameters and texture components file *
-!***********************************************************
+subroutine constitutive_Parse_MatTexDat(filename)
+!*********************************************************************
+!* This function reads the material and texture input file           *
+!* INPUT:                                                            *
+!*  - filename : name of input file                                  *
+!*********************************************************************
 use prec, only: pReal,pInt
 use IO
 implicit none
 
+!* Definition of variables
 character(len=*) filename
 character(len=80) part,formerPart
 integer(pInt) sectionCount,i,j,m
 
-
+!* Open input file
 open(200,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
 
+!* First reading: number of materials and textures
+!* Arrays allocation
 part = '_dummy_'
 do while (part/='')
-  formerPart = part
-  call constitutive_countSections(200,sectionCount,part)
-  select case (formerPart)
-    case ('materials')
-      materials_maxN = sectionCount
-    case ('textures')
-      textures_maxN = sectionCount
-  end select
-end do
+   formerPart = part
+   call constitutive_countSections(200,sectionCount,part)
+   select case (formerPart)
+   case ('materials')
+        materials_maxN = sectionCount
+   case ('textures')
+        textures_maxN = sectionCount
+   end select
+enddo
+allocate(textures_ODFfile(textures_maxN))          ; textures_ODFfile=''
+allocate(textures_Ngrains(textures_maxN))          ; textures_Ngrains=0_pInt
+allocate(textures_symmetry(textures_maxN))         ; textures_symmetry=''
+allocate(materials_CrystalStructure(materials_maxN)) ; materials_CrystalStructure=0_pInt
+allocate(materials_Nslip(materials_maxN))            ; materials_Nslip=0_pInt
+allocate(materials_C11(materials_maxN))              ; materials_C11=0.0_pReal
+allocate(materials_C12(materials_maxN))              ; materials_C12=0.0_pReal
+allocate(materials_C13(materials_maxN))              ; materials_C13=0.0_pReal
+allocate(materials_C33(materials_maxN))              ; materials_C33=0.0_pReal
+allocate(materials_C44(materials_maxN))              ; materials_C44=0.0_pReal
+allocate(materials_s0_slip(materials_maxN))          ; materials_s0_slip=0.0_pReal
+allocate(materials_gdot0_slip(materials_maxN))       ; materials_gdot0_slip=0.0_pReal
+allocate(materials_n_slip(materials_maxN))           ; materials_n_slip=0.0_pReal
+allocate(materials_h0(materials_maxN))               ; materials_h0=0.0_pReal
+allocate(materials_s_sat(materials_maxN))            ; materials_s_sat=0.0_pReal
+allocate(materials_w0(materials_maxN))               ; materials_w0=0.0_pReal
 
-allocate(constitutive_ODFfile(constitutive_Ntexts))          ; constitutive_ODFfile=''
-allocate(constitutive_Ngrains(constitutive_Ntexts))          ; constitutive_Ngrains=0_pInt
-allocate(constitutive_symmetry(constitutive_Ntexts))         ; constitutive_symmetry=''
-allocate(constitutive_crystal_structure(constitutive_Nmats)) ; constitutive_crystal_structure=0_pInt
-allocate(constitutive_Nslip(constitutive_Nmats))             ; constitutive_Nslip=0_pInt
-allocate(constitutive_C11(constitutive_Nmats))               ; constitutive_C11=0.0_pReal
-allocate(constitutive_C12(constitutive_Nmats))               ; constitutive_C12=0.0_pReal
-allocate(constitutive_C13(constitutive_Nmats))               ; constitutive_C13=0.0_pReal
-allocate(constitutive_C33(constitutive_Nmats))               ; constitutive_C33=0.0_pReal
-allocate(constitutive_C44(constitutive_Nmats))               ; constitutive_C44=0.0_pReal
-allocate(constitutive_s0_slip(constitutive_Nmats))           ; constitutive_s0_slip=0.0_pReal
-allocate(constitutive_gdot0_slip(constitutive_Nmats))        ; constitutive_gdot0_slip=0.0_pReal
-allocate(constitutive_n_slip(constitutive_Nmats))            ; constitutive_n_slip=0.0_pReal
-allocate(constitutive_h0(constitutive_Nmats))                ; constitutive_h0=0.0_pReal
-allocate(constitutive_s_sat(constitutive_Nmats))             ; constitutive_s_sat=0.0_pReal
-allocate(constitutive_w0(constitutive_Nmats))                ; constitutive_w0=0.0_pReal
-
+!* Second reading: materials and textures are stored
 part = '_dummy_'
 do while (part/='')
   select case (part)
@@ -514,6 +570,7 @@ do while (part/='')
       part = constitutive_parse_unknownPart(200)
   end select
 end do
+!* Close input file
 close(200)
 
 
@@ -540,18 +597,6 @@ do m=1,material_maxN
   material_Cslip_3333(:,:,:,:,m) = math_66to3333(Cslip_66(:,:,m))   
 end do
 
-! *** Transformation to get the MARC order ***
-! ***    11,22,33,12,23,13      ***
-! MISSING this should be outsourced to FEM-spec
-
- temp=Cslip_66(4,:)
- Cslip_66(4,:)=Cslip_66(6,:)    
- Cslip_66(6,:)=Cslip_66(5,:)    
- Cslip_66(5,:)=temp
- temp=Cslip_66(:,4)
- Cslip_66(:,4)=2.0d0*Cslip_66(:,6)    
- Cslip_66(:,6)=2.0d0*Cslip_66(:,5)    
- Cslip_66(:,5)=2.0d0*temp 
 
 ! MISSING some consistency checks may be..?
 
@@ -560,129 +605,102 @@ return
 end subroutine
 
 
-subroutine constitutive_calc_SlipRates(matID,tau_slip,tauc_slip,gdot_slip,dgdot_dtaucslip)
+real(pReal) function constitutive_Lp(Tstar_v,ipc,ip,el)
 !*********************************************************************
-!* This subroutine contains the constitutive equation for the slip   *
-!* rate on each slip system                                          *
+!* This subroutine contains the constitutive equation for            *
+!* calculating the velocity gradient                                 *       
 !* INPUT:                                                            *
-!*  - matID           : material identifier                          *
-!*  - tau_slip        : applied shear stress on each slip system     *
-!*  - tauc_slip       : critical shear stress on each slip system    *
-!* OUTPUT:                                                           *
-!*  - gdot_slip       : slip rate on each slip system                *
-!*  - dgdot_dtaucslip : derivative of slip rate on each slip system  *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor            *
+!*  - ipc             : component-ID of current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
 !*********************************************************************
 use prec, only: pReal,pInt
 implicit none
  
 !* Definition of variables
-integer(pInt) matID,i
-real(pReal) tau_slip(constitutive_Nslip(matID))
-real(pReal) tauc_slip(constitutive_Nslip(matID))
-real(pReal) gdot_slip(constitutive_Nslip(matID))
-real(pReal) dgdot_dtaucslip(constitutive_Nslip(matID))
+!integer(pInt) matID,i
+!real(pReal) tau_slip(constitutive_Nslip(matID))
+!real(pReal) tauc_slip(constitutive_Nslip(matID))
+!real(pReal) gdot_slip(constitutive_Nslip(matID))
+!real(pReal) dgdot_dtaucslip(constitutive_Nslip(matID))
 
 !* Iteration over the systems 
-do i=1,constitutive_Nslip(matID)
-   gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
-   dgdot_dtaucslip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**(constitutive_n_slip(matID)-1.0_pReal)*constitutive_n_slip(matID)/tauc_slip(i)
-enddo
+!do i=1,constitutive_Nslip(matID)
+!   gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+!   dgdot_dtaucslip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**(constitutive_n_slip(matID)-1.0_pReal)*constitutive_n_slip(matID)/tauc_slip(i)
+!enddo
 
 return
-end subroutine
+end function
 
 
-subroutine constitutive_calc_Hardening(matID,tauc_slip,gdot_slip,dtauc_slip)
+subroutine constitutive_TangentLp(Tstar_v,ipc,ip,el,dLp_dTstar,dLpT_dTstar)
 !*********************************************************************
-!* This subroutine calculates the increment in critical shear stress *
-!* due to plastic deformation on each slip system                    *
+!* This subroutine contains the constitutive equation for            *
+!* calculating the velocity gradient                                 *       
 !* INPUT:                                                            *
-!*  - matID      : material identifier                               *
-!*  - tauc_slip  : critical shear stress on each slip system         *
-!*  - gdot_slip  : slip rate on each slip system                     *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor            *
+!*  - ipc             : component-ID of current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
 !* OUTPUT:                                                           *
-!*  - dtauc_slip : increment of hardening due to slip on each system *
+!*  - dLp_dTstar      : derivative of Lp                             *
+!*  - dLpT_dTstar     : derivative of tranposed Lp                   *
 !*********************************************************************
 use prec, only: pReal,pInt
 implicit none
 
 !* Definition of variables
-integer(pInt) matID,i,j
-real(pReal) tauc_slip(constitutive_Nslip(matID))
-real(pReal) gdot_slip(constitutive_Nslip(matID))
-real(pReal) dtauc_slip(constitutive_Nslip(matID))
-real(pReal) self_hardening(constitutive_Nslip(matID))
+!integer(pInt) matID,i,j
+!real(pReal) tauc_slip(constitutive_Nslip(matID))
+!real(pReal) gdot_slip(constitutive_Nslip(matID))
+!real(pReal) dtauc_slip(constitutive_Nslip(matID))
+!real(pReal) self_hardening(constitutive_Nslip(matID))
 
 !* Self-Hardening of each system
-do i=1,constitutive_Nslip(matID)
-   self_hardening(i)=constitutive_h0(matID)*(1.0_pReal-tauc_slip(i)/constitutive_s_sat(matID))**constitutive_w0(matID)*abs(gdot_slip(i))
-enddo
+!do i=1,constitutive_Nslip(matID)
+!   self_hardening(i)=constitutive_h0(matID)*(1.0_pReal-tauc_slip(i)/constitutive_s_sat(matID))**constitutive_w0(matID)*abs(gdot_slip(i))
+!enddo
 
 !* Hardening for all systems
-i=constitutive_Nslip(matID)
-j=constitutive_crystal_structure(matID)
-dtauc_slip=matmul(constitutive_hardening_matrix(1:i,1:i,j),self_hardening)
+!i=constitutive_Nslip(matID)
+!j=constitutive_crystal_structure(matID)
+!dtauc_slip=matmul(constitutive_hardening_matrix(1:i,1:i,j),self_hardening)
 
 return
 end subroutine
 
 
-subroutine constitutive_calc_PlasVeloGradient(dt,tau_slip,tauc_slip_new,Lp)
+real(pReal) function constitutive_DotState(Tstar_v,ipc,ip,el)
 !*********************************************************************
-!* This subroutine calculates the plastic velocity gradient given    *
-!* the slip rates                                                    *
+!* This subroutine contains the constitutive equation for            *
+!* calculating the velocity gradient                                 *       
 !* INPUT:                                                            *
-!*  - matID      : material identifier                               *
-!*  - dt         : time step                                         *
-!*  - tau_slip   : applied shear stress on each slip system          *
-!*  - tauc_slip  : critical shear stress on each slip system         *
-!* OUTPUT:                                                           *
-!*  - Lp         : plastic velocity gradient                         *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor            *
+!*  - ipc             : component-ID of current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
 !*********************************************************************
 use prec, only: pReal,pInt
 implicit none
 
 !* Definition of variables
-integer(pInt) matID,i
-real(pReal) dt,Lp(3,3)
-real(pReal) tau_slip(constitutive_Nslip(matID))
-real(pReal) tauc_slip_new(constitutive_Nslip(matID))
-real(pReal) gdot_slip(constitutive_Nslip(matID))
+!integer(pInt) matID,i
+!real(pReal) dt,Lp(3,3)
+!real(pReal) tau_slip(constitutive_Nslip(matID))
+!real(pReal) tauc_slip_new(constitutive_Nslip(matID))
+!real(pReal) gdot_slip(constitutive_Nslip(matID))
  
 !* Calculation of Lp
-Lp=0.0_pReal
-do i=1,constitutive_Nslip(matID)
-   gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
-   Lp=Lp+gdot_slip(i)*constitutive_Sslip(:,:,i,constitutive_crystal_structure(matID))
-enddo
+!Lp=0.0_pReal
+!do i=1,constitutive_Nslip(matID)
+!   gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+!   Lp=Lp+gdot_slip(i)*constitutive_Sslip(:,:,i,constitutive_crystal_structure(matID))
+!enddo
 
 return
-end subroutine
+end function
 
 
-!function CPFEM_Cauchy(Estar_v,Fe,C66)
-! ***************************************************************
-! Subroutine calculates the cauchy from the elastic strain tensor
-! Input: Estar_v : elastic strain tensor (in vector form)
-!   Fe    : elastic deformation gradient
-!   C66    : Stiffness Tensor
-! Output: cs    : cauchy stress
-! Local: Tstar_v,Tstar,mm,det
-! ***************************************************************
-!use math
-!use prec
-!implicit none
-
-!real(pRe) Estar_v(6),Fe(3,3),C66(6,6),CPFEM_Cauchy(6)
-!real(pRe) det,mm(3,3),Tstar(3,3)
-!integer(pIn) i
-
-!det = math_det(Fe)
-!Tstar = math_6to33(matmul(C66,Estar_v))
-!mm=matmul(matmul(Fe,Tstar),transpose(Fe))/det
-!CPFEM_Cauchy = math_33to6(mm)
-
-!return
-!end function
- 
 END MODULE
