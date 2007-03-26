@@ -16,17 +16,15 @@ use prec, only: pReal,pInt
 implicit none
 
 
-! QUESTION: would it be wise to outsource these to _constitutive_ ?? YES!
-!    *** Slip resistances at (t=t0) and (t=t1) ***  
+! IS MISSING
 ! allocate(constitutive_state_old(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- !allocate(constitutive_state_new(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- !state_tauc_slip_old = 0.0_pReal
- !state_tauc_slip_new = 0.0_pReal
+! allocate(constitutive_state_new(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+! state_tauc_slip_old = 0.0_pReal
+! state_tauc_slip_new = 0.0_pReal
 
 ! *** Transformation to get the MARC order ***
 ! ***    11,22,33,12,23,13      ***
 ! MISSING this should be outsourced to FEM-spec
-
 !temp=Cslip_66(4,:)
 !Cslip_66(4,:)=Cslip_66(6,:)    
 !Cslip_66(6,:)=Cslip_66(5,:)    
@@ -177,7 +175,7 @@ integer(pInt) materials_maxN
 integer(pInt), dimension(:)  , allocatable :: materials_CrystalStructure
 integer(pInt), dimension(:)  , allocatable :: materials_Nslip
 !* Maximum number of selected slip systems over materials
-integer(pInt), allocatable :: materials_MaxNslip
+integer(pInt) materials_MaxNslip
 !* Elastic constants and matrices
 real(pReal), dimension(:)    , allocatable :: materials_C11
 real(pReal), dimension(:)    , allocatable :: materials_C12
@@ -206,30 +204,51 @@ character(len=80), dimension(:), allocatable :: textures_symmetry
 integer(pInt), dimension(:)    , allocatable :: textures_Ngrains
 ! NB: symmetry(number of texture)
 
+!************************************
+!*         State variables          *
+!************************************
+real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_old
+real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_new
+!* IS MISSING : allocation
+
+!************************************
+!*             Results              *
+!************************************
+integer(pInt) constitutive_MaxNresults
+integer(pInt), dimension(:,:,:), allocatable :: constitutive_Nresults
+real(pReal), dimension(:,:,:,:), allocatable :: constitutive_results
+!* IS MISSING : allocation
+
+!************************************
+!*             Other                *
+!************************************
+integer(pInt), dimension(:,:,:)  , allocatable :: constitutive_matID
+real(pReal), dimension(:,:,:)    , allocatable :: constitutive_matvolfrac
+real(pReal), dimension(:,:,:,:,:), allocatable :: consitutive_initFp
+
 
 CONTAINS
 !****************************************
-!* - constitutive_init                  
+!* - constitutive_Init                  
 !* - constitutive_SchmidMatrices          
 !* - constitutive_HardeningMatrices
 !* - constitutive_CountSections 
 !* - constitutive_Parse_UnknownPart 
 !* - constitutive_Parse_MaterialPart
 !* - constitutive_Parse_TexturePart     
-!* - constitutive_Parse_MatTexDat                    
-!* - constitutive_Lp        
-!* - constitutive_TangentLp      
+!* - constitutive_Parse_MatTexDat                          
+!* - constitutive_LpAndItsTangent     
 !* - consistutive_DotState          
 !****************************************
 
 
-subroutine constitutive_init()
+subroutine constitutive_Init()
 !**************************************
 !*      Module initialization         *
 !**************************************
-call constitutive_calc_SchmidMatrices()
-call constitutive_calc_HardeningMatrices()
-call constitutive_parse_MatTexDat('materials_textures.mpie')
+call constitutive_SchmidMatrices()
+call constitutive_HardeningMatrices()
+call constitutive_Parse_MatTexDat('mattex.mpie')
 end subroutine
  
 
@@ -336,14 +355,15 @@ integer(pInt), dimension(3) :: positions
 
 count=0
 part=''
+
 do while(.true.)
-   read(unit=file,fmt='(a80)',END=100) line
+   read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,1)
    tag=IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
-      part=tag(2:len(tag)-1)
+   if (tag(1:1)=='<') then 
+      part=tag
 	  exit
-   elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
+   elseif (tag(1:1)=='[') then
       count=count+1
    endif
 enddo
@@ -369,13 +389,14 @@ integer(pInt), parameter :: maxNchunks = 1
 integer(pInt) file
 integer(pInt), dimension(1+2*maxNchunks) :: positions 
 
-constitutive_parse_unknownPart = ''
+constitutive_parse_unknownPart=''
+
 do while(.true.)
-   read(unit=file,fmt='(a80)',end=100) line
-   positions = IO_stringPos(line,maxNchunks)
-   tag = IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
-      constitutive_parse_unknownPart = tag(2:len(tag)-1)
+   read(file,'(a80)',END=100) line
+   positions=IO_stringPos(line,maxNchunks)
+   tag=IO_lc(IO_stringValue(line,positions,1))
+   if (tag(1:1)=='<') then
+      constitutive_Parse_UnknownPart=tag  
 	  exit
    endif
 enddo
@@ -392,7 +413,7 @@ character(len=80) function constitutive_Parse_MaterialPart(file)
 !*  - file  : file ID                                                *
 !*********************************************************************
 use prec, only: pInt
-use IO, only: IO_stringPos,IO_stringValue,IO_lc
+use IO
 implicit none
 
 !* Definition of variables
@@ -404,17 +425,18 @@ integer(pInt), dimension(1+2*maxNchunks) :: positions
 section = 0
 constitutive_parse_materialPart = ''
 
+write(*,*) 'Enter do while for materials'
 do while(.true.)
-   read(unit=file,fmt='(a80)',end=100) line
-   positions = IO_stringPos(line,maxNchunks) ! parse leading chunks
-   tag = IO_lc(IO_stringValue(line,positions,1))
+   read(file,'(a80)',END=100) line
+   positions=IO_stringPos(line,maxNchunks) ! parse leading chunks
+   tag=IO_lc(IO_stringValue(line,positions,1))
    if (tag(1:1)=='#') then  ! skip comment line
       cycle
-   elseif (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
-      constitutive_parse_materialPart = tag(2:len(tag)-1)
+   elseif (tag(1:1)=='<') then
+      constitutive_parse_materialPart=tag
 	  exit
-   elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
-      section = section+1
+   elseif (tag(1:1)=='[') then
+      section=section+1
    else
       if (section>0) then
          select case(tag)
@@ -422,15 +444,15 @@ do while(.true.)
               materials_CrystalStructure(section)=IO_intValue(line,positions,2)
 	     case ('nslip')
 		      materials_Nslip(section)=IO_intValue(line,positions,2)
-		 case ('C11')
+		 case ('c11')
               materials_C11(section)=IO_floatValue(line,positions,2)
-		 case ('C12')
+		 case ('c12')
               materials_C12(section)=IO_floatValue(line,positions,2)
-		 case ('C13')
+		 case ('c13')
               materials_C13(section)=IO_floatValue(line,positions,2)
-		 case ('C33')
+		 case ('c33')
               materials_C33(section)=IO_floatValue(line,positions,2)
-		 case ('C44')
+		 case ('c44')
               materials_C44(section)=IO_floatValue(line,positions,2)
          case ('s0_slip')
               materials_s0_slip(section)=IO_floatValue(line,positions,2)
@@ -463,7 +485,7 @@ character(len=80) function constitutive_Parse_TexturePart(file)
 !*  - file  : file ID                                                *
 !*********************************************************************
 use prec, only: pInt
-use IO, only: IO_stringPos,IO_stringValue,IO_lc
+use IO
 implicit none
 
 !* Definition of variables
@@ -476,25 +498,25 @@ section = 0
 constitutive_parse_texturePart = ''
 
 do while(.true.)
-   read(unit=file,fmt='(a80)',end=100) line
-   positions = IO_stringPos(line,maxNchunks)  ! parse leading chunks
-   tag = IO_lc(IO_stringValue(line,positions,1))
+   read(file,'(a80)',END=100) line
+   positions=IO_stringPos(line,maxNchunks)  ! parse leading chunks
+   tag=IO_lc(IO_stringValue(line,positions,1))
    if (tag(1:1)=='#') then  ! skip comment line
       cycle
-   elseif (tag(1:1)=='<' .and. tag(len(tag):len(tag)=='>') then
-      constitutive_parse_texturePart = tag(2:len(tag)-1)
+   elseif (tag(1:1)=='<') then
+      constitutive_parse_texturePart=tag
 	  exit
-   elseif (tag(1:1)=='[' .and. tag(len(tag):len(tag)==']') then
-      section = section+1
+   elseif (tag(1:1)=='[') then
+      section=section+1
    else
       if (section>0) then
          select case(tag)
   		 case ('hybridIA')
               textures_ODFfile(section)=IO_stringValue(line,positions,2)
 		 case ('gauss')
-
+              !* euler angles, scatter, volfrac of component
 		 case ('fiber')
-
+              !* 4 angles, scatte, volfrac of component
 		 case ('ngrains')
 		      textures_Ngrains(section)=IO_intValue(line,positions,2)
          case ('symmetry')
@@ -525,22 +547,21 @@ character(len=*) filename
 character(len=80) part,formerPart
 integer(pInt) sectionCount,i,j,m
 
-!* Open input file
-open(200,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
-
 !* First reading: number of materials and textures
 !* Arrays allocation
+open(1,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
 part = '_dummy_'
 do while (part/='')
    formerPart = part
-   call constitutive_countSections(200,sectionCount,part)
+   call constitutive_CountSections(1,sectionCount,part)
    select case (formerPart)
-   case ('materials')
+   case ('<materials>')
         materials_maxN = sectionCount
-   case ('textures')
+   case ('<textures>')
         textures_maxN = sectionCount
    end select
 enddo
+close(1)
 allocate(textures_ODFfile(textures_maxN))          ; textures_ODFfile=''
 allocate(textures_Ngrains(textures_maxN))          ; textures_Ngrains=0_pInt
 allocate(textures_symmetry(textures_maxN))         ; textures_symmetry=''
@@ -557,45 +578,46 @@ allocate(materials_n_slip(materials_maxN))           ; materials_n_slip=0.0_pRea
 allocate(materials_h0(materials_maxN))               ; materials_h0=0.0_pReal
 allocate(materials_s_sat(materials_maxN))            ; materials_s_sat=0.0_pReal
 allocate(materials_w0(materials_maxN))               ; materials_w0=0.0_pReal
+write(*,*) 'Allocation is done'
 
 !* Second reading: materials and textures are stored
-part = '_dummy_'
+open(1,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
+part='_dummy_'
 do while (part/='')
-  select case (part)
-    case ('materials')
-	  part = constitutive_parse_materialPart(200)
-    case ('textures')
-	  part = constitutive_parse_texturePart(200)
-	case default
-      part = constitutive_parse_unknownPart(200)
-  end select
-end do
-!* Close input file
-close(200)
+   select case (part)
+   case ('<materials>')
+	    part=constitutive_Parse_MaterialPart(1)
+   case ('<textures>')
+	    part=constitutive_Parse_TexturePart(1)
+   case default
+        part=constitutive_Parse_UnknownPart(1)
+   end select
+enddo
+close(1)
 
 
-do m=1,material_maxN
-  material_Cslip_66(:,:,m) = 0.0_pReal
-  select case (material_crystal_structure)
-    case (1:2) ! cubic structure
-      do i=1,3
-        do j=1,3
-          material_Cslip_66(i,j,m)   = C12
-        enddo
-        material_Cslip_66(i,i,m)     = C11
-        material_Cslip_66(i+3,i+3,m) = C44
-      enddo
-    case (3)   ! hcp structure MISSING correct
-      do i=1,3
-        do j=1,3
-          material_Cslip_66(i,j,m)   = C12
-        enddo
-        material_Cslip_66(i,i,m)     = C11
-        material_Cslip_66(i+3,i+3,m) = C44
-      enddo
-  end select
-  material_Cslip_3333(:,:,:,:,m) = math_66to3333(Cslip_66(:,:,m))   
-end do
+!do m=1,materials_maxN
+!  materials_Cslip_66(:,:,m) = 0.0_pReal
+!  select case (material_crystal_structure)
+!    case (1:2) ! cubic structure
+!      do i=1,3
+!        do j=1,3
+!          materials_Cslip_66(i,j,m)   = C12
+!        enddo
+!        materials_Cslip_66(i,i,m)     = C11
+!        materials_Cslip_66(i+3,i+3,m) = C44
+!      enddo
+!    case (3)   ! hcp structure MISSING correct
+!      do i=1,3
+!        do j=1,3
+!          materials_Cslip_66(i,j,m)   = C12
+!        enddo
+!        materials_Cslip_66(i,i,m)     = C11
+!        materials_Cslip_66(i+3,i+3,m) = C44
+!      enddo
+!  end select
+!  materials_Cslip_3333(:,:,:,:,m) = math_66to3333(Cslip_66(:,:,m))   
+!end do
 
 
 ! MISSING some consistency checks may be..?
@@ -605,7 +627,25 @@ return
 end subroutine
 
 
-real(pReal) function constitutive_Lp(Tstar_v,ipc,ip,el)
+subroutine constitutive_InitFp(CPFEM_Fp_old)
+!*********************************************************************
+!* This function reads the material and texture input file           *
+!* INPUT:                                                            *
+!*  - CPFEM_Fp_old : old plastic deformation gradient                *
+!*********************************************************************
+use prec, only: pReal,pInt
+use CPFEM, only: CPFEM_Fp_old
+implicit none
+
+!* Definition of variables
+
+!* Initialization of Fp_old with starting orientation
+
+
+end subroutine
+
+
+subroutine constitutive_LpAndItsTangent(Tstar_v,ipc,ip,el,Lp,dLp_dTstar)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *       
@@ -614,28 +654,49 @@ real(pReal) function constitutive_Lp(Tstar_v,ipc,ip,el)
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
+!* OUTPUT:
+!*  - Lp              : plastic velocity gradient                    *
+!*  - dLp_dTstar      : derivative of Lp                             *
 !*********************************************************************
 use prec, only: pReal,pInt
 implicit none
- 
-!* Definition of variables
-!integer(pInt) matID,i
-!real(pReal) tau_slip(constitutive_Nslip(matID))
-!real(pReal) tauc_slip(constitutive_Nslip(matID))
-!real(pReal) gdot_slip(constitutive_Nslip(matID))
-!real(pReal) dgdot_dtaucslip(constitutive_Nslip(matID))
 
-!* Iteration over the systems 
-!do i=1,constitutive_Nslip(matID)
-!   gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
-!   dgdot_dtaucslip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**(constitutive_n_slip(matID)-1.0_pReal)*constitutive_n_slip(matID)/tauc_slip(i)
-!enddo
+!* Definition of variables
+integer(pInt) ipc,ip,el
+integer(pInt) matID,i,j,k
+real(pReal) Tstar_v(6)
+real(pReal) Lp(3,3)
+real(pReal) dLp_dTstar(6,6)
+real(pReal) dLpT_dTstar(6,6)
+real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: gdot_slip
+real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: dgdot_dtauslip
+real(preal), dimension(constitutive_matID(ipc,ip,el)) :: tau_slip
+
+!* Get the material-ID from the triplet(ipc,ip,el)
+matID=constitutive_matID(ipc,ip,el)
+
+!* Calculation of Lp
+Lp=0.0_pReal
+do i=1,materials_Nslip(matID)
+   tau_slip(i)=dot_product(Tstar_v,constitutive_Sslip_v(:,i,materials_CrystalStructure(matID)))
+   gdot_slip(i)=materials_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**materials_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+   Lp=Lp+gdot_slip(i)*constitutive_Sslip(:,:,i,materials_CrystalStructure(matID))
+enddo
+
+!* Calculation of the tangent of Lp
+dLp_dTstar=0.0_pReal
+do i=1,materials_Nslip(matID)
+   dgdot_dtauslip(i)=materials_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**(materials_n_slip(matID)-1.0_pReal)*materials_n_slip(matID)/constitutive_state_new(i,ipc,ip,el)
+   forall (j=1:6,k=1:6)
+          dLp_dTstar(j,k)=dLp_dTstar(j,k)+constitutive_Sslip_v(j,i,materials_CrystalStructure(matID))*constitutive_Sslip_v(k,i,materials_CrystalStructure(matID))*dgdot_dtauslip(i) 
+   endforall
+enddo
 
 return
-end function
+end subroutine
 
 
-subroutine constitutive_TangentLp(Tstar_v,ipc,ip,el,dLp_dTstar,dLpT_dTstar)
+function constitutive_DotState(Tstar_v,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *       
@@ -645,59 +706,32 @@ subroutine constitutive_TangentLp(Tstar_v,ipc,ip,el,dLp_dTstar,dLpT_dTstar)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !* OUTPUT:                                                           *
-!*  - dLp_dTstar      : derivative of Lp                             *
-!*  - dLpT_dTstar     : derivative of tranposed Lp                   *
+!*  - constitutive_DotState : evolution of state variable            *
 !*********************************************************************
 use prec, only: pReal,pInt
 implicit none
 
 !* Definition of variables
-!integer(pInt) matID,i,j
-!real(pReal) tauc_slip(constitutive_Nslip(matID))
-!real(pReal) gdot_slip(constitutive_Nslip(matID))
-!real(pReal) dtauc_slip(constitutive_Nslip(matID))
-!real(pReal) self_hardening(constitutive_Nslip(matID))
+integer(pInt) ipc,ip,el
+integer(pInt) matID,i
+real(pReal) Tstar_v(6)
+real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: constitutive_DotState
+real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: gdot_slip
+real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: tau_slip
+real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: self_hardening
+ 
+!* Get the material-ID from the triplet(ipc,ip,el)
+matID=constitutive_mat(ipc,ip,el)
 
 !* Self-Hardening of each system
-!do i=1,constitutive_Nslip(matID)
-!   self_hardening(i)=constitutive_h0(matID)*(1.0_pReal-tauc_slip(i)/constitutive_s_sat(matID))**constitutive_w0(matID)*abs(gdot_slip(i))
-!enddo
+do i=1,materials_Nslip(matID)
+   tau_slip(i)=dot_product(Tstar_v,constitutive_Sslip_v(:,i,materials_CrystalStructure(matID)))
+   gdot_slip(i)=materials_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**materials_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+   self_hardening(i)=materials_h0(matID)*(1.0_pReal-constitutive_state_new(i,ipc,ip,el)/materials_s_sat(matID))**materials_w0(matID)*abs(gdot_slip(i))
+enddo
 
 !* Hardening for all systems
-!i=constitutive_Nslip(matID)
-!j=constitutive_crystal_structure(matID)
-!dtauc_slip=matmul(constitutive_hardening_matrix(1:i,1:i,j),self_hardening)
-
-return
-end subroutine
-
-
-real(pReal) function constitutive_DotState(Tstar_v,ipc,ip,el)
-!*********************************************************************
-!* This subroutine contains the constitutive equation for            *
-!* calculating the velocity gradient                                 *       
-!* INPUT:                                                            *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor            *
-!*  - ipc             : component-ID of current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!*********************************************************************
-use prec, only: pReal,pInt
-implicit none
-
-!* Definition of variables
-!integer(pInt) matID,i
-!real(pReal) dt,Lp(3,3)
-!real(pReal) tau_slip(constitutive_Nslip(matID))
-!real(pReal) tauc_slip_new(constitutive_Nslip(matID))
-!real(pReal) gdot_slip(constitutive_Nslip(matID))
- 
-!* Calculation of Lp
-!Lp=0.0_pReal
-!do i=1,constitutive_Nslip(matID)
-!   gdot_slip(i)=constitutive_gdot0_slip(matID)*(abs(tau_slip(i))/tauc_slip(i))**constitutive_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
-!   Lp=Lp+gdot_slip(i)*constitutive_Sslip(:,:,i,constitutive_crystal_structure(matID))
-!enddo
+constitutive_DotState=matmul(constitutive_hardening_matrix(1:materials_Nslip(matID),1:materials_Nslip(matID),materials_CrystalStructure(matID)),self_hardening)
 
 return
 end function
