@@ -12,11 +12,11 @@
 ! _Nnodes    : total number of nodes in mesh
 ! _maxNnodes : max number of nodes in any element
 ! _maxNips   : max number of IPs in any element
+! _maxNsharedElems : max number of elements sharing a node
 !
-! _element   : FEid, type, material, texture, node indices
-! _node      : x,y,z coordinates (initially!)
-! _nodeIndex : count of elements containing node,
-!     [element_num, node_index], ...
+! _element    : FEid, type, material, texture, node indices
+! _node       : x,y,z coordinates (initially!)
+! _sharedElem : entryCount and list of elements containing node
 !
 ! _mapFEtoCPelement : [sorted FEid, corresponding CPid]
 !
@@ -26,66 +26,181 @@
 !
 ! _mapElementtype   : map MARC/ABAQUS elemtype to 1-maxN 
 !
-! _NipsInElementtype : IPs in a specific type of element
-! _NipNeighbors      : count of IP neighbors in a specific type of element
-! _ipNeighborhood    : +x,-x,+y,-y,+z,-z list of intra-element IPs and
+! _Nnodes            : # nodes in a specific type of element
+! _Nips              : # IPs in a specific type of element
+! _NipNeighbors      : # IP neighbors in a specific type of element
+! _ipNeighbor        : +x,-x,+y,-y,+z,-z list of intra-element IPs and
 !     (negative) neighbor faces per own IP in a specific type of element
-! _NnodesPerFace     : count of nodes per face in a specific type of element
-! _nodesOnFace       : list of node indices on each face of a specific type of element
+! _NfaceNodes        : # nodes per face in a specific type of element
+! _nodeOnFace        : list of node indices on each face of a specific type of element
 ! _ipAtNode          : map node index to IP index in a specific type of element
 ! _nodeAtIP          : map IP index to node index in a specific type of element
-! _envIP             : 6 or less neighboring IPs as [element_num, IP_index]
+! _ipNeighborhood    : 6 or less neighboring IPs as [element_num, IP_index]
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
- integer(pInt) mesh_Nelems, mesh_Nnodes, mesh_maxNnodes,mesh_maxNips
+ integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNsharedElems
  integer(pInt), dimension(:,:), allocatable :: mesh_mapFEtoCPelement
- integer(pInt), dimension(:,:), allocatable :: mesh_element, mesh_nodeIndex, mesh_envIP
+ integer(pInt), dimension(:,:), allocatable :: mesh_element, mesh_sharedElem
+ integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
  real(pReal), allocatable :: mesh_node (:,:)
 
  integer(pInt), parameter :: FE_Nelemtypes = 1
  integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNips = 8
+ integer(pInt), parameter :: FE_maxNneighbors = 6
  integer(pInt), parameter :: FE_maxNfaceNodes = 4
  integer(pInt), parameter :: FE_maxNfaces = 6
  integer(pInt), dimension(200) :: FE_mapElemtype 
- integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipsInElement = &
+ integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nnodes = &
+ (/8/)
+ integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nips = &
  (/8/)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipNeighbors = &
  (/ 6 /)
  integer(pInt), dimension(FE_maxNfaces,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
-  4,4,4,4,4,4 &
+  4,4,4,4,4,4 & ! element 7
    /),(/FE_maxNfaces,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNips,FE_Nelemtypes), parameter :: FE_nodeAtIP = &
  reshape((/&
-  1,2,4,3,5,6,8,7 &
+  1,2,4,3,5,6,8,7 & ! element 7
    /),(/FE_maxNips,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNnodes,FE_Nelemtypes), parameter :: FE_ipAtNode = &
  reshape((/&
-  1,2,4,3,5,6,8,7 &
+  1,2,4,3,5,6,8,7 & ! element 7
    /),(/FE_maxNnodes,FE_Nelemtypes/))
- integer(pInt), dimension(FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes), parameter :: FE_nodesOnFace = &
+ integer(pInt), dimension(FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
-  1,2,3,4 , &
+  1,2,3,4 , & ! element 7
   2,1,5,6 , &
   3,2,6,7 , &
   3,4,8,7 , &
   4,1,5,8 , &
   8,7,6,5 &
    /),(/FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes/))
+ integer(pInt), dimension(FE_maxNneighbors,FE_maxNips,FE_Nelemtypes), parameter :: FE_ipNeighbor = &
+ reshape((/&
+   2,-5, 3,-2, 5,-1 , & ! element 7
+  -3, 1, 4,-2, 6,-1 , &
+   4,-5,-4, 1, 7,-1 , &
+  -3, 3,-4, 2, 8,-1 , &
+   6,-5, 7,-2,-6, 1 , &
+  -3, 5, 8,-2,-6, 2 , &
+   8,-5,-4, 5,-6, 3 , &
+  -3, 7,-4, 6,-6, 4   &
+   /),(/FE_maxNneighbors,FE_maxNips,FE_Nelemtypes/))
    
  CONTAINS
 ! ---------------------------
 ! subroutine mesh_init()
 ! function mesh_FEtoCPelement(FEid)
-! function mesh_build_IPenvironment()
+! function mesh_build_ipNeighorhood()
 ! subroutine mesh_parse_inputFile()
 ! ---------------------------
 
+
  
-! ***********************************************************
+!***********************************************************
+! find face-matching element of same type
+!
+! 
+!***********************************************************
+ FUNCTION mesh_faceMatch(face,elem)
+
+ use prec, only: pInt
+ implicit none
+
+ integer(pInt) face,elem
+ integer(pInt) mesh_faceMatch
+ integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: nodeMapFE
+ integer(pInt) minN,NsharedElems,lonelyNode,faceNode,i,j,t
+ 
+ mesh_faceMatch = 0_pInt   ! intialize to "no match found"
+ t = mesh_element(2,elem)  ! figure elemType
+ do faceNode=1,FE_NfaceNodes(face,t)  ! loop over nodes on face
+   nodeMapFE(faceNode) = mesh_element(4+FE_nodeOnFace(faceNode,face,t),elem) ! FE id of face node
+   NsharedElems = mesh_sharedElem(1,nodeMapFE(faceNode))  ! figure # shared elements for this node
+   if (NsharedElems < minN) then
+     minN = NsharedElems       ! remember min # shared elems
+     lonelyNode = faceNode     ! remember most lonely node
+   endif
+ end do
+candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
+   mesh_faceMatch = mesh_sharedElem(1+i,nodeMapFE(lonelyNode)) ! present candidate elem
+   if (mesh_faceMatch == elem) then   ! my own element ?
+     mesh_faceMatch = 0_pInt          ! disregard
+     cycle candidate
+   endif
+   do faceNode=1,FE_NfaceNodes(face,t) ! check remaining face nodes to match
+     if (faceNode == lonelyNode) cycle ! disregard lonely node (matches anyway)
+     NsharedElems = mesh_sharedElem(1,nodeMapFE(faceNode))  ! how many shared elems for checked node?
+     do j=1,NsharedElems               ! iterate over other node's elements
+       if (all(mesh_sharedElem(2:1+NsharedElems,nodeMapFE(faceNode)) /= mesh_faceMatch)) then  ! no ref to candidate elem?
+         mesh_faceMatch = 0_pInt       ! set to "no match" (so far)
+         cycle candidate               ! next candidate elem
+       endif
+     end do
+   end do
+ end do candidate
+  
+ return
+ 
+ END FUNCTION
+
+
+!***********************************************************
+! build up of IP neighborhood
+!***********************************************************
+ SUBROUTINE mesh_build_ipNeighborhood()
+ 
+ use prec, only: pInt
+ implicit none
+ 
+ integer(pInt) e,t,i,j,k,n
+ integer(pInt) neighbor,neighboringElem,neighboringIP,matchingElem,faceNode,linkingNode
+ 
+ do e = 1,mesh_NcpElems            ! loop over cpElems
+   t = mesh_element(2,e)           ! get elemType
+   do i = 1,FE_Nips(t)             ! loop over IPs of elem
+     do n = 1,FE_NipNeighbors(t)   ! loop over neighbors of IP
+       neighbor = FE_ipNeighbor(n,i,t)
+       if (neighbor > 0) then ! intra-element IP
+           neighboringElem = e
+           neighboringIP   = neighbor
+       else                   ! neighboring element's IP
+         neighboringElem = 0_pInt
+         neighboringIP = 0_pInt
+         matchingElem = mesh_faceMatch(-neighbor,e)
+         if (matchingElem > 0) then
+matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching face
+             faceNode = FE_nodeOnFace(j,-neighbor,t)  ! get face node id
+             if (i == FE_ipAtNode(faceNode,t)) then   ! ip linked to face node is me?
+               linkingNode = mesh_element(4+faceNode,e) ! FE id of this facial node
+               do k = 1,FE_Nnodes(t)   ! loop over nodes in matching element
+                 if (linkingNode == mesh_element(4+k,matchingElem)) then
+                   neighboringElem = matchingElem
+                   neighboringIP = FE_ipAtNode(j,t)
+                   exit matchFace
+                 endif
+               end do
+             endif
+           end do matchFace
+         endif
+       endif
+       mesh_ipNeighborhood(1,n,i,e) = neighboringElem
+       mesh_ipNeighborhood(2,n,i,e) = neighboringIP
+     end do
+   end do
+ end do
+ 
+ return
+ 
+ END SUBROUTINE
+ 
+ 
+!***********************************************************
 ! FE to CP id mapping by binary search thru lookup array
-! ***********************************************************
+!***********************************************************
  FUNCTION mesh_FEtoCPelement(FEid)
  
  use prec, only: pInt
@@ -98,22 +213,22 @@
  lower = 1_pInt
  upper = size(mesh_mapFEtoCPelement,2)
  
- if (mesh_mapFEtoCPelement(lower,1) == FEid) then
-   mesh_FEtoCPelement = mesh_mapFEtoCPelement(lower,2)
+ if (mesh_mapFEtoCPelement(1,lower) == FEid) then
+   mesh_FEtoCPelement = mesh_mapFEtoCPelement(2,lower)
    return
- elseif (mesh_mapFEtoCPelement(upper,1) == FEid) then
-   mesh_FEtoCPelement = mesh_mapFEtoCPelement(upper,2)
+ elseif (mesh_mapFEtoCPelement(1,upper) == FEid) then
+   mesh_FEtoCPelement = mesh_mapFEtoCPelement(2,upper)
    return
  endif
  
  do while (upper-lower > 0)
    center = (lower+upper)/2
-   if (mesh_mapFEtoCPelement(center,1) < FEid) then
+   if (mesh_mapFEtoCPelement(1,center) < FEid) then
      lower = center
-   elseif (mesh_mapFEtoCPelement(center,1) > FEid) then
+   elseif (mesh_mapFEtoCPelement(1,center) > FEid) then
      upper = center
    else
-     mesh_FEtoCPelement = mesh_mapFEtoCPelement(center,2)
+     mesh_FEtoCPelement = mesh_mapFEtoCPelement(2,center)
      exit
    end if
  end do
@@ -122,181 +237,29 @@
  END FUNCTION
  
 
-! ***********************************************************
+!***********************************************************
 ! initialization 
-! ***********************************************************
+!***********************************************************
  SUBROUTINE mesh_init ()
 
  mesh_Nelems = 0_pInt
+ mesh_NcpElems = 0_pInt
  mesh_Nnodes = 0_pInt
  mesh_maxNips = 0_pInt
  mesh_maxNnodes = 0_pInt
+ mesh_maxNsharedElems = 0_pInt
  call mesh_parse_inputFile ()
 
  END SUBROUTINE
  
  
-! ***********************************************************
+!***********************************************************
 ! parsing of input file 
-! ***********************************************************
- FUNCTION mesh_parse_inputFile ()
+!***********************************************************
+ SUBROUTINE mesh_parse_inputFile()
 
- use prec, only: pReal,pInt
- use IO
  
- implicit none
-
- logical mesh_parse_inputFile
- integer(pInt) i,j,positions(10*2+1)
- integer(pInt) elem_num,elem_type,Nnodes,node_num,num_ip,mat,tp(70,2)
-
-! Set a format to read the entire line (max. len is 80 characters)
-  610 FORMAT(A80)
-
- if (.not. IO_open_inputFile(600)) then
-   mesh_parse_inputFile = .false.
-   return
- endif
-
- do while(.true.)
-   read(600,610,end=620) line
-
-   positions = IO_stringPos(line,3)
-   select case (IO_stringValue(line,positions,1)
-!-----------------------------------
-   case ('sizing')
-!-----------------------------------
-     mesh_Nelems = IO_intValue(line,positions,2)
-     mesh_Nnodes = IO_intValue(line,positions,3)
-!-----------------------------------
-   case ('elements')
-!-----------------------------------
-     select case (IO_intValue(line,positions,2)) ! elem type
-  case (3) ! 2D Triangle
-    mesh_maxNips = max(3,mesh_maxNips)
-    mesh_maxNnodes = max(3,mesh_maxNnodes)
-  case (6) ! 2D Quad.
-    mesh_maxNips = max(4,mesh_maxNips)
-    mesh_maxNnodes = max(4,mesh_maxNnodes)
-  case (7) ! 3D hexahedral
-    mesh_maxNips = max(8,mesh_maxNips)
-    mesh_maxNnodes = max(8,mesh_maxNnodes)
-  case default
-    mesh_maxNips = max(8,mesh_maxNips)
-    mesh_maxNnodes = max(8,mesh_maxNnodes)
-     end select
-!-----------------------------------
-   case ('connectivity')
-!-----------------------------------
-     allocate (mesh_element(mesh_Nelems,2+mesh_maxNips))
-     allocate (mesh_nodeIndex (mesh_Nnodes,1+mesh_maxNnodes*2)
-     allocate (mesh_envIP(mesh_Nelems,mesh_maxNips,6,2))
-     mesh_element = 0_pInt
-     mesh_nodeIndex = 0_pInt
-     mesh_envIP = 0_pInt
-
-! MISSING: setting up of envIP
-
-     read(600,610,end=620) line ! skip line ??
-     do i=1,mesh_Nelems
-  read(600,610,end=620) line
-  positions = IO_stringPos(line,0) ! find all chunks
-  elem_num  = IO_intValue(line,positions,1)
-  elem_type = IO_intValue(line,positions,2)
-  select case (elem_type)
-  case (3) ! 2D Triangle
-    Nnodes = 3
-  case (6) ! 2D Quad.
-    Nnodes = 4
-  case (7) ! 3D hexahedral
-    Nnodes = 8
-  case default
-    Nnodes = 8
-  end select
-  mesh_element(elem_num,1) = elem_type
-  do j=1,Nnodes  ! store all node indices
-    node_num = IO_intValue(line,positions,2+j)
-    mesh_element(elem_num,1+j) = node_num
-    mesh_nodeIndex(node_num,1) = mesh_nodeIndex(node_num,1)+1 ! inc count
-    mesh_nodeIndex(node_num,mesh_nodeIndex(node_num,1)*2  ) = elem_num
-    mesh_nodeIndex(node_num,mesh_nodeIndex(node_num,1)*2+1) = j
-  end do
-     end do
-!-----------------------------------
-   case ('coordinates')
-!-----------------------------------
-     allocate (mesh_node(mesh_Nnodes,3)) ! x,y,z, per node
-
-     read(600,610,end=620) line ! skip line ??
-     do i=1,mesh_Nnodes
-  read(600,610,end=620) line
-  positions = IO_stringPos(line,0) ! find all (4) chunks
-  node_num  = IO_intValue(line,positions,1)
-  do j=1,3  ! store x,y,z coordinates
-    mesh_node(node_num,j) = IO_floatValue(line,positions,1+j)
-  end do
-     end do
-!-----------------------------------
-   case ('hypoelastic')
-!-----------------------------------
- 
-!   ***************************************************
-!   Search for key word "hypoelastic".  
-!     This section contains the # of materials and
-!  the element range of each material
-!   ***************************************************
-   ELSE IF( line(1:11).eq.'hypoelastic' )THEN
-     mat=0
-     flag=0
-     DO WHILE( line(1:8).ne.'geometry' )
-  READ(600,610,END=620) line
-  i=1
-  DO WHILE( i.le.len(line)-8 )
-    IF( line(i:i+2).eq.'mat' )THEN
-      mat=mat+1
-      flag=1
-    END IF
-    i=i+1
-  END DO
-  IF( flag.eq.1 )THEN
-    flag=0
-    READ(600,610,END=620) line
-    READ(600,610,END=620) line
-    i=1
-    DO WHILE( line(i:i).eq.' ')
-      i=i+1
-    END DO
-    left=i
-    DO WHILE( line(i:i).ne.' ')
-      i=i+1
-    END DO
-    right=i-1
-    READ(UNIT=line(left:right), FMT=' (I5) ') tp(mat,1)
-    DO WHILE( (line(i:i).eq.' ').or.
-     &   (line(i:i).eq.'t').or.
-     &   (line(i:i).eq.'o') )
-     i=i+1
-    END DO
-    left=i
-    DO WHILE( line(i:i).ne.' ')
-      i=i+1
-    END DO
-    right=i-1
-    READ(UNIT=line(left:right), FMT=' (I5) ') tp(mat,2)
-  END IF
-     END DO
-     WRITE(6,*) 'mat: ',mat,' ',tp(1,1),' ',tp(1,2)
-
-   end select
- END DO
-
-! Code jumps to 620 when it reaches the end of the file
-  620 continue
-
- WRITE(6,*) 'Finished with .dat file'
- CALL FLUSH(6)
-
- END FUNCTION
+ END SUBROUTINE
  
  END MODULE mesh
  
