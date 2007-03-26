@@ -4,7 +4,7 @@
 ! written by F. Roters, P. Eisenlohr, L. Hantcherli, W.A. Counts
 ! MPI fuer Eisenforschung, Duesseldorf
 !
-! last modified: 22.03.2007
+! last modified: 26.03.2007
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
@@ -22,15 +22,15 @@
 !             - quit
 !********************************************************************
 !     Marc common blocks included:
-!             - concom: lovl, ncycle
+!             - concom: lovl, ncycle, inc, incsub
 !             - creeps: timinc
 !********************************************************************
 !
  include "prec.f90"
-! include "math.f90"
-! include "IO.f90"
-! include "mesh.f90"
-! include "constitutive.f90"
+ include "math.f90"
+ include "IO.f90"
+ include "mesh.f90"
+ include "constitutive.f90"
  include "CPFEM.f90"
 !
  subroutine hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kc,mats,ndi,nshear,&
@@ -129,13 +129,13 @@
 !3    continue
 !
 !
- use prec, only: pReal,pInt
+ use prec,  only: pReal,pInt
  use CPFEM, only : CPFEM_stress_all, CPFEM_jaco_old
  implicit real(pReal) (a-h,o-z)
 !
 ! Marc common blocks are in fixed format so they have to be pasted in here beware of changes in newer Marc versions
 ! these are from 2005r3
-! concom is needed for inc (# increment), lovl
+! concom is needed for inc, subinc, ncycle, lovl
 ! include 'concom'
  common/concom/ &
      iacous, iasmbl, iautth,    ibear,  icompl,     iconj,  icreep, ideva(50), idyn,   idynt,&
@@ -176,24 +176,20 @@
 !********************************************************************
 !     mpie_ffn         deformation gradient for t=t0
 !     mpie_ffn1        deformation gradient for t=t1
-!     mpie_ndi         dimension
 !     mpie_cn          number of cycle
 !     mpie_tinc        time increment
 !     mpie_en          element number
 !     mpie_in          intergration point number
 !     mpie_dimension   dimension of stress/strain vector
 !********************************************************************
-! CPFEM_ffn_all(:,:, n(1), nn)=ffn
-! CPFEM_ffn1_all(:,:, n(1), nn)=ffn1
  cp_en=mesh_mapFEtoCPelement(n(1))
  if ((lovl==6).or.(inc==0)) then
-    call cpfem_general(ffn, ffn1, ndi, inc, subinc, ncycle, timinc, cp_en, nn)
+    call cpfem_general(ffn, ffn1, inc, incsub, ncycle, timinc, cp_en, nn)
  endif
 !     return stress and jacobi
  s=CPFEM_stress_all(1:ngens, nn, cp_en)
  d=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
  
-! FE_en = mesh_element(1,cp_en)
  return
  end
 !
@@ -228,8 +224,8 @@
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
 !
 ! assign result variable
- v=CPFEM_result(mod(jpltcd, CPFEM_Nresults),&
-                int(jpltcd/CPFEM_Nresults),&
+ v=CPFEM_result(mod(jpltcd, CPFEM_Nresults+constitutive_Nresults),&
+                int(jpltcd/(CPFEM_Nresults+constitutive_Nresults)),&
                 nn, mesh_mapFEtoCPelement(m))
  return
  end
