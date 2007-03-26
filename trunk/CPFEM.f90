@@ -493,8 +493,8 @@
  real(pReal) Tstar_v(6), cs(6)
  integer(pInt) cp_en, CPFEM_in, iori, iconv, ising
 !    *** Local variables ***
- real(pReal) crite, tol_in, tol_out, invFp_old(3,3), det, A(3,3), C66(6,6), Lp(3,3), dLp(3,3)
- real(pReal) tLp(3,3), inv_tLp(3,3), help(3,3), Tstar0_v(6), R1(6), norm1, tdLp(3,3)
+ real(pReal) crite, tol_in, tol_out, invFp_old(3,3), det, A(3,3), C66(6,6), Lp(3,3), dLp(3,3,6)
+ real(pReal) tLp(3,3), help(3,3), help1(6), Tstar0_v(6), R1(6), norm1, tdLp(3,3)
  real(pReal) dstate(constitutive_Nstatevars), R2(6), norm2, invFp_new(3,3), Estar(3,3)
  real(pReal) Estar_v(6)
  integer(pInt) iouter, iinner , Jacobi(6,6), inv_Jacobi(6,6), dTstar_v(6), dummy, err
@@ -545,9 +545,18 @@
         if (norm1<tol_in) goto 100
 ! 
 !    *** Jacobi Calculation ***
-        help=matmul(transpose(dLp),matmul(A, I3tLp))+&
-              matmul(transpose(I3tLp),matmul(A, tdLp))
-        Jacobi= 0.5_pReal * matmul(C66, math_33to6(help)) + mat_identity(6)
+        help=matmul(A, I3tLp)
+        do i=1,3
+            do j=1,3
+                do k=1,3
+!                    dol=1,3
+                        help1(k)=dLp(j,i,k)*help(i,j)
+!                    enddo
+                enddo
+            enddo
+        enddo
+!        help=help1+transpose(help1)
+        Jacobi= matmul(C66, help1) + mat_identity(6)
         call math_invert6x6(Jacobi, invJacobi, dummy, err) !ÄÄÄ
         if (err==1_pInt) then
             do i=1,6
@@ -594,17 +603,15 @@
 ! call plastic_vel_grad(dt,tau_slip,tauc_slip_new,Lp)
 ! 
 !    *** Calculation of Fp(t+dt) (see Kalidindi) ***
-! dLp=I3+Lp*dt
- Fp_new=matmul(tLp,Fp_old)
- Fp_new=Fp_new/math_det3x3(Fp_new)**(1.0_pReal/3.0_pReal)
-!
-!    *** Calculation of F*(t+dt) (see Kalidindi) ***
- !invFp_new=Fp_new
- call math_invert3x3(Fp_new, invFp_new, det, err) !ÄÄÄ
+ invFp_new=matmul(Fp_old, I3tLp)
+ call math_invert3x3(invFp_new, Fp_new, det, err) !ÄÄÄ
  if (err==1_pInt) then
     ising=1
     return
  endif
+ Fp_new=Fp_new/math_det3x3(Fp_new)**(1.0_pReal/3.0_pReal)
+!
+!    *** Calculation of F*(t+dt) (see Kalidindi) ***
  Fe=matmul(Fg_new,invFp_new)
 !
 !    *** Calculation of Estar ***
