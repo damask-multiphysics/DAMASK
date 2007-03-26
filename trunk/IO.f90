@@ -110,13 +110,14 @@
  character(len=*) ODFfileName
  character(len=80) line
  character(len=*), parameter :: fileFormat = '(A80)'
- integer(pInt) i,j,bin,pos(7),Nast,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
+ integer(pInt) i,j,bin,Nast,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
+ integer(pInt), dimension(7) :: pos
  integer(pInt), dimension(3) :: steps
  integer(pInt), dimension(:), allocatable :: binSet
  real(pReal) center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
  real(pReal), dimension(3) :: limits,deltas
  real(pReal), dimension(:,:,:), allocatable :: dV_V
- real(pReal), dimension(:,:), allocatable :: IO_hybridIA
+ real(pReal), dimension(3,Nast) :: IO_hybridIA
 
  if (.not. IO_open_file(999,ODFfileName)) goto 100
  
@@ -212,7 +213,6 @@
    end do
  end do
 
- allocate(IO_hybridIA(3,Nast))
  do i=1,Nast
    if (i < Nast) then
      call random_number(rnd)
@@ -230,9 +230,7 @@
  return
 
 ! on error
-100 if (allocated(IO_hybridIA)) deallocate(IO_hybridIA)
- allocate(IO_hybridIA(1,1))
- IO_hybridIA = -1
+100 IO_hybridIA = -1
  close(999)
  return
  
@@ -425,7 +423,6 @@
  integer(pInt) i
 
  IO_lc = line
- !forall (i=1:len(line),64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
  do i=1,len(line)
     if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
  enddo
@@ -445,10 +442,10 @@
  character (len=*) line
  integer(pInt) i
 
- !forall (i=1:len(line),64<iachar(line(i:i)) .and. iachar(line(i:i))<91) line(i:i)=achar(iachar(line(i:i))+32)
  do i=1,len(line)
     if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) line(i:i)=achar(iachar(line(i:i))+32)
  enddo
+
  return 
 
  END SUBROUTINE
