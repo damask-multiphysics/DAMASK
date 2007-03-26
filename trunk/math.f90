@@ -8,7 +8,7 @@
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), parameter :: pi = (2.0_pReal)*dasin(1.0_pReal)
+ real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
  real(pReal), dimension(3,3), parameter :: math_I3 = &
@@ -18,6 +18,295 @@
  0.0_pReal,0.0_pReal,1.0_pReal /),(/3,3/))
 
  CONTAINS
+
+ SUBROUTINE math_invert3x3(A, InvA, DetA, err)
+
+!   Bestimmung der Determinanten und Inversen einer 3x3-Matrix
+
+!   A      = Matrix A
+!   InvA   = Inverse von A
+!   DetA   = Determinante von A
+!   Fehler = Fehlerparameter
+!            0 : Die Berechnung wurde durchgefuehrt.
+!            1 : Die Determinante ist kleiner gleich Null.
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ integer (pInt) err
+ real(pReal)    InvA(3,3), DetA, A(3,3)
+
+ INTENT (IN)     A
+ INTENT (OUT)    InvA, DetA, err
+
+ err = 0
+
+ DetA =   A(1,1) * ( A(2,2) * A(3,3) - A(2,3) * A(3,2) )&
+        - A(1,2) * ( A(2,1) * A(3,3) - A(2,3) * A(3,1) )&
+        + A(1,3) * ( A(2,1) * A(3,2) - A(2,2) * A(3,1) )
+
+ IF (DetA <= 0.0000001) THEN
+ err = 1
+ RETURN
+ END IF
+
+ InvA(1,1) = (  A(2,2) * A(3,3) - A(2,3) * A(3,2) ) / DetA
+ InvA(2,1) = ( -A(2,1) * A(3,3) + A(2,3) * A(3,1) ) / DetA
+ InvA(3,1) = (  A(2,1) * A(3,2) - A(2,2) * A(3,1) ) / DetA
+
+ InvA(1,2) = ( -A(1,2) * A(3,3) + A(1,3) * A(3,2) ) / DetA
+ InvA(2,2) = (  A(1,1) * A(3,3) - A(1,3) * A(3,1) ) / DetA
+ InvA(3,2) = ( -A(1,1) * A(3,2) + A(1,2) * A(3,1) ) / DetA
+
+ InvA(1,3) = (  A(1,2) * A(2,3) - A(1,3) * A(2,2) ) / DetA
+ InvA(2,3) = ( -A(1,1) * A(2,3) + A(1,3) * A(2,1) ) / DetA
+ InvA(3,3) = (  A(1,1) * A(2,2) - A(1,2) * A(2,1) ) / DetA
+
+ RETURN
+
+ END SUBROUTINE math_invert3x3
+! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+      SUBROUTINE math_invert6x6(A, InvA, AnzNegEW, err)
+
+!   Invertieren einer 6x6-Matrix
+
+!   A        = Matrix A
+!   InvA     = Inverse von A
+!   AnzNegEW = Anzahl der negativen Eigenwerte von A
+!   Fehler   = Fehlerparameter
+!              = 0: Inversion wurde durchgefuehrt.
+!              = 1: Die Inversion in SymGauss wurde wegen eines verschwindenen
+!                   Pivotelement abgebrochen.
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ integer (pInt) AnzNegEW, err
+ real(pReal)    InvA(6,6), A(6,6)
+
+
+ INTENT (IN)     A
+ INTENT (OUT)    InvA, AnzNegEW, err
+
+
+ integer (pInt) i
+ real(pReal)    LogAbsDetA
+ real(pReal)    B(6,6)
+
+ InvA = 0.0_pReal
+
+ forall(i = 1:6) InvA(i,i) = 1.0_pReal
+ B = A
+ CALL Gauss (B, InvA, LogAbsDetA, AnzNegEW, err)
+
+ RETURN
+
+ END SUBROUTINE math_invert6x6
+
+! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+      SUBROUTINE Gauss (A, B,LogAbsDetA, NegHDK,Fehler)
+
+!   Loesung eines linearen Gleichungsssystem A * X = B mit Hilfe des
+!   GAUSS-Algorithmusses
+
+!   Zur numerischen Stabilisierung wird eine Zeilen- und Spaltenpivotsuche
+!   durchgefuehrt.
+
+!   Eingabeparameter:
+!
+!   A(6,6) = Koeffizientenmatrix A
+!   B(6,6) = rechte Seiten B
+!
+!   Ausgabeparameter:
+!
+!   B(6,6)        = Matrix der Unbekanntenvektoren X
+!   LogAbsDetA    = 10-Logarithmus des Betrages der Determinanten von A
+!   NegHDK        = Anzahl der negativen Hauptdiagonalkoeffizienten nach der
+!                   Vorwaertszerlegung
+!   Fehler        = Fehlerparameter
+!                   = 0: Das Gleichungssystem wurde geloest.
+!                   = 1: Matrix A ist singulaer.
+
+!   A und B werden veraendert!
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ integer (pInt) NegHDK, Fehler
+ real(pReal)    LogAbsDetA
+ real(pReal)    A(6,6), B(6,6)
+
+ INTENT (OUT)    LogAbsDetA, NegHDK, Fehler
+ INTENT (INOUT)  A, B
+
+ LOGICAL        SortX
+ integer (pInt) PivotZeile, PivotSpalte, StoreI, I, IP1, J, K, L
+ integer (pInt) XNr(6)
+ real(pReal)    AbsA, PivotWert, EpsAbs, Quote
+ real(pReal)    StoreA(6), StoreB(6)
+
+ Fehler = 1
+ NegHDK = 1
+ SortX  = .FALSE.
+
+!   Unbekanntennumerierung
+
+ DO  I = 1, 6
+    XNr(I) = I
+ END DO
+
+!   Genauigkeitsschranke und Bestimmung des groessten Pivotelementes
+
+ PivotWert   = ABS(A(1,1))
+ PivotZeile  = 1
+ PivotSpalte = 1
+
+ DO  I = 1, 6
+    DO  J = 1, 6
+        AbsA = ABS(A(I,J))
+        IF (AbsA .GT. PivotWert) THEN
+            PivotWert   = AbsA
+            PivotZeile  = I
+            PivotSpalte = J
+        END IF
+    END DO
+ END DO
+
+ IF (PivotWert .LT. 0.0000001) RETURN   ! Pivotelement = 0?
+
+ EpsAbs = PivotWert * 0.1_pReal ** PRECISION(1.0_pReal)
+
+!   V O R W A E R T S T R I A N G U L A T I O N
+
+ DO  I = 1, 6 - 1
+
+!     Zeilentausch?
+
+    IF (PivotZeile .NE. I) THEN
+
+        StoreA(I:6)       = A(I,I:6)
+        A(I,I:6)          = A(PivotZeile,I:6)
+        A(PivotZeile,I:6) = StoreA(I:6)
+
+        StoreB(1:6)        = B(I,1:6)
+        B(I,1:6)           = B(PivotZeile,1:6)
+        B(PivotZeile,1:6)  = StoreB(1:6)
+
+        SortX                = .TRUE.
+
+    END IF
+
+!     Spaltentausch?
+
+    IF (PivotSpalte .NE. I) THEN
+
+        StoreA(1:6)        = A(1:6,I)
+        A(1:6,I)           = A(1:6,PivotSpalte)
+        A(1:6,PivotSpalte) = StoreA(1:6)
+
+        StoreI                = XNr(I)
+        XNr(I)                = XNr(PivotSpalte)
+        XNr(PivotSpalte)      = StoreI
+
+        SortX                 = .TRUE.
+
+    END IF
+
+!     Triangulation
+
+    DO  J = I + 1, 6
+
+        Quote = A(J,I) / A(I,I)
+
+        DO  K = I + 1, 6
+            A(J,K) = A(J,K) - Quote * A(I,K)
+        END DO
+
+        DO  K = 1, 6
+            B(J,K) = B(J,K) - Quote * B(I,K)
+        END DO
+
+    END DO
+
+!     Bestimmung des groessten Pivotelementes
+
+    IP1         = I + 1
+    PivotWert   = ABS(A(IP1,IP1))
+    PivotZeile  = IP1
+    PivotSpalte = IP1
+
+    DO  J = IP1, 6
+        DO  K = IP1, 6
+            AbsA = ABS(A(J,K))
+            IF (AbsA .GT. PivotWert) THEN
+                PivotWert   = AbsA
+                PivotZeile  = J
+                PivotSpalte = K
+            END IF
+        END DO
+    END DO
+
+    IF (PivotWert .LT. EpsAbs) RETURN   ! Pivotelement = 0?
+
+ END DO
+
+!   R U E C K W A E R T S A U F L O E S U N G
+
+ DO  I = 6, 1, -1
+
+    DO  L = 1, 6
+
+        DO  J = I + 1, 6
+            B(I,L) = B(I,L) - A(I,J) * B(J,L)
+        END DO
+
+        B(I,L) = B(I,L) / A(I,I)
+
+    END DO
+
+ END DO
+
+!   Sortieren der Unbekanntenvektoren?
+
+ IF (SortX) THEN
+
+    DO  L = 1, 6
+
+        StoreA(1:6) = B(1:6,L)
+
+        DO  I = 1, 6
+            J      = XNr(I)
+            B(J,L) = StoreA(I)
+        END DO
+
+    END DO
+
+ END IF
+
+!   Determinante
+
+ LogAbsDetA = 0.0_pReal
+ NegHDK     = 0
+
+ DO  I = 1, 6
+    IF (A(I,I) .LT. 0.0_pReal) NegHDK = NegHDK + 1
+    AbsA       = ABS(A(I,I))
+    LogAbsDetA = LogAbsDetA + LOG10(AbsA)
+ END DO
+
+ Fehler = 0
+
+ RETURN
+
+ END SUBROUTINE Gauss
+
+
+
+
 
 !    ***  Initialize random number generator     ***
 !    *** for later use in mpie_fiber and mpie_disturbOri ***
