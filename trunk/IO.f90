@@ -425,7 +425,10 @@
  integer(pInt) i
 
  IO_lc = line
- forall (i=1:len(line),64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
+ !forall (i=1:len(line),64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
+ do i=1,len(line)
+    if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
+ enddo
  return 
 
  END FUNCTION
@@ -442,7 +445,10 @@
  character (len=*) line
  integer(pInt) i
 
- forall (i=1:len(line),64<iachar(line(i:i)) .and. iachar(line(i:i))<91) line(i:i)=achar(iachar(line(i:i))+32)
+ !forall (i=1:len(line),64<iachar(line(i:i)) .and. iachar(line(i:i))<91) line(i:i)=achar(iachar(line(i:i))+32)
+ do i=1,len(line)
+    if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) line(i:i)=achar(iachar(line(i:i))+32)
+ enddo
  return 
 
  END SUBROUTINE
