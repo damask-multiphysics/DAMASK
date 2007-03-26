@@ -504,13 +504,12 @@
  integer(pInt), parameter :: ninner    = 2000_pInt
  real(pReal),   parameter :: tol_inner = 1.0e-3_pReal   
  real(pReal),   parameter :: eta       = 13.7_pReal 
- integer(pInt), parameter :: numerical = 0_pInt
- real(pReal),   parameter :: pert_nr   = 1.0e-8_pReal  
+
  crite=eta*constitutive_s0_slip/constitutive_n_slip !ÄÄÄ
 !
 !    *** Tolerances ***
- tol_in  = tol_inner*s0_slip
- tol_out = tol_outer*s0_slip 
+ tol_in  = tol_inner*s0_slip !ÄÄÄ
+ tol_out = tol_outer*s0_slip !ÄÄÄ
 !
 !    *** Error treatment ***
  iconv  = 0
@@ -546,30 +545,26 @@
 ! 
 !    *** Jacobi Calculation ***
         help=matmul(A, I3tLp)
+        ! MISSING 1..6 outer loop, inner sum required
         do i=1,3
             do j=1,3
-                do k=1,3
-!                    dol=1,3
-                        help1(k)=dLp(j,i,k)*help(i,j)
-!                    enddo
+                do k=1,6
+                    help1(k)=dLp(j,i,k)*help(i,j)
                 enddo
             enddo
         enddo
 !        help=help1+transpose(help1)
-        Jacobi= matmul(C66, help1) + mat_identity(6)
+        Jacobi= matmul(C66, help1) + math_identity(6)
         call math_invert6x6(Jacobi, invJacobi, dummy, err) !ÄÄÄ
         if (err==1_pInt) then
-            do i=1,6
-                Jacobi(i,i)=1.05d0*maxval(Jacobi(i,:))
-            enddo
-            invJacobi=Jacobi
+            forall (i=1:6) Jacobi(i,i)=1.05d0*maxval(Jacobi(i,:)) ! regularization
             call math_invert6x6(Jacobi, invJacobi, dummy, err)
-            if (err==1_pInt) then
+            if (err==1_pInt) then  ! sorry, can't help here!!
                 ising=1
                 return
             endif
         endif
-        dTstar_v=matmul(invJacobi,R1)
+        dTstar_v=matmul(invJacobi,R1)  ! correction to Tstar
 
 !    *** Correction (see Kalidindi) ***
         do i=1,6
@@ -584,26 +579,19 @@
     return
 !    *** End of the first level of iterative procedure ***
 
- 100 continue
-
-!    call hardening(tauc_slip_new,gdot_slip,dtauc_slip)
-    dstate=constitutive_dotState(Tstar_v, iori, CPFEM_in, cp_en)
+100 dstate=dt*constitutive_dotState(Tstar_v, iori, CPFEM_in, cp_en)
 !    *** Arrays of residuals ***
-    R2=state_new-state_old-dt*dstate
+    R2=state_new-state_old-dstate
     norm2=maxval(abs(R2))
     if (norm2<tol_out) goto 200
-    state_new=state_old+dt*dstate
-    enddo  
-    iconv=2
-    return
+    state_new=state_old+dstate
+ enddo  
+ iconv=2
+ return
 !    *** End of the second level of iterative procedure ***
 
- 200 continue
-!
-! call plastic_vel_grad(dt,tau_slip,tauc_slip_new,Lp)
-! 
 !    *** Calculation of Fp(t+dt) (see Kalidindi) ***
- invFp_new=matmul(Fp_old, I3tLp)
+200 invFp_new=matmul(Fp_old, I3tLp)
  call math_invert3x3(invFp_new, Fp_new, det, err) !ÄÄÄ
  if (err==1_pInt) then
     ising=1
@@ -619,7 +607,8 @@
  call math_conv33to6(Estar,Estar_v)
 !
 !    *** Calculation of the Cauchy stress ***
- call CPFEM_cauchy_stress(Estar_v,Fe,cs)
+!	QUESTION seems to need Tstar, not Estar..??
+ cs = CPFEM_cauchy_stress(Estar_v,Fe)
 !
  return
  end subroutine
