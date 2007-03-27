@@ -15,16 +15,9 @@ MODULE constitutive
 use prec, only: pReal,pInt
 implicit none
 
-
-! IS MISSING
-! allocate(constitutive_state_old(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-! allocate(constitutive_state_new(constitutive_Nstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-! state_tauc_slip_old = 0.0_pReal
-! state_tauc_slip_new = 0.0_pReal
-
+! MISSING this should be outsourced to FEM-spec
 ! *** Transformation to get the MARC order ***
 ! ***    11,22,33,12,23,13      ***
-! MISSING this should be outsourced to FEM-spec
 !temp=Cslip_66(4,:)
 !Cslip_66(4,:)=Cslip_66(6,:)    
 !Cslip_66(6,:)=Cslip_66(5,:)    
@@ -183,7 +176,6 @@ real(pReal), dimension(:)    , allocatable :: material_C13
 real(pReal), dimension(:)    , allocatable :: material_C33
 real(pReal), dimension(:)    , allocatable :: material_C44
 real(pReal), dimension(:,:,:), allocatable :: material_Cslip_66
-! NB: Cslip_66(1:6,1:6,number of materials)
 !* Visco-plastic material parameters
 real(pReal), dimension(:)    , allocatable :: material_s0_slip
 real(pReal), dimension(:)    , allocatable :: material_gdot0_slip
@@ -191,7 +183,6 @@ real(pReal), dimension(:)    , allocatable :: material_n_slip
 real(pReal), dimension(:)    , allocatable :: material_h0
 real(pReal), dimension(:)    , allocatable :: material_s_sat
 real(pReal), dimension(:)    , allocatable :: material_w0
-! NB: Parameters(number of materials)
 
 !************************************
 !* Definition of texture properties *
@@ -202,14 +193,13 @@ integer(pInt) texture_maxN
 character(len=80), dimension(:), allocatable :: texture_ODFfile
 character(len=80), dimension(:), allocatable :: texture_symmetry
 integer(pInt), dimension(:)    , allocatable :: texture_Ngrains
-! NB: symmetry(number of texture)
 
 !************************************
 !*         State variables          *
 !************************************
+!* integer(pInt) constitutive_maxNstate???
 real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_old
 real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_new
-!* IS MISSING : allocation
 
 !************************************
 !*             Results              *
@@ -222,12 +212,12 @@ real(pReal), dimension(:,:,:,:), allocatable :: constitutive_results
 !************************************
 !*             Other                *
 !************************************
+integer(pInt) constitutive_maxNgrains
 integer(pInt), dimension(:,:)    , allocatable :: constitutive_Ngrains
 integer(pInt), dimension(:,:,:)  , allocatable :: constitutive_matID
 real(pReal), dimension(:,:,:)    , allocatable :: constitutive_matVolFrac
 integer(pInt), dimension(:,:,:)  , allocatable :: constitutive_texID
 real(pReal), dimension(:,:,:)    , allocatable :: constitutive_texVolFrac
-real(pReal), dimension(:,:,:,:,:), allocatable :: consitutive_initFp
 
 
 CONTAINS
@@ -239,7 +229,8 @@ CONTAINS
 !* - constitutive_Parse_UnknownPart 
 !* - constitutive_Parse_MaterialPart
 !* - constitutive_Parse_TexturePart     
-!* - constitutive_Parse_MatTexDat                          
+!* - constitutive_Parse_MatTexDat
+!* - constitutive_Assignement                          
 !* - constitutive_LpAndItsTangent     
 !* - consistutive_DotState          
 !****************************************
@@ -252,6 +243,7 @@ subroutine constitutive_Init()
 call constitutive_SchmidMatrices()
 call constitutive_HardeningMatrices()
 call constitutive_Parse_MatTexDat('mattex.mpie')
+call constitutive_Assignement()
 end subroutine
  
 
@@ -581,7 +573,6 @@ allocate(material_n_slip(material_maxN))           ; material_n_slip=0.0_pReal
 allocate(material_h0(material_maxN))               ; material_h0=0.0_pReal
 allocate(material_s_sat(material_maxN))            ; material_s_sat=0.0_pReal
 allocate(material_w0(material_maxN))               ; material_w0=0.0_pReal
-write(*,*) 'Allocation is done'
 
 !* Second reading: materials and textures are stored
 open(1,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
@@ -627,6 +618,58 @@ close(1)
 
 return
 100 call IO_error(110) ! corrupt matarials_textures file
+end subroutine
+
+
+subroutine constitutive_Assignement()
+!*********************************************************************
+!* This subroutine assign material parameters according to ipc,ip,el *
+!*********************************************************************
+use prec, only: pReal,pInt
+use mesh, only: mesh_NcpElems,FE_Nips,mesh_maxNips,mesh_element
+!use CPFEM, only: CPFEM_Fp_old
+implicit none
+
+!* Definition of variables
+integer(pInt) i,j,k,l
+
+!* Allocate arrays
+constitutive_maxNgrains=maxval(texture_Ngrains)
+allocate(constitutive_Ngrains(mesh_maxNips,mesh_NcpElems))
+constitutive_Ngrains=0_pInt
+allocate(constitutive_matID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_matID=0_pInt
+allocate(constitutive_texID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_texID=0_pInt
+allocate(constitutive_MatVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_MatVolFrac=0.0_pReal
+allocate(constitutive_TexVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_TexVolFrac=0.0_pReal
+allocate(constitutive_state_old(material_maxNslip,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_state_old=0.0_pReal
+allocate(constitutive_state_new(material_maxNslip,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_state_new=0.0_pReal
+
+!* Assignement
+do i=1,mesh_NcpElems
+   do j=1,FE_Nips(mesh_element(2,i))
+      !* Multiplicity of orientations per texture 
+      constitutive_Ngrains(j,i)=texture_Ngrains(mesh_element(4,i))
+      do k=1,constitutive_Ngrains(j,i)
+	     !* MaterialID and TextureID 
+         constitutive_matID(k,j,i)=mesh_element(3,i)
+		 constitutive_texID(k,j,i)=mesh_element(4,i)
+         constitutive_MatVolFrac(k,j,i)=1.0_pReal
+!		 constitutive_TexVolFrac(k,j,i)=texture_VolFrac([gauss],mesh_element(4,i))
+		 !* Initialization of state variables 
+		 do l=1,material_Nslip(constitutive_matID(k,j,i))
+		    constitutive_state_old(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
+		    constitutive_state_new(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
+		 enddo 
+	  enddo
+   enddo
+enddo
+
 end subroutine
 
 
