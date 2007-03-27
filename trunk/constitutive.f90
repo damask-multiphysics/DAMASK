@@ -27,6 +27,7 @@ implicit none
 !Cslip_66(:,6)=2.0d0*Cslip_66(:,5)    
 !Cslip_66(:,5)=2.0d0*temp 
 
+! MISSING consistency check after reading 'mattex.mpie'
 
 !***********************************************
 !* Definition of crystal structures properties *
@@ -236,7 +237,8 @@ CONTAINS
 !* - constitutive_Parse_MaterialPart
 !* - constitutive_Parse_TexturePart     
 !* - constitutive_Parse_MatTexDat
-!* - constitutive_Assignement                          
+!* - constitutive_Assignement
+!* - constitutive_HomogenizedC                          
 !* - constitutive_LpAndItsTangent     
 !* - consistutive_DotState          
 !****************************************
@@ -611,7 +613,7 @@ implicit none
 !* Definition of variables
 character(len=*) filename
 character(len=80) part,formerPart
-integer(pInt) sectionCount,dummy,i,j,m
+integer(pInt) sectionCount,dummy,i,j,k
 
 !* First reading: number of materials and textures
 !* determine material_maxN and texture_maxN
@@ -683,29 +685,33 @@ do while (part/='')
 enddo
 close(1)
 
-
-!do m=1,material_maxN
-!  material_Cslip_66(:,:,m) = 0.0_pReal
-!  select case (material_crystal_structure)
-!    case (1:2) ! cubic structure
-!      do i=1,3
-!        do j=1,3
-!          material_Cslip_66(i,j,m)   = C12
-!        enddo
-!        material_Cslip_66(i,i,m)     = C11
-!        material_Cslip_66(i+3,i+3,m) = C44
-!      enddo
-!    case (3)   ! hcp structure MISSING correct
-!      do i=1,3
-!        do j=1,3
-!          material_Cslip_66(i,j,m)   = C12
-!        enddo
-!        material_Cslip_66(i,i,m)     = C11
-!        material_Cslip_66(i+3,i+3,m) = C44
-!      enddo
-!  end select
-!  material_Cslip_3333(:,:,:,:,m) = math_66to3333(Cslip_66(:,:,m))   
-!end do
+!* Construction of the elasticity matrices
+do i=1,material_maxN
+   material_Cslip_66(:,:,i) = 0.0_pReal
+   select case (material_CrystalStructure(i))
+   case(1:2) 
+       do k=1,3
+          do j=1,3
+             material_Cslip_66(k,j,i)=material_C12(i)
+          enddo
+          material_Cslip_66(k,k,i)=material_C11(i)
+          material_Cslip_66(k+3,k+3,i)=material_C44(i)
+       enddo
+   case(3)   
+        material_Cslip_66(1,1,i)=material_C11(i)
+        material_Cslip_66(2,2,i)=material_C11(i)
+		material_Cslip_66(3,3,i)=material_C33(i)
+		material_Cslip_66(1,2,i)=material_C12(i)
+		material_Cslip_66(2,1,i)=material_C12(i)
+		material_Cslip_66(1,3,i)=material_C13(i)
+		material_Cslip_66(3,1,i)=material_C13(i)
+		material_Cslip_66(2,3,i)=material_C13(i)
+		material_Cslip_66(3,2,i)=material_C13(i)
+        material_Cslip_66(4,4,i)=material_C44(i)
+        material_Cslip_66(5,5,i)=material_C44(i)
+        material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))  
+   end select
+enddo
 
 
 ! MISSING some consistency checks may be..?
@@ -743,6 +749,8 @@ allocate(constitutive_state_old(material_maxNslip,constitutive_maxNgrains,mesh_m
 constitutive_state_old=0.0_pReal
 allocate(constitutive_state_new(material_maxNslip,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_new=0.0_pReal
+allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_Nresults=0_pInt
 
 !* Assignement
 do i=1,mesh_NcpElems
@@ -759,12 +767,34 @@ do i=1,mesh_NcpElems
 		 do l=1,material_Nslip(constitutive_matID(k,j,i))
 		    constitutive_state_old(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
 		    constitutive_state_new(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
-		 enddo 
+		 enddo 		
 	  enddo
    enddo
 enddo
 
 end subroutine
+
+
+function constitutive_HomogenizedC(ipc,ip,el)
+!*********************************************************************
+!* This function gives the homogenized elacticity matrix back        *
+!* INPUT:                                                            *
+!*  - ipc             : component-ID of current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
+!*********************************************************************
+use prec, only: pReal,pInt
+implicit none
+
+!* Definition of variables
+integer(pInt) ipc,ip,el
+real(pReal), dimension(6,6) :: constitutive_homogeniZedC
+
+!* Homogenization scheme
+constitutive_homogenizedC=constitutive_MatVolFrac(ipc,ip,el)*material_Cslip_66(:,:,constitutive_matID(ipc,ip,el)) 
+
+return
+end function
 
 
 !subroutine constitutive_InitFp(CPFEM_Fp_old)
@@ -794,20 +824,19 @@ subroutine constitutive_LpAndItsTangent(Tstar_v,ipc,ip,el,Lp,dLp_dTstar)
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
-!* OUTPUT:
+!* OUTPUT:                                                           *
 !*  - Lp              : plastic velocity gradient                    *
-!*  - dLp_dTstar      : derivative of Lp                             *
+!*  - dLp_dTstar      : derivative of Lp (4th-order tensor)          *
 !*********************************************************************
 use prec, only: pReal,pInt
 implicit none
 
 !* Definition of variables
 integer(pInt) ipc,ip,el
-integer(pInt) matID,i,j,k
+integer(pInt) matID,i,k,l,m,n
 real(pReal) Tstar_v(6)
 real(pReal) Lp(3,3)
-real(pReal) dLp_dTstar(6,6)
-real(pReal) dLpT_dTstar(6,6)
+real(pReal) dLp_dTstar(3,3,3,3)
 real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: gdot_slip
 real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: dgdot_dtauslip
 real(preal), dimension(constitutive_matID(ipc,ip,el)) :: tau_slip
@@ -827,8 +856,8 @@ enddo
 dLp_dTstar=0.0_pReal
 do i=1,material_Nslip(matID)
    dgdot_dtauslip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**(material_n_slip(matID)-1.0_pReal)*material_n_slip(matID)/constitutive_state_new(i,ipc,ip,el)
-   forall (j=1:6,k=1:6)
-          dLp_dTstar(j,k)=dLp_dTstar(j,k)+constitutive_Sslip_v(j,i,material_CrystalStructure(matID))*constitutive_Sslip_v(k,i,material_CrystalStructure(matID))*dgdot_dtauslip(i) 
+   forall (k=1:3,l=1:3,m=1:3,n=1:3)
+          dLp_dTstar(k,l,m,n)=dLp_dTstar(k,l,m,n)+constitutive_Sslip(k,l,i,material_CrystalStructure(matID))*constitutive_Sslip(m,n,i,material_CrystalStructure(matID))*dgdot_dtauslip(i) 
    endforall
 enddo
 
