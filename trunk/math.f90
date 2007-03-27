@@ -327,6 +327,25 @@
  
  
 !********************************************************************
+! calculate v6 stress from M6x6 stiffness and v6 strain
+!********************************************************************
+ FUNCTION math_Hooke(C,e)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal) C(6,6), e(6), factoredE(6)
+ real(pReal), dimension(6), parameter :: preFactor = (/1.0_pReal,1.0_pReal,1.0_pReal,2.0_pReal,2.0_pReal,2.0_pReal/)
+ real(pReal) math_Hooke(6)
+
+ factoredE = dot_product(preFactor,e)
+ math_Hooke = matmul(C,factoredE)
+ return
+
+ END FUNCTION
+
+ 
+!********************************************************************
 ! calculate the determinant of a (3x3)
 !********************************************************************
  real(pReal) FUNCTION math_det3x3(m)
@@ -345,7 +364,7 @@
 
 
 !********************************************************************
-! covert a symmetric 3,3 matrix into an array of 6
+! convert a symmetric 3,3 matrix into an array of 6
 !********************************************************************
  FUNCTION math_33to6(m33)
 
@@ -836,7 +855,7 @@
  integer(pInt)  i,dimen
  real(pReal) math_identity2nd(dimen,dimen)
 
- math_identity = 0.0_pReal 
+ math_identity2nd = 0.0_pReal 
  forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
  return
 
@@ -850,7 +869,7 @@
  use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,dimen
+ integer(pInt)  i,j,k,l,dimen
  real(pReal) math_identity4th(dimen,dimen,dimen,dimen)
 
  forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
