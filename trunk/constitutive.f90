@@ -200,6 +200,9 @@ integer(pInt), dimension(:)    , allocatable :: texture_NGauss
 integer(pInt),dimension(:)     , allocatable :: texture_NFiber
 real(pReal), dimension(:,:,:)  , allocatable :: texture_Gauss
 real(pReal), dimension(:,:,:)  , allocatable :: texture_Fiber
+real(pReal), dimension(:,:,:)  , allocatable :: constitutive_phi1
+real(pReal), dimension(:,:,:)  , allocatable :: constitutive_phi
+real(pReal), dimension(:,:,:)  , allocatable :: constitutive_phi2
 
 !************************************
 !*         State variables          *
@@ -745,12 +748,19 @@ allocate(constitutive_MatVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpEl
 constitutive_MatVolFrac=0.0_pReal
 allocate(constitutive_TexVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_TexVolFrac=0.0_pReal
+allocate(constitutive_phi1(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_phi1=0.0_pReal
+allocate(constitutive_phi(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_phi=0.0_pReal
+allocate(constitutive_phi2(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_phi2=0.0_pReal
 allocate(constitutive_state_old(material_maxNslip,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_old=0.0_pReal
 allocate(constitutive_state_new(material_maxNslip,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_new=0.0_pReal
 allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_Nresults=0_pInt
+
 
 !* Assignement
 do i=1,mesh_NcpElems
@@ -762,7 +772,10 @@ do i=1,mesh_NcpElems
          constitutive_matID(k,j,i)=mesh_element(3,i)
 		 constitutive_texID(k,j,i)=mesh_element(4,i)
          constitutive_MatVolFrac(k,j,i)=1.0_pReal
-!		 constitutive_TexVolFrac(k,j,i)=texture_VolFrac([gauss],mesh_element(4,i))
+!		 constitutive_TexVolFrac(k,j,i)=texture_Gauss/Fiber(6,M*([gauss]+[fiber]),mesh_element(4,i))
+!        constitutive_phi1(k,j,i)=texture_Gauss/Fiber(1,M*([gauss]+[fiber])mesh_element(4,i)) 
+!        constitutive_phi(k,j,i)=texture_Gauss/Fiber(2,M*([gauss]+[fiber])mesh_element(4,i))
+!        constitutive_phi2(k,j,i)=texture_Gauss/Fiber(3,M*([gauss]+[fiber])mesh_element(4,i))
 		 !* Initialization of state variables 
 		 do l=1,material_Nslip(constitutive_matID(k,j,i))
 		    constitutive_state_old(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
