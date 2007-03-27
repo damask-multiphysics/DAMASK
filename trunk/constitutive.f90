@@ -187,12 +187,18 @@ real(pReal), dimension(:)    , allocatable :: material_w0
 !************************************
 !* Definition of texture properties *
 !************************************
-!* Number of textures
+!* Number of textures, maximum number of Gauss and Fiber components
 integer(pInt) texture_maxN
+integer(pInt) texture_maxNGauss
+integer(pInt) texture_maxNFiber
 !* Textures definition
 character(len=80), dimension(:), allocatable :: texture_ODFfile
 character(len=80), dimension(:), allocatable :: texture_symmetry
 integer(pInt), dimension(:)    , allocatable :: texture_Ngrains
+integer(pInt), dimension(:)    , allocatable :: texture_NGauss
+integer(pInt),dimension(:)     , allocatable :: texture_NFiber
+real(pReal), dimension(:,:,:)  , allocatable :: texture_Gauss
+real(pReal), dimension(:,:,:)  , allocatable :: texture_Fiber
 
 !************************************
 !*         State variables          *
@@ -367,6 +373,40 @@ enddo
 end subroutine
 
 
+subroutine constitutive_CountGaussAndFiber(file,count,part)
+!*********************************************************************
+!*********************************************************************
+use prec, only: pInt
+use IO,   only: IO_stringPos,IO_stringValue,IO_lc
+implicit none
+
+!* Definition of variables
+character(len=80) line,tag,part
+integer(pInt) file,count,pos
+integer(pInt), dimension(3) :: positions
+
+part=''
+
+do while(.true.)
+   read(file,'(a80)',END=100) line
+   positions=IO_stringPos(line,1)
+   tag=IO_lc(IO_stringValue(line,positions,1))
+   if (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then 
+      part=tag(2:len_trim(tag)-1)
+	  exit
+   elseif (tag(1:1)=='[') then  
+	  count=count+1
+   elseif (tag(2:len_trim(tag)-1)=='gauss') then
+      texture_NGauss(count)=texture_NGauss(count)+1
+   elseif (tag(2:len_trim(tag)-1)=='fiber') then
+      texture_NFiber(count)=texture_NFiber(count)+1
+   endif
+enddo
+100 return
+
+end subroutine
+
+
 character(len=80) function constitutive_Parse_UnknownPart(file)
 !*********************************************************************
 !* read an unknown "part" from the input file until                  *
@@ -420,7 +460,6 @@ integer(pInt), dimension(1+2*maxNchunks) :: positions
 section = 0
 constitutive_parse_materialPart = ''
 
-write(*,*) 'Enter do while for materials'
 do while(.true.)
    read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,maxNchunks) ! parse leading chunks
@@ -461,8 +500,6 @@ do while(.true.)
               material_s_sat(section)=IO_floatValue(line,positions,2)
 		 case ('w0')
               material_w0(section)=IO_floatValue(line,positions,2)
-         case default
-              write(6,*) 'Unknown material parameter ',line
          end select
       endif
    endif
@@ -485,11 +522,13 @@ implicit none
 
 !* Definition of variables
 character(len=80) line,tag
-integer(pInt), parameter :: maxNchunks = 10 ! may be more than 10 chunks ..?
-integer(pInt) file,pos,section
+integer(pInt), parameter :: maxNchunks = 13 ! may be more than 10 chunks ..?
+integer(pInt) file,pos,section,gaussCount,fiberCount,i
 integer(pInt), dimension(1+2*maxNchunks) :: positions 
 
 section = 0
+gaussCount = 0
+fiberCount = 0
 constitutive_parse_texturePart = ''
 
 do while(.true.)
@@ -503,21 +542,53 @@ do while(.true.)
 	  exit
    elseif (tag(1:1)=='[') then
       section=section+1
+	  gaussCount=0
+	  fiberCount=0
    else
       if (section>0) then
          select case(tag)
   		 case ('hybridIA')
               texture_ODFfile(section)=IO_stringValue(line,positions,2)
-		 case ('gauss')
-              !* euler angles, scatter, volfrac of component
-		 case ('fiber')
-              !* 4 angles, scatte, volfrac of component
+		 case ('(gauss)')
+		      gaussCount=gaussCount+1
+		      do i=2,10,2
+			     tag=IO_lc(IO_stringValue(line,positions,i))
+				 select case (tag)
+				 case('phi1')
+				     texture_Gauss(1,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				 case('phi')
+				     texture_Gauss(2,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				 case('phi2')
+				     texture_Gauss(3,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				 case('scatter')
+				     texture_Gauss(5,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				 case('fraction')
+				     texture_Gauss(6,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				 end select
+              enddo
+		 case ('(fiber)')
+              fiberCount=fiberCount+1
+		      do i=2,12,2
+			     tag=IO_lc(IO_stringValue(line,positions,i))
+				 select case (tag)
+				 case('alpha1')
+				     texture_fiber(1,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				 case('alpha2')
+				     texture_fiber(2,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				 case('beta1')
+				     texture_fiber(3,fiberCount,section)=IO_floatValue(line,positions,i+1)
+                 case('beta2')
+				     texture_fiber(4,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				 case('scatter')
+				     texture_fiber(5,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				 case('fraction')
+				     texture_fiber(6,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				 end select
+              enddo
 		 case ('ngrains')
 		      texture_Ngrains(section)=IO_intValue(line,positions,2)
          case ('symmetry')
 		      texture_symmetry(section)=IO_stringValue(line,positions,2)
-         case default
-              write(6,*) 'Unknown texture parameter ',line
          end select
       endif
    endif
@@ -540,10 +611,10 @@ implicit none
 !* Definition of variables
 character(len=*) filename
 character(len=80) part,formerPart
-integer(pInt) sectionCount,i,j,m
+integer(pInt) sectionCount,dummy,i,j,m
 
 !* First reading: number of materials and textures
-!* Arrays allocation
+!* determine material_maxN and texture_maxN
 open(1,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
 part = '_dummy_'
 do while (part/='')
@@ -557,24 +628,47 @@ do while (part/='')
    end select
 enddo
 close(1)
-allocate(texture_ODFfile(texture_maxN))          ; texture_ODFfile=''
-allocate(texture_Ngrains(texture_maxN))          ; texture_Ngrains=0_pInt
-allocate(texture_symmetry(texture_maxN))         ; texture_symmetry=''
-allocate(material_CrystalStructure(material_maxN)) ; material_CrystalStructure=0_pInt
-allocate(material_Nslip(material_maxN))            ; material_Nslip=0_pInt
-allocate(material_C11(material_maxN))              ; material_C11=0.0_pReal
-allocate(material_C12(material_maxN))              ; material_C12=0.0_pReal
-allocate(material_C13(material_maxN))              ; material_C13=0.0_pReal
-allocate(material_C33(material_maxN))              ; material_C33=0.0_pReal
-allocate(material_C44(material_maxN))              ; material_C44=0.0_pReal
-allocate(material_s0_slip(material_maxN))          ; material_s0_slip=0.0_pReal
-allocate(material_gdot0_slip(material_maxN))       ; material_gdot0_slip=0.0_pReal
-allocate(material_n_slip(material_maxN))           ; material_n_slip=0.0_pReal
-allocate(material_h0(material_maxN))               ; material_h0=0.0_pReal
-allocate(material_s_sat(material_maxN))            ; material_s_sat=0.0_pReal
-allocate(material_w0(material_maxN))               ; material_w0=0.0_pReal
+!* Arrays allocation
+allocate(texture_NGauss(texture_maxN)) ; texture_NGauss=0_pInt
+allocate(texture_NFiber(texture_maxN)) ; texture_NFiber=0_pInt
 
-!* Second reading: materials and textures are stored
+!* Second reading: number of Gauss and Fiber
+!* determine material_maxN and texture_maxN
+open(1,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
+part = '_dummy_'
+sectionCount = 0
+do while (part/='')
+   select case (part)
+   case ('textures') 
+        call constitutive_CountGaussAndFiber(1,sectionCount,part)
+   case default
+        call constitutive_CountSections(1,dummy,part)
+   end select
+enddo
+close(1)
+!* Arrays allocation
+texture_maxNGauss=maxval(texture_NGauss)
+texture_maxNFiber=maxval(texture_NFiber)
+allocate(material_CrystalStructure(material_maxN))		  ; material_CrystalStructure=0_pInt
+allocate(material_Nslip(material_maxN))					  ; material_Nslip=0_pInt
+allocate(material_C11(material_maxN))					  ; material_C11=0.0_pReal
+allocate(material_C12(material_maxN))					  ; material_C12=0.0_pReal
+allocate(material_C13(material_maxN))					  ; material_C13=0.0_pReal
+allocate(material_C33(material_maxN))					  ; material_C33=0.0_pReal
+allocate(material_C44(material_maxN))					  ; material_C44=0.0_pReal
+allocate(material_s0_slip(material_maxN))				  ; material_s0_slip=0.0_pReal
+allocate(material_gdot0_slip(material_maxN))			  ; material_gdot0_slip=0.0_pReal
+allocate(material_n_slip(material_maxN))				  ; material_n_slip=0.0_pReal
+allocate(material_h0(material_maxN))				      ; material_h0=0.0_pReal
+allocate(material_s_sat(material_maxN))                   ; material_s_sat=0.0_pReal
+allocate(material_w0(material_maxN))                      ; material_w0=0.0_pReal
+allocate(texture_ODFfile(texture_maxN))                   ; texture_ODFfile=''
+allocate(texture_Ngrains(texture_maxN))                   ; texture_Ngrains=0_pInt
+allocate(texture_symmetry(texture_maxN))                  ; texture_symmetry=''
+allocate(texture_Gauss(6,texture_maxNGauss,texture_maxN)) ; texture_Gauss=0.0_pReal
+allocate(texture_Fiber(6,texture_maxNGauss,texture_maxN)) ; texture_Fiber=0.0_pReal
+
+!* Third reading: materials and textures are stored
 open(1,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
 part='_dummy_'
 do while (part/='')
