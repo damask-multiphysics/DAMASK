@@ -8,7 +8,7 @@
 
 ! ---------------------------
 ! _Nelems    : total number of elements in mesh
-! _NcpElems  : total number of elements in mesh
+! _NcpElems  : total number of CP elements in mesh
 ! _Nnodes    : total number of nodes in mesh
 ! _maxNnodes : max number of nodes in any element
 ! _maxNips   : max number of IPs in any element
@@ -18,7 +18,8 @@
 ! _node       : x,y,z coordinates (initially!)
 ! _sharedElem : entryCount and list of elements containing node
 !
-! _mapFEtoCPelement : [sorted FEid, corresponding CPid]
+! _mapFEtoCPelem : [sorted FEid, corresponding CPid]
+! _mapFEtoCPnode : [sorted FEid, corresponding CPid]
 !
 ! MISSING: these definitions should actually reside in the
 ! FE-solver specific part (different for MARC/ABAQUS)..!
@@ -39,7 +40,7 @@
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
  integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNsharedElems
- integer(pInt), dimension(:,:), allocatable :: mesh_mapFEtoCPelement
+ integer(pInt), dimension(:,:), allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
  integer(pInt), dimension(:,:), allocatable :: mesh_element, mesh_sharedElem
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
  real(pReal), allocatable :: mesh_node (:,:)
@@ -200,35 +201,51 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  
 !***********************************************************
 ! FE to CP id mapping by binary search thru lookup array
+!
+! valid questions are 'elem', 'node'
 !***********************************************************
- FUNCTION mesh_FEtoCPelement(FEid)
+ FUNCTION mesh_FEasCP(what,id)
  
  use prec, only: pInt
+ use IO, only: IO_lc
  implicit none
  
- integer(pInt), intent(in) :: FEid
- integer(pInt) mesh_FEtoCPelement, lower,upper,center
+ character(len=*), intent(in) :: what
+ integer(pInt), intent(in) :: id
+ integer(pInt), dimension(:,:), pointer :: lookupMap
+ integer(pInt) mesh_FEasCP, lower,upper,center
  
- mesh_FEtoCPelement = 0_pInt
+ mesh_FEasCP = 0_pInt
+ select case(IO_lc(what(1:4)))
+   case('elem')
+     lookupMap => mesh_mapFEtoCPelem
+   case('node')
+     lookupMap => mesh_mapFEtoCPnode
+   case default
+     return
+ end select
+ 
  lower = 1_pInt
- upper = size(mesh_mapFEtoCPelement,2)
+ upper = size(lookupMap,2)
  
- if (mesh_mapFEtoCPelement(1,lower) == FEid) then
-   mesh_FEtoCPelement = mesh_mapFEtoCPelement(2,lower)
+ ! check at bounds
+ if (lookupMap(1,lower) == id) then
+   mesh_FEasCP = lookupMap(2,lower)
    return
- elseif (mesh_mapFEtoCPelement(1,upper) == FEid) then
-   mesh_FEtoCPelement = mesh_mapFEtoCPelement(2,upper)
+ elseif (lookupMap(1,upper) == id) then
+   mesh_FEasCP = lookupMap(2,upper)
    return
  endif
  
+ ! binary search in between bounds
  do while (upper-lower > 0)
    center = (lower+upper)/2
-   if (mesh_mapFEtoCPelement(1,center) < FEid) then
+   if (lookupMap(1,center) < id) then
      lower = center
-   elseif (mesh_mapFEtoCPelement(1,center) > FEid) then
+   elseif (lookupMap(1,center) > id) then
      upper = center
    else
-     mesh_FEtoCPelement = mesh_mapFEtoCPelement(2,center)
+     mesh_FEasCP = lookupMap(2,center)
      exit
    end if
  end do
