@@ -743,7 +743,6 @@
  real(pReal) HI1M,HI2M,HI3M,TOL,R,S,T,P,Q,RHO,PHI,Y1,Y2,Y3,D1,D2,D3
  real(pReal) C1,C2,C3,M1(3,3),M2(3,3),M3(3,3),I3(3,3),arg
  TOL=1.e-14_pReal
- I3 = math_identity(3)
  CALL math_hi(M,HI1M,HI2M,HI3M)
  R=-HI1M
  S= HI2M
@@ -782,30 +781,30 @@
    IF(C1.LT.TOL) THEN
 !  EW1 is equal to EW2
   D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
-  M1=M-EW1*I3
-  M2=M-EW2*I3
+  M1=M-EW1*math_I3
+  M2=M-EW2*math_I3
   EB3=MATMUL(M1,M2)*D3
-  EB1=I3-EB3
+  EB1=math_I3-EB3
 !  both EB2 and EW2 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
   EW2=0.0_pReal
    ELSE IF(C2.LT.TOL) THEN
 !  EW2 is equal to EW3
   D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
-  M2=M-I3*EW2
-  M3=M-I3*EW3
+  M2=M-math_I3*EW2
+  M3=M-math_I3*EW3
   EB1=MATMUL(M2,M3)*D1
-  EB2=I3-EB1
+  EB2=math_I3-EB1
 !  both EB3 and EW3 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
   EW3=0.0_pReal
    ELSE IF(C3.LT.TOL) THEN
 !  EW1 is equal to EW3
   D2=1.0_pReal/(EW2-EW1)/(EW2-EW3) 
-  M1=M-I3*EW1
-  M3=M-I3*EW3
+  M1=M-math_I3*EW1
+  M3=M-math_I3*EW3
   EB2=MATMUL(M1,M3)*D2
-  EB1=I3-EB2
+  EB1=math_I3-EB2
 !  both EB3 and EW3 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
   EW3=0.0_pReal
@@ -814,9 +813,9 @@
   D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
   D2=1.0_pReal/(EW2-EW1)/(EW2-EW3) 
   D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
-  M1=M-EW1*I3
-  M2=M-EW2*I3
-  M3=M-EW3*I3
+  M1=M-EW1*math_I3
+  M2=M-EW2*math_I3
+  M3=M-EW3*math_I3
   EB1=MATMUL(M2,M3)*D1
   EB2=MATMUL(M1,M3)*D2
   EB3=MATMUL(M1,M2)*D3
@@ -829,16 +828,33 @@
 !**********************************************************************
 !**** EINHEITSMATRIX MIT dim DIAGONALELEMENTEN 
 
- FUNCTION math_identity(dimen)  
+ FUNCTION math_identity2nd(dimen)  
 
  use prec, only: pReal, pInt
  implicit none
 
  integer(pInt)  i,dimen
- real(pReal) math_identity(dimen,dimen)
+ real(pReal) math_identity2nd(dimen,dimen)
 
  math_identity = 0.0_pReal 
- forall (i=1:dimen) math_identity(i,i) = 1.0_pReal 
+ forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
+ return
+
+ END FUNCTION
+
+!**********************************************************************
+!**** EINHEITSTENSOR 4th MIT dim "DIAGONAL"ELEMENTEN 
+
+ FUNCTION math_identity4th(dimen)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,dimen
+ real(pReal) math_identity4th(dimen,dimen,dimen,dimen)
+
+ forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
+ 	0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
  return
 
  END FUNCTION
@@ -1720,7 +1736,7 @@
 ! calculate rotation matrix
      orot = math_RodrigtoR(angle, axis_u, axis_v, axis_w)
  else
-     orot = math_identity(3)
+     orot = math_I3
  end if
 
 ! calculate random rotation angle about fiber axis
