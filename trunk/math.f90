@@ -28,9 +28,9 @@
   1,3  &
  /),(/2,6/))
  real(pReal), dimension(6), parameter :: nrmMandel = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(2.0_pReal),dsqrt(2.0_pReal),dsqrt(2.0_pReal)/)
+ (/1.0_pReal,1.0_pReal,1.0_pReal, 1.414213562373095_pReal, 1.414213562373095_pReal, 1.414213562373095_pReal/)
  real(pReal), dimension(6), parameter :: invnrmMandel = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(0.5_pReal),dsqrt(0.5_pReal),dsqrt(0.5_pReal)/)
+ (/1.0_pReal,1.0_pReal,1.0_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal/)
  
 
  CONTAINS
