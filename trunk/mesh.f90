@@ -9,6 +9,7 @@
 ! ---------------------------
 ! _Nelems    : total number of elements in mesh
 ! _NcpElems  : total number of CP elements in mesh
+! _NelemTypes: total number of element types in mesh
 ! _Nnodes    : total number of nodes in mesh
 ! _maxNnodes : max number of nodes in any element
 ! _maxNips   : max number of IPs in any element
@@ -39,7 +40,8 @@
 ! _ipNeighborhood    : 6 or less neighboring IPs as [element_num, IP_index]
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
- integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNsharedElems
+ integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_NelemTypes
+ integer(pInt) mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNsharedElems
  integer(pInt), dimension(:,:), allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
  integer(pInt), dimension(:,:), allocatable :: mesh_element, mesh_sharedElem
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
@@ -100,6 +102,19 @@
 ! ---------------------------
 
 
+!***********************************************************
+! initialization 
+!***********************************************************
+ SUBROUTINE mesh_init ()
+
+ mesh_Nelems = 0_pInt
+ mesh_NcpElems = 0_pInt
+ mesh_Nnodes = 0_pInt
+ mesh_maxNips = 0_pInt
+ mesh_maxNnodes = 0_pInt
+ mesh_maxNsharedElems = 0_pInt
+! call to various subrountes to parse the stuff from the input file...
+ END SUBROUTINE
  
 !***********************************************************
 ! find face-matching element of same type
@@ -254,29 +269,184 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  END FUNCTION
  
 
-!***********************************************************
-! initialization 
-!***********************************************************
- SUBROUTINE mesh_init ()
+ 
+!********************************************************************
+! Build node mapping from FEM to CP
+!********************************************************************
+ SUBROUTINE mesh_build_nodeMapping (unit)
 
- mesh_Nelems = 0_pInt
- mesh_NcpElems = 0_pInt
- mesh_Nnodes = 0_pInt
- mesh_maxNips = 0_pInt
- mesh_maxNnodes = 0_pInt
- mesh_maxNsharedElems = 0_pInt
- call mesh_parse_inputFile ()
+ use prec, only: pInt
+ use IO
+ implicit none
 
+ integer(pInt) unit,i
+ integer(pInt), dimension (3) :: pos
+ character*264 line
+
+610 FORMAT(A264)
+
+ rewind(unit)
+ allocate ( mesh_mapFEtoCPnode(2,mesh_Nnodes) )
+
+ do
+   read (unit,610,END=620) line
+   pos = IO_stringPos(line,1)
+   if( IO_lc(IO_stringValue(line,pos,1)) == 'coordinates' ) then
+     read (unit,610,END=620) line  ! skip crap line
+     do i=1,mesh_Nnodes
+       read (unit,610,END=620) line
+       mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (line,(/0,10/),1)
+       mesh_mapFEtoCPnode(2,i) = i
+     end do
+   end if
+ end do
+620 continue
+
+ return
  END SUBROUTINE
- 
- 
-!***********************************************************
-! parsing of input file 
-!***********************************************************
- SUBROUTINE mesh_parse_inputFile()
+
+!********************************************************************
+! Build ele mapping from FEM to CP
+!********************************************************************
+ SUBROUTINE mesh_build_CPeleMapping (unit)
+
+ use prec, only: pInt
+ implicit none
+
+ integer unit
+
+ return
+ END SUBROUTINE
+
+
+!********************************************************************
+!********************************************************************
+ SUBROUTINE mesh_build_Sharedelems (unit)
+
+ use prec, only: pInt
+ implicit none
+
+ integer unit
+
+ return
+ END SUBROUTINE
+
+!********************************************************************
+!********************************************************************
+ SUBROUTINE mesh_build_nodeCoord (unit)
+
+ use prec, only: pInt
+ use IO
+ implicit none
+
+ integer unit,i,j,m
+ integer(pInt), dimension(3) :: pos
+ integer(pInt), dimension(5), parameter :: node_ends = (/0,10,30,50,70/)
+ character*264 line
+
+ rewind(unit)
+ allocate ( mesh_node (3,mesh_Nnodes) )
+
+610 FORMAT(A264)
+
+ do while(.true.)
+   read (unit,610,END=620) line
+   pos = IO_stringPos(line,1)
+   if( IO_lc(IO_stringValue(line,pos,1)) == 'coordinates' ) then
+     read (unit,610,END=620) line ! skip crap line
+     do i=1,mesh_Nnodes
+       read (unit,610,END=620) line
+	   m = mesh_FEasCP('node',IO_fixedIntValue (line,node_ends,1))
+       do j=1,3
+         mesh_node(j,m) = IO_fixedNoEFloatValue (line,node_ends,j+1)
+       end do
+     end do
+   end if
+
+ end do
+620 continue
+
+ return
+ END SUBROUTINE
+
+!********************************************************************
+!********************************************************************
+ SUBROUTINE mesh_build_element (unit)
+
+ use prec, only: pInt
+ implicit none
+
+ integer unit
+
+ return
+ END SUBROUTINE
 
  
+ !********************************************************************
+! Get global variables (like # ele, # nodes, # ele types, # CP ele)
+!********************************************************************
+ SUBROUTINE mesh_get_globals (unit)
+
+ use prec, only: pInt
+ use IO
+ implicit none
+
+ integer(pInt) unit,i,pos(41)
+ character*264 line
+
+610 FORMAT(A264)
+
+ rewind(unit)
+ mesh_NelemTypes = 0_pInt
+
+ do 
+   read (unit,610,END=620) line
+   pos = IO_stringPos(line,20)
+   select case ( IO_lc(IO_Stringvalue(line,pos,1)))
+     case('sizing')
+       mesh_Nelems = IO_IntValue (line,pos,3)
+       mesh_Nnodes = IO_IntValue (line,pos,4)
+     case('elements')
+       mesh_NelemTypes = mesh_NelemTypes+1
+     case('hypoelastic')
+       write(7,*) 'hypo'
+       do i=1,4
+         read (unit,610,END=620) line
+       end do
+       pos = IO_stringPos(line,20)
+       write(7,*) pos(1)
+       if( IO_lc(IO_Stringvalue(line,pos,2)).eq.'to' )then
+         mesh_NcpElems = IO_IntValue(line,pos,3)-IO_IntValue(line,pos,1)+1
+       else
+         write(7,*) pos(1)
+         do i=1,pos(1)
+           write(7,*) pos(1)
+         end do
+       end if
+
+   end select
+
+
+!       pos = 1
+!       do while( pos.le.len_trim(line)-1 )
+!         pos = IO_skip_white_space(line,pos)
+!         if( line(pos:pos).eq.'c' )then
+!           read (unit,610,END=630) line
+!           pos = 1
+!           pos = IO_skip_white_space(line,pos)
+!         end if
+!         call IO_extract_INT(line,pos,start)
+!         num_cp_ele = num_cp_ele + 1
+!       end do
+!     end if
+
+ end do
+620 continue
+
+
+ return
  END SUBROUTINE
+
  
  END MODULE mesh
  
