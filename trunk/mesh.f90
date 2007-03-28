@@ -47,30 +47,39 @@
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
  real(pReal), allocatable :: mesh_node (:,:)
 
- integer(pInt), parameter :: FE_Nelemtypes = 1
+ integer(pInt), parameter :: FE_Nelemtypes = 2
  integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNips = 8
  integer(pInt), parameter :: FE_maxNneighbors = 6
  integer(pInt), parameter :: FE_maxNfaceNodes = 4
  integer(pInt), parameter :: FE_maxNfaces = 6
- integer(pInt), dimension(200) :: FE_mapElemtype 
+ integer(pInt), dimension(200):: FE_mapElemtype 
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nnodes = &
- (/8/)
+ (/8, & ! element 7
+   4  & ! element 134
+  /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nips = &
- (/8/)
+ (/8, & ! element 7
+   1  & ! element 134
+  /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipNeighbors = &
- (/ 6 /)
+ (/6, & ! element 7
+   4  & ! element 134
+  /)
  integer(pInt), dimension(FE_maxNfaces,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
-  4,4,4,4,4,4 & ! element 7
+  4,4,4,4,4,4, & ! element 7
+  3,3,3,3,0,0  & ! element 134
    /),(/FE_maxNfaces,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNips,FE_Nelemtypes), parameter :: FE_nodeAtIP = &
  reshape((/&
-  1,2,4,3,5,6,8,7 & ! element 7
+  1,2,4,3,5,6,8,7, & ! element 7
+  1,0,0,0,0,0,0,0  & ! element 134
    /),(/FE_maxNips,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNnodes,FE_Nelemtypes), parameter :: FE_ipAtNode = &
  reshape((/&
-  1,2,4,3,5,6,8,7 & ! element 7
+  1,2,4,3,5,6,8,7, & ! element 7
+  1,1,1,1,0,0,0,0  & ! element 134
    /),(/FE_maxNnodes,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
@@ -79,7 +88,13 @@
   3,2,6,7 , &
   3,4,8,7 , &
   4,1,5,8 , &
-  8,7,6,5 &
+  8,7,6,5 , &
+  1,2,3,0 , & ! element 134
+  1,4,2,0 , &
+  2,3,4,0 , &
+  1,3,4,0 , &
+  0,0,0,0 , &
+  0,0,0,0 &
    /),(/FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNneighbors,FE_maxNips,FE_Nelemtypes), parameter :: FE_ipNeighbor = &
  reshape((/&
@@ -90,7 +105,15 @@
    6,-5, 7,-2,-6, 1 , &
   -3, 5, 8,-2,-6, 2 , &
    8,-5,-4, 5,-6, 3 , &
-  -3, 7,-4, 6,-6, 4   &
+  -3, 7,-4, 6,-6, 4 , &
+  -1,-2,-3,-4, 0, 0 , & ! element 134
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0   &
    /),(/FE_maxNneighbors,FE_maxNips,FE_Nelemtypes/))
    
  CONTAINS
@@ -113,6 +136,11 @@
  mesh_maxNips = 0_pInt
  mesh_maxNnodes = 0_pInt
  mesh_maxNsharedElems = 0_pInt
+
+ FE_mapElemtype = 1 ! MISSING this should be zero...
+ FE_mapElemtype(  7) = 1
+ FE_mapElemtype(134) = 2
+
 ! call to various subrountes to parse the stuff from the input file...
  END SUBROUTINE
  
@@ -279,14 +307,16 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  use IO
  implicit none
 
- integer(pInt) unit,i
- integer(pInt), dimension (3) :: pos
+ integer(pInt), dimension (mesh_Nnodes) :: node_count
+ integer(pInt) unit,i,j,Nnodes,cur_node
+ integer(pInt), dimension (133) :: pos
  character*264 line
 
 610 FORMAT(A264)
 
  rewind(unit)
  allocate ( mesh_mapFEtoCPnode(2,mesh_Nnodes) )
+ node_count(:) = 0_pInt
 
  do
    read (unit,610,END=620) line
@@ -301,6 +331,27 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
    end if
  end do
 620 continue
+
+ rewind(unit)
+ do
+   read (unit,610,END=630) line
+   pos = IO_stringPos(line,1)
+   if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
+     read (unit,610,END=620) line  ! Garbage line
+	 do i=1,mesh_Nelems
+	   read (unit,610,END=620) line
+	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
+	   Nnodes = FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
+	   do j=1,Nnodes
+	     cur_node = IO_IntValue (line,pos,j+2)
+	     node_count( mesh_FEasCP('node',cur_node) )= node_count( mesh_FEasCP('node',cur_node) )+1
+	   end do
+     end do
+   end if
+ end do
+630 continue
+
+ mesh_maxNsharedElems = MAXVAL(node_count)
 
  return
  END SUBROUTINE
@@ -402,6 +453,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  do 
    read (unit,610,END=620) line
    pos = IO_stringPos(line,20)
+
    select case ( IO_lc(IO_Stringvalue(line,pos,1)))
      case('sizing')
        mesh_Nelems = IO_IntValue (line,pos,3)
@@ -409,36 +461,23 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
      case('elements')
        mesh_NelemTypes = mesh_NelemTypes+1
      case('hypoelastic')
-       write(7,*) 'hypo'
        do i=1,4
          read (unit,610,END=620) line
        end do
        pos = IO_stringPos(line,20)
-       write(7,*) pos(1)
        if( IO_lc(IO_Stringvalue(line,pos,2)).eq.'to' )then
          mesh_NcpElems = IO_IntValue(line,pos,3)-IO_IntValue(line,pos,1)+1
        else
-         write(7,*) pos(1)
-         do i=1,pos(1)
-           write(7,*) pos(1)
-         end do
+	     mesh_NcpElems = mesh_NcpElems + pos(1)
+		 do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
+	       mesh_NcpElems = mesh_NcpElems - 1 ! Counted the c character from the line
+		   read (unit,610,END=620) line
+		   pos = IO_stringPos(line,20)
+           mesh_NcpElems = mesh_NcpElems + pos(1)
+		 end do
        end if
 
    end select
-
-
-!       pos = 1
-!       do while( pos.le.len_trim(line)-1 )
-!         pos = IO_skip_white_space(line,pos)
-!         if( line(pos:pos).eq.'c' )then
-!           read (unit,610,END=630) line
-!           pos = 1
-!           pos = IO_skip_white_space(line,pos)
-!         end if
-!         call IO_extract_INT(line,pos,start)
-!         num_cp_ele = num_cp_ele + 1
-!       end do
-!     end if
 
  end do
 620 continue
