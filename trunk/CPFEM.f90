@@ -410,8 +410,8 @@
  real(pReal)   state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Tstar_v(6)
 !    *** Local variables ***
  integer(pInt) ic     
- real(pReal) Fe(3,3), R(3,3), U(3,3), dev(6), dF(3,3), Fg2(3,3), sgm2(6)
- real(pReal) state2(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Fp2(3,3), cs1(6)
+ real(pReal) Fe(3,3), R(3,3), U(3,3), dev(6), dF(3,3), Fg_pert(3,3), sgm2(6)
+ real(pReal) state2(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Fp2(3,3), cs1(6),E_pert(3,3)
 !    *** Numerical parameters ***
  real(pReal), parameter :: pert_ct=1.0e-5_pReal  
 !    *** Error treatment ***
@@ -441,21 +441,31 @@
 !
 !    *** Calculation of the consistent tangent with perturbation ***
 !    *** Perturbation on the component of Fg ***    
- do ic=1,6    
+ do ic=1,6
 !
 !    *** Method of small perturbation
-    dev=0
-    if(ic<=3) dev(ic) = pert_ct
-    if(ic>3)  dev(ic) = pert_ct/2
-    dF=matmul(math_Mandel6to33(dev),Fg_old) 
-    Fg2=Fg_new+dF
+! Missing direct matrix perturbation
+    E_pert=0
+    if(ic<=3) then 
+        E_pert(ic,ic) = pert_ct
+    else if(ic==4)  then 
+        E_pert(1,2) = pert_ct/2
+        E_pert(2,1) = pert_ct/2
+    else if(ic==5)  then 
+        E_pert(2,3) = pert_ct/2
+        E_pert(3,2) = pert_ct/2
+    else if(ic==6)  then 
+        E_pert(1,3) = pert_ct/2
+        E_pert(3,1) = pert_ct/2
+    end if
+    Fg_pert=Fg_new+matmul(E_pert, Fg_old)
     sgm2=Tstar_v
     state2=state_new
 
 !    *** Calculation of the perturbated Cauchy stress ***
-    call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_old,Fg2,Fp_old,Fp2,Fe,state_old,state2,sgm2,cs1,iconv,ising)
+    call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_old,Fg_pert,Fp_old,Fp2,Fe,state_old,state2,sgm2,cs1,iconv,ising)
 !  
-!    *** Consistent tangent ***
+!    *** Consistent tangent *** as cs is Mandel dcs_de(:,4:6) is too large by sqrt(2)
     dcs_de(:,ic)=(cs1-cs)/pert_ct     
  enddo
 !
@@ -588,7 +598,7 @@
     R2=state_new-state_old-dstate
     R2s=0.0_pReal
     forall(i=1:constitutive_Nstatevars(iori, CPFEM_in, cp_en), state_new(i)/=0.0_pReal) R2s(i)=R2(i)/state_new(i)
-    if (maxval(dabs(R2s)) < tol_outer) goto 200
+    if (maxval(abs(R2s)) < tol_outer) goto 200
     state_new=state_old+dstate
  enddo  
  iconv=2

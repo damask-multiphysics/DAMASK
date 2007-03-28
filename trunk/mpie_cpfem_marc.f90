@@ -177,7 +177,6 @@
 !     Marc:   11, 22, 33, 12, 23, 13
  s(1:ngens)=invnrmMandel(1:ngens)*CPFEM_stress_all(1:ngens, nn, cp_en)
  d(1:ngens,1:ngens)=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
- forall(i=1:ngens) d(1:ngens,i)=d(1:ngens,i)*nrmMandel(1:ngens)
  forall(i=1:ngens) d(i,1:ngens)=d(i,1:ngens)*invnrmMandel(1:ngens)
  
  !d(1:ngens,1:ngens)=transpose(d(1:ngens,1:ngens))
