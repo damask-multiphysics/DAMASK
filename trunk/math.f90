@@ -19,6 +19,24 @@
 
  CONTAINS
 
+!    ***  Initialize random number generator     ***
+!    *** for later use in mpie_fiber and mpie_disturbOri ***
+
+ SUBROUTINE math_init ()
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ integer (pInt) seed
+ 
+ call random_seed()
+ call get_seed(seed)
+ call halton_seed_set(seed)
+ call halton_ndim_set(3)
+
+ END SUBROUTINE
+ 
+ 
  SUBROUTINE math_invert3x3(A, InvA, DetA, err)
 
 !   Bestimmung der Determinanten und Inversen einer 3x3-Matrix
@@ -219,17 +237,13 @@
 !     Triangulation
 
     DO  J = I + 1, 6
-
         Quote = A(J,I) / A(I,I)
-
         DO  K = I + 1, 6
             A(J,K) = A(J,K) - Quote * A(I,K)
         END DO
-
         DO  K = 1, 6
             B(J,K) = B(J,K) - Quote * B(I,K)
         END DO
-
     END DO
 
 !     Bestimmung des groessten Pivotelementes
@@ -257,17 +271,12 @@
 !   R U E C K W A E R T S A U F L O E S U N G
 
  DO  I = 6, 1, -1
-
     DO  L = 1, 6
-
         DO  J = I + 1, 6
             B(I,L) = B(I,L) - A(I,J) * B(J,L)
         END DO
-
         B(I,L) = B(I,L) / A(I,I)
-
     END DO
-
  END DO
 
 !   Sortieren der Unbekanntenvektoren?
@@ -275,16 +284,12 @@
  IF (SortX) THEN
 
     DO  L = 1, 6
-
         StoreA(1:6) = B(1:6,L)
-
         DO  I = 1, 6
             J      = XNr(I)
             B(J,L) = StoreA(I)
         END DO
-
     END DO
-
  END IF
 
 !   Determinante
@@ -305,27 +310,6 @@
  END SUBROUTINE Gauss
 
 
-
-
-
-!    ***  Initialize random number generator     ***
-!    *** for later use in mpie_fiber and mpie_disturbOri ***
-
- SUBROUTINE math_init ()
-
- use prec, only: pReal,pInt
- implicit none
-
- integer (pInt) seed
- 
- call random_seed()
- call get_seed(seed)
- call halton_seed_set(seed)
- call halton_ndim_set(3)
-
- END SUBROUTINE
- 
- 
 !********************************************************************
 ! calculate v6 stress from M6x6 stiffness and v6 strain
 !********************************************************************
@@ -361,6 +345,133 @@
  return
 
  END FUNCTION
+
+
+!********************************************************************
+! convert a symmetric 3x3 matrix into Mandel vector 6x1
+!********************************************************************
+ FUNCTION math_Mandel33to6(m33)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3) :: m33
+ real(pReal), dimension(6) :: math_Mandel33to6
+ integer(pInt) i
+ real(pReal), dimension(6), parameter :: nrm = &
+ (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(2.0_pReal),dsqrt(2.0_pReal),dsqrt(2.0_pReal)/)
+ integer(pInt), dimension (2,6), parameter :: map = &
+ reshape((/&
+  1,1, &
+  2,2, &
+  3,3, &
+  1,2, &
+  2,3, &
+  1,3  &
+ /),(/2,6/))
+ 
+ forall (i=1:6) math_Mandel33to6(i) = nrm(i)*m33(map(1,i),map(2,i))
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+! convert Mandel 6x1 back to symmetric 3x3 matrix
+!********************************************************************
+ FUNCTION math_Mandel6to33(v6)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(6) :: v6
+ real(pReal), dimension(3,3) :: math_Mandel6to33
+ integer(pInt) i,j
+ real(pReal), dimension(6), parameter :: nrm = &
+ (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(0.5_pReal),dsqrt(0.5_pReal),dsqrt(0.5_pReal)/)
+ integer(pInt), dimension (2,6), parameter :: map = &
+ reshape((/&
+  1,1, &
+  2,2, &
+  3,3, &
+  1,2, &
+  2,3, &
+  1,3  &
+ /),(/2,6/))
+ 
+ forall (i=1:6)
+  math_Mandel6to33(map(1,i),map(2,i)) = nrm(i)*v6(i)
+  math_Mandel6to33(map(2,i),map(1,i)) = nrm(i)*v6(i)
+ end forall
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+! convert symmetric 3x3x3x3 tensor into Mandel matrix 6x6
+!********************************************************************
+ FUNCTION math_Mandel3333to66(m3333)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3,3,3) :: m3333
+ real(pReal), dimension(6,6) :: math_Mandel3333to66
+ integer(pInt) i,j
+ real(pReal), dimension(6), parameter :: nrm = &
+ (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(2.0_pReal),dsqrt(2.0_pReal),dsqrt(2.0_pReal)/)
+ integer(pInt), dimension (2,6), parameter :: map = &
+ reshape((/&
+  1,1, &
+  2,2, &
+  3,3, &
+  1,2, &
+  2,3, &
+  1,3  &
+ /),(/2,6/))
+ 
+ forall (i=1:6,j=1:6) math_Mandel3333to66(i,j) = &
+   nrm(i)*nrm(j)*m3333(map(1,i),map(2,i),map(1,j),map(2,j))
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+! convert Mandel matrix 6x6 back to symmetric 3x3x3x3 tensor
+!********************************************************************
+ FUNCTION math_Mandel66to3333(m66)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(6,6) :: m66
+ real(pReal), dimension(3,3,3,3) :: math_Mandel66to3333
+ integer(pInt) i,j
+ real(pReal), dimension(6), parameter :: nrm = &
+ (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(0.5_pReal),dsqrt(0.5_pReal),dsqrt(0.5_pReal)/)
+ integer(pInt), dimension (2,6), parameter :: map = &
+ reshape((/&
+  1,1, &
+  2,2, &
+  3,3, &
+  1,2, &
+  2,3, &
+  1,3  &
+ /),(/2,6/))
+ 
+ forall (i=1:6,j=1:6) 
+   math_Mandel66to3333(map(1,i),map(2,i),map(1,j),map(2,j)) = nrm(i)*nrm(j)*m66(i,j)
+   math_Mandel66to3333(map(2,i),map(1,i),map(1,j),map(2,j)) = nrm(i)*nrm(j)*m66(i,j)
+   math_Mandel66to3333(map(1,i),map(2,i),map(2,j),map(1,j)) = nrm(i)*nrm(j)*m66(i,j)
+   math_Mandel66to3333(map(2,i),map(1,i),map(2,j),map(1,j)) = nrm(i)*nrm(j)*m66(i,j)
+ end forall
+ return
+
+ END FUNCTION
+
+
 
 
 !********************************************************************
