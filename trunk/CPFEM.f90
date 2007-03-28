@@ -504,7 +504,7 @@
  real(pReal),   parameter :: tol_outer = 1.0e-4_pReal
  integer(pInt), parameter :: ninner    = 2000_pInt
  real(pReal),   parameter :: tol_inner = 1.0e-3_pReal   
- real(pReal),   parameter :: crite     = 0.3_pReal 
+ real(pReal),   parameter :: crite     = 1.0e-1_pReal 
 
 ! crite=eta*constitutive_s0_slip/constitutive_n_slip !ÄÄÄ
 !
@@ -526,10 +526,11 @@
  endif
 !
 !    *** Calculation of A and T*0 (see Kalidindi) ***
- A = matmul(Fg_new,invFp_old)
+ A = matmul(Fg_new,invFp_old)  ! actually Fe
  A = matmul(transpose(A), A)
  C_66=constitutive_HomogenizedC(iori, CPFEM_in, cp_en) !ÄÄÄ
- Tstar_v=matmul(C_66, math_Mandel33to6(A-math_I3))
+ Tstar_v=matmul(C_66, math_Mandel33to6(A-math_I3))  ! fully elastic guess
+! QUESTION follow former plastic slope to guess better?
 !
 !    *** Second level of iterative procedure: Resistences ***
  do iouter=1,nouter
@@ -542,14 +543,10 @@
         help=matmul(transpose(I3tLp),matmul(A, I3tLp))-math_I3
         Tstar0_v = 0.5_pReal * matmul(C_66, math_Mandel33to6(help))
         R1=Tstar_v-Tstar0_v
-        R1s=0
-        forall(i=1:6, Tstar_v(i)/=0) R1s(i)=R1(i)/Tstar_v(i)
-        norm1=maxval(abs(R1s))  
-        if (norm1<tol_inner) goto 100
+        if (maxval(abs(R1/maxval(abs(Tstar_v)))) < tol_inner) goto 100
 ! 
-!    *** Jacobi Calculation ***
+!    *** Jacobi Calculation: dRes/dTstar ***
         help=matmul(A, I3tLp)
-        ! MISSING 1..6 outer loop, inner sum required
         help1=0
         forall(i=1:3, j=1:3, k=1:3, l=1:3,m=1:3)&
                             help1(i,j,k,l)=help1(i,j,k,l)+help(i,m)*dLp(m,j,k,l)+help(j,m)*dLp(m,i,l,k)
@@ -567,12 +564,9 @@
         dTstar_v=matmul(invJacobi,R1)  ! correction to Tstar
 
 !    *** Correction (see Kalidindi) ***
-        forall(i=1:6, abs(dTstar_v(i)) > crite*Tstar_v(i).AND. Tstar_v(i)/=0)&
-!        do i=1,6
-!            if (abs(dTstar_v(i))> crite*Tstar_v(i)) then
-                dTstar_v(i)=sign(crite*Tstar_v(i),dTstar_v(i))
-!            endif
-!        enddo
+        forall(i=1:6, abs(dTstar_v(i)) > crite*maxval(abs(Tstar_v))) &
+          dTstar_v(i) = sign(crite*maxval(abs(Tstar_v)),dTstar_v(i))
+
         Tstar_v=Tstar_v-dTstar_v
 !
     enddo
@@ -583,10 +577,9 @@
 100 dstate=dt*constitutive_dotState(Tstar_v, iori, CPFEM_in, cp_en)
 !    *** Arrays of residuals ***
     R2=state_new-state_old-dstate
-    R2s=0
-    forall(i=1:constitutive_Nstatevars(iori, CPFEM_in, cp_en), state_new(i)/=0) R2s(i)=R2(i)/state_new(i)
-    norm2=maxval(abs(R2s))
-    if (norm2<tol_outer) goto 200
+    R2s=0.0_pReal
+    forall(i=1:constitutive_Nstatevars(iori, CPFEM_in, cp_en), state_new(i)/=0.0_pReal) R2s(i)=R2(i)/state_new(i)
+    if (maxval(abs(R2s)) < tol_outer) goto 200
     state_new=state_old+dstate
  enddo  
  iconv=2
@@ -617,18 +610,11 @@
 !***        Cauchy stress calculation                               ***
 !***********************************************************************
  use prec, only: pReal,pInt
- use math
+ use math, only math_Mandel33to6,math_Mandel6to33
  implicit none
-!    *** Definition of variables ***
 !    *** Subroutine parameters ***
  real(pReal) PK_v(6), Fe(3,3), CPFEM_cauchy_stress(6)
-!    *** Local variables ***
- real(pReal) PK(3,3), det
- real(pReal), dimension(3,3) :: cs_33
-!    *** Calculation of Estar ***
- det = math_det3x3(Fe)
- PK = math_Mandel6to33(PK_v)
- cs_33 = matmul(matmul(Fe,PK),transpose(Fe))/det
- CPFEM_cauchy_stress = math_Mandel33to6(cs_33)
+
+ CPFEM_cauchy_stress = math_Mandel33to6(matmul(matmul(Fe,math_Mandel6to33(PK_v)),transpose(Fe))/math_det3x3(Fe))
  end function
  end module
