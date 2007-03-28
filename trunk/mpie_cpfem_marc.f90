@@ -119,7 +119,8 @@
 !
 !
  use prec,  only: pReal,pInt
- use CPFEM, only : CPFEM_stress_all, CPFEM_jaco_old
+ use CPFEM, only: CPFEM_stress_all, CPFEM_jaco_old
+ use math,  only: invnrmMandel, nrmMandel
  implicit real(pReal) (a-h,o-z)
 !
 ! Marc common blocks are in fixed format so they have to be pasted in here beware of changes in newer Marc versions
@@ -156,10 +157,7 @@
 !
 ! call general material routine only in increment 0 and for lovl==6 (stress recovery)
           
-!     subroutine cpfem_general(mpie_s, mpie_d, mpie_ndi,
-!    1                mpie_ffn, mpie_ffn1, mpie_cn, mpie_tinc,
-!    2                mpie_timefactor, mpie_numel, mpie_nip, mpie_en,
-!    3                mpie_in, mpie_mn, mpie_dimension, state_var)
+!     subroutine cpfem_general(mpie_ffn, mpie_ffn1, mpie_cn, mpie_tinc, mpie_enp, mpie_in)
 !********************************************************************
 !     This routine calculates the material behaviour
 !********************************************************************
@@ -169,15 +167,20 @@
 !     mpie_tinc        time increment
 !     mpie_en          element number
 !     mpie_in          intergration point number
-!     mpie_dimension   dimension of stress/strain vector
 !********************************************************************
  cp_en=mesh_FEasCP('elem', n(1))
  if ((lovl==6).or.(inc==0)) then
     call cpfem_general(ffn, ffn1, inc, incsub, ncycle, timinc, cp_en, nn)
  endif
-!     return stress and jacobi
- s(1:ngens)=CPFEM_stress_all(1:ngens, nn, cp_en)
+! return stress and jacobi
+!     Mandel: 11, 22, 33, 12, 23, 13 
+!     Marc:   11, 22, 33, 12, 23, 13
+ s(1:ngens)=invnrmMandel(1:ngens)*CPFEM_stress_all(1:ngens, nn, cp_en)
  d(1:ngens,1:ngens)=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
+ forall(i=1:ngens) d(1:ngens,i)=d(1:ngens,i)*invnrmMandel(1:ngens)
+ d(1:ngens,1:ngens)=transpose(d(1:ngens,1:ngens))
+ forall(i=1:ngens) d(1:ngens,i)=d(1:ngens,i)*nrmMandel(1:ngens)
+ d(1:ngens,1:ngens)=transpose(d(1:ngens,1:ngens))
  
  return
  end

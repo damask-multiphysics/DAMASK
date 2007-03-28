@@ -1,4 +1,4 @@
-! last modified 26.03.07
+! last modified 28.03.07
 !    ---------------------------
  MODULE CPFEM     
 !    ---------------------------
@@ -399,7 +399,7 @@
 !********************************************************************
  use prec, only: pReal,pInt
  use constitutive, only: constitutive_Nstatevars
- use math, only: math_6to33
+ use math, only: math_Mandel6to33
  implicit none
 !
 !    *** Definition of variables ***
@@ -447,7 +447,7 @@
     dev=0
     if(ic<=3) dev(ic) = pert_ct
     if(ic>3)  dev(ic) = pert_ct/2
-    dF=matmul(math_6to33(dev),Fg_old) 
+    dF=matmul(math_Mandel6to33(dev),Fg_old) 
     Fg2=Fg_new+dF
     sgm2=Tstar_v
     state2=state_new
@@ -493,17 +493,18 @@
  real(pReal) state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)) 
  real(pReal) Tstar_v(6), cs(6)
 !    *** Local variables ***
- real(pReal) crite, tol_in, tol_out, invFp_old(3,3), det, A(3,3), C_66(6,6), Lp(3,3), dLp(3,3,6)
- real(pReal) I3tLp(3,3), help(3,3), help1(6), Tstar0_v(6), R1(6), norm1, tdLp(3,3)
- real(pReal) dstate(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), R2(6), norm2, invFp_new(3,3), Estar(3,3)
- real(pReal) Estar_v(6), Jacobi(6,6), invJacobi(6,6), dTstar_v(6)
- integer(pInt) iouter, iinner , dummy, err, i, j, k
+ real(pReal) tol_in, tol_out, invFp_old(3,3), det, A(3,3), C_66(6,6), Lp(3,3), dLp(3,3,3,3)
+ real(pReal) I3tLp(3,3), help(3,3), help1(3,3,3,3), Tstar0_v(6), R1(6), R1s(6), norm1, tdLp(3,3)
+ real(pReal) dstate(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), R2(constitutive_Nstatevars(iori, CPFEM_in, cp_en))
+ real(pReal) R2s(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), norm2, invFp_new(3,3), Estar(3,3)
+ real(pReal) Estar_v(6), Jacobi(6,6), invJacobi(6,6), dTstar_v(6), help2(6,6)
+ integer(pInt) iouter, iinner , dummy, err, i, j, k, l, m
 !    *** Numerical parameters ***
  integer(pInt), parameter :: nouter    = 50_pInt
  real(pReal),   parameter :: tol_outer = 1.0e-4_pReal
  integer(pInt), parameter :: ninner    = 2000_pInt
  real(pReal),   parameter :: tol_inner = 1.0e-3_pReal   
- real(pReal),   parameter :: eta       = 13.7_pReal 
+ real(pReal),   parameter :: crite     = 0.3_pReal 
 
 ! crite=eta*constitutive_s0_slip/constitutive_n_slip !ÄÄÄ
 !
@@ -528,6 +529,7 @@
  A = matmul(Fg_new,invFp_old)
  A = matmul(transpose(A), A)
  C_66=constitutive_HomogenizedC(iori, CPFEM_in, cp_en) !ÄÄÄ
+ Tstar_v=matmul(C_66, math_Mandel33to6(A-math_I3))
 !
 !    *** Second level of iterative procedure: Resistences ***
  do iouter=1,nouter
@@ -535,26 +537,24 @@
     do iinner=1,ninner
 !
 !    *** Calculation of gdot_slip ***    
-        call constitutive_LpAndItsTangent(Lp, dLp, iori, CPFEM_in, cp_en)
+        call constitutive_LpAndItsTangent(Tstar_v, iori, CPFEM_in, cp_en, Lp, dLp)
         I3tLp  = math_I3-dt*Lp
         help=matmul(transpose(I3tLp),matmul(A, I3tLp))-math_I3
-        Tstar0_v = 0.5_pReal * matmul(C_66, math_33to6(help))
+        Tstar0_v = 0.5_pReal * matmul(C_66, math_Mandel33to6(help))
         R1=Tstar_v-Tstar0_v
-        norm1=maxval(abs(R1))  
-        if (norm1<tol_in) goto 100
+        R1s=0
+        forall(i=1:6, Tstar_v(i)/=0) R1s(i)=R1(i)/Tstar_v(i)
+        norm1=maxval(abs(R1s))  
+        if (norm1<tol_inner) goto 100
 ! 
 !    *** Jacobi Calculation ***
         help=matmul(A, I3tLp)
         ! MISSING 1..6 outer loop, inner sum required
         help1=0
-        do k=1,6
-            do j=1,3
-                do i=1,6
-                    help1(k)=help1(k)+dLp(j,i,k)*help(i,j)+dLp(i,j,k)*help(j,i)
-                enddo
-            enddo
-        enddo
-!        Jacobi= matmul(C_66, help1) + math_identity(6)
+        forall(i=1:3, j=1:3, k=1:3, l=1:3,m=1:3)&
+                            help1(i,j,k,l)=help1(i,j,k,l)+help(i,m)*dLp(m,j,k,l)+help(j,m)*dLp(m,i,l,k)
+        help2=math_Mandel3333to66(help1)
+        Jacobi= 0.5_pReal*matmul(C_66, help2) + math_identity2nd(6)
         call math_invert6x6(Jacobi, invJacobi, dummy, err) !ÄÄÄ
         if (err==1_pInt) then
             forall (i=1:6) Jacobi(i,i)=1.05d0*maxval(Jacobi(i,:)) ! regularization
@@ -567,11 +567,12 @@
         dTstar_v=matmul(invJacobi,R1)  ! correction to Tstar
 
 !    *** Correction (see Kalidindi) ***
-        do i=1,6
-            if (abs(dTstar_v(i))>crite) then
-                dTstar_v(i)=sign(crite,dTstar_v(i))
-            endif
-        enddo
+        forall(i=1:6, abs(dTstar_v(i)) > crite*Tstar_v(i).AND. Tstar_v(i)/=0)&
+!        do i=1,6
+!            if (abs(dTstar_v(i))> crite*Tstar_v(i)) then
+                dTstar_v(i)=sign(crite*Tstar_v(i),dTstar_v(i))
+!            endif
+!        enddo
         Tstar_v=Tstar_v-dTstar_v
 !
     enddo
@@ -582,8 +583,10 @@
 100 dstate=dt*constitutive_dotState(Tstar_v, iori, CPFEM_in, cp_en)
 !    *** Arrays of residuals ***
     R2=state_new-state_old-dstate
-    norm2=maxval(abs(R2))
-    if (norm2<tol_out) goto 200
+    R2s=0
+    forall(i=1:constitutive_Nstatevars(iori, CPFEM_in, cp_en), state_new(i)/=0) R2s(i)=R2(i)/state_new(i)
+    norm2=maxval(abs(R2s))
+    if (norm2<tol_outer) goto 200
     state_new=state_old+dstate
  enddo  
  iconv=2
@@ -624,8 +627,8 @@
  real(pReal), dimension(3,3) :: cs_33
 !    *** Calculation of Estar ***
  det = math_det3x3(Fe)
- PK = math_6to33(PK_v)
+ PK = math_Mandel6to33(PK_v)
  cs_33 = matmul(matmul(Fe,PK),transpose(Fe))/det
- CPFEM_cauchy_stress = math_33to6(cs_33)
+ CPFEM_cauchy_stress = math_Mandel33to6(cs_33)
  end function
  end module
