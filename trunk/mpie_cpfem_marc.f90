@@ -4,7 +4,7 @@
 ! written by F. Roters, P. Eisenlohr, L. Hantcherli, W.A. Counts
 ! MPI fuer Eisenforschung, Duesseldorf
 !
-! last modified: 26.03.2007
+! last modified: 28.03.2007
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
@@ -33,10 +33,10 @@
  include "constitutive.f90"
  include "CPFEM.f90"
 !
- subroutine hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kc,mats,ndi,nshear,&
-                        disp,dispt,coord,ffn,frotn,strechn,eigvn,ffn1,&
-                        frotn1,strechn1,eigvn1,ncrd1,itel,ndeg1,ndm,&
-                        nnode,jtype,lclass,ifr,ifu)
+ subroutine hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
+                    nshear,disp,dispt,coord,ffn,frotn,strechn,eigvn,ffn1,&
+                    frotn1,strechn1,eigvn1,ncrd,itel,ndeg,ndm,&
+                    nnode,jtype,lclass,ifr,ifu)
 !********************************************************************
 ! This is the Marc material routine
 !********************************************************************
@@ -44,7 +44,7 @@
 ! *************   user subroutine for defining material behavior  **************
 !
 !
-!CAUTION: Due to calculation of the Deformation gradients, Stretch Tensors and
+! CAUTION : Due to calculation of the Deformation gradients, Stretch Tensors and
 !         Rotation tensors at previous and current states, the analysis can be
 !         computationally expensive. Please use the user subroutine ->  hypela
 !         if these kinematic quantities are not needed in the constitutive model
@@ -52,47 +52,36 @@
 !
 ! IMPORTANT NOTES :
 !
+! (1) F,R,U are only available for continuum and membrane elements (not for
+!     shells and beams).
 !
-! (1) You must include the -> process,1,1,1,  card in the parameter section
-!     of MARC input deck.
-!
-! (2) For total Lagrangian formulation use the -> 'large disp' card in the 
-!     parameter section of MARC input deck.
-!     For updated Lagrangian formulation use the -> 'large disp' and 'update' 
-!     cards in the parameter section of MARC input deck. However for any
-!     large strain calculation (whether elasticity or inelasticity) must entail
-!     the use of 'finite' parameter card also.
-!
-! (3) For Plasticity, the 2nd or 3rd cards in 'geometry' option in the model 
-!     definition sections must be flagged for correct behavior in incompressible
-!     deformation.
-!
-! (4) The kinematic quantities are calculated for the following continuum
-!     elements (both lower and higher order) :
-!     plane stress, plane strain, generalized plane strain, axisymmetric,
-!     axisymmetric with twist and brick elements.
+! (2) For total Lagrangian formulation use the -> 'Elasticity,1' card(=
+!     total Lagrange with large disp) in the parameter section of input deck.
+!     For updated Lagrangian formulation use the -> 'Plasticity,3' card(=
+!     update+finite+large disp+constant d) in the parameter section of
+!     input deck.
 !
 !
-!
-!
-!     d            stress strain law to be formed 
+!     d            stress strain law to be formed
 !     g            change in stress due to temperature effects
-!     e            total strain
+!     e            total elastic strain
 !     de           increment of strain
 !     s            stress - should be updated by user
-!     t            state variables (comes in at t=n, must be updated 
+!     t            state variables (comes in at t=n, must be updated
 !                                   to have state variables at t=n+1)
 !     dt           increment of state variables
 !     ngens        size of stress - strain law
 !     n            element number
 !     nn           integration point number
-!     kc           layer number
-!     mats         material identification number
+!     kcus(1)      layer number
+!     kcus(2)      internal layer number
+!     matus(1)     user material identification number
+!     matus(2)     internal material identification number
 !     ndi          number of direct components
 !     nshear       number of shear components
 !     disp         incremental displacements
-!     dispt        displacements at t=n   (at assembly,        lovl=4) and 
-!                  displacements at t=n+1 (at stress recovery, lovl=6) 
+!     dispt        displacements at t=n   (at assembly,        lovl=4) and
+!                  displacements at t=n+1 (at stress recovery, lovl=6)
 !     coord        coordinates
 !     ncrd         number of coordinates
 !     ndeg         number of degrees of freedom
@@ -101,19 +90,19 @@
 !     jtype        element type
 !     lclass       element class
 !     ifr          set to 1 if R has been calculated
-!     ifu          set to 1 if strech has been calculated 
+!     ifu          set to 1 if strech has been calculated
 !
 !     at t=n   :
 !
-!     ffn          deformation gradient  
+!     ffn          deformation gradient
 !     frotn        rotation tensor
-!     strechn      square of principal stretch ratios, lambda(i) 
+!     strechn      square of principal stretch ratios, lambda(i)
 !     eigvn(i,j)   i principal direction components for j eigenvalues
 !
 !     at t=n+1 :
 !
-!     ffn1         deformation gradient 
-!     frotn1       rotation tensor 
+!     ffn1         deformation gradient
+!     frotn1       rotation tensor
 !     strechn1     square of principal stretch ratios, lambda(i)
 !     eigvn1(i,j)  i principal direction components for j eigenvalues
 !
@@ -162,8 +151,8 @@
  real(pReal) mpie_timefactor, mpie_stress(ngens)
  real(pReal) mpie_jacobi(ngens,ngens)
 !
- dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,ngens),s(ngens),n(2),coord(ncrd,*),disp(ndeg,*),dispt(ndeg,*),ffn(itel,*),&
-           frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*)
+ dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
+           frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
 !
 ! call general material routine only in increment 0 and for lovl==6 (stress recovery)
           
@@ -182,13 +171,13 @@
 !     mpie_in          intergration point number
 !     mpie_dimension   dimension of stress/strain vector
 !********************************************************************
- cp_en=mesh_mapFEtoCPelement(n(1))
+ cp_en=mesh_FEasCP('elem', n(1))
  if ((lovl==6).or.(inc==0)) then
     call cpfem_general(ffn, ffn1, inc, incsub, ncycle, timinc, cp_en, nn)
  endif
 !     return stress and jacobi
- s=CPFEM_stress_all(1:ngens, nn, cp_en)
- d=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
+ s(1:ngens)=CPFEM_stress_all(1:ngens, nn, cp_en)
+ d(1:ngens,1:ngens)=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
  
  return
  end
@@ -217,6 +206,8 @@
 !********************************************************************
  use prec, only: pReal,pInt
  use CPFEM, only: CPFEM_results, CPFEM_Nresults
+ use constitutive, only: constitutive_maxNresults
+ use mesh, only: mesh_FEasCP
  implicit none
 !
  real(pReal) s(*),etot(*),eplas(*),ecreep(*),sp(*)
@@ -224,23 +215,23 @@
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
 !
 ! assign result variable
- v=CPFEM_result(mod(jpltcd, CPFEM_Nresults+constitutive_Nresults),&
-                int(jpltcd/(CPFEM_Nresults+constitutive_Nresults)),&
-                nn, mesh_mapFEtoCPelement(m))
+ v=CPFEM_results(mod(jpltcd, CPFEM_Nresults+constitutive_maxNresults),&
+                 int(jpltcd/(CPFEM_Nresults+constitutive_maxNresults)),&
+                 nn, mesh_FEasCP('elem', m))
  return
  end
 !
 !
- subroutine utimestep(timestep,timestepold,icall,time,timeloadcase)
+! subroutine utimestep(timestep,timestepold,icall,time,timeloadcase)
 !********************************************************************
 !     This routine modifies the addaptive time step of Marc
 !********************************************************************
- use prec, only: pReal,pInt
- use CPFEM, only : CPFEM_timefactor_max
- implicit none
+! use prec, only: pReal,pInt
+! use CPFEM, only : CPFEM_timefactor_max
+! implicit none
 !
- real(pReal) timestep, timestepold, time,timeloadcase 
- integer(pInt) icall
+! real(pReal) timestep, timestepold, time,timeloadcase 
+! integer(pInt) icall
 !
 ! user subroutine for modifying the time step in auto step
 !
@@ -261,22 +252,22 @@
 !
 !  user coding
 !     reduce timestep during increment in case mpie_timefactor is too large
- if(icall==2_pInt) then
-    if(mpie_timefactor_max>1.25_pReal) then
-        timestep=min(timestep,timestepold*0.8_pReal)
-    end if
- return
+! if(icall==2_pInt) then
+!    if(mpie_timefactor_max>1.25_pReal) then
+!        timestep=min(timestep,timestepold*0.8_pReal)
+!    end if
+! return
 !     modify timestep at beginning of new increment
- else if(icall==3_pInt) then
-    if(mpie_timefactor_max<=0.8_pReal) then
-        timestep=min(timestep,timestepold*1.25_pReal)
-    else if (mpie_timefactor_max<=1.0_pReal) then
-        timestep=min(timestep,timestepold/mpie_timefactor_max)
-    else if (mpie_timefactor_max<=1.25_pReal) then
-        timestep=min(timestep,timestepold*1.01_pReal)
-    else
-        timestep=min(timestep,timestepold*0.8_pReal)
-    end if
- end if
- return
- end
+! else if(icall==3_pInt) then
+!    if(mpie_timefactor_max<=0.8_pReal) then
+!        timestep=min(timestep,timestepold*1.25_pReal)
+!    else if (mpie_timefactor_max<=1.0_pReal) then
+!        timestep=min(timestep,timestepold/mpie_timefactor_max)
+!    else if (mpie_timefactor_max<=1.25_pReal) then
+!        timestep=min(timestep,timestepold*1.01_pReal)
+!    else
+!        timestep=min(timestep,timestepold*0.8_pReal)
+!    end if
+! end if
+! return
+! end

@@ -105,18 +105,18 @@
  CPFEM_jacobi_all = 0.0_pReal
 !
 !    *** User defined results !!! MISSING incorporate consti_Nresults ***
- allocate(CPFEM_results(CPFEM_Nresults+constitutive_maxNresults,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_results(CPFEM_Nresults+constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_results = 0.0_pReal
 !
 !    *** Second Piola-Kirchoff stress tensor at (t=t0) and (t=t1) ***
- allocate(CPFEM_sigma_old(6,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_sigma_new(6,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_sigma_old(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_sigma_new(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_sigma_old = 0.0_pReal
  CPFEM_sigma_new = 0.0_pReal
 !
 !    *** Plastic deformation gradient at (t=t0) and (t=t1) ***  
- allocate(CPFEM_Fp_old(3,3,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_Fp_new(3,3,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_Fp_old = 0.0_pReal 
  CPFEM_Fp_new = 0.0_pReal 
 !    
@@ -187,7 +187,7 @@
 !
 !    *** Initialization of the matrices for t=t0 ***
 ! data from constitutive?
-    vf            = constitutive_volfrac(iori,CPFEM_in,cp_en) !ÄÄÄ
+    vf = constitutive_matVolFrac(iori,CPFEM_in,cp_en)*constitutive_texVolFrac(iori,CPFEM_in,cp_en) !ÄÄÄ
 
 !    *** Calculation of the solution at t=t1 ***
 !	QUESTION use the mod() as flag parameter in the call ??
@@ -282,10 +282,10 @@
  real(pReal)   cs(6), cd(6,6), CPFEM_dt
  integer(pInt) cp_en ,CPFEM_in, iori, ising, icut, iconv, isjaco
 !    *** Local variables ***
- real(pReal)   Fp_old(3,3), Fp_new(3,3), state_old(constitutive_Nstatevars)
- real(pReal)   state_new(constitutive_Nstatevars), Tstar_v(6), CPFEM_ffn(3,3), CPFEM_ffn1(3,3)
- real(pReal)   Tstar_v_h(6), state_new_h(constitutive_Nstatevars), phi1, PHI, phi2, dt_i, delta_Fg(3,3), Fg_i(3,3)
- real(pReal)   state_new_i(constitutive_Nstatevars), time
+ real(pReal)   Fp_old(3,3), Fp_new(3,3), state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en))
+ real(pReal)   state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Tstar_v(6), CPFEM_ffn(3,3), CPFEM_ffn1(3,3)
+ real(pReal)   Tstar_v_h(6), state_new_h(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), phi1, PHI, phi2, dt_i
+ real(pReal)   delta_Fg(3,3), Fg_i(3,3), state_new_i(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), time
  integer(pInt) jcut
 !    *** Numerical parameters ***
  integer(pInt), parameter :: ncut=7_pInt
@@ -404,14 +404,14 @@
 !
 !    *** Definition of variables ***
 !    *** Subroutine parameters ***
- real(pReal)   cs(6), dcs_de(6,6), dt, phi1, PHI, phi2, Fg_old(3,3), Fg_new(3,3)
- real(pReal)   Fp_old(3,3), Fp_new(3,3), state_old(constitutive_Nstatevars)
- real(pReal)   state_new(constitutive_Nstatevars), Tstar_v(6)
  integer(pInt) cp_en, CPFEM_in, iori, ising, icut, iconv, isjaco
+ real(pReal)   cs(6), dcs_de(6,6), dt, phi1, PHI, phi2, Fg_old(3,3), Fg_new(3,3)
+ real(pReal)   Fp_old(3,3), Fp_new(3,3), state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en))
+ real(pReal)   state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Tstar_v(6)
 !    *** Local variables ***
  integer(pInt) ic     
  real(pReal) Fe(3,3), R(3,3), U(3,3), dev(6), dF(3,3), Fg2(3,3), sgm2(6)
- real(pReal) state2(constitutive_Nstatevars), Fp2(3,3), cs1(6)
+ real(pReal) state2(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Fp2(3,3), cs1(6)
 !    *** Numerical parameters ***
  real(pReal), parameter :: pert_ct=1.0e-5_pReal  
 !    *** Error treatment ***
@@ -483,19 +483,19 @@
 !***        NEWTON-RAPHSON Calculation                               ***
 !***********************************************************************
  use prec, only: pReal,pInt
- use constitutive, only: constitutive_Nstatevars
+ use constitutive, only: constitutive_Nstatevars, constitutive_HomogenizedC, constitutive_dotState
  use math
  implicit none
 !    *** Definition of variables ***
 !    *** Subroutine parameters ***
- real(pReal) dt,Fg_old(3,3),Fg_new(3,3),Fp_old(3,3),Fp_new(3,3), Fe(3,3)
- real(pReal) state_old(constitutive_Nstatevars), state_new(constitutive_Nstatevars) 
- real(pReal) Tstar_v(6), cs(6)
  integer(pInt) cp_en, CPFEM_in, iori, iconv, ising
+ real(pReal) dt,Fg_old(3,3),Fg_new(3,3),Fp_old(3,3),Fp_new(3,3), Fe(3,3)
+ real(pReal) state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)) 
+ real(pReal) Tstar_v(6), cs(6)
 !    *** Local variables ***
  real(pReal) crite, tol_in, tol_out, invFp_old(3,3), det, A(3,3), C_66(6,6), Lp(3,3), dLp(3,3,6)
  real(pReal) I3tLp(3,3), help(3,3), help1(6), Tstar0_v(6), R1(6), norm1, tdLp(3,3)
- real(pReal) dstate(constitutive_Nstatevars), R2(6), norm2, invFp_new(3,3), Estar(3,3)
+ real(pReal) dstate(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), R2(6), norm2, invFp_new(3,3), Estar(3,3)
  real(pReal) Estar_v(6), Jacobi(6,6), invJacobi(6,6), dTstar_v(6)
  integer(pInt) iouter, iinner , dummy, err, i, j, k
 !    *** Numerical parameters ***
@@ -505,11 +505,11 @@
  real(pReal),   parameter :: tol_inner = 1.0e-3_pReal   
  real(pReal),   parameter :: eta       = 13.7_pReal 
 
- crite=eta*constitutive_s0_slip/constitutive_n_slip !ÄÄÄ
+! crite=eta*constitutive_s0_slip/constitutive_n_slip !ÄÄÄ
 !
 !    *** Tolerances ***
- tol_in  = tol_inner*s0_slip !ÄÄÄ
- tol_out = tol_outer*s0_slip !ÄÄÄ
+! tol_in  = tol_inner*s0_slip !ÄÄÄ
+! tol_out = tol_outer*s0_slip !ÄÄÄ
 !
 !    *** Error treatment ***
  iconv  = 0
@@ -527,7 +527,7 @@
 !    *** Calculation of A and T*0 (see Kalidindi) ***
  A = matmul(Fg_new,invFp_old)
  A = matmul(transpose(A), A)
- C_66=constitutive_homogenizedC(iori, CPFEM_in, cp_en) !ÄÄÄ
+ C_66=constitutive_HomogenizedC(iori, CPFEM_in, cp_en) !ÄÄÄ
 !
 !    *** Second level of iterative procedure: Resistences ***
  do iouter=1,nouter
@@ -554,7 +554,7 @@
                 enddo
             enddo
         enddo
-        Jacobi= matmul(C_66, help1) + math_identity(6)
+!        Jacobi= matmul(C_66, help1) + math_identity(6)
         call math_invert6x6(Jacobi, invJacobi, dummy, err) !ÄÄÄ
         if (err==1_pInt) then
             forall (i=1:6) Jacobi(i,i)=1.05d0*maxval(Jacobi(i,:)) ! regularization
