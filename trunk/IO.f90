@@ -248,7 +248,7 @@
  implicit none
 
  character(len=*) line
- character(len=*), parameter :: sep=achar(32)//achar(9) ! whitespaces
+ character(len=*), parameter :: sep=achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
  integer(pInt) N, part
  integer(pInt) IO_stringPos(1+N*2)
 
