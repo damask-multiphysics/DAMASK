@@ -440,12 +440,14 @@
  implicit none
 
  character (len=*) line
+ character (len=len(line)) IO_lc
  integer(pInt) i
 
+ IO_lc = line
  do i=1,len(line)
-    if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) line(i:i)=achar(iachar(line(i:i))+32)
+    if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
  enddo
-
+ line = IO_lc
  return 
 
  END SUBROUTINE
