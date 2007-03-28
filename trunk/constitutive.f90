@@ -159,8 +159,8 @@ data constitutive_sd(:,12,3)/ 1, 1, 0/ ; data constitutive_sn(:,12,3)/ 1,-1, 1/
 !* Slip-slip interactions matrices
 !* (defined for the moment as crystal structure property and not as material property)
 !* (may be changed in the future)
-real(pReal), dimension(constitutive_MaxMaxNslipOfStructure,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: constitutive_hardening_matrix
-real(pReal), parameter :: constitutive_latent_hardening=1.4
+real(pReal), dimension(constitutive_MaxMaxNslipOfStructure,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: constitutive_HardeningMatrix
+real(pReal), parameter :: constitutive_LatentHardening=1.4_pReal
 
 !*************************************
 !* Definition of material properties *
@@ -308,7 +308,7 @@ implicit none
 integer(pInt) i,j,k,l
 
 !* Initialization of the hardening matrix
-constitutive_hardening_matrix=constitutive_latent_hardening
+constitutive_HardeningMatrix=constitutive_LatentHardening
 !* Iteration over the crystal structures 
 do l=1,3
    select case(l) 
@@ -316,26 +316,26 @@ do l=1,3
    case (1)
    do k=1,10,3
       forall (i=1:3,j=1:3)
-             constitutive_hardening_matrix(k-1+i,k-1+j,l)=1.0_pReal
+             constitutive_HardeningMatrix(k-1+i,k-1+j,l)=1.0_pReal
       endforall
    enddo
 !* Hardening matrix for BCC structures
    case (2)
    do k=1,11,2
       forall (i=1:2,j=1:2)
-             constitutive_hardening_matrix(k-1+i,k-1+j,l)=1.0_pReal
+             constitutive_HardeningMatrix(k-1+i,k-1+j,l)=1.0_pReal
       endforall
    enddo
    do k=13,48
-      constitutive_hardening_matrix(k,k,l)=1.0_pReal
+      constitutive_HardeningMatrix(k,k,l)=1.0_pReal
    enddo
 !* Hardening matrix for HCP structures
    case (3)
    forall (i=1:3,j=1:3)
-          constitutive_hardening_matrix(i,j,l)=1.0_pReal
+          constitutive_HardeningMatrix(i,j,l)=1.0_pReal
    endforall
    do k=4,12
-      constitutive_hardening_matrix(k,k,l)=1.0_pReal
+      constitutive_HardeningMatrix(k,k,l)=1.0_pReal
    enddo
    end select
 enddo
@@ -843,7 +843,7 @@ end function
 !end subroutine
 
 
-subroutine constitutive_LpAndItsTangent(Tstar_v_m,ipc,ip,el,Lp,dLp_dTstar)
+subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_m,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *       
@@ -938,7 +938,7 @@ do i=1,constitutive_Nstatevars(ipc,ip,el)
 enddo
 
 !* Hardening for all systems
-constitutive_DotState=matmul(constitutive_hardening_matrix(1:material_Nslip(matID),1:material_Nslip(matID),material_CrystalStructure(matID)),self_hardening)
+constitutive_DotState=matmul(constitutive_HardeningMatrix(1:material_Nslip(matID),1:material_Nslip(matID),material_CrystalStructure(matID)),self_hardening)
 
 return
 end function
