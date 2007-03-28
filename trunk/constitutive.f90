@@ -243,7 +243,7 @@ CONTAINS
 !* - constitutive_Parse_MaterialPart
 !* - constitutive_Parse_TexturePart     
 !* - constitutive_Parse_MatTexDat
-!* - constitutive_Assignement
+!* - constitutive_Assignment
 !* - constitutive_HomogenizedC                          
 !* - constitutive_LpAndItsTangent     
 !* - consistutive_DotState          
@@ -257,7 +257,7 @@ subroutine constitutive_Init()
 call constitutive_SchmidMatrices()
 call constitutive_HardeningMatrices()
 call constitutive_Parse_MatTexDat('mattex.mpie')
-call constitutive_Assignement()
+call constitutive_Assignment()
 end subroutine
  
 
@@ -731,7 +731,7 @@ return
 end subroutine
 
 
-subroutine constitutive_Assignement()
+subroutine constitutive_Assignment()
 !*********************************************************************
 !* This subroutine assign material parameters according to ipc,ip,el *
 !*********************************************************************
@@ -786,7 +786,7 @@ constitutive_state_new=0.0_pReal
 !* Results
 allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_Nresults=0_pInt
-!* Assignement
+!* Assignment
 do i=1,mesh_NcpElems
    do j=1,FE_Nips(mesh_element(2,i))
       multiplicity=texture_Ngrains(mesh_element(4,i))/(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))	  
