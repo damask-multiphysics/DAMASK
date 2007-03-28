@@ -36,7 +36,8 @@
 !
  use prec, only: pReal,pInt
 ! use CPFEM, only: CPFEM_ffn_all, CPFEM_ffn1_all, CPFEM_inc_old
- use IO, only: IO_init
+! use IO, only: IO_init
+ use constitutive, only: constitutive_state_old, constitutive_state_new
  implicit none
 !
  real(pReal)   ffn(3,3), ffn1(3,3), CPFEM_dt
@@ -45,7 +46,7 @@
 ! initialization step
  if (CPFEM_first_call) then
 ! three dimensional stress state ?
-    call IO_init()
+!    call IO_init()
     call mesh_init()
     call constitutive_init()
     call math_init()
@@ -68,7 +69,6 @@
     constitutive_state_old  = constitutive_state_new
     CPFEM_inc_old           = CPFEM_inc
     CPFEM_subinc_old        = 1_pInt
-    CPFEM_timefactor_max    = 0.0_pReal
  endif
 !
 ! get cp element number for fe element number
@@ -86,7 +86,7 @@
  subroutine CPFEM_init()
 !
  use prec, only: pReal,pInt
- use math, only: math_I3
+! use math, only: math_I3
  use mesh
  use constitutive
 !
@@ -105,20 +105,20 @@
  CPFEM_jacobi_all = 0.0_pReal
 !
 !    *** User defined results !!! MISSING incorporate consti_Nresults ***
- allocate(CPFEM_results(CPFEM_Nresults+constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_results(CPFEM_Nresults+constitutive_maxNresults,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_results = 0.0_pReal
 !
 !    *** Second Piola-Kirchoff stress tensor at (t=t0) and (t=t1) ***
- allocate(CPFEM_sigma_old(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_sigma_new(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_sigma_old(6,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_sigma_new(6,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_sigma_old = 0.0_pReal
  CPFEM_sigma_new = 0.0_pReal
 !
 !    *** Plastic deformation gradient at (t=t0) and (t=t1) ***  
- allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- CPFEM_Fp_old = math_I3 
- CPFEM_Fp_new = math_I3 
+ allocate(CPFEM_Fp_old(3,3,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(CPFEM_Fp_new(3,3,texture_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ CPFEM_Fp_old = 0.0_pReal 
+ CPFEM_Fp_new = 0.0_pReal 
 !    
 !    *** Old jacobian (consistent tangent) ***
  allocate(CPFEM_jaco_old(6,6,mesh_maxNips,mesh_NcpElems))
@@ -132,7 +132,6 @@
  write(6,*) 'CPFEM_stress_all:    ', shape(CPFEM_stress_all)
  write(6,*) 'CPFEM_jacobi_all:    ', shape(CPFEM_jacobi_all)
  write(6,*) 'CPFEM_results:       ', shape(CPFEM_results)
- write(6,*) 'CPFEM_thickness:     ', shape(CPFEM_thickness)
  write(6,*) 'CPFEM_sigma_old:     ', shape(CPFEM_sigma_old)
  write(6,*) 'CPFEM_sigma_new:     ', shape(CPFEM_sigma_new)
  write(6,*) 'CPFEM_Fp_old:        ', shape(CPFEM_Fp_old)
@@ -162,11 +161,11 @@
 !
 !    *** Definition of variables ***
 !    *** Subroutine parameters ***
- real(pReal)   CPFEM_cn, CPFEM_dt
- integer(pInt) cp_en ,CPFEM_in
+ real(pReal)   CPFEM_dt
+ integer(pInt) CPFEM_cn, cp_en ,CPFEM_in
 !    *** Local variables ***
- real(pReal)   vf, cs(6), cd(6,6)
- integer(pInt) jpara,nori, iori, ising, icut, iconv
+ real(pReal)   vf, cs(6), cd(6,6), CPFEM_d(6,6), CPFEM_s(6)
+ integer(pInt) jpara,nori, iori, ising, icut, iconv, CPFEM_en
 !    *** Numerical parameters ***
 !    *** How often the jacobian is recalculated ***
  integer (pInt), parameter :: ijaco = 5_pInt
@@ -274,7 +273,8 @@
 ! and manages the independent time incrmentation
 !********************************************************************
  use prec, only: pReal,pInt
- use constitutive, only: constitutive_Nstatevars
+ use constitutive, only: constitutive_Nstatevars, constitutive_state_old, constitutive_state_new, constitutive_Nresults,&
+                         constitutive_results
  implicit none
 !
 !    *** Definition of variables ***
@@ -284,7 +284,9 @@
 !    *** Local variables ***
  real(pReal)   Fp_old(3,3), Fp_new(3,3), state_old(constitutive_Nstatevars)
  real(pReal)   state_new(constitutive_Nstatevars), Tstar_v(6), CPFEM_ffn(3,3), CPFEM_ffn1(3,3)
- real(pReal)   Tstar_v_h(6), state_new_h(constitutive_Nstatevars)
+ real(pReal)   Tstar_v_h(6), state_new_h(constitutive_Nstatevars), phi1, PHI, phi2, dt_i, delta_Fg(3,3), Fg_i(3,3)
+ real(pReal)   state_new_i(constitutive_Nstatevars), time
+ integer(pInt) jcut
 !    *** Numerical parameters ***
  integer(pInt), parameter :: ncut=7_pInt
 !
@@ -292,7 +294,7 @@
 !
 !    *** Initialization of the matrices for t=t0 ***
     Fp_old     = CPFEM_Fp_old(:,:,iori,CPFEM_in,cp_en)
-    Fp_new     = 0_pReal
+    Fp_new     = 0.0_pReal
     state_old  = constitutive_state_old(:,iori,CPFEM_in,cp_en)
     state_new  = state_old
     Tstar_v    = CPFEM_sigma_old(:,iori,CPFEM_in,cp_en)
@@ -303,20 +305,19 @@
 ! save copies of Tstar_v and state_new
  Tstar_v_h = Tstar_v
  state_new_h = state_new
- call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori,, ising, icut, iconv, isjaco, phi1, PHI, phi2,&
-                       CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,g_old,g_new,state_old, state_new, Tstar_v)
+ call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori, ising, icut, iconv, isjaco, phi1, PHI, phi2,&
+                       CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,state_old, state_new, Tstar_v)
  if ((iconv==0).AND.(ising==0)) then
 !    *** Update the differents matrices for t=t1 ***
     CPFEM_Fp_new(:,:,iori,CPFEM_in,cp_en)          = Fp_new
-    constituitive_state_new(:,iori,CPFEM_in,cp_en) = state_new
-    CPFEM_g_new(:,iori,CPFEM_in,cp_en)             = g_new
+    constitutive_state_new(:,iori,CPFEM_in,cp_en) = state_new
     CPFEM_sigma_new(:,iori,CPFEM_in,cp_en)         = Tstar_v
 !    *** Update the results plotted in MENTAT ***
     CPFEM_results(1,iori,CPFEM_in,cp_en) = phi1
     CPFEM_results(2,iori,CPFEM_in,cp_en) = PHI
     CPFEM_results(3,iori,CPFEM_in,cp_en) = phi2
     CPFEM_results(4:3+constitutive_Nresults(iori,CPFEM_in,cp_en),iori,CPFEM_in,cp_en)=&
-            constitutive_results(1:constitutive_Nresults,iori,CPFEM_in,cp_en)!컴컴
+            constitutive_results(1:constitutive_Nresults(iori,CPFEM_in,cp_en),iori,CPFEM_in,cp_en)!컴컴
     return
  endif
 !
@@ -332,7 +333,7 @@
  time=dt_i
  do while (time<=CPFEM_dt)
     call CPFEM_stress_int(cs, cd, time, cp_en,CPFEM_in, iori, ising, icut, iconv, isjaco, phi1, PHI, phi2,&
-                       CPFEM_ffn, Fg_i,Fp_old,Fp_new,g_old,g_new,state_old, state_new_i, Tstar_v)
+                       CPFEM_ffn, Fg_i,Fp_old,Fp_new,state_old, state_new_i, Tstar_v)
     if ((iconv==0).AND.(ising==0)) then
         time=time+dt_i
         Fg_i=Fg_i+delta_Fg
@@ -356,17 +357,15 @@
 !    *** Final calculation of stress and resistences with full timestep ***
  state_new=state_new_i
  call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori, ising, icut, iconv, isjaco, phi1, PHI, phi2,&
-                       CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,g_old,g_new,state_old, state_new, Tstar_v)
+                       CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,state_old, state_new, Tstar_v)
 !    *** Update the differents matrices for t=t1 ***
  CPFEM_Fp_new(:,:,iori,CPFEM_in,cp_en)          = Fp_new
- constituitive_state_new(:,iori,CPFEM_in,cp_en) = state_new
- CPFEM_g_new(:,iori,CPFEM_in,cp_en)             = g_new
+ constitutive_state_new(:,iori,CPFEM_in,cp_en) = state_new
  CPFEM_sigma_new(:,iori,CPFEM_in,cp_en)         = Tstar_v
 !    *** Update the results plotted in MENTAT ***
  CPFEM_results(1,iori,CPFEM_in,cp_en) = phi1
  CPFEM_results(2,iori,CPFEM_in,cp_en) = PHI
  CPFEM_results(3,iori,CPFEM_in,cp_en) = phi2
- CPFEM_results(4,iori,CPFEM_in,cp_en) = sum(g_new)
  return
  end subroutine
 !
@@ -400,6 +399,7 @@
 !********************************************************************
  use prec, only: pReal,pInt
  use constitutive, only: constitutive_Nstatevars
+ use math, only: math_6to33
  implicit none
 !
 !    *** Definition of variables ***
@@ -447,13 +447,13 @@
     dev=0
     if(ic<=3) dev(ic) = pert_ct
     if(ic>3)  dev(ic) = pert_ct/2
-    dF=matmul(math_conv6to33(dev),Fg_old) 
+    dF=matmul(math_6to33(dev),Fg_old) 
     Fg2=Fg_new+dF
     sgm2=Tstar_v
     state2=state_new
 
 !    *** Calculation of the perturbated Cauchy stress ***
-    call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_old,Fg2,Fp_old,Fp2,Fe,state_old,tauc2,sgm2,cs1,iconv,ising)
+    call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_old,Fg2,Fp_old,Fp2,Fe,state_old,state2,sgm2,cs1,iconv,ising)
 !  
 !    *** Consistent tangent ***
     dcs_de(:,ic)=(cs1-cs)/pert_ct     
@@ -493,11 +493,11 @@
  real(pReal) Tstar_v(6), cs(6)
  integer(pInt) cp_en, CPFEM_in, iori, iconv, ising
 !    *** Local variables ***
- real(pReal) crite, tol_in, tol_out, invFp_old(3,3), det, A(3,3), C66(6,6), Lp(3,3), dLp(3,3,6)
- real(pReal) tLp(3,3), help(3,3), help1(6), Tstar0_v(6), R1(6), norm1, tdLp(3,3)
+ real(pReal) crite, tol_in, tol_out, invFp_old(3,3), det, A(3,3), C_66(6,6), Lp(3,3), dLp(3,3,6)
+ real(pReal) I3tLp(3,3), help(3,3), help1(6), Tstar0_v(6), R1(6), norm1, tdLp(3,3)
  real(pReal) dstate(constitutive_Nstatevars), R2(6), norm2, invFp_new(3,3), Estar(3,3)
- real(pReal) Estar_v(6)
- integer(pInt) iouter, iinner , Jacobi(6,6), inv_Jacobi(6,6), dTstar_v(6), dummy, err
+ real(pReal) Estar_v(6), Jacobi(6,6), invJacobi(6,6), dTstar_v(6)
+ integer(pInt) iouter, iinner , dummy, err, i, j, k
 !    *** Numerical parameters ***
  integer(pInt), parameter :: nouter    = 50_pInt
  real(pReal),   parameter :: tol_outer = 1.0e-4_pReal
@@ -538,7 +538,7 @@
         call constitutive_LpAndItsTangent(Lp, dLp, iori, CPFEM_in, cp_en)
         I3tLp  = math_I3-dt*Lp
         help=matmul(transpose(I3tLp),matmul(A, I3tLp))-math_I3
-        Tstar0_v = 0.5_pReal * matmul(C66, math_33to6(help))
+        Tstar0_v = 0.5_pReal * matmul(C_66, math_33to6(help))
         R1=Tstar_v-Tstar0_v
         norm1=maxval(abs(R1))  
         if (norm1<tol_in) goto 100
@@ -546,15 +546,15 @@
 !    *** Jacobi Calculation ***
         help=matmul(A, I3tLp)
         ! MISSING 1..6 outer loop, inner sum required
-        do i=1,3
+        help1=0
+        do k=1,6
             do j=1,3
-                do k=1,6
-                    help1(k)=dLp(j,i,k)*help(i,j)
+                do i=1,6
+                    help1(k)=help1(k)+dLp(j,i,k)*help(i,j)+dLp(i,j,k)*help(j,i)
                 enddo
             enddo
         enddo
-!        help=help1+transpose(help1)
-        Jacobi= matmul(C66, help1) + math_identity(6)
+        Jacobi= matmul(C_66, help1) + math_identity(6)
         call math_invert6x6(Jacobi, invJacobi, dummy, err) !컴�
         if (err==1_pInt) then
             forall (i=1:6) Jacobi(i,i)=1.05d0*maxval(Jacobi(i,:)) ! regularization
@@ -602,15 +602,30 @@
 !    *** Calculation of F*(t+dt) (see Kalidindi) ***
  Fe=matmul(Fg_new,invFp_new)
 !
-!    *** Calculation of Estar ***
- Estar=0.5_pReal*(matmul(transpose(Fe),Fe)-math_I3)
- call math_conv33to6(Estar,Estar_v)
-!
 !    *** Calculation of the Cauchy stress ***
 !	QUESTION seems to need Tstar, not Estar..??
- cs = CPFEM_cauchy_stress(Estar_v,Fe)
+ cs = CPFEM_cauchy_stress(Tstar_v,Fe)
 !
  return
  end subroutine
 !
+ function CPFEM_cauchy_stress(PK_v, Fe)
+!***********************************************************************
+!***        Cauchy stress calculation                               ***
+!***********************************************************************
+ use prec, only: pReal,pInt
+ use math
+ implicit none
+!    *** Definition of variables ***
+!    *** Subroutine parameters ***
+ real(pReal) PK_v(6), Fe(3,3), CPFEM_cauchy_stress(6)
+!    *** Local variables ***
+ real(pReal) PK(3,3), det
+ real(pReal), dimension(3,3) :: cs_33
+!    *** Calculation of Estar ***
+ det = math_det3x3(Fe)
+ PK = math_6to33(PK_v)
+ cs_33 = matmul(matmul(Fe,PK),transpose(Fe))/det
+ CPFEM_cauchy_stress = math_33to6(cs_33)
+ end function
  end module
