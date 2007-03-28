@@ -278,7 +278,11 @@
  integer(pInt) positions(*),pos
  character(len=1+positions(pos*2+1)-positions(pos*2)) IO_stringValue
 
- IO_stringValue = line(positions(pos*2):positions(pos*2+1))
+ if (positions(1) < pos) then
+   IO_stringValue = ''
+ else
+   IO_stringValue = line(positions(pos*2):positions(pos*2+1))
+ endif
  return
 
  END FUNCTION
@@ -294,9 +298,9 @@
  
  character(len=*) line
  integer(pInt) ends(*),pos
- character(len=ends(pos)-ends(pos-1)) IO_fixedStringValue
+ character(len=ends(pos+1)-ends(pos)) IO_fixedStringValue
 
- IO_fixedStringValue = line(ends(pos-1)+1:ends(pos))
+ IO_fixedStringValue = line(ends(pos)+1:ends(pos+1))
  return
 
  END FUNCTION
@@ -314,8 +318,10 @@
  real(pReal) IO_floatValue
  integer(pInt) positions(*),pos
 
- read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(F)') IO_floatValue
- return
+ if (positions(1) >= pos) then
+   read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(F)') IO_floatValue
+   return
+ endif
 100 IO_floatValue = -1.0_pReal
  return
 
@@ -354,12 +360,12 @@
  real(pReal) IO_fixedNoEFloatValue,base
  integer(pInt) ends(*),pos,pos_exp,expon
  
- pos_exp = scan(line(ends(pos-1)+1:ends(pos)),'+-',back=.true.)
+ pos_exp = scan(line(ends(pos)+1:ends(pos+1)),'+-',back=.true.)
  if (pos_exp > 1) then
-   read(UNIT=line(ends(pos-1)+1:ends(pos-1)+pos_exp-1),ERR=100,FMT='(F)') base
-   read(UNIT=line(ends(pos-1)+pos_exp:ends(pos)),ERR=100,FMT='(I)') expon
+   read(UNIT=line(ends(pos)+1:ends(pos)+pos_exp-1),ERR=100,FMT='(F)') base
+   read(UNIT=line(ends(pos)+pos_exp:ends(pos+1)),ERR=100,FMT='(I)') expon
  else
-   read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(F)') base
+   read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT='(F)') base
    expon = 0_pInt
  endif
  IO_fixedNoEFloatValue = base*10.0_pReal**expon
@@ -382,8 +388,10 @@
  integer(pInt) IO_intValue
  integer(pInt) positions(*),pos
 
- read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(I)') IO_intValue
- return
+ if (positions(1) >= pos) then
+   read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(I)') IO_intValue
+   return
+ endif
 100 IO_intValue = -1_pInt
  return
 
@@ -402,7 +410,7 @@
  integer(pInt) IO_fixedIntValue
  integer(pInt) ends(*),pos
 
- read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(I)') IO_fixedIntValue
+ read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT='(I)') IO_fixedIntValue
  return
 100 IO_fixedIntValue = -1_pInt
  return
