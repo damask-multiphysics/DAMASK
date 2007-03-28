@@ -548,8 +548,17 @@
 !    *** Jacobi Calculation: dRes/dTstar ***
         help=matmul(A, I3tLp)
         help1=0
-        forall(i=1:3, j=1:3, k=1:3, l=1:3,m=1:3)&
-                            help1(i,j,k,l)=help1(i,j,k,l)+help(i,m)*dLp(m,j,k,l)+help(j,m)*dLp(m,i,l,k)
+        do i=1,3
+          do j=1,3
+            do k=1,3
+              do l=1,3
+                do m=1,3
+                  help1(i,j,k,l)=help1(i,j,k,l)+help(i,m)*dLp(m,j,k,l)+help(j,m)*dLp(m,i,l,k)
+                enddo
+              enddo
+            enddo
+          enddo
+        enddo
         help2=math_Mandel3333to66(help1)
         Jacobi= 0.5_pReal*matmul(C_66, help2) + math_identity2nd(6)
         call math_invert6x6(Jacobi, invJacobi, dummy, err) !ÄÄÄ
@@ -579,7 +588,7 @@
     R2=state_new-state_old-dstate
     R2s=0.0_pReal
     forall(i=1:constitutive_Nstatevars(iori, CPFEM_in, cp_en), state_new(i)/=0.0_pReal) R2s(i)=R2(i)/state_new(i)
-    if (maxval(abs(R2s)) < tol_outer) goto 200
+    if (maxval(dabs(R2s)) < tol_outer) goto 200
     state_new=state_old+dstate
  enddo  
  iconv=2
@@ -610,7 +619,7 @@
 !***        Cauchy stress calculation                               ***
 !***********************************************************************
  use prec, only: pReal,pInt
- use math, only math_Mandel33to6,math_Mandel6to33
+ use math, only: math_Mandel33to6,math_Mandel6to33,math_det3x3
  implicit none
 !    *** Subroutine parameters ***
  real(pReal) PK_v(6), Fe(3,3), CPFEM_cauchy_stress(6)
