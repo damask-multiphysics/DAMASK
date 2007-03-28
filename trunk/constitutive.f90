@@ -159,7 +159,8 @@ data constitutive_sd(:,12,3)/ 1, 1, 0/ ; data constitutive_sn(:,12,3)/ 1,-1, 1/
 !* Slip-slip interactions matrices
 !* (defined for the moment as crystal structure property and not as material property)
 !* (may be changed in the future)
-real(pReal), dimension(constitutive_MaxMaxNslipOfStructure,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: constitutive_HardeningMatrix
+real(pReal), dimension(constitutive_MaxMaxNslipOfStructure,constitutive_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) ::&
+ constitutive_HardeningMatrix
 real(pReal), parameter :: constitutive_LatentHardening=1.4_pReal
 
 !*************************************
@@ -281,7 +282,8 @@ do l=1,3
 	         constitutive_Sslip(i,j,k,l)=constitutive_sd(i,k,l)*constitutive_sn(j,k,l)
       endforall
 !* Normalization of Schmid matrix
-      invNorm=dsqrt(1.0_pReal/((constitutive_sn(1,k,l)**2+constitutive_sn(2,k,l)**2+constitutive_sn(3,k,l)**2)*(constitutive_sd(1,k,l)**2+constitutive_sd(2,k,l)**2+constitutive_sd(3,k,l)**2)))
+      invNorm=dsqrt(1.0_pReal/((constitutive_sn(1,k,l)**2+constitutive_sn(2,k,l)**2+constitutive_sn(3,k,l)**2)* &
+       (constitutive_sd(1,k,l)**2+constitutive_sd(2,k,l)**2+constitutive_sd(3,k,l)**2)))
       constitutive_Sslip(:,:,k,l)=constitutive_Sslip(:,:,k,l)*invNorm
 !* Vectorization of normalized Schmid matrix
 !* according MARC component order 11,22,33,12,23,13
@@ -742,7 +744,7 @@ implicit none
 
 !* Definition of variables
 integer(pInt) i,j,k,l
-integer(pInt) multiplicity
+integer(pInt) mul
 
 !* Multiplicity of orientations per texture
 !* Construction of optimized constitutive_Ngrains 
@@ -750,11 +752,11 @@ allocate(constitutive_Ngrains(mesh_maxNips,mesh_NcpElems))
 constitutive_Ngrains=0_pInt
 do i=1,mesh_NcpElems
    do j=1,FE_Nips(mesh_element(2,i)) 
-	  multiplicity=texture_Ngrains(mesh_element(4,i))/(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))	  
-	  if (texture_Ngrains(mesh_element(4,i))==(multiplicity*(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i))))) then
+	  mul=texture_Ngrains(mesh_element(4,i))/(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))	  
+	  if (texture_Ngrains(mesh_element(4,i))==(mul*(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i))))) then
 	     constitutive_Ngrains(j,i)=texture_Ngrains(mesh_element(4,i))
 	  else
-         constitutive_Ngrains(j,i)=multiplicity*(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))
+         constitutive_Ngrains(j,i)=mul*(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))
 	  endif
       constitutive_maxNgrains=maxval(constitutive_Ngrains)
    enddo
@@ -789,14 +791,14 @@ constitutive_Nresults=0_pInt
 !* Assignment
 do i=1,mesh_NcpElems
    do j=1,FE_Nips(mesh_element(2,i))
-      multiplicity=texture_Ngrains(mesh_element(4,i))/(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))	  
+      mul=texture_Ngrains(mesh_element(4,i))/(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))	  
 	  !* Gauss component
-	  do k=1,multiplicity*texture_NGauss(mesh_element(4,i)),multiplicity
-	     do l=k,k+multiplicity
+	  do k=1,mul*texture_NGauss(mesh_element(4,i)),mul
+	     do l=k,k+mul
             constitutive_matID(l,j,i)=mesh_element(3,i)
 		    constitutive_texID(l,j,i)=mesh_element(4,i)
             constitutive_MatVolFrac(l,j,i)=1.0_pReal	
-		    constitutive_TexVolFrac(l,j,i)=texture_Gauss(6,k,mesh_element(4,i))/multiplicity
+		    constitutive_TexVolFrac(l,j,i)=texture_Gauss(6,k,mesh_element(4,i))/mul
             constitutive_phi1(l,j,i)=texture_Gauss(1,k,mesh_element(4,i))
             constitutive_phi(l,j,i)=texture_Gauss(2,k,mesh_element(4,i))
             constitutive_phi2(l,j,i)=texture_Gauss(3,k,mesh_element(4,i))
@@ -811,12 +813,12 @@ do i=1,mesh_NcpElems
 		 enddo
 	  enddo
 	  !* Fiber component
-	  do k=1+texture_NGauss(mesh_element(4,i)),constitutive_Ngrains(i,j),multiplicity
-	     do l=k,k+multiplicity
+	  do k=1+texture_NGauss(mesh_element(4,i)),constitutive_Ngrains(i,j),mul
+	     do l=k,k+mul
             constitutive_matID(l,j,i)=mesh_element(3,i)
 		    constitutive_texID(l,j,i)=mesh_element(4,i)
             constitutive_MatVolFrac(l,j,i)=1.0_pReal	
-		    constitutive_TexVolFrac(l,j,i)=texture_Fiber(6,k,mesh_element(4,i))/multiplicity 		 
+		    constitutive_TexVolFrac(l,j,i)=texture_Fiber(6,k,mesh_element(4,i))/mul 		 
 !           constitutive_phi1(l,j,i)=texture_Fiber(1,k,mesh_element(4,i))
 !           constitutive_phi(l,j,i)=texture_Fiber(2,k,mesh_element(4,i))
 !           constitutive_phi2(l,j,i)=texture_Fiber(3,k,mesh_element(4,i))	 
@@ -912,17 +914,21 @@ Tstar_v(6)=Tstar_v_m(6)/dsqrt(2.0_pReal)
 Lp=0.0_pReal
 do i=1,material_Nslip(matID)
    tau_slip(i)=dot_product(Tstar_v,constitutive_Sslip_v(:,i,material_CrystalStructure(matID)))
-   gdot_slip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**material_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+   gdot_slip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**material_n_slip(matID)* &
+    sign(1.0_pReal,tau_slip(i))
    Lp=Lp+gdot_slip(i)*constitutive_Sslip(:,:,i,material_CrystalStructure(matID))
 enddo
 
 !* Calculation of the tangent of Lp
 dLp_dTstar=0.0_pReal
 do i=1,material_Nslip(matID)
-   dgdot_dtauslip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**(material_n_slip(matID)-1.0_pReal)*material_n_slip(matID)/constitutive_state_new(i,ipc,ip,el)
+   dgdot_dtauslip(i)=material_gdot0_slip(matID)* &
+    (abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**(material_n_slip(matID)-1.0_pReal)* &
+    material_n_slip(matID)/constitutive_state_new(i,ipc,ip,el)
    forall (k=1:3,l=1:3,m=1:3,n=1:3)
-          dLp_dTstar(k,l,m,n)=dLp_dTstar(k,l,m,n)+constitutive_Sslip(k,l,i,material_CrystalStructure(matID))*constitutive_Sslip(m,n,i,material_CrystalStructure(matID))*dgdot_dtauslip(i) 
-   endforall
+          dLp_dTstar(k,l,m,n)=dLp_dTstar(k,l,m,n)+constitutive_Sslip(k,l,i,material_CrystalStructure(matID))* &
+           constitutive_Sslip(m,n,i,material_CrystalStructure(matID))*dgdot_dtauslip(i) 
+   end forall
 enddo
 
 return
@@ -964,12 +970,17 @@ Tstar_v(6)=Tstar_v_m(6)/dsqrt(2.0_pReal)
 !* Self-Hardening of each system
 do i=1,constitutive_Nstatevars(ipc,ip,el)
    tau_slip(i)=dot_product(Tstar_v,constitutive_Sslip_v(:,i,material_CrystalStructure(matID)))
-   gdot_slip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**material_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
-   self_hardening(i)=material_h0(matID)*(1.0_pReal-constitutive_state_new(i,ipc,ip,el)/material_s_sat(matID))**material_w0(matID)*abs(gdot_slip(i))
+   gdot_slip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/constitutive_state_new(i,ipc,ip,el))**material_n_slip(matID)* &
+    sign(1.0_pReal,tau_slip(i))
+   self_hardening(i)=material_h0(matID)*(1.0_pReal-constitutive_state_new(i,ipc,ip,el)/material_s_sat(matID))**material_w0(matID)* &
+    abs(gdot_slip(i))
 enddo
 
 !* Hardening for all systems
-constitutive_DotState=matmul(constitutive_HardeningMatrix(1:material_Nslip(matID),1:material_Nslip(matID),material_CrystalStructure(matID)),self_hardening)
+constitutive_DotState = matmul(constitutive_HardeningMatrix(1:material_Nslip(matID), &
+                                                            1:material_Nslip(matID), &
+                                                            material_CrystalStructure(matID)), &
+                               self_hardening)
 
 return
 end function
