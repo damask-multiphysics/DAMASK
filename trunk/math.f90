@@ -31,6 +31,20 @@
  (/1.0_pReal,1.0_pReal,1.0_pReal, 1.414213562373095_pReal, 1.414213562373095_pReal, 1.414213562373095_pReal/)
  real(pReal), dimension(6), parameter :: invnrmMandel = &
  (/1.0_pReal,1.0_pReal,1.0_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal/)
+! *** Voigt notation ***
+ integer(pInt), dimension (2,6), parameter :: mapMandel = &
+ reshape((/&
+  1,1, &
+  2,2, &
+  3,3, &
+  2,3, &
+  1,3, &
+  1,2  &
+ /),(/2,6/))
+ real(pReal), dimension(6), parameter :: nrmVoigt = &
+ (/1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal/)
+ real(pReal), dimension(6), parameter :: invnrmVoigt = &
+ (/1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal/)
  
 
  CONTAINS
@@ -326,23 +340,6 @@
  END SUBROUTINE Gauss
 
 
-!********************************************************************
-! calculate v6 stress from M6x6 stiffness and v6 strain
-!********************************************************************
- FUNCTION math_Hooke(C,e)
-
- use prec, only: pReal,pInt
- implicit none
-
- real(pReal) C(6,6), e(6), factoredE(6)
- real(pReal), dimension(6), parameter :: preFactor = (/1.0_pReal,1.0_pReal,1.0_pReal,2.0_pReal,2.0_pReal,2.0_pReal/)
- real(pReal) math_Hooke(6)
-
- factoredE = dot_product(preFactor,e)
- math_Hooke = matmul(C,factoredE)
- return
-
- END FUNCTION
 
  
 !********************************************************************
@@ -438,6 +435,29 @@
    math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(1,j),mapMandel(2,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
    math_Mandel66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(2,j),mapMandel(1,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
    math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(2,j),mapMandel(1,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
+ end forall
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+! convert Voigt matrix 6x6 back to symmetric 3x3x3x3 tensor
+!********************************************************************
+ FUNCTION math_Voigt66to3333(m66)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(6,6) :: m66
+ real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
+ integer(pInt) i,j
+ 
+ forall (i=1:6,j=1:6) 
+   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(1,j),mapVoigt(2,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
+   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(1,j),mapVoigt(2,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
+   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
+   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(2,j),mapVoigt(1,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
  end forall
  return
 
