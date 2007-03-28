@@ -11,11 +11,27 @@
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
+! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
  reshape( (/ &
  1.0_pReal,0.0_pReal,0.0_pReal, &
  0.0_pReal,1.0_pReal,0.0_pReal, &
  0.0_pReal,0.0_pReal,1.0_pReal /),(/3,3/))
+! *** Mandel notation ***
+ integer(pInt), dimension (2,6), parameter :: mapMandel = &
+ reshape((/&
+  1,1, &
+  2,2, &
+  3,3, &
+  1,2, &
+  2,3, &
+  1,3  &
+ /),(/2,6/))
+ real(pReal), dimension(6), parameter :: nrmMandel = &
+ (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(2.0_pReal),dsqrt(2.0_pReal),dsqrt(2.0_pReal)/)
+ real(pReal), dimension(6), parameter :: invnrmMandel = &
+ (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(0.5_pReal),dsqrt(0.5_pReal),dsqrt(0.5_pReal)/)
+ 
 
  CONTAINS
 
@@ -358,19 +374,8 @@
  real(pReal), dimension(3,3) :: m33
  real(pReal), dimension(6) :: math_Mandel33to6
  integer(pInt) i
- real(pReal), dimension(6), parameter :: nrm = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(2.0_pReal),dsqrt(2.0_pReal),dsqrt(2.0_pReal)/)
- integer(pInt), dimension (2,6), parameter :: map = &
- reshape((/&
-  1,1, &
-  2,2, &
-  3,3, &
-  1,2, &
-  2,3, &
-  1,3  &
- /),(/2,6/))
  
- forall (i=1:6) math_Mandel33to6(i) = nrm(i)*m33(map(1,i),map(2,i))
+ forall (i=1:6) math_Mandel33to6(i) = nrmMandel(i)*m33(mapMandel(1,i),mapMandel(2,i))
  return
 
  END FUNCTION
@@ -387,21 +392,10 @@
  real(pReal), dimension(6) :: v6
  real(pReal), dimension(3,3) :: math_Mandel6to33
  integer(pInt) i,j
- real(pReal), dimension(6), parameter :: nrm = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(0.5_pReal),dsqrt(0.5_pReal),dsqrt(0.5_pReal)/)
- integer(pInt), dimension (2,6), parameter :: map = &
- reshape((/&
-  1,1, &
-  2,2, &
-  3,3, &
-  1,2, &
-  2,3, &
-  1,3  &
- /),(/2,6/))
  
  forall (i=1:6)
-  math_Mandel6to33(map(1,i),map(2,i)) = nrm(i)*v6(i)
-  math_Mandel6to33(map(2,i),map(1,i)) = nrm(i)*v6(i)
+  math_Mandel6to33(mapMandel(1,i),mapMandel(2,i)) = invnrmMandel(i)*v6(i)
+  math_Mandel6to33(mapMandel(2,i),mapMandel(1,i)) = invnrmMandel(i)*v6(i)
  end forall
  return
 
@@ -419,20 +413,9 @@
  real(pReal), dimension(3,3,3,3) :: m3333
  real(pReal), dimension(6,6) :: math_Mandel3333to66
  integer(pInt) i,j
- real(pReal), dimension(6), parameter :: nrm = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(2.0_pReal),dsqrt(2.0_pReal),dsqrt(2.0_pReal)/)
- integer(pInt), dimension (2,6), parameter :: map = &
- reshape((/&
-  1,1, &
-  2,2, &
-  3,3, &
-  1,2, &
-  2,3, &
-  1,3  &
- /),(/2,6/))
  
  forall (i=1:6,j=1:6) math_Mandel3333to66(i,j) = &
-   nrm(i)*nrm(j)*m3333(map(1,i),map(2,i),map(1,j),map(2,j))
+   nrmMandel(i)*nrmMandel(j)*m3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j))
  return
 
  END FUNCTION
@@ -449,23 +432,12 @@
  real(pReal), dimension(6,6) :: m66
  real(pReal), dimension(3,3,3,3) :: math_Mandel66to3333
  integer(pInt) i,j
- real(pReal), dimension(6), parameter :: nrm = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,dsqrt(0.5_pReal),dsqrt(0.5_pReal),dsqrt(0.5_pReal)/)
- integer(pInt), dimension (2,6), parameter :: map = &
- reshape((/&
-  1,1, &
-  2,2, &
-  3,3, &
-  1,2, &
-  2,3, &
-  1,3  &
- /),(/2,6/))
  
  forall (i=1:6,j=1:6) 
-   math_Mandel66to3333(map(1,i),map(2,i),map(1,j),map(2,j)) = nrm(i)*nrm(j)*m66(i,j)
-   math_Mandel66to3333(map(2,i),map(1,i),map(1,j),map(2,j)) = nrm(i)*nrm(j)*m66(i,j)
-   math_Mandel66to3333(map(1,i),map(2,i),map(2,j),map(1,j)) = nrm(i)*nrm(j)*m66(i,j)
-   math_Mandel66to3333(map(2,i),map(1,i),map(2,j),map(1,j)) = nrm(i)*nrm(j)*m66(i,j)
+   math_Mandel66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
+   math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(1,j),mapMandel(2,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
+   math_Mandel66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(2,j),mapMandel(1,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
+   math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(2,j),mapMandel(1,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
  end forall
  return
 
