@@ -526,6 +526,7 @@ character(len=80) function constitutive_Parse_TexturePart(file)
 !*********************************************************************
 use prec, only: pInt
 use IO
+use math, only: inRad
 implicit none
 
 !* Definition of variables
@@ -563,11 +564,11 @@ do while(.true.)
 			     tag=IO_lc(IO_stringValue(line,positions,i))
 				 select case (tag)
 				 case('phi1')
-				     texture_Gauss(1,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_Gauss(1,gaussCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('phi')
-				     texture_Gauss(2,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_Gauss(2,gaussCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('phi2')
-				     texture_Gauss(3,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_Gauss(3,gaussCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('scatter')
 				     texture_Gauss(5,gaussCount,section)=IO_floatValue(line,positions,i+1)
 				 case('fraction')
@@ -580,13 +581,13 @@ do while(.true.)
 			     tag=IO_lc(IO_stringValue(line,positions,i))
 				 select case (tag)
 				 case('alpha1')
-				     texture_fiber(1,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_fiber(1,fiberCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('alpha2')
-				     texture_fiber(2,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_fiber(2,fiberCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('beta1')
-				     texture_fiber(3,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_fiber(3,fiberCount,section)=IO_floatValue(line,positions,i+1)*inRad
                  case('beta2')
-				     texture_fiber(4,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_fiber(4,fiberCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('scatter')
 				     texture_fiber(5,fiberCount,section)=IO_floatValue(line,positions,i+1)
 				 case('fraction')
@@ -743,10 +744,23 @@ implicit none
 integer(pInt) i,j,k,l
 integer(pInt) multiplicity
 
-!* Allocate arrays
-constitutive_maxNgrains=maxval(texture_Ngrains)
+!* Multiplicity of orientations per texture
+!* Construction of optimized constitutive_Ngrains 
 allocate(constitutive_Ngrains(mesh_maxNips,mesh_NcpElems))
 constitutive_Ngrains=0_pInt
+do i=1,mesh_NcpElems
+   do j=1,FE_Nips(mesh_element(2,i)) 
+	  multiplicity=texture_Ngrains(mesh_element(4,i))/(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))	  
+	  if (texture_Ngrains(mesh_element(4,i))==(multiplicity*(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i))))) then
+	     constitutive_Ngrains(j,i)=texture_Ngrains(mesh_element(4,i))
+	  else
+         constitutive_Ngrains(j,i)=multiplicity*(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))
+	  endif
+      constitutive_maxNgrains=maxval(constitutive_Ngrains)
+   enddo
+enddo
+
+!* Allocate arrays
 allocate(constitutive_matID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_matID=0_pInt
 allocate(constitutive_texID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
@@ -772,33 +786,50 @@ constitutive_state_new=0.0_pReal
 !* Results
 allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_Nresults=0_pInt
-
-
 !* Assignement
 do i=1,mesh_NcpElems
    do j=1,FE_Nips(mesh_element(2,i))
-      !* Multiplicity of orientations per texture 
-      constitutive_Ngrains(j,i)=texture_Ngrains(mesh_element(4,i))
-	  multiplicity=constitutive_Ngrains(j,i)/(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))
-      do k=1,constitutive_Ngrains(j,i)
-	     !* MaterialID and TextureID 
-         constitutive_matID(k,j,i)=mesh_element(3,i)
-		 constitutive_texID(k,j,i)=mesh_element(4,i)
-         constitutive_MatVolFrac(k,j,i)=1.0_pReal	 
-		 do l=1,multiplicity
-!		    constitutive_TexVolFrac(k,j,i)=texture_Gauss/Fiber(6,M*([gauss]+[fiber]),mesh_element(4,i))
-!           constitutive_phi1(k,j,i)=texture_Gauss/Fiber(1,M*([gauss]+[fiber]),mesh_element(4,i)) 
-!           constitutive_phi(k,j,i)=texture_Gauss/Fiber(2,M*([gauss]+[fiber]),mesh_element(4,i))
-!           constitutive_phi2(k,j,i)=texture_Gauss/Fiber(3,M*([gauss]+[fiber]),mesh_element(4,i))		 
+      multiplicity=texture_Ngrains(mesh_element(4,i))/(texture_NGauss(mesh_element(4,i))+texture_NFiber(mesh_element(4,i)))	  
+	  !* Gauss component
+	  do k=1,multiplicity*texture_NGauss(mesh_element(4,i)),multiplicity
+	     do l=k,k+multiplicity
+            constitutive_matID(l,j,i)=mesh_element(3,i)
+		    constitutive_texID(l,j,i)=mesh_element(4,i)
+            constitutive_MatVolFrac(l,j,i)=1.0_pReal	
+		    constitutive_TexVolFrac(l,j,i)=texture_Gauss(6,k,mesh_element(4,i))/multiplicity
+            constitutive_phi1(l,j,i)=texture_Gauss(1,k,mesh_element(4,i))
+            constitutive_phi(l,j,i)=texture_Gauss(2,k,mesh_element(4,i))
+            constitutive_phi2(l,j,i)=texture_Gauss(3,k,mesh_element(4,i))
+!			if (constitutive_phi1(l,j,i)==400*inRad) then
+!			   call math_halton_ori() 
+!			else
+!			   call math_gauss()
+!			endif		 
+!           constitutive_phi1(l,j,i)=texture_Gauss(1,k,mesh_element(4,i))
+!           constitutive_phi(l,j,i)=texture_Gauss(2,k,mesh_element(4,i))
+!           constitutive_phi2(l,j,i)=texture_Gauss(3,k,mesh_element(4,i))	 
 		 enddo
-		 !* Initialization of state variables 
-		 do l=1,material_Nslip(constitutive_matID(k,j,i))
-		    constitutive_state_old(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
-		    constitutive_state_new(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
-		 enddo 		
 	  enddo
+	  !* Fiber component
+	  do k=1+texture_NGauss(mesh_element(4,i)),constitutive_Ngrains(i,j),multiplicity
+	     do l=k,k+multiplicity
+            constitutive_matID(l,j,i)=mesh_element(3,i)
+		    constitutive_texID(l,j,i)=mesh_element(4,i)
+            constitutive_MatVolFrac(l,j,i)=1.0_pReal	
+		    constitutive_TexVolFrac(l,j,i)=texture_Fiber(6,k,mesh_element(4,i))/multiplicity 		 
+!           constitutive_phi1(l,j,i)=texture_Fiber(1,k,mesh_element(4,i))
+!           constitutive_phi(l,j,i)=texture_Fiber(2,k,mesh_element(4,i))
+!           constitutive_phi2(l,j,i)=texture_Fiber(3,k,mesh_element(4,i))	 
+		 enddo
+	  enddo	 		
    enddo
 enddo
+
+!* Initialization of state variables 
+!do l=1,material_Nstatevars(k,j,i)
+!   constitutive_state_old(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
+!   constitutive_state_new(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
+!enddo 
 
 end subroutine
 
