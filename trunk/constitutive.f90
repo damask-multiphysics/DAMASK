@@ -819,7 +819,9 @@ do i=1,mesh_NcpElems
                constitutive_phi(l,j,i)=texture_Gauss(2,k,texID)
                constitutive_phi2(l,j,i)=texture_Gauss(3,k,texID)
 			   !* Use of sample_Gauss
-               constitutive_EulerAngles(:,l,j,i)=sample_Gauss(texture_Gauss(1:3,k,texID),texture_Gauss(4.k,texID))		 	 
+               constitutive_EulerAngles(:,l,j,i)=sample_Gauss(texture_Gauss(1:3,k,texID),texture_Gauss(4.k,texID))
+			   !* Rotation matrix
+			   CPFEM_Fp_old(l,j,i)=math_EulertoR(constitutive_EulerAngles(:,l,j,i))		 	 
 		    enddo
 	     enddo
 	     !* Fiber component
@@ -830,7 +832,9 @@ do i=1,mesh_NcpElems
                constitutive_MatVolFrac(l,j,i)=1.0_pReal	
 		       constitutive_TexVolFrac(l,j,i)=texture_Fiber(6,k,texID)/multiplicity 
 			   !* Use of sample_Fiber
-               constitutive_EulerAngles(:,l,j,i)=sample_Fiber(texture_Fiber(1:4,k,texID),texture_Fiber(5,k,texID))	 	 
+               constitutive_EulerAngles(:,l,j,i)=sample_Fiber(texture_Fiber(1:4,k,texID),texture_Fiber(5,k,texID))
+			   !* Rotation matrix
+			   CPFEM_Fp_old(l,j,i)=math_EulertoR(constitutive_EulerAngles(:,l,j,i))	 	 
 		    enddo
 	     enddo
 		 !* Random component
@@ -839,15 +843,19 @@ do i=1,mesh_NcpElems
                constitutive_matID(l,j,i)=matID
 		       constitutive_texID(l,j,i)=texID
                constitutive_MatVolFrac(l,j,i)=1.0_pReal	
-		       constitutive_TexVolFrac(l,j,i)=(1.0_pReal-texture_Gauss(5,k,texID)-texture_Fiber(6,k,texID))/multiplicity 
-			   constitutive_EulerAngles(:,l,j,i)=sample_Random()		 	 
+		       constitutive_TexVolFrac(l,j,i)=(1.0_pReal-texture_Gauss(5,k,texID)-texture_Fiber(6,k,texID))/multiplicity
+			   !* Use of sample_Random 
+			   constitutive_EulerAngles(:,l,j,i)=sample_Random()
+			   !* Rotation matrix
+			   CPFEM_Fp_old(l,j,i)=math_EulertoR(constitutive_EulerAngles(:,l,j,i))		 	 
 		    enddo
 	     enddo
 	  enddo ! End of ip
    endif		 		
 enddo ! End of cp_element
 
-
+! MISSING case of symmetry
+! MISSING
 !* Initialization of state variables 
 !do l=1,material_Nstatevars(k,j,i)
 !   constitutive_state_old(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
