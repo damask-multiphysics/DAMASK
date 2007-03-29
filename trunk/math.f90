@@ -1,5 +1,3 @@
-! MISSING agree on Rad as standard in/out
-! MISSING inverse 3x3 and 6x6
 
 !##############################################################
  MODULE math   
@@ -32,7 +30,7 @@
  real(pReal), dimension(6), parameter :: invnrmMandel = &
  (/1.0_pReal,1.0_pReal,1.0_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal/)
 ! *** Voigt notation ***
- integer(pInt), dimension (2,6), parameter :: mapMandel = &
+ integer(pInt), dimension (2,6), parameter :: mapVoigt = &
  reshape((/&
   1,1, &
   2,2, &
@@ -58,15 +56,57 @@
  implicit none
 
  integer (pInt) seed
+ real(pReal) poop(3)
  
  call random_seed()
  call get_seed(seed)
  call halton_seed_set(seed)
  call halton_ndim_set(3)
-
+  
+ poop = dabs((/1.0_8,2.34_8,534.2_8/))
+ 
  END SUBROUTINE
  
  
+ !**************************************************************************
+! second rank identity tensor of specified dimension
+!**************************************************************************
+ FUNCTION math_identity2nd(dimen)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,dimen
+ real(pReal) math_identity2nd(dimen,dimen)
+
+ math_identity2nd = 0.0_pReal 
+ forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
+ return
+
+ END FUNCTION
+
+
+!**************************************************************************
+! fourth rank identity tensor of specified dimension
+!**************************************************************************
+ FUNCTION math_identity4th(dimen)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,j,k,l,dimen
+ real(pReal) math_identity4th(dimen,dimen,dimen,dimen)
+
+ forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
+ 	0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
+ return
+
+ END FUNCTION
+
+
+!**************************************************************************
+! Cramer inversion of 3x3 matrix
+!**************************************************************************
  SUBROUTINE math_invert3x3(A, InvA, DetA, err)
 
 !   Bestimmung der Determinanten und Inversen einer 3x3-Matrix
@@ -111,12 +151,13 @@
  InvA(3,3) = (  A(1,1) * A(2,2) - A(1,2) * A(2,1) ) / DetA
 
  RETURN
+ END SUBROUTINE
 
- END SUBROUTINE math_invert3x3
-! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-      SUBROUTINE math_invert6x6(A, InvA, AnzNegEW, err)
+!**************************************************************************
+! Gauss elimination to invert 6x6 matrix
+!**************************************************************************
+ SUBROUTINE math_invert6x6(A, InvA, AnzNegEW, err)
 
 !   Invertieren einer 6x6-Matrix
 
@@ -340,10 +381,8 @@
  END SUBROUTINE Gauss
 
 
-
- 
 !********************************************************************
-! calculate the determinant of a (3x3)
+! determinant of a 3x3 matrix
 !********************************************************************
  real(pReal) FUNCTION math_det3x3(m)
 
@@ -361,7 +400,7 @@
 
 
 !********************************************************************
-! convert a symmetric 3x3 matrix into Mandel vector 6x1
+! convert symmetric 3x3 matrix into Mandel vector 6x1
 !********************************************************************
  FUNCTION math_Mandel33to6(m33)
 
@@ -464,365 +503,263 @@
  END FUNCTION
 
 
-
-
 !********************************************************************
-! convert a symmetric 3,3 matrix into an array of 6
+! Euler angles from orientation matrix
 !********************************************************************
- FUNCTION math_33to6(m33)
-
- use prec, only: pReal,pInt
- implicit none
-
- real(pReal), dimension(3,3) :: m33
- real(pReal), dimension(6) :: math_33to6
-
- math_33to6(1)=m33(1,1)
- math_33to6(2)=m33(2,2)
- math_33to6(3)=m33(3,3)
- math_33to6(4)=m33(1,2)
- math_33to6(5)=m33(2,3)
- math_33to6(6)=m33(1,3)
- return
-
- END FUNCTION
-
-
-!********************************************************************
-! This routine coverts an array of 6 into a symmetric 3,3 matrix
-!********************************************************************
- FUNCTION math_6to33(v6)
-
- use prec, only: pReal,pInt
- implicit none
-
- real(pReal) math_6to33(3,3), v6(6)
-
- math_6to33(1,1)=v6(1)
- math_6to33(2,2)=v6(2)
- math_6to33(3,3)=v6(3)
- math_6to33(1,2)=v6(4)
- math_6to33(2,1)=v6(4)
- math_6to33(2,3)=v6(5)
- math_6to33(3,2)=v6(5)
- math_6to33(1,3)=v6(6)
- math_6to33(3,1)=v6(6)
- return
-
- END FUNCTION
-
- 
-!********************************************************************************
-!**      This routine transforms the stiffness matrix    **
-!********************************************************************************
- FUNCTION math_66to3333(C66)
+ FUNCTION math_RtoEuler(R)
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal) C66(6,6), math_66to3333(3,3,3,3)
+ real(pReal) R(3,3), sqhkl, squvw, sqhk, val
+ real(pReal), dimension(3) :: math_RtoEuler
 
- math_66to3333(1,1,1,1)=C66(1,1)
- math_66to3333(1,1,2,2)=C66(1,2)
- math_66to3333(1,1,3,3)=C66(1,3) 
- math_66to3333(1,1,2,3)=C66(1,4)
- math_66to3333(1,1,3,2)=C66(1,4)
- math_66to3333(1,1,1,3)=C66(1,5) 
- math_66to3333(1,1,3,1)=C66(1,5)
- math_66to3333(1,1,1,2)=C66(1,6)
- math_66to3333(1,1,2,1)=C66(1,6) 
- math_66to3333(2,2,1,1)=C66(2,1)
- math_66to3333(2,2,2,2)=C66(2,2)
- math_66to3333(2,2,3,3)=C66(2,3) 
- math_66to3333(2,2,2,3)=C66(2,4)
- math_66to3333(2,2,3,2)=C66(2,4)
- math_66to3333(2,2,1,3)=C66(2,5) 
- math_66to3333(2,2,3,1)=C66(2,5)
- math_66to3333(2,2,1,2)=C66(2,6)
- math_66to3333(2,2,2,1)=C66(2,6) 
- math_66to3333(3,3,1,1)=C66(3,1)
- math_66to3333(3,3,2,2)=C66(3,2)
- math_66to3333(3,3,3,3)=C66(3,3) 
- math_66to3333(3,3,2,3)=C66(3,4)
- math_66to3333(3,3,3,2)=C66(3,4)
- math_66to3333(3,3,1,3)=C66(3,5) 
- math_66to3333(3,3,3,1)=C66(3,5)
- math_66to3333(3,3,1,2)=C66(3,6)
- math_66to3333(3,3,2,1)=C66(3,6) 
- math_66to3333(2,3,1,1)=C66(4,1)
- math_66to3333(3,2,1,1)=C66(4,1)
- math_66to3333(2,3,2,2)=C66(4,2) 
- math_66to3333(3,2,2,2)=C66(4,2)
- math_66to3333(2,3,3,3)=C66(4,3)
- math_66to3333(3,2,3,3)=C66(4,3)
- math_66to3333(2,3,2,3)=C66(4,4)
- math_66to3333(2,3,3,2)=C66(4,4)
- math_66to3333(3,2,2,3)=C66(4,4) 
- math_66to3333(3,2,3,2)=C66(4,4)
- math_66to3333(2,3,3,1)=C66(4,5)
- math_66to3333(2,3,1,3)=C66(4,5)
- math_66to3333(2,3,3,1)=C66(4,5)
- math_66to3333(3,2,1,3)=C66(4,5)
- math_66to3333(2,3,1,2)=C66(4,6) 
- math_66to3333(2,3,2,1)=C66(4,6)
- math_66to3333(3,2,1,2)=C66(4,6)
- math_66to3333(3,2,2,1)=C66(4,6) 
- math_66to3333(3,1,1,1)=C66(5,1)
- math_66to3333(1,3,1,1)=C66(5,1)
- math_66to3333(3,1,2,2)=C66(5,2) 
- math_66to3333(1,3,2,2)=C66(5,2)
- math_66to3333(3,1,3,3)=C66(5,3)
- math_66to3333(1,3,3,3)=C66(5,3)
- math_66to3333(3,1,2,3)=C66(5,4)
- math_66to3333(3,1,3,2)=C66(5,4)
- math_66to3333(1,3,2,3)=C66(5,4) 
- math_66to3333(1,3,3,2)=C66(5,4)
- math_66to3333(3,1,3,1)=C66(5,5)
- math_66to3333(3,1,1,3)=C66(5,5) 
- math_66to3333(1,3,3,1)=C66(5,5)
- math_66to3333(1,3,1,3)=C66(5,5)
- math_66to3333(3,1,1,2)=C66(5,6)
- math_66to3333(3,1,2,1)=C66(5,6)
- math_66to3333(1,3,1,2)=C66(5,6)
- math_66to3333(1,3,2,1)=C66(5,6)
- math_66to3333(1,2,1,1)=C66(6,1)
- math_66to3333(2,1,1,1)=C66(6,1)
- math_66to3333(1,2,2,2)=C66(6,2) 
- math_66to3333(2,1,2,2)=C66(6,2)
- math_66to3333(1,2,3,3)=C66(6,3)
- math_66to3333(2,1,3,3)=C66(6,3) 
- math_66to3333(1,2,2,3)=C66(6,4)
- math_66to3333(1,2,3,2)=C66(6,4)
- math_66to3333(2,1,2,3)=C66(6,4)
- math_66to3333(2,1,3,2)=C66(6,4)
- math_66to3333(1,2,3,1)=C66(6,5)
- math_66to3333(1,2,1,3)=C66(6,5) 
- math_66to3333(2,1,3,1)=C66(6,5)
- math_66to3333(2,1,1,3)=C66(6,5)
- math_66to3333(1,2,1,2)=C66(6,6)  
- math_66to3333(1,2,2,1)=C66(6,6)
- math_66to3333(2,1,1,2)=C66(6,6)
- math_66to3333(2,1,2,1)=C66(6,6)    
- return
-
- END FUNCTION 
-
-     
- FUNCTION math_3333to66(C3333)
-!********************************************************************************
-!**      This routine transforms the stiffness matrix    **
-!********************************************************************************
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal) math_3333to66(6,6), C3333(3,3,3,3)
-
- math_3333to66(1,1)=C3333(1,1,1,1)
- math_3333to66(1,2)=C3333(1,1,2,2)
- math_3333to66(1,3)=C3333(1,1,3,3)
- math_3333to66(1,4)=C3333(1,1,2,3)
- math_3333to66(1,5)=C3333(1,1,3,1)
- math_3333to66(1,6)=C3333(1,1,1,2)
- math_3333to66(2,1)=C3333(2,2,1,1)
- math_3333to66(2,2)=C3333(2,2,2,2)
- math_3333to66(2,3)=C3333(2,2,3,3)
- math_3333to66(2,4)=C3333(2,2,2,3)
- math_3333to66(2,5)=C3333(2,2,3,1)
- math_3333to66(2,6)=C3333(2,2,1,2)
- math_3333to66(3,1)=C3333(3,3,1,1)
- math_3333to66(3,2)=C3333(3,3,2,2)
- math_3333to66(3,3)=C3333(3,3,3,3)
- math_3333to66(3,4)=C3333(3,3,2,3)
- math_3333to66(3,5)=C3333(3,3,3,1)
- math_3333to66(3,6)=C3333(3,3,1,2)
- math_3333to66(4,1)=C3333(2,3,1,1)
- math_3333to66(4,2)=C3333(2,3,2,2)
- math_3333to66(4,3)=C3333(2,3,3,3)
- math_3333to66(4,4)=C3333(2,3,2,3)
- math_3333to66(4,5)=C3333(2,3,3,1)
- math_3333to66(4,6)=C3333(2,3,1,2)
- math_3333to66(5,1)=C3333(3,1,1,1)
- math_3333to66(5,2)=C3333(3,1,2,2)
- math_3333to66(5,3)=C3333(3,1,3,3)
- math_3333to66(5,4)=C3333(3,1,2,3)
- math_3333to66(5,5)=C3333(3,1,3,1)
- math_3333to66(5,6)=C3333(3,1,1,2)  
- math_3333to66(6,1)=C3333(1,2,1,1)
- math_3333to66(6,2)=C3333(1,2,2,2)
- math_3333to66(6,3)=C3333(1,2,3,3) 
- math_3333to66(6,4)=C3333(1,2,2,3)
- math_3333to66(6,5)=C3333(1,2,3,1)
- math_3333to66(6,6)=C3333(1,2,1,2) 
- return
-
- END FUNCTION
-
-
-!********************************************************************
-! This routine calculates Euler angles from orientation matrix
-!********************************************************************
- SUBROUTINE math_RtoEuler(orimat, phi1, PHI, phi2)
-
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal) orimat(3,3), phi1, PHI, phi2
- real(pReal) sqhkl, squvw, sqhk, val
-
- sqhkl=sqrt(orimat(1,3)*orimat(1,3)+orimat(2,3)*orimat(2,3)+orimat(3,3)*orimat(3,3))
- squvw=sqrt(orimat(1,1)*orimat(1,1)+orimat(2,1)*orimat(2,1)+orimat(3,1)*orimat(3,1))
- sqhk=sqrt(orimat(1,3)*orimat(1,3)+orimat(2,3)*orimat(2,3))
+ sqhkl=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3)+R(3,3)*R(3,3))
+ squvw=sqrt(R(1,1)*R(1,1)+R(2,1)*R(2,1)+R(3,1)*R(3,1))
+ sqhk=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3))
 ! calculate PHI
- val=orimat(3,3)/sqhkl
+ val=R(3,3)/sqhkl
  
- if(val.GT.1.0_pReal) val=1.0_pReal
- if(val.LT.-1.0_pReal) val=-1.0_pReal
+ if(val >  1.0_pReal) val =  1.0_pReal
+ if(val < -1.0_pReal) val = -1.0_pReal
      
- PHI=acos(val)
+ math_RtoEuler(2) = acos(val)
 
- if(PHI.LT.1.0e-30_pReal) then
+ if(math_RtoEuler(2) < 1.0e-30_pReal) then
 ! calculate phi2
-     phi2=0.0
+     math_RtoEuler(3) = 0.0_pReal
 ! calculate phi1
-     val=orimat(1,1)/squvw
- 
-     if(val.GT.1.0_pReal) val=1.0_pReal
-     if(val.LT.-1.0_pReal) val=-1.0_pReal
+     val=R(1,1)/squvw
+     if(val >  1.0_pReal) val =  1.0_pReal
+     if(val < -1.0_pReal) val = -1.0_pReal
      
-     if(orimat(2,1).LE.0.0) then
-    phi1=acos(val)
-     else
-    phi1=2.0_pReal*pi-acos(val)
-     end if
+     math_RtoEuler(1) = acos(val)
+     if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  else
 ! calculate phi2
-     val=orimat(2,3)/sqhk
- 
-     if(val.GT.1.0_pReal) val=1.0_pReal
-     if(val.LT.-1.0_pReal) val=-1.0_pReal
+     val=R(2,3)/sqhk
+     if(val >  1.0_pReal) val =  1.0_pReal
+     if(val < -1.0_pReal) val = -1.0_pReal
      
-     if(orimat(1,3).GE.0.0) then
-    phi2=acos(val)
-     else
-    phi2=2.0_pReal*pi-acos(val)
-     end if
+     math_RtoEuler(3) = acos(val)
+     if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
 ! calculate phi1
-     val=-orimat(3,2)/sin(PHI)
- 
-     if(val.GT.1.0_pReal) val=1.0_pReal
-     if(val.LT.-1.0_pReal) val=-1.0_pReal
+     val=-R(3,2)/sin(math_RtoEuler(2))
+     if(val >  1.0_pReal) val =  1.0_pReal
+     if(val < -1.0_pReal) val = -1.0_pReal
      
-     if(orimat(3,1).GE.0.0) then
-    phi1=acos(val)
-     else
-    phi1=2.0_pReal*pi-acos(val)
-     end if
+     math_RtoEuler(1) = acos(val)
+     if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  end if
-! convert angles to degrees
- phi1=phi1*inDeg
- PHI=PHI*inDeg
- phi2=phi2*inDeg
  return
  
- END SUBROUTINE
+ END FUNCTION
 
 
-!#####################################################
-! bestimmt Drehmatrix DREH3 fuer Drehung um Omega um Achse (u,v,w)
- FUNCTION math_RodrigtoR(Omega,U,V,W)
+!****************************************************************
+! rotation matrix from axis and angle (in radians)  
+!****************************************************************
+ FUNCTION math_RodrigToR(axis,omega)
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal) omega, u, v, w, math_RodrigtoR(3,3)
- real(pReal) betrag, s, c, u2, v2, w2
+ real(pReal), dimension(3) :: axis, axisNrm
+ real(pReal), dimension(3,3) :: math_RodrigToR
+ real(pReal) omega, s,c
+ integer(pInt) i
 
- BETRAG=SQRT(U**2+V**2+W**2)
- S=SIN(OMEGA)
- C=COS(OMEGA)
- U2=U/BETRAG
- V2=V/BETRAG
- W2=W/BETRAG
- math_RodrigtoR(1,1)=(1-U2**2)*C+U2**2
- math_RodrigtoR(1,2)=U2*V2*(1-C)+W2*S
- math_RodrigtoR(1,3)=U2*W2*(1-C)-V2*S
- math_RodrigtoR(2,1)=U2*V2*(1-C)-W2*S
- math_RodrigtoR(2,2)=(1-V2**2)*C+V2**2
- math_RodrigtoR(2,3)=V2*W2*(1-C)+U2*S
- math_RodrigtoR(3,1)=U2*W2*(1-C)+V2*S
- math_RodrigtoR(3,2)=V2*W2*(1-C)-U2*S
- math_RodrigtoR(3,3)=(1-W2**2)*C+W2**2
+ forall (i=1:3) axisNrm(i) = axis(i)/sqrt(dot_product(axis,axis))
+ s = sin(omega)
+ c = cos(omega)
+ math_RodrigtoR(1,1) = (1.0_pReal - axisNrm(1)**2)*c + axisNrm(1)**2
+ math_RodrigtoR(1,2) = axisNrm(1)*axisNrm(2)*(1.0_pReal - c) + axisNrm(3)*s
+ math_RodrigtoR(1,3) = axisNrm(1)*axisNrm(3)*(1.0_pReal - c) - axisNrm(2)*s
+ math_RodrigtoR(2,1) = axisNrm(1)*axisNrm(2)*(1.0_pReal - c) - axisNrm(3)*s
+ math_RodrigtoR(2,2) = (1.0_pReal - axisNrm(2)**2)*c + axisNrm(2)**2
+ math_RodrigtoR(2,3) = axisNrm(2)*axisNrm(3)*(1.0_pReal - c) + axisNrm(1)*s
+ math_RodrigtoR(3,1) = axisNrm(1)*axisNrm(3)*(1.0_pReal - c) + axisNrm(2)*s
+ math_RodrigtoR(3,2) = axisNrm(2)*axisNrm(3)*(1.0_pReal - c) - axisNrm(1)*s
+ math_RodrigtoR(3,3) = (1.0_pReal - axisNrm(3)**2)*c + axisNrm(3)**2
  return
 
  END FUNCTION
 
-! Best. Drehmatrix ROTA fuer Euler-Winkel  
 
- FUNCTION math_EulertoR (P1,P,P2)
+!****************************************************************
+! rotation matrix from Euler angles  
+!****************************************************************
+ FUNCTION math_EulerToR (Euler)
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal) p1, p, p2, math_EulertoR(3,3)
- real(pReal)  xp1, xp, xp2, c1, c, c2, s1, s, s2
+ real(pReal), dimension(3) :: Euler
+ real(pReal), dimension(3,3) :: math_EulerToR
+ real(pReal) c1, c, c2, s1, s, s2
 
- XP1=P1*inRad
- XP=P*inRad
- XP2=P2*inRad
- C1=COS(XP1)
- C=COS(XP)
- C2=COS(XP2)
- S1=SIN(XP1)
- S=SIN(XP)
- S2=SIN(XP2)
- math_EulertoR(1,1)=C1*C2-S1*S2*C
- math_EulertoR(1,2)=S1*C2+C1*S2*C
- math_EulertoR(1,3)=S2*S
- math_EulertoR(2,1)=-C1*S2-S1*C2*C
- math_EulertoR(2,2)=-S1*S2+C1*C2*C
- math_EulertoR(2,3)=C2*S
- math_EulertoR(3,1)=S1*S
- math_EulertoR(3,2)=-C1*S
- math_EulertoR(3,3)=C
+ C1=COS(Euler(1))
+ C=COS(Euler(2))
+ C2=COS(Euler(3))
+ S1=SIN(Euler(1))
+ S=SIN(Euler(2))
+ S2=SIN(Euler(3))
+ math_EulerToR(1,1)=C1*C2-S1*S2*C
+ math_EulerToR(1,2)=S1*C2+C1*S2*C
+ math_EulerToR(1,3)=S2*S
+ math_EulerToR(2,1)=-C1*S2-S1*C2*C
+ math_EulerToR(2,2)=-S1*S2+C1*C2*C
+ math_EulerToR(2,3)=C2*S
+ math_EulerToR(3,1)=S1*S
+ math_EulerToR(3,2)=-C1*S
+ math_EulerToR(3,3)=C
  return
  
  END FUNCTION
 
 
 !**************************************************************************
-! BERECHNUNG VON ORIENTIERUNGSBEZIEHUNGEN ZWISCHEN
-! ZWEI VORGEGEBENEN ORIENTIERUNGEN
-
- function math_disorient(P1,P,P2)
+! disorientation angle between two sets of Euler angles
+!**************************************************************************
+ function math_disorient(EulerA,EulerB)
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal) D1(3,3),D2(3,3),P1(2),P(2),P2(2),D1T(3,3),DR(3,3)
- real(pReal) math_disorient, spur, sp, omega, alpha
+ real(pReal), dimension(3):: EulerA,EulerB
+ real(pReal), dimension(3,3) :: r
+ real(pReal) math_disorient, tr
+
+ r = matmul(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
+ tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
+ math_disorient = abs(0.5_pReal*pi-asin(tr))
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+!   draw a random sample from Euler space
+!********************************************************************
+ FUNCTION math_sampleRandomOri()
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3) :: math_sampleRandomOri, rnd
+
+ call halton(3,rnd)
+ math_sampleRandomOri(1) = rnd(1)*2.0_pReal*pi
+ math_sampleRandomOri(2) = acos(2.0_pReal*rnd(2)-1.0_pReal)
+ math_sampleRandomOri(3) = rnd(3)*2.0_pReal*pi
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+!   draw a random sample from Gauss component
+!   with noise (in radians) half-width 
+!********************************************************************
+ FUNCTION math_sampleGaussOri(center,noise)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3) :: math_sampleGaussOri, center, disturb
+ real(pReal), dimension(3), parameter :: origin = (/0.0_pReal,0.0_pReal,0.0_pReal/)
+ real(pReal), dimension(5) :: rnd
+ real(pReal) noise,scatter,cosScatter
  integer(pInt) i
 
-! ERSTELLEN DER BEIDEN DMATRIZEN
+! Helming uses different distribution with Bessel functions
+! therefore the gauss scatter width has to be scaled differently
+ scatter = 0.95_pReal * noise
+ cosScatter = cos(scatter)
 
- d1 = math_EulertoR(p1(1),P(1),p2(1))
- d2 = math_EulertoR(p1(2),P(2),p2(2))
-!****************************************************
-! BESTIMMUNG DER INVERSEN MATRIX ZUR ORIENTIERUNG 1:DM
-!****************************************************
- d1T=transpose(d1)
-!***********************************************************
-! MATRIZENMULTIPLIKATION DER MATRIZEN D2 UND DM=DR(I,J)
-!***********************************************************
- dr=matmul(d2,d1T)
-!*******************************
-! BESTIMMUNG DES ROTATIONSWINKELS
-!*******************************
- SPUR=DR(1,1)+DR(2,2)+DR(3,3)
- SP=(SPUR-1._pReal)*0.4999999_pReal
- OMEGA=PI*0.5_pReal-ASIN(SP)
-! Winkel in Grad umrechnen
- ALPHA=OMEGA*inDeg
- math_disorient=abs(alpha)
+ do
+   call halton(5,rnd)
+   forall (i=1:3) rnd(i) = 2.0_pReal*rnd(i)-1.0_pReal  ! expand 1:3 to range [-1,+1] 
+   disturb(1) = scatter * rnd(1)                                                      ! phi1
+   disturb(2) = sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)) ! Phi
+   disturb(3) = scatter * rnd(2)                                                      ! phi2
+   if (rnd(5) <= exp(-1.0_pReal*(math_disorient(origin,disturb)/scatter)**2)) exit   
+ enddo
+ math_sampleGaussOri = math_RtoEuler(matmul(math_EulerToR(disturb),math_EulerToR(center)))
+ return
+ 
+ END FUNCTION
+ 
+
+!********************************************************************
+!   draw a random sample from Fiber component
+!   with noise (in radians)
+!********************************************************************
+ FUNCTION math_sampleFiberOri(alpha,beta,noise)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
+ real(pReal), dimension(2) :: alpha,beta, rnd
+ real(pReal), dimension(3,3) :: oRot,fRot,pRot
+ real(pReal) noise, scatter, cos2Scatter, angle
+ integer(pInt), dimension(2,3), parameter :: rotMap = reshape((/2,3, 3,1, 1,2/),(/2,3/))
+ integer(pInt) i
+
+! Helming uses different distribution with Bessel functions
+! therefore the gauss scatter width has to be scaled differently
+ scatter = 0.95_pReal * noise
+ cos2Scatter = cos(2.0_pReal*scatter)
+
+! fiber axis in crystal coordinate system
+ fiberInC(1)=sin(alpha(1))*cos(alpha(2))
+ fiberInC(2)=sin(alpha(1))*sin(alpha(2))
+ fiberInC(3)=cos(alpha(1))
+! fiber axis in sample coordinate system
+ fiberInS(1)=sin(beta(1))*cos(beta(2))
+ fiberInS(2)=sin(beta(1))*sin(beta(2))
+ fiberInS(3)=cos(beta(1))
+
+! ---# rotation matrix from sample to crystal system #---
+ angle=-acos(dot_product(fiberInC,fiberInS))
+ if(angle /= 0.0_pReal) then
+!   rotation axis between sample and crystal system (cross product)
+   forall(i=1:3) axis(i) = fiberInC(rotMap(1,i))*fiberInS(rotMap(2,i))-fiberInC(rotMap(2,i))*fiberInS(rotMap(1,i))
+   oRot = math_RodrigtoR(axis,angle)
+ else
+   oRot = math_I3
+ end if
+
+! ---# rotation matrix about fiber axis (random angle) #---
+ call halton(1,rnd)
+ fRot = math_RodrigToR(fiberInS,axis(3)*2.0_pReal*pi)
+
+! ---# rotation about random axis perpend to fiber #---
+! random axis pependicular to fiber axis
+ call halton(2,axis)
+ if (fiberInS(3) /= 0.0_pReal) then
+     axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))/fiberInS(3)
+ else if(fiberInS(2) /= 0.0_pReal) then
+     axis(3)=axis(2)
+     axis(2)=-(axis(1)*fiberInS(1)+axis(3)*fiberInS(3))/fiberInS(2)
+ else if(fiberInS(1) /= 0.0_pReal) then
+     axis(3)=axis(1)
+     axis(1)=-(axis(2)*fiberInS(2)+axis(3)*fiberInS(3))/fiberInS(1)
+ end if
+
+! scattered rotation angle 
+ do
+   call halton(2,rnd)
+     angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(1))
+     if (rnd(2) <= exp(-1.0_pReal*(angle/scatter)**2)) exit
+ enddo
+ call halton(1,rnd)
+ if (rnd(1) <= 0.5) angle = -angle
+ pRot = math_RodrigtoR(axis,angle)
+
+! ---# apply the three rotations #---
+ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot))) 
  return
 
  END FUNCTION
@@ -842,13 +779,8 @@
  ce=matmul(transpose(fe),fe)
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=DSQRT(EW1)*EB1+DSQRT(EW2)*EB2+DSQRT(EW3)*EB3
- UI=U
- call invert(UI,3,0,0,det,3)
- if (det.EQ.0) then
-     ising=1
-     return
- endif
- R=matmul(fe,ui)
+ call math_invert3x3(U,UI,det,ising)
+ if (ising==0) R=matmul(fe,ui)
  return 
  
  END SUBROUTINE
@@ -947,41 +879,6 @@
  END SUBROUTINE
 
 
-!**********************************************************************
-!**** EINHEITSMATRIX MIT dim DIAGONALELEMENTEN 
-
- FUNCTION math_identity2nd(dimen)  
-
- use prec, only: pReal, pInt
- implicit none
-
- integer(pInt)  i,dimen
- real(pReal) math_identity2nd(dimen,dimen)
-
- math_identity2nd = 0.0_pReal 
- forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
- return
-
- END FUNCTION
-
-!**********************************************************************
-!**** EINHEITSTENSOR 4th MIT dim "DIAGONAL"ELEMENTEN 
-
- FUNCTION math_identity4th(dimen)  
-
- use prec, only: pReal, pInt
- implicit none
-
- integer(pInt)  i,j,k,l,dimen
- real(pReal) math_identity4th(dimen,dimen,dimen,dimen)
-
- forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
- 	0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
- return
-
- END FUNCTION
-
-
 !********************************************************************** 
 !**** HAUPTINVARIANTEN HI1M, HI2M, HI3M DER 3X3 MATRIX M
 
@@ -992,7 +889,7 @@
  real(pReal) M(3,3),HI1M,HI2M,HI3M 
 
  HI1M=M(1,1)+M(2,2)+M(3,3)
- HI2M=(M(1,1)+M(2,2)+M(3,3))**2/2.0_pReal-(M(1,1)**2+M(2,2)**2+M(3,3)**2)/2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
+ HI2M=HI1M**2/2.0_pReal-(M(1,1)**2+M(2,2)**2+M(3,3)**2)/2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
  HI3M=math_det3x3(M)
 ! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
  return  
@@ -1717,10 +1614,10 @@
    prime = npvec(n)
  else
    prime = 0
-   write ( *, '(a)' ) ' '
-   write ( *, '(a)' ) 'PRIME - Fatal error!'
-   write ( *, '(a,i6)' ) '  Illegal prime index N = ', n
-   write ( *, '(a,i6)' ) '  N must be between 0 and PRIME_MAX =',prime_max
+   write ( 6, '(a)' ) ' '
+   write ( 6, '(a)' ) 'PRIME - Fatal error!'
+   write ( 6, '(a,i6)' ) '  Illegal prime index N = ', n
+   write ( 6, '(a,i6)' ) '  N must be between 0 and PRIME_MAX =',prime_max
    call flush(6)
    stop
  end if
@@ -1728,176 +1625,6 @@
  return
  
  END FUNCTION
-
-
-!********************************************************************
-! This routine generates a random orientation
-!********************************************************************
- subroutine math_random_ori (phi1, PHI, phi2, scatter)
-
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal) phi1, PHI, phi2, scatter, x, y, z
-
- call random_number(x)
- call random_number(y)
- call random_number(z)
- phi1=x*360.0_pReal
- PHI=acos(y)*inDeg
- phi2=z*360.0_pReal
- scatter=0.0_pReal
- return
-
- END SUBROUTINE
-
-
- subroutine math_halton_ori (phi1, PHI, phi2, scatter)
-!********************************************************************
-! This routine generates a random orientation using Halton series
-!********************************************************************
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal) phi1, PHI, phi2, scatter, r(3)
-
- call halton(3,r)
- phi1=r(1)*360.0_pReal
- PHI=acos(r(2))*inDeg
- phi2=r(3)*360.0_pReal
- scatter=0.0_pReal
- return
- 
- END SUBROUTINE
-
-
-!********************************************************************
-! This routine applies gaussian scatter to the texture components
-!********************************************************************
- subroutine math_disturbOri (phi1, PHI, phi2, scatter)
-
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal) phi1, PHI, phi2, scatter
- real(pReal) orot(3,3), srot(3,3), p1(2), P(2), p2(2), rot(3,3)
- real(pReal) gscatter,scale,x,y,s,z,arg,angle,rand,gauss
-
- p1(1)=0
- P(1)=0
- p2(1)=0
-
-! Helming uses different distribution with Bessel functions
-! therefore the gauss scatter width has to be scaled differently
- gscatter=0.95*scatter
- scale=cos(gscatter*inRad)
-
- 100 call random_number(x)
- call random_number(y)
- call random_number(s)
- call random_number(z)
- x=x-0.5
- s=s-0.5
- z=z-0.5
- p1(2)=x*gscatter*2.0_pReal
- p2(2)=z*gscatter*2.0_pReal
- arg=scale+y*(1.0-scale)
- P(2)=sign(1.0_pReal,s)*acos(arg)*inDeg
- angle = math_disorient(p1,P,p2)
- call random_number(rand)
- gauss=exp(-1.0*(angle/gscatter)**2)
- if(gauss.LT.rand) then
-     goto 100
- end if
-! calculate rotation matrix for rotation angles
- srot = math_EulertoR(p1(2),p(2),p2(2))
-! calculate rotation matrix for original euler angles
- orot = math_EulertoR(phi1,PHI,phi2)      
-! rotate originial orientation matrix
- rot=matmul(srot,orot)
-! calculate Euler angles for new rotation matrix
- call math_RtoEuler(rot, phi1,PHI,phi2)
- return
- 
- END SUBROUTINE
-
-
-!********************************************************************
-! This routine computes one orientation of a fiber component
-!********************************************************************
- subroutine math_fiber(alpha1, alpha2,beta1,beta2,scatter,phi1,PHI,phi2)
-
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal) alpha1, alpha2,beta1,beta2,scatter, phi1, PHI, phi2
- real(pReal) orot(3,3), srot(3,3), ac(3), as(3),ori(3,3), rrot(3,3)
- real(pReal) a1r,a2r,b1r,b2r,angle,axis_u,axis_v,axis_w,rand,x,y,z,gscatter,scale,gauss
- integer(pInt) i
-
-! convert angles to radians
- a1r=alpha1*inRad
- a2r=alpha2*inRad
- b1r=beta1*inRad
- b2r=beta2*inRad
-! calculate fiber axis in crystal coordinate system
- ac(1)=sin(a1r)*cos(a2r)
- ac(2)=sin(a1r)*sin(a2r)
- ac(3)=cos(a1r)
-! calculate fiber axis in sample coordinate system
- as(1)=sin(b1r)*cos(b2r)
- as(2)=sin(b1r)*sin(b2r)
- as(3)=cos(b1r)
-! calculate rotation angle between sample and crystal system
- angle=-acos(dot_product(ac, as))
- if(angle.NE.0.0) then
-! calculate rotation axis between sample and crystal system
-     axis_u=ac(2)*as(3)-ac(3)*as(2)
-     axis_v=ac(3)*as(1)-ac(1)*as(3)
-     axis_w=ac(1)*as(2)-ac(2)*as(1)
-! calculate rotation matrix
-     orot = math_RodrigtoR(angle, axis_u, axis_v, axis_w)
- else
-     orot = math_I3
- end if
-
-! calculate random rotation angle about fiber axis
- call random_number(rand)
- angle=rand*2.0_pReal*pi
- rrot = math_RodrigtoR(angle, as(1), as(2), as(3))
-! find random axis pependicular to fiber axis
- call random_number(x)
- call random_number(y)
- if (as(3).NE.0) then
-     z=-(x*as(1)+y*as(2))/as(3)
- else if(as(2).NE.0) then
-     z=y
-     y=-(x*as(1)+z*as(3))/as(2)
- else if(as(1).NE.0) then
-     z=x
-     x=-(y*as(2)+z*as(3))/as(1)
- end if
-! Helming uses different distribution with Bessel functions
-! therefore the gauss scatter width has to be scalled differently
- gscatter=0.95*scatter
- scale=cos(2*gscatter*inRad)
-! calculate rotation angle
-100 call random_number(rand)
- angle=sign(1.0_pReal,rand)*acos(abs(rand)*scale)*inDeg
- call random_number(rand)
- gauss=exp(-1.0*(angle/gscatter)**2)
- if(gauss.LT.rand) then
-     goto 100
- end if
-! convert angle to radians
- angle=angle*inRad
- srot = math_RodrigtoR(angle, x, y, z)
- ori=matmul(srot, matmul(rrot, orot))
-! calculate Euler angles for new rotation matrix
- call math_RtoEuler(ori, phi1,PHI,phi2)
- 
- return
- END SUBROUTINE
 
 
  END MODULE math
