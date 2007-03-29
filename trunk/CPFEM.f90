@@ -1,4 +1,4 @@
-! last modified 28.03.07
+! last modified 29.03.07
 !    ---------------------------
  MODULE CPFEM     
 !    ---------------------------
@@ -92,8 +92,6 @@
 !
  implicit none
 !
- integer(pInt) i
-!
 !    *** mpie.marc parameters ***
  allocate(CPFEM_ffn_all(3,3,mesh_maxNips,mesh_NcpElems))
  allocate(CPFEM_ffn1_all(3,3,mesh_maxNips,mesh_NcpElems))
@@ -151,7 +149,7 @@
 !***********************************************************************
 !***    This routine calculates the material behaviour    ***
 !***********************************************************************
- use prec, only: pReal,pInt
+ use prec, only: pReal,pInt, ijaco
 ! use IO, only: IO_error
  use math
  use mesh
@@ -166,11 +164,6 @@
 !    *** Local variables ***
  real(pReal)   vf, cs(6), cd(6,6), CPFEM_d(6,6), CPFEM_s(6)
  integer(pInt) jpara,nori, iori, ising, icut, iconv, CPFEM_en
-!    *** Numerical parameters ***
-!    *** How often the jacobian is recalculated ***
- integer (pInt), parameter :: ijaco = 5_pInt
-!    *** Reference shear rate for the calculation of CPFEM_timefactor ***
- real (pReal), parameter :: dgs = 0.01_pReal
 !
 !    *** Flag for recalculation of jacobian ***
  jpara = 1_pInt      
@@ -272,7 +265,7 @@
 ! This routine calculates the stress for a single component
 ! and manages the independent time incrmentation
 !********************************************************************
- use prec, only: pReal,pInt
+ use prec, only: pReal,pInt, ncut
  use constitutive, only: constitutive_Nstatevars, constitutive_state_old, constitutive_state_new, constitutive_Nresults,&
                          constitutive_results
  implicit none
@@ -287,8 +280,6 @@
  real(pReal)   Tstar_v_h(6), state_new_h(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), phi1, PHI, phi2, dt_i
  real(pReal)   delta_Fg(3,3), Fg_i(3,3), state_new_i(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), time
  integer(pInt) jcut
-!    *** Numerical parameters ***
- integer(pInt), parameter :: ncut=7_pInt
 !
  icut=0
 !
@@ -305,7 +296,7 @@
 ! save copies of Tstar_v and state_new
  Tstar_v_h = Tstar_v
  state_new_h = state_new
- call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori, ising, icut, iconv, isjaco, phi1, PHI, phi2,&
+ call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori, ising, iconv, isjaco, phi1, PHI, phi2,&
                        CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,state_old, state_new, Tstar_v)
  if ((iconv==0).AND.(ising==0)) then
 !    *** Update the differents matrices for t=t1 ***
@@ -332,7 +323,7 @@
 !    *** Start time ***
  time=dt_i
  do while (time<=CPFEM_dt)
-    call CPFEM_stress_int(cs, cd, time, cp_en,CPFEM_in, iori, ising, icut, iconv, isjaco, phi1, PHI, phi2,&
+    call CPFEM_stress_int(cs, cd, time, cp_en,CPFEM_in, iori, ising, iconv, isjaco, phi1, PHI, phi2,&
                        CPFEM_ffn, Fg_i,Fp_old,Fp_new,state_old, state_new_i, Tstar_v)
     if ((iconv==0).AND.(ising==0)) then
         time=time+dt_i
@@ -356,7 +347,7 @@
 !
 !    *** Final calculation of stress and resistences with full timestep ***
  state_new=state_new_i
- call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori, ising, icut, iconv, isjaco, phi1, PHI, phi2,&
+ call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori, ising, iconv, isjaco, phi1, PHI, phi2,&
                        CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,state_old, state_new, Tstar_v)
 !    *** Update the differents matrices for t=t1 ***
  CPFEM_Fp_new(:,:,iori,CPFEM_in,cp_en)          = Fp_new
@@ -378,7 +369,6 @@
      CPFEM_in,&   ! Integration point number
      iori,&       ! number of orintation
      ising,&      ! flag for singular matrix
-     icut,&       ! flag for too many cut backs
      iconv,&      ! flag for non convergence
      isjaco,&     ! flag whether to calculate Jacoby matrix
      phi1,&       ! Euler angle
@@ -397,23 +387,21 @@
 ! J. Mech. Phys, Solids Vol. 40, No. 3, pp. 537-569, 1992
 ! it is modified to use anisotropic elasticity matrix
 !********************************************************************
- use prec, only: pReal,pInt
+ use prec, only: pReal,pInt,pert_e
  use constitutive, only: constitutive_Nstatevars
  use math, only: math_Mandel6to33
  implicit none
 !
 !    *** Definition of variables ***
 !    *** Subroutine parameters ***
- integer(pInt) cp_en, CPFEM_in, iori, ising, icut, iconv, isjaco
+ integer(pInt) cp_en, CPFEM_in, iori, ising, iconv, isjaco
  real(pReal)   cs(6), dcs_de(6,6), dt, phi1, PHI, phi2, Fg_old(3,3), Fg_new(3,3)
  real(pReal)   Fp_old(3,3), Fp_new(3,3), state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en))
  real(pReal)   state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Tstar_v(6)
 !    *** Local variables ***
  integer(pInt) ic     
- real(pReal) Fe(3,3), R(3,3), U(3,3), dev(6), dF(3,3), Fg_pert(3,3), sgm2(6)
+ real(pReal) Fe(3,3), R(3,3), U(3,3), Fg_pert(3,3), sgm2(6)
  real(pReal) state2(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Fp2(3,3), cs1(6),E_pert(3,3)
-!    *** Numerical parameters ***
- real(pReal), parameter :: pert_ct=1.0e-5_pReal  
 !    *** Error treatment ***
  iconv  = 0
  ising  = 0   
@@ -423,7 +411,7 @@
 !    *********************************************
 
 !    *** Call Newton-Raphson method ***
- call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_old,Fg_new,Fp_old,Fp_new,Fe,state_old,state_new,Tstar_v,cs,iconv,ising)
+ call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_new,Fp_old,Fp_new,Fe,state_old,state_new,Tstar_v,cs,iconv,ising)
 ! 
 !    *** Calculation of the new orientation ***
  call math_pDecomposition(Fe,U,R,ising)
@@ -447,26 +435,26 @@
 ! Missing direct matrix perturbation
     E_pert=0
     if(ic<=3) then 
-        E_pert(ic,ic) = pert_ct
+        E_pert(ic,ic) = pert_e
     else if(ic==4)  then 
-        E_pert(1,2) = pert_ct/2
-        E_pert(2,1) = pert_ct/2
+        E_pert(1,2) = pert_e/2
+        E_pert(2,1) = pert_e/2
     else if(ic==5)  then 
-        E_pert(2,3) = pert_ct/2
-        E_pert(3,2) = pert_ct/2
+        E_pert(2,3) = pert_e/2
+        E_pert(3,2) = pert_e/2
     else if(ic==6)  then 
-        E_pert(1,3) = pert_ct/2
-        E_pert(3,1) = pert_ct/2
+        E_pert(1,3) = pert_e/2
+        E_pert(3,1) = pert_e/2
     end if
     Fg_pert=Fg_new+matmul(E_pert, Fg_old)
     sgm2=Tstar_v
     state2=state_new
 
 !    *** Calculation of the perturbated Cauchy stress ***
-    call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_old,Fg_pert,Fp_old,Fp2,Fe,state_old,state2,sgm2,cs1,iconv,ising)
+    call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_pert,Fp_old,Fp2,Fe,state_old,state2,sgm2,cs1,iconv,ising)
 !  
 !    *** Consistent tangent *** as cs is Mandel dcs_de(:,4:6) is too large by sqrt(2)
-    dcs_de(:,ic)=(cs1-cs)/pert_ct     
+    dcs_de(:,ic)=(cs1-cs)/pert_e     
  enddo
 !
  return
@@ -478,7 +466,6 @@
      cp_en,&            ! Element number
      CPFEM_in,&         ! Integration point number
      iori,&             ! number of orintation
-     Fg_old,&
      Fg_new,&
      Fp_old,&
      Fp_new,&
@@ -492,35 +479,23 @@
 !***********************************************************************
 !***        NEWTON-RAPHSON Calculation                               ***
 !***********************************************************************
- use prec, only: pReal,pInt
+ use prec, only: pReal,pInt, nouter, tol_outer, ninner, tol_inner, crite
  use constitutive, only: constitutive_Nstatevars, constitutive_HomogenizedC, constitutive_dotState
  use math
  implicit none
 !    *** Definition of variables ***
 !    *** Subroutine parameters ***
  integer(pInt) cp_en, CPFEM_in, iori, iconv, ising
- real(pReal) dt,Fg_old(3,3),Fg_new(3,3),Fp_old(3,3),Fp_new(3,3), Fe(3,3)
+ real(pReal) dt,Fg_new(3,3),Fp_old(3,3),Fp_new(3,3), Fe(3,3)
  real(pReal) state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)) 
  real(pReal) Tstar_v(6), cs(6)
 !    *** Local variables ***
- real(pReal) tol_in, tol_out, invFp_old(3,3), det, A(3,3), C_66(6,6), Lp(3,3), dLp(3,3,3,3)
- real(pReal) I3tLp(3,3), help(3,3), help1(3,3,3,3), Tstar0_v(6), R1(6), R1s(6), norm1, tdLp(3,3)
+ real(pReal) invFp_old(3,3), det, A(3,3), C_66(6,6), Lp(3,3), dLp(3,3,3,3)
+ real(pReal) I3tLp(3,3), help(3,3), help1(3,3,3,3), Tstar0_v(6), R1(6)
  real(pReal) dstate(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), R2(constitutive_Nstatevars(iori, CPFEM_in, cp_en))
- real(pReal) R2s(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), norm2, invFp_new(3,3), Estar(3,3)
- real(pReal) Estar_v(6), Jacobi(6,6), invJacobi(6,6), dTstar_v(6), help2(6,6)
+ real(pReal) R2s(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), invFp_new(3,3)
+ real(pReal) Jacobi(6,6), invJacobi(6,6), dTstar_v(6), help2(6,6)
  integer(pInt) iouter, iinner , dummy, err, i, j, k, l, m
-!    *** Numerical parameters ***
- integer(pInt), parameter :: nouter    = 50_pInt
- real(pReal),   parameter :: tol_outer = 1.0e-4_pReal
- integer(pInt), parameter :: ninner    = 2000_pInt
- real(pReal),   parameter :: tol_inner = 1.0e-3_pReal   
- real(pReal),   parameter :: crite     = 1.0e-1_pReal 
-
-! crite=eta*constitutive_s0_slip/constitutive_n_slip !ÄÄÄ
-!
-!    *** Tolerances ***
-! tol_in  = tol_inner*s0_slip !ÄÄÄ
-! tol_out = tol_outer*s0_slip !ÄÄÄ
 !
 !    *** Error treatment ***
  iconv  = 0
