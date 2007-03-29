@@ -281,9 +281,9 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  endif
  
  ! binary search in between bounds
- do while (upper-lower > 0)
+ do while (upper-lower > 1)
    center = (lower+upper)/2
-   if (lookupMap(1,center) < id) then
+  if (lookupMap(1,center) < id) then
      lower = center
    elseif (lookupMap(1,center) > id) then
      upper = center
@@ -332,6 +332,12 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  end do
 620 continue
 
+ do i=2,mesh_Nnodes
+   if( mesh_mapFEtoCPnode(1,i).lt.mesh_mapFEtoCPnode(1,i-1) )then
+     write(*,*) 'Need to sort node'
+   end if
+ end do
+
  rewind(unit)
  do
    read (unit,610,END=630) line
@@ -362,9 +368,71 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  SUBROUTINE mesh_build_CPeleMapping (unit)
 
  use prec, only: pInt
+ use IO
  implicit none
 
- integer unit
+ integer unit, i,cur_CPele,start_ele,end_ele
+ character*264 line
+ integer(pInt), dimension (41) :: pos
+
+
+610 FORMAT(A264)
+ rewind(unit)
+
+ allocate ( mesh_mapFEtoCPelem(2,mesh_NcpElems) )
+ cur_CPele = 0
+
+ do
+   read (unit,610,END=620) line
+   pos = IO_stringPos(line,1)
+   if( IO_lc(IO_stringValue(line,pos,1)) == 'hypoelastic' ) then
+     do i=1,4
+       read (unit,610,END=620) line
+     end do
+     pos = IO_stringPos(line,20)
+	 if( IO_lc(IO_Stringvalue(line,pos,2)).eq.'to' )then
+       start_ele = IO_IntValue(line,pos,1)
+	   end_ele = IO_IntValue(line,pos,3)
+	   do i=start_ele,end_ele
+	     cur_CPele = cur_CPele+1
+	     mesh_mapFEtoCPelem(1,cur_CPele) = i
+		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
+       end do
+     else
+	   do i=1,pos(1)-1
+	   	 cur_CPele = cur_CPele+1
+         mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,i)
+		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
+	   end do
+	   if( IO_lc(IO_Stringvalue(line,pos,pos(1))).ne.'c' )then
+	     cur_CPele = cur_CPele+1
+	     mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,pos(1))
+		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
+	   end if
+       do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
+		 read (unit,610,END=620) line
+		 pos = IO_stringPos(line,20)
+	     do i=1,pos(1)-1
+	   	   cur_CPele = cur_CPele+1
+           mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,i)
+		   mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
+	     end do
+	     if( IO_lc(IO_Stringvalue(line,pos,pos(1))).ne.'c' )then
+	       cur_CPele = cur_CPele+1
+	       mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,pos(1))
+		   mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
+	     end if
+       end do 
+     end if
+   end if
+ end do
+620 continue
+
+ do i=2,mesh_NcpElems
+   if( mesh_mapFEtoCPelem(1,i).lt.mesh_mapFEtoCPelem(1,i-1) )then
+     write(*,*) 'Need to sort ele'
+   end if
+ end do
 
  return
  END SUBROUTINE
@@ -375,9 +443,48 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  SUBROUTINE mesh_build_Sharedelems (unit)
 
  use prec, only: pInt
+ use IO
  implicit none
 
  integer unit
+ integer(pInt), dimension (mesh_Nnodes) :: node_count
+ integer(pInt), dimension (41) :: pos
+ integer i,j,FE_node,CP_node,Nnodes,CP_elem
+ character*264 line
+
+610 FORMAT(A264)
+ rewind(unit)
+
+ allocate ( mesh_sharedElem( 1+mesh_maxNsharedElems,mesh_Nnodes) )
+ mesh_sharedElem(:,:) = 0_pInt
+ node_count(:) = 0_pInt
+
+ do
+   read (unit,610,END=620) line
+   pos = IO_stringPos(line,1)
+   if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
+     read (unit,610,END=620) line  ! Garbage line
+	 do i=1,mesh_Nelems
+	   read (unit,610,END=620) line
+	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
+	   Nnodes = FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
+	   CP_elem = mesh_FEasCP('elem',IO_IntValue(line,pos,1))
+	   if( CP_elem.ne.0 )then
+	     do j=1,Nnodes
+	       FE_node = IO_IntValue (line,pos,j+2)
+           CP_node = mesh_FEasCP('node',FE_node)
+	       node_count( CP_node )= node_count( CP_node )+1
+		   mesh_sharedElem(node_count(CP_node)+1,CP_node) = CP_elem
+	     end do
+	   end if
+     end do
+   end if
+ end do
+620 continue
+
+ do i=1,mesh_Nnodes
+   mesh_sharedElem(1,i) = node_count(i)
+ end do
 
  return
  END SUBROUTINE
