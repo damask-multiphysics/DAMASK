@@ -316,6 +316,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
 
  rewind(unit)
  allocate ( mesh_mapFEtoCPnode(2,mesh_Nnodes) )
+ mesh_mapFEtoCPnode(:,:) = 0_pInt
  node_count(:) = 0_pInt
 
  do
@@ -380,7 +381,8 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  rewind(unit)
 
  allocate ( mesh_mapFEtoCPelem(2,mesh_NcpElems) )
- cur_CPele = 0
+ mesh_mapFEtoCPelem(:,:) = 0_pInt
+ cur_CPele = 0_pInt
 
  do
    read (unit,610,END=620) line
@@ -399,30 +401,20 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
 		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
        end do
      else
-	   do i=1,pos(1)-1
-	   	 cur_CPele = cur_CPele+1
-         mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,i)
-		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
-	   end do
-	   if( IO_lc(IO_Stringvalue(line,pos,pos(1))).ne.'c' )then
-	     cur_CPele = cur_CPele+1
-	     mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,pos(1))
-		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
-	   end if
        do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
-		 read (unit,610,END=620) line
-		 pos = IO_stringPos(line,20)
 	     do i=1,pos(1)-1
 	   	   cur_CPele = cur_CPele+1
            mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,i)
 		   mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
 	     end do
-	     if( IO_lc(IO_Stringvalue(line,pos,pos(1))).ne.'c' )then
-	       cur_CPele = cur_CPele+1
-	       mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,pos(1))
-		   mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
-	     end if
-       end do 
+		 read (unit,610,END=620) line
+		 pos = IO_stringPos(line,20)
+       end do
+	   do i=1,pos(1)
+	   	 cur_CPele = cur_CPele+1
+         mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,i)
+		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
+	   end do
      end if
    end if
  end do
@@ -504,6 +496,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
 
  rewind(unit)
  allocate ( mesh_node (3,mesh_Nnodes) )
+ mesh_node(:,:) = 0_pInt
 
 610 FORMAT(A264)
 
@@ -532,16 +525,100 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  SUBROUTINE mesh_build_element (unit)
 
  use prec, only: pInt
+ use IO
  implicit none
 
  integer unit
+ integer FE_node,Nnodes,i,j,sv,ele,val
+ integer(pInt), dimension (41) :: pos
+ logical not_found
+ character*264 line
+
+ rewind(unit)
+ allocate ( mesh_element (mesh_Nelems,4+mesh_maxNnodes) )
+ mesh_element(:,:) = 0_pInt
+
+610 FORMAT(A264)
+
+ do
+   read (unit,610,END=620) line
+   pos = IO_stringPos(line,2)
+
+   if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
+     read (unit,610,END=620) line  ! Garbage line
+	 do i=1,mesh_Nelems
+	   read (unit,610,END=620) line
+	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
+	   Nnodes = FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
+	   mesh_element (i,1) = IO_IntValue (line,pos,1)
+	   mesh_element (i,2) = IO_IntValue (line,pos,2)
+       do j=1,Nnodes
+         FE_node = IO_IntValue (line,pos,j+2)
+!         CP_node = mesh_FEasCP('node',FE_node)
+         mesh_element(i,j+4) = FE_node
+	   end do
+     end do
+   end if
+
+   if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
+       (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) then
+     read (unit,610,END=620) line
+	 pos = IO_stringPos(line,66)
+	 sv = IO_IntValue (line,pos,1)
+	 if( (sv.ne.2).and.(sv.ne.3) )then
+	   write(*,*) 'Major PROBLEM!!  -> Invalid state variable found'
+	   write(*,*) sv
+	 end if
+
+     read (unit,610,END=620) line
+	 read(UNIT=line(2:2),FMT='(I)') val
+
+     read (unit,610,END=620) line
+	 pos = IO_stringPos(line,20)
+	 
+     do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
+	   do i=1,pos(1)-1
+	     ele = IO_IntValue(line,pos,i)
+	     not_found = .true.
+	     j=1
+	     do while( not_found )
+	       if( mesh_element(j,1).eq.ele )then
+		     not_found = .false.
+		     ele = j
+		   end if
+		   j=j+1
+	     end do
+         mesh_element(ele,sv+1) = 40 
+	   end do
+       read (unit,610,END=620) line
+	   pos = IO_stringPos(line,20)
+     end do
+     do i=1,pos(1)
+	   ele = IO_IntValue(line,pos,i)
+	   not_found = .true.
+	   j=1
+	   do while( not_found )
+	     if( mesh_element(j,1).eq.ele )then
+		   not_found = .false.
+		   ele = j
+		 end if
+		 j=j+1
+	   end do
+       mesh_element(ele,sv+1) = 40 
+	 end do
+
+   end if
+
+ end do
+
+620 continue
 
  return
  END SUBROUTINE
 
  
- !********************************************************************
-! Get global variables (like # ele, # nodes, # ele types, # CP ele)
+!********************************************************************
+! Get global variables (#ele, #nodes, #ele types, #CP ele, max # nodes per element)
 !********************************************************************
  SUBROUTINE mesh_get_globals (unit)
 
@@ -549,7 +626,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  use IO
  implicit none
 
- integer(pInt) unit,i,pos(41)
+ integer(pInt) unit,i,pos(41),Nnodes
  character*264 line
 
 610 FORMAT(A264)
@@ -567,6 +644,10 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
        mesh_Nnodes = IO_IntValue (line,pos,4)
      case('elements')
        mesh_NelemTypes = mesh_NelemTypes+1
+	   Nnodes = FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
+	   if( Nnodes.gt.mesh_maxNnodes )then
+	     mesh_maxNnodes = Nnodes
+	   end if
      case('hypoelastic')
        do i=1,4
          read (unit,610,END=620) line
