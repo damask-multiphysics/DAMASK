@@ -205,6 +205,7 @@ integer(pInt), dimension(:)    , allocatable :: texture_Ngrains
 integer(pInt), dimension(:)    , allocatable :: texture_NGauss
 integer(pInt),dimension(:)     , allocatable :: texture_NFiber
 integer(pInt),dimension(:)     , allocatable :: texture_NRandom
+integer(pInt),dimension(:)     , allocatable :: texture_totalNgrains
 real(pReal), dimension(:,:,:)  , allocatable :: texture_Gauss
 real(pReal), dimension(:,:,:)  , allocatable :: texture_Fiber
 real(pReal), dimension(:,:,:,:), allocatable :: constitutive_EulerAngles
@@ -740,123 +741,125 @@ subroutine constitutive_Assignment()
 !* This subroutine assign material parameters according to ipc,ip,el *
 !*********************************************************************
 use prec, only: pReal,pInt
-use mesh, only: mesh_NcpElems,FE_Nips,mesh_maxNips,mesh_element
-use CPFEM, only: CPFEM_Fp_old
+use mesh, only: mesh_NcpElems,FE_Nips,FE_mapElemtype,mesh_maxNips,mesh_element
+use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri
+!use CPFEM, only: CPFEM_Fp_old
 implicit none
 
 !* Definition of variables
-integer(pInt) i,j,k,l,volfrac,Ngrains
-integer(pInt) matID,texID,multiplicity
+integer(pInt) i,j,k,l,m,g,s,Ngrains
+integer(pInt) matID,texID
+integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,sumVolfrac
+real(pReal), dimension(3,4) :: Euler
 
 !* Check for random components
-do i=1,texture_maxN
-   if (texture_ODFfile(i)=='') then
-      volfrac=sum(texture_gauss(5,:,i))+sum(texture_fiber(6,:,i))
-      if (volfrac<1.0_pReal) then
-         texture_NRandom(i)=1 
-      endif
+do texID=1,texture_maxN
+   if (texture_ODFfile(texID)=='') then
+      sumVolfrac(texID) = sum(texture_gauss(5,:,texID))+sum(texture_fiber(6,:,texID))
+      if (sumVolfrac(texID)<1.0_pReal) texture_NRandom(texID) = 1_pInt
+      select case (texture_symmetry(texID))
+	  case ('orthotropic')
+		   Nsym(texID) = 4
+	  case ('monoclinic')
+		   Nsym(texID) = 2
+	  case default
+		  Nsym(texID) = 1
+	  end select
+      Ncomponents(texID) = texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)
+      multiplicity(texID) = max(1_pInt,texture_Ngrains(texID)/Ncomponents(texID)/Nsym(texID))
+	  if (mod(texture_Ngrains(texID),Ncomponents(texID)*Nsym(texID)) /= 0_pInt) then
+       texture_Ngrains(texID) = multiplicity(texID)*Ncomponents(texID)*Nsym(texID)
+	   write (6,*) 'changed Ngrains to',texture_Ngrains(texID),' for texture',texID
+	  endif
    endif
 enddo
 
-!* Multiplicity of orientations per texture
-!* Construction of optimized constitutive_Ngrains 
-allocate(constitutive_Ngrains(mesh_maxNips,mesh_NcpElems)) ; constitutive_Ngrains=0_pInt
+!* Check for texture_totalNgrains
+allocate(texture_totalNgrains(texture_maxN)) ; texture_totalNgrains=0_pInt
 do i=1,mesh_NcpElems
-   matID=mesh_element(3,i)
    texID=mesh_element(4,i)
-   if (texture_ODFfile(texID)/='') then
-      constitutive_Ngrains = texture_Ngrains(texID)
-   else
-      multiplicity=texture_Ngrains(texID)/(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))
-      do j=1,FE_Nips(mesh_element(2,i)) 
-	     if ((texture_Ngrains(texID)==multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)))&
-		    .AND.(texture_symmetry(texID)=='orthotropic')) then
-			constitutive_Ngrains(j,i)=texture_Ngrains(texID)*4.0_pReal
-		 elseif ((texture_Ngrains(texID)==multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)))&
-		        .AND.(texture_symmetry(texID)=='isotropic')) then
-			constitutive_Ngrains(j,i)=texture_Ngrains(texID) 	
-	     elseif ((texture_Ngrains(texID).NE.multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)))&
-		        .AND.(texture_symmetry(texID)=='orthotropic')) then
-			constitutive_Ngrains(j,i)=multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))*4.0_pReal
-	     elseif ((texture_Ngrains(texID).NE.multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)))&
-		        .AND.(texture_symmetry(texID)=='isotropic')) then
-			constitutive_Ngrains(j,i)=multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))    
-	     endif     
-      enddo
-   endif
+   texture_totalNgrains(texID) = texture_totalNgrains(texID) + FE_Nips(FE_mapElemtype(mesh_element(2,i)))*texture_Ngrains(texID)
 enddo
-!* Allocate arrays
-constitutive_maxNgrains=maxval(constitutive_Ngrains)
-allocate(constitutive_matID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_matID=0_pInt
-allocate(constitutive_texID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_texID=0_pInt
-allocate(constitutive_MatVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_MatVolFrac=0.0_pReal
-allocate(constitutive_TexVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_TexVolFrac=0.0_pReal
-allocate(constitutive_EulerAngles(3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_EulerAngles=0.0_pReal
-!* State variables
+
+! generate hybridIA samplings for ODFfile textures to later draw from these populations
+! needs texture_sampleID(texID) which gets inc for each grain assigned
+
+!* Arrays allocation
+constitutive_maxNgrains=maxval(texture_Ngrains)
 constitutive_maxNstatevars=material_maxNslip
-allocate(constitutive_Nstatevars(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_Nstatevars=0_pInt
+allocate(constitutive_Ngrains(mesh_maxNips,mesh_NcpElems)) ; constitutive_Ngrains=0_pInt
+allocate(constitutive_matID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_matID=0_pInt
+allocate(constitutive_texID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_texID=0_pInt
+allocate(constitutive_MatVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_MatVolFrac=0.0_pReal
+allocate(constitutive_TexVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_TexVolFrac=0.0_pReal
+allocate(constitutive_Nstatevars(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nstatevars=0_pInt
 allocate(constitutive_state_old(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_old=0.0_pReal
 allocate(constitutive_state_new(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_new=0.0_pReal
-!* Results
-allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_Nresults=0_pInt
+allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nresults=0_pInt
 
 !* Assignment
+g = 0_pInt
 do i=1,mesh_NcpElems
    matID=mesh_element(3,i)
    texID=mesh_element(4,i)
    if (texture_ODFfile(texID)=='') then
-      multiplicity=texture_Ngrains(texID)/(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))
-      do j=1,FE_Nips(mesh_element(2,i))     	  
-	     !* Gauss component
-	     do k=1,multiplicity*texture_NGauss(texID),multiplicity
-	        do l=k,k+multiplicity
-               constitutive_matID(l,j,i)=matID
-		       constitutive_texID(l,j,i)=texID
-               constitutive_MatVolFrac(l,j,i)=1.0_pReal	
-		       constitutive_TexVolFrac(l,j,i)=texture_Gauss(6,k,texID)/multiplicity
-			   !* Use of sample_Gauss
-               constitutive_EulerAngles(:,l,j,i)=sample_Gauss(texture_Gauss(1:3,k,texID),texture_Gauss(4,k,texID))
-			   !* Rotation matrix
-			   CPFEM_Fp_old(l,j,i)=math_EulertoR(constitutive_EulerAngles(:,l,j,i))		 	 
+      do j=1,FE_Nips(FE_mapElemtype(mesh_element(2,i)))
+	     do m = 1,multiplicity(texID)
+            ! *** gauss ***
+		    do k = 1,texture_nGauss(texID)
+               Euler(:,1) = math_sampleGaussOri(texture_Gauss(1:3,k,texID),texture_Gauss(4,k,texID))
+			   Euler(:,2:4) = math_symmetricEulers(texture_symmetry(texID),Euler(:,1)) !always return 3x3 even if empty!!!
+               do s = 1,Nsym(texID)
+			      g = g+1_pInt
+                  constitutive_matID(g,j,i)=matID
+		          constitutive_texID(g,j,i)=texID
+                  constitutive_MatVolFrac(g,j,i)=1.0_pReal	
+		          constitutive_TexVolFrac(g,j,i)=texture_Gauss(5,k,texID)/multiplicity(texID)/Nsym(texID)
+!			      CPFEM_Fp_old(:,:,g,j,i) = math_EulerToR(Euler(:,s))
+               enddo
 		    enddo
-	     enddo
-	     !* Fiber component
-	     do k=1+texture_NGauss(texID),multiplicity*texture_NFiber(texID)+texture_NGauss(texID),multiplicity
-	        do l=k,k+multiplicity
-               constitutive_matID(l,j,i)=matID
-		       constitutive_texID(l,j,i)=texID
-               constitutive_MatVolFrac(l,j,i)=1.0_pReal	
-		       constitutive_TexVolFrac(l,j,i)=texture_Fiber(6,k,texID)/multiplicity 
-			   !* Use of sample_Fiber
-               constitutive_EulerAngles(:,l,j,i)=sample_Fiber(texture_Fiber(1:4,k,texID),texture_Fiber(5,k,texID))
-			   !* Rotation matrix
-			   CPFEM_Fp_old(l,j,i)=math_EulertoR(constitutive_EulerAngles(:,l,j,i))	 	 
+		    ! *** fiber ***
+		    do k = 1,texture_nFiber(texID)
+               Euler(:,1) = math_sampleFiberOri(texture_Fiber(1:2,k,texID),texture_Fiber(3:4,k,texID),texture_Fiber(5,k,texID))
+			   Euler(:,2:4) = math_symmetricEulers(texture_symmetry(texID),Euler(:,1)) !always return 3x3 even if empty!!!
+               do s = 1,Nsym(texID)
+			      g = g+1_pInt
+                  constitutive_matID(g,j,i)=matID
+		          constitutive_texID(g,j,i)=texID
+                  constitutive_MatVolFrac(g,j,i)=1.0_pReal	
+		          constitutive_TexVolFrac(g,j,i)=texture_Fiber(6,k,texID)/multiplicity(texID)/Nsym(texID)
+!			      CPFEM_Fp_old(:,:,g,j,i) = math_EulerToR(Euler(:,s))
+               enddo
 		    enddo
-	     enddo
-		 !* Random component
-		 do k=1+texture_NGauss(texID)+texture_NFiber(texID),constitutive_Ngrains(j,i),multiplicity
-	        do l=k,k+multiplicity
-               constitutive_matID(l,j,i)=matID
-		       constitutive_texID(l,j,i)=texID
-               constitutive_MatVolFrac(l,j,i)=1.0_pReal	
-		       constitutive_TexVolFrac(l,j,i)=(1.0_pReal-texture_Gauss(5,k,texID)-texture_Fiber(6,k,texID))/multiplicity
-			   !* Use of sample_Random 
-			   constitutive_EulerAngles(:,l,j,i)=sample_Random()
-			   !* Rotation matrix
-			   CPFEM_Fp_old(l,j,i)=math_EulertoR(constitutive_EulerAngles(:,l,j,i))		 	 
+		    ! *** random ***
+		    do k = 1,texture_nRandom(texID)
+               Euler(:,1) = math_sampleRandomOri()
+			   Euler(:,2:4) = math_symmetricEulers(texture_symmetry(texID),Euler(:,1)) !always return 3x3 even if empty!!!
+               do s = 1,Nsym(texID)
+			      g = g+1_pInt
+                  constitutive_matID(g,j,i)=matID
+		          constitutive_texID(g,j,i)=texID
+                  constitutive_MatVolFrac(g,j,i)=1.0_pReal	
+		          constitutive_TexVolFrac(g,j,i)=(1.0_pReal-sumVolfrac(texID))/multiplicity(texID)/Nsym(texID)
+!			      CPFEM_Fp_old(:,:,g,j,i) = math_EulerToR(Euler(:,s))
+               enddo
 		    enddo
-	     enddo
-	  enddo ! End of ip
-   endif		 		
+		 enddo  ! multiplicity
+	 enddo ! ip
+   else
+     do j=1,FE_Nips(FE_mapElemtype(mesh_element(2,i)))
+	    do g=1,texture_Ngrains(texID)
+           constitutive_matID(g,j,i)=matID
+		   constitutive_texID(g,j,i)=texID
+           constitutive_MatVolFrac(g,j,i)=1.0_pReal	
+		   constitutive_TexVolFrac(g,j,i)=1.0_pReal/texture_Ngrains(texID)
+		   CPFEM_Fp_old(:,:,g,j,i) = math_EulerToR(hybridIA_population(:,texture_hybridIAsample(texID)+g,texID))
+		enddo
+        texture_hybridIAsample(texID) = texture_hybridIAsample(texID) + texture_Ngrains(textID)
+      enddo
+   endif 
 enddo ! End of cp_element
 
 ! MISSING case of symmetry
