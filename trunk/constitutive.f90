@@ -741,7 +741,7 @@ subroutine constitutive_Assignment()
 !*********************************************************************
 use prec, only: pReal,pInt
 use mesh, only: mesh_NcpElems,FE_Nips,mesh_maxNips,mesh_element
-!use CPFEM, only: CPFEM_Fp_old
+use CPFEM, only: CPFEM_Fp_old
 implicit none
 
 !* Definition of variables
@@ -769,10 +769,18 @@ do i=1,mesh_NcpElems
    else
       multiplicity=texture_Ngrains(texID)/(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))
       do j=1,FE_Nips(mesh_element(2,i)) 
-	     if (texture_Ngrains(texID)==multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))) then
-	        constitutive_Ngrains(j,i)=texture_Ngrains(texID)
-	     else
-            constitutive_Ngrains(j,i)=multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))
+	     if ((texture_Ngrains(texID)==multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)))&
+		    .AND.(texture_symmetry(texID)=='orthotropic')) then
+			constitutive_Ngrains(j,i)=texture_Ngrains(texID)*4.0_pReal
+		 elseif ((texture_Ngrains(texID)==multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)))&
+		        .AND.(texture_symmetry(texID)=='isotropic')) then
+			constitutive_Ngrains(j,i)=texture_Ngrains(texID) 	
+	     elseif ((texture_Ngrains(texID).NE.multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)))&
+		        .AND.(texture_symmetry(texID)=='orthotropic')) then
+			constitutive_Ngrains(j,i)=multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))*4.0_pReal
+	     elseif ((texture_Ngrains(texID).NE.multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)))&
+		        .AND.(texture_symmetry(texID)=='isotropic')) then
+			constitutive_Ngrains(j,i)=multiplicity*(texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID))    
 	     endif     
       enddo
    endif
@@ -815,11 +823,8 @@ do i=1,mesh_NcpElems
 		       constitutive_texID(l,j,i)=texID
                constitutive_MatVolFrac(l,j,i)=1.0_pReal	
 		       constitutive_TexVolFrac(l,j,i)=texture_Gauss(6,k,texID)/multiplicity
-               constitutive_phi1(l,j,i)=texture_Gauss(1,k,texID)
-               constitutive_phi(l,j,i)=texture_Gauss(2,k,texID)
-               constitutive_phi2(l,j,i)=texture_Gauss(3,k,texID)
 			   !* Use of sample_Gauss
-               constitutive_EulerAngles(:,l,j,i)=sample_Gauss(texture_Gauss(1:3,k,texID),texture_Gauss(4.k,texID))
+               constitutive_EulerAngles(:,l,j,i)=sample_Gauss(texture_Gauss(1:3,k,texID),texture_Gauss(4,k,texID))
 			   !* Rotation matrix
 			   CPFEM_Fp_old(l,j,i)=math_EulertoR(constitutive_EulerAngles(:,l,j,i))		 	 
 		    enddo
@@ -885,24 +890,6 @@ constitutive_homogenizedC=constitutive_MatVolFrac(ipc,ip,el)*material_Cslip_66(:
 
 return
 end function
-
-
-!subroutine constitutive_InitFp(CPFEM_Fp_old)
-!*********************************************************************
-!* This function reads the material and texture input file           *
-!* INPUT:                                                            *
-!*  - CPFEM_Fp_old : old plastic deformation gradient                *
-!*********************************************************************
-!use prec, only: pReal,pInt
-!use CPFEM, only: CPFEM_Fp_old
-!implicit none
-
-!* Definition of variables
-
-!* Initialization of Fp_old with starting orientation
-
-
-!end subroutine
 
 
 subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_m,ipc,ip,el)
