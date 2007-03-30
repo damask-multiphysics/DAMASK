@@ -529,10 +529,10 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  implicit none
 
  integer unit
- integer FE_node,Nnodes,i,j,sv,ele,val
+ integer FE_node,Nnodes,i,j,sv,ele,val,start_ele,end_ele
  integer(pInt), dimension (41) :: pos
  logical not_found
- character*264 line
+ character*264 line,line2
 
  rewind(unit)
  allocate ( mesh_element (mesh_Nelems,4+mesh_maxNnodes) )
@@ -571,42 +571,73 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
 	 end if
 
      read (unit,610,END=620) line
-	 read(UNIT=line(2:2),FMT='(I)') val
+	 val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1))
 
-     read (unit,610,END=620) line
-	 pos = IO_stringPos(line,20)
-	 
-     do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
-	   do i=1,pos(1)-1
-	     ele = IO_IntValue(line,pos,i)
-	     not_found = .true.
-	     j=1
-	     do while( not_found )
-	       if( mesh_element(j,1).eq.ele )then
-		     not_found = .false.
-		     ele = j
-		   end if
-		   j=j+1
-	     end do
-         mesh_element(ele,sv+1) = 40 
-	   end do
+	 line2 = line
+
+     do while( line.eq.line2 )
+
+       line2 = line
        read (unit,610,END=620) line
 	   pos = IO_stringPos(line,20)
-     end do
-     do i=1,pos(1)
-	   ele = IO_IntValue(line,pos,i)
-	   not_found = .true.
-	   j=1
-	   do while( not_found )
-	     if( mesh_element(j,1).eq.ele )then
-		   not_found = .false.
-		   ele = j
-		 end if
-		 j=j+1
-	   end do
-       mesh_element(ele,sv+1) = 40 
-	 end do
+	   if ( IO_lc(IO_Stringvalue(line,pos,2)).eq.'to' )then
+         start_ele = IO_IntValue(line,pos,1)
+	     end_ele = IO_IntValue(line,pos,3)
+	     do i=start_ele,end_ele
+	       not_found = .true.
+	       j=1
+	       do while( not_found )
+	         if( mesh_element(j,1).eq.i )then
+		       not_found = .false.
+		       ele = i
+		     end if
+		     j=j+1
+	       end do
+           mesh_element(ele,sv+1) = val 
+         end do        
+	   else
 
+         do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
+	       do i=1,pos(1)-1
+	         ele = IO_IntValue(line,pos,i)
+	         not_found = .true.
+	         j=1
+	         do while( not_found )
+	           if( mesh_element(j,1).eq.ele )then
+		         not_found = .false.
+		         ele = j
+		       end if
+		       j=j+1
+	         end do
+             mesh_element(ele,sv+1) = val 
+	       end do
+           read (unit,610,END=620) line
+	       pos = IO_stringPos(line,20)
+         end do
+         do i=1,pos(1)
+	       ele = IO_IntValue(line,pos,i)
+	       not_found = .true.
+	       j=1
+	       do while( not_found )
+	         if( mesh_element(j,1).eq.ele )then
+		       not_found = .false.
+		       ele = j
+		     end if
+		     j=j+1
+	       end do
+           mesh_element(ele,sv+1) = val 
+	     end do
+
+       end if
+       read (unit,610,END=620) line  ! Garbage line
+       read (unit,610,END=620) line
+     end do
+ 
+   end if
+   pos = IO_stringPos(line,20)
+   if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
+       (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) then
+	  backspace(unit)
    end if
 
  end do
