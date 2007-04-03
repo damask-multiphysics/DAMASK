@@ -47,9 +47,9 @@
 
  CONTAINS
 
-!    ***  Initialize random number generator     ***
-!    *** for later use in mpie_fiber and mpie_disturbOri ***
-
+!**************************************************************************
+! initialization of module
+!**************************************************************************
  SUBROUTINE math_init ()
 
  use prec, only: pReal,pInt
@@ -62,13 +62,74 @@
  call get_seed(seed)
  call halton_seed_set(seed)
  call halton_ndim_set(3)
-  
- poop = dabs((/1.0_8,2.34_8,534.2_8/))
- 
+   
  END SUBROUTINE
  
+!**************************************************************************
+! Quicksort algorithm for two-dimensional integer arrays
+!
+! Sorting is done with respect to array(1,:)
+! and keeps array(2:N,:) linked to it.
+!**************************************************************************
+ RECURSIVE SUBROUTINE qsort(a, istart, iend)
+
+ implicit none
+ integer(pInt), dimension(*,*) :: a
+ integer(pInt) :: istart,iend,ipivot
+
+ if (istart < iend) then
+   ipivot = math_partition(a,istart, iend)
+   call qsort(a, istart, ipivot)
+   call qsort(a, ipivot+1, iend)
+ endif
+ return
+  
+ END SUBROUTINE
+
+!**************************************************************************
+! Partitioning required for quicksort
+!**************************************************************************
+ integer(pInt) FUNCTION math_partition(a, istart, iend)
+
+ implicit none
+ integer(pInt), dimension(*,*) :: a
+ integer(pInt) :: istart,iend,d,i,j,k,x,tmp
+
+ d = size(a,1) ! number of linked data
+! set the starting and ending points, and the pivot point
+ i = istart 
+ j = iend 
+ x = a(1,istart)
+ do
+! find the first element on the right side less than or equal to the pivot point
+   do j = j, istart, -1
+     if (a(1,j) <= x) exit
+   enddo
+! find the first element on the left side greater than the pivot point
+   do i = i, iend
+     if (a(1,i) > x) exit
+   enddo
+   if (i < j ) then ! if the indexes do not cross, exchange values
+     do k = 1,d
+      tmp = a(k,i)
+      a(k,i) = a(k,j)
+      a(k,j) = tmp
+     enddo
+   else            ! if they do cross, exchange left value with pivot and return with the partition index
+     do k = 1,d
+      tmp = a(k,istart)
+      a(k,istart) = a(k,j)
+      a(k,j) = tmp
+     enddo
+     partition = j
+     return
+   endif
+ enddo
+
+ END FUNCTION
  
- !**************************************************************************
+
+!**************************************************************************
 ! second rank identity tensor of specified dimension
 !**************************************************************************
  FUNCTION math_identity2nd(dimen)  
