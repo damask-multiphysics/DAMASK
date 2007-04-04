@@ -623,7 +623,7 @@ subroutine constitutive_Parse_MatTexDat(filename)
 !*********************************************************************
 use prec, only: pReal,pInt
 use IO, only: IO_error
-!use math, only: math_Mandel3333to66, math_Voigt66to3333
+use math, only: math_Mandel3333to66, math_Voigt66to3333
 implicit none
 
 !* Definition of variables
@@ -631,7 +631,9 @@ character(len=*) filename
 character(len=80) part,formerPart
 integer(pInt) sectionCount,i,j,k
 
+!-----------------------------
 !* First reading: number of materials and textures
+!-----------------------------
 !* determine material_maxN and texture_maxN from last respective parts
 open(1,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
 part = '_dummy_'
@@ -645,7 +647,7 @@ do while (part/='')
         texture_maxN = sectionCount
    end select
 enddo
-!* Arrays allocation
+!* Array allocation
 allocate(material_CrystalStructure(material_maxN))		  ; material_CrystalStructure=0_pInt
 allocate(material_Nslip(material_maxN))					  ; material_Nslip=0_pInt
 allocate(material_C11(material_maxN))					  ; material_C11=0.0_pReal
@@ -667,7 +669,9 @@ allocate(texture_NGauss(texture_maxN)) ; texture_NGauss=0_pInt
 allocate(texture_NFiber(texture_maxN)) ; texture_NFiber=0_pInt
 allocate(texture_NRandom(texture_maxN)) ; texture_NRandom=0_pInt
 
+!-----------------------------
 !* Second reading: number of Gauss and Fiber
+!-----------------------------
 rewind(1)
 part = '_dummy_'
 do while (part/='')
@@ -678,13 +682,15 @@ do while (part/='')
         part = constitutive_Parse_UnknownPart(1)
    end select
 enddo
-!* Arrays allocation
+!* Array allocation
 texture_maxNGauss=maxval(texture_NGauss)
 texture_maxNFiber=maxval(texture_NFiber)
 allocate(texture_Gauss(5,texture_maxNGauss,texture_maxN)) ; texture_Gauss=0.0_pReal
 allocate(texture_Fiber(6,texture_maxNFiber,texture_maxN)) ; texture_Fiber=0.0_pReal
 
+!-----------------------------
 !* Third reading: materials and textures are stored
+!-----------------------------
 rewind(1)
 part='_dummy_'
 do while (part/='')
@@ -725,7 +731,7 @@ do i=1,material_maxN
         material_Cslip_66(5,5,i)=material_C44(i)
         material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))  
    end select
-!   material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
+   material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
 enddo
 
 
@@ -741,52 +747,71 @@ subroutine constitutive_Assignment()
 !* This subroutine assign material parameters according to ipc,ip,el *
 !*********************************************************************
 use prec, only: pReal,pInt
+use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,math_symmetricEulers,math_EulerToR
 use mesh, only: mesh_NcpElems,FE_Nips,FE_mapElemtype,mesh_maxNips,mesh_element
-use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri
-!use CPFEM, only: CPFEM_Fp_old
+use IO,   only: IO_hybridIA
+use CPFEM, only: CPFEM_Fp_old
 implicit none
 
 !* Definition of variables
-integer(pInt) i,j,k,l,m,g,s,Ngrains
+integer(pInt) e,i,j,k,l,m,o,g,s,Ngrains
 integer(pInt) matID,texID
-integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,sumVolfrac
-real(pReal), dimension(3,4) :: Euler
+integer(pInt), dimension(:,:,:), allocatable :: hybridIA_population
+integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,sumVolfrac,ODFmap,sampleCount
+real(pReal), dimension(3,4*(1+texture_maxNGauss+texture_maxNfiber)) :: Euler
+real(pReal), dimension(4*(1+texture_maxNGauss+texture_maxNfiber)) :: texVolfrac
 
-!* Check for random components
+! process textures
+o = 0_pInt       ! ODF counter
+ODFmap = 0_pInt  ! blank mapping
+sampleCount = 0_pInt  ! count orientations assigned per texture
+
 do texID=1,texture_maxN
    if (texture_ODFfile(texID)=='') then
       sumVolfrac(texID) = sum(texture_gauss(5,:,texID))+sum(texture_fiber(6,:,texID))
-      if (sumVolfrac(texID)<1.0_pReal) texture_NRandom(texID) = 1_pInt
-      select case (texture_symmetry(texID))
+      if (sumVolfrac(texID)<1.0_pReal) texture_NRandom(texID) = 1_pInt  ! check whether random component missing
+      select case (texture_symmetry(texID))                             ! set symmetry factor
 	  case ('orthotropic')
-		   Nsym(texID) = 4
+		   Nsym(texID) = 4_pInt
 	  case ('monoclinic')
-		   Nsym(texID) = 2
+		   Nsym(texID) = 2_pInt
 	  case default
-		  Nsym(texID) = 1
+	 	   Nsym(texID) = 1_pInt
 	  end select
       Ncomponents(texID) = texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)
-      multiplicity(texID) = max(1_pInt,texture_Ngrains(texID)/Ncomponents(texID)/Nsym(texID))
-	  if (mod(texture_Ngrains(texID),Ncomponents(texID)*Nsym(texID)) /= 0_pInt) then
-       texture_Ngrains(texID) = multiplicity(texID)*Ncomponents(texID)*Nsym(texID)
-	   write (6,*) 'changed Ngrains to',texture_Ngrains(texID),' for texture',texID
-	  endif
+   else      ! hybrid IA
+      o = o+1
+	  ODFmap(texID) = o             ! remember mapping
+      Ncomponents(texID) = 1_pInt   ! single "component"
+      Nsym(texID) = 1_pInt          ! no symmetry (use full ODF instead)
+   endif
+! adjust multiplicity and number of grains per IP of components
+   multiplicity(texID) = max(1_pInt,texture_Ngrains(texID)/Ncomponents(texID)/Nsym(texID))
+   if (mod(texture_Ngrains(texID),Ncomponents(texID)*Nsym(texID)) /= 0_pInt) then
+      texture_Ngrains(texID) = multiplicity(texID)*Ncomponents(texID)*Nsym(texID)
+      write (6,*) 'changed Ngrains to',texture_Ngrains(texID),' for texture',texID
    endif
 enddo
 
-!* Check for texture_totalNgrains
+!* publish globals
+constitutive_maxNgrains = maxval(texture_Ngrains)
+constitutive_maxNstatevars = material_maxNslip
+
+!* calc texture_totalNgrains
 allocate(texture_totalNgrains(texture_maxN)) ; texture_totalNgrains=0_pInt
 do i=1,mesh_NcpElems
-   texID=mesh_element(4,i)
+   texID = mesh_element(4,i)
    texture_totalNgrains(texID) = texture_totalNgrains(texID) + FE_Nips(FE_mapElemtype(mesh_element(2,i)))*texture_Ngrains(texID)
 enddo
 
 ! generate hybridIA samplings for ODFfile textures to later draw from these populations
-! needs texture_sampleID(texID) which gets inc for each grain assigned
+allocate(hybridIA_population(3,maxval(texture_totalNgrains,ODFmap /= 0),o))
+do texID = 1,texture_maxN
+   if (ODFmap(texID) > 0) &
+      hybridIA_population(:,:,ODFmap(texID)) = IO_hybridIA(texture_totalNgrains(texID),texture_ODFfile(texID))
+enddo
 
-!* Arrays allocation
-constitutive_maxNgrains=maxval(texture_Ngrains)
-constitutive_maxNstatevars=material_maxNslip
+!* Array allocation
 allocate(constitutive_Ngrains(mesh_maxNips,mesh_NcpElems)) ; constitutive_Ngrains=0_pInt
 allocate(constitutive_matID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_matID=0_pInt
 allocate(constitutive_texID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_texID=0_pInt
@@ -800,82 +825,65 @@ constitutive_state_new=0.0_pReal
 allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nresults=0_pInt
 
 !* Assignment
-g = 0_pInt
-do i=1,mesh_NcpElems
-   matID=mesh_element(3,i)
-   texID=mesh_element(4,i)
-   if (texture_ODFfile(texID)=='') then
-      do j=1,FE_Nips(FE_mapElemtype(mesh_element(2,i)))
-	     do m = 1,multiplicity(texID)
-            ! *** gauss ***
-		    do k = 1,texture_nGauss(texID)
-               Euler(:,1) = math_sampleGaussOri(texture_Gauss(1:3,k,texID),texture_Gauss(4,k,texID))
-			   Euler(:,2:4) = math_symmetricEulers(texture_symmetry(texID),Euler(:,1)) !always return 3x3 even if empty!!!
-               do s = 1,Nsym(texID)
-			      g = g+1_pInt
-                  constitutive_matID(g,j,i)=matID
-		          constitutive_texID(g,j,i)=texID
-                  constitutive_MatVolFrac(g,j,i)=1.0_pReal	
-		          constitutive_TexVolFrac(g,j,i)=texture_Gauss(5,k,texID)/multiplicity(texID)/Nsym(texID)
-!			      CPFEM_Fp_old(:,:,g,j,i) = math_EulerToR(Euler(:,s))
-               enddo
-		    enddo
-		    ! *** fiber ***
-		    do k = 1,texture_nFiber(texID)
-               Euler(:,1) = math_sampleFiberOri(texture_Fiber(1:2,k,texID),texture_Fiber(3:4,k,texID),texture_Fiber(5,k,texID))
-			   Euler(:,2:4) = math_symmetricEulers(texture_symmetry(texID),Euler(:,1)) !always return 3x3 even if empty!!!
-               do s = 1,Nsym(texID)
-			      g = g+1_pInt
-                  constitutive_matID(g,j,i)=matID
-		          constitutive_texID(g,j,i)=texID
-                  constitutive_MatVolFrac(g,j,i)=1.0_pReal	
-		          constitutive_TexVolFrac(g,j,i)=texture_Fiber(6,k,texID)/multiplicity(texID)/Nsym(texID)
-!			      CPFEM_Fp_old(:,:,g,j,i) = math_EulerToR(Euler(:,s))
-               enddo
-		    enddo
-		    ! *** random ***
-		    do k = 1,texture_nRandom(texID)
-               Euler(:,1) = math_sampleRandomOri()
-			   Euler(:,2:4) = math_symmetricEulers(texture_symmetry(texID),Euler(:,1)) !always return 3x3 even if empty!!!
-               do s = 1,Nsym(texID)
-			      g = g+1_pInt
-                  constitutive_matID(g,j,i)=matID
-		          constitutive_texID(g,j,i)=texID
-                  constitutive_MatVolFrac(g,j,i)=1.0_pReal	
-		          constitutive_TexVolFrac(g,j,i)=(1.0_pReal-sumVolfrac(texID))/multiplicity(texID)/Nsym(texID)
-!			      CPFEM_Fp_old(:,:,g,j,i) = math_EulerToR(Euler(:,s))
-               enddo
-		    enddo
-		 enddo  ! multiplicity
-	 enddo ! ip
-   else
-     do j=1,FE_Nips(FE_mapElemtype(mesh_element(2,i)))
-	    do g=1,texture_Ngrains(texID)
-           constitutive_matID(g,j,i)=matID
-		   constitutive_texID(g,j,i)=texID
-           constitutive_MatVolFrac(g,j,i)=1.0_pReal	
-		   constitutive_TexVolFrac(g,j,i)=1.0_pReal/texture_Ngrains(texID)
-		   CPFEM_Fp_old(:,:,g,j,i) = math_EulerToR(hybridIA_population(:,texture_hybridIAsample(texID)+g,texID))
-		enddo
-        texture_hybridIAsample(texID) = texture_hybridIAsample(texID) + texture_Ngrains(textID)
-      enddo
-   endif 
-enddo ! End of cp_element
+do e=1,mesh_NcpElems
+   matID=mesh_element(3,e)
+   texID=mesh_element(4,e)
+   do i=1,FE_Nips(FE_mapElemtype(mesh_element(2,e)))
+      g = 0_pInt  ! grain counter
+	  do m = 1,multiplicity(texID)
+		 o = 0_pInt
+         if (texture_ODFfile(texID)=='') then
+		    do k = 1,texture_nGauss(texID)            ! *** gauss ***
+			   o = o+1
+               Euler(:,o)    = math_sampleGaussOri(texture_Gauss(1:3,k,texID),texture_Gauss(4,k,texID))
+		       texVolFrac(o) = texture_Gauss(5,k,texID)
+			enddo
+		    do k = 1,texture_nFiber(texID)            ! *** fiber ***
+			   o = o+1
+               Euler(:,o)    = math_sampleFiberOri(texture_Fiber(1:2,k,texID),texture_Fiber(3:4,k,texID),texture_Fiber(5,k,texID))
+		       texVolFrac(o) = texture_Fiber(6,k,texID)
+			enddo
+		    do k = 1,texture_nRandom(texID)           ! *** random ***
+			   o = o+1
+               Euler(:,o)    = math_sampleRandomOri()
+		       texVolfrac(o) = 1.0_pReal-sumVolfrac(texID)
+			enddo
+		 else     ! hybrid IA
+		    o = 1 ! only singular orientation
+			Euler(:,o) = hybridIA_population(:,1+sampleCount(texID),ODFmap(texID))
+            texVolfrac(o) = 1.0_pReal
+		 endif
+		 if (Nsym(texID) > 1) then   ! symmetry generates additional orientations
+		    forall (k=1:o)
+		       Euler(:,1+o+(Nsym(texID)-1)*(k-1):3+o+(Nsym(texID)-1)*(k-1)) = &
+		       math_symmetricEulers(texture_symmetry(texID),Euler(:,k))
+		       texVolfrac(1+o+(Nsym(texID)-1)*(k-1):3+o+(Nsym(texID)-1)*(k-1)) = texVolfrac(k)
+		    end forall
+         endif
+         do s = 1,Nsym(texID)*o   ! loop over orientations to be assigned to ip (ex multiplicity)
+		    g = g+1               ! next "grain"
+			sampleCount(texID) = sampleCount(texID)+1  ! next member of population
+            constitutive_matID(g,i,e) = matID          ! copy matID of element
+		    constitutive_texID(g,i,e) = texID          ! copy texID of element
+		    constitutive_MatVolFrac(g,i,e) = 1.0_pReal ! singular material (so far)
+		    constitutive_TexVolFrac(g,i,e) = texVolfrac(s)/multiplicity(texID)/Nsym(texID)
+		    CPFEM_Fp_old(:,:,g,i,e) = math_EulerToR(Euler(:,s))  ! set plastic deformation gradient at t_0
+            forall (l=1:constitutive_Nstatevars(g,i,e))  ! initialize state variables
+               constitutive_state_old(l,g,i,e) = material_s0_slip(matID)
+               constitutive_state_new(l,g,i,e) = material_s0_slip(matID)
+            end forall
+		 enddo
+	  enddo  ! multiplicity
+   enddo ! ip
+enddo ! cp_element
 
-! MISSING case of symmetry
-! MISSING
-!* Initialization of state variables 
-!do l=1,material_Nstatevars(k,j,i)
-!   constitutive_state_old(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
-!   constitutive_state_new(l,k,j,i)=material_s0_slip(constitutive_matID(k,j,i))
-!enddo 
 
 end subroutine
 
 
 function constitutive_HomogenizedC(ipc,ip,el)
 !*********************************************************************
-!* This function gives the homogenized elacticity matrix back        *
+!* This function returns the homogenized elacticity matrix           *
 !* INPUT:                                                            *
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
