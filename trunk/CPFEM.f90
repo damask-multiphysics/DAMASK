@@ -465,7 +465,7 @@
      dt,&
      cp_en,&            ! Element number
      CPFEM_in,&         ! Integration point number
-     iori,&             ! number of orintation
+     iori,&             ! number of orientation
      Fg_new,&
      Fp_old,&
      Fp_new,&
@@ -513,8 +513,8 @@
 !    *** Calculation of A and T*0 (see Kalidindi) ***
  A = matmul(Fg_new,invFp_old)  ! actually Fe
  A = matmul(transpose(A), A)
- C_66=constitutive_HomogenizedC(iori, CPFEM_in, cp_en) !ÄÄÄ
- Tstar_v=matmul(C_66, math_Mandel33to6(A-math_I3))  ! fully elastic guess
+ C_66 = constitutive_HomogenizedC(iori, CPFEM_in, cp_en) !ÄÄÄ
+ Tstar_v = 0.5_pReal*matmul(C_66, math_Mandel33to6(A-math_I3))  ! fully elastic guess ADDED 1/2
 ! QUESTION follow former plastic slope to guess better?
 !
 !    *** Second level of iterative procedure: Resistences ***
@@ -525,14 +525,14 @@
 !    *** Calculation of gdot_slip ***    
         call constitutive_LpAndItsTangent(Tstar_v, iori, CPFEM_in, cp_en, Lp, dLp)
         I3tLp  = math_I3-dt*Lp
-        help=matmul(transpose(I3tLp),matmul(A, I3tLp))-math_I3
-        Tstar0_v = 0.5_pReal * matmul(C_66, math_Mandel33to6(help))
+        help=matmul(transpose(I3tLp),matmul(A, I3tLp)) 
+        Tstar0_v = 0.5_pReal * matmul(C_66, math_Mandel33to6(help-math_I3))
         R1=Tstar_v-Tstar0_v
         if (maxval(abs(R1/maxval(abs(Tstar_v)))) < tol_inner) goto 100
 ! 
 !    *** Jacobi Calculation: dRes/dTstar ***
         help=matmul(A, I3tLp)
-        help1=0
+        help1=0.0_pReal
         do i=1,3
           do j=1,3
             do k=1,3
