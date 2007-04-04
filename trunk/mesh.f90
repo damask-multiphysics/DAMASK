@@ -11,9 +11,10 @@
 ! _NcpElems  : total number of CP elements in mesh
 ! _NelemTypes: total number of element types in mesh
 ! _Nnodes    : total number of nodes in mesh
-! _maxNnodes : max number of nodes in any element
-! _maxNips   : max number of IPs in any element
-! _maxNsharedElems : max number of elements sharing a node
+! _maxNnodes : max number of nodes in any CP element
+! _maxNips   : max number of IPs in any CP element
+! _maxNipNeighbors   : max number of IP neighbors in any CP element
+! _maxNsharedElems : max number of CP elements sharing a node
 !
 ! _element    : FEid, type, material, texture, node indices
 ! _node       : x,y,z coordinates (initially!)
@@ -41,7 +42,7 @@
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
  integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_NelemTypes
- integer(pInt) mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNsharedElems
+ integer(pInt) mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNipNeighbors,mesh_maxNsharedElems
  integer(pInt), dimension(:,:), allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
  integer(pInt), dimension(:,:), allocatable :: mesh_element, mesh_sharedElem
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
@@ -156,35 +157,36 @@
 
  integer(pInt) face,elem
  integer(pInt) mesh_faceMatch
- integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: nodeMapFE
- integer(pInt) minN,NsharedElems,lonelyNode,faceNode,i,j,t
+ integer(pInt), dimension(FE_NfaceNodes(face,FE_mapElemtype(mesh_element(2,elem)))) :: nodeMap
+ integer(pInt) minN,NsharedElems,lonelyNode,faceNode,i,j,n,t
  
- mesh_faceMatch = 0_pInt   ! intialize to "no match found"
- t = mesh_element(2,elem)  ! figure elemType
+ minN = mesh_maxNsharedElems+1 ! init to worst case
+ mesh_faceMatch = 0_pInt       ! intialize to "no match found"
+ t = FE_mapElemtype(mesh_element(2,elem)) ! figure elemType
+
  do faceNode=1,FE_NfaceNodes(face,t)  ! loop over nodes on face
-   nodeMapFE(faceNode) = mesh_element(4+FE_nodeOnFace(faceNode,face,t),elem) ! FE id of face node
-   NsharedElems = mesh_sharedElem(1,nodeMapFE(faceNode))  ! figure # shared elements for this node
+   nodeMap(faceNode) = mesh_FEasCP('node',mesh_element(4+FE_nodeOnFace(faceNode,face,t),elem)) ! CP id of face node
+   NsharedElems = mesh_sharedElem(1,nodeMap(faceNode)) ! figure # shared elements for this node
    if (NsharedElems < minN) then
      minN = NsharedElems       ! remember min # shared elems
      lonelyNode = faceNode     ! remember most lonely node
    endif
  end do
 candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
-   mesh_faceMatch = mesh_sharedElem(1+i,nodeMapFE(lonelyNode)) ! present candidate elem
+   mesh_faceMatch = mesh_sharedElem(1+i,nodeMap(lonelyNode)) ! present candidate elem
    if (mesh_faceMatch == elem) then   ! my own element ?
      mesh_faceMatch = 0_pInt          ! disregard
      cycle candidate
    endif
    do faceNode=1,FE_NfaceNodes(face,t) ! check remaining face nodes to match
      if (faceNode == lonelyNode) cycle ! disregard lonely node (matches anyway)
-     NsharedElems = mesh_sharedElem(1,nodeMapFE(faceNode))  ! how many shared elems for checked node?
-     do j=1,NsharedElems               ! iterate over other node's elements
-       if (all(mesh_sharedElem(2:1+NsharedElems,nodeMapFE(faceNode)) /= mesh_faceMatch)) then  ! no ref to candidate elem?
-         mesh_faceMatch = 0_pInt       ! set to "no match" (so far)
-         cycle candidate               ! next candidate elem
-       endif
-     end do
+	 n = nodeMap(faceNode)
+     if (all(mesh_sharedElem(2:1+mesh_sharedElem(1,n),n) /= mesh_faceMatch)) then  ! no ref to candidate elem?
+       mesh_faceMatch = 0_pInt         ! set to "no match" (so far)
+       cycle candidate                 ! next candidate elem
+     endif
    end do
+   exit        ! surviving candidate
  end do candidate
   
  return
@@ -202,28 +204,31 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  
  integer(pInt) e,t,i,j,k,n
  integer(pInt) neighbor,neighboringElem,neighboringIP,matchingElem,faceNode,linkingNode
+
+ allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
  
- do e = 1,mesh_NcpElems            ! loop over cpElems
-   t = mesh_element(2,e)           ! get elemType
-   do i = 1,FE_Nips(t)             ! loop over IPs of elem
-     do n = 1,FE_NipNeighbors(t)   ! loop over neighbors of IP
+ do e = 1,mesh_NcpElems                  ! loop over cpElems
+   t = FE_mapElemtype(mesh_element(2,e)) ! get elemType
+   do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+     do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
        neighbor = FE_ipNeighbor(n,i,t)
-       if (neighbor > 0) then ! intra-element IP
-           neighboringElem = e
-           neighboringIP   = neighbor
+      if (neighbor > 0) then ! intra-element IP
+         neighboringElem = e
+         neighboringIP   = neighbor
        else                   ! neighboring element's IP
          neighboringElem = 0_pInt
          neighboringIP = 0_pInt
-         matchingElem = mesh_faceMatch(-neighbor,e)
-         if (matchingElem > 0) then
-matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching face
+         matchingElem = mesh_faceMatch(-neighbor,e)   ! get CP elem id of face match
+         if (matchingElem > 0 .and. &
+		     FE_mapElemtype(mesh_element(2,matchingElem)) == t) then ! found match of same type?
+matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matching face
              faceNode = FE_nodeOnFace(j,-neighbor,t)  ! get face node id
              if (i == FE_ipAtNode(faceNode,t)) then   ! ip linked to face node is me?
                linkingNode = mesh_element(4+faceNode,e) ! FE id of this facial node
                do k = 1,FE_Nnodes(t)   ! loop over nodes in matching element
                  if (linkingNode == mesh_element(4+k,matchingElem)) then
                    neighboringElem = matchingElem
-                   neighboringIP = FE_ipAtNode(j,t)
+                   neighboringIP = FE_ipAtNode(k,t)
                    exit matchFace
                  endif
                end do
@@ -300,25 +305,29 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  
 !********************************************************************
 ! Build node mapping from FEM to CP
+!
+! assign globals:
+! _maxNsharedElems
 !********************************************************************
  SUBROUTINE mesh_build_nodeMapping (unit)
 
  use prec, only: pInt
+ use math, only: qsort
  use IO
  implicit none
 
  integer(pInt), dimension (mesh_Nnodes) :: node_count
  integer(pInt) unit,i,j,Nnodes,cur_node
  integer(pInt), dimension (133) :: pos
- character*264 line
+ character*300 line
 
-610 FORMAT(A264)
+610 FORMAT(A300)
 
- rewind(unit)
  allocate ( mesh_mapFEtoCPnode(2,mesh_Nnodes) )
  mesh_mapFEtoCPnode(:,:) = 0_pInt
  node_count(:) = 0_pInt
 
+ rewind(unit)
  do
    read (unit,610,END=620) line
    pos = IO_stringPos(line,1)
@@ -329,102 +338,109 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
        mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (line,(/0,10/),1)
        mesh_mapFEtoCPnode(2,i) = i
      end do
+	 exit
    end if
  end do
-620 continue
 
- do i=2,mesh_Nnodes
-   if( mesh_mapFEtoCPnode(1,i).lt.mesh_mapFEtoCPnode(1,i-1) )then
-     write(*,*) 'Need to sort node'
-   end if
- end do
+620 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
+
+ return
+ END SUBROUTINE
+
+
+!********************************************************************
+! Build node mapping from FEM to CP
+!
+! assign globals:
+! _maxNnodes, _maxNips, _maxNipNeighbors, _maxNsharedElems
+!********************************************************************
+ SUBROUTINE mesh_build_maxNofCPelems (unit)
+
+ use prec, only: pInt
+ use IO
+ implicit none
+
+ integer(pInt), dimension (mesh_Nnodes) :: node_count
+ integer(pInt) unit,i,j,n,t,e
+ integer(pInt), dimension (133) :: pos
+ character*300 line
+
+610 FORMAT(A300)
+
+ node_count = 0_pInt
 
  rewind(unit)
  do
    read (unit,610,END=630) line
    pos = IO_stringPos(line,1)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
-     read (unit,610,END=620) line  ! Garbage line
-	 do i=1,mesh_Nelems
-	   read (unit,610,END=620) line
+     read (unit,610,END=630) line  ! Garbage line
+	 do i=1,mesh_Nelems            ! read all elements
+	   read (unit,610,END=630) line
 	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
-	   Nnodes = FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
-	   do j=1,Nnodes
-	     cur_node = IO_IntValue (line,pos,j+2)
-	     node_count( mesh_FEasCP('node',cur_node) )= node_count( mesh_FEasCP('node',cur_node) )+1
-	   end do
+	   e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
+	   if (e /= 0) then
+         t = FE_mapElemtype(IO_intValue(line,pos,2))
+		 mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
+		 mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
+		 mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
+	     do j=1,FE_Nnodes(t)
+	       n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
+	       node_count(n) = node_count(n)+1
+	     end do
+       end if
      end do
+	 exit
    end if
  end do
-630 continue
 
- mesh_maxNsharedElems = MAXVAL(node_count)
+630 mesh_maxNsharedElems = maxval(node_count)
 
  return
  END SUBROUTINE
 
+
 !********************************************************************
-! Build ele mapping from FEM to CP
+! Build element mapping from FEM to CP
 !********************************************************************
- SUBROUTINE mesh_build_CPeleMapping (unit)
+ SUBROUTINE mesh_build_elemMapping (unit)
 
  use prec, only: pInt
+ use math, only: qsort
  use IO
+
  implicit none
 
- integer unit, i,cur_CPele,start_ele,end_ele
- character*264 line
- integer(pInt), dimension (41) :: pos
+ integer unit, i,CP_elem
+ character*300 line
+ integer(pInt), dimension (3) :: pos
+ integer(pInt), dimension (1+mesh_NcpElems) :: contInts
 
 
-610 FORMAT(A264)
- rewind(unit)
+610 FORMAT(A300)
 
  allocate ( mesh_mapFEtoCPelem(2,mesh_NcpElems) )
  mesh_mapFEtoCPelem(:,:) = 0_pInt
- cur_CPele = 0_pInt
+ CP_elem = 0_pInt
 
+ rewind(unit)
  do
    read (unit,610,END=620) line
    pos = IO_stringPos(line,1)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'hypoelastic' ) then
-     do i=1,4
-       read (unit,610,END=620) line
+     do i=1,3          ! skip three lines
+       read (unit,610,END=620) line 
      end do
-     pos = IO_stringPos(line,20)
-	 if( IO_lc(IO_Stringvalue(line,pos,2)).eq.'to' )then
-       start_ele = IO_IntValue(line,pos,1)
-	   end_ele = IO_IntValue(line,pos,3)
-	   do i=start_ele,end_ele
-	     cur_CPele = cur_CPele+1
-	     mesh_mapFEtoCPelem(1,cur_CPele) = i
-		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
-       end do
-     else
-       do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
-	     do i=1,pos(1)-1
-	   	   cur_CPele = cur_CPele+1
-           mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,i)
-		   mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
-	     end do
-		 read (unit,610,END=620) line
-		 pos = IO_stringPos(line,20)
-       end do
-	   do i=1,pos(1)
-	   	 cur_CPele = cur_CPele+1
-         mesh_mapFEtoCPelem(1,cur_CPele) = IO_IntValue(line,pos,i)
-		 mesh_mapFEtoCPelem(2,cur_CPele) = cur_CPele
-	   end do
-     end if
+	 contInts = IO_continousIntValues(unit,mesh_NcpElems)
+	 do i = 1,contInts(1)
+	   CP_elem = CP_elem+1
+       mesh_mapFEtoCPelem(1,CP_elem) = contInts(1+i)
+       mesh_mapFEtoCPelem(2,CP_elem) = CP_elem
+	 enddo
    end if
  end do
-620 continue
 
- do i=2,mesh_NcpElems
-   if( mesh_mapFEtoCPelem(1,i).lt.mesh_mapFEtoCPelem(1,i-1) )then
-     write(*,*) 'Need to sort ele'
-   end if
- end do
+620 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))  ! should be mesh_NcpElems
 
  return
  END SUBROUTINE
@@ -432,25 +448,22 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
 
 !********************************************************************
 !********************************************************************
- SUBROUTINE mesh_build_Sharedelems (unit)
+ SUBROUTINE mesh_build_sharedElems (unit)
 
  use prec, only: pInt
  use IO
  implicit none
 
- integer unit
- integer(pInt), dimension (mesh_Nnodes) :: node_count
- integer(pInt), dimension (41) :: pos
- integer i,j,FE_node,CP_node,Nnodes,CP_elem
- character*264 line
+ integer unit,i,j,CP_node,CP_elem
+ integer(pInt), dimension (133) :: pos
+ character*300 line
 
-610 FORMAT(A264)
- rewind(unit)
+610 FORMAT(A300)
 
  allocate ( mesh_sharedElem( 1+mesh_maxNsharedElems,mesh_Nnodes) )
  mesh_sharedElem(:,:) = 0_pInt
- node_count(:) = 0_pInt
 
+ rewind(unit)
  do
    read (unit,610,END=620) line
    pos = IO_stringPos(line,1)
@@ -459,31 +472,26 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
 	 do i=1,mesh_Nelems
 	   read (unit,610,END=620) line
 	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
-	   Nnodes = FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
 	   CP_elem = mesh_FEasCP('elem',IO_IntValue(line,pos,1))
-	   if( CP_elem.ne.0 )then
-	     do j=1,Nnodes
-	       FE_node = IO_IntValue (line,pos,j+2)
-           CP_node = mesh_FEasCP('node',FE_node)
-	       node_count( CP_node )= node_count( CP_node )+1
-		   mesh_sharedElem(node_count(CP_node)+1,CP_node) = CP_elem
-	     end do
+	   if (CP_elem /= 0) then  ! disregard non CP elems
+         do j = 1,FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
+           CP_node = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
+		   mesh_sharedElem(1,CP_node) = mesh_sharedElem(1,CP_node) + 1
+		   mesh_sharedElem(1+mesh_sharedElem(1,CP_node),CP_node) = CP_elem
+		 enddo
 	   end if
      end do
+     exit
    end if
  end do
-620 continue
 
- do i=1,mesh_Nnodes
-   mesh_sharedElem(1,i) = node_count(i)
- end do
+620 return
 
- return
  END SUBROUTINE
 
 !********************************************************************
 !********************************************************************
- SUBROUTINE mesh_build_nodeCoord (unit)
+ SUBROUTINE mesh_build_nodeCoords (unit)
 
  use prec, only: pInt
  use IO
@@ -492,15 +500,15 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  integer unit,i,j,m
  integer(pInt), dimension(3) :: pos
  integer(pInt), dimension(5), parameter :: node_ends = (/0,10,30,50,70/)
- character*264 line
+ character*300 line
 
- rewind(unit)
  allocate ( mesh_node (3,mesh_Nnodes) )
  mesh_node(:,:) = 0_pInt
 
-610 FORMAT(A264)
+610 FORMAT(A300)
 
- do while(.true.)
+ rewind(unit)
+ do
    read (unit,610,END=620) line
    pos = IO_stringPos(line,1)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'coordinates' ) then
@@ -512,33 +520,37 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
          mesh_node(j,m) = IO_fixedNoEFloatValue (line,node_ends,j+1)
        end do
      end do
+     exit
    end if
-
  end do
-620 continue
 
- return
+620 return
+
  END SUBROUTINE
 
+
 !********************************************************************
+!
+! assign globals:
+! _maxNnodes, _maxNips, _maxNipNeighbors
 !********************************************************************
- SUBROUTINE mesh_build_element (unit)
+ SUBROUTINE mesh_build_elements (unit)
 
  use prec, only: pInt
  use IO
  implicit none
 
- integer unit
- integer FE_node,Nnodes,i,j,sv,ele,val,start_ele,end_ele
- integer(pInt), dimension (41) :: pos
- logical not_found
- character*264 line,line2
+ integer unit,i,j,t,sv,val,CP_elem
+ integer(pInt), dimension(133) :: pos
+ integer(pInt), dimension(1+mesh_NcpElems) :: contInts
+ character*300 line
 
  rewind(unit)
- allocate ( mesh_element (mesh_Nelems,4+mesh_maxNnodes) )
+ allocate ( mesh_element (4+mesh_maxNnodes,mesh_NcpElems) )
+ write(*,*) 'allocated',4+mesh_maxNnodes,mesh_NcpElems
  mesh_element(:,:) = 0_pInt
 
-610 FORMAT(A264)
+610 FORMAT(A300)
 
  do
    read (unit,610,END=620) line
@@ -549,107 +561,57 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
 	 do i=1,mesh_Nelems
 	   read (unit,610,END=620) line
 	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
-	   Nnodes = FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
-	   mesh_element (i,1) = IO_IntValue (line,pos,1)
-	   mesh_element (i,2) = IO_IntValue (line,pos,2)
-       do j=1,Nnodes
-         FE_node = IO_IntValue (line,pos,j+2)
-!         CP_node = mesh_FEasCP('node',FE_node)
-         mesh_element(i,j+4) = FE_node
-	   end do
-     end do
-   end if
-
-   if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
-       (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) then
-     read (unit,610,END=620) line
-	 pos = IO_stringPos(line,66)
-	 sv = IO_IntValue (line,pos,1)
-	 if( (sv.ne.2).and.(sv.ne.3) )then
-	   write(*,*) 'Major PROBLEM!!  -> Invalid state variable found'
-	   write(*,*) sv
-	 end if
-
-     read (unit,610,END=620) line
-	 val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1))
-
-	 line2 = line
-
-     do while( line.eq.line2 )
-
-       line2 = line
-       read (unit,610,END=620) line
-	   pos = IO_stringPos(line,20)
-	   if ( IO_lc(IO_Stringvalue(line,pos,2)).eq.'to' )then
-         start_ele = IO_IntValue(line,pos,1)
-	     end_ele = IO_IntValue(line,pos,3)
-	     do i=start_ele,end_ele
-	       not_found = .true.
-	       j=1
-	       do while( not_found )
-	         if( mesh_element(j,1).eq.i )then
-		       not_found = .false.
-		       ele = i
-		     end if
-		     j=j+1
-	       end do
-           mesh_element(ele,sv+1) = val 
-         end do        
-	   else
-
-         do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
-	       do i=1,pos(1)-1
-	         ele = IO_IntValue(line,pos,i)
-	         not_found = .true.
-	         j=1
-	         do while( not_found )
-	           if( mesh_element(j,1).eq.ele )then
-		         not_found = .false.
-		         ele = j
-		       end if
-		       j=j+1
-	         end do
-             mesh_element(ele,sv+1) = val 
-	       end do
-           read (unit,610,END=620) line
-	       pos = IO_stringPos(line,20)
-         end do
-         do i=1,pos(1)
-	       ele = IO_IntValue(line,pos,i)
-	       not_found = .true.
-	       j=1
-	       do while( not_found )
-	         if( mesh_element(j,1).eq.ele )then
-		       not_found = .false.
-		       ele = j
-		     end if
-		     j=j+1
-	       end do
-           mesh_element(ele,sv+1) = val 
+	   CP_elem = mesh_FEasCP('elem',IO_intValue(line,pos,1))
+	   if (CP_elem /= 0) then ! disregard non CP elems
+	     mesh_element (1,CP_elem) = IO_IntValue (line,pos,1)  ! FE id
+	     mesh_element (2,CP_elem) = IO_IntValue (line,pos,2)  ! elem type
+         do j=1,FE_Nnodes(FE_mapElemtype(mesh_element(2,CP_elem)))
+           mesh_element(j+4,CP_elem) = IO_IntValue (line,pos,j+2) ! copy FE ids of nodes
 	     end do
-
-       end if
-       read (unit,610,END=620) line  ! Garbage line
-       read (unit,610,END=620) line
+	   end if
      end do
- 
-   end if
-   pos = IO_stringPos(line,20)
+     exit
+   endif
+ enddo
+ write(*,*) 'done with connectivity.'
+ do  ! fast forward to "initial state" sections
+   read (unit,610,END=620) line
+   if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
+       (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) exit
+ enddo
+
+ do  ! parse initial state section(s)
    if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
        (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) then
-	  backspace(unit)
-   end if
+     read (unit,610,END=620) line
+	 pos = IO_stringPos(line,1)
+	 sv = IO_IntValue (line,pos,1)  ! figure state variable index
+	 if( (sv == 2).or.(sv == 3) ) then  ! only state vars 2 and 3 of interest
+       read (unit,610,END=620) line
+	   do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)
+   	     val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1)) ! state var's value
+         contInts = IO_continousIntValues(unit,mesh_Nelems)  ! read affected elements
+	     do i = 1,contInts(1)
+	       CP_elem = mesh_FEasCP('elem',contInts(1+i))
+		   mesh_element(1+sv,CP_elem) = val
+	     enddo
+         read (unit,610,END=620) line  ! ignore IP range
+         read (unit,610,END=620) line  ! read ahead to check in do loop
+	   enddo
+	 endif
+   endif
+ enddo
 
- end do
+620 return
 
-620 continue
-
- return
  END SUBROUTINE
 
  
 !********************************************************************
-! Get global variables (#ele, #nodes, #ele types, #CP ele, max # nodes per element)
+! Get global variables
+!
+! assign globals:
+! _Nelems, _Nnodes, NcpElem
 !********************************************************************
  SUBROUTINE mesh_get_globals (unit)
 
@@ -657,14 +619,14 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
  use IO
  implicit none
 
- integer(pInt) unit,i,pos(41),Nnodes
- character*264 line
+ integer(pInt) unit,i,pos(41)
+ character*300 line
 
-610 FORMAT(A264)
+610 FORMAT(A300)
 
- rewind(unit)
  mesh_NelemTypes = 0_pInt
 
+ rewind(unit)
  do 
    read (unit,610,END=620) line
    pos = IO_stringPos(line,20)
@@ -673,12 +635,6 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
      case('sizing')
        mesh_Nelems = IO_IntValue (line,pos,3)
        mesh_Nnodes = IO_IntValue (line,pos,4)
-     case('elements')
-       mesh_NelemTypes = mesh_NelemTypes+1
-	   Nnodes = FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
-	   if( Nnodes.gt.mesh_maxNnodes )then
-	     mesh_maxNnodes = Nnodes
-	   end if
      case('hypoelastic')
        do i=1,4
          read (unit,610,END=620) line
@@ -699,10 +655,9 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)  ! count over nodes on matching f
    end select
 
  end do
-620 continue
 
-
- return
+620 return
+ 
  END SUBROUTINE
 
  
