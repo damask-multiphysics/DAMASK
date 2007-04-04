@@ -650,12 +650,12 @@
 !****************************************************************
 ! rotation matrix from Euler angles  
 !****************************************************************
- FUNCTION math_EulerToR (Euler)
+ PURE FUNCTION math_EulerToR (Euler)
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal), dimension(3) :: Euler
+ real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_EulerToR
  real(pReal) c1, c, c2, s1, s, s2
 
@@ -821,6 +821,47 @@
 
 ! ---# apply the three rotations #---
  math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot))) 
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+!   symmetric Euler angles for given symmetry string
+!   'triclinic' or '', 'monoclinic', 'orthotropic'
+!********************************************************************
+ PURE FUNCTION math_symmetricEulers(sym,Euler)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ character(len=80), intent(in) :: sym
+ real(pReal), dimension(3), intent(in) :: Euler
+ real(pReal), dimension(3,3) :: math_symmetricEulers
+ integer(pInt) i,j
+ 
+ math_symmetricEulers(1,1) = pi+Euler(1)
+ math_symmetricEulers(2,1) = Euler(2)
+ math_symmetricEulers(3,1) = Euler(3)
+
+ math_symmetricEulers(1,2) = pi-Euler(1)
+ math_symmetricEulers(2,2) = pi-Euler(2)
+ math_symmetricEulers(3,2) = pi+Euler(3)
+
+ math_symmetricEulers(1,3) = 2.0_pReal*pi-Euler(1)
+ math_symmetricEulers(2,3) = pi-Euler(2)
+ math_symmetricEulers(3,3) = pi+Euler(3)
+
+ forall (i=1:3,j=1:3) math_symmetricEulers(j,i) = modulo(math_symmetricEulers(j,i),2.0_pReal*pi)
+
+ select case (sym)
+   case ('orthotropic') ! all done
+
+   case ('monoclinic')  ! return only first
+     math_symmetricEulers(:,2:3) = 0.0_pReal
+   case default         ! return blank
+     math_symmetricEulers = 0.0_pReal
+ end select
  return
 
  END FUNCTION
