@@ -74,12 +74,12 @@
  RECURSIVE SUBROUTINE qsort(a, istart, iend)
 
  implicit none
- integer(pInt), dimension(*,*) :: a
+ integer(pInt), dimension(:,:) :: a
  integer(pInt) :: istart,iend,ipivot
 
  if (istart < iend) then
    ipivot = math_partition(a,istart, iend)
-   call qsort(a, istart, ipivot)
+   call qsort(a, istart, ipivot-1)
    call qsort(a, ipivot+1, iend)
  endif
  return
@@ -92,13 +92,13 @@
  integer(pInt) FUNCTION math_partition(a, istart, iend)
 
  implicit none
- integer(pInt), dimension(*,*) :: a
+ integer(pInt), dimension(:,:) :: a
  integer(pInt) :: istart,iend,d,i,j,k,x,tmp
 
  d = size(a,1) ! number of linked data
 ! set the starting and ending points, and the pivot point
- i = istart 
- j = iend 
+ i = istart
+ j = iend
  x = a(1,istart)
  do
 ! find the first element on the right side less than or equal to the pivot point
@@ -121,7 +121,7 @@
       a(k,istart) = a(k,j)
       a(k,j) = tmp
      enddo
-     partition = j
+     math_partition = j
      return
    endif
  enddo
@@ -1150,7 +1150,6 @@
  character ( len = * ) name
  integer(pInt) ndim
  integer(pInt), save :: ndim_save = 0
- integer(pInt) prime
  integer(pInt), save :: seed = 1
  integer(pInt) value(*)
 
