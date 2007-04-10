@@ -293,9 +293,10 @@ do l=1,3
       constitutive_Sslip_v(1,k,l)=constitutive_Sslip(1,1,k,l)
       constitutive_Sslip_v(2,k,l)=constitutive_Sslip(2,2,k,l)
       constitutive_Sslip_v(3,k,l)=constitutive_Sslip(3,3,k,l)
-      constitutive_Sslip_v(4,k,l)=constitutive_Sslip(1,2,k,l)+constitutive_Sslip(2,1,k,l)
-      constitutive_Sslip_v(5,k,l)=constitutive_Sslip(2,3,k,l)+constitutive_Sslip(3,3,k,l)
-      constitutive_Sslip_v(6,k,l)=constitutive_Sslip(1,3,k,l)+constitutive_Sslip(3,1,k,l)
+	  !* be compatible with Mandel notation of Tstar
+      constitutive_Sslip_v(4,k,l)=(constitutive_Sslip(1,2,k,l)+constitutive_Sslip(2,1,k,l))/dsqrt(2.0_pReal)
+      constitutive_Sslip_v(5,k,l)=(constitutive_Sslip(2,3,k,l)+constitutive_Sslip(3,3,k,l))/dsqrt(2.0_pReal)
+      constitutive_Sslip_v(6,k,l)=(constitutive_Sslip(1,3,k,l)+constitutive_Sslip(3,1,k,l))/dsqrt(2.0_pReal)
    enddo
 enddo
 
@@ -903,12 +904,12 @@ return
 end function
 
 
-subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_m,ipc,ip,el)
+subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *       
 !* INPUT:                                                            *
-!*  - Tstar_v_m       : 2nd Piola Kirchhoff stress tensor (Mandel)   *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
@@ -922,7 +923,7 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i,k,l,m,n
-real(pReal) Tstar_v(6),Tstar_v_m(6)
+real(pReal) Tstar_v(6)
 real(pReal) Lp(3,3)
 real(pReal) dLp_dTstar(3,3,3,3)
 real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: gdot_slip
@@ -931,11 +932,6 @@ real(preal), dimension(constitutive_matID(ipc,ip,el)) :: tau_slip
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID=constitutive_matID(ipc,ip,el)
-
-!* Tstar_v tranformed
-Tstar_v(4)=Tstar_v_m(4)/dsqrt(2.0_pReal)
-Tstar_v(5)=Tstar_v_m(5)/dsqrt(2.0_pReal)
-Tstar_v(6)=Tstar_v_m(6)/dsqrt(2.0_pReal)
 
 !* Calculation of Lp
 Lp=0.0_pReal
@@ -961,12 +957,12 @@ return
 end subroutine
 
 
-function constitutive_DotState(Tstar_v_m,ipc,ip,el)
+function constitutive_DotState(Tstar_v,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *       
 !* INPUT:                                                            *
-!*  - Tstar_v_m       : 2nd Piola Kirchhoff stress tensor (Mandel)   *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
@@ -979,7 +975,7 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i
-real(pReal) Tstar_v(6),Tstar_v_m(6)
+real(pReal) Tstar_v(6)
 real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: constitutive_DotState
 real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: gdot_slip
 real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: tau_slip
@@ -987,11 +983,6 @@ real(pReal), dimension(constitutive_matID(ipc,ip,el)) :: self_hardening
  
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID=constitutive_matID(ipc,ip,el)
-
-!* Tstar_v tranformed
-Tstar_v(4)=Tstar_v_m(4)/dsqrt(2.0_pReal)
-Tstar_v(5)=Tstar_v_m(5)/dsqrt(2.0_pReal)
-Tstar_v(6)=Tstar_v_m(6)/dsqrt(2.0_pReal)
 
 !* Self-Hardening of each system
 do i=1,constitutive_Nstatevars(ipc,ip,el)
