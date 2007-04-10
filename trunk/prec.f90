@@ -12,6 +12,8 @@
  integer (pInt), parameter :: ijaco = 5_pInt
 !    *** Maximum number of internal cutbacks in time step ***
  integer(pInt), parameter :: ncut=7_pInt
+!    *** Maximum number of regularization attempts for Jacobi inversion ***
+ integer(pInt), parameter :: nreg=1_pInt
 !    *** Perturbation of strain array for numerical calculation of FEM Jacobi matrix ***
  real(pReal), parameter :: pert_e=1.0e-5_pReal  
 !    *** Maximum number of iterations in outer (statevariables) loop ***
