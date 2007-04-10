@@ -9,11 +9,17 @@
 ! function IO_open_inputFile(unit)
 ! function IO_hybridIA(Nast,ODFfileName)
 ! private function hybridIA_reps(dV_V,steps,C)
-! function IO_stringPos(line,N)
+! function IO_stringPos(line,maxN)
 ! function IO_stringValue(line,positions,pos)
 ! function IO_floatValue(line,positions,pos)
 ! function IO_intValue(line,positions,pos)
-! function IO_lowercase(line)
+! function IO_fixedStringValue(line,ends,pos)
+! function IO_fixedFloatValue(line,ends,pos)
+! function IO_fixedFloatNoEValue(line,ends,pos)
+! function IO_fixedIntValue(line,ends,pos)
+! function IO_continousTntValues(unit,maxN)
+! function IO_lc(line)
+! subroutine IO_lcInplace(line)
 ! subroutine IO_error(ID)
 !---------------------------
 
@@ -517,32 +523,16 @@
 
  select case (ID)
  case (100)
-   msg='File material.mpie can not be opened'
- case (110)
-   msg='File material99.mpie can not be opened'
- case (120)
-   msg='File with c-coefficience can not be opened'
- case (130)
-   msg='File with single orientations can not be opened'
+   msg='Unable to open input file.'
  case (200)
-   msg='Error reading from file material.mpie'
- case (210)
-   msg='Error reading from file material99.mpie'
- case (220)
-   msg='Error reading from file containing c-coefficiences'
- case (230)
-   msg='Error reading from file containing single orientations'
+   msg='Error reading from material+texture file'
  case (300)
    msg='This material can only be used with &
   &elements with three direct stress components'
  case (400)
    msg='Unknown alloy number specified'
  case (500)
-   msg='Unknown lattice number specified'
- case (510)
-   msg='Unknown component type specified'
- case (520)
-   msg='Unknown component symmetry specified'
+   msg='Unknown lattice type specified'
  case (600)
    msg='Stress iteration did not converge'
  case (700)
