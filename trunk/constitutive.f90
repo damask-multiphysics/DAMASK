@@ -1,5 +1,3 @@
-! QUESTION fileunit 1  may run into trouble?
-
 
 !************************************
 !*      Module: CONSTITUTIVE        *
@@ -9,7 +7,7 @@
 !* - Schmid matrices calculation    *
 !* - Hardening matrices definition  *
 !* - Parameters definition          *
-!* - orientations?                  *
+!* - orientations                   *
 !************************************
 
 MODULE constitutive
@@ -86,15 +84,13 @@ real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_new
 !************************************
 !*             Results              *
 !************************************
-integer(pInt) constitutive_maxNresults
+integer(pInt), constitutive_maxNresults
 integer(pInt), dimension(:,:,:), allocatable :: constitutive_Nresults
 real(pReal), dimension(:,:,:,:), allocatable :: constitutive_results
-!* MISSING : allocation
 
-
-!***********************************************
-!*      Crystal structures                     *
-!***********************************************
+!************************************
+!*      Crystal structures          *
+!************************************
 !* Number of crystal structures (1-FCC,2-BCC,3-HCP)
 integer(pInt), parameter :: constitutive_MaxCrystalStructure = 3
 !* Total number of slip systems per crystal structure
@@ -781,7 +777,9 @@ enddo
 
 !* publish globals
 constitutive_maxNgrains = maxval(texture_Ngrains)
-constitutive_maxNstatevars = material_maxNslip
+constitutive_maxNstatevars = material_maxNslip + 0_pInt
+constitutive_maxNresults = 1_pInt
+
 
 !* calc texture_totalNgrains
 allocate(texture_totalNgrains(texture_maxN)) ; texture_totalNgrains=0_pInt
@@ -803,12 +801,14 @@ allocate(constitutive_matID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 allocate(constitutive_texID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_texID=0_pInt
 allocate(constitutive_MatVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_MatVolFrac=0.0_pReal
 allocate(constitutive_TexVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_TexVolFrac=0.0_pReal
+allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nresults=0_pInt
+allocate(constitutive_results(constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_results=0.0_pReal
 allocate(constitutive_Nstatevars(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nstatevars=0_pInt
 allocate(constitutive_state_old(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_old=0.0_pReal
 allocate(constitutive_state_new(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_new=0.0_pReal
-allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nresults=0_pInt
 
 !* Assignment of all grains in all IPs of all cp-elements
 do e=1,mesh_NcpElems
@@ -854,6 +854,7 @@ do e=1,mesh_NcpElems
 		    constitutive_MatVolFrac(g,i,e) = 1.0_pReal ! singular material (so far)
 		    constitutive_TexVolFrac(g,i,e) = texVolfrac(s)/multiplicity(texID)/Nsym(texID)
 		    constitutive_Nstatevars(g,i,e) = material_Nslip(matID) ! number of state variables (i.e. tau_c of each slip system)
+		    constitutive_Nresults(g,i,e)   = 0         ! number of constitutive results
 		    CPFEM_Fp_old(:,:,g,i,e) = math_EulerToR(Euler(:,s))    ! set plastic deformation gradient at t_0
             forall (l=1:constitutive_Nstatevars(g,i,e))  ! initialize state variables
                constitutive_state_old(l,g,i,e) = material_s0_slip(matID)
@@ -961,20 +962,20 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i
+real(pReal) tau_slip,gdot_slip
 real(pReal), dimension(6) :: Tstar_v
-real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,&
-                                                              state,gdot_slip,tau_slip,self_hardening
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,state,self_hardening
  
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
 
 !* Self-Hardening of each system
 do i=1,constitutive_Nstatevars(ipc,ip,el)
-   tau_slip(i)=dot_product(Tstar_v,constitutive_Sslip_v(:,i,material_CrystalStructure(matID)))
-   gdot_slip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/state(i))**&
-                material_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+   tau_slip = dot_product(Tstar_v,constitutive_Sslip_v(:,i,material_CrystalStructure(matID)))
+   gdot_slip = material_gdot0_slip(matID)*(abs(tau_slip)/state(i))**&
+               material_n_slip(matID)*sign(1.0_pReal,tau_slip)
    self_hardening(i)=material_h0(matID)*(1.0_pReal-state(i)/&
-                material_s_sat(matID))**material_w0(matID)*abs(gdot_slip(i))
+                     material_s_sat(matID))**material_w0(matID)*abs(gdot_slip)
 enddo
 
 !* Hardening for all systems
@@ -984,5 +985,40 @@ constitutive_dotState=matmul(constitutive_HardeningMatrix(1:material_Nslip(matID
 return
 end function
 
+
+function constitutive_post_results(Tstar_v,state,dt,ipc,ip,el)
+!*********************************************************************
+!* return array of constitutive results                              *
+!* INPUT:                                                            *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
+!*  - state           : current microstructure                       *
+!*  - dt              : current time increment                       *
+!*  - ipc             : component-ID of current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
+!*********************************************************************
+use prec, only: pReal,pInt
+implicit none
+
+!* Definition of variables
+integer(pInt) ipc,ip,el
+integer(pInt) matID,i,k,l,m,n
+real(pReal) dt,tau_slip
+real(pReal), dimension(6) :: Tstar_v
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
+real(pReal), dimension(constitutive_Nresults(ipc,ip,el))   :: constitutive_post_results
+
+!* Get the material-ID from the triplet(ipc,ip,el)
+matID = constitutive_matID(ipc,ip,el)
+
+do i=1,material_Nslip(matID)
+   constitutive_post_results(i) = state(i)
+   tau_slip=dot_product(Tstar_v,constitutive_Sslip_v(:,i,material_CrystalStructure(matID)))
+   constitutive_post_results(i+material_Nslip(matID)) = &
+     dt*material_gdot0_slip(matID)*(abs(tau_slip)/state(i))**material_n_slip(matID)*sign(1.0_pReal,tau_slip)
+enddo
+return
+
+end function
 
 END MODULE
