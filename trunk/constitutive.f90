@@ -84,7 +84,7 @@ real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_new
 !************************************
 !*             Results              *
 !************************************
-integer(pInt), constitutive_maxNresults
+integer(pInt) constitutive_maxNresults
 integer(pInt), dimension(:,:,:), allocatable :: constitutive_Nresults
 real(pReal), dimension(:,:,:,:), allocatable :: constitutive_results
 

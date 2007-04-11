@@ -138,6 +138,7 @@
      CPFEM_in)        ! Integration point number
 
  use prec, only: pReal,pInt,ijaco,nCutback
+ use math, only: math_pDecomposition,math_RtoEuler
  use IO,   only: IO_error
  use mesh, only: mesh_element
  use constitutive
@@ -158,7 +159,7 @@
 
  updateJaco = (mod(CPFEM_cn,ijaco)==0)   ! update consistent tangent every ijaco'th iteration
 
- CPFEM_stress_all(:,CPFEM_in,cp_en) = 0.0_pReal                ! average Cauchy stress
+ CPFEM_stress_all(:,CPFEM_in,cp_en) = 0.0_pReal                  ! average Cauchy stress
  if (updateJaco) CPFEM_jaco_old(:,:,CPFEM_in,cp_en) = 0.0_pReal  ! average consistent tangent
 
 ! -------------- grain loop -----------------
