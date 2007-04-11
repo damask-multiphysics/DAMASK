@@ -147,19 +147,19 @@
  integer(pInt), parameter :: i_now = 1_pInt,i_then = 2_pInt
  character(len=128) msg
  integer(pInt) CPFEM_cn,cp_en,CPFEM_in,grain,i
- logical updateJaco
+ logical updateJaco,error
  real(pReal) CPFEM_dt,dt,t,volfrac
  real(pReal), dimension(6) :: cs,Tstar_v
- real(pReal), dimension(6,6) :: cd,cd_IP
- real(pReal), dimension(3,3) :: deltaFg
+ real(pReal), dimension(6,6) :: cd
+ real(pReal), dimension(3,3) :: Fe,U,R,deltaFg
  real(pReal), dimension(3) :: Euler
  real(pReal), dimension(3,3,2) :: Fg,Fp
- real(pReal), dimension(constitutive_Nstatevars(grain,CPFEM_in,cp_en),2) :: state
+ real(pReal), dimension(constitutive_maxNstatevars,2) :: state
 
  updateJaco = (mod(CPFEM_cn,ijaco)==0)   ! update consistent tangent every ijaco'th iteration
 
- CPFEM_stress_all(:,CPFEM_in,cp_en) = 0.0_pReal ! average Cauchy stress
- cd_IP = 0.0_pReal                              ! average consistent tangent
+ CPFEM_stress_all(:,CPFEM_in,cp_en) = 0.0_pReal                ! average Cauchy stress
+ if (updateJaco) CPFEM_jaco_old(:,:,CPFEM_in,cp_en) = 0.0_pReal  ! average consistent tangent
 
 ! -------------- grain loop -----------------
  do grain = 1,constitutive_Ngrains(CPFEM_in,cp_en)
@@ -189,7 +189,7 @@
        Fg(:,:,i_then) = CPFEM_ffn_all(:,:,CPFEM_in,cp_en) ! final Fg
      endif
      
-     call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Fp(:,:,i_then),state(:,i_then),Euler,&
+     call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Fp(:,:,i_then),Fe,state(:,i_then),&
                                   dt,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
                                   Fg(:,:,i_now),Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
      if (msg == 'ok') then             ! solution converged
@@ -216,15 +216,24 @@
    CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en)         = Fp(:,:,i_then)
    constitutive_state_new(:,grain,CPFEM_in,cp_en) = state(:,i_then)
    CPFEM_sigma_new(:,grain,CPFEM_in,cp_en)        = Tstar_v
-! ---- update results plotted in MENTAT ----  
-   CPFEM_results(1:3,grain,CPFEM_in,cp_en) = Euler
+! ---- update results plotted in MENTAT ---- 
+   call math_pDecomposition(Fe,U,R,error) ! polar decomposition
+   if (error) then
+     write(6,*) 'polar decomposition'
+     write(6,*) 'Grain:             ',grain
+     write(6,*) 'Integration point: ',CPFEM_in
+     write(6,*) 'Element:           ',mesh_element(1,cp_en)
+     call IO_error(600)
+     return
+   endif
+   CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))        ! orientation
    CPFEM_results(4:3+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en) = &
-     constitutive_results(1:constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en)!ÄÄÄÄ
+     constitutive_post_results(Tstar_v,state(:,i_then),CPFEM_dt,grain,CPFEM_in,cp_en)
 
 ! ---- contribute to IP result ----  
     volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
-    CPFEM_stress_all(:,CPFEM_in,cp_en) =  CPFEM_stress_all(:,CPFEM_in,cp_en)+volfrac*cs ! average Cauchy stress
-    if (updateJaco) cd_IP = cd_IP+volfrac*cd                                            ! average consistent tangent
+    CPFEM_stress_all(:,CPFEM_in,cp_en) = CPFEM_stress_all(:,CPFEM_in,cp_en)+volfrac*cs                  ! average Cauchy stress
+    if (updateJaco) CPFEM_jaco_old(:,:,CPFEM_in,cp_en) = CPFEM_jaco_old(:,:,CPFEM_in,cp_en)+volfrac*cd  ! average consistent tangent
 
  enddo    ! grain loop
  
@@ -244,8 +253,8 @@
      dcs_de,&     ! consistent tangent
      Tstar_v,&    ! second Piola-Kirchoff stress tensor
      Fp_new,&     ! new plastic deformation gradient
+     Fe_new,&     ! new "elastic" deformation gradient
      state_new,&  ! new state variable array
-     Euler,&      ! Euler angles
 !
      dt,&         ! time increment
      cp_en,&      ! element number
@@ -259,42 +268,32 @@
 
  use prec, only: pReal,pInt,pert_e
  use constitutive, only: constitutive_Nstatevars
- use math, only: math_Mandel6to33, mapMandel,math_pDecomposition,math_RtoEuler
+ use math, only: math_Mandel6to33,mapMandel
  implicit none
 
  character(len=*) msg
  logical updateJaco,error
  integer(pInt) cp_en,CPFEM_in,grain,i
  real(pReal) dt
- real(pReal), dimension(3) :: Euler
- real(pReal), dimension(3,3) :: Fg_old,Fg_new,Fg_pert,Fp_old,Fp_new,Fp_pert,Fe_new,Fe_pert,R,U,E_pert
- real(pReal), dimension(6) :: cs,Tstar_v,Tstar_v_pert
+ real(pReal), dimension(3,3) :: Fg_old,Fg_new,Fg_pert,Fp_old,Fp_new,Fp_pert,Fe_new,Fe_pert,E_pert
+ real(pReal), dimension(6)   :: cs,Tstar_v,Tstar_v_pert
  real(pReal), dimension(6,6) :: dcs_de
- real(pReal), dimension(constitutive_Nstatevars(grain, CPFEM_in, cp_en)) :: state_old,state_new,state_pert
+ real(pReal), dimension(constitutive_Nstatevars(grain,CPFEM_in,cp_en)) :: state_old,state_new,state_pert
 
- call CPFEM_timeIntegration(msg,Fp_new,Fe_new,Tstar_v,state_new, &
+ call CPFEM_timeIntegration(msg,Fp_new,Fe_new,Tstar_v,state_new, &   ! def gradients and PK2 at end of time step
                             dt,cp_en,CPFEM_in,grain,Fg_new,Fp_old,state_old)
  if (msg /= 'ok') return
  cs = CPFEM_CauchyStress(Tstar_v,Fe_new)    ! Cauchy stress
 
- call math_pDecomposition(Fe_new,U,R,error) ! polar decomposition
- if (error) then
-    msg = 'polar decomposition'
-    return
- endif
- Euler = math_RtoEuler(transpose(R))        ! orientation
-
- if (updateJaco) then
-!    *** Calculation of the consistent tangent with perturbation ***
-!    *** Perturbation on the component of Fg ***    
-   do i = 1,6
+ if (updateJaco) then                       ! consistent tangent using numerical perturbation of Fg
+   do i = 1,6                               ! Fg component
      E_pert = 0.0_pReal
      E_pert(mapMandel(1,i),mapMandel(2,i)) = E_pert(mapMandel(1,i),mapMandel(2,i)) + pert_e/2.0_pReal
      E_pert(mapMandel(2,i),mapMandel(1,i)) = E_pert(mapMandel(2,i),mapMandel(1,i)) + pert_e/2.0_pReal
 
      Fg_pert = Fg_new+matmul(E_pert,Fg_old) ! perturbated Fg
-     Tstar_v_pert = Tstar_v                 ! initial guess at center
-     state_pert = state_new             ! initial guess at center
+     Tstar_v_pert = Tstar_v                 ! initial guess from end of time step
+     state_pert = state_new                 ! initial guess from end of time step
 
      call CPFEM_timeIntegration(msg,Fp_pert,Fe_pert,Tstar_v_pert,state_pert, &
                                 dt,cp_en,CPFEM_in,grain,Fg_pert,Fp_old,state_old)
@@ -302,10 +301,11 @@
        msg = 'consistent tangent --> '//msg
        return
      endif
-!    *** MISSING:Consistent tangent, (perturbated) Cauchy stress is Mandel hence dcs_de(:,4:6) is too large by sqrt(2)
+! Remark: (perturbated) Cauchy stress is Mandel hence dcs_de(:,4:6) is too large by sqrt(2)
      dcs_de(:,i) = (CPFEM_CauchyStress(Tstar_v_pert,Fe_pert)-cs)/pert_e     
    enddo
  endif
+
  return
 
  END SUBROUTINE
