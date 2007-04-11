@@ -35,11 +35,13 @@
  SUBROUTINE CPFEM_init()
 !
  use prec, only: pReal,pInt
-! use math, only: math_I3
+ use math, only: math_EulertoR
  use mesh
  use constitutive
 !
  implicit none
+
+ integer(pInt) e,i,g
 !
 !    *** mpie.marc parameters ***
  allocate(CPFEM_ffn_all   (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn_all    = 0.0_pReal
@@ -56,7 +58,9 @@
  allocate(CPFEM_sigma_new(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_sigma_new = 0.0_pReal
 !
 !    *** Plastic deformation gradient at (t=t0) and (t=t1) ***  
- allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Fp_old = 0.0_pReal
+ allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ forall (e=1:mesh_NcpElems,i=1:mesh_maxNips,g=1:constitutive_maxNgrains) &
+   CPFEM_Fp_old(:,:,g,i,e) = math_EulerToR(constitutive_EulerAngles(:,g,i,e))  ! plastic def gradient reflects init orientation
  allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Fp_new = 0.0_pReal
 !    
 !    *** Old jacobian (consistent tangent) ***

@@ -732,7 +732,7 @@ use prec, only: pReal,pInt
 use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,math_symmetricEulers,math_EulerToR
 use mesh, only: mesh_NcpElems,FE_Nips,FE_mapElemtype,mesh_maxNips,mesh_element
 use IO,   only: IO_hybridIA
-use CPFEM,only: CPFEM_Fp_old
+
 implicit none
 
 !* Definition of variables
@@ -801,6 +801,7 @@ allocate(constitutive_matID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 allocate(constitutive_texID(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_texID=0_pInt
 allocate(constitutive_MatVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_MatVolFrac=0.0_pReal
 allocate(constitutive_TexVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_TexVolFrac=0.0_pReal
+allocate(constitutive_EulerAngles(3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_EulerAngles=0.0_pReal
 allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nresults=0_pInt
 allocate(constitutive_results(constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_results=0.0_pReal
@@ -855,7 +856,7 @@ do e=1,mesh_NcpElems
 		    constitutive_TexVolFrac(g,i,e) = texVolfrac(s)/multiplicity(texID)/Nsym(texID)
 		    constitutive_Nstatevars(g,i,e) = material_Nslip(matID) ! number of state variables (i.e. tau_c of each slip system)
 		    constitutive_Nresults(g,i,e)   = 0         ! number of constitutive results
-		    CPFEM_Fp_old(:,:,g,i,e) = math_EulerToR(Euler(:,s))    ! set plastic deformation gradient at t_0
+		    constitutive_EulerAngles(:,g,i,e) = Euler(:,s)    ! store initial orientation
             forall (l=1:constitutive_Nstatevars(g,i,e))  ! initialize state variables
                constitutive_state_old(l,g,i,e) = material_s0_slip(matID)
                constitutive_state_new(l,g,i,e) = material_s0_slip(matID)
