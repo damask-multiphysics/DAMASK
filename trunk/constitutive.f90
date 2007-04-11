@@ -868,7 +868,7 @@ enddo ! cp_element
 end subroutine
 
 
-function constitutive_HomogenizedC(ipc,ip,el)
+function constitutive_homogenizedC(ipc,ip,el)
 !*********************************************************************
 !* This function returns the homogenized elacticity matrix           *
 !* INPUT:                                                            *
@@ -910,9 +910,9 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i,k,l,m,n
-real(pReal) Tstar_v(6)
-real(pReal) Lp(3,3)
-real(pReal) dLp_dTstar(3,3,3,3)
+real(pReal), dimension(6) :: Tstar_v
+real(pReal), dimension(3,3) :: Lp
+real(pReal), dimension(3,3,3,3) :: dLp_dTstar
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state,gdot_slip,dgdot_dtauslip,tau_slip
 
 !* Get the material-ID from the triplet(ipc,ip,el)
@@ -942,7 +942,7 @@ return
 end subroutine
 
 
-function constitutive_DotState(Tstar_v,state,ipc,ip,el)
+function constitutive_dotState(Tstar_v,state,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *       
@@ -962,7 +962,7 @@ implicit none
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i
 real(pReal), dimension(6) :: Tstar_v
-real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_DotState,&
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,&
                                                               state,gdot_slip,tau_slip,self_hardening
  
 !* Get the material-ID from the triplet(ipc,ip,el)
@@ -978,7 +978,7 @@ do i=1,constitutive_Nstatevars(ipc,ip,el)
 enddo
 
 !* Hardening for all systems
-constitutive_DotState=matmul(constitutive_HardeningMatrix(1:material_Nslip(matID),1:material_Nslip(matID),&
+constitutive_dotState=matmul(constitutive_HardeningMatrix(1:material_Nslip(matID),1:material_Nslip(matID),&
                       material_CrystalStructure(matID)),self_hardening)
 
 return
