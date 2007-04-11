@@ -8,13 +8,14 @@
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
-!             - set statevariable 2 to number of material
-!             - set statevariable 2 to number of texture
+!             - set statevariable 2 to index of material
+!             - set statevariable 3 to index of texture
 !             - choose output of user variables if desired
-!             - make sure the file material.mpie exists in the working
+!             - make sure the file "mattex.mpie" exists in the working
 !               directory
-!             - use nonsymmetric option for solver (e.g. direct profile
-!               or multifrontal sparse, the letter seems to be faster!)
+!             - use nonsymmetric option for solver (e.g. direct 
+!               profile or multifrontal sparse, the latter seems
+!               to be faster!)
 !********************************************************************
 !     Marc subroutines used:
 !             - hypela2
@@ -33,7 +34,7 @@
  include "constitutive.f90"
  include "CPFEM.f90"
 !
- subroutine hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
+ SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
                     nshear,disp,dispt,coord,ffn,frotn,strechn,eigvn,ffn1,&
                     frotn1,strechn1,eigvn1,ncrd,itel,ndeg,ndm,&
                     nnode,jtype,lclass,ifr,ifu)
@@ -123,8 +124,8 @@
  use math,  only: invnrmMandel, nrmMandel
  implicit real(pReal) (a-h,o-z)
 !
-! Marc common blocks are in fixed format so they have to be pasted in here beware of changes in newer Marc versions
-! these are from 2005r3
+! Marc common blocks are in fixed format so they have to be pasted in here
+! Beware of changes in newer Marc versions -- these are from 2005r3
 ! concom is needed for inc, subinc, ncycle, lovl
 ! include 'concom'
  common/concom/ &
@@ -167,9 +168,9 @@
 !     mpie_en          element number
 !     mpie_in          intergration point number
 !********************************************************************
- cp_en=mesh_FEasCP('elem', n(1))
+ cp_en = mesh_FEasCP('elem', n(1))
  if ((lovl==6).or.(inc==0)) then
-    call cpfem_general(ffn, ffn1, inc, incsub, ncycle, timinc, cp_en, nn)
+    call CPFEM_general(ffn, ffn1, inc, incsub, ncycle, timinc, cp_en, nn)
  endif
 ! return stress and jacobi
 !     Mandel: 11, 22, 33, 12, 23, 13 
@@ -177,16 +178,12 @@
  s(1:ngens)=invnrmMandel(1:ngens)*CPFEM_stress_all(1:ngens, nn, cp_en)
  d(1:ngens,1:ngens)=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
  forall(i=1:ngens) d(i,1:ngens)=d(i,1:ngens)*invnrmMandel(1:ngens)
- 
- !d(1:ngens,1:ngens)=transpose(d(1:ngens,1:ngens))
- !forall(i=1:ngens) d(1:ngens,i)=d(1:ngens,i)*invnrmMandel(1:ngens)
- !d(1:ngens,1:ngens)=transpose(d(1:ngens,1:ngens))
- 
  return
- end
+ 
+ END SUBROUTINE
 !
 !
- subroutine plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi, nshear,jpltcd)
+ SUBROUTINE plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
 !********************************************************************
 !     This routine sets user defined output variables for Marc
 !********************************************************************
@@ -207,10 +204,10 @@
 !     nshear (3)    number of shear stress components
 !
 !********************************************************************
- use prec, only: pReal,pInt
+ use prec,  only: pReal,pInt
  use CPFEM, only: CPFEM_results, CPFEM_Nresults
  use constitutive, only: constitutive_maxNresults
- use mesh, only: mesh_FEasCP
+ use mesh,  only: mesh_FEasCP
  implicit none
 !
  real(pReal) s(*),etot(*),eplas(*),ecreep(*),sp(*)
@@ -222,7 +219,7 @@
                  int(jpltcd/(CPFEM_Nresults+constitutive_maxNresults)),&
                  nn, mesh_FEasCP('elem', m))
  return
- end
+ END SUBROUTINE
 !
 !
 ! subroutine utimestep(timestep,timestepold,icall,time,timeloadcase)
