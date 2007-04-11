@@ -1,15 +1,15 @@
-! last modified 29.03.07
-!    ---------------------------
+
+!##############################################################
  MODULE CPFEM     
-!    ---------------------------
+!##############################################################
 !    *** CPFEM engine ***
 !
  use prec, only: pReal,pInt
  implicit none
 !
-!    ****************************************************************
-!    *** General variables for the material behaviour calculation ***
-!    ****************************************************************  
+! ****************************************************************
+! *** General variables for the material behaviour calculation ***
+! ****************************************************************  
  real(pReal), dimension (:,:,:),     allocatable :: CPFEM_stress_all
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_jacobi_all
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_ffn_all
@@ -28,62 +28,11 @@
 
  CONTAINS
 
-!***********************************************************************
-!***    This routine checks for initialization, variables update and ***
-!***    calls the actual material model                              ***
-!***********************************************************************
- subroutine cpfem_general(ffn, ffn1, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
-!
- use prec, only: pReal,pInt
-! use CPFEM, only: CPFEM_ffn_all, CPFEM_ffn1_all, CPFEM_inc_old
-! use IO, only: IO_init
- use constitutive, only: constitutive_state_old, constitutive_state_new
- implicit none
-!
- real(pReal)   ffn(3,3), ffn1(3,3), CPFEM_dt
- integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, cp_en, CPFEM_in
-!
-! initialization step
- if (CPFEM_first_call) then
-! three dimensional stress state ?
-!    call IO_init()
-    call mesh_init()
-    call constitutive_init()
-    call math_init()
-    call CPFEM_init()
-    CPFEM_first_call = .false.
- endif
-! not a new increment
- if (CPFEM_inc==CPFEM_inc_old) then
-! case of a new subincrement:update starting with subinc 2
-     if (CPFEM_subinc > CPFEM_subinc_old) then
-        CPFEM_sigma_old        = CPFEM_sigma_new
-        CPFEM_Fp_old           = CPFEM_Fp_new
-        constitutive_state_old = constitutive_state_new
-        CPFEM_subinc_old       = CPFEM_subinc
-    endif
-! case of a new increment
- else
-    CPFEM_sigma_old         = CPFEM_sigma_new
-    CPFEM_Fp_old            = CPFEM_Fp_new
-    constitutive_state_old  = constitutive_state_new
-    CPFEM_inc_old           = CPFEM_inc
-    CPFEM_subinc_old        = 1_pInt
- endif
-!
-! get cp element number for fe element number
- CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
- CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
- call CPFEM_general_material(CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
- return
- end subroutine
-
-
-!***********************************************************************
-!***    This routine allocates the arrays defined in module CPFEM    ***
-!***    and initializes them                                         ***
-!***********************************************************************
- subroutine CPFEM_init()
+!*********************************************************
+!***    allocate the arrays defined in module CPFEM    ***
+!***    and initialize them                            ***
+!*********************************************************
+ SUBROUTINE CPFEM_init()
 !
  use prec, only: pReal,pInt
 ! use math, only: math_I3
@@ -93,34 +42,25 @@
  implicit none
 !
 !    *** mpie.marc parameters ***
- allocate(CPFEM_ffn_all(3,3,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_ffn1_all(3,3,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_stress_all(6,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_jacobi_all(6,6,mesh_maxNips,mesh_NcpElems))
- CPFEM_ffn_all    = 0.0_pReal
- CPFEM_ffn1_all   = 0.0_pReal
- CPFEM_stress_all = 0.0_pReal
- CPFEM_jacobi_all = 0.0_pReal
+ allocate(CPFEM_ffn_all   (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn_all    = 0.0_pReal
+ allocate(CPFEM_ffn1_all  (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn1_all   = 0.0_pReal
+ allocate(CPFEM_stress_all(  6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_stress_all = 0.0_pReal
+ allocate(CPFEM_jacobi_all(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_jacobi_all = 0.0_pReal
 !
 !    *** User defined results !!! MISSING incorporate consti_Nresults ***
  allocate(CPFEM_results(CPFEM_Nresults+constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_results = 0.0_pReal
 !
 !    *** Second Piola-Kirchoff stress tensor at (t=t0) and (t=t1) ***
- allocate(CPFEM_sigma_old(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_sigma_new(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- CPFEM_sigma_old = 0.0_pReal
- CPFEM_sigma_new = 0.0_pReal
+ allocate(CPFEM_sigma_old(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_sigma_old = 0.0_pReal
+ allocate(CPFEM_sigma_new(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_sigma_new = 0.0_pReal
 !
 !    *** Plastic deformation gradient at (t=t0) and (t=t1) ***  
- allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
- CPFEM_Fp_old = 0.0_pReal 
- CPFEM_Fp_new = 0.0_pReal 
+ allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Fp_old = 0.0_pReal
+ allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Fp_new = 0.0_pReal
 !    
 !    *** Old jacobian (consistent tangent) ***
- allocate(CPFEM_jaco_old(6,6,mesh_maxNips,mesh_NcpElems))
- CPFEM_jaco_old = 0.0_pReal
+ allocate(CPFEM_jaco_old(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_jaco_old = 0.0_pReal
 !
 !    *** Output to MARC output file ***
  write(6,*)
@@ -138,468 +78,372 @@
  write(6,*)
  call flush(6)
  return
- end subroutine  
+
+ END SUBROUTINE  
 !
 !
- subroutine CPFEM_general_material(&
+!***********************************************************************
+!***    perform initialization at first call, update variables and   ***
+!***    call the actual material model                               ***
+!***********************************************************************
+ SUBROUTINE CPFEM_general(ffn, ffn1, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
+!
+ use prec, only: pReal,pInt
+ use constitutive, only: constitutive_state_old, constitutive_state_new
+ implicit none
+!
+ real(pReal)   ffn(3,3), ffn1(3,3), CPFEM_dt
+ integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, cp_en, CPFEM_in
+!
+! initialization step
+ if (CPFEM_first_call) then
+! three dimensional stress state ?
+    call math_init()
+    call mesh_init()
+    call constitutive_init()
+    call CPFEM_init()
+    CPFEM_first_call = .false.
+ endif
+ if (CPFEM_inc==CPFEM_inc_old) then ! not a new increment
+! case of a new subincrement:update starting with subinc 2
+     if (CPFEM_subinc > CPFEM_subinc_old) then
+        CPFEM_sigma_old        = CPFEM_sigma_new
+        CPFEM_Fp_old           = CPFEM_Fp_new
+        constitutive_state_old = constitutive_state_new
+        CPFEM_subinc_old       = CPFEM_subinc
+    endif
+ else                               ! new increment 
+    CPFEM_sigma_old         = CPFEM_sigma_new
+    CPFEM_Fp_old            = CPFEM_Fp_new
+    constitutive_state_old  = constitutive_state_new
+    CPFEM_inc_old           = CPFEM_inc
+    CPFEM_subinc_old        = 1_pInt
+ endif
+!
+ CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
+ CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
+ call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
+ return
+
+ END SUBROUTINE
+
+
+!**********************************************************
+!***  calculate the material behaviour at IP level      ***
+!**********************************************************
+ SUBROUTINE CPFEM_stressIP(&
      CPFEM_cn,&       ! Cycle number
      CPFEM_dt,&       ! Time increment (dt)
      cp_en,&          ! Element number
      CPFEM_in)        ! Integration point number
-!***********************************************************************
-!***    This routine calculates the material behaviour    ***
-!***********************************************************************
- use prec, only: pReal,pInt, ijaco
-! use IO, only: IO_error
- use math
- use mesh
+
+ use prec, only: pReal,pInt,ijaco,nCutback
+ use IO,   only: IO_error
+ use mesh, only: mesh_element
  use constitutive
 !
  implicit none
-!
-!    *** Definition of variables ***
-!    *** Subroutine parameters ***
- real(pReal)   CPFEM_dt
- integer(pInt) CPFEM_cn, cp_en ,CPFEM_in
-!    *** Local variables ***
- real(pReal)   vf, cs(6), cd(6,6), CPFEM_d(6,6), CPFEM_s(6)
- integer(pInt) jpara,nori, iori, ising, icut, iconv, CPFEM_en
-!
-!    *** Flag for recalculation of jacobian ***
- jpara = 1_pInt      
-! get number of grains from cp element number and integration point number
- nori = constitutive_Ngrains(CPFEM_in,cp_en)  !ÄÄÄ
-! 
- CPFEM_en = mesh_element(1,cp_en) ! remap back to FE id
-!
- CPFEM_s=0
- CPFEM_d=0
-!
-!    *** Loop over all the components ***
- do iori=1,nori
-!
-!    *** Initialization of the matrices for t=t0 ***
-! data from constitutive?
-    vf = constitutive_matVolFrac(iori,CPFEM_in,cp_en)*constitutive_texVolFrac(iori,CPFEM_in,cp_en) !ÄÄÄ
 
-!    *** Calculation of the solution at t=t1 ***
-!	QUESTION use the mod() as flag parameter in the call ??
-    if (mod(CPFEM_cn,ijaco)==0) then !ÄÄÄ
-        call CPFEM_stress(cs, cd, CPFEM_dt,cp_en,CPFEM_in, iori, ising, icut, iconv, 1_pInt)
-!    ***   Evaluation of ising      ***
-!    *** ising=2 => singular matrix in jacobi calculation ***
-!    ***      => use old jacobi        ***
-        if (ising==2) jpara=0
-!    *** Calculation of the consistent tangent ***
-        CPFEM_d=CPFEM_d+vf*cd
-    else
-       call CPFEM_stress(cs, cd, CPFEM_dt,cp_en,CPFEM_in, iori, ising, icut, iconv, 0_pInt)
-       jpara=0
-    endif
-!    *** Cases of unsuccessful calculations *** 
-!    ***   Evaluation of ising  ***
-!    *** ising!=0 => singular matrix ***
-    if (ising==1) then
-        write(6,*) 'Singular matrix!'
-        write(6,*) 'Integration point: ',CPFEM_in
-        write(6,*) 'Element:           ',CPFEM_en
-        call IO_error(700)
-!        CPFEM_timefactor=1.e5_pReal
-        return
-    endif
-!    ***   Evaluation of icut   ***
-!    *** icut!=0 => too many cutbacks ***
-    if (icut==1) then
-        write(6,*) 'Too many cutbacks'
-        write(6,*) 'Integration point: ',CPFEM_in
-        write(6,*) 'Element:           ',CPFEM_en
-        call IO_error(600)
-!        CPFEM_timefactor=1.e5_pReal
-        return
-    endif
-!    ***  Evaluation of iconv ***
-!    *** iconv!=0 => no convergence ***
-    if (iconv==1) then
-        write(6,*) 'Inner loop did not converge!'
-        write(6,*) 'Integration point: ',CPFEM_in
-        write(6,*) 'Element:           ',CPFEM_en
-        call IO_error(600)
-!       CPFEM_timefactor=1.e5_pReal
-        return
-    else if (iconv==2) then
-        write(6,*) 'Outer loop did not converge!'
-        write(6,*) 'Integration point: ',CPFEM_in
-        write(6,*) 'Element:           ',CPFEM_en
-        call IO_error(600)
-!        CPFEM_timefactor=1.e5_pReal
-        return
-    endif
-!    *** Evaluation of the average Cauchy stress ***    
-    CPFEM_s=CPFEM_s+vf*cs
- enddo
-!    *** End of the loop over the components ***
+ integer(pInt), parameter :: i_now = 1_pInt,i_then = 2_pInt
+ character(len=128) msg
+ integer(pInt) CPFEM_cn,cp_en,CPFEM_in,grain,i
+ logical updateJaco
+ real(pReal) CPFEM_dt,dt,t,volfrac
+ real(pReal), dimension(6) :: cs,Tstar_v
+ real(pReal), dimension(6,6) :: cd,cd_IP
+ real(pReal), dimension(3,3) :: deltaFg
+ real(pReal), dimension(3) :: Euler
+ real(pReal), dimension(3,3,2) :: Fg,Fp
+ real(pReal), dimension(constitutive_Nstatevars(grain,CPFEM_in,cp_en),2) :: state
 
-!    *************************************
-!    *** End of the CP-FEM Calculation *** 
-!    *************************************
-!    *** Store the new stress ***     
- CPFEM_stress_all(:,CPFEM_in,cp_en)=CPFEM_s
-!    *** Store the new jacobian ***     
- if (jpara/=0) CPFEM_jaco_old(:,:,CPFEM_in,cp_en)=CPFEM_d
+ updateJaco = (mod(CPFEM_cn,ijaco)==0)   ! update consistent tangent every ijaco'th iteration
+
+ CPFEM_stress_all(:,CPFEM_in,cp_en) = 0.0_pReal ! average Cauchy stress
+ cd_IP = 0.0_pReal                              ! average consistent tangent
+
+! -------------- grain loop -----------------
+ do grain = 1,constitutive_Ngrains(CPFEM_in,cp_en)
+! -------------------------------------------
+ 
+   i = 0_pInt                         ! cutback counter
+   state(:,i_now) = constitutive_state_old(:,grain,CPFEM_in,cp_en)
+   Fg(:,:,i_now)  = CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
+   Fp(:,:,i_now)  = CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en)
+  
+   deltaFg = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en)-CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
+   dt = CPFEM_dt
+   
+   Tstar_v = 0.0_pReal                ! fully elastic initial guess
+   Fg(:,:,i_then) = Fg(:,:,i_now)
+   state(:,i_then) = 0.0_pReal        ! state_old as initial guess 
+   t = 0.0_pReal
+   
+! ------- crystallite integration -----------
+   do
+! -------------------------------------------
+     if (t+dt < CPFEM_dt) then          ! intermediate solution
+       t = t+dt                         ! next time inc
+       Fg(:,:,i_then) = Fg(:,:,i_then)+deltaFg  ! corresponding Fg
+     else                               ! full step solution
+       t = CPFEM_dt                     ! final time
+       Fg(:,:,i_then) = CPFEM_ffn_all(:,:,CPFEM_in,cp_en) ! final Fg
+     endif
+     
+     call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Fp(:,:,i_then),state(:,i_then),Euler,&
+                                  dt,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
+                                  Fg(:,:,i_now),Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
+     if (msg == 'ok') then             ! solution converged
+       if (t == CPFEM_dt) exit         ! reached final "then"
+     else                              ! solution not found
+       i = i+1_pInt                    ! inc cutback counter
+       if (i > nCutback) then          ! limit exceeded?
+         write(6,*) 'cutback limit --> '//msg
+         write(6,*) 'Grain:             ',grain
+         write(6,*) 'Integration point: ',CPFEM_in
+         write(6,*) 'Element:           ',mesh_element(1,cp_en)
+         call IO_error(600)
+         return                        ! byebye
+       else
+         t = t-dt                        ! rewind time
+         Fg(:,:,i_then) = Fg(:,:,i_then)-deltaFg ! rewind Fg
+         dt = 0.5_pReal*dt               ! cut time-step in half
+         deltaFg = 0.5_pReal*deltaFg     ! cut Fg-step in half
+       endif
+     endif
+   enddo    ! crystallite integration (cutback loop)
+  
+! ---- update crystallite matrices at t = t1 ----  
+   CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en)         = Fp(:,:,i_then)
+   constitutive_state_new(:,grain,CPFEM_in,cp_en) = state(:,i_then)
+   CPFEM_sigma_new(:,grain,CPFEM_in,cp_en)        = Tstar_v
+! ---- update results plotted in MENTAT ----  
+   CPFEM_results(1:3,grain,CPFEM_in,cp_en) = Euler
+   CPFEM_results(4:3+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en) = &
+     constitutive_results(1:constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en)!ÄÄÄÄ
+
+! ---- contribute to IP result ----  
+    volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
+    CPFEM_stress_all(:,CPFEM_in,cp_en) =  CPFEM_stress_all(:,CPFEM_in,cp_en)+volfrac*cs ! average Cauchy stress
+    if (updateJaco) cd_IP = cd_IP+volfrac*cd                                            ! average consistent tangent
+
+ enddo    ! grain loop
+ 
  return
- end subroutine
-!
-!
- subroutine CPFEM_stress(&
-     cs,&               ! stress vector
-     cd,&               ! Jacoby matrix
-     CPFEM_dt,&         ! Time increment (dt)
-     cp_en,&            ! Element number
-     CPFEM_in,&         ! Integration point number
-     iori,&             ! number of orintation
-     ising,&            ! flag for singular matrix
-     icut,&             ! flag for too many cut backs
-     iconv,&            ! flag for non convergence
-     isjaco)            ! flag whether to calculate Jacoby matrix
+ END SUBROUTINE
+
+
 !********************************************************************
-! This routine calculates the stress for a single component
-! and manages the independent time incrmentation
-!********************************************************************
- use prec, only: pReal,pInt, ncut
- use constitutive, only: constitutive_Nstatevars, constitutive_state_old, constitutive_state_new, constitutive_Nresults,&
-                         constitutive_results
- implicit none
-!
-!    *** Definition of variables ***
-!    *** Subroutine parameters ***
- real(pReal)   cs(6), cd(6,6), CPFEM_dt
- integer(pInt) cp_en ,CPFEM_in, iori, ising, icut, iconv, isjaco
-!    *** Local variables ***
- real(pReal)   Fp_old(3,3), Fp_new(3,3), state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en))
- real(pReal)   state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Tstar_v(6), CPFEM_ffn(3,3), CPFEM_ffn1(3,3)
- real(pReal)   Tstar_v_h(6), state_new_h(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), phi1, PHI, phi2, dt_i
- real(pReal)   delta_Fg(3,3), Fg_i(3,3), state_new_i(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), time
- integer(pInt) jcut
-!
- icut=0
-!
-!    *** Initialization of the matrices for t=t0 ***
-    Fp_old     = CPFEM_Fp_old(:,:,iori,CPFEM_in,cp_en)
-    Fp_new     = 0.0_pReal
-    state_old  = constitutive_state_old(:,iori,CPFEM_in,cp_en)
-    state_new  = state_old
-    Tstar_v    = CPFEM_sigma_old(:,iori,CPFEM_in,cp_en)
-    CPFEM_ffn  = CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
-    CPFEM_ffn1 = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en)
-!
-!    *** First attempt to calculate Tstar and tauc with initial timestep ***
-! save copies of Tstar_v and state_new
- Tstar_v_h = Tstar_v
- state_new_h = state_new
- call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori, ising, iconv, isjaco, phi1, PHI, phi2,&
-                       CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,state_old, state_new, Tstar_v)
- if ((iconv==0).AND.(ising==0)) then
-!    *** Update the differents matrices for t=t1 ***
-    CPFEM_Fp_new(:,:,iori,CPFEM_in,cp_en)          = Fp_new
-    constitutive_state_new(:,iori,CPFEM_in,cp_en) = state_new
-    CPFEM_sigma_new(:,iori,CPFEM_in,cp_en)         = Tstar_v
-!    *** Update the results plotted in MENTAT ***
-    CPFEM_results(1,iori,CPFEM_in,cp_en) = phi1
-    CPFEM_results(2,iori,CPFEM_in,cp_en) = PHI
-    CPFEM_results(3,iori,CPFEM_in,cp_en) = phi2
-    CPFEM_results(4:3+constitutive_Nresults(iori,CPFEM_in,cp_en),iori,CPFEM_in,cp_en)=&
-            constitutive_results(1:constitutive_Nresults(iori,CPFEM_in,cp_en),iori,CPFEM_in,cp_en)!ÄÄÄÄ
-    return
- endif
-!
-!    *** Calculation of stress and resistences with a cut timestep ***
-!    ***      when first try did not converge    ***  
- jcut=1_pInt
- dt_i=0.5_pReal*CPFEM_dt
- delta_Fg=0.5_pReal*(CPFEM_ffn1-CPFEM_ffn)
- Fg_i=CPFEM_ffn+delta_Fg
- Tstar_v=Tstar_v_h
- state_new_i=state_new_h
-!    *** Start time ***
- time=dt_i
- do while (time<=CPFEM_dt)
-    call CPFEM_stress_int(cs, cd, time, cp_en,CPFEM_in, iori, ising, iconv, isjaco, phi1, PHI, phi2,&
-                       CPFEM_ffn, Fg_i,Fp_old,Fp_new,state_old, state_new_i, Tstar_v)
-    if ((iconv==0).AND.(ising==0)) then
-        time=time+dt_i
-        Fg_i=Fg_i+delta_Fg
-        Tstar_v_h=Tstar_v
-        state_new_h=state_new_i
-    else
-        jcut=jcut+1_pInt
-        if (jcut>ncut) then
-            icut=1_pInt
-            return
-        endif
-        dt_i=0.5_pReal*dt_i
-        time=time-dt_i
-        delta_Fg=0.5_pReal*delta_Fg
-        Fg_i=Fg_i-delta_Fg
-        Tstar_v=Tstar_v_h
-        state_new_i=state_new_h
-    endif
- enddo
-!
-!    *** Final calculation of stress and resistences with full timestep ***
- state_new=state_new_i
- call CPFEM_stress_int(cs, cd, CPFEM_dt, cp_en,CPFEM_in, iori, ising, iconv, isjaco, phi1, PHI, phi2,&
-                       CPFEM_ffn, CPFEM_ffn1,Fp_old,Fp_new,state_old, state_new, Tstar_v)
-!    *** Update the differents matrices for t=t1 ***
- CPFEM_Fp_new(:,:,iori,CPFEM_in,cp_en)          = Fp_new
- constitutive_state_new(:,iori,CPFEM_in,cp_en) = state_new
- CPFEM_sigma_new(:,iori,CPFEM_in,cp_en)         = Tstar_v
-!    *** Update the results plotted in MENTAT ***
- CPFEM_results(1,iori,CPFEM_in,cp_en) = phi1
- CPFEM_results(2,iori,CPFEM_in,cp_en) = PHI
- CPFEM_results(3,iori,CPFEM_in,cp_en) = phi2
- return
- end subroutine
-!
-!
- subroutine CPFEM_stress_int(&
-     cs,&         ! Cauchy stress vector
-     dcs_de,&     ! Consistent tangent
-     dt,&         ! Time increment
-     cp_en,&      ! Element number
-     CPFEM_in,&   ! Integration point number
-     iori,&       ! number of orintation
-     ising,&      ! flag for singular matrix
-     iconv,&      ! flag for non convergence
-     isjaco,&     ! flag whether to calculate Jacoby matrix
-     phi1,&       ! Euler angle
-     PHI,&        ! Euler angle
-     phi2,&       ! Euler angle
-     Fg_old,&     ! Old global deformation gradient
-     Fg_new,&     ! New global deformation gradient
-     Fp_old,&     ! Old plastic deformation gradient
-     Fp_new,&     ! New plastic deformation gradient
-     state_old,&  ! Old state variable array
-     state_new,&  ! New state variable array
-     Tstar_v)     ! Second Piola-Kirschoff stress tensor
-!********************************************************************
-! This routine calculates the stress for a single component
+! Calculates the stress for a single component
 ! it is based on the paper by Kalidindi et al.:
 ! J. Mech. Phys, Solids Vol. 40, No. 3, pp. 537-569, 1992
 ! it is modified to use anisotropic elasticity matrix
 !********************************************************************
+ subroutine CPFEM_stressCrystallite(&
+     msg,&        ! return message
+     cs,&         ! Cauchy stress vector
+     dcs_de,&     ! consistent tangent
+     Tstar_v,&    ! second Piola-Kirchoff stress tensor
+     Fp_new,&     ! new plastic deformation gradient
+     state_new,&  ! new state variable array
+     Euler,&      ! Euler angles
+!
+     dt,&         ! time increment
+     cp_en,&      ! element number
+     CPFEM_in,&   ! integration point number
+     grain,&      ! grain number
+     updateJaco,& ! boolean to calculate Jacobi matrix
+     Fg_old,&     ! old global deformation gradient
+     Fg_new,&     ! new global deformation gradient
+     Fp_old,&     ! old plastic deformation gradient
+     state_old)   ! old state variable array
+
  use prec, only: pReal,pInt,pert_e
  use constitutive, only: constitutive_Nstatevars
- use math, only: math_Mandel6to33
+ use math, only: math_Mandel6to33, mapMandel,math_pDecomposition,math_RtoEuler
  implicit none
-!
-!    *** Definition of variables ***
-!    *** Subroutine parameters ***
- integer(pInt) cp_en, CPFEM_in, iori, ising, iconv, isjaco
- real(pReal)   cs(6), dcs_de(6,6), dt, phi1, PHI, phi2, Fg_old(3,3), Fg_new(3,3)
- real(pReal)   Fp_old(3,3), Fp_new(3,3), state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en))
- real(pReal)   state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Tstar_v(6)
-!    *** Local variables ***
- integer(pInt) ic     
- real(pReal) Fe(3,3), R(3,3), U(3,3), Fg_pert(3,3), sgm2(6)
- real(pReal) state2(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), Fp2(3,3), cs1(6),E_pert(3,3)
-!    *** Error treatment ***
- iconv  = 0
- ising  = 0   
 
-!    *********************************************
-!    ***  Calculation of the new Cauchy stress ***
-!    *********************************************
+ character(len=*) msg
+ logical updateJaco,error
+ integer(pInt) cp_en,CPFEM_in,grain,i
+ real(pReal) dt
+ real(pReal), dimension(3) :: Euler
+ real(pReal), dimension(3,3) :: Fg_old,Fg_new,Fg_pert,Fp_old,Fp_new,Fp_pert,Fe_new,Fe_pert,R,U,E_pert
+ real(pReal), dimension(6) :: cs,Tstar_v,Tstar_v_pert
+ real(pReal), dimension(6,6) :: dcs_de
+ real(pReal), dimension(constitutive_Nstatevars(grain, CPFEM_in, cp_en)) :: state_old,state_new,state_pert
 
-!    *** Call Newton-Raphson method ***
- call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_new,Fp_old,Fp_new,Fe,state_old,state_new,Tstar_v,cs,iconv,ising)
-! 
-!    *** Calculation of the new orientation ***
- call math_pDecomposition(Fe,U,R,ising)
- if (ising==1) then
+ call CPFEM_timeIntegration(msg,Fp_new,Fe_new,Tstar_v,state_new, &
+                            dt,cp_en,CPFEM_in,grain,Fg_new,Fp_old,state_old)
+ if (msg /= 'ok') return
+ cs = CPFEM_CauchyStress(Tstar_v,Fe_new)    ! Cauchy stress
+
+ call math_pDecomposition(Fe_new,U,R,error) ! polar decomposition
+ if (error) then
+    msg = 'polar decomposition'
     return
  endif
- call math_RtoEuler(transpose(R),phi1,PHI,phi2)
-!
-!    *** Choice of the calculation of the consistent tangent ***     
- if (isjaco==0) return
-!
-!    *********************************************
-!    *** Calculation of the consistent tangent ***
-!    *********************************************
-!
+ Euler = math_RtoEuler(transpose(R))        ! orientation
+
+ if (updateJaco) then
 !    *** Calculation of the consistent tangent with perturbation ***
 !    *** Perturbation on the component of Fg ***    
- do ic=1,6
-!
-!    *** Method of small perturbation
-! Missing direct matrix perturbation
-    E_pert=0
-    if(ic<=3) then 
-        E_pert(ic,ic) = pert_e
-    else if(ic==4)  then 
-        E_pert(1,2) = pert_e/2
-        E_pert(2,1) = pert_e/2
-    else if(ic==5)  then 
-        E_pert(2,3) = pert_e/2
-        E_pert(3,2) = pert_e/2
-    else if(ic==6)  then 
-        E_pert(1,3) = pert_e/2
-        E_pert(3,1) = pert_e/2
-    end if
-    Fg_pert=Fg_new+matmul(E_pert, Fg_old)
-    sgm2=Tstar_v
-    state2=state_new
+   do i = 1,6
+     E_pert = 0.0_pReal
+     E_pert(mapMandel(1,i),mapMandel(2,i)) = E_pert(mapMandel(1,i),mapMandel(2,i)) + pert_e/2.0_pReal
+     E_pert(mapMandel(2,i),mapMandel(1,i)) = E_pert(mapMandel(2,i),mapMandel(1,i)) + pert_e/2.0_pReal
 
-!    *** Calculation of the perturbated Cauchy stress ***
-    call NEWTON_RAPHSON(dt,cp_en,CPFEM_in,iori,Fg_pert,Fp_old,Fp2,Fe,state_old,state2,sgm2,cs1,iconv,ising)
-!  
-!    *** Consistent tangent *** as cs is Mandel dcs_de(:,4:6) is too large by sqrt(2)
-    dcs_de(:,ic)=(cs1-cs)/pert_e     
- enddo
-!
+     Fg_pert = Fg_new+matmul(E_pert,Fg_old) ! perturbated Fg
+     Tstar_v_pert = Tstar_v                 ! initial guess at center
+     state_pert = state_new             ! initial guess at center
+
+     call CPFEM_timeIntegration(msg,Fp_pert,Fe_pert,Tstar_v_pert,state_pert, &
+                                dt,cp_en,CPFEM_in,grain,Fg_pert,Fp_old,state_old)
+     if (msg /= 'ok') then
+       msg = 'consistent tangent --> '//msg
+       return
+     endif
+!    *** MISSING:Consistent tangent, (perturbated) Cauchy stress is Mandel hence dcs_de(:,4:6) is too large by sqrt(2)
+     dcs_de(:,i) = (CPFEM_CauchyStress(Tstar_v_pert,Fe_pert)-cs)/pert_e     
+   enddo
+ endif
  return
- end subroutine
-!
-!
- subroutine NEWTON_RAPHSON(&
-     dt,&
-     cp_en,&            ! Element number
-     CPFEM_in,&         ! Integration point number
-     iori,&             ! number of orientation
-     Fg_new,&
-     Fp_old,&
-     Fp_new,&
-     Fe,&
-     state_old,&
-     state_new,&
-     Tstar_v,&
-     cs,&
-     iconv,&
-     ising)
+
+ END SUBROUTINE
+
+
 !***********************************************************************
-!***        NEWTON-RAPHSON Calculation                               ***
+!***     fully-implicit two-level time integration                   ***
 !***********************************************************************
- use prec, only: pReal,pInt, nouter, tol_outer, ninner, tol_inner, crite
- use constitutive, only: constitutive_Nstatevars, constitutive_HomogenizedC, constitutive_dotState
+ SUBROUTINE CPFEM_timeIntegration(&
+     msg,&              ! return message
+     Fp_new,&           ! new plastic deformation gradient
+     Fe_new,&           ! new "elastic" deformation gradient
+     Tstar_v,&          ! 2nd PK stress (taken as initial guess if /= 0)
+     state_new,&        ! current microstructure at end of time inc (taken as guess if /= 0)
+!
+     dt,&               ! time increment
+     cp_en,&            ! element number
+     CPFEM_in,&         ! integration point number
+     grain,&            ! grain number
+     Fg_new,&           ! new total def gradient
+     Fp_old,&           ! former plastic def gradient
+     state_old)         ! former microstructure
+     
+ use prec, only: pReal,pInt, nState,tol_State,nStress,tol_Stress, crite, nReg
+ use constitutive, only: constitutive_Nstatevars,&
+                         constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent
  use math
  implicit none
-!    *** Definition of variables ***
-!    *** Subroutine parameters ***
- integer(pInt) cp_en, CPFEM_in, iori, iconv, ising
- real(pReal) dt,Fg_new(3,3),Fp_old(3,3),Fp_new(3,3), Fe(3,3)
- real(pReal) state_old(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), state_new(constitutive_Nstatevars(iori, CPFEM_in, cp_en)) 
- real(pReal) Tstar_v(6), cs(6)
-!    *** Local variables ***
- real(pReal) invFp_old(3,3), det, A(3,3), C_66(6,6), Lp(3,3), dLp(3,3,3,3)
- real(pReal) I3tLp(3,3), help(3,3), help1(3,3,3,3), Tstar0_v(6), R1(6)
- real(pReal) dstate(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), R2(constitutive_Nstatevars(iori, CPFEM_in, cp_en))
- real(pReal) R2s(constitutive_Nstatevars(iori, CPFEM_in, cp_en)), invFp_new(3,3)
- real(pReal) Jacobi(6,6), invJacobi(6,6), dTstar_v(6), help2(6,6)
- integer(pInt) iouter, iinner , dummy, err, i, j, k, l, m
-!
-!    *** Error treatment ***
- iconv  = 0
- ising  = 0
-!
-! initialize new state
- state_new=state_old
-!    *** Calculation of Fp_old(-1) ***
- call invert3x3(Fp_old, invFp_old, det, err) !ÄÄÄ
- if (err==1_pInt) then
-    ising=1
+
+ character(len=*) msg
+ integer(pInt) cp_en, CPFEM_in, grain
+ integer(pInt) iState,iStress,dummy, i,j,k,l,m
+ real(pReal) dt,det
+ real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress
+ real(pReal), dimension(6,6) :: C_66,Jacobi,invJacobi,help2
+ real(pReal), dimension(3,3) :: Fg_new,Fp_old,Fp_new,Fe_new,invFp_old,invFp_new,Lp,A,B,AB
+ real(pReal), dimension(3,3,3,3) :: dLp, LTL
+ real(pReal), dimension(constitutive_Nstatevars(grain, CPFEM_in, cp_en)) :: state_old,state_new,dstate,Rstate,RstateS
+ logical failed
+ 
+ msg = 'ok'  ! error-free so far
+
+ call math_invert3x3(Fp_old,invFp_old,det,failed) ! inversion of Fp
+ if (failed) then
+    msg = 'inversion Fp_old'
     return
  endif
-!
-!    *** Calculation of A and T*0 (see Kalidindi) ***
+
+ C_66 = constitutive_HomogenizedC(grain, CPFEM_in, cp_en)
  A = matmul(Fg_new,invFp_old)  ! actually Fe
  A = matmul(transpose(A), A)
- C_66 = constitutive_HomogenizedC(iori, CPFEM_in, cp_en) !ÄÄÄ
- Tstar_v = 0.5_pReal*matmul(C_66, math_Mandel33to6(A-math_I3))  ! fully elastic guess ADDED 1/2
+
+! former state guessed, if none specified
+ if (all(state_new == 0.0_pReal)) state_new = state_old
+ RstateS = state_new
+ iState = 0_pInt
+! fully elastic guess (Lp = 0), if none specified
+ if (all(Tstar_v == 0.0_pReal)) Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(A-math_I3))
 ! QUESTION follow former plastic slope to guess better?
-!
-!    *** Second level of iterative procedure: Resistences ***
- do iouter=1,nouter
-!    *** First level of iterative procedure: Stresses ***
-    do iinner=1,ninner
-!
-!    *** Calculation of gdot_slip ***    
-        call constitutive_LpAndItsTangent(Tstar_v, iori, CPFEM_in, cp_en, Lp, dLp)
-        I3tLp  = math_I3-dt*Lp
-        help=matmul(transpose(I3tLp),matmul(A, I3tLp)) 
-        Tstar0_v = 0.5_pReal * matmul(C_66, math_Mandel33to6(help-math_I3))
-        R1=Tstar_v-Tstar0_v
-        if (maxval(abs(R1/maxval(abs(Tstar_v)))) < tol_inner) goto 100
-! 
-!    *** Jacobi Calculation: dRes/dTstar ***
-        help=matmul(A, I3tLp)
-        help1=0.0_pReal
-        do i=1,3
-          do j=1,3
-            do k=1,3
-              do l=1,3
-                do m=1,3
-                  help1(i,j,k,l)=help1(i,j,k,l)+help(i,m)*dLp(m,j,k,l)+help(j,m)*dLp(m,i,l,k)
-                enddo
-              enddo
-            enddo
-          enddo
-        enddo
-        help2=math_Mandel3333to66(help1)
-        Jacobi= 0.5_pReal*matmul(C_66, help2) + math_identity2nd(6)
-        call math_invert6x6(Jacobi, invJacobi, dummy, err) !ÄÄÄ
-        if (err==1_pInt) then
-            forall (i=1:6) Jacobi(i,i)=1.05d0*maxval(Jacobi(i,:)) ! regularization
-            call math_invert6x6(Jacobi, invJacobi, dummy, err)
-            if (err==1_pInt) then  ! sorry, can't help here!!
-                ising=1
-                return
-            endif
-        endif
-        dTstar_v=matmul(invJacobi,R1)  ! correction to Tstar
+ Rstress = Tstar_v
+ iStress = 0_pInt
 
-!    *** Correction (see Kalidindi) ***
-        forall(i=1:6, abs(dTstar_v(i)) > crite*maxval(abs(Tstar_v))) &
-          dTstar_v(i) = sign(crite*maxval(abs(Tstar_v)),dTstar_v(i))
+state: do                ! outer iteration: state
+         iState = iState+1
+         if (iState > nState) then
+           msg = 'limit state iteration'
+           return
+         endif
+stress:  do              ! inner iteration: stress
+           iStress = iStress+1
+           if (iStress > nStress) then      ! too many loops required
+             msg = 'limit stress iteration'
+             return
+           endif
+           call constitutive_LpAndItsTangent(Lp,dLp, Tstar_v,state_new,grain,CPFEM_in,cp_en)
+           B = math_I3-dt*Lp
+           Rstress = Tstar_v - 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),matmul(A,B))-math_I3))
+           if (maxval(abs(Rstress/maxval(abs(Tstar_v)))) < tol_Stress) exit stress
 
-        Tstar_v=Tstar_v-dTstar_v
-!
-    enddo
-    iconv=1
-    return
-!    *** End of the first level of iterative procedure ***
+!   update stress guess using inverse of dRes/dTstar (Newton--Raphson)
+           AB = matmul(A,B)
+           LTL = 0.0_pReal
+           do i=1,3
+             do j=1,3
+               do k=1,3
+                 do l=1,3
+                   do m=1,3
+!                    LTL(i,j,k,l) = LTL(i,j,k,l) + AB(i,m)*dLp(m,j,k,l) + AB(j,m)*dLp(m,i,l,k)  ! old
+                     LTL(i,j,k,l) = LTL(i,j,k,l) + dLp(j,i,k,m)*AB(m,l) + AB(m,i)*dLp(m,j,k,l)   ! new (and correct??)
+                   enddo
+                 enddo
+               enddo
+             enddo
+           enddo
 
-100 dstate=dt*constitutive_dotState(Tstar_v, iori, CPFEM_in, cp_en)
-!    *** Arrays of residuals ***
-    R2=state_new-state_old-dstate
-    R2s=0.0_pReal
-    forall(i=1:constitutive_Nstatevars(iori, CPFEM_in, cp_en), state_new(i)/=0.0_pReal) R2s(i)=R2(i)/state_new(i)
-    if (maxval(abs(R2s)) < tol_outer) goto 200
-    state_new=state_old+dstate
- enddo  
- iconv=2
- return
-!    *** End of the second level of iterative procedure ***
+           Jacobi = math_identity2nd(6) + 0.5_pReal*dt*matmul(C_66,math_Mandel3333to66(LTL))
+           j = 0_pInt ; failed = .true.
+           do while (failed .and. j <= nReg)
+             call math_invert6x6(Jacobi,invJacobi,dummy,failed)
+             forall (i=1:6) Jacobi(i,i) = 1.05_pReal*maxval(Jacobi(i,:)) ! regularization
+             j = j+1
+           enddo
+           if (failed) then
+             msg = 'regularization Jacobi'
+             return
+           endif 
+           
+           dTstar_v = matmul(invJacobi,Rstress)  ! correction to Tstar
+           forall(i=1:6, abs(dTstar_v(i)) > crite*maxval(abs(Tstar_v))) &
+             dTstar_v(i) = sign(crite*maxval(abs(Tstar_v)),dTstar_v(i))   ! cap to maximum correction
+           Tstar_v = Tstar_v-dTstar_v
 
-!    *** Calculation of Fp(t+dt) (see Kalidindi) ***
-200 invFp_new=matmul(Fp_old, I3tLp)
- call math_invert3x3(invFp_new, Fp_new, det, err) !ÄÄÄ
- if (err==1_pInt) then
-    ising=1
+    enddo stress
+
+    dstate = dt*constitutive_dotState(Tstar_v,state_new,grain,CPFEM_in,cp_en) ! evolution of microstructure
+    Rstate = state_new - (state_old+dstate)
+    RstateS = 0.0_pReal
+    forall (i=1:constitutive_Nstatevars(grain,CPFEM_in,cp_en), state_new(i)/=0.0_pReal) &
+      RstateS(i) = Rstress(i)/state_new(i)
+    if (maxval(abs(RstateS)) < tol_State) exit state
+    state_new = state_old+dstate
+
+ enddo state
+ 
+ invFp_new = matmul(invFp_old,B)
+ call math_invert3x3(invFp_new,Fp_new,det,failed)
+ if (failed) then
+    msg = 'inversion Fp_new'
     return
  endif
- Fp_new=Fp_new/math_det3x3(Fp_new)**(1.0_pReal/3.0_pReal)
-!
-!    *** Calculation of F*(t+dt) (see Kalidindi) ***
- Fe=matmul(Fg_new,invFp_new)
-!
-!    *** Calculation of the Cauchy stress ***
-!	QUESTION seems to need Tstar, not Estar..??
- cs = CPFEM_cauchy_stress(Tstar_v,Fe)
-!
+ Fp_new = Fp_new*det**(1.0_pReal/3.0_pReal) ! det = det(InvFp_new) !!
+ Fe_new = matmul(Fg_new,invFp_new)
+
  return
- end subroutine
-!
- function CPFEM_cauchy_stress(PK_v, Fe)
+ END SUBROUTINE
+ 
+ 
+ FUNCTION CPFEM_CauchyStress(PK_v,Fe)
 !***********************************************************************
 !***        Cauchy stress calculation                               ***
 !***********************************************************************
@@ -607,8 +451,12 @@
  use math, only: math_Mandel33to6,math_Mandel6to33,math_det3x3
  implicit none
 !    *** Subroutine parameters ***
- real(pReal) PK_v(6), Fe(3,3), CPFEM_cauchy_stress(6)
+ real(pReal) PK_v(6), Fe(3,3), CPFEM_CauchyStress(6)
 
- CPFEM_cauchy_stress = math_Mandel33to6(matmul(matmul(Fe,math_Mandel6to33(PK_v)),transpose(Fe))/math_det3x3(Fe))
- end function
- end module
+ CPFEM_CauchyStress = math_Mandel33to6(matmul(matmul(Fe,math_Mandel6to33(PK_v)),transpose(Fe))/math_det3x3(Fe))
+ return
+ END FUNCTION
+ 
+ 
+ END MODULE
+ 
