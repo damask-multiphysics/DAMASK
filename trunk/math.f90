@@ -138,7 +138,7 @@
  implicit none
 
  integer(pInt)  i,dimen
- real(pReal) math_identity2nd(dimen,dimen)
+ real(pReal), dimension(dimen,dimen) :: math_identity2nd
 
  math_identity2nd = 0.0_pReal 
  forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
@@ -156,7 +156,7 @@
  implicit none
 
  integer(pInt)  i,j,k,l,dimen
- real(pReal) math_identity4th(dimen,dimen,dimen,dimen)
+ real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
 
  forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
  	0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
@@ -168,88 +168,81 @@
 !**************************************************************************
 ! Cramer inversion of 3x3 matrix
 !**************************************************************************
- SUBROUTINE math_invert3x3(A, InvA, DetA, err)
+ SUBROUTINE math_invert3x3(A, InvA, DetA, error)
 
 !   Bestimmung der Determinanten und Inversen einer 3x3-Matrix
 
 !   A      = Matrix A
-!   InvA   = Inverse von A
-!   DetA   = Determinante von A
-!   Fehler = Fehlerparameter
-!            0 : Die Berechnung wurde durchgefuehrt.
-!            1 : Die Determinante ist kleiner gleich Null.
+!   InvA   = Inverse of A
+!   DetA   = Determinant of A
+!   error  = logical
 
  use prec, only: pReal,pInt
  implicit none
 
- integer (pInt) err
- real(pReal)    InvA(3,3), DetA, A(3,3)
-
- INTENT (IN)     A
- INTENT (OUT)    InvA, DetA, err
-
- err = 0
+ logical, intent(out) :: error
+ real(pReal),dimension(3,3),intent(in)  :: A
+ real(pReal),dimension(3,3),intent(out) :: InvA
+ real(pReal), intent(out) :: DetA
 
  DetA =   A(1,1) * ( A(2,2) * A(3,3) - A(2,3) * A(3,2) )&
         - A(1,2) * ( A(2,1) * A(3,3) - A(2,3) * A(3,1) )&
         + A(1,3) * ( A(2,1) * A(3,2) - A(2,2) * A(3,1) )
 
- IF (DetA <= 0.0000001) THEN
- err = 1
- RETURN
- END IF
+ if (DetA <= 0.0000001) then
+   error = .true.
+ else
+   InvA(1,1) = (  A(2,2) * A(3,3) - A(2,3) * A(3,2) ) / DetA
+   InvA(2,1) = ( -A(2,1) * A(3,3) + A(2,3) * A(3,1) ) / DetA
+   InvA(3,1) = (  A(2,1) * A(3,2) - A(2,2) * A(3,1) ) / DetA
 
- InvA(1,1) = (  A(2,2) * A(3,3) - A(2,3) * A(3,2) ) / DetA
- InvA(2,1) = ( -A(2,1) * A(3,3) + A(2,3) * A(3,1) ) / DetA
- InvA(3,1) = (  A(2,1) * A(3,2) - A(2,2) * A(3,1) ) / DetA
+   InvA(1,2) = ( -A(1,2) * A(3,3) + A(1,3) * A(3,2) ) / DetA
+   InvA(2,2) = (  A(1,1) * A(3,3) - A(1,3) * A(3,1) ) / DetA
+   InvA(3,2) = ( -A(1,1) * A(3,2) + A(1,2) * A(3,1) ) / DetA
 
- InvA(1,2) = ( -A(1,2) * A(3,3) + A(1,3) * A(3,2) ) / DetA
- InvA(2,2) = (  A(1,1) * A(3,3) - A(1,3) * A(3,1) ) / DetA
- InvA(3,2) = ( -A(1,1) * A(3,2) + A(1,2) * A(3,1) ) / DetA
+   InvA(1,3) = (  A(1,2) * A(2,3) - A(1,3) * A(2,2) ) / DetA
+   InvA(2,3) = ( -A(1,1) * A(2,3) + A(1,3) * A(2,1) ) / DetA
+   InvA(3,3) = (  A(1,1) * A(2,2) - A(1,2) * A(2,1) ) / DetA
+   
+   error = .false.
+ endif
+ return
 
- InvA(1,3) = (  A(1,2) * A(2,3) - A(1,3) * A(2,2) ) / DetA
- InvA(2,3) = ( -A(1,1) * A(2,3) + A(1,3) * A(2,1) ) / DetA
- InvA(3,3) = (  A(1,1) * A(2,2) - A(1,2) * A(2,1) ) / DetA
-
- RETURN
  END SUBROUTINE
 
 
 !**************************************************************************
 ! Gauss elimination to invert 6x6 matrix
 !**************************************************************************
- SUBROUTINE math_invert6x6(A, InvA, AnzNegEW, err)
+ SUBROUTINE math_invert6x6(A, InvA, AnzNegEW, error)
 
 !   Invertieren einer 6x6-Matrix
 
 !   A        = Matrix A
 !   InvA     = Inverse von A
 !   AnzNegEW = Anzahl der negativen Eigenwerte von A
-!   Fehler   = Fehlerparameter
-!              = 0: Inversion wurde durchgefuehrt.
-!              = 1: Die Inversion in SymGauss wurde wegen eines verschwindenen
-!                   Pivotelement abgebrochen.
+!   error    = logical
+!              = false: Inversion wurde durchgefuehrt.
+!              = true:  Die Inversion in SymGauss wurde wegen eines verschwindenen
+!                       Pivotelement abgebrochen.
 
  use prec, only: pReal,pInt
  implicit none
 
- integer (pInt) AnzNegEW, err
- real(pReal)    InvA(6,6), A(6,6)
+ real(pReal),dimension(6,6), intent(in)  :: A
+ real(pReal),dimension(6,6), intent(out) :: InvA
+ integer(pInt), intent(out) :: AnzNegEW
+ logical, intent(out) :: error
 
-
- INTENT (IN)     A
- INTENT (OUT)    InvA, AnzNegEW, err
-
-
- integer (pInt) i
- real(pReal)    LogAbsDetA
- real(pReal)    B(6,6)
+ integer(pInt) i
+ real(pReal) LogAbsDetA
+ real(pReal),dimension(6,6) :: B
 
  InvA = 0.0_pReal
 
  forall(i = 1:6) InvA(i,i) = 1.0_pReal
  B = A
- CALL Gauss (B, InvA, LogAbsDetA, AnzNegEW, err)
+ CALL Gauss (B,InvA,LogAbsDetA,AnzNegEW,error)
 
  RETURN
 
@@ -258,7 +251,7 @@
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-      SUBROUTINE Gauss (A, B,LogAbsDetA, NegHDK,Fehler)
+ SUBROUTINE Gauss (A,B,LogAbsDetA,NegHDK,error)
 
 !   Loesung eines linearen Gleichungsssystem A * X = B mit Hilfe des
 !   GAUSS-Algorithmusses
@@ -277,20 +270,21 @@
 !   LogAbsDetA    = 10-Logarithmus des Betrages der Determinanten von A
 !   NegHDK        = Anzahl der negativen Hauptdiagonalkoeffizienten nach der
 !                   Vorwaertszerlegung
-!   Fehler        = Fehlerparameter
-!                   = 0: Das Gleichungssystem wurde geloest.
-!                   = 1: Matrix A ist singulaer.
+!   error         = logical
+!                   = false: Das Gleichungssystem wurde geloest.
+!                   = true : Matrix A ist singulaer.
 
 !   A und B werden veraendert!
 
  use prec, only: pReal,pInt
  implicit none
 
- integer (pInt) NegHDK, Fehler
+ logical error
+ integer (pInt) NegHDK
  real(pReal)    LogAbsDetA
  real(pReal)    A(6,6), B(6,6)
 
- INTENT (OUT)    LogAbsDetA, NegHDK, Fehler
+ INTENT (OUT)    LogAbsDetA, NegHDK, error
  INTENT (INOUT)  A, B
 
  LOGICAL        SortX
@@ -299,7 +293,7 @@
  real(pReal)    AbsA, PivotWert, EpsAbs, Quote
  real(pReal)    StoreA(6), StoreB(6)
 
- Fehler = 1
+ error = .true.
  NegHDK = 1
  SortX  = .FALSE.
 
@@ -435,7 +429,7 @@
     LogAbsDetA = LogAbsDetA + LOG10(AbsA)
  END DO
 
- Fehler = 0
+ error = .false.
 
  RETURN
 
@@ -868,21 +862,21 @@
 
 
 !****************************************************************
- subroutine math_pDecomposition(FE,U,R,ISING)
+ subroutine math_pDecomposition(FE,U,R,error)
 !-----FE=RU 
-!-----INVERT is the subroutine applied by Marc
 !****************************************************************
  use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  ISING
+ logical error
  real(pReal) FE(3,3),R(3,3),U(3,3),CE(3,3),EW1,EW2,EW3,EB1(3,3),EB2(3,3),EB3(3,3),UI(3,3),det
- ising=0
+
+ error = .false.
  ce=matmul(transpose(fe),fe)
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=DSQRT(EW1)*EB1+DSQRT(EW2)*EB2+DSQRT(EW3)*EB3
- call math_invert3x3(U,UI,det,ising)
- if (ising==0) R=matmul(fe,ui)
+ call math_invert3x3(U,UI,det,error)
+ if (.not. error) R = matmul(fe,ui)
  return 
  
  END SUBROUTINE
