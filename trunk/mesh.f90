@@ -131,7 +131,7 @@
  SUBROUTINE mesh_init ()
 
  use prec, only: pInt
- use IO, only: IO_open_InputFile
+ use IO, only: IO_error,IO_open_InputFile
  implicit none
  
  integer(pInt), parameter :: fileUnit = 222
