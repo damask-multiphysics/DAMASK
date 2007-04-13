@@ -429,7 +429,8 @@ stress:  do              ! inner iteration: stress
     Rstate = state_new - (state_old+dstate)
     RstateS = 0.0_pReal
     forall (i=1:constitutive_Nstatevars(grain,CPFEM_in,cp_en), state_new(i)/=0.0_pReal) &
-      RstateS(i) = Rstress(i)/state_new(i)
+!     RstateS(i) = Rstress(i)/state_new(i) ???
+      RstateS(i) = Rstate(i)/state_new(i)
     if (maxval(abs(RstateS)) < tol_State) exit state
     state_new = state_old+dstate
 
