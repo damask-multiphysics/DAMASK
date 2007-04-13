@@ -120,8 +120,9 @@
 !
 !
  use prec,  only: pReal,pInt
- use CPFEM, only: CPFEM_stress_all, CPFEM_jaco_old
  use math,  only: invnrmMandel, nrmMandel
+ use mesh,  only: mesh_FEasCP
+ use CPFEM, only: CPFEM_general,CPFEM_stress_all, CPFEM_jaco_old
  implicit real(pReal) (a-h,o-z)
 !
 ! Marc common blocks are in fixed format so they have to be pasted in here
