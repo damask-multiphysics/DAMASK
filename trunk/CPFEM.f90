@@ -93,7 +93,9 @@
  SUBROUTINE CPFEM_general(ffn, ffn1, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
 !
  use prec, only: pReal,pInt
- use constitutive, only: constitutive_state_old, constitutive_state_new
+ use math, only: math_init
+ use mesh, only: mesh_init
+ use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new
  implicit none
 !
  real(pReal)   ffn(3,3), ffn1(3,3), CPFEM_dt
