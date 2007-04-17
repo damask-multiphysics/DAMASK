@@ -932,13 +932,13 @@ enddo
 !* Calculation of the tangent of Lp
 dLp_dTstar=0.0_pReal
 do i=1,material_Nslip(matID)
-   dgdot_dtauslip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/state(i))**&
-                     (material_n_slip(matID)-1.0_pReal)*material_n_slip(matID)/constitutive_state_new(i,ipc,ip,el)
+   dgdot_dtauslip(i) = material_gdot0_slip(matID)*(abs(tau_slip(i))/state(i))**&
+                      (material_n_slip(matID)-1.0_pReal)*material_n_slip(matID)/constitutive_state_new(i,ipc,ip,el)
    forall (k=1:3,l=1:3,m=1:3,n=1:3)
-          dLp_dTstar(k,l,m,n)=dLp_dTstar(k,l,m,n)+constitutive_Sslip(k,l,i,material_CrystalStructure(matID))*&
-		                      (constitutive_Sslip(m,n,i,material_CrystalStructure(matID)+&   ! force m,n symmetry
-		                       constitutive_Sslip(n,m,i,material_CrystalStructure(matID))/2)*dgdot_dtauslip(i)
-		  
+          dLp_dTstar(k,l,m,n) = dLp_dTstar(k,l,m,n)+ &
+                                dgdot_dtauslip(i)*constitutive_Sslip(k,l,i,material_CrystalStructure(matID))* &
+		                        (constitutive_Sslip(m,n,i,material_CrystalStructure(matID))+ &
+		                         constitutive_Sslip(n,m,i,material_CrystalStructure(matID)))/2.0_pReal ! force m,n symmetry
    endforall
 enddo
 
