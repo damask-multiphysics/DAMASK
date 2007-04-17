@@ -1,6 +1,6 @@
 
 !##############################################################
- MODULE CPFEM     
+ MODULE CPFEM
 !##############################################################
 !    *** CPFEM engine ***
 !
@@ -9,7 +9,7 @@
 !
 ! ****************************************************************
 ! *** General variables for the material behaviour calculation ***
-! ****************************************************************  
+! ****************************************************************
  real(pReal), dimension (:,:,:),     allocatable :: CPFEM_stress_all
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_jacobi_all
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_ffn_all
@@ -57,12 +57,12 @@
  allocate(CPFEM_sigma_old(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_sigma_old = 0.0_pReal
  allocate(CPFEM_sigma_new(6,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_sigma_new = 0.0_pReal
 !
-!    *** Plastic deformation gradient at (t=t0) and (t=t1) ***  
+!    *** Plastic deformation gradient at (t=t0) and (t=t1) ***
  allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  forall (e=1:mesh_NcpElems,i=1:mesh_maxNips,g=1:constitutive_maxNgrains) &
    CPFEM_Fp_old(:,:,g,i,e) = math_EulerToR(constitutive_EulerAngles(:,g,i,e))  ! plastic def gradient reflects init orientation
  allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Fp_new = 0.0_pReal
-!    
+!
 !    *** Old jacobian (consistent tangent) ***
  allocate(CPFEM_jaco_old(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_jaco_old = 0.0_pReal
 !
@@ -83,7 +83,7 @@
  call flush(6)
  return
 
- END SUBROUTINE  
+ END SUBROUTINE
 !
 !
 !***********************************************************************
@@ -118,7 +118,7 @@
         constitutive_state_old = constitutive_state_new
         CPFEM_subinc_old       = CPFEM_subinc
     endif
- else                               ! new increment 
+ else                               ! new increment
     CPFEM_sigma_old         = CPFEM_sigma_new
     CPFEM_Fp_old            = CPFEM_Fp_new
     constitutive_state_old  = constitutive_state_new
@@ -171,20 +171,20 @@
 ! -------------- grain loop -----------------
  do grain = 1,constitutive_Ngrains(CPFEM_in,cp_en)
 ! -------------------------------------------
- 
+
    i = 0_pInt                         ! cutback counter
    state(:,i_now) = constitutive_state_old(:,grain,CPFEM_in,cp_en)
    Fg(:,:,i_now)  = CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
    Fp(:,:,i_now)  = CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en)
-  
+
    deltaFg = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en)-CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
    dt = CPFEM_dt
-   
+
    Tstar_v = 0.0_pReal                ! fully elastic initial guess
    Fg(:,:,i_then) = Fg(:,:,i_now)
-   state(:,i_then) = 0.0_pReal        ! state_old as initial guess 
+   state(:,i_then) = 0.0_pReal        ! state_old as initial guess
    t = 0.0_pReal
-   
+
 ! ------- crystallite integration -----------
    do
 ! -------------------------------------------
@@ -195,7 +195,7 @@
        t = CPFEM_dt                     ! final time
        Fg(:,:,i_then) = CPFEM_ffn_all(:,:,CPFEM_in,cp_en) ! final Fg
      endif
-     
+
      call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Fp(:,:,i_then),Fe,state(:,i_then),&
                                   dt,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
                                   Fg(:,:,i_now),Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
@@ -218,12 +218,12 @@
        endif
      endif
    enddo    ! crystallite integration (cutback loop)
-  
-! ---- update crystallite matrices at t = t1 ----  
+
+! ---- update crystallite matrices at t = t1 ----
    CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en)         = Fp(:,:,i_then)
    constitutive_state_new(:,grain,CPFEM_in,cp_en) = state(:,i_then)
    CPFEM_sigma_new(:,grain,CPFEM_in,cp_en)        = Tstar_v
-! ---- update results plotted in MENTAT ---- 
+! ---- update results plotted in MENTAT ----
    call math_pDecomposition(Fe,U,R,error) ! polar decomposition
    if (error) then
      write(6,*) 'polar decomposition'
@@ -237,13 +237,13 @@
    CPFEM_results(4:3+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en) = &
      constitutive_post_results(Tstar_v,state(:,i_then),CPFEM_dt,grain,CPFEM_in,cp_en)
 
-! ---- contribute to IP result ----  
+! ---- contribute to IP result ----
     volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
     CPFEM_stress_all(:,CPFEM_in,cp_en) = CPFEM_stress_all(:,CPFEM_in,cp_en)+volfrac*cs                  ! average Cauchy stress
     if (updateJaco) CPFEM_jaco_old(:,:,CPFEM_in,cp_en) = CPFEM_jaco_old(:,:,CPFEM_in,cp_en)+volfrac*cd  ! average consistent tangent
 
  enddo    ! grain loop
- 
+
  return
  END SUBROUTINE
 
@@ -309,7 +309,7 @@
        return
      endif
 ! Remark: (perturbated) Cauchy stress is Mandel hence dcs_de(:,4:6) is too large by sqrt(2)
-     dcs_de(:,i) = (CPFEM_CauchyStress(Tstar_v_pert,Fe_pert)-cs)/pert_e     
+     dcs_de(:,i) = (CPFEM_CauchyStress(Tstar_v_pert,Fe_pert)-cs)/pert_e
    enddo
  endif
 
@@ -335,7 +335,7 @@
      Fg_new,&           ! new total def gradient
      Fp_old,&           ! former plastic def gradient
      state_old)         ! former microstructure
-     
+
  use prec, only: pReal,pInt, nState,tol_State,nStress,tol_Stress, crite, nReg
  use constitutive, only: constitutive_Nstatevars,&
                          constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent
@@ -352,7 +352,7 @@
  real(pReal), dimension(3,3,3,3) :: dLp, LTL
  real(pReal), dimension(constitutive_Nstatevars(grain, CPFEM_in, cp_en)) :: state_old,state_new,dstate,Rstate,RstateS
  logical failed
- 
+
  msg = 'ok'  ! error-free so far
 
  call math_invert3x3(Fp_old,invFp_old,det,failed) ! inversion of Fp
@@ -390,7 +390,7 @@ stress:  do              ! inner iteration: stress
            call constitutive_LpAndItsTangent(Lp,dLp, Tstar_v,state_new,grain,CPFEM_in,cp_en)
            B = math_I3-dt*Lp
            Rstress = Tstar_v - 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),matmul(A,B))-math_I3))
-           if (maxval(abs(Rstress/maxval(abs(Tstar_v)))) < tol_Stress) exit stress
+           if (maxval(abs(Tstar_v)) == 0.0_pReal .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < tol_Stress) exit stress
 
 !   update stress guess using inverse of dRes/dTstar (Newton--Raphson)
            AB = matmul(A,B)
@@ -401,7 +401,7 @@ stress:  do              ! inner iteration: stress
                  do l=1,3
                    do m=1,3
 !                    LTL(i,j,k,l) = LTL(i,j,k,l) + AB(i,m)*dLp(m,j,k,l) + AB(j,m)*dLp(m,i,l,k)  ! old
-                     LTL(i,j,k,l) = LTL(i,j,k,l) + dLp(j,i,k,m)*AB(m,l) + AB(m,i)*dLp(m,j,k,l)   ! new (and correct??)
+                     LTL(i,j,k,l) = LTL(i,j,k,l) + dLp(j,i,m,k)*AB(m,l) + AB(m,i)*dLp(m,j,k,l)   ! new (and correct??)
                    enddo
                  enddo
                enddo
@@ -418,8 +418,8 @@ stress:  do              ! inner iteration: stress
            if (failed) then
              msg = 'regularization Jacobi'
              return
-           endif 
-           
+           endif
+
            dTstar_v = matmul(invJacobi,Rstress)  ! correction to Tstar
            forall(i=1:6, abs(dTstar_v(i)) > crite*maxval(abs(Tstar_v))) &
              dTstar_v(i) = sign(crite*maxval(abs(Tstar_v)),dTstar_v(i))   ! cap to maximum correction
@@ -436,7 +436,7 @@ stress:  do              ! inner iteration: stress
     state_new = state_old+dstate
 
  enddo state
- 
+
  invFp_new = matmul(invFp_old,B)
  call math_invert3x3(invFp_new,Fp_new,det,failed)
  if (failed) then
@@ -448,8 +448,8 @@ stress:  do              ! inner iteration: stress
 
  return
  END SUBROUTINE
- 
- 
+
+
  FUNCTION CPFEM_CauchyStress(PK_v,Fe)
 !***********************************************************************
 !***        Cauchy stress calculation                               ***
@@ -463,7 +463,6 @@ stress:  do              ! inner iteration: stress
  CPFEM_CauchyStress = math_Mandel33to6(matmul(matmul(Fe,math_Mandel6to33(PK_v)),transpose(Fe))/math_det3x3(Fe))
  return
  END FUNCTION
- 
- 
+
+
  END MODULE
- 
