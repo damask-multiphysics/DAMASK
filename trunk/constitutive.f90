@@ -197,7 +197,7 @@ data constitutive_sd(:, 3,3)/ 1, 1, 0/ ; data constitutive_sn(:, 3,3)/ 0, 0, 1/
 data constitutive_sd(:, 4,3)/-1, 0, 0/ ; data constitutive_sn(:, 4,3)/ 0, 1, 0/
 data constitutive_sd(:, 5,3)/ 0,-1, 0/ ; data constitutive_sn(:, 5,3)/ 1, 0, 0/
 data constitutive_sd(:, 6,3)/ 1, 1, 0/ ; data constitutive_sn(:, 6,3)/-1, 1, 0/
-!* 1st type 1st order pyramidal systems {1011}<1120> 
+!* 1st type 1st order pyramidal systems {1011}<1120>
 !* plane normales depend on the c/a-ratio
 !* 1- ( 0 -1  1  1)[-2  1  1  0]
 !* 2- ( 0  1 -1  1)[-2  1  1  0]
@@ -225,18 +225,18 @@ real(pReal), parameter :: constitutive_LatentHardening=1.4_pReal
 
 CONTAINS
 !****************************************
-!* - constitutive_Init                  
-!* - constitutive_SchmidMatrices          
+!* - constitutive_Init
+!* - constitutive_SchmidMatrices
 !* - constitutive_HardeningMatrices
-!* - constitutive_CountSections 
-!* - constitutive_Parse_UnknownPart 
+!* - constitutive_CountSections
+!* - constitutive_Parse_UnknownPart
 !* - constitutive_Parse_MaterialPart
-!* - constitutive_Parse_TexturePart     
+!* - constitutive_Parse_TexturePart
 !* - constitutive_Parse_MatTexDat
 !* - constitutive_Assignment
-!* - constitutive_HomogenizedC                          
-!* - constitutive_LpAndItsTangent     
-!* - consistutive_DotState          
+!* - constitutive_HomogenizedC
+!* - constitutive_LpAndItsTangent
+!* - consistutive_DotState
 !****************************************
 
 
@@ -249,7 +249,7 @@ call constitutive_HardeningMatrices()
 call constitutive_Parse_MatTexDat(mattexFile)
 call constitutive_Assignment()
 end subroutine
- 
+
 
 subroutine constitutive_SchmidMatrices()
 !**************************************
@@ -262,12 +262,12 @@ implicit none
 integer(pInt) i,j,k,l
 real(pReal) invNorm
 
-!* Iteration over the crystal structures 
-do l=1,3  
+!* Iteration over the crystal structures
+do l=1,3
 !* Iteration over the systems
    do k=1,constitutive_MaxNslipOfStructure(l)
-!* Defintion of Schmid matrix  
-      forall (i=1:3,j=1:3) 
+!* Defintion of Schmid matrix
+      forall (i=1:3,j=1:3)
 	         constitutive_Sslip(i,j,k,l)=constitutive_sd(i,k,l)*constitutive_sn(j,k,l)
       endforall
 !* Normalization of Schmid matrix
@@ -300,10 +300,10 @@ integer(pInt) i,j,k,l
 
 !* Initialization of the hardening matrix
 constitutive_HardeningMatrix=constitutive_LatentHardening
-!* Iteration over the crystal structures 
+!* Iteration over the crystal structures
 do l=1,3
-   select case(l) 
-!* Hardening matrix for FCC structures    
+   select case(l)
+!* Hardening matrix for FCC structures
    case (1)
       forall (k=1:10:3,i=0:2,j=0:2)
          constitutive_HardeningMatrix(k+i,k+j,l)=1.0_pReal
@@ -356,7 +356,7 @@ do
    read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,1)
    tag=IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then  
+   if (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
       part=tag(2:len_trim(tag)-1)
 	  exit
    elseif (tag(1:1)=='[') then
@@ -387,10 +387,10 @@ do
    read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,1)
    tag=IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then 
+   if (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
       constitutive_assignNGaussAndFiber=tag(2:len_trim(tag)-1)
 	  exit
-   elseif (tag(1:1)=='[') then  
+   elseif (tag(1:1)=='[') then
 	  section=section+1
       texture_NGauss(section) = 0_pInt
       texture_NFiber(section) = 0_pInt
@@ -420,7 +420,7 @@ implicit none
 character(len=80) line,tag
 integer(pInt), parameter :: maxNchunks = 1
 integer(pInt) file
-integer(pInt), dimension(1+2*maxNchunks) :: positions 
+integer(pInt), dimension(1+2*maxNchunks) :: positions
 
 constitutive_parse_unknownPart=''
 
@@ -451,9 +451,9 @@ implicit none
 
 !* Definition of variables
 character(len=80) line,tag
-integer(pInt), parameter :: maxNchunks = 2 
+integer(pInt), parameter :: maxNchunks = 2
 integer(pInt) file,section
-integer(pInt), dimension(1+2*maxNchunks) :: positions 
+integer(pInt), dimension(1+2*maxNchunks) :: positions
 
 section = 0
 constitutive_parse_materialPart = ''
@@ -472,7 +472,7 @@ do while(.true.)
    else
       if (section>0) then
          select case(tag)
-	     case ('crystal_structure') 
+	     case ('crystal_structure')
               material_CrystalStructure(section)=IO_intValue(line,positions,2)
 	     case ('nslip')
 		      material_Nslip(section)=IO_intValue(line,positions,2)
@@ -523,7 +523,7 @@ implicit none
 character(len=80) line,tag
 integer(pInt), parameter :: maxNchunks = 13 ! may be more than 10 chunks ..?
 integer(pInt) file,pos,section,gaussCount,fiberCount,i
-integer(pInt), dimension(1+2*maxNchunks) :: positions 
+integer(pInt), dimension(1+2*maxNchunks) :: positions
 
 section = 0
 gaussCount = 0
@@ -658,7 +658,7 @@ rewind(1)
 part = '_dummy_'
 do while (part/='')
    select case (part)
-   case ('textures') 
+   case ('textures')
         part = constitutive_assignNGaussAndFiber(1)
    case default
         part = constitutive_Parse_UnknownPart(1)
@@ -711,7 +711,7 @@ do i=1,material_maxN
 		material_Cslip_66(3,2,i)=material_C13(i)
         material_Cslip_66(4,4,i)=material_C44(i)
         material_Cslip_66(5,5,i)=material_C44(i)
-        material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))  
+        material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
    end select
    material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
 enddo
@@ -886,7 +886,7 @@ integer(pInt) ipc,ip,el
 real(pReal), dimension(6,6) :: constitutive_homogenizedC
 
 !* Homogenization scheme
-constitutive_homogenizedC=constitutive_MatVolFrac(ipc,ip,el)*material_Cslip_66(:,:,constitutive_matID(ipc,ip,el)) 
+constitutive_homogenizedC=constitutive_MatVolFrac(ipc,ip,el)*material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))
 
 return
 end function
@@ -895,7 +895,7 @@ end function
 subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar, Tstar_v,state,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
-!* calculating the velocity gradient                                 *       
+!* calculating the velocity gradient                                 *
 !* INPUT:                                                            *
 !*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
 !*  - state           : current microstructure                       *
@@ -936,7 +936,9 @@ do i=1,material_Nslip(matID)
                      (material_n_slip(matID)-1.0_pReal)*material_n_slip(matID)/constitutive_state_new(i,ipc,ip,el)
    forall (k=1:3,l=1:3,m=1:3,n=1:3)
           dLp_dTstar(k,l,m,n)=dLp_dTstar(k,l,m,n)+constitutive_Sslip(k,l,i,material_CrystalStructure(matID))*&
-		                      constitutive_Sslip(m,n,i,material_CrystalStructure(matID))*dgdot_dtauslip(i) 
+		                      (constitutive_Sslip(m,n,i,material_CrystalStructure(matID)+&   ! force m,n symmetry
+		                       constitutive_Sslip(n,m,i,material_CrystalStructure(matID))/2)*dgdot_dtauslip(i)
+		  
    endforall
 enddo
 
@@ -947,7 +949,7 @@ end subroutine
 function constitutive_dotState(Tstar_v,state,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
-!* calculating the velocity gradient                                 *       
+!* calculating the velocity gradient                                 *
 !* INPUT:                                                            *
 !*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
 !*  - state           : current microstructure                       *
@@ -966,7 +968,7 @@ integer(pInt) matID,i
 real(pReal) tau_slip,gdot_slip
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,state,self_hardening
- 
+
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
 
