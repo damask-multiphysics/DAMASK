@@ -169,13 +169,13 @@
 !     mpie_en          element number
 !     mpie_in          intergration point number
 !********************************************************************
- cp_en = mesh_FEasCP('elem', n(1))
  if ((lovl==6).or.(inc==0)) then
-    call CPFEM_general(ffn, ffn1, inc, incsub, ncycle, timinc, cp_en, nn)
+    call CPFEM_general(ffn, ffn1, inc, incsub, ncycle, timinc, n(1), nn)
  endif
 ! return stress and jacobi
 !     Mandel: 11, 22, 33, 12, 23, 13 
 !     Marc:   11, 22, 33, 12, 23, 13
+ cp_en = mesh_FEasCP('elem', n(1))
  s(1:ngens)=invnrmMandel(1:ngens)*CPFEM_stress_all(1:ngens, nn, cp_en)
  d(1:ngens,1:ngens)=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
  forall(i=1:ngens) d(i,1:ngens)=d(i,1:ngens)*invnrmMandel(1:ngens)
