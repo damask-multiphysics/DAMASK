@@ -90,16 +90,16 @@
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
 !***********************************************************************
- SUBROUTINE CPFEM_general(ffn, ffn1, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
+ SUBROUTINE CPFEM_general(ffn, ffn1, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, CPFEM_en, CPFEM_in)
 !
  use prec, only: pReal,pInt
  use math, only: math_init
- use mesh, only: mesh_init
+ use mesh, only: mesh_init,mesh_FEasCP
  use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new
  implicit none
 !
  real(pReal)   ffn(3,3), ffn1(3,3), CPFEM_dt
- integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, cp_en, CPFEM_in
+ integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en
 !
 ! initialization step
  if (CPFEM_first_call) then
@@ -125,7 +125,8 @@
     CPFEM_inc_old           = CPFEM_inc
     CPFEM_subinc_old        = 1_pInt
  endif
-!
+
+ cp_en = mesh_FEasCP('elem',CPFEM_en)
  CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
  CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
  call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
@@ -373,7 +374,6 @@
  if (all(Tstar_v == 0.0_pReal)) Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(A-math_I3))
 ! QUESTION follow former plastic slope to guess better?
  Rstress = Tstar_v
- iStress = 0_pInt
 
 state: do                ! outer iteration: state
          iState = iState+1
@@ -381,6 +381,7 @@ state: do                ! outer iteration: state
            msg = 'limit state iteration'
            return
          endif
+         iStress = 0_pInt
 stress:  do              ! inner iteration: stress
            iStress = iStress+1
            if (iStress > nStress) then      ! too many loops required
@@ -389,11 +390,11 @@ stress:  do              ! inner iteration: stress
            endif
            call constitutive_LpAndItsTangent(Lp,dLp, Tstar_v,state_new,grain,CPFEM_in,cp_en)
            B = math_I3-dt*Lp
-           Rstress = Tstar_v - 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),matmul(A,B))-math_I3))
+           AB = matmul(A,B)
+           Rstress = Tstar_v - 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
            if (maxval(abs(Tstar_v)) == 0.0_pReal .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < tol_Stress) exit stress
 
 !   update stress guess using inverse of dRes/dTstar (Newton--Raphson)
-           AB = matmul(A,B)
            LTL = 0.0_pReal
            do i=1,3
              do j=1,3
