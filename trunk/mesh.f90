@@ -150,9 +150,9 @@
 ! call to various subrountes to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
    call mesh_get_meshDimensions(fileUnit)
-   call mesh_get_nodeElemDimensions(fileUnit)
    call mesh_build_nodeMapping(fileUnit)
    call mesh_build_elemMapping(fileUnit)
+   call mesh_get_nodeElemDimensions(fileUnit)
    call mesh_build_nodes(fileUnit)
    call mesh_build_elements(fileUnit)
    call mesh_build_sharedElems(fileUnit)
