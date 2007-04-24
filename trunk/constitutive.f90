@@ -346,7 +346,7 @@ implicit none
 
 !* Definition of variables
 character(len=80) part,line,tag
-integer(pInt) file,count,pos
+integer(pInt) file,count
 integer(pInt), dimension(3) :: positions
 
 count=0
@@ -377,7 +377,7 @@ implicit none
 
 !* Definition of variables
 character(len=80) line,tag
-integer(pInt) file,section,pos
+integer(pInt) file,section
 integer(pInt), dimension(3) :: positions
 
 constitutive_assignNGaussAndFiber=''
@@ -522,7 +522,7 @@ implicit none
 !* Definition of variables
 character(len=80) line,tag
 integer(pInt), parameter :: maxNchunks = 13 ! may be more than 10 chunks ..?
-integer(pInt) file,pos,section,gaussCount,fiberCount,i
+integer(pInt) file,section,gaussCount,fiberCount,i
 integer(pInt), dimension(1+2*maxNchunks) :: positions
 
 section = 0
@@ -736,7 +736,7 @@ use IO,   only: IO_hybridIA
 implicit none
 
 !* Definition of variables
-integer(pInt) e,i,j,k,l,m,o,g,s,Ngrains
+integer(pInt) e,i,k,l,m,o,g,s
 integer(pInt) matID,texID
 integer(pInt), dimension(:,:,:), allocatable :: hybridIA_population
 integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,sumVolfrac,ODFmap,sampleCount
@@ -1005,7 +1005,7 @@ implicit none
 
 !* Definition of variables
 integer(pInt) ipc,ip,el
-integer(pInt) matID,i,k,l,m,n
+integer(pInt) matID,i
 real(pReal) dt,tau_slip
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state

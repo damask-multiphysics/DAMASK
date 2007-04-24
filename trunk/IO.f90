@@ -541,7 +541,7 @@
    msg='Unknown error number'
  end select
  
- write(6,*) 'MPIE Material Routine Ver. 0.7 by Dr. F. Roters'
+ write(6,*) 'MPIE Material Routine Ver. 0.0 by the coding team'
  write(6,*)
  write(6,*) msg
  call flush(6)

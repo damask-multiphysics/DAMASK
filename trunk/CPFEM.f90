@@ -160,7 +160,6 @@
  real(pReal), dimension(6) :: cs,Tstar_v
  real(pReal), dimension(6,6) :: cd
  real(pReal), dimension(3,3) :: Fe,U,R,deltaFg
- real(pReal), dimension(3) :: Euler
  real(pReal), dimension(3,3,2) :: Fg,Fp
  real(pReal), dimension(constitutive_maxNstatevars,2) :: state
 
@@ -280,7 +279,7 @@
  implicit none
 
  character(len=*) msg
- logical updateJaco,error
+ logical updateJaco
  integer(pInt) cp_en,CPFEM_in,grain,i
  real(pReal) dt
  real(pReal), dimension(3,3) :: Fg_old,Fg_new,Fg_pert,Fp_old,Fp_new,Fp_pert,Fe_new,Fe_pert,E_pert
@@ -348,7 +347,7 @@
  integer(pInt) iState,iStress,dummy, i,j,k,l,m
  real(pReal) dt,det
  real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress
- real(pReal), dimension(6,6) :: C_66,Jacobi,invJacobi,help2
+ real(pReal), dimension(6,6) :: C_66,Jacobi,invJacobi
  real(pReal), dimension(3,3) :: Fg_new,Fp_old,Fp_new,Fe_new,invFp_old,invFp_new,Lp,A,B,AB
  real(pReal), dimension(3,3,3,3) :: dLp, LTL
  real(pReal), dimension(constitutive_Nstatevars(grain, CPFEM_in, cp_en)) :: state_old,state_new,dstate,Rstate,RstateS

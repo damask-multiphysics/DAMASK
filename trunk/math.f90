@@ -56,7 +56,6 @@
  implicit none
 
  integer (pInt) seed
- real(pReal) poop(3)
  
  call random_seed()
  call get_seed(seed)
@@ -482,7 +481,7 @@
 
  real(pReal), dimension(6) :: v6
  real(pReal), dimension(3,3) :: math_Mandel6to33
- integer(pInt) i,j
+ integer(pInt) i
  
  forall (i=1:6)
   math_Mandel6to33(mapMandel(1,i),mapMandel(2,i)) = invnrmMandel(i)*v6(i)
@@ -891,7 +890,7 @@
 
  real(pReal) M(3,3),EB1(3,3),EB2(3,3),EB3(3,3),EW1,EW2,EW3
  real(pReal) HI1M,HI2M,HI3M,TOL,R,S,T,P,Q,RHO,PHI,Y1,Y2,Y3,D1,D2,D3
- real(pReal) C1,C2,C3,M1(3,3),M2(3,3),M3(3,3),I3(3,3),arg
+ real(pReal) C1,C2,C3,M1(3,3),M2(3,3),M3(3,3),arg
  TOL=1.e-14_pReal
  CALL math_hi(M,HI1M,HI2M,HI3M)
  R=-HI1M

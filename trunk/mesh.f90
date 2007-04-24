@@ -231,7 +231,7 @@
  integer(pInt) face,elem
  integer(pInt) mesh_faceMatch
  integer(pInt), dimension(FE_NfaceNodes(face,FE_mapElemtype(mesh_element(2,elem)))) :: nodeMap
- integer(pInt) minN,NsharedElems,lonelyNode,faceNode,i,j,n,t
+ integer(pInt) minN,NsharedElems,lonelyNode,faceNode,i,n,t
  
  minN = mesh_maxNsharedElems+1 ! init to worst case
  mesh_faceMatch = 0_pInt       ! intialize to "no match found"
@@ -387,7 +387,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  implicit none
 
  integer(pInt), dimension (mesh_Nnodes) :: node_count
- integer(pInt) unit,i,j,Nnodes,cur_node
+ integer(pInt) unit,i
  integer(pInt), dimension (133) :: pos
  character*300 line
 
@@ -521,7 +521,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use IO
  implicit none
 
- integer unit,i,j,t,sv,val,CP_elem
+ integer unit,i,j,sv,val,CP_elem
  integer(pInt), dimension(133) :: pos
  integer(pInt), dimension(1+mesh_NcpElems) :: contInts
  character*300 line
