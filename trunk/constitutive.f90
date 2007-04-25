@@ -777,7 +777,7 @@ enddo
 
 !* publish globals
 constitutive_maxNgrains = maxval(texture_Ngrains)
-constitutive_maxNstatevars = material_maxNslip + 0_pInt
+constitutive_maxNstatevars = maxval(material_Nslip) + 0_pInt
 constitutive_maxNresults = 1_pInt
 
 
