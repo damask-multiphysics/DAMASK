@@ -169,7 +169,7 @@
  if (updateJaco) CPFEM_jaco_old(:,:,CPFEM_in,cp_en) = 0.0_pReal  ! average consistent tangent
 
 ! -------------- grain loop -----------------
- do grain = 1,constitutive_Ngrains(CPFEM_in,cp_en)
+ do grain = 1,texture_Ngrains(mesh_element(4,cp_en))
 ! -------------------------------------------
 
    i = 0_pInt                         ! cutback counter
