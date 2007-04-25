@@ -530,11 +530,11 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 
 610 FORMAT(A300)
 
+
  rewind(unit)
  do
    read (unit,610,END=620) line
    pos = IO_stringPos(line,2)
-
    if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
      read (unit,610,END=620) line  ! Garbage line
 	 do i=1,mesh_Nelems
@@ -552,9 +552,11 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      exit
    endif
  enddo
-
+ 
+ rewind(unit) ! just in case "initial state" apears before "connectivity"
  do  ! fast forward to first "initial state" section
    read (unit,610,END=620) line
+   pos = IO_stringPos(line,2)
    if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
        (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) exit
  enddo
@@ -567,6 +569,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 	 sv = IO_IntValue (line,pos,1)  ! figure state variable index
 	 if( (sv == 2).or.(sv == 3) ) then  ! only state vars 2 and 3 of interest
        read (unit,610,END=620) line
+       pos = IO_stringPos(line,1)
 	   do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)
    	     val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1)) ! state var's value
          contInts = IO_continousIntValues(unit,mesh_Nelems)  ! get affected elements
@@ -575,10 +578,12 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 		   mesh_element(1+sv,CP_elem) = val
 	     enddo
          read (unit,610,END=620) line  ! ignore IP range
-         read (unit,610,END=620) line  ! read ahead (check in do loop)
+        pos = IO_stringPos(line,1)
 	   enddo
 	 endif
    endif
+         read (unit,610,END=620) line  ! read ahead (check in do loop)
+	 pos = IO_stringPos(line,2)
  enddo
 
 620 return
