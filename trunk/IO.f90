@@ -325,7 +325,7 @@
  integer(pInt) positions(*),pos
 
  if (positions(1) >= pos) then
-   read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(F)') IO_floatValue
+   read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_floatValue
    return
  endif
 100 IO_floatValue = -1.0_pReal
