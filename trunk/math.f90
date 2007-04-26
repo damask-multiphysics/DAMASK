@@ -726,6 +726,11 @@
  real(pReal) noise,scatter,cosScatter
  integer(pInt) i
 
+if (noise<=0.01) then
+    math_sampleGaussOri = center
+    return
+endif
+
 ! Helming uses different distribution with Bessel functions
 ! therefore the gauss scatter width has to be scaled differently
  scatter = 0.95_pReal * noise
