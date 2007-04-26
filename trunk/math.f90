@@ -726,7 +726,7 @@
  real(pReal) noise,scatter,cosScatter
  integer(pInt) i
 
-if (noise<=0.01) then
+if (noise==0.0) then
     math_sampleGaussOri = center
     return
 endif
