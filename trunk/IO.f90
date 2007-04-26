@@ -328,7 +328,7 @@
    read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_floatValue
    return
  endif
-100 IO_floatValue = -1.0_pReal
+100 IO_floatValue = huge(1.0_pReal)
  return
 
  END FUNCTION
@@ -346,9 +346,9 @@
  real(pReal) IO_fixedFloatValue
  integer(pInt) ends(*),pos
 
- read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT='(F)') IO_fixedFloatValue
+ read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT=*) IO_fixedFloatValue
  return
-100 IO_fixedFloatValue = -1.0_pReal
+100 IO_fixedFloatValue = huge(1.0_pReal)
  return
 
  END FUNCTION
@@ -371,12 +371,12 @@
    read(UNIT=line(ends(pos)+1:ends(pos)+pos_exp-1),ERR=100,FMT='(F)') base
    read(UNIT=line(ends(pos)+pos_exp:ends(pos+1)),ERR=100,FMT='(I)') expon
  else
-   read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT='(F)') base
+   read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT=*) base
    expon = 0_pInt
  endif
  IO_fixedNoEFloatValue = base*10.0_pReal**expon
  return
-100 IO_fixedNoEFloatValue = -1.0_pReal
+100 IO_fixedNoEFloatValue = huge(1.0_pReal)
  return
 
  END FUNCTION
@@ -398,7 +398,7 @@
    read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(I)') IO_intValue
    return
  endif
-100 IO_intValue = -1_pInt
+100 IO_intValue = huge(1_pInt)
  return
 
  END FUNCTION
@@ -418,7 +418,7 @@
 
  read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT='(I)') IO_fixedIntValue
  return
-100 IO_fixedIntValue = -1_pInt
+100 IO_fixedIntValue = huge(1_pInt)
  return
 
  END FUNCTION
