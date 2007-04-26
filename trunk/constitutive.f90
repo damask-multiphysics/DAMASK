@@ -560,7 +560,7 @@ do while(.true.)
 				 case('phi2')
 				     texture_Gauss(3,gaussCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('scatter')
-				     texture_Gauss(4,gaussCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_Gauss(4,gaussCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('fraction')
 				     texture_Gauss(5,gaussCount,section)=IO_floatValue(line,positions,i+1)
 				 end select
@@ -579,7 +579,7 @@ do while(.true.)
                  case('beta2')
 				     texture_fiber(4,fiberCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('scatter')
-				     texture_fiber(5,fiberCount,section)=IO_floatValue(line,positions,i+1)
+				     texture_fiber(5,fiberCount,section)=IO_floatValue(line,positions,i+1)*inRad
 				 case('fraction')
 				     texture_fiber(6,fiberCount,section)=IO_floatValue(line,positions,i+1)
 				 end select
