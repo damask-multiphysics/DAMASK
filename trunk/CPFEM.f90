@@ -193,7 +193,7 @@
        Fg(:,:,i_then) = Fg(:,:,i_then)+deltaFg  ! corresponding Fg
      else                               ! full step solution
        t = CPFEM_dt                     ! final time
-       Fg(:,:,i_then) = CPFEM_ffn_all(:,:,CPFEM_in,cp_en) ! final Fg
+       Fg(:,:,i_then) = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en) ! final Fg
      endif
 
      call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Fp(:,:,i_then),Fe,state(:,i_then),&

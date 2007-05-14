@@ -156,7 +156,7 @@
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
 !
-! call general material routine only in increment 0 and for lovl==6 (stress recovery)
+! call general material routine only in cycle 0 and for lovl==6 (stress recovery)
           
 !     subroutine cpfem_general(mpie_ffn, mpie_ffn1, mpie_cn, mpie_tinc, mpie_enp, mpie_in)
 !********************************************************************
@@ -169,7 +169,7 @@
 !     mpie_en          element number
 !     mpie_in          intergration point number
 !********************************************************************
- if ((lovl==6).or.(inc==0)) then
+ if ((lovl==6).or.(ncycle==0)) then
     call CPFEM_general(ffn, ffn1, inc, incsub, ncycle, timinc, n(1), nn)
  endif
 ! return stress and jacobi
