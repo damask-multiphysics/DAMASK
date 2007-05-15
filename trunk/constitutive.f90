@@ -280,7 +280,7 @@ do l=1,3
       constitutive_Sslip_v(3,k,l)=constitutive_Sslip(3,3,k,l)
 	  !* be compatible with Mandel notation of Tstar
       constitutive_Sslip_v(4,k,l)=(constitutive_Sslip(1,2,k,l)+constitutive_Sslip(2,1,k,l))/dsqrt(2.0_pReal)
-      constitutive_Sslip_v(5,k,l)=(constitutive_Sslip(2,3,k,l)+constitutive_Sslip(3,3,k,l))/dsqrt(2.0_pReal)
+      constitutive_Sslip_v(5,k,l)=(constitutive_Sslip(2,3,k,l)+constitutive_Sslip(3,2,k,l))/dsqrt(2.0_pReal)
       constitutive_Sslip_v(6,k,l)=(constitutive_Sslip(1,3,k,l)+constitutive_Sslip(3,1,k,l))/dsqrt(2.0_pReal)
    enddo
 enddo
