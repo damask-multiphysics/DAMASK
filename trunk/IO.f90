@@ -545,7 +545,7 @@
  write(6,*)
  write(6,*) msg
  call flush(6)
-!  call quit(9000+ID)
+ call quit(9000+ID)
 ! ABAQUS returns in some cases
  return
 

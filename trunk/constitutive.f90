@@ -356,7 +356,9 @@ do
    read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,1)
    tag=IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
+   if (tag(1:1)=='#' .OR. positions(1)==0) then  ! skip comment and empty lines
+      cycle
+   elseif (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
       part=tag(2:len_trim(tag)-1)
 	  exit
    elseif (tag(1:1)=='[') then
@@ -387,7 +389,9 @@ do
    read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,1)
    tag=IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
+   if (tag(1:1)=='#' .OR. positions(1)==0) then  ! skip comment and empty lines
+      cycle
+   elseif (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
       constitutive_assignNGaussAndFiber=tag(2:len_trim(tag)-1)
 	  exit
    elseif (tag(1:1)=='[') then
@@ -428,7 +432,9 @@ do
    read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,maxNchunks)
    tag=IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
+   if (tag(1:1)=='#' .OR. positions(1)==0) then  ! skip comment and empty lines
+      cycle
+   elseif (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
       constitutive_Parse_UnknownPart=tag(2:len_trim(tag)-1)
 	  exit
    endif
@@ -462,7 +468,7 @@ do while(.true.)
    read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,maxNchunks) ! parse leading chunks
    tag=IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='#') then  ! skip comment line
+   if (tag(1:1)=='#' .OR. positions(1)==0) then  ! skip comment and empty lines
       cycle
    elseif (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
       constitutive_parse_materialPart=tag(2:len_trim(tag)-1)
@@ -534,7 +540,7 @@ do while(.true.)
    read(file,'(a80)',END=100) line
    positions=IO_stringPos(line,maxNchunks)  ! parse leading chunks
    tag=IO_lc(IO_stringValue(line,positions,1))
-   if (tag(1:1)=='#') then  ! skip comment line
+   if (tag(1:1)=='#' .OR. positions(1)==0) then  ! skip comment and empty lines
       cycle
    elseif (tag(1:1)=='<'.AND.tag(len_trim(tag):len_trim(tag))=='>') then
       constitutive_parse_texturePart=tag(2:len_trim(tag)-1)
@@ -604,24 +610,26 @@ subroutine constitutive_Parse_MatTexDat(filename)
 !*  - filename : name of input file                                  *
 !*********************************************************************
 use prec, only: pReal,pInt
-use IO, only: IO_error
+use IO, only: IO_error, IO_open_file
 use math, only: math_Mandel3333to66, math_Voigt66to3333
 implicit none
 
 !* Definition of variables
 character(len=*) filename
 character(len=80) part,formerPart
-integer(pInt) sectionCount,i,j,k
+integer(pInt) sectionCount,i,j,k, fileunit
 
+! set fileunit
+fileunit=200
 !-----------------------------
 !* First reading: number of materials and textures
 !-----------------------------
 !* determine material_maxN and texture_maxN from last respective parts
-open(1,FILE=filename,ACTION='READ',STATUS='OLD',ERR=100)
+if(IO_open_file(fileunit,filename)==.false.) goto 100
 part = '_dummy_'
 do while (part/='')
    formerPart = part
-   call constitutive_CountSections(1,sectionCount,part)
+   call constitutive_CountSections(fileunit,sectionCount,part)
    select case (formerPart)
    case ('materials')
         material_maxN = sectionCount
@@ -654,14 +662,14 @@ allocate(texture_NRandom(texture_maxN)) ; texture_NRandom=0_pInt
 !-----------------------------
 !* Second reading: number of Gauss and Fiber
 !-----------------------------
-rewind(1)
+rewind(fileunit)
 part = '_dummy_'
 do while (part/='')
    select case (part)
    case ('textures')
-        part = constitutive_assignNGaussAndFiber(1)
+        part = constitutive_assignNGaussAndFiber(fileunit)
    case default
-        part = constitutive_Parse_UnknownPart(1)
+        part = constitutive_Parse_UnknownPart(fileunit)
    end select
 enddo
 !* Array allocation
@@ -673,19 +681,19 @@ allocate(texture_Fiber(6,texture_maxNFiber,texture_maxN)) ; texture_Fiber=0.0_pR
 !-----------------------------
 !* Third reading: materials and textures are stored
 !-----------------------------
-rewind(1)
+rewind(fileunit)
 part='_dummy_'
 do while (part/='')
    select case (part)
    case ('materials')
-	    part=constitutive_Parse_MaterialPart(1)
+	    part=constitutive_Parse_MaterialPart(fileunit)
    case ('textures')
-	    part=constitutive_Parse_TexturePart(1)
+	    part=constitutive_Parse_TexturePart(fileunit)
    case default
-        part=constitutive_Parse_UnknownPart(1)
+        part=constitutive_Parse_UnknownPart(fileunit)
    end select
 enddo
-close(1)
+close(fileunit)
 
 
 !* Construction of the elasticity matrices
@@ -720,7 +728,7 @@ enddo
 ! MISSING some consistency checks may be..?
 ! if ODFfile present then set NGauss NFiber =0
 return
-100 call IO_error(110) ! corrupt materials_textures file
+100 call IO_error(200) ! corrupt materials_textures file
 end subroutine
 
 
