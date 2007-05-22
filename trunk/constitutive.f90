@@ -1022,6 +1022,9 @@ real(pReal), dimension(constitutive_Nresults(ipc,ip,el))   :: constitutive_post_
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
 
+
+if(constitutive_Nresults(ipc,ip,el)==0) return
+
 do i=1,material_Nslip(matID)
    constitutive_post_results(i) = state(i)
    tau_slip=dot_product(Tstar_v,constitutive_Sslip_v(:,i,material_CrystalStructure(matID)))
