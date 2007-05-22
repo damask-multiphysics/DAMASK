@@ -178,7 +178,7 @@
  cp_en = mesh_FEasCP('elem', n(1))
  s(1:ngens)=invnrmMandel(1:ngens)*CPFEM_stress_all(1:ngens, nn, cp_en)
  d(1:ngens,1:ngens)=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
- forall(i=1:ngens) d(1:ngens,i)=d(1:ngens,1)*invnrmMandel(1:ngens)
+ forall(i=1:ngens) d(1:ngens,i)=d(1:ngens,i)*invnrmMandel(1:ngens)
  return
  
  END SUBROUTINE
