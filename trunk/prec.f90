@@ -19,11 +19,11 @@
 !    *** Maximum number of iterations in outer (state variables) loop ***
  integer(pInt), parameter :: nState    = 50_pInt
 !    *** Convergence criteria for outer (state variables) loop ***
- real(pReal),   parameter :: tol_State = 1.0e-4_pReal
+ real(pReal),   parameter :: tol_State = 1.0e-6_pReal
 !    *** Maximum number of iterations in inner (stress) loop ***
  integer(pInt), parameter :: nStress    = 2000_pInt
 !    *** Convergence criteria for inner (stress) loop ***
- real(pReal),   parameter :: tol_Stress = 1.0e-3_pReal   
+ real(pReal),   parameter :: tol_Stress = 1.0e-6_pReal   
 !    *** Factor for maximum stress correction in inner (stress) loop ***
  real(pReal),   parameter :: crite     = 1.0e-1_pReal 
 

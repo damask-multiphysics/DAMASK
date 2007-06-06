@@ -180,7 +180,7 @@
    deltaFg = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en)-CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
    dt = CPFEM_dt
 
-   Tstar_v = 0.0_pReal                ! fully elastic initial guess
+   Tstar_v = CPFEM_sigma_old(:,grain,CPFEM_in,cp_en)                ! use last result as initial guess
    Fg(:,:,i_then) = Fg(:,:,i_now)
    state(:,i_then) = 0.0_pReal        ! state_old as initial guess
    t = 0.0_pReal
@@ -369,8 +369,8 @@
  if (all(state_new == 0.0_pReal)) state_new = state_old
  RstateS = state_new
  iState = 0_pInt
-! fully elastic guess (Lp = 0), if none specified
- if (all(Tstar_v == 0.0_pReal)) Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(A-math_I3))
+! fully elastic guess (Lp = 0), if none specified, however somewhat reduced ie. 0.3 instead of 0.5
+ if (all(Tstar_v == 0.0_pReal)) Tstar_v = 0.3_pReal*matmul(C_66,math_Mandel33to6(A-math_I3))
 ! QUESTION follow former plastic slope to guess better?
  Rstress = Tstar_v
 
@@ -407,12 +407,12 @@ stress:  do              ! inner iteration: stress
                enddo
              enddo
            enddo
-
            Jacobi = math_identity2nd(6) + 0.5_pReal*dt*matmul(C_66,math_Mandel3333to66(LTL))
-           j = 0_pInt ; failed = .true.
+           j = 0_pInt
+           call math_invert6x6(Jacobi,invJacobi,dummy,failed)
            do while (failed .and. j <= nReg)
-             call math_invert6x6(Jacobi,invJacobi,dummy,failed)
              forall (i=1:6) Jacobi(i,i) = 1.05_pReal*maxval(Jacobi(i,:)) ! regularization
+             call math_invert6x6(Jacobi,invJacobi,dummy,failed)
              j = j+1
            enddo
            if (failed) then
@@ -426,16 +426,18 @@ stress:  do              ! inner iteration: stress
            Tstar_v = Tstar_v-dTstar_v
 
     enddo stress
-
+!    write(6,*) 'istress', istress
+    Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
     dstate = dt*constitutive_dotState(Tstar_v,state_new,grain,CPFEM_in,cp_en) ! evolution of microstructure
     Rstate = state_new - (state_old+dstate)
     RstateS = 0.0_pReal
     forall (i=1:constitutive_Nstatevars(grain,CPFEM_in,cp_en), state_new(i)/=0.0_pReal) &
       RstateS(i) = Rstate(i)/state_new(i)
-    if (maxval(abs(RstateS)) < tol_State) exit state
     state_new = state_old+dstate
+    if (maxval(abs(RstateS)) < tol_State) exit state
 
  enddo state
+! write(6,*) 'istate', istate
 
  invFp_new = matmul(invFp_old,B)
  call math_invert3x3(invFp_new,Fp_new,det,failed)
