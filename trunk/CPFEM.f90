@@ -301,7 +301,6 @@
      Fg_pert = Fg_new+matmul(E_pert,Fg_old) ! perturbated Fg
      Tstar_v_pert = Tstar_v                 ! initial guess from end of time step
      state_pert = state_new                 ! initial guess from end of time step
-
      call CPFEM_timeIntegration(msg,Fp_pert,Fe_pert,Tstar_v_pert,state_pert, &
                                 dt,cp_en,CPFEM_in,grain,Fg_pert,Fp_old,state_old)
      if (msg /= 'ok') then
@@ -336,7 +335,7 @@
      Fp_old,&           ! former plastic def gradient
      state_old)         ! former microstructure
 
- use prec, only: pReal,pInt, nState,tol_State,nStress,tol_Stress, crite, nReg
+ use prec
  use constitutive, only: constitutive_Nstatevars,&
                          constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent
  use math
@@ -345,8 +344,8 @@
  character(len=*) msg
  integer(pInt) cp_en, CPFEM_in, grain
  integer(pInt) iState,iStress,dummy, i,j,k,l,m
- real(pReal) dt,det
- real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress
+ real(pReal) dt,det, max_E, p_hydro
+ real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress, E, T_elastic
  real(pReal), dimension(6,6) :: C_66,Jacobi,invJacobi
  real(pReal), dimension(3,3) :: Fg_new,Fp_old,Fp_new,Fe_new,invFp_old,invFp_new,Lp,A,B,AB
  real(pReal), dimension(3,3,3,3) :: dLp, LTL
@@ -369,8 +368,13 @@
  if (all(state_new == 0.0_pReal)) state_new = state_old
  RstateS = state_new
  iState = 0_pInt
-! fully elastic guess (Lp = 0), if none specified, however somewhat reduced ie. 0.3 instead of 0.5
- if (all(Tstar_v == 0.0_pReal)) Tstar_v = 0.3_pReal*matmul(C_66,math_Mandel33to6(A-math_I3))
+! elastic guess for small Tstar, however reduced to prec_max_e
+ if (all(Tstar_v < 0.1_pReal)) then
+    E =  math_Mandel33to6(A-math_I3)
+    max_E = maxval(E)
+    if (max_E > prec_max_e) E = prec_max_e * E / max_E
+    Tstar_v = 0.5_pReal*matmul(C_66, E)
+ endif
 ! QUESTION follow former plastic slope to guess better?
  Rstress = Tstar_v
 
@@ -387,10 +391,16 @@ stress:  do              ! inner iteration: stress
              msg = 'limit stress iteration'
              return
            endif
+           p_hydro=(Tstar_v(1)+Tstar_v(2)+Tstar_v(3))/3.0_pReal
+           forall(i=1:3) Tstar_v(i)=Tstar_v(i)-p_hydro
            call constitutive_LpAndItsTangent(Lp,dLp, Tstar_v,state_new,grain,CPFEM_in,cp_en)
            B = math_I3-dt*Lp
+ !          B = B / math_det3x3(B)**(1.0_pReal/3.0_pReal)
            AB = matmul(A,B)
-           Rstress = Tstar_v - 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
+           T_elastic= 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
+           p_hydro=(T_elastic(1)+T_elastic(2)+T_elastic(3))/3.0_pReal
+           forall(i=1:3) T_elastic(i)=T_elastic(i)-p_hydro
+           Rstress = Tstar_v - T_elastic
            if (maxval(abs(Tstar_v)) == 0.0_pReal .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < tol_Stress) exit stress
 
 !   update stress guess using inverse of dRes/dTstar (Newton--Raphson)
@@ -419,10 +429,10 @@ stress:  do              ! inner iteration: stress
              msg = 'regularization Jacobi'
              return
            endif
-
            dTstar_v = matmul(invJacobi,Rstress)  ! correction to Tstar
-           forall(i=1:6, abs(dTstar_v(i)) > crite*maxval(abs(Tstar_v))) &
-             dTstar_v(i) = sign(crite*maxval(abs(Tstar_v)),dTstar_v(i))   ! cap to maximum correction
+! limit correction of Tstar
+           if(maxval(abs(dTstar_v)) > crite*maxval(abs(Tstar_v))) &
+              dTstar_v=dTstar_v*crite*maxval(abs(Tstar_v))/maxval(abs(dTstar_v))
            Tstar_v = Tstar_v-dTstar_v
 
     enddo stress
