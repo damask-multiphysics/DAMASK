@@ -203,6 +203,7 @@
        if (t == CPFEM_dt) exit         ! reached final "then"
      else                              ! solution not found
        i = i+1_pInt                    ! inc cutback counter
+!       write(6,*) 'ncut:', i
        if (i > nCutback) then          ! limit exceeded?
          write(6,*) 'cutback limit --> '//msg
          write(6,*) 'Grain:             ',grain
@@ -344,8 +345,8 @@
  character(len=*) msg
  integer(pInt) cp_en, CPFEM_in, grain
  integer(pInt) iState,iStress,dummy, i,j,k,l,m
- real(pReal) dt,det, max_E, p_hydro
- real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress, E, T_elastic
+ real(pReal) dt,det, p_hydro
+ real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress, E, T_elastic, Rstress_old
  real(pReal), dimension(6,6) :: C_66,Jacobi,invJacobi
  real(pReal), dimension(3,3) :: Fg_new,Fp_old,Fp_new,Fe_new,invFp_old,invFp_new,Lp,A,B,AB
  real(pReal), dimension(3,3,3,3) :: dLp, LTL
@@ -368,15 +369,9 @@
  if (all(state_new == 0.0_pReal)) state_new = state_old
  RstateS = state_new
  iState = 0_pInt
-! elastic guess for small Tstar, however reduced to prec_max_e
- if (all(Tstar_v < 0.1_pReal)) then
-    E =  math_Mandel33to6(A-math_I3)
-    max_E = maxval(E)
-    if (max_E > prec_max_e) E = prec_max_e * E / max_E
-    Tstar_v = 0.5_pReal*matmul(C_66, E)
- endif
-! QUESTION follow former plastic slope to guess better?
+
  Rstress = Tstar_v
+ Rstress_old=Rstress
 
 state: do                ! outer iteration: state
          iState = iState+1
@@ -395,13 +390,20 @@ stress:  do              ! inner iteration: stress
            forall(i=1:3) Tstar_v(i)=Tstar_v(i)-p_hydro
            call constitutive_LpAndItsTangent(Lp,dLp, Tstar_v,state_new,grain,CPFEM_in,cp_en)
            B = math_I3-dt*Lp
- !          B = B / math_det3x3(B)**(1.0_pReal/3.0_pReal)
+!           B = B / math_det3x3(B)**(1.0_pReal/3.0_pReal)
            AB = matmul(A,B)
            T_elastic= 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
            p_hydro=(T_elastic(1)+T_elastic(2)+T_elastic(3))/3.0_pReal
            forall(i=1:3) T_elastic(i)=T_elastic(i)-p_hydro
            Rstress = Tstar_v - T_elastic
-           if (maxval(abs(Tstar_v)) == 0.0_pReal .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < tol_Stress) exit stress
+!          step size control: if residuum does not improve redo iteration with reduced step size
+           if(maxval(abs(Rstress)) > maxval(abs(Rstress_old)) .and. iStress > 1) then
+!                write(6,*) 'Hallo', iStress
+                Tstar_v=Tstar_v+0.5*dTstar_v
+                dTstar_v=0.5*dTstar_v
+                cycle
+           endif
+           if (iStress > 1 .and. (maxval(abs(Tstar_v)) < 1.0e-3_pReal .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < tol_Stress)) exit stress
 
 !   update stress guess using inverse of dRes/dTstar (Newton--Raphson)
            LTL = 0.0_pReal
@@ -410,8 +412,7 @@ stress:  do              ! inner iteration: stress
                do k=1,3
                  do l=1,3
                    do m=1,3
-!                    LTL(i,j,k,l) = LTL(i,j,k,l) + AB(i,m)*dLp(m,j,k,l) + AB(j,m)*dLp(m,i,l,k)  ! old
-                     LTL(i,j,k,l) = LTL(i,j,k,l) + dLp(j,i,m,k)*AB(m,l) + AB(m,i)*dLp(m,j,k,l)   ! new (and correct??)
+                     LTL(i,j,k,l) = LTL(i,j,k,l) + dLp(j,i,m,k)*AB(m,l) + AB(m,i)*dLp(m,j,k,l)
                    enddo
                  enddo
                enddo
@@ -430,14 +431,12 @@ stress:  do              ! inner iteration: stress
              return
            endif
            dTstar_v = matmul(invJacobi,Rstress)  ! correction to Tstar
-! limit correction of Tstar
-           if(maxval(abs(dTstar_v)) > crite*maxval(abs(Tstar_v))) &
-              dTstar_v=dTstar_v*crite*maxval(abs(Tstar_v))/maxval(abs(dTstar_v))
+           Rstress_old=Rstress
            Tstar_v = Tstar_v-dTstar_v
+!           write(999,*) Tstar_v, dTstar_v, Rstress
 
     enddo stress
 !    write(6,*) 'istress', istress
-    Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
     dstate = dt*constitutive_dotState(Tstar_v,state_new,grain,CPFEM_in,cp_en) ! evolution of microstructure
     Rstate = state_new - (state_old+dstate)
     RstateS = 0.0_pReal
@@ -448,6 +447,8 @@ stress:  do              ! inner iteration: stress
 
  enddo state
 ! write(6,*) 'istate', istate
+! write(999,*) 'Tstar_v raus', Tstar_v
+! write(999,*)
 
  invFp_new = matmul(invFp_old,B)
  call math_invert3x3(invFp_new,Fp_new,det,failed)
