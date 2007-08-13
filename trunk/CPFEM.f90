@@ -397,7 +397,8 @@ stress:  do              ! inner iteration: stress
            forall(i=1:3) T_elastic(i)=T_elastic(i)-p_hydro
            Rstress = Tstar_v - T_elastic
 !          step size control: if residuum does not improve redo iteration with reduced step size
-           if(maxval(abs(Rstress)) > maxval(abs(Rstress_old)) .and. iStress > 1) then
+           if(maxval(abs(Rstress)) > maxval(abs(Rstress_old)) .and. &
+           maxval(abs(Rstress)) > 1.0e-6 .and. iStress > 1) then
 !                write(6,*) 'Hallo', iStress
                 Tstar_v=Tstar_v+0.5*dTstar_v
                 dTstar_v=0.5*dTstar_v
@@ -437,6 +438,7 @@ stress:  do              ! inner iteration: stress
 
     enddo stress
 !    write(6,*) 'istress', istress
+    Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
     dstate = dt*constitutive_dotState(Tstar_v,state_new,grain,CPFEM_in,cp_en) ! evolution of microstructure
     Rstate = state_new - (state_old+dstate)
     RstateS = 0.0_pReal
@@ -458,7 +460,6 @@ stress:  do              ! inner iteration: stress
  endif
  Fp_new = Fp_new*det**(1.0_pReal/3.0_pReal) ! det = det(InvFp_new) !!
  Fe_new = matmul(Fg_new,invFp_new)
-
  return
  END SUBROUTINE
 
