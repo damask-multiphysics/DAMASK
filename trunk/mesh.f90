@@ -47,6 +47,7 @@
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
  real(pReal), allocatable :: mesh_node (:,:)
 
+ integer(pInt) :: hypoelasticTableStyle = 0
  integer(pInt), parameter :: FE_Nelemtypes = 2
  integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNips = 8
@@ -135,7 +136,6 @@
  implicit none
  
  integer(pInt), parameter :: fileUnit = 222
- integer(pInt), parameter :: hypoelasticTableStyle = 0
 
  mesh_Nelems = 0_pInt
  mesh_NcpElems = 0_pInt
@@ -293,25 +293,25 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 
    select case ( IO_lc(IO_Stringvalue(line,pos,1)))
      case('table')
-       hypoelasticTableStyle = IO_IntValue (line,pos,5)
+       if (pos(1) == 6) hypoelasticTableStyle = IO_IntValue (line,pos,5) ! only recognize header entry for "table"
      case('sizing')
        mesh_Nelems = IO_IntValue (line,pos,3)
        mesh_Nnodes = IO_IntValue (line,pos,4)
      case('hypoelastic')
-       do i=1,4+hypoTableStyle
+       do i=1,4+hypoelasticTableStyle
          read (unit,610,END=620) line
        end do
        pos = IO_stringPos(line,20)
        if( IO_lc(IO_Stringvalue(line,pos,2)).eq.'to' )then
          mesh_NcpElems = IO_IntValue(line,pos,3)-IO_IntValue(line,pos,1)+1
        else
-	     mesh_NcpElems = mesh_NcpElems + pos(1)
-		 do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
-	       mesh_NcpElems = mesh_NcpElems - 1 ! Counted the c character from the line
-		   read (unit,610,END=620) line
-		   pos = IO_stringPos(line,20)
+         mesh_NcpElems = mesh_NcpElems + pos(1)
+         do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
+           mesh_NcpElems = mesh_NcpElems - 1 ! Counted the c character from the line
+           read (unit,610,END=620) line
+           pos = IO_stringPos(line,20)
            mesh_NcpElems = mesh_NcpElems + pos(1)
-		 end do
+         end do
        end if
 
    end select
@@ -351,22 +351,22 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    pos = IO_stringPos(line,1)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
      read (unit,610,END=630) line  ! Garbage line
-	 do i=1,mesh_Nelems            ! read all elements
-	   read (unit,610,END=630) line
-	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
-	   e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
-	   if (e /= 0) then
+     do i=1,mesh_Nelems            ! read all elements
+       read (unit,610,END=630) line
+       pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
+       e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
+       if (e /= 0) then
          t = FE_mapElemtype(IO_intValue(line,pos,2))
-		 mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
-		 mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
-		 mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
-	     do j=1,FE_Nnodes(t)
-	       n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
-	       node_count(n) = node_count(n)+1
-	     end do
+         mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
+         mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
+         mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
+         do j=1,FE_Nnodes(t)
+           n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
+           node_count(n) = node_count(n)+1
+         end do
        end if
      end do
-	 exit
+     exit
    end if
  end do
 
