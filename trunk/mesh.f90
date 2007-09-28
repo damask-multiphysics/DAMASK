@@ -135,6 +135,7 @@
  implicit none
  
  integer(pInt), parameter :: fileUnit = 222
+ integer(pInt), parameter :: hypoelasticTableStyle = 0
 
  mesh_Nelems = 0_pInt
  mesh_NcpElems = 0_pInt
@@ -291,11 +292,13 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    pos = IO_stringPos(line,20)
 
    select case ( IO_lc(IO_Stringvalue(line,pos,1)))
+     case('table')
+       hypoelasticTableStyle = IO_IntValue (line,pos,5)
      case('sizing')
        mesh_Nelems = IO_IntValue (line,pos,3)
        mesh_Nnodes = IO_IntValue (line,pos,4)
      case('hypoelastic')
-       do i=1,4
+       do i=1,4+hypoTableStyle
          read (unit,610,END=620) line
        end do
        pos = IO_stringPos(line,20)
@@ -447,7 +450,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    read (unit,610,END=620) line
    pos = IO_stringPos(line,1)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'hypoelastic' ) then
-     do i=1,3          ! skip three lines
+     do i=1,3+hypoelasticTableStyle          ! skip three (or four if new table style!) lines
        read (unit,610,END=620) line 
      end do
 	 contInts = IO_continousIntValues(unit,mesh_NcpElems)
