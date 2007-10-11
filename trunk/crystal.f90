@@ -26,10 +26,10 @@ reshape((/12,48,12/),(/crystal_MaxCrystalStructure/))
 !* Maximum number of slip systems over crystal structures
 integer(pInt), parameter :: crystal_MaxMaxNslipOfStructure = 48
 !* Slip direction, slip normales and Schmid matrices
-real(pReal), dimension(3,3,crystal_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: crystal_Sslip
-real(pReal), dimension(6,crystal_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: crystal_Sslip_v
-real(pReal), dimension(3,crystal_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: crystal_sn
-real(pReal), dimension(3,crystal_MaxMaxNslipOfStructure,constitutive_MaxCrystalStructure) :: crystal_sd
+real(pReal), dimension(3,3,crystal_MaxMaxNslipOfStructure,crystal_MaxCrystalStructure) :: crystal_Sslip
+real(pReal), dimension(6,crystal_MaxMaxNslipOfStructure,crystal_MaxCrystalStructure) :: crystal_Sslip_v
+real(pReal), dimension(3,crystal_MaxMaxNslipOfStructure,crystal_MaxCrystalStructure) :: crystal_sn
+real(pReal), dimension(3,crystal_MaxMaxNslipOfStructure,crystal_MaxCrystalStructure) :: crystal_sd
 
 !*** Slip systems for FCC structures (1) ***
 !* System {111}<110>  Sort according Eisenlohr&Hantcherli
