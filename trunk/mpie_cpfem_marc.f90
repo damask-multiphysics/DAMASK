@@ -31,6 +31,7 @@
  include "math.f90"
  include "IO.f90"
  include "mesh.f90"
+ include "crystal.f90"
  include "constitutive.f90"
  include "CPFEM.f90"
 !
