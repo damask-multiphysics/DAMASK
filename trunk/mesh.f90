@@ -48,39 +48,51 @@
  real(pReal), allocatable :: mesh_node (:,:)
 
  integer(pInt) :: hypoelasticTableStyle = 0
- integer(pInt), parameter :: FE_Nelemtypes = 2
+ integer(pInt), parameter :: FE_Nelemtypes = 4
  integer(pInt), parameter :: FE_maxNnodes = 8
- integer(pInt), parameter :: FE_maxNips = 8
+ integer(pInt), parameter :: FE_maxNips = 9
  integer(pInt), parameter :: FE_maxNneighbors = 6
  integer(pInt), parameter :: FE_maxNfaceNodes = 4
  integer(pInt), parameter :: FE_maxNfaces = 6
- integer(pInt), dimension(200):: FE_mapElemtype 
+ integer(pInt), dimension(200):: FE_mapElemtype	! dimension should exceed maximum element type index (134 at present)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nnodes = &
  (/8, & ! element 7
-   4  & ! element 134
+   4, & ! element 134
+   4, & ! element 11
+   8  & ! element 27
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nips = &
  (/8, & ! element 7
-   1  & ! element 134
+   1, & ! element 134
+   4, & ! element 11
+   9  & ! element 27
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipNeighbors = &
  (/6, & ! element 7
-   4  & ! element 134
+   4, & ! element 134
+   4, & ! element 11
+   4  & ! element 27
   /)
  integer(pInt), dimension(FE_maxNfaces,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
   4,4,4,4,4,4, & ! element 7
-  3,3,3,3,0,0  & ! element 134
+  3,3,3,3,0,0, & ! element 134
+  2,2,2,2,0,0, & ! element 11
+  3,3,3,3,0,0  & ! element 27
    /),(/FE_maxNfaces,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNips,FE_Nelemtypes), parameter :: FE_nodeAtIP = &
  reshape((/&
-  1,2,4,3,5,6,8,7, & ! element 7
-  1,0,0,0,0,0,0,0  & ! element 134
+  1,2,4,3,5,6,8,7,0, & ! element 7
+  1,0,0,0,0,0,0,0,0, & ! element 134
+  1,2,4,3,0,0,0,0,0, & ! element 11
+  1,5,2,8,0,6,4,7,3  & ! element 27
    /),(/FE_maxNips,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNnodes,FE_Nelemtypes), parameter :: FE_ipAtNode = &
  reshape((/&
   1,2,4,3,5,6,8,7, & ! element 7
-  1,1,1,1,0,0,0,0  & ! element 134
+  1,1,1,1,0,0,0,0, & ! element 134
+  1,2,4,3,0,0,0,0, & ! element 11
+  1,3,9,7,2,6,8,4  & ! element 27
    /),(/FE_maxNnodes,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
@@ -95,6 +107,18 @@
   2,3,4,0 , &
   1,3,4,0 , &
   0,0,0,0 , &
+  0,0,0,0 , &
+  1,2,0,0 , & ! element 11
+  2,3,0,0 , &
+  3,4,0,0 , &
+  4,1,0,0 , &
+  0,0,0,0 , &
+  0,0,0,0 , &
+  1,5,2,0 , & ! element 27
+  2,6,3,0 , &
+  3,7,4,0 , &
+  4,8,1,0 , &
+  0,0,0,0 , &
   0,0,0,0 &
    /),(/FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNneighbors,FE_maxNips,FE_Nelemtypes), parameter :: FE_ipNeighbor = &
@@ -107,6 +131,7 @@
   -3, 5, 8,-2,-6, 2 , &
    8,-5,-4, 5,-6, 3 , &
   -3, 7,-4, 6,-6, 4 , &
+   0, 0, 0, 0, 0, 0 , &
   -1,-2,-3,-4, 0, 0 , & ! element 134
    0, 0, 0, 0, 0, 0 , &
    0, 0, 0, 0, 0, 0 , &
@@ -114,7 +139,26 @@
    0, 0, 0, 0, 0, 0 , &
    0, 0, 0, 0, 0, 0 , &
    0, 0, 0, 0, 0, 0 , &
-   0, 0, 0, 0, 0, 0   &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   2,-4, 3,-1, 0, 0 , & ! element 11
+  -2, 1, 4,-1, 0, 0 , &
+   4,-4,-3, 1, 0, 0 , &
+  -2, 3,-3, 2, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   2,-4, 4,-1, 0, 0 , & ! element 27
+   3, 1, 5,-1, 0, 0 , &
+  -2, 2, 6,-1, 0, 0 , &
+   5,-4, 7, 1, 0, 0 , &
+   6, 4, 8, 2, 0, 0 , &
+  -2, 5, 9, 3, 0, 0 , &
+   8,-4,-3, 4, 0, 0 , &
+   9, 7,-3, 5, 0, 0 , &
+  -2, 8,-3, 6, 0, 0   &
    /),(/FE_maxNneighbors,FE_maxNips,FE_Nelemtypes/))
    
  CONTAINS
@@ -147,6 +191,8 @@
  FE_mapElemtype = 1 ! MISSING this should be zero...
  FE_mapElemtype(  7) = 1
  FE_mapElemtype(134) = 2
+ FE_mapElemtype( 11) = 3
+ FE_mapElemtype( 27) = 4
 
 ! call to various subrountes to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
