@@ -15,7 +15,7 @@ c2                              2.0
 c3                              0.4
 c4                              0.05
 c5				10.0
-interaction_coefficients        1.0 2.2 3.0 1.6 3.8 4.5                      	
+interaction_coefficients        1.0  2.2  3.0  1.6  3.8  4.5                      	
 
 <textures>
 [cube SX]
