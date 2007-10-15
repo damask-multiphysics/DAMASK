@@ -20,7 +20,7 @@ implicit none
 !* Number of crystal structures (1-FCC,2-BCC,3-HCP)
 integer(pInt), parameter :: crystal_MaxCrystalStructure = 3
 !* Total number of slip systems per crystal structure
-!* (as to be changed according the definition of slip systems)
+!* (has to be changed according the definition of slip systems)
 integer(pInt), dimension(crystal_MaxCrystalStructure), parameter :: crystal_MaxNslipOfStructure = &
 reshape((/12,48,12/),(/crystal_MaxCrystalStructure/))
 !* Maximum number of slip systems over crystal structures
@@ -167,7 +167,7 @@ integer(pInt) i,j,k,l
 real(pReal) invNorm
 
 !* Iteration over the crystal structures
-do l=1,3
+do l=1,crystal_MaxCrystalStructure
 !* Iteration over the systems
    do k=1,crystal_MaxNslipOfStructure(l)
 !* Defintion of Schmid matrix
