@@ -468,7 +468,39 @@
 
 
 !********************************************************************
-! read consecutive lines of ints concatenatred by "c" as last char
+! count items in consecutive lines of ints concatenated by "c"
+! as last char or range of values a "to" b
+!********************************************************************
+ FUNCTION IO_countContinousIntValues (unit)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ integer(pInt)  IO_continousIntValues,unit,i
+ integer(pInt), dimension(67) :: pos  ! allow for 32 values excl "c"
+ character(len=300) line
+
+ IO_countContinousIntValues(1) = 0
+ do
+   read(unit,'(A300)',end=100) line
+   pos = IO_stringPos(line,33)
+   if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then  ! found range indicator
+     IO_countContinousIntValues = IO_countContinousIntValues+1+IO_intValue(line,pos,3)-IO_intValue(line,pos,1)
+	 exit
+   else
+     IO_countContinousIntValues = IO_countContinousIntValues+pos(1)-1
+     if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then  ! line finished, read last value
+       IO_countContinousIntValues = IO_countContinousIntValues+1
+       exit
+     endif
+   endif
+ enddo
+100 return
+
+ END FUNCTION
+
+!********************************************************************
+! read consecutive lines of ints concatenated by "c" as last char
 ! or range of values a "to" b
 !********************************************************************
  FUNCTION IO_continousIntValues (unit,maxN)
