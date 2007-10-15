@@ -106,6 +106,7 @@
 ! three dimensional stress state ?
     call math_init()
     call mesh_init()
+	call crystal_init()
     call constitutive_init()
     call CPFEM_init()
     CPFEM_first_call = .false.
