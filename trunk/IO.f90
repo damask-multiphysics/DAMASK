@@ -476,11 +476,11 @@
  use prec, only: pReal,pInt
  implicit none
 
- integer(pInt)  IO_continousIntValues,unit,i
+ integer(pInt)  IO_countContinousIntValues,unit,i
  integer(pInt), dimension(67) :: pos  ! allow for 32 values excl "c"
  character(len=300) line
 
- IO_countContinousIntValues(1) = 0
+ IO_countContinousIntValues = 0
  do
    read(unit,'(A300)',end=100) line
    pos = IO_stringPos(line,33)
