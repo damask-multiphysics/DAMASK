@@ -95,6 +95,7 @@
  use prec, only: pReal,pInt
  use math, only: math_init
  use mesh, only: mesh_init,mesh_FEasCP
+ use crystal, only: crystal_Init
  use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new
  implicit none
 !
@@ -106,7 +107,7 @@
 ! three dimensional stress state ?
     call math_init()
     call mesh_init()
-	call crystal_init()
+    call crystal_Init()
     call constitutive_init()
     call CPFEM_init()
     CPFEM_first_call = .false.
@@ -347,7 +348,7 @@
  integer(pInt) cp_en, CPFEM_in, grain
  integer(pInt) iState,iStress,dummy, i,j,k,l,m
  real(pReal) dt,det, p_hydro
- real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress, E, T_elastic, Rstress_old
+ real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress, T_elastic, Rstress_old
  real(pReal), dimension(6,6) :: C_66,Jacobi,invJacobi
  real(pReal), dimension(3,3) :: Fg_new,Fp_old,Fp_new,Fe_new,invFp_old,invFp_new,Lp,A,B,AB
  real(pReal), dimension(3,3,3,3) :: dLp, LTL
