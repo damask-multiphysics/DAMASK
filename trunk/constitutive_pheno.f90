@@ -303,7 +303,7 @@ do while(.true.)
               material_s_sat(section)=IO_floatValue(line,positions,2)
 		 case ('w0')
               material_w0(section)=IO_floatValue(line,positions,2)
-	     case ('hardening_coefficient') 
+	     case ('hardening_coefficients') 
 		      do i=1,crystal_MaxMaxNslipOfStructure
               material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
 			  enddo

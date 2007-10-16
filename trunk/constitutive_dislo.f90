@@ -304,7 +304,7 @@ do while(.true.)
               material_C44(section)=IO_floatValue(line,positions,2)
          case ('rho0') !* conversion in 1/mm²
               material_rho0(section)=IO_floatValue(line,positions,2)/1.0e6_pReal
-	     case ('interaction_coefficient') 
+	     case ('interaction_coefficients') 
 		      do i=1,crystal_MaxMaxNslipOfStructure
               material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
 			  enddo
