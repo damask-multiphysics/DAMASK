@@ -150,7 +150,7 @@
      CPFEM_in)        ! Integration point number
 
  use prec, only: pReal,pInt,ijaco,nCutback
- use math, only: math_pDecomposition,math_RtoEuler
+ use math, only: math_pDecomposition,math_RtoEuler, inDeg
  use IO,   only: IO_error
  use mesh, only: mesh_element
  use constitutive
@@ -239,7 +239,7 @@
      call IO_error(600)
      return
    endif
-   CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))        ! orientation
+   CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))*inDeg        ! orientation
    CPFEM_results(4:3+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en) = &
      constitutive_post_results(Tstar_v,state(:,i_then),CPFEM_dt,CPFEM_Temperature,grain,CPFEM_in,cp_en)
 
