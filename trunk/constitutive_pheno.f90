@@ -3,10 +3,8 @@
 !*      Module: CONSTITUTIVE        *
 !************************************
 !* contains:                        *
-!* - parameters definition          *
 !* - constitutive equations         *
-!* - Hardening matrices definition  *
-!* - Parameters definition          *
+!* - parameters definition          *
 !* - orientations                   *
 !************************************
 
@@ -14,11 +12,18 @@ MODULE constitutive
 
 !*** Include other modules ***
 use prec, only: pReal,pInt
-use crystal, only: crystal_MaxMaxNslipOfStructure,crystal_MaxCrystalStructure
 implicit none
 
 ! MISSING consistency check after reading 'mattex.mpie'
 character(len=300), parameter :: mattexFile = 'mattex.mpie'
+
+!*************************************
+!* Definition of material properties *
+!*************************************
+!* Physical parameter, attack_frequency != Debye frequency
+real(pReal), parameter :: attack_frequency = 1.0e10_pReal  
+!* Physical parameter, Boltzman constant in mJ/Kelvin
+real(pReal), parameter :: Kb = 1.38e-20_pReal
 
 !*************************************
 !* Definition of material properties *
@@ -44,6 +49,7 @@ real(pReal), dimension(:)    , allocatable :: material_n_slip
 real(pReal), dimension(:)    , allocatable :: material_h0
 real(pReal), dimension(:)    , allocatable :: material_s_sat
 real(pReal), dimension(:)    , allocatable :: material_w0
+real(pReal), dimension(:,:)  , allocatable :: material_SlipIntCoeff
 
 !************************************
 !* Definition of texture properties *
@@ -83,26 +89,22 @@ real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_old
 real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_new
 
 !************************************
+!*      Hardening matrices        *
+!************************************
+real(pReal), dimension(:,:,:), allocatable :: constitutive_HardeningMatrix
+
+!************************************
 !*             Results              *
 !************************************
 integer(pInt) constitutive_maxNresults
 integer(pInt), dimension(:,:,:), allocatable :: constitutive_Nresults
 real(pReal), dimension(:,:,:,:), allocatable :: constitutive_results
 
-!***********************************************
-!*      slip-slip interaction                  *
-!***********************************************
-!* (defined for the moment as crystal structure property and not as material property)
-!* (may be changed in the future)
-real(pReal), dimension(crystal_MaxMaxNslipOfStructure,crystal_MaxMaxNslipOfStructure,&
-                       crystal_MaxCrystalStructure) :: constitutive_HardeningMatrix
-real(pReal), parameter :: constitutive_LatentHardening=1.4_pReal
 
 
 CONTAINS
 !****************************************
 !* - constitutive_Init
-!* - constitutive_HardeningMatrices
 !* - constitutive_CountSections
 !* - constitutive_Parse_UnknownPart
 !* - constitutive_Parse_MaterialPart
@@ -110,6 +112,7 @@ CONTAINS
 !* - constitutive_Parse_MatTexDat
 !* - constitutive_Assignment
 !* - constitutive_HomogenizedC
+!* - constitutive_Microstructure
 !* - constitutive_LpAndItsTangent
 !* - consistutive_DotState
 !****************************************
@@ -119,51 +122,8 @@ subroutine constitutive_Init()
 !**************************************
 !*      Module initialization         *
 !**************************************
-call constitutive_HardeningMatrices()
 call constitutive_Parse_MatTexDat(mattexFile)
 call constitutive_Assignment()
-end subroutine
-
-
-subroutine constitutive_HardeningMatrices()
-!****************************************
-!* Hardening matrix (see Kalidindi)     *
-!****************************************
-use prec, only: pReal,pInt
-implicit none
-
-!* Definition of variables
-integer(pInt) i,j,k,l
-
-!* Initialization of the hardening matrix
-constitutive_HardeningMatrix=constitutive_LatentHardening
-!* Iteration over the crystal structures
-do l=1,3
-   select case(l)
-!* Hardening matrix for FCC structures
-   case (1)
-      forall (k=1:10:3,i=0:2,j=0:2)
-         constitutive_HardeningMatrix(k+i,k+j,l)=1.0_pReal
-      endforall
-!* Hardening matrix for BCC structures
-   case (2)
-      forall (k=1:11:2,i=0:1,j=0:1)
-             constitutive_HardeningMatrix(k+i,k+j,l)=1.0_pReal
-      endforall
-      forall (k=13:48)
-         constitutive_HardeningMatrix(k,k,l)=1.0_pReal
-      endforall
-!* Hardening matrix for HCP structures
-   case (3)
-      forall (i=1:3,j=1:3)
-          constitutive_HardeningMatrix(i,j,l)=1.0_pReal
-      endforall
-      forall (k=4:12)
-         constitutive_HardeningMatrix(k,k,l)=1.0_pReal
-      endforall
-   end select
-enddo
-
 end subroutine
 
 
@@ -290,10 +250,12 @@ character(len=80) function constitutive_Parse_MaterialPart(file)
 !*********************************************************************
 use prec, only: pInt
 use IO
+use crystal, only: crystal_MaxMaxNslipOfStructure
 implicit none
 
 !* Definition of variables
 character(len=80) line,tag
+integer(pInt) i
 integer(pInt), parameter :: maxNchunks = 2
 integer(pInt) file,section
 integer(pInt), dimension(1+2*maxNchunks) :: positions
@@ -341,6 +303,10 @@ do while(.true.)
               material_s_sat(section)=IO_floatValue(line,positions,2)
 		 case ('w0')
               material_w0(section)=IO_floatValue(line,positions,2)
+	     case ('hardening_coefficient') 
+		      do i=1,crystal_MaxMaxNslipOfStructure
+              material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
+			  enddo
          end select
       endif
    endif
@@ -449,6 +415,7 @@ subroutine constitutive_Parse_MatTexDat(filename)
 use prec, only: pReal,pInt
 use IO, only: IO_error, IO_open_file
 use math, only: math_Mandel3333to66, math_Voigt66to3333
+use crystal, only: crystal_MaxMaxNslipOfStructure
 implicit none
 
 !* Definition of variables
@@ -489,6 +456,7 @@ allocate(material_n_slip(material_maxN))				  ; material_n_slip=0.0_pReal
 allocate(material_h0(material_maxN))				      ; material_h0=0.0_pReal
 allocate(material_s_sat(material_maxN))                   ; material_s_sat=0.0_pReal
 allocate(material_w0(material_maxN))                      ; material_w0=0.0_pReal
+allocate(material_SlipIntCoeff(crystal_MaxMaxNslipOfStructure,material_maxN)) ; material_SlipIntCoeff=0.0_pReal
 allocate(texture_ODFfile(texture_maxN))                   ; texture_ODFfile=''
 allocate(texture_Ngrains(texture_maxN))                   ; texture_Ngrains=0_pInt
 allocate(texture_symmetry(texture_maxN))                  ; texture_symmetry=''
@@ -577,14 +545,16 @@ use prec, only: pReal,pInt
 use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,math_symmetricEulers,math_EulerToR
 use mesh, only: mesh_NcpElems,FE_Nips,FE_mapElemtype,mesh_maxNips,mesh_element
 use IO,   only: IO_hybridIA
+use crystal, only: crystal_SlipIntType
 
 implicit none
 
 !* Definition of variables
-integer(pInt) e,i,k,l,m,o,g,s
+integer(pInt) e,i,j,k,l,m,o,g,s
 integer(pInt) matID,texID
 integer(pInt), dimension(:,:,:), allocatable :: hybridIA_population
 integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,sumVolfrac,ODFmap,sampleCount
+real(pReal) K_inter
 real(pReal), dimension(3,4*(1+texture_maxNGauss+texture_maxNfiber)) :: Euler
 real(pReal), dimension(4*(1+texture_maxNGauss+texture_maxNfiber)) :: texVolfrac
 
@@ -655,6 +625,8 @@ allocate(constitutive_state_old(constitutive_maxNstatevars,constitutive_maxNgrai
 constitutive_state_old=0.0_pReal
 allocate(constitutive_state_new(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_new=0.0_pReal
+allocate(constitutive_HardeningMatrix(constitutive_maxNstatevars,constitutive_maxNstatevars,material_maxN)) 
+constitutive_HardeningMatrix=0.0_pReal
 
 !* Assignment of all grains in all IPs of all cp-elements
 do e=1,mesh_NcpElems
@@ -712,10 +684,28 @@ do e=1,mesh_NcpElems
 enddo ! cp_element
 
 
+!* Construction of the hardening matrices
+do i=1,material_maxN
+!* Iteration over the systems
+   do j=1,constitutive_maxNstatevars
+   do k=1,constitutive_maxNstatevars
+!* Hardening type *
+      do l=1,constitutive_maxNstatevars
+	     if (crystal_SlipIntType(j,k,l)==l) then
+		    K_inter=material_SlipIntCoeff(l,i)
+		 else
+		    K_inter=0.0_pReal
+		 endif
+      enddo
+      constitutive_HardeningMatrix(j,k,i)=K_inter
+   enddo
+   enddo
+enddo
+
 end subroutine
 
 
-function constitutive_homogenizedC(ipc,ip,el)
+function constitutive_HomogenizedC(ipc,ip,el)
 !*********************************************************************
 !* This function returns the homogenized elacticity matrix           *
 !* INPUT:                                                            *
@@ -737,7 +727,28 @@ return
 end function
 
 
-subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar, Tstar_v,state,ipc,ip,el)
+subroutine constitutive_Microstructure(state,Temperature,ipc,ip,el)
+!*********************************************************************
+!* This function calculates from state needed variables              *
+!* INPUT:                                                            *
+!*  - state           : state variables                              *
+!*  - Tp              : temperature                                  *
+!*  - ipc             : component-ID of current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
+!*********************************************************************
+use prec, only: pReal,pInt
+implicit none
+
+!* Definition of variables
+integer(pInt) ipc,ip,el
+real(pReal) Temperature
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
+
+end subroutine
+
+
+subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,state,Temperature,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *
@@ -758,6 +769,7 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i,k,l,m,n
+real(pReal) Temperature
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(3,3) :: Lp
 real(pReal), dimension(3,3,3,3) :: dLp_dTstar
@@ -792,7 +804,7 @@ return
 end subroutine
 
 
-function constitutive_dotState(Tstar_v,state,ipc,ip,el)
+function constitutive_dotState(Tstar_v,state,Temperature,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *
@@ -812,7 +824,7 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i
-real(pReal) tau_slip,gdot_slip
+real(pReal) Temperature,tau_slip,gdot_slip
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,state,self_hardening
 
@@ -836,7 +848,7 @@ return
 end function
 
 
-function constitutive_post_results(Tstar_v,state,dt,ipc,ip,el)
+function constitutive_post_results(Tstar_v,state,dt,Temperature,ipc,ip,el)
 !*********************************************************************
 !* return array of constitutive results                              *
 !* INPUT:                                                            *
@@ -854,14 +866,13 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i
-real(pReal) dt,tau_slip
+real(pReal) dt,Temperature,tau_slip
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 real(pReal), dimension(constitutive_Nresults(ipc,ip,el))   :: constitutive_post_results
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
-
 
 if(constitutive_Nresults(ipc,ip,el)==0) return
 

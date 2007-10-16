@@ -343,7 +343,7 @@
 
  use prec
  use constitutive, only: constitutive_Nstatevars,&
-                         constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent,
+                         constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent,&
 						 constitutive_Microstructure
  use math
  implicit none

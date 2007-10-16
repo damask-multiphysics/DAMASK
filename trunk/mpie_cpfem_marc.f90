@@ -33,7 +33,7 @@
  include "mesh.f90"
  include "crystal.f90"
  !* use a dynamic link for choosing the constitutive file
- include "constitutive.f90"
+ include "constitutive_pheno.f90"
  include "CPFEM.f90"
 !
  SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
