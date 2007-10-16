@@ -12,17 +12,27 @@ n_slip				20
 h0				75
 s_sat				63
 w0				2.25
-hardening_coefficients           1.0 1.4
+hardening_coefficients        	1.0 1.4
 # Parameters for dislocation-based modeling
-rho0				1.5e11
-bg			        2.86e-10
-Qedge				3.0e-19
-tau0		                0.0
-c1				0.1
-c2                              2.0
-c3                              0.4
-c4                      	0.05
-c5				10.0
+# Initial dislocation density [m]²
+rho0				              1.5e11 
+# Burgers vector [m]                        
+bg			                      2.86e-10
+# Activation energy for dislocation glide [J/K]
+Qedge				              3.0e-19
+# Reference for passing stress [MPa]
+tau0		                              0.0
+# Passing stress adjustment
+c1				              0.1
+# Jump width adjustment
+c2                                            2.0
+# Activation volume adjustment
+c3                                            0.4
+# Dislocation storage adjustment
+c4                      	              0.05
+# Athermal annihilation adjustment
+c5				              10.0
+# Dislocation interaction coefficients
 interaction_coefficients	1.0 2.2 3.0 1.6 3.8 4.5   
 
 <textures>
