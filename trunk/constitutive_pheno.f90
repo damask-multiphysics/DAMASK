@@ -303,7 +303,7 @@ do while(.true.)
               material_s_sat(section)=IO_floatValue(line,positions,2)
 		 case ('w0')
               material_w0(section)=IO_floatValue(line,positions,2)
-	     case ('hardening_coefficients') 
+	     case ('hardening_coefficient') 
 		      do i=1,crystal_MaxMaxNslipOfStructure
               material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
 			  enddo
@@ -415,7 +415,7 @@ subroutine constitutive_Parse_MatTexDat(filename)
 use prec, only: pReal,pInt
 use IO, only: IO_error, IO_open_file
 use math, only: math_Mandel3333to66, math_Voigt66to3333
-use crystal, only: crystal_MaxMaxNslipOfStructure
+use crystal, only: crystal_SlipIntType
 implicit none
 
 !* Definition of variables
@@ -456,7 +456,7 @@ allocate(material_n_slip(material_maxN))				  ; material_n_slip=0.0_pReal
 allocate(material_h0(material_maxN))				      ; material_h0=0.0_pReal
 allocate(material_s_sat(material_maxN))                   ; material_s_sat=0.0_pReal
 allocate(material_w0(material_maxN))                      ; material_w0=0.0_pReal
-allocate(material_SlipIntCoeff(crystal_MaxMaxNslipOfStructure,material_maxN)) ; material_SlipIntCoeff=0.0_pReal
+allocate(material_SlipIntCoeff(maxval(crystal_SlipIntType),material_maxN)) ; material_SlipIntCoeff=0.0_pReal
 allocate(texture_ODFfile(texture_maxN))                   ; texture_ODFfile=''
 allocate(texture_Ngrains(texture_maxN))                   ; texture_Ngrains=0_pInt
 allocate(texture_symmetry(texture_maxN))                  ; texture_symmetry=''
@@ -592,7 +592,8 @@ enddo
 
 !* publish globals
 constitutive_maxNgrains = maxval(texture_Ngrains)
-constitutive_maxNstatevars = maxval(material_Nslip) + 0_pInt
+material_maxNslip       = maxval(material_Nslip)	! max # of slip systems among materials present
+constitutive_maxNstatevars = material_maxNslip + 0_pInt
 constitutive_maxNresults = 1_pInt
 
 
@@ -625,7 +626,7 @@ allocate(constitutive_state_old(constitutive_maxNstatevars,constitutive_maxNgrai
 constitutive_state_old=0.0_pReal
 allocate(constitutive_state_new(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_new=0.0_pReal
-allocate(constitutive_HardeningMatrix(constitutive_maxNstatevars,constitutive_maxNstatevars,material_maxN)) 
+allocate(constitutive_HardeningMatrix(material_maxNslip,material_maxNslip,material_maxN)) 
 constitutive_HardeningMatrix=0.0_pReal
 
 !* Assignment of all grains in all IPs of all cp-elements
@@ -687,19 +688,10 @@ enddo ! cp_element
 !* Construction of the hardening matrices
 do i=1,material_maxN
 !* Iteration over the systems
-   do j=1,constitutive_maxNstatevars
-   do k=1,constitutive_maxNstatevars
-!* Hardening type *
-      do l=1,constitutive_maxNstatevars
-	     if (crystal_SlipIntType(j,k,i)==0) then
-		    K_inter=0.0_pReal
-		 elseif (crystal_SlipIntType(j,k,i)==1) then
-		    K_inter=material_SlipIntCoeff(1,i)
-		 else
-		    K_inter=material_SlipIntCoeff(2,i)
-	     endif
-      enddo
-      constitutive_HardeningMatrix(j,k,i)=K_inter
+   do j=1,material_Nslip(i)
+   do k=1,material_Nslip(i)
+!* min function is used to distinguish self hardening from latent hardening
+      constitutive_HardeningMatrix(k,j,i) = material_SlipIntCoeff(min(2,crystal_SlipIntType(k,j,i)),i)
    enddo
    enddo
 enddo
