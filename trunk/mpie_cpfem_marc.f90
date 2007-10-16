@@ -131,7 +131,7 @@
 ! Beware of changes in newer Marc versions -- these are from 2005r3
 ! concom is needed for inc, subinc, ncycle, lovl
 ! include 'concom'
- common/concom/ &
+ common/marc_concom/ &
      iacous, iasmbl, iautth,    ibear,  icompl,     iconj,  icreep, ideva(50), idyn,   idynt,&
      ielas,  ielcma, ielect,    iform,  ifour,      iharm,  ihcps,  iheat,     iheatt, ihresp,&
      ijoule, ilem,   ilnmom,    iloren, inc,        incext, incsub, ipass,     iplres, ipois,&
@@ -149,7 +149,7 @@
      ishrink,ioffsflg,isetoff,  iharmt, inc_incdat, iautspc,ibrake
 ! creeps is needed for timinc (time increment)
 ! include 'creeps'
- common/creeps/ &
+ common/marc_creeps/ &
      cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b,creept(33),icptim,icfte,icfst,&
      icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
 !
