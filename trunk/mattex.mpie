@@ -5,15 +5,19 @@ Nslip				12
 C11				106.75e3
 C12				60.41e3
 C44				28.34e3
-# Parameters for phenomenological modeling
+
+## Parameters for phenomenological modeling
+# Unit in [MPa]
 s0_slip				31.0
 gdot0_slip			0.001
 n_slip				20
 h0				75
 s_sat				63
 w0				2.25
+# Self and latent hardening coefficients
 hardening_coefficients        	1.0 1.4
-# Parameters for dislocation-based modeling
+
+## Parameters for dislocation-based modeling
 # Initial dislocation density [m]²
 rho0				              1.5e11 
 # Burgers vector [m]                        

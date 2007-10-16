@@ -691,11 +691,13 @@ do i=1,material_maxN
    do k=1,constitutive_maxNstatevars
 !* Hardening type *
       do l=1,constitutive_maxNstatevars
-	     if (crystal_SlipIntType(j,k,l)==l) then
-		    K_inter=material_SlipIntCoeff(l,i)
-		 else
+	     if (crystal_SlipIntType(j,k,i)==0) then
 		    K_inter=0.0_pReal
-		 endif
+		 elseif (crystal_SlipIntType(j,k,i)==1) then
+		    K_inter=material_SlipIntCoeff(1,i)
+		 else
+		    K_inter=material_SlipIntCoeff(2,i)
+	     endif
       enddo
       constitutive_HardeningMatrix(j,k,i)=K_inter
    enddo

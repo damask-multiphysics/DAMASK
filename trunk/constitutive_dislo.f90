@@ -720,7 +720,7 @@ do i=1,material_maxN
    do k=1,constitutive_maxNstatevars
 !* Hardening type *
       do l=1,constitutive_maxNstatevars
-	     if (crystal_SlipIntType(j,k,l)==l) then
+	     if (crystal_SlipIntType(j,k,i)==l) then
 		    K_inter=material_SlipIntCoeff(l,i)
 		 else
 		    K_inter=0.0_pReal
