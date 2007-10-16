@@ -32,8 +32,7 @@
  include "IO.f90"
  include "mesh.f90"
  include "crystal.f90"
- !* use a dynamic link for choosing the constitutive file
- include "constitutive_pheno.f90"
+ include "constitutive.f90"
  include "CPFEM.f90"
 !
  SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
@@ -131,7 +130,7 @@
 ! Beware of changes in newer Marc versions -- these are from 2005r3
 ! concom is needed for inc, subinc, ncycle, lovl
 ! include 'concom'
- common/marc_concom/ &
+ common/concom/ &
      iacous, iasmbl, iautth,    ibear,  icompl,     iconj,  icreep, ideva(50), idyn,   idynt,&
      ielas,  ielcma, ielect,    iform,  ifour,      iharm,  ihcps,  iheat,     iheatt, ihresp,&
      ijoule, ilem,   ilnmom,    iloren, inc,        incext, incsub, ipass,     iplres, ipois,&
@@ -149,7 +148,7 @@
      ishrink,ioffsflg,isetoff,  iharmt, inc_incdat, iautspc,ibrake
 ! creeps is needed for timinc (time increment)
 ! include 'creeps'
- common/marc_creeps/ &
+ common/creeps/ &
      cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b,creept(33),icptim,icfte,icfst,&
      icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
 !
@@ -172,7 +171,7 @@
 !     mpie_in          intergration point number
 !********************************************************************
  if ((lovl==6).or.(ncycle==0)) then
-    call CPFEM_general(ffn, ffn1, t(1), inc, incsub, ncycle, timinc, n(1), nn)
+    call CPFEM_general(ffn, ffn1, inc, incsub, ncycle, timinc, n(1), nn)
  endif
 ! return stress and jacobi
 !     Mandel: 11, 22, 33, 12, 23, 13 
@@ -218,8 +217,8 @@
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
 !
 ! assign result variable
- v=CPFEM_results(mod(jpltcd, CPFEM_Nresults+constitutive_maxNresults),&
-                 int(jpltcd/(CPFEM_Nresults+constitutive_maxNresults)),&
+ v=CPFEM_results(mod(jpltcd-1_pInt, CPFEM_Nresults+constitutive_maxNresults)+1_pInt,&
+                 (jpltcd-1_pInt)/(CPFEM_Nresults+constitutive_maxNresults)+1_pInt,&
                  nn, mesh_FEasCP('elem', m))
  return
  END SUBROUTINE
