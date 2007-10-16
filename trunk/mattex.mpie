@@ -41,6 +41,6 @@ interaction_coefficients	1.0 2.2 3.0 1.6 3.8 4.5
 
 <textures>
 [cube SX]
-symmetry			monoclinic
-Ngrains				1
+symmetry			monoclinic /orthorhombic
+Ngrains				2 /4
 (gauss)				phi1	0.0	phi	0.0	phi2	0.0 scatter 0.0	fraction 1.0
