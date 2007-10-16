@@ -51,18 +51,18 @@ data crystal_sd(:,11,1)/ 1, 0,-1/ ; data crystal_sn(:,11,1)/-1, 1,-1/
 data crystal_sd(:,12,1)/-1,-1, 0/ ; data crystal_sn(:,12,1)/-1, 1,-1/
 
 !*** Slip-Slip interactions for FCC structures (1) ***
-data crystal_SlipIntType( 1,:,1)/1,2,2,4,6,5,3,5,5,4,5,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 2,:,1)/2,1,2,6,4,5,5,4,6,5,3,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 3,:,1)/2,2,1,5,5,3,5,6,4,6,5,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 4,:,1)/4,6,5,1,2,2,4,5,6,3,5,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 5,:,1)/6,4,5,2,1,2,5,3,5,5,4,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 6,:,1)/5,5,3,2,2,1,6,5,4,5,6,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 7,:,1)/3,5,5,4,5,6,1,2,2,4,6,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 8,:,1)/5,4,6,5,3,5,2,1,2,6,4,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 9,:,1)/5,6,4,6,5,4,2,2,1,5,5,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType(10,:,1)/4,5,6,3,5,5,4,6,5,1,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType(11,:,1)/5,3,5,5,4,6,6,4,5,2,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType(12,:,1)/6,5,4,5,6,4,5,5,3,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
+data crystal_SlipIntType( 1,1:crystal_MaxNslipOfStructure(1),1)/1,2,2,4,6,5,3,5,5,4,5,6/
+data crystal_SlipIntType( 2,1:crystal_MaxNslipOfStructure(1),1)/2,1,2,6,4,5,5,4,6,5,3,5/
+data crystal_SlipIntType( 3,1:crystal_MaxNslipOfStructure(1),1)/2,2,1,5,5,3,5,6,4,6,5,4/
+data crystal_SlipIntType( 4,1:crystal_MaxNslipOfStructure(1),1)/4,6,5,1,2,2,4,5,6,3,5,5/
+data crystal_SlipIntType( 5,1:crystal_MaxNslipOfStructure(1),1)/6,4,5,2,1,2,5,3,5,5,4,6/
+data crystal_SlipIntType( 6,1:crystal_MaxNslipOfStructure(1),1)/5,5,3,2,2,1,6,5,4,5,6,4/
+data crystal_SlipIntType( 7,1:crystal_MaxNslipOfStructure(1),1)/3,5,5,4,5,6,1,2,2,4,6,5/
+data crystal_SlipIntType( 8,1:crystal_MaxNslipOfStructure(1),1)/5,4,6,5,3,5,2,1,2,6,4,5/
+data crystal_SlipIntType( 9,1:crystal_MaxNslipOfStructure(1),1)/5,6,4,6,5,4,2,2,1,5,5,3/
+data crystal_SlipIntType(10,1:crystal_MaxNslipOfStructure(1),1)/4,5,6,3,5,5,4,6,5,1,2,2/
+data crystal_SlipIntType(11,1:crystal_MaxNslipOfStructure(1),1)/5,3,5,5,4,6,6,4,5,2,1,2/
+data crystal_SlipIntType(12,1:crystal_MaxNslipOfStructure(1),1)/6,5,4,5,6,4,5,5,3,2,2,1/
 
 !*** Slip systems for BCC structures (2) ***
 !* System {110}<111>
@@ -208,18 +208,18 @@ data crystal_sd(:,11,3)/ 0,-1, 0/ ; data crystal_sn(:,11,3)/-1, 1, 1/
 data crystal_sd(:,12,3)/ 1, 1, 0/ ; data crystal_sn(:,12,3)/ 1,-1, 1/
 
 !*** Slip-Slip interactions for HCP structures (3) ***
-data crystal_SlipIntType( 1,:,3)/1,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 2,:,3)/2,1,2,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 3,:,3)/2,2,1,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 4,:,3)/2,2,2,1,2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 5,:,3)/2,2,2,2,1,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 6,:,3)/2,2,2,2,2,1,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 7,:,3)/2,2,2,2,2,2,1,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 8,:,3)/2,2,2,2,2,2,2,1,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType( 9,:,3)/2,2,2,2,2,2,2,2,1,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType(10,:,3)/2,2,2,2,2,2,2,2,2,1,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType(11,:,3)/2,2,2,2,2,2,2,2,2,2,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
-data crystal_SlipIntType(12,:,3)/2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0/
+data crystal_SlipIntType( 1,1:crystal_MaxNslipOfStructure(3),3)/1,2,2,2,2,2,2,2,2,2,2,2/
+data crystal_SlipIntType( 2,1:crystal_MaxNslipOfStructure(3),3)/2,1,2,2,2,2,2,2,2,2,2,2/
+data crystal_SlipIntType( 3,1:crystal_MaxNslipOfStructure(3),3)/2,2,1,2,2,2,2,2,2,2,2,2/
+data crystal_SlipIntType( 4,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,1,2,2,2,2,2,2,2,2/
+data crystal_SlipIntType( 5,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,1,2,2,2,2,2,2,2/
+data crystal_SlipIntType( 6,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,1,2,2,2,2,2,2/
+data crystal_SlipIntType( 7,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,1,2,2,2,2,2/
+data crystal_SlipIntType( 8,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,1,2,2,2,2/
+data crystal_SlipIntType( 9,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,1,2,2,2/
+data crystal_SlipIntType(10,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,1,2,2/
+data crystal_SlipIntType(11,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,2,1,2/
+data crystal_SlipIntType(12,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,2,2,1/
 
 
 CONTAINS
