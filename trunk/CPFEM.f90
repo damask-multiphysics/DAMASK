@@ -10,6 +10,7 @@
 ! ****************************************************************
 ! *** General variables for the material behaviour calculation ***
 ! ****************************************************************
+ real(pReal) CPFEM_Temperature
  real(pReal), dimension (:,:,:),     allocatable :: CPFEM_stress_all
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_jacobi_all
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_ffn_all
@@ -44,6 +45,7 @@
  integer(pInt) e,i,g
 !
 !    *** mpie.marc parameters ***
+ CPFEM_Temperature = 0.0_pReal
  allocate(CPFEM_ffn_all   (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn_all    = 0.0_pReal
  allocate(CPFEM_ffn1_all  (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn1_all   = 0.0_pReal
  allocate(CPFEM_stress_all(  6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_stress_all = 0.0_pReal
@@ -90,7 +92,7 @@
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
 !***********************************************************************
- SUBROUTINE CPFEM_general(ffn, ffn1, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, CPFEM_en, CPFEM_in)
+ SUBROUTINE CPFEM_general(ffn, ffn1, Temperature, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, CPFEM_en, CPFEM_in)
 !
  use prec, only: pReal,pInt
  use math, only: math_init
@@ -99,7 +101,7 @@
  use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new
  implicit none
 !
- real(pReal)   ffn(3,3), ffn1(3,3), CPFEM_dt
+ real(pReal)   ffn(3,3), ffn1(3,3), Temperature, CPFEM_dt
  integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en
 !
 ! initialization step
@@ -129,6 +131,7 @@
  endif
 
  cp_en = mesh_FEasCP('elem',CPFEM_en)
+ CPFEM_Temperature = Temperature
  CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
  CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
  call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
@@ -238,7 +241,7 @@
    endif
    CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))        ! orientation
    CPFEM_results(4:3+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en) = &
-     constitutive_post_results(Tstar_v,state(:,i_then),CPFEM_dt,grain,CPFEM_in,cp_en)
+     constitutive_post_results(Tstar_v,state(:,i_then),CPFEM_dt,CPFEM_Temperature,grain,CPFEM_in,cp_en)
 
 ! ---- contribute to IP result ----
     volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
@@ -340,7 +343,8 @@
 
  use prec
  use constitutive, only: constitutive_Nstatevars,&
-                         constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent
+                         constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent,
+						 constitutive_Microstructure
  use math
  implicit none
 
@@ -381,6 +385,7 @@ state: do                ! outer iteration: state
            msg = 'limit state iteration'
            return
          endif
+		 call constitutive_Microstructure(state_new,CPFEM_Temperature,grain,CPFEM_in,cp_en)
          iStress = 0_pInt
 stress:  do              ! inner iteration: stress
            iStress = iStress+1
@@ -390,7 +395,7 @@ stress:  do              ! inner iteration: stress
            endif
            p_hydro=(Tstar_v(1)+Tstar_v(2)+Tstar_v(3))/3.0_pReal
            forall(i=1:3) Tstar_v(i)=Tstar_v(i)-p_hydro
-           call constitutive_LpAndItsTangent(Lp,dLp, Tstar_v,state_new,grain,CPFEM_in,cp_en)
+           call constitutive_LpAndItsTangent(Lp,dLp,Tstar_v,state_new,CPFEM_Temperature,grain,CPFEM_in,cp_en)
            B = math_I3-dt*Lp
 !           B = B / math_det3x3(B)**(1.0_pReal/3.0_pReal)
            AB = matmul(A,B)
@@ -441,7 +446,7 @@ stress:  do              ! inner iteration: stress
     enddo stress
 !    write(6,*) 'istress', istress
     Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
-    dstate = dt*constitutive_dotState(Tstar_v,state_new,grain,CPFEM_in,cp_en) ! evolution of microstructure
+    dstate = dt*constitutive_dotState(Tstar_v,state_new,CPFEM_Temperature,grain,CPFEM_in,cp_en) ! evolution of microstructure
     Rstate = state_new - (state_old+dstate)
     RstateS = 0.0_pReal
     forall (i=1:constitutive_Nstatevars(grain,CPFEM_in,cp_en), state_new(i)/=0.0_pReal) &
