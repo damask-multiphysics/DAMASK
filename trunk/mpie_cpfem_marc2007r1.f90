@@ -173,7 +173,7 @@
 !     mpie_in          intergration point number
 !********************************************************************
  if ((lovl==6).or.(ncycle==0)) then
-    call CPFEM_general(ffn, ffn1, inc, incsub, ncycle, timinc, n(1), nn)
+    call CPFEM_general(ffn, ffn1, t(1), inc, incsub, ncycle, timinc, n(1), nn)
  endif
 ! return stress and jacobi
 !     Mandel: 11, 22, 33, 12, 23, 13 
