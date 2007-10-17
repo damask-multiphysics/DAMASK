@@ -691,7 +691,7 @@ do i=1,material_maxN
    do j=1,material_Nslip(i)
    do k=1,material_Nslip(i)
 !* min function is used to distinguish self hardening from latent hardening
-      constitutive_HardeningMatrix(k,j,i) = material_SlipIntCoeff(min(2,crystal_SlipIntType(k,j,i)),i)
+      constitutive_HardeningMatrix(k,j,i) = material_SlipIntCoeff(min(3,crystal_SlipIntType(k,j,i)),i)
    enddo
    enddo
 enddo
