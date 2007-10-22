@@ -250,13 +250,12 @@ character(len=80) function constitutive_Parse_MaterialPart(file)
 !*********************************************************************
 use prec, only: pInt
 use IO
-use crystal, only: crystal_MaxMaxNslipOfStructure
 implicit none
 
 !* Definition of variables
 character(len=80) line,tag
 integer(pInt) i
-integer(pInt), parameter :: maxNchunks = 2
+integer(pInt), parameter :: maxNchunks = 3
 integer(pInt) file,section
 integer(pInt), dimension(1+2*maxNchunks) :: positions
 
@@ -303,8 +302,8 @@ do while(.true.)
               material_s_sat(section)=IO_floatValue(line,positions,2)
 		 case ('w0')
               material_w0(section)=IO_floatValue(line,positions,2)
-	     case ('hardening_coefficient') 
-		      do i=1,crystal_MaxMaxNslipOfStructure
+	     case ('hardening_coefficients') 
+		      do i=1,2
               material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
 			  enddo
          end select
@@ -554,7 +553,6 @@ integer(pInt) e,i,j,k,l,m,o,g,s
 integer(pInt) matID,texID
 integer(pInt), dimension(:,:,:), allocatable :: hybridIA_population
 integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,sumVolfrac,ODFmap,sampleCount
-real(pReal) K_inter
 real(pReal), dimension(3,4*(1+texture_maxNGauss+texture_maxNfiber)) :: Euler
 real(pReal), dimension(4*(1+texture_maxNGauss+texture_maxNfiber)) :: texVolfrac
 
@@ -691,7 +689,7 @@ do i=1,material_maxN
    do j=1,material_Nslip(i)
    do k=1,material_Nslip(i)
 !* min function is used to distinguish self hardening from latent hardening
-      constitutive_HardeningMatrix(k,j,i) = material_SlipIntCoeff(min(3,crystal_SlipIntType(k,j,i)),i)
+      constitutive_HardeningMatrix(k,j,i) = material_SlipIntCoeff(max(2,min(3,crystal_SlipIntType(k,j,i)))-1,i) ! 1,2,3,4,5 --> 1,1,2,2,2
    enddo
    enddo
 enddo
@@ -836,8 +834,7 @@ enddo
 
 !* Hardening for all systems
 constitutive_dotState=matmul(constitutive_HardeningMatrix(1:material_Nslip(matID),1:material_Nslip(matID),&
-                      material_CrystalStructure(matID)),self_hardening)
-
+                      matID),self_hardening)
 return
 end function
 

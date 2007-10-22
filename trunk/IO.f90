@@ -476,7 +476,7 @@
  use prec, only: pReal,pInt
  implicit none
 
- integer(pInt)  IO_countContinousIntValues,unit,i
+ integer(pInt)  IO_countContinousIntValues,unit
  integer(pInt), dimension(67) :: pos  ! allow for 32 values excl "c"
  character(len=300) line
 
