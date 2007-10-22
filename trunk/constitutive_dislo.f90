@@ -262,12 +262,11 @@ character(len=80) function constitutive_Parse_MaterialPart(file)
 !*********************************************************************
 use prec, only: pInt,pReal
 use IO
-use crystal, only: crystal_MaxMaxNslipOfStructure
 implicit none
 
 !* Definition of variables
 character(len=80) line,tag
-integer(pInt), parameter :: maxNchunks = 2
+integer(pInt), parameter :: maxNchunks = 7
 integer(pInt) i,file,section
 integer(pInt), dimension(1+2*maxNchunks) :: positions
 
@@ -305,7 +304,7 @@ do while(.true.)
          case ('rho0') !* conversion in 1/mm²
               material_rho0(section)=IO_floatValue(line,positions,2)/1.0e6_pReal
 	     case ('interaction_coefficients') 
-		      do i=1,crystal_MaxMaxNslipOfStructure
+		      do i=1,6
               material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
 			  enddo
 		 case ('bg') !* conversion in mm
@@ -613,6 +612,7 @@ enddo
 
 !* publish globals
 constitutive_maxNgrains = maxval(texture_Ngrains)
+material_maxNslip       = maxval(material_Nslip)	! max # of slip systems among materials present
 constitutive_maxNstatevars = maxval(material_Nslip) + 0_pInt
 constitutive_maxNresults = 1_pInt
 
@@ -645,17 +645,17 @@ allocate(constitutive_state_old(constitutive_maxNstatevars,constitutive_maxNgrai
 constitutive_state_old=0.0_pReal
 allocate(constitutive_state_new(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_new=0.0_pReal
-allocate(constitutive_Pforest(constitutive_maxNstatevars,constitutive_maxNstatevars,material_maxN)) 
+allocate(constitutive_Pforest(material_maxNslip,constitutive_material_maxNslip,material_maxN)) 
 constitutive_Pforest=0.0_pReal
-allocate(constitutive_Pparallel(constitutive_maxNstatevars,constitutive_maxNstatevars,material_maxN))
+allocate(constitutive_Pparallel(material_maxNslip,material_maxNslip,material_maxN))
 constitutive_Pparallel=0.0_pReal
-allocate(constitutive_rho_p(constitutive_maxNstatevars))             ; constitutive_rho_p=0.0_pReal
-allocate(constitutive_rho_f(constitutive_maxNstatevars))             ; constitutive_rho_f=0.0_pReal
-allocate(constitutive_rho_m(constitutive_maxNstatevars))             ; constitutive_rho_m=0.0_pReal
-allocate(constitutive_passing_stress(constitutive_maxNstatevars))    ; constitutive_passing_stress=0.0_pReal
-allocate(constitutive_jump_width(constitutive_maxNstatevars))        ; constitutive_jump_width=0.0_pReal
-allocate(constitutive_activation_volume(constitutive_maxNstatevars)) ; constitutive_activation_volume=0.0_pReal
-allocate(constitutive_g0_slip(constitutive_maxNstatevars))           ; constitutive_g0_slip=0.0_pReal
+allocate(constitutive_rho_p(material_maxNslip))             ; constitutive_rho_p=0.0_pReal
+allocate(constitutive_rho_f(material_maxNslip))             ; constitutive_rho_f=0.0_pReal
+allocate(constitutive_rho_m(material_maxNslip))             ; constitutive_rho_m=0.0_pReal
+allocate(constitutive_passing_stress(material_maxNslip))    ; constitutive_passing_stress=0.0_pReal
+allocate(constitutive_jump_width(material_maxNslip))        ; constitutive_jump_width=0.0_pReal
+allocate(constitutive_activation_volume(material_maxNslip)) ; constitutive_activation_volume=0.0_pReal
+allocate(constitutive_g0_slip(material_maxNslip))           ; constitutive_g0_slip=0.0_pReal
 
 !* Assignment of all grains in all IPs of all cp-elements
 do e=1,mesh_NcpElems
@@ -716,23 +716,15 @@ enddo ! cp_element
 !* Construction of the hardening matrices
 do i=1,material_maxN
 !* Iteration over the systems
-   do j=1,constitutive_maxNstatevars
-   do k=1,constitutive_maxNstatevars
-!* Hardening type *
-      do l=1,constitutive_maxNstatevars
-	     if (crystal_SlipIntType(j,k,i)==l) then
-		    K_inter=material_SlipIntCoeff(l,i)
-		 else
-		    K_inter=0.0_pReal
-	     endif
-      enddo
+   do j=1,material_Nslip(i)
+   do k=1,material_Nslip(i)
 !* Projection of the dislocation *
 	  x=dot_product(crystal_sn(:,j,i),crystal_st(:,k,i))
 	  y=1.0_pReal-x**(2.0_pReal)
 !* Interaction matrix *
-      constitutive_Pforest(j,k,i)=abs(x)*K_inter
+      constitutive_Pforest(j,k,i)=abs(x)*material_SlipIntCoeff(crystal_SlipIntType(j,k,i),i)
 	  if (y>0.0_pReal) then
-	     constitutive_Pparallel(j,k,i)=sqrt(y)*K_inter
+	     constitutive_Pparallel(j,k,i)=sqrt(y)*material_SlipIntCoeff(crystal_SlipIntType(j,k,i),i)
 	  else
 	     constitutive_Pparallel(j,k,i)=0.0_pReal
 	  endif
@@ -788,10 +780,8 @@ real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 matID = constitutive_matID(ipc,ip,el)
 
 !* Quantities derivated from state
-constitutive_rho_f=matmul(constitutive_Pforest(1:constitutive_Nstatevars(ipc,ip,el),&
-                   1:constitutive_Nstatevars(ipc,ip,el),matID),state)
-constitutive_rho_p=matmul(constitutive_Pparallel(1:constitutive_Nstatevars(ipc,ip,el),&
-                   1:constitutive_Nstatevars(ipc,ip,el),matID),state)	
+constitutive_rho_f=matmul(constitutive_Pforest  (1:material_Nslip(matID),1:material_Nslip(matID),matID),state)
+constitutive_rho_p=matmul(constitutive_Pparallel(1:material_Nslip(matID),1:material_Nslip(matID),matID),state)	
 do i=1,material_Nslip(matID)
    constitutive_passing_stress(i)=material_tau0(matID)+material_c1(matID)*material_Gmod(matID)*material_bg(matID)*&
                                   sqrt(constitutive_rho_p(i))
