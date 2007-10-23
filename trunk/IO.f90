@@ -503,7 +503,7 @@
 ! read consecutive lines of ints concatenated by "c" as last char
 ! or range of values a "to" b
 !********************************************************************
- FUNCTION IO_continousIntValues (unit,maxN)
+ FUNCTION IO_continousIntValues (unit,maxN,lookupName,lookupMap,lookupMaxN)
 
  use prec, only: pReal,pInt
  implicit none
@@ -511,26 +511,37 @@
  integer(pInt)  unit,maxN,i
  integer(pInt), dimension(1+maxN) :: IO_continousIntValues
  integer(pInt), dimension(67) :: pos  ! allow for 32 values excl "c"
+ character(len=64), dimension(:) :: lookupName
+ integer(pInt) :: lookupMaxN
+ integer(pInt), dimension(:,:) :: lookupMap
  character(len=300) line
 
- IO_continousIntValues(1) = 0
+ IO_continousIntValues = 0_pInt
  do
    read(unit,'(A300)',end=100) line
    pos = IO_stringPos(line,33)
-   if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then  ! found range indicator
+   if (verify(IO_stringValue(line,pos,1),"0123456789") > 0) then     ! a non-int, i.e. set name
+     do i = 1,lookupMaxN                                       ! loop over known set names
+       if (IO_stringValue(line,pos,1) == lookupName(i)) then   ! found matching name
+         IO_continousIntValues = lookupMap(:,i)                ! return resp. entity list
+         exit
+       endif
+     enddo
+     exit
+   else if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then   ! found range indicator
      do i = IO_intValue(line,pos,1),IO_intValue(line,pos,3)
        IO_continousIntValues(1) = IO_continousIntValues(1)+1
 	   IO_continousIntValues(1+IO_continousIntValues(1)) = i
      enddo
-	 exit
+     exit
    else
      do i = 1,pos(1)-1  ! interpret up to second to last value
        IO_continousIntValues(1) = IO_continousIntValues(1)+1
-	   IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,i)
+       IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,i)
      enddo
      if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then  ! line finished, read last value
        IO_continousIntValues(1) = IO_continousIntValues(1)+1
-	   IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,pos(1))
+       IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,pos(1))
        exit
      endif
    endif
