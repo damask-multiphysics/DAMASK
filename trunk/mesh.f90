@@ -40,14 +40,17 @@
 ! _ipNeighborhood    : 6 or less neighboring IPs as [element_num, IP_index]
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
- integer(pInt) mesh_Nelems,mesh_NcpElems
+ integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_NelemSets,mesh_maxNelemInSet
  integer(pInt) mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNipNeighbors,mesh_maxNsharedElems
+ character(len=64), dimension(:), allocatable :: mesh_nameElemSet
+ integer(pInt), dimension(:,:), allocatable :: mesh_mapElemSet
  integer(pInt), dimension(:,:), allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
  integer(pInt), dimension(:,:), allocatable :: mesh_element, mesh_sharedElem
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
  real(pReal), allocatable :: mesh_node (:,:)
 
  integer(pInt) :: hypoelasticTableStyle = 0
+ integer(pInt) :: initialcondTableStyle = 0
  integer(pInt), parameter :: FE_Nelemtypes = 4
  integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNips = 9
@@ -187,6 +190,8 @@
  mesh_maxNips = 0_pInt
  mesh_maxNnodes = 0_pInt
  mesh_maxNsharedElems = 0_pInt
+ mesh_NelemSets = 0_pInt
+ mesh_maxNelemInSet = 0_pInt
 
  FE_mapElemtype = 1 ! MISSING this should be zero...
  FE_mapElemtype(  7) = 1
@@ -199,6 +204,7 @@
    call mesh_get_meshDimensions(fileUnit)
    call mesh_build_nodeMapping(fileUnit)
    call mesh_build_elemMapping(fileUnit)
+   call mesh_build_elemSetMapping(fileUnit)
    call mesh_get_nodeElemDimensions(fileUnit)
    call mesh_build_nodes(fileUnit)
    call mesh_build_elements(fileUnit)
@@ -327,7 +333,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use IO
  implicit none
 
- integer(pInt) unit,i,pos(41)
+ integer(pInt) unit,i,pos(41),mesh_NelemInSet
  character*300 line
 
 610 FORMAT(A300)
@@ -337,29 +343,26 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    read (unit,610,END=620) line
    pos = IO_stringPos(line,20)
 
-   select case ( IO_lc(IO_Stringvalue(line,pos,1)))
+   select case ( IO_lc(IO_StringValue(line,pos,1)))
      case('table')
-       if (pos(1) == 6) hypoelasticTableStyle = IO_IntValue (line,pos,5) ! only recognize header entry for "table"
+       if (pos(1) == 6) then
+         initialcondTableStyle = IO_IntValue (line,pos,4)
+         hypoelasticTableStyle = IO_IntValue (line,pos,5)
+       endif
      case('sizing')
        mesh_Nelems = IO_IntValue (line,pos,3)
        mesh_Nnodes = IO_IntValue (line,pos,4)
+     case('define')
+       select case (IO_lc(IO_StringValue(line,pos,2)))
+          case('element')                                ! Count the number of encountered element sets
+            mesh_NelemSets=mesh_NelemSets+1
+            mesh_maxNelemInSet = max(mesh_maxNelemInSet,IO_countContinousIntValues(unit))
+        end select
      case('hypoelastic')
-       do i=1,4+hypoelasticTableStyle
+       do i=1,3+hypoelasticTableStyle  ! Skip 3 or 4 lines
          read (unit,610,END=620) line
        end do
-       pos = IO_stringPos(line,20)
-       if( IO_lc(IO_Stringvalue(line,pos,2)).eq.'to' )then
-         mesh_NcpElems = IO_IntValue(line,pos,3)-IO_IntValue(line,pos,1)+1
-       else
-         mesh_NcpElems = mesh_NcpElems + pos(1)
-         do while( IO_lc(IO_Stringvalue(line,pos,pos(1))).eq.'c' )
-           mesh_NcpElems = mesh_NcpElems - 1 ! Counted the c character from the line
-           read (unit,610,END=620) line
-           pos = IO_stringPos(line,20)
-           mesh_NcpElems = mesh_NcpElems + pos(1)
-         end do
-       end if
-
+       mesh_NcpElems = mesh_NcpElems + IO_countContinousIntValues(unit)
    end select
 
  end do
@@ -421,6 +424,43 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  return
  END SUBROUTINE
  
+!********************************************************************
+! Build element set mapping 
+!
+! allocate globals:
+!********************************************************************
+ SUBROUTINE mesh_build_elemSetMapping (unit)
+
+ use prec, only: pInt
+ use IO
+
+ implicit none
+
+ integer unit, i,elem_set
+ character*300 line
+ integer(pInt), dimension (9) :: pos          ! count plus 4 entities on a line
+
+610 FORMAT(A300)
+
+ allocate (mesh_nameElemSet(mesh_NelemSets))
+ allocate (mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
+ elem_set = 0_pInt
+
+ rewind(unit)
+ do
+   read (unit,610,END=620) line
+   pos = IO_stringPos(line,4)
+   if( (IO_lc(IO_stringValue(line,pos,1)) == 'define' ).and.   &
+       (IO_lc(IO_stringValue(line,pos,2)) == 'element' ) )then
+      elem_set = elem_set+1
+      mesh_nameElemSet(elem_set) = IO_stringValue(line,pos,4)
+      mesh_mapElemSet(:,elem_set) = IO_continousIntValues(unit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+   end if
+ end do
+
+620 return
+ END SUBROUTINE
+
  
 !********************************************************************
 ! Build node mapping from FEM to CP
@@ -499,12 +539,12 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      do i=1,3+hypoelasticTableStyle          ! skip three (or four if new table style!) lines
        read (unit,610,END=620) line 
      end do
-	 contInts = IO_continousIntValues(unit,mesh_NcpElems)
-	 do i = 1,contInts(1)
-	   CP_elem = CP_elem+1
+     contInts = IO_continousIntValues(unit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+     do i = 1,contInts(1)
+       CP_elem = CP_elem+1
        mesh_mapFEtoCPelem(1,CP_elem) = contInts(1+i)
        mesh_mapFEtoCPelem(2,CP_elem) = CP_elem
-	 enddo
+     enddo
    end if
  end do
 
@@ -544,7 +584,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      read (unit,610,END=620) line ! skip crap line
      do i=1,mesh_Nnodes
        read (unit,610,END=620) line
-	   m = mesh_FEasCP('node',IO_fixedIntValue (line,node_ends,1))
+       m = mesh_FEasCP('node',IO_fixedIntValue (line,node_ends,1))
        do j=1,3
          mesh_node(j,m) = IO_fixedNoEFloatValue (line,node_ends,j+1)
        end do
@@ -574,6 +614,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  integer(pInt), dimension(133) :: pos
  integer(pInt), dimension(1+mesh_NcpElems) :: contInts
  character*300 line
+ logical :: loadcaseInit = .FALSE.
 
  allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
 
@@ -603,36 +644,37 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  enddo
  
  rewind(unit) ! just in case "initial state" apears before "connectivity"
- do  ! fast forward to first "initial state" section
-   read (unit,610,END=620) line
+ read (unit,610,END=620) line
+ do
    pos = IO_stringPos(line,2)
    if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
-       (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) exit
- enddo
-
- do  ! parse initial state section(s)
-   if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
        (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) then
-     read (unit,610,END=620) line
-	 pos = IO_stringPos(line,1)
-	 sv = IO_IntValue (line,pos,1)  ! figure state variable index
-	 if( (sv == 2).or.(sv == 3) ) then  ! only state vars 2 and 3 of interest
-       read (unit,610,END=620) line
+     if (initialcondTableStyle == 2) read (unit,610,END=620) line  ! read extra line for new style     
+     read (unit,610,END=620) line       ! read line with index of state var
+     pos = IO_stringPos(line,1)
+     sv = IO_IntValue (line,pos,1)      ! figure state variable index
+     if( (sv == 2).or.(sv == 3) ) then  ! only state vars 2 and 3 of interest
+       read (unit,610,END=620) line     ! read line with value of state var
        pos = IO_stringPos(line,1)
-	   do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)
-   	     val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1)) ! state var's value
-         contInts = IO_continousIntValues(unit,mesh_Nelems)  ! get affected elements
-	     do i = 1,contInts(1)
-	       CP_elem = mesh_FEasCP('elem',contInts(1+i))
-		   mesh_element(1+sv,CP_elem) = val
-	     enddo
-         read (unit,610,END=620) line  ! ignore IP range
-        pos = IO_stringPos(line,1)
-	   enddo
-	 endif
+       do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)  ! is noEfloat value?
+         val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1)) ! state var's value
+         if (initialcondTableStyle == 2) then
+           read (unit,610,END=620) line  ! read extra line     
+           read (unit,610,END=620) line  ! read extra line     
+         endif
+         contInts = IO_continousIntValues(unit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)  ! get affected elements
+         do i = 1,contInts(1)
+           CP_elem = mesh_FEasCP('elem',contInts(1+i))
+           mesh_element(1+sv,CP_elem) = val
+         enddo
+         if (initialcondTableStyle == 0) read (unit,610,END=620) line  ! ignore IP range for old table style
+         read (unit,610,END=620) line
+         pos = IO_stringPos(line,1)
+       enddo
+     endif
+   else   
+     read (unit,610,END=620) line
    endif
-         read (unit,610,END=620) line  ! read ahead (check in do loop)
-	 pos = IO_stringPos(line,2)
  enddo
 
 620 return
