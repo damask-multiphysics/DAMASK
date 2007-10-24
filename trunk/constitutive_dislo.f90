@@ -584,23 +584,22 @@ ODFmap = 0_pInt  ! blank mapping
 sampleCount = 0_pInt  ! count orientations assigned per texture
 
 do texID=1,texture_maxN
-   if (texture_ODFfile(texID)=='') then
+   select case (texture_symmetry(texID))          ! set symmetry factor
+   case ('orthotropic')
+     Nsym(texID) = 4_pInt
+   case ('monoclinic')
+     Nsym(texID) = 2_pInt
+   case default
+     Nsym(texID) = 1_pInt
+   end select
+   if (texture_ODFfile(texID)=='') then           ! texture components
       sumVolfrac(texID) = sum(texture_gauss(5,:,texID))+sum(texture_fiber(6,:,texID))
       if (sumVolfrac(texID)<1.0_pReal) texture_NRandom(texID) = 1_pInt  ! check whether random component missing
-      select case (texture_symmetry(texID))                             ! set symmetry factor
-	  case ('orthotropic')
-		   Nsym(texID) = 4_pInt
-	  case ('monoclinic')
-		   Nsym(texID) = 2_pInt
-	  case default
-	 	   Nsym(texID) = 1_pInt
-	  end select
       Ncomponents(texID) = texture_NGauss(texID)+texture_NFiber(texID)+texture_NRandom(texID)
    else      ! hybrid IA
       o = o+1
 	  ODFmap(texID) = o             ! remember mapping
       Ncomponents(texID) = 1_pInt   ! single "component"
-      Nsym(texID) = 1_pInt          ! no symmetry (use full ODF instead)
    endif
 ! adjust multiplicity and number of grains per IP of components
    multiplicity(texID) = max(1_pInt,texture_Ngrains(texID)/Ncomponents(texID)/Nsym(texID))
@@ -624,10 +623,10 @@ do i=1,mesh_NcpElems
 enddo
 
 ! generate hybridIA samplings for ODFfile textures to later draw from these populations
-allocate(hybridIA_population(3,maxval(texture_totalNgrains,ODFmap /= 0),o))
+allocate(hybridIA_population(3,maxval(texture_totalNgrains/Nsym,ODFmap /= 0),o))
 do texID = 1,texture_maxN
    if (ODFmap(texID) > 0) &
-      hybridIA_population(:,:,ODFmap(texID)) = IO_hybridIA(texture_totalNgrains(texID),texture_ODFfile(texID))
+      hybridIA_population(:,:,ODFmap(texID)) = IO_hybridIA(texture_totalNgrains(texID)/Nsym(texID),texture_ODFfile(texID))
 enddo
 
 !* Array allocation
@@ -695,7 +694,6 @@ do e=1,mesh_NcpElems
          endif
          do s = 1,Nsym(texID)*o   ! loop over orientations to be assigned to ip (ex multiplicity)
 		    g = g+1               ! next "grain"
-			sampleCount(texID) = sampleCount(texID)+1  ! next member of population
             constitutive_matID(g,i,e) = matID          ! copy matID of element
 		    constitutive_texID(g,i,e) = texID          ! copy texID of element
 		    constitutive_MatVolFrac(g,i,e) = 1.0_pReal ! singular material (so far)
@@ -708,6 +706,7 @@ do e=1,mesh_NcpElems
                constitutive_state_new(l,g,i,e) = material_rho0(matID)
             end forall
 		 enddo  ! components
+         sampleCount(texID) = sampleCount(texID)+1     ! next member of hybrid IA population
 	  enddo  ! multiplicity
    enddo ! ip
 enddo ! cp_element
