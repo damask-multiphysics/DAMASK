@@ -26,7 +26,7 @@
 ! FE-solver specific part (different for MARC/ABAQUS)..!
 ! Hence, I suggest to prefix with "FE_"
 !
-! _mapElementtype   : map MARC/ABAQUS elemtype to 1-maxN 
+! _mapElementtype   : map MARC/ABAQUS elemtype to 1...maxN 
 !
 ! _Nnodes            : # nodes in a specific type of element
 ! _Nips              : # IPs in a specific type of element
@@ -42,6 +42,7 @@
 ! ---------------------------
  integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_NelemSets,mesh_maxNelemInSet
  integer(pInt) mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNipNeighbors,mesh_maxNsharedElems
+ integer(pInt), dimension(2) :: mesh_maxValStateVar = 0_pInt
  character(len=64), dimension(:), allocatable :: mesh_nameElemSet
  integer(pInt), dimension(:,:), allocatable :: mesh_mapElemSet
  integer(pInt), dimension(:,:), allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
@@ -169,7 +170,6 @@
 ! subroutine mesh_init()
 ! function mesh_FEtoCPelement(FEid)
 ! function mesh_build_ipNeighorhood()
-! subroutine mesh_parse_inputFile()
 ! ---------------------------
 
 
@@ -193,13 +193,13 @@
  mesh_NelemSets = 0_pInt
  mesh_maxNelemInSet = 0_pInt
 
- FE_mapElemtype = 1 ! MISSING this should be zero...
+ FE_mapElemtype = 1 ! MISSING this should be zero... Now all unknown types map to Marc type "7"
  FE_mapElemtype(  7) = 1
  FE_mapElemtype(134) = 2
  FE_mapElemtype( 11) = 3
  FE_mapElemtype( 27) = 4
 
-! call to various subrountes to parse the stuff from the input file...
+! call to various subroutines to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
    call mesh_get_meshDimensions(fileUnit)
    call mesh_build_nodeMapping(fileUnit)
@@ -210,6 +210,7 @@
    call mesh_build_elements(fileUnit)
    call mesh_build_sharedElems(fileUnit)
    call mesh_build_ipNeighborhood()
+   call mesh_tell_statistics()
    close (fileUnit)
  else
    call IO_error(100)
@@ -658,6 +659,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
        pos = IO_stringPos(line,1)
        do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)  ! is noEfloat value?
          val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1)) ! state var's value
+         mesh_maxValStateVar(sv-1) = max(val,mesh_maxValStateVar(sv-1))  ! remember max val of material and texture index
          if (initialcondTableStyle == 2) then
            read (unit,610,END=620) line  ! read extra line     
            read (unit,610,END=620) line  ! read extra line     
@@ -694,7 +696,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use IO
  implicit none
 
- integer unit,i,j,CP_node,CP_elem
+ integer(pint) unit,i,j,CP_node,CP_elem
  integer(pInt), dimension (133) :: pos
  character*300 line
 
@@ -781,6 +783,53 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
    end do
  end do
  
+ return
+ 
+ END SUBROUTINE
+ 
+ 
+!***********************************************************
+! write statistics regarding input file parsing
+! to the output file
+! 
+!***********************************************************
+ SUBROUTINE mesh_tell_statistics()
+
+ use prec, only: pInt 
+ implicit none
+
+ integer(pInt) i,j
+ integer(pInt), dimension (:,:), allocatable :: mesh_MatTex
+ character(len=64) f
+ allocate (mesh_MatTex(mesh_maxValStateVar(1),mesh_maxValStateVar(2)))
+ mesh_MatTex = 0_pInt
+ 
+ do i=1,mesh_NcpElems
+   mesh_MatTex(mesh_element(3,i),mesh_element(4,i)) = &
+   mesh_MatTex(mesh_element(3,i),mesh_element(4,i)) + 1 ! count combinations of material and texture
+ enddo
+ 
+ write (6,*)
+ write (6,*) "Input Parser: STATISTICS"
+ write (6,*)
+ write (6,*) mesh_Nelems," : total number of elements in mesh"
+ write (6,*) mesh_NcpElems, " : total number of CP elements in mesh"
+ write (6,*) mesh_Nnodes, " : total number of nodes in mesh"
+ write (6,*) mesh_maxNnodes, " : max number of nodes in any CP element"
+ write (6,*) mesh_maxNips, " : max number of IPs in any CP element"
+ write (6,*) mesh_maxNipNeighbors, " : max number of IP neighbors in any CP element"
+ write (6,*) mesh_maxNsharedElems, " : max number of CP elements sharing a node"
+ write (6,*)
+ write (6,*) "Input Parser: MATERIAL/TEXTURE"
+ write (6,*)
+
+ write (f,"(I3)") 1+mesh_maxValStateVar(2)
+ f = f//"(I8)"
+ do i=1,mesh_maxValStateVar(1)    ! loop over all (possibly assigned) materials
+   write (6,f) i,mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
+ enddo
+ write (6,*)
+
  return
  
  END SUBROUTINE
