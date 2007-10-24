@@ -800,7 +800,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
 
  integer(pInt) i,j
  integer(pInt), dimension (:,:), allocatable :: mesh_MatTex
- character(len=64) f
+ character(len=64) fmt
  allocate (mesh_MatTex(mesh_maxValStateVar(1),mesh_maxValStateVar(2)))
  mesh_MatTex = 0_pInt
  
@@ -822,11 +822,13 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  write (6,*)
  write (6,*) "Input Parser: MATERIAL/TEXTURE"
  write (6,*)
+ write (6,*) mesh_maxValStateVar(1), " : maximum material index"
+ write (6,*) mesh_maxValStateVar(2), " : maximum texture index"
+ write (6,*)
 
- write (f,"(I3)") 1+mesh_maxValStateVar(2)
- f = f//"(I8)"
+ write (6,*) fmt
  do i=1,mesh_maxValStateVar(1)    ! loop over all (possibly assigned) materials
-   write (6,f) i,mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
+   write (6,fmt) i,mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
  enddo
  write (6,*)
 
