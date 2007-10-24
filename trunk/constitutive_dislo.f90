@@ -572,7 +572,7 @@ implicit none
 !* Definition of variables
 integer(pInt) e,i,j,k,l,m,o,g,s
 integer(pInt) matID,texID
-real(pReal) K_inter,x,y
+real(pReal) x,y
 integer(pInt), dimension(:,:,:), allocatable :: hybridIA_population
 integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,sumVolfrac,ODFmap,sampleCount
 real(pReal), dimension(3,4*(1+texture_maxNGauss+texture_maxNfiber)) :: Euler
@@ -644,7 +644,7 @@ allocate(constitutive_state_old(constitutive_maxNstatevars,constitutive_maxNgrai
 constitutive_state_old=0.0_pReal
 allocate(constitutive_state_new(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_new=0.0_pReal
-allocate(constitutive_Pforest(material_maxNslip,constitutive_material_maxNslip,material_maxN)) 
+allocate(constitutive_Pforest(material_maxNslip,material_maxNslip,material_maxN)) 
 constitutive_Pforest=0.0_pReal
 allocate(constitutive_Pparallel(material_maxNslip,material_maxNslip,material_maxN))
 constitutive_Pparallel=0.0_pReal

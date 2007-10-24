@@ -334,7 +334,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use IO
  implicit none
 
- integer(pInt) unit,i,pos(41),mesh_NelemInSet
+ integer(pInt) unit,i,pos(41)
  character*300 line
 
 610 FORMAT(A300)
@@ -437,7 +437,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 
  implicit none
 
- integer unit, i,elem_set
+ integer unit, elem_set
  character*300 line
  integer(pInt), dimension (9) :: pos          ! count plus 4 entities on a line
 
@@ -615,7 +615,6 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  integer(pInt), dimension(133) :: pos
  integer(pInt), dimension(1+mesh_NcpElems) :: contInts
  character*300 line
- logical :: loadcaseInit = .FALSE.
 
  allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
 
@@ -798,7 +797,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  use prec, only: pInt 
  implicit none
 
- integer(pInt) i,j
+ integer(pInt) i
  integer(pInt), dimension (:,:), allocatable :: mesh_MatTex
  character(len=64) fmt
  allocate (mesh_MatTex(mesh_maxValStateVar(1),mesh_maxValStateVar(2)))
