@@ -825,7 +825,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  write (6,*) mesh_maxValStateVar(2), " : maximum texture index"
  write (6,*)
 
- write (6,*) fmt
+ write (fmt,"(a,i3,a,a)") "(",1+mesh_maxValStateVar(1),"(i8)",")"
  do i=1,mesh_maxValStateVar(1)    ! loop over all (possibly assigned) materials
    write (6,fmt) i,mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
  enddo
