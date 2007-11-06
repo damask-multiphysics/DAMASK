@@ -98,7 +98,6 @@ real(pReal), dimension(:,:,:), allocatable :: constitutive_HardeningMatrix
 !************************************
 integer(pInt) constitutive_maxNresults
 integer(pInt), dimension(:,:,:), allocatable :: constitutive_Nresults
-real(pReal), dimension(:,:,:,:), allocatable :: constitutive_results
 
 
 
@@ -591,7 +590,6 @@ enddo
 constitutive_maxNgrains = maxval(texture_Ngrains)
 material_maxNslip       = maxval(material_Nslip)	! max # of slip systems among materials present
 constitutive_maxNstatevars = material_maxNslip + 0_pInt
-constitutive_maxNresults = 1_pInt
 
 
 !* calc texture_totalNgrains
@@ -616,8 +614,6 @@ allocate(constitutive_MatVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpEl
 allocate(constitutive_TexVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_TexVolFrac=0.0_pReal
 allocate(constitutive_EulerAngles(3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_EulerAngles=0.0_pReal
 allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nresults=0_pInt
-allocate(constitutive_results(constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_results=0.0_pReal
 allocate(constitutive_Nstatevars(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nstatevars=0_pInt
 allocate(constitutive_state_old(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_old=0.0_pReal
@@ -692,6 +688,9 @@ do i=1,material_maxN
    enddo
    enddo
 enddo
+
+!* publish globals
+constitutive_maxNresults = maxval(constitutive_Nresults)
 
 end subroutine
 
