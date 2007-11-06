@@ -24,7 +24,7 @@
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_jaco_old
  integer(pInt) :: CPFEM_inc_old    = 0_pInt
  integer(pInt) :: CPFEM_subinc_old = 1_pInt
- integer(pInt) :: CPFEM_Nresults   = 3_pInt
+ integer(pInt) :: CPFEM_Nresults   = 4_pInt    ! three Euler angles plus volume fraction
  logical :: CPFEM_first_call = .true.
 
  CONTAINS
@@ -230,6 +230,10 @@
    CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en)         = Fp(:,:,i_then)
    constitutive_state_new(:,grain,CPFEM_in,cp_en) = state(:,i_then)
    CPFEM_sigma_new(:,grain,CPFEM_in,cp_en)        = Tstar_v
+! ---- contribute to IP result ----
+    volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
+    CPFEM_stress_all(:,CPFEM_in,cp_en) = CPFEM_stress_all(:,CPFEM_in,cp_en)+volfrac*cs                  ! average Cauchy stress
+    if (updateJaco) CPFEM_jaco_old(:,:,CPFEM_in,cp_en) = CPFEM_jaco_old(:,:,CPFEM_in,cp_en)+volfrac*cd  ! average consistent tangent
 ! ---- update results plotted in MENTAT ----
    call math_pDecomposition(Fe,U,R,error) ! polar decomposition
    if (error) then
@@ -241,13 +245,9 @@
      return
    endif
    CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))*inDeg        ! orientation
-   CPFEM_results(4:3+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en) = &
+   CPFEM_results(4  ,grain,CPFEM_in,cp_en) = volfrac                                  ! volume fraction of orientation
+   CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en) = &
      constitutive_post_results(Tstar_v,state(:,i_then),CPFEM_dt,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en)
-
-! ---- contribute to IP result ----
-    volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
-    CPFEM_stress_all(:,CPFEM_in,cp_en) = CPFEM_stress_all(:,CPFEM_in,cp_en)+volfrac*cs                  ! average Cauchy stress
-    if (updateJaco) CPFEM_jaco_old(:,:,CPFEM_in,cp_en) = CPFEM_jaco_old(:,:,CPFEM_in,cp_en)+volfrac*cd  ! average consistent tangent
 
  enddo    ! grain loop
 
