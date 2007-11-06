@@ -551,9 +551,10 @@ implicit none
 integer(pInt) e,i,j,k,l,m,o,g,s
 integer(pInt) matID,texID
 integer(pInt), dimension(:,:,:), allocatable :: hybridIA_population
-integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,sumVolfrac,ODFmap,sampleCount
+integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,ODFmap,sampleCount
 real(pReal), dimension(3,4*(1+texture_maxNGauss+texture_maxNfiber)) :: Euler
 real(pReal), dimension(4*(1+texture_maxNGauss+texture_maxNfiber)) :: texVolfrac
+real(pReal), dimension(texture_maxN) :: sumVolfrac
 
 ! process textures
 o = 0_pInt       ! ODF counter
