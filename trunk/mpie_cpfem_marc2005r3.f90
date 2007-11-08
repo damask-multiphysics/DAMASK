@@ -4,7 +4,7 @@
 ! written by F. Roters, P. Eisenlohr, L. Hantcherli, W.A. Counts
 ! MPI fuer Eisenforschung, Duesseldorf
 !
-! last modified: 16.10.2007
+! last modified: 08.11.2007
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
@@ -121,9 +121,7 @@
 !
 !
  use prec,  only: pReal,pInt
- use math,  only: invnrmMandel, nrmMandel
- use mesh,  only: mesh_FEasCP
- use CPFEM, only: CPFEM_general,CPFEM_stress_all, CPFEM_jaco_old
+ use CPFEM, only: CPFEM_general
  implicit real(pReal) (a-h,o-z)
 !
 ! Marc common blocks are in fixed format so they have to be pasted in here
@@ -152,34 +150,29 @@
      cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b,creept(33),icptim,icfte,icfst,&
      icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
 !
- integer(pInt) cp_en, i
-!
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
 !
-! call general material routine only in cycle 0 and for lovl==6 (stress recovery)
-          
-!     subroutine cpfem_general(mpie_ffn, mpie_ffn1, mpie_cn, mpie_tinc, mpie_enp, mpie_in)
+!     subroutine cpfem_general(mpie_ffn, mpie_ffn1, temperature, mpie_inc, mpie_subinc,  mpie_cn,
+!                              mpie_stress_recovery, mpie_tinc, mpie_en, mpie_in, mpie_s, mpie_d, mpie_ngens)
 !********************************************************************
 !     This routine calculates the material behaviour
 !********************************************************************
-!     mpie_ffn         deformation gradient for t=t0
-!     mpie_ffn1        deformation gradient for t=t1
-!     mpie_cn          number of cycle
-!     mpie_tinc        time increment
-!     mpie_en          element number
-!     mpie_in          intergration point number
+!     mpie_ffn              deformation gradient for t=t0
+!     mpie_ffn1             deformation gradient for t=t1
+!     temperature           temperature
+!     mpie_inc              increment number
+!     mpie_subinc           subincrement number
+!     mpie_cn               number of cycle
+!     mpie_stress_recovery  indicates wether we are in stiffness assemly(lovl==4) or stress recovery(lovl==6)
+!     mpie_tinc             time increment
+!     mpie_en               element number
+!     mpie_in               intergration point number
+!     mpie_s                stress vector in Marc notation, i.e. 11 22 33 12, 23, 13
+!     mpie_d                jacoby in Marc notation
+!     mpie_ngens            size of stress strain law
 !********************************************************************
- if ((lovl==6).or.(ncycle==0)) then
-    call CPFEM_general(ffn, ffn1, t(1), inc, incsub, ncycle, timinc, n(1), nn)
- endif
-! return stress and jacobi
-!     Mandel: 11, 22, 33, 12, 23, 13 
-!     Marc:   11, 22, 33, 12, 23, 13
- cp_en = mesh_FEasCP('elem', n(1))
- s(1:ngens)=invnrmMandel(1:ngens)*CPFEM_stress_all(1:ngens, nn, cp_en)
- d(1:ngens,1:ngens)=CPFEM_jaco_old(1:ngens,1:ngens, nn, cp_en)
- forall(i=1:ngens) d(1:ngens,i)=d(1:ngens,i)*invnrmMandel(1:ngens)
+ call CPFEM_general(ffn, ffn1, t(1), inc, incsub, ncycle, stress_recovery, timinc, n(1), nn, s, d, ngens)
  return
  
  END SUBROUTINE

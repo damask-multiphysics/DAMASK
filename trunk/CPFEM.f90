@@ -22,10 +22,13 @@
  real(pReal), dimension (:,:,:,:,:), allocatable :: CPFEM_Fp_old
  real(pReal), dimension (:,:,:,:,:), allocatable :: CPFEM_Fp_new
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_jaco_old
+ real(pReal), dimension(6,6) :: CPFEM_dummy_jacobian
  integer(pInt) :: CPFEM_inc_old    = 0_pInt
  integer(pInt) :: CPFEM_subinc_old = 1_pInt
+ integer(pInt) :: CPFEM_cycle_old = -1_pInt
  integer(pInt) :: CPFEM_Nresults   = 4_pInt    ! three Euler angles plus volume fraction
  logical :: CPFEM_first_call = .true.
+
 
  CONTAINS
 
@@ -36,7 +39,7 @@
  SUBROUTINE CPFEM_init()
 !
  use prec, only: pReal,pInt
- use math, only: math_EulertoR
+ use math, only: math_EulertoR, math_I3, math_identity2nd
  use mesh
  use constitutive
 !
@@ -46,8 +49,9 @@
 !
 !    *** mpie.marc parameters ***
  allocate(CPFEM_Temperature   (mesh_maxNips,mesh_NcpElems)) ; CPFEM_Temperature = 0.0_pReal
- allocate(CPFEM_ffn_all   (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn_all    = 0.0_pReal
- allocate(CPFEM_ffn1_all  (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn1_all   = 0.0_pReal
+ allocate(CPFEM_ffn_all   (3,3,mesh_maxNips,mesh_NcpElems))
+ forall(e=1:mesh_NcpElems,i=1:mesh_maxNips) CPFEM_ffn_all(:,:,i,e)    = math_I3
+ allocate(CPFEM_ffn1_all  (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn1_all   = CPFEM_ffn_all
  allocate(CPFEM_stress_all(  6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_stress_all = 0.0_pReal
  allocate(CPFEM_jacobi_all(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_jacobi_all = 0.0_pReal
 !
@@ -68,6 +72,9 @@
 !    *** Old jacobian (consistent tangent) ***
  allocate(CPFEM_jaco_old(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_jaco_old = 0.0_pReal
 !
+!    *** dummy Jacobian returned in odd cycles
+ CPFEM_dummy_jacobian=1.0e50_pReal*math_identity2nd(6)
+
 !    *** Output to MARC output file ***
  write(6,*)
  write(6,*) 'Arrays allocated:'
@@ -93,49 +100,75 @@
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
 !***********************************************************************
- SUBROUTINE CPFEM_general(ffn, ffn1, Temperature, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_dt, CPFEM_en, CPFEM_in)
+ SUBROUTINE CPFEM_general(ffn, ffn1, Temperature, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_stress_recovery, CPFEM_dt,&
+                          CPFEM_en, CPFEM_in, CPFEM_stress, CPFEM_jaco, CPFEM_ngens)
 !
  use prec, only: pReal,pInt
- use math, only: math_init
- use mesh, only: mesh_init,mesh_FEasCP
+ use math, only: math_init, invnrmMandel
+ use mesh, only: mesh_init,mesh_FEasCP, mesh_NcpElems, FE_Nips, FE_mapElemtype, mesh_element
  use crystal, only: crystal_Init
  use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new
  implicit none
 !
- real(pReal)   ffn(3,3), ffn1(3,3), Temperature, CPFEM_dt
- integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en
+ integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en, CPFEM_ngens, i, e
+ real(pReal)   ffn(3,3), ffn1(3,3), Temperature, CPFEM_dt, CPFEM_stress(CPFEM_ngens), CPFEM_jaco(CPFEM_ngens,CPFEM_ngens)
+ logical CPFEM_stress_recovery
 !
-! initialization step
- if (CPFEM_first_call) then
-! three dimensional stress state ?
-    call math_init()
-    call mesh_init()
-    call crystal_Init()
-    call constitutive_init()
-    call CPFEM_init()
-    CPFEM_first_call = .false.
- endif
- if (CPFEM_inc==CPFEM_inc_old) then ! not a new increment
-! case of a new subincrement:update starting with subinc 2
-     if (CPFEM_subinc > CPFEM_subinc_old) then
-        CPFEM_sigma_old        = CPFEM_sigma_new
-        CPFEM_Fp_old           = CPFEM_Fp_new
-        constitutive_state_old = constitutive_state_new
-        CPFEM_subinc_old       = CPFEM_subinc
-    endif
- else                               ! new increment
-    CPFEM_sigma_old         = CPFEM_sigma_new
-    CPFEM_Fp_old            = CPFEM_Fp_new
-    constitutive_state_old  = constitutive_state_new
-    CPFEM_inc_old           = CPFEM_inc
-    CPFEM_subinc_old        = 1_pInt
- endif
 
- cp_en = mesh_FEasCP('elem',CPFEM_en)
- CPFEM_Temperature(CPFEM_in, cp_en)  = Temperature
- CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
- CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
- call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, cp_en, CPFEM_in)
+! calculate only every second cycle
+if(mod(CPFEM_cn,2)==0) then
+! really calculate only in first call of new cycle and when in stress recovery
+    if(CPFEM_cn/=CPFEM_cycle_old .and. (CPFEM_stress_recovery .or. CPFEM_cn==0)) then
+! initialization step
+        if (CPFEM_first_call) then
+! three dimensional stress state ?
+            call math_init()
+            call mesh_init()
+            call crystal_Init()
+            call constitutive_init()
+            call CPFEM_init()
+            CPFEM_Temperature  = Temperature
+            CPFEM_first_call = .false.
+        endif
+        if (CPFEM_inc==CPFEM_inc_old) then ! not a new increment
+! case of a new subincrement:update starting with subinc 2
+            if (CPFEM_subinc > CPFEM_subinc_old) then
+                CPFEM_sigma_old        = CPFEM_sigma_new
+                CPFEM_Fp_old           = CPFEM_Fp_new
+                constitutive_state_old = constitutive_state_new
+                CPFEM_subinc_old       = CPFEM_subinc
+            endif
+        else                               ! new increment
+            CPFEM_sigma_old         = CPFEM_sigma_new
+            CPFEM_Fp_old            = CPFEM_Fp_new
+            constitutive_state_old  = constitutive_state_new
+            CPFEM_inc_old           = CPFEM_inc
+            CPFEM_subinc_old        = 1_pInt
+        endif
+        CPFEM_cycle_old=CPFEM_cn
+! this shall be done in a parallel loop in the future
+        do e=1,mesh_NcpElems
+            do i=1,FE_Nips(FE_mapElemtype(mesh_element(2,e)))
+                call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, i, e)
+            enddo
+        enddo
+    end if
+! return stress and jacobi
+!     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
+!     Marc:   11, 22, 33, 12, 23, 13
+    cp_en = mesh_FEasCP('elem', CPFEM_en)
+    CPFEM_stress(1:CPFEM_ngens)=invnrmMandel(1:CPFEM_ngens)*CPFEM_stress_all(1:CPFEM_ngens, CPFEM_in, cp_en)
+    CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens)=CPFEM_jaco_old(1:CPFEM_ngens,1:CPFEM_ngens, CPFEM_in, cp_en)
+    forall(i=1:CPFEM_ngens) CPFEM_jaco(1:CPFEM_ngens,i)=CPFEM_jaco(1:CPFEM_ngens,i)*invnrmMandel(1:CPFEM_ngens)
+ else
+! record data for use in second cycle and return fixed result 
+    cp_en = mesh_FEasCP('elem',CPFEM_en)
+    CPFEM_Temperature(CPFEM_in, cp_en)  = Temperature
+    CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
+    CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
+    CPFEM_stress(1:CPFEM_ngens)=1.0e5_pReal
+    CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens)=CPFEM_dummy_jacobian(1:CPFEM_ngens,1:CPFEM_ngens)
+ end if
  return
 
  END SUBROUTINE
@@ -147,8 +180,8 @@
  SUBROUTINE CPFEM_stressIP(&
      CPFEM_cn,&       ! Cycle number
      CPFEM_dt,&       ! Time increment (dt)
-     cp_en,&          ! Element number
-     CPFEM_in)        ! Integration point number
+     CPFEM_in,&       ! Integration point number
+     cp_en)           ! Element number
 
  use prec, only: pReal,pInt,ijaco,nCutback
  use math, only: math_pDecomposition,math_RtoEuler, inDeg
@@ -169,7 +202,7 @@
  real(pReal), dimension(3,3,2) :: Fg,Fp
  real(pReal), dimension(constitutive_maxNstatevars,2) :: state
 
- updateJaco = (mod(CPFEM_cn,ijaco)==0)   ! update consistent tangent every ijaco'th iteration
+ updateJaco = (mod(CPFEM_cn,2_pInt*ijaco)==0)   ! update consistent tangent every ijaco'th iteration
 
  CPFEM_stress_all(:,CPFEM_in,cp_en) = 0.0_pReal                  ! average Cauchy stress
  if (updateJaco) CPFEM_jaco_old(:,:,CPFEM_in,cp_en) = 0.0_pReal  ! average consistent tangent
