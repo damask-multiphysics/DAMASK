@@ -441,13 +441,13 @@ stress:  do              ! inner iteration: stress
            Rstress = Tstar_v - T_elastic
 !          step size control: if residuum does not improve redo iteration with reduced step size
            if(maxval(abs(Rstress)) > maxval(abs(Rstress_old)) .and. &
-           maxval(abs(Rstress)) > 1.0e-6 .and. iStress > 1) then
-!                write(6,*) 'Hallo', iStress
+           maxval(abs(Rstress)) > abstol_ResStress .and. iStress > 1) then
                 Tstar_v=Tstar_v+0.5*dTstar_v
                 dTstar_v=0.5*dTstar_v
                 cycle
            endif
-           if (iStress > 1 .and. (maxval(abs(Tstar_v)) < 1.0e-3_pReal .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < tol_Stress)) exit stress
+           if (iStress > 1 .and. &
+               (maxval(abs(Tstar_v)) < abstol_Stress .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < reltol_Stress)) exit stress
 
 !   update stress guess using inverse of dRes/dTstar (Newton--Raphson)
            LTL = 0.0_pReal
@@ -488,7 +488,7 @@ stress:  do              ! inner iteration: stress
     forall (i=1:constitutive_Nstatevars(grain,CPFEM_in,cp_en), state_new(i)/=0.0_pReal) &
       RstateS(i) = Rstate(i)/state_new(i)
     state_new = state_old+dstate
-    if (maxval(abs(RstateS)) < tol_State) exit state
+    if (maxval(abs(RstateS)) < reltol_State) exit state
 
  enddo state
 ! write(6,*) 'istate', istate
