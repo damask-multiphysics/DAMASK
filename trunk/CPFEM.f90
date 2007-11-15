@@ -23,6 +23,7 @@
  real(pReal), dimension (:,:,:,:,:), allocatable :: CPFEM_Fp_new
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_jaco_old
  real(pReal), dimension(6,6) :: CPFEM_dummy_jacobian
+ real(pReal) CPFEM_dummy_stress
  integer(pInt) :: CPFEM_inc_old    = 0_pInt
  integer(pInt) :: CPFEM_subinc_old = 1_pInt
  integer(pInt) :: CPFEM_cycle_old = -1_pInt
@@ -72,9 +73,10 @@
 !    *** Old jacobian (consistent tangent) ***
  allocate(CPFEM_jaco_old(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_jaco_old = 0.0_pReal
 !
-!    *** dummy Jacobian returned in odd cycles
+!    *** dummy Jacobian and stress returned in odd cycles
  CPFEM_dummy_jacobian=1.0e50_pReal*math_identity2nd(6)
-
+ CPFEM_dummy_stress = 1e5_pReal
+!
 !    *** Output to MARC output file ***
  write(6,*)
  write(6,*) 'Arrays allocated:'
@@ -166,7 +168,7 @@ if(mod(CPFEM_cn,2)==0) then
     CPFEM_Temperature(CPFEM_in, cp_en)  = Temperature
     CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
     CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
-    CPFEM_stress(1:CPFEM_ngens)=1.0e5_pReal
+    CPFEM_stress(1:CPFEM_ngens) = CPFEM_dummy_stress
     CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens)=CPFEM_dummy_jacobian(1:CPFEM_ngens,1:CPFEM_ngens)
  end if
  return
