@@ -22,8 +22,8 @@ character(len=300), parameter :: mattexFile = 'mattex.mpie'
 !*************************************
 !* Physical parameter, attack_frequency != Debye frequency
 real(pReal), parameter :: attack_frequency = 1.0e10_pReal  
-!* Physical parameter, Boltzman constant in mJ/Kelvin
-real(pReal), parameter :: Kb = 1.38e-20_pReal
+!* Physical parameter, Boltzman constant in J/Kelvin
+real(pReal), parameter :: Kb = 1.38e-23_pReal
 
 !*************************************
 !* Definition of material properties *
@@ -301,16 +301,16 @@ do while(.true.)
               material_C33(section)=IO_floatValue(line,positions,2)
 		 case ('c44')
               material_C44(section)=IO_floatValue(line,positions,2)
-         case ('rho0') !* conversion in 1/mm²
-              material_rho0(section)=IO_floatValue(line,positions,2)/1.0e6_pReal
+         case ('rho0') 
+              material_rho0(section)=IO_floatValue(line,positions,2)
 	     case ('interaction_coefficients') 
 		      do i=1,6
               material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
 			  enddo
-		 case ('bg') !* conversion in mm
-              material_bg(section)=IO_floatValue(line,positions,2)*1.0e3_pReal		  
-		 case ('Qedge') !* conversion in mJ/Kelvin
-              material_Qedge(section)=IO_floatValue(line,positions,2)*1.0e3_pReal
+		 case ('burgers') 
+              material_bg(section)=IO_floatValue(line,positions,2)	  
+		 case ('Qedge') 
+              material_Qedge(section)=IO_floatValue(line,positions,2)
 		 case ('tau0')
               material_tau0(section)=IO_floatValue(line,positions,2)
 		 case ('c1')
@@ -886,14 +886,10 @@ matID = constitutive_matID(ipc,ip,el)
 do i=1,constitutive_Nstatevars(ipc,ip,el)
    tau_slip = dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
    gdot_slip = constitutive_g0_slip(i)*sinh((abs(tau_slip)*constitutive_activation_volume(i))/(Kb*Tp))*&
-                sign(1.0_pReal,tau_slip)
-   if (abs(tau_slip)>1.0e-20_pReal) then  
-      lock(i)=(material_c4(matID)*sqrt(constitutive_rho_f(i))*abs(gdot_slip))/material_bg(matID)
-      recovery(i)=material_c5(matID)*state(i)*abs(gdot_slip)
-      constitutive_dotState(i)=lock(i)-recovery(i)
-   else
-      constitutive_dotState(i)=0.0_pReal
-   endif
+               sign(1.0_pReal,tau_slip)
+   lock(i)=(material_c4(matID)*sqrt(constitutive_rho_f(i))*abs(gdot_slip))/material_bg(matID)
+   recovery(i)=material_c5(matID)*state(i)*abs(gdot_slip)
+   constitutive_dotState(i)=lock(i)-recovery(i)
 enddo
 
 return

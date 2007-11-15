@@ -2,17 +2,19 @@
 [Aluminium]
 crystal_structure		1
 Nslip				12
-C11				106.75e3
-C12				60.41e3
-C44				28.34e3
+## Elastic constants 
+# Unit in [Pa]
+C11				106.75e9
+C12				60.41e9
+C44				28.34e9
 
 ## Parameters for phenomenological modeling
-# Unit in [MPa]
-s0_slip				31.0
+# Unit in [Pa]
+s0_slip				31.0e6
 gdot0_slip			0.001
 n_slip				20
-h0				75
-s_sat				63
+h0				75.0e6
+s_sat				63.0e6
 w0				2.25
 # Self and latent hardening coefficients
 hardening_coefficients        	1.0 1.4
@@ -21,10 +23,10 @@ hardening_coefficients        	1.0 1.4
 # Initial dislocation density [m]²
 rho0				              1.5e11 
 # Burgers vector [m]                        
-bg			                      2.86e-10
+burgers			                      2.86e-10
 # Activation energy for dislocation glide [J/K]
 Qedge				              3.0e-19
-# Reference for passing stress [MPa]
+# Reference for passing stress [Pa]
 tau0		                              0.0
 # Passing stress adjustment
 c1				              0.1
