@@ -403,7 +403,7 @@ if(mod(CPFEM_cn,2)==0) then
     return
  endif
 
- C_66 = constitutive_HomogenizedC(grain, CPFEM_in, cp_en)
+
  A = matmul(Fg_new,invFp_old)  ! actually Fe
  A = matmul(transpose(A), A)
 
@@ -422,6 +422,7 @@ state: do                ! outer iteration: state
            return
          endif
 		 call constitutive_Microstructure(state_new,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en)
+		 C_66 = constitutive_HomogenizedC(state_new, grain, CPFEM_in, cp_en)
          iStress = 0_pInt
 stress:  do              ! inner iteration: stress
            iStress = iStress+1
