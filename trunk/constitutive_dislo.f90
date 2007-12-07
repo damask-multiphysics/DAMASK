@@ -735,10 +735,11 @@ enddo
 end subroutine
 
 
-function constitutive_HomogenizedC(ipc,ip,el)
+function constitutive_HomogenizedC(state,ipc,ip,el)
 !*********************************************************************
 !* This function returns the homogenized elacticity matrix           *
 !* INPUT:                                                            *
+!*  - state           : state variables                              *
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
@@ -751,7 +752,7 @@ integer(pInt) ipc,ip,el
 real(pReal), dimension(6,6) :: constitutive_homogenizedC
 
 !* Homogenization scheme
-constitutive_homogenizedC=constitutive_MatVolFrac(ipc,ip,el)*material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))
+constitutive_homogenizedC=material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))
 
 return
 end function
@@ -837,6 +838,8 @@ do i=1,material_Nslip(matID)
    Lp=Lp+gdot_slip(i)*crystal_Sslip(:,:,i,material_CrystalStructure(matID))
 enddo
 
+!* Lp twin
+
 !* Calculation of the tangent of Lp
 dLp_dTstar=0.0_pReal
 do i=1,material_Nslip(matID)
@@ -857,7 +860,7 @@ end subroutine
 function constitutive_dotState(Tstar_v,state,Tp,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
-!* calculating the velocity gradient                                 *
+!* calculating rate of change of microstructure                      *
 !* INPUT:                                                            *
 !*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
 !*  - state           : current microstructure                       *
@@ -875,21 +878,21 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i
-real(pReal) Tp,tau_slip,gdot_slip
+real(pReal) Tp,tau_slip,gdot_slip,lock,recovery
 real(pReal), dimension(6) :: Tstar_v
-real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,state,lock,recovery
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,state
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
 
 !* Hardening of each system
-do i=1,constitutive_Nstatevars(ipc,ip,el)
+do i=1,material_Nslip(matID)
    tau_slip = dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
    gdot_slip = constitutive_g0_slip(i)*sinh((abs(tau_slip)*constitutive_activation_volume(i))/(Kb*Tp))*&
                sign(1.0_pReal,tau_slip)
-   lock(i)=(material_c4(matID)*sqrt(constitutive_rho_f(i))*abs(gdot_slip))/material_bg(matID)
-   recovery(i)=material_c5(matID)*state(i)*abs(gdot_slip)
-   constitutive_dotState(i)=lock(i)-recovery(i)
+   lock=(material_c4(matID)*sqrt(constitutive_rho_f(i))*abs(gdot_slip))/material_bg(matID)
+   recovery=material_c5(matID)*state(i)*abs(gdot_slip)
+   constitutive_dotState(i)=lock-recovery
 enddo
 
 return
