@@ -30,30 +30,35 @@ real(pReal), parameter :: Kb = 1.38e-23_pReal
 !*************************************
 !* Number of materials
 integer(pInt) material_maxN
-!* Crystal structure and number of selected slip systems per material
-integer(pInt), dimension(:)  , allocatable :: material_CrystalStructure
-integer(pInt), dimension(:)  , allocatable :: material_Nslip
-!* Maximum number of selected slip systems over materials
+!* Crystal structure and number of selected slip or twin systems per material
+integer(pInt), dimension(:)        , allocatable :: material_CrystalStructure
+integer(pInt), dimension(:)        , allocatable :: material_Nslip
+integer(pInt), dimension(:)        , allocatable :: material_Ntwin
+!* Maximum number of selected slip or twin systems over materials
 integer(pInt) material_maxNslip
+integer(pInt) material_maxNtwin
 !* Elastic constants and matrices
-real(pReal), dimension(:)    , allocatable :: material_C11
-real(pReal), dimension(:)    , allocatable :: material_C12
-real(pReal), dimension(:)    , allocatable :: material_C13
-real(pReal), dimension(:)    , allocatable :: material_C33
-real(pReal), dimension(:)    , allocatable :: material_C44
-real(pReal), dimension(:)    , allocatable :: material_Gmod
-real(pReal), dimension(:,:,:), allocatable :: material_Cslip_66
+real(pReal), dimension(:)          , allocatable :: material_C11
+real(pReal), dimension(:)          , allocatable :: material_C12
+real(pReal), dimension(:)          , allocatable :: material_C13
+real(pReal), dimension(:)          , allocatable :: material_C33
+real(pReal), dimension(:)          , allocatable :: material_C44
+real(pReal), dimension(:)          , allocatable :: material_Gmod
+real(pReal), dimension(:,:,:)      , allocatable :: material_Cslip_66
+real(pReal), dimension(:,:,:,:,:)  , allocatable :: material_Cslip_3333
+real(preal), dimension(:,:,:,:)    , allocatable :: material_Ctwin_66
+real(pReal), dimension(:,:,:,:,:,:), allocatable :: material_Ctwin_3333
 !* Visco-plastic material parameters
-real(pReal), dimension(:)    , allocatable :: material_rho0
-real(pReal), dimension(:)    , allocatable :: material_bg
-real(pReal), dimension(:)    , allocatable :: material_Qedge
-real(pReal), dimension(:)    , allocatable :: material_tau0
-real(pReal), dimension(:)    , allocatable :: material_c1
-real(pReal), dimension(:)    , allocatable :: material_c2
-real(pReal), dimension(:)    , allocatable :: material_c3
-real(pReal), dimension(:)    , allocatable :: material_c4
-real(pReal), dimension(:)    , allocatable :: material_c5
-real(pReal), dimension(:,:)  , allocatable :: material_SlipIntCoeff
+real(pReal), dimension(:)          , allocatable :: material_rho0
+real(pReal), dimension(:)          , allocatable :: material_bg
+real(pReal), dimension(:)          , allocatable :: material_Qedge
+real(pReal), dimension(:)          , allocatable :: material_tau0
+real(pReal), dimension(:)          , allocatable :: material_c1
+real(pReal), dimension(:)          , allocatable :: material_c2
+real(pReal), dimension(:)          , allocatable :: material_c3
+real(pReal), dimension(:)          , allocatable :: material_c4
+real(pReal), dimension(:)          , allocatable :: material_c5
+real(pReal), dimension(:,:)        , allocatable :: material_SlipIntCoeff
 
 !************************************
 !* Definition of texture properties *
@@ -291,6 +296,8 @@ do while(.true.)
               material_CrystalStructure(section)=IO_intValue(line,positions,2)
 	     case ('nslip')
 		      material_Nslip(section)=IO_intValue(line,positions,2)
+	     case ('ntwin')
+		      material_Ntwin(section)=IO_intValue(line,positions,2)
 		 case ('c11')
               material_C11(section)=IO_floatValue(line,positions,2)
 		 case ('c12')
@@ -431,7 +438,7 @@ subroutine constitutive_Parse_MatTexDat(filename)
 use prec, only: pReal,pInt
 use IO, only: IO_error, IO_open_file
 use math, only: math_Mandel3333to66, math_Voigt66to3333
-use crystal, only: crystal_MaxMaxNslipOfStructure
+use crystal, only: crystal_MaxMaxNslipOfStructure,crystal_MaxMaxNtwinOfStructure
 implicit none
 
 !* Definition of variables
@@ -458,31 +465,34 @@ do while (part/='')
    end select
 enddo
 !* Array allocation
-allocate(material_CrystalStructure(material_maxN))		                      ; material_CrystalStructure=0_pInt
-allocate(material_Nslip(material_maxN))					                      ; material_Nslip=0_pInt
-allocate(material_C11(material_maxN))					                      ; material_C11=0.0_pReal
-allocate(material_C12(material_maxN))					                      ; material_C12=0.0_pReal
-allocate(material_C13(material_maxN))					                      ; material_C13=0.0_pReal
-allocate(material_C33(material_maxN))					                      ; material_C33=0.0_pReal
-allocate(material_C44(material_maxN))					                      ; material_C44=0.0_pReal
-allocate(material_Gmod(material_maxN))					                      ; material_Gmod=0.0_pReal
-allocate(material_Cslip_66(6,6,material_maxN))                                ; material_Cslip_66=0.0_pReal
-allocate(material_rho0(material_maxN))				                          ; material_rho0=0.0_pReal
-allocate(material_SlipIntCoeff(crystal_MaxMaxNslipOfStructure,material_maxN)) ; material_SlipIntCoeff=0.0_pReal 
-allocate(material_bg(material_maxN))			                              ; material_bg=0.0_pReal
-allocate(material_Qedge(material_maxN))				                          ; material_Qedge=0.0_pReal
-allocate(material_tau0(material_maxN))				                          ; material_tau0=0.0_pReal
-allocate(material_c1(material_maxN))				                          ; material_c1=0.0_pReal
-allocate(material_c2(material_maxN))                                          ; material_c2=0.0_pReal
-allocate(material_c3(material_maxN))                                          ; material_c3=0.0_pReal
-allocate(material_c4(material_maxN))                                          ; material_c4=0.0_pReal
-allocate(material_c5(material_maxN))                                          ; material_c5=0.0_pReal
-allocate(texture_ODFfile(texture_maxN))                                       ; texture_ODFfile=''
-allocate(texture_Ngrains(texture_maxN))                                       ; texture_Ngrains=0_pInt
-allocate(texture_symmetry(texture_maxN))                                      ; texture_symmetry=''
-allocate(texture_NGauss(texture_maxN))                                        ; texture_NGauss=0_pInt
-allocate(texture_NFiber(texture_maxN))                                        ; texture_NFiber=0_pInt
-allocate(texture_NRandom(texture_maxN))                                       ; texture_NRandom=0_pInt
+allocate(material_CrystalStructure(material_maxN))		                            ; material_CrystalStructure=0_pInt
+allocate(material_Nslip(material_maxN))					                            ; material_Nslip=0_pInt
+allocate(material_C11(material_maxN))					                            ; material_C11=0.0_pReal
+allocate(material_C12(material_maxN))					                            ; material_C12=0.0_pReal
+allocate(material_C13(material_maxN))					                            ; material_C13=0.0_pReal
+allocate(material_C33(material_maxN))					                            ; material_C33=0.0_pReal
+allocate(material_C44(material_maxN))					                            ; material_C44=0.0_pReal
+allocate(material_Gmod(material_maxN))					                            ; material_Gmod=0.0_pReal
+allocate(material_Cslip_66(6,6,material_maxN))                                      ; material_Cslip_66=0.0_pReal
+allocate(material_Cslip_3333(3,3,3,3,material_maxN))                                ; material_Cslip_3333=0.0_pReal
+allocate(material_Ctwin_66(6,6,crystal_MaxMaxNtwinOfStructure,material_maxN))       ; material_Ctwin_66=0.0_pReal
+allocate(material_Ctwin_3333(3,3,3,3,crystal_MaxMaxNtwinOfStructure,material_maxN)) ; material_Ctwin_3333=0.0_pReal
+allocate(material_rho0(material_maxN))				                                ; material_rho0=0.0_pReal
+allocate(material_SlipIntCoeff(crystal_MaxMaxNslipOfStructure,material_maxN))       ; material_SlipIntCoeff=0.0_pReal 
+allocate(material_bg(material_maxN))			                                    ; material_bg=0.0_pReal
+allocate(material_Qedge(material_maxN))				                                ; material_Qedge=0.0_pReal
+allocate(material_tau0(material_maxN))				                                ; material_tau0=0.0_pReal
+allocate(material_c1(material_maxN))				                                ; material_c1=0.0_pReal
+allocate(material_c2(material_maxN))                                                ; material_c2=0.0_pReal
+allocate(material_c3(material_maxN))                                                ; material_c3=0.0_pReal
+allocate(material_c4(material_maxN))                                                ; material_c4=0.0_pReal
+allocate(material_c5(material_maxN))                                                ; material_c5=0.0_pReal
+allocate(texture_ODFfile(texture_maxN))                                             ; texture_ODFfile=''
+allocate(texture_Ngrains(texture_maxN))                                             ; texture_Ngrains=0_pInt
+allocate(texture_symmetry(texture_maxN))                                            ; texture_symmetry=''
+allocate(texture_NGauss(texture_maxN))                                              ; texture_NGauss=0_pInt
+allocate(texture_NFiber(texture_maxN))                                              ; texture_NFiber=0_pInt
+allocate(texture_NRandom(texture_maxN))                                             ; texture_NRandom=0_pInt
 
 !-----------------------------
 !* Second reading: number of Gauss and Fiber
@@ -520,12 +530,11 @@ do while (part/='')
 enddo
 close(fileunit)
 
-
 !* Construction of the elasticity matrices
 do i=1,material_maxN
-   material_Gmod(i)=material_C44(i)
    select case (material_CrystalStructure(i))
    case(1:2) ! cubic(s) 
+       material_Gmod(i)=material_C44(i)
        forall(k=1:3)
           forall(j=1:3)
              material_Cslip_66(k,j,i)=material_C12(i)
@@ -534,6 +543,8 @@ do i=1,material_maxN
           material_Cslip_66(k+3,k+3,i)=material_C44(i)
        endforall
    case(3)   ! hcp
+        material_Gmod(i)=material_C44(i)
+        !* MISSING: Warning message: C44 in hexagonal structures?
         material_Cslip_66(1,1,i)=material_C11(i)
         material_Cslip_66(2,2,i)=material_C11(i)
 		material_Cslip_66(3,3,i)=material_C33(i)
@@ -547,9 +558,9 @@ do i=1,material_maxN
         material_Cslip_66(5,5,i)=material_C44(i)
         material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
    end select
-   material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
+   material_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(material_Cslip_66(:,:,i))
+   material_Cslip_66(:,:,i) = math_Mandel3333to66(material_Cslip_3333(:,:,:,:,i))
 enddo
-
 
 ! MISSING some consistency checks may be..?
 ! if ODFfile present then set NGauss NFiber =0
@@ -563,14 +574,15 @@ subroutine constitutive_Assignment()
 !* This subroutine assign material parameters according to ipc,ip,el *
 !*********************************************************************
 use prec, only: pReal,pInt
-use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,math_symmetricEulers,math_EulerToR
+use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,math_symmetricEulers,math_EulerToR,&
+                math_Mandel3333to66
 use mesh, only: mesh_NcpElems,FE_Nips,FE_mapElemtype,mesh_maxNips,mesh_element
 use IO,   only: IO_hybridIA
-use crystal, only: crystal_MaxNslipOfStructure,crystal_SlipIntType,crystal_sn,crystal_st
+use crystal, only: crystal_SlipIntType,crystal_sn,crystal_st,crystal_Qtwin
 implicit none
 
 !* Definition of variables
-integer(pInt) e,i,j,k,l,m,o,g,s
+integer(pInt) e,g,i,j,k,l,m,n,o,p,q,r,s
 integer(pInt) matID,texID
 real(pReal) x,y
 integer(pInt), dimension(:,:,:), allocatable :: hybridIA_population
@@ -612,8 +624,9 @@ enddo
 
 !* publish globals
 constitutive_maxNgrains = maxval(texture_Ngrains)
-material_maxNslip       = maxval(material_Nslip)	! max # of slip systems among materials present
-constitutive_maxNstatevars = maxval(material_Nslip) + 0_pInt
+material_maxNslip       = maxval(material_Nslip)	! max of slip systems among materials present
+material_maxNtwin       = maxval(material_Ntwin)    ! max of twin systems among materials present 
+constitutive_maxNstatevars = maxval(material_Nslip) + maxval(material_Ntwin)
 constitutive_maxNresults = 1_pInt
 
 !* calc texture_totalNgrains
@@ -712,6 +725,34 @@ do e=1,mesh_NcpElems
    enddo ! ip
 enddo ! cp_element
 
+!* Construction of the rotated elasticity matrices for twinning
+do i=1,material_maxN
+   do j=1,material_Ntwin(i)
+      do k=1,3
+      do l=1,3
+      do m=1,3
+      do n=1,3
+         material_Ctwin_3333(k,l,m,n,j,i)=0.0_pReal
+         do p=1,3
+	     do q=1,3
+	     do r=1,3
+	     do s=1,3
+	        material_Ctwin_3333(k,l,m,n,j,i)=material_Ctwin_3333(k,l,m,n,j,i)+material_Cslip_3333(p,q,r,s,i)*&
+		                                     crystal_Qtwin(k,p,j,material_CrystalStructure(i))*&
+											 crystal_Qtwin(l,q,j,material_CrystalStructure(i))*&
+											 crystal_Qtwin(m,r,j,material_CrystalStructure(i))*&
+											 crystal_Qtwin(n,s,j,material_CrystalStructure(i))
+	     enddo
+	     enddo
+	     enddo
+	     enddo
+      enddo
+      enddo
+      enddo
+      enddo
+      material_Ctwin_66(:,:,j,i) = math_Mandel3333to66(material_Ctwin_3333(:,:,:,:,j,i))
+   enddo
+enddo
 
 !* Construction of the hardening matrices
 do i=1,material_maxN
@@ -790,7 +831,8 @@ do i=1,material_Nslip(matID)
    constitutive_jump_width(i)=material_c2(matID)/sqrt(constitutive_rho_f(i))
    constitutive_activation_volume(i)=material_c3(matID)*constitutive_jump_width(i)*material_bg(matID)**2.0_pReal 
    constitutive_rho_m(i)=(2.0_pReal*Kb*Tp*sqrt(constitutive_rho_p(i)))/&
-                         (material_c1(matID)*material_c3(matID)*material_Gmod(matID)*constitutive_jump_width(i)*material_bg(matID)**3.0_pReal) 
+                         (material_c1(matID)*material_c3(matID)*material_Gmod(matID)*constitutive_jump_width(i)*&
+						 material_bg(matID)**3.0_pReal) 
    constitutive_g0_slip(i)=constitutive_rho_m(i)*material_bg(matID)*attack_frequency*constitutive_jump_width(i)*&
                            exp(-(material_Qedge(matID)+constitutive_passing_stress(i)*constitutive_activation_volume(i))/&
 						   (Kb*Tp))

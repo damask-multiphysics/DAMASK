@@ -2,6 +2,7 @@
 [Aluminium]
 crystal_structure		1
 Nslip				12
+Ntwin                           0
 ## Elastic constants 
 # Unit in [Pa]
 C11				106.75e9

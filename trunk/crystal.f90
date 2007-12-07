@@ -152,7 +152,7 @@ data crystal_sd(:,48,2)/ 1,-1, 1/ ; data crystal_sn(:,48,2)/ 3, 2,-1/
 !*** Twin systems for BCC structures (2) ***
 !* System {112}<111>
 !* Sort?
-!* Not implemented yet
+!* MISSING
 
 !*** Slip-Slip interactions for BCC structures (2) ***
 data crystal_SlipIntType( 1,:,2)/1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2/
@@ -244,7 +244,7 @@ data crystal_sd(:,12,3)/ 1, 1, 0/ ; data crystal_sn(:,12,3)/ 1,-1, 1/
 !*** Twin systems for HCP structures (2) ***
 !* System {1012}<1011>
 !* Sort?
-!* Not implemented yet
+!* MISSING
 
 !*** Slip-Slip interactions for HCP structures (3) ***
 data crystal_SlipIntType( 1,1:crystal_MaxNslipOfStructure(3),3)/1,2,2,2,2,2,2,2,2,2,2,2/
