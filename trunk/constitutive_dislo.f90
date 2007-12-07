@@ -750,6 +750,7 @@ do i=1,material_maxN
       enddo
       enddo
       enddo
+	  !* Mapping back to 66-formulation of the matices
       material_Ctwin_66(:,:,j,i) = math_Mandel3333to66(material_Ctwin_3333(:,:,:,:,j,i))
    enddo
 enddo
@@ -790,11 +791,20 @@ implicit none
 
 !* Definition of variables
 integer(pInt) ipc,ip,el
+integer(pInt) matID,i
 real(pReal), dimension(6,6) :: constitutive_homogenizedC
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 
+!* Get the material-ID from the triplet(ipc,ip,el)
+matID = constitutive_matID(ipc,ip,el)
+
 !* Homogenization scheme
-constitutive_homogenizedC=material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))
+constitutive_homogenizedC=(1-sum(state((material_Nslip(matID)+1):(material_Nslip(matID)+material_Ntwin(matID)))))*&
+                          material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))
+do i=1,material_Ntwin(matID)
+   constitutive_homogenizedC=constitutive_homogenizedC+state((material_Nslip(matID)+i))*&
+                             material_Ctwin_66(:,:,i,constitutive_matID(ipc,ip,el)) 
+enddo
 
 return
 end function
