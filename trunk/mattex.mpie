@@ -1,24 +1,24 @@
 <materials>
 [Aluminium]
-crystal_structure		1
-Nslip				12
-Ntwin                           0
+crystal_structure		              1
+Nslip				              12
+Ntwin                                         0
 ## Elastic constants 
 # Unit in [Pa]
-C11				106.75e9
-C12				60.41e9
-C44				28.34e9
+C11				              106.75e9
+C12				              60.41e9
+C44				              28.34e9
 
 ## Parameters for phenomenological modeling
 # Unit in [Pa]
-s0_slip				31.0e6
-gdot0_slip			0.001
-n_slip				20
-h0				75.0e6
-s_sat				63.0e6
-w0				2.25
+s0_slip				              31.0e6
+gdot0_slip			              0.001
+n_slip				              20
+h0				              75.0e6
+s_sat				              63.0e6
+w0				              2.25
 # Self and latent hardening coefficients
-hardening_coefficients        	1.0 1.4
+hardening_coefficients        	              1.0 1.4
 
 ## Parameters for dislocation-based modeling
 # Initial dislocation density [m]²
@@ -40,7 +40,10 @@ c4                      	              0.05
 # Athermal annihilation adjustment
 c5				              10.0
 # Dislocation interaction coefficients
-interaction_coefficients	1.0 2.2 3.0 1.6 3.8 4.5   
+interaction_coefficients	              1.0 2.2 3.0 1.6 3.8 4.5
+# Twin parameters: grain size, average size of stacks of twins [m]
+grain_size                                    1.5e-5
+stack_size                                    5.0e-8                      
 
 <textures>
 [cube SX]
