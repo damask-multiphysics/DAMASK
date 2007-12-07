@@ -526,13 +526,13 @@ do i=1,material_maxN
    material_Gmod(i)=material_C44(i)
    select case (material_CrystalStructure(i))
    case(1:2) ! cubic(s) 
-       do k=1,3
-          do j=1,3
+       forall(k=1:3)
+          forall(j=1:3)
              material_Cslip_66(k,j,i)=material_C12(i)
-          enddo
+          endforall
           material_Cslip_66(k,k,i)=material_C11(i)
           material_Cslip_66(k+3,k+3,i)=material_C44(i)
-       enddo
+       endforall
    case(3)   ! hcp
         material_Cslip_66(1,1,i)=material_C11(i)
         material_Cslip_66(2,2,i)=material_C11(i)
@@ -750,6 +750,7 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 real(pReal), dimension(6,6) :: constitutive_homogenizedC
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 
 !* Homogenization scheme
 constitutive_homogenizedC=material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))

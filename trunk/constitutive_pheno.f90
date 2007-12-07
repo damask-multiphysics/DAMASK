@@ -503,13 +503,13 @@ close(fileunit)
 do i=1,material_maxN
    select case (material_CrystalStructure(i))
    case(1:2) ! cubic(s)
-       do k=1,3
-          do j=1,3
+       forall(k=1:3)
+          forall(j=1:3)
              material_Cslip_66(k,j,i)=material_C12(i)
-          enddo
+          endforall
           material_Cslip_66(k,k,i)=material_C11(i)
           material_Cslip_66(k+3,k+3,i)=material_C44(i)
-       enddo
+       endforall
    case(3)   ! hcp
         material_Cslip_66(1,1,i)=material_C11(i)
         material_Cslip_66(2,2,i)=material_C11(i)
@@ -696,10 +696,11 @@ constitutive_maxNresults = maxval(constitutive_Nresults)
 end subroutine
 
 
-function constitutive_HomogenizedC(ipc,ip,el)
+function constitutive_HomogenizedC(state,ipc,ip,el)
 !*********************************************************************
 !* This function returns the homogenized elacticity matrix           *
 !* INPUT:                                                            *
+!*  - state           : state variables                              *
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
@@ -710,9 +711,10 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 real(pReal), dimension(6,6) :: constitutive_homogenizedC
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 
 !* Homogenization scheme
-constitutive_homogenizedC=constitutive_MatVolFrac(ipc,ip,el)*material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))
+constitutive_homogenizedC=material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))
 
 return
 end function
@@ -798,7 +800,7 @@ end subroutine
 function constitutive_dotState(Tstar_v,state,Temperature,ipc,ip,el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
-!* calculating the velocity gradient                                 *
+!* calculating the rate of change of microstructure                  *
 !* INPUT:                                                            *
 !*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
 !*  - state           : current microstructure                       *
