@@ -36,14 +36,26 @@ c2                                            2.0
 # Activation volume adjustment
 c3                                            0.4
 # Dislocation storage adjustment
-c4                      	              0.05
+c4                      	              20.0
+# Grain boundaries storage adjustment
+c5                                            1.0e100
+# Twin boundaries storage adjustment
+c6                                            1.0e100
 # Athermal annihilation adjustment
-c5				              10.0
+c7				              10.0
 # Dislocation interaction coefficients
 interaction_coefficients	              1.0 2.2 3.0 1.6 3.8 4.5
-# Twin parameters: grain size, average size of stacks of twins [m]
+# Twin parameters
+# grain size, average size of stacks of twins [m]
 grain_size                                    1.5e-5
-stack_size                                    5.0e-8                      
+stack_size                                    5.0e-8
+# stacking fault energy
+stacking_fault_energy                         2.0e-2
+# Twin reference [?], twin resistance [Pa], twin sensitivity
+twin_ref                                      1.0e-15
+twin_res                                      150.0e6
+twin_sens                                     10.0
+                      
 
 <textures>
 [cube SX]

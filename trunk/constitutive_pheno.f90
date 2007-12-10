@@ -525,6 +525,7 @@ do i=1,material_maxN
         material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
    end select
    material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
+   ! Check
 enddo
 
 
@@ -766,7 +767,8 @@ real(pReal) Temperature
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(3,3) :: Lp
 real(pReal), dimension(3,3,3,3) :: dLp_dTstar
-real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state,gdot_slip,dgdot_dtauslip,tau_slip
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
+real(pReal), dimension(material_Nslip(constitutive_matID(ipc,ip,el))) :: gdot_slip,dgdot_dtauslip,tau_slip
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)

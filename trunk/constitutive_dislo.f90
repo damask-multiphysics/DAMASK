@@ -45,9 +45,7 @@ real(pReal), dimension(:)          , allocatable :: material_C33
 real(pReal), dimension(:)          , allocatable :: material_C44
 real(pReal), dimension(:)          , allocatable :: material_Gmod
 real(pReal), dimension(:,:,:)      , allocatable :: material_Cslip_66
-real(pReal), dimension(:,:,:,:,:)  , allocatable :: material_Cslip_3333
 real(preal), dimension(:,:,:,:)    , allocatable :: material_Ctwin_66
-real(pReal), dimension(:,:,:,:,:,:), allocatable :: material_Ctwin_3333
 !* Visco-plastic material parameters
 real(pReal), dimension(:)          , allocatable :: material_rho0
 real(pReal), dimension(:)          , allocatable :: material_bg
@@ -55,11 +53,16 @@ real(pReal), dimension(:)          , allocatable :: material_Qedge
 real(pReal), dimension(:)          , allocatable :: material_tau0
 real(pReal), dimension(:)          , allocatable :: material_GrainSize
 real(pReal), dimension(:)          , allocatable :: material_StackSize
+real(pReal), dimension(:)          , allocatable :: material_twin_ref
+real(pReal), dimension(:)          , allocatable :: material_twin_res
+real(pReal), dimension(:)          , allocatable :: material_twin_sens
 real(pReal), dimension(:)          , allocatable :: material_c1
 real(pReal), dimension(:)          , allocatable :: material_c2
 real(pReal), dimension(:)          , allocatable :: material_c3
 real(pReal), dimension(:)          , allocatable :: material_c4
 real(pReal), dimension(:)          , allocatable :: material_c5
+real(pReal), dimension(:)          , allocatable :: material_c6
+real(pReal), dimension(:)          , allocatable :: material_c7
 real(pReal), dimension(:,:)        , allocatable :: material_SlipIntCoeff
 
 !************************************
@@ -92,6 +95,21 @@ integer(pInt), dimension(:,:,:)  , allocatable :: constitutive_texID
 real(pReal), dimension(:,:,:)    , allocatable :: constitutive_texVolFrac
 
 !************************************
+!*        Kinetics variables        *
+!************************************
+real(pReal), dimension(:)      , allocatable :: constitutive_tau_slip
+real(pReal), dimension(:)      , allocatable :: constitutive_tau_twin
+real(pReal), dimension(:)      , allocatable :: constitutive_gdot_slip
+real(pReal), dimension(:)      , allocatable :: constitutive_fdot_twin
+real(pReal), dimension(:)      , allocatable :: constitutive_dgdot_dtauslip
+real(pReal), dimension(:)      , allocatable :: constitutive_dfdot_dtautwin
+real(pReal), dimension(:,:)    , allocatable :: constitutive_dfdot_dtauslip
+real(pReal), dimension(:)      , allocatable :: constitutive_locks
+real(pReal), dimension(:)      , allocatable :: constitutive_grainboundaries
+real(pReal), dimension(:)      , allocatable :: constitutive_twinboundaries
+real(pReal), dimension(:)      , allocatable :: constitutive_recovery
+
+!************************************
 !*         State variables          *
 !************************************
 integer(pInt) constitutive_maxNstatevars
@@ -106,6 +124,8 @@ real(pReal), dimension(:)      , allocatable :: constitutive_rho_f
 real(pReal), dimension(:)      , allocatable :: constitutive_rho_p
 real(pReal), dimension(:)      , allocatable :: constitutive_g0_slip
 real(pReal), dimension(:)      , allocatable :: constitutive_twin_volume
+real(pReal), dimension(:)      , allocatable :: constitutive_inv_intertwin_len
+real(pReal), dimension(:)      , allocatable :: constitutive_twin_mfp
 
 !************************************
 !*      Interaction matrices        *
@@ -118,7 +138,6 @@ real(pReal), dimension(:,:,:), allocatable :: constitutive_Pparallel
 !************************************
 integer(pInt) constitutive_maxNresults
 integer(pInt), dimension(:,:,:), allocatable :: constitutive_Nresults
-real(pReal), dimension(:,:,:,:), allocatable :: constitutive_results
 
 
 
@@ -327,6 +346,12 @@ do while(.true.)
               material_GrainSize(section)=IO_floatValue(line,positions,2)
 	     case ('stack_size')
               material_StackSize(section)=IO_floatValue(line,positions,2)
+		 case ('twin_reference')
+              material_twin_ref(section)=IO_floatValue(line,positions,2)
+		 case ('twin_resistance')
+              material_twin_res(section)=IO_floatValue(line,positions,2)
+		 case ('twin_sensitivity')
+              material_twin_sens(section)=IO_floatValue(line,positions,2)
 		 case ('c1')
               material_c1(section)=IO_floatValue(line,positions,2)
 		 case ('c2')
@@ -336,6 +361,10 @@ do while(.true.)
 		 case ('c4')
               material_c4(section)=IO_floatValue(line,positions,2)
 		 case ('c5')
+              material_c5(section)=IO_floatValue(line,positions,2)
+		 case ('c6')
+              material_c5(section)=IO_floatValue(line,positions,2)
+	     case ('c7')
               material_c5(section)=IO_floatValue(line,positions,2)
          end select
       endif
@@ -481,9 +510,7 @@ allocate(material_C33(material_maxN))					                            ; material
 allocate(material_C44(material_maxN))					                            ; material_C44=0.0_pReal
 allocate(material_Gmod(material_maxN))					                            ; material_Gmod=0.0_pReal
 allocate(material_Cslip_66(6,6,material_maxN))                                      ; material_Cslip_66=0.0_pReal
-allocate(material_Cslip_3333(3,3,3,3,material_maxN))                                ; material_Cslip_3333=0.0_pReal
 allocate(material_Ctwin_66(6,6,crystal_MaxMaxNtwinOfStructure,material_maxN))       ; material_Ctwin_66=0.0_pReal
-allocate(material_Ctwin_3333(3,3,3,3,crystal_MaxMaxNtwinOfStructure,material_maxN)) ; material_Ctwin_3333=0.0_pReal
 allocate(material_rho0(material_maxN))				                                ; material_rho0=0.0_pReal
 allocate(material_SlipIntCoeff(crystal_MaxMaxNslipOfStructure,material_maxN))       ; material_SlipIntCoeff=0.0_pReal 
 allocate(material_bg(material_maxN))			                                    ; material_bg=0.0_pReal
@@ -491,11 +518,16 @@ allocate(material_Qedge(material_maxN))				                                ; mat
 allocate(material_tau0(material_maxN))				                                ; material_tau0=0.0_pReal
 allocate(material_GrainSize(material_maxN))				                            ; material_GrainSize=0.0_pReal
 allocate(material_StackSize(material_maxN))				                            ; material_StackSize=0.0_pReal
+allocate(material_twin_ref(material_maxN))                                          ; material_twin_ref=0.0_pReal
+allocate(material_twin_res(material_maxN))                                          ; material_twin_res=0.0_pReal
+allocate(material_twin_sens(material_maxN))                                         ; material_twin_sens=0.0_pReal
 allocate(material_c1(material_maxN))				                                ; material_c1=0.0_pReal
 allocate(material_c2(material_maxN))                                                ; material_c2=0.0_pReal
 allocate(material_c3(material_maxN))                                                ; material_c3=0.0_pReal
 allocate(material_c4(material_maxN))                                                ; material_c4=0.0_pReal
 allocate(material_c5(material_maxN))                                                ; material_c5=0.0_pReal
+allocate(material_c6(material_maxN))                                                ; material_c5=0.0_pReal
+allocate(material_c7(material_maxN))                                                ; material_c5=0.0_pReal
 allocate(texture_ODFfile(texture_maxN))                                             ; texture_ODFfile=''
 allocate(texture_Ngrains(texture_maxN))                                             ; texture_Ngrains=0_pInt
 allocate(texture_symmetry(texture_maxN))                                            ; texture_symmetry=''
@@ -567,8 +599,7 @@ do i=1,material_maxN
         material_Cslip_66(5,5,i)=material_C44(i)
         material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
    end select
-   material_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(material_Cslip_66(:,:,i))
-   material_Cslip_66(:,:,i) = math_Mandel3333to66(material_Cslip_3333(:,:,:,:,i))
+   material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
 enddo
 
 ! MISSING some consistency checks may be..?
@@ -584,7 +615,7 @@ subroutine constitutive_Assignment()
 !*********************************************************************
 use prec, only: pReal,pInt
 use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,math_symmetricEulers,math_EulerToR,&
-                math_Mandel3333to66
+                math_Mandel3333to66,math_Mandel66to3333
 use mesh, only: mesh_NcpElems,FE_Nips,FE_mapElemtype,mesh_maxNips,mesh_element
 use IO,   only: IO_hybridIA
 use crystal, only: crystal_SlipIntType,crystal_sn,crystal_st,crystal_Qtwin
@@ -599,6 +630,8 @@ integer(pInt), dimension(texture_maxN) :: Ncomponents,Nsym,multiplicity,ODFmap,s
 real(pReal), dimension(3,4*(1+texture_maxNGauss+texture_maxNfiber)) :: Euler
 real(pReal), dimension(4*(1+texture_maxNGauss+texture_maxNfiber)) :: texVolfrac
 real(pReal), dimension(texture_maxN) :: sumVolfrac
+real(pReal), dimension(3,3,3,3) :: C_3333,Ctwin_3333
+real(pReal), dimension(3,3) :: Qtwin
 
 ! process textures
 o = 0_pInt       ! ODF counter
@@ -636,7 +669,10 @@ constitutive_maxNgrains = maxval(texture_Ngrains)
 material_maxNslip       = maxval(material_Nslip)	! max of slip systems among materials present
 material_maxNtwin       = maxval(material_Ntwin)    ! max of twin systems among materials present 
 constitutive_maxNstatevars = maxval(material_Nslip) + maxval(material_Ntwin)
+! -----------------------------------------------------------------------------------------------------------------------
 constitutive_maxNresults = 1_pInt
+! -----------------------------------------------------------------------------------------------------------------------
+
 
 !* calc texture_totalNgrains
 allocate(texture_totalNgrains(texture_maxN)) ; texture_totalNgrains=0_pInt
@@ -660,8 +696,6 @@ allocate(constitutive_MatVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpEl
 allocate(constitutive_TexVolFrac(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_TexVolFrac=0.0_pReal
 allocate(constitutive_EulerAngles(3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_EulerAngles=0.0_pReal
 allocate(constitutive_Nresults(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nresults=0_pInt
-allocate(constitutive_results(constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
-constitutive_results=0.0_pReal
 allocate(constitutive_Nstatevars(constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_Nstatevars=0_pInt
 allocate(constitutive_state_old(constitutive_maxNstatevars,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
 constitutive_state_old=0.0_pReal
@@ -679,6 +713,19 @@ allocate(constitutive_jump_width(material_maxNslip))        ; constitutive_jump_
 allocate(constitutive_activation_volume(material_maxNslip)) ; constitutive_activation_volume=0.0_pReal
 allocate(constitutive_g0_slip(material_maxNslip))           ; constitutive_g0_slip=0.0_pReal
 allocate(constitutive_twin_volume(material_maxNtwin))       ; constitutive_twin_volume=0.0_pReal
+allocate(constitutive_inv_intertwin_len(material_maxNtwin)) ; constitutive_inv_intertwin_len=0.0_pReal
+allocate(constitutive_twin_mfp(material_maxNtwin))          ; constitutive_twin_mfp=0.0_pReal
+allocate(constitutive_tau_slip(material_maxNslip))          ; constitutive_tau_slip=0.0_pReal
+allocate(constitutive_tau_twin(material_maxNtwin))          ; constitutive_tau_twin=0.0_pReal
+allocate(constitutive_gdot_slip(material_maxNslip))         ; constitutive_gdot_slip=0.0_pReal
+allocate(constitutive_fdot_twin(material_maxNtwin))         ; constitutive_fdot_twin=0.0_pReal
+allocate(constitutive_dgdot_dtauslip(material_maxNslip))    ; constitutive_dgdot_dtauslip=0.0_pReal
+allocate(constitutive_dfdot_dtautwin(material_maxNtwin))    ; constitutive_dfdot_dtautwin=0.0_pReal
+allocate(constitutive_dfdot_dtauslip(material_maxNtwin,material_maxNslip)) ; constitutive_dfdot_dtauslip=0.0_pReal
+allocate(constitutive_locks(material_maxNslip))             ; constitutive_locks=0.0_pReal
+allocate(constitutive_grainboundaries(material_maxNslip))   ; constitutive_grainboundaries=0.0_pReal
+allocate(constitutive_twinboundaries(material_maxNslip))    ; constitutive_twinboundaries=0.0_pReal
+allocate(constitutive_recovery(material_maxNslip))          ; constitutive_locks=0.0_pReal
 
 !* Assignment of all grains in all IPs of all cp-elements
 do e=1,mesh_NcpElems
@@ -723,7 +770,9 @@ do e=1,mesh_NcpElems
 		    constitutive_MatVolFrac(g,i,e) = 1.0_pReal ! singular material (so far)
 		    constitutive_TexVolFrac(g,i,e) = texVolfrac(s)/multiplicity(texID)/Nsym(texID)
 		    constitutive_Nstatevars(g,i,e) = material_Nslip(matID) ! number of state variables (i.e. tau_c of each slip system)
-		    constitutive_Nresults(g,i,e)   = 0         ! number of constitutive results
+! -----------------------------------------------------------------------------------------------------------------------
+		    constitutive_Nresults(g,i,e)   = 0         ! number of constitutive results output by constitutive_post_results
+! -----------------------------------------------------------------------------------------------------------------------
 		    constitutive_EulerAngles(:,g,i,e) = Euler(:,s)    ! store initial orientation
             forall (l=1:constitutive_Nstatevars(g,i,e))  ! initialize state variables
                constitutive_state_old(l,g,i,e) = material_rho0(matID)
@@ -737,21 +786,19 @@ enddo ! cp_element
 
 !* Construction of the rotated elasticity matrices for twinning
 do i=1,material_maxN
+   C_3333=math_Mandel66to3333(material_Cslip_66(:,:,i))
    do j=1,material_Ntwin(i)
+      Qtwin=crystal_Qtwin(:,:,j,material_CrystalStructure(i))
       do k=1,3
       do l=1,3
       do m=1,3
       do n=1,3
-         material_Ctwin_3333(k,l,m,n,j,i)=0.0_pReal
+         Ctwin_3333(k,l,m,n)=0.0_pReal
          do p=1,3
 	     do q=1,3
 	     do r=1,3
 	     do s=1,3
-	        material_Ctwin_3333(k,l,m,n,j,i)=material_Ctwin_3333(k,l,m,n,j,i)+material_Cslip_3333(p,q,r,s,i)*&
-		                                     crystal_Qtwin(k,p,j,material_CrystalStructure(i))*&
-											 crystal_Qtwin(l,q,j,material_CrystalStructure(i))*&
-											 crystal_Qtwin(m,r,j,material_CrystalStructure(i))*&
-											 crystal_Qtwin(n,s,j,material_CrystalStructure(i))
+	        Ctwin_3333(k,l,m,n)=Ctwin_3333(k,l,m,n)+C_3333(p,q,r,s)*Qtwin(k,p)*Qtwin(l,q)*Qtwin(m,r)*Qtwin(n,s)
 	     enddo
 	     enddo
 	     enddo
@@ -760,8 +807,8 @@ do i=1,material_maxN
       enddo
       enddo
       enddo
-	  !* Mapping back to 66-formulation of the matices
-      material_Ctwin_66(:,:,j,i) = math_Mandel3333to66(material_Ctwin_3333(:,:,:,:,j,i))
+	  !* Mapping back to 66-format of the matrices
+      material_Ctwin_66(:,:,j,i) = math_Mandel3333to66(Ctwin_3333)
    enddo
 enddo
 
@@ -801,19 +848,19 @@ implicit none
 
 !* Definition of variables
 integer(pInt) ipc,ip,el
-integer(pInt) matID,i
+integer(pInt) matID,i,startIdxTwin
 real(pReal), dimension(6,6) :: constitutive_homogenizedC
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
+startIdxTwin = material_Nslip(matID)
 
 !* Homogenization scheme
-constitutive_homogenizedC=(1-sum(state((material_Nslip(matID)+1):(material_Nslip(matID)+material_Ntwin(matID)))))*&
-                          material_Cslip_66(:,:,constitutive_matID(ipc,ip,el))
+constitutive_homogenizedC=(1-sum(state((startIdxTwin+1):(startIdxTwin+material_Ntwin(matID)))))*&
+                          material_Cslip_66(:,:,matID)
 do i=1,material_Ntwin(matID)
-   constitutive_homogenizedC=constitutive_homogenizedC+state((material_Nslip(matID)+i))*&
-                             material_Ctwin_66(:,:,i,constitutive_matID(ipc,ip,el)) 
+   constitutive_homogenizedC=constitutive_homogenizedC+state(startIdxTwin+i)*material_Ctwin_66(:,:,i,matID) 
 enddo
 
 return
@@ -837,14 +884,15 @@ implicit none
 
 !* Definition of variables
 integer(pInt) ipc,ip,el
-integer(pInt) matID,i,j
-real(pReal) Tp,inv_intertwin_length,twin_mfp
+integer(pInt) matID,i,j,startIdxTwin
+real(pReal) Tp,Ftwin
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
+startIdxTwin = material_Nslip(matID)
 
-!* Quantities derivated from state - slip
+!* Quantities derived from state - slip
 constitutive_rho_f=matmul(constitutive_Pforest  (1:material_Nslip(matID),1:material_Nslip(matID),matID),state)
 constitutive_rho_p=matmul(constitutive_Pparallel(1:material_Nslip(matID),1:material_Nslip(matID),matID),state)	
 do i=1,material_Nslip(matID)
@@ -860,17 +908,18 @@ do i=1,material_Nslip(matID)
 						   (Kb*Tp))
 enddo
 
-!* Quantities derivated from state - twin
+!* Quantities derived from state - twin
+Ftwin = sum(state((startIdxTwin+1):(startIdxTwin+material_Ntwin(matID))))
 do i=1,material_Ntwin(matID)
    !* Inverse of the average distance between 2 twins of the same familly
-   inv_intertwin_length=0.0_pReal
+   constitutive_inv_intertwin_len(i)=0.0_pReal
    do j=1,material_Ntwin(matID)
-      inv_intertwin_length=inv_intertwin_length+(crystal_TwinIntType(i,j,material_CrystalStructure(matID))*&
-	                       state((material_Nslip(matID)+j)))/(2.0_pReal*material_StackSize(matID)*&
-	                       (1.0_pReal-(1-sum(state((material_Nslip(matID)+1):(material_Nslip(matID)+material_Ntwin(matID)))))))
+      constitutive_inv_intertwin_len(i)=constitutive_inv_intertwin_len(i)+&
+	                                    (crystal_TwinIntType(i,j,material_CrystalStructure(matID))*state(startIdxTwin+j))/&
+										(2.0_pReal*material_StackSize(matID)*(1.0_pReal-Ftwin))
    enddo
-   twin_mfp=(1.0_pReal)/((1.0_pReal/material_GrainSize(matID))+inv_intertwin_length)
-   constitutive_twin_volume(i)=(pi/6.0_pReal)*material_StackSize(matID)*twin_mfp**2.0_pReal
+   constitutive_twin_mfp(i)=(1.0_pReal)/((1.0_pReal/material_GrainSize(matID))+constitutive_inv_intertwin_len(i))
+   constitutive_twin_volume(i)=(pi/6.0_pReal)*material_StackSize(matID)*constitutive_twin_mfp(i)**2.0_pReal
 enddo
 
 return	 
@@ -893,44 +942,93 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,state,Tp,ipc,ip,el
 !*  - dLp_dTstar      : derivative of Lp (4th-order tensor)          *
 !*********************************************************************
 use prec, only: pReal,pInt
-use crystal, only: crystal_Sslip,crystal_Sslip_v
+use crystal, only: crystal_Sslip,crystal_Sslip_v,crystal_Stwin,crystal_Stwin_v,crystal_TwinShear
 implicit none
 
 !* Definition of variables
 integer(pInt) ipc,ip,el
-integer(pInt) matID,i,k,l,m,n
-real(pReal) Tp
+integer(pInt) matID,startIdxTwin,i,j,k,l,m,n
+real(pReal) Tp,Ftwin
 real(pReal), dimension(6) :: Tstar_v
-real(pReal), dimension(3,3) :: Lp
+real(pReal), dimension(3,3) :: Lp,Sslip,Stwin
 real(pReal), dimension(3,3,3,3) :: dLp_dTstar
-real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state,gdot_slip,dgdot_dtauslip,tau_slip
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
+startIdxTwin = material_Nslip(matID)
 
-!* Calculation of Lp
+!* Recompute arrays from the microstructure (may be not needed)
+call constitutive_Microstructure(state,Tp,ipc,ip,el)
+
+!* Calculation of Lp - slip
+Ftwin = sum(state((startIdxTwin+1):(startIdxTwin+material_Ntwin(matID))))
 Lp = 0.0_pReal
 do i=1,material_Nslip(matID)
-   tau_slip(i)=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
-   gdot_slip(i)=constitutive_g0_slip(i)*sinh((abs(tau_slip(i))*constitutive_activation_volume(i))/(Kb*Tp))*&
-                sign(1.0_pReal,tau_slip(i))   
-   Lp=Lp+gdot_slip(i)*crystal_Sslip(:,:,i,material_CrystalStructure(matID))
+   constitutive_tau_slip(i)=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
+   constitutive_gdot_slip(i)=constitutive_g0_slip(i)*sinh((abs(constitutive_tau_slip(i))*&
+                             constitutive_activation_volume(i))/(Kb*Tp))*sign(1.0_pReal,constitutive_tau_slip(i))
+   constitutive_dgdot_dtauslip(i)=((constitutive_g0_slip(i)*constitutive_activation_volume(i))/(Kb*Tp))*&
+                                  cosh((abs(constitutive_tau_slip(i))*constitutive_activation_volume(i))/(Kb*Tp)) 							    
+   Lp=Lp+(1.0_pReal-Ftwin)*constitutive_gdot_slip(i)*crystal_Sslip(:,:,i,material_CrystalStructure(matID))
 enddo
 
-!* Lp twin
+!* Calculation of Lp - twin
+do i=1,material_Ntwin(matID)
+   constitutive_tau_twin(i)=dot_product(Tstar_v,crystal_Stwin_v(:,i,material_CrystalStructure(matID)))
+   if (constitutive_tau_twin(i)>0.0_pReal) then
+      constitutive_fdot_twin(i)=(1.0_pReal-Ftwin)*constitutive_twin_volume(i)*&
+	               ((material_twin_ref(matID)*sum(state(1:material_Nslip(matID)))**(1.5_pReal))/material_bg(matID))*&
+				   sum(abs(constitutive_gdot_slip))*(constitutive_tau_twin(i)/material_twin_res(matID))**&
+				   material_twin_sens(matID)
+	  constitutive_dfdot_dtautwin(i)=(1.0_pReal-Ftwin)*constitutive_twin_volume(i)*&
+	               ((material_twin_ref(matID)*sum(state(1:material_Nslip(matID)))**(1.5_pReal))/material_bg(matID))*&
+                   sum(abs(constitutive_gdot_slip))*(material_twin_sens(matID)/material_twin_res(matID))*&
+                   (constitutive_tau_twin(i)/material_twin_res(matID))**(material_twin_sens(matID)-1.0_pReal)
+	  do j=1,material_Nslip(matID)
+	     constitutive_dfdot_dtauslip(i,j)=(1.0_pReal-Ftwin)*constitutive_twin_volume(i)*&
+	                  ((material_twin_ref(matID)*sum(state(1:material_Nslip(matID)))**(1.5_pReal))/material_bg(matID))*&
+                      abs(constitutive_dgdot_dtauslip(j))*(constitutive_tau_twin(i)/material_twin_res(matID))**&
+					  material_twin_sens(matID)
+	  enddo
+   else
+      constitutive_fdot_twin(i)=0.0_pReal
+	  constitutive_dfdot_dtautwin(i)=0.0_pReal
+	  do j=1,material_Nslip(matID)
+	     constitutive_dfdot_dtauslip(i,j)=0.0_pReal
+	  enddo
+   endif
+   Lp=Lp+state(material_Nslip(matID)+i)*crystal_TwinShear(material_CrystalStructure(matID))*constitutive_fdot_twin(i)*&
+      crystal_Stwin(:,:,i,material_CrystalStructure(matID))
+enddo
+
 
 !* Calculation of the tangent of Lp
 dLp_dTstar=0.0_pReal
 do i=1,material_Nslip(matID)
-   dgdot_dtauslip(i)=((constitutive_g0_slip(i)*constitutive_activation_volume(i))/(Kb*Tp))*&
-                     cosh((abs(tau_slip(i))*constitutive_activation_volume(i))/(Kb*Tp))  
+   Sslip = crystal_Sslip(:,:,i,material_CrystalStructure(matID))
    forall (k=1:3,l=1:3,m=1:3,n=1:3)
           dLp_dTstar(k,l,m,n) = dLp_dTstar(k,l,m,n)+ &
-                                dgdot_dtauslip(i)*crystal_Sslip(k,l,i,material_CrystalStructure(matID))* &
-		                        (crystal_Sslip(m,n,i,material_CrystalStructure(matID))+ &
-		                         crystal_Sslip(n,m,i,material_CrystalStructure(matID)))/2.0_pReal ! force m,n symmetry
+                                (1-Ftwin)*constitutive_dgdot_dtauslip(i)*Sslip(k,l)*(Sslip(m,n)+Sslip(n,m))/2.0_pReal !force m,n symmetry
    endforall
 enddo
+do i=1,material_Ntwin(matID)
+   Stwin = crystal_Stwin(:,:,i,material_CrystalStructure(matID)) 
+   forall (k=1:3,l=1:3,m=1:3,n=1:3)
+          dLp_dTstar(k,l,m,n) = dLp_dTstar(k,l,m,n)+ &
+                                state(material_Nslip(matID)+i)*crystal_TwinShear(material_CrystalStructure(matID))*&
+								constitutive_dfdot_dtautwin(i)*Stwin(k,l)*(Stwin(m,n)+Stwin(n,m))/2.0_pReal !force m,n symmetry
+   endforall
+   do j=1,material_Nslip(matID)
+      Sslip = crystal_Sslip(:,:,j,material_CrystalStructure(matID))
+      forall (k=1:3,l=1:3,m=1:3,n=1:3)
+             dLp_dTstar(k,l,m,n) = dLp_dTstar(k,l,m,n)+ &
+                                   state(material_Nslip(matID)+i)*crystal_TwinShear(material_CrystalStructure(matID))*&
+								   constitutive_dfdot_dtauslip(i,j)*Stwin(k,l)*(Sslip(m,n)+Sslip(n,m))/2.0_pReal !force m,n symmetry
+      endforall  
+   enddo
+enddo
+
 
 return
 end subroutine
@@ -957,21 +1055,27 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i
-real(pReal) Tp,tau_slip,gdot_slip,lock,recovery
+real(pReal) Tp,tau_slip,gdot_slip
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,state
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
 
+!* Recompute arrays from the microstructure (may be not needed)
+call constitutive_Microstructure(state,Tp,ipc,ip,el)
+
 !* Hardening of each system
 do i=1,material_Nslip(matID)
    tau_slip = dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
    gdot_slip = constitutive_g0_slip(i)*sinh((abs(tau_slip)*constitutive_activation_volume(i))/(Kb*Tp))*&
                sign(1.0_pReal,tau_slip)
-   lock=(material_c4(matID)*sqrt(constitutive_rho_f(i))*abs(gdot_slip))/material_bg(matID)
-   recovery=material_c5(matID)*state(i)*abs(gdot_slip)
-   constitutive_dotState(i)=lock-recovery
+   constitutive_locks(i)=(sqrt(constitutive_rho_f(i))*abs(gdot_slip))/(material_c4(matID)*material_bg(matID))
+   constitutive_grainboundaries(i)=(abs(gdot_slip))/(material_c5(matID)*material_bg(matID)*material_GrainSize(matID))
+   constitutive_twinboundaries(i)=(abs(gdot_slip)*constitutive_inv_intertwin_len(i))/(material_c6(matID)*material_bg(matID))
+   constitutive_recovery(i)=material_c7(matID)*state(i)*abs(gdot_slip)
+   constitutive_dotState(i)=constitutive_locks(i)+constitutive_grainboundaries(i)+constitutive_twinboundaries(i)-&
+                            constitutive_recovery(i)
 enddo
 
 return
@@ -989,6 +1093,7 @@ function constitutive_post_results(Tstar_v,state,dt,Tp,ipc,ip,el)
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
+!* constitutive_Nresults has to be set accordingly in _Assignment    *
 !*********************************************************************
 use prec, only: pReal,pInt
 use crystal, only: crystal_Sslip_v

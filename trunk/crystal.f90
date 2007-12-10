@@ -44,10 +44,14 @@ real(pReal), dimension(3,crystal_MaxMaxNtwinOfStructure,crystal_MaxCrystalStruct
 real(pReal), dimension(3,crystal_MaxMaxNtwinOfStructure,crystal_MaxCrystalStructure) :: crystal_td
 real(pReal), dimension(3,crystal_MaxMaxNtwinOfStructure,crystal_MaxCrystalStructure) :: crystal_tt
 real(pReal), dimension(3,3,crystal_MaxMaxNtwinOfStructure,crystal_MaxCrystalStructure) :: crystal_Qtwin
-
+real(pReal), dimension(crystal_MaxCrystalStructure), parameter :: crystal_TwinShear = &
+reshape((/0.7071067812,0.7071067812,0.7071067812/),(/crystal_MaxCrystalStructure/)) ! Depends surely on c/a ratio for HCP
 !* Slip_slip interaction matrices
 integer(pInt), dimension(crystal_MaxMaxNslipOfStructure,crystal_MaxMaxNslipOfStructure,crystal_MaxCrystalStructure) :: &
 crystal_SlipIntType
+!* Twin-twin interaction matrices
+integer(pInt), dimension(crystal_MaxMaxNtwinOfStructure,crystal_MaxMaxNtwinOfStructure,crystal_MaxCrystalStructure) :: &
+crystal_TwinIntType
 
 !*** Slip systems for FCC structures (1) ***
 !* System {111}<110>  Sort according Eisenlohr&Hantcherli
@@ -92,6 +96,20 @@ data crystal_SlipIntType( 9,1:crystal_MaxNslipOfStructure(1),1)/5,6,4,6,5,4,2,2,
 data crystal_SlipIntType(10,1:crystal_MaxNslipOfStructure(1),1)/4,5,6,3,5,5,4,6,5,1,2,2/
 data crystal_SlipIntType(11,1:crystal_MaxNslipOfStructure(1),1)/5,3,5,5,4,6,6,4,5,2,1,2/
 data crystal_SlipIntType(12,1:crystal_MaxNslipOfStructure(1),1)/6,5,4,5,6,4,5,5,3,2,2,1/
+
+!*** Twin-Twin interactions for FCC structures (1) ***
+data crystal_TwinIntType( 1,1:crystal_MaxNtwinOfStructure(1),1)/0,0,0,1,1,1,1,1,1,1,1,1/
+data crystal_TwinIntType( 2,1:crystal_MaxNtwinOfStructure(1),1)/0,0,0,1,1,1,1,1,1,1,1,1/
+data crystal_TwinIntType( 3,1:crystal_MaxNtwinOfStructure(1),1)/0,0,0,1,1,1,1,1,1,1,1,1/
+data crystal_TwinIntType( 4,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,0,0,0,1,1,1,1,1,1/
+data crystal_TwinIntType( 5,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,0,0,0,1,1,1,1,1,1/
+data crystal_TwinIntType( 6,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,0,0,0,1,1,1,1,1,1/
+data crystal_TwinIntType( 7,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,1,1,1,0,0,0,1,1,1/
+data crystal_TwinIntType( 8,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,1,1,1,0,0,0,1,1,1/
+data crystal_TwinIntType( 9,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,1,1,1,0,0,0,1,1,1/
+data crystal_TwinIntType(10,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,1,1,1,1,1,1,0,0,0/
+data crystal_TwinIntType(11,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,1,1,1,1,1,1,0,0,0/
+data crystal_TwinIntType(12,1:crystal_MaxNtwinOfStructure(1),1)/1,1,1,1,1,1,1,1,1,0,0,0/
 
 !*** Slip systems for BCC structures (2) ***
 !* System {110}<111>
@@ -152,7 +170,7 @@ data crystal_sd(:,48,2)/ 1,-1, 1/ ; data crystal_sn(:,48,2)/ 3, 2,-1/
 !*** Twin systems for BCC structures (2) ***
 !* System {112}<111>
 !* Sort?
-!* MISSING
+!* MISSING: not implemented yet
 
 !*** Slip-Slip interactions for BCC structures (2) ***
 data crystal_SlipIntType( 1,:,2)/1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2/
@@ -204,6 +222,9 @@ data crystal_SlipIntType(46,:,2)/2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
 data crystal_SlipIntType(47,:,2)/2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2/
 data crystal_SlipIntType(48,:,2)/2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1/
 
+!*** Twin-twin interactions for BCC structures (2) ***
+! MISSING: not implemented yet
+
 !*** Slip systems for HCP structures (3) ***
 !* Basal systems {0001}<1120> (independent of c/a-ratio)
 !* 1- (0 0 0 1)[-2  1  1  0]
@@ -241,10 +262,10 @@ data crystal_sd(:,10,3)/-1, 0, 0/ ; data crystal_sn(:,10,3)/ 1, 0, 1/
 data crystal_sd(:,11,3)/ 0,-1, 0/ ; data crystal_sn(:,11,3)/-1, 1, 1/
 data crystal_sd(:,12,3)/ 1, 1, 0/ ; data crystal_sn(:,12,3)/ 1,-1, 1/
 
-!*** Twin systems for HCP structures (2) ***
+!*** Twin systems for HCP structures (3) ***
 !* System {1012}<1011>
 !* Sort?
-!* MISSING
+!* MISSING: not implemented yet
 
 !*** Slip-Slip interactions for HCP structures (3) ***
 data crystal_SlipIntType( 1,1:crystal_MaxNslipOfStructure(3),3)/1,2,2,2,2,2,2,2,2,2,2,2/
@@ -259,6 +280,9 @@ data crystal_SlipIntType( 9,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,
 data crystal_SlipIntType(10,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,1,2,2/
 data crystal_SlipIntType(11,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,2,1,2/
 data crystal_SlipIntType(12,1:crystal_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,2,2,1/
+
+!*** Twin-twin interactions for HCP structures (3) ***
+! MISSING: not implemented yet
 
 
 CONTAINS
@@ -281,7 +305,7 @@ subroutine crystal_SchmidMatrices()
 !*   Calculation of Schmid matrices   *
 !**************************************
 use prec, only: pReal,pInt
-use math, only: math_identity2nd
+use math, only: math_I3
 implicit none
 
 !* Definition of variables
@@ -315,13 +339,13 @@ do l=1,crystal_MaxCrystalStructure
    enddo
 
 !* Iteration over the twin systems
-   do k=1,crystal_MaxNslipOfStructure(l)
+   do k=1,crystal_MaxNtwinOfStructure(l)
 !* Definition of transverse direction tt for the frame (td,tt,tn)
       crystal_tt(1,k,l)=crystal_tn(2,k,l)*crystal_td(3,k,l)-crystal_tn(3,k,l)*crystal_td(2,k,l)
 	  crystal_tt(2,k,l)=crystal_tn(3,k,l)*crystal_td(1,k,l)-crystal_tn(1,k,l)*crystal_td(3,k,l)
 	  crystal_tt(3,k,l)=crystal_tn(1,k,l)*crystal_td(2,k,l)-crystal_tn(2,k,l)*crystal_td(1,k,l)
 !* Defintion of Schmid matrix and transformation matrices
-      crystal_Qtwin(:,:,k,l)=-math_identity2nd(3)
+      crystal_Qtwin(:,:,k,l)=-math_I3
       forall (i=1:3,j=1:3)
 	         crystal_Stwin(i,j,k,l)=crystal_td(i,k,l)*crystal_tn(j,k,l)
 			 crystal_Qtwin(i,j,k,l)=crystal_Qtwin(i,j,k,l)+2*crystal_tn(i,k,l)*crystal_tn(j,k,l)
