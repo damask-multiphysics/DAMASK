@@ -316,56 +316,81 @@ do while(.true.)
          select case(tag)
 	     case ('crystal_structure')
               material_CrystalStructure(section)=IO_intValue(line,positions,2)
+			  write(6,*) 'crystal_structure', material_CrystalStructure(section)
 	     case ('nslip')
 		      material_Nslip(section)=IO_intValue(line,positions,2)
+			  write(6,*) 'nslip', material_Nslip(section)
 	     case ('ntwin')
 		      material_Ntwin(section)=IO_intValue(line,positions,2)
+			  write(6,*) 'ntwin', material_Ntwin(section)
 		 case ('c11')
               material_C11(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c11', material_C11(section)
 		 case ('c12')
               material_C12(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c12', material_C12(section)
 		 case ('c13')
               material_C13(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c13', material_C13(section)
 		 case ('c33')
               material_C33(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c33', material_C33(section)
 		 case ('c44')
               material_C44(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c44', material_C44(section)
          case ('rho0') 
               material_rho0(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'rho0', material_rho0(section)
 	     case ('interaction_coefficients') 
 		      do i=1,6
               material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
+              write(6,*) 'interaction_coefficients', material_SlipIntCoeff(i,section)
 			  enddo
 		 case ('burgers') 
-              material_bg(section)=IO_floatValue(line,positions,2)	  
+              material_bg(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'burgers', material_bg(section) 
 		 case ('Qedge') 
               material_Qedge(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'Qedge', material_Qedge(section)
 		 case ('tau0')
               material_tau0(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'tau0', material_tau0(section)
 	     case ('grain_size')
               material_GrainSize(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'grain_size', material_GrainSize(section)
 	     case ('stack_size')
               material_StackSize(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'stack_size', material_StackSize(section)
 		 case ('twin_reference')
               material_twin_ref(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'twin_reference', material_twin_ref(section)
 		 case ('twin_resistance')
               material_twin_res(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'twin_resistance', material_twin_res(section)
 		 case ('twin_sensitivity')
               material_twin_sens(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'twin_sensitivity', material_twin_sens(section)
 		 case ('c1')
               material_c1(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c1', material_c1(section)
 		 case ('c2')
               material_c2(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c2', material_c2(section)
 		 case ('c3')
               material_c3(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c3', material_c3(section)
 		 case ('c4')
               material_c4(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c4', material_c4(section)
 		 case ('c5')
               material_c5(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c5', material_c5(section)
 		 case ('c6')
-              material_c5(section)=IO_floatValue(line,positions,2)
+              material_c6(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c6', material_c6(section)
 	     case ('c7')
-              material_c5(section)=IO_floatValue(line,positions,2)
+              material_c7(section)=IO_floatValue(line,positions,2)
+			  write(6,*) 'c7', material_c7(section)
          end select
       endif
    endif
@@ -503,6 +528,7 @@ enddo
 !* Array allocation
 allocate(material_CrystalStructure(material_maxN))		                            ; material_CrystalStructure=0_pInt
 allocate(material_Nslip(material_maxN))					                            ; material_Nslip=0_pInt
+allocate(material_Ntwin(material_maxN))                                             ; material_Ntwin=0_pInt
 allocate(material_C11(material_maxN))					                            ; material_C11=0.0_pReal
 allocate(material_C12(material_maxN))					                            ; material_C12=0.0_pReal
 allocate(material_C13(material_maxN))					                            ; material_C13=0.0_pReal
@@ -570,6 +596,7 @@ do while (part/='')
    end select
 enddo
 close(fileunit)
+
 
 !* Construction of the elasticity matrices
 do i=1,material_maxN
@@ -769,7 +796,7 @@ do e=1,mesh_NcpElems
 		    constitutive_texID(g,i,e) = texID          ! copy texID of element
 		    constitutive_MatVolFrac(g,i,e) = 1.0_pReal ! singular material (so far)
 		    constitutive_TexVolFrac(g,i,e) = texVolfrac(s)/multiplicity(texID)/Nsym(texID)
-		    constitutive_Nstatevars(g,i,e) = material_Nslip(matID) ! number of state variables (i.e. tau_c of each slip system)
+		    constitutive_Nstatevars(g,i,e) = material_Nslip(matID) + material_Ntwin(matID)! number of state variables (i.e. tau_c of each slip system)
 ! -----------------------------------------------------------------------------------------------------------------------
 		    constitutive_Nresults(g,i,e)   = 0         ! number of constitutive results output by constitutive_post_results
 ! -----------------------------------------------------------------------------------------------------------------------
@@ -922,6 +949,15 @@ do i=1,material_Ntwin(matID)
    constitutive_twin_volume(i)=(pi/6.0_pReal)*material_StackSize(matID)*constitutive_twin_mfp(i)**2.0_pReal
 enddo
 
+!write(6,*) 'rho_f', constitutive_rho_f
+!write(6,*) 'rho_p', constitutive_rho_p
+!write(6,*) 'passing', constitutive_passing_stress
+!write(6,*) 'jump_width', constitutive_jump_width
+!write(6,*) 'activation_volume', constitutive_activation_volume
+!write(6,*) 'Temperature', Tp
+!write(6,*) 'rho_m', constitutive_rho_m
+!write(6,*) 'g0_slip', constitutive_g0_slip
+
 return	 
 end subroutine
 
@@ -1002,6 +1038,8 @@ do i=1,material_Ntwin(matID)
       crystal_Stwin(:,:,i,material_CrystalStructure(matID))
 enddo
 
+!write(6,*) 'constitutive_gdot_slip'
+!write(6,*) constitutive_gdot_slip
 
 !* Calculation of the tangent of Lp
 dLp_dTstar=0.0_pReal
@@ -1072,9 +1110,9 @@ do i=1,material_Nslip(matID)
                sign(1.0_pReal,tau_slip)
    constitutive_locks(i)=(sqrt(constitutive_rho_f(i))*abs(gdot_slip))/(material_c4(matID)*material_bg(matID))
    constitutive_grainboundaries(i)=(abs(gdot_slip))/(material_c5(matID)*material_bg(matID)*material_GrainSize(matID))
-   constitutive_twinboundaries(i)=(abs(gdot_slip)*constitutive_inv_intertwin_len(i))/(material_c6(matID)*material_bg(matID))
+!   constitutive_twinboundaries(i)=(abs(gdot_slip)*constitutive_inv_intertwin_len(i))/(material_c6(matID)*material_bg(matID))
    constitutive_recovery(i)=material_c7(matID)*state(i)*abs(gdot_slip)
-   constitutive_dotState(i)=constitutive_locks(i)+constitutive_grainboundaries(i)+constitutive_twinboundaries(i)-&
+   constitutive_dotState(i)=constitutive_locks(i)+constitutive_grainboundaries(i)-& !+constitutive_twinboundaries(i)-&
                             constitutive_recovery(i)
 enddo
 
