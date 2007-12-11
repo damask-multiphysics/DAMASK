@@ -213,7 +213,7 @@
    call mesh_tell_statistics()
    close (fileUnit)
  else
-   call IO_error(100)
+   call IO_error(100) ! cannot open input file
  endif
  
  END SUBROUTINE
@@ -795,14 +795,18 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  SUBROUTINE mesh_tell_statistics()
 
  use prec, only: pInt 
+ use IO, only: IO_error
  implicit none
 
- integer(pInt) i
  integer(pInt), dimension (:,:), allocatable :: mesh_MatTex
  character(len=64) fmt
+ integer(pInt) i
+
+ if (mesh_maxValStateVar(1) == 0) call IO_error(110) ! no materials specified
+ if (mesh_maxValStateVar(2) == 0) call IO_error(120) ! no textures specified
+   
  allocate (mesh_MatTex(mesh_maxValStateVar(1),mesh_maxValStateVar(2)))
  mesh_MatTex = 0_pInt
- 
  do i=1,mesh_NcpElems
    mesh_MatTex(mesh_element(3,i),mesh_element(4,i)) = &
    mesh_MatTex(mesh_element(3,i),mesh_element(4,i)) + 1 ! count combinations of material and texture
