@@ -567,6 +567,10 @@
  select case (ID)
  case (100)
    msg='Unable to open input file.'
+ case (110)
+   msg='No materials specified via State Variable 2.'
+ case (120)
+   msg='No textures specified via State Variable 3.'
  case (200)
    msg='Error reading from material+texture file'
  case (300)
