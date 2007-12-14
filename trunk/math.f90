@@ -114,7 +114,7 @@
       a(k,i) = a(k,j)
       a(k,j) = tmp
      enddo
-   else            ! if they do cross, exchange left value with pivot and return with the partition index
+   else           ! if they do cross, exchange left value with pivot and return with the partition index
      do k = 1,d
       tmp = a(k,istart)
       a(k,istart) = a(k,j)

@@ -349,7 +349,7 @@ do while(.true.)
 		 case ('burgers') 
               material_bg(section)=IO_floatValue(line,positions,2)
 			  write(6,*) 'burgers', material_bg(section) 
-		 case ('Qedge') 
+		 case ('qedge') 
               material_Qedge(section)=IO_floatValue(line,positions,2)
 			  write(6,*) 'Qedge', material_Qedge(section)
 		 case ('tau0')
@@ -925,11 +925,15 @@ constitutive_rho_p=matmul(constitutive_Pparallel(1:material_Nslip(matID),1:mater
 do i=1,material_Nslip(matID)
    constitutive_passing_stress(i)=material_tau0(matID)+material_c1(matID)*material_Gmod(matID)*material_bg(matID)*&
                                   sqrt(constitutive_rho_p(i))
+
    constitutive_jump_width(i)=material_c2(matID)/sqrt(constitutive_rho_f(i))
+
    constitutive_activation_volume(i)=material_c3(matID)*constitutive_jump_width(i)*material_bg(matID)**2.0_pReal 
+
    constitutive_rho_m(i)=(2.0_pReal*Kb*Tp*sqrt(constitutive_rho_p(i)))/&
                          (material_c1(matID)*material_c3(matID)*material_Gmod(matID)*constitutive_jump_width(i)*&
 						 material_bg(matID)**3.0_pReal) 
+
    constitutive_g0_slip(i)=constitutive_rho_m(i)*material_bg(matID)*attack_frequency*constitutive_jump_width(i)*&
                            exp(-(material_Qedge(matID)+constitutive_passing_stress(i)*constitutive_activation_volume(i))/&
 						   (Kb*Tp))
@@ -948,15 +952,6 @@ do i=1,material_Ntwin(matID)
    constitutive_twin_mfp(i)=(1.0_pReal)/((1.0_pReal/material_GrainSize(matID))+constitutive_inv_intertwin_len(i))
    constitutive_twin_volume(i)=(pi/6.0_pReal)*material_StackSize(matID)*constitutive_twin_mfp(i)**2.0_pReal
 enddo
-
-!write(6,*) 'rho_f', constitutive_rho_f
-!write(6,*) 'rho_p', constitutive_rho_p
-!write(6,*) 'passing', constitutive_passing_stress
-!write(6,*) 'jump_width', constitutive_jump_width
-!write(6,*) 'activation_volume', constitutive_activation_volume
-!write(6,*) 'Temperature', Tp
-!write(6,*) 'rho_m', constitutive_rho_m
-!write(6,*) 'g0_slip', constitutive_g0_slip
 
 return	 
 end subroutine
@@ -994,18 +989,19 @@ real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 matID = constitutive_matID(ipc,ip,el)
 startIdxTwin = material_Nslip(matID)
 
-!* Recompute arrays from the microstructure (may be not needed)
-call constitutive_Microstructure(state,Tp,ipc,ip,el)
-
 !* Calculation of Lp - slip
 Ftwin = sum(state((startIdxTwin+1):(startIdxTwin+material_Ntwin(matID))))
 Lp = 0.0_pReal
 do i=1,material_Nslip(matID)
    constitutive_tau_slip(i)=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
-   constitutive_gdot_slip(i)=constitutive_g0_slip(i)*sinh((abs(constitutive_tau_slip(i))*&
-                             constitutive_activation_volume(i))/(Kb*Tp))*sign(1.0_pReal,constitutive_tau_slip(i))
-   constitutive_dgdot_dtauslip(i)=((constitutive_g0_slip(i)*constitutive_activation_volume(i))/(Kb*Tp))*&
-                                  cosh((abs(constitutive_tau_slip(i))*constitutive_activation_volume(i))/(Kb*Tp)) 							    
+   if (abs(constitutive_tau_slip(i))<constitutive_passing_stress(i)) then
+      constitutive_gdot_slip(i) = 0.0_pReal
+      constitutive_dgdot_dtauslip(i) = 0.0_pReal
+   else
+      constitutive_gdot_slip(i)=constitutive_g0_slip(i)*sinh(constitutive_tau_slip(i)*constitutive_activation_volume(i)/Kb/Tp)
+      constitutive_dgdot_dtauslip(i)=constitutive_g0_slip(i)*constitutive_activation_volume(i)/Kb/Tp*&
+                                     cosh(constitutive_tau_slip(i)*constitutive_activation_volume(i)/Kb/Tp) 	
+   endif							  						    
    Lp=Lp+(1.0_pReal-Ftwin)*constitutive_gdot_slip(i)*crystal_Sslip(:,:,i,material_CrystalStructure(matID))
 enddo
 
@@ -1038,8 +1034,6 @@ do i=1,material_Ntwin(matID)
       crystal_Stwin(:,:,i,material_CrystalStructure(matID))
 enddo
 
-!write(6,*) 'constitutive_gdot_slip'
-!write(6,*) constitutive_gdot_slip
 
 !* Calculation of the tangent of Lp
 dLp_dTstar=0.0_pReal
@@ -1099,9 +1093,6 @@ real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotSt
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
-
-!* Recompute arrays from the microstructure (may be not needed)
-call constitutive_Microstructure(state,Tp,ipc,ip,el)
 
 !* Hardening of each system
 do i=1,material_Nslip(matID)

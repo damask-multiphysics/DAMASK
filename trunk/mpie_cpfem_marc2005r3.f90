@@ -34,7 +34,7 @@
  include "crystal.f90"
  include "constitutive.f90"
  include "CPFEM.f90"
-!
+
  SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
                     nshear,disp,dispt,coord,ffn,frotn,strechn,eigvn,ffn1,&
                     frotn1,strechn1,eigvn1,ncrd,itel,ndeg,ndm,&

@@ -116,7 +116,6 @@
  real(pReal)   ffn(3,3), ffn1(3,3), Temperature, CPFEM_dt, CPFEM_stress(CPFEM_ngens), CPFEM_jaco(CPFEM_ngens,CPFEM_ngens)
  logical CPFEM_stress_recovery
 !
-Temperature = 293.0_pReal
 ! calculate only every second cycle
 if(mod(CPFEM_cn,2)==0) then
 ! really calculate only in first call of new cycle and when in stress recovery
@@ -151,7 +150,6 @@ if(mod(CPFEM_cn,2)==0) then
 ! this shall be done in a parallel loop in the future
         do e=1,mesh_NcpElems
             do i=1,FE_Nips(FE_mapElemtype(mesh_element(2,e)))
-			    write(6,*) 'Debut', e,i
                 call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, i, e)
             enddo
         enddo
@@ -330,8 +328,6 @@ if(mod(CPFEM_cn,2)==0) then
  real(pReal), dimension(6,6) :: dcs_de
  real(pReal), dimension(constitutive_Nstatevars(grain,CPFEM_in,cp_en)) :: state_old,state_new,state_pert
 
- write(6,*)
- write(6,*) 'SOLUTION'
  call CPFEM_timeIntegration(msg,Fp_new,Fe_new,Tstar_v,state_new, &   ! def gradients and PK2 at end of time step
                             dt,cp_en,CPFEM_in,grain,Fg_new,Fp_old,state_old)
  
@@ -346,9 +342,7 @@ if(mod(CPFEM_cn,2)==0) then
 
      Fg_pert = Fg_new+matmul(E_pert,Fg_old) ! perturbated Fg
      Tstar_v_pert = Tstar_v                 ! initial guess from end of time step
-     state_pert = state_new                 ! initial guess from end of time step
-	 write(6,*)	
-	 write(6,*) 'CONSISTENT TANGENT', i 
+     state_pert = state_new                 ! initial guess from end of time step 
      call CPFEM_timeIntegration(msg,Fp_pert,Fe_pert,Tstar_v_pert,state_pert, &
                                 dt,cp_en,CPFEM_in,grain,Fg_pert,Fp_old,state_old)
      if (msg /= 'ok') then
@@ -359,14 +353,6 @@ if(mod(CPFEM_cn,2)==0) then
      dcs_de(:,i) = (CPFEM_CauchyStress(Tstar_v_pert,Fe_pert)-cs)/pert_e
    enddo
  endif
-
- write(6,*) 'OPERATEUR TANGENTE'
- write(6,*) dcs_de(1,:)
- write(6,*) dcs_de(2,:)
- write(6,*) dcs_de(3,:)
- write(6,*) dcs_de(4,:)
- write(6,*) dcs_de(5,:)
- write(6,*) dcs_de(6,:)
 
  return
 
@@ -394,7 +380,7 @@ if(mod(CPFEM_cn,2)==0) then
  use prec
  use constitutive, only: constitutive_Nstatevars,&
                          constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent,&
-						 constitutive_Microstructure
+ 						 constitutive_Microstructure
  use math
  implicit none
 
@@ -437,10 +423,10 @@ state: do                ! outer iteration: state
          endif
 		 call constitutive_Microstructure(state_new,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en)
 		 C_66 = constitutive_HomogenizedC(state_new, grain, CPFEM_in, cp_en)
+
          iStress = 0_pInt
 stress:  do              ! inner iteration: stress
            iStress = iStress+1
-		   write(6,*) 'istate,istress', istate, istress
            if (iStress > nStress) then      ! too many loops required
              msg = 'limit stress iteration'
              return
@@ -462,9 +448,6 @@ stress:  do              ! inner iteration: stress
                 dTstar_v=0.5*dTstar_v
                 cycle
            endif
-		   write(6,*) 'Tstar_v', Tstar_v
-		   write(6,*) 'dTstar_v', dTstar_v 
-		   !write(6,*) 'norm stress', maxval(abs(Rstress/maxval(abs(Tstar_v))))
            if (iStress > 1 .and. &
                (maxval(abs(Tstar_v)) < abstol_Stress .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < reltol_Stress)) exit stress
 
@@ -480,9 +463,9 @@ stress:  do              ! inner iteration: stress
                  enddo
                enddo
              enddo
-           enddo
-           Jacobi = math_identity2nd(6) + 0.5_pReal*dt*matmul(C_66,math_Mandel3333to66(LTL))
-           j = 0_pInt
+           enddo         
+		   Jacobi = math_identity2nd(6) + 0.5_pReal*dt*matmul(C_66,math_Mandel3333to66(LTL))
+		   j = 0_pInt
            call math_invert6x6(Jacobi,invJacobi,dummy,failed)
            do while (failed .and. j <= nReg)
              forall (i=1:6) Jacobi(i,i) = 1.05_pReal*maxval(Jacobi(i,:)) ! regularization
@@ -496,10 +479,14 @@ stress:  do              ! inner iteration: stress
            dTstar_v = matmul(invJacobi,Rstress)  ! correction to Tstar
            Rstress_old=Rstress
            Tstar_v = Tstar_v-dTstar_v
-
+		
 
     enddo stress
     Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
+    !if ((printer==1_pInt).AND.(CPFEM_in==1_pInt).AND.(cp_en==1_pInt)) then
+	!write(6,'(A10, 12ES12.3)') 'state_new', state_new
+	!write(6,'(A10, 6ES12.3)') 'Tstar_v', Tstar_v
+	!endif
     dstate = dt*constitutive_dotState(Tstar_v,state_new,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en) ! evolution of microstructure
 	Rstate = state_new - (state_old+dstate)
     RstateS = 0.0_pReal
@@ -507,12 +494,9 @@ stress:  do              ! inner iteration: stress
       RstateS(i) = Rstate(i)/state_new(i)
     state_new = state_old+dstate
 
-	write(6,*) 'norm state', maxval(abs(RstateS))
     if (maxval(abs(RstateS)) < reltol_State) exit state
 
  enddo state
-! write(999,*) 'Tstar_v raus', Tstar_v
-! write(999,*)
 
  invFp_new = matmul(invFp_old,B)
  call math_invert3x3(invFp_new,Fp_new,det,failed)

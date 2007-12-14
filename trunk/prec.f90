@@ -9,7 +9,7 @@
  integer, parameter :: pInt  = 4
 !    *** Numerical parameters ***
 !    *** How frequently the jacobian is recalculated ***
- integer (pInt), parameter :: ijaco = 5_pInt
+ integer (pInt), parameter :: ijaco = 1_pInt
 !    *** Maximum number of internal cutbacks in time step ***
  integer(pInt), parameter :: nCutback = 7_pInt
 !    *** Maximum number of regularization attempts for Jacobi inversion ***

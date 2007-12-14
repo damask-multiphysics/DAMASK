@@ -1,28 +1,28 @@
 <materials>
-[Aluminium]
+[TWIP steel FeMnC]
 crystal_structure		              1
 Nslip				              12
 Ntwin                                         0
 ## Elastic constants 
 # Unit in [Pa]
-C11				              106.75e9
-C12				              60.41e9
-C44				              28.34e9
+C11				              245.0e9
+C12				              105.0e9
+C44				              65.0e9
 
 ## Parameters for phenomenological modeling
 # Unit in [Pa]
-s0_slip				              31.0e6
+s0_slip				              85.0e6
 gdot0_slip			              0.001
-n_slip				              20
-h0				              75.0e6
-s_sat				              63.0e6
-w0				              2.25
+n_slip				              100.0
+h0				              355.0e6
+s_sat				              265.0e6
+w0				              1.0
 # Self and latent hardening coefficients
 hardening_coefficients        	              1.0 1.4
 
 ## Parameters for dislocation-based modeling
 # Initial dislocation density [m]²
-rho0				              1.5e11 
+rho0				              2.8e13 
 # Burgers vector [m]                        
 burgers			                      2.86e-10
 # Activation energy for dislocation glide [J/K]
@@ -34,31 +34,33 @@ c1				              0.1
 # Jump width adjustment
 c2                                            2.0
 # Activation volume adjustment
-c3                                            0.4
+c3                                            1.2
 # Dislocation storage adjustment
-c4                      	              20.0
+# = c4(Anxin)*c2(Anxin) !!!!!!
+c4                      	              14.29 
+# Athermal annihilation adjustment
+c7				              20.0
+# Dislocation interaction coefficients
+interaction_coefficients	              1.0 2.2 3.0 1.6 3.8 4.5
+
+# Twin parameters
 # Grain boundaries storage adjustment
 c5                                            1.0e100
 # Twin boundaries storage adjustment
 c6                                            1.0e100
-# Athermal annihilation adjustment
-c7				              10.0
-# Dislocation interaction coefficients
-interaction_coefficients	              1.0 2.2 3.0 1.6 3.8 4.5
-# Twin parameters
 # grain size, average size of stacks of twins [m]
 grain_size                                    1.5e-5
 stack_size                                    5.0e-8
 # stacking fault energy
 stacking_fault_energy                         2.0e-2
 # Twin reference [?], twin resistance [Pa], twin sensitivity
-twin_ref                                      1.0e-15
-twin_res                                      150.0e6
-twin_sens                                     10.0
+twin_reference                                1.0e-15
+twin_resistance                               150.0e6
+twin_sensitivity                              10.0
                       
 
 <textures>
 [cube SX]
-symmetry			monoclinic /orthorhombic
-Ngrains				2 /4
-(gauss)				phi1	0.0	phi	0.0	phi2	0.0 scatter 0.0	fraction 1.0
+symmetry			no /monoclinic /orthorhombic
+Ngrains				1 /2 /4
+(gauss)				phi1	0.0	phi	45.0	phi2	0.0 scatter 0.0	fraction 1.0

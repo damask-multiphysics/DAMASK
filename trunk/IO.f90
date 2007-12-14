@@ -499,10 +499,10 @@
 
  END FUNCTION
 
-!********************************************************************
+!*********************************************************************
 ! read consecutive lines of ints concatenated by "c" as last char
 ! or range of values a "to" b
-!********************************************************************
+!*********************************************************************
  FUNCTION IO_continousIntValues (unit,maxN,lookupName,lookupMap,lookupMaxN)
 
  use prec, only: pReal,pInt

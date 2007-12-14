@@ -310,7 +310,7 @@ implicit none
 
 !* Definition of variables
 integer(pInt) i,j,k,l
-real(pReal) invNorm
+real(pReal) norm_d,norm_t,norm_n
 
 !* Iteration over the crystal structures
 do l=1,crystal_MaxCrystalStructure
@@ -320,14 +320,16 @@ do l=1,crystal_MaxCrystalStructure
       crystal_st(1,k,l)=crystal_sn(2,k,l)*crystal_sd(3,k,l)-crystal_sn(3,k,l)*crystal_sd(2,k,l)
 	  crystal_st(2,k,l)=crystal_sn(3,k,l)*crystal_sd(1,k,l)-crystal_sn(1,k,l)*crystal_sd(3,k,l)
 	  crystal_st(3,k,l)=crystal_sn(1,k,l)*crystal_sd(2,k,l)-crystal_sn(2,k,l)*crystal_sd(1,k,l)
+	  norm_d=dsqrt(crystal_sd(1,k,l)**2+crystal_sd(2,k,l)**2+crystal_sd(3,k,l)**2)
+      norm_t=dsqrt(crystal_st(1,k,l)**2+crystal_st(2,k,l)**2+crystal_st(3,k,l)**2)
+      norm_n=dsqrt(crystal_sn(1,k,l)**2+crystal_sn(2,k,l)**2+crystal_sn(3,k,l)**2)
+      crystal_sd(:,k,l)=crystal_sd(:,k,l)/norm_d
+	  crystal_st(:,k,l)=crystal_st(:,k,l)/norm_t
+	  crystal_sn(:,k,l)=crystal_sn(:,k,l)/norm_n
 !* Defintion of Schmid matrix
       forall (i=1:3,j=1:3)
 	         crystal_Sslip(i,j,k,l)=crystal_sd(i,k,l)*crystal_sn(j,k,l)
       endforall
-!* Normalization of Schmid matrix
-      invNorm=dsqrt(1.0_pReal/((crystal_sn(1,k,l)**2+crystal_sn(2,k,l)**2+crystal_sn(3,k,l)**2)*&
-	          (crystal_sd(1,k,l)**2+crystal_sd(2,k,l)**2+crystal_sd(3,k,l)**2)))
-      crystal_Sslip(:,:,k,l)=crystal_Sslip(:,:,k,l)*invNorm
 !* Vectorization of normalized Schmid matrix
       crystal_Sslip_v(1,k,l)=crystal_Sslip(1,1,k,l)
       crystal_Sslip_v(2,k,l)=crystal_Sslip(2,2,k,l)
@@ -344,16 +346,18 @@ do l=1,crystal_MaxCrystalStructure
       crystal_tt(1,k,l)=crystal_tn(2,k,l)*crystal_td(3,k,l)-crystal_tn(3,k,l)*crystal_td(2,k,l)
 	  crystal_tt(2,k,l)=crystal_tn(3,k,l)*crystal_td(1,k,l)-crystal_tn(1,k,l)*crystal_td(3,k,l)
 	  crystal_tt(3,k,l)=crystal_tn(1,k,l)*crystal_td(2,k,l)-crystal_tn(2,k,l)*crystal_td(1,k,l)
+	  norm_d=dsqrt(crystal_td(1,k,l)**2+crystal_td(2,k,l)**2+crystal_td(3,k,l)**2)
+      norm_t=dsqrt(crystal_tt(1,k,l)**2+crystal_tt(2,k,l)**2+crystal_tt(3,k,l)**2)
+      norm_n=dsqrt(crystal_tn(1,k,l)**2+crystal_tn(2,k,l)**2+crystal_tn(3,k,l)**2)
+      crystal_td(:,k,l)=crystal_td(:,k,l)/norm_d
+	  crystal_tt(:,k,l)=crystal_tt(:,k,l)/norm_t
+	  crystal_tn(:,k,l)=crystal_tn(:,k,l)/norm_n
 !* Defintion of Schmid matrix and transformation matrices
       crystal_Qtwin(:,:,k,l)=-math_I3
       forall (i=1:3,j=1:3)
 	         crystal_Stwin(i,j,k,l)=crystal_td(i,k,l)*crystal_tn(j,k,l)
 			 crystal_Qtwin(i,j,k,l)=crystal_Qtwin(i,j,k,l)+2*crystal_tn(i,k,l)*crystal_tn(j,k,l)
       endforall
-!* Normalization of Schmid matrix
-      invNorm=dsqrt(1.0_pReal/((crystal_tn(1,k,l)**2+crystal_tn(2,k,l)**2+crystal_tn(3,k,l)**2)*&
-	          (crystal_td(1,k,l)**2+crystal_td(2,k,l)**2+crystal_td(3,k,l)**2)))
-      crystal_Stwin(:,:,k,l)=crystal_Stwin(:,:,k,l)*invNorm
 !* Vectorization of normalized Schmid matrix
       crystal_Stwin_v(1,k,l)=crystal_Stwin(1,1,k,l)
       crystal_Stwin_v(2,k,l)=crystal_Stwin(2,2,k,l)
