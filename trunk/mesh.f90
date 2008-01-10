@@ -373,7 +373,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  END SUBROUTINE
 
  
-!********************************************************************
+!!********************************************************************
 ! get maximum count of nodes, IPs, IP neighbors, and shared elements
 ! for subsequent array allocations
 !
@@ -381,20 +381,24 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _maxNnodes, _maxNips, _maxNipNeighbors, _maxNsharedElems
 !********************************************************************
  SUBROUTINE mesh_get_nodeElemDimensions (unit)
-
+ 
  use prec, only: pInt
  use IO
  implicit none
-
+ 
  integer(pInt), dimension (mesh_Nnodes) :: node_count
+ integer(pInt), dimension (:), allocatable :: node_seen
  integer(pInt) unit,i,j,n,t,e
  integer(pInt), dimension (133) :: pos
  character*300 line
-
+ 
+ integer(pInt) targetNode
+ 
 610 FORMAT(A300)
-
+ 
  node_count = 0_pInt
-
+ allocate(node_seen(maxval(FE_Nnodes)))
+ 
  rewind(unit)
  do
    read (unit,610,END=630) line
@@ -410,18 +414,22 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
+         node_seen = 0_pInt
          do j=1,FE_Nnodes(t)
            n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
-           node_count(n) = node_count(n)+1
+           if (all(node_seen /= n)) then
+             node_count(n) = node_count(n)+1
+           end if
+           node_seen(j) = n
          end do
        end if
      end do
      exit
    end if
  end do
-
+ 
 630 mesh_maxNsharedElems = maxval(node_count)
-
+ 
  return
  END SUBROUTINE
  
