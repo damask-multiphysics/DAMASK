@@ -28,6 +28,7 @@
 !********************************************************************
 !
  include "prec.f90"
+ include "debug.f90"
  include "math.f90"
  include "IO.f90"
  include "mesh.f90"

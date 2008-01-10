@@ -559,6 +559,7 @@
  SUBROUTINE IO_error(ID)
 
  use prec, only: pInt
+ use debug
  implicit none
 
  integer(pInt) ID
@@ -581,7 +582,7 @@
  case (500)
    msg='Unknown lattice type specified'
  case (600)
-   msg='Stress iteration did not converge'
+   msg='Convergence not reached'
  case (700)
    msg='Singular matrix in stress iteration'
  case default
@@ -591,6 +592,9 @@
  write(6,*) 'MPIE Material Routine Ver. 0.0 by the coding team'
  write(6,*)
  write(6,*) msg
+ write(6,*)
+ call debug_info()
+
  call flush(6)
  call quit(9000+ID)
 ! ABAQUS returns in some cases

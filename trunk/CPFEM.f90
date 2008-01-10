@@ -39,7 +39,7 @@
 !*********************************************************
  SUBROUTINE CPFEM_init()
 !
- use prec, only: pReal,pInt
+ use prec
  use math, only: math_EulertoR, math_I3, math_identity2nd
  use mesh
  use constitutive
@@ -106,6 +106,7 @@
                           CPFEM_en, CPFEM_in, CPFEM_stress, CPFEM_jaco, CPFEM_ngens)
 !
  use prec, only: pReal,pInt
+ use debug
  use math, only: math_init, invnrmMandel
  use mesh, only: mesh_init,mesh_FEasCP, mesh_NcpElems, FE_Nips, FE_mapElemtype, mesh_element
  use crystal, only: crystal_Init
@@ -148,6 +149,9 @@ if(mod(CPFEM_cn,2)==0) then
         endif
         CPFEM_cycle_old=CPFEM_cn
 ! this shall be done in a parallel loop in the future
+        debug_cutbackDistribution = 0_pInt
+        debug_stressLoopDistribution = 0_pInt
+        debug_stateLoopDistribution = 0_pInt
         do e=1,mesh_NcpElems
             do i=1,FE_Nips(FE_mapElemtype(mesh_element(2,e)))
                 call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, i, e)
@@ -185,6 +189,7 @@ if(mod(CPFEM_cn,2)==0) then
      cp_en)           ! Element number
 
  use prec, only: pReal,pInt,ijaco,nCutback
+ use debug
  use math, only: math_pDecomposition,math_RtoEuler, inDeg
  use IO,   only: IO_error
  use mesh, only: mesh_element
@@ -240,7 +245,10 @@ if(mod(CPFEM_cn,2)==0) then
                                   dt,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
                                   Fg(:,:,i_now),Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
      if (msg == 'ok') then             ! solution converged
-       if (t == CPFEM_dt) exit         ! reached final "then"
+       if (t == CPFEM_dt) then
+	     debug_cutbackDistribution(i) = debug_cutbackDistribution(i)+1
+	     exit         ! reached final "then"
+	   endif
      else                              ! solution not found
        i = i+1_pInt                    ! inc cutback counter
 !       write(6,*) 'ncut:', i
@@ -378,6 +386,7 @@ if(mod(CPFEM_cn,2)==0) then
      state_old)         ! former microstructure
 
  use prec
+ use debug
  use constitutive, only: constitutive_Nstatevars,&
                          constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent,&
  						 constitutive_Microstructure
@@ -419,6 +428,7 @@ state: do                ! outer iteration: state
          iState = iState+1
          if (iState > nState) then
            msg = 'limit state iteration'
+		   debug_stateLoopDistribution(nState) = debug_stateLoopDistribution(nState)+1
            return
          endif
 		 call constitutive_Microstructure(state_new,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en)
@@ -429,6 +439,7 @@ stress:  do              ! inner iteration: stress
            iStress = iStress+1
            if (iStress > nStress) then      ! too many loops required
              msg = 'limit stress iteration'
+		     debug_stressLoopDistribution(nStress) = debug_stateLoopDistribution(nStress)+1
              return
            endif
            p_hydro=(Tstar_v(1)+Tstar_v(2)+Tstar_v(3))/3.0_pReal
@@ -474,7 +485,7 @@ stress:  do              ! inner iteration: stress
            enddo
            if (failed) then
              msg = 'regularization Jacobi'
-             return
+			 return
            endif
            dTstar_v = matmul(invJacobi,Rstress)  ! correction to Tstar
            Rstress_old=Rstress
@@ -482,9 +493,10 @@ stress:  do              ! inner iteration: stress
 		
 
     enddo stress
+    debug_stressLoopDistribution(iStress) = debug_stressLoopDistribution(iStress)+1
     Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
     !if ((printer==1_pInt).AND.(CPFEM_in==1_pInt).AND.(cp_en==1_pInt)) then
-	!write(6,'(A10, 12ES12.3)') 'state_new', state_new
+	!write(6,'(A10, 24ES12.3)') 'state_new', state_new
 	!write(6,'(A10, 6ES12.3)') 'Tstar_v', Tstar_v
 	!endif
     dstate = dt*constitutive_dotState(Tstar_v,state_new,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en) ! evolution of microstructure
@@ -497,6 +509,7 @@ stress:  do              ! inner iteration: stress
     if (maxval(abs(RstateS)) < reltol_State) exit state
 
  enddo state
+ debug_strateLoopDistribution(iState) = debug_stateLoopDistribution(iState)+1
 
  invFp_new = matmul(invFp_old,B)
  call math_invert3x3(invFp_new,Fp_new,det,failed)
@@ -507,6 +520,7 @@ stress:  do              ! inner iteration: stress
  Fp_new = Fp_new*det**(1.0_pReal/3.0_pReal) ! det = det(InvFp_new) !!
  Fe_new = matmul(Fg_new,invFp_new)
  return
+ 
  END SUBROUTINE
 
 

@@ -17,11 +17,11 @@
 !    *** Perturbation of strain array for numerical calculation of FEM Jacobi matrix ***
  real(pReal), parameter :: pert_e=1.0e-5_pReal  
 !    *** Maximum number of iterations in outer (state variables) loop ***
- integer(pInt), parameter :: nState    = 50_pInt
+ integer(pInt), parameter :: nState    = 500_pInt
 !    *** Convergence criteria for outer (state variables) loop ***
  real(pReal),   parameter :: reltol_State = 1.0e-6_pReal
 !    *** Maximum number of iterations in inner (stress) loop ***
- integer(pInt), parameter :: nStress    = 500_pInt
+ integer(pInt), parameter :: nStress    = 1000_pInt
 !    *** Convergence criteria for inner (stress) loop ***
  real(pReal),   parameter :: reltol_Stress = 1.0e-6_pReal   
 !    *** Convergence criteria for inner (stress) loop ***
