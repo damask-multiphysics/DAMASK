@@ -509,7 +509,7 @@ stress:  do              ! inner iteration: stress
     if (maxval(abs(RstateS)) < reltol_State) exit state
 
  enddo state
- debug_strateLoopDistribution(iState) = debug_stateLoopDistribution(iState)+1
+ debug_stateLoopDistribution(iState) = debug_stateLoopDistribution(iState)+1
 
  invFp_new = matmul(invFp_old,B)
  call math_invert3x3(invFp_new,Fp_new,det,failed)

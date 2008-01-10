@@ -22,7 +22,7 @@ character(len=300), parameter :: mattexFile = 'mattex.mpie'
 !*************************************
 !* Physical parameter, attack_frequency != Debye frequency
 real(pReal), parameter :: attack_frequency = 1.0e10_pReal  
-!* Physical parameter, Boltzman constant in J/Kelvin
+!* Physical parameter, Boltzmann constant in J/Kelvin
 real(pReal), parameter :: kB = 1.38e-23_pReal
 
 !*************************************
@@ -1165,7 +1165,7 @@ startIdxTwin = material_Nslip(matID)
 
 if(constitutive_Nresults(ipc,ip,el)==0) return
 
-constitutive_post_results=0
+constitutive_post_results=0.0_pReal
 do i=1,material_Nslip(matID)
    constitutive_post_results(i) = state(i)
 !   tau_slip=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
