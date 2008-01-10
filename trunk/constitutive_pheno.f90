@@ -17,13 +17,6 @@ implicit none
 ! MISSING consistency check after reading 'mattex.mpie'
 character(len=300), parameter :: mattexFile = 'mattex.mpie'
 
-!*************************************
-!* Definition of material properties *
-!*************************************
-!* Physical parameter, attack_frequency != Debye frequency
-real(pReal), parameter :: attack_frequency = 1.0e10_pReal  
-!* Physical parameter, Boltzman constant in mJ/Kelvin
-real(pReal), parameter :: Kb = 1.38e-20_pReal
 
 !*************************************
 !* Definition of material properties *

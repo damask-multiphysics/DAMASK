@@ -23,7 +23,7 @@ character(len=300), parameter :: mattexFile = 'mattex.mpie'
 !* Physical parameter, attack_frequency != Debye frequency
 real(pReal), parameter :: attack_frequency = 1.0e10_pReal  
 !* Physical parameter, Boltzman constant in J/Kelvin
-real(pReal), parameter :: Kb = 1.38e-23_pReal
+real(pReal), parameter :: kB = 1.38e-23_pReal
 
 !*************************************
 !* Definition of material properties *
@@ -697,7 +697,7 @@ material_maxNslip       = maxval(material_Nslip)	! max of slip systems among mat
 material_maxNtwin       = maxval(material_Ntwin)    ! max of twin systems among materials present 
 constitutive_maxNstatevars = maxval(material_Nslip) + maxval(material_Ntwin)
 ! -----------------------------------------------------------------------------------------------------------------------
-constitutive_maxNresults = 1_pInt
+constitutive_maxNresults = 24_pInt
 ! -----------------------------------------------------------------------------------------------------------------------
 
 
@@ -798,10 +798,10 @@ do e=1,mesh_NcpElems
 		    constitutive_TexVolFrac(g,i,e) = texVolfrac(s)/multiplicity(texID)/Nsym(texID)
 		    constitutive_Nstatevars(g,i,e) = material_Nslip(matID) + material_Ntwin(matID)! number of state variables (i.e. tau_c of each slip system)
 ! -----------------------------------------------------------------------------------------------------------------------
-		    constitutive_Nresults(g,i,e)   = 0         ! number of constitutive results output by constitutive_post_results
+		    constitutive_Nresults(g,i,e)   = 24         ! number of constitutive results output by constitutive_post_results
 ! -----------------------------------------------------------------------------------------------------------------------
 		    constitutive_EulerAngles(:,g,i,e) = Euler(:,s)    ! store initial orientation
-            forall (l=1:constitutive_Nstatevars(g,i,e))  ! initialize state variables
+            forall (l=1:material_Nslip(matID))  ! initialize state variables
                constitutive_state_old(l,g,i,e) = material_rho0(matID)
                constitutive_state_new(l,g,i,e) = material_rho0(matID)
             end forall
@@ -930,13 +930,13 @@ do i=1,material_Nslip(matID)
 
    constitutive_activation_volume(i)=material_c3(matID)*constitutive_jump_width(i)*material_bg(matID)**2.0_pReal 
 
-   constitutive_rho_m(i)=(2.0_pReal*Kb*Tp*sqrt(constitutive_rho_p(i)))/&
+   constitutive_rho_m(i)=(2.0_pReal*kB*Tp*sqrt(constitutive_rho_p(i)))/&
                          (material_c1(matID)*material_c3(matID)*material_Gmod(matID)*constitutive_jump_width(i)*&
 						 material_bg(matID)**3.0_pReal) 
 
    constitutive_g0_slip(i)=constitutive_rho_m(i)*material_bg(matID)*attack_frequency*constitutive_jump_width(i)*&
                            exp(-(material_Qedge(matID)+constitutive_passing_stress(i)*constitutive_activation_volume(i))/&
-						   (Kb*Tp))
+						   (kB*Tp))
 enddo
 
 !* Quantities derived from state - twin
@@ -998,9 +998,9 @@ do i=1,material_Nslip(matID)
       constitutive_gdot_slip(i) = 0.0_pReal
       constitutive_dgdot_dtauslip(i) = 0.0_pReal
    else
-      constitutive_gdot_slip(i)=constitutive_g0_slip(i)*sinh(constitutive_tau_slip(i)*constitutive_activation_volume(i)/Kb/Tp)
-      constitutive_dgdot_dtauslip(i)=constitutive_g0_slip(i)*constitutive_activation_volume(i)/Kb/Tp*&
-                                     cosh(constitutive_tau_slip(i)*constitutive_activation_volume(i)/Kb/Tp) 	
+      constitutive_gdot_slip(i)=constitutive_g0_slip(i)*sinh(constitutive_tau_slip(i)*constitutive_activation_volume(i)/kB/Tp)
+      constitutive_dgdot_dtauslip(i)=constitutive_g0_slip(i)*constitutive_activation_volume(i)/kB/Tp*&
+                                     cosh(constitutive_tau_slip(i)*constitutive_activation_volume(i)/kB/Tp) 	
    endif							  						    
    Lp=Lp+(1.0_pReal-Ftwin)*constitutive_gdot_slip(i)*crystal_Sslip(:,:,i,material_CrystalStructure(matID))
 enddo
@@ -1081,30 +1081,53 @@ function constitutive_dotState(Tstar_v,state,Tp,ipc,ip,el)
 !*  - constitutive_DotState : evolution of state variable            *
 !*********************************************************************
 use prec, only: pReal,pInt
-use crystal, only: crystal_Sslip_v
+use crystal, only: crystal_Sslip_v,crystal_Stwin_v
 implicit none
 
 !* Definition of variables
 integer(pInt) ipc,ip,el
-integer(pInt) matID,i
-real(pReal) Tp,tau_slip,gdot_slip
+integer(pInt) matID,i,j,startIdxTwin
+real(pReal) Tp,Ftwin
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: constitutive_dotState,state
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
+startIdxTwin = material_Nslip(matID)
 
-!* Hardening of each system
+!* Dislocation density evolution
 do i=1,material_Nslip(matID)
-   tau_slip = dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
-   gdot_slip = constitutive_g0_slip(i)*sinh((abs(tau_slip)*constitutive_activation_volume(i))/(Kb*Tp))*&
-               sign(1.0_pReal,tau_slip)
-   constitutive_locks(i)=(sqrt(constitutive_rho_f(i))*abs(gdot_slip))/(material_c4(matID)*material_bg(matID))
-   constitutive_grainboundaries(i)=(abs(gdot_slip))/(material_c5(matID)*material_bg(matID)*material_GrainSize(matID))
-!   constitutive_twinboundaries(i)=(abs(gdot_slip)*constitutive_inv_intertwin_len(i))/(material_c6(matID)*material_bg(matID))
-   constitutive_recovery(i)=material_c7(matID)*state(i)*abs(gdot_slip)
-   constitutive_dotState(i)=constitutive_locks(i)+constitutive_grainboundaries(i)-& !+constitutive_twinboundaries(i)-&
+   constitutive_tau_slip(i)=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
+   if (abs(constitutive_tau_slip(i))<constitutive_passing_stress(i)) then
+      constitutive_gdot_slip(i) = 0.0_pReal
+   else
+      constitutive_gdot_slip(i)=constitutive_g0_slip(i)*sinh(constitutive_tau_slip(i)*constitutive_activation_volume(i)/kB/Tp)	
+   endif
+   constitutive_locks(i)=(sqrt(constitutive_rho_f(i))*abs(constitutive_gdot_slip(i)))/(material_c4(matID)*material_bg(matID))
+   constitutive_grainboundaries(i)=(abs(constitutive_gdot_slip(i)))/(material_c5(matID)*material_bg(matID)*&
+                                   material_GrainSize(matID))
+   do j=1,material_Ntwin(matID) ! to not count twin hardening effect when no twinning (if maybe be used)
+      constitutive_twinboundaries(i)=(abs(constitutive_gdot_slip(i))*constitutive_inv_intertwin_len(i))/(material_c6(matID)*&
+                                       material_bg(matID))
+   enddo
+   constitutive_recovery(i)=material_c7(matID)*state(i)*abs(constitutive_gdot_slip(i))
+   constitutive_dotState(i)=constitutive_locks(i)+constitutive_grainboundaries(i)+constitutive_twinboundaries(i)-&
                             constitutive_recovery(i)
+enddo
+
+!* Twin volume fraction evolution
+Ftwin = sum(state((startIdxTwin+1):(startIdxTwin+material_Ntwin(matID))))
+do i=1,material_Ntwin(matID)
+   constitutive_tau_twin(i)=dot_product(Tstar_v,crystal_Stwin_v(:,i,material_CrystalStructure(matID)))
+   if (constitutive_tau_twin(i)>0.0_pReal) then
+      constitutive_fdot_twin(i)=(1.0_pReal-Ftwin)*constitutive_twin_volume(i)*&
+	               ((material_twin_ref(matID)*sum(state(1:material_Nslip(matID)))**(1.5_pReal))/material_bg(matID))*&
+				   sum(abs(constitutive_gdot_slip))*(constitutive_tau_twin(i)/material_twin_res(matID))**&
+				   material_twin_sens(matID)
+   else
+      constitutive_fdot_twin(i)=0.0_pReal
+   endif
+   constitutive_dotState(startIdxTwin+i)=constitutive_fdot_twin(i)
 enddo
 
 return
@@ -1130,7 +1153,7 @@ implicit none
 
 !* Definition of variables
 integer(pInt) ipc,ip,el
-integer(pInt) matID,i
+integer(pInt) matID,i,startIdxTwin
 real(pReal) dt,Tp,tau_slip
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
@@ -1138,16 +1161,26 @@ real(pReal), dimension(constitutive_Nresults(ipc,ip,el))   :: constitutive_post_
 
 !* Get the material-ID from the triplet(ipc,ip,el)
 matID = constitutive_matID(ipc,ip,el)
+startIdxTwin = material_Nslip(matID)
 
 if(constitutive_Nresults(ipc,ip,el)==0) return
 
+constitutive_post_results=0
 do i=1,material_Nslip(matID)
    constitutive_post_results(i) = state(i)
-   tau_slip=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
-   constitutive_post_results(i+material_Nslip(matID)) = &
-     dt*constitutive_g0_slip(i)*sinh((abs(tau_slip)*constitutive_activation_volume(i))/(Kb*Tp))*&
-	 sign(1.0_pReal,tau_slip)
+!   tau_slip=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
+!   constitutive_post_results(i+material_Nslip(matID)) = &
+!     dt*constitutive_g0_slip(i)*sinh((abs(tau_slip)*constitutive_activation_volume(i))/(kB*Tp))*&
+!	 sign(1.0_pReal,tau_slip)
 enddo
+do i=1,material_Ntwin(matID)
+   constitutive_post_results(startIdxTwin+i) = state(startIdxTwin+i)
+!   tau_slip=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
+!   constitutive_post_results(i+material_Nslip(matID)) = &
+!     dt*constitutive_g0_slip(i)*sinh((abs(tau_slip)*constitutive_activation_volume(i))/(kB*Tp))*&
+!	 sign(1.0_pReal,tau_slip)
+enddo
+
 return
 
 end function
