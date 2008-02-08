@@ -242,7 +242,7 @@ if(mod(CPFEM_cn,2)==0) then
      endif
 
      call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Fp(:,:,i_then),Fe,state(:,i_then),&
-                                  dt,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
+                                  t,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
                                   Fg(:,:,i_now),Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
      if (msg == 'ok') then             ! solution converged
        if (t == CPFEM_dt) then
