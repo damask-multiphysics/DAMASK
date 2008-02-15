@@ -559,6 +559,7 @@
  SUBROUTINE IO_error(ID)
 
  use prec, only: pInt
+
  use debug
  implicit none
 
@@ -567,11 +568,17 @@
 
  select case (ID)
  case (100)
+
    msg='Unable to open input file.'
+
  case (110)
+
    msg='No materials specified via State Variable 2.'
+
  case (120)
+
    msg='No textures specified via State Variable 3.'
+
  case (200)
    msg='Error reading from material+texture file'
  case (300)
@@ -579,10 +586,13 @@
   &elements with three direct stress components'
  case (400)
    msg='Unknown alloy number specified'
+
  case (500)
    msg='Unknown lattice type specified'
  case (600)
    msg='Convergence not reached'
+ case (650)
+   msg='Polar decomposition failed'
  case (700)
    msg='Singular matrix in stress iteration'
  case default
@@ -592,8 +602,11 @@
  write(6,*) 'MPIE Material Routine Ver. 0.0 by the coding team'
  write(6,*)
  write(6,*) msg
+
  write(6,*)
+
  call debug_info()
+
 
  call flush(6)
  call quit(9000+ID)

@@ -22,14 +22,12 @@
  real(pReal), dimension (:,:,:,:,:), allocatable :: CPFEM_Fp_old
  real(pReal), dimension (:,:,:,:,:), allocatable :: CPFEM_Fp_new
  real(pReal), dimension (:,:,:,:),   allocatable :: CPFEM_jaco_old
- real(pReal), dimension(6,6) :: CPFEM_dummy_jacobian
- real(pReal) CPFEM_dummy_stress
+ real(pReal), parameter :: CPFEM_odd_stress = 1e15_pReal, CPFEM_odd_jacobian = 1e50_pReal
  integer(pInt) :: CPFEM_inc_old    = 0_pInt
  integer(pInt) :: CPFEM_subinc_old = 1_pInt
  integer(pInt) :: CPFEM_cycle_old = -1_pInt
  integer(pInt) :: CPFEM_Nresults   = 4_pInt    ! three Euler angles plus volume fraction
  logical :: CPFEM_first_call = .true.
-
 
  CONTAINS
 
@@ -73,9 +71,6 @@
 !    *** Old jacobian (consistent tangent) ***
  allocate(CPFEM_jaco_old(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_jaco_old = 0.0_pReal
 !
-!    *** dummy Jacobian and stress returned in odd cycles
- CPFEM_dummy_jacobian=1.0e50_pReal*math_identity2nd(6)
- CPFEM_dummy_stress = 1e5_pReal
 !
 !    *** Output to MARC output file ***
  write(6,*)
@@ -107,23 +102,31 @@
 !
  use prec, only: pReal,pInt
  use debug
- use math, only: math_init, invnrmMandel
+ use math, only: math_init, invnrmMandel, math_identity2nd
  use mesh, only: mesh_init,mesh_FEasCP, mesh_NcpElems, FE_Nips, FE_mapElemtype, mesh_element
  use crystal, only: crystal_Init
- use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new
+ use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new,material_Cslip_66
  implicit none
-!
- integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en, CPFEM_ngens, i, e
- real(pReal)   ffn(3,3), ffn1(3,3), Temperature, CPFEM_dt, CPFEM_stress(CPFEM_ngens), CPFEM_jaco(CPFEM_ngens,CPFEM_ngens)
+
+ integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en, CPFEM_ngens, i,j, e
+ real(pReal)   ffn(3,3),ffn1(3,3),Temperature,CPFEM_dt,CPFEM_stress(CPFEM_ngens),CPFEM_jaco(CPFEM_ngens,CPFEM_ngens)
  logical CPFEM_stress_recovery
-!
+
 ! calculate only every second cycle
-if(mod(CPFEM_cn,2)==0) then
-! really calculate only in first call of new cycle and when in stress recovery
-    if(CPFEM_cn/=CPFEM_cycle_old .and. (CPFEM_stress_recovery .or. CPFEM_cn==0)) then
-! initialization step
-        if (CPFEM_first_call) then
-! three dimensional stress state ?
+
+ if(mod(CPFEM_cn,2) /= 0) then ! odd cycle: record data for use in even cycle and return stiff result for this odd cycle
+    cp_en = mesh_FEasCP('elem',CPFEM_en)
+    CPFEM_Temperature(CPFEM_in, cp_en)  = Temperature
+    CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
+    CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
+    CPFEM_stress(1:CPFEM_ngens) = CPFEM_odd_stress
+    CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_odd_jacobian*math_identity2nd(CPFEM_ngens)
+
+ else  ! even cycle: really calculate only in first call of new cycle and when in stress recovery
+
+    if(CPFEM_cn/=CPFEM_cycle_old .and. CPFEM_stress_recovery) then
+        if (CPFEM_first_call) then             ! initialization step
+                                               ! three dimensional stress state ?
             call math_init()
             call mesh_init()
             call crystal_Init()
@@ -132,47 +135,47 @@ if(mod(CPFEM_cn,2)==0) then
             CPFEM_Temperature  = Temperature
             CPFEM_first_call = .false.
         endif
-        if (CPFEM_inc==CPFEM_inc_old) then ! not a new increment
-! case of a new subincrement:update starting with subinc 2
-            if (CPFEM_subinc > CPFEM_subinc_old) then
+
+        if (CPFEM_inc == CPFEM_inc_old) then   ! not a new increment
+            if (CPFEM_subinc > CPFEM_subinc_old) then  ! new subincrement: update starting with subinc 2
                 CPFEM_sigma_old        = CPFEM_sigma_new
                 CPFEM_Fp_old           = CPFEM_Fp_new
                 constitutive_state_old = constitutive_state_new
                 CPFEM_subinc_old       = CPFEM_subinc
             endif
-        else                               ! new increment
+        else                                   ! new increment
             CPFEM_sigma_old         = CPFEM_sigma_new
             CPFEM_Fp_old            = CPFEM_Fp_new
             constitutive_state_old  = constitutive_state_new
             CPFEM_inc_old           = CPFEM_inc
             CPFEM_subinc_old        = 1_pInt
         endif
-        CPFEM_cycle_old=CPFEM_cn
+        CPFEM_cycle_old = CPFEM_cn
+
+        debug_cutbackDistribution = 0_pInt     ! initialize debugging data
+        debug_InnerLoopDistribution = 0_pInt
+        debug_OuterLoopDistribution = 0_pInt
+
 ! this shall be done in a parallel loop in the future
-        debug_cutbackDistribution = 0_pInt
-        debug_stressLoopDistribution = 0_pInt
-        debug_stateLoopDistribution = 0_pInt
+
         do e=1,mesh_NcpElems
             do i=1,FE_Nips(FE_mapElemtype(mesh_element(2,e)))
+!                debugger = (e==1 .and. i==1)
                 call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, i, e)
             enddo
         enddo
+
+        call debug_info()        ! output of debugging/performance statistics
     end if
+
 ! return stress and jacobi
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13
     cp_en = mesh_FEasCP('elem', CPFEM_en)
-    CPFEM_stress(1:CPFEM_ngens)=invnrmMandel(1:CPFEM_ngens)*CPFEM_stress_all(1:CPFEM_ngens, CPFEM_in, cp_en)
-    CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens)=CPFEM_jaco_old(1:CPFEM_ngens,1:CPFEM_ngens, CPFEM_in, cp_en)
-    forall(i=1:CPFEM_ngens) CPFEM_jaco(1:CPFEM_ngens,i)=CPFEM_jaco(1:CPFEM_ngens,i)*invnrmMandel(1:CPFEM_ngens)
- else
-! record data for use in second cycle and return fixed result 
-    cp_en = mesh_FEasCP('elem',CPFEM_en)
-    CPFEM_Temperature(CPFEM_in, cp_en)  = Temperature
-    CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
-    CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
-    CPFEM_stress(1:CPFEM_ngens) = CPFEM_dummy_stress
-    CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens)=CPFEM_dummy_jacobian(1:CPFEM_ngens,1:CPFEM_ngens)
+    CPFEM_stress(1:CPFEM_ngens) = invnrmMandel(1:CPFEM_ngens)*CPFEM_stress_all(1:CPFEM_ngens, CPFEM_in, cp_en)
+    CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_jaco_old(1:CPFEM_ngens,1:CPFEM_ngens, CPFEM_in, cp_en)
+    forall(i=1:CPFEM_ngens) &
+      CPFEM_jaco(1:CPFEM_ngens,i) = CPFEM_jaco(1:CPFEM_ngens,i)*invnrmMandel(1:CPFEM_ngens)
  end if
  return
 
@@ -190,21 +193,21 @@ if(mod(CPFEM_cn,2)==0) then
 
  use prec, only: pReal,pInt,ijaco,nCutback
  use debug
- use math, only: math_pDecomposition,math_RtoEuler, inDeg
+ use math, only: math_pDecomposition,math_RtoEuler, inDeg, math_I3, math_invert3x3
  use IO,   only: IO_error
  use mesh, only: mesh_element
  use constitutive
-!
+
  implicit none
 
  integer(pInt), parameter :: i_now = 1_pInt,i_then = 2_pInt
  character(len=128) msg
  integer(pInt) CPFEM_cn,cp_en,CPFEM_in,grain,i
  logical updateJaco,error
- real(pReal) CPFEM_dt,dt,t,volfrac
+ real(pReal) CPFEM_dt,dt,t,volfrac,det
  real(pReal), dimension(6) :: cs,Tstar_v
  real(pReal), dimension(6,6) :: cd
- real(pReal), dimension(3,3) :: Fe,U,R,deltaFg
+ real(pReal), dimension(3,3) :: Fe,U,R,deltaFg,invFgthen,invFpnow,Lp
  real(pReal), dimension(3,3,2) :: Fg,Fp
  real(pReal), dimension(constitutive_maxNstatevars,2) :: state
 
@@ -218,16 +221,26 @@ if(mod(CPFEM_cn,2)==0) then
 ! -------------------------------------------
 
    i = 0_pInt                         ! cutback counter
+   dt = CPFEM_dt
    state(:,i_now) = constitutive_state_old(:,grain,CPFEM_in,cp_en)
    Fg(:,:,i_now)  = CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
    Fp(:,:,i_now)  = CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en)
+   invFgthen = 0.0_pReal
+   invFpnow = 0.0_pReal
+   call math_invert3x3(CPFEM_ffn1_all(:,:,CPFEM_in,cp_en),invFgthen,det,error)
+   call math_invert3x3(Fp(:,:,i_now),invFpnow,det,error)
+   if (dt /= 0.0_pReal) then
+     Lp = (math_I3-matmul(Fp(:,:,i_now),matmul(invFgthen,matmul(Fg(:,:,i_now),invFpnow))))/dt ! fully plastic initial guess
+   else
+     Lp = 0.0_pReal                                          ! fully elastic guess 
+   endif
 
    deltaFg = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en)-CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
-   dt = CPFEM_dt
 
-   Tstar_v = CPFEM_sigma_old(:,grain,CPFEM_in,cp_en)                ! use last result as initial guess
+   Tstar_v = CPFEM_sigma_old(:,grain,CPFEM_in,cp_en)         ! use last result as initial guess
    Fg(:,:,i_then) = Fg(:,:,i_now)
-   state(:,i_then) = 0.0_pReal        ! state_old as initial guess
+   Fp(:,:,i_then) = Fp(:,:,i_now)
+   state(:,i_then) = 0.0_pReal                               ! state_old as initial guess
    t = 0.0_pReal
 
 ! ------- crystallite integration -----------
@@ -241,24 +254,22 @@ if(mod(CPFEM_cn,2)==0) then
        Fg(:,:,i_then) = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en) ! final Fg
      endif
 
-     call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Fp(:,:,i_then),Fe,state(:,i_then),&
+     call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Lp,Fp(:,:,i_then),Fe,state(:,i_then),&
                                   t,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
                                   Fg(:,:,i_now),Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
      if (msg == 'ok') then             ! solution converged
        if (t == CPFEM_dt) then
-	     debug_cutbackDistribution(i) = debug_cutbackDistribution(i)+1
-	     exit         ! reached final "then"
+	     debug_cutbackDistribution(i+1) = debug_cutbackDistribution(i+1)+1
+	     exit                          ! reached final "then"
 	   endif
      else                              ! solution not found
        i = i+1_pInt                    ! inc cutback counter
-!       write(6,*) 'ncut:', i
        if (i > nCutback) then          ! limit exceeded?
+	     debug_cutbackDistribution(nCutback+1) = debug_cutbackDistribution(nCutback+1)+1
+         write(6,*)
          write(6,*) 'cutback limit --> '//msg
-         write(6,*) 'Grain:             ',grain
-         write(6,*) 'Integration point: ',CPFEM_in
-         write(6,*) 'Element:           ',mesh_element(1,cp_en)
          call IO_error(600)
-         return                        ! byebye
+         return                          ! byebye
        else
          t = t-dt                        ! rewind time
          Fg(:,:,i_then) = Fg(:,:,i_then)-deltaFg ! rewind Fg
@@ -283,7 +294,7 @@ if(mod(CPFEM_cn,2)==0) then
      write(6,*) 'Grain:             ',grain
      write(6,*) 'Integration point: ',CPFEM_in
      write(6,*) 'Element:           ',mesh_element(1,cp_en)
-     call IO_error(600)
+     call IO_error(650)
      return
    endif
    CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))*inDeg        ! orientation
@@ -299,15 +310,13 @@ if(mod(CPFEM_cn,2)==0) then
 
 !********************************************************************
 ! Calculates the stress for a single component
-! it is based on the paper by Kalidindi et al.:
-! J. Mech. Phys, Solids Vol. 40, No. 3, pp. 537-569, 1992
-! it is modified to use anisotropic elasticity matrix
 !********************************************************************
  subroutine CPFEM_stressCrystallite(&
      msg,&        ! return message
      cs,&         ! Cauchy stress vector
      dcs_de,&     ! consistent tangent
      Tstar_v,&    ! second Piola-Kirchoff stress tensor
+     Lp,&         ! guess of plastic velocity gradient
      Fp_new,&     ! new plastic deformation gradient
      Fe_new,&     ! new "elastic" deformation gradient
      state_new,&  ! new state variable array
@@ -323,7 +332,9 @@ if(mod(CPFEM_cn,2)==0) then
      state_old)   ! old state variable array
 
  use prec, only: pReal,pInt,pert_e
+ use debug
  use constitutive, only: constitutive_Nstatevars
+ use mesh, only: mesh_element
  use math, only: math_Mandel6to33,mapMandel
  implicit none
 
@@ -331,17 +342,15 @@ if(mod(CPFEM_cn,2)==0) then
  logical updateJaco
  integer(pInt) cp_en,CPFEM_in,grain,i
  real(pReal) dt
- real(pReal), dimension(3,3) :: Fg_old,Fg_new,Fg_pert,Fp_old,Fp_new,Fp_pert,Fe_new,Fe_pert,E_pert
+ real(pReal), dimension(3,3) :: Lp,Fg_old,Fg_new,Fg_pert,Fp_old,Fp_new,Fp_pert,Fe_new,Fe_pert,E_pert
  real(pReal), dimension(6)   :: cs,Tstar_v,Tstar_v_pert
  real(pReal), dimension(6,6) :: dcs_de
  real(pReal), dimension(constitutive_Nstatevars(grain,CPFEM_in,cp_en)) :: state_old,state_new,state_pert
 
- call CPFEM_timeIntegration(msg,Fp_new,Fe_new,Tstar_v,state_new, &   ! def gradients and PK2 at end of time step
-                            dt,cp_en,CPFEM_in,grain,Fg_new,Fp_old,state_old)
- 
- if (msg /= 'ok') return
+ call CPFEM_timeIntegration(msg,Lp,Fp_new,Fe_new,Tstar_v,state_new, &   ! def gradients and PK2 at end of time step
+                            dt,cp_en,CPFEM_in,grain,Fg_new,Fg_old,Fp_old,state_old)
+ if (msg /= 'ok') return                    ! solution not reached --> report back
  cs = CPFEM_CauchyStress(Tstar_v,Fe_new)    ! Cauchy stress
-
  if (updateJaco) then                       ! consistent tangent using numerical perturbation of Fg
    do i = 1,6                               ! Fg component
      E_pert = 0.0_pReal
@@ -350,9 +359,9 @@ if(mod(CPFEM_cn,2)==0) then
 
      Fg_pert = Fg_new+matmul(E_pert,Fg_old) ! perturbated Fg
      Tstar_v_pert = Tstar_v                 ! initial guess from end of time step
-     state_pert = state_new                 ! initial guess from end of time step 
-     call CPFEM_timeIntegration(msg,Fp_pert,Fe_pert,Tstar_v_pert,state_pert, &
-                                dt,cp_en,CPFEM_in,grain,Fg_pert,Fp_old,state_old)
+     state_pert = state_new                 ! initial guess from end of time step
+     call CPFEM_timeIntegration(msg,Lp,Fp_pert,Fe_pert,Tstar_v_pert,state_pert, &
+                                dt,cp_en,CPFEM_in,grain,Fg_pert,Fg_old,Fp_old,state_old)
      if (msg /= 'ok') then
        msg = 'consistent tangent --> '//msg
        return
@@ -369,24 +378,29 @@ if(mod(CPFEM_cn,2)==0) then
 
 !***********************************************************************
 !***     fully-implicit two-level time integration                   ***
+!***     based on a residuum in Lp and intermediate                  ***
+!***     acceleration of the Newton-Raphson correction               ***
 !***********************************************************************
  SUBROUTINE CPFEM_timeIntegration(&
      msg,&              ! return message
+     Lpguess,&          ! guess of plastic velocity gradient
      Fp_new,&           ! new plastic deformation gradient
      Fe_new,&           ! new "elastic" deformation gradient
      Tstar_v,&          ! 2nd PK stress (taken as initial guess if /= 0)
-     state_new,&        ! current microstructure at end of time inc (taken as guess if /= 0)
+     state,&            ! current microstructure at end of time inc (taken as guess if /= 0)
 !
      dt,&               ! time increment
      cp_en,&            ! element number
      CPFEM_in,&         ! integration point number
      grain,&            ! grain number
      Fg_new,&           ! new total def gradient
+     Fg_old,&           ! old total def gradient
      Fp_old,&           ! former plastic def gradient
      state_old)         ! former microstructure
 
  use prec
  use debug
+ use mesh, only: mesh_element
  use constitutive, only: constitutive_Nstatevars,&
                          constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent,&
  						 constitutive_Microstructure
@@ -395,130 +409,136 @@ if(mod(CPFEM_cn,2)==0) then
 
  character(len=*) msg
  integer(pInt) cp_en, CPFEM_in, grain
- integer(pInt) iState,iStress,dummy, i,j,k,l,m
- real(pReal) dt,det, p_hydro
- real(pReal), dimension(6) :: Tstar_v,dTstar_v,Rstress, T_elastic, Rstress_old
- real(pReal), dimension(6,6) :: C_66,Jacobi,invJacobi
- real(pReal), dimension(3,3) :: Fg_new,Fp_old,Fp_new,Fe_new,invFp_old,invFp_new,Lp,A,B,AB
- real(pReal), dimension(3,3,3,3) :: dLp, LTL
- real(pReal), dimension(constitutive_Nstatevars(grain, CPFEM_in, cp_en)) :: state_old,state_new,dstate,Rstate,RstateS
+ integer(pInt) iOuter,iInner,dummy, i,j,k,l,m,n
+ real(pReal) dt, det, p_hydro, max_dlnLp, max_deltalnLp, leapfrog,maxleap
+ real(pReal), dimension(6) :: Tstar_v
+ real(pReal), dimension(9) :: deltaLp,deltaR
+ 
+ real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2
+ real(pReal), dimension(6,6) :: C_66
+ real(pReal), dimension(3,3) :: Fg_new,invFg_new,Fg_old,Fp_new,invFp_new,Fp_old,invFp_old,Fe_new,Fe_old
+ real(pReal), dimension(3,3) :: Tstar
+ real(pReal), dimension(3,3) :: Lp,Lpguess,Lpguess_old,dLpguess,Rinner,Rinner_old,A,B,BT,AB,BTA
+ real(pReal), dimension(3,3,3,3) :: C
+ real(pReal), dimension(constitutive_Nstatevars(grain, CPFEM_in, cp_en)) :: state_old,state,ROuter
  logical failed
 
  msg = 'ok'  ! error-free so far
-
- call math_invert3x3(Fp_old,invFp_old,det,failed) ! inversion of Fp
+ 
+ eye2 = math_identity2nd(9)
+ call math_invert3x3(Fp_old,invFp_old,det,failed) ! inversion of Fp_old
  if (failed) then
     msg = 'inversion Fp_old'
     return
  endif
+ call math_invert3x3(Fg_new,invFg_new,det,failed) ! inversion of Fg_new
+ if (failed) then
+    msg = 'inversion Fg_new'
+    return
+ endif
 
+ Fe_old = matmul(Fg_new,invFp_old)
+ A = matmul(transpose(Fe_old), Fe_old)
 
- A = matmul(Fg_new,invFp_old)  ! actually Fe
- A = matmul(transpose(A), A)
+ if (all(state == 0.0_pReal)) state = state_old    ! former state guessed, if none specified
+ iOuter = 0_pInt                                   ! outer counter
 
-! former state guessed, if none specified
- if (all(state_new == 0.0_pReal)) state_new = state_old
- RstateS = state_new
- iState = 0_pInt
-
- Rstress = Tstar_v
- Rstress_old=Rstress
-
-state: do                ! outer iteration: state
-         iState = iState+1
-         if (iState > nState) then
-           msg = 'limit state iteration'
-		   debug_stateLoopDistribution(nState) = debug_stateLoopDistribution(nState)+1
+Outer: do                ! outer iteration: State
+         iOuter = iOuter+1
+         if (iOuter > nOuter) then
+           msg = 'limit Outer iteration'
+		   debug_OuterLoopDistribution(nOuter) = debug_OuterLoopDistribution(nOuter)+1
            return
          endif
-		 call constitutive_Microstructure(state_new,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en)
-		 C_66 = constitutive_HomogenizedC(state_new, grain, CPFEM_in, cp_en)
+		 call constitutive_Microstructure(state,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en)
+		 C_66 = constitutive_HomogenizedC(state, grain, CPFEM_in, cp_en)
+         C = math_Mandel66to3333(C_66)       ! 4th rank elasticity tensor
+         
+         iInner = 0_pInt
+         leapfrog = 1.0_pReal                ! correction as suggested by invdRdLp-step
+         maxleap = 1024.0_pReal              ! preassign maximum acceleration level
 
-         iStress = 0_pInt
-stress:  do              ! inner iteration: stress
-           iStress = iStress+1
-           if (iStress > nStress) then      ! too many loops required
-             msg = 'limit stress iteration'
-		     debug_stressLoopDistribution(nStress) = debug_stateLoopDistribution(nStress)+1
+Inner:  do              ! inner iteration: Lp
+           iInner = iInner+1
+           if (iInner > nInner) then         ! too many loops required
+             msg = 'limit Inner iteration'
+		     debug_InnerLoopDistribution(nInner) = debug_InnerLoopDistribution(nInner)+1
              return
            endif
-           p_hydro=(Tstar_v(1)+Tstar_v(2)+Tstar_v(3))/3.0_pReal
-           forall(i=1:3) Tstar_v(i)=Tstar_v(i)-p_hydro
-           call constitutive_LpAndItsTangent(Lp,dLp,Tstar_v,state_new,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en)
-           B = math_I3-dt*Lp
-!           B = B / math_det3x3(B)**(1.0_pReal/3.0_pReal)
+           B = math_i3 - dt*Lpguess
+           BT = transpose(B)
            AB = matmul(A,B)
-           T_elastic= 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
-           p_hydro=(T_elastic(1)+T_elastic(2)+T_elastic(3))/3.0_pReal
-           forall(i=1:3) T_elastic(i)=T_elastic(i)-p_hydro
-           Rstress = Tstar_v - T_elastic
-!          step size control: if residuum does not improve redo iteration with reduced step size
-           if(maxval(abs(Rstress)) > maxval(abs(Rstress_old)) .and. &
-           maxval(abs(Rstress)) > abstol_ResStress .and. iStress > 1) then
-                Tstar_v=Tstar_v+0.5*dTstar_v
-                dTstar_v=0.5*dTstar_v
-                cycle
+           BTA = matmul(BT,A)
+           Tstar_v = 0.5_pReal*matmul(C_66,math_mandel33to6(matmul(BT,AB)-math_I3))
+           Tstar = math_Mandel6to33(Tstar_v)
+           p_hydro=(Tstar_v(1)+Tstar_v(2)+Tstar_v(3))/3.0_pReal
+           forall(i=1:3) Tstar_v(i) = Tstar_v(i)-p_hydro       ! subtract hydrostatic pressure
+           call constitutive_LpAndItsTangent(Lp,dLp, &
+                                             Tstar_v,state,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en)
+           Rinner = Lpguess - Lp                   ! update current residuum
+           if (( maxval(abs(Rinner)) < abstol_Inner ) .or. &
+               ( any(abs(dt*Lpguess) > relevantStrain) .and. &
+                maxval(abs(Rinner/Lpguess),abs(dt*Lpguess) > relevantStrain) < reltol_Inner )&
+              ) exit Inner
+
+           ! check for acceleration/deceleration in Newton--Raphson correction
+           
+           if (leapfrog > 1.0_pReal .and. &
+               (sum(Rinner*Rinner) > sum(Rinner_old*Rinner_old) .or. &  ! worse residuum
+               sum(Rinner*Rinner_old) < 0.0_pReal)) then                ! residuum changed sign (overshoot)
+
+             maxleap = 0.5_pReal * leapfrog                             ! limit next acceleration
+             leapfrog = 1.0_pReal                                       ! grinding halt
+
+           else                                                         ! better residuum
+
+             dTdLp = 0.0_pReal                                          ! calc dT/dLp
+             forall (i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
+               dTdLp(3*(i-1)+j,3*(k-1)+l) = dTdLp(3*(i-1)+j,3*(k-1)+l) + &
+               C(i,j,l,n)*AB(k,n)+C(i,j,m,l)*BTA(m,k)
+             dTdLp = -0.5_pReal*dt*dTdLp
+           
+             dRdLp = eye2 - matmul(dLp,dTdLp)                           ! calc dR/dLp
+
+             invdRdLp = 0.0_pReal
+             call math_invert(9,dRdLp,invdRdLp,dummy,failed)            ! invert dR/dLp --> dLp/dR
+             if (failed) then
+               msg = 'inversion dR/dLp'
+               return
+             endif
+
+             Rinner_old = Rinner                                        ! remember current residuum
+             Lpguess_old = Lpguess                                      ! remember current Lp guess
+             if (iInner > 1 .and. leapfrog < maxleap) &
+               leapfrog = 2.0_pReal * leapfrog                          ! accelerate
            endif
-           if (iStress > 1 .and. &
-               (maxval(abs(Tstar_v)) < abstol_Stress .or. maxval(abs(Rstress/maxval(abs(Tstar_v)))) < reltol_Stress)) exit stress
 
-!   update stress guess using inverse of dRes/dTstar (Newton--Raphson)
-           LTL = 0.0_pReal
-           do i=1,3
-             do j=1,3
-               do k=1,3
-                 do l=1,3
-                   do m=1,3
-                     LTL(i,j,k,l) = LTL(i,j,k,l) + dLp(j,i,m,k)*AB(m,l) + AB(m,i)*dLp(m,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           enddo         
-		   Jacobi = math_identity2nd(6) + 0.5_pReal*dt*matmul(C_66,math_Mandel3333to66(LTL))
-		   j = 0_pInt
-           call math_invert6x6(Jacobi,invJacobi,dummy,failed)
-           do while (failed .and. j <= nReg)
-             forall (i=1:6) Jacobi(i,i) = 1.05_pReal*maxval(Jacobi(i,:)) ! regularization
-             call math_invert6x6(Jacobi,invJacobi,dummy,failed)
-             j = j+1
-           enddo
-           if (failed) then
-             msg = 'regularization Jacobi'
-			 return
-           endif
-           dTstar_v = matmul(invJacobi,Rstress)  ! correction to Tstar
-           Rstress_old=Rstress
-           Tstar_v = Tstar_v-dTstar_v
-		
+           Lpguess = Lpguess_old                                        ! start from current guess
+           Rinner  = Rinner_old                                         ! use current residuum
+           forall (i=1:3,j=1:3,k=1:3,l=1:3) &                           ! leapfrog to updated Lpguess 
+             Lpguess(i,j) = Lpguess(i,j) - leapfrog*invdRdLp(3*(i-1)+j,3*(k-1)+l)*Rinner(k,l)
+  		   
+     enddo Inner
+ 
+       debug_InnerLoopDistribution(iInner) = debug_InnerLoopDistribution(iInner)+1
+	   ROuter = state - state_old - &
+	            dt*constitutive_dotState(Tstar_v,state,CPFEM_Temperature(CPFEM_in,cp_en),&
+	                                     grain,CPFEM_in,cp_en)          ! evolution of microstructure
+       state = state - ROuter
+       if (maxval(abs(Router/state),state /= 0.0_pReal) < reltol_Outer) exit Outer
 
-    enddo stress
-    debug_stressLoopDistribution(iStress) = debug_stressLoopDistribution(iStress)+1
-    Tstar_v = 0.5_pReal*matmul(C_66,math_Mandel33to6(matmul(transpose(B),AB)-math_I3))
-    !if ((printer==1_pInt).AND.(CPFEM_in==1_pInt).AND.(cp_en==1_pInt)) then
-	!write(6,'(A10, 24ES12.3)') 'state_new', state_new
-	!write(6,'(A10, 6ES12.3)') 'Tstar_v', Tstar_v
-	!endif
-    dstate = dt*constitutive_dotState(Tstar_v,state_new,CPFEM_Temperature(CPFEM_in,cp_en),grain,CPFEM_in,cp_en) ! evolution of microstructure
-	Rstate = state_new - (state_old+dstate)
-    RstateS = 0.0_pReal
-    forall (i=1:constitutive_Nstatevars(grain,CPFEM_in,cp_en), state_new(i)/=0.0_pReal) &
-      RstateS(i) = Rstate(i)/state_new(i)
-    state_new = state_old+dstate
+   enddo Outer
 
-    if (maxval(abs(RstateS)) < reltol_State) exit state
-
- enddo state
- debug_stateLoopDistribution(iState) = debug_stateLoopDistribution(iState)+1
-
+ debug_OuterLoopDistribution(iOuter) = debug_OuterLoopDistribution(iOuter)+1
  invFp_new = matmul(invFp_old,B)
  call math_invert3x3(invFp_new,Fp_new,det,failed)
  if (failed) then
     msg = 'inversion Fp_new'
     return
  endif
- Fp_new = Fp_new*det**(1.0_pReal/3.0_pReal) ! det = det(InvFp_new) !!
- Fe_new = matmul(Fg_new,invFp_new)
+ Fp_new = Fp_new*det**(1.0_pReal/3.0_pReal)     ! regularize Fp by det = det(InvFp_new) !!
+ Fe_new = matmul(Fg_new,invFp_new)              ! calc resulting Fe
+ forall (i=1:3) Tstar_v(i) = Tstar_v(i)+p_hydro ! add hydrostatic component back
  return
  
  END SUBROUTINE
@@ -526,7 +546,7 @@ stress:  do              ! inner iteration: stress
 
  FUNCTION CPFEM_CauchyStress(PK_v,Fe)
 !***********************************************************************
-!***        Cauchy stress calculation                               ***
+!***        Cauchy stress calculation                                ***
 !***********************************************************************
  use prec, only: pReal,pInt
  use math, only: math_Mandel33to6,math_Mandel6to33,math_det3x3

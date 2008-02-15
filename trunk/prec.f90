@@ -7,26 +7,19 @@
 !    *** Precision of real and integer variables ***
  integer, parameter :: pReal = 8
  integer, parameter :: pInt  = 4
+ real(pReal), parameter :: relevantStrain = 1e-7
+
 !    *** Numerical parameters ***
+
 !    *** How frequently the jacobian is recalculated ***
- integer (pInt), parameter :: ijaco = 1_pInt
-!    *** Maximum number of internal cutbacks in time step ***
- integer(pInt), parameter :: nCutback = 7_pInt
-!    *** Maximum number of regularization attempts for Jacobi inversion ***
- integer(pInt), parameter :: nReg = 1_pInt
-!    *** Perturbation of strain array for numerical calculation of FEM Jacobi matrix ***
- real(pReal), parameter :: pert_e=1.0e-5_pReal  
-!    *** Maximum number of iterations in outer (state variables) loop ***
- integer(pInt), parameter :: nState    = 500_pInt
-!    *** Convergence criteria for outer (state variables) loop ***
- real(pReal),   parameter :: reltol_State = 1.0e-6_pReal
-!    *** Maximum number of iterations in inner (stress) loop ***
- integer(pInt), parameter :: nStress    = 1000_pInt
-!    *** Convergence criteria for inner (stress) loop ***
- real(pReal),   parameter :: reltol_Stress = 1.0e-6_pReal   
-!    *** Convergence criteria for inner (stress) loop ***
- real(pReal),   parameter :: abstol_Stress = 1.0e3_pReal   
-!    *** Convergence criteria for inner (stress) loop ***
- real(pReal),   parameter :: abstol_ResStress = 1.0_pReal   
+ integer(pInt), parameter :: ijaco        = 1_pInt       ! frequency of FEM Jacobi update
+ integer(pInt), parameter :: nCutback     = 10_pInt      ! cutbacks in time-step integration
+ integer(pInt), parameter :: nReg         = 1_pInt       ! regularization attempts for Jacobi inversion
+ real(pReal),   parameter :: pert_e       = 1.0e-5_pReal ! strain perturbation for FEM Jacobi
+ integer(pInt), parameter :: nOuter       = 10_pInt      ! outer loop limit
+ integer(pInt), parameter :: nInner       = 200_pInt     ! inner loop limit
+ real(pReal),   parameter :: reltol_Outer = 1.0e-4_pReal ! relative tolerance in outer loop (state)
+ real(pReal),   parameter :: reltol_Inner = 1.0e-6_pReal ! relative tolerance in inner loop (Lp)
+ real(pReal),   parameter :: abstol_Inner = 1.0e-8_pReal ! absolute tolerance in inner loop (Lp)
 
  END MODULE prec
