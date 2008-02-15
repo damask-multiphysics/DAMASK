@@ -3,6 +3,7 @@
  MODULE math   
 !##############################################################
 
+
  use prec, only: pReal,pInt
  implicit none
 
@@ -15,6 +16,7 @@
  1.0_pReal,0.0_pReal,0.0_pReal, &
  0.0_pReal,1.0_pReal,0.0_pReal, &
  0.0_pReal,0.0_pReal,1.0_pReal /),(/3,3/))
+
 ! *** Mandel notation ***
  integer(pInt), dimension (2,6), parameter :: mapMandel = &
  reshape((/&
@@ -25,10 +27,12 @@
   2,3, &
   1,3  &
  /),(/2,6/))
+
  real(pReal), dimension(6), parameter :: nrmMandel = &
  (/1.0_pReal,1.0_pReal,1.0_pReal, 1.414213562373095_pReal, 1.414213562373095_pReal, 1.414213562373095_pReal/)
  real(pReal), dimension(6), parameter :: invnrmMandel = &
  (/1.0_pReal,1.0_pReal,1.0_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal/)
+
 ! *** Voigt notation ***
  integer(pInt), dimension (2,6), parameter :: mapVoigt = &
  reshape((/&
@@ -39,10 +43,26 @@
   1,3, &
   1,2  &
  /),(/2,6/))
+
  real(pReal), dimension(6), parameter :: nrmVoigt = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal/)
+ (/1.0_pReal,1.0_pReal,1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal/)
  real(pReal), dimension(6), parameter :: invnrmVoigt = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal,1.0_pReal/)
+ (/1.0_pReal,1.0_pReal,1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal/)
+
+! *** Plain notation ***
+ integer(pInt), dimension (2,9), parameter :: mapPlain = &
+ reshape((/&
+  1,1, &
+  1,2, &
+  1,3, &
+  2,1, &
+  2,2, &
+  2,3, &
+  3,1, &
+  3,2, &
+  3,3  &
+ /),(/2,9/))
+
  
 
  CONTAINS
@@ -96,7 +116,9 @@
 
  d = size(a,1) ! number of linked data
 ! set the starting and ending points, and the pivot point
+
  i = istart
+
  j = iend
  x = a(1,istart)
  do
@@ -163,6 +185,7 @@
 
  END FUNCTION
 
+ 
 
 !**************************************************************************
 ! Cramer inversion of 3x3 matrix
@@ -170,7 +193,6 @@
  SUBROUTINE math_invert3x3(A, InvA, DetA, error)
 
 !   Bestimmung der Determinanten und Inversen einer 3x3-Matrix
-
 !   A      = Matrix A
 !   InvA   = Inverse of A
 !   DetA   = Determinant of A
@@ -180,6 +202,7 @@
  implicit none
 
  logical, intent(out) :: error
+
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal),dimension(3,3),intent(out) :: InvA
  real(pReal), intent(out) :: DetA
@@ -188,7 +211,7 @@
         - A(1,2) * ( A(2,1) * A(3,3) - A(2,3) * A(3,1) )&
         + A(1,3) * ( A(2,1) * A(3,2) - A(2,2) * A(3,1) )
 
- if (DetA <= 0.0000001) then
+ if (DetA <= tiny(DetA)) then
    error = .true.
  else
    InvA(1,1) = (  A(2,2) * A(3,3) - A(2,3) * A(3,2) ) / DetA
@@ -210,13 +233,13 @@
  END SUBROUTINE
 
 
+
 !**************************************************************************
 ! Gauss elimination to invert 6x6 matrix
 !**************************************************************************
- SUBROUTINE math_invert6x6(A, InvA, AnzNegEW, error)
+ SUBROUTINE math_invert(dimen,A, InvA, AnzNegEW, error)
 
-!   Invertieren einer 6x6-Matrix
-
+!   Invertieren einer dimen x dimen - Matrix
 !   A        = Matrix A
 !   InvA     = Inverse von A
 !   AnzNegEW = Anzahl der negativen Eigenwerte von A
@@ -228,44 +251,42 @@
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal),dimension(6,6), intent(in)  :: A
- real(pReal),dimension(6,6), intent(out) :: InvA
+ integer(pInt), intent(in) :: dimen
+ real(pReal),dimension(dimen,dimen), intent(in)  :: A
+ real(pReal),dimension(dimen,dimen), intent(out) :: InvA
  integer(pInt), intent(out) :: AnzNegEW
  logical, intent(out) :: error
-
  integer(pInt) i
  real(pReal) LogAbsDetA
- real(pReal),dimension(6,6) :: B
+ real(pReal),dimension(dimen,dimen) :: B
 
- InvA = 0.0_pReal
-
- forall(i = 1:6) InvA(i,i) = 1.0_pReal
+ InvA = math_identity2nd(dimen)
  B = A
- CALL Gauss (B,InvA,LogAbsDetA,AnzNegEW,error)
+ CALL Gauss(dimen,B,InvA,LogAbsDetA,AnzNegEW,error)
 
  RETURN
 
- END SUBROUTINE math_invert6x6
+ END SUBROUTINE math_invert
+
+ 
 
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
- SUBROUTINE Gauss (A,B,LogAbsDetA,NegHDK,error)
+ SUBROUTINE Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
 
 !   Loesung eines linearen Gleichungsssystem A * X = B mit Hilfe des
-!   GAUSS-Algorithmusses
-
+!   GAUSS-Algorithmus
 !   Zur numerischen Stabilisierung wird eine Zeilen- und Spaltenpivotsuche
 !   durchgefuehrt.
 
 !   Eingabeparameter:
 !
-!   A(6,6) = Koeffizientenmatrix A
-!   B(6,6) = rechte Seiten B
+!   A(dimen,dimen) = Koeffizientenmatrix A
+!   B(dimen,dimen) = rechte Seiten B
 !
 !   Ausgabeparameter:
 !
-!   B(6,6)        = Matrix der Unbekanntenvektoren X
+!   B(dimen,dimen)    = Matrix der Unbekanntenvektoren X
 !   LogAbsDetA    = 10-Logarithmus des Betrages der Determinanten von A
 !   NegHDK        = Anzahl der negativen Hauptdiagonalkoeffizienten nach der
 !                   Vorwaertszerlegung
@@ -279,18 +300,19 @@
  implicit none
 
  logical error
- integer (pInt) NegHDK
+ integer (pInt) dimen,NegHDK
  real(pReal)    LogAbsDetA
- real(pReal)    A(6,6), B(6,6)
+ real(pReal)    A(dimen,dimen), B(dimen,dimen)
 
+ INTENT (IN)     dimen
  INTENT (OUT)    LogAbsDetA, NegHDK, error
  INTENT (INOUT)  A, B
 
  LOGICAL        SortX
  integer (pInt) PivotZeile, PivotSpalte, StoreI, I, IP1, J, K, L
- integer (pInt) XNr(6)
+ integer (pInt) XNr(dimen)
  real(pReal)    AbsA, PivotWert, EpsAbs, Quote
- real(pReal)    StoreA(6), StoreB(6)
+ real(pReal)    StoreA(dimen), StoreB(dimen)
 
  error = .true.
  NegHDK = 1
@@ -298,7 +320,7 @@
 
 !   Unbekanntennumerierung
 
- DO  I = 1, 6
+ DO  I = 1, dimen
     XNr(I) = I
  END DO
 
@@ -308,8 +330,8 @@
  PivotZeile  = 1
  PivotSpalte = 1
 
- DO  I = 1, 6
-    DO  J = 1, 6
+ DO  I = 1, dimen
+    DO  J = 1, dimen
         AbsA = ABS(A(I,J))
         IF (AbsA .GT. PivotWert) THEN
             PivotWert   = AbsA
@@ -325,61 +347,44 @@
 
 !   V O R W A E R T S T R I A N G U L A T I O N
 
- DO  I = 1, 6 - 1
-
+ DO  I = 1, dimen - 1
 !     Zeilentausch?
-
     IF (PivotZeile .NE. I) THEN
-
-        StoreA(I:6)       = A(I,I:6)
-        A(I,I:6)          = A(PivotZeile,I:6)
-        A(PivotZeile,I:6) = StoreA(I:6)
-
-        StoreB(1:6)        = B(I,1:6)
-        B(I,1:6)           = B(PivotZeile,1:6)
-        B(PivotZeile,1:6)  = StoreB(1:6)
-
+        StoreA(I:dimen)       = A(I,I:dimen)
+        A(I,I:dimen)          = A(PivotZeile,I:dimen)
+        A(PivotZeile,I:dimen) = StoreA(I:dimen)
+        StoreB(1:dimen)        = B(I,1:dimen)
+        B(I,1:dimen)           = B(PivotZeile,1:dimen)
+        B(PivotZeile,1:dimen)  = StoreB(1:dimen)
         SortX                = .TRUE.
-
     END IF
-
 !     Spaltentausch?
-
     IF (PivotSpalte .NE. I) THEN
-
-        StoreA(1:6)        = A(1:6,I)
-        A(1:6,I)           = A(1:6,PivotSpalte)
-        A(1:6,PivotSpalte) = StoreA(1:6)
-
+        StoreA(1:dimen)        = A(1:dimen,I)
+        A(1:dimen,I)           = A(1:dimen,PivotSpalte)
+        A(1:dimen,PivotSpalte) = StoreA(1:dimen)
         StoreI                = XNr(I)
         XNr(I)                = XNr(PivotSpalte)
         XNr(PivotSpalte)      = StoreI
-
         SortX                 = .TRUE.
-
     END IF
-
 !     Triangulation
-
-    DO  J = I + 1, 6
+    DO  J = I + 1, dimen
         Quote = A(J,I) / A(I,I)
-        DO  K = I + 1, 6
+        DO  K = I + 1, dimen
             A(J,K) = A(J,K) - Quote * A(I,K)
         END DO
-        DO  K = 1, 6
+        DO  K = 1, dimen
             B(J,K) = B(J,K) - Quote * B(I,K)
         END DO
     END DO
-
 !     Bestimmung des groessten Pivotelementes
-
     IP1         = I + 1
     PivotWert   = ABS(A(IP1,IP1))
     PivotZeile  = IP1
     PivotSpalte = IP1
-
-    DO  J = IP1, 6
-        DO  K = IP1, 6
+    DO  J = IP1, dimen
+        DO  K = IP1, dimen
             AbsA = ABS(A(J,K))
             IF (AbsA .GT. PivotWert) THEN
                 PivotWert   = AbsA
@@ -395,9 +400,9 @@
 
 !   R U E C K W A E R T S A U F L O E S U N G
 
- DO  I = 6, 1, -1
-    DO  L = 1, 6
-        DO  J = I + 1, 6
+ DO  I = dimen, 1, -1
+    DO  L = 1, dimen
+        DO  J = I + 1, dimen
             B(I,L) = B(I,L) - A(I,J) * B(J,L)
         END DO
         B(I,L) = B(I,L) / A(I,I)
@@ -407,10 +412,9 @@
 !   Sortieren der Unbekanntenvektoren?
 
  IF (SortX) THEN
-
-    DO  L = 1, 6
-        StoreA(1:6) = B(1:6,L)
-        DO  I = 1, 6
+    DO  L = 1, dimen
+        StoreA(1:dimen) = B(1:dimen,L)
+        DO  I = 1, dimen
             J      = XNr(I)
             B(J,L) = StoreA(I)
         END DO
@@ -422,7 +426,7 @@
  LogAbsDetA = 0.0_pReal
  NegHDK     = 0
 
- DO  I = 1, 6
+ DO  I = 1, dimen
     IF (A(I,I) .LT. 0.0_pReal) NegHDK = NegHDK + 1
     AbsA       = ABS(A(I,I))
     LogAbsDetA = LogAbsDetA + LOG10(AbsA)
@@ -434,6 +438,41 @@
 
  END SUBROUTINE Gauss
 
+
+
+!********************************************************************
+! symmetrize a 3x3 matrix
+!********************************************************************
+ FUNCTION math_symmetric3x3(m)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3) :: math_symmetric3x3,m
+ integer(pInt) i,j
+ 
+ forall (i=1:3,j=1:3) math_symmetric3x3(i,j) = 1.0_pReal/2.0_pReal * &
+   (m(i,j) + m(j,i))
+
+ END FUNCTION
+ 
+
+!********************************************************************
+! symmetrize a 6x6 matrix
+!********************************************************************
+ FUNCTION math_symmetric6x6(m)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(6,6) :: math_symmetric6x6,m
+ integer(pInt) i,j
+ 
+ forall (i=1:6,j=1:6) math_symmetric6x6(i,j) = 1.0_pReal/2.0_pReal * &
+   (m(i,j) + m(j,i))
+
+ END FUNCTION
+ 
 
 !********************************************************************
 ! determinant of a 3x3 matrix
@@ -452,6 +491,42 @@
 
  END FUNCTION
 
+
+!********************************************************************
+! convert 3x3 matrix into vector 9x1
+!********************************************************************
+ FUNCTION math_Plain33to9(m33)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3) :: m33
+ real(pReal), dimension(9) :: math_Plain33to9
+ integer(pInt) i
+ 
+ forall (i=1:9) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+! convert Plain 9x1 back to 3x3 matrix
+!********************************************************************
+ FUNCTION math_Plain9to33(v9)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(9) :: v9
+ real(pReal), dimension(3,3) :: math_Plain9to33
+ integer(pInt) i
+ 
+ forall (i=1:9) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
+ return
+
+ END FUNCTION
+ 
 
 !********************************************************************
 ! convert symmetric 3x3 matrix into Mandel vector 6x1
@@ -487,6 +562,25 @@
   math_Mandel6to33(mapMandel(1,i),mapMandel(2,i)) = invnrmMandel(i)*v6(i)
   math_Mandel6to33(mapMandel(2,i),mapMandel(1,i)) = invnrmMandel(i)*v6(i)
  end forall
+ return
+
+ END FUNCTION
+
+
+!********************************************************************
+! convert 3x3x3x3 tensor into plain matrix 9x9
+!********************************************************************
+ FUNCTION math_Plain3333to99(m3333)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3,3,3) :: m3333
+ real(pReal), dimension(9,9) :: math_Plain3333to99
+ integer(pInt) i,j
+ 
+ forall (i=1:9,j=1:9) math_Plain3333to99(i,j) = &
+   m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
  return
 
  END FUNCTION
@@ -534,6 +628,7 @@
  END FUNCTION
 
 
+
 !********************************************************************
 ! convert Voigt matrix 6x6 back to symmetric 3x3x3x3 tensor
 !********************************************************************
@@ -555,6 +650,7 @@
  return
 
  END FUNCTION
+
 
 
 !********************************************************************
@@ -726,10 +822,15 @@
  real(pReal) noise,scatter,cosScatter
  integer(pInt) i
 
+
 if (noise==0.0) then
+
     math_sampleGaussOri = center
+
     return
+
 endif
+
 
 ! Helming uses different distribution with Bessel functions
 ! therefore the gauss scatter width has to be scaled differently
@@ -824,10 +925,16 @@ endif
  END FUNCTION
 
 
+
+
 !********************************************************************
+
 !   symmetric Euler angles for given symmetry string
+
 !   'triclinic' or '', 'monoclinic', 'orthotropic'
+
 !********************************************************************
+
  PURE FUNCTION math_symmetricEulers(sym,Euler)
 
  use prec, only: pReal, pInt
@@ -857,12 +964,15 @@ endif
 
    case ('monoclinic')  ! return only first
      math_symmetricEulers(:,2:3) = 0.0_pReal
+
    case default         ! return blank
      math_symmetricEulers = 0.0_pReal
  end select
+
  return
 
  END FUNCTION
+
 
 
 !****************************************************************
