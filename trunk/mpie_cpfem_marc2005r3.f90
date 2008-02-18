@@ -4,7 +4,7 @@
 ! written by F. Roters, P. Eisenlohr, L. Hantcherli, W.A. Counts
 ! MPI fuer Eisenforschung, Duesseldorf
 !
-! last modified: 08.11.2007
+! last modified: 18.02.2005
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
@@ -153,6 +153,10 @@
 !
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
+
+ logical stress_recovery
+
+ stress_recovery = (lovl == 6)
 !
 !     subroutine cpfem_general(mpie_ffn, mpie_ffn1, temperature, mpie_inc, mpie_subinc,  mpie_cn,
 !                              mpie_stress_recovery, mpie_tinc, mpie_en, mpie_in, mpie_s, mpie_d, mpie_ngens)
@@ -174,6 +178,10 @@
 !     mpie_ngens            size of stress strain law
 !********************************************************************
  call CPFEM_general(ffn, ffn1, t(1), inc, incsub, ncycle, stress_recovery, timinc, n(1), nn, s, d, ngens)
+!     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
+!     Marc:   11, 22, 33, 12, 23, 13
+ forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*d(1:ngens,i)*invnrmMandel(1:ngens)
+ s(1:ngens) = s(1:ngens)*invnrmMandel(1:ngens)
  return
  
  END SUBROUTINE

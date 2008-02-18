@@ -122,7 +122,9 @@
 !
 
  use prec, only: pReal,pInt
+
  use CPFEM, only: CPFEM_general
+ use math, only: invnrmMandel
  implicit real(pReal) (a-h,o-z)
 !
 ! Marc common blocks are in fixed format so they have to be pasted in here
@@ -158,32 +160,41 @@
 
  logical stress_recovery
 
- if(lovl==6) then
-    stress_recovery = .true.
- else
-    stress_recovery = .false.
- endif
+ stress_recovery = (lovl == 6)
 !
 !     subroutine cpfem_general(mpie_ffn, mpie_ffn1, temperature, mpie_inc, mpie_subinc,  mpie_cn,
+
 !                              mpie_stress_recovery, mpie_tinc, mpie_en, mpie_in, mpie_s, mpie_d, mpie_ngens)
 !********************************************************************
 !     This routine calculates the material behaviour
 !********************************************************************
 !     mpie_ffn              deformation gradient for t=t0
 !     mpie_ffn1             deformation gradient for t=t1
+
 !     temperature           temperature
+
 !     mpie_inc              increment number
+
 !     mpie_subinc           subincrement number
+
 !     mpie_cn               number of cycle
 !     mpie_stress_recovery  indicates wether we are in stiffness assemly(lovl==4) or stress recovery(lovl==6)
+
 !     mpie_tinc             time increment
 !     mpie_en               element number
 !     mpie_in               intergration point number
+
 !     mpie_s                stress vector in Marc notation, i.e. 11 22 33 12, 23, 13
+
 !     mpie_d                jacoby in Marc notation
+
 !     mpie_ngens            size of stress strain law
 !********************************************************************
  call CPFEM_general(ffn, ffn1, t(1), inc, incsub, ncycle, stress_recovery, timinc, n(1), nn, s, d, ngens)
+!     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
+!     Marc:   11, 22, 33, 12, 23, 13
+ forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*d(1:ngens,i)*invnrmMandel(1:ngens)
+ s(1:ngens) = s(1:ngens)*invnrmMandel(1:ngens)
  return
  
  END SUBROUTINE
