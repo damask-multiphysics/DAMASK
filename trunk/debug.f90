@@ -8,7 +8,8 @@
  integer(pInt), dimension(nCutback+1) :: debug_cutbackDistribution
  integer(pInt), dimension(nInner) :: debug_innerLoopDistribution
  integer(pInt), dimension(nOuter) :: debug_outerLoopDistribution
-
+ logical debugger
+ 
  CONTAINS
 
 
