@@ -6,8 +6,8 @@
 
  implicit none
  integer(pInt), dimension(nCutback+1) :: debug_cutbackDistribution
- integer(pInt), dimension(nStress) :: debug_stressLoopDistribution
- integer(pInt), dimension(nState) :: debug_stateLoopDistribution
+ integer(pInt), dimension(nInner) :: debug_innerLoopDistribution
+ integer(pInt), dimension(nOuter) :: debug_outerLoopDistribution
 
  CONTAINS
 
@@ -30,18 +30,18 @@
  write(6,*) 'total',sum(debug_cutbackDistribution)
  write(6,*)
  
- write(6,*)	'distribution_stressLoop :'
+ write(6,*)	'distribution_innerLoop :'
  do i=1,nStress
-   if (debug_stressLoopDistribution(i) > 0) write(6,*) i,debug_stressLoopDistribution(i)
+   if (debug_innerLoopDistribution(i) > 0) write(6,*) i,debug_innerLoopDistribution(i)
  enddo
- write(6,*) 'total',sum(debug_stressLoopDistribution)
+ write(6,*) 'total',sum(debug_innerLoopDistribution)
  write(6,*)
  
- write(6,*)	'distribution_stateLoop :'
+ write(6,*)	'distribution_outerLoop :'
  do i=1,nState
-   if (debug_stateLoopDistribution(i) > 0) write(6,*) i,debug_stateLoopDistribution(i)
+   if (debug_outerLoopDistribution(i) > 0) write(6,*) i,debug_outerLoopDistribution(i)
  enddo
- write(6,*) 'total',sum(debug_stateLoopDistribution)
+ write(6,*) 'total',sum(debug_outerLoopDistribution)
  write(6,*)
 
  END SUBROUTINE
