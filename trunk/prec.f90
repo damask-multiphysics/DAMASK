@@ -15,7 +15,7 @@
  integer(pInt), parameter :: ijaco        = 1_pInt       ! frequency of FEM Jacobi update
  integer(pInt), parameter :: nCutback     = 10_pInt      ! cutbacks in time-step integration
  integer(pInt), parameter :: nReg         = 1_pInt       ! regularization attempts for Jacobi inversion
- real(pReal),   parameter :: pert_e       = 1.0e-5_pReal ! strain perturbation for FEM Jacobi
+ real(pReal),   parameter :: pert_Fg      = 1.0e-5_pReal ! strain perturbation for FEM Jacobi
  integer(pInt), parameter :: nOuter       = 10_pInt      ! outer loop limit
  integer(pInt), parameter :: nInner       = 200_pInt     ! inner loop limit
  real(pReal),   parameter :: reltol_Outer = 1.0e-4_pReal ! relative tolerance in outer loop (state)
