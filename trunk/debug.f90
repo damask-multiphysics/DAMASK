@@ -31,14 +31,14 @@
  write(6,*)
  
  write(6,*)	'distribution_innerLoop :'
- do i=1,nStress
+ do i=1,nInner
    if (debug_innerLoopDistribution(i) > 0) write(6,*) i,debug_innerLoopDistribution(i)
  enddo
  write(6,*) 'total',sum(debug_innerLoopDistribution)
  write(6,*)
  
  write(6,*)	'distribution_outerLoop :'
- do i=1,nState
+ do i=1,nOuter
    if (debug_outerLoopDistribution(i) > 0) write(6,*) i,debug_outerLoopDistribution(i)
  enddo
  write(6,*) 'total',sum(debug_outerLoopDistribution)
