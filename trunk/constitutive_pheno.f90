@@ -751,6 +751,8 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,state,Temperature,
 !*********************************************************************
 use prec, only: pReal,pInt
 use crystal, only: crystal_Sslip,crystal_Sslip_v
+use math, only: math_Plain3333to99
+
 implicit none
 
 !* Definition of variables
@@ -759,7 +761,8 @@ integer(pInt) matID,i,k,l,m,n
 real(pReal) Temperature
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(3,3) :: Lp
-real(pReal), dimension(3,3,3,3) :: dLp_dTstar
+real(pReal), dimension(3,3,3,3) :: dLp
+real(pReal), dimension(9,9) :: dLp_dTstar
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 real(pReal), dimension(material_Nslip(constitutive_matID(ipc,ip,el))) :: gdot_slip,dgdot_dtauslip,tau_slip
 
@@ -776,17 +779,17 @@ do i=1,material_Nslip(matID)
 enddo
 
 !* Calculation of the tangent of Lp
-dLp_dTstar=0.0_pReal
+dLp = 0.0_pReal
+dLp_dTstar = 0.0_pReal
 do i=1,material_Nslip(matID)
    dgdot_dtauslip(i) = material_gdot0_slip(matID)*(abs(tau_slip(i))/state(i))**&
                       (material_n_slip(matID)-1.0_pReal)*material_n_slip(matID)/state(i)
-   forall (k=1:3,l=1:3,m=1:3,n=1:3)
-          dLp_dTstar(k,l,m,n) = dLp_dTstar(k,l,m,n)+ &
-                                dgdot_dtauslip(i)*crystal_Sslip(k,l,i,material_CrystalStructure(matID))* &
-		                        (crystal_Sslip(m,n,i,material_CrystalStructure(matID))+ &
-		                         crystal_Sslip(n,m,i,material_CrystalStructure(matID)))/2.0_pReal ! force m,n symmetry
-   endforall
+   forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+          dLp(k,l,m,n) = dLp(k,l,m,n) + &
+             dgdot_dtauslip(i)*crystal_Sslip(k,l,i,material_CrystalStructure(matID))* &
+		                       crystal_Sslip(m,n,i,material_CrystalStructure(matID))
 enddo
+dLp_dTstar = math_Plain3333to99(dLp)
 
 return
 end subroutine
@@ -803,7 +806,7 @@ function constitutive_dotState(Tstar_v,state,Temperature,ipc,ip,el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !* OUTPUT:                                                           *
-!*  - constitutive_DotState : evolution of state variable            *
+!*  - constitutive_dotState : evolution of state variable            *
 !*********************************************************************
 use prec, only: pReal,pInt
 use crystal, only: crystal_Sslip_v

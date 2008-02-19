@@ -305,7 +305,7 @@ subroutine crystal_SchmidMatrices()
 !*   Calculation of Schmid matrices   *
 !**************************************
 use prec, only: pReal,pInt
-use math, only: math_I3
+use math, only: math_I3,nrmMandel,mapMandel
 implicit none
 
 !* Definition of variables
@@ -327,17 +327,10 @@ do l=1,crystal_MaxCrystalStructure
 	  crystal_st(:,k,l)=crystal_st(:,k,l)/norm_t
 	  crystal_sn(:,k,l)=crystal_sn(:,k,l)/norm_n
 !* Defintion of Schmid matrix
-      forall (i=1:3,j=1:3)
-	         crystal_Sslip(i,j,k,l)=crystal_sd(i,k,l)*crystal_sn(j,k,l)
-      endforall
+      forall (i=1:3,j=1:3) crystal_Sslip(i,j,k,l)=crystal_sd(i,k,l)*crystal_sn(j,k,l)
 !* Vectorization of normalized Schmid matrix
-      crystal_Sslip_v(1,k,l)=crystal_Sslip(1,1,k,l)
-      crystal_Sslip_v(2,k,l)=crystal_Sslip(2,2,k,l)
-      crystal_Sslip_v(3,k,l)=crystal_Sslip(3,3,k,l)
-	  !* be compatible with Mandel notation of Tstar
-      crystal_Sslip_v(4,k,l)=(crystal_Sslip(1,2,k,l)+crystal_Sslip(2,1,k,l))/dsqrt(2.0_pReal)
-      crystal_Sslip_v(5,k,l)=(crystal_Sslip(2,3,k,l)+crystal_Sslip(3,2,k,l))/dsqrt(2.0_pReal)
-      crystal_Sslip_v(6,k,l)=(crystal_Sslip(1,3,k,l)+crystal_Sslip(3,1,k,l))/dsqrt(2.0_pReal)
+      forall (i=1:6) crystal_Sslip_v(i,k,l) = nrmMandel(i)/2.0_pReal * &
+                  (crystal_Sslip(mapMandel(1,i),mapMandel(2,i),k,l)+crystal_Sslip(mapMandel(2,i),mapMandel(1,i),k,l))
    enddo
 
 !* Iteration over the twin systems

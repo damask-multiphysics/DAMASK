@@ -28,7 +28,9 @@
 !********************************************************************
 !
  include "prec.f90"
+
  include "debug.f90"
+
  include "math.f90"
  include "IO.f90"
  include "mesh.f90"
@@ -195,6 +197,7 @@
 !     Marc:   11, 22, 33, 12, 23, 13
  forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*d(1:ngens,i)*invnrmMandel(1:ngens)
  s(1:ngens) = s(1:ngens)*invnrmMandel(1:ngens)
+
  return
  
  END SUBROUTINE
