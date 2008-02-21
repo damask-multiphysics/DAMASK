@@ -752,6 +752,7 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,state,Temperature,
 use prec, only: pReal,pInt
 use crystal, only: crystal_Sslip,crystal_Sslip_v
 use math, only: math_Plain3333to99
+use debug
 
 implicit none
 
@@ -761,7 +762,7 @@ integer(pInt) matID,i,k,l,m,n
 real(pReal) Temperature
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(3,3) :: Lp
-real(pReal), dimension(3,3,3,3) :: dLp
+real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
 real(pReal), dimension(9,9) :: dLp_dTstar
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 real(pReal), dimension(material_Nslip(constitutive_matID(ipc,ip,el))) :: gdot_slip,dgdot_dtauslip,tau_slip
@@ -779,17 +780,17 @@ do i=1,material_Nslip(matID)
 enddo
 
 !* Calculation of the tangent of Lp
-dLp = 0.0_pReal
+dLp_dTstar3333 = 0.0_pReal
 dLp_dTstar = 0.0_pReal
 do i=1,material_Nslip(matID)
    dgdot_dtauslip(i) = material_gdot0_slip(matID)*(abs(tau_slip(i))/state(i))**&
                       (material_n_slip(matID)-1.0_pReal)*material_n_slip(matID)/state(i)
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-          dLp(k,l,m,n) = dLp(k,l,m,n) + &
+          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
              dgdot_dtauslip(i)*crystal_Sslip(k,l,i,material_CrystalStructure(matID))* &
 		                       crystal_Sslip(m,n,i,material_CrystalStructure(matID))
 enddo
-dLp_dTstar = math_Plain3333to99(dLp)
+dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 
 return
 end subroutine

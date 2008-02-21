@@ -982,7 +982,8 @@ integer(pInt) matID,startIdxTwin,i,j,k,l,m,n
 real(pReal) Tp,Ftwin
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(3,3) :: Lp,Sslip,Stwin
-real(pReal), dimension(3,3,3,3) :: dLp_dTstar
+real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
+real(pReal), dimension(9,9) :: dLp_dTstar
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 
 !* Get the material-ID from the triplet(ipc,ip,el)
@@ -1040,27 +1041,27 @@ dLp_dTstar=0.0_pReal
 do i=1,material_Nslip(matID)
    Sslip = crystal_Sslip(:,:,i,material_CrystalStructure(matID))
    forall (k=1:3,l=1:3,m=1:3,n=1:3)
-          dLp_dTstar(k,l,m,n) = dLp_dTstar(k,l,m,n)+ &
-                                (1-Ftwin)*constitutive_dgdot_dtauslip(i)*Sslip(k,l)*(Sslip(m,n)+Sslip(n,m))/2.0_pReal !force m,n symmetry
+     dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n)+ &
+                               (1-Ftwin)*constitutive_dgdot_dtauslip(i)*Sslip(k,l)*(Sslip(m,n)+Sslip(n,m))/2.0_pReal !force m,n symmetry
    endforall
 enddo
 do i=1,material_Ntwin(matID)
    Stwin = crystal_Stwin(:,:,i,material_CrystalStructure(matID)) 
    forall (k=1:3,l=1:3,m=1:3,n=1:3)
-          dLp_dTstar(k,l,m,n) = dLp_dTstar(k,l,m,n)+ &
-                                state(material_Nslip(matID)+i)*crystal_TwinShear(material_CrystalStructure(matID))*&
-								constitutive_dfdot_dtautwin(i)*Stwin(k,l)*(Stwin(m,n)+Stwin(n,m))/2.0_pReal !force m,n symmetry
+     dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n)+ &
+                               state(material_Nslip(matID)+i)*crystal_TwinShear(material_CrystalStructure(matID))*&
+                               constitutive_dfdot_dtautwin(i)*Stwin(k,l)*(Stwin(m,n)+Stwin(n,m))/2.0_pReal !force m,n symmetry
    endforall
    do j=1,material_Nslip(matID)
       Sslip = crystal_Sslip(:,:,j,material_CrystalStructure(matID))
       forall (k=1:3,l=1:3,m=1:3,n=1:3)
-             dLp_dTstar(k,l,m,n) = dLp_dTstar(k,l,m,n)+ &
+         dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n)+ &
                                    state(material_Nslip(matID)+i)*crystal_TwinShear(material_CrystalStructure(matID))*&
 								   constitutive_dfdot_dtauslip(i,j)*Stwin(k,l)*(Sslip(m,n)+Sslip(n,m))/2.0_pReal !force m,n symmetry
       endforall  
    enddo
 enddo
-
+dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 
 return
 end subroutine
