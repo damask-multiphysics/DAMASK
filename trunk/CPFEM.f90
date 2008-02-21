@@ -49,7 +49,7 @@
 !    *** mpie.marc parameters ***
  allocate(CPFEM_Temperature   (mesh_maxNips,mesh_NcpElems)) ; CPFEM_Temperature = 0.0_pReal
  allocate(CPFEM_ffn_all   (3,3,mesh_maxNips,mesh_NcpElems))
- forall(e=1:mesh_NcpElems,i=1:mesh_maxNips) CPFEM_ffn_all(:,:,i,e)    = math_I3
+ forall(e=1:mesh_NcpElems,i=1:mesh_maxNips) CPFEM_ffn_all(:,:,i,e)             = math_I3
  allocate(CPFEM_ffn1_all  (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn1_all   = CPFEM_ffn_all
  allocate(CPFEM_stress_all(  6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_stress_all = 0.0_pReal
  allocate(CPFEM_jacobi_all(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_jacobi_all = 0.0_pReal
@@ -91,8 +91,8 @@
  return
 
  END SUBROUTINE
-
-
+!
+!
 !***********************************************************************
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
@@ -200,8 +200,8 @@
 
  integer(pInt), parameter :: i_now = 1_pInt,i_then = 2_pInt
  character(len=128) msg
- integer(pInt) CPFEM_cn,cp_en,CPFEM_in,grain,i
- logical updateJaco,error
+ integer(pInt) CPFEM_cn,cp_en,CPFEM_in,grain,i,max_cutbacks
+ logical updateJaco,error,cutback
  real(pReal) CPFEM_dt,dt,t,volfrac,det
  real(pReal), dimension(6) :: cs,Tstar_v
  real(pReal), dimension(6,6) :: cd
@@ -219,6 +219,7 @@
 ! -------------------------------------------
 
    i = 0_pInt                         ! cutback counter
+   max_cutbacks = 0_pInt              ! maximum depth of cut backing
    dt = CPFEM_dt
    state(:,i_now) = constitutive_state_old(:,grain,CPFEM_in,cp_en)
    Fg(:,:,i_now)  = CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
@@ -240,7 +241,7 @@
    Fp(:,:,i_then) = Fp(:,:,i_now)
    state(:,i_then) = 0.0_pReal                               ! state_old as initial guess
    t = 0.0_pReal
-
+   cutback = .false.                                         ! no cutback has happened so far
 ! ------- crystallite integration -----------
    do
 ! -------------------------------------------
@@ -257,11 +258,18 @@
                                   Fg(:,:,i_now),Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
      if (msg == 'ok') then             ! solution converged
        if (t == CPFEM_dt) then
-	     debug_cutbackDistribution(i+1) = debug_cutbackDistribution(i+1)+1
+	     debug_cutbackDistribution(max_cutbacks+1) = debug_cutbackDistribution(max_cutbacks+1)+1
 	     exit                          ! reached final "then"
 	   endif
+       if (cutback == .false.) then    ! stable solution at current speed?
+         dt = 2.0_pReal*dt             ! double time-step
+         i = i-1_pInt                  ! dec cutback counter
+       endif
+       cutback = .false.               ! solution in next step does not derive from a cutback
      else                              ! solution not found
        i = i+1_pInt                    ! inc cutback counter
+       max_cutbacks = max(i,max_cutbacks)
+       cutback = .true.
        if (i > nCutback) then          ! limit exceeded?
 	     debug_cutbackDistribution(nCutback+1) = debug_cutbackDistribution(nCutback+1)+1
          write(6,'(x,a,x,i6,x,a,x,i2,x,a,x,i2)') 'element:',cp_en,'IP:',CPFEM_in,'grain:',grain
@@ -333,7 +341,8 @@
  use debug
  use constitutive, only: constitutive_Nstatevars
  use mesh, only: mesh_element
- use math, only: math_Mandel6to33,math_Mandel33to6,math_Mandel3333to66,math_I3,math_det3x3,math_invert3x3
+ use math, only: math_Mandel6to33,math_Mandel33to6,math_Mandel3333to66,&
+                 math_I3,math_det3x3,math_invert3x3
  implicit none
 
  character(len=*) msg
@@ -354,7 +363,8 @@
  tau = matmul(Fe_new,matmul(Tstar,transpose(Fe_new))) ! Kirchhoff stress
  invJ = 1.0_pReal/math_det3x3(Fe_new)       ! inverse dilatation of Fe
  cs = math_Mandel33to6(invJ*tau)            ! Cauchy stress
- if (updateJaco) then                       ! consistent tangent using numerical perturbation of Fg (D.Tjahjanto Diss p.106)
+ if (updateJaco) then                       ! consistent tangent using
+                                            ! numerical perturbation of Fg (D. Tjahjanto Diss p.106)
    call math_invert3x3(Fp_new,invFp_new,det,error)
    if (error) then
      msg = 'inversion of Fp_new'
