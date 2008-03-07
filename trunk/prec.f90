@@ -6,8 +6,8 @@
  implicit none
 
 !    *** Precision of real and integer variables ***
- integer, parameter :: pReal = 8
- integer, parameter :: pInt  = 4
+ integer, parameter :: pReal = selected_real_kind(15,300)  ! 15 significant digits, up to 1e+-300
+ integer, parameter :: pInt  = selected_int_kind(9)        ! up to +- 1e9
 
 !    *** Strain increment considered significant ***
  real(pReal), parameter :: relevantStrain = 1.0e-7_pReal
