@@ -165,7 +165,7 @@
  do phi1=1,steps(1)
    do Phi=1,steps(2)
      do phi2=1,steps(3)
-       read(999,fmt='(F)',end=100) prob
+       read(999,fmt=*,end=100) prob
        if (prob > 0.0_pReal) then
          NnonZero = NnonZero+1
          sum_dV_V = sum_dV_V+prob
@@ -368,8 +368,8 @@
  
  pos_exp = scan(line(ends(pos)+1:ends(pos+1)),'+-',back=.true.)
  if (pos_exp > 1) then
-   read(UNIT=line(ends(pos)+1:ends(pos)+pos_exp-1),ERR=100,FMT='(F)') base
-   read(UNIT=line(ends(pos)+pos_exp:ends(pos+1)),ERR=100,FMT='(I)') expon
+   read(UNIT=line(ends(pos)+1:ends(pos)+pos_exp-1),ERR=100,FMT=*) base
+   read(UNIT=line(ends(pos)+pos_exp:ends(pos+1)),ERR=100,FMT=*) expon
  else
    read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT=*) base
    expon = 0_pInt
@@ -395,7 +395,7 @@
  integer(pInt) positions(*),pos
 
  if (positions(1) >= pos) then
-   read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT='(I)') IO_intValue
+   read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_intValue
    return
  endif
 100 IO_intValue = huge(1_pInt)
@@ -416,7 +416,7 @@
  integer(pInt) IO_fixedIntValue
  integer(pInt) ends(*),pos
 
- read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT='(I)') IO_fixedIntValue
+ read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT=*) IO_fixedIntValue
  return
 100 IO_fixedIntValue = huge(1_pInt)
  return
