@@ -10,20 +10,20 @@
 ! *** General variables for the material behaviour calculation ***
 ! ****************************************************************
  real(pReal), dimension (:,:),        allocatable :: CPFEM_Temperature
+ real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_ffn_bar
+ real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_ffn1_bar
  real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_PK1_bar
- real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_ffn_all
- real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_ffn1_all
+ real(pReal), dimension (:,:,:,:,:,:),allocatable :: CPFEM_dPdF_bar
+ real(pReal), dimension (:,:,:),      allocatable :: CPFEM_stress_bar
+ real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_jaco_bar
  real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_results
- real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_ini_ori
  real(pReal), dimension (:,:,:,:,:),  allocatable :: CPFEM_Fp_old
  real(pReal), dimension (:,:,:,:,:),  allocatable :: CPFEM_Fp_new
- real(pReal), dimension (:,:,:,:,:,:),allocatable :: CPFEM_dPdF_bar
  real(pReal), parameter :: CPFEM_odd_stress = 1e15_pReal, CPFEM_odd_jacobian = 1e50_pReal
- integer(pInt) :: CPFEM_inc_old    = 0_pInt
- integer(pInt) :: CPFEM_subinc_old = 1_pInt
- integer(pInt) :: CPFEM_cycle_old = -1_pInt
  integer(pInt) :: CPFEM_Nresults   = 4_pInt    ! three Euler angles plus volume fraction
- logical :: CPFEM_first_call = .true.
+ logical :: CPFEM_init_done = .false.          ! remember if init has been done already
+ logical :: CPFEM_calc_done = .false.          ! remember if first IP has already calced the results
+
 !
  CONTAINS
 !
@@ -31,7 +31,7 @@
 !***    allocate the arrays defined in module CPFEM    ***
 !***    and initialize them                            ***
 !*********************************************************
- SUBROUTINE CPFEM_init()
+ SUBROUTINE CPFEM_init(Temperature)
 !
  use prec
  use math, only: math_EulertoR, math_I3, math_identity2nd
@@ -40,39 +40,43 @@
 !
  implicit none
 !
+ real(pReal) Temperature
  integer(pInt) e,i,g
 !
 !    *** mpie.marc parameters ***
- allocate(CPFEM_Temperature   (mesh_maxNips,mesh_NcpElems)) ; CPFEM_Temperature = 0.0_pReal
- allocate(CPFEM_ffn_all   (3,3,mesh_maxNips,mesh_NcpElems))
- forall(e=1:mesh_NcpElems,i=1:mesh_maxNips) CPFEM_ffn_all(:,:,i,e)             = math_I3
- allocate(CPFEM_ffn1_all  (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn1_all   = CPFEM_ffn_all
+ allocate(CPFEM_Temperature   (mesh_maxNips,mesh_NcpElems)) ; CPFEM_Temperature = Temperature
+ allocate(CPFEM_ffn_bar   (3,3,mesh_maxNips,mesh_NcpElems))
+ forall(e=1:mesh_NcpElems,i=1:mesh_maxNips) CPFEM_ffn_bar(:,:,i,e)             = math_I3
+ allocate(CPFEM_ffn1_bar  (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_ffn1_bar   = CPFEM_ffn_bar
  allocate(CPFEM_PK1_bar   (3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_PK1_bar    = 0.0_pReal
+ allocate(CPFEM_dPdF_bar(3,3,3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_dPdF_bar = 0.0_pReal
+ allocate(CPFEM_stress_bar(6,mesh_maxNips,mesh_NcpElems)) ;   CPFEM_stress_bar = 0.0_pReal
+ allocate(CPFEM_jaco_bar(6,6,mesh_maxNips,mesh_NcpElems)) ;   CPFEM_jaco_bar   = 0.0_pReal
 !
 !    *** User defined results !!! MISSING incorporate consti_Nresults ***
  allocate(CPFEM_results(CPFEM_Nresults+constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_results = 0.0_pReal
 !
 !    *** Plastic deformation gradient at (t=t0) and (t=t1) ***
+ allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Fp_new = 0.0_pReal
  allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  forall (e=1:mesh_NcpElems,i=1:mesh_maxNips,g=1:constitutive_maxNgrains) &
    CPFEM_Fp_old(:,:,g,i,e) = math_EulerToR(constitutive_EulerAngles(:,g,i,e))  ! plastic def gradient reflects init orientation
- allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Fp_new = 0.0_pReal
-!
-!    *** FEM jacobian (consistent tangent) ***
- allocate(CPFEM_dPdF_bar(3,3,3,3,mesh_maxNips,mesh_NcpElems)) ; CPFEM_dPdF_bar = 0.0_pReal
 !
 !    *** Output to MARC output file ***
  write(6,*)
- write(6,*) 'Arrays allocated:'
+ write(6,*) 'CPFEM Initialization'
+ write(6,*)
  write(6,*) 'CPFEM_Temperature:   ', shape(CPFEM_Temperature)
- write(6,*) 'CPFEM_ffn_all:       ', shape(CPFEM_ffn_all)
- write(6,*) 'CPFEM_ffn1_all:      ', shape(CPFEM_ffn1_all)
+ write(6,*) 'CPFEM_ffn_bar:       ', shape(CPFEM_ffn_bar)
+ write(6,*) 'CPFEM_ffn1_bar:      ', shape(CPFEM_ffn1_bar)
  write(6,*) 'CPFEM_PK1_bar:       ', shape(CPFEM_PK1_bar)
+ write(6,*) 'CPFEM_dPdF_bar:      ', shape(CPFEM_dPdF_bar)
+ write(6,*) 'CPFEM_stress_bar:    ', shape(CPFEM_stress_bar)
+ write(6,*) 'CPFEM_jaco_bar:      ', shape(CPFEM_jaco_bar)
  write(6,*) 'CPFEM_results:       ', shape(CPFEM_results)
  write(6,*) 'CPFEM_Fp_old:        ', shape(CPFEM_Fp_old)
  write(6,*) 'CPFEM_Fp_new:        ', shape(CPFEM_Fp_new)
- write(6,*) 'CPFEM_dPdF_bar:      ', shape(CPFEM_dPdF_bar)
  write(6,*)
  call flush(6)
  return
@@ -83,12 +87,25 @@
 !***********************************************************************
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
+!
+!     CPFEM_mode             computation mode (regular, collection, recycle)
+!     ffn                    deformation gradient for t=t0
+!     ffn1                   deformation gradient for t=t1
+!     Temperature            temperature
+!     CPFEM_dt               time increment
+!     CPFEM_en               element number
+!     CPFEM_in               intergration point number
+!     CPFEM_stress           stress vector in Mandel notation
+!     CPFEM_updateJaco       flag to initiate computation of Jacobian
+!     CPFEM_jaco             jacobian in Mandel notation
+!     CPFEM_ngens            size of stress strain law
 !***********************************************************************
- SUBROUTINE CPFEM_general(ffn, ffn1, Temperature, CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_stress_recovery, CPFEM_dt,&
-                          CPFEM_en, CPFEM_in, CPFEM_stress, CPFEM_jaco, CPFEM_ngens)
+ SUBROUTINE CPFEM_general(CPFEM_mode, ffn, ffn1, Temperature, CPFEM_dt,&
+                          CPFEM_en, CPFEM_in, CPFEM_stress, CPFEM_updateJaco, CPFEM_jaco, CPFEM_ngens)
 ! note: CPFEM_stress = Cauchy stress cs(6) and CPFEM_jaco = Consistent tangent dcs/de
 !
  use prec, only: pReal,pInt
+ use FEsolving
  use debug
  use math, only: math_init, invnrmMandel, math_identity2nd, math_Mandel3333to66,math_Mandel33to6,math_Mandel6to33,math_det3x3,math_I3
  use mesh, only: mesh_init,mesh_FEasCP, mesh_NcpElems, FE_Nips, FE_mapElemtype, mesh_element
@@ -96,86 +113,93 @@
  use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new,material_Cslip_66
  implicit none
 !
- integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en, CPFEM_ngens, i,j,k,l,m,n, e
- real(pReal)   ffn(3,3),ffn1(3,3),Temperature,CPFEM_dt,CPFEM_stress(CPFEM_ngens),CPFEM_jaco(CPFEM_ngens,CPFEM_ngens),Kirchhoff_bar(3,3), &
- H_bar(3,3,3,3),J_inverse
- logical CPFEM_stress_recovery
+ integer(pInt) CPFEM_en, CPFEM_in, cp_en, CPFEM_ngens, i,j,k,l,m,n, e
+ real(pReal), dimension (3,3)        :: ffn,ffn1,Kirchhoff_bar
+ real(pReal), dimension (3,3,3,3)    :: H_bar
+ real(pReal), dimension(CPFEM_ngens) :: CPFEM_stress
+ real(pReal), dimension(CPFEM_ngens,CPFEM_ngens) :: CPFEM_jaco
+ real(pReal) Temperature,CPFEM_dt,J_inverse
+ integer(pInt) CPFEM_mode               ! 1: regular computation, 2: collection, 3: recycling
+ logical       CPFEM_updateJaco
 !
-! calculate only every second cycle
- if (mod(CPFEM_cn,2) /= 0) then ! odd cycle: record data for use in even cycle and return stiff result for this odd cycle
-    cp_en = mesh_FEasCP('elem',CPFEM_en)
-    CPFEM_Temperature(CPFEM_in, cp_en)  = Temperature
-    CPFEM_ffn_all(:,:,CPFEM_in, cp_en)  = ffn
-    CPFEM_ffn1_all(:,:,CPFEM_in, cp_en) = ffn1
-    CPFEM_stress(1:CPFEM_ngens) = CPFEM_odd_stress
-    CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_odd_jacobian*math_identity2nd(CPFEM_ngens)
-    CPFEM_cycle_old = CPFEM_cn
+ if (.not. CPFEM_init_done) then        ! initialization step
+                                        ! three dimensional stress state check missing?
+   call math_init()
+   call mesh_init()
+   call crystal_init()
+   call constitutive_init()
+   call CPFEM_init(Temperature)			
+   CPFEM_init_done = .true.
+ endif
+
+ cp_en = mesh_FEasCP('elem',CPFEM_en)
+  if (cp_en == 1 .and. CPFEM_in == 1) &
+    write(6,'(a6,x,i4,x,a4,x,i4,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2)') &
+    'elem',cp_en,'IP',CPFEM_in,'theInc',theInc,'theCycle',theCycle,'theLovl',theLovl,'mode',CPFEM_mode
+
+ select case (CPFEM_mode)
+    case (2,1)     ! regular computation (with aging of results)
+       if (.not. CPFEM_calc_done) then                ! puuh, me needs doing all the work...
+           write (6,*) 'puuh me needs doing all the work', cp_en
+           if (CPFEM_mode == 1) then                  ! age results at start of new increment
+             CPFEM_Fp_old            = CPFEM_Fp_new
+             constitutive_state_old  = constitutive_state_new
+             write (6,*) '#### aged results'
+           endif
+
+           debug_cutbackDistribution = 0_pInt         ! initialize debugging data
+           debug_InnerLoopDistribution = 0_pInt
+           debug_OuterLoopDistribution = 0_pInt
+
+           do e=1,mesh_NcpElems                       ! ## this shall be done in a parallel loop in the future ##
+               do i=1,FE_Nips(mesh_element(2,e))      ! iterate over all IPs of this element's type
+                  debugger = (e==1 .and. i==1)        ! switch on debugging for first IP in first element
+                  call CPFEM_MaterialPoint(CPFEM_updateJaco, CPFEM_dt, i, e)
+               enddo
+           enddo
+
+           call debug_info()                          ! output of debugging/performance statistics
+           CPFEM_calc_done = .true.                   ! now calc is done
+	   endif    
+	   ! translate from P and dP/dF to CS and dCS/dE
+       Kirchhoff_bar = matmul(CPFEM_PK1_bar(:,:,CPFEM_in, cp_en),transpose(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en)))
+       J_inverse  = 1.0_pReal/math_det3x3(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en))
+       CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff_bar)
 !
- else  ! even cycle: really calculate only in first call of new cycle and when in stress recovery
-    if (CPFEM_cn /= CPFEM_cycle_old .and. CPFEM_stress_recovery) then
-        if (CPFEM_first_call) then             ! initialization step
-                                               ! three dimensional stress state ?
-            call math_init()
-            call mesh_init()
-            call crystal_Init()
-            call constitutive_init()
-            call CPFEM_init()			
-            CPFEM_Temperature  = Temperature
-            CPFEM_first_call = .false.
-        endif
+       H_bar = 0.0_pReal
+       forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
+         H_bar(i,j,k,l) = H_bar(i,j,k,l) + &
+                          (CPFEM_ffn1_bar(j,m,CPFEM_in, cp_en)*CPFEM_ffn1_bar(l,n,CPFEM_in, cp_en)*CPFEM_dPdF_bar(i,m,k,n,CPFEM_in, cp_en) - &
+                           math_I3(j,l)*CPFEM_ffn1_bar(i,m,CPFEM_in, cp_en)*CPFEM_PK1_bar(k,m, CPFEM_in, cp_en)) + &
+                          0.5_pReal*(math_I3(i,k)*Kirchhoff_bar(j,l) + math_I3(j,l)*Kirchhoff_bar(i,k) + &
+                                     math_I3(i,l)*Kirchhoff_bar(j,k) + math_I3(j,k)*Kirchhoff_bar(i,l))
+       CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel3333to66(J_inverse*H_bar)
+
+    case (3)    ! collect and return odd result
+       CPFEM_Temperature(CPFEM_in,cp_en)  = Temperature
+       CPFEM_ffn_bar(:,:,CPFEM_in,cp_en)  = ffn
+       CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en) = ffn1
+       CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = CPFEM_odd_stress
+       CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = CPFEM_odd_jacobian*math_identity2nd(CPFEM_ngens)
+       CPFEM_calc_done = .false.
+
+    case (4)    ! do nothing since we can recycle the former results (MARC specialty)
+ end select
 !
-        if (CPFEM_inc == CPFEM_inc_old) then   ! not a new increment
-            if (CPFEM_subinc > CPFEM_subinc_old) then  ! new subincrement: update starting with subinc 2
-                CPFEM_Fp_old           = CPFEM_Fp_new
-                constitutive_state_old = constitutive_state_new
-                CPFEM_subinc_old       = CPFEM_subinc
-            endif
-        else                                   ! new increment
-            CPFEM_Fp_old            = CPFEM_Fp_new
-            constitutive_state_old  = constitutive_state_new
-            CPFEM_inc_old           = CPFEM_inc
-            CPFEM_subinc_old        = 1_pInt
-        endif
-        CPFEM_cycle_old = CPFEM_cn
-        debug_cutbackDistribution   = 0_pInt     ! initialize debugging data
-        debug_InnerLoopDistribution = 0_pInt
-        debug_OuterLoopDistribution = 0_pInt
-!
-! this shall be done in a parallel loop in the future
-        do e=1,mesh_NcpElems
-            do i=1,FE_Nips(FE_mapElemtype(mesh_element(2,e)))
-                debugger = (e==1 .and. i==1)
-                call CPFEM_stressIP(CPFEM_cn, CPFEM_dt, i, e)
-            enddo
-        enddo
-        call debug_info()        ! output of debugging/performance statistics
-    end if
-!
-! return stress and the jacobian
-    cp_en = mesh_FEasCP('elem', CPFEM_en)
-    Kirchhoff_bar = matmul(CPFEM_PK1_bar(:,:,CPFEM_in, cp_en),transpose(CPFEM_ffn1_all(:,:,CPFEM_in, cp_en)))
-    J_inverse  = 1.0_pReal/math_det3x3(CPFEM_ffn1_all(:,:,CPFEM_in, cp_en))
-    CPFEM_stress(1:CPFEM_ngens) = math_Mandel33to6(J_inverse*Kirchhoff_bar)
-!
-    H_bar = 0.0_pReal
-    forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
-      H_bar(i,j,k,l) = H_bar(i,j,k,l) + &
-                       (CPFEM_ffn1_all(j,m,CPFEM_in, cp_en)*CPFEM_ffn1_all(l,n,CPFEM_in, cp_en)*CPFEM_dPdF_bar(i,m,k,n,CPFEM_in, cp_en) - &
-                        math_I3(j,l)*CPFEM_ffn1_all(i,m,CPFEM_in, cp_en)*CPFEM_PK1_bar(k,m, CPFEM_in, cp_en)) + &
-                       0.5_pReal*(math_I3(i,k)*Kirchhoff_bar(j,l) + math_I3(j,l)*Kirchhoff_bar(i,k) + &
-                                  math_I3(i,l)*Kirchhoff_bar(j,k) + math_I3(j,k)*Kirchhoff_bar(i,l))
-    CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = math_Mandel3333to66(J_inverse*H_bar)
- end if
+! return the local stress and the jacobian from storage
+ CPFEM_stress(1:CPFEM_ngens) = CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en)
+ CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en)
+ if (cp_en == 1 .and. CPFEM_in == 1) write (6,*) 'stress',CPFEM_stress
 ! 
  return
 !
  END SUBROUTINE
 !
 !**********************************************************
-!***  calculate the material behaviour at IP level      ***
+!***      calculate the material point behaviour        ***
 !**********************************************************
- SUBROUTINE CPFEM_stressIP(&
-     CPFEM_cn,&       ! Cycle number
+ SUBROUTINE CPFEM_MaterialPoint(&
+     updateJaco,&     ! flag to initiate Jacobian updating
      CPFEM_dt,&       ! Time increment (dt)
      CPFEM_in,&       ! Integration point number
      cp_en)           ! Element number
@@ -190,7 +214,7 @@
 !
  integer(pInt), parameter :: i_now = 1_pInt,i_then = 2_pInt
  character(len=128) msg
- integer(pInt) CPFEM_cn,cp_en,CPFEM_in,grain,i,max_cutbacks
+ integer(pInt) cp_en,CPFEM_in,grain,i,max_cutbacks
  logical updateJaco,error,cutback,post_flag
  real(pReal) CPFEM_dt,dt,t,volfrac,det
  real(pReal), dimension(3,3)     :: PK1
@@ -199,8 +223,6 @@
  real(pReal), dimension(3,3,2)   :: Fg,Fp
  real(pReal), dimension(constitutive_maxNstatevars,2) :: state
  real(pReal), dimension (:), allocatable              :: post_results
-!
- updateJaco = (mod(CPFEM_cn,2_pInt*ijaco)==0)   ! update consistent tangent every ijaco'th iteration
 !
  CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = 0.0_pReal                       ! zero out average first PK stress
  if (updateJaco) CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = 0.0_pReal  ! zero out average consistent tangent
@@ -213,11 +235,11 @@
    max_cutbacks = 0_pInt              ! maximum depth of cut backing
    dt = CPFEM_dt
    state(:,i_now) = constitutive_state_old(:,grain,CPFEM_in,cp_en)
-   Fg(:,:,i_now)  = CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
+   Fg(:,:,i_now)  = CPFEM_ffn_bar(:,:,CPFEM_in,cp_en)
    Fp(:,:,i_now)  = CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en)
    invFgthen = 0.0_pReal
    invFpnow = 0.0_pReal
-   call math_invert3x3(CPFEM_ffn1_all(:,:,CPFEM_in,cp_en),invFgthen,det,error)
+   call math_invert3x3(CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en),invFgthen,det,error)
    call math_invert3x3(Fp(:,:,i_now),invFpnow,det,error)
    if (dt /= 0.0_pReal) then
      Lp = (math_I3-matmul(Fp(:,:,i_now),matmul(invFgthen,matmul(Fg(:,:,i_now),invFpnow))))/dt ! fully plastic initial guess
@@ -225,13 +247,24 @@
      Lp = 0.0_pReal                                          ! fully elastic guess 
    endif
 !
-   deltaFg = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en)-CPFEM_ffn_all(:,:,CPFEM_in,cp_en)
+   deltaFg = CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en)-CPFEM_ffn_bar(:,:,CPFEM_in,cp_en)
    Fg(:,:,i_then) = Fg(:,:,i_now)
    Fp(:,:,i_then) = Fp(:,:,i_now)
    state(:,i_then) = 0.0_pReal                               ! state_old as initial guess
    t = 0.0_pReal
    cutback = .false.                                         ! no cutback has happened so far
    msg = ''
+   if (debugger) then
+     write(6,*) 'required Fg from FEM'
+     write(6,'(3(3(f5.3,x),/))') CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en)
+     write(6,*) 'my Fp_old'
+     write(6,'(3(3(f5.3,x),/))') CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en)
+     write(6,*) 'my Fp_new'
+     write(6,'(3(3(f5.3,x),/))') CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en)
+     write(6,*) 'my state old'
+     write(6,*) constitutive_state_old(:,grain,CPFEM_in,cp_en)
+   endif
+
 !
 ! ------- crystallite integration -----------
    do while ((t < CPFEM_dt) .or. (msg /= 'ok'))
@@ -242,13 +275,16 @@
        post_flag = .false.
      else                               ! full step solution
        t = CPFEM_dt                     ! final time
-       Fg(:,:,i_then) = CPFEM_ffn1_all(:,:,CPFEM_in,cp_en) ! final Fg 
+       Fg(:,:,i_then) = CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en) ! final Fg 
        post_flag = .true.
      endif
 !
-     call CPFEM_stressCrystallite(msg,PK1,dPdF,post_results,post_flag,Lp,Fp(:,:,i_then),Fe,state(:,i_then),&
-                                  t,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
-                                  Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
+     if (debugger .and. CPFEM_dt > 0.0_pReal) &
+       write (6,'(a,x,f7.5,x,a,x,f7.5,x,a,i2)') 'calculating from',(t-dt)/CPFEM_dt,'to',t/CPFEM_dt,'for grain',grain
+
+     call CPFEM_Crystallite(msg,PK1,dPdF,post_results,post_flag,Lp,Fp(:,:,i_then),Fe,state(:,i_then),&
+                            t,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
+                            Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
      if (msg == 'ok') then             ! solution converged
 !       if (t == CPFEM_dt) then
 !          debug_cutbackDistribution(max_cutbacks+1) = debug_cutbackDistribution(max_cutbacks+1)+1
@@ -260,6 +296,7 @@
        endif
        cutback = .false.               ! solution in next step does not derive from a cutback
      else                              ! solution not found
+       if (debugger) write (6,*) msg
        i = i+1_pInt                    ! inc cutback counter
        max_cutbacks = max(i,max_cutbacks)
        cutback = .true.
@@ -278,6 +315,7 @@
        endif
      endif
    enddo    ! crystallite integration (cutback loop)
+
    debug_cutbackDistribution(max_cutbacks+1) = debug_cutbackDistribution(max_cutbacks+1)+1
 !
 ! update crystallite matrices at t = t1
@@ -314,7 +352,7 @@
 !********************************************************************
 ! Calculates the stress for a single component
 !********************************************************************
- subroutine CPFEM_stressCrystallite(&
+ subroutine CPFEM_Crystallite(&
      msg,&        ! return message
      P,&          ! first PK stress
      dPdF,&       ! consistent tangent
@@ -512,6 +550,13 @@ Inner: do              ! inner iteration: Lp
            call math_invert(9,dRdLp,invdRdLp,dummy,failed)            ! invert dR/dLp --> dLp/dR
            if (failed) then
              msg = 'inversion dR/dLp'
+               if (debugger) then
+                 write (6,*) msg
+                 write (6,*) 'dRdLp',dRdLp
+                 write (6,*) 'state',state
+                 write (6,*) 'Lpguess',Lpguess
+                 write (6,*) 'Tstar',Tstar_v
+               endif                 
              return
            endif
 !
