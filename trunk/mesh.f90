@@ -392,8 +392,6 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  integer(pInt), dimension (133) :: pos
  character*300 line
  
- integer(pInt) targetNode
- 
 610 FORMAT(A300)
  
  node_count = 0_pInt

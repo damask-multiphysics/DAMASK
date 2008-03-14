@@ -256,7 +256,6 @@
  real(pReal),dimension(dimen,dimen), intent(out) :: InvA
  integer(pInt), intent(out) :: AnzNegEW
  logical, intent(out) :: error
- integer(pInt) i
  real(pReal) LogAbsDetA
  real(pReal),dimension(dimen,dimen) :: B
 

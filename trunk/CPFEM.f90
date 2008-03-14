@@ -108,7 +108,7 @@
  use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new,material_Cslip_66
  implicit none
 
- integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en, CPFEM_ngens, i,j,k,l, e
+ integer(pInt) CPFEM_inc, CPFEM_subinc, CPFEM_cn, CPFEM_en, CPFEM_in, cp_en, CPFEM_ngens, i, e
  real(pReal)   ffn(3,3),ffn1(3,3),Temperature,CPFEM_dt,CPFEM_stress(CPFEM_ngens),CPFEM_jaco(CPFEM_ngens,CPFEM_ngens)
  logical CPFEM_stress_recovery
  
@@ -255,7 +255,7 @@
 
      call CPFEM_stressCrystallite(msg,cs,cd,Tstar_v,Lp,Fp(:,:,i_then),Fe,state(:,i_then),&
                                   t,cp_en,CPFEM_in,grain,updateJaco .and. t==CPFEM_dt,&
-                                  Fg(:,:,i_now),Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
+                                  Fg(:,:,i_then),Fp(:,:,i_now),state(:,i_now))
      if (msg == 'ok') then             ! solution converged
        if (t == CPFEM_dt) then
 	     debug_cutbackDistribution(max_cutbacks+1) = debug_cutbackDistribution(max_cutbacks+1)+1
@@ -332,7 +332,6 @@
      CPFEM_in,&   ! integration point number
      grain,&      ! grain number
      updateJaco,& ! boolean to calculate Jacobi matrix
-     Fg_old,&     ! old global deformation gradient
      Fg_new,&     ! new global deformation gradient
      Fp_old,&     ! old plastic deformation gradient
      state_old)   ! old state variable array
@@ -350,14 +349,14 @@
  integer(pInt) cp_en,CPFEM_in,grain,i,j,k,l,m,n
  real(pReal) dt,invJ,det
  real(pReal), dimension(3,3,3,3) :: A,H
- real(pReal), dimension(3,3) :: Lp,Lp_pert,Fg_old,Fg_new,Fg_pert,Fp_old,Fp_new,invFp_new,Fp_pert,invFp_pert
- real(pReal), dimension(3,3) :: Fe_new,Fe_pert,Tstar,tau,P,P_pert,E_pert
+ real(pReal), dimension(3,3) :: Lp,Lp_pert,Fg_new,Fg_pert,Fp_old,Fp_new,invFp_new,Fp_pert,invFp_pert
+ real(pReal), dimension(3,3) :: Fe_new,Fe_pert,Tstar,tau,P,P_pert
  real(pReal), dimension(6)   :: cs,Tstar_v,Tstar_v_pert
  real(pReal), dimension(6,6) :: dcs_de
  real(pReal), dimension(constitutive_Nstatevars(grain,CPFEM_in,cp_en)) :: state_old,state_new,state_pert
 
  call CPFEM_timeIntegration(msg,Lp,Fp_new,Fe_new,Tstar_v,state_new, &   ! def gradients and PK2 at end of time step
-                            dt,cp_en,CPFEM_in,grain,Fg_new,Fg_old,Fp_old,state_old)
+                            dt,cp_en,CPFEM_in,grain,Fg_new,Fp_old,state_old)
  if (msg /= 'ok') return                    ! solution not reached --> report back
  Tstar = math_Mandel6to33(Tstar_v)          ! second PK in intermediate
  tau = matmul(Fe_new,matmul(Tstar,transpose(Fe_new))) ! Kirchhoff stress
@@ -379,7 +378,7 @@
        Lp_pert    = Lp
        state_pert = state_new                 ! initial guess from end of time step
        call CPFEM_timeIntegration(msg,Lp_pert,Fp_pert,Fe_pert,Tstar_v_pert,state_pert, &
-                                  dt,cp_en,CPFEM_in,grain,Fg_pert,Fg_old,Fp_old,state_old)
+                                  dt,cp_en,CPFEM_in,grain,Fg_pert,Fp_old,state_old)
        if (msg /= 'ok') then
          msg = 'consistent tangent --> '//msg
          return
@@ -428,7 +427,6 @@
      CPFEM_in,&         ! integration point number
      grain,&            ! grain number
      Fg_new,&           ! new total def gradient
-     Fg_old,&           ! old total def gradient
      Fp_old,&           ! former plastic def gradient
      state_old)         ! former microstructure
 
@@ -444,15 +442,14 @@
  character(len=*) msg
  integer(pInt) cp_en, CPFEM_in, grain
  integer(pInt) iOuter,iInner,dummy, i,j,k,l,m,n
- real(pReal) dt, det, p_hydro, max_dlnLp, max_deltalnLp, leapfrog,maxleap
+ real(pReal) dt, det, p_hydro, leapfrog,maxleap
  real(pReal), dimension(6) :: Tstar_v
- real(pReal), dimension(9) :: deltaLp,deltaR
  
  real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2
  real(pReal), dimension(6,6) :: C_66
- real(pReal), dimension(3,3) :: Fg_new,invFg_new,Fg_old,Fp_new,invFp_new,Fp_old,invFp_old,Fe_new,Fe_old
+ real(pReal), dimension(3,3) :: Fg_new,invFg_new,Fp_new,invFp_new,Fp_old,invFp_old,Fe_new,Fe_old
  real(pReal), dimension(3,3) :: Tstar
- real(pReal), dimension(3,3) :: Lp,Lpguess,Lpguess_old,dLpguess,Rinner,Rinner_old,A,B,BT,AB,BTA
+ real(pReal), dimension(3,3) :: Lp,Lpguess,Lpguess_old,Rinner,Rinner_old,A,B,BT,AB,BTA
  real(pReal), dimension(3,3,3,3) :: C
  real(pReal), dimension(constitutive_Nstatevars(grain, CPFEM_in, cp_en)) :: state_old,state,ROuter
  logical failed
