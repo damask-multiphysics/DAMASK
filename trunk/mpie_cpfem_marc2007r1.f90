@@ -28,9 +28,8 @@
 !********************************************************************
 !
  include "prec.f90"
-
+ include "FEsolving.f90"
  include "debug.f90"
-
  include "math.f90"
  include "IO.f90"
  include "mesh.f90"
@@ -38,6 +37,7 @@
  include "constitutive.f90"
  include "CPFEM.f90"
 !
+
  SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
                     nshear,disp,dispt,coord,ffn,frotn,strechn,eigvn,ffn1,&
                     frotn1,strechn1,eigvn1,ncrd,itel,ndeg,ndm,&
@@ -123,12 +123,23 @@
 !3    continue
 !
 
- use prec, only: pReal,pInt
-
+ use prec, only: pReal,pInt, ijaco
+ use FEsolving
  use CPFEM, only: CPFEM_general
  use math, only: invnrmMandel
+
  implicit real(pReal) (a-h,o-z)
-!
+
+ integer(pInt) computationMode
+
+
+
+ dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
+
+           frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
+
+
+
 ! Marc common blocks are in fixed format so they have to be pasted in here
 ! Beware of changes in newer Marc versions -- these are from 2005r3
 ! concom is needed for inc, subinc, ncycle, lovl
@@ -156,43 +167,31 @@
  common/marc_creeps/ &
      cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b,creept(33),icptim,icfte,icfst,&
      icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
-!
- dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
-           frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
 
- logical stress_recovery
 
- stress_recovery = (lovl == 6)
-!
-!     subroutine cpfem_general(mpie_ffn, mpie_ffn1, temperature, mpie_inc, mpie_subinc,  mpie_cn,
+ if (inc == 0) then
+   cycleCounter = 0
+ else
+   if (theInc /= inc .or. theCycle /= ncycle .or. theLovl /= lovl) cycleCounter = cycleCounter+1
+ endif
+ 
+ if (theInc /= inc) outdatedByNewInc = .true.
 
-!                              mpie_stress_recovery, mpie_tinc, mpie_en, mpie_in, mpie_s, mpie_d, mpie_ngens)
-!********************************************************************
-!     This routine calculates the material behaviour
-!********************************************************************
-!     mpie_ffn              deformation gradient for t=t0
-!     mpie_ffn1             deformation gradient for t=t1
+ if (mod(cycleCounter,2) /= 0) computationMode = 4   ! recycle
+ if (mod(cycleCounter,4) == 2) computationMode = 3   ! collect
+ if (mod(cycleCounter,4) == 0) computationMode = 2   ! compute
+ if (computationMode == 2 .and. outdatedByNewInc) then
+   outdatedByNewInc = .false.
+   computationMode = 1   ! compute and age former results
+ endif
+ 
+ theInc = inc
+ theCycle = ncycle
+ theLovl = lovl
 
-!     temperature           temperature
+ call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(theCycle,2_pInt*ijaco)==0,d,ngens)
 
-!     mpie_inc              increment number
 
-!     mpie_subinc           subincrement number
-
-!     mpie_cn               number of cycle
-!     mpie_stress_recovery  indicates wether we are in stiffness assemly(lovl==4) or stress recovery(lovl==6)
-
-!     mpie_tinc             time increment
-!     mpie_en               element number
-!     mpie_in               intergration point number
-
-!     mpie_s                stress vector in Marc notation, i.e. 11 22 33 12, 23, 13
-
-!     mpie_d                jacoby in Marc notation
-
-!     mpie_ngens            size of stress strain law
-!********************************************************************
- call CPFEM_general(ffn, ffn1, t(1), inc, incsub, ncycle, stress_recovery, timinc, n(1), nn, s, d, ngens)
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13
  forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*d(1:ngens,i)*invnrmMandel(1:ngens)
