@@ -15,7 +15,7 @@
 ! _maxNipNeighbors   : max number of IP neighbors in any CP element
 ! _maxNsharedElems : max number of CP elements sharing a node
 !
-! _element    : FEid, type, material, texture, node indices
+! _element    : FEid, type(internal representation), material, texture, node indices
 ! _node       : x,y,z coordinates (initially!)
 ! _sharedElem : entryCount and list of elements containing node
 !
@@ -58,7 +58,6 @@
  integer(pInt), parameter :: FE_maxNneighbors = 6
  integer(pInt), parameter :: FE_maxNfaceNodes = 4
  integer(pInt), parameter :: FE_maxNfaces = 6
- integer(pInt), dimension(200):: FE_mapElemtype	! dimension should exceed maximum element type index (134 at present)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nnodes = &
  (/8, & ! element 7
    4, & ! element 134
@@ -193,11 +192,6 @@
  mesh_NelemSets = 0_pInt
  mesh_maxNelemInSet = 0_pInt
 
- FE_mapElemtype = 1 ! MISSING this should be zero... Now all unknown types map to Marc type "7"
- FE_mapElemtype(  7) = 1
- FE_mapElemtype(134) = 2
- FE_mapElemtype( 11) = 3
- FE_mapElemtype( 27) = 4
 
 ! call to various subroutines to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
@@ -218,6 +212,36 @@
  
  END SUBROUTINE
  
+
+
+
+!***********************************************************
+! mapping of FE element types to internal representation
+!***********************************************************
+ FUNCTION FE_mapElemtype(what)
+
+ implicit none
+ 
+ character(len=*), intent(in) :: what
+ integer(pInt) FE_mapElemtype
+  
+ select case (what)
+    case ('7')
+	   FE_mapElemtype = 1
+    case ('134')
+	   FE_mapElemtype = 2
+    case ('11')
+	   FE_mapElemtype = 3
+    case ('27')
+	   FE_mapElemtype = 4
+    case ('C3D8')
+	   FE_mapElemtype = 5
+ 
+ end select
+
+ END FUNCTION
+
+
 
 !***********************************************************
 ! FE to CP id mapping by binary search thru lookup array
@@ -284,12 +308,12 @@
 
  integer(pInt) face,elem
  integer(pInt) mesh_faceMatch
- integer(pInt), dimension(FE_NfaceNodes(face,FE_mapElemtype(mesh_element(2,elem)))) :: nodeMap
+ integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: nodeMap
  integer(pInt) minN,NsharedElems,lonelyNode,faceNode,i,n,t
  
  minN = mesh_maxNsharedElems+1 ! init to worst case
  mesh_faceMatch = 0_pInt       ! intialize to "no match found"
- t = FE_mapElemtype(mesh_element(2,elem)) ! figure elemType
+ t = mesh_element(2,elem)      ! figure elemType
 
  do faceNode=1,FE_NfaceNodes(face,t)  ! loop over nodes on face
    nodeMap(faceNode) = mesh_FEasCP('node',mesh_element(4+FE_nodeOnFace(faceNode,face,t),elem)) ! CP id of face node
@@ -408,7 +432,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
        pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
        e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
        if (e /= 0) then
-         t = FE_mapElemtype(IO_intValue(line,pos,2))
+         t = FE_mapElemtype(IO_StringValue(line,pos,2))
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
@@ -434,7 +458,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 !********************************************************************
 ! Build element set mapping 
 !
-! allocate globals:
+! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !********************************************************************
  SUBROUTINE mesh_build_elemSetMapping (unit)
 
@@ -638,9 +662,9 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
 	   CP_elem = mesh_FEasCP('elem',IO_intValue(line,pos,1))
 	   if (CP_elem /= 0) then ! disregard non CP elems
-	     mesh_element (1,CP_elem) = IO_IntValue (line,pos,1)  ! FE id
-	     mesh_element (2,CP_elem) = IO_IntValue (line,pos,2)  ! elem type
-         do j=1,FE_Nnodes(FE_mapElemtype(mesh_element(2,CP_elem)))
+	     mesh_element (1,CP_elem) = IO_IntValue (line,pos,1)                     ! FE id
+	     mesh_element (2,CP_elem) = FE_mapElemtype(IO_StringValue (line,pos,2))  ! elem type
+         do j=1,FE_Nnodes(mesh_element(2,CP_elem))
            mesh_element(j+4,CP_elem) = IO_IntValue (line,pos,j+2) ! copy FE ids of nodes
 	     end do
 	   end if
@@ -721,7 +745,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
 	   CP_elem = mesh_FEasCP('elem',IO_IntValue(line,pos,1))
 	   if (CP_elem /= 0) then  ! disregard non CP elems
-         do j = 1,FE_Nnodes(FE_mapElemtype(IO_intValue(line,pos,2)))
+         do j = 1,FE_Nnodes(FE_mapElemtype(IO_StringValue(line,pos,2)))
            CP_node = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
 		   mesh_sharedElem(1,CP_node) = mesh_sharedElem(1,CP_node) + 1
 		   mesh_sharedElem(1+mesh_sharedElem(1,CP_node),CP_node) = CP_elem
@@ -754,7 +778,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipNeighborhood = 0_pInt
  
  do e = 1,mesh_NcpElems                  ! loop over cpElems
-   t = FE_mapElemtype(mesh_element(2,e)) ! get elemType
+   t = mesh_element(2,e)                 ! get elemType
    do i = 1,FE_Nips(t)                   ! loop over IPs of elem
      do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
        neighbor = FE_ipNeighbor(n,i,t)
@@ -766,7 +790,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
          neighboringIP = 0_pInt
          matchingElem = mesh_faceMatch(-neighbor,e)   ! get CP elem id of face match
          if (matchingElem > 0 .and. &
-		     FE_mapElemtype(mesh_element(2,matchingElem)) == t) then ! found match of same type?
+		     mesh_element(2,matchingElem) == t) then  ! found match of same type?
 matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matching face
              faceNode = FE_nodeOnFace(j,-neighbor,t)  ! get face node id
              if (i == FE_ipAtNode(faceNode,t)) then   ! ip linked to face node is me?
