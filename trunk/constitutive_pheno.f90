@@ -535,7 +535,7 @@ subroutine constitutive_Assignment()
 !*********************************************************************
 use prec, only: pReal,pInt
 use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,math_symmetricEulers,math_EulerToR
-use mesh, only: mesh_NcpElems,FE_Nips,FE_mapElemtype,mesh_maxNips,mesh_element
+use mesh, only: mesh_NcpElems,FE_Nips,mesh_maxNips,mesh_element
 use IO,   only: IO_hybridIA
 use crystal, only: crystal_SlipIntType
 
@@ -591,7 +591,7 @@ constitutive_maxNstatevars = material_maxNslip + 0_pInt
 allocate(texture_totalNgrains(texture_maxN)) ; texture_totalNgrains=0_pInt
 do i=1,mesh_NcpElems
    texID = mesh_element(4,i)
-   texture_totalNgrains(texID) = texture_totalNgrains(texID) + FE_Nips(FE_mapElemtype(mesh_element(2,i)))*texture_Ngrains(texID)
+   texture_totalNgrains(texID) = texture_totalNgrains(texID) + FE_Nips(mesh_element(2,i))*texture_Ngrains(texID)
 enddo
 
 ! generate hybridIA samplings for ODFfile textures to later draw from these populations
@@ -621,7 +621,7 @@ constitutive_HardeningMatrix=0.0_pReal
 do e=1,mesh_NcpElems
    matID=mesh_element(3,e)
    texID=mesh_element(4,e)
-   do i=1,FE_Nips(FE_mapElemtype(mesh_element(2,e)))
+   do i=1,FE_Nips(mesh_element(2,e))
       g = 0_pInt     ! grain counter
 	  do m = 1,multiplicity(texID)
 		 o = 0_pInt  ! component counter
