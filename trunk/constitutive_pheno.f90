@@ -43,6 +43,9 @@ real(pReal), dimension(:)    , allocatable :: material_h0
 real(pReal), dimension(:)    , allocatable :: material_s_sat
 real(pReal), dimension(:)    , allocatable :: material_w0
 real(pReal), dimension(:,:)  , allocatable :: material_SlipIntCoeff
+!* GIA material parameters
+real(pReal), dimension(:)    , allocatable :: material_GrainSize
+real(pReal), dimension(:)          , allocatable :: material_bg
 
 !************************************
 !* Definition of texture properties *
@@ -268,10 +271,10 @@ do while(.true.)
    else
       if (section>0) then
          select case(tag)
-	     case ('crystal_structure')
+		 case ('crystal_structure')
               material_CrystalStructure(section)=IO_intValue(line,positions,2)
-	     case ('nslip')
-		      material_Nslip(section)=IO_intValue(line,positions,2)
+		 case ('nslip')
+              material_Nslip(section)=IO_intValue(line,positions,2)
 		 case ('c11')
               material_C11(section)=IO_floatValue(line,positions,2)
 		 case ('c12')
@@ -282,7 +285,7 @@ do while(.true.)
               material_C33(section)=IO_floatValue(line,positions,2)
 		 case ('c44')
               material_C44(section)=IO_floatValue(line,positions,2)
-         case ('s0_slip')
+		 case ('s0_slip')
               material_s0_slip(section)=IO_floatValue(line,positions,2)
 		 case ('gdot0_slip')
               material_gdot0_slip(section)=IO_floatValue(line,positions,2)
@@ -294,10 +297,14 @@ do while(.true.)
               material_s_sat(section)=IO_floatValue(line,positions,2)
 		 case ('w0')
               material_w0(section)=IO_floatValue(line,positions,2)
-	     case ('hardening_coefficients') 
-		      do i=1,2
+		 case ('hardening_coefficients') 
+	      do i=1,2
               material_SlipIntCoeff(i,section)=IO_floatValue(line,positions,i+1)
-			  enddo
+	      enddo
+		 case ('grain_size')
+              material_GrainSize(section)=IO_floatValue(line,positions,2)
+		 case ('burgers') 
+              material_bg(section)=IO_floatValue(line,positions,2)
          end select
       endif
    endif
@@ -433,27 +440,29 @@ do while (part/='')
    end select
 enddo
 !* Array allocation
-allocate(material_CrystalStructure(material_maxN))		  ; material_CrystalStructure=0_pInt
-allocate(material_Nslip(material_maxN))					  ; material_Nslip=0_pInt
-allocate(material_C11(material_maxN))					  ; material_C11=0.0_pReal
-allocate(material_C12(material_maxN))					  ; material_C12=0.0_pReal
-allocate(material_C13(material_maxN))					  ; material_C13=0.0_pReal
-allocate(material_C33(material_maxN))					  ; material_C33=0.0_pReal
-allocate(material_C44(material_maxN))					  ; material_C44=0.0_pReal
-allocate(material_Cslip_66(6,6,material_maxN))            ; material_Cslip_66=0.0_pReal
-allocate(material_s0_slip(material_maxN))				  ; material_s0_slip=0.0_pReal
-allocate(material_gdot0_slip(material_maxN))			  ; material_gdot0_slip=0.0_pReal
-allocate(material_n_slip(material_maxN))				  ; material_n_slip=0.0_pReal
-allocate(material_h0(material_maxN))				      ; material_h0=0.0_pReal
-allocate(material_s_sat(material_maxN))                   ; material_s_sat=0.0_pReal
-allocate(material_w0(material_maxN))                      ; material_w0=0.0_pReal
+allocate(material_CrystalStructure(material_maxN))			   ; material_CrystalStructure=0_pInt
+allocate(material_Nslip(material_maxN))					   ; material_Nslip=0_pInt
+allocate(material_C11(material_maxN))					   ; material_C11=0.0_pReal
+allocate(material_C12(material_maxN))					   ; material_C12=0.0_pReal
+allocate(material_C13(material_maxN))					   ; material_C13=0.0_pReal
+allocate(material_C33(material_maxN))					   ; material_C33=0.0_pReal
+allocate(material_C44(material_maxN))					   ; material_C44=0.0_pReal
+allocate(material_Cslip_66(6,6,material_maxN))				   ; material_Cslip_66=0.0_pReal
+allocate(material_s0_slip(material_maxN))				   ; material_s0_slip=0.0_pReal
+allocate(material_gdot0_slip(material_maxN))				   ; material_gdot0_slip=0.0_pReal
+allocate(material_n_slip(material_maxN))				   ; material_n_slip=0.0_pReal
+allocate(material_h0(material_maxN))					   ; material_h0=0.0_pReal
+allocate(material_s_sat(material_maxN))					   ; material_s_sat=0.0_pReal
+allocate(material_w0(material_maxN))					   ; material_w0=0.0_pReal
 allocate(material_SlipIntCoeff(maxval(crystal_SlipIntType),material_maxN)) ; material_SlipIntCoeff=0.0_pReal
-allocate(texture_ODFfile(texture_maxN))                   ; texture_ODFfile=''
-allocate(texture_Ngrains(texture_maxN))                   ; texture_Ngrains=0_pInt
-allocate(texture_symmetry(texture_maxN))                  ; texture_symmetry=''
-allocate(texture_NGauss(texture_maxN)) ; texture_NGauss=0_pInt
-allocate(texture_NFiber(texture_maxN)) ; texture_NFiber=0_pInt
-allocate(texture_NRandom(texture_maxN)) ; texture_NRandom=0_pInt
+allocate(material_GrainSize(material_maxN))				   ; material_GrainSize=0.0_pReal
+allocate(material_bg(material_maxN))					   ; material_bg=0.0_pReal
+allocate(texture_ODFfile(texture_maxN)) 				   ; texture_ODFfile=''
+allocate(texture_Ngrains(texture_maxN)) 				   ; texture_Ngrains=0_pInt
+allocate(texture_symmetry(texture_maxN))				   ; texture_symmetry=''
+allocate(texture_NGauss(texture_maxN)) 					   ; texture_NGauss=0_pInt
+allocate(texture_NFiber(texture_maxN))					   ; texture_NFiber=0_pInt
+allocate(texture_NRandom(texture_maxN))					   ; texture_NRandom=0_pInt
 
 !-----------------------------
 !* Second reading: number of Gauss and Fiber
@@ -506,16 +515,16 @@ do i=1,material_maxN
    case(3)   ! hcp
         material_Cslip_66(1,1,i)=material_C11(i)
         material_Cslip_66(2,2,i)=material_C11(i)
-		material_Cslip_66(3,3,i)=material_C33(i)
-		material_Cslip_66(1,2,i)=material_C12(i)
-		material_Cslip_66(2,1,i)=material_C12(i)
-		material_Cslip_66(1,3,i)=material_C13(i)
-		material_Cslip_66(3,1,i)=material_C13(i)
-		material_Cslip_66(2,3,i)=material_C13(i)
-		material_Cslip_66(3,2,i)=material_C13(i)
-        material_Cslip_66(4,4,i)=material_C44(i)
-        material_Cslip_66(5,5,i)=material_C44(i)
-        material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
+	material_Cslip_66(3,3,i)=material_C33(i)
+	material_Cslip_66(1,2,i)=material_C12(i)
+	material_Cslip_66(2,1,i)=material_C12(i)
+	material_Cslip_66(1,3,i)=material_C13(i)
+	material_Cslip_66(3,1,i)=material_C13(i)
+	material_Cslip_66(2,3,i)=material_C13(i)
+	material_Cslip_66(3,2,i)=material_C13(i)
+	material_Cslip_66(4,4,i)=material_C44(i)
+	material_Cslip_66(5,5,i)=material_C44(i)
+	material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
    end select
    material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
    ! Check
