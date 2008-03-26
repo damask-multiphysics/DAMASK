@@ -167,6 +167,31 @@
 
  END FUNCTION
 
+!**************************************************************************
+! permutation tensor e_ijk used for computing cross product of two tensors
+! e_ijk =  1 if even permutation of ijk
+! e_ijk = -1 if odd permutation of ijk
+! e_ijk =  0 otherwise
+!**************************************************************************
+ FUNCTION math_permut(i,j,k)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,j,k
+ real(pReal) math_permut
+
+ math_permut = 0.0_pReal
+ if (((i == 1).and.(j == 2).and.(k == 3)) .or. &
+     ((i == 2).and.(j == 3).and.(k == 1)) .or. &
+     ((i == 3).and.(j == 1).and.(k == 2))) math_permut = 1.0_pReal
+ if (((i == 1).and.(j == 3).and.(k == 2)) .or. &
+     ((i == 2).and.(j == 1).and.(k == 3)) .or. &
+     ((i == 3).and.(j == 2).and.(k == 1))) math_permut = -1.0_pReal
+ math_permut
+ return
+
+ END FUNCTION
 
 !**************************************************************************
 ! fourth rank identity tensor of specified dimension
