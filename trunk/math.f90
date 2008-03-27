@@ -188,7 +188,26 @@
  if (((i == 1).and.(j == 3).and.(k == 2)) .or. &
      ((i == 2).and.(j == 1).and.(k == 3)) .or. &
      ((i == 3).and.(j == 2).and.(k == 1))) math_permut = -1.0_pReal
- math_permut
+ return
+
+ END FUNCTION
+
+!**************************************************************************
+! kronecker delta function d_ij
+! d_ij = 1 if i = j
+! d_ij = 0 otherwise
+!**************************************************************************
+ FUNCTION math_delta(i,j)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,j
+ real(pReal) math_delta
+
+ math_delta = 0.0_pReal
+ if (i == j) math_delta = 1.0_pReal
+
  return
 
  END FUNCTION
