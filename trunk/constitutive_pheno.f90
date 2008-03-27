@@ -45,7 +45,7 @@ real(pReal), dimension(:)    , allocatable :: material_w0
 real(pReal), dimension(:,:)  , allocatable :: material_SlipIntCoeff
 !* GIA material parameters
 real(pReal), dimension(:)    , allocatable :: material_GrainSize
-real(pReal), dimension(:)          , allocatable :: material_bg
+real(pReal), dimension(:)    , allocatable :: material_bg
 
 !************************************
 !* Definition of texture properties *
