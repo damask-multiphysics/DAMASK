@@ -271,7 +271,7 @@ do while(.true.)
    else
       if (section>0) then
          select case(tag)
-		 case ('crystal_structure')
+		 case ('lattice_structure')
               material_CrystalStructure(section)=IO_intValue(line,positions,2)
 		 case ('nslip')
               material_Nslip(section)=IO_intValue(line,positions,2)
@@ -413,7 +413,7 @@ subroutine constitutive_Parse_MatTexDat(filename)
 use prec, only: pReal,pInt
 use IO, only: IO_error, IO_open_file
 use math, only: math_Mandel3333to66, math_Voigt66to3333
-use crystal, only: crystal_SlipIntType
+use lattice, only: lattice_SlipIntType
 implicit none
 
 !* Definition of variables
@@ -454,7 +454,7 @@ allocate(material_n_slip(material_maxN))				   ; material_n_slip=0.0_pReal
 allocate(material_h0(material_maxN))					   ; material_h0=0.0_pReal
 allocate(material_s_sat(material_maxN))					   ; material_s_sat=0.0_pReal
 allocate(material_w0(material_maxN))					   ; material_w0=0.0_pReal
-allocate(material_SlipIntCoeff(maxval(crystal_SlipIntType),material_maxN)) ; material_SlipIntCoeff=0.0_pReal
+allocate(material_SlipIntCoeff(maxval(lattice_SlipIntType),material_maxN)) ; material_SlipIntCoeff=0.0_pReal
 allocate(material_GrainSize(material_maxN))				   ; material_GrainSize=0.0_pReal
 allocate(material_bg(material_maxN))					   ; material_bg=0.0_pReal
 allocate(texture_ODFfile(texture_maxN)) 				   ; texture_ODFfile=''
@@ -546,7 +546,7 @@ use prec, only: pReal,pInt
 use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,math_symmetricEulers,math_EulerToR
 use mesh, only: mesh_NcpElems,FE_Nips,mesh_maxNips,mesh_element
 use IO,   only: IO_hybridIA
-use crystal, only: crystal_SlipIntType
+use lattice, only: lattice_SlipIntType
 
 implicit none
 
@@ -688,7 +688,7 @@ do i=1,material_maxN
    do j=1,material_Nslip(i)
    do k=1,material_Nslip(i)
 !* min function is used to distinguish self hardening from latent hardening
-      constitutive_HardeningMatrix(k,j,i) = material_SlipIntCoeff(max(2,min(3,crystal_SlipIntType(k,j,i)))-1,i) ! 1,2,3,4,5 --> 1,1,2,2,2
+      constitutive_HardeningMatrix(k,j,i) = material_SlipIntCoeff(max(2,min(3,lattice_SlipIntType(k,j,i)))-1,i) ! 1,2,3,4,5 --> 1,1,2,2,2
    enddo
    enddo
 enddo
@@ -759,7 +759,7 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,state,Temperature,
 !*  - dLp_dTstar      : derivative of Lp (4th-order tensor)          *
 !*********************************************************************
 use prec, only: pReal,pInt
-use crystal, only: crystal_Sslip,crystal_Sslip_v
+use lattice, only: lattice_Sslip,lattice_Sslip_v
 use math, only: math_Plain3333to99
 use debug
 
@@ -782,10 +782,10 @@ matID = constitutive_matID(ipc,ip,el)
 !* Calculation of Lp
 Lp = 0.0_pReal
 do i=1,material_Nslip(matID)
-   tau_slip(i)=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
+   tau_slip(i)=dot_product(Tstar_v,lattice_Sslip_v(:,i,material_CrystalStructure(matID)))
    gdot_slip(i)=material_gdot0_slip(matID)*(abs(tau_slip(i))/state(i))**&
                 material_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
-   Lp=Lp+gdot_slip(i)*crystal_Sslip(:,:,i,material_CrystalStructure(matID))
+   Lp=Lp+gdot_slip(i)*lattice_Sslip(:,:,i,material_CrystalStructure(matID))
 enddo
 
 !* Calculation of the tangent of Lp
@@ -796,8 +796,8 @@ do i=1,material_Nslip(matID)
                       (material_n_slip(matID)-1.0_pReal)*material_n_slip(matID)/state(i)
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
           dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-             dgdot_dtauslip(i)*crystal_Sslip(k,l,i,material_CrystalStructure(matID))* &
-		                       crystal_Sslip(m,n,i,material_CrystalStructure(matID))
+             dgdot_dtauslip(i)*lattice_Sslip(k,l,i,material_CrystalStructure(matID))* &
+		                       lattice_Sslip(m,n,i,material_CrystalStructure(matID))
 enddo
 dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 
@@ -819,7 +819,7 @@ function constitutive_dotState(Tstar_v,state,Temperature,ipc,ip,el)
 !*  - constitutive_dotState : evolution of state variable            *
 !*********************************************************************
 use prec, only: pReal,pInt
-use crystal, only: crystal_Sslip_v
+use lattice, only: lattice_Sslip_v
 implicit none
 
 !* Definition of variables
@@ -834,7 +834,7 @@ matID = constitutive_matID(ipc,ip,el)
 
 !* Self-Hardening of each system
 do i=1,constitutive_Nstatevars(ipc,ip,el)
-   tau_slip = dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
+   tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,material_CrystalStructure(matID)))
    gdot_slip = material_gdot0_slip(matID)*(abs(tau_slip)/state(i))**&
                material_n_slip(matID)*sign(1.0_pReal,tau_slip)
    self_hardening(i)=material_h0(matID)*(1.0_pReal-state(i)/&
@@ -848,7 +848,7 @@ return
 end function
 
 
-function constitutive_post_results(Tstar_v,state,dt,Temperature,ipc,ip,el)
+function constitutive_post_results(Tstar_v,state,Temperature,dt,ipc,ip,el)
 !*********************************************************************
 !* return array of constitutive results                              *
 !* INPUT:                                                            *
@@ -860,7 +860,7 @@ function constitutive_post_results(Tstar_v,state,dt,Temperature,ipc,ip,el)
 !*  - el              : current element                              *
 !*********************************************************************
 use prec, only: pReal,pInt
-use crystal, only: crystal_Sslip_v
+use lattice, only: lattice_Sslip_v
 implicit none
 
 !* Definition of variables
@@ -878,7 +878,7 @@ if(constitutive_Nresults(ipc,ip,el)==0) return
 
 do i=1,material_Nslip(matID)
    constitutive_post_results(i) = state(i)
-   tau_slip=dot_product(Tstar_v,crystal_Sslip_v(:,i,material_CrystalStructure(matID)))
+   tau_slip=dot_product(Tstar_v,lattice_Sslip_v(:,i,material_CrystalStructure(matID)))
    constitutive_post_results(i+material_Nslip(matID)) = &
      dt*material_gdot0_slip(matID)*(abs(tau_slip)/state(i))**material_n_slip(matID)*sign(1.0_pReal,tau_slip)
 enddo

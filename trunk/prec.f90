@@ -16,11 +16,17 @@
  integer(pInt), parameter :: ijaco        = 1_pInt       ! frequency of FEM Jacobi update
  integer(pInt), parameter :: nCutback     = 10_pInt      ! cutbacks in time-step integration
  integer(pInt), parameter :: nReg         = 1_pInt       ! regularization attempts for Jacobi inversion
- real(pReal),   parameter :: pert_Fg      = 1.0e-5_pReal ! strain perturbation for FEM Jacobi
+ real(pReal),   parameter :: pert_Fg      = 1.0e-6_pReal ! strain perturbation for FEM Jacobi
  integer(pInt), parameter :: nOuter       = 10_pInt      ! outer loop limit
  integer(pInt), parameter :: nInner       = 1000_pInt    ! inner loop limit
- real(pReal),   parameter :: reltol_Outer = 1.0e-4_pReal ! relative tolerance in outer loop (state)
+ real(pReal),   parameter :: reltol_Outer = 1.0e-6_pReal ! relative tolerance in outer loop (state)
  real(pReal),   parameter :: reltol_Inner = 1.0e-6_pReal ! relative tolerance in inner loop (Lp)
  real(pReal),   parameter :: abstol_Inner = 1.0e-8_pReal ! absolute tolerance in inner loop (Lp)
+!
+ real(pReal),   parameter :: resToler = 1.0e-6_pReal     ! relative tolerance of residual in GIA iteration
+ real(pReal),   parameter :: resAbsol = 1.0e+0_pReal     ! absolute tolerance of residual in GIA iteration (corresponds to 1 Pa)
+ real(pReal),   parameter :: resBound = 1.0e+2_pReal     ! relative maximum value (upper bound) for GIA residual
+ integer(pInt), parameter :: NRiterMax = 24_pInt         ! maximum number of GIA iteration
+ real(pReal),   parameter :: subStepMin = 1.0e-3_pReal   ! minimum (relative) size of sub-step allowed during cutback
 
  END MODULE prec

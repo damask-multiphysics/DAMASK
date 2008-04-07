@@ -595,6 +595,8 @@
    msg='Polar decomposition failed'
  case (700)
    msg='Singular matrix in stress iteration'
+ case (800)
+   msg='GIA requires 8 grains per IP (bonehead, you!)'
  case default
    msg='Unknown error number'
  end select

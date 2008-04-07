@@ -33,8 +33,9 @@
  include "math.f90"
  include "IO.f90"
  include "mesh.f90"
- include "crystal.f90"
+ include "lattice.f90"
  include "constitutive.f90"
+ include "crystallite.f90"
  include "CPFEM.f90"
 !
 
@@ -135,7 +136,6 @@
 
 
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
-
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
 
 
@@ -172,22 +172,32 @@
  if (inc == 0) then
    cycleCounter = 0
  else
-   if (theInc /= inc .or. theCycle /= ncycle .or. theLovl /= lovl) cycleCounter = cycleCounter+1
+   if (theCycle > ncycle) cycleCounter = 0                                      ! reset counter for each cutback
+   if (theCycle /= ncycle .or. theLovl /= lovl) cycleCounter = cycleCounter+1   ! ping pong
  endif
- 
- if (theInc /= inc) outdatedByNewInc = .true.
+ if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence
+   lastIncConverged = .true.
+   outdatedByNewInc = .true.
+ endif
 
  if (mod(cycleCounter,2) /= 0) computationMode = 4   ! recycle
  if (mod(cycleCounter,4) == 2) computationMode = 3   ! collect
  if (mod(cycleCounter,4) == 0) computationMode = 2   ! compute
+ if (computationMode == 4 .and. ncycle == 0 .and. .not. lastIncConverged) &
+   computationMode = 6    ! recycle but restore known good consistent tangent
+ if (computationMode == 4 .and. lastIncConverged) then
+   computationMode  = 5   ! recycle and record former consistent tangent
+   lastIncConverged = .false.
+ endif
  if (computationMode == 2 .and. outdatedByNewInc) then
+   computationMode  = 1   ! compute and age former results
    outdatedByNewInc = .false.
-   computationMode = 1   ! compute and age former results
  endif
  
- theInc = inc
- theCycle = ncycle
- theLovl = lovl
+ theTime  = cptim                                   ! record current starting time
+ theInc   = inc                                     ! record current increment number
+ theCycle = ncycle                                  ! record current cycle count
+ theLovl  = lovl                                    ! record current lovl
 
  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(theCycle,2_pInt*ijaco)==0,d,ngens)
 
@@ -201,7 +211,7 @@
  
  END SUBROUTINE
 !
-!
+
  SUBROUTINE plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
 !********************************************************************
 !     This routine sets user defined output variables for Marc

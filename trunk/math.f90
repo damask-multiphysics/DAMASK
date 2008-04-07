@@ -79,6 +79,7 @@
  
  call random_seed()
  call get_seed(seed)
+ seed = 1
  call halton_seed_set(seed)
  call halton_ndim_set(3)
    
@@ -306,7 +307,6 @@
  InvA = math_identity2nd(dimen)
  B = A
  CALL Gauss(dimen,B,InvA,LogAbsDetA,AnzNegEW,error)
-
  RETURN
 
  END SUBROUTINE math_invert
@@ -1877,7 +1877,6 @@ endif
  return
  
  END FUNCTION
-
 
  END MODULE math
 

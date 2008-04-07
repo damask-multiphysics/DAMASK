@@ -33,8 +33,9 @@
  include "math.f90"
  include "IO.f90"
  include "mesh.f90"
- include "crystal.f90"
+ include "lattice.f90"
  include "constitutive.f90"
+ include "crystallite.f90"
  include "CPFEM.f90"
 !
 
@@ -74,7 +75,37 @@
 !     s            stress - should be updated by user
 !     t            state variables (comes in at t=n, must be updated
 !                                   to have state variables at t=n+1)
-!     dt           increment of state variables
+!     dt        ! Marc common blocks are in fixed format so they have to be pasted in here
+!
+! Marc common blocks are in fixed format so they have to be pasted in here
+! Beware of changes in newer Marc versions -- these are from 2005r3
+! concom is needed for inc, subinc, ncycle, lovl
+! include 'concom'
+ common/concom/ &
+     iacous, iasmbl, iautth,    ibear,  icompl,     iconj,  icreep, ideva(50), idyn,   idynt,&
+     ielas,  ielcma, ielect,    iform,  ifour,      iharm,  ihcps,  iheat,     iheatt, ihresp,&
+     ijoule, ilem,   ilnmom,    iloren, inc,        incext, incsub, ipass,     iplres, ipois,&
+     ipoist, irpflo, ismall,    ismalt, isoil,      ispect, ispnow, istore,    iswep,  ithcrp,&
+     itherm, iupblg, iupdat,    jacflg, jel,        jparks, largst, lfond,     loadup, loaduq,&
+     lodcor, lovl,   lsub,      magnet, ncycle,     newtnt, newton, noshr,     linear, ivscpl,&
+     icrpim, iradrt, ipshft,    itshr,  iangin,     iupmdr, iconjf, jincfl,    jpermg, jhour,&
+     isolvr, jritz,  jtable,    jshell, jdoubl,     jform,  jcentr, imini,     kautth, iautof,&
+     ibukty, iassum, icnstd,    icnstt, kmakmas,    imethvp,iradrte,iradrtp,   iupdate,iupdatp,&
+     ncycnt, marmen ,idynme,    ihavca, ispf,       kmini,  imixed, largtt,    kdoela, iautofg,&
+     ipshftp,idntrc, ipore,     jtablm, jtablc,     isnecma,itrnspo,imsdif,    jtrnspo,mcnear,&
+     imech,  imecht, ielcmat,   ielectt,magnett,    imsdift,noplas, jtabls,    jactch, jtablth,&
+     kgmsto ,jpzo,   ifricsh,   iremkin,iremfor,    ishearp,jspf,   machining, jlshell,icompsol,&
+     iupblgfo,jcondir,nstcrp,   nactive,ipassref,   nstspnt,ibeart,icheckmpc,  noline, icuring,&
+     ishrink,ioffsflg,isetoff,  iharmt, inc_incdat, iautspc,ibrake
+
+! creeps is needed for timinc (time increment)
+! include 'creeps'
+ common/marc_creeps/ &
+     cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b,creept(33),icptim,icfte,icfst,&
+     icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
+
+
+   increment of state variables
 !     ngens        size of stress - strain law
 !     n            element number
 !     nn           integration point number
@@ -132,15 +163,18 @@
 
  integer(pInt) computationMode
 
+
+
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
+
 
 
 ! Marc common blocks are in fixed format so they have to be pasted in here
 ! Beware of changes in newer Marc versions -- these are from 2005r3
 ! concom is needed for inc, subinc, ncycle, lovl
 ! include 'concom'
- common/concom/ &
+ common/marc_concom/ &
      iacous, iasmbl, iautth,    ibear,  icompl,     iconj,  icreep, ideva(50), idyn,   idynt,&
      ielas,  ielcma, ielect,    iform,  ifour,      iharm,  ihcps,  iheat,     iheatt, ihresp,&
      ijoule, ilem,   ilnmom,    iloren, inc,        incext, incsub, ipass,     iplres, ipois,&
@@ -155,7 +189,8 @@
      imech,  imecht, ielcmat,   ielectt,magnett,    imsdift,noplas, jtabls,    jactch, jtablth,&
      kgmsto ,jpzo,   ifricsh,   iremkin,iremfor,    ishearp,jspf,   machining, jlshell,icompsol,&
      iupblgfo,jcondir,nstcrp,   nactive,ipassref,   nstspnt,ibeart,icheckmpc,  noline, icuring,&
-     ishrink,ioffsflg,isetoff,  iharmt, inc_incdat, iautspc,ibrake
+     ishrink,ioffsflg,isetoff,  ioffsetm,iharmt,    inc_incdat,iautspc,ibrake, icbush ,istream_input,&
+     iprsinp,ivlsinp,ifirst_time,ipin_m,jgnstr_glb, imarc_return,iqvcinp,nqvceid,istpnx,imicro1
 
 ! creeps is needed for timinc (time increment)
 ! include 'creeps'
@@ -167,22 +202,32 @@
  if (inc == 0) then
    cycleCounter = 0
  else
-   if (theInc /= inc .or. theCycle /= ncycle .or. theLovl /= lovl) cycleCounter = cycleCounter+1
+   if (theCycle > ncycle) cycleCounter = 0                                      ! reset counter for each cutback
+   if (theCycle /= ncycle .or. theLovl /= lovl) cycleCounter = cycleCounter+1   ! ping pong
  endif
- 
- if (theInc /= inc) outdatedByNewInc = .true.
+ if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence
+   lastIncConverged = .true.
+   outdatedByNewInc = .true.
+ endif
 
  if (mod(cycleCounter,2) /= 0) computationMode = 4   ! recycle
  if (mod(cycleCounter,4) == 2) computationMode = 3   ! collect
  if (mod(cycleCounter,4) == 0) computationMode = 2   ! compute
+ if (computationMode == 4 .and. ncycle == 0 .and. .not. lastIncConverged) &
+   computationMode = 6    ! recycle but restore known good consistent tangent
+ if (computationMode == 4 .and. lastIncConverged) then
+   computationMode  = 5   ! recycle and record former consistent tangent
+   lastIncConverged = .false.
+ endif
  if (computationMode == 2 .and. outdatedByNewInc) then
+   computationMode  = 1   ! compute and age former results
    outdatedByNewInc = .false.
-   computationMode = 1   ! compute and age former results
  endif
  
- theInc = inc
- theCycle = ncycle
- theLovl = lovl
+ theTime  = cptim                                   ! record current starting time
+ theInc   = inc                                     ! record current increment number
+ theCycle = ncycle                                  ! record current cycle count
+ theLovl  = lovl                                    ! record current lovl
 
  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(theCycle,2_pInt*ijaco)==0,d,ngens)
 
@@ -196,7 +241,7 @@
  
  END SUBROUTINE
 !
-!
+
  SUBROUTINE plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
 !********************************************************************
 !     This routine sets user defined output variables for Marc
