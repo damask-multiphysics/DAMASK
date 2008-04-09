@@ -1,6 +1,6 @@
 <materials>
 [TWIP steel FeMnC]
-crystal_structure		              1
+lattice_structure		              1
 Nslip				              12
 Ntwin                                         12
 ## Elastic constants 
