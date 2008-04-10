@@ -40,6 +40,7 @@
  character(256) path
 
  inquire(6, name=path) ! determine outputfile
+ write(6,*)'trying to open mattex at',path(1:scan(path,pathSep,back=.true.))//relPath
  open(unit,status='old',err=100,file=path(1:scan(path,pathSep,back=.true.))//relPath)
  IO_open_file = .true.
  return
@@ -568,25 +569,17 @@
 
  select case (ID)
  case (100)
-
    msg='Unable to open input file.'
-
  case (110)
-
    msg='No materials specified via State Variable 2.'
-
  case (120)
-
    msg='No textures specified via State Variable 3.'
-
  case (200)
    msg='Error reading from material+texture file'
  case (300)
-   msg='This material can only be used with &
-  &elements with three direct stress components'
+   msg='This material can only be used with elements with three direct stress components'
  case (400)
    msg='Unknown alloy number specified'
-
  case (500)
    msg='Unknown lattice type specified'
  case (600)

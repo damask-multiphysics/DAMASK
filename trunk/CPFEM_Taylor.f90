@@ -68,17 +68,17 @@
  write(6,*)
  write(6,*) 'CPFEM Initialization'
  write(6,*)
- write(6,*) 'CPFEM_Temperature:    ', shape(CPFEM_Temperature)
- write(6,*) 'CPFEM_ffn_bar:        ', shape(CPFEM_ffn_bar)
- write(6,*) 'CPFEM_ffn1_bar:       ', shape(CPFEM_ffn1_bar)
- write(6,*) 'CPFEM_PK1_bar:        ', shape(CPFEM_PK1_bar)
- write(6,*) 'CPFEM_dPdF_bar:       ', shape(CPFEM_dPdF_bar)
- write(6,*) 'CPFEM_stress_bar:     ', shape(CPFEM_stress_bar)
- write(6,*) 'CPFEM_jaco_bar:       ', shape(CPFEM_jaco_bar)
+ write(6,*) 'CPFEM_Temperature:   ', shape(CPFEM_Temperature)
+ write(6,*) 'CPFEM_ffn_bar:       ', shape(CPFEM_ffn_bar)
+ write(6,*) 'CPFEM_ffn1_bar:      ', shape(CPFEM_ffn1_bar)
+ write(6,*) 'CPFEM_PK1_bar:       ', shape(CPFEM_PK1_bar)
+ write(6,*) 'CPFEM_dPdF_bar:      ', shape(CPFEM_dPdF_bar)
+ write(6,*) 'CPFEM_stress_bar:    ', shape(CPFEM_stress_bar)
+ write(6,*) 'CPFEM_jaco_bar:      ', shape(CPFEM_jaco_bar)
  write(6,*) 'CPFEM_jaco_knownGood: ', shape(CPFEM_jaco_knownGood)
- write(6,*) 'CPFEM_results:        ', shape(CPFEM_results)
- write(6,*) 'CPFEM_Fp_old:         ', shape(CPFEM_Fp_old)
- write(6,*) 'CPFEM_Fp_new:         ', shape(CPFEM_Fp_new)
+ write(6,*) 'CPFEM_results:       ', shape(CPFEM_results)
+ write(6,*) 'CPFEM_Fp_old:        ', shape(CPFEM_Fp_old)
+ write(6,*) 'CPFEM_Fp_new:        ', shape(CPFEM_Fp_new)
  write(6,*)
  call flush(6)
  return
@@ -199,8 +199,8 @@
 ! return the local stress and the jacobian from storage
  CPFEM_stress(1:CPFEM_ngens) = CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en)
  CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en)
- if (cp_en == 1 .and. CPFEM_in == 1) write (6,*) 'stress',CPFEM_stress
- if (cp_en == 1 .and. CPFEM_in == 1 .and. CPFEM_updateJaco) write (6,*) 'stiffness',CPFEM_jaco
+! if (cp_en == 1 .and. CPFEM_in == 1) write (6,*) 'stress',CPFEM_stress
+! if (cp_en == 1 .and. CPFEM_in == 1 .and. CPFEM_updateJaco) write (6,*) 'stiffness',CPFEM_jaco
 ! 
  return
 !
@@ -216,6 +216,7 @@
      cp_en)           ! Element number
 !
  use prec
+ use FEsolving, only: theCycle
  use debug
  use math, only: math_pDecomposition,math_RtoEuler,inDeg,math_I3,math_invert3x3,math_permut,math_invert,math_delta
  use IO,   only: IO_error
@@ -225,39 +226,34 @@
  implicit none
 !
  character(len=128) msg
- integer(pInt) cp_en,CPFEM_in,grain,max_cutbacks,i,j,k,l,m,n
- logical updateJaco,error
- real(pReal) CPFEM_dt,volfrac
- real(pReal), dimension(3,3)     :: F0_bar,F1_bar,dF_bar
- real(pReal), dimension(3,3)     :: U,R
- real(pReal), dimension(3,3,8)      :: PK1,Fp0,Fp1,Fe1
- real(pReal), dimension(3,3,3,3,8)  :: dPdF
- real(pReal), dimension(constitutive_maxNstatevars,8) :: state0,state1
+ integer(pInt) cp_en,CPFEM_in,grain,max_cutbacks,i,j,k,l,m,n,iBoun,NRiter,dummy,ii,jj,kk,ll,ip,jp
+ logical updateJaco,error,NRconvergent,failed
+ real(pReal) CPFEM_dt,volfrac,dTime,shMod,C_kb,resNorm,resMax,subStep,subFrac,temp1,temp2
+ real(pReal), dimension(3,3)        :: PK1_pert,F1_pert
+ real(pReal), dimension(3,3)        :: U,R,Fe1
+ real(pReal), dimension(3,3)        :: PK1
+ real(pReal), dimension(3,3,3,3)    :: dPdF
 !
  CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = 0.0_pReal                       ! zero out average first PK stress
  if (updateJaco) CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = 0.0_pReal  ! zero out average consistent tangent
-!
- F0_bar = CPFEM_ffn_bar(:,:,CPFEM_in,cp_en)                   ! effective deformation gradient at t_n
- F1_bar = CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en)                  ! effective deformation gradient at t_n+1
- state0 = constitutive_state_old(:,:,CPFEM_in,cp_en)          ! state variables at t_n
- Fp0    = CPFEM_Fp_old(:,:,:,CPFEM_in,cp_en)                  ! grain plastic def. gradient at t_n
-!
-! -------------- grain loop -----------------
- do grain = 1,texture_Ngrains(mesh_element(4,cp_en))
-   call SingleCrystallite(msg,PK1(:,:,grain),dPdF(:,:,:,:,grain),&
-                    CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en),&
-                    Fp1(:,:,grain),Fe1(:,:,grain),state1(:,grain),&   ! output up to here
-                    CPFEM_dt,cp_en,CPFEM_in,grain,.true.,&
-                    CPFEM_Temperature(CPFEM_in,cp_en),F1_bar,F0_bar,Fp0(:,:,grain),state0(:,grain))
-   if (msg /= 'ok') then                    ! solution not reached
-     call IO_error(600)
-     return
-   endif
 
+ do grain = 1,texture_Ngrains(mesh_element(4,cp_en))
+   volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
+   call SingleCrystallite(msg,PK1,dPdF,&
+                      CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en),&
+                      CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en),Fe1,constitutive_state_new(:,grain,CPFEM_in,cp_en),&   ! output up to here
+                      CPFEM_dt,cp_en,CPFEM_in,grain,.true.,&
+                      CPFEM_Temperature(CPFEM_in,cp_en),&
+                      CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en),CPFEM_ffn_bar(:,:,CPFEM_in,cp_en),&
+                      CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en),constitutive_state_old(:,grain,CPFEM_in,cp_en))
+!
+   CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) + volfrac*PK1
+   if (updateJaco) CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) + volfrac*dPdF
+!
 !   update results plotted in MENTAT
-   call math_pDecomposition(Fe1(:,:,grain),U,R,error) ! polar decomposition
+   call math_pDecomposition(Fe1,U,R,error) ! polar decomposition
    if (error) then
-     write(6,*) Fe1(:,:,grain)
+     write(6,*) Fe1
      write(6,*) 'polar decomposition'
      write(6,*) 'Grain:             ',grain
      write(6,*) 'Integration point: ',CPFEM_in
@@ -265,21 +261,9 @@
      call IO_error(650)
      return
    endif
-!
-   volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
-   CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) + &
-                                       volfrac*PK1(:,:,grain)                  ! average Cauchy stress
-   if (updateJaco) then                                                        ! consistent tangent
-     CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) + &
-                                                volfrac*dPdF(:,:,:,:,grain)
-   endif
    CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))*inDeg        ! orientation
    CPFEM_results(4  ,grain,CPFEM_in,cp_en) = volfrac                                  ! volume fraction of orientation
- enddo    ! grain loop
-!
-! updates all variables, deformation gradients, and vectors
- CPFEM_Fp_new(:,:,:,CPFEM_in,cp_en)         = Fp1
- constitutive_state_new(:,:,CPFEM_in,cp_en) = state1
+ enddo ! grain
 !
  return
 !

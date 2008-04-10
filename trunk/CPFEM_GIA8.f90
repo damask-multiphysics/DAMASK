@@ -217,8 +217,9 @@
 ! return the local stress and the jacobian from storage
  CPFEM_stress(1:CPFEM_ngens) = CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en)
  CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en)
- if (cp_en == 1 .and. CPFEM_in == 1) write (6,*) 'stress',CPFEM_stress
- if (cp_en == 1 .and. CPFEM_in == 1 .and. CPFEM_updateJaco) write (6,*) 'stiffness',CPFEM_jaco
+! if (cp_en == 1 .and. CPFEM_in == 1) write (6,*) 'stress',CPFEM_stress
+! if (cp_en == 1 .and. CPFEM_in == 1 .and. CPFEM_updateJaco) write (6,*) 'stiffness',CPFEM_jaco
+! if (cp_en == 1 .and. CPFEM_in == 1) write (6,*) 'vector',GIA_rVect_new(:,:,1,1)
 ! 
  return
 !
@@ -234,6 +235,7 @@
      cp_en)           ! Element number
 !
  use prec
+ use FEsolving, only: theCycle
  use debug
  use math, only: math_pDecomposition,math_RtoEuler,inDeg,math_I3,math_invert3x3,math_permut,math_invert,math_delta
  use IO,   only: IO_error
@@ -243,12 +245,12 @@
  implicit none
 !
  character(len=128) msg
- integer(pInt) cp_en,CPFEM_in,grain,max_cutbacks,i,j,k,l,m,n,iBoun,NRiter,dummy,ii,jj,kk,ll
+ integer(pInt) cp_en,CPFEM_in,grain,max_cutbacks,i,j,k,l,m,n,iBoun,NRiter,dummy,ii,jj,kk,ll,ip,jp
  logical updateJaco,error,NRconvergent,failed
  real(pReal) CPFEM_dt,volfrac,dTime,shMod,C_kb,resNorm,resMax,subStep,subFrac,temp1,temp2
- real(pReal), dimension(3,3)     :: F0_bar,F1_bar,dF_bar
+ real(pReal), dimension(3,3)     :: F0_bar,F1_bar,dF_bar,PK1_per,F1_per
  real(pReal), dimension(3,3)     :: U,R
- real(pReal), dimension(3,3,8)      :: PK1,Fp0,Fp1,Fe1,F1,F0,dFgrain,dFg_cor
+ real(pReal), dimension(3,3,8)      :: PK1,Fp0,Fp1,Fe1,F1,F0
  real(pReal), dimension(3,3,12)     :: GPK1,GF1,Nye,GRB1
  real(pReal), dimension(3,3,3,3,8)  :: dPdF
  real(pReal), dimension(3,3,3,3,12) :: dRdX1
@@ -282,7 +284,7 @@
  subStep = 1.0_pReal
 !
 ! Substepping procedure to improve N-R iteration
-SubStepping: do
+ SubStepping: do
  dTime  = subStep*CPFEM_dt
  call GIA_RelaxedDeformation(F0,F0_bar,rVect)                 ! def. gradient of indiv. grains at t_n
  F1_bar = F0_bar + subStep*dF_bar                             ! effective def. gradient at t_n+1
@@ -290,28 +292,27 @@ SubStepping: do
 !
 ! Newton-Raphson iteration block
  NRiter = 1_pInt
-NRIteration: do
+ NRIteration: do
    forall (iBoun=1:12,i=1:3) rx(i,iBoun) = var(3_pInt*(iBoun-1_pInt)+i)   ! relaxation vectors (guess)
 !
 !   deformation gradients of grains at t_n+1 (guess)
    call GIA_RelaxedDeformation(F1,F1_bar,rx)
 !
 ! -------------- grain loop -----------------
-   do grain = 1,8
+   do grain = 1,texture_Ngrains(mesh_element(4,cp_en))
      call SingleCrystallite(msg,PK1(:,:,grain),dPdF(:,:,:,:,grain),&
                       CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en),&
                       Fp1(:,:,grain),Fe1(:,:,grain),state1(:,grain),&   ! output up to here
                       dTime,cp_en,CPFEM_in,grain,.true.,&
                       CPFEM_Temperature(CPFEM_in,cp_en),F1(:,:,grain),F0(:,:,grain),Fp0(:,:,grain),state0(:,grain))
      if (msg /= 'ok') then                    ! solution not reached --> exit NRIteration
-       write(6,*) 'GIA: grain loop failed to converge within allowable step-size'
+       write(6,*) 'GIA: grain loop failed to converge @ EL:',cp_en,' IP:',CPFEM_in
        NRconvergent = .false.
        exit NRiteration
      endif
    enddo    ! grain loop
 !
 !   calculate the deformation jump and stress jump across the boundaries
-   dFgrain = F1 - F0
    call GIA_BoundaryJump(GF1,F1)
    call GIA_BoundaryJump(GPK1,PK1)
 !
@@ -362,7 +363,7 @@ NRIteration: do
    enddo
    resNorm = sqrt(resNorm)
 !
-!   write(6,'(x,a,i3,a,i3,a,i3,a,e10.4)')'EL = ',cp_en,':IP = ',CPFEM_in,':Iter = ',NRiter,':RNorm = ',resNorm
+   if (debugger) write(6,'(x,a,i3,a,i3,a,i3,a,e10.4)')'EL:',cp_en,' IP:',CPFEM_in,' Iter:',NRiter,' RNorm:',resNorm
    if (NRiter == 1_pInt) resMax = resNorm
    if ((resNorm < resToler*resMax) .or. (resNorm < resAbsol)) then     ! resNorm < tolerance ===> convergent
      NRconvergent = .true.
@@ -402,7 +403,7 @@ NRIteration: do
      dvardres = 0.0_pReal
      call math_invert(36,dresdvar,dvardres,dummy,failed)
      if (failed) then
-       write(6,*) 'GIA: failed to invert the Jacobian'
+       write(6,*) 'GIA: failed to invert the Jacobian @ EL:',cp_en,' IP:',CPFEM_in
        NRconvergent = .false.
        exit NRiteration
      endif
@@ -430,8 +431,7 @@ NRIteration: do
 !
 ! return to the general subroutine when convergence is not reached
  if (.not. NRconvergent) then
-   write(6,'(x,a)') 'GIA: convergence is not reached within allowable step-size'
-   write(6,'(x,a,i3,a,i3)') 'Element: ',cp_en,' @ IP: ',CPFEM_in
+   write(6,'(x,a)') 'GIA: convergence is not reached @ EL:',cp_en,' IP:',CPFEM_in
    call IO_error(600)
    return
  endif
@@ -442,19 +442,10 @@ NRIteration: do
  constitutive_state_new(:,:,CPFEM_in,cp_en) = state1
 !
 !   compute the effective stress and consistent tangent
- call GIA_TangentCorrection(dFgrain,dFg_cor)
  do grain = 1,texture_Ngrains(mesh_element(4,cp_en))
    volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
    CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) + &
                                        volfrac*PK1(:,:,grain)                  ! average Cauchy stress
-   if (updateJaco) then                                                        ! consistent tangent
-     do i = 1,3
-     do j = 1,3
-       CPFEM_dPdF_bar(:,:,i,j,CPFEM_in,cp_en) = CPFEM_dPdF_bar(:,:,i,j,CPFEM_in,cp_en) + &
-                                                volfrac*dPdF(:,:,i,j,grain)*dFg_cor(i,j,grain) 
-     enddo
-     enddo
-   endif
 !
 !   update results plotted in MENTAT
    call math_pDecomposition(Fe1(:,:,grain),U,R,error) ! polar decomposition
@@ -467,9 +458,141 @@ NRIteration: do
      call IO_error(650)
      return
    endif
-   CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))*inDeg        ! orientation
-   CPFEM_results(4  ,grain,CPFEM_in,cp_en) = volfrac                                  ! volume fraction of orientation
+   CPFEM_results(1:3,grain,CPFEM_in,cp_en) = math_RtoEuler(transpose(R))*inDeg ! orientation
+   CPFEM_results(4  ,grain,CPFEM_in,cp_en) = volfrac                           ! volume fraction of orientation
  enddo
+!
+ if (theCycle >= 0_pInt) then
+   forall (grain=1:texture_Ngrains(mesh_element(4,cp_en))) &
+      CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) + volfrac*dPdF(:,:,:,:,grain)
+ else
+   do ip = 1,3
+   do jp = 1,3
+     F1_per = F1_bar
+     F1_per(ip,jp) = F1_per(ip,jp) + 1.0e-5_pReal
+     forall (iBoun=1:12,i=1:3) var(3_pInt*(iBoun-1_pInt)+i) = rVect(i,iBoun)
+     NRiter = 1_pInt
+!
+     NRPerturbation: do
+       forall (iBoun=1:12,i=1:3) rx(i,iBoun) = var(3_pInt*(iBoun-1_pInt)+i)   ! relaxation vectors (guess)
+       call GIA_RelaxedDeformation(F1,F1_bar,rx)
+       do grain = 1,8
+         call SingleCrystallite(msg,PK1(:,:,grain),dPdF(:,:,:,:,grain),&
+                      CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en),&
+                      Fp1(:,:,grain),Fe1(:,:,grain),state1(:,grain),&   ! output up to here
+                      dTime,cp_en,CPFEM_in,grain,.true.,&
+                      CPFEM_Temperature(CPFEM_in,cp_en),F1(:,:,grain),F0(:,:,grain),Fp0(:,:,grain),state0(:,grain))
+         if (msg /= 'ok') then                    ! solution not reached --> exit NRIteration
+           write(6,*) 'GIA: perturbation grain loop failed to converge within allowable step-size'
+           NRconvergent = .false.
+           exit NRPerturbation
+         endif
+       enddo
+       call GIA_BoundaryJump(GF1,F1)
+       call GIA_BoundaryJump(GPK1,PK1)
+!
+       Nye     = 0.0_pReal
+       NyeNorm = 0.0_pReal
+       do iBoun = 1,12
+         do i = 1,3
+         do j = 1,3
+           do k = 1,3
+           do l = 1,3
+             Nye(i,j,iBoun) = Nye(i,j,iBoun) - 0.5_pReal*math_permut(j,k,l)*GIA_bNorm(k,iBoun)*GF1(i,l,iBoun)
+           enddo
+           enddo
+           NyeNorm(iBoun) = NyeNorm(iBoun) + Nye(i,j,iBoun)*Nye(i,j,iBoun)
+         enddo
+         enddo
+         NyeNorm(iBoun) = sqrt(NyeNorm(iBoun))
+         if (NyeNorm(iBoun) > 1.0e-8_pReal) Nye(:,:,iBoun) = Nye(:,:,iBoun)/NyeNorm(iBoun)
+       enddo
+!
+       GRB1 = 0.0_pReal
+       do iBoun = 1,12
+         do i = 1,3
+         do j = 1,3
+           do k = 1,3
+           do l = 1,3
+             GRB1(i,j,iBoun) = GRB1(i,j,iBoun) + Nye(i,k,iBoun)*GIA_bNorm(l,iBoun)*math_permut(k,l,j)
+           enddo
+           enddo
+         enddo
+         enddo
+         GRB1(:,:,iBoun) = 0.5_pReal*(C_kb + C_kb)*GRB1(:,:,iBoun)
+       enddo
+!
+       res     = 0.0_pReal
+       resNorm = 0.0_pReal
+       do iBoun = 1,12
+         do j = 1,3
+           do i = 1,3
+             res(3_pInt*(iBoun-1_pInt)+j) = res(3_pInt*(iBoun-1_pInt)+j) - &
+                                            GIA_bNorm(i,iBoun)*(GPK1(i,j,iBoun) - GRB1(i,j,iBoun))
+           enddo
+           resNorm = resNorm + res(3_pInt*(iBoun-1_pInt)+j)*res(3_pInt*(iBoun-1_pInt)+j)
+         enddo
+       enddo
+       resNorm = sqrt(resNorm)
+!
+!       if (debugger) write(6,'(x,a,i3,a,i3,a,i3,a,i3,a,e10.4)')'EL = ',cp_en,':IP = ',CPFEM_in,':pert = ',3*(ip-1)+jp,':Iter = ',NRiter,':RNorm = ',resNorm
+       if (NRiter == 1_pInt) resMax = resNorm
+       if ((resNorm < resToler*resMax) .or. (resNorm < resAbsol)) then     ! resNorm < tolerance ===> convergent
+         NRconvergent = .true.
+         exit NRPerturbation
+       elseif ((NRiter > NRiterMax) .or. (resNorm > resBound*resMax)) then ! resNorm > up. bound ===> substepping
+         NRconvergent = .false.
+         exit NRPerturbation
+       else                                                                ! update the residual
+         dRdX1 = 0.0_pReal
+         do iBoun = 1,12
+           if (NyeNorm(iBoun) < 1.0e-8_pReal) NyeNorm(iBoun) = 1.0e-8_pReal
+           do i = 1,3
+           do j = 1,3
+           do k = 1,3
+           do l = 1,3
+             temp1 = 0.0_pReal
+             temp2 = 0.0_pReal
+             do ii = 1,3
+             do jj = 1,3
+             do kk = 1,3
+               temp1 = temp1 + GIA_bNorm(jj,iBoun)*math_permut(ii,jj,j)*math_delta(i,k)* &
+                               GIA_bNorm(kk,iBoun)*math_permut(ii,kk,l)
+               do ll = 1,3
+                 temp2 = temp2 + Nye(i,ii,iBoun)*GIA_bNorm(jj,iBoun)*math_permut(ii,jj,j)* &
+                                 Nye(k,kk,iBoun)*GIA_bNorm(ll,iBoun)*math_permut(kk,ll,l)
+               enddo
+             enddo
+             enddo
+             enddo
+             dRdX1(i,j,k,l,iBoun) = 0.25_pReal*(C_kb + C_kb)*(temp1 - temp2)/NyeNorm(iBoun)
+           enddo
+           enddo
+           enddo
+           enddo
+         enddo
+         call GIA_JacobianMatrix(dresdvar,dPdF,dRdX1)
+         dvardres = 0.0_pReal
+         call math_invert(36,dresdvar,dvardres,dummy,failed)
+         if (failed) then
+           write(6,*) 'GIA: perturbation failed to invert the Jacobian'
+           NRconvergent = .false.
+           exit NRPerturbation
+         endif
+         forall (i=1:36,j=1:36) var(i) = var(i) - dvardres(i,j)*res(j)
+       endif
+       NRiter = NRiter + 1_pInt
+     enddo NRPerturbation ! End of N-R iteration blok
+!
+     PK1_per = 0.0_pReal
+     do grain = 1,texture_Ngrains(mesh_element(4,cp_en))
+       volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
+       PK1_per = PK1_per + volfrac*PK1(:,:,grain)
+     enddo
+     CPFEM_dPdF_bar(:,:,ip,jp,CPFEM_in,cp_en) = (PK1_per - CPFEM_PK1_bar(:,:,CPFEM_in,cp_en))/1.0e-5_pReal
+  enddo
+  enddo
+ endif
 !
  return
 !
@@ -729,69 +852,6 @@ NRIteration: do
 !
  END SUBROUTINE
 !
-!
-!********************************************************************
-! Calculate the correction for the effective consisten tangent
-!********************************************************************
- subroutine GIA_TangentCorrection(&
-     dF_grain,&    ! deformation gradient increment of grains
-     ddF_corr)     ! 
-!
- implicit none
-!
- real(pReal), dimension(3,3,8)  :: dF_grain,ddF_corr
- integer(pInt) i,j,iBoun,grain
-!
- ddF_corr = 0.0_pReal
- do j = 1,3
-!
-!   first relaxation direction
-   ddF_corr(1,j,1) = 2.0_pReal*abs(dF_grain(1,j,1))/(abs(dF_grain(1,j,1)) + abs(dF_grain(1,j,2)))
-   if (abs(dF_grain(1,j,1)) < 1.0e-8_pReal) ddF_corr(1,j,1) = 1.0_pReal
-   ddF_corr(1,j,2) = 2.0_pReal - ddF_corr(1,j,1)
-   ddF_corr(1,j,3) = 2.0_pReal*abs(dF_grain(1,j,3))/(abs(dF_grain(1,j,3)) + abs(dF_grain(1,j,4)))
-   if (abs(dF_grain(1,j,3)) < 1.0e-8_pReal) ddF_corr(1,j,3) = 1.0_pReal
-   ddF_corr(1,j,4) = 2.0_pReal - ddF_corr(1,j,3)
-   ddF_corr(1,j,5) = 2.0_pReal*abs(dF_grain(1,j,5))/(abs(dF_grain(1,j,5)) + abs(dF_grain(1,j,6)))
-   if (abs(dF_grain(1,j,5)) < 1.0e-8_pReal) ddF_corr(1,j,5) = 1.0_pReal
-   ddF_corr(1,j,6) = 2.0_pReal - ddF_corr(1,j,5)
-   ddF_corr(1,j,7) = 2.0_pReal*abs(dF_grain(1,j,7))/(abs(dF_grain(1,j,7)) + abs(dF_grain(1,j,8)))
-   if (abs(dF_grain(1,j,7)) < 1.0e-8_pReal) ddF_corr(1,j,7) = 1.0_pReal
-   ddF_corr(1,j,8) = 2.0_pReal - ddF_corr(1,j,7)
-!
-!   second relaxation direction
-   ddF_corr(2,j,1) = 2.0_pReal*abs(dF_grain(2,j,1))/(abs(dF_grain(2,j,1)) + abs(dF_grain(2,j,3)))
-   if (abs(dF_grain(2,j,1)) < 1.0e-8_pReal) ddF_corr(2,j,1) = 1.0_pReal
-   ddF_corr(2,j,2) = 2.0_pReal*abs(dF_grain(2,j,2))/(abs(dF_grain(2,j,2)) + abs(dF_grain(2,j,4)))
-   if (abs(dF_grain(2,j,2)) < 1.0e-8_pReal) ddF_corr(2,j,2) = 1.0_pReal
-   ddF_corr(2,j,3) = 2.0_pReal - ddF_corr(2,j,1)
-   ddF_corr(2,j,4) = 2.0_pReal - ddF_corr(2,j,2)
-   ddF_corr(2,j,5) = 2.0_pReal*abs(dF_grain(2,j,5))/(abs(dF_grain(2,j,5)) + abs(dF_grain(2,j,7)))
-   if (abs(dF_grain(2,j,5)) < 1.0e-8_pReal) ddF_corr(2,j,5) = 1.0_pReal
-   ddF_corr(2,j,6) = 2.0_pReal*abs(dF_grain(2,j,6))/(abs(dF_grain(2,j,6)) + abs(dF_grain(2,j,8)))
-   if (abs(dF_grain(2,j,6)) < 1.0e-8_pReal) ddF_corr(2,j,6) = 1.0_pReal
-   ddF_corr(2,j,7) = 2.0_pReal - ddF_corr(2,j,5)
-   ddF_corr(2,j,8) = 2.0_pReal - ddF_corr(2,j,6)
-!
-!   third relaxation direction
-   ddF_corr(3,j,1) = 2.0_pReal*abs(dF_grain(3,j,1))/(abs(dF_grain(3,j,1)) + abs(dF_grain(3,j,5)))
-   if (abs(dF_grain(3,j,1)) < 1.0e-8_pReal) ddF_corr(3,j,1) = 1.0_pReal
-   ddF_corr(3,j,2) = 2.0_pReal*abs(dF_grain(3,j,2))/(abs(dF_grain(3,j,2)) + abs(dF_grain(3,j,6)))
-   if (abs(dF_grain(3,j,2)) < 1.0e-8_pReal) ddF_corr(3,j,2) = 1.0_pReal
-   ddF_corr(3,j,3) = 2.0_pReal*abs(dF_grain(3,j,3))/(abs(dF_grain(3,j,3)) + abs(dF_grain(3,j,7)))
-   if (abs(dF_grain(3,j,3)) < 1.0e-8_pReal) ddF_corr(3,j,3) = 1.0_pReal
-   ddF_corr(3,j,4) = 2.0_pReal*abs(dF_grain(3,j,4))/(abs(dF_grain(3,j,4)) + abs(dF_grain(3,j,8)))
-   if (abs(dF_grain(3,j,4)) < 1.0e-8_pReal) ddF_corr(3,j,4) = 1.0_pReal
-   ddF_corr(3,j,5) = 2.0_pReal - ddF_corr(3,j,1)
-   ddF_corr(3,j,6) = 2.0_pReal - ddF_corr(3,j,2)
-   ddF_corr(3,j,7) = 2.0_pReal - ddF_corr(3,j,3)
-   ddF_corr(3,j,8) = 2.0_pReal - ddF_corr(3,j,4)
-!
- enddo
-!
- return
-!
- END SUBROUTINE
 !
  END MODULE
 !##############################################################

@@ -104,9 +104,9 @@ CONTAINS
      guessNew = .true.                    ! redo plastic Lp guess
      subStep = subStep / 2.0_pReal        ! cut time step in half
    endif
- enddo
+ enddo  ! potential substepping
 !
- debug_cutbackDistribution(nCutbacks+1) = debug_cutbackDistribution(nCutbacks+1)+1
+ debug_cutbackDistribution(min(nCutback,nCutbacks)+1) = debug_cutbackDistribution(min(nCutback,nCutbacks)+1)+1
 !
  if (msg /= 'ok') return                    ! solution not reached --> report back
  if (updateJaco) then                       ! consistent tangent using
@@ -117,8 +117,9 @@ CONTAINS
        Lp_pert    = Lp
        state_pert = state_new                 ! initial guess from end of time step
        call TimeIntegration(msg,Lp,Fp_pert,Fe_pert,P_pert,state_pert,post_results,.false., &   ! def gradients and PK2 at end of time step
-                                  dt_aim,cp_en,ip,grain,Temperature,Fg_pert,Fp_current,state_current)
+                            dt_aim,cp_en,ip,grain,Temperature,Fg_pert,Fp_current,state_current)
        if (msg /= 'ok') then
+         write(6,*)'killed myself at component',k,l
          msg = 'consistent tangent --> '//msg
          return
        endif
@@ -249,13 +250,13 @@ Inner: do              ! inner iteration: Lp
            call math_invert(9,dRdLp,invdRdLp,dummy,failed)            ! invert dR/dLp --> dLp/dR
            if (failed) then
              msg = 'inversion dR/dLp'
-               if (debugger) then
-                 write (6,*) msg
-                 write (6,'(a,/,9(9(e9.3,x)/))') 'dRdLp', dRdLp(1:9,:)
-                 write (6,*) 'state',state
-                 write (6,'(a,/,3(3(f12.7,x)/))') 'Lpguess',Lpguess(1:3,:)
-                 write (6,*) 'Tstar',Tstar_v
-               endif 
+!               if (debugger) then
+!                 write (6,*) msg
+!                 write (6,'(a,/,9(9(e9.3,x)/))') 'dRdLp', dRdLp(1:9,:)
+!                 write (6,*) 'state',state
+!                 write (6,'(a,/,3(3(f12.7,x)/))') 'Lpguess',Lpguess(1:3,:)
+!                 write (6,*) 'Tstar',Tstar_v
+!               endif 
              return
            endif
 !
@@ -280,7 +281,6 @@ Inner: do              ! inner iteration: Lp
 !
  debug_OuterLoopDistribution(iOuter) = debug_OuterLoopDistribution(iOuter)+1
 
-
  invFp_new = matmul(invFp_old,B)
  call math_invert3x3(invFp_new,Fp_new,det,failed)
  if (failed) then
@@ -301,7 +301,8 @@ Inner: do              ! inner iteration: Lp
  return
 !
  END SUBROUTINE
-!!
+!
+!
  END MODULE
 !##############################################################
 
