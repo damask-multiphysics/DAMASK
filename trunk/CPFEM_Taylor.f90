@@ -232,13 +232,16 @@
  real(pReal), dimension(3,3)        :: PK1_pert,F1_pert
  real(pReal), dimension(3,3)        :: U,R,Fe1
  real(pReal), dimension(3,3)        :: PK1
- real(pReal), dimension(3,3,3,3)    :: dPdF
+ real(pReal), dimension(3,3,3,3)    :: dPdF,dPdF_bar_old
 !
- CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = 0.0_pReal                       ! zero out average first PK stress
- if (updateJaco) CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = 0.0_pReal  ! zero out average consistent tangent
+ CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = 0.0_pReal                         ! zero out average first PK stress
+ if (updateJaco) then
+   dPdF_bar_old = CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en)               ! remember former average consistent tangent
+   CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = 0.0_pReal                  ! zero out avg consistent tangent for later assembly
+ endif
 
  do grain = 1,texture_Ngrains(mesh_element(4,cp_en))
-   volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
+   dPdF = dPdF_bar_old                                                 ! preguess consistent tangent of grain with avg
    call SingleCrystallite(msg,PK1,dPdF,&
                       CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en),&
                       CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en),Fe1,constitutive_state_new(:,grain,CPFEM_in,cp_en),&   ! output up to here
@@ -246,9 +249,13 @@
                       CPFEM_Temperature(CPFEM_in,cp_en),&
                       CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en),CPFEM_ffn_bar(:,:,CPFEM_in,cp_en),&
                       CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en),constitutive_state_old(:,grain,CPFEM_in,cp_en))
-!
+
+   volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
    CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) + volfrac*PK1
-   if (updateJaco) CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) + volfrac*dPdF
+   if (updateJaco) CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = &
+                   CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) + volfrac*dPdF   ! add up crystallite stiffnesses
+				                                                           ! (may have "holes" corresponding 
+				                                                           ! to former avg tangent)
 !
 !   update results plotted in MENTAT
    call math_pDecomposition(Fe1,U,R,error) ! polar decomposition
