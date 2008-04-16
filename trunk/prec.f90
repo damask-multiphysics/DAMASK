@@ -17,9 +17,9 @@
  integer(pInt), parameter :: nCutback     = 20_pInt      ! max cutbacks accounted for in debug distribution
  integer(pInt), parameter :: nReg         = 1_pInt       ! regularization attempts for Jacobi inversion
  real(pReal),   parameter :: pert_Fg      = 1.0e-6_pReal ! strain perturbation for FEM Jacobi
- integer(pInt), parameter :: nOuter       = 20_pInt      ! outer loop limit
- integer(pInt), parameter :: nInner       = 200_pInt     ! inner loop limit
- real(pReal),   parameter :: reltol_Outer = 1.0e-4_pReal ! relative tolerance in outer loop (state)
+ integer(pInt), parameter :: nOuter       = 20_pInt      ! outer loop limit 20
+ integer(pInt), parameter :: nInner       = 200_pInt     ! inner loop limit 200
+ real(pReal),   parameter :: reltol_Outer = 1.0e-6_pReal ! relative tolerance in outer loop (state)
  real(pReal),   parameter :: reltol_Inner = 1.0e-6_pReal ! relative tolerance in inner loop (Lp)
  real(pReal),   parameter :: abstol_Inner = 1.0e-8_pReal ! absolute tolerance in inner loop (Lp)
 !

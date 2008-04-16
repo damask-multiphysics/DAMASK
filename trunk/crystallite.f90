@@ -19,6 +19,7 @@ CONTAINS
      P,&          ! first PK stress
      dPdF,&       ! consistent tangent
      post_results,& ! plot results from constitutive model
+     Lp,&         ! plastic velocity gradient
      Fp_new,&     ! new plastic deformation gradient
      Fe_new,&     ! new "elastic" deformation gradient
      state_new,&  ! new state variable array
@@ -48,7 +49,7 @@ CONTAINS
  real(pReal) Temperature
  real(pReal) dt,dt_aim,subFrac,subStep,invJ,det
  real(pReal), dimension(3,3)     :: Lp,Lp_pert,inv
- real(pReal), dimension(3,3)     :: Fg_old,Fg_current,Fg_aim,Fg_new,Fg_pert,deltaFg
+ real(pReal), dimension(3,3)     :: Fg_old,Fg_current,Fg_new,Fg_pert,Fg_aim,deltaFg
  real(pReal), dimension(3,3)     :: Fp_old,Fp_current,Fp_new,Fp_pert
  real(pReal), dimension(3,3)     :: Fe_old,Fe_current,Fe_new,Fe_pert
  real(pReal), dimension(3,3)     :: Tstar,tau,P,P_pert
@@ -83,18 +84,12 @@ CONTAINS
 !
    Fg_aim = Fg_current + subStep*deltaFg                           ! aim for Fg
    dt_aim = subStep*dt                                             ! aim for dt
-   msg = ''                                                        ! error free so far
-   if (guessNew) then                                              ! calculate new Lp guess when cutted back
-     if (dt_aim /= 0.0_pReal) then
-       call math_invert3x3(Fg_aim,inv,det,error)
-       Lp = (math_I3-matmul(Fp_current,matmul(inv,Fe_current)))/dt ! fully plastic initial guess
-     else
-       Lp = 0.0_pReal                                              ! fully elastic guess 
-     endif
+
+   if (guessNew) &
      state_new = state_bestguess                                   ! try best available guess for state
-   endif
+
    call TimeIntegration(msg,Lp,Fp_new,Fe_new,P,state_new,post_results,.true., &   ! def gradients and PK2 at end of time step
-                        dt_aim,cp_en,ip,grain,Temperature,Fg_aim,Fp_current,state_current)
+                        dt_aim,cp_en,ip,grain,Temperature,Fg_aim,Fp_current,state_current,0)
 !
    if (msg == 'ok') then
      cuttedBack = .false.                 ! no cut back required
@@ -106,7 +101,7 @@ CONTAINS
      cuttedBack = .true.                  ! encountered problems -->
      guessNew = .true.                    ! redo plastic Lp guess
      subStep = subStep / 2.0_pReal        ! cut time step in half
-	 state_bestguess = state_current      ! current state is then best guess
+     state_bestguess = state_current      ! current state is then best guess
    endif
  enddo  ! potential substepping
 !
@@ -120,10 +115,11 @@ CONTAINS
        Fg_pert(k,l) = Fg_pert(k,l) + pert_Fg  ! perturb single component
        Lp_pert    = Lp
        state_pert = state_new                 ! initial guess from end of time step
-       call TimeIntegration(msg,Lp,Fp_pert,Fe_pert,P_pert,state_pert,post_results,.false., &   ! def gradients and PK2 at end of time step
-                            dt_aim,cp_en,ip,grain,Temperature,Fg_pert,Fp_current,state_current)
+       call TimeIntegration(msg,Lp_pert,Fp_pert,Fe_pert,P_pert,state_pert,post_results,.false., &   ! def gradients and PK2 at end of time step
+                            dt_aim,cp_en,ip,grain,Temperature,Fg_pert,Fp_current,state_current,1)
        if (msg == 'ok') &
          dPdF(:,:,k,l) = (P_pert-P)/pert_Fg   ! constructing tangent dP_ij/dFg_kl only if valid forward difference
+                                              ! otherwise leave component unchanged
      enddo
    enddo
  endif
@@ -154,8 +150,8 @@ CONTAINS
      Temperature,&      ! temperature
      Fg_new,&           ! new total def gradient
      Fp_old,&           ! former plastic def gradient
-     state_old)         ! former microstructure
-!
+     state_old,&         ! former microstructure
+     flag) 
  use prec
  use debug
  use mesh, only: mesh_element
@@ -168,7 +164,7 @@ CONTAINS
  character(len=*) msg
  logical failed,wantsConstitutiveResults
  integer(pInt) cp_en, ip, grain
- integer(pInt) iOuter,iInner,dummy, i,j,k,l,m,n
+ integer(pInt) iOuter,iInner,dummy, i,j,k,l,m,n,flag
  real(pReal) dt, Temperature, det, p_hydro, leapfrog,maxleap
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2
@@ -218,13 +214,6 @@ Inner: do              ! inner iteration: Lp
            return
          endif
 
-!               if (debugger) then
-!                 write (6,*) iInner,iOuter
-                 !write (6,'(a,/,9(9(e9.3,x)/))') 'dRdLp', dRdLp(1:9,:)
-!                 write (6,'(a,/,3(3(e9.3,x)/))') 'Lpguess',Lpguess(1:3,:)
-!				 write (6,*) 'state',state
-!               endif 
-
          B = math_i3 - dt*Lpguess
          BT = transpose(B)
          AB = matmul(A,B)
@@ -232,31 +221,26 @@ Inner: do              ! inner iteration: Lp
          Tstar_v = 0.5_pReal*matmul(C_66,math_mandel33to6(matmul(BT,AB)-math_I3))
          Tstar = math_Mandel6to33(Tstar_v)
          p_hydro=(Tstar_v(1)+Tstar_v(2)+Tstar_v(3))/3.0_pReal
-         forall(i=1:3) Tstar_v(i) = Tstar_v(i)-p_hydro       ! subtract hydrostatic pressure
+         forall(i=1:3) Tstar_v(i) = Tstar_v(i)-p_hydro                ! subtract hydrostatic pressure
          call constitutive_LpAndItsTangent(Lp,dLp, &
                                            Tstar_v,state,Temperature,grain,ip,cp_en)
-!               if (debugger) then
-!			     write (6,'(a,/,6(f9.3,x))') 'Tstar[MPa]',1.0e-6_pReal*Tstar_v
-!				 write (6,'(a,/,3(3(e9.3,x)/))') 'Lp',Lp(1:3,:) 
-!                 write (6,'(a,/,9(9(e9.3,x)/))') 'dLp', dLp(1:9,:)                          
-!               endif
 			    
-         Rinner = Lpguess - Lp                   ! update current residuum
+         Rinner = Lpguess - Lp                                        ! update current residuum
 
-!              if (debugger) then
-!				 write (6,'(a,/,3(3(e9.3,x)/))') 'Rinner',Rinner(1:3,:)                           
-!               endif
-
-         if ((maxval(abs(Rinner)) < abstol_Inner) .or. &
-             (any(abs(dt*Lpguess) > relevantStrain) .and. &
-              maxval(abs(Rinner/Lpguess),abs(dt*Lpguess) > relevantStrain) < reltol_Inner)) &
-           exit Inner
+         if (not(any(Rinner.NE.Rinner)) .and. &                       ! exclude all NaN in residuum
+             ( (maxval(abs(Rinner)) < abstol_Inner) .or. &            ! below abs tol .or.
+               ( any(abs(dt*Lpguess) > relevantStrain) .and. &        ! worth checking? .and.
+                 maxval(abs(Rinner/Lpguess),abs(dt*Lpguess) > relevantStrain) < reltol_Inner &  ! below rel tol
+               ) &
+             )   &
+            )    &
+            exit Inner                                                ! convergence
 !
 !          check for acceleration/deceleration in Newton--Raphson correction
          if (leapfrog > 1.0_pReal .and. &
              (sum(Rinner*Rinner) > sum(Rinner_old*Rinner_old) .or. &  ! worse residuum
               sum(Rinner*Rinner_old) < 0.0_pReal) .or. &              ! residuum changed sign (overshoot)
-			  any(Rinner /= Rinner) ) then                            ! NaN
+			  any(Rinner.NE.Rinner) ) then                            ! NaN
            maxleap = 0.5_pReal * leapfrog                             ! limit next acceleration
            leapfrog = 1.0_pReal                                       ! grinding halt
 !		   if (debugger) write(6,*) 'grinding HALT'
@@ -271,20 +255,12 @@ Inner: do              ! inner iteration: Lp
            call math_invert(9,dRdLp,invdRdLp,dummy,failed)            ! invert dR/dLp --> dLp/dR
            if (failed) then
              msg = 'inversion dR/dLp'
-!               if (debugger) then
-!                 write (6,*) msg
-!                 write (6,'(a,/,9(9(e9.3,x)/))') 'dRdLp', dRdLp(1:9,:)
-!                 write (6,*) 'state',state
-!                 write (6,'(a,/,3(3(f12.7,x)/))') 'Lpguess',Lpguess(1:3,:)
-!                 write (6,*) 'Tstar',Tstar_v
-!               endif 
              return
            endif
 !
            Rinner_old = Rinner                                        ! remember current residuum
            Lpguess_old = Lpguess                                      ! remember current Lp guess
            if (iInner > 1 .and. leapfrog < maxleap) leapfrog = 2.0_pReal * leapfrog   ! accelerate
-!		   if (debugger) write(6,*) 'leapfrogging at',leapfrog
          endif
 !
          Lpguess = Lpguess_old                                        ! start from current guess
@@ -296,9 +272,9 @@ Inner: do              ! inner iteration: Lp
        debug_InnerLoopDistribution(iInner) = debug_InnerLoopDistribution(iInner)+1
        ROuter = state - state_old - &
                 dt*constitutive_dotState(Tstar_v,state,Temperature,&
-                                         grain,ip,cp_en)          ! residuum from evolution of microstructure
-       state = state - ROuter                                           ! update of microstructure
-       if (maxval(abs(Router/state),state /= 0.0_pReal) < reltol_Outer) exit Outer
+                                         grain,ip,cp_en)              ! residuum from evolution of microstructure
+       state = state - ROuter                                         ! update of microstructure
+       if (maxval(abs(Router/state),state /= 0.0_pReal) < reltol_Outer) exit Outer ! convergence ?
      enddo Outer
 !
  debug_OuterLoopDistribution(iOuter) = debug_OuterLoopDistribution(iOuter)+1

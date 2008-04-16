@@ -18,6 +18,7 @@
  real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_jaco_bar
  real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_jaco_knownGood
  real(pReal), dimension (:,:,:,:),    allocatable :: CPFEM_results
+ real(pReal), dimension (:,:,:,:,:),  allocatable :: CPFEM_Lp
  real(pReal), dimension (:,:,:,:,:),  allocatable :: CPFEM_Fp_old
  real(pReal), dimension (:,:,:,:,:),  allocatable :: CPFEM_Fp_new
  real(pReal), parameter :: CPFEM_odd_stress = 1e15_pReal, CPFEM_odd_jacobian = 1e50_pReal
@@ -58,6 +59,9 @@
  allocate(CPFEM_results(CPFEM_Nresults+constitutive_maxNresults,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
  CPFEM_results = 0.0_pReal
 !
+!    *** Plastic velocity gradient ***
+ allocate(CPFEM_Lp(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Lp = 0.0_pReal
+
 !    *** Plastic deformation gradient at (t=t0) and (t=t1) ***
  allocate(CPFEM_Fp_new(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; CPFEM_Fp_new = 0.0_pReal
  allocate(CPFEM_Fp_old(3,3,constitutive_maxNgrains,mesh_maxNips,mesh_NcpElems))
@@ -77,6 +81,7 @@
  write(6,*) 'CPFEM_jaco_bar:      ', shape(CPFEM_jaco_bar)
  write(6,*) 'CPFEM_jaco_knownGood: ', shape(CPFEM_jaco_knownGood)
  write(6,*) 'CPFEM_results:       ', shape(CPFEM_results)
+ write(6,*) 'CPFEM_Lp:            ', shape(CPFEM_Lp)
  write(6,*) 'CPFEM_Fp_old:        ', shape(CPFEM_Fp_old)
  write(6,*) 'CPFEM_Fp_new:        ', shape(CPFEM_Fp_new)
  write(6,*)
@@ -140,19 +145,16 @@
 !
  cp_en = mesh_FEasCP('elem',CPFEM_en)
   if (cp_en == 1 .and. CPFEM_in == 1) &
-    write(6,'(a6,x,i4,x,a4,x,i4,x,a10,x,f8.4,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2)') &
-    'elem',cp_en,'IP',CPFEM_in,&
+    write(6,'(a10,x,f8.4,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2)') &
     'theTime',theTime,'theInc',theInc,'theCycle',theCycle,'theLovl',theLovl,&
     'mode',CPFEM_mode
 !
  select case (CPFEM_mode)
     case (2,1)     ! regular computation (with aging of results)
        if (.not. CPFEM_calc_done) then                ! puuh, me needs doing all the work...
-           write (6,*) 'puuh me needs doing all the work', cp_en
            if (CPFEM_mode == 1) then                  ! age results at start of new increment
              CPFEM_Fp_old            = CPFEM_Fp_new
              constitutive_state_old  = constitutive_state_new
-             write (6,*) '#### aged results'
            endif
            debug_cutbackDistribution = 0_pInt         ! initialize debugging data
            debug_InnerLoopDistribution = 0_pInt
@@ -199,8 +201,6 @@
 ! return the local stress and the jacobian from storage
  CPFEM_stress(1:CPFEM_ngens) = CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en)
  CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en)
-! if (cp_en == 1 .and. CPFEM_in == 1) write (6,*) 'stress',CPFEM_stress
-! if (cp_en == 1 .and. CPFEM_in == 1 .and. CPFEM_updateJaco) write (6,*) 'stiffness',CPFEM_jaco
 ! 
  return
 !
@@ -244,12 +244,12 @@
    dPdF = dPdF_bar_old                                                 ! preguess consistent tangent of grain with avg
    call SingleCrystallite(msg,PK1,dPdF,&
                       CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en),&
+                      CPFEM_Lp(:,:,grain,CPFEM_in,cp_en),&
                       CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en),Fe1,constitutive_state_new(:,grain,CPFEM_in,cp_en),&   ! output up to here
                       CPFEM_dt,cp_en,CPFEM_in,grain,.true.,&
                       CPFEM_Temperature(CPFEM_in,cp_en),&
                       CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en),CPFEM_ffn_bar(:,:,CPFEM_in,cp_en),&
                       CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en),constitutive_state_old(:,grain,CPFEM_in,cp_en))
-
    volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
    CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) + volfrac*PK1
    if (updateJaco) CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = &
