@@ -250,6 +250,13 @@
                       CPFEM_Temperature(CPFEM_in,cp_en),&
                       CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en),CPFEM_ffn_bar(:,:,CPFEM_in,cp_en),&
                       CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en),constitutive_state_old(:,grain,CPFEM_in,cp_en))
+  
+   if (msg /= 'ok') then                    ! solution not reached --> exit
+       write(6,*) 'grain loop failed to converge @ EL:',cp_en,' IP:',CPFEM_in
+       call IO_error(600)
+       return 
+   endif
+
    volfrac = constitutive_matVolFrac(grain,CPFEM_in,cp_en)*constitutive_texVolFrac(grain,CPFEM_in,cp_en)
    CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) = CPFEM_PK1_bar(:,:,CPFEM_in,cp_en) + volfrac*PK1
    if (updateJaco) CPFEM_dPdF_bar(:,:,:,:,CPFEM_in,cp_en) = &

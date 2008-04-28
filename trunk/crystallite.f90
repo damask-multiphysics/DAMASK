@@ -89,19 +89,21 @@ CONTAINS
      state_new = state_bestguess                                   ! try best available guess for state
 
    call TimeIntegration(msg,Lp,Fp_new,Fe_new,P,state_new,post_results,.true., &   ! def gradients and PK2 at end of time step
-                        dt_aim,cp_en,ip,grain,Temperature,Fg_aim,Fp_current,state_current,0)
+                        dt_aim,cp_en,ip,grain,Temperature,Fg_aim,Fp_current,state_current,0_pInt)
 !
    if (msg == 'ok') then
      cuttedBack = .false.                 ! no cut back required
      guessNew = .false.                   ! keep the Lp
      subFrac = subFrac + subStep
      subStep = 1.0_pReal - subFrac        ! try one go
+	 if (debugger) write (6,*) '--------- one go -----------++##'
    else
      nCutbacks = nCutbacks + 1            ! record additional cutback
      cuttedBack = .true.                  ! encountered problems -->
      guessNew = .true.                    ! redo plastic Lp guess
      subStep = subStep / 2.0_pReal        ! cut time step in half
      state_bestguess = state_current      ! current state is then best guess
+	 if (debugger) write (6,*) '>>>>>>>>>>>>>>>>>>>> cutback <<<<<<<<<<<<<<<<<<<<<<'
    endif
  enddo  ! potential substepping
 !
@@ -116,7 +118,7 @@ CONTAINS
        Lp_pert    = Lp
        state_pert = state_new                 ! initial guess from end of time step
        call TimeIntegration(msg,Lp_pert,Fp_pert,Fe_pert,P_pert,state_pert,post_results,.false., &   ! def gradients and PK2 at end of time step
-                            dt_aim,cp_en,ip,grain,Temperature,Fg_pert,Fp_current,state_current,1)
+                            dt_aim,cp_en,ip,grain,Temperature,Fg_pert,Fp_current,state_current,1_pInt)
        if (msg == 'ok') &
          dPdF(:,:,k,l) = (P_pert-P)/pert_Fg   ! constructing tangent dP_ij/dFg_kl only if valid forward difference
                                               ! otherwise leave component unchanged
@@ -159,6 +161,7 @@ CONTAINS
                          constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent,&
                          constitutive_Nresults,constitutive_Microstructure,constitutive_post_results
  use math
+ use IO
  implicit none
 !
  character(len=*) msg
@@ -205,6 +208,8 @@ Outer: do                ! outer iteration: State
          iInner = 0_pInt
          leapfrog = 1.0_pReal                ! correction as suggested by invdRdLp-step
          maxleap = 1024.0_pReal              ! preassign maximum acceleration level
+
+		 Lpguess_old = Lpguess               ! consider present Lpguess good
 !
 Inner: do              ! inner iteration: Lp
          iInner = iInner+1
@@ -225,9 +230,11 @@ Inner: do              ! inner iteration: Lp
          call constitutive_LpAndItsTangent(Lp,dLp, &
                                            Tstar_v,state,Temperature,grain,ip,cp_en)
 			    
+
          Rinner = Lpguess - Lp                                        ! update current residuum
 
-         if (not(any(Rinner.NE.Rinner)) .and. &                       ! exclude all NaN in residuum
+
+         if (not(any(Rinner.NE.Rinner)) .and. &                       ! exclude any NaN in residuum
              ( (maxval(abs(Rinner)) < abstol_Inner) .or. &            ! below abs tol .or.
                ( any(abs(dt*Lpguess) > relevantStrain) .and. &        ! worth checking? .and.
                  maxval(abs(Rinner/Lpguess),abs(dt*Lpguess) > relevantStrain) < reltol_Inner &  ! below rel tol
@@ -237,13 +244,19 @@ Inner: do              ! inner iteration: Lp
             exit Inner                                                ! convergence
 !
 !          check for acceleration/deceleration in Newton--Raphson correction
-         if (leapfrog > 1.0_pReal .and. &
+
+         if (any(Rinner.NE.Rinner) .and. &                            ! NaN occured at regular speed
+		     leapfrog == 1.0) then
+			Lpguess = Lpguess_old                                     ! restore known good guess
+		    msg = 'NaN present'                                       ! croak for cutback
+			return
+         elseif (leapfrog > 1.0_pReal .and. &                         ! at fast pace ?
              (sum(Rinner*Rinner) > sum(Rinner_old*Rinner_old) .or. &  ! worse residuum
               sum(Rinner*Rinner_old) < 0.0_pReal) .or. &              ! residuum changed sign (overshoot)
 			  any(Rinner.NE.Rinner) ) then                            ! NaN
            maxleap = 0.5_pReal * leapfrog                             ! limit next acceleration
            leapfrog = 1.0_pReal                                       ! grinding halt
-!		   if (debugger) write(6,*) 'grinding HALT'
+
          else                                                         ! better residuum
            dTdLp = 0.0_pReal                                          ! calc dT/dLp
            forall (i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -259,11 +272,12 @@ Inner: do              ! inner iteration: Lp
            endif
 !
            Rinner_old = Rinner                                        ! remember current residuum
-           Lpguess_old = Lpguess                                      ! remember current Lp guess
-           if (iInner > 1 .and. leapfrog < maxleap) leapfrog = 2.0_pReal * leapfrog   ! accelerate
+           Lpguess_old = Lpguess                                      ! remember current Lp guess 
+           if (iInner > 1 .and. leapfrog < maxleap) &
+		     leapfrog = 2.0_pReal * leapfrog                          ! accelerate if ok
          endif
 !
-         Lpguess = Lpguess_old                                        ! start from current guess
+         Lpguess = Lpguess_old                                        ! start from current guess                                       
          Rinner  = Rinner_old                                         ! use current residuum
          forall (i=1:3,j=1:3,k=1:3,l=1:3) &                           ! leapfrog to updated Lpguess 
            Lpguess(i,j) = Lpguess(i,j) - leapfrog*invdRdLp(3*(i-1)+j,3*(k-1)+l)*Rinner(k,l)
