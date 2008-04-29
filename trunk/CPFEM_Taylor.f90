@@ -145,7 +145,7 @@
 !
  cp_en = mesh_FEasCP('elem',CPFEM_en)
   if (cp_en == 1 .and. CPFEM_in == 1) &
-    write(6,'(a10,x,f8.4,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2)') &
+    write(6,'(a10,1x,f8.4,1x,a10,1x,i4,1x,a10,1x,i3,1x,a10,1x,i2,x,a10,1x,i2)') &
     'theTime',theTime,'theInc',theInc,'theCycle',theCycle,'theLovl',theLovl,&
     'mode',CPFEM_mode
 !
@@ -156,7 +156,7 @@
              CPFEM_Fp_old            = CPFEM_Fp_new
              constitutive_state_old  = constitutive_state_new
            endif
-           debug_cutbackDistribution = 0_pInt         ! initialize debugging data
+           debug_cutbackDistribution   = 0_pInt       ! initialize debugging data
            debug_InnerLoopDistribution = 0_pInt
            debug_OuterLoopDistribution = 0_pInt
 !
@@ -177,8 +177,10 @@
        H_bar = 0.0_pReal
        forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
          H_bar(i,j,k,l) = H_bar(i,j,k,l) + &
-                          (CPFEM_ffn1_bar(j,m,CPFEM_in,cp_en)*CPFEM_ffn1_bar(l,n,CPFEM_in,cp_en)*CPFEM_dPdF_bar(i,m,k,n,CPFEM_in,cp_en) - &
-                           math_I3(j,l)*CPFEM_ffn1_bar(i,m,CPFEM_in,cp_en)*CPFEM_PK1_bar(k,m,CPFEM_in,cp_en)) + &
+                          CPFEM_ffn1_bar(j,m,CPFEM_in,cp_en) * &
+                          CPFEM_ffn1_bar(l,n,CPFEM_in,cp_en) * &
+                          CPFEM_dPdF_bar(i,m,k,n,CPFEM_in,cp_en) - &
+                          math_I3(j,l)*CPFEM_ffn1_bar(i,m,CPFEM_in,cp_en)*CPFEM_PK1_bar(k,m,CPFEM_in,cp_en) + &
                           0.5_pReal*(math_I3(i,k)*Kirchhoff_bar(j,l) + math_I3(j,l)*Kirchhoff_bar(i,k) + &
                                      math_I3(i,l)*Kirchhoff_bar(j,k) + math_I3(j,k)*Kirchhoff_bar(i,l))
        CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel3333to66(J_inverse*H_bar)
@@ -205,6 +207,7 @@
  return
 !
  END SUBROUTINE
+!
 !
 !**********************************************************
 !***      calculate the material point behaviour        ***
@@ -250,8 +253,8 @@
                       CPFEM_Temperature(CPFEM_in,cp_en),&
                       CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en),CPFEM_ffn_bar(:,:,CPFEM_in,cp_en),&
                       CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en),constitutive_state_old(:,grain,CPFEM_in,cp_en))
-  
-   if (msg /= 'ok') then                    ! solution not reached --> exit
+
+   if (msg /= 'ok') then                                               ! solution not reached --> exit
        write(6,*) 'grain loop failed to converge @ EL:',cp_en,' IP:',CPFEM_in
        call IO_error(600)
        return 

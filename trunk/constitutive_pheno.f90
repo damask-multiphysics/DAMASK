@@ -427,7 +427,7 @@ fileunit=200
 !* First reading: number of materials and textures
 !-----------------------------
 !* determine material_maxN and texture_maxN from last respective parts
-if(IO_open_file(fileunit,filename)==.false.) goto 100
+if(.not. IO_open_file(fileunit,filename)) call IO_error (200) ! corrupt mattex file
 part = '_dummy_'
 do while (part/='')
    formerPart = part
@@ -440,16 +440,16 @@ do while (part/='')
    end select
 enddo
 !* Array allocation
-allocate(material_CrystalStructure(material_maxN))			   ; material_CrystalStructure=0_pInt
+allocate(material_CrystalStructure(material_maxN))		   ; material_CrystalStructure=0_pInt
 allocate(material_Nslip(material_maxN))					   ; material_Nslip=0_pInt
 allocate(material_C11(material_maxN))					   ; material_C11=0.0_pReal
 allocate(material_C12(material_maxN))					   ; material_C12=0.0_pReal
 allocate(material_C13(material_maxN))					   ; material_C13=0.0_pReal
 allocate(material_C33(material_maxN))					   ; material_C33=0.0_pReal
 allocate(material_C44(material_maxN))					   ; material_C44=0.0_pReal
-allocate(material_Cslip_66(6,6,material_maxN))				   ; material_Cslip_66=0.0_pReal
+allocate(material_Cslip_66(6,6,material_maxN))			   ; material_Cslip_66=0.0_pReal
 allocate(material_s0_slip(material_maxN))				   ; material_s0_slip=0.0_pReal
-allocate(material_gdot0_slip(material_maxN))				   ; material_gdot0_slip=0.0_pReal
+allocate(material_gdot0_slip(material_maxN))			   ; material_gdot0_slip=0.0_pReal
 allocate(material_n_slip(material_maxN))				   ; material_n_slip=0.0_pReal
 allocate(material_h0(material_maxN))					   ; material_h0=0.0_pReal
 allocate(material_s_sat(material_maxN))					   ; material_s_sat=0.0_pReal
@@ -515,16 +515,16 @@ do i=1,material_maxN
    case(3)   ! hcp
         material_Cslip_66(1,1,i)=material_C11(i)
         material_Cslip_66(2,2,i)=material_C11(i)
-	material_Cslip_66(3,3,i)=material_C33(i)
-	material_Cslip_66(1,2,i)=material_C12(i)
-	material_Cslip_66(2,1,i)=material_C12(i)
-	material_Cslip_66(1,3,i)=material_C13(i)
-	material_Cslip_66(3,1,i)=material_C13(i)
-	material_Cslip_66(2,3,i)=material_C13(i)
-	material_Cslip_66(3,2,i)=material_C13(i)
-	material_Cslip_66(4,4,i)=material_C44(i)
-	material_Cslip_66(5,5,i)=material_C44(i)
-	material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
+        material_Cslip_66(3,3,i)=material_C33(i)
+        material_Cslip_66(1,2,i)=material_C12(i)
+        material_Cslip_66(2,1,i)=material_C12(i)
+        material_Cslip_66(1,3,i)=material_C13(i)
+        material_Cslip_66(3,1,i)=material_C13(i)
+        material_Cslip_66(2,3,i)=material_C13(i)
+        material_Cslip_66(3,2,i)=material_C13(i)
+        material_Cslip_66(4,4,i)=material_C44(i)
+        material_Cslip_66(5,5,i)=material_C44(i)
+        material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
    end select
    material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
    ! Check
@@ -534,7 +534,7 @@ enddo
 ! MISSING some consistency checks may be..?
 ! if ODFfile present then set NGauss NFiber =0
 return
-100 call IO_error(200) ! corrupt materials_textures file
+
 end subroutine
 
 
