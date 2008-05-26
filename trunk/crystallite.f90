@@ -64,11 +64,15 @@ CONTAINS
  nCutbacks = 0_pInt
 !
  Fg_aim = Fg_old                                                   ! make "new", "aim" a synonym for "old"
+!$OMP CRITICAL (fpnew)
  Fp_new = Fp_old
+!$OMP END CRITICAL (fpnew)
  call math_invert3x3(Fp_old,inv,det,error)
  Fe_new = matmul(Fg_old,inv)
+!$OMP CRITICAL (statenew)
  state_bestguess = state_new                                       ! remember potentially available state guess
  state_new = state_old
+!$OMP END CRITICAL (statenew)
 !
  cuttedBack = .false.
  guessNew = .true.
@@ -109,9 +113,18 @@ CONTAINS
    endif
  enddo  ! potential substepping
 !
+!$OMP CRITICAL (cutback)
  debug_cutbackDistribution(min(nCutback,nCutbacks)+1) = debug_cutbackDistribution(min(nCutback,nCutbacks)+1)+1
+!$OMP END CRITICAL (cutback)
 !
  if (msg /= 'ok') return                    ! solution not reached --> report back
+!!$OMP CRITICAL (write2out)
+!    write(6,*) '*************************'
+!    write(6,*) '*************************'
+!    write(6,*) 'updateJaco', updateJaco, cp_en, ip
+!    write(6,*) '*************************'
+!    write(6,*) '*************************'
+!!$OMP END CRITICAL (write2out)
  if (updateJaco) then                       ! consistent tangent using
    do k=1,3
      do l=1,3
@@ -124,6 +137,13 @@ CONTAINS
        if (msg == 'ok') &
          dPdF(:,:,k,l) = (P_pert-P)/pert_Fg   ! constructing tangent dP_ij/dFg_kl only if valid forward difference
                                               ! otherwise leave component unchanged
+!!$OMP CRITICAL (write2out)
+!    write(6,*) '*************************'
+!    write(6,*) cp_en, ip
+!    write(6,*) 'dPdF_kl', k, l
+!    write(6,*) dPdF(:,:,k,l)
+!    write(6,*) '*************************'
+!!$OMP END CRITICAL (write2out)
      enddo
    enddo
  endif
@@ -193,7 +213,11 @@ CONTAINS
 
  A = matmul(transpose(invFp_old), matmul(transpose(Fg_new),matmul(Fg_new,invFp_old)))
 !
- if (all(state == 0.0_pReal)) state = state_old    ! former state guessed, if none specified
+ if (all(state == 0.0_pReal)) then
+!$OMP CRITICAL (statenew)
+   state = state_old    ! former state guessed, if none specified
+!$OMP END CRITICAL (statenew)
+ endif
  iOuter = 0_pInt                                   ! outer counter
 !
 !
@@ -201,7 +225,9 @@ Outer: do                ! outer iteration: State
          iOuter = iOuter+1
          if (iOuter > nOuter) then
            msg = 'limit Outer iteration'
+!$OMP CRITICAL (out)
            debug_OuterLoopDistribution(nOuter) = debug_OuterLoopDistribution(nOuter)+1
+!$OMP END CRITICAL (out)
            return
          endif
          call constitutive_Microstructure(state,Temperature,grain,ip,cp_en)
@@ -218,7 +244,9 @@ Inner: do              ! inner iteration: Lp
          iInner = iInner+1
          if (iInner > nInner) then         ! too many loops required
            msg = 'limit Inner iteration'
+!$OMP CRITICAL (in)
            debug_InnerLoopDistribution(nInner) = debug_InnerLoopDistribution(nInner)+1
+!$OMP END CRITICAL (in)
            return
          endif
 !
@@ -232,6 +260,25 @@ Inner: do              ! inner iteration: Lp
          forall(i=1:3) Tstar_v(i) = Tstar_v(i)-p_hydro                ! subtract hydrostatic pressure
          call constitutive_LpAndItsTangent(Lp,dLp, &
                                            Tstar_v,state,Temperature,grain,ip,cp_en)
+!!$OMP CRITICAL (write2out)
+!    write(6,*)
+!    write(6,*) '*************************'
+!    write(6,*) cp_en, ip
+!    write(6,*) 'Tstar_v'
+!    write(6,*) Tstar_v
+!    write(6,*) 'A'
+!    write(6,*) A
+!    write(6,*) 'B'
+!    write(6,*) B
+!    write(6,*) 'AB'
+!    write(6,*) AB
+!    write(6,*) 'BTA'
+!    write(6,*) BTA
+!    write(6,*) 'C_66'
+!    write(6,*) C_66
+!    write(6,*) '*************************'
+!    write(6,*)
+!$OMP END CRITICAL (write2out)
 !			    
          Rinner = Lpguess - Lp                                        ! update current residuum
 !
@@ -270,6 +317,15 @@ Inner: do              ! inner iteration: Lp
            call math_invert(9,dRdLp,invdRdLp,dummy,failed)            ! invert dR/dLp --> dLp/dR
            if (failed) then
              msg = 'inversion dR/dLp'
+               if (debugger) then
+!$OMP CRITICAL (write2out)
+                 write (6,*) msg
+                 write (6,'(a,/,9(9(e9.3,x)/))') 'dRdLp', dRdLp(1:9,:)
+                 write (6,*) 'state',state
+                 write (6,'(a,/,3(3(f12.7,x)/))') 'Lpguess',Lpguess(1:3,:)
+                 write (6,*) 'Tstar',Tstar_v
+!$OMP END CRITICAL (write2out)
+               endif 
              return
            endif
 !
@@ -286,30 +342,42 @@ Inner: do              ! inner iteration: Lp
            Lpguess(i,j) = Lpguess(i,j) - leapfrog*invdRdLp(3*(i-1)+j,3*(k-1)+l)*Rinner(k,l)
        enddo Inner
 !
+!$OMP CRITICAL (in)
        debug_InnerLoopDistribution(iInner) = debug_InnerLoopDistribution(iInner)+1
+!$OMP END CRITICAL (in)
        ROuter = state - state_old - &
                 dt*constitutive_dotState(Tstar_v,state,Temperature,&
-                                         grain,ip,cp_en)              ! residuum from evolution of microstructure
-       state = state - ROuter                                         ! update of microstructure
-       if (maxval(abs(Router/state),state /= 0.0_pReal) < reltol_Outer) exit Outer ! convergence ?
+                                         grain,ip,cp_en)          ! residuum from evolution of microstructure
+!$OMP CRITICAL (statenew)
+       state = state - ROuter                                           ! update of microstructure
+!$OMP END CRITICAL (statenew)
+       if (maxval(abs(Router/state),state /= 0.0_pReal) < reltol_Outer) exit Outer
      enddo Outer
 !
+!$OMP CRITICAL (out)
  debug_OuterLoopDistribution(iOuter) = debug_OuterLoopDistribution(iOuter)+1
+!$OMP END CRITICAL (out)
 
  invFp_new = matmul(invFp_old,B)
+!$OMP CRITICAL (fpnew)
  call math_invert3x3(invFp_new,Fp_new,det,failed)
+!$OMP END CRITICAL (fpnew)
  if (failed) then
    msg = 'inversion Fp_new^-1'
    return
  endif
 !
  if (wantsConstitutiveResults) then     ! get the post_results upon request
+!$OMP CRITICAL (res)
    results = 0.0_pReal
    results = constitutive_post_results(Tstar_v,state,Temperature,dt,grain,ip,cp_en)
+!$OMP END CRITICAL (res)
  endif
 !
+!$OMP CRITICAL (fpnew)
  Fp_new = Fp_new*det**(1.0_pReal/3.0_pReal)     ! regularize Fp by det = det(InvFp_new) !!
  Fe_new = matmul(Fg_new,invFp_new)              ! calc resulting Fe
+!$OMP END CRITICAL (fpnew)
  forall (i=1:3) Tstar_v(i) = Tstar_v(i)+p_hydro ! add hydrostatic component back
  P = matmul(Fe_new,matmul(Tstar,transpose(invFp_new)))    ! first PK stress
 !

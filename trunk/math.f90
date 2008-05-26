@@ -1590,6 +1590,7 @@ endif
  r(1:ndim) = 0.0_pReal
 
  if ( any ( base(1:ndim) <= 1 ) ) then
+!$OMP CRITICAL (write2out)
    write ( *, '(a)' ) ' '
    write ( *, '(a)' ) 'I_TO_HALTON - Fatal error!'
    write ( *, '(a)' ) ' An input base BASE is <= 1!'
@@ -1597,6 +1598,7 @@ endif
      write ( *, '(i6,i6)' ) i, base(i)
    end do
    call flush(6)
+!$OMP END CRITICAL (write2out)
    stop
  end if
 
@@ -1866,11 +1868,13 @@ endif
    prime = npvec(n)
  else
    prime = 0
+!$OMP CRITICAL (write2out)
    write ( 6, '(a)' ) ' '
    write ( 6, '(a)' ) 'PRIME - Fatal error!'
    write ( 6, '(a,i6)' ) '  Illegal prime index N = ', n
    write ( 6, '(a,i6)' ) '  N must be between 0 and PRIME_MAX =',prime_max
    call flush(6)
+!$OMP END CRITICAL (write2out)
    stop
  end if
 

@@ -69,6 +69,7 @@
    CPFEM_Fp_old(:,:,g,i,e) = math_EulerToR(constitutive_EulerAngles(:,g,i,e))  ! plastic def gradient reflects init orientation
 !
 !    *** Output to MARC output file ***
+!$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) 'CPFEM Initialization'
  write(6,*)
@@ -86,6 +87,7 @@
  write(6,*) 'CPFEM_Fp_new:        ', shape(CPFEM_Fp_new)
  write(6,*)
  call flush(6)
+!$OMP END CRITICAL (write2out)
  return
 !
  END SUBROUTINE
@@ -160,12 +162,14 @@
            debug_InnerLoopDistribution = 0_pInt
            debug_OuterLoopDistribution = 0_pInt
 !
+!$OMP PARALLEL DO
            do e=1,mesh_NcpElems                       ! ## this shall be done in a parallel loop in the future ##
                do i=1,FE_Nips(mesh_element(2,e))      ! iterate over all IPs of this element's type
                   debugger = (e==1 .and. i==1)        ! switch on debugging for first IP in first element
                   call CPFEM_MaterialPoint(CPFEM_updateJaco, CPFEM_dt, i, e)
                enddo
            enddo
+!$OMP END PARALLEL DO
            call debug_info()                          ! output of debugging/performance statistics
            CPFEM_calc_done = .true.                   ! now calc is done
          endif    
@@ -270,11 +274,12 @@
 !   update results plotted in MENTAT
    call math_pDecomposition(Fe1,U,R,error) ! polar decomposition
    if (error) then
-     write(6,*) Fe1
-     write(6,*) 'polar decomposition'
+!$OMP CRITICAL (write2out)
+     write(6,*) 'polar decomposition of', Fe1
      write(6,*) 'Grain:             ',grain
      write(6,*) 'Integration point: ',CPFEM_in
      write(6,*) 'Element:           ',mesh_element(1,cp_en)
+!$OMP END CRITICAL (write2out)
      call IO_error(650)
      return
    endif

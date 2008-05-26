@@ -842,6 +842,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
    mesh_MatTex(mesh_element(3,i),mesh_element(4,i)) + 1 ! count combinations of material and texture
  enddo
  
+!$OMP CRITICAL (write2out)
  write (6,*)
  write (6,*) "Input Parser: STATISTICS"
  write (6,*)
@@ -864,6 +865,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
    write (6,fmt) i,mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
  enddo
  write (6,*)
+!$OMP END CRITICAL (write2out)
 
  return
  

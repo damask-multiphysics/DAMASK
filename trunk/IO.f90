@@ -594,17 +594,18 @@
    msg='Unknown error number'
  end select
  
+ !$OMP CRITICAL (write2out)
  write(6,*) 'MPIE Material Routine Ver. 0.0 by the coding team'
  write(6,*)
  write(6,*) msg
 
  write(6,*)
-
  call debug_info()
 
 
  call flush(6)
  call quit(9000+ID)
+!$OMP END CRITICAL (write2out)
 ! ABAQUS returns in some cases
  return
 
