@@ -44,6 +44,7 @@ real(pReal), dimension(:)    , allocatable :: material_s_sat
 real(pReal), dimension(:)    , allocatable :: material_w0
 real(pReal), dimension(:,:)  , allocatable :: material_SlipIntCoeff
 !* GIA material parameters
+real(pReal), dimension(:,:)  , allocatable :: material_AspectRatio
 real(pReal), dimension(:)    , allocatable :: material_GrainSize
 real(pReal), dimension(:)    , allocatable :: material_bg
 
@@ -305,6 +306,10 @@ do while(.true.)
               material_GrainSize(section)=IO_floatValue(line,positions,2)
 		 case ('burgers') 
               material_bg(section)=IO_floatValue(line,positions,2)
+		 case ('grain_aspect_ratio') 
+	      do i=1,2
+              material_AspectRatio(i,section)=IO_floatValue(line,positions,i+1)
+	      enddo
          end select
       endif
    endif
@@ -427,7 +432,7 @@ fileunit=200
 !* First reading: number of materials and textures
 !-----------------------------
 !* determine material_maxN and texture_maxN from last respective parts
-if(.not. IO_open_file(fileunit,filename)) call IO_error (200) ! corrupt mattex file
+if(IO_open_file(fileunit,filename)==.false.) goto 100
 part = '_dummy_'
 do while (part/='')
    formerPart = part
@@ -440,16 +445,16 @@ do while (part/='')
    end select
 enddo
 !* Array allocation
-allocate(material_CrystalStructure(material_maxN))		   ; material_CrystalStructure=0_pInt
+allocate(material_CrystalStructure(material_maxN))			   ; material_CrystalStructure=0_pInt
 allocate(material_Nslip(material_maxN))					   ; material_Nslip=0_pInt
 allocate(material_C11(material_maxN))					   ; material_C11=0.0_pReal
 allocate(material_C12(material_maxN))					   ; material_C12=0.0_pReal
 allocate(material_C13(material_maxN))					   ; material_C13=0.0_pReal
 allocate(material_C33(material_maxN))					   ; material_C33=0.0_pReal
 allocate(material_C44(material_maxN))					   ; material_C44=0.0_pReal
-allocate(material_Cslip_66(6,6,material_maxN))			   ; material_Cslip_66=0.0_pReal
+allocate(material_Cslip_66(6,6,material_maxN))				   ; material_Cslip_66=0.0_pReal
 allocate(material_s0_slip(material_maxN))				   ; material_s0_slip=0.0_pReal
-allocate(material_gdot0_slip(material_maxN))			   ; material_gdot0_slip=0.0_pReal
+allocate(material_gdot0_slip(material_maxN))				   ; material_gdot0_slip=0.0_pReal
 allocate(material_n_slip(material_maxN))				   ; material_n_slip=0.0_pReal
 allocate(material_h0(material_maxN))					   ; material_h0=0.0_pReal
 allocate(material_s_sat(material_maxN))					   ; material_s_sat=0.0_pReal
@@ -457,6 +462,7 @@ allocate(material_w0(material_maxN))					   ; material_w0=0.0_pReal
 allocate(material_SlipIntCoeff(maxval(lattice_SlipIntType),material_maxN)) ; material_SlipIntCoeff=0.0_pReal
 allocate(material_GrainSize(material_maxN))				   ; material_GrainSize=0.0_pReal
 allocate(material_bg(material_maxN))					   ; material_bg=0.0_pReal
+allocate(material_AspectRatio(2,material_maxN))				   ; material_AspectRatio=0.0_pReal
 allocate(texture_ODFfile(texture_maxN)) 				   ; texture_ODFfile=''
 allocate(texture_Ngrains(texture_maxN)) 				   ; texture_Ngrains=0_pInt
 allocate(texture_symmetry(texture_maxN))				   ; texture_symmetry=''
@@ -500,6 +506,27 @@ do while (part/='')
 enddo
 close(fileunit)
 
+!* 
+do i=1,material_maxN
+  write(6,*) 'echo: material(',i,')'
+  write(6,*) 'lattice_structure',material_CrystalStructure(i)
+  write(6,*) 'nslip',material_Nslip(i)
+  write(6,*) 'c11',material_C11(i)
+  write(6,*) 'c12',material_C12(i)
+  write(6,*) 'c13',material_C13(i)
+  write(6,*) 'c33',material_C33(i)
+  write(6,*) 'c44',material_C44(i)
+  write(6,*) 's0_slip',material_s0_slip(i)
+  write(6,*) 'gdot0_slip',material_gdot0_slip(i)
+  write(6,*) 'n_slip',material_n_slip(i)
+  write(6,*) 'h0',material_h0(i)
+  write(6,*) 's_sat',material_s_sat(i)
+  write(6,*) 'w0',material_w0(i)
+  write(6,*) 'hardening_coefficients',material_SlipIntCoeff(1,i),material_SlipIntCoeff(2,i)
+  write(6,*) 'grain_size',material_GrainSize(i)
+  write(6,*) 'burgers',material_bg(i)
+  write(6,*) 'grain_aspect_ratio',material_AspectRatio(1,i),material_AspectRatio(2,i)
+enddo
 
 !* Construction of the elasticity matrices
 do i=1,material_maxN
@@ -515,16 +542,16 @@ do i=1,material_maxN
    case(3)   ! hcp
         material_Cslip_66(1,1,i)=material_C11(i)
         material_Cslip_66(2,2,i)=material_C11(i)
-        material_Cslip_66(3,3,i)=material_C33(i)
-        material_Cslip_66(1,2,i)=material_C12(i)
-        material_Cslip_66(2,1,i)=material_C12(i)
-        material_Cslip_66(1,3,i)=material_C13(i)
-        material_Cslip_66(3,1,i)=material_C13(i)
-        material_Cslip_66(2,3,i)=material_C13(i)
-        material_Cslip_66(3,2,i)=material_C13(i)
-        material_Cslip_66(4,4,i)=material_C44(i)
-        material_Cslip_66(5,5,i)=material_C44(i)
-        material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
+	material_Cslip_66(3,3,i)=material_C33(i)
+	material_Cslip_66(1,2,i)=material_C12(i)
+	material_Cslip_66(2,1,i)=material_C12(i)
+	material_Cslip_66(1,3,i)=material_C13(i)
+	material_Cslip_66(3,1,i)=material_C13(i)
+	material_Cslip_66(2,3,i)=material_C13(i)
+	material_Cslip_66(3,2,i)=material_C13(i)
+	material_Cslip_66(4,4,i)=material_C44(i)
+	material_Cslip_66(5,5,i)=material_C44(i)
+	material_Cslip_66(6,6,i)=0.5_pReal*(material_C11(i)-material_C12(i))
    end select
    material_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(material_Cslip_66(:,:,i)))
    ! Check
@@ -534,7 +561,7 @@ enddo
 ! MISSING some consistency checks may be..?
 ! if ODFfile present then set NGauss NFiber =0
 return
-
+100 call IO_error(200) ! corrupt materials_textures file
 end subroutine
 
 
