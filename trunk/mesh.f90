@@ -193,17 +193,29 @@
  mesh_maxNelemInSet = 0_pInt
 
 
+
 ! call to various subroutines to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
+   write (6,*) 'get_meshDimension'
+
    call mesh_get_meshDimensions(fileUnit)
+   write (6,*) 'build_nodeMap'
    call mesh_build_nodeMapping(fileUnit)
+   write (6,*) 'build_elemMap'
    call mesh_build_elemMapping(fileUnit)
+   write (6,*) 'build_elemSetMap'
    call mesh_build_elemSetMapping(fileUnit)
+   write (6,*) 'get_NodeElemDim'
    call mesh_get_nodeElemDimensions(fileUnit)
+   write (6,*) 'build_nodes'
    call mesh_build_nodes(fileUnit)
+   write (6,*) 'build_elems'
    call mesh_build_elements(fileUnit)
+   write (6,*) 'build_sahredElems'
    call mesh_build_sharedElems(fileUnit)
+   write (6,*) 'build_IP{neighborhood'
    call mesh_build_ipNeighborhood()
+   write (6,*) 'tell_stat'
    call mesh_tell_statistics()
    close (fileUnit)
  else
@@ -215,31 +227,61 @@
 
 
 
+
+
 !***********************************************************
+
 ! mapping of FE element types to internal representation
+
 !***********************************************************
+
  FUNCTION FE_mapElemtype(what)
 
+
+
  implicit none
+
  
+
  character(len=*), intent(in) :: what
+
  integer(pInt) FE_mapElemtype
+
   
+
  select case (what)
+
     case ('7')
+
 	   FE_mapElemtype = 1
+
     case ('134')
+
 	   FE_mapElemtype = 2
+
     case ('11')
+
 	   FE_mapElemtype = 3
+
     case ('27')
+
 	   FE_mapElemtype = 4
+
     case ('C3D8')
+
 	   FE_mapElemtype = 5
+
  
+
  end select
 
+
+
  END FUNCTION
+
+
+
+
 
 
 
@@ -441,7 +483,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
            n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
            if (all(node_seen /= n)) then
              node_count(n) = node_count(n)+1
-           end if
+          end if
            node_seen(j) = n
          end do
        end if
@@ -727,10 +769,12 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 
  integer(pint) unit,i,j,CP_node,CP_elem
  integer(pInt), dimension (133) :: pos
+ integer(pInt), dimension (:), allocatable :: node_seen
  character*300 line
 
 610 FORMAT(A300)
 
+ allocate(node_seen(maxval(FE_Nnodes)))
  allocate ( mesh_sharedElem( 1+mesh_maxNsharedElems,mesh_Nnodes) )
  mesh_sharedElem(:,:) = 0_pInt
 
@@ -745,10 +789,14 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
 	   CP_elem = mesh_FEasCP('elem',IO_IntValue(line,pos,1))
 	   if (CP_elem /= 0) then  ! disregard non CP elems
+	     node_seen = 0_pInt
          do j = 1,FE_Nnodes(FE_mapElemtype(IO_StringValue(line,pos,2)))
            CP_node = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
-		   mesh_sharedElem(1,CP_node) = mesh_sharedElem(1,CP_node) + 1
-		   mesh_sharedElem(1+mesh_sharedElem(1,CP_node),CP_node) = CP_elem
+           if (all(node_seen /= CP_node)) then
+		     mesh_sharedElem(1,CP_node) = mesh_sharedElem(1,CP_node) + 1
+		     mesh_sharedElem(1+mesh_sharedElem(1,CP_node),CP_node) = CP_elem
+           end if
+           node_seen(j) = CP_node
 		 enddo
 	   end if
      end do
@@ -826,15 +874,21 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
 
  use prec, only: pInt 
  use IO, only: IO_error
+
  implicit none
 
  integer(pInt), dimension (:,:), allocatable :: mesh_MatTex
  character(len=64) fmt
+
  integer(pInt) i
 
+
  if (mesh_maxValStateVar(1) == 0) call IO_error(110) ! no materials specified
+
  if (mesh_maxValStateVar(2) == 0) call IO_error(120) ! no textures specified
+
    
+
  allocate (mesh_MatTex(mesh_maxValStateVar(1),mesh_maxValStateVar(2)))
  mesh_MatTex = 0_pInt
  do i=1,mesh_NcpElems
@@ -843,6 +897,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  enddo
  
 !$OMP CRITICAL (write2out)
+
  write (6,*)
  write (6,*) "Input Parser: STATISTICS"
  write (6,*)
@@ -866,6 +921,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  enddo
  write (6,*)
 !$OMP END CRITICAL (write2out)
+
 
  return
  
