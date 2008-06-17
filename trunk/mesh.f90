@@ -52,7 +52,7 @@
 
  integer(pInt) :: hypoelasticTableStyle = 0
  integer(pInt) :: initialcondTableStyle = 0
- integer(pInt), parameter :: FE_Nelemtypes = 4
+ integer(pInt), parameter :: FE_Nelemtypes = 6
  integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNips = 9
  integer(pInt), parameter :: FE_maxNneighbors = 6
@@ -62,47 +62,59 @@
  (/8, & ! element 7
    4, & ! element 134
    4, & ! element 11
-   8  & ! element 27
+   8, & ! element 27
+   4, & ! element 157
+   6  & ! element 136
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nips = &
  (/8, & ! element 7
    1, & ! element 134
    4, & ! element 11
-   9  & ! element 27
+   9, & ! element 27
+   4, & ! element 157
+   6  & ! element 136
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipNeighbors = &
  (/6, & ! element 7
    4, & ! element 134
    4, & ! element 11
-   4  & ! element 27
+   4, & ! element 27
+   6, & ! element 157
+   6  & ! element 136
   /)
  integer(pInt), dimension(FE_maxNfaces,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
   4,4,4,4,4,4, & ! element 7
   3,3,3,3,0,0, & ! element 134
   2,2,2,2,0,0, & ! element 11
-  3,3,3,3,0,0  & ! element 27
+  3,3,3,3,0,0, & ! element 27
+  3,3,3,3,0,0, & ! element 157
+  3,4,4,4,3,0  & ! element 136
    /),(/FE_maxNfaces,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNips,FE_Nelemtypes), parameter :: FE_nodeAtIP = &
  reshape((/&
   1,2,4,3,5,6,8,7,0, & ! element 7
   1,0,0,0,0,0,0,0,0, & ! element 134
   1,2,4,3,0,0,0,0,0, & ! element 11
-  1,5,2,8,0,6,4,7,3  & ! element 27
+  1,5,2,8,0,6,4,7,3, & ! element 27
+  1,2,3,4,0,0,0,0,0, & ! element 157
+  1,2,3,4,5,6,0,0,0  & ! element 136
    /),(/FE_maxNips,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNnodes,FE_Nelemtypes), parameter :: FE_ipAtNode = &
  reshape((/&
   1,2,4,3,5,6,8,7, & ! element 7
   1,1,1,1,0,0,0,0, & ! element 134
   1,2,4,3,0,0,0,0, & ! element 11
-  1,3,9,7,2,6,8,4  & ! element 27
+  1,3,9,7,2,6,8,4, & ! element 27
+  1,2,3,4,0,0,0,0, & ! element 157
+  1,2,3,4,5,6,0,0  & ! element 136
    /),(/FE_maxNnodes,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
   1,2,3,4 , & ! element 7
   2,1,5,6 , &
   3,2,6,7 , &
-  3,4,8,7 , &
+  4,3,7,8 , &
   4,1,5,8 , &
   8,7,6,5 , &
   1,2,3,0 , & ! element 134
@@ -122,6 +134,18 @@
   3,7,4,0 , &
   4,8,1,0 , &
   0,0,0,0 , &
+  0,0,0,0 , &
+  1,2,3,0 , & ! element 157
+  1,4,2,0 , &
+  2,3,4,0 , &
+  1,3,4,0 , &
+  0,0,0,0 , &
+  0,0,0,0 , &
+  1,2,3,0 , & ! element 136
+  1,4,5,2 , &
+  2,5,6,3 , &
+  1,3,6,4 , &
+  4,6,5,0 , &
   0,0,0,0 &
    /),(/FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNneighbors,FE_maxNips,FE_Nelemtypes), parameter :: FE_ipNeighbor = &
@@ -161,7 +185,25 @@
   -2, 5, 9, 3, 0, 0 , &
    8,-4,-3, 4, 0, 0 , &
    9, 7,-3, 5, 0, 0 , &
-  -2, 8,-3, 6, 0, 0   &
+  -2, 8,-3, 6, 0, 0 , &
+   2,-4, 3,-2, 4,-1 , & ! element 157
+   3,-2, 1,-3, 4,-1 , &
+   1,-3, 2,-4, 4,-1 , &
+   1,-3, 2,-4, 3,-2 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   2,-4, 3,-2, 4,-1 , & ! element 136
+  -3, 1, 3,-2, 5,-1 , &
+   2,-4,-3, 1, 6,-1 , &
+   5,-4, 6,-2,-5, 1 , &
+  -3, 4, 6,-2,-5, 2 , &
+   5,-4,-3, 4,-5, 3 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0 , &
+   0, 0, 0, 0, 0, 0   &
    /),(/FE_maxNneighbors,FE_maxNips,FE_Nelemtypes/))
    
  CONTAINS
@@ -196,26 +238,15 @@
 
 ! call to various subroutines to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
-   write (6,*) 'get_meshDimension'
-
    call mesh_get_meshDimensions(fileUnit)
-   write (6,*) 'build_nodeMap'
    call mesh_build_nodeMapping(fileUnit)
-   write (6,*) 'build_elemMap'
    call mesh_build_elemMapping(fileUnit)
-   write (6,*) 'build_elemSetMap'
    call mesh_build_elemSetMapping(fileUnit)
-   write (6,*) 'get_NodeElemDim'
    call mesh_get_nodeElemDimensions(fileUnit)
-   write (6,*) 'build_nodes'
    call mesh_build_nodes(fileUnit)
-   write (6,*) 'build_elems'
    call mesh_build_elements(fileUnit)
-   write (6,*) 'build_sahredElems'
    call mesh_build_sharedElems(fileUnit)
-   write (6,*) 'build_IP{neighborhood'
    call mesh_build_ipNeighborhood()
-   write (6,*) 'tell_stat'
    call mesh_tell_statistics()
    close (fileUnit)
  else
@@ -226,62 +257,34 @@
  
 
 
-
-
-
 !***********************************************************
-
 ! mapping of FE element types to internal representation
-
 !***********************************************************
-
  FUNCTION FE_mapElemtype(what)
 
-
-
  implicit none
-
  
-
  character(len=*), intent(in) :: what
-
  integer(pInt) FE_mapElemtype
-
   
-
  select case (what)
-
-    case ('7')
-
-	   FE_mapElemtype = 1
-
+    case ('7', 'C3D8')
+	   FE_mapElemtype = 1            ! Three-dimensional Arbitrarily Distorted Brick
     case ('134')
-
-	   FE_mapElemtype = 2
-
+	   FE_mapElemtype = 2            ! Three-dimensional Four-node Tetrahedron
     case ('11')
-
-	   FE_mapElemtype = 3
-
+	   FE_mapElemtype = 3            ! Arbitrary Quadrilateral Plane-strain
     case ('27')
-
-	   FE_mapElemtype = 4
-
-    case ('C3D8')
-
-	   FE_mapElemtype = 5
-
- 
-
+	   FE_mapElemtype = 4            ! Plane Strain, Eight-node Distorted Quadrilateral
+    case ('157')
+	   FE_mapElemtype = 5            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
+    case ('136')
+	   FE_mapElemtype = 6            ! Three-dimensional Arbitrarily Distorted Pentahedral
+	case default 
+	   FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
  end select
 
-
-
  END FUNCTION
-
-
-
-
 
 
 
@@ -483,7 +486,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
            n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
            if (all(node_seen /= n)) then
              node_count(n) = node_count(n)+1
-          end if
+           end if
            node_seen(j) = n
          end do
        end if
@@ -767,7 +770,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use IO
  implicit none
 
- integer(pint) unit,i,j,CP_node,CP_elem
+ integer(pint) unit,i,j,n,e
  integer(pInt), dimension (133) :: pos
  integer(pInt), dimension (:), allocatable :: node_seen
  character*300 line
@@ -787,16 +790,16 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 	 do i=1,mesh_Nelems
 	   read (unit,610,END=620) line
 	   pos = IO_stringPos(line,66)  ! limit to 64 nodes max (plus ID, type)
-	   CP_elem = mesh_FEasCP('elem',IO_IntValue(line,pos,1))
-	   if (CP_elem /= 0) then  ! disregard non CP elems
+	   e = mesh_FEasCP('elem',IO_IntValue(line,pos,1))
+	   if (e /= 0) then  ! disregard non CP elems
 	     node_seen = 0_pInt
          do j = 1,FE_Nnodes(FE_mapElemtype(IO_StringValue(line,pos,2)))
-           CP_node = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
-           if (all(node_seen /= CP_node)) then
-		     mesh_sharedElem(1,CP_node) = mesh_sharedElem(1,CP_node) + 1
-		     mesh_sharedElem(1+mesh_sharedElem(1,CP_node),CP_node) = CP_elem
+           n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
+           if (all(node_seen /= n)) then
+		     mesh_sharedElem(1,CP_node) = mesh_sharedElem(1,n) + 1
+		     mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e
            end if
-           node_seen(j) = CP_node
+           node_seen(j) = n
 		 enddo
 	   end if
      end do
@@ -915,9 +918,9 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  write (6,*) mesh_maxValStateVar(2), " : maximum texture index"
  write (6,*)
 
- write (fmt,"(a,i3,a,a)") "(",1+mesh_maxValStateVar(1),"(i8)",")"
+ write (fmt,"(a,i3,a)") "(i8,x,a1,x,",mesh_maxValStateVar(2),"(i8))"
  do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) materials
-   write (6,fmt) i,mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
+   write (6,fmt) i,"|",mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
  enddo
  write (6,*)
 !$OMP END CRITICAL (write2out)
