@@ -796,7 +796,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
          do j = 1,FE_Nnodes(FE_mapElemtype(IO_StringValue(line,pos,2)))
            n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
            if (all(node_seen /= n)) then
-		     mesh_sharedElem(1,CP_node) = mesh_sharedElem(1,n) + 1
+		     mesh_sharedElem(1,n) = mesh_sharedElem(1,n) + 1
 		     mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e
            end if
            node_seen(j) = n
