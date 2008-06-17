@@ -177,6 +177,8 @@ CONTAINS
    enddo
  endif
 !
+ msg = 'ok' ! a new consistent tangent was computed even if msg was not ok for all components
+!
  return
 !
  END SUBROUTINE
@@ -419,6 +421,12 @@ Inner: do              ! inner iteration: Lp
                                          grain,ip,cp_en)          ! residuum from evolution of microstructure
 !!$OMP END CRITICAL (stateupdate)
        state = state - ROuter                                           ! update of microstructure
+	   if (iOuter==nOuter) then
+!$OMP CRITICAL (write2out)
+	      write (6,*) 'WARNING: Outer loop has not really converged'
+!$OMP END CRITICAL (write2out)
+	      exit Outer
+	   endif
        if (maxval(abs(Router/state),state /= 0.0_pReal) < reltol_Outer) exit Outer
      enddo Outer
 !

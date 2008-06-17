@@ -21,52 +21,57 @@ w0				              1.0
 hardening_coefficients        	              1.0 1.4
 
 ## Parameters for dislocation-based modeling
-# Initial dislocation density [m]²
-rho0				              2.8e13 
 # Burgers vector [m]                        
 burgers			                      2.56e-10
 # Activation energy for dislocation glide [J/K]
 Qedge				              3.0e-19
-# Reference for passing stress [Pa]
-tau0		                              0.0
+# Initial dislocation density [m]²
+rho0				              2.8e13 
+# Average grain size [m]
+grain_size                                    2.0e-5
 # Passing stress adjustment
 c1				              0.1
 # Jump width adjustment
 c2                                            2.0
 # Activation volume adjustment
 c3                                            1.2
-# Dislocation storage adjustment
+# Average slip distance adjustment for lock formation
 # = c4(Anxin)*c2(Anxin) !!!!!!
 c4                      	              14.25
-# Grain boundaries storage adjustment
+# Average slip distance adjustment when grain boundaries
 c5                                            1.0 
-# Athermal annihilation adjustment
+# Average slip distance adjustment when twin boundaries
+c6                                            0.1
+# Athermal recovery adjustment
 c7				              23.5
 # Dislocation interaction coefficients
 interaction_coefficients	              1.0 2.2 3.0 1.6 3.8 4.5
 
-# Twin parameters
-# Grain size [m]
-grain_size                                    2.0e-5
-# Twin thickness (stacks) [m]
+## Parameters for mechanical twinning
+# Average twin thickness (stacks) [m]
 stack_size                                    5.0e-8
-# Activation length for twin nucleation [m]
-d_star                                        5.0e-10
-# Twin saturation value
-f_sat                                         0.3
-# Twin boundaries storage adjustment
-c6                                            0.425
-# Scaling of really activated nucleation sites
-c8                                            2.0e-3
-# Selection of active twin systems
-c9                                            10.0
-# Twin resistance [Pa]
-twin_resistance                               1000.0e6
-stacking_fault_energy                         2.0e-2
+# Total twin volume fraction saturation
+f_sat                                         0.2
+# Scaling potential nucleation sites
+site_scaling                                  1.0e-7
+# Scaling the P-K force on the twinning dislocation
+q1                                            0.75
+# Scaling the resolved shear stress
+q2                                            1.0
+
                       
 
 <textures>
 [cube SX]
 symmetry			no /monoclinic /orthorhombic
-Ngrains				1 /2 /4
-(gauss)				phi1	0.0	phi	0.0	phi2	0.0 scatter 0.0	fraction 1.0
+Ngrains				10 /2 /4
+#(gauss)				phi1	0.0	phi	29.21	phi2	-26.57 scatter 0.0	fraction 1.0
+#(gauss)				phi1	0.0	phi	54.74	phi2	-45.0  scatter 0.0	fraction 0.1
+#(gauss)				phi1	0.0	phi	45.0	phi2	 0.0   scatter 0.0	fraction 0.1
+#(gauss)				phi1	0.0	phi	0.0	phi2	 0.0   scatter 0.0	fraction 0.1
+#(gauss)				phi1	0.0	phi	35.26	phi2	-45.0  scatter 0.0	fraction 0.1
+#(gauss)				phi1	0.0	phi	48.19	phi2	-26.57 scatter 0.0	fraction 0.1
+#(gauss)				phi1	0.0	phi	26.57	phi2	 0.0   scatter 0.0	fraction 0.1
+#(gauss)				phi1	0.0	phi	42.03	phi2	-33.69 scatter 0.0	fraction 0.1
+#(gauss)				phi1	0.0	phi	40.36	phi2	-11.31 scatter 0.0	fraction 0.1
+#(gauss)				phi1	0.0	phi	15.62	phi2	-26.57 scatter 0.0	fraction 0.1
