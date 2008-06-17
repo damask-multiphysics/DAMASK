@@ -26,7 +26,7 @@ reshape((/12,48,12/),(/lattice_MaxLatticeStructure/))
 !* Total number of twin systems per lattice structure
 !* (has to be changed according the definition of twin systems)
 integer(pInt), dimension(lattice_MaxLatticeStructure), parameter :: lattice_MaxNtwinOfStructure = &
-reshape((/12,12,6/),(/lattice_MaxLatticeStructure/))
+reshape((/12,0,0/),(/lattice_MaxLatticeStructure/))
 !* Maximum number of slip systems over lattice structures
 integer(pInt), parameter :: lattice_MaxMaxNslipOfStructure = 48
 !* Maximum number of twin systems over lattice structures
@@ -49,6 +49,9 @@ reshape((/0.7071067812,0.7071067812,0.7071067812/),(/lattice_MaxLatticeStructure
 !* Slip_slip interaction matrices
 integer(pInt), dimension(lattice_MaxMaxNslipOfStructure,lattice_MaxMaxNslipOfStructure,lattice_MaxLatticeStructure) :: &
 lattice_SlipIntType
+!* Slip_twin interaction matrices
+integer(pInt), dimension(lattice_MaxMaxNslipOfStructure,lattice_MaxMaxNtwinOfStructure,lattice_MaxLatticeStructure) :: &
+lattice_SlipTwinIntType
 !* Twin-twin interaction matrices
 integer(pInt), dimension(lattice_MaxMaxNtwinOfStructure,lattice_MaxMaxNtwinOfStructure,lattice_MaxLatticeStructure) :: &
 lattice_TwinIntType
@@ -96,6 +99,20 @@ data lattice_SlipIntType( 9,1:lattice_MaxNslipOfStructure(1),1)/5,6,4,6,5,4,2,2,
 data lattice_SlipIntType(10,1:lattice_MaxNslipOfStructure(1),1)/4,5,6,3,5,5,4,6,5,1,2,2/
 data lattice_SlipIntType(11,1:lattice_MaxNslipOfStructure(1),1)/5,3,5,5,4,6,6,4,5,2,1,2/
 data lattice_SlipIntType(12,1:lattice_MaxNslipOfStructure(1),1)/6,5,4,5,6,4,5,5,3,2,2,1/
+
+!*** Slip-Twin interactions for FCC structures (1) ***
+data lattice_SlipTwinIntType( 1,1:lattice_MaxNtwinOfStructure(1),1)/0,0,0,1,1,1,0,0,0,1,1,1/
+data lattice_SlipTwinIntType( 2,1:lattice_MaxNtwinOfStructure(1),1)/0,0,0,1,1,1,1,1,1,0,0,0/
+data lattice_SlipTwinIntType( 3,1:lattice_MaxNtwinOfStructure(1),1)/0,0,0,0,0,0,1,1,1,1,1,1/
+data lattice_SlipTwinIntType( 4,1:lattice_MaxNtwinOfStructure(1),1)/1,1,1,0,0,0,1,1,1,0,0,0/
+data lattice_SlipTwinIntType( 5,1:lattice_MaxNtwinOfStructure(1),1)/1,1,1,0,0,0,0,0,0,1,1,1/
+data lattice_SlipTwinIntType( 6,1:lattice_MaxNtwinOfStructure(1),1)/0,0,0,0,0,0,1,1,1,1,1,1/
+data lattice_SlipTwinIntType( 7,1:lattice_MaxNtwinOfStructure(1),1)/0,0,0,1,1,1,0,0,0,1,1,1/
+data lattice_SlipTwinIntType( 8,1:lattice_MaxNtwinOfStructure(1),1)/1,1,1,0,0,0,0,0,0,1,1,1/
+data lattice_SlipTwinIntType( 9,1:lattice_MaxNtwinOfStructure(1),1)/1,1,1,1,1,1,0,0,0,0,0,0/
+data lattice_SlipTwinIntType(10,1:lattice_MaxNtwinOfStructure(1),1)/1,1,1,0,0,0,1,1,1,0,0,0/
+data lattice_SlipTwinIntType(11,1:lattice_MaxNtwinOfStructure(1),1)/0,0,0,1,1,1,1,1,1,0,0,0/
+data lattice_SlipTwinIntType(12,1:lattice_MaxNtwinOfStructure(1),1)/1,1,1,1,1,1,0,0,0,0,0,0/
 
 !*** Twin-Twin interactions for FCC structures (1) ***
 data lattice_TwinIntType( 1,1:lattice_MaxNtwinOfStructure(1),1)/0,0,0,1,1,1,1,1,1,1,1,1/
@@ -222,6 +239,9 @@ data lattice_SlipIntType(46,:,2)/2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
 data lattice_SlipIntType(47,:,2)/2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2/
 data lattice_SlipIntType(48,:,2)/2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1/
 
+!*** Slip-twin interactions for BCC structures (2) ***
+! MISSING: not implemented yet
+
 !*** Twin-twin interactions for BCC structures (2) ***
 ! MISSING: not implemented yet
 
@@ -280,6 +300,9 @@ data lattice_SlipIntType( 9,1:lattice_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,
 data lattice_SlipIntType(10,1:lattice_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,1,2,2/
 data lattice_SlipIntType(11,1:lattice_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,2,1,2/
 data lattice_SlipIntType(12,1:lattice_MaxNslipOfStructure(3),3)/2,2,2,2,2,2,2,2,2,2,2,1/
+
+!*** slip-twin interactions for HCP structures (3) ***
+! MISSING: not implemented yet
 
 !*** Twin-twin interactions for HCP structures (3) ***
 ! MISSING: not implemented yet
