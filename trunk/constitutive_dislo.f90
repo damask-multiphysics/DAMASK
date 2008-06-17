@@ -315,6 +315,7 @@ do while(.true.)
       section=section+1
    else
       if (section>0) then
+!$OMP CRITICAL (write2out)
          select case(tag)
 	     case ('lattice_structure')
               material_LatticeStructure(section)=IO_intValue(line,positions,2)
@@ -400,6 +401,7 @@ do while(.true.)
               material_c9(section)=IO_floatValue(line,positions,2)
 			  write(6,*) 'c9', material_c9(section)
          end select
+!$OMP END CRITICAL (write2out)
       endif
    endif
 enddo
@@ -697,7 +699,9 @@ do texID=1,texture_maxN
    multiplicity(texID) = max(1_pInt,texture_Ngrains(texID)/Ncomponents(texID)/Nsym(texID))
    if (mod(texture_Ngrains(texID),Ncomponents(texID)*Nsym(texID)) /= 0_pInt) then
       texture_Ngrains(texID) = multiplicity(texID)*Ncomponents(texID)*Nsym(texID)
+!$OMP CRITICAL (write2out)
       write (6,*) 'changed Ngrains to',texture_Ngrains(texID),' for texture',texID
+!$OMP END CRITICAL (write2out)
    endif
 enddo
 
@@ -930,8 +934,10 @@ matID = constitutive_matID(ipc,ip,el)
 startIdxTwin = material_Nslip(matID)
 
 !* Quantities derived from state - slip
+!$OMP CRITICAL (evilmatmul)
 constitutive_rho_f=matmul(constitutive_Pforest  (1:material_Nslip(matID),1:material_Nslip(matID),matID),state)
 constitutive_rho_p=matmul(constitutive_Pparallel(1:material_Nslip(matID),1:material_Nslip(matID),matID),state)	
+!$OMP END CRITICAL (evilmatmul)
 do i=1,material_Nslip(matID)
    constitutive_passing_stress(i) = material_tau0(matID)+material_c1(matID)*material_Gmod(matID)*material_bg(matID)*&
                                     sqrt(constitutive_rho_p(i))

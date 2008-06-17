@@ -432,7 +432,7 @@ fileunit=200
 !* First reading: number of materials and textures
 !-----------------------------
 !* determine material_maxN and texture_maxN from last respective parts
-if(IO_open_file(fileunit,filename)==.false.) goto 100
+if(.not. IO_open_file(fileunit,filename)) call IO_error (200) ! corrupt mattex file
 part = '_dummy_'
 do while (part/='')
    formerPart = part
@@ -561,7 +561,6 @@ enddo
 ! MISSING some consistency checks may be..?
 ! if ODFfile present then set NGauss NFiber =0
 return
-100 call IO_error(200) ! corrupt materials_textures file
 end subroutine
 
 
@@ -613,7 +612,9 @@ do texID=1,texture_maxN
    multiplicity(texID) = max(1_pInt,texture_Ngrains(texID)/Ncomponents(texID)/Nsym(texID))
    if (mod(texture_Ngrains(texID),Ncomponents(texID)*Nsym(texID)) /= 0_pInt) then
       texture_Ngrains(texID) = multiplicity(texID)*Ncomponents(texID)*Nsym(texID)
+!$OMP CRITICAL (write2out)
       write (6,*) 'changed Ngrains to',texture_Ngrains(texID),' for texture',texID
+!$OMP END CRITICAL (write2out)
    endif
 enddo
 
@@ -869,8 +870,10 @@ do i=1,constitutive_Nstatevars(ipc,ip,el)
 enddo
 
 !* Hardening for all systems
+!$OMP CRITICAL (evilmatmul)
 constitutive_dotState=matmul(constitutive_HardeningMatrix(1:material_Nslip(matID),1:material_Nslip(matID),&
                       matID),self_hardening)
+!$OMP END CRITICAL (evilmatmul)
 return
 end function
 

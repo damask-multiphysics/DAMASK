@@ -823,7 +823,9 @@
  real(pReal), dimension(3,3) :: r
  real(pReal) math_disorient, tr
 
+!$OMP CRITICAL (evilmatmul)
  r = matmul(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
+!$OMP END CRITICAL (evilmatmul)
  tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
  math_disorient = abs(0.5_pReal*pi-asin(tr))
  return
@@ -888,7 +890,9 @@ endif
    disturb(3) = scatter * rnd(2)                                                      ! phi2
    if (rnd(5) <= exp(-1.0_pReal*(math_disorient(origin,disturb)/scatter)**2)) exit   
  enddo
+!$OMP CRITICAL (evilmatmul)
  math_sampleGaussOri = math_RtoEuler(matmul(math_EulerToR(disturb),math_EulerToR(center)))
+!$OMP END CRITICAL (evilmatmul)
  return
  
  END FUNCTION
@@ -962,7 +966,9 @@ endif
  pRot = math_RodrigtoR(axis,angle)
 
 ! ---# apply the three rotations #---
- math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot))) 
+!$OMP CRITICAL (evilmatmul)
+math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot))) 
+!$OMP END CRITICAL (evilmatmul)
  return
 
  END FUNCTION
@@ -1029,11 +1035,17 @@ endif
  real(pReal) FE(3,3),R(3,3),U(3,3),CE(3,3),EW1,EW2,EW3,EB1(3,3),EB2(3,3),EB3(3,3),UI(3,3),det
 
  error = .false.
+!$OMP CRITICAL (evilmatmul)
  ce=matmul(transpose(fe),fe)
+!$OMP END CRITICAL (evilmatmul)
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=DSQRT(EW1)*EB1+DSQRT(EW2)*EB2+DSQRT(EW3)*EB3
  call math_invert3x3(U,UI,det,error)
- if (.not. error) R = matmul(fe,ui)
+ if (.not. error) then
+!$OMP CRITICAL (evilmatmul)
+ R = matmul(fe,ui)
+!$OMP END CRITICAL (evilmatmul)
+ endif
  return 
  
  END SUBROUTINE
@@ -1090,7 +1102,9 @@ endif
   D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
   M1=M-EW1*math_I3
   M2=M-EW2*math_I3
+!$OMP CRITICAL (evilmatmul)
   EB3=MATMUL(M1,M2)*D3
+!$OMP END CRITICAL (evilmatmul)
   EB1=math_I3-EB3
 !  both EB2 and EW2 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
@@ -1100,7 +1114,9 @@ endif
   D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
   M2=M-math_I3*EW2
   M3=M-math_I3*EW3
+!$OMP CRITICAL (evilmatmul)
   EB1=MATMUL(M2,M3)*D1
+!$OMP END CRITICAL (evilmatmul)
   EB2=math_I3-EB1
 !  both EB3 and EW3 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
@@ -1110,7 +1126,9 @@ endif
   D2=1.0_pReal/(EW2-EW1)/(EW2-EW3) 
   M1=M-math_I3*EW1
   M3=M-math_I3*EW3
+!$OMP CRITICAL (evilmatmul)
   EB2=MATMUL(M1,M3)*D2
+!$OMP END CRITICAL (evilmatmul)
   EB1=math_I3-EB2
 !  both EB3 and EW3 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
@@ -1123,9 +1141,11 @@ endif
   M1=M-EW1*math_I3
   M2=M-EW2*math_I3
   M3=M-EW3*math_I3
+!$OMP CRITICAL (evilmatmul)
   EB1=MATMUL(M2,M3)*D1
   EB2=MATMUL(M1,M3)*D2
   EB3=MATMUL(M1,M2)*D3
+!$OMP END CRITICAL (evilmatmul)
    END IF
  END IF
  RETURN

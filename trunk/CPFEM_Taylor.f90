@@ -172,9 +172,11 @@
 !$OMP END PARALLEL DO
            call debug_info()                          ! output of debugging/performance statistics
            CPFEM_calc_done = .true.                   ! now calc is done
-         endif    
+       endif    
 !       translate from P and dP/dF to CS and dCS/dE
+!$OMP CRITICAL (evilmatmul)
        Kirchhoff_bar = matmul(CPFEM_PK1_bar(:,:,CPFEM_in, cp_en),transpose(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en)))
+!$OMP END CRITICAL (evilmatmul)
        J_inverse  = 1.0_pReal/math_det3x3(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en))
        CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff_bar)
 !
@@ -188,6 +190,17 @@
                           0.5_pReal*(math_I3(i,k)*Kirchhoff_bar(j,l) + math_I3(j,l)*Kirchhoff_bar(i,k) + &
                                      math_I3(i,l)*Kirchhoff_bar(j,k) + math_I3(j,k)*Kirchhoff_bar(i,l))
        CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel3333to66(J_inverse*H_bar)
+! if (CPFEM_in==8 .and. cp_en==80) then
+!   do e=1,80
+!       do i=1,8
+!       write(6,*)
+!       write(6,*) e, i
+!       write(6,*) CPFEM_stress_bar(1:CPFEM_ngens,i,e)
+!       write(6,*)
+!       write(6,*) CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,i,e)
+!       enddo
+!   enddo
+! endif
 !
     case (3)    ! collect and return odd result
        CPFEM_Temperature(CPFEM_in,cp_en)  = Temperature
@@ -196,6 +209,15 @@
        CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = CPFEM_odd_stress
        CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = CPFEM_odd_jacobian*math_identity2nd(CPFEM_ngens)
        CPFEM_calc_done = .false.
+! if (CPFEM_in==8 .and. cp_en==80) then
+!   do e=1,80
+!       do i=1,8
+!       write(6,*)
+!       write(6,*) e, i
+!       write(6,*) ffn1
+!       enddo
+!   enddo
+! endif
 
     case (4)    ! do nothing since we can recycle the former results (MARC specialty)
     case (5)    ! record consistent tangent at beginning of new increment
@@ -207,7 +229,7 @@
 ! return the local stress and the jacobian from storage
  CPFEM_stress(1:CPFEM_ngens) = CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en)
  CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en)
-! 
+!
  return
 !
  END SUBROUTINE
@@ -259,7 +281,9 @@
                       CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en),constitutive_state_old(:,grain,CPFEM_in,cp_en))
 
    if (msg /= 'ok') then                                               ! solution not reached --> exit
+!$OMP CRITICAL (write2out)
        write(6,*) 'grain loop failed to converge @ EL:',cp_en,' IP:',CPFEM_in
+!$OMP END CRITICAL (write2out)
        call IO_error(600)
        return 
    endif

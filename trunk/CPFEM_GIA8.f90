@@ -78,6 +78,7 @@
  enddo
 !
 !    *** Output to MARC output file ***
+!$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) 'CPFEM Initialization'
  write(6,*)
@@ -98,6 +99,7 @@
  write(6,*) 'GIA_bNorm:           ', shape(GIA_bNorm)
  write(6,*)
  call flush(6)
+!$OMP END CRITICAL (write2out)
  return
 !
  END SUBROUTINE
@@ -156,21 +158,28 @@
  endif
 !
  cp_en = mesh_FEasCP('elem',CPFEM_en)
-  if (cp_en == 1 .and. CPFEM_in == 1) &
+  if (cp_en == 1 .and. CPFEM_in == 1) then
+!$OMP CRITICAL (write2out)
     write(6,'(a6,x,i4,x,a4,x,i4,x,a10,x,f8.4,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2,x,a10,x,i2)') &
     'elem',cp_en,'IP',CPFEM_in,&
     'theTime',theTime,'theInc',theInc,'theCycle',theCycle,'theLovl',theLovl,&
     'mode',CPFEM_mode
+!$OMP END CRITICAL (write2out)
+  endif
 !
  select case (CPFEM_mode)
     case (2,1)     ! regular computation (with aging of results)
        if (.not. CPFEM_calc_done) then                ! puuh, me needs doing all the work...
+!$OMP CRITICAL (write2out)
            write (6,*) 'puuh me needs doing all the work', cp_en
+!$OMP END CRITICAL (write2out)
            if (CPFEM_mode == 1) then                  ! age results at start of new increment
              CPFEM_Fp_old            = CPFEM_Fp_new
              constitutive_state_old  = constitutive_state_new
              GIA_rVect_old           = GIA_rVect_new
+!$OMP CRITICAL (write2out)
              write (6,*) '#### aged results'
+!$OMP END CRITICAL (write2out)
            endif
            debug_cutbackDistribution = 0_pInt         ! initialize debugging data
            debug_InnerLoopDistribution = 0_pInt
@@ -186,7 +195,9 @@
            CPFEM_calc_done = .true.                   ! now calc is done
          endif    
 !       translate from P and dP/dF to CS and dCS/dE
+!$OMP CRITICAL (evilmatmul)
        Kirchhoff_bar = matmul(CPFEM_PK1_bar(:,:,CPFEM_in, cp_en),transpose(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en)))
+!$OMP END CRITICAL (evilmatmul)
        J_inverse  = 1.0_pReal/math_det3x3(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en))
        CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff_bar)
 !
@@ -306,7 +317,9 @@
                       dTime,cp_en,CPFEM_in,grain,.true.,&
                       CPFEM_Temperature(CPFEM_in,cp_en),F1(:,:,grain),F0(:,:,grain),Fp0(:,:,grain),state0(:,grain))
      if (msg /= 'ok') then                    ! solution not reached --> exit NRIteration
+!$OMP CRITICAL (write2out)
        write(6,*) 'GIA: grain loop failed to converge @ EL:',cp_en,' IP:',CPFEM_in
+!$OMP END CRITICAL (write2out)
        NRconvergent = .false.
        exit NRiteration
      endif
@@ -363,7 +376,10 @@
    enddo
    resNorm = sqrt(resNorm)
 !
-   if (debugger) write(6,'(x,a,i3,a,i3,a,i3,a,e10.4)')'EL:',cp_en,' IP:',CPFEM_in,' Iter:',NRiter,' RNorm:',resNorm
+   if (debugger) then
+!$OMP CRITICAL (write2out)
+    write(6,'(x,a,i3,a,i3,a,i3,a,e10.4)')'EL:',cp_en,' IP:',CPFEM_in,' Iter:',NRiter,' RNorm:',resNorm
+!$OMP END CRITICAL (write2out)
    if (NRiter == 1_pInt) resMax = resNorm
    if ((resNorm < resToler*resMax) .or. (resNorm < resAbsol)) then     ! resNorm < tolerance ===> convergent
      NRconvergent = .true.
@@ -403,7 +419,9 @@
      dvardres = 0.0_pReal
      call math_invert(36,dresdvar,dvardres,dummy,failed)
      if (failed) then
+!$OMP CRITICAL (write2out)
        write(6,*) 'GIA: failed to invert the Jacobian @ EL:',cp_en,' IP:',CPFEM_in
+!$OMP END CRITICAL (write2out)
        NRconvergent = .false.
        exit NRiteration
      endif
@@ -431,7 +449,9 @@
 !
 ! return to the general subroutine when convergence is not reached
  if (.not. NRconvergent) then
+!$OMP CRITICAL (write2out)
    write(6,'(x,a)') 'GIA: convergence is not reached @ EL:',cp_en,' IP:',CPFEM_in
+!$OMP END CRITICAL (write2out)
    call IO_error(600)
    return
  endif
@@ -450,11 +470,13 @@
 !   update results plotted in MENTAT
    call math_pDecomposition(Fe1(:,:,grain),U,R,error) ! polar decomposition
    if (error) then
+!$OMP CRITICAL (write2out)
      write(6,*) Fe1(:,:,grain)
      write(6,*) 'polar decomposition'
      write(6,*) 'Grain:             ',grain
      write(6,*) 'Integration point: ',CPFEM_in
      write(6,*) 'Element:           ',mesh_element(1,cp_en)
+!$OMP END CRITICAL (write2out)
      call IO_error(650)
      return
    endif
@@ -483,7 +505,9 @@
                       dTime,cp_en,CPFEM_in,grain,.true.,&
                       CPFEM_Temperature(CPFEM_in,cp_en),F1(:,:,grain),F0(:,:,grain),Fp0(:,:,grain),state0(:,grain))
          if (msg /= 'ok') then                    ! solution not reached --> exit NRIteration
+!$OMP CRITICAL (write2out)
            write(6,*) 'GIA: perturbation grain loop failed to converge within allowable step-size'
+!$OMP END CRITICAL (write2out)
            NRconvergent = .false.
            exit NRPerturbation
          endif
@@ -535,7 +559,11 @@
        enddo
        resNorm = sqrt(resNorm)
 !
-!       if (debugger) write(6,'(x,a,i3,a,i3,a,i3,a,i3,a,e10.4)')'EL = ',cp_en,':IP = ',CPFEM_in,':pert = ',3*(ip-1)+jp,':Iter = ',NRiter,':RNorm = ',resNorm
+!       if (debugger) then
+!!$OMP CRITICAL (write2out)
+!            write(6,'(x,a,i3,a,i3,a,i3,a,i3,a,e10.4)')'EL = ',cp_en,':IP = ',CPFEM_in,':pert = ',3*(ip-1)+jp,':Iter = ',NRiter,':RNorm = ',resNorm
+!!$OMP END CRITICAL (write2out)
+!       endif
        if (NRiter == 1_pInt) resMax = resNorm
        if ((resNorm < resToler*resMax) .or. (resNorm < resAbsol)) then     ! resNorm < tolerance ===> convergent
          NRconvergent = .true.
@@ -575,7 +603,9 @@
          dvardres = 0.0_pReal
          call math_invert(36,dresdvar,dvardres,dummy,failed)
          if (failed) then
+!$OMP CRITICAL (write2out)
            write(6,*) 'GIA: perturbation failed to invert the Jacobian'
+!$OMP END CRITICAL (write2out)
            NRconvergent = .false.
            exit NRPerturbation
          endif
