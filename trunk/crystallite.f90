@@ -34,7 +34,7 @@ CONTAINS
      Fp_old,&     ! old plastic deformation gradient
      state_old)   ! old state variable array
 !
- use prec, only: pReal,pInt,pert_Fg,subStepMin
+ use prec, only: pReal,pInt,pert_Fg,subStepMin, nCutback
  use debug
  use constitutive, only: constitutive_Nstatevars,constitutive_Nresults
  use mesh, only: mesh_element
@@ -44,14 +44,14 @@ CONTAINS
 !
  character(len=*) msg
  logical updateJaco,error,cuttedBack,guessNew
- integer(pInt) cp_en,ip,grain,i,j,k,l,m,n, nCutbacks
+ integer(pInt) cp_en,ip,grain,k,l, nCutbacks, maxCutbacks
  real(pReal) Temperature
- real(pReal) dt,dt_aim,subFrac,subStep,invJ,det
+ real(pReal) dt,dt_aim,subFrac,subStep,det
  real(pReal), dimension(3,3)     :: Lp,Lp_pert,inv
  real(pReal), dimension(3,3)     :: Fg_old,Fg_current,Fg_new,Fg_pert,Fg_aim,deltaFg
  real(pReal), dimension(3,3)     :: Fp_old,Fp_current,Fp_new,Fp_pert
- real(pReal), dimension(3,3)     :: Fe_old,Fe_current,Fe_new,Fe_pert
- real(pReal), dimension(3,3)     :: Tstar,tau,P,P_pert
+ real(pReal), dimension(3,3)     :: Fe_current,Fe_new,Fe_pert
+ real(pReal), dimension(3,3)     :: P,P_pert
  real(pReal), dimension(3,3,3,3) :: dPdF
  real(pReal), dimension(constitutive_Nstatevars(grain,ip,cp_en)) :: state_old,state_new
  real(pReal), dimension(constitutive_Nstatevars(grain,ip,cp_en)) :: state_current,state_bestguess,state_pert
@@ -61,6 +61,7 @@ CONTAINS
  subFrac = 0.0_pReal
  subStep = 1.0_pReal
  nCutbacks = 0_pInt
+ maxCutbacks = 0_pInt
 !
  Fg_aim = Fg_old                                                   ! make "new", "aim" a synonym for "old"
  Fp_new = Fp_old
@@ -99,6 +100,7 @@ CONTAINS
      guessNew = .false.                   ! keep the Lp
      subFrac = subFrac + subStep
      subStep = 1.0_pReal - subFrac        ! try one go
+     nCutbacks = 0_pInt                   ! rest cutbackcounter
 
 	 if (debugger) then
 !$OMP CRITICAL (write2out)
@@ -107,6 +109,7 @@ CONTAINS
      endif
    else
      nCutbacks = nCutbacks + 1            ! record additional cutback
+     maxCutbacks=max(nCutbacks,maxCutbacks)! remember maximum number of cutbacks
      cuttedBack = .true.                  ! encountered problems -->
      guessNew = .true.                    ! redo plastic Lp guess
      subStep = subStep / 2.0_pReal        ! cut time step in half
@@ -121,7 +124,7 @@ CONTAINS
  enddo  ! potential substepping
 !
 !$OMP CRITICAL (cutback)
- debug_cutbackDistribution(min(nCutback,nCutbacks)+1) = debug_cutbackDistribution(min(nCutback,nCutbacks)+1)+1
+ debug_cutbackDistribution(min(nCutback,maxCutbacks)+1) = debug_cutbackDistribution(min(nCutback,maxCutbacks)+1)+1
 !$OMP END CRITICAL (cutback)
 !
  if (msg /= 'ok') return                    ! solution not reached --> report back
@@ -226,7 +229,7 @@ CONTAINS
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2
  real(pReal), dimension(6,6) :: C_66
- real(pReal), dimension(3,3) :: Fg_new,Fp_new,invFp_new,Fp_old,invFp_old,Fe_new,Fe_old
+ real(pReal), dimension(3,3) :: Fg_new,Fp_new,invFp_new,Fp_old,invFp_old,Fe_new
  real(pReal), dimension(3,3) :: P,Tstar
  real(pReal), dimension(3,3) :: Lp,Lpguess,Lpguess_old,Rinner,Rinner_old,A,B,BT,AB,BTA
  real(pReal), dimension(3,3,3,3) :: C
@@ -290,7 +293,8 @@ Outer: do                ! outer iteration: State
 !
 Inner: do              ! inner iteration: Lp
          iInner = iInner+1
-         if (iInner > nInner) then         ! too many loops required
+         if (iInner > nInner) then          ! too many loops required
+           Lpguess=Lpguess_old              ! do not trust the last update
            msg = 'limit Inner iteration'
 !$OMP CRITICAL (in)
            debug_InnerLoopDistribution(nInner) = debug_InnerLoopDistribution(nInner)+1
