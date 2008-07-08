@@ -231,6 +231,64 @@
  END FUNCTION
 
  
+!**************************************************************************
+! matrix multiplication 3x3
+!**************************************************************************
+ FUNCTION math_mul33x33(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,j
+ real(pReal), dimension(3,3) ::  math_mul33x33,A,B
+
+ forall (i=1:3,j=1:3) math_mul33x33(i,j) = &
+   A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
+ return
+
+ END FUNCTION
+
+ 
+
+!**************************************************************************
+! matrix multiplication 6x6
+!**************************************************************************
+ FUNCTION math_mul66x66(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,j
+ real(pReal), dimension(6,6) ::  math_mul66x66,A,B
+
+ forall (i=1:6,j=1:6) math_mul66x66(i,j) = &
+   A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
+   A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
+ return
+
+ END FUNCTION
+
+ 
+!**************************************************************************
+! matrix multiplication 9x9
+!**************************************************************************
+ FUNCTION math_mul99x99(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,j
+ real(pReal), dimension(9,9) ::  math_mul99x99,A,B
+
+ forall (i=1:9,j=1:9) math_mul99x99(i,j) = &
+   A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
+   A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j) + &
+   A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
+ return
+
+ END FUNCTION
+
+ 
 
 !**************************************************************************
 ! Cramer inversion of 3x3 matrix
@@ -824,8 +882,10 @@
  real(pReal) math_disorient, tr
 
 !$OMP CRITICAL (evilmatmul)
+
  r = matmul(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
 !$OMP END CRITICAL (evilmatmul)
+
  tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
  math_disorient = abs(0.5_pReal*pi-asin(tr))
  return
@@ -890,9 +950,12 @@ endif
    disturb(3) = scatter * rnd(2)                                                      ! phi2
    if (rnd(5) <= exp(-1.0_pReal*(math_disorient(origin,disturb)/scatter)**2)) exit   
  enddo
+
 !$OMP CRITICAL (evilmatmul)
+
  math_sampleGaussOri = math_RtoEuler(matmul(math_EulerToR(disturb),math_EulerToR(center)))
 !$OMP END CRITICAL (evilmatmul)
+
  return
  
  END FUNCTION
@@ -967,8 +1030,10 @@ endif
 
 ! ---# apply the three rotations #---
 !$OMP CRITICAL (evilmatmul)
+
 math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot))) 
 !$OMP END CRITICAL (evilmatmul)
+
  return
 
  END FUNCTION
@@ -1036,16 +1101,22 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
 
  error = .false.
 !$OMP CRITICAL (evilmatmul)
+
  ce=matmul(transpose(fe),fe)
 !$OMP END CRITICAL (evilmatmul)
+
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=DSQRT(EW1)*EB1+DSQRT(EW2)*EB2+DSQRT(EW3)*EB3
  call math_invert3x3(U,UI,det,error)
  if (.not. error) then
+
 !$OMP CRITICAL (evilmatmul)
+
  R = matmul(fe,ui)
 !$OMP END CRITICAL (evilmatmul)
+
  endif
+
  return 
  
  END SUBROUTINE
@@ -1103,8 +1174,10 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
   M1=M-EW1*math_I3
   M2=M-EW2*math_I3
 !$OMP CRITICAL (evilmatmul)
+
   EB3=MATMUL(M1,M2)*D3
 !$OMP END CRITICAL (evilmatmul)
+
   EB1=math_I3-EB3
 !  both EB2 and EW2 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
@@ -1115,8 +1188,10 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
   M2=M-math_I3*EW2
   M3=M-math_I3*EW3
 !$OMP CRITICAL (evilmatmul)
+
   EB1=MATMUL(M2,M3)*D1
 !$OMP END CRITICAL (evilmatmul)
+
   EB2=math_I3-EB1
 !  both EB3 and EW3 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
@@ -1127,8 +1202,10 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
   M1=M-math_I3*EW1
   M3=M-math_I3*EW3
 !$OMP CRITICAL (evilmatmul)
+
   EB2=MATMUL(M1,M3)*D2
 !$OMP END CRITICAL (evilmatmul)
+
   EB1=math_I3-EB2
 !  both EB3 and EW3 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
@@ -1142,10 +1219,12 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
   M2=M-EW2*math_I3
   M3=M-EW3*math_I3
 !$OMP CRITICAL (evilmatmul)
+
   EB1=MATMUL(M2,M3)*D1
   EB2=MATMUL(M1,M3)*D2
   EB3=MATMUL(M1,M2)*D3
 !$OMP END CRITICAL (evilmatmul)
+
    END IF
  END IF
  RETURN
@@ -1611,6 +1690,7 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
 
  if ( any ( base(1:ndim) <= 1 ) ) then
 !$OMP CRITICAL (write2out)
+
    write ( *, '(a)' ) ' '
    write ( *, '(a)' ) 'I_TO_HALTON - Fatal error!'
    write ( *, '(a)' ) ' An input base BASE is <= 1!'
@@ -1619,6 +1699,7 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
    end do
    call flush(6)
 !$OMP END CRITICAL (write2out)
+
    stop
  end if
 
@@ -1889,12 +1970,14 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
  else
    prime = 0
 !$OMP CRITICAL (write2out)
+
    write ( 6, '(a)' ) ' '
    write ( 6, '(a)' ) 'PRIME - Fatal error!'
    write ( 6, '(a,i6)' ) '  Illegal prime index N = ', n
    write ( 6, '(a,i6)' ) '  N must be between 0 and PRIME_MAX =',prime_max
    call flush(6)
 !$OMP END CRITICAL (write2out)
+
    stop
  end if
 
