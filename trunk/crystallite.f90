@@ -87,12 +87,17 @@ CONTAINS
    Fg_aim = Fg_current + subStep*deltaFg                           ! aim for Fg
    dt_aim = subStep*dt                                             ! aim for dt
 
-   if (guessNew) &
-     state_new = state_bestguess                                   ! try best available guess for state
-
+    if (guessNew) &
+      state_new = state_bestguess                                   !  try best available guess for state
+      if (dt_aim > 0.0_pReal) then
+        call math_invert3x3(Fg_aim,inv,det,error)                   !  inv of Fg_aim
+!$OMP CRITICAL (evilmatmul)
+        Lp = 0.5_pReal*Lp + 0.5_pReal*(math_I3 -  matmul(Fp_current,matmul(inv,Fe_current)))/dt_aim  ! interpolate Lp  and L
+!$OMP END CRITICAL (evilmatmul)
+      endif
 !!$OMP CRITICAL (timeint)
    call TimeIntegration(msg,Lp,Fp_new,Fe_new,P,state_new,post_results,.true., &   ! def gradients and PK2 at end of time step
-                        dt_aim,cp_en,ip,grain,Temperature,Fg_aim,Fp_current,state_current,0_pInt)
+                        dt_aim,cp_en,ip,grain,Temperature,Fg_old,Fg_aim,state_current)
 !!$OMP END CRITICAL (timeint)
 !
    if (msg == 'ok') then
@@ -144,7 +149,7 @@ CONTAINS
        state_pert = state_new                 ! initial guess from end of time step
 !!$OMP CRITICAL (timeint)
        call TimeIntegration(msg,Lp_pert,Fp_pert,Fe_pert,P_pert,state_pert,post_results,.false., &   ! def gradients and PK2 at end of time step
-                            dt_aim,cp_en,ip,grain,Temperature,Fg_pert,Fp_current,state_current,1_pInt)
+                            dt_aim,cp_en,ip,grain,Temperature,Fg_old,Fg_pert,state_current)
 !!$OMP END CRITICAL (timeint)
 !!$OMP CRITICAL (write2out)
 !		if(cp_en==61 .and. ip==1) then
@@ -208,8 +213,7 @@ CONTAINS
      Temperature,&      ! temperature
      Fg_new,&           ! new total def gradient
      Fp_old,&           ! former plastic def gradient
-     state_old,&         ! former microstructure
-     flag) 
+     state_old)         ! former microstructure
  use prec
  use debug
  use mesh, only: mesh_element
@@ -224,7 +228,7 @@ CONTAINS
  character(len=*) msg
  logical failed,wantsConstitutiveResults
  integer(pInt) cp_en, ip, grain
- integer(pInt) iOuter,iInner,dummy, i,j,k,l,m,n,flag
+ integer(pInt) iOuter,iInner,dummy, i,j,k,l,m,n
  real(pReal) dt, Temperature, det, p_hydro, leapfrog,maxleap
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2
@@ -248,23 +252,6 @@ CONTAINS
 !$OMP CRITICAL (evilmatmul)
  A = matmul(transpose(invFp_old), matmul(transpose(Fg_new),matmul(Fg_new,invFp_old)))
 !$OMP END CRITICAL (evilmatmul)
-!!$OMP CRITICAL (write2out)
-!if(cp_en==61 .and. ip==1) then
-!    write(6,*)
-!    write(6,*) '*************************'
-!    write(6,*) iInner, iOuter
-!    write(6,*) cp_en, ip
-!    write(6,*) 'invFp_old'
-!    write(6,*) invFp_old
-!    write(6,*) 'Fg_new'
-!    write(6,*) Fg_new
-!    write(6,*) 'A'
-!    write(6,*) A
-!    write(6,*) '*************************'
-!    write(6,*)
-!    call flush(6)
-!endif
-!!$OMP END CRITICAL (write2out)
 !
  if (all(state == 0.0_pReal)) then
    state = state_old    ! former state guessed, if none specified
@@ -425,12 +412,12 @@ Inner: do              ! inner iteration: Lp
                                          grain,ip,cp_en)          ! residuum from evolution of microstructure
 !!$OMP END CRITICAL (stateupdate)
        state = state - ROuter                                           ! update of microstructure
-	   if (iOuter==nOuter) then
-!$OMP CRITICAL (write2out)
-	      write (6,*) 'WARNING: Outer loop has not really converged'
-!$OMP END CRITICAL (write2out)
-	      exit Outer
-	   endif
+!	   if (iOuter==nOuter) then
+!!$OMP CRITICAL (write2out)
+!	      write (6,*) 'WARNING: Outer loop has not really converged'
+!!$OMP END CRITICAL (write2out)
+!	      exit Outer
+!	   endif
        if (maxval(abs(Router/state),state /= 0.0_pReal) < reltol_Outer) exit Outer
      enddo Outer
 !

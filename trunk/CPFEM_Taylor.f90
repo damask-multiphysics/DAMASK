@@ -126,7 +126,7 @@
  real(pReal), dimension (3,3)        :: ffn,ffn1,Kirchhoff_bar
  real(pReal), dimension (3,3,3,3)    :: H_bar
  real(pReal), dimension(CPFEM_ngens) :: CPFEM_stress
- real(pReal), dimension(CPFEM_ngens,CPFEM_ngens) :: CPFEM_jaco
+ real(pReal), dimension(CPFEM_ngens,CPFEM_ngens) :: CPFEM_jaco, odd_jaco
  real(pReal) Temperature,CPFEM_dt,J_inverse
  integer(pInt) CPFEM_mode               ! 1: regular computation with aged results&
                                         ! 2: regular computation&
@@ -153,7 +153,22 @@
 !
  select case (CPFEM_mode)
     case (2,1)     ! regular computation (with aging of results)
-       if (.not. CPFEM_calc_done) then                ! puuh, me needs doing all the work...
+       if (any(abs(ffn1 - CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en)) > relevantStrain)) then
+           CPFEM_stress_bar(1:CPFEM_ngens,:,:) = CPFEM_odd_stress
+           odd_jaco = CPFEM_odd_jacobian*math_identity2nd(CPFEM_ngens)
+           forall (i=1:mesh_NcpElems, j=1:FE_Nips(mesh_element(2,e))) &
+              CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,j,i) = odd_jaco
+           outdatedFFN1 = .true.
+           if (.not. CPFEM_calc_done .AND.CPFEM_mode == 1) then
+             CPFEM_Fp_old            = CPFEM_Fp_new
+             constitutive_state_old  = constitutive_state_new
+           endif
+!$OMP CRITICAL (write2out)
+           write(6,*) 'WARNING: FFN1 changed for ip', CPFEM_in, 'of element', cp_en
+!$OMP END CRITICAL (write2out)
+           return
+       else
+         if (.not. CPFEM_calc_done) then                ! puuh, me needs doing all the work...
            if (CPFEM_mode == 1) then                  ! age results at start of new increment
              CPFEM_Fp_old            = CPFEM_Fp_new
              constitutive_state_old  = constitutive_state_new
@@ -172,24 +187,24 @@
 !$OMP END PARALLEL DO
            call debug_info()                          ! output of debugging/performance statistics
            CPFEM_calc_done = .true.                   ! now calc is done
-       endif    
+         endif    
 !       translate from P and dP/dF to CS and dCS/dE
 !$OMP CRITICAL (evilmatmul)
-       Kirchhoff_bar = matmul(CPFEM_PK1_bar(:,:,CPFEM_in, cp_en),transpose(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en)))
+         Kirchhoff_bar = matmul(CPFEM_PK1_bar(:,:,CPFEM_in, cp_en),transpose(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en)))
 !$OMP END CRITICAL (evilmatmul)
-       J_inverse  = 1.0_pReal/math_det3x3(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en))
-       CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff_bar)
+         J_inverse  = 1.0_pReal/math_det3x3(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en))
+         CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff_bar)
 !
-       H_bar = 0.0_pReal
-       forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
-         H_bar(i,j,k,l) = H_bar(i,j,k,l) + &
+         H_bar = 0.0_pReal
+         forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
+           H_bar(i,j,k,l) = H_bar(i,j,k,l) + &
                           CPFEM_ffn1_bar(j,m,CPFEM_in,cp_en) * &
                           CPFEM_ffn1_bar(l,n,CPFEM_in,cp_en) * &
                           CPFEM_dPdF_bar(i,m,k,n,CPFEM_in,cp_en) - &
                           math_I3(j,l)*CPFEM_ffn1_bar(i,m,CPFEM_in,cp_en)*CPFEM_PK1_bar(k,m,CPFEM_in,cp_en) + &
                           0.5_pReal*(math_I3(i,k)*Kirchhoff_bar(j,l) + math_I3(j,l)*Kirchhoff_bar(i,k) + &
                                      math_I3(i,l)*Kirchhoff_bar(j,k) + math_I3(j,k)*Kirchhoff_bar(i,l))
-       CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel3333to66(J_inverse*H_bar)
+         CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel3333to66(J_inverse*H_bar)
 ! if (CPFEM_in==8 .and. cp_en==80) then
 !   do e=1,80
 !       do i=1,8
@@ -202,6 +217,7 @@
 !   enddo
 ! endif
 !
+      endif
     case (3)    ! collect and return odd result
        CPFEM_Temperature(CPFEM_in,cp_en)  = Temperature
        CPFEM_ffn_bar(:,:,CPFEM_in,cp_en)  = ffn
@@ -255,10 +271,9 @@
  implicit none
 !
  character(len=128) msg
- integer(pInt) cp_en,CPFEM_in,grain,max_cutbacks,i,j,k,l,m,n,iBoun,NRiter,dummy,ii,jj,kk,ll,ip,jp
- logical updateJaco,error,NRconvergent,failed
- real(pReal) CPFEM_dt,volfrac,dTime,shMod,C_kb,resNorm,resMax,subStep,subFrac,temp1,temp2
- real(pReal), dimension(3,3)        :: PK1_pert,F1_pert
+ integer(pInt) cp_en,CPFEM_in,grain
+ logical updateJaco,error
+ real(pReal) CPFEM_dt,volfrac
  real(pReal), dimension(3,3)        :: U,R,Fe1
  real(pReal), dimension(3,3)        :: PK1
  real(pReal), dimension(3,3,3,3)    :: dPdF,dPdF_bar_old
@@ -275,7 +290,7 @@
                       CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en),&
                       CPFEM_Lp(:,:,grain,CPFEM_in,cp_en),&
                       CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en),Fe1,constitutive_state_new(:,grain,CPFEM_in,cp_en),&   ! output up to here
-                      CPFEM_dt,cp_en,CPFEM_in,grain,.true.,&
+                      CPFEM_dt,cp_en,CPFEM_in,grain,updateJaco,&
                       CPFEM_Temperature(CPFEM_in,cp_en),&
                       CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en),CPFEM_ffn_bar(:,:,CPFEM_in,cp_en),&
                       CPFEM_Fp_old(:,:,grain,CPFEM_in,cp_en),constitutive_state_old(:,grain,CPFEM_in,cp_en))

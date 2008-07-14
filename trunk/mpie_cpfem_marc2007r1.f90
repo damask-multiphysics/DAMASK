@@ -4,7 +4,7 @@
 ! written by F. Roters, P. Eisenlohr, L. Hantcherli, W.A. Counts
 ! MPI fuer Eisenforschung, Duesseldorf
 !
-! last modified: 08.11.2007
+! last modified: 09.07.2008
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
@@ -170,10 +170,13 @@
 
 
  if (inc == 0) then
-   cycleCounter = 0
+   cycleCounter = 4
  else
-   if (theCycle > ncycle) cycleCounter = 0                                      ! reset counter for each cutback
-   if (theCycle /= ncycle .or. theLovl /= lovl) cycleCounter = cycleCounter+1   ! ping pong
+   if (theCycle > ncycle .or. theInc /= inc) cycleCounter = 0                  ! reset counter for each cutback or new inc
+   if (theCycle /= ncycle .or. theLovl /= lovl) then
+     cycleCounter = cycleCounter+1   ! ping pong
+     outdatedFFN1 = .false.
+   endif
  endif
  if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence
    lastIncConverged = .true.
@@ -193,13 +196,17 @@
    computationMode  = 1   ! compute and age former results
    outdatedByNewInc = .false.
  endif
+ if (computationMode == 2 .and. outdatedFFN1) then
+   computationMode  = 4   ! return odd results to force new vyvle
+ endif
+
  
  theTime  = cptim                                   ! record current starting time
  theInc   = inc                                     ! record current increment number
  theCycle = ncycle                                  ! record current cycle count
  theLovl  = lovl                                    ! record current lovl
 
- call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(theCycle,2_pInt*ijaco)==0,d,ngens)
+ call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(cycleCounter-4,4_pInt*ijaco)==0,d,ngens)
 
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
