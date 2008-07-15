@@ -97,7 +97,7 @@ CONTAINS
       endif
 !!$OMP CRITICAL (timeint)
    call TimeIntegration(msg,Lp,Fp_new,Fe_new,P,state_new,post_results,.true., &   ! def gradients and PK2 at end of time step
-                        dt_aim,cp_en,ip,grain,Temperature,Fg_old,Fg_aim,state_current)
+                        dt_aim,cp_en,ip,grain,Temperature,Fg_aim,Fp_current,state_current)
 !!$OMP END CRITICAL (timeint)
 !
    if (msg == 'ok') then
@@ -149,7 +149,7 @@ CONTAINS
        state_pert = state_new                 ! initial guess from end of time step
 !!$OMP CRITICAL (timeint)
        call TimeIntegration(msg,Lp_pert,Fp_pert,Fe_pert,P_pert,state_pert,post_results,.false., &   ! def gradients and PK2 at end of time step
-                            dt_aim,cp_en,ip,grain,Temperature,Fg_old,Fg_pert,state_current)
+                            dt_aim,cp_en,ip,grain,Temperature,Fg_pert, Fp_current,state_current)
 !!$OMP END CRITICAL (timeint)
 !!$OMP CRITICAL (write2out)
 !		if(cp_en==61 .and. ip==1) then
