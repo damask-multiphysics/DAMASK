@@ -358,7 +358,7 @@ do while(.true.)
    else
       if (section>0) then
          select case(tag)
-  		 case ('hybridIA')
+  		 case ('hybridia')
               texture_ODFfile(section)=IO_stringValue(line,positions,2)
 		 case ('(gauss)')
 		      gaussCount=gaussCount+1
@@ -634,8 +634,12 @@ enddo
 ! generate hybridIA samplings for ODFfile textures to later draw from these populations
 allocate(hybridIA_population(3,maxval(texture_totalNgrains/Nsym,ODFmap /= 0),o))
 do texID = 1,texture_maxN
-   if (ODFmap(texID) > 0) &
+   if (ODFmap(texID) > 0) then
+!$OMP CRITICAL (write2out)
+      write (6,*) 'hybridIA',texture_totalNgrains(texID)/Nsym(texID),texture_ODFfile(texID)
+!$OMP END CRITICAL (write2out)
       hybridIA_population(:,:,ODFmap(texID)) = IO_hybridIA(texture_totalNgrains(texID)/Nsym(texID),texture_ODFfile(texID))
+   endif
 enddo
 
 !* Array allocation
