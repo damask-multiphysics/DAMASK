@@ -128,7 +128,7 @@
  use prec, only: pReal,pInt
  use FEsolving
  use debug
- use math, only: math_init, invnrmMandel, math_identity2nd, math_Mandel3333to66,math_Mandel33to6,math_Mandel6to33,math_det3x3,math_I3
+ use math
  use mesh, only: mesh_init,mesh_FEasCP, mesh_NcpElems, FE_Nips, FE_mapElemtype, mesh_element
  use lattice, only: lattice_init
  use constitutive, only: constitutive_init,constitutive_state_old,constitutive_state_new,material_Cslip_66
@@ -195,9 +195,9 @@
            CPFEM_calc_done = .true.                   ! now calc is done
          endif    
 !       translate from P and dP/dF to CS and dCS/dE
-!$OMP CRITICAL (evilmatmul)
-       Kirchhoff_bar = matmul(CPFEM_PK1_bar(:,:,CPFEM_in, cp_en),transpose(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en)))
-!$OMP END CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
+       Kirchhoff_bar = math_mul33x33(CPFEM_PK1_bar(:,:,CPFEM_in, cp_en),transpose(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en)))
+!!$OMP END CRITICAL (evilmatmul)
        J_inverse  = 1.0_pReal/math_det3x3(CPFEM_ffn1_bar(:,:,CPFEM_in, cp_en))
        CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff_bar)
 !

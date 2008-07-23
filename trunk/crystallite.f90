@@ -38,8 +38,7 @@ CONTAINS
  use debug
  use constitutive, only: constitutive_Nstatevars,constitutive_Nresults
  use mesh, only: mesh_element
- use math, only: math_Mandel6to33,math_Mandel33to6,math_Mandel3333to66,&
-                 math_I3,math_det3x3,math_invert3x3
+ use math
  implicit none
 !
  character(len=*) msg
@@ -66,9 +65,9 @@ CONTAINS
  Fg_aim = Fg_old                                                   ! make "new", "aim" a synonym for "old"
  Fp_new = Fp_old
  call math_invert3x3(Fp_old,inv,det,error)
-!$OMP CRITICAL (evilmatmul)
- Fe_new = matmul(Fg_old,inv)
-!$OMP END CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
+ Fe_new = math_mul33x33(Fg_old,inv)
+!!$OMP END CRITICAL (evilmatmul)
  state_bestguess = state_new                                       ! remember potentially available state guess
  state_new = state_old
 !
@@ -91,9 +90,10 @@ CONTAINS
       state_new = state_bestguess                                   !  try best available guess for state
       if (dt_aim > 0.0_pReal) then
         call math_invert3x3(Fg_aim,inv,det,error)                   !  inv of Fg_aim
-!$OMP CRITICAL (evilmatmul)
-        Lp = 0.5_pReal*Lp + 0.5_pReal*(math_I3 -  matmul(Fp_current,matmul(inv,Fe_current)))/dt_aim  ! interpolate Lp  and L
-!$OMP END CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
+        Lp = 0.5_pReal*Lp + 0.5_pReal*(math_I3 -  math_mul33x33(Fp_current,&
+                            math_mul33x33(inv,Fe_current)))/dt_aim  ! interpolate Lp  and L
+!!$OMP END CRITICAL (evilmatmul)
       endif
 !!$OMP CRITICAL (timeint)
    call TimeIntegration(msg,Lp,Fp_new,Fe_new,P,state_new,post_results,.true., &   ! def gradients and PK2 at end of time step
@@ -221,7 +221,6 @@ CONTAINS
                          constitutive_homogenizedC,constitutive_dotState,constitutive_LpAndItsTangent,&
                          constitutive_Nresults,constitutive_Microstructure,constitutive_post_results
  use math
-
  use IO
  implicit none
 !
@@ -249,9 +248,9 @@ CONTAINS
     return
  endif
 
-!$OMP CRITICAL (evilmatmul)
- A = matmul(transpose(invFp_old), matmul(transpose(Fg_new),matmul(Fg_new,invFp_old)))
-!$OMP END CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
+ A = math_mul33x33(transpose(invFp_old), math_mul33x33(transpose(Fg_new),math_mul33x33(Fg_new,invFp_old)))
+!!$OMP END CRITICAL (evilmatmul)
 !
  if (all(state == 0.0_pReal)) then
    state = state_old    ! former state guessed, if none specified
@@ -291,11 +290,11 @@ Inner: do              ! inner iteration: Lp
 !
          B = math_i3 - dt*Lpguess
          BT = transpose(B)
-!$OMP CRITICAL (evilmatmul)
-         AB = matmul(A,B)
-         BTA = matmul(BT,A)
-         Tstar_v = 0.5_pReal*matmul(C_66,math_mandel33to6(matmul(BT,AB)-math_I3))
-!$OMP END CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
+         AB = math_mul33x33(A,B)
+         BTA = math_mul33x33(BT,A)
+         Tstar_v = 0.5_pReal*math_mul66x6(C_66,math_mandel33to6(math_mul33x33(BT,AB)-math_I3))
+!!$OMP END CRITICAL (evilmatmul)
          Tstar = math_Mandel6to33(Tstar_v)
          p_hydro=(Tstar_v(1)+Tstar_v(2)+Tstar_v(3))/3.0_pReal
          forall(i=1:3) Tstar_v(i) = Tstar_v(i)-p_hydro                ! subtract hydrostatic pressure
@@ -371,9 +370,9 @@ Inner: do              ! inner iteration: Lp
              dTdLp(3*(i-1)+j,3*(k-1)+l) = dTdLp(3*(i-1)+j,3*(k-1)+l) + &
              C(i,j,l,n)*AB(k,n)+C(i,j,m,l)*BTA(m,k)
            dTdLp = -0.5_pReal*dt*dTdLp
-!$OMP CRITICAL (evilmatmul)
-           dRdLp = eye2 - matmul(dLp,dTdLp)                           ! calc dR/dLp
-!$OMP END CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
+           dRdLp = eye2 - math_mul99x99(dLp,dTdLp)                           ! calc dR/dLp
+!!$OMP END CRITICAL (evilmatmul)
            invdRdLp = 0.0_pReal
            call math_invert(9,dRdLp,invdRdLp,dummy,failed)            ! invert dR/dLp --> dLp/dR
            if (failed) then
@@ -425,9 +424,9 @@ Inner: do              ! inner iteration: Lp
  debug_OuterLoopDistribution(iOuter) = debug_OuterLoopDistribution(iOuter)+1
 !$OMP END CRITICAL (out)
 
-!$OMP CRITICAL (evilmatmul)
- invFp_new = matmul(invFp_old,B)
-!$OMP END CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
+ invFp_new = math_mul33x33(invFp_old,B)
+!!$OMP END CRITICAL (evilmatmul)
  call math_invert3x3(invFp_new,Fp_new,det,failed)
  if (failed) then
    msg = 'inversion Fp_new^-1'
@@ -441,10 +440,10 @@ Inner: do              ! inner iteration: Lp
 !
  Fp_new = Fp_new*det**(1.0_pReal/3.0_pReal)     ! regularize Fp by det = det(InvFp_new) !!
  forall (i=1:3) Tstar_v(i) = Tstar_v(i)+p_hydro ! add hydrostatic component back
-!$OMP CRITICAL (evilmatmul)
- Fe_new = matmul(Fg_new,invFp_new)              ! calc resulting Fe
- P = matmul(Fe_new,matmul(Tstar,transpose(invFp_new)))    ! first PK stress
-!$OMP END CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
+ Fe_new = math_mul33x33(Fg_new,invFp_new)              ! calc resulting Fe
+ P = math_mul33x33(Fe_new,math_mul33x33(Tstar,transpose(invFp_new)))    ! first PK stress
+!!$OMP END CRITICAL (evilmatmul)
 !
 !!$OMP CRITICAL (write2out)
 !    write(6,*)

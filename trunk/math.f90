@@ -268,6 +268,24 @@
 
  END FUNCTION
 
+!**************************************************************************
+! matrix multiplication 6x6
+!**************************************************************************
+ FUNCTION math_mul66x6(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i
+ real(pReal), dimension(6) ::  math_mul66x6,B
+ real(pReal), dimension(6,6) ::  A
+
+ forall (i=1:6) math_mul66x6(i) = &
+   A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
+   A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
+ return
+
+ END FUNCTION
  
 !**************************************************************************
 ! matrix multiplication 9x9
@@ -881,10 +899,10 @@
  real(pReal), dimension(3,3) :: r
  real(pReal) math_disorient, tr
 
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
- r = matmul(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
-!$OMP END CRITICAL (evilmatmul)
+ r = math_mul33x33(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
+!!$OMP END CRITICAL (evilmatmul)
 
  tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
  math_disorient = abs(0.5_pReal*pi-asin(tr))
@@ -951,10 +969,10 @@ endif
    if (rnd(5) <= exp(-1.0_pReal*(math_disorient(origin,disturb)/scatter)**2)) exit   
  enddo
 
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
- math_sampleGaussOri = math_RtoEuler(matmul(math_EulerToR(disturb),math_EulerToR(center)))
-!$OMP END CRITICAL (evilmatmul)
+ math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
+!!$OMP END CRITICAL (evilmatmul)
 
  return
  
@@ -1029,10 +1047,10 @@ endif
  pRot = math_RodrigtoR(axis,angle)
 
 ! ---# apply the three rotations #---
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
-math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot))) 
-!$OMP END CRITICAL (evilmatmul)
+math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))) 
+!!$OMP END CRITICAL (evilmatmul)
 
  return
 
@@ -1100,20 +1118,20 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
  real(pReal) FE(3,3),R(3,3),U(3,3),CE(3,3),EW1,EW2,EW3,EB1(3,3),EB2(3,3),EB3(3,3),UI(3,3),det
 
  error = .false.
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
- ce=matmul(transpose(fe),fe)
-!$OMP END CRITICAL (evilmatmul)
+ ce=math_mul33x33(transpose(fe),fe)
+!!$OMP END CRITICAL (evilmatmul)
 
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=DSQRT(EW1)*EB1+DSQRT(EW2)*EB2+DSQRT(EW3)*EB3
  call math_invert3x3(U,UI,det,error)
  if (.not. error) then
 
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
- R = matmul(fe,ui)
-!$OMP END CRITICAL (evilmatmul)
+ R = math_mul33x33(fe,ui)
+!!$OMP END CRITICAL (evilmatmul)
 
  endif
 
@@ -1173,10 +1191,10 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
   D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
   M1=M-EW1*math_I3
   M2=M-EW2*math_I3
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
-  EB3=MATMUL(M1,M2)*D3
-!$OMP END CRITICAL (evilmatmul)
+  EB3=math_mul33x33(M1,M2)*D3
+!!$OMP END CRITICAL (evilmatmul)
 
   EB1=math_I3-EB3
 !  both EB2 and EW2 are set to zero so that they do not
@@ -1187,10 +1205,10 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
   D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
   M2=M-math_I3*EW2
   M3=M-math_I3*EW3
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
-  EB1=MATMUL(M2,M3)*D1
-!$OMP END CRITICAL (evilmatmul)
+  EB1=math_mul33x33(M2,M3)*D1
+!!$OMP END CRITICAL (evilmatmul)
 
   EB2=math_I3-EB1
 !  both EB3 and EW3 are set to zero so that they do not
@@ -1201,10 +1219,10 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
   D2=1.0_pReal/(EW2-EW1)/(EW2-EW3) 
   M1=M-math_I3*EW1
   M3=M-math_I3*EW3
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
-  EB2=MATMUL(M1,M3)*D2
-!$OMP END CRITICAL (evilmatmul)
+  EB2=math_mul33x33(M1,M3)*D2
+!!$OMP END CRITICAL (evilmatmul)
 
   EB1=math_I3-EB2
 !  both EB3 and EW3 are set to zero so that they do not
@@ -1218,12 +1236,12 @@ math_sampleFiberOri = math_RtoEuler(matmul(pRot,matmul(fRot,oRot)))
   M1=M-EW1*math_I3
   M2=M-EW2*math_I3
   M3=M-EW3*math_I3
-!$OMP CRITICAL (evilmatmul)
+!!$OMP CRITICAL (evilmatmul)
 
-  EB1=MATMUL(M2,M3)*D1
-  EB2=MATMUL(M1,M3)*D2
-  EB3=MATMUL(M1,M2)*D3
-!$OMP END CRITICAL (evilmatmul)
+  EB1=math_mul33x33(M2,M3)*D1
+  EB2=math_mul33x33(M1,M3)*D2
+  EB3=math_mul33x33(M1,M2)*D3
+!!$OMP END CRITICAL (evilmatmul)
 
    END IF
  END IF
