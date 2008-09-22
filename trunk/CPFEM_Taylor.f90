@@ -124,7 +124,7 @@
 !
  integer(pInt) CPFEM_en, CPFEM_in, cp_en, CPFEM_ngens, i,j,k,l,m,n, e
  real(pReal), dimension (3,3)        :: ffn,ffn1,Kirchhoff_bar
- real(pReal), dimension (3,3,3,3)    :: H_bar
+ real(pReal), dimension (3,3,3,3)    :: H_bar, H_bar_sym
  real(pReal), dimension(CPFEM_ngens) :: CPFEM_stress
  real(pReal), dimension(CPFEM_ngens,CPFEM_ngens) :: CPFEM_jaco, odd_jaco
  real(pReal) Temperature,CPFEM_dt,J_inverse
@@ -204,7 +204,8 @@
                           math_I3(j,l)*CPFEM_ffn1_bar(i,m,CPFEM_in,cp_en)*CPFEM_PK1_bar(k,m,CPFEM_in,cp_en) + &
                           0.5_pReal*(math_I3(i,k)*Kirchhoff_bar(j,l) + math_I3(j,l)*Kirchhoff_bar(i,k) + &
                                      math_I3(i,l)*Kirchhoff_bar(j,k) + math_I3(j,k)*Kirchhoff_bar(i,l))
-! Do we have to symmetrize H_bar?
+         forall(i=1:3,j=1:3,k=1:3,l=1:3) &
+            H_bar_sym(i,j,k,l)= 0.25_pReal*(H_bar(i,j,k,l) +H_bar(j,i,k,l) +H_bar(i,j,l,k) +H_bar(j,i,l,k))
          CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = math_Mandel3333to66(J_inverse*H_bar)
 ! if (CPFEM_in==8 .and. cp_en==80) then
 !   do e=1,80
@@ -288,7 +289,8 @@
  do grain = 1,texture_Ngrains(mesh_element(4,cp_en))
    dPdF = dPdF_bar_old                                                 ! preguess consistent tangent of grain with avg
    call SingleCrystallite(msg,PK1,dPdF,&
-                      CPFEM_results(5:4+constitutive_Nresults(grain,CPFEM_in,cp_en),grain,CPFEM_in,cp_en),&
+                      CPFEM_results(CPFEM_Nresults+1:CPFEM_Nresults+constitutive_Nresults(grain,CPFEM_in,cp_en),&
+                                    grain,CPFEM_in,cp_en),&
                       CPFEM_Lp(:,:,grain,CPFEM_in,cp_en),&
                       CPFEM_Fp_new(:,:,grain,CPFEM_in,cp_en),Fe1,constitutive_state_new(:,grain,CPFEM_in,cp_en),&   ! output up to here
                       CPFEM_dt,cp_en,CPFEM_in,grain,updateJaco,&

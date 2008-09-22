@@ -701,7 +701,7 @@ do e=1,mesh_NcpElems
 		    constitutive_MatVolFrac(g,i,e) = 1.0_pReal ! singular material (so far)
 		    constitutive_TexVolFrac(g,i,e) = texVolfrac(s)/multiplicity(texID)/Nsym(texID)
 		    constitutive_Nstatevars(g,i,e) = material_Nslip(matID) ! number of state variables (i.e. tau_c of each slip system)
-		    constitutive_Nresults(g,i,e)   = 0         ! number of constitutive results
+!		    constitutive_Nresults(g,i,e)   = 2*material_Nslip(matID) ! number of constitutive results (shears in this case)
 		    constitutive_EulerAngles(:,g,i,e) = Euler(:,s)    ! store initial orientation
             forall (l=1:constitutive_Nstatevars(g,i,e))  ! initialize state variables
                constitutive_state_old(l,g,i,e) = material_s0_slip(matID)
@@ -900,7 +900,7 @@ implicit none
 !* Definition of variables
 integer(pInt) ipc,ip,el
 integer(pInt) matID,i
-real(pReal) dt,Temperature,tau_slip
+real(pReal) dt,Temperature,tau_slip, active_rate
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
 real(pReal), dimension(constitutive_Nresults(ipc,ip,el))   :: constitutive_post_results
@@ -910,11 +910,18 @@ matID = constitutive_matID(ipc,ip,el)
 
 if(constitutive_Nresults(ipc,ip,el)==0) return
 
+constitutive_post_results=0
 do i=1,material_Nslip(matID)
-   constitutive_post_results(i) = state(i)
+!do i=1,constitutive_Nresults(ipc,ip,el)
+!   constitutive_post_results(i) = state(i)
    tau_slip=dot_product(Tstar_v,lattice_Sslip_v(:,i,material_CrystalStructure(matID)))
-   constitutive_post_results(i+material_Nslip(matID)) = &
-     dt*material_gdot0_slip(matID)*(abs(tau_slip)/state(i))**material_n_slip(matID)*sign(1.0_pReal,tau_slip)
+!   constitutive_post_results(i+material_Nslip(matID)) = &
+   constitutive_post_results(i) = &
+     material_gdot0_slip(matID)*(abs(tau_slip)/state(i))**material_n_slip(matID)*sign(1.0_pReal,tau_slip)
+enddo
+active_rate = 0.1_pReal*MAXVAL(abs(constitutive_post_results))
+do i=1,material_Nslip(matID)
+    if(abs(constitutive_post_results(i)) > active_rate) constitutive_post_results(i+material_Nslip(matID))=1.0_pReal
 enddo
 return
 

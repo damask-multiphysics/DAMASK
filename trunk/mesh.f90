@@ -221,6 +221,7 @@
 
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile
+ use FEsolving, only: FE_get_solverSymmetry
  implicit none
  
  integer(pInt), parameter :: fileUnit = 222
@@ -238,6 +239,7 @@
 
 ! call to various subroutines to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
+   call FE_get_solverSymmetry(fileUnit)
    call mesh_get_meshDimensions(fileUnit)
    call mesh_build_nodeMapping(fileUnit)
    call mesh_build_elemMapping(fileUnit)

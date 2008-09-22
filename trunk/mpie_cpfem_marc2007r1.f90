@@ -27,16 +27,16 @@
 !             - creeps: timinc
 !********************************************************************
 !
- include "prec.f90"
- include "FEsolving.f90"
- include "debug.f90"
- include "math.f90"
- include "IO.f90"
- include "mesh.f90"
- include "lattice.f90"
- include "constitutive.f90"
- include "crystallite.f90"
- include "CPFEM.f90"
+ include "prec.f90"             ! uses nothing else
+ include "debug.f90"            ! uses prec
+ include "math.f90"             ! uses prec
+ include "IO.f90"               ! uses prec, debug, math
+ include "FEsolving.f90"        ! uses prec, IO
+ include "mesh.f90"             ! uses prec, IO, math, FEsolving
+ include "lattice.f90"          ! uses prec, math
+ include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
+ include "crystallite.f90"      ! uses prec, debug, constitutive, mesh, math, IO
+ include "CPFEM.f90"            ! uses prec, math, mesh, constitutive, FEsolving, debug, lattice, IO, crystallite
 !
 
  SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
@@ -213,7 +213,7 @@
 !     Marc:   11, 22, 33, 12, 23, 13
  forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*d(1:ngens,i)*invnrmMandel(1:ngens)
  s(1:ngens) = s(1:ngens)*invnrmMandel(1:ngens)
-
+ if(symmetricSolver) d(1:ngens,1:ngens) = 0.5_pReal*(d(1:ngens,1:ngens)+transpose(d(1:ngens,1:ngens)))
  return
  
  END SUBROUTINE
