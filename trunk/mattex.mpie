@@ -2,12 +2,12 @@
 [TWIP steel FeMnC]
 lattice_structure		              1
 Nslip				              12
-Ntwin                                         12
+Ntwin                                         0
 ## Elastic constants 
 # Unit in [Pa]
-C11				              245.0e9
-C12				              105.0e9
-C44				              65.0e9
+C11				              183.9e9
+C12				              101.9e9
+C44				              115.4e9
 
 ## Parameters for phenomenological modeling
 # Unit in [Pa]
@@ -23,39 +23,45 @@ hardening_coefficients        	              1.0 1.4
 ## Parameters for dislocation-based modeling
 # Burgers vector [m]                        
 burgers			                      2.56e-10
-# Activation energy for dislocation glide [J/K]
-Qedge				              3.0e-19
-# Initial dislocation density [m]²
-rho0				              2.8e13 
+# Activation energy for dislocation glide [J/K] (0.5*G*b^3)
+Qedge				              5.5e-19
+# Activation energy for self diffusion [J/K] (gamma-iron)
+Qsd				              4.7e-19
+# Vacancy diffusion coeffficent              (gamma-iron)
+diff0				              4.0e-5
 # Average grain size [m]
 grain_size                                    2.0e-5
+# Dislocation interaction coefficients
+interaction_coefficients	              1.0 2.2 3.0 1.6 3.8 4.5
+
+# Initial dislocation density [m]²
+rho0				              6.0e12 
 # Passing stress adjustment
 c1				              0.1
 # Jump width adjustment
 c2                                            2.0
 # Activation volume adjustment
-c3                                            1.2
+c3                                            1.0
 # Average slip distance adjustment for lock formation
-# = c4(Anxin)*c2(Anxin) !!!!!!
-c4                      	              14.25
+c4                      	              50.0
 # Average slip distance adjustment when grain boundaries
-c5                                            1.0 
-# Average slip distance adjustment when twin boundaries
-c6                                            0.1
+c5                                            1.0                                            
 # Athermal recovery adjustment
-c7				              23.5
-# Dislocation interaction coefficients
-interaction_coefficients	              1.0 2.2 3.0 1.6 3.8 4.5
+c7				              8.0
+# Thermal recovery adjustment (plays no role for me)
+c8				              1.0e10
 
 ## Parameters for mechanical twinning
 # Average twin thickness (stacks) [m]
 stack_size                                    5.0e-8
 # Total twin volume fraction saturation
-f_sat                                         0.2
+f_sat                                         1.0
+# Average slip distance adjustment when twin boundaries
+c6 
 # Scaling potential nucleation sites
-site_scaling                                  1.0e-7
+site_scaling                                  1.0e-6
 # Scaling the P-K force on the twinning dislocation
-q1                                            0.75
+q1                                            1.0
 # Scaling the resolved shear stress
 q2                                            1.0
 
