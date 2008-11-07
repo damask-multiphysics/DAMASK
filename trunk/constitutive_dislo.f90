@@ -670,7 +670,7 @@ use math, only: math_sampleGaussOri,math_sampleFiberOri,math_sampleRandomOri,mat
                 math_Mandel3333to66,math_Mandel66to3333
 use mesh, only: mesh_NcpElems,FE_Nips,mesh_maxNips,mesh_element
 use IO,   only: IO_hybridIA
-use lattice, only: lattice_SlipSlipIntType,lattice_sn,lattice_st,lattice_Qtwin,lattice_Sslip_v,lattice_Sslip
+use lattice, only: lattice_SlipIntType,lattice_sn,lattice_st,lattice_Qtwin,lattice_Sslip_v,lattice_Sslip
 implicit none
 
 !* Definition of variables
@@ -876,16 +876,15 @@ do i=1,material_maxN
 	  x=dot_product(lattice_sn(:,j,i),lattice_st(:,k,i))
 	  y=1.0_pReal-x**(2.0_pReal)
 !* Interaction matrix *
-      constitutive_Pforest(j,k,i)=abs(x)*material_SlipIntCoeff(lattice_SlipSlipIntType(j,k,i),i)
+      constitutive_Pforest(j,k,i)=abs(x)*material_SlipIntCoeff(lattice_SlipIntType(j,k,i),i)
 	  if (y>0.0_pReal) then
-	     constitutive_Pparallel(j,k,i)=sqrt(y)*material_SlipIntCoeff(lattice_SlipSlipIntType(j,k,i),i)
+	     constitutive_Pparallel(j,k,i)=sqrt(y)*material_SlipIntCoeff(lattice_SlipIntType(j,k,i),i)
 	  else
 	     constitutive_Pparallel(j,k,i)=0.0_pReal
 	  endif
    enddo
    enddo
 enddo
-
 
 end subroutine
 
@@ -1004,13 +1003,16 @@ do i=1,material_Nslip(matID)
    Sslip = lattice_Sslip(:,:,i,material_CrystalStructure(matID))
    tau_slip(i) = dot_product(Tstar_v,lattice_Sslip_v(:,i,material_CrystalStructure(matID)))
    if (abs(tau_slip(i)) > constitutive_passing_stress(i)) then
-      gdot_slip(i) = constitutive_g0_slip(i)*(tau_slip(i)/abs(tau_slip(i)))*&
+      gdot_slip(i) = constitutive_g0_slip(i)*sign(1.d0,tau_slip(i))*&
 	                 sinh(((abs(tau_slip(i))-constitutive_passing_stress(i))*constitutive_activation_volume(i))/(Kb*Tp))
       dgdot_dtauslip(i) = (constitutive_g0_slip(i)*constitutive_activation_volume(i))/(Kb*Tp)*&
 	                      cosh(((abs(tau_slip(i))-constitutive_passing_stress(i))*constitutive_activation_volume(i))/(Kb*Tp)) 
    endif       							  						       
    Lp = Lp + gdot_slip(i) * Sslip
 enddo
+
+write(6,*) 'constitutive_g0_slip'
+write(6,*) constitutive_g0_slip
 	            
 !* Calculation of the tangent of Lp
 do i=1,material_Nslip(matID)
@@ -1063,15 +1065,15 @@ gdot_slip = 0.0_pReal
 do i=1,material_Nslip(matID)
    tau_slip(i) = dot_product(Tstar_v,lattice_Sslip_v(:,i,material_CrystalStructure(matID)))
    if (abs(tau_slip(i)) > constitutive_passing_stress(i)) then
-      gdot_slip(i) = constitutive_g0_slip(i)*(tau_slip(i)/abs(tau_slip(i)))*&
+      gdot_slip(i) = constitutive_g0_slip(i)*sign(1.d0,tau_slip(i))*&
 	                 sinh(((abs(tau_slip(i))-constitutive_passing_stress(i))*constitutive_activation_volume(i))/(Kb*Tp)) 
-   endif	    
-   locks(i)             = (sqrt(constitutive_rho_f(i))*abs(gdot_slip(i)))/(material_c4(matID)*material_bg(matID)) 
-   grainboundaries(i)   = abs(gdot_slip(i))/(material_c5(matID)*material_bg(matID)*material_GrainSize(matID))
-   athermal_recovery(i) = material_c7(matID)*state(i)*abs(gdot_slip(i))
-   thermal_recovery(i)  = material_c8(matID)*abs(tau_slip(i))*state(i)**2*((material_D0(matID)*material_bg(matID)**3)/&
-                          (kB*Tp))*exp(-material_Qsd(matID)/(kB*Tp))
-   constitutive_dotState(i) = locks(i)+grainboundaries(i)-athermal_recovery(i)-thermal_recovery(i)
+      locks(i)             = (sqrt(constitutive_rho_f(i))*abs(gdot_slip(i)))/(material_c4(matID)*material_bg(matID)) 
+      grainboundaries(i)   = abs(gdot_slip(i))/(material_c5(matID)*material_bg(matID)*material_GrainSize(matID))
+      athermal_recovery(i) = material_c7(matID)*state(i)*abs(gdot_slip(i))
+      thermal_recovery(i)  = material_c8(matID)*abs(tau_slip(i))*state(i)**2*((material_D0(matID)*material_bg(matID)**3)/&
+                             (kB*Tp))*exp(-material_Qsd(matID)/(kB*Tp))
+      constitutive_dotState(i) = locks(i)+grainboundaries(i)-athermal_recovery(i) !-thermal_recovery(i)
+   endif
 enddo
 
 return
@@ -1092,6 +1094,7 @@ function constitutive_post_results(Tstar_v,state,Tp,dt,ipc,ip,el)
 !* constitutive_Nresults has to be set accordingly in _Assignment    *
 !*********************************************************************
 use prec, only: pReal,pInt
+use lattice, only: lattice_Sslip_v
 implicit none
 
 !* Definition of variables
@@ -1099,7 +1102,7 @@ integer(pInt) i,ipc,ip,el
 integer(pInt) matID
 real(pReal) Tp,dt
 real(pReal), dimension(6) :: Tstar_v
-real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state
+real(pReal), dimension(constitutive_Nstatevars(ipc,ip,el)) :: state,tau_slip,gdot_slip
 real(pReal), dimension(constitutive_Nresults(ipc,ip,el))   :: constitutive_post_results
 
 !* Get the material-ID from the triplet(ipc,ip,el)
@@ -1108,9 +1111,23 @@ constitutive_post_results=0.0_pReal
 
 !* Output variables
 if(constitutive_Nresults(ipc,ip,el)==0) return
+
+!* Dislocation density evolution
+do i=1,material_Nslip(matID)
+   tau_slip(i) = dot_product(Tstar_v,lattice_Sslip_v(:,i,material_CrystalStructure(matID)))
+   if (abs(tau_slip(i)) > constitutive_passing_stress(i)) then
+      gdot_slip(i) = constitutive_g0_slip(i)*sign(1.d0,tau_slip(i))*&
+	                 sinh(((abs(tau_slip(i))-constitutive_passing_stress(i))*constitutive_activation_volume(i))/(Kb*Tp)) 	    
+   endif
+enddo
+
+!* Output variables
 constitutive_post_results(1) = sum(state(1:material_Nslip(matID)))
 do i=1,material_Nslip(matID)
    constitutive_post_results(2+i) = state(i)
+enddo
+do i=1,material_Nslip(matID)
+   constitutive_post_results(2+material_Nslip(matID)+i) = constitutive_passing_stress(i)
 enddo
 
 return
