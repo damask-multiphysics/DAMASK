@@ -156,7 +156,7 @@
        if (any(abs(ffn1 - CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en)) > relevantStrain)) then
            CPFEM_stress_bar(1:CPFEM_ngens,:,:) = CPFEM_odd_stress
            odd_jaco = CPFEM_odd_jacobian*math_identity2nd(CPFEM_ngens)
-           forall (i=1:mesh_NcpElems, j=1:FE_Nips(mesh_element(2,e))) &
+           forall (i=1:mesh_NcpElems, j=1:FE_Nips(mesh_element(2,cp_en))) &
               CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,j,i) = odd_jaco
            outdatedFFN1 = .true.
            if (.not. CPFEM_calc_done .AND.CPFEM_mode == 1) then
