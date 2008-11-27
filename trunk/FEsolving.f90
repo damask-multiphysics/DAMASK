@@ -36,11 +36,13 @@
    if( IO_lc(IO_stringValue(line,pos,1)) == 'solver' ) then
      read (unit,610,END=630) line  ! Garbage line
      pos = IO_stringPos(line,2)  ! limit to 64 nodes max (plus ID, type)
-     if(IO_intValue(line,pos,2) /= 1_pInt) symmetricSolver = .true.
+     if(IO_intValue(line,pos,2) /= 1_pInt) then
+        symmetricSolver = .true.
 !$OMP CRITICAL (write2out)
-     write (6,*)
-     write (6,*) 'Symmetric solver detected. d-Matrix will be symmetrized!'
+        write (6,*)
+        write (6,*) 'Symmetric solver detected. d-Matrix will be symmetrized!'
 !$OMP END CRITICAL (write2out)
+     endif
    endif
  enddo
 
