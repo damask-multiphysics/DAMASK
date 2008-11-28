@@ -4,7 +4,7 @@
 ! written by F. Roters, P. Eisenlohr, L. Hantcherli, W.A. Counts
 ! MPI fuer Eisenforschung, Duesseldorf
 !
-! last modified: 09.07.2008
+! last modified: 27.11.2008
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
@@ -35,7 +35,7 @@
  include "mesh.f90"             ! uses prec, IO, math, FEsolving
  include "lattice.f90"          ! uses prec, math
  include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
- include "crystallite.f90"      ! uses prec, debug, constitutive, mesh, math, IO
+! include "crystallite.f90"      ! uses prec, debug, constitutive, mesh, math, IO
  include "CPFEM.f90"            ! uses prec, math, mesh, constitutive, FEsolving, debug, lattice, IO, crystallite
 !
 

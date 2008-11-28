@@ -1,0 +1,8 @@
+Things to be implemented into the code
+
+# parsing of texture data from mattex file to be done by separate "texture.f90", thus freeing constitutive.f90 from this global task
+ this should go along with new scheme for multi material definition
+# constitutive law to be used is indicated within [material]. constitutive.f90 then assumes a wrapper functionality for the four functions "dot_microstructure", "Lpanditstangent", "postresults" and "microstructure". Within those, a switch case checks for the true constitutive law (a string) and passes control on to the respective subroutine-clone of this law. Technically, the compilation relies on "IFDEF" to include the necessary constitutive laws plus the corresponding entries in each switch case.
+# change state variable meaning to (i) homogenization, (ii) microstructure
+# adopt CPFEM_GIA8.f90 to new scheme, rename to CPFEM_RGC.f90
+# make OpenMP parallelization work again
