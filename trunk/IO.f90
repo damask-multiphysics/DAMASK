@@ -249,14 +249,15 @@
 ! return array containing number of parts found and
 ! their left/right positions to be used by IO_xxxVal
 !********************************************************************
- FUNCTION IO_stringPos (line,N)
+ PURE FUNCTION IO_stringPos (line,N)
 
  use prec, only: pReal,pInt
  implicit none
 
- character(len=*) line
+ character(len=*), intent(in) :: line
  character(len=*), parameter :: sep=achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
- integer(pInt) N, part
+ integer(pInt), intent(in) :: N
+ integer(pInt)  part
  integer(pInt) IO_stringPos(1+N*2)
 
  IO_stringPos = -1
@@ -276,13 +277,13 @@
 !********************************************************************
 ! read string value at pos from line
 !********************************************************************
- FUNCTION IO_stringValue (line,positions,pos)
+ PURE FUNCTION IO_stringValue (line,positions,pos)
  
  use prec, only: pReal,pInt
  implicit none
  
- character(len=*) line
- integer(pInt) positions(*),pos
+ character(len=*), intent(in) :: line
+ integer(pInt), intent(in) :: positions(*),pos
  character(len=1+positions(pos*2+1)-positions(pos*2)) IO_stringValue
 
  if (positions(1) < pos) then
@@ -298,13 +299,13 @@
 !********************************************************************
 ! read string value at pos from fixed format line
 !********************************************************************
- FUNCTION IO_fixedStringValue (line,ends,pos)
+ PURE FUNCTION IO_fixedStringValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
  
- character(len=*) line
- integer(pInt) ends(*),pos
+ character(len=*), intent(in) :: line
+ integer(pInt), intent(in) :: ends(*),pos
  character(len=ends(pos+1)-ends(pos)) IO_fixedStringValue
 
  IO_fixedStringValue = line(ends(pos)+1:ends(pos+1))
@@ -316,14 +317,14 @@
 !********************************************************************
 ! read float value at pos from line
 !********************************************************************
- FUNCTION IO_floatValue (line,positions,pos)
+ PURE FUNCTION IO_floatValue (line,positions,pos)
  
  use prec, only: pReal,pInt
  implicit none
  
- character(len=*) line
+ character(len=*), intent(in) :: line
+ integer(pInt), intent(in) :: positions(*),pos
  real(pReal) IO_floatValue
- integer(pInt) positions(*),pos
 
  if (positions(1) >= pos) then
    read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_floatValue
@@ -338,14 +339,14 @@
 !********************************************************************
 ! read float value at pos from fixed format line
 !********************************************************************
- FUNCTION IO_fixedFloatValue (line,ends,pos)
+ PURE FUNCTION IO_fixedFloatValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
  
- character(len=*) line
+ character(len=*), intent(in) :: line
+ integer(pInt), intent(in) :: ends(*),pos
  real(pReal) IO_fixedFloatValue
- integer(pInt) ends(*),pos
 
  read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT=*) IO_fixedFloatValue
  return
@@ -358,14 +359,15 @@
 !********************************************************************
 ! read float x.y+z value at pos from format line line
 !********************************************************************
- FUNCTION IO_fixedNoEFloatValue (line,ends,pos)
+ PURE FUNCTION IO_fixedNoEFloatValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
  
- character(len=*) line
+ character(len=*), intent(in) :: line
+ integer(pInt), intent(in) :: ends(*),pos
+ integer(pInt) pos_exp,expon
  real(pReal) IO_fixedNoEFloatValue,base
- integer(pInt) ends(*),pos,pos_exp,expon
  
  pos_exp = scan(line(ends(pos)+1:ends(pos+1)),'+-',back=.true.)
  if (pos_exp > 1) then
@@ -386,14 +388,14 @@
 !********************************************************************
 ! read int value at pos from line
 !********************************************************************
- FUNCTION IO_intValue (line,positions,pos)
+ PURE FUNCTION IO_intValue (line,positions,pos)
  
  use prec, only: pReal,pInt
  implicit none
  
- character(len=*) line
+ character(len=*), intent(in) :: line
+ integer(pInt), intent(in) :: positions(*),pos
  integer(pInt) IO_intValue
- integer(pInt) positions(*),pos
 
  if (positions(1) >= pos) then
    read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_intValue
@@ -408,14 +410,14 @@
 !********************************************************************
 ! read int value at pos from fixed format line
 !********************************************************************
- FUNCTION IO_fixedIntValue (line,ends,pos)
+ PURE FUNCTION IO_fixedIntValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
  
- character(len=*) line
+ character(len=*), intent(in) :: line
+ integer(pInt), intent(in) :: ends(*),pos
  integer(pInt) IO_fixedIntValue
- integer(pInt) ends(*),pos
 
  read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT=*) IO_fixedIntValue
  return
@@ -428,12 +430,12 @@
 !********************************************************************
 ! change character in line to lower case
 !********************************************************************
- FUNCTION IO_lc (line)
+ PURE FUNCTION IO_lc (line)
 
  use prec, only: pInt
  implicit none
 
- character (len=*) line
+ character (len=*), intent(in) :: line
  character (len=len(line)) IO_lc
  integer(pInt) i
 
