@@ -34,11 +34,13 @@
 ! _ipNeighbor        : +x,-x,+y,-y,+z,-z list of intra-element IPs and
 !     (negative) neighbor faces per own IP in a specific type of element
 ! _NfaceNodes        : # nodes per face in a specific type of element
+
 ! _nodeOnFace        : list of node indices on each face of a specific type of element
 ! _ipAtNode          : map node index to IP index in a specific type of element
 ! _nodeAtIP          : map IP index to node index in a specific type of element
 ! _ipNeighborhood    : 6 or less neighboring IPs as [element_num, IP_index]
 ! _NsubNodes        : # subnodes required to fully define all IP volumes
+
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
  integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_NelemSets,mesh_maxNelemInSet
@@ -89,11 +91,11 @@
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NsubNodes = &
  (/19, & ! element 7
-   0, & ! element 134
-   0, & ! element 11
-   0, & ! element 27
-   0, & ! element 157
-   0  & ! element 136
+    0, & ! element 134
+    0, & ! element 11
+    0, & ! element 27
+    0, & ! element 157
+    0  & ! element 136
   /)
  integer(pInt), dimension(FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
@@ -391,10 +393,10 @@
    0, 0, 0, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, &
-   0, 0, 0, 0, & ! element 134
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
+   1, 3, 2, 0, & ! element 134
+   1, 2, 4, 0, &
+   2, 3, 4, 0, &
+   1, 4, 3, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, & ! 
@@ -670,19 +672,16 @@
 ! function mesh_build_ipNeighorhood()
 ! ---------------------------
 
-
 !***********************************************************
 ! initialization 
 !***********************************************************
  SUBROUTINE mesh_init ()
-
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile
  use FEsolving, only: FE_get_solverSymmetry
  implicit none
  
  integer(pInt), parameter :: fileUnit = 222
-
  mesh_Nelems          = 0_pInt
  mesh_NcpElems        = 0_pInt
  mesh_Nnodes          = 0_pInt
@@ -693,8 +692,6 @@
  mesh_maxNsubNodes    = 0_pInt
  mesh_NelemSets       = 0_pInt
  mesh_maxNelemInSet   = 0_pInt
-
-
 
 ! call to various subroutines to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
@@ -720,12 +717,10 @@
  END SUBROUTINE
  
 
-
 !***********************************************************
 ! mapping of FE element types to internal representation
 !***********************************************************
  FUNCTION FE_mapElemtype(what)
-
  implicit none
  
  character(len=*), intent(in) :: what
@@ -747,10 +742,7 @@
 	case default 
 	   FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
  end select
-
  END FUNCTION
-
-
 
 !***********************************************************
 ! FE to CP id mapping by binary search thru lookup array
@@ -806,15 +798,12 @@
  
  END FUNCTION
 
-
 !***********************************************************
 ! find face-matching element of same type
 !!***********************************************************
  FUNCTION mesh_faceMatch(face,elem)
-
  use prec, only: pInt
  implicit none
-
  integer(pInt) face,elem
  integer(pInt) mesh_faceMatch
  integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: nodeMap
@@ -823,7 +812,6 @@
  minN = mesh_maxNsharedElems+1 ! init to worst case
  mesh_faceMatch = 0_pInt       ! intialize to "no match found"
  t = mesh_element(2,elem)      ! figure elemType
-
  do faceNode=1,FE_NfaceNodes(face,t)  ! loop over nodes on face
    nodeMap(faceNode) = mesh_FEasCP('node',mesh_element(4+FE_nodeOnFace(faceNode,face,t),elem)) ! CP id of face node
    NsharedElems = mesh_sharedElem(1,nodeMap(faceNode)) ! figure # shared elements for this node
@@ -853,7 +841,6 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  
  END FUNCTION
 
-
 !********************************************************************
 ! get count of elements, nodes, and cp elements in mesh
 ! for subsequent array allocations
@@ -862,21 +849,16 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _Nelems, _Nnodes, _NcpElems
 !********************************************************************
  SUBROUTINE mesh_get_meshDimensions (unit)
-
  use prec, only: pInt
  use IO
  implicit none
-
  integer(pInt) unit,i,pos(41)
  character*300 line
-
 610 FORMAT(A300)
-
  rewind(unit)
  do 
    read (unit,610,END=620) line
    pos = IO_stringPos(line,20)
-
    select case ( IO_lc(IO_StringValue(line,pos,1)))
      case('table')
        if (pos(1) == 6) then
@@ -898,13 +880,10 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
        end do
        mesh_NcpElems = mesh_NcpElems + IO_countContinousIntValues(unit)
    end select
-
  end do
-
 620 return
  
  END SUBROUTINE
-
  
 !!********************************************************************
 ! get maximum count of nodes, IPs, IP neighbors, and shared elements
@@ -971,22 +950,16 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !********************************************************************
  SUBROUTINE mesh_build_elemSetMapping (unit)
-
  use prec, only: pInt
  use IO
-
  implicit none
-
  integer unit, elem_set
  character*300 line
  integer(pInt), dimension (9) :: pos          ! count plus 4 entities on a line
-
 610 FORMAT(A300)
-
  allocate (mesh_nameElemSet(mesh_NelemSets))
  allocate (mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
  elem_set = 0_pInt
-
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -998,10 +971,8 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
       mesh_mapElemSet(:,elem_set) = IO_continousIntValues(unit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
    end if
  end do
-
 620 return
  END SUBROUTINE
-
  
 !********************************************************************
 ! Build node mapping from FEM to CP
@@ -1010,22 +981,17 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _mapFEtoCPnode
 !********************************************************************
  SUBROUTINE mesh_build_nodeMapping (unit)
-
  use prec, only: pInt
  use math, only: qsort
  use IO
  implicit none
-
  integer(pInt), dimension (mesh_Nnodes) :: node_count
  integer(pInt) unit,i
  integer(pInt), dimension (133) :: pos
  character*300 line
-
 610 FORMAT(A300)
-
  allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
  node_count(:) = 0_pInt
-
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -1040,12 +1006,9 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 	 exit
    end if
  end do
-
 620 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
-
  return
  END SUBROUTINE
-
 
 !********************************************************************
 ! Build element mapping from FEM to CP
@@ -1054,24 +1017,18 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _mapFEtoCPelem
 !********************************************************************
  SUBROUTINE mesh_build_elemMapping (unit)
-
  use prec, only: pInt
  use math, only: qsort
  use IO
-
  implicit none
-
  integer unit, i,CP_elem
  character*300 line
  integer(pInt), dimension (3) :: pos
  integer(pInt), dimension (1+mesh_NcpElems) :: contInts
 
-
 610 FORMAT(A300)
-
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
  CP_elem = 0_pInt
-
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -1088,12 +1045,9 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      enddo
    end if
  end do
-
 620 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))  ! should be mesh_NcpElems
-
  return
  END SUBROUTINE
-
 
 !********************************************************************
 ! store x,y,z coordinates of all nodes in mesh
@@ -1102,21 +1056,16 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _node
 !********************************************************************
  SUBROUTINE mesh_build_nodes (unit)
-
  use prec, only: pInt
  use IO
  implicit none
-
  integer unit,i,j,m
  integer(pInt), dimension(3) :: pos
  integer(pInt), dimension(5), parameter :: node_ends = (/0,10,30,50,70/)
  character*300 line
-
  allocate ( mesh_node (3,mesh_Nnodes) )
  mesh_node(:,:) = 0_pInt
-
 610 FORMAT(A300)
-
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -1133,11 +1082,8 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      exit
    end if
  end do
-
 620 return
-
  END SUBROUTINE
-
 
 !********************************************************************
 ! store FEid, type, mat, tex, and node list per element
@@ -1146,20 +1092,15 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _element
 !********************************************************************
  SUBROUTINE mesh_build_elements (unit)
-
  use prec, only: pInt
  use IO
  implicit none
-
  integer unit,i,j,sv,val,CP_elem
  integer(pInt), dimension(133) :: pos
  integer(pInt), dimension(1+mesh_NcpElems) :: contInts
  character*300 line
-
  allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
-
 610 FORMAT(A300)
-
 
  rewind(unit)
  do
@@ -1217,11 +1158,8 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      read (unit,610,END=620) line
    endif
  enddo
-
 620 return
-
  END SUBROUTINE
-
  
 !********************************************************************
 ! build list of elements shared by each node in mesh
@@ -1230,22 +1168,17 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _sharedElem
 !********************************************************************
  SUBROUTINE mesh_build_sharedElems (unit)
-
  use prec, only: pInt
  use IO
  implicit none
-
  integer(pint) unit,i,j,n,e
  integer(pInt), dimension (133) :: pos
  integer(pInt), dimension (:), allocatable :: node_seen
  character*300 line
-
 610 FORMAT(A300)
-
  allocate(node_seen(maxval(FE_Nnodes)))
  allocate ( mesh_sharedElem( 1+mesh_maxNsharedElems,mesh_Nnodes) )
  mesh_sharedElem(:,:) = 0_pInt
-
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -1271,12 +1204,9 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      exit
    end if
  end do
-
 620 return
-
  END SUBROUTINE
  
-
 !***********************************************************
 ! build up of IP neighborhood
 !
@@ -1290,7 +1220,6 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  
  integer(pInt) e,t,i,j,k,n
  integer(pInt) neighbor,neighboringElem,neighboringIP,matchingElem,faceNode,linkingNode
-
  allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipNeighborhood = 0_pInt
  
  do e = 1,mesh_NcpElems                  ! loop over cpElems
@@ -1482,24 +1411,16 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
 ! 
 !***********************************************************
  SUBROUTINE mesh_tell_statistics()
-
  use prec, only: pInt 
  use IO, only: IO_error
-
  implicit none
-
  integer(pInt), dimension (:,:), allocatable :: mesh_MatTex
  character(len=64) fmt
-
  integer(pInt) i
 
-
  if (mesh_maxValStateVar(1) == 0) call IO_error(110) ! no materials specified
-
  if (mesh_maxValStateVar(2) == 0) call IO_error(120) ! no textures specified
-
    
-
  allocate (mesh_MatTex(mesh_maxValStateVar(1),mesh_maxValStateVar(2)))
  mesh_MatTex = 0_pInt
  do i=1,mesh_NcpElems
@@ -1508,7 +1429,6 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  enddo
  
 !$OMP CRITICAL (write2out)
-
  write (6,*)
  write (6,*) "Input Parser: STATISTICS"
  write (6,*)
@@ -1526,14 +1446,12 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  write (6,*) mesh_maxValStateVar(1), " : maximum material index"
  write (6,*) mesh_maxValStateVar(2), " : maximum texture index"
  write (6,*)
-
  write (fmt,"(a,i3,a)") "(i8,x,a1,x,",mesh_maxValStateVar(2),"(i8))"
  do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) materials
    write (6,fmt) i,"|",mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
  enddo
  write (6,*)
 !$OMP END CRITICAL (write2out)
-
 
  return
  
