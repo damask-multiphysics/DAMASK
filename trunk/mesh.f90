@@ -38,26 +38,31 @@
 ! _ipAtNode          : map node index to IP index in a specific type of element
 ! _nodeAtIP          : map IP index to node index in a specific type of element
 ! _ipNeighborhood    : 6 or less neighboring IPs as [element_num, IP_index]
+! _NsubNodes        : # subnodes required to fully define all IP volumes
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
  integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_NelemSets,mesh_maxNelemInSet
- integer(pInt) mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNipNeighbors,mesh_maxNsharedElems
+ integer(pInt) mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNipNeighbors,mesh_maxNsharedElems,mesh_maxNsubNodes
  integer(pInt), dimension(2) :: mesh_maxValStateVar = 0_pInt
- character(len=64), dimension(:), allocatable :: mesh_nameElemSet
- integer(pInt), dimension(:,:), allocatable :: mesh_mapElemSet
- integer(pInt), dimension(:,:), allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
- integer(pInt), dimension(:,:), allocatable :: mesh_element, mesh_sharedElem
+ character(len=64), dimension(:),   allocatable :: mesh_nameElemSet
+ integer(pInt), dimension(:,:),     allocatable :: mesh_mapElemSet
+ integer(pInt), dimension(:,:),     allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
+ integer(pInt), dimension(:,:),     allocatable :: mesh_element, mesh_sharedElem
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
- real(pReal), allocatable :: mesh_node (:,:)
+ real(pReal),   dimension(:,:,:),   allocatable :: mesh_subNodeCoord    ! coordinates of subnodes per element
+ real(pReal),   dimension(:,:),     allocatable :: mesh_ipVolume        ! volume associated with IP
+ real(pReal),   dimension(:,:,:),   allocatable :: mesh_ipArea          ! area of interface to neighboring IP
+ real(pReal),   dimension(:,:,:,:), allocatable :: mesh_ipAreaNormal    ! area normal of interface to neighboring IP
+ real(pReal),                       allocatable :: mesh_node (:,:)
 
  integer(pInt) :: hypoelasticTableStyle = 0
  integer(pInt) :: initialcondTableStyle = 0
  integer(pInt), parameter :: FE_Nelemtypes = 6
  integer(pInt), parameter :: FE_maxNnodes = 8
+ integer(pInt), parameter :: FE_maxNsubNodes = 19
  integer(pInt), parameter :: FE_maxNips = 9
- integer(pInt), parameter :: FE_maxNneighbors = 6
- integer(pInt), parameter :: FE_maxNfaceNodes = 4
- integer(pInt), parameter :: FE_maxNfaces = 6
+ integer(pInt), parameter :: FE_maxNipNeighbors = 6
+ integer(pInt), parameter :: FE_NipFaceNodes = 4
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nnodes = &
  (/8, & ! element 7
    4, & ! element 134
@@ -82,7 +87,15 @@
    6, & ! element 157
    6  & ! element 136
   /)
- integer(pInt), dimension(FE_maxNfaces,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
+ integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NsubNodes = &
+ (/19, & ! element 7
+   0, & ! element 134
+   0, & ! element 11
+   0, & ! element 27
+   0, & ! element 157
+   0  & ! element 136
+  /)
+ integer(pInt), dimension(FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
   4,4,4,4,4,4, & ! element 7
   3,3,3,3,0,0, & ! element 134
@@ -90,7 +103,7 @@
   3,3,3,3,0,0, & ! element 27
   3,3,3,3,0,0, & ! element 157
   3,4,4,4,3,0  & ! element 136
-   /),(/FE_maxNfaces,FE_Nelemtypes/))
+   /),(/FE_maxNipNeighbors,FE_Nelemtypes/))
  integer(pInt), dimension(FE_maxNips,FE_Nelemtypes), parameter :: FE_nodeAtIP = &
  reshape((/&
   1,2,4,3,5,6,8,7,0, & ! element 7
@@ -109,7 +122,7 @@
   1,2,3,4,0,0,0,0, & ! element 157
   1,2,3,4,5,6,0,0  & ! element 136
    /),(/FE_maxNnodes,FE_Nelemtypes/))
- integer(pInt), dimension(FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
+ integer(pInt), dimension(FE_NipFaceNodes,FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
   1,2,3,4 , & ! element 7
   2,1,5,6 , &
@@ -147,8 +160,8 @@
   1,3,6,4 , &
   4,6,5,0 , &
   0,0,0,0 &
-   /),(/FE_maxNfaceNodes,FE_maxNfaces,FE_Nelemtypes/))
- integer(pInt), dimension(FE_maxNneighbors,FE_maxNips,FE_Nelemtypes), parameter :: FE_ipNeighbor = &
+   /),(/FE_NipFaceNodes,FE_maxNipNeighbors,FE_Nelemtypes/))
+ integer(pInt), dimension(FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes), parameter :: FE_ipNeighbor = &
  reshape((/&
    2,-5, 3,-2, 5,-1 , & ! element 7
   -3, 1, 4,-2, 6,-1 , &
@@ -204,7 +217,451 @@
    0, 0, 0, 0, 0, 0 , &
    0, 0, 0, 0, 0, 0 , &
    0, 0, 0, 0, 0, 0   &
-   /),(/FE_maxNneighbors,FE_maxNips,FE_Nelemtypes/))
+   /),(/FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes/))
+ integer(pInt), dimension(FE_maxNnodes,FE_maxNsubNodes,FE_Nelemtypes), parameter :: FE_subNodeParent = &
+ reshape((/&
+   1, 2, 0, 0, 0, 0, 0, 0, & ! element 7
+   2, 3, 0, 0, 0, 0, 0, 0, &
+   3, 4, 0, 0, 0, 0, 0, 0, &
+   4, 5, 0, 0, 0, 0, 0, 0, &
+   1, 5, 0, 0, 0, 0, 0, 0, &
+   2, 6, 0, 0, 0, 0, 0, 0, &
+   3, 7, 0, 0, 0, 0, 0, 0, &
+   4, 8, 0, 0, 0, 0, 0, 0, &
+   5, 6, 0, 0, 0, 0, 0, 0, &
+   6, 7, 0, 0, 0, 0, 0, 0, &
+   7, 8, 0, 0, 0, 0, 0, 0, &
+   8, 5, 0, 0, 0, 0, 0, 0, &
+   1, 2, 3, 4, 0, 0, 0, 0, &
+   1, 2, 6, 5, 0, 0, 0, 0, &
+   2, 3, 7, 6, 0, 0, 0, 0, &
+   3, 4, 8, 7, 0, 0, 0, 0, &
+   1, 4, 8, 5, 0, 0, 0, 0, &
+   5, 6, 7, 8, 0, 0, 0, 0, &
+   1, 2, 3, 4, 5, 6, 7, 8, &
+   0, 0, 0, 0, 0, 0, 0, 0, & ! element 134
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & ! element 11
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & ! element 27
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & ! element 157
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & ! element 136
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0, & 
+   0, 0, 0, 0, 0, 0, 0, 0  &
+   /),(/FE_maxNnodes,FE_maxNsubNodes,FE_Nelemtypes/))
+ integer(pInt), dimension(FE_NipFaceNodes,FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes), parameter :: FE_subNodeOnIPFace = &
+ reshape((/&
+   9,21,27,22, & ! element 7
+   1,13,25,12, &
+  12,25,27,21, &
+   1, 9,22,13, &
+  13,22,27,26, &
+   1,12,21, 9, &
+   2,10,23,14, & ! 
+   9,22,27,21, &
+  10,21,27,23, &
+   2,14,22, 9, &
+  14,23,27,22, &
+   2, 9,21,10, &
+  11,24,27,21, & ! 
+   4,12,25,16, &
+   4,16,24,11, &
+  12,21,27,25, &
+  16,25,27,24, &
+   4,11,21,12, &
+   3,15,23,10, & ! 
+  11,21,27,24, &
+   3,11,24,15, &
+  10,23,27,21, &
+  15,24,27,23, &
+   3,10,21,11, &
+  17,22,27,26, & ! 
+   5,20,25,13, &
+  20,26,27,25, &
+   5,13,22,17, &
+   5,17,26,20, &
+  13,25,27,22, &
+   6,14,23,18, & ! 
+  17,26,27,18, &
+  18,23,27,26, &
+   6,17,22,14, &
+   6,18,26,17, &
+  14,22,27,23, &
+  19,26,27,24, & ! 
+   8,16,25,20, &
+   8,19,24,16, &
+  20,25,27,26, &
+   8,20,26,19, &
+  16,24,27,25, &
+   7,18,23,15, & ! 
+  19,24,27,26, &
+   7,15,24,19, &
+  18,26,27,23, &
+   7,19,26,18, &
+  15,23,27,24, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! element 134
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! element 11
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! element 27
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! element 157
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! element 136
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, & ! 
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0, &
+   0, 0, 0, 0  &
+   /),(/FE_NipFaceNodes,FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes/))
    
  CONTAINS
 ! ---------------------------
@@ -226,14 +683,16 @@
  
  integer(pInt), parameter :: fileUnit = 222
 
- mesh_Nelems = 0_pInt
- mesh_NcpElems = 0_pInt
- mesh_Nnodes = 0_pInt
- mesh_maxNips = 0_pInt
- mesh_maxNnodes = 0_pInt
+ mesh_Nelems          = 0_pInt
+ mesh_NcpElems        = 0_pInt
+ mesh_Nnodes          = 0_pInt
+ mesh_maxNips         = 0_pInt
+ mesh_maxNnodes       = 0_pInt
+ mesh_maxNipNeighbors = 0_pInt
  mesh_maxNsharedElems = 0_pInt
- mesh_NelemSets = 0_pInt
- mesh_maxNelemInSet = 0_pInt
+ mesh_maxNsubNodes    = 0_pInt
+ mesh_NelemSets       = 0_pInt
+ mesh_maxNelemInSet   = 0_pInt
 
 
 
@@ -249,6 +708,9 @@
    call mesh_build_elements(fileUnit)
    call mesh_build_sharedElems(fileUnit)
    call mesh_build_ipNeighborhood()
+   call mesh_build_subNodeCoords()
+   call mesh_build_ipVolumes()
+   call mesh_build_ipAreas()
    call mesh_tell_statistics()
    close (fileUnit)
  else
@@ -483,6 +945,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
+         mesh_maxNsubNodes =    max(mesh_maxNsubNodes,FE_NsubNodes(t))
          node_seen = 0_pInt
          do j=1,FE_Nnodes(t)
            n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
@@ -869,6 +1332,149 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  
  END SUBROUTINE
  
+
+!***********************************************************
+! assignment of coordinates for subnodes in each cp element
+!
+! allocate globals
+! _subNodeCoord
+!***********************************************************
+ SUBROUTINE mesh_build_subNodeCoords()
+ 
+ use prec, only: pInt,pReal
+ implicit none
+
+ integer(pInt) e,t,n,p
+
+ allocate(mesh_subNodeCoord(3,mesh_maxNnodes+mesh_maxNsubNodes,mesh_NcpElems)) ; mesh_subNodeCoord = 0.0_pReal
+ 
+ do e = 1,mesh_NcpElems                   ! loop over cpElems
+   t = mesh_element(2,e)                  ! get elemType
+   do n = 1,FE_Nnodes(t)
+     mesh_subNodeCoord(:,n,e) = mesh_node(:,mesh_FEasCP('node',mesh_element(4+n,e))) ! loop over nodes of this element type
+   enddo
+   do n = 1,FE_NsubNodes(t)               ! now for the treu subnodes
+     do p = 1,mesh_maxNnodes              ! loop through parents
+	   if (FE_subNodeParent(p,n,t) > 0) & ! valid parent node
+         mesh_subNodeCoord(:,n+FE_Nnodes(t),e) = &
+		 mesh_subNodeCoord(:,n+FE_Nnodes(t),e) + &
+		 mesh_node(:,mesh_FEasCP('node',mesh_element(4+FE_subNodeParent(p,n,t),e))) ! add up parents
+	 enddo
+     mesh_subNodeCoord(:,n+FE_Nnodes(t),e) = mesh_subNodeCoord(:,n+FE_Nnodes(t),e) / count(FE_subNodeParent(:,n,t) > 0)
+   enddo 
+ enddo 
+
+ return
+ 
+ END SUBROUTINE
+
+
+!***********************************************************
+! calculation of IP volume
+!
+! allocate globals
+! _ipVolume
+!***********************************************************
+ SUBROUTINE mesh_build_ipVolumes()
+ 
+ use prec, only: pInt
+ use math, only: math_volTetrahedron
+ implicit none
+ 
+ integer(pInt) e,f,t,i,j,k,n
+ integer(pInt), dimension(mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNode      ! flagList to find subnodes determining center of grav
+ real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos   ! coordinates of subnodes determining center of grav
+ real(pReal), dimension (3,FE_NipFaceNodes) :: nPos                             ! coordinates of nodes on IP face
+ real(pReal), dimension(3) :: centerOfGravity
+
+ allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems)) ; mesh_ipVolume = 0.0_pReal
+ 
+ do e = 1,mesh_NcpElems                  ! loop over cpElems
+   t = mesh_element(2,e)                 ! get elemType
+   do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+     gravityNode = 0_pInt                ! reset flagList
+     gravityNodePos = 0.0_pReal          ! reset coordinates
+     do f = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
+	   do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
+         gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = 1
+         gravityNodePos(:,FE_subNodeOnIPFace(n,f,i,t)) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+       enddo
+     enddo
+
+	 do j = 1,8+FE_maxNsubNodes-1        ! walk through entire flagList except last
+       if (gravityNode(j) > 0_pInt) then ! valid node index
+         do k = j,8+FE_maxNsubNodes      ! walk through remainder of list
+           if (all((mesh_subNodeCoord(:,gravityNode(j),e) - &
+		            mesh_subNodeCoord(:,gravityNode(k),e)) == 0.0_pReal)) then   ! found match
+		     gravityNode(j) = 0_pInt     ! delete first instance
+		     gravityNodePos(:,j) = 0.0_pReal
+		     exit                        ! continue with next suspect
+		   endif
+		 enddo
+	   endif
+	 enddo
+     centerOfGravity = sum(gravityNodePos,2)/count(gravityNode > 0)
+
+     do f = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP and add tetrahedra which connect to CoG
+	   forall (n=1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + math_volTetrahedron(nPos(:,1),nPos(:,2),nPos(:,3),centerOfGravity)
+       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + math_volTetrahedron(nPos(:,1),nPos(:,3),nPos(:,4),centerOfGravity)
+       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + math_volTetrahedron(nPos(:,2),nPos(:,3),nPos(:,4),centerOfGravity)
+       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + math_volTetrahedron(nPos(:,2),nPos(:,4),nPos(:,1),centerOfGravity)
+	 enddo
+     mesh_ipVolume(i,e) = 0.5_pReal * mesh_ipVolume(i,e) 
+   enddo
+ enddo
+ return
+ 
+ END SUBROUTINE
+
+
+!***********************************************************
+! calculation of IP volume
+!
+! allocate globals
+! _ipVolume
+!***********************************************************
+ SUBROUTINE mesh_build_ipAreas()
+ 
+ use prec, only: pInt,pReal
+ use math
+ implicit none
+ 
+ integer(pInt) e,f,t,i,j,k,n
+ real(pReal), dimension (3,FE_NipFaceNodes) :: nPos                ! coordinates of nodes on IP face
+ real(pReal), dimension(3,4) :: normal
+ real(pReal), dimension(4)   :: area
+
+ allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipArea = 0.0_pReal
+ allocate(mesh_ipAreaNormal(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipAreaNormal = 0.0_pReal
+ 
+ do e = 1,mesh_NcpElems                     ! loop over cpElems
+   t = mesh_element(2,e)                    ! get elemType
+   do i = 1,FE_Nips(t)                      ! loop over IPs of elem
+     do f = 1,FE_NipNeighbors(t)            ! loop over neighbors of IP 
+	   forall (n = 1:FE_NipFaceNodes) &     ! loop over nodes on interface
+         nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)  ! get shorthand name
+       normal(:,1) = math_vectorproduct(nPos(:,2)-nPos(:,1),nPos(:,3)-nPos(:,1))
+	   normal(:,2) = math_vectorproduct(nPos(:,3)-nPos(:,1),nPos(:,4)-nPos(:,1))
+	   normal(:,3) = math_vectorproduct(nPos(:,3)-nPos(:,2),nPos(:,4)-nPos(:,2))
+	   normal(:,4) = math_vectorproduct(nPos(:,4)-nPos(:,2),nPos(:,1)-nPos(:,2))
+	   forall (n = 1:4)
+	     area(n) = dsqrt(sum(normal(:,n)*normal(:,n)))         ! length of normal vectors (i.e. area)
+		 normal(:,n) = normal(:,n) / area(n)                   ! make unit normal
+	   endforall
+       mesh_ipArea(f,i,e) = sum(area) / 2.0_pReal              ! counted area twice
+	   mesh_ipAreaNormal(:,f,i,e) = sum(normal,2) / 4.0_pReal  ! average of all four possible normals
+     enddo
+   enddo
+ enddo
+ return
+ 
+ END SUBROUTINE
+
+
+
  
 !***********************************************************
 ! write statistics regarding input file parsing
@@ -906,13 +1512,14 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  write (6,*)
  write (6,*) "Input Parser: STATISTICS"
  write (6,*)
- write (6,*) mesh_Nelems," : total number of elements in mesh"
- write (6,*) mesh_NcpElems, " : total number of CP elements in mesh"
- write (6,*) mesh_Nnodes, " : total number of nodes in mesh"
- write (6,*) mesh_maxNnodes, " : max number of nodes in any CP element"
- write (6,*) mesh_maxNips, " : max number of IPs in any CP element"
- write (6,*) mesh_maxNipNeighbors, " : max number of IP neighbors in any CP element"
- write (6,*) mesh_maxNsharedElems, " : max number of CP elements sharing a node"
+ write (6,*) mesh_Nelems,           " : total number of elements in mesh"
+ write (6,*) mesh_NcpElems,         " : total number of CP elements in mesh"
+ write (6,*) mesh_Nnodes,           " : total number of nodes in mesh"
+ write (6,*) mesh_maxNnodes,        " : max number of nodes in any CP element"
+ write (6,*) mesh_maxNips,          " : max number of IPs in any CP element"
+ write (6,*) mesh_maxNipNeighbors,  " : max number of IP neighbors in any CP element"
+ write (6,*) mesh_maxNsubNodes,     " : max number of (additional) subnodes in any CP element"
+ write (6,*) mesh_maxNsharedElems,  " : max number of CP elements sharing a node"
  write (6,*)
  write (6,*) "Input Parser: MATERIAL/TEXTURE"
  write (6,*)
