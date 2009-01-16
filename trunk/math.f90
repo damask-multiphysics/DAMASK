@@ -216,12 +216,13 @@
 !**************************************************************************
 ! fourth rank identity tensor of specified dimension
 !**************************************************************************
- FUNCTION math_identity4th(dimen)  
+ PURE FUNCTION math_identity4th(dimen)  
 
  use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,j,k,l,dimen
+ integer(pInt), intent(in) :: dimen
+ integer(pInt)  i,j,k,l
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
 
  forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
@@ -232,15 +233,37 @@
 
  
 !**************************************************************************
+! vector product a x b
+!**************************************************************************
+ PURE FUNCTION math_vectorproduct(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3), intent(in) ::  A,B
+ real(pReal), dimension(3) ::  math_vectorproduct
+
+ math_vectorproduct(1) = A(2)*B(3)-A(3)*B(2)
+ math_vectorproduct(2) = A(3)*B(1)-A(1)*B(3)
+ math_vectorproduct(3) = A(1)*B(2)-A(2)*B(1)
+
+ return
+
+ END FUNCTION
+
+ 
+
+!**************************************************************************
 ! matrix multiplication 3x3
 !**************************************************************************
- FUNCTION math_mul33x33(A,B)  
+ PURE FUNCTION math_mul33x33(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
 
  integer(pInt)  i,j
- real(pReal), dimension(3,3) ::  math_mul33x33,A,B
+ real(pReal), dimension(3,3), intent(in) ::  A,B
+ real(pReal), dimension(3,3) ::  math_mul33x33
 
  forall (i=1:3,j=1:3) math_mul33x33(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
@@ -253,13 +276,14 @@
 !**************************************************************************
 ! matrix multiplication 6x6
 !**************************************************************************
- FUNCTION math_mul66x66(A,B)  
+ PURE FUNCTION math_mul66x66(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
 
  integer(pInt)  i,j
- real(pReal), dimension(6,6) ::  math_mul66x66,A,B
+ real(pReal), dimension(6,6), intent(in) ::  A,B
+ real(pReal), dimension(6,6) ::  math_mul66x66
 
  forall (i=1:6,j=1:6) math_mul66x66(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
@@ -271,14 +295,15 @@
 !**************************************************************************
 ! matrix multiplication 6x6
 !**************************************************************************
- FUNCTION math_mul66x6(A,B)  
+ PURE FUNCTION math_mul66x6(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
 
  integer(pInt)  i
- real(pReal), dimension(6) ::  math_mul66x6,B
- real(pReal), dimension(6,6) ::  A
+ real(pReal), dimension(6,6), intent(in) ::  A
+ real(pReal), dimension(6),   intent(in) ::  B
+ real(pReal), dimension(6) ::  math_mul66x6
 
  forall (i=1:6) math_mul66x6(i) = &
    A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
@@ -290,13 +315,14 @@
 !**************************************************************************
 ! matrix multiplication 9x9
 !**************************************************************************
- FUNCTION math_mul99x99(A,B)  
+ PURE FUNCTION math_mul99x99(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
 
  integer(pInt)  i,j
- real(pReal), dimension(9,9) ::  math_mul99x99,A,B
+ real(pReal), dimension(9,9), intent(in) ::  A,B
+ real(pReal), dimension(9,9) ::  math_mul99x99
 
  forall (i=1:9,j=1:9) math_mul99x99(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
@@ -579,13 +605,14 @@
 !********************************************************************
 ! symmetrize a 6x6 matrix
 !********************************************************************
- FUNCTION math_symmetric6x6(m)
+ PURE FUNCTION math_symmetric6x6(m)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(6,6) :: math_symmetric6x6,m
  integer(pInt) i,j
+ real(pReal), dimension(6,6), intent(in) :: m
+ real(pReal), dimension(6,6) :: math_symmetric6x6
  
  forall (i=1:6,j=1:6) math_symmetric6x6(i,j) = 1.0_pReal/2.0_pReal * &
    (m(i,j) + m(j,i))
@@ -596,12 +623,13 @@
 !********************************************************************
 ! determinant of a 3x3 matrix
 !********************************************************************
- real(pReal) FUNCTION math_det3x3(m)
+ PURE FUNCTION math_det3x3(m)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal) m(3,3)
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) math_det3x3
 
  math_det3x3 = m(1,1)*(m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
               -m(1,2)*(m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
@@ -614,12 +642,12 @@
 !********************************************************************
 ! convert 3x3 matrix into vector 9x1
 !********************************************************************
- FUNCTION math_Plain33to9(m33)
+ PURE FUNCTION math_Plain33to9(m33)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(3,3) :: m33
+ real(pReal), dimension(3,3), intent(in) :: m33
  real(pReal), dimension(9) :: math_Plain33to9
  integer(pInt) i
  
@@ -632,12 +660,12 @@
 !********************************************************************
 ! convert Plain 9x1 back to 3x3 matrix
 !********************************************************************
- FUNCTION math_Plain9to33(v9)
+ PURE FUNCTION math_Plain9to33(v9)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(9) :: v9
+ real(pReal), dimension(9), intent(in) :: v9
  real(pReal), dimension(3,3) :: math_Plain9to33
  integer(pInt) i
  
@@ -650,12 +678,12 @@
 !********************************************************************
 ! convert symmetric 3x3 matrix into Mandel vector 6x1
 !********************************************************************
- FUNCTION math_Mandel33to6(m33)
+ PURE FUNCTION math_Mandel33to6(m33)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(3,3) :: m33
+ real(pReal), dimension(3,3), intent(in) :: m33
  real(pReal), dimension(6) :: math_Mandel33to6
  integer(pInt) i
  
@@ -668,12 +696,12 @@
 !********************************************************************
 ! convert Mandel 6x1 back to symmetric 3x3 matrix
 !********************************************************************
- FUNCTION math_Mandel6to33(v6)
+ PURE FUNCTION math_Mandel6to33(v6)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(6) :: v6
+ real(pReal), dimension(6), intent(in) :: v6
  real(pReal), dimension(3,3) :: math_Mandel6to33
  integer(pInt) i
  
@@ -689,12 +717,12 @@
 !********************************************************************
 ! convert 3x3x3x3 tensor into plain matrix 9x9
 !********************************************************************
- FUNCTION math_Plain3333to99(m3333)
+ PURE FUNCTION math_Plain3333to99(m3333)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(3,3,3,3) :: m3333
+ real(pReal), dimension(3,3,3,3), intent(in) :: m3333
  real(pReal), dimension(9,9) :: math_Plain3333to99
  integer(pInt) i,j
  
@@ -708,12 +736,12 @@
 !********************************************************************
 ! convert symmetric 3x3x3x3 tensor into Mandel matrix 6x6
 !********************************************************************
- FUNCTION math_Mandel3333to66(m3333)
+ PURE FUNCTION math_Mandel3333to66(m3333)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(3,3,3,3) :: m3333
+ real(pReal), dimension(3,3,3,3), intent(in) :: m3333
  real(pReal), dimension(6,6) :: math_Mandel3333to66
  integer(pInt) i,j
  
@@ -727,12 +755,12 @@
 !********************************************************************
 ! convert Mandel matrix 6x6 back to symmetric 3x3x3x3 tensor
 !********************************************************************
- FUNCTION math_Mandel66to3333(m66)
+ PURE FUNCTION math_Mandel66to3333(m66)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(6,6) :: m66
+ real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(3,3,3,3) :: math_Mandel66to3333
  integer(pInt) i,j
  
@@ -751,12 +779,12 @@
 !********************************************************************
 ! convert Voigt matrix 6x6 back to symmetric 3x3x3x3 tensor
 !********************************************************************
- FUNCTION math_Voigt66to3333(m66)
+ PURE FUNCTION math_Voigt66to3333(m66)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(6,6) :: m66
+ real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
  integer(pInt) i,j
  
@@ -775,13 +803,14 @@
 !********************************************************************
 ! Euler angles from orientation matrix
 !********************************************************************
- FUNCTION math_RtoEuler(R)
+ PURE FUNCTION math_RtoEuler(R)
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal) R(3,3), sqhkl, squvw, sqhk, val
+ real(pReal), dimension (3,3), intent(in) :: R
  real(pReal), dimension(3) :: math_RtoEuler
+ real(pReal) sqhkl, squvw, sqhk, val
 
  sqhkl=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3)+R(3,3)*R(3,3))
  squvw=sqrt(R(1,1)*R(1,1)+R(2,1)*R(2,1)+R(3,1)*R(3,1))
@@ -828,14 +857,16 @@
 !****************************************************************
 ! rotation matrix from axis and angle (in radians)  
 !****************************************************************
- FUNCTION math_RodrigToR(axis,omega)
+ PURE FUNCTION math_RodrigToR(axis,omega)
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal), dimension(3) :: axis, axisNrm
+ real(pReal), dimension(3), intent(in) :: axis
+ real(pReal), intent(in) :: omega
+ real(pReal), dimension(3) :: axisNrm
  real(pReal), dimension(3,3) :: math_RodrigToR
- real(pReal) omega, s,c
+ real(pReal) s,c
  integer(pInt) i
 
  forall (i=1:3) axisNrm(i) = axis(i)/sqrt(dot_product(axis,axis))
@@ -890,12 +921,12 @@
 !**************************************************************************
 ! disorientation angle between two sets of Euler angles
 !**************************************************************************
- function math_disorient(EulerA,EulerB)
+ pure function math_disorient(EulerA,EulerB)
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal), dimension(3):: EulerA,EulerB
+ real(pReal), dimension(3), intent(in) :: EulerA,EulerB
  real(pReal), dimension(3,3) :: r
  real(pReal) math_disorient, tr
 
@@ -2002,6 +2033,29 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
  return
  
  END FUNCTION
+
+!**************************************************************************
+! volume of tetrahedron given by four vertices
+!**************************************************************************
+ PURE FUNCTION math_volTetrahedron(v1,v2,v3,v4)  
+
+ use prec, only: pReal
+ implicit none
+
+ real(pReal) math_volTetrahedron
+ real(pReal), dimension (3), intent(in) :: v1,v2,v3,v4
+ real(pReal), dimension (3,3) :: m
+
+ m(:,1) = v1-v2
+ m(:,2) = v2-v3
+ m(:,3) = v3-v4
+
+ math_volTetrahedron = math_det3x3(m)/6.0_pReal 
+ return
+
+ END FUNCTION
+
+
 
  END MODULE math
 
