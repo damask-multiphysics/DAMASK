@@ -51,6 +51,7 @@
  integer(pInt), dimension(:,:),     allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
  integer(pInt), dimension(:,:),     allocatable :: mesh_element, mesh_sharedElem
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
+
  real(pReal),   dimension(:,:,:),   allocatable :: mesh_subNodeCoord    ! coordinates of subnodes per element
  real(pReal),   dimension(:,:),     allocatable :: mesh_ipVolume        ! volume associated with IP
  real(pReal),   dimension(:,:,:),   allocatable :: mesh_ipArea          ! area of interface to neighboring IP
@@ -91,11 +92,11 @@
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NsubNodes = &
  (/19, & ! element 7
-    0, & ! element 134
-    0, & ! element 11
-    0, & ! element 27
-    0, & ! element 157
-    0  & ! element 136
+   0, & ! element 134
+   0, & ! element 11
+   0, & ! element 27
+   0, & ! element 157
+   0  & ! element 136
   /)
  integer(pInt), dimension(FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
@@ -225,7 +226,7 @@
    1, 2, 0, 0, 0, 0, 0, 0, & ! element 7
    2, 3, 0, 0, 0, 0, 0, 0, &
    3, 4, 0, 0, 0, 0, 0, 0, &
-   4, 5, 0, 0, 0, 0, 0, 0, &
+   4, 1, 0, 0, 0, 0, 0, 0, &
    1, 5, 0, 0, 0, 0, 0, 0, &
    2, 6, 0, 0, 0, 0, 0, 0, &
    3, 7, 0, 0, 0, 0, 0, 0, &
@@ -343,7 +344,7 @@
    1,13,25,12, &
   12,25,27,21, &
    1, 9,22,13, &
-  13,22,27,26, &
+  13,22,27,25, &
    1,12,21, 9, &
    2,10,23,14, & ! 
    9,22,27,21, &
@@ -370,7 +371,7 @@
    5,17,26,20, &
   13,25,27,22, &
    6,14,23,18, & ! 
-  17,26,27,18, &
+  17,26,27,22, &
   18,23,27,26, &
    6,17,22,14, &
    6,18,26,17, &
@@ -393,10 +394,10 @@
    0, 0, 0, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, &
-   1, 3, 2, 0, & ! element 134
-   1, 2, 4, 0, &
-   2, 3, 4, 0, &
-   1, 4, 3, 0, &
+   1, 1, 3, 2, & ! element 134
+   1, 1, 2, 4, &
+   2, 2, 3, 4, &
+   1, 1, 4, 3, &
    0, 0, 0, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, & ! 
@@ -672,16 +673,20 @@
 ! function mesh_build_ipNeighorhood()
 ! ---------------------------
 
+
 !***********************************************************
 ! initialization 
 !***********************************************************
  SUBROUTINE mesh_init ()
+
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile
+
  use FEsolving, only: FE_get_solverSymmetry
  implicit none
  
  integer(pInt), parameter :: fileUnit = 222
+
  mesh_Nelems          = 0_pInt
  mesh_NcpElems        = 0_pInt
  mesh_Nnodes          = 0_pInt
@@ -693,8 +698,11 @@
  mesh_NelemSets       = 0_pInt
  mesh_maxNelemInSet   = 0_pInt
 
+
+
 ! call to various subroutines to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
+
    call FE_get_solverSymmetry(fileUnit)
    call mesh_get_meshDimensions(fileUnit)
    call mesh_build_nodeMapping(fileUnit)
@@ -717,10 +725,12 @@
  END SUBROUTINE
  
 
+
 !***********************************************************
 ! mapping of FE element types to internal representation
 !***********************************************************
  FUNCTION FE_mapElemtype(what)
+
  implicit none
  
  character(len=*), intent(in) :: what
@@ -742,7 +752,10 @@
 	case default 
 	   FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
  end select
+
  END FUNCTION
+
+
 
 !***********************************************************
 ! FE to CP id mapping by binary search thru lookup array
@@ -798,12 +811,15 @@
  
  END FUNCTION
 
+
 !***********************************************************
 ! find face-matching element of same type
 !!***********************************************************
  FUNCTION mesh_faceMatch(face,elem)
+
  use prec, only: pInt
  implicit none
+
  integer(pInt) face,elem
  integer(pInt) mesh_faceMatch
  integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: nodeMap
@@ -812,6 +828,7 @@
  minN = mesh_maxNsharedElems+1 ! init to worst case
  mesh_faceMatch = 0_pInt       ! intialize to "no match found"
  t = mesh_element(2,elem)      ! figure elemType
+
  do faceNode=1,FE_NfaceNodes(face,t)  ! loop over nodes on face
    nodeMap(faceNode) = mesh_FEasCP('node',mesh_element(4+FE_nodeOnFace(faceNode,face,t),elem)) ! CP id of face node
    NsharedElems = mesh_sharedElem(1,nodeMap(faceNode)) ! figure # shared elements for this node
@@ -841,6 +858,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  
  END FUNCTION
 
+
 !********************************************************************
 ! get count of elements, nodes, and cp elements in mesh
 ! for subsequent array allocations
@@ -849,16 +867,21 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _Nelems, _Nnodes, _NcpElems
 !********************************************************************
  SUBROUTINE mesh_get_meshDimensions (unit)
+
  use prec, only: pInt
  use IO
  implicit none
+
  integer(pInt) unit,i,pos(41)
  character*300 line
+
 610 FORMAT(A300)
+
  rewind(unit)
  do 
    read (unit,610,END=620) line
    pos = IO_stringPos(line,20)
+
    select case ( IO_lc(IO_StringValue(line,pos,1)))
      case('table')
        if (pos(1) == 6) then
@@ -880,10 +903,13 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
        end do
        mesh_NcpElems = mesh_NcpElems + IO_countContinousIntValues(unit)
    end select
+
  end do
+
 620 return
  
  END SUBROUTINE
+
  
 !!********************************************************************
 ! get maximum count of nodes, IPs, IP neighbors, and shared elements
@@ -924,7 +950,9 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
+
          mesh_maxNsubNodes =    max(mesh_maxNsubNodes,FE_NsubNodes(t))
+
          node_seen = 0_pInt
          do j=1,FE_Nnodes(t)
            n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
@@ -950,16 +978,22 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !********************************************************************
  SUBROUTINE mesh_build_elemSetMapping (unit)
+
  use prec, only: pInt
  use IO
+
  implicit none
+
  integer unit, elem_set
  character*300 line
  integer(pInt), dimension (9) :: pos          ! count plus 4 entities on a line
+
 610 FORMAT(A300)
+
  allocate (mesh_nameElemSet(mesh_NelemSets))
  allocate (mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
  elem_set = 0_pInt
+
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -971,8 +1005,10 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
       mesh_mapElemSet(:,elem_set) = IO_continousIntValues(unit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
    end if
  end do
+
 620 return
  END SUBROUTINE
+
  
 !********************************************************************
 ! Build node mapping from FEM to CP
@@ -981,17 +1017,22 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _mapFEtoCPnode
 !********************************************************************
  SUBROUTINE mesh_build_nodeMapping (unit)
+
  use prec, only: pInt
  use math, only: qsort
  use IO
  implicit none
+
  integer(pInt), dimension (mesh_Nnodes) :: node_count
  integer(pInt) unit,i
  integer(pInt), dimension (133) :: pos
  character*300 line
+
 610 FORMAT(A300)
+
  allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
  node_count(:) = 0_pInt
+
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -1006,9 +1047,12 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 	 exit
    end if
  end do
+
 620 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
+
  return
  END SUBROUTINE
+
 
 !********************************************************************
 ! Build element mapping from FEM to CP
@@ -1017,18 +1061,24 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _mapFEtoCPelem
 !********************************************************************
  SUBROUTINE mesh_build_elemMapping (unit)
+
  use prec, only: pInt
  use math, only: qsort
  use IO
+
  implicit none
+
  integer unit, i,CP_elem
  character*300 line
  integer(pInt), dimension (3) :: pos
  integer(pInt), dimension (1+mesh_NcpElems) :: contInts
 
+
 610 FORMAT(A300)
+
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
  CP_elem = 0_pInt
+
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -1045,9 +1095,12 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      enddo
    end if
  end do
+
 620 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))  ! should be mesh_NcpElems
+
  return
  END SUBROUTINE
+
 
 !********************************************************************
 ! store x,y,z coordinates of all nodes in mesh
@@ -1056,16 +1109,21 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _node
 !********************************************************************
  SUBROUTINE mesh_build_nodes (unit)
+
  use prec, only: pInt
  use IO
  implicit none
+
  integer unit,i,j,m
  integer(pInt), dimension(3) :: pos
  integer(pInt), dimension(5), parameter :: node_ends = (/0,10,30,50,70/)
  character*300 line
+
  allocate ( mesh_node (3,mesh_Nnodes) )
  mesh_node(:,:) = 0_pInt
+
 610 FORMAT(A300)
+
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -1082,8 +1140,11 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      exit
    end if
  end do
+
 620 return
+
  END SUBROUTINE
+
 
 !********************************************************************
 ! store FEid, type, mat, tex, and node list per element
@@ -1092,15 +1153,20 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _element
 !********************************************************************
  SUBROUTINE mesh_build_elements (unit)
+
  use prec, only: pInt
  use IO
  implicit none
+
  integer unit,i,j,sv,val,CP_elem
  integer(pInt), dimension(133) :: pos
  integer(pInt), dimension(1+mesh_NcpElems) :: contInts
  character*300 line
+
  allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
+
 610 FORMAT(A300)
+
 
  rewind(unit)
  do
@@ -1158,8 +1224,11 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      read (unit,610,END=620) line
    endif
  enddo
+
 620 return
+
  END SUBROUTINE
+
  
 !********************************************************************
 ! build list of elements shared by each node in mesh
@@ -1168,17 +1237,22 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! _sharedElem
 !********************************************************************
  SUBROUTINE mesh_build_sharedElems (unit)
+
  use prec, only: pInt
  use IO
  implicit none
+
  integer(pint) unit,i,j,n,e
  integer(pInt), dimension (133) :: pos
  integer(pInt), dimension (:), allocatable :: node_seen
  character*300 line
+
 610 FORMAT(A300)
+
  allocate(node_seen(maxval(FE_Nnodes)))
  allocate ( mesh_sharedElem( 1+mesh_maxNsharedElems,mesh_Nnodes) )
  mesh_sharedElem(:,:) = 0_pInt
+
  rewind(unit)
  do
    read (unit,610,END=620) line
@@ -1204,9 +1278,12 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      exit
    end if
  end do
+
 620 return
+
  END SUBROUTINE
  
+
 !***********************************************************
 ! build up of IP neighborhood
 !
@@ -1220,6 +1297,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  
  integer(pInt) e,t,i,j,k,n
  integer(pInt) neighbor,neighboringElem,neighboringIP,matchingElem,faceNode,linkingNode
+
  allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipNeighborhood = 0_pInt
  
  do e = 1,mesh_NcpElems                  ! loop over cpElems
@@ -1258,9 +1336,10 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  end do
  
  return
- 
+
  END SUBROUTINE
- 
+
+
 
 !***********************************************************
 ! assignment of coordinates for subnodes in each cp element
@@ -1282,15 +1361,15 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
    do n = 1,FE_Nnodes(t)
      mesh_subNodeCoord(:,n,e) = mesh_node(:,mesh_FEasCP('node',mesh_element(4+n,e))) ! loop over nodes of this element type
    enddo
-   do n = 1,FE_NsubNodes(t)               ! now for the treu subnodes
-     do p = 1,mesh_maxNnodes              ! loop through parents
+   do n = 1,FE_NsubNodes(t)               ! now for the true subnodes
+     do p = 1,FE_Nnodes(t)                ! loop through parents
 	   if (FE_subNodeParent(p,n,t) > 0) & ! valid parent node
          mesh_subNodeCoord(:,n+FE_Nnodes(t),e) = &
 		 mesh_subNodeCoord(:,n+FE_Nnodes(t),e) + &
 		 mesh_node(:,mesh_FEasCP('node',mesh_element(4+FE_subNodeParent(p,n,t),e))) ! add up parents
 	 enddo
      mesh_subNodeCoord(:,n+FE_Nnodes(t),e) = mesh_subNodeCoord(:,n+FE_Nnodes(t),e) / count(FE_subNodeParent(:,n,t) > 0)
-   enddo 
+   enddo
  enddo 
 
  return
@@ -1311,9 +1390,11 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  implicit none
  
  integer(pInt) e,f,t,i,j,k,n
+ integer(pInt), parameter :: Ntriangles = FE_NipFaceNodes-2                     ! each interface is made up of this many triangles
  integer(pInt), dimension(mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNode      ! flagList to find subnodes determining center of grav
  real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos   ! coordinates of subnodes determining center of grav
  real(pReal), dimension (3,FE_NipFaceNodes) :: nPos                             ! coordinates of nodes on IP face
+ real(pReal), dimension(Ntriangles,FE_NipFaceNodes) :: volume                   ! volumes of possible tetrahedra
  real(pReal), dimension(3) :: centerOfGravity
 
  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems)) ; mesh_ipVolume = 0.0_pReal
@@ -1323,35 +1404,36 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
    do i = 1,FE_Nips(t)                   ! loop over IPs of elem
      gravityNode = 0_pInt                ! reset flagList
      gravityNodePos = 0.0_pReal          ! reset coordinates
-     do f = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
+     do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP
 	   do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
          gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = 1
          gravityNodePos(:,FE_subNodeOnIPFace(n,f,i,t)) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
        enddo
      enddo
-
-	 do j = 1,8+FE_maxNsubNodes-1        ! walk through entire flagList except last
-       if (gravityNode(j) > 0_pInt) then ! valid node index
-         do k = j,8+FE_maxNsubNodes      ! walk through remainder of list
-           if (all((mesh_subNodeCoord(:,gravityNode(j),e) - &
-		            mesh_subNodeCoord(:,gravityNode(k),e)) == 0.0_pReal)) then   ! found match
-		     gravityNode(j) = 0_pInt     ! delete first instance
+     
+	 do j = 1,mesh_maxNnodes+mesh_maxNsubNodes-1        ! walk through entire flagList except last
+       if (gravityNode(j) > 0_pInt) then                ! valid node index
+         do k = j+1,mesh_maxNnodes+mesh_maxNsubNodes    ! walk through remainder of list
+           if (all((gravityNodePos(:,j) - gravityNodePos(:,k)) == 0.0_pReal)) then   ! found match
+		     gravityNode(j) = 0_pInt                    ! delete first instance
 		     gravityNodePos(:,j) = 0.0_pReal
-		     exit                        ! continue with next suspect
+		     exit                                       ! continue with next suspect
 		   endif
 		 enddo
 	   endif
 	 enddo
      centerOfGravity = sum(gravityNodePos,2)/count(gravityNode > 0)
 
-     do f = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP and add tetrahedra which connect to CoG
-	   forall (n=1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
-       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + math_volTetrahedron(nPos(:,1),nPos(:,2),nPos(:,3),centerOfGravity)
-       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + math_volTetrahedron(nPos(:,1),nPos(:,3),nPos(:,4),centerOfGravity)
-       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + math_volTetrahedron(nPos(:,2),nPos(:,3),nPos(:,4),centerOfGravity)
-       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + math_volTetrahedron(nPos(:,2),nPos(:,4),nPos(:,1),centerOfGravity)
+     do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
+	   forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+       forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles) &  ! start at each interface node and build valid triangles to cover interface
+         volume(j,n) = math_volTetrahedron(nPos(:,n), &    ! calc volume of respective tetrahedron to CoG
+                                           nPos(:,1+mod(n+j-1,FE_NipFaceNodes)), &
+                                           nPos(:,1+mod(n+j-0,FE_NipFaceNodes)), &
+                                           centerOfGravity)
+       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
 	 enddo
-     mesh_ipVolume(i,e) = 0.5_pReal * mesh_ipVolume(i,e) 
+     mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes  ! renormalize with interfaceNodeNum due to loop over them
    enddo
  enddo
  return
@@ -1372,29 +1454,29 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  implicit none
  
  integer(pInt) e,f,t,i,j,k,n
- real(pReal), dimension (3,FE_NipFaceNodes) :: nPos                ! coordinates of nodes on IP face
- real(pReal), dimension(3,4) :: normal
- real(pReal), dimension(4)   :: area
+ integer(pInt), parameter :: Ntriangles = FE_NipFaceNodes-2    ! each interface is made up of this many triangles
+ real(pReal), dimension (3,FE_NipFaceNodes) :: nPos            ! coordinates of nodes on IP face
+ real(pReal), dimension(3,Ntriangles,FE_NipFaceNodes) :: normal
+ real(pReal), dimension(Ntriangles,FE_NipFaceNodes)   :: area
 
- allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipArea = 0.0_pReal
+ allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ;         mesh_ipArea       = 0.0_pReal
  allocate(mesh_ipAreaNormal(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipAreaNormal = 0.0_pReal
  
  do e = 1,mesh_NcpElems                     ! loop over cpElems
    t = mesh_element(2,e)                    ! get elemType
    do i = 1,FE_Nips(t)                      ! loop over IPs of elem
-     do f = 1,FE_NipNeighbors(t)            ! loop over neighbors of IP 
-	   forall (n = 1:FE_NipFaceNodes) &     ! loop over nodes on interface
-         nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)  ! get shorthand name
-       normal(:,1) = math_vectorproduct(nPos(:,2)-nPos(:,1),nPos(:,3)-nPos(:,1))
-	   normal(:,2) = math_vectorproduct(nPos(:,3)-nPos(:,1),nPos(:,4)-nPos(:,1))
-	   normal(:,3) = math_vectorproduct(nPos(:,3)-nPos(:,2),nPos(:,4)-nPos(:,2))
-	   normal(:,4) = math_vectorproduct(nPos(:,4)-nPos(:,2),nPos(:,1)-nPos(:,2))
-	   forall (n = 1:4)
-	     area(n) = dsqrt(sum(normal(:,n)*normal(:,n)))         ! length of normal vectors (i.e. area)
-		 normal(:,n) = normal(:,n) / area(n)                   ! make unit normal
-	   endforall
-       mesh_ipArea(f,i,e) = sum(area) / 2.0_pReal              ! counted area twice
-	   mesh_ipAreaNormal(:,f,i,e) = sum(normal,2) / 4.0_pReal  ! average of all four possible normals
+     do f = 1,FE_NipNeighbors(t)            ! loop over interfaces of IP 
+	   forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+       forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles)   ! start at each interface node and build valid triangles to cover interface
+         normal(:,j,n) = math_vectorproduct(nPos(:,1+mod(n+j-1,FE_NipFaceNodes)) - nPos(:,n), &    ! calc their normal vectors
+                                            nPos(:,1+mod(n+j-0,FE_NipFaceNodes)) - nPos(:,n))
+         area(j,n) = dsqrt(sum(normal(:,j,n)*normal(:,j,n)))                                       ! and area
+       end forall
+	   forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles, area(j,n) > 0.0_pReal) &
+	     normal(:,j,n) = normal(:,j,n) / area(j,n)        ! make unit normal
+
+       mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)          ! area of parallelograms instead of triangles
+	   mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2) / count(area > 0.0_pReal)  ! average of all valid normals
      enddo
    enddo
  enddo
@@ -1403,20 +1485,22 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  END SUBROUTINE
 
 
-
- 
 !***********************************************************
 ! write statistics regarding input file parsing
 ! to the output file
 ! 
 !***********************************************************
  SUBROUTINE mesh_tell_statistics()
+
  use prec, only: pInt 
  use IO, only: IO_error
+
  implicit none
+
  integer(pInt), dimension (:,:), allocatable :: mesh_MatTex
  character(len=64) fmt
- integer(pInt) i
+
+ integer(pInt) i,e,f
 
  if (mesh_maxValStateVar(1) == 0) call IO_error(110) ! no materials specified
  if (mesh_maxValStateVar(2) == 0) call IO_error(120) ! no textures specified
@@ -1429,6 +1513,21 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  enddo
  
 !$OMP CRITICAL (write2out)
+
+ write (6,*)
+ write (6,*) "Input Parser: IP NEIGHBORHOOD"
+ write (6,*)
+ write (6,"(a13,x,e15.8)") "total volume", sum(mesh_ipVolume)
+ write (6,*)
+ write (6,"(a5,x,a5,x,a15,x,a5,x,a15,x,a16)") "elem","IP","volume","face","area","-- normal --"
+ do e = 1,mesh_NcpElems
+   do i = 1,FE_Nips(mesh_element(2,e))
+     write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
+     do f = 1,FE_NipNeighbors(mesh_element(2,e))
+!       write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
+     enddo
+   enddo
+ enddo
  write (6,*)
  write (6,*) "Input Parser: STATISTICS"
  write (6,*)
@@ -1452,6 +1551,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  enddo
  write (6,*)
 !$OMP END CRITICAL (write2out)
+
 
  return
  
