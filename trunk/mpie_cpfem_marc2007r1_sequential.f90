@@ -130,15 +130,10 @@
  use math, only: invnrmMandel
 
  implicit real(pReal) (a-h,o-z)
-
  integer(pInt) computationMode
-
-
 
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
-
-
 
 ! Marc common blocks are in fixed format so they have to be pasted in here
 ! Beware of changes in newer Marc versions -- these are from 2005r3
@@ -167,7 +162,6 @@
  common/marc_creeps/ &
      cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b,creept(33),icptim,icfte,icfst,&
      icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
-
 
  if (inc == 0) then
    cycleCounter = 4
@@ -201,7 +195,6 @@
  theLovl  = lovl                                    ! record current lovl
 
  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(cycleCounter-4,2_pInt*ijaco)==0,d,ngens)
-
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13

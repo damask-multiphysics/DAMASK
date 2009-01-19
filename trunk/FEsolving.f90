@@ -12,6 +12,7 @@
  logical :: lastIncConverged = .false.,outdatedByNewInc = .false., outdatedFFN1 = .false.
  logical :: symmetricSolver = .false. 
 
+
  CONTAINS
 
 !***********************************************************

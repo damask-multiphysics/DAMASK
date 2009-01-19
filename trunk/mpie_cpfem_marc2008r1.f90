@@ -130,15 +130,15 @@
  use math, only: invnrmMandel
 !
  implicit none
-!
+ 
 !     ** Start of generated type statements **
  real(pReal) coord, d, de, disp, dispt, dt, e, eigvn, eigvn1, ffn, ffn1
  real(pReal) frotn, frotn1, g
  integer(pInt) ifr, ifu, itel, jtype, kcus, lclass, matus, n, ncrd, ndeg
  integer(pInt) ndi, ndm, ngens, nn, nnode, nshear
  real(pReal) s, strechn, strechn1, t
-!     ** End of generated type statements **
-!
+ !     ** End of generated type statements **
+ !
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2),&
            lclass(2)
@@ -183,14 +183,12 @@
    computationMode  = 4   ! return odd results to force new vyvle
  endif
 
- 
  theTime  = cptim                                   ! record current starting time
  theInc   = inc                                     ! record current increment number
  theCycle = ncycle                                  ! record current cycle count
  theLovl  = lovl                                    ! record current lovl
 
  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(cycleCounter-4,4_pInt*ijaco)==0,d,ngens)
-
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13

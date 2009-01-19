@@ -79,6 +79,7 @@
 !
 !    *** Output to MARC output file ***
 !$OMP CRITICAL (write2out)
+
  write(6,*)
  write(6,*) 'CPFEM Initialization'
  write(6,*)
@@ -100,6 +101,7 @@
  write(6,*)
  call flush(6)
 !$OMP END CRITICAL (write2out)
+
  return
 !
  END SUBROUTINE
@@ -219,7 +221,6 @@
        CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = CPFEM_odd_stress
        CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en) = CPFEM_odd_jacobian*math_identity2nd(CPFEM_ngens)
        CPFEM_calc_done = .false.
-
     case (4)    ! do nothing since we can recycle the former results (MARC specialty)
     case (5)    ! record consistent tangent at beginning of new increment
        CPFEM_jaco_knownGood = CPFEM_jaco_bar

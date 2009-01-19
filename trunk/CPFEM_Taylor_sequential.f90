@@ -240,8 +240,6 @@
  CPFEM_stress(1:CPFEM_ngens) = CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en)
  CPFEM_jaco(1:CPFEM_ngens,1:CPFEM_ngens) = CPFEM_jaco_bar(1:CPFEM_ngens,1:CPFEM_ngens,CPFEM_in,cp_en)
  if (debugger) write (6,'(a,/,6(6(f9.3,x)/))') 'stiffness / GPa',CPFEM_jaco(1:CPFEM_ngens,:)/1e9_pReal
-
- 
 !
  return
 !
@@ -266,6 +264,7 @@
 ! use crystallite
  use constitutive
  implicit none
+
 !
  integer(pInt) cp_en,CPFEM_in,g,i,e
  integer(pInt) el_start, el_end, ip_start, ip_end

@@ -17,6 +17,7 @@
 !               profile or multifrontal sparse, the latter seems
 !               to be faster!)
 !             - in case of ddm a symmetric solver has to be used
+
 !********************************************************************
 !     Marc subroutines used:
 !             - hypela2
@@ -124,7 +125,6 @@
 !2     continue
 !3    continue
 !
-
  use prec, only: pReal,pInt, ijaco
  use FEsolving
  use CPFEM, only: CPFEM_general
@@ -185,7 +185,6 @@
  theLovl  = lovl                                    ! record current lovl
 
  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(cycleCounter-4,2_pInt*ijaco)==0,d,ngens)
-
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13

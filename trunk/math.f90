@@ -256,6 +256,7 @@
 !**************************************************************************
 ! matrix multiplication 3x3
 !**************************************************************************
+
  PURE FUNCTION math_mul33x33(A,B)  
 
  use prec, only: pReal, pInt
@@ -271,7 +272,6 @@
 
  END FUNCTION
 
- 
 
 !**************************************************************************
 ! matrix multiplication 6x6
@@ -292,6 +292,7 @@
 
  END FUNCTION
 
+
 !**************************************************************************
 ! matrix multiplication 6x6
 !**************************************************************************
@@ -311,6 +312,7 @@
  return
 
  END FUNCTION
+
  
 !**************************************************************************
 ! matrix multiplication 9x9
@@ -322,7 +324,9 @@
 
  integer(pInt)  i,j
  real(pReal), dimension(9,9), intent(in) ::  A,B
+
  real(pReal), dimension(9,9) ::  math_mul99x99
+
 
  forall (i=1:9,j=1:9) math_mul99x99(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
@@ -976,15 +980,10 @@
  real(pReal) noise,scatter,cosScatter
  integer(pInt) i
 
-
 if (noise==0.0) then
-
     math_sampleGaussOri = center
-
     return
-
 endif
-
 
 ! Helming uses different distribution with Bessel functions
 ! therefore the gauss scatter width has to be scaled differently
@@ -2058,4 +2057,3 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
 
  END MODULE math
-
