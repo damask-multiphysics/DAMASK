@@ -80,6 +80,7 @@ real(pReal), dimension(:,:,:)    , allocatable :: constitutive_texVolFrac
 !************************************
 !*         State variables          *
 !************************************
+logical :: wantsConstitutiveResults = .false.
 integer(pInt) constitutive_maxNstatevars
 integer(pInt), dimension(:,:,:)  , allocatable :: constitutive_Nstatevars
 real(pReal), dimension(:,:,:,:)  , allocatable :: constitutive_state_old

@@ -121,6 +121,7 @@ real(pReal), dimension(:)      , allocatable :: constitutive_recovery
 !************************************
 !*         State variables          *
 !************************************
+logical :: wantsConstitutiveResults = .false.
 integer(pInt) constitutive_maxNstatevars
 integer(pInt), dimension(:,:,:), allocatable :: constitutive_Nstatevars
 real(pReal), dimension(:,:,:,:), allocatable :: constitutive_state_old
