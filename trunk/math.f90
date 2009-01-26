@@ -264,7 +264,7 @@ elseif (typ==2) then
 	allocate(symop(nosym,3,3))
 	do i=1,nosym
 		do j=1,3
-			symop(i,j,:)=sym(24+i*j,:)
+			symop(i,j,:)=sym(24+(i*j),:)
 		enddo
 	enddo
 else
@@ -272,7 +272,7 @@ else
 	allocate(symop(nosym,3,3))
 	do i=1,nosym
 		do j=1,3
-			symop(i,j,:)=sym(36+i*j,:)
+			symop(i,j,:)=sym(36+(i*j),:)
 		enddo
 	enddo
 endif
