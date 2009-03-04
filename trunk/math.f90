@@ -416,6 +416,23 @@ end subroutine
  
 
 !**************************************************************************
+! range of integers starting at one
+!**************************************************************************
+ PURE FUNCTION math_range(N)  
+
+ use prec, only: pInt
+ implicit none
+
+ integer(pInt), intent(in) :: N
+ integer(pInt) i
+ integer(pInt), dimension(N) :: math_range
+
+ forall (i=1:N) math_range(i) = i
+ return
+
+ END FUNCTION
+
+!**************************************************************************
 ! second rank identity tensor of specified dimension
 !**************************************************************************
  FUNCTION math_identity2nd(dimen)  
@@ -1366,7 +1383,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
  use prec, only: pReal, pInt
  implicit none
 
- character(len=80), intent(in) :: sym
+ integer(pInt), intent(in) :: sym
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_symmetricEulers
  integer(pInt) i,j
@@ -1386,9 +1403,9 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
  forall (i=1:3,j=1:3) math_symmetricEulers(j,i) = modulo(math_symmetricEulers(j,i),2.0_pReal*pi)
 
  select case (sym)
-   case ('orthotropic') ! all done
+   case (4) ! all done
 
-   case ('monoclinic')  ! return only first
+   case (2)  ! return only first
      math_symmetricEulers(:,2:3) = 0.0_pReal
 
    case default         ! return blank

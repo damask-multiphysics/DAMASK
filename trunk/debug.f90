@@ -6,10 +6,11 @@
 
 
  implicit none
- integer(pInt), dimension(nCutback+1) :: debug_cutbackDistribution
- integer(pInt), dimension(nInner) :: debug_InnerLoopDistribution
- integer(pInt), dimension(nOuter) :: debug_OuterLoopDistribution
+ integer(pInt), dimension(nCutback+1) :: debug_cutbackDistribution = 0_pInt
+ integer(pInt), dimension(nInner) :: debug_InnerLoopDistribution = 0_pInt
+ integer(pInt), dimension(nOuter) :: debug_OuterLoopDistribution = 0_pInt
  logical :: debugger = .false.
+ logical :: distribution_init = .false.
 
  CONTAINS
 

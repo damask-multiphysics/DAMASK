@@ -4,18 +4,18 @@
 ! written by F. Roters, P. Eisenlohr, L. Hantcherli, W.A. Counts
 ! MPI fuer Eisenforschung, Duesseldorf
 !
-! last modified: 27.11.2008
+! last modified: 22.11.2008
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
-!             - set statevariable 2 to index of material
-!             - set statevariable 3 to index of texture
-!             - choose output of user variables if desired
-!             - make sure the file "mattex.mpie" exists in the working
+!             - set statevariable 2 to index of homogenization
+!             - set statevariable 3 to index of microstructure
+!             - make sure the file "material.config" exists in the working
 !               directory
 !             - use nonsymmetric option for solver (e.g. direct 
 !               profile or multifrontal sparse, the latter seems
 !               to be faster!)
+!             - in case of ddm a symmetric solver has to be used
 !********************************************************************
 !     Marc subroutines used:
 !             - hypela2
@@ -34,15 +34,16 @@
  include "FEsolving.f90"        ! uses prec, IO
  include "mesh.f90"             ! uses prec, IO, math, FEsolving
  include "lattice.f90"          ! uses prec, math
+ include "material.f90"         ! uses prec, math, IO, mesh
+ include "constitutive_phenomenological.f90"     ! uses prec, math, IO, lattice, material, debug
  include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
-! include "crystallite.f90"      ! uses prec, debug, constitutive, mesh, math, IO
  include "CPFEM.f90"            ! uses prec, math, mesh, constitutive, FEsolving, debug, lattice, IO, crystallite
-!
 
  SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
                     nshear,disp,dispt,coord,ffn,frotn,strechn,eigvn,ffn1,&
                     frotn1,strechn1,eigvn1,ncrd,itel,ndeg,ndm,&
                     nnode,jtype,lclass,ifr,ifu)
+
 !********************************************************************
 ! This is the Marc material routine
 !********************************************************************
@@ -123,45 +124,34 @@
 !2     continue
 !3    continue
 !
-
  use prec, only: pReal,pInt, ijaco
  use FEsolving
  use CPFEM, only: CPFEM_general
  use math, only: invnrmMandel
-
- implicit real(pReal) (a-h,o-z)
- integer(pInt) computationMode
-
+ use debug
+!
+ implicit none
+ 
+!     ** Start of generated type statements **
+ real(pReal) coord, d, de, disp, dispt, dt, e, eigvn, eigvn1, ffn, ffn1
+ real(pReal) frotn, frotn1, g
+ integer(pInt) ifr, ifu, itel, jtype, kcus, lclass, matus, n, ncrd, ndeg
+ integer(pInt) ndi, ndm, ngens, nn, nnode, nshear
+ real(pReal) s, strechn, strechn1, t
+ !     ** End of generated type statements **
+ !
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
 
-! Marc common blocks are in fixed format so they have to be pasted in here
-! Beware of changes in newer Marc versions -- these are from 2005r3
-! concom is needed for inc, subinc, ncycle, lovl
-! include 'concom'
- common/marc_concom/ &
-     iacous, iasmbl, iautth,    ibear,  icompl,     iconj,  icreep, ideva(50), idyn,   idynt,&
-     ielas,  ielcma, ielect,    iform,  ifour,      iharm,  ihcps,  iheat,     iheatt, ihresp,&
-     ijoule, ilem,   ilnmom,    iloren, inc,        incext, incsub, ipass,     iplres, ipois,&
-     ipoist, irpflo, ismall,    ismalt, isoil,      ispect, ispnow, istore,    iswep,  ithcrp,&
-     itherm, iupblg, iupdat,    jacflg, jel,        jparks, largst, lfond,     loadup, loaduq,&
-     lodcor, lovl,   lsub,      magnet, ncycle,     newtnt, newton, noshr,     linear, ivscpl,&
-     icrpim, iradrt, ipshft,    itshr,  iangin,     iupmdr, iconjf, jincfl,    jpermg, jhour,&
-     isolvr, jritz,  jtable,    jshell, jdoubl,     jform,  jcentr, imini,     kautth, iautof,&
-     ibukty, iassum, icnstd,    icnstt, kmakmas,    imethvp,iradrte,iradrtp,   iupdate,iupdatp,&
-     ncycnt, marmen ,idynme,    ihavca, ispf,       kmini,  imixed, largtt,    kdoela, iautofg,&
-     ipshftp,idntrc, ipore,     jtablm, jtablc,     isnecma,itrnspo,imsdif,    jtrnspo,mcnear,&
-     imech,  imecht, ielcmat,   ielectt,magnett,    imsdift,noplas, jtabls,    jactch, jtablth,&
-     kgmsto ,jpzo,   ifricsh,   iremkin,iremfor,    ishearp,jspf,   machining, jlshell,icompsol,&
-     iupblgfo,jcondir,nstcrp,   nactive,ipassref,   nstspnt,ibeart,icheckmpc,  noline, icuring,&
-     ishrink,ioffsflg,isetoff,  ioffsetm,iharmt,    inc_incdat,iautspc,ibrake, icbush ,istream_input,&
-     iprsinp,ivlsinp,ifirst_time,ipin_m,jgnstr_glb, imarc_return,iqvcinp,nqvceid,istpnx,imicro1
+! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
+! Beware of changes in newer Marc versions
 
-! creeps is needed for timinc (time increment)
-! include 'creeps'
- common/marc_creeps/ &
-     cptim,timinc,timinc_p,timinc_s,timincm,timinc_a,timinc_b,creept(33),icptim,icfte,icfst,&
-     icfeq,icftm,icetem,mcreep,jcreep,icpa,icftmp,icfstr,icfqcp,icfcpm,icrppr,icrcha,icpb,iicpmt,iicpa
+ include "concom2007r1"     ! concom is needed for inc, subinc, ncycle, lovl
+ include "creeps2007r1"     ! creeps is needed for timinc (time increment)
+
+ integer(pInt) computationMode,i
+
+! write(6,'(3(3(f10.3,x),/))') ffn1(:,1),ffn1(:,2),ffn1(:,3)
 
  if (inc == 0) then
    cycleCounter = 4
@@ -170,16 +160,22 @@
    if (theCycle /= ncycle .or. theLovl /= lovl) then
      cycleCounter = cycleCounter+1   ! ping pong
      outdatedFFN1 = .false.
+     write (6,*) n(1),nn,'cycleCounter',cycleCounter
+     call debug_info()                          ! output of debugging/performance statistics of former
+     debug_cutbackDistribution   = 0_pInt       ! initialize debugging data
+     debug_InnerLoopDistribution = 0_pInt
+     debug_OuterLoopDistribution = 0_pInt
    endif
  endif
  if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence
    lastIncConverged = .true.
    outdatedByNewInc = .true.
+   write (6,*) n(1),nn,'lastIncConverged + outdated'
  endif
 
- if (mod(cycleCounter,2) /= 0) computationMode = 4   ! recycle
- if (mod(cycleCounter,4) == 2) computationMode = 3   ! collect
- if (mod(cycleCounter,4) == 0) computationMode = 2   ! compute
+ if (mod(cycleCounter,2) /= 0) computationMode = 4   ! recycle in odd cycles
+ if (mod(cycleCounter,4) == 2) computationMode = 3   ! collect in 2,6,10,...
+ if (mod(cycleCounter,4) == 0) computationMode = 2   ! compute in 0,4,8,...
  if (computationMode == 4 .and. ncycle == 0 .and. .not. lastIncConverged) &
    computationMode = 6    ! recycle but restore known good consistent tangent
  if (computationMode == 4 .and. lastIncConverged) then
@@ -189,10 +185,6 @@
  if (computationMode == 2 .and. outdatedByNewInc) then
    computationMode  = 1   ! compute and age former results
    outdatedByNewInc = .false.
- endif
-
- if (computationMode == 2 .and. outdatedFFN1) then
-   computationMode  = 4   ! return odd results to force new vyvle
  endif
 
  theTime  = cptim                                   ! record current starting time
@@ -207,6 +199,7 @@
  forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*d(1:ngens,i)*invnrmMandel(1:ngens)
  s(1:ngens) = s(1:ngens)*invnrmMandel(1:ngens)
  if(symmetricSolver) d(1:ngens,1:ngens) = 0.5_pReal*(d(1:ngens,1:ngens)+transpose(d(1:ngens,1:ngens)))
+
  return
  
  END SUBROUTINE
@@ -220,22 +213,22 @@
 !     select a variable contour plotting (user subroutine).
 !
 !     v            variable
-!     s (idss)         stress array
+!     s (idss)     stress array
 !     sp           stresses in preferred direction
-!     etot          total strain (generalized)
-!     eplas         total plastic strain
-!     ecreep        total creep strain
-!     t             current temperature
+!     etot         total strain (generalized)
+!     eplas        total plastic strain
+!     ecreep       total creep strain
+!     t            current temperature
 !     m            element number
 !     nn           integration point number
 !     layer        layer number
-!     ndi (3)       number of direct stress components
-!     nshear (3)    number of shear stress components
+!     ndi (3)      number of direct stress components
+!     nshear (3)   number of shear stress components
 !
 !********************************************************************
  use prec,  only: pReal,pInt
  use CPFEM, only: CPFEM_results, CPFEM_Nresults
- use constitutive, only: constitutive_maxNresults
+ use constitutive, only: constitutive_maxSizePostResults
  use mesh,  only: mesh_FEasCP
  implicit none
 !
@@ -244,10 +237,9 @@
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
 !
 ! assign result variable
- v=CPFEM_results(mod(jpltcd-1_pInt, CPFEM_Nresults+constitutive_maxNresults)+1_pInt,&
-                 (jpltcd-1_pInt)/(CPFEM_Nresults+constitutive_maxNresults)+1_pInt,&
-                 nn, mesh_FEasCP('elem', m))
-
+ v = CPFEM_results(mod(jpltcd-1_pInt, CPFEM_Nresults+constitutive_maxSizePostResults)+1_pInt,&
+                   (jpltcd-1_pInt)/(CPFEM_Nresults+constitutive_maxSizePostResults)+1_pInt,&
+                   nn, mesh_FEasCP('elem', m))
  return
  END SUBROUTINE
 !

@@ -245,6 +245,132 @@
 
 
 !********************************************************************
+! identifies lines without content
+!********************************************************************
+ PURE FUNCTION IO_isBlank (line)
+
+ use prec, only: pInt
+ implicit none
+
+ character(len=*), intent(in) :: line
+ character(len=*), parameter :: blank = achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
+ character(len=*), parameter :: comment = achar(35)                               ! comment id '#'
+ integer(pInt) posNonBlank, posComment
+ logical IO_isBlank
+ 
+ posNonBlank = verify(line,blank)
+ posComment  = scan(line,comment)
+ IO_isBlank = posNonBlank == 0 .or. posNonBlank == posComment
+
+ return
+ 
+ END FUNCTION
+
+!********************************************************************
+! get tagged content of line
+!********************************************************************
+ PURE FUNCTION IO_getTag (line,openChar,closechar)
+
+ use prec, only: pInt
+ implicit none
+
+ character(len=*), intent(in) :: line,openChar,closeChar
+ character(len=*), parameter :: sep=achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
+ character(len=len_trim(line)) IO_getTag
+ integer(pInt)  left,right
+
+ IO_getTag = ''
+ left = scan(line,openChar)
+ right = scan(line,closeChar)
+ 
+ if (left == verify(line,sep) .and. right > left) & ! openChar is first and closeChar occurs
+   IO_getTag = line(left+1:right-1)
+
+ return
+ 
+ END FUNCTION
+
+
+!*********************************************************************
+ FUNCTION IO_countSections(file,part)
+!*********************************************************************
+ use prec, only: pInt
+ implicit none
+
+!* Definition of variables
+ integer(pInt), intent(in) :: file
+ character(len=*), intent(in) :: part
+ integer(pInt) IO_countSections
+ character(len=1024) line
+
+ IO_countSections = 0
+ line = ''
+ rewind(file)
+
+ do while (IO_getTag(line,'<','>') /= part)      ! search for part
+   read(file,'(a1024)',END=100) line
+ enddo
+
+ do
+   read(file,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
+     IO_countSections = IO_countSections + 1
+ enddo
+
+100 return
+
+ END FUNCTION
+ 
+
+!*********************************************************************
+! return array of myTag counts within <part> for at most N[sections]
+!*********************************************************************
+ FUNCTION IO_countTagInPart(file,part,myTag,Nsections)
+
+ use prec, only: pInt
+ implicit none
+
+!* Definition of variables
+ integer(pInt), intent(in) :: file, Nsections
+ character(len=*), intent(in) :: part, myTag
+ integer(pInt), dimension(Nsections) :: IO_countTagInPart, counter
+ integer(pInt), parameter :: maxNchunks = 1
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt) section
+ character(len=1024) line,tag
+
+ counter = 0_pInt
+ section = 0_pInt
+ line = ''
+ rewind(file)
+
+ do while (IO_getTag(line,'<','>') /= part)               ! search for part
+   read(file,'(a1024)',END=100) line
+ enddo
+
+ do
+   read(file,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
+     section = section + 1
+   if (section > 0) then
+     positions = IO_stringPos(line,maxNchunks)
+     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     if (tag == myTag) &                                  ! match
+       counter(section) = counter(section) + 1
+   endif   
+ enddo
+
+100 IO_countTagInPart = counter
+ return
+
+END FUNCTION
+
+
+!********************************************************************
 ! locate at most N space-separated parts in line
 ! return array containing number of parts found and
 ! their left/right positions to be used by IO_xxxVal
@@ -559,48 +685,90 @@
 ! and terminate the Marc run with exit #9xxx
 ! in ABAQUS either time step is reduced or execution terminated
 !********************************************************************
- SUBROUTINE IO_error(ID)
+ SUBROUTINE IO_error(ID,e,i,g,ext_msg)
 
  use prec, only: pInt
 
  use debug
  implicit none
 
- integer(pInt) ID
+ integer(pInt), intent(in) :: ID
+ integer(pInt), optional, intent(in) :: e,i,g
+ character(len=*), optional, intent(in) :: ext_msg
  character(len=80) msg
 
  select case (ID)
- case (100)
+ case (0)
    msg='Unable to open input file.'
+ case (100)
+   msg='Error reading from configuration file.'
+ case (105)
+   msg='Error reading from ODF file.'
  case (110)
-   msg='No materials specified via State Variable 2.'
+   msg='No homogenization specified via State Variable 2.'
  case (120)
-   msg='No textures specified via State Variable 3.'
+   msg='No microstructure specified via State Variable 3.'
+ case (130)
+   msg='Homogenization index out of bounds.'
+ case (140)
+   msg='Microstructure index out of bounds.'
+ case (150)
+   msg='Phase index out of bounds.'
+ case (160)
+   msg='Texture index out of bounds.'
+ case (170)
+   msg='Sum of phase fractions differs from 1.'
  case (200)
-   msg='Error reading from material+texture file'
+   msg='Unknown constitution specified.'
+ case (201)
+   msg='Unknown lattice type specified.'
+ case (202)
+   msg='Number of slip systems too small.'
+ case (203)
+   msg='Negative initial slip resistance.'
+ case (204)
+   msg='Non-positive reference shear rate.'
+ case (205)
+   msg='Non-positive stress exponent.'
+ case (206)
+   msg='Non-positive initial hardening slope.'
+ case (207)
+   msg='Non-positive saturation stress.'
+ case (208)
+   msg='Non-positive w0.'
+ case (209)
+   msg='Negative latent hardening ratio.'
  case (300)
-   msg='This material can only be used with elements with three direct stress components'
- case (400)
-   msg='Unknown alloy number specified'
+   msg='This material can only be used with elements with three direct stress components.'
  case (500)
-   msg='Unknown lattice type specified'
+   msg='Unknown lattice type specified.'
  case (600)
-   msg='Convergence not reached'
+   msg='Convergence not reached.'
+ case (610)
+   msg='Stress loop not converged.'
  case (650)
-   msg='Polar decomposition failed'
+   msg='Polar decomposition failed.'
  case (700)
-   msg='Singular matrix in stress iteration'
+   msg='Singular matrix in stress iteration.'
  case (800)
    msg='GIA requires 8 grains per IP (bonehead, you!)'
  case default
-   msg='Unknown error number'
+   msg='Unknown error number...'
  end select
  
  !$OMP CRITICAL (write2out)
- write(6,*) 'MPIE Material Routine Ver. 0.0 by the coding team'
- write(6,*)
+ write(6,*) '+------------------------------+'
  write(6,*) msg
- write(6,*)
+ if (present(ext_msg))  write(6,*) ext_msg
+ write(6,*) '+------------------------------+'
+ if (present(e)) then
+   if (present(i) .and. present(g)) then
+     write(6,'(a10,x,i6,x,a2,x,i2,x,a5,x,i4)') 'at element',e,'IP',i,'grain',g
+   else
+     write(6,'(a2,x,i6)') 'at',e
+   endif
+   write(6,*)
+ endif
 
  call debug_info()
  call flush(6)

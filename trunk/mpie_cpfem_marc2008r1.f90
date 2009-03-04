@@ -36,10 +36,10 @@
  include "mesh.f90"             ! uses prec, IO, math, FEsolving
  include "lattice.f90"          ! uses prec, math
  include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
-! include "crystallite.f90"      ! uses prec, debug, constitutive, mesh, math, IO
  include "CPFEM.f90"            ! uses prec, math, mesh, constitutive, FEsolving, debug, lattice, IO, crystallite
-!
-!
+
+ logical, parameter :: parallelExecution = .true.
+
  SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
                     nshear,disp,dispt,coord,ffn,frotn,strechn,eigvn,ffn1,&
                     frotn1,strechn1,eigvn1,ncrd,itel,ndeg,ndm,&
@@ -128,6 +128,7 @@
  use FEsolving
  use CPFEM, only: CPFEM_general
  use math, only: invnrmMandel
+ use debug
 !
  implicit none
  
@@ -146,9 +147,9 @@
 ! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
 ! Beware of changes in newer Marc versions -- these are from 2005r3
 ! concom is needed for inc, subinc, ncycle, lovl
- include "concom_f90"
+ include "concom2008r1"
 ! creeps is needed for timinc (time increment)
- include "creeps_f90"
+ include "creeps2008r1"
 !
  integer(pInt) computationMode,i
 !
@@ -159,6 +160,10 @@
    if (theCycle /= ncycle .or. theLovl /= lovl) then
      cycleCounter = cycleCounter+1   ! ping pong
      outdatedFFN1 = .false.
+     call debug_info()                          ! output of debugging/performance statistics of former
+     debug_cutbackDistribution   = 0_pInt       ! initialize debugging data
+     debug_InnerLoopDistribution = 0_pInt
+     debug_OuterLoopDistribution = 0_pInt
    endif
  endif
  if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence
@@ -178,9 +183,6 @@
  if (computationMode == 2 .and. outdatedByNewInc) then
    computationMode  = 1   ! compute and age former results
    outdatedByNewInc = .false.
- endif
- if (computationMode == 2 .and. outdatedFFN1) then
-   computationMode  = 4   ! return odd results to force new vyvle
  endif
 
  theTime  = cptim                                   ! record current starting time
@@ -208,17 +210,17 @@
 !     select a variable contour plotting (user subroutine).
 !
 !     v            variable
-!     s (idss)         stress array
+!     s (idss)     stress array
 !     sp           stresses in preferred direction
-!     etot          total strain (generalized)
-!     eplas         total plastic strain
-!     ecreep        total creep strain
-!     t             current temperature
+!     etot         total strain (generalized)
+!     eplas        total plastic strain
+!     ecreep       total creep strain
+!     t            current temperature
 !     m            element number
 !     nn           integration point number
 !     layer        layer number
-!     ndi (3)       number of direct stress components
-!     nshear (3)    number of shear stress components
+!     ndi (3)      number of direct stress components
+!     nshear (3)   number of shear stress components
 !
 !********************************************************************
  use prec,  only: pReal,pInt
@@ -232,8 +234,8 @@
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
 !
 ! assign result variable
- v=CPFEM_results(mod(jpltcd-1_pInt, CPFEM_Nresults+constitutive_maxNresults)+1_pInt,&
-                 (jpltcd-1_pInt)/(CPFEM_Nresults+constitutive_maxNresults)+1_pInt,&
+ v=CPFEM_results(mod(jpltcd-1_pInt, CPFEM_Nresults+constitutive_maxSizePostResults)+1_pInt,&
+                 (jpltcd-1_pInt)/(CPFEM_Nresults+constitutive_maxSizePostResults)+1_pInt,&
                  nn, mesh_FEasCP('elem', m))
  return
  END SUBROUTINE

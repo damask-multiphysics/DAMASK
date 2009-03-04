@@ -681,8 +681,8 @@
 
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile
-
- use FEsolving, only: FE_get_solverSymmetry
+ use FEsolving, only: parallelExecution
+ 
  implicit none
  
  integer(pInt), parameter :: fileUnit = 222
@@ -703,7 +703,6 @@
 ! call to various subroutines to parse the stuff from the input file...
  if (IO_open_inputFile(fileUnit)) then
 
-   call FE_get_solverSymmetry(fileUnit)
    call mesh_get_meshDimensions(fileUnit)
    call mesh_build_nodeMapping(fileUnit)
    call mesh_build_elemMapping(fileUnit)
@@ -718,6 +717,8 @@
    call mesh_build_ipAreas()
    call mesh_tell_statistics()
    close (fileUnit)
+
+   parallelExecution = (mesh_Nelems == mesh_NcpElems)      ! plus potential killer from non-local constitutive
  else
    call IO_error(100) ! cannot open input file
  endif
@@ -1442,10 +1443,10 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
 
 
 !***********************************************************
-! calculation of IP volume
+! calculation of IP interface areas
 !
 ! allocate globals
-! _ipVolume
+! _ipArea, _ipAreaNormal
 !***********************************************************
  SUBROUTINE mesh_build_ipAreas()
  
@@ -1492,7 +1493,8 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
 !***********************************************************
  SUBROUTINE mesh_tell_statistics()
 
- use prec, only: pInt 
+ use prec, only: pInt
+ use math, only: math_range
  use IO, only: IO_error
 
  implicit none
@@ -1540,11 +1542,13 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  write (6,*) mesh_maxNsubNodes,     " : max number of (additional) subnodes in any CP element"
  write (6,*) mesh_maxNsharedElems,  " : max number of CP elements sharing a node"
  write (6,*)
- write (6,*) "Input Parser: MATERIAL/TEXTURE"
+ write (6,*) "Input Parser: HOMOGENIZATION/MICROSTRUCTURE"
  write (6,*)
- write (6,*) mesh_maxValStateVar(1), " : maximum material index"
- write (6,*) mesh_maxValStateVar(2), " : maximum texture index"
+ write (6,*) mesh_maxValStateVar(1), " : maximum homogenization index"
+ write (6,*) mesh_maxValStateVar(2), " : maximum microstructure index"
  write (6,*)
+ write (fmt,"(a,i3,a)") "(9(x),a1,x,",mesh_maxValStateVar(2),"(i8))"
+ write (6,fmt) "+",math_range(mesh_maxValStateVar(2))
  write (fmt,"(a,i3,a)") "(i8,x,a1,x,",mesh_maxValStateVar(2),"(i8))"
  do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) materials
    write (6,fmt) i,"|",mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
