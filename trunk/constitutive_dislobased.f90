@@ -8,8 +8,31 @@
 !* - orientations                   *
 !************************************
 
-MODULE constitutive_dislobased
+!	[Alu]
+!	constitution             phenomenological
+!	lattice_structure        1
+!	Nslip                    12
+!	
+!	c11                      106.75e9
+!	c12                      60.41e9
+!	c44                      28.34e9
+!	
+!	burgers                  2.86e-10	# Burgers vector [m]
+!	Qedge                    3e-19		# Activation energy for dislocation glide [J/K] (0.5*G*b^3)
+!	Qsd                      2.4e-19		# Activation energy for self diffusion [J/K] (gamma-iron)
+!	diff0                    1e-3		# prefactor vacancy diffusion coeffficent (gamma-iron)
+!	interaction_coefficients 1.0 2.2 3.0 1.6 3.8 4.5		# Dislocation interaction coefficients
+!	
+!	rho0                     6.0e12		# Initial dislocation density [m/m^3]
+!	
+!	c1                       0.1		# Passing stress adjustment
+!	c2                       2.0		# Jump width adjustment
+!	c3                       1.0		# Activation volume adjustment
+!	c4                       50.0		# Average slip distance adjustment for lock formation
+!	c7                       8.0		# Athermal recovery adjustment
+!	c8                       1.0e10		# Thermal recovery adjustment (plays no role for me)
 
+MODULE constitutive_dislobased
 !*** Include other modules ***
  use prec, only: pReal,pInt
  implicit none
@@ -59,7 +82,6 @@ real(pReal), parameter :: avogadro = 6.022e23_pReal
 !* Physical parameter, Gas constant in J.mol/Kelvin
 real(pReal), parameter :: Rgaz = 8.314_pReal    
 
-
 CONTAINS
 !****************************************
 !* - constitutive_init
@@ -69,7 +91,6 @@ CONTAINS
 !* - consistutive_dotState
 !* - consistutive_postResults
 !****************************************
-
 
 subroutine constitutive_dislobased_init(file)
 !**************************************
@@ -260,17 +281,17 @@ subroutine constitutive_dislobased_init(file)
    do j = 1,constitutive_dislobased_Nslip(i)
       do k = 1,constitutive_dislobased_Nslip(i)
        !* Projection of the dislocation *
-	   x = math_mul3x3(lattice_sn(:,j,i),lattice_st(:,k,i))
-	   y = 1.0_pReal-x**(2.0_pReal)
+        x = math_mul3x3(lattice_sn(:,j,i),lattice_st(:,k,i))
+        y = 1.0_pReal-x**(2.0_pReal)
        !* Interaction matrix *
-       constitutive_dislobased_Iforest(j,k,i)=abs(x)*&
-	   constitutive_dislobased_SlipIntCoeff(lattice_SlipIntType(j,k,constitutive_dislobased_structure(i)),i)
-	   if (y>0.0_pReal) then
-	     constitutive_dislobased_Iparallel(j,k,i)=sqrt(y)*&
-		 constitutive_dislobased_SlipIntCoeff(lattice_SlipIntType(j,k,constitutive_dislobased_structure(i)),i)
-	   else
-	     constitutive_dislobased_Iparallel(j,k,i)=0.0_pReal
-	   endif
+        constitutive_dislobased_Iforest(j,k,i)=abs(x)*&
+        constitutive_dislobased_SlipIntCoeff(lattice_SlipIntType(j,k,constitutive_dislobased_structure(i)),i)
+        if (y>0.0_pReal) then
+          constitutive_dislobased_Iparallel(j,k,i)=sqrt(y)*&
+          constitutive_dislobased_SlipIntCoeff(lattice_SlipIntType(j,k,constitutive_dislobased_structure(i)),i)
+        else
+          constitutive_dislobased_Iparallel(j,k,i)=0.0_pReal
+        endif
       enddo
    enddo
 
@@ -300,7 +321,6 @@ function constitutive_dislobased_stateInit(ipc,ip,el)
 
  return
 end function
-
 
 function constitutive_dislobased_homogenizedC(state,ipc,ip,el)
 !*********************************************************************
@@ -365,7 +385,7 @@ subroutine constitutive_dislobased_microstructure(Temperature,state,ipc,ip,el)
  state(ipc,ip,el)%p((n+1):(2*n))   = matmul(constitutive_dislobased_Iforest  (1:n,1:n,matID),state(ipc,ip,el)%p(1:n))
  state(ipc,ip,el)%p((2*n+1):(3*n)) = matmul(constitutive_dislobased_Iparallel(1:n,1:n,matID),state(ipc,ip,el)%p(1:n))
  !$OMP END CRITICAL (evilmatmul)
-	
+
  do i=1,n
 
    state(ipc,ip,el)%p(3*n+i) = &
@@ -442,7 +462,7 @@ subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Tempera
  dLp_dTstar = 0.0_pReal
  do i = 1,constitutive_dislobased_Nslip(matID)
    dgdot_dtauslip(i) = (state(ipc,ip,el)%p(7*n+i)*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)*&
-	                   cosh(((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)) 
+                        cosh(((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)) 
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
           dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
              dgdot_dtauslip(i)*lattice_Sslip(k,l,i,constitutive_dislobased_structure(matID))* &
@@ -491,18 +511,17 @@ function constitutive_dislobased_dotState(Tstar_v,Temperature,state,ipc,ip,el)
       gdot_slip = state(ipc,ip,el)%p(7*n+i)*sign(1.0_pReal,tau_slip)*&
                   sinh(((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature))
       locks     = (sqrt(state(ipc,ip,el)%p(n+i))*abs(gdot_slip))/&
-	              (constitutive_dislobased_c4(matID)*constitutive_dislobased_bg(matID)) 
-	  athermal_recovery = constitutive_dislobased_c7(matID)*state(ipc,ip,el)%p(i)*abs(gdot_slip)
+                  (constitutive_dislobased_c4(matID)*constitutive_dislobased_bg(matID)) 
+      athermal_recovery = constitutive_dislobased_c7(matID)*state(ipc,ip,el)%p(i)*abs(gdot_slip)
       thermal_recovery  = constitutive_dislobased_c8(matID)*abs(tau_slip)*state(ipc,ip,el)%p(i)**(2.0_pReal)*&
-	                      ((constitutive_dislobased_D0(matID)*constitutive_dislobased_bg(matID)**(3.0_pReal))/&
-						  (kB*Temperature))*exp(-constitutive_dislobased_Qsd(matID)/(kB*Temperature))
+                          ((constitutive_dislobased_D0(matID)*constitutive_dislobased_bg(matID)**(3.0_pReal))/&
+                          (kB*Temperature))*exp(-constitutive_dislobased_Qsd(matID)/(kB*Temperature))
       constitutive_dislobased_dotState(i) = locks - athermal_recovery !-thermal_recovery
    endif
  enddo
 
  return
 end function
-
 
 pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el)
 !*********************************************************************

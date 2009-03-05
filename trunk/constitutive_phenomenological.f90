@@ -7,6 +7,23 @@
 !* - parameters definition                           *
 !*****************************************************
 
+!	[Alu]
+!	constitution            phenomenological
+!	lattice_structure       1
+!	Nslip                   12
+!	
+!	c11                     106.75e9
+!	c12                     60.41e9
+!	c44                     28.34e9
+!	
+!	s0_slip                 31e6
+!	gdot0_slip              0.001
+!	n_slip                  20
+!	h0                      75e6
+!	s_sat                   63e6
+!	w0                      2.25
+!	latent_ratio            1.4
+
 MODULE constitutive_phenomenological
 
 !*** Include other modules ***
