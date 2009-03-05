@@ -61,7 +61,7 @@ subroutine constitutive_phenomenological_init(file)
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 7
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k,l, output
+ integer(pInt) section, maxNinstance, i,j,k, output
  character(len=64) tag
  character(len=1024) line
  
@@ -415,7 +415,7 @@ pure function constitutive_phenomenological_postResults(Tstar_v,Temperature,dt,s
  real(pReal), dimension(6), intent(in) :: Tstar_v
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
  integer(pInt) matID,o,i,c,n
- real(pReal) tau_slip, active_rate
+ real(pReal) tau_slip
  real(pReal), dimension(constitutive_phenomenological_sizePostResults(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_phenomenological_postResults
 

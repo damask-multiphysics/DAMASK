@@ -1454,7 +1454,7 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  use math
  implicit none
  
- integer(pInt) e,f,t,i,j,k,n
+ integer(pInt) e,f,t,i,j,n
  integer(pInt), parameter :: Ntriangles = FE_NipFaceNodes-2    ! each interface is made up of this many triangles
  real(pReal), dimension (3,FE_NipFaceNodes) :: nPos            ! coordinates of nodes on IP face
  real(pReal), dimension(3,Ntriangles,FE_NipFaceNodes) :: normal

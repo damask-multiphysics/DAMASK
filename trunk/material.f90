@@ -421,8 +421,8 @@ subroutine material_populateGrains()
  real(pReal), dimension (:,:),   allocatable :: orientationOfGrain
  real(pReal), dimension (3) :: orientation
  real(pReal), dimension (3,3) :: symOrientation
- integer(pInt) t,n,e,i,g,j,m,homog,micro,sgn
- integer(pInt) phaseID,textureID,dGrains,myNgrains,myNorientations,NorientationsOfConstituent, &
+ integer(pInt) t,e,i,g,j,m,homog,micro,sgn
+ integer(pInt) phaseID,textureID,dGrains,myNgrains,myNorientations, &
                grain,constituentGrain,symExtension
  real(pReal) extreme,rnd
 
@@ -516,7 +516,7 @@ subroutine material_populateGrains()
                                      texture_Gauss(  4,t,textureID))
              enddo
              constituentGrain = constituentGrain + int(myNorientations*texture_Gauss(5,t,textureID))
-             write (6,*) 'now at constitutent grain',constituentGrain
+             write (6,*) 'now at constituent grain',constituentGrain
            enddo
 
            do t = 1,texture_Nfiber(textureID)                                   ! loop over fiber components
@@ -528,7 +528,7 @@ subroutine material_populateGrains()
                                      texture_Fiber(  5,t,textureID))
              enddo
              constituentGrain = constituentGrain + int(myNorientations*texture_fiber(6,t,textureID))
-             write (6,*) 'now at constitutent grain',constituentGrain
+             write (6,*) 'now at constituent grain',constituentGrain
            enddo
 
            write (6,*) 'looping',constituentGrain+1,myNorientations         

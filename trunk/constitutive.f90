@@ -44,12 +44,12 @@ subroutine constitutive_init()
 
  integer(pInt), parameter :: fileunit = 200
  integer(pInt) e,i,g,myInstance
- 
+
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
  call constitutive_phenomenological_init(fileunit)       ! parse all phases of this constitution
 ! call constitutive_dislocal_init(fileunit)
  close(fileunit)
- 
+
  allocate(constitutive_state_old(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_state_new(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_sizeDotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;    constitutive_sizeDotState = 0_pInt
@@ -206,7 +206,7 @@ function constitutive_dotState(Tstar_v,Temperature,ipc,ip,el)
  real(pReal) Temperature
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(constitutive_sizeDotState(ipc,ip,el)) :: constitutive_dotState
- 
+
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
      constitutive_dotState = constitutive_phenomenological_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)

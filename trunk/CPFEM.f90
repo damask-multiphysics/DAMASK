@@ -171,7 +171,7 @@
  real(pReal), dimension (3,3)        :: ffn,ffn1,Kirchhoff_bar
  real(pReal), dimension (3,3,3,3)    :: H_bar, H_bar_sym
  real(pReal), dimension(CPFEM_ngens) :: CPFEM_stress
- real(pReal), dimension(CPFEM_ngens,CPFEM_ngens) :: CPFEM_jaco, odd_jaco
+ real(pReal), dimension(CPFEM_ngens,CPFEM_ngens) :: CPFEM_jaco
  real(pReal) Temperature,CPFEM_dt,J_inverse
  integer(pInt) CPFEM_mode               ! 1: regular computation with aged results&
                                         ! 2: regular computation&
@@ -291,7 +291,6 @@
  real(pReal), intent(in) :: CPFEM_dt
  integer(pInt) g,i,e
  logical error
- real(pReal) volfrac
  real(pReal), dimension(3,3) :: U,R
 
 
@@ -354,7 +353,7 @@
  implicit none
 
  character (len=128) msg
- logical updateJaco, JacoOK, allConverged
+ logical updateJaco, allConverged
  real(preal) dt
  real(pReal), dimension(3,3) :: Fg_pert,Lp_pert, P_pert, Fp_pert, Fe_pert
  real(pReal), dimension(6) :: Tstar_v     
@@ -785,4 +784,3 @@ Inner: do              ! inner iteration: Lp
 !
  END MODULE
 !##############################################################
-
