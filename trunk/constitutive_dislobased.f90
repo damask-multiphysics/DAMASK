@@ -9,7 +9,9 @@
 !************************************
 
 !	[Alu]
-!	constitution             phenomenological
+!	constitution             dislobased
+!	(output)                 dislodensity
+!	(output)                 rateofshear
 !	lattice_structure        1
 !	Nslip                    12
 !	

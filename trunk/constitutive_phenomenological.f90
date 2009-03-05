@@ -9,6 +9,8 @@
 
 !	[Alu]
 !	constitution            phenomenological
+!	(output)                slipresistance
+!	(output)                rateofshear
 !	lattice_structure       1
 !	Nslip                   12
 !	
