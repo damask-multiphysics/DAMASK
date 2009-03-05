@@ -41,6 +41,7 @@ subroutine constitutive_init()
  use material
  use constitutive_phenomenological
  use constitutive_j2
+ use constitutive_dislobased
 
  integer(pInt), parameter :: fileunit = 200
  integer(pInt) e,i,g,myInstance
@@ -49,6 +50,7 @@ subroutine constitutive_init()
 
  call constitutive_phenomenological_init(fileunit)       ! parse all phases of this constitution
  call constitutive_j2_init(fileunit)
+ call constitutive_dislobased_init(fileunit)
 
  close(fileunit)
 
@@ -107,6 +109,7 @@ function constitutive_homogenizedC(ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
  use constitutive_j2
+ use constitutive_dislobased
  implicit none
 
  !* Definition of variables
@@ -118,6 +121,8 @@ function constitutive_homogenizedC(ipc,ip,el)
      constitutive_homogenizedC = constitutive_phenomenological_homogenizedC(constitutive_state_new,ipc,ip,el)
    case (constitutive_j2_label)
      constitutive_homogenizedC = constitutive_j2_homogenizedC(constitutive_state_new,ipc,ip,el)
+   case (constitutive_dislobased_label)
+     constitutive_homogenizedC = constitutive_dislobased_homogenizedC(constitutive_state_new,ipc,ip,el)
 
  end select
 
@@ -139,6 +144,7 @@ subroutine constitutive_microstructure(Temperature,ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
  use constitutive_j2
+ use constitutive_dislobased
  implicit none
 
 !* Definition of variables
@@ -150,6 +156,8 @@ real(pReal) Temperature
      call constitutive_phenomenological_microstructure(Temperature,constitutive_state_new,ipc,ip,el)
    case (constitutive_j2_label)
      call constitutive_j2_microstructure(Temperature,constitutive_state_new,ipc,ip,el)
+   case (constitutive_dislobased_label)
+     call constitutive_dislobased_microstructure(Temperature,constitutive_state_new,ipc,ip,el)
 
  end select
 
@@ -173,6 +181,7 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar, Tstar_v,Temperature,ipc,i
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
  use constitutive_j2
+ use constitutive_dislobased
  implicit none
 
 !* Definition of variables
@@ -187,6 +196,8 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar, Tstar_v,Temperature,ipc,i
      call constitutive_phenomenological_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
    case (constitutive_j2_label)
      call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+   case (constitutive_dislobased_label)
+     call constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
 
  end select
 
@@ -211,6 +222,7 @@ function constitutive_dotState(Tstar_v,Temperature,ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
  use constitutive_j2
+ use constitutive_dislobased
  implicit none
 
 !* Definition of variables
@@ -224,6 +236,8 @@ function constitutive_dotState(Tstar_v,Temperature,ipc,ip,el)
      constitutive_dotState = constitutive_phenomenological_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
    case (constitutive_j2_label)
      constitutive_dotState = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+   case (constitutive_dislobased_label)
+     call constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
 
  end select
  return
@@ -244,6 +258,7 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
  use constitutive_j2
+ use constitutive_dislobased
  implicit none
 
 !* Definition of variables
@@ -258,6 +273,9 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
      constitutive_postResults = constitutive_phenomenological_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
    case (constitutive_j2_label)
      constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
+   case (constitutive_dislobased_label)
+     call constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+
  end select
 
 return

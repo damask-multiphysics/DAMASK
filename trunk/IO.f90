@@ -738,6 +738,16 @@ END FUNCTION
    msg='Non-positive w0.'
  case (209)
    msg='Negative latent hardening ratio.'
+ case (220)
+   msg='Negative initial dislocation density'
+ case (221)
+   msg='Negative Bugers vector'
+ case (222)
+   msg='Negative activation energy for edge dislocation glide'
+ case (223)
+   msg='Negative self diffusion energy'
+ case (224)
+   msg='Negative diffusion constant'
  case (300)
    msg='This material can only be used with elements with three direct stress components.'
  case (500)
