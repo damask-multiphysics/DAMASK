@@ -532,10 +532,52 @@ end subroutine
 
  END FUNCTION
 
- 
 
 !**************************************************************************
-! matrix multiplication 3x3
+! matrix multiplication 3x3 = 1
+!**************************************************************************
+
+ PURE FUNCTION math_mul3x3(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i
+ real(pReal), dimension(3), intent(in) ::  A,B
+ real(pReal), dimension(3), C
+ real(pReal) math_mul3x3
+
+ forall (i=1:3) C(i) = A(i)*B(i)
+ math_mul3x3 = sum(C)
+ 
+ return
+
+ END FUNCTION
+
+
+!**************************************************************************
+! matrix multiplication 6x6 = 1
+!**************************************************************************
+
+ PURE FUNCTION math_mul6x6(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i
+ real(pReal), dimension(6), intent(in) ::  A,B
+ real(pReal), dimension(6), C
+ real(pReal) math_mul6x6
+
+ forall (i=1:6) C(i) = A(i)*B(i)
+ math_mul6x6 = sum(C)
+ 
+ return
+
+ END FUNCTION
+
+!**************************************************************************
+! matrix multiplication 33x33 = 3x3
 !**************************************************************************
 
  PURE FUNCTION math_mul33x33(A,B)  
@@ -555,7 +597,7 @@ end subroutine
 
 
 !**************************************************************************
-! matrix multiplication 6x6
+! matrix multiplication 66x66 = 6x6
 !**************************************************************************
  PURE FUNCTION math_mul66x66(A,B)  
 
@@ -575,7 +617,7 @@ end subroutine
 
 
 !**************************************************************************
-! matrix multiplication 6x6
+! matrix multiplication 66x6 = 6
 !**************************************************************************
  PURE FUNCTION math_mul66x6(A,B)  
 
@@ -596,7 +638,7 @@ end subroutine
 
  
 !**************************************************************************
-! matrix multiplication 9x9
+! matrix multiplication 99x99 = 9x9
 !**************************************************************************
  PURE FUNCTION math_mul99x99(A,B)  
 
