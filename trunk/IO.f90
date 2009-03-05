@@ -748,6 +748,8 @@ END FUNCTION
    msg='Negative self diffusion energy'
  case (224)
    msg='Negative diffusion constant'
+ case (240)
+   msg='Non-positive Taylor factor.'
  case (300)
    msg='This material can only be used with elements with three direct stress components.'
  case (500)
