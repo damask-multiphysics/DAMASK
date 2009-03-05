@@ -40,14 +40,16 @@ subroutine constitutive_init()
  use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
  use material
  use constitutive_phenomenological
-! use constitutive_dislocal
+ use constitutive_j2
 
  integer(pInt), parameter :: fileunit = 200
  integer(pInt) e,i,g,myInstance
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
+
  call constitutive_phenomenological_init(fileunit)       ! parse all phases of this constitution
-! call constitutive_dislocal_init(fileunit)
+ call constitutive_j2_init(fileunit)
+
  close(fileunit)
 
  allocate(constitutive_state_old(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
@@ -69,7 +71,14 @@ subroutine constitutive_init()
            constitutive_sizeDotState(g,i,e) =    constitutive_phenomenological_sizeDotState(myInstance)
            constitutive_sizeState(g,i,e) =       constitutive_phenomenological_sizeState(myInstance)
            constitutive_sizePostResults(g,i,e) = constitutive_phenomenological_sizePostResults(myInstance)
-         case ('dislocal')
+         case (constitutive_j2_label)
+           allocate(constitutive_state_old(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
+           allocate(constitutive_state_new(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
+           constitutive_state_new(g,i,e)%p = constitutive_j2_stateInit(g,i,e)
+           constitutive_state_old(g,i,e)%p = constitutive_j2_stateInit(g,i,e)
+           constitutive_sizeDotState(g,i,e) =    constitutive_j2_sizeDotState(myInstance)
+           constitutive_sizeState(g,i,e) =       constitutive_j2_sizeState(myInstance)
+           constitutive_sizePostResults(g,i,e) = constitutive_j2_sizePostResults(myInstance)
          case default
            call IO_error(200,material_phase(g,i,e))      ! unknown constitution
        end select
@@ -97,7 +106,7 @@ function constitutive_homogenizedC(ipc,ip,el)
  use prec, only: pReal,pInt
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
-! use constitutive_dislocal
+ use constitutive_j2
  implicit none
 
  !* Definition of variables
@@ -107,7 +116,8 @@ function constitutive_homogenizedC(ipc,ip,el)
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
      constitutive_homogenizedC = constitutive_phenomenological_homogenizedC(constitutive_state_new,ipc,ip,el)
-   case ('dislocal')
+   case (constitutive_j2_label)
+     constitutive_homogenizedC = constitutive_j2_homogenizedC(constitutive_state_new,ipc,ip,el)
 
  end select
 
@@ -128,7 +138,7 @@ subroutine constitutive_microstructure(Temperature,ipc,ip,el)
  use prec, only: pReal,pInt
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
-! use constitutive_dislocal
+ use constitutive_j2
  implicit none
 
 !* Definition of variables
@@ -138,7 +148,8 @@ real(pReal) Temperature
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
      call constitutive_phenomenological_microstructure(Temperature,constitutive_state_new,ipc,ip,el)
-   case ('dislocal')
+   case (constitutive_j2_label)
+     call constitutive_j2_microstructure(Temperature,constitutive_state_new,ipc,ip,el)
 
  end select
 
@@ -161,7 +172,7 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar, Tstar_v,Temperature,ipc,i
  use prec, only: pReal,pInt
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
- ! use constitutive_dislocal
+ use constitutive_j2
  implicit none
 
 !* Definition of variables
@@ -174,7 +185,8 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar, Tstar_v,Temperature,ipc,i
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
      call constitutive_phenomenological_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
-   case ('dislocal')
+   case (constitutive_j2_label)
+     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
 
  end select
 
@@ -198,7 +210,7 @@ function constitutive_dotState(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: pReal,pInt
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
- ! use constitutive_dislocal
+ use constitutive_j2
  implicit none
 
 !* Definition of variables
@@ -210,7 +222,8 @@ function constitutive_dotState(Tstar_v,Temperature,ipc,ip,el)
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
      constitutive_dotState = constitutive_phenomenological_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
-   case ('dislocal')
+   case (constitutive_j2_label)
+     constitutive_dotState = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
 
  end select
  return
@@ -230,7 +243,7 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
  use prec, only: pReal,pInt
  use material, only: phase_constitution,material_phase
  use constitutive_phenomenological
- ! use constitutive_dislocal
+ use constitutive_j2
  implicit none
 
 !* Definition of variables
@@ -243,7 +256,8 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
      constitutive_postResults = constitutive_phenomenological_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
-   case ('dislocal')
+   case (constitutive_j2_label)
+     constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
  end select
 
 return
