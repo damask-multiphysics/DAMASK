@@ -36,6 +36,8 @@
  include "lattice.f90"          ! uses prec, math
  include "material.f90"         ! uses prec, math, IO, mesh
  include "constitutive_phenomenological.f90"     ! uses prec, math, IO, lattice, material, debug
+ include "constitutive_j2.f90"                   ! uses prec, math, IO, lattice, material, debug
+ include "constitutive_dislobased.f90"           ! uses prec, math, IO, lattice, material, debug
  include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
  include "CPFEM.f90"            ! uses prec, math, mesh, constitutive, FEsolving, debug, lattice, IO, crystallite
 

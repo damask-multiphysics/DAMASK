@@ -81,6 +81,14 @@ subroutine constitutive_init()
            constitutive_sizeDotState(g,i,e) =    constitutive_j2_sizeDotState(myInstance)
            constitutive_sizeState(g,i,e) =       constitutive_j2_sizeState(myInstance)
            constitutive_sizePostResults(g,i,e) = constitutive_j2_sizePostResults(myInstance)
+         case (constitutive_dislobased_label)
+           allocate(constitutive_state_old(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
+           allocate(constitutive_state_new(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
+           constitutive_state_new(g,i,e)%p = constitutive_dislobased_stateInit(g,i,e)
+           constitutive_state_old(g,i,e)%p = constitutive_dislobased_stateInit(g,i,e)
+           constitutive_sizeDotState(g,i,e) =    constitutive_dislobased_sizeDotState(myInstance)
+           constitutive_sizeState(g,i,e) =       constitutive_dislobased_sizeState(myInstance)
+           constitutive_sizePostResults(g,i,e) = constitutive_dislobased_sizePostResults(myInstance)
          case default
            call IO_error(200,material_phase(g,i,e))      ! unknown constitution
        end select
@@ -237,7 +245,7 @@ function constitutive_dotState(Tstar_v,Temperature,ipc,ip,el)
    case (constitutive_j2_label)
      constitutive_dotState = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
    case (constitutive_dislobased_label)
-     call constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+     constitutive_dotState = constitutive_dislobased_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
 
  end select
  return
@@ -274,7 +282,7 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
    case (constitutive_j2_label)
      constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
    case (constitutive_dislobased_label)
-     call constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+     constitutive_postResults = constitutive_dislobased_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
 
  end select
 
