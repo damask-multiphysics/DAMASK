@@ -303,7 +303,7 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,sta
  forall (k=1:3,l=1:3,m=1:3,n=1:3) &
    dLp_dTstar3333(k,l,m,n) = Tstar33(k,l)*Tstar33(m,n) * (constitutive_j2_n(matID)-1.0_pReal)/squarenorm_Tstar
  forall (k=1:3,l=1:3) &
-   dLp_dTstar3333(k,k,l,l) = dLp_dTstar3333(k,k,l,l) + 1.0_pReal
+   dLp_dTstar3333(k,l,k,l) = dLp_dTstar3333(k,l,k,l) + 1.0_pReal
  dLp_dTstar = math_Plain3333to99(factor * dLp_dTstar3333)
 
  return
