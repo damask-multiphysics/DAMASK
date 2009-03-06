@@ -287,7 +287,7 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,sta
 
  Tstar33 = math_Mandel6to33(Tstar_v)
  squarenorm_Tstar = math_mul6x6(Tstar_v,Tstar_v)
- norm_Tstar = dsqrt(Tstar) 
+ norm_Tstar = dsqrt(squarenorm_Tstar) 
 
 !* Calculation of Lp
  Lp = Tstar33/norm_Tstar*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
