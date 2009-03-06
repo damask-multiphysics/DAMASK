@@ -61,6 +61,7 @@ MODULE constitutive_phenomenological
 CONTAINS
 !****************************************
 !* - constitutive_init
+!* - constitutive_stateInit
 !* - constitutive_homogenizedC
 !* - constitutive_microstructure
 !* - constitutive_LpAndItsTangent

@@ -48,12 +48,13 @@ MODULE constitutive_j2
 
 CONTAINS
 !****************************************
-!* - constitutive_init
-!* - constitutive_homogenizedC
-!* - constitutive_microstructure
-!* - constitutive_LpAndItsTangent
-!* - consistutive_dotState
-!* - consistutive_postResults
+!* - constitutive_j2_init
+!* - constitutive_j2_stateInit
+!* - constitutive_j2_homogenizedC
+!* - constitutive_j2_microstructure
+!* - constitutive_j2_LpAndItsTangent
+!* - consistutive_j2_dotState
+!* - consistutive_j2_postResults
 !****************************************
 
 
@@ -311,10 +312,6 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,sta
 		dLp_dTstar = math_Plain3333to99(factor * dLp_dTstar3333)
  end if
  
-! if ((ipc==1) .and. (ip==1) .and. (el==1)) then
-!	  write(6,*) 'Lp: ', Lp
-!	  write(6,*) 'dLp_dTstar: ', dLp_dTstar
-! end if
  return
 
 end subroutine
