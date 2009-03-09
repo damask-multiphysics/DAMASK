@@ -186,9 +186,9 @@ subroutine constitutive_dislobased_init(file)
               constitutive_dislobased_rho0(i) = IO_floatValue(line,positions,2)
        case ('burgers')
               constitutive_dislobased_bg(i) = IO_floatValue(line,positions,2)
-       case ('Qedge')
+       case ('qedge')
               constitutive_dislobased_Qedge(i) = IO_floatValue(line,positions,2)
-       case ('Qsd')
+       case ('qsd')
               constitutive_dislobased_Qsd(i) = IO_floatValue(line,positions,2)
        case ('diff0')
               constitutive_dislobased_D0(i) = IO_floatValue(line,positions,2)
@@ -237,7 +237,7 @@ subroutine constitutive_dislobased_init(file)
 
  do i = 1,maxNinstance
    constitutive_dislobased_sizeDotState(i) = constitutive_dislobased_Nslip(i)
-   constitutive_dislobased_sizeState(i)    = constitutive_dislobased_Nslip(i)
+   constitutive_dislobased_sizeState(i)    = 8*constitutive_dislobased_Nslip(i)
 
    do j = 1,maxval(phase_Noutput)
      select case(constitutive_dislobased_output(j,i))
@@ -373,7 +373,6 @@ subroutine constitutive_dislobased_microstructure(Temperature,state,ipc,ip,el)
 
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
  n = constitutive_dislobased_Nslip(matID)
-
  !* Quantities derived from state - slip
  !* State: 1    : n   rho
  !*        n+1  : 2n  rho_f
