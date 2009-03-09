@@ -77,9 +77,11 @@ subroutine material_init()
  call material_parsePhase(fileunit)
  close(fileunit)
 
- if (minval(microstructure_phase) < 1 .or. maxval(microstructure_phase) > material_Nphase) call IO_error(150)
- if (minval(microstructure_texture) < 1 .or. maxval(microstructure_texture) > material_Ntexture) call IO_error(160)
  do i = 1,material_Nmicrostructure
+   if (minval(microstructure_phase(1:microstructure_Nconstituents(i),i)) < 1 .or. &
+       maxval(microstructure_phase(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(150,i)
+   if (minval(microstructure_texture(1:microstructure_Nconstituents(i),i)) < 1 .or. &
+       maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(160,i)
    if (sum(microstructure_fraction(:,i)) /= 1.0_pReal) call IO_error(170,i)
  enddo
  write (6,*)
