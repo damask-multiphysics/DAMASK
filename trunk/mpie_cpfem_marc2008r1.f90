@@ -143,8 +143,7 @@
  !     ** End of generated type statements **
  !
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
-           frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2),&
-           lclass(2)
+           frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2)
 
 ! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
 ! Beware of changes in newer Marc versions
@@ -168,6 +167,8 @@
      debug_cutbackDistribution   = 0_pInt       ! initialize debugging data
      debug_InnerLoopDistribution = 0_pInt
      debug_OuterLoopDistribution = 0_pInt
+     debug_cumLpTicks = 0
+     debug_cumLpCalls = 0_pInt
    endif
  endif
  if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence

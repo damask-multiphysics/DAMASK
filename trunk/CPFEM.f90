@@ -652,6 +652,7 @@
  logical failed
  integer(pInt) cp_en, ip, grain
  integer(pInt) iInner,dummy, i,j,k,l,m,n
+ integer(8) tick,tock,tickrate,maxticks
  real(pReal) dt, Temperature, det, p_hydro, leapfrog,maxleap
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2
@@ -701,7 +702,12 @@ Inner: do              ! inner iteration: Lp
    Tstar_v = 0.5_pReal*math_mul66x6(C_66,math_mandel33to6(math_mul33x33(BT,AB)-math_I3))
    p_hydro=(Tstar_v(1)+Tstar_v(2)+Tstar_v(3))/3.0_pReal
    forall(i=1:3) Tstar_v(i) = Tstar_v(i)-p_hydro                ! subtract hydrostatic pressure
+   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
    call constitutive_LpAndItsTangent(Lp,dLp, Tstar_v,Temperature,grain,ip,cp_en)
+   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
+   debug_cumLpCalls = debug_cumLpCalls + 1_pInt
+   debug_cumLpTicks  = debug_cumLpTicks + tock-tick
+   if (tock < tick) debug_cumLpTicks  = debug_cumLpTicks + maxticks
    Rinner = Lpguess - Lp                                        ! update current residuum
 
    if (.not.(any(Rinner/=Rinner)) .and. &                       ! exclude any NaN in residuum

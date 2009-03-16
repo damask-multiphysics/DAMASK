@@ -9,6 +9,8 @@
  integer(pInt), dimension(nCutback+1) :: debug_cutbackDistribution = 0_pInt
  integer(pInt), dimension(nInner) :: debug_InnerLoopDistribution = 0_pInt
  integer(pInt), dimension(nOuter) :: debug_OuterLoopDistribution = 0_pInt
+ integer(8)    :: debug_cumLpTicks = 0_pInt
+ integer(pInt) :: debug_cumLpCalls = 0_pInt
  logical :: debugger = .false.
  logical :: distribution_init = .false.
 
@@ -23,9 +25,19 @@
  use prec
  implicit none
 
- integer(pInt) i
+ integer(pInt) i,integral
+ integer(8) tickrate
 
+ write(6,*)
  write(6,*) 'DEBUG Info'
+ write(6,*)
+ write(6,'(a33,x,i9)')	'total calls to LpAndItsTangent  :',debug_cumLpCalls
+ if (debug_cumLpCalls > 0_pInt) then
+   call system_clock(count_rate=tickrate)
+   write(6,'(a33,x,f10.6)') 'avg CPU time/microsecs per call :',dble(debug_cumLpTicks)/tickrate/1.0e-6_pReal/debug_cumLpCalls
+   write(6,'(a33,x,i12)')   'total CPU ticks                 :',debug_cumLpTicks
+ endif
+ write(6,*)
  write(6,*)	'distribution_cutback :'
  do i=0,nCutback
    if (debug_cutbackDistribution(i+1) /= 0) write(6,*) i,debug_cutbackDistribution(i+1)
@@ -33,18 +45,26 @@
  write(6,*) 'total',sum(debug_cutbackDistribution)
  write(6,*)
  
+ integral = 0_pInt
  write(6,*)	'distribution_InnerLoop :'
  do i=1,nInner
-   if (debug_InnerLoopDistribution(i) /= 0) write(6,*) i,debug_InnerLoopDistribution(i)
+   if (debug_InnerLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_InnerLoopDistribution(i)
+     write(6,*) i,debug_InnerLoopDistribution(i)
+   endif
  enddo
- write(6,*) 'total',sum(debug_InnerLoopDistribution)
+ write(6,*) 'total',sum(debug_InnerLoopDistribution),integral
  write(6,*)
  
+ integral = 0_pInt
  write(6,*)	'distribution_OuterLoop :'
  do i=1,nOuter
-   if (debug_OuterLoopDistribution(i) /= 0) write(6,*) i,debug_OuterLoopDistribution(i)
+   if (debug_OuterLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_OuterLoopDistribution(i)
+     write(6,*) i,debug_OuterLoopDistribution(i)
+   endif
  enddo
- write(6,*) 'total',sum(debug_OuterLoopDistribution)
+ write(6,*) 'total',sum(debug_OuterLoopDistribution),integral
  write(6,*)
 
  END SUBROUTINE
