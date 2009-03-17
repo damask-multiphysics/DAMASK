@@ -534,6 +534,25 @@ end subroutine
 
 
 !**************************************************************************
+! tensor product a \otimes b
+!**************************************************************************
+ PURE FUNCTION math_tensorproduct(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3), intent(in) ::  A,B
+ real(pReal), dimension(3,3) ::  math_tensorproduct
+ integer(pInt) i,j
+ 
+ forall (i=1:3,j=1:3) math_tensorproduct(i,j) = A(i)*B(j)
+
+ return
+
+ END FUNCTION
+
+
+!**************************************************************************
 ! matrix multiplication 3x3 = 1
 !**************************************************************************
 
@@ -923,8 +942,7 @@ end subroutine
  real(pReal), dimension(3,3) :: math_symmetric3x3,m
  integer(pInt) i,j
  
- forall (i=1:3,j=1:3) math_symmetric3x3(i,j) = 1.0_pReal/2.0_pReal * &
-   (m(i,j) + m(j,i))
+ forall (i=1:3,j=1:3) math_symmetric3x3(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
  END FUNCTION
  
@@ -941,8 +959,7 @@ end subroutine
  real(pReal), dimension(6,6), intent(in) :: m
  real(pReal), dimension(6,6) :: math_symmetric6x6
  
- forall (i=1:6,j=1:6) math_symmetric6x6(i,j) = 1.0_pReal/2.0_pReal * &
-   (m(i,j) + m(j,i))
+ forall (i=1:6,j=1:6) math_symmetric6x6(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
  END FUNCTION
  
