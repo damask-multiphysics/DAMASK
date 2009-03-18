@@ -1213,18 +1213,25 @@ end subroutine
  real(pReal) s,c
  integer(pInt) i
 
- forall (i=1:3) axisNrm(i) = axis(i)/sqrt(dot_product(axis,axis))
+ forall (i=1:3) axisNrm(i) = axis(i)/dsqrt(math_mul3x3(axis,axis))
  s = sin(omega)
  c = cos(omega)
- math_RodrigtoR(1,1) = (1.0_pReal - axisNrm(1)**2)*c + axisNrm(1)**2
- math_RodrigtoR(1,2) = axisNrm(1)*axisNrm(2)*(1.0_pReal - c) + axisNrm(3)*s
- math_RodrigtoR(1,3) = axisNrm(1)*axisNrm(3)*(1.0_pReal - c) - axisNrm(2)*s
- math_RodrigtoR(2,1) = axisNrm(1)*axisNrm(2)*(1.0_pReal - c) - axisNrm(3)*s
- math_RodrigtoR(2,2) = (1.0_pReal - axisNrm(2)**2)*c + axisNrm(2)**2
- math_RodrigtoR(2,3) = axisNrm(2)*axisNrm(3)*(1.0_pReal - c) + axisNrm(1)*s
- math_RodrigtoR(3,1) = axisNrm(1)*axisNrm(3)*(1.0_pReal - c) + axisNrm(2)*s
- math_RodrigtoR(3,2) = axisNrm(2)*axisNrm(3)*(1.0_pReal - c) - axisNrm(1)*s
- math_RodrigtoR(3,3) = (1.0_pReal - axisNrm(3)**2)*c + axisNrm(3)**2
+ c1 = 1.0_pReal - c
+
+ ! formula taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
+
+ math_RodrigtoR(1,1) = c + c1*axisNrm(1)**2
+ math_RodrigtoR(1,2) = -s*axisNrm(3) + c1*axisNrm(1)*axisNrm(2) 
+ math_RodrigtoR(1,3) =  s*axisNrm(2) + c1*axisNrm(1)*axisNrm(3)
+
+ math_RodrigtoR(2,1) =  s*axisNrm(3) + c1*axisNrm(2)*axisNrm(1)
+ math_RodrigtoR(2,2) = c + c1*axisNrm(2)**2
+ math_RodrigtoR(2,3) = -s*axisNrm(1) + c1*axisNrm(2)*axisNrm(3)
+
+ math_RodrigtoR(3,1) = -s*axisNrm(2) + c1*axisNrm(3)*axisNrm(1)
+ math_RodrigtoR(3,2) =  s*axisNrm(1) + c1*axisNrm(3)*axisNrm(2)
+ math_RodrigtoR(3,3) = c + c1*axisNrm(3)**2
+
  return
 
  END FUNCTION
@@ -1274,10 +1281,7 @@ end subroutine
  real(pReal), dimension(3,3) :: r
  real(pReal) math_disorient, tr
 
-!!$OMP CRITICAL (evilmatmul)
-
  r = math_mul33x33(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
-!!$OMP END CRITICAL (evilmatmul)
 
  tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
  math_disorient = abs(0.5_pReal*pi-asin(tr))
@@ -1339,10 +1343,7 @@ endif
    if (rnd(5) <= exp(-1.0_pReal*(math_disorient(origin,disturb)/scatter)**2)) exit   
  enddo
 
-!!$OMP CRITICAL (evilmatmul)
-
  math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
-!!$OMP END CRITICAL (evilmatmul)
 
  return
  
@@ -1417,10 +1418,7 @@ endif
  pRot = math_RodrigtoR(axis,angle)
 
 ! ---# apply the three rotations #---
-!!$OMP CRITICAL (evilmatmul)
-
 math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))) 
-!!$OMP END CRITICAL (evilmatmul)
 
  return
 
@@ -1428,15 +1426,10 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
 
 
-
 !********************************************************************
-
 !   symmetric Euler angles for given symmetry string
-
 !   'triclinic' or '', 'monoclinic', 'orthotropic'
-
 !********************************************************************
-
  PURE FUNCTION math_symmetricEulers(sym,Euler)
 
  use prec, only: pReal, pInt
@@ -1496,14 +1489,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=DSQRT(EW1)*EB1+DSQRT(EW2)*EB2+DSQRT(EW3)*EB3
  call math_invert3x3(U,UI,det,error)
- if (.not. error) then
-
-!!$OMP CRITICAL (evilmatmul)
-
- R = math_mul33x33(fe,ui)
-!!$OMP END CRITICAL (evilmatmul)
-
- endif
+ if (.not. error) R = math_mul33x33(fe,ui)
 
  return 
  
@@ -1561,10 +1547,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
   D3=1.0_pReal/(EW3-EW1)/(EW3-EW2)
   M1=M-EW1*math_I3
   M2=M-EW2*math_I3
-!!$OMP CRITICAL (evilmatmul)
-
   EB3=math_mul33x33(M1,M2)*D3
-!!$OMP END CRITICAL (evilmatmul)
 
   EB1=math_I3-EB3
 !  both EB2 and EW2 are set to zero so that they do not
@@ -1575,11 +1558,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
   D1=1.0_pReal/(EW1-EW2)/(EW1-EW3)
   M2=M-math_I3*EW2
   M3=M-math_I3*EW3
-!!$OMP CRITICAL (evilmatmul)
-
   EB1=math_mul33x33(M2,M3)*D1
-!!$OMP END CRITICAL (evilmatmul)
-
   EB2=math_I3-EB1
 !  both EB3 and EW3 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
@@ -1589,11 +1568,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
   D2=1.0_pReal/(EW2-EW1)/(EW2-EW3) 
   M1=M-math_I3*EW1
   M3=M-math_I3*EW3
-!!$OMP CRITICAL (evilmatmul)
-
   EB2=math_mul33x33(M1,M3)*D2
-!!$OMP END CRITICAL (evilmatmul)
-
   EB1=math_I3-EB2
 !  both EB3 and EW3 are set to zero so that they do not
 !  contribute to U in PDECOMPOSITION
@@ -1606,12 +1581,9 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
   M1=M-EW1*math_I3
   M2=M-EW2*math_I3
   M3=M-EW3*math_I3
-!!$OMP CRITICAL (evilmatmul)
-
   EB1=math_mul33x33(M2,M3)*D1
   EB2=math_mul33x33(M1,M3)*D2
   EB3=math_mul33x33(M1,M2)*D3
-!!$OMP END CRITICAL (evilmatmul)
 
    END IF
  END IF
@@ -1865,19 +1837,14 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
      else
   ndim_save = value(1)
      end if
-
    else if ( name(1:1) == 'S' .or. name(1:1) == 's' ) then
-
      seed = value(1)
-
  end if
 !
 !  Get
 !
  else if ( action(1:1) == 'G' .or. action(1:1) == 'g' ) then
-
    if ( name(1:1) == 'B' .or. name(1:1) == 'b' ) then
-
      if ( ndim /= ndim_save ) then
   deallocate ( base )
   ndim_save = ndim
@@ -1886,27 +1853,19 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
     base(i) = prime(i)
   end do
      end if
-
      value(1:ndim_save) = base(1:ndim_save)
-
    else if ( name(1:1) == 'N' .or. name(1:1) == 'n' ) then
-
      value(1) = ndim_save
-
    else if ( name(1:1) == 'S' .or. name(1:1) == 's' ) then
-
      value(1) = seed
-
    end if
 !
 !  Increment
 !
  else if ( action(1:1) == 'I' .or. action(1:1) == 'i' ) then
-
    if ( name(1:1) == 'S' .or. name(1:1) == 's' ) then
      seed = seed + value(1)
    end if
-
  end if
 
  return
@@ -2078,7 +2037,6 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  if ( any ( base(1:ndim) <= 1 ) ) then
 !$OMP CRITICAL (write2out)
-
    write ( *, '(a)' ) ' '
    write ( *, '(a)' ) 'I_TO_HALTON - Fatal error!'
    write ( *, '(a)' ) ' An input base BASE is <= 1!'
@@ -2087,7 +2045,6 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
    end do
    call flush(6)
 !$OMP END CRITICAL (write2out)
-
    stop
  end if
 
