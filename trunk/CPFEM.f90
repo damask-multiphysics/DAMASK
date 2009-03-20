@@ -489,7 +489,7 @@
  
  logical integrateState
 
- integer(pInt) tick,tock,tickrate,maxticks
+ integer(8) tick,tock,tickrate,maxticks
  integer(pInt) g,i,e,mySize
  real(pReal), dimension(6) :: Tstar_v
  real(pReal) dt
@@ -659,7 +659,7 @@
  logical failed
  integer(pInt) cp_en, ip, grain
  integer(pInt) iInner,dummy, i,j,k,l,m,n
- integer(pInt) tick,tock,tickrate,maxticks
+ integer(8) tick,tock,tickrate,maxticks
  real(pReal) dt, Temperature, det, p_hydro, leapfrog,maxleap
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2
