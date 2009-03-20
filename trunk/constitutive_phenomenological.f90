@@ -38,8 +38,10 @@ MODULE constitutive_phenomenological
                                                    constitutive_phenomenological_sizeState, &
                                                    constitutive_phenomenological_sizePostResults
  character(len=64), dimension(:,:), allocatable :: constitutive_phenomenological_output
+ character(len=32), dimension(:),   allocatable :: constitutive_phenomenological_structureName
  integer(pInt),   dimension(:),     allocatable :: constitutive_phenomenological_structure
  integer(pInt),   dimension(:),     allocatable :: constitutive_phenomenological_Nslip
+ real(pReal), dimension(:),     allocatable :: constitutive_phenomenological_CoverA
  real(pReal), dimension(:),     allocatable :: constitutive_phenomenological_C11
  real(pReal), dimension(:),     allocatable :: constitutive_phenomenological_C12
  real(pReal), dimension(:),     allocatable :: constitutive_phenomenological_C13
@@ -78,6 +80,7 @@ subroutine constitutive_phenomenological_init(file)
  use math, only: math_Mandel3333to66, math_Voigt66to3333
  use IO
  use material
+ use lattice, only: lattice_initializeStructure
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 7
  integer(pInt), dimension(1+2*maxNchunks) :: positions
@@ -93,8 +96,10 @@ subroutine constitutive_phenomenological_init(file)
  allocate(constitutive_phenomenological_sizePostResults(maxNinstance)); constitutive_phenomenological_sizePostResults = 0_pInt
  allocate(constitutive_phenomenological_output(maxval(phase_Noutput), &
                                                maxNinstance)) ;         constitutive_phenomenological_output = ''
+ allocate(constitutive_phenomenological_structureName(maxNinstance)) ;  constitutive_phenomenological_structureName = ''
  allocate(constitutive_phenomenological_structure(maxNinstance)) ;      constitutive_phenomenological_structure = 0_pInt
  allocate(constitutive_phenomenological_Nslip(maxNinstance)) ;          constitutive_phenomenological_Nslip = 0_pInt
+ allocate(constitutive_phenomenological_CoverA(maxNinstance))       ;   constitutive_phenomenological_CoverA = 0.0_pReal
  allocate(constitutive_phenomenological_C11(maxNinstance)) ;            constitutive_phenomenological_C11 = 0.0_pReal
  allocate(constitutive_phenomenological_C12(maxNinstance)) ;            constitutive_phenomenological_C12 = 0.0_pReal
  allocate(constitutive_phenomenological_C13(maxNinstance)) ;            constitutive_phenomenological_C13 = 0.0_pReal
@@ -134,9 +139,11 @@ subroutine constitutive_phenomenological_init(file)
          output = output + 1
          constitutive_phenomenological_output(output,i) = IO_lc(IO_stringValue(line,positions,2))
        case ('lattice_structure')
-              constitutive_phenomenological_structure(i) = IO_intValue(line,positions,2)
+              constitutive_phenomenological_structureName(i) = IO_lc(IO_stringValue(line,positions,2))
        case ('nslip')
               constitutive_phenomenological_Nslip(i) = IO_intValue(line,positions,2)
+	   case ('covera_ratio')
+              constitutive_phenomenological_CoverA(i) = IO_floatValue(line,positions,2)
        case ('c11')
               constitutive_phenomenological_C11(i) = IO_floatValue(line,positions,2)
        case ('c12')
@@ -165,7 +172,9 @@ subroutine constitutive_phenomenological_init(file)
    endif
  enddo
 
-100 do i = 1,maxNinstance                                        ! sanity checks
+100 do i = 1,maxNinstance
+   constitutive_phenomenological_structure(i) = lattice_initializeStructure(constitutive_phenomenological_structureName(i), &
+                                                                      constitutive_phenomenological_CoverA(i))                                        ! sanity checks
    if (constitutive_phenomenological_structure(i) < 1 .or. &
        constitutive_phenomenological_structure(i) > 3)           call IO_error(201)
    if (constitutive_phenomenological_Nslip(i) < 1)               call IO_error(202)

@@ -40,7 +40,6 @@
  character(256) path
 
  inquire(6, name=path) ! determine outputfile
- write(6,*)'trying to open mattex at',path(1:scan(path,pathSep,back=.true.))//relPath
  open(unit,status='old',err=100,file=path(1:scan(path,pathSep,back=.true.))//relPath)
  IO_open_file = .true.
  return

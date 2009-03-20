@@ -168,7 +168,9 @@
      debug_InnerLoopDistribution = 0_pInt
      debug_OuterLoopDistribution = 0_pInt
      debug_cumLpTicks = 0
+     debug_cumDotStateTicks = 0
      debug_cumLpCalls = 0_pInt
+     debug_cumDotStateCalls = 0_pInt
    endif
  endif
  if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence

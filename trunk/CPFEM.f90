@@ -485,17 +485,24 @@
  use prec, only: pReal,pInt,reltol_Outer
  use constitutive, only: constitutive_dotState,constitutive_sizeDotState,&
                          constitutive_state_old,constitutive_state_new
+ use debug
  
  logical integrateState
 
+ integer(pInt) tick,tock,tickrate,maxticks
  integer(pInt) g,i,e,mySize
  real(pReal), dimension(6) :: Tstar_v
  real(pReal) dt
  real(pReal), dimension(constitutive_sizeDotState(g,i,e)) :: residuum
 
  mySize = constitutive_sizeDotState(g,i,e)
+ call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
  residuum = constitutive_state_new(g,i,e)%p(1:mySize) - constitutive_state_old(g,i,e)%p(1:mySize) - &
             dt*constitutive_dotState(Tstar_v,CPFEM_Temperature(i,e),g,i,e)                        ! residuum from evolution of microstructure
+ call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
+ debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
+ debug_cumDotStateTicks  = debug_cumDotStateTicks + tock-tick
+ if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
  constitutive_state_new(g,i,e)%p(1:mySize) = constitutive_state_new(g,i,e)%p(1:mySize) - residuum ! update of microstructure
  integrateState = maxval(abs(residuum/constitutive_state_new(g,i,e)%p(1:mySize)),&
                              constitutive_state_new(g,i,e)%p(1:mySize) /= 0.0_pReal) < reltol_Outer
@@ -652,7 +659,7 @@
  logical failed
  integer(pInt) cp_en, ip, grain
  integer(pInt) iInner,dummy, i,j,k,l,m,n
- integer(8) tick,tock,tickrate,maxticks
+ integer(pInt) tick,tock,tickrate,maxticks
  real(pReal) dt, Temperature, det, p_hydro, leapfrog,maxleap
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2

@@ -13,6 +13,10 @@ use prec, only: pReal,pInt
 implicit none
 
 character(len=64), parameter :: material_configFile = 'material.config'
+character(len=32), parameter :: material_partHomogenization = 'homogenization'
+character(len=32), parameter :: material_partMicrostructure = 'microstructure'
+character(len=32), parameter :: material_partPhase =          'phase'
+character(len=32), parameter :: material_partTexture =        'texture'
 
 
 !*************************************
@@ -68,13 +72,13 @@ subroutine material_init()
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
  write(6,*) 'parsing homogenization...'
- call material_parseHomogenization(fileunit)
+ call material_parseHomogenization(fileunit,material_partHomogenization)
  write(6,*) 'parsing microstrcuture...'
- call material_parseMicrostructure(fileunit)
+ call material_parseMicrostructure(fileunit,material_partMicrostructure)
  write(6,*) 'parsing texture...'
- call material_parseTexture(fileunit)
+ call material_parseTexture(fileunit,material_partTexture)
  write(6,*) 'parsing phase...'
- call material_parsePhase(fileunit)
+ call material_parsePhase(fileunit,material_partPhase)
  close(fileunit)
 
  do i = 1,material_Nmicrostructure
@@ -105,14 +109,14 @@ end subroutine
 
 
 !*********************************************************************
-subroutine material_parseHomogenization(file)
+subroutine material_parseHomogenization(file,myPart)
 !*********************************************************************
 
  use prec, only: pInt
  use IO
  implicit none
 
- character(len=32), parameter :: myPart = 'homogenization'
+ character(len=*), intent(in) :: myPart
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 2
  integer(pInt), dimension(1+2*maxNchunks) :: positions
@@ -161,14 +165,14 @@ subroutine material_parseHomogenization(file)
 
 
 !*********************************************************************
-subroutine material_parseMicrostructure(file)
+subroutine material_parseMicrostructure(file,myPart)
 !*********************************************************************
 
  use prec, only: pInt
  use IO
  implicit none
 
- character(len=32), parameter :: myPart = 'microstructure'
+ character(len=*), intent(in) :: myPart
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 7
  integer(pInt), dimension(1+2*maxNchunks) :: positions
@@ -231,14 +235,14 @@ subroutine material_parseMicrostructure(file)
 
 
 !*********************************************************************
-subroutine material_parsePhase(file)
+subroutine material_parsePhase(file,myPart)
 !*********************************************************************
 
  use prec, only: pInt
  use IO
  implicit none
 
- character(len=32), parameter :: myPart = 'phase'
+ character(len=*), intent(in) :: myPart
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 2
  integer(pInt), dimension(1+2*maxNchunks) :: positions
@@ -246,7 +250,7 @@ subroutine material_parsePhase(file)
  character(len=64) tag
  character(len=1024) line
  
- Nsections= IO_countSections(file,myPart)
+ Nsections = IO_countSections(file,myPart)
  material_Nphase = Nsections
  allocate(phase_name(Nsections));          phase_name = ''
  allocate(phase_constitution(Nsections));  phase_constitution = ''
@@ -291,7 +295,7 @@ subroutine material_parsePhase(file)
 
 
 !*********************************************************************
-subroutine material_parseTexture(file)
+subroutine material_parseTexture(file,myPart)
 !*********************************************************************
 
  use prec, only: pInt, pReal
@@ -299,7 +303,7 @@ subroutine material_parseTexture(file)
  use math, only: inRad
  implicit none
 
- character(len=32), parameter :: myPart = 'texture'
+ character(len=*), intent(in) :: myPart
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 13
  integer(pInt), dimension(1+2*maxNchunks) :: positions

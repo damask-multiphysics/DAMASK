@@ -1210,7 +1210,7 @@ end subroutine
  real(pReal), intent(in) :: omega
  real(pReal), dimension(3) :: axisNrm
  real(pReal), dimension(3,3) :: math_RodrigToR
- real(pReal) s,c
+ real(pReal) s,c,c1
  integer(pInt) i
 
  forall (i=1:3) axisNrm(i) = axis(i)/dsqrt(math_mul3x3(axis,axis))

@@ -298,18 +298,18 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,sta
  if (norm_Tstar > 0) then
    !* Calculation of Lp
    Lp = Tstar33/norm_Tstar*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
-		  (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID)
+        (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID)
 
    !* Calculation of the tangent of Lp
    factor = constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
-		  (dsqrt(1.5_pReal)/ constitutive_j2_fTaylor(matID)/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID) * &
-			  norm_Tstar**(constitutive_j2_n(matID)-1.0_pReal)
+            (dsqrt(1.5_pReal)/ constitutive_j2_fTaylor(matID)/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID) * &
+            norm_Tstar**(constitutive_j2_n(matID)-1.0_pReal)
    dLp_dTstar3333 = 0.0_pReal
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-		dLp_dTstar3333(k,l,m,n) = Tstar33(k,l)*Tstar33(m,n) * (constitutive_j2_n(matID)-1.0_pReal)/squarenorm_Tstar
+     dLp_dTstar3333(k,l,m,n) = Tstar33(k,l)*Tstar33(m,n) * (constitutive_j2_n(matID)-1.0_pReal)/squarenorm_Tstar
    forall (k=1:3,l=1:3) &
-		dLp_dTstar3333(k,l,k,l) = dLp_dTstar3333(k,l,k,l) + 1.0_pReal
-		dLp_dTstar = math_Plain3333to99(factor * dLp_dTstar3333)
+     dLp_dTstar3333(k,l,k,l) = dLp_dTstar3333(k,l,k,l) + 1.0_pReal
+   dLp_dTstar = math_Plain3333to99(factor * dLp_dTstar3333)
  end if
  
  return
