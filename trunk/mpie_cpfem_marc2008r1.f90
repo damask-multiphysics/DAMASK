@@ -33,8 +33,8 @@
  include "IO.f90"               ! uses prec, debug, math
  include "FEsolving.f90"        ! uses prec, IO
  include "mesh.f90"             ! uses prec, IO, math, FEsolving
- include "lattice.f90"          ! uses prec, math
  include "material.f90"         ! uses prec, math, IO, mesh
+ include "lattice.f90"          ! uses prec, math
  include "constitutive_phenomenological.f90"     ! uses prec, math, IO, lattice, material, debug
  include "constitutive_j2.f90"                   ! uses prec, math, IO, lattice, material, debug
  include "constitutive_dislobased.f90"           ! uses prec, math, IO, lattice, material, debug
