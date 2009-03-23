@@ -1,10 +1,14 @@
 !********************************************************************
-! Material subroutine for MSC.Marc Version 0.1
+! Material subroutine for MSC.Marc
 !
-! written by F. Roters, P. Eisenlohr, L. Hantcherli, W.A. Counts
+! written by P. Eisenlohr,
+!            F. Roters,
+!            L. Hantcherli,
+!            W.A. Counts
+!            D.D. Tjahjanto
+!
 ! MPI fuer Eisenforschung, Duesseldorf
 !
-! last modified: 22.11.2008
 !********************************************************************
 !     Usage:
 !             - choose material as hypela2
@@ -15,7 +19,8 @@
 !             - use nonsymmetric option for solver (e.g. direct 
 !               profile or multifrontal sparse, the latter seems
 !               to be faster!)
-!             - in case of ddm a symmetric solver has to be used
+!             - in case of ddm (domain decomposition)a SYMMETRIC
+!               solver has to be used, i.e uncheck "non-symmetric"
 !********************************************************************
 !     Marc subroutines used:
 !             - hypela2
@@ -148,8 +153,8 @@
 ! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
 ! Beware of changes in newer Marc versions
 
- include "concom2007r1"     ! concom is needed for inc, subinc, ncycle, lovl
- include "creeps2007r1"     ! creeps is needed for timinc (time increment)
+ include "concom%%MARCVERSION%%"     ! concom is needed for inc, subinc, ncycle, lovl
+ include "creeps%%MARCVERSION%%"     ! creeps is needed for timinc (time increment)
 
  integer(pInt) computationMode,i
 
