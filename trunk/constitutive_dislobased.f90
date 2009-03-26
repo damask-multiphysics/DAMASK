@@ -309,22 +309,18 @@ subroutine constitutive_dislobased_init(file)
 end subroutine
 
 
-function constitutive_dislobased_stateInit(ipc,ip,el)
+function constitutive_dislobased_stateInit(myInstance)
 !*********************************************************************
 !* initial microstructural state                                     *
 !*********************************************************************
  use prec, only: pReal,pInt
- use material, only: material_phase, phase_constitutionInstance
  implicit none
 
 !* Definition of variables
- integer(pInt), intent(in) :: ipc,ip,el
- integer(pInt) matID
- real(pReal), dimension(constitutive_dislobased_Nslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
-   constitutive_dislobased_stateInit
+ integer(pInt), intent(in) :: myInstance
+ real(pReal), dimension(constitutive_dislobased_Nslip(myInstance)) :: constitutive_dislobased_stateInit
 
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- constitutive_dislobased_stateInit = constitutive_dislobased_rho0(matID)
+ constitutive_dislobased_stateInit = constitutive_dislobased_rho0(myInstance)
 
  return
 end function

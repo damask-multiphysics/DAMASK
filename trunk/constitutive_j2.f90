@@ -80,7 +80,7 @@ subroutine constitutive_j2_init(file)
  allocate(constitutive_j2_sizeState(maxNinstance)) ;      constitutive_j2_sizeState = 0_pInt
  allocate(constitutive_j2_sizePostResults(maxNinstance)); constitutive_j2_sizePostResults = 0_pInt
  allocate(constitutive_j2_output(maxval(phase_Noutput), &
-                                               maxNinstance)) ;         constitutive_j2_output = ''
+                                 maxNinstance)) ;         constitutive_j2_output = ''
  allocate(constitutive_j2_C11(maxNinstance)) ;            constitutive_j2_C11 = 0.0_pReal
  allocate(constitutive_j2_C12(maxNinstance)) ;            constitutive_j2_C12 = 0.0_pReal
  allocate(constitutive_j2_Cslip_66(6,6,maxNinstance)) ;   constitutive_j2_Cslip_66 = 0.0_pReal
@@ -109,7 +109,7 @@ subroutine constitutive_j2_init(file)
      output = 0                                           ! reset output counter
    endif
    if (section > 0 .and. phase_constitution(section) == constitutive_j2_label) then  ! one of my sections
-     i = phase_constitutionInstance(section)     ! which instance of my constitution is present phase
+     i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
      select case(tag)
@@ -179,22 +179,18 @@ subroutine constitutive_j2_init(file)
 end subroutine
 
 
-function constitutive_j2_stateInit(ipc,ip,el)
+function constitutive_j2_stateInit(myInstance)
 !*********************************************************************
 !* initial microstructural state                                     *
 !*********************************************************************
  use prec, only: pReal,pInt
- use material, only: material_phase, phase_constitutionInstance
  implicit none
 
 !* Definition of variables
- integer(pInt), intent(in) :: ipc,ip,el
- integer(pInt) matID
- real(pReal), dimension(1) :: &
-   constitutive_j2_stateInit
+ integer(pInt), intent(in) :: myInstance
+ real(pReal), dimension(1) :: constitutive_j2_stateInit
 
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- constitutive_j2_stateInit = constitutive_j2_s0(matID)
+ constitutive_j2_stateInit = constitutive_j2_s0(myInstance)
 
  return
 end function
