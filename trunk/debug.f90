@@ -28,7 +28,7 @@
  implicit none
 
  integer(pInt) i,integral
- integer(pInt) tickrate
+ integer(8) tickrate
 
  write(6,*)
  write(6,*) 'DEBUG Info'
@@ -56,7 +56,7 @@
  write(6,*)
  
  integral = 0_pInt
- write(6,*)	'distribution_InnerLoop :'
+ write(6,*)	'distribution_InnerLoop :'
  do i=1,nInner
    if (debug_InnerLoopDistribution(i) /= 0) then
      integral = integral + i*debug_InnerLoopDistribution(i)
