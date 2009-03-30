@@ -36,8 +36,7 @@
 ! _NfaceNodes        : # nodes per face in a specific type of element
 
 ! _nodeOnFace        : list of node indices on each face of a specific type of element
-! _ipAtNode          : map node index to IP index in a specific type of element
-! _nodeAtIP          : map IP index to node index in a specific type of element
+! _nodesAtIP         : map IP index to two node indices in a specific type of element
 ! _ipNeighborhood    : 6 or less neighboring IPs as [element_num, IP_index]
 ! _NsubNodes        : # subnodes required to fully define all IP volumes
 
@@ -107,24 +106,15 @@
   3,3,3,3,0,0, & ! element 157
   3,4,4,4,3,0  & ! element 136
    /),(/FE_maxNipNeighbors,FE_Nelemtypes/))
- integer(pInt), dimension(FE_maxNips,FE_Nelemtypes), parameter :: FE_nodeAtIP = &
+ integer(pInt), dimension(2,FE_maxNips,FE_Nelemtypes), parameter :: FE_nodesAtIP = &
  reshape((/&
-  1,2,4,3,5,6,8,7,0, & ! element 7
-  1,0,0,0,0,0,0,0,0, & ! element 134
-  1,2,4,3,0,0,0,0,0, & ! element 11
-  1,5,2,8,0,6,4,7,3, & ! element 27
-  1,2,3,4,0,0,0,0,0, & ! element 157
-  1,2,3,4,5,6,0,0,0  & ! element 136
-   /),(/FE_maxNips,FE_Nelemtypes/))
- integer(pInt), dimension(FE_maxNnodes,FE_Nelemtypes), parameter :: FE_ipAtNode = &
- reshape((/&
-  1,2,4,3,5,6,8,7, & ! element 7
-  1,1,1,1,0,0,0,0, & ! element 134
-  1,2,4,3,0,0,0,0, & ! element 11
-  1,3,9,7,2,6,8,4, & ! element 27
-  1,2,3,4,0,0,0,0, & ! element 157
-  1,2,3,4,5,6,0,0  & ! element 136
-   /),(/FE_maxNnodes,FE_Nelemtypes/))
+  1,1, 2,2, 4,4, 3,3, 5,5, 6,6, 8,8, 7,7, 0,0,  & ! element 7
+  1,1, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0, 0,0,  & ! element 134
+  1,1, 2,2, 4,4, 3,3, 0,0, 0,0, 0,0, 0,0, 0,0,  & ! element 11
+  1,1, 5,5, 2,2, 8,8, 0,0, 6,6, 4,4, 7,7, 3,3,  & ! element 27
+  1,1, 2,2, 3,3, 4,4, 0,0, 0,0, 0,0, 0,0, 0,0,  & ! element 157
+  1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 0,0, 0,0, 0,0   & ! element 136
+   /),(/2,FE_maxNips,FE_Nelemtypes/))
  integer(pInt), dimension(FE_NipFaceNodes,FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
   1,2,3,4 , & ! element 7
@@ -1297,7 +1287,8 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  implicit none
  
  integer(pInt) e,t,i,j,k,n
- integer(pInt) neighbor,neighboringElem,neighboringIP,matchingElem,faceNode,linkingNode
+ integer(pInt) neighbor,neighboringElem,neighboringIP,matchingElem
+ integer(pInt), dimension(2) :: linkedNode
 
  allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipNeighborhood = 0_pInt
  
@@ -1306,7 +1297,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    do i = 1,FE_Nips(t)                   ! loop over IPs of elem
      do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
        neighbor = FE_ipNeighbor(n,i,t)
-      if (neighbor > 0) then ! intra-element IP
+       if (neighbor > 0) then ! intra-element IP
          neighboringElem = e
          neighboringIP   = neighbor
        else                   ! neighboring element's IP
@@ -1314,27 +1305,26 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
          neighboringIP = 0_pInt
          matchingElem = mesh_faceMatch(-neighbor,e)   ! get CP elem id of face match
          if (matchingElem > 0 .and. &
-		     mesh_element(2,matchingElem) == t) then  ! found match of same type?
-matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matching face
-             faceNode = FE_nodeOnFace(j,-neighbor,t)  ! get face node id
-             if (i == FE_ipAtNode(faceNode,t)) then   ! ip linked to face node is me?
-               linkingNode = mesh_element(4+faceNode,e) ! FE id of this facial node
-               do k = 1,FE_Nnodes(t)   ! loop over nodes in matching element
-                 if (linkingNode == mesh_element(4+k,matchingElem)) then
-                   neighboringElem = matchingElem
-                   neighboringIP = FE_ipAtNode(k,t)
-                   exit matchFace
-                 endif
-               end do
+           mesh_element(2,matchingElem) == t) then  ! found match of same type?
+           do j = 1,FE_Nnodes(t)                    ! check against all neighbor's nodes
+             if (mesh_element(4+FE_nodesAtIP(1,i,t),e)==mesh_element(4+j,matchingElem)) linkedNode(1) = j   ! which neighboring node matches my first nodeAtIP (indexed globally)
+             if (mesh_element(4+FE_nodesAtIP(2,i,t),e)==mesh_element(4+j,matchingElem)) linkedNode(2) = j   ! which neighboring node matches my second nodeAtIP (indexed globally)
+           enddo
+matchFace: do j = 1,FE_Nips(t)
+             if ((linkedNode(1) == FE_nodesAtIP(1,j,t) .and. linkedNode(2) == FE_nodesAtIP(2,j,t)) .or. &
+                 (linkedNode(1) == FE_nodesAtIP(2,j,t) .and. linkedNode(2) == FE_nodesAtIP(1,j,t)) ) then
+               neighboringElem = matchingElem
+               neighboringIP = j
+               exit matchFace
              endif
-           end do matchFace
+           enddo matchFace
          endif
        endif
        mesh_ipNeighborhood(1,n,i,e) = neighboringElem
        mesh_ipNeighborhood(2,n,i,e) = neighboringIP
-     end do
-   end do
- end do
+     enddo
+   enddo
+ enddo
  
  return
 
@@ -1499,25 +1489,34 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
 
  implicit none
 
- integer(pInt), dimension (:,:), allocatable :: mesh_MatTex
+ integer(pInt), dimension (:,:), allocatable :: mesh_HomogMicro
  character(len=64) fmt
 
- integer(pInt) i,e,f
+ integer(pInt) i,e,n,f,t
 
  if (mesh_maxValStateVar(1) == 0) call IO_error(110) ! no materials specified
  if (mesh_maxValStateVar(2) == 0) call IO_error(120) ! no textures specified
    
- allocate (mesh_MatTex(mesh_maxValStateVar(1),mesh_maxValStateVar(2)))
- mesh_MatTex = 0_pInt
+ allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
  do i=1,mesh_NcpElems
-   mesh_MatTex(mesh_element(3,i),mesh_element(4,i)) = &
-   mesh_MatTex(mesh_element(3,i),mesh_element(4,i)) + 1 ! count combinations of material and texture
+   mesh_HomogMicro(mesh_element(3,i),mesh_element(4,i)) = &
+   mesh_HomogMicro(mesh_element(3,i),mesh_element(4,i)) + 1 ! count combinations of homogenization and microstructure
  enddo
  
 !$OMP CRITICAL (write2out)
 
  write (6,*)
  write (6,*) "Input Parser: IP NEIGHBORHOOD"
+ write (6,*)
+ write (6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
+ do e = 1,mesh_NcpElems                  ! loop over cpElems
+   t = mesh_element(2,e)                 ! get elemType
+   do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+     do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
+       write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
+     enddo
+   enddo
+ enddo
  write (6,*)
  write (6,"(a13,x,e15.8)") "total volume", sum(mesh_ipVolume)
  write (6,*)
@@ -1550,8 +1549,8 @@ matchFace: do j = 1,FE_NfaceNodes(-neighbor,t)        ! count over nodes on matc
  write (fmt,"(a,i3,a)") "(9(x),a1,x,",mesh_maxValStateVar(2),"(i8))"
  write (6,fmt) "+",math_range(mesh_maxValStateVar(2))
  write (fmt,"(a,i3,a)") "(i8,x,a1,x,",mesh_maxValStateVar(2),"(i8))"
- do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) materials
-   write (6,fmt) i,"|",mesh_MatTex(i,:) ! loop over all (possibly assigned) textures
+ do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
+   write (6,fmt) i,"|",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
  enddo
  write (6,*)
 !$OMP END CRITICAL (write2out)
