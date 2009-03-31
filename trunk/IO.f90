@@ -21,6 +21,7 @@
 ! function IO_lc(line)
 ! subroutine IO_lcInplace(line)
 ! subroutine IO_error(ID)
+! subroutine IO_warning(ID)
 !---------------------------
 
 
@@ -698,88 +699,88 @@ END FUNCTION
 
  select case (ID)
  case (0)
-   msg='Unable to open input file.'
+   msg = 'Unable to open input file'
  case (100)
-   msg='Error reading from configuration file.'
+   msg = 'Error reading from configuration file'
  case (105)
-   msg='Error reading from ODF file.'
+   msg = 'Error reading from ODF file'
  case (110)
-   msg='No homogenization specified via State Variable 2.'
+   msg = 'No homogenization specified via State Variable 2'
  case (120)
-   msg='No microstructure specified via State Variable 3.'
+   msg = 'No microstructure specified via State Variable 3'
  case (130)
-   msg='Homogenization index out of bounds.'
+   msg = 'Homogenization index out of bounds'
  case (140)
-   msg='Microstructure index out of bounds.'
+   msg = 'Microstructure index out of bounds'
  case (150)
-   msg='Phase index out of bounds.'
+   msg = 'Phase index out of bounds'
  case (160)
-   msg='Texture index out of bounds.'
+   msg = 'Texture index out of bounds'
  case (170)
-   msg='Sum of phase fractions differs from 1.'
+   msg = 'Sum of phase fractions differs from 1'
  case (200)
-   msg='Unknown constitution specified.'
+   msg = 'Unknown constitution specified'
  case (201)
-   msg='Unknown lattice type specified.'
+   msg = 'Unknown lattice type specified'
  case (202)
-   msg='Number of slip systems too small.'
+   msg = 'Number of slip systems too small'
  case (203)
-   msg='Negative initial slip resistance.'
+   msg = 'Negative initial slip resistance'
  case (204)
-   msg='Non-positive reference shear rate.'
+   msg = 'Non-positive reference shear rate'
  case (205)
-   msg='Non-positive stress exponent.'
+   msg = 'Non-positive stress exponent'
  case (206)
-   msg='Non-positive initial hardening slope.'
+   msg = 'Non-positive initial hardening slope'
  case (207)
-   msg='Non-positive saturation stress.'
+   msg = 'Non-positive saturation stress'
  case (208)
-   msg='Non-positive w0.'
+   msg = 'Non-positive w0'
  case (209)
-   msg='Negative latent hardening ratio.'
+   msg = 'Negative latent hardening ratio'
  case (220)
-   msg='Negative initial dislocation density'
+   msg = 'Negative initial dislocation density'
  case (221)
-   msg='Negative Bugers vector'
+   msg = 'Negative Bugers vector'
  case (222)
-   msg='Negative activation energy for edge dislocation glide'
+   msg = 'Negative activation energy for edge dislocation glide'
  case (223)
-   msg='Negative self diffusion energy'
+   msg = 'Negative self diffusion energy'
  case (224)
-   msg='Negative diffusion constant'
+   msg = 'Negative diffusion constant'
  case (240)
-   msg='Non-positive Taylor factor.'
+   msg = 'Non-positive Taylor factor'
  case (300)
-   msg='This material can only be used with elements with three direct stress components.'
+   msg = 'This material can only be used with elements with three direct stress components'
  case (500)
-   msg='Unknown lattice type specified.'
+   msg = 'Unknown lattice type specified'
  case (600)
-   msg='Convergence not reached.'
+   msg = 'Convergence not reached'
  case (610)
-   msg='Stress loop not converged.'
- case (650)
-   msg='Polar decomposition failed.'
+   msg = 'Stress loop not converged'
  case (700)
-   msg='Singular matrix in stress iteration.'
+   msg = 'Singular matrix in stress iteration'
  case (800)
-   msg='GIA requires 8 grains per IP (bonehead, you!)'
+   msg = 'GIA requires 8 grains per IP (bonehead, you!)'
  case default
-   msg='Unknown error number...'
+   msg = 'Unknown error number...'
  end select
  
  !$OMP CRITICAL (write2out)
+ write(6,*)
  write(6,*) '+------------------------------+'
+ write(6,*) '+            ERROR             +'
+ write(6,*) '+                              +'
  write(6,*) msg
- if (present(ext_msg))  write(6,*) ext_msg
- write(6,*) '+------------------------------+'
+ if (present(ext_msg)) write(6,*) ext_msg
  if (present(e)) then
    if (present(i) .and. present(g)) then
      write(6,'(a10,x,i6,x,a2,x,i2,x,a5,x,i4)') 'at element',e,'IP',i,'grain',g
    else
      write(6,'(a2,x,i6)') 'at',e
    endif
-   write(6,*)
  endif
+ write(6,*) '+------------------------------+'
 
  call debug_info()
  call flush(6)
@@ -792,4 +793,43 @@ END FUNCTION
  END SUBROUTINE
 
 
+!********************************************************************
+! write warning statements to standard out
+!********************************************************************
+ SUBROUTINE IO_warning(ID,e,i,g,ext_msg)
+
+ use prec, only: pInt
+ use debug
+ implicit none
+
+ integer(pInt), intent(in) :: ID
+ integer(pInt), optional, intent(in) :: e,i,g
+ character(len=*), optional, intent(in) :: ext_msg
+ character(len=80) msg
+
+ select case (ID)
+ case (650)
+   msg = 'Polar decomposition failed'
+ case default
+   msg = 'Unknown warning number...'
+ end select
+ 
+ !$OMP CRITICAL (write2out)
+ write(6,*)
+ write(6,*) '+------------------------------+'
+ write(6,*) '+           warning            +'
+ write(6,*) '+                              +'
+ write(6,*) msg
+ if (present(ext_msg))  write(6,*) ext_msg
+ if (present(e)) then
+   if (present(i) .and. present(g)) then
+     write(6,'(a10,x,i6,x,a2,x,i2,x,a5,x,i4)') 'at element',e,'IP',i,'grain',g
+   else
+     write(6,'(a2,x,i6)') 'at',e
+   endif
+ endif
+ write(6,*) '+------------------------------+'
+
+ END SUBROUTINE
+ 
  END MODULE IO
