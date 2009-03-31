@@ -39,6 +39,8 @@ character(len=64), dimension(:),       allocatable :: homogenization_name, &    
                                                       texture_name                     ! name of each texture
 character(len=256),dimension(:),       allocatable :: texture_ODFfile                  ! name of each ODF file
 integer(pInt),     dimension(:),       allocatable :: homogenization_Ngrains, &        ! number of grains in each homogenization
+                                                      homogenization_typeInstance, &   ! instance of particular type of each homogenization
+                                                      homogenization_Noutput, &        ! number of '(output)' items per homogenization
                                                       microstructure_Nconstituents, &  ! number of constituents in each microstructure
                                                       phase_constitutionInstance, &    ! instance of particular constitution of each phase
                                                       phase_Noutput, &                 ! number of '(output)' items per phase
@@ -120,7 +122,7 @@ subroutine material_parseHomogenization(file,myPart)
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 2
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) Nsections, section
+ integer(pInt) Nsections, section, s
  character(len=64) tag
  character(len=1024) line
  
@@ -128,7 +130,10 @@ subroutine material_parseHomogenization(file,myPart)
  material_Nhomogenization = Nsections
  allocate(homogenization_name(Nsections));    homogenization_name = ''
  allocate(homogenization_type(Nsections));    homogenization_type = ''
+ allocate(homogenization_typeInstance(Nsections));  homogenization_typeInstance = 0_pInt
  allocate(homogenization_Ngrains(Nsections)); homogenization_Ngrains = 0_pInt
+ 
+ homogenization_Noutput = IO_countTagInPart(file,myPart,'(output)',Nsections)
  
  rewind(file)
  line = ''
@@ -152,6 +157,10 @@ subroutine material_parseHomogenization(file,myPart)
      select case(tag)
        case ('type')
          homogenization_type(section) = IO_stringValue(line,positions,2)
+         do s = 1,section
+           if (homogenization_type(s) == homogenization_type(section)) &
+             homogenization_typeInstance(section) = homogenization_typeInstance(section) + 1  ! count instances
+         enddo
        case ('ngrains')
          homogenization_Ngrains(section) = IO_intValue(line,positions,2)
      end select
