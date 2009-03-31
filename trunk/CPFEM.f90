@@ -482,14 +482,14 @@
    i,&              ! integration point number
    e&               ! element number
  )
- use prec, only: pReal,pInt,reltol_Outer
+ use prec, only: pReal,pInt,pLongInt,reltol_Outer
  use constitutive, only: constitutive_dotState,constitutive_sizeDotState,&
                          constitutive_state_old,constitutive_state_new
  use debug
  
  logical integrateState
 
- integer(8) tick,tock,tickrate,maxticks
+ integer(pLongInt) tick,tock,tickrate,maxticks
  integer(pInt) g,i,e,mySize
  real(pReal), dimension(6) :: Tstar_v
  real(pReal) dt
@@ -659,7 +659,7 @@
  logical failed
  integer(pInt) cp_en, ip, grain
  integer(pInt) iInner,dummy, i,j,k,l,m,n
- integer(8) tick,tock,tickrate,maxticks
+ integer(pLongInt) tick,tock,tickrate,maxticks
  real(pReal) dt, Temperature, det, p_hydro, leapfrog,maxleap
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2

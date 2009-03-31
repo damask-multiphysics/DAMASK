@@ -694,7 +694,9 @@ end subroutine
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal) DetA
 
- real(pReal),dimension(3,3) :: math_inv3x3 = 0.0_pReal
+ real(pReal),dimension(3,3) :: math_inv3x3
+ 
+ math_inv3x3 = 0.0_pReal
 
  DetA =   A(1,1) * ( A(2,2) * A(3,3) - A(2,3) * A(3,2) )&
         - A(1,2) * ( A(2,1) * A(3,3) - A(2,3) * A(3,1) )&

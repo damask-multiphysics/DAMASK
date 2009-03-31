@@ -9,8 +9,8 @@
  integer(pInt), dimension(nCutback+1) :: debug_cutbackDistribution = 0_pInt
  integer(pInt), dimension(nInner) :: debug_InnerLoopDistribution = 0_pInt
  integer(pInt), dimension(nOuter) :: debug_OuterLoopDistribution = 0_pInt
- integer(8) :: debug_cumLpTicks = 0_pInt
- integer(8) :: debug_cumDotStateTicks = 0_pInt
+ integer(pLongInt) :: debug_cumLpTicks = 0_pInt
+ integer(pLongInt) :: debug_cumDotStateTicks = 0_pInt
  integer(pInt) :: debug_cumLpCalls = 0_pInt
  integer(pInt) :: debug_cumDotStateCalls = 0_pInt
  logical :: debugger = .false.
@@ -28,7 +28,7 @@
  implicit none
 
  integer(pInt) i,integral
- integer(8) tickrate
+ integer(pLongInt) tickrate
 
  write(6,*)
  write(6,*) 'DEBUG Info'
@@ -56,7 +56,7 @@
  write(6,*)
  
  integral = 0_pInt
- write(6,*)	'distribution_InnerLoop :'
+ write(6,*)	'distribution_InnerLoop :'
  do i=1,nInner
    if (debug_InnerLoopDistribution(i) /= 0) then
      integral = integral + i*debug_InnerLoopDistribution(i)
