@@ -681,7 +681,46 @@ end subroutine
  
 
 !**************************************************************************
-! Cramer inversion of 3x3 matrix
+! Cramer inversion of 3x3 matrix (function)
+!**************************************************************************
+ function math_inv3x3(A)
+
+!   direct Cramer inversion of matrix A.
+!   returns all zeroes if not possible, i.e. if det close to zero
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal),dimension(3,3),intent(in)  :: A
+ real(pReal) DetA
+
+ real(pReal),dimension(3,3) :: math_inv3x3 = 0.0_pReal
+
+ DetA =   A(1,1) * ( A(2,2) * A(3,3) - A(2,3) * A(3,2) )&
+        - A(1,2) * ( A(2,1) * A(3,3) - A(2,3) * A(3,1) )&
+        + A(1,3) * ( A(2,1) * A(3,2) - A(2,2) * A(3,1) )
+
+ if (DetA > tiny(DetA)) then
+   math_inv3x3(1,1) = (  A(2,2) * A(3,3) - A(2,3) * A(3,2) ) / DetA
+   math_inv3x3(2,1) = ( -A(2,1) * A(3,3) + A(2,3) * A(3,1) ) / DetA
+   math_inv3x3(3,1) = (  A(2,1) * A(3,2) - A(2,2) * A(3,1) ) / DetA
+
+   math_inv3x3(1,2) = ( -A(1,2) * A(3,3) + A(1,3) * A(3,2) ) / DetA
+   math_inv3x3(2,2) = (  A(1,1) * A(3,3) - A(1,3) * A(3,1) ) / DetA
+   math_inv3x3(3,2) = ( -A(1,1) * A(3,2) + A(1,2) * A(3,1) ) / DetA
+
+   math_inv3x3(1,3) = (  A(1,2) * A(2,3) - A(1,3) * A(2,2) ) / DetA
+   math_inv3x3(2,3) = ( -A(1,1) * A(2,3) + A(1,3) * A(2,1) ) / DetA
+   math_inv3x3(3,3) = (  A(1,1) * A(2,2) - A(1,2) * A(2,1) ) / DetA
+ endif
+ return
+
+ end function
+
+
+
+!**************************************************************************
+! Cramer inversion of 3x3 matrix (subroutine)
 !**************************************************************************
  SUBROUTINE math_invert3x3(A, InvA, DetA, error)
 
