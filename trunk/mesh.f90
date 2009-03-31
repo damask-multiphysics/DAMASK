@@ -1546,9 +1546,9 @@ matchFace: do j = 1,FE_Nips(t)
  write (6,*) mesh_maxValStateVar(1), " : maximum homogenization index"
  write (6,*) mesh_maxValStateVar(2), " : maximum microstructure index"
  write (6,*)
- write (fmt,"(a,i3,a)") "(9(x),a1,x,",mesh_maxValStateVar(2),"(i8))"
+ write (fmt,"(a,i5,a)") "(9(x),a1,x,",mesh_maxValStateVar(2),"(i8))"
  write (6,fmt) "+",math_range(mesh_maxValStateVar(2))
- write (fmt,"(a,i3,a)") "(i8,x,a1,x,",mesh_maxValStateVar(2),"(i8))"
+ write (fmt,"(a,i5,a)") "(i8,x,a1,x,",mesh_maxValStateVar(2),"(i8))"
  do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
    write (6,fmt) i,"|",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
  enddo
