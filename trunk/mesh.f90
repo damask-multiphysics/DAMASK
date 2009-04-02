@@ -1421,16 +1421,11 @@
    0, 0, 0, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, &
-   0, 0, 0, 0, & !
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
    9,17, 0, 0, & ! element 27
    1,16, 0, 0, &
   16,17, 0, 0, &
    1, 9, 0, 0, &
+   0, 0, 0, 0, &
    0, 0, 0, 0, &
   10,18, 0, 0, & ! 
    9,17, 0, 0, &
@@ -1481,12 +1476,6 @@
    0, 0, 0, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, & ! 
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
-   0, 0, 0, 0, &
-   0, 0, 0, 0, & !
    0, 0, 0, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, &
@@ -2838,7 +2827,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      mesh_subNodeCoord(:,n,e) = mesh_node(:,mesh_FEasCP('node',mesh_element(4+n,e))) ! loop over nodes of this element type
    enddo
    do n = 1,FE_NsubNodes(t)               ! now for the true subnodes
-     do p = 1,FE_Nnodes(t)                ! loop through parents
+     do p = 1,FE_Nips(t)                  ! loop through parents
        if (FE_subNodeParent(p,n,t) > 0) & ! valid parent node
          mesh_subNodeCoord(:,n+FE_Nnodes(t),e) = &
          mesh_subNodeCoord(:,n+FE_Nnodes(t),e) + &
@@ -2874,7 +2863,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  real(pReal), dimension(3) :: centerOfGravity
 
  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems)) ; mesh_ipVolume = 0.0_pReal
- 
+ write(6,'(a10,x,a20,x,a20,x,a25,3(x,a6))') 'FE_Nips','FE_NipNeighbors','FE_NipFaceNodes','FE_subNodeOnIPFace','x','y','z'
  do e = 1,mesh_NcpElems                  ! loop over cpElems
    t = mesh_element(2,e)                 ! get elemType
    do i = 1,FE_Nips(t)                   ! loop over IPs of elem
@@ -2884,6 +2873,10 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
        do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
          gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = 1
          gravityNodePos(:,FE_subNodeOnIPFace(n,f,i,t)) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+         write(6,'(i10,x,i20,x,i20,x,i25,3(x,f6.3))') i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
+                                                    mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
+                                                    mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
+                                                    mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
        end do
      end do
      
