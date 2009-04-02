@@ -17,7 +17,7 @@
 ! function IO_fixedFloatValue(line,ends,pos)
 ! function IO_fixedFloatNoEValue(line,ends,pos)
 ! function IO_fixedIntValue(line,ends,pos)
-! function IO_continousTntValues(unit,maxN)
+! function IO_continousIntValues(unit,maxN)
 ! function IO_lc(line)
 ! subroutine IO_lcInplace(line)
 ! subroutine IO_error(ID)
