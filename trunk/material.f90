@@ -44,6 +44,7 @@ integer(pInt),     dimension(:),       allocatable :: homogenization_Ngrains, & 
                                                       microstructure_Nconstituents, &  ! number of constituents in each microstructure
                                                       phase_constitutionInstance, &    ! instance of particular constitution of each phase
                                                       phase_Noutput, &                 ! number of '(output)' items per phase
+                                                      phase_localConstitution, &       ! flag phases with local constitutive law
                                                       texture_symmetry, &              ! number of symmetric orientations per texture
                                                       texture_Ngauss, &                ! number of Gauss components per texture
                                                       texture_Nfiber                   ! number of Fiber components per texture
@@ -265,8 +266,10 @@ subroutine material_parsePhase(file,myPart)
  allocate(phase_constitution(Nsections));  phase_constitution = ''
  allocate(phase_constitutionInstance(Nsections));  phase_constitutionInstance = 0_pInt
  allocate(phase_Noutput(Nsections))
+ allocate(phase_localConstitution(Nsections))
 
  phase_Noutput = IO_countTagInPart(file,myPart,'(output)',Nsections)
+ phase_localConstitution = .not. IO_spotTagInPart(file,myPart,'/nonlocal/',Nsections)
  
  rewind(file)
  line = ''
