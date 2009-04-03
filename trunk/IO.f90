@@ -370,6 +370,52 @@
 END FUNCTION
 
 
+!*********************************************************************
+! return array of myTag presence within <part> for at most N[sections]
+!*********************************************************************
+ FUNCTION IO_spotTagInPart(file,part,myTag,Nsections)
+
+ use prec, only: pInt
+ implicit none
+
+!* Definition of variables
+ integer(pInt), intent(in) :: file, Nsections
+ character(len=*), intent(in) :: part, myTag
+ logical, dimension(Nsections) :: IO_spotTagInPart
+ integer(pInt), parameter :: maxNchunks = 1
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt) section
+ character(len=1024) line,tag
+
+ IO_spotTagInPart = .false.                               ! assume to nowhere spot tag
+ counter = 0_pInt
+ section = 0_pInt
+ line = ''
+ rewind(file)
+
+ do while (IO_getTag(line,'<','>') /= part)               ! search for part
+   read(file,'(a1024)',END=100) line
+ enddo
+
+ do
+   read(file,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
+     section = section + 1
+   if (section > 0) then
+     positions = IO_stringPos(line,maxNchunks)
+     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     if (tag == myTag) &                                  ! match
+       IO_spotTagInPart(section) = .true.
+   endif   
+ enddo
+
+100 return
+
+END FUNCTION
+
+
 !********************************************************************
 ! locate at most N space-separated parts in line
 ! return array containing number of parts found and
