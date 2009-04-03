@@ -597,6 +597,30 @@ END FUNCTION
 
 
 !********************************************************************
+! read on in file to skip (at least) N chunks (may be over multiple lines)
+!********************************************************************
+ SUBROUTINE IO_skipChunks (unit,N)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ integer(pInt)  remainingChunks,unit,N
+ integer(pInt), parameter :: maxNchunks = 64
+ integer(pInt), dimension(1+2*maxNchunks) :: pos
+ character(len=300) line
+
+ remainingChunks = N
+ do while (remainingChunks > 0)
+   read(unit,'(A300)',end=100) line
+   pos = IO_stringPos(line,maxNchunks)
+   remainingChunks = remainingChunks - pos(1)
+ end do
+100 return
+
+ END SUBROUTINE
+
+ 
+!********************************************************************
 ! count items in consecutive lines of ints concatenated by "c"
 ! as last char or range of values a "to" b
 !********************************************************************
