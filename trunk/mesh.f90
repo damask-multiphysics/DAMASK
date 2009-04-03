@@ -26,7 +26,8 @@
 ! FE-solver specific part (different for MARC/ABAQUS)..!
 ! Hence, I suggest to prefix with "FE_"
 !
-! _Nnodes            : # nodes in a specific type of element
+! _Nnodes            : # nodes in a specific type of element (how we use it)
+! _NoriginalNodes    : # nodes in a specific type of element (how it is originally defined by marc)
 ! _Nips              : # IPs in a specific type of element
 ! _NipNeighbors      : # IP neighbors in a specific type of element
 ! _ipNeighbor        : +x,-x,+y,-y,+z,-z list of intra-element IPs and
@@ -58,12 +59,21 @@
  integer(pInt) :: hypoelasticTableStyle = 0
  integer(pInt) :: initialcondTableStyle = 0
  integer(pInt), parameter :: FE_Nelemtypes = 7
- integer(pInt), parameter :: FE_maxNnodes = 20
+ integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNsubNodes = 56
  integer(pInt), parameter :: FE_maxNips = 27
  integer(pInt), parameter :: FE_maxNipNeighbors = 6
  integer(pInt), parameter :: FE_NipFaceNodes = 4
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nnodes = &
+ (/8, & ! element 7
+   4, & ! element 134
+   4, & ! element 11
+   4, & ! element 27
+   4, & ! element 157
+   6, & ! element 136
+   8  & ! element 21
+  /)
+ integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NoriginalNodes = &
  (/8, & ! element 7
    4, & ! element 134
    4, & ! element 11
@@ -929,8 +939,8 @@
    3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4, 7, 7, 7, 7, 1, 1, 6, 6, 8, 8, 5, &
    4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 3, 3, 3, 3, 8, 8, 8, 8, 2, 2, 5, 5, 7, 7, 6, &
    5, 5, 5, 5, 5, 5, 5, 5, 1, 1, 1, 1, 6, 6, 6, 6, 8, 8, 8, 8, 2, 2, 4, 4, 7, 7, 3, &
-   6, 6, 6, 6, 6, 6, 6, 6, 2, 2, 2, 2, 5, 5, 5, 5, 8, 8, 8, 8, 1, 1, 3, 3, 8, 8, 4, &
-   7, 7, 7, 7, 7, 7, 7, 7, 3, 3, 3, 3, 6, 6, 6, 6, 7, 7, 7, 7, 2, 2, 4, 4, 5, 5, 1, &
+   6, 6, 6, 6, 6, 6, 6, 6, 2, 2, 2, 2, 5, 5, 5, 5, 7, 7, 7, 7, 1, 1, 3, 3, 8, 8, 4, &
+   7, 7, 7, 7, 7, 7, 7, 7, 3, 3, 3, 3, 6, 6, 6, 6, 8, 8, 8, 8, 2, 2, 4, 4, 5, 5, 1, &
    8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 4, 4, 5, 5, 5, 5, 7, 7, 7, 7, 1, 1, 3, 3, 6, 6, 2  & 
    /),(/FE_maxNips,FE_maxNsubNodes,FE_Nelemtypes/))
  integer(pInt), dimension(FE_NipFaceNodes,FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes), parameter :: FE_subNodeOnIPFace = &
@@ -1907,168 +1917,168 @@
    0, 0, 0, 0, &
    0, 0, 0, 0, &
    0, 0, 0, 0, &
-   9,33,57,37, & ! element 21
+   9,33,57,37, &  ! element 21
    1,17,44,16, &
-  16,44,57,33, &
+  33,16,44,57, &
    1, 9,37,17, &
-  17,37,44,57, &
+  17,37,57,44, &
    1,16,33, 9, &
-  10,34,58,38, & !
+  10,34,58,38, &  !  2
    9,37,57,33, &
-  33,57,58,34, &
+  34,33,57,58, &
    9,10,38,37, &
-  37,38,57,58, &
+  37,38,58,57, &
    9,33,34,10, &
-   2,11,39,18, & !
+   2,11,39,18, &  !  3
   10,38,58,34, &
-  34,58,39,11, &
+  11,34,58,39, &
   10, 2,18,38, &
-  38,18,58,39, &
+  38,18,39,58, &
   10,34,11, 2, &
-  16,15,43,44, & !
-   2,18,39,11, &
-  11,39,43,15, &
-   2,16,44,18, &
-  18,44,39,43, &
-   2,11,15,16, &
-  33,36,60,57, & !
+  33,36,60,57, &  !  4
   16,44,43,15, &
-  15,43,60,36, &
+  36,15,43,60, &
   16,33,57,44, &
-  44,57,43,60, &
+  44,57,60,43, &
   16,15,36,33, &
-  34,35,59,58, & !
+  34,35,59,58, &  !  5
   33,57,60,36, &
-  36,60,59,35, &
+  35,36,60,59, &
   33,34,58,57, &
-  57,58,60,59, &
+  57,58,59,60, &
   33,36,35,34, &
-  11,12,40,39, & !
+  11,12,40,39, &  !  6
   34,58,59,35, &
-  35,59,40,12, &
+  12,35,59,40, &
   34,11,39,58, &
-  58,39,59,40, &
+  58,39,40,59, &
   34,35,12,11, &
-  15, 4,20,43, & !
-  11,39,40,12, &
-  12,40,20, 4, &
-  11,15,43,39, &
-  39,43,40,20, &
-  11,12, 4,15, &
-  36,14,42,60, & !
+  36,14,42,60, &  !  7
   15,43,20, 4, &
-   4,20,42,14, &
+  14, 4,20,42, &
   15,36,60,43, &
-  43,60,20,42, &
+  43,60,42,20, &
   15, 4,14,36, &
-  37,57,61,45, & !
+  35,13,41,59, &  !  8
+  36,60,42,14, &
+  13,14,42,41, &
+  36,35,59,60, &
+  60,59,41,42, &
+  36,14,13,35, &
+  12, 3,19,40, &  !  9
+  35,59,41,13, &
+   3,13,41,19, &
+  35,12,40,59, &
+  59,40,19,41, &
+  35,13, 3,12, &
+  37,57,61,45, &  ! 10
   17,21,52,44, &
-  44,52,61,57, &
+  57,44,52,61, &
   17,37,45,21, &
-  21,45,52,61, &
+  21,45,61,52, &
   17,44,57,37, &
-  38,58,62,46, & !
+  38,58,62,46, &  ! 11
   37,45,61,57, &
-  57,61,62,58, &
+  58,57,61,62, &
   37,38,46,45, &
-  45,46,61,62, &
+  45,46,62,61, &
   37,57,58,38, &
-  18,39,47,22, & !
+  18,39,47,22, &  ! 12
   38,46,62,58, &
-  58,62,47,39, &
+  39,58,62,47, &
   38,18,22,46, &
-  46,22,62,47, &
+  46,22,47,62, &
   38,58,39,18, &
-  44,43,51,52, & !
-  18,22,47,39, &
-  39,47,51,43, &
-  18,44,52,22, &
-  22,52,47,51, &
-  18,39,43,44, &
-  57,60,64,61, & !
+  57,60,64,61, &  ! 13
   44,52,51,43, &
-  43,51,64,60, &
+  60,43,51,64, &
   44,57,61,52, &
-  52,61,51,64, &
+  52,61,64,51, &
   44,43,60,57, &
-  58,59,63,62, & !
+  58,59,63,62, &  ! 14
   57,61,64,60, &
-  60,64,63,59, &
+  59,60,64,63, &
   57,58,62,61, &
-  61,62,64,63, &
+  61,62,63,64, &
   57,60,59,58, &
-  39,40,48,47, & !
+  39,40,48,47, &  ! 15
   58,62,63,59, &
-  59,63,48,40, &
+  40,59,63,48, &
   58,39,47,62, &
-  62,47,63,48, &
+  62,47,48,63, &
   58,59,40,39, &
-  43,20,24,51, & !
-  39,47,48,40, &
-  40,48,24,20, &
-  39,43,51,47, &
-  47,51,48,24, &
-  39,40,20,43, &
-  60,42,50,64, & !
+  60,42,50,64, &  ! 16
   43,51,24,20, &
-  20,24,50,42, &
+  42,20,24,50, &
   43,60,64,51, &
-  51,64,24,50, &
+  51,64,50,24, &
   43,20,42,60, &
-  45,61,53,25, & !
+  59,41,49,63, &  ! 17
+  60,64,50,42, &
+  41,42,50,49, &
+  60,59,63,64, &
+  64,63,49,50, &
+  60,42,41,59, &
+  40,19,23,48, &  ! 18
+  59,63,49,41, &
+  19,41,49,23, &
+  59,40,48,63, &
+  63,48,23,49, &
+  59,41,19,40, &
+  45,61,53,25, &  ! 19
   21, 5,32,52, &
-  52,32,53,61, &
+  61,52,32,53, &
   21,45,25, 5, &
-   5,25,32,53, &
+   5,25,53,32, &
   21,52,61,45, &
-  46,62,54,26, & !
+  46,62,54,26, &  ! 20
   45,25,53,61, &
-  61,53,54,62, &
+  62,61,53,54, &
   45,46,26,25, &
-  25,26,53,54, &
+  25,26,54,53, &
   45,61,62,46, &
-  22,47,27, 6, & !
+  22,47,27, 6, &  ! 21
   46,26,54,62, &
-  62,54,27,47, &
+  47,62,54,27, &
   46,22, 6,26, &
-  26, 6,54,27, &
+  26, 6,27,54, &
   46,62,47,22, &
-  52,51,31,32, & !
-  22, 6,27,47, &
-  47,27,31,51, &
-  22,52,32, 6, &
-   6,32,27,31, &
-  22,47,51,52, &
-  61,64,56,53, & !
+  61,64,56,53, &  ! 22
   52,32,31,51, &
-  51,31,56,64, &
+  64,51,31,56, &
   52,61,53,32, &
-  32,53,31,56, &
+  32,53,56,31, &
   52,51,64,61, &
-  62,63,55,54, & !
+  62,63,55,54, &  ! 23
   61,53,56,64, &
-  64,56,55,63, &
+  63,64,56,55, &
   61,62,54,53, &
-  53,54,56,55, &
+  53,54,55,56, &
   61,64,63,62, &
-  47,48,28,27, & !
+  47,48,28,27, &  ! 24
   62,54,55,63, &
-  63,55,28,48, &
+  48,63,55,28, &
   62,47,27,54, &
-  54,27,55,28, &
+  54,27,28,55, &
   62,63,48,47, &
-  51,24, 8,31, & !
-  47,27,28,48, &
-  48,28, 8,24, &
-  47,51,31,27, &
-  27,31,28, 8, &
-  47,48,24,51, &
-  64,50,30,56, & !
+  64,50,30,56, &  ! 25
   51,31, 8,24, &
-  24, 8,30,50, &
+  50,24, 8,30, &
   51,64,56,31, &
-  31,56, 8,30, &
-  51,24,50,64  &
+  31,56,30, 8, &
+  51,24,50,64, &
+  63,49,29,55, &  ! 26
+  64,56,30,50, &
+  49,50,30,29, &
+  64,63,55,56, &
+  56,55,29,30, &
+  64,50,49,63, &
+  48,23, 7,28, &  ! 27
+  63,55,29,49, &
+  23,49,29, 7, &
+  63,48,28,55, &
+  55,28, 7,29, &
+  63,49,23,48  &
    /),(/FE_NipFaceNodes,FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes/))
    
  CONTAINS
@@ -2326,16 +2336,17 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! assign globals:
 ! _maxNnodes, _maxNips, _maxNipNeighbors, _maxNsharedElems
 !********************************************************************
- SUBROUTINE mesh_get_nodeElemDimensions (unit)
+SUBROUTINE mesh_get_nodeElemDimensions (unit)
  
  use prec, only: pInt
  use IO
  implicit none
  
+ integer(pInt), parameter :: maxNchunks = 66
  integer(pInt), dimension (mesh_Nnodes) :: node_count
  integer(pInt), dimension (:), allocatable :: node_seen
- integer(pInt) unit,i,j,n,t,e,NnodesStillToBeRead
- integer(pInt), dimension (133) :: pos
+ integer(pInt) unit,i,j,n,t,e
+ integer(pInt), dimension (1+2*maxNchunks) :: pos
  character*300 line
  
 610 FORMAT(A300)
@@ -2348,50 +2359,35 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    read (unit,610,END=630) line
    pos = IO_stringPos(line,1)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
-     read (unit,610,END=630) line                                               ! Garbage line
-     readThisElement: do i=1,mesh_Nelems                                        ! read all elements
-       NnodesStillToBeRead = -1_pInt                                            ! number of nodes per element still to be read
-       do while (NnodesStillToBeRead /= 0)
-         read (unit,610,END=630) line
-         pos = IO_stringPos(line,2+FE_maxNnodes)                                ! limit to maximal number of nodes (plus ID, type)
-         if (NnodesStillToBeRead < 0) then                                      ! first line of element with FE ID and element type
-           e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
-           if (e < 1) exit readThisElement                                      ! disregard non-CP elems
-           t = FE_mapElemtype(IO_StringValue(line,pos,2))                       ! element type
-           NnodesStillToBeRead = FE_Nnodes(t)
-           mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
-           mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
-           mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
-           mesh_maxNsubNodes =    max(mesh_maxNsubNodes,FE_NsubNodes(t))
-           node_seen = 0_pInt
-           do j = 1,(pos(1)-2)
-             n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
-             if (all(node_seen /= n)) then
-               node_count(n) = node_count(n)+1
-             end if
-             node_seen(j) = n
-             NnodesStillToBeRead = NnodesStillToBeRead - 1
-           end do
-         else                                                                   ! all lines after the first just contain nodes
-           do j = 1,pos(1)
-             n = mesh_FEasCP('node',IO_IntValue (line,pos,j))
-             if (all(node_seen /= n)) then
-               node_count(n) = node_count(n)+1
-             end if
-             node_seen(FE_Nnodes(t)-NnodesStillToBeRead+1) = n
-             NnodesStillToBeRead = NnodesStillToBeRead - 1
-           end do
-         end if
-       end do
-     end do readThisElement
+     read (unit,610,END=630) line  ! Garbage line
+     do i=1,mesh_Nelems            ! read all elements
+       read (unit,610,END=630) line
+       pos = IO_stringPos(line,maxNchunks)  ! limit to 64 nodes max (plus ID, type)
+       e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
+       if (e /= 0) then
+         t = FE_mapElemtype(IO_StringValue(line,pos,2))
+         mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
+         mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
+         mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
+         mesh_maxNsubNodes =    max(mesh_maxNsubNodes,FE_NsubNodes(t))
+         node_seen = 0_pInt
+         do j=1,FE_Nnodes(t)
+           n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
+           if (all(node_seen /= n)) node_count(n) = node_count(n)+1
+           node_seen(j) = n
+         end do
+         call IO_skipChunks(unit,FE_NoriginalNodes(t)-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
+	   end if
+     end do
      exit
    end if
  end do
+ 
 630 mesh_maxNsharedElems = maxval(node_count)
  
  return
  END SUBROUTINE
- 
+
 !********************************************************************
 ! Build element set mapping 
 !
@@ -2442,9 +2438,10 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use IO
  implicit none
 
+ integer(pInt), parameter :: maxNchunks = 1
  integer(pInt), dimension (mesh_Nnodes) :: node_count
  integer(pInt) unit,i
- integer(pInt), dimension (133) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: pos
  character*300 line
 
 610 FORMAT(A300)
@@ -2455,7 +2452,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  rewind(unit)
  do
    read (unit,610,END=650) line
-   pos = IO_stringPos(line,1)
+   pos = IO_stringPos(line,maxNchunks)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'coordinates' ) then
      read (unit,610,END=650) line  ! skip crap line
      do i=1,mesh_Nnodes
@@ -2577,8 +2574,9 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use IO
  implicit none
 
- integer unit,e,i,j,sv,val,NnodesStillToBeRead
- integer, parameter :: maxNchunks = 2+FE_maxNnodes
+ integer unit,i,j,sv,val,e
+
+  integer(pInt), parameter :: maxNchunks = 66
  integer(pInt), dimension(1+2*maxNchunks) :: pos
  integer(pInt), dimension(1+mesh_NcpElems) :: contInts
  character*300 line
@@ -2587,76 +2585,66 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 
 610 FORMAT(A300)
 
- 
+
  rewind(unit)
  do
-   read (unit,610,END=680) line
+   read (unit,610,END=620) line
    pos = IO_stringPos(line,2)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
-     read (unit,610,END=680) line  ! Garbage line
-     readThisElement: do i=1,mesh_Nelems
-       NnodesStillToBeRead = -1_pInt                                            ! number of nodes per element still to be read
-       do while (NnodesStillToBeRead /= 0)
-         read (unit,610,END=680) line
-         pos = IO_stringPos(line,2+FE_maxNnodes)                                ! limit to maximal number of nodes (plus ID, type)
-         if (NnodesStillToBeRead < 0) then                                      ! first line of element with FE ID and element type
-           e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
-           if (e < 1) exit readThisElement                                      ! disregard non-CP elems
-           mesh_element(1,e) = IO_IntValue(line,pos,1)                          ! FE id
-           mesh_element(2,e) = FE_mapElemtype(IO_StringValue(line,pos,2))       ! elem type
-           NnodesStillToBeRead = FE_Nnodes(mesh_element(2,e))
-           do j = 1,(pos(1)-2)
-             mesh_element(j+4,e) = IO_IntValue(line,pos,j+2)                    ! copy FE ids of nodes
-             NnodesStillToBeRead = NnodesStillToBeRead - 1
-           end do
-         else                                                                   ! all lines after the first just contain nodes
-           do j = 1,pos(1)
-             mesh_element(FE_Nnodes(mesh_element(2,e))-NnodesStillToBeRead+5,e) = IO_IntValue(line,pos,j)  ! copy FE ids of nodes
-             NnodesStillToBeRead = NnodesStillToBeRead - 1
-           end do
-         end if
-       end do
-     end do readThisElement
+     read (unit,610,END=620) line  ! Garbage line
+	 do i=1,mesh_Nelems
+	   read (unit,610,END=620) line
+	   pos = IO_stringPos(line,maxNchunks)  ! limit to 64 nodes max (plus ID, type)
+	   e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
+	   if (e /= 0) then       ! disregard non CP elems
+	     mesh_element (1,e) = IO_IntValue (line,pos,1)                     ! FE id
+	     mesh_element (2,e) = FE_mapElemtype(IO_StringValue (line,pos,2))  ! elem type
+         forall (j=1:FE_Nnodes(mesh_element(2,e))) &
+           mesh_element(j+4,e) = IO_IntValue (line,pos,j+2) ! copy FE ids of nodes
+         call IO_skipChunks(unit,FE_NoriginalNodes(mesh_element(2,e))-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
+	   end if
+     end do
+
      exit
-   end if
- end do
+   endif
+ enddo
  
  rewind(unit) ! just in case "initial state" apears before "connectivity"
- read (unit,610,END=680) line
+ read (unit,610,END=620) line
  do
    pos = IO_stringPos(line,2)
    if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial').and.    &
        (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) then
-     if (initialcondTableStyle == 2) read (unit,610,END=680) line           ! read extra line for new style     
-     read (unit,610,END=680) line                                           ! read line with index of state var
+     if (initialcondTableStyle == 2) read (unit,610,END=620) line  ! read extra line for new style     
+     read (unit,610,END=620) line       ! read line with index of state var
      pos = IO_stringPos(line,1)
-     sv = IO_IntValue (line,pos,1)                                          ! figure state variable index
-     if( (sv == 2).or.(sv == 3) ) then                                      ! only state vars 2 and 3 of interest
-       read (unit,610,END=680) line                                         ! read line with value of state var
+     sv = IO_IntValue (line,pos,1)      ! figure state variable index
+     if( (sv == 2).or.(sv == 3) ) then  ! only state vars 2 and 3 of interest
+       read (unit,610,END=620) line     ! read line with value of state var
        pos = IO_stringPos(line,1)
-       do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)       ! is noEfloat value?
-         val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1))                ! state var's value
-         mesh_maxValStateVar(sv-1) = max(val,mesh_maxValStateVar(sv-1))     ! remember max val of material and texture index
+       do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)  ! is noEfloat value?
+         val = NINT(IO_fixedNoEFloatValue (line,(/0,20/),1)) ! state var's value
+         mesh_maxValStateVar(sv-1) = max(val,mesh_maxValStateVar(sv-1))  ! remember max val of material and texture index
          if (initialcondTableStyle == 2) then
-           read (unit,610,END=680) line  ! read extra line     
-           read (unit,610,END=680) line  ! read extra line     
-         end if
+           read (unit,610,END=620) line  ! read extra line     
+           read (unit,610,END=620) line  ! read extra line     
+         endif
          contInts = IO_continousIntValues(unit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)  ! get affected elements
          do i = 1,contInts(1)
            e = mesh_FEasCP('elem',contInts(1+i))
            mesh_element(1+sv,e) = val
-         end do
-         if (initialcondTableStyle == 0) read (unit,610,END=680) line       ! ignore IP range for old table style
-         read (unit,610,END=680) line
+         enddo
+         if (initialcondTableStyle == 0) read (unit,610,END=620) line  ! ignore IP range for old table style
+         read (unit,610,END=620) line
          pos = IO_stringPos(line,1)
-       end do
-     end if
+       enddo
+     endif
    else   
-     read (unit,610,END=680) line
-   end if
- end do
+     read (unit,610,END=620) line
+   endif
+ enddo
 
-680 return
+620 return
 
  END SUBROUTINE
 
@@ -2673,8 +2661,9 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use IO
  implicit none
 
- integer(pint) unit,i,j,n,e,t,NnodesStillToBeRead
- integer(pInt), dimension (133) :: pos
+ integer(pInt), parameter :: maxNchunks = 66
+ integer(pint) unit,i,j,n,e
+ integer(pInt), dimension (1+2*maxNchunks) :: pos
  integer(pInt), dimension (:), allocatable :: node_seen
  character*300 line
 
@@ -2686,47 +2675,32 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 
  rewind(unit)
  do
-   read (unit,610,END=690) line
+   read (unit,610,END=620) line
    pos = IO_stringPos(line,1)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
-     read (unit,610,END=690) line                                               ! Garbage line
-     readThisElement: do i=1,mesh_Nelems                                        ! read all elements
-       NnodesStillToBeRead = -1_pInt                                            ! number of nodes per element still to be read
-       do while (NnodesStillToBeRead /= 0)
-         read (unit,610,END=690) line
-         pos = IO_stringPos(line,2+FE_maxNnodes)                                ! limit to maximal number of nodes (plus ID, type)
-         if (NnodesStillToBeRead < 0) then                                      ! first line of element with FE ID and element type
-           e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
-           if (e < 1) exit readThisElement                                      ! disregard non-CP elems
-           t = FE_mapElemtype(IO_StringValue(line,pos,2))                       ! element type
-           NnodesStillToBeRead = FE_Nnodes(t)
-           node_seen = 0_pInt
-           do j = 1,(pos(1)-2)
-             n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
-             if (all(node_seen /= n)) then
-               mesh_sharedElem(1,n) = mesh_sharedElem(1,n) + 1
-               mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e
-             end if
-             node_seen(j) = n
-             NnodesStillToBeRead = NnodesStillToBeRead - 1
-           end do
-         else
-           do j = 1,pos(1)
-             n = mesh_FEasCP('node',IO_IntValue (line,pos,j))
-             if (all(node_seen /= n)) then
-               mesh_sharedElem(1,n) = mesh_sharedElem(1,n) + 1
-               mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e
-             end if
-             node_seen(FE_Nnodes(t)-NnodesStillToBeRead+1) = n
-             NnodesStillToBeRead = NnodesStillToBeRead - 1
-           end do
-         end if
-       end do
-     end do readThisElement
+     read (unit,610,END=620) line  ! Garbage line
+	 do i=1,mesh_Nelems
+	   read (unit,610,END=620) line
+	   pos = IO_stringPos(line,maxNchunks)  ! limit to 64 nodes max (plus ID, type)
+	   e = mesh_FEasCP('elem',IO_IntValue(line,pos,1))
+	   if (e /= 0) then  ! disregard non CP elems
+	     node_seen = 0_pInt
+         do j = 1,FE_Nnodes(FE_mapElemtype(IO_StringValue(line,pos,2)))
+           n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
+           if (all(node_seen /= n)) then
+		     mesh_sharedElem(1,n) = mesh_sharedElem(1,n) + 1
+		     mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e
+           end if
+           node_seen(j) = n
+		 enddo
+         call IO_skipChunks(unit,FE_NoriginalNodes(mesh_element(2,e))-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
+	   end if
+     end do
      exit
    end if
- end do 
-690 return
+ end do
+
+620 return
 
  END SUBROUTINE
  
@@ -2827,7 +2801,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      mesh_subNodeCoord(:,n,e) = mesh_node(:,mesh_FEasCP('node',mesh_element(4+n,e))) ! loop over nodes of this element type
    enddo
    do n = 1,FE_NsubNodes(t)               ! now for the true subnodes
-     do p = 1,FE_Nips(t)                  ! loop through parents
+     do p = 1,FE_Nips(t)                  ! loop through possible parent nodes
        if (FE_subNodeParent(p,n,t) > 0) & ! valid parent node
          mesh_subNodeCoord(:,n+FE_Nnodes(t),e) = &
          mesh_subNodeCoord(:,n+FE_Nnodes(t),e) + &
@@ -2854,7 +2828,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use math, only: math_volTetrahedron
  implicit none
  
- integer(pInt) e,f,t,i,j,k,n,test
+ integer(pInt) e,f,t,i,j,k,n
  integer(pInt), parameter :: Ntriangles = FE_NipFaceNodes-2                     ! each interface is made up of this many triangles
  integer(pInt), dimension(mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNode      ! flagList to find subnodes determining center of grav
  real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos   ! coordinates of subnodes determining center of grav
@@ -2863,7 +2837,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  real(pReal), dimension(3) :: centerOfGravity
 
  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems)) ; mesh_ipVolume = 0.0_pReal
- write(6,'(a10,x,a20,x,a20,x,a25,3(x,a6))') 'FE_Nips','FE_NipNeighbors','FE_NipFaceNodes','FE_subNodeOnIPFace','x','y','z'
+ !write(6,'(a10,x,a20,x,a20,x,a25,3(x,a6))') 'FE_Nips','FE_NipNeighbors','FE_NipFaceNodes','FE_subNodeOnIPFace','x','y','z'
  do e = 1,mesh_NcpElems                  ! loop over cpElems
    t = mesh_element(2,e)                 ! get elemType
    do i = 1,FE_Nips(t)                   ! loop over IPs of elem
@@ -2874,16 +2848,16 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
          gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = 1
          gravityNodePos(:,FE_subNodeOnIPFace(n,f,i,t)) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
          write(6,'(i10,x,i20,x,i20,x,i25,3(x,f6.3))') i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
-                                                    mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
-                                                    mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
-                                                    mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
+                                                     mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
+                                                     mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
+                                                     mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
        end do
      end do
      
      do j = 1,mesh_maxNnodes+mesh_maxNsubNodes-1        ! walk through entire flagList except last
        if (gravityNode(j) > 0_pInt) then                ! valid node index
          do k = j+1,mesh_maxNnodes+mesh_maxNsubNodes    ! walk through remainder of list
-           if (all((gravityNodePos(:,j) - gravityNodePos(:,k)) == 0.0_pReal)) then   ! found match
+           if (all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < 1.0e-100_pReal)) then   ! found duplicate
              gravityNode(j) = 0_pInt                    ! delete first instance
              gravityNodePos(:,j) = 0.0_pReal
              exit                                       ! continue with next suspect
@@ -3003,7 +2977,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    do i = 1,FE_Nips(mesh_element(2,e))
      write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
      do f = 1,FE_NipNeighbors(mesh_element(2,e))
-!       write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
+       write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
      enddo
    enddo
  enddo
