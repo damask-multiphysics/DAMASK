@@ -193,6 +193,8 @@
    CPFEM_init_done = .true.
  endif
 !
+ if ((.not. parallelExecution) .and. (CPFEM_mode == 3)) CPFEM_mode = 2
+!
  cp_en = mesh_FEasCP('elem',CPFEM_en)
  if (cp_en == 1 .and. CPFEM_in == 1) then
     write(6,'(a10,1x,f8.4,1x,a10,1x,i4,1x,a10,1x,i3,1x,a10,1x,i2,x,a10,1x,i2)') &
@@ -212,7 +214,8 @@
          write (6,*) 'results aged.'
        endif
 
-       if (outdatedFFN1 .or. any(abs(ffn1 - CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en)) > relevantStrain)) then
+       if (outdatedFFN1 .or. any(abs(ffn1 - CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en)) > relevantStrain)&
+           .and. parallelExecution) then
          if (.not. outdatedFFN1) write(6,'(i5,x,i2,x,a10,/,3(3(f10.3,x),/))') cp_en,CPFEM_in,'FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
          outdatedFFN1 = .true.
          CPFEM_stress_bar(1:CPFEM_ngens,CPFEM_in,cp_en) = CPFEM_odd_stress
@@ -223,6 +226,9 @@
            CPFEM_execution_elem(2) = cp_en
            CPFEM_execution_IP(1,cp_en) = CPFEM_in
            CPFEM_execution_IP(2,cp_en) = CPFEM_in
+           CPFEM_Temperature(CPFEM_in,cp_en)  = Temperature
+           CPFEM_ffn_bar(:,:,CPFEM_in,cp_en)  = ffn
+           CPFEM_ffn1_bar(:,:,CPFEM_in,cp_en) = ffn1
            call CPFEM_MaterialPoint(CPFEM_updateJaco, CPFEM_dt)
          elseif (.not. CPFEM_calc_done) then
            call CPFEM_MaterialPoint(CPFEM_updateJaco, CPFEM_dt)  ! parallel execution inside
