@@ -388,7 +388,6 @@ END FUNCTION
  character(len=1024) line,tag
 
  IO_spotTagInPart = .false.                               ! assume to nowhere spot tag
- counter = 0_pInt
  section = 0_pInt
  line = ''
  rewind(file)
