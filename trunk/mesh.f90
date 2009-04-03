@@ -2837,7 +2837,6 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
  real(pReal), dimension(3) :: centerOfGravity
 
  allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems)) ; mesh_ipVolume = 0.0_pReal
- !write(6,'(a10,x,a20,x,a20,x,a25,3(x,a6))') 'FE_Nips','FE_NipNeighbors','FE_NipFaceNodes','FE_subNodeOnIPFace','x','y','z'
  do e = 1,mesh_NcpElems                  ! loop over cpElems
    t = mesh_element(2,e)                 ! get elemType
    do i = 1,FE_Nips(t)                   ! loop over IPs of elem
@@ -2847,10 +2846,6 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
        do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
          gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = 1
          gravityNodePos(:,FE_subNodeOnIPFace(n,f,i,t)) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
-         write(6,'(i10,x,i20,x,i20,x,i25,3(x,f6.3))') i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
-                                                     mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
-                                                     mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
-                                                     mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
        end do
      end do
      
@@ -2978,9 +2973,25 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
      write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
      do f = 1,FE_NipNeighbors(mesh_element(2,e))
        write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
-     enddo
-   enddo
- enddo
+     end do
+   end do
+ end do
+ write (6,*)
+ !write(6,'(a5,x,a5,x,a15,x,a15,x,a20,3(x,a8))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
+ !do e = 1,mesh_NcpElems                  ! loop over cpElems
+ !  t = mesh_element(2,e)                 ! get elemType
+ !  do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+ !    do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP
+ !      do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
+ !        write(6,'(i5,x,i5,x,i15,x,i15,x,i20,3(x,f8.3))') e,i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
+ !                                                           mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
+ !                                                           mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
+ !                                                           mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
+ !      end do
+ !    end do
+ !  end do
+ !end do
+ write (6,*)
  write (6,*)
  write (6,*) "Input Parser: STATISTICS"
  write (6,*)
