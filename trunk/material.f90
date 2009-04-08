@@ -51,8 +51,8 @@ integer(pInt),     dimension(:),       allocatable :: homogenization_Ngrains, & 
 integer(pInt),     dimension(:,:),     allocatable :: microstructure_phase, &          ! phase IDs of each microstructure
                                                       microstructure_texture           ! texture IDs of each microstructure
 real(pReal),       dimension(:,:),     allocatable :: microstructure_fraction          ! vol fraction of each constituent in microstructure
-integer(pInt),     dimension(:,:,:),   allocatable :: material_volFrac, &              ! vol fraction of grain within phase (?)
-                                                      material_phase                   ! phase of each grain,IP,element
+real(pReal),       dimension(:,:,:),   allocatable :: material_volFrac                 ! vol fraction of grain within phase (?)
+integer(pInt),     dimension(:,:,:),   allocatable :: material_phase                   ! phase of each grain,IP,element
 real(pReal),       dimension(:,:,:,:), allocatable :: material_EulerAngles             ! initial orientation of each grain,IP,element
 real(pReal),       dimension(:,:,:),   allocatable :: texture_Gauss, &                 ! data of each Gauss component
                                                       texture_Fiber                    ! data of each Fiber component
@@ -434,7 +434,6 @@ subroutine material_populateGrains()
 
  integer(pInt), dimension (:,:), allocatable :: Ngrains
  integer(pInt), dimension (microstructure_maxNconstituents) :: NgrainsOfConstituent
- real(pReal), dimension (:,:),   allocatable :: volume
  real(pReal), dimension (:),     allocatable :: volFracOfGrain, phaseOfGrain
  real(pReal), dimension (:,:),   allocatable :: orientationOfGrain
  real(pReal), dimension (3) :: orientation
@@ -449,9 +448,8 @@ subroutine material_populateGrains()
  allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; material_EulerAngles = 0.0_pReal
  
  allocate(Ngrains(material_Nhomogenization,material_Nmicrostructure)); Ngrains = 0_pInt
- allocate(volume(material_Nhomogenization,material_Nmicrostructure));  volume  = 0.0_pReal
 
-! count grains and total volume per homog/micro pair
+! count grains per homog/micro pair
  do e = 1,mesh_NcpElems
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
@@ -460,7 +458,6 @@ subroutine material_populateGrains()
    if (micro < 1 .or. micro > material_Nmicrostructure) &   ! out of bounds
      call IO_error(140,e,0,0)
    Ngrains(homog,micro) = Ngrains(homog,micro) + homogenization_Ngrains(homog) * FE_Nips(mesh_element(2,e))
-   volume(homog,micro) = volume(homog,micro) + sum(mesh_ipVolume(:,e))
  enddo
 
  allocate(volFracOfGrain(maxval(Ngrains)))          ! reserve memory for maximum case
@@ -483,8 +480,7 @@ subroutine material_populateGrains()
        do e = 1,mesh_NcpElems                       ! check each element
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
            forall (i = 1:FE_Nips(mesh_element(2,e))) &                          ! loop over IPs
-             volFracOfGrain(grain+(i-1)*dGrains+1:grain+i*dGrains) = &
-               mesh_ipVolume(i,e)/volume(homog,micro)/dGrains                   ! assign IPvolfrac/Ngrains to grains
+             volFracOfGrain(grain+(i-1)*dGrains+1:grain+i*dGrains) = mesh_ipVolume(i,e)/dGrains ! assign IPvolfrac/Ngrains to grains
            grain = grain + FE_Nips(mesh_element(2,e)) * dGrains                 ! wind forward by Nips*NgrainsPerIP
          endif
        enddo
@@ -596,6 +592,9 @@ subroutine material_populateGrains()
        !exchange in MC steps to improve result...
 
 ! ----------------------------------------------------------------------------
+       !write(6,*) ''
+       !write(6,*) 'USER DEFINED OUTPUT'
+       !write(6,'(7(a10,x),a10)') 'element','ip','Ngrains','volFrac','phase','phi1','Phi','phi2'
        grain = 0_pInt                               ! microstructure grain index
        do e = 1,mesh_NcpElems                       ! check each element
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
@@ -604,9 +603,13 @@ subroutine material_populateGrains()
              material_phase(g,i,e) = phaseOfGrain(grain+(i-1)*dGrains+g)
              material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+(i-1)*dGrains+g)
            end forall
-           write (6,*) e
-           write (6,*) material_phase(:,:,e)
-           write (6,*) material_EulerAngles(:,:,:,e)
+           !do i = 1,FE_Nips(mesh_element(2,e))
+           !  write(6,'(3(i10,x),e10.3,x,i10,x,3(f10.1,x))') e, i, dGrains, sum(material_volFrac(:,i,e)), &
+           !                                                                sum(material_phase(:,i,e)), &
+           !                                                                sum(material_EulerAngles(1,:,i,e)), &
+           !                                                                sum(material_EulerAngles(2,:,i,e)), &
+           !                                                                sum(material_EulerAngles(3,:,i,e))
+           !end do
            grain = grain + FE_Nips(mesh_element(2,e)) * dGrains                 ! wind forward by Nips*NgrainsPerIP
          endif
        enddo
