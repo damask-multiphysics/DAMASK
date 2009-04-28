@@ -398,7 +398,7 @@ subroutine material_parseTexture(file,myPart)
          do i = 2,12,2
            tag = IO_lc(IO_stringValue(line,positions,i))
            select case (tag)
-             case('aplha1')
+             case('alpha1')
                  texture_Fiber(1,fiber,section) = IO_floatValue(line,positions,i+1)*inRad
              case('alpha2')
                  texture_Fiber(2,fiber,section) = IO_floatValue(line,positions,i+1)*inRad
