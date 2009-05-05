@@ -293,12 +293,12 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,sta
 !* for Tstar==0 both Lp and dLp_dTstar are zero (if not n==1)
  if (norm_Tstar > 0) then
    !* Calculation of Lp
-   Lp = Tstar33/norm_Tstar*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
+   Lp = dsqrt(1.5_pReal)*Tstar33/norm_Tstar*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
         (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID)
 
    !* Calculation of the tangent of Lp
-   factor = constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
-            (dsqrt(1.5_pReal)/ constitutive_j2_fTaylor(matID)/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID) * &
+   factor = dsqrt(1.5_pReal)*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
+            (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID) * &
             norm_Tstar**(constitutive_j2_n(matID)-1.0_pReal)
    dLp_dTstar3333 = 0.0_pReal
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
@@ -343,7 +343,7 @@ function constitutive_j2_dotState(Tstar_v,Temperature,state,ipc,ip,el)
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
 
  norm_Tstar = dsqrt(math_mul6x6(Tstar_v,Tstar_v))
- constitutive_j2_dotState = constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
+ constitutive_j2_dotState = dsqrt(1.5_pReal)*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
                             (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))** &
                             constitutive_j2_n(matID) * &
                             constitutive_j2_h0(matID)*(1.0_pReal-state(ipc,ip,el)%p(1)/constitutive_j2_s_sat(matID))** &
@@ -392,7 +392,7 @@ pure function constitutive_j2_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el
        constitutive_j2_postResults(c+1) = state(ipc,ip,el)%p(1)
        c = c + 1
      case ('strainrate')
-       constitutive_j2_postResults(c+1) = constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
+       constitutive_j2_postResults(c+1) = dsqrt(1.5_pReal)*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
                                           (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))** &
                                           constitutive_j2_n(matID)
        c = c + 1
