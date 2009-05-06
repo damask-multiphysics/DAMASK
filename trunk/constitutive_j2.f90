@@ -343,11 +343,11 @@ function constitutive_j2_dotState(Tstar_v,Temperature,state,ipc,ip,el)
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
 
  norm_Tstar = dsqrt(math_mul6x6(Tstar_v,Tstar_v))
- constitutive_j2_dotState = dsqrt(1.5_pReal)*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
+ constitutive_j2_dotState = constitutive_j2_h0(matID)*(1.0_pReal-state(ipc,ip,el)%p(1)/constitutive_j2_s_sat(matID))** &
+                            constitutive_j2_w0(matID) * &
+                            constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
                             (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))** &
-                            constitutive_j2_n(matID) * &
-                            constitutive_j2_h0(matID)*(1.0_pReal-state(ipc,ip,el)%p(1)/constitutive_j2_s_sat(matID))** &
-                            constitutive_j2_w0(matID)
+                            constitutive_j2_n(matID) 
 
  return
 
@@ -392,7 +392,7 @@ pure function constitutive_j2_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el
        constitutive_j2_postResults(c+1) = state(ipc,ip,el)%p(1)
        c = c + 1
      case ('strainrate')
-       constitutive_j2_postResults(c+1) = dsqrt(1.5_pReal)*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
+       constitutive_j2_postResults(c+1) = constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
                                           (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))** &
                                           constitutive_j2_n(matID)
        c = c + 1
