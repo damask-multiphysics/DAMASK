@@ -1522,15 +1522,12 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
  real(pReal) FE(3,3),R(3,3),U(3,3),CE(3,3),EW1,EW2,EW3,EB1(3,3),EB2(3,3),EB3(3,3),UI(3,3),det
 
  error = .false.
-!!$OMP CRITICAL (evilmatmul)
-
- ce=math_mul33x33(transpose(fe),fe)
-!!$OMP END CRITICAL (evilmatmul)
+ ce = math_mul33x33(transpose(FE),FE)
 
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=DSQRT(EW1)*EB1+DSQRT(EW2)*EB2+DSQRT(EW3)*EB3
  call math_invert3x3(U,UI,det,error)
- if (.not. error) R = math_mul33x33(fe,ui)
+ if (.not. error) R = math_mul33x33(FE,UI)
 
  return 
  

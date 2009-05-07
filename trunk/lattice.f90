@@ -566,7 +566,6 @@ subroutine lattice_init()
  allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt
 
- write(6,*) 'lattice Nstructure',lattice_Nstructure
 end subroutine
 
 
@@ -595,7 +594,6 @@ function lattice_initializeStructure(struct,CoverA)
 
  integer(pInt) lattice_initializeStructure
 
- write(6,*) 'initialize structure', struct
  select case(struct(1:3))                          ! check first three chars of structure name
    case ('fcc')
      myStructure = 1_pInt
@@ -705,7 +703,6 @@ function lattice_initializeStructure(struct,CoverA)
  endif
 
  lattice_initializeStructure = myStructure
- write(6,*) 'lattice_initializeStructure', myStructure
 
 end function
 

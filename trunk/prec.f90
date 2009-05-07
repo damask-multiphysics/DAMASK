@@ -20,14 +20,15 @@
 
 !    *** Numerical parameters ***
  integer(pInt), parameter :: ijaco        = 1_pInt       ! frequency of FEM Jacobi update
- integer(pInt), parameter :: nCutback     = 20_pInt      ! max cutbacks accounted for in debug distribution
- integer(pInt), parameter :: nReg         = 1_pInt       ! regularization attempts for Jacobi inversion
  real(pReal),   parameter :: pert_Fg      = 1.0e-6_pReal ! strain perturbation for FEM Jacobi
- integer(pInt), parameter :: nOuter       = 20_pInt      ! outer loop limit 20
- integer(pInt), parameter :: nInner       = 200_pInt     ! inner loop limit 200
- real(pReal),   parameter :: reltol_Outer = 1.0e-5_pReal ! relative tolerance in outer loop (state)
- real(pReal),   parameter :: reltol_Inner = 1.0e-6_pReal ! relative tolerance in inner loop (Lp)
- real(pReal),   parameter :: abstol_Inner = 1.0e-8_pReal ! absolute tolerance in inner loop (Lp)
+ integer(pInt), parameter :: nReg         = 1_pInt       ! regularization attempts for Jacobi inversion
+ integer(pInt), parameter :: nHomog       = 10_pInt      ! homogenization loop limit
+ integer(pInt), parameter :: nCryst       = 10_pInt      ! crystallite loop limit (state update)
+ integer(pInt), parameter :: nStress      = 20_pInt      ! stress loop limit
+ integer(pInt), parameter :: nLp          = 40_pInt      ! stress loop limit
+ real(pReal),   parameter :: rTol_crystalliteState  = 1.0e-5_pReal ! relative tolerance in crystallite state loop 
+ real(pReal),   parameter :: rTol_crystalliteStress = 1.0e-6_pReal ! relative tolerance in crystallite stress loop
+ real(pReal),   parameter :: aTol_crystalliteStress = 1.0e-8_pReal ! absolute tolerance in crystallite stress loop
 !
  real(pReal),   parameter :: resToler = 1.0e-4_pReal     ! relative tolerance of residual in GIA iteration
  real(pReal),   parameter :: resAbsol = 1.0e+2_pReal     ! absolute tolerance of residual in GIA iteration (corresponds to ~1 Pa)

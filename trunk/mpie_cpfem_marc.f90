@@ -37,19 +37,18 @@
  include "math.f90"             ! uses prec
  include "IO.f90"               ! uses prec, debug, math
  include "FEsolving.f90"        ! uses prec, IO
- include "mesh.f90"             ! uses prec, IO, math, FEsolving
+ include "mesh.f90"             ! uses prec, math, IO, FEsolving
  include "material.f90"         ! uses prec, math, IO, mesh
- include "lattice.f90"          ! uses prec, math
+ include "lattice.f90"          ! uses prec, math, IO, material
  include "constitutive_phenomenological.f90"     ! uses prec, math, IO, lattice, material, debug
  include "constitutive_j2.f90"                   ! uses prec, math, IO, lattice, material, debug
  include "constitutive_dislobased.f90"           ! uses prec, math, IO, lattice, material, debug
  include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
+ include "crystallite.f90"      ! uses
+ include "homogenization_isostrain.f90"          ! uses
+ include "homogenization.f90"   ! uses
  include "CPFEM.f90"            ! uses prec, math, mesh, constitutive, FEsolving, debug, lattice, IO, crystallite
 
- SUBROUTINE hypela2(d,g,e,de,s,t,dt,ngens,n,nn,kcus,matus,ndi,&
-                    nshear,disp,dispt,coord,ffn,frotn,strechn,eigvn,ffn1,&
-                    frotn1,strechn1,eigvn1,ncrd,itel,ndeg,ndm,&
-                    nnode,jtype,lclass,ifr,ifu)
 
 !********************************************************************
 ! This is the Marc material routine
@@ -75,51 +74,6 @@
 !     update+finite+large disp+constant d) in the parameter section of
 !     input deck.
 !
-!
-!     d            stress strain law to be formed
-!     g            change in stress due to temperature effects
-!     e            total elastic strain
-!     de           increment of strain
-!     s            stress - should be updated by user
-!     t            state variables (comes in at t=n, must be updated
-!                                   to have state variables at t=n+1)
-!     dt           increment of state variables
-!     ngens        size of stress - strain law
-!     n            element number
-!     nn           integration point number
-!     kcus(1)      layer number
-!     kcus(2)      internal layer number
-!     matus(1)     user material identification number
-!     matus(2)     internal material identification number
-!     ndi          number of direct components
-!     nshear       number of shear components
-!     disp         incremental displacements
-!     dispt        displacements at t=n   (at assembly,        lovl=4) and
-!                  displacements at t=n+1 (at stress recovery, lovl=6)
-!     coord        coordinates
-!     ncrd         number of coordinates
-!     ndeg         number of degrees of freedom
-!     itel         dimension of F and R, either 2 or 3
-!     nnode        number of nodes per element
-!     jtype        element type
-!     lclass       element class
-!     ifr          set to 1 if R has been calculated
-!     ifu          set to 1 if strech has been calculated
-!
-!     at t=n   :
-!
-!     ffn          deformation gradient
-!     frotn        rotation tensor
-!     strechn      square of principal stretch ratios, lambda(i)
-!     eigvn(i,j)   i principal direction components for j eigenvalues
-!
-!     at t=n+1 :
-!
-!     ffn1         deformation gradient
-!     frotn1       rotation tensor
-!     strechn1     square of principal stretch ratios, lambda(i)
-!     eigvn1(i,j)  i principal direction components for j eigenvalues
-!
 !     The following operation obtains U (stretch tensor) at t=n+1 :
 !
 !     call scla(un1,0.d0,itel,itel,1)
@@ -131,12 +85,49 @@
 !2     continue
 !3    continue
 !
+!********************************************************************
+subroutine hypela2(&
+     d,&          ! stress strain law to be formed
+     g,&          ! change in stress due to temperature effects
+     e,&          ! total elastic strain
+     de,&         ! increment of strain
+     s,&          ! stress - should be updated by user
+     t,&          ! state variables (comes in at t=n, must be updated to have state variables at t=n+1)
+     dt,&         ! increment of state variables
+     ngens,&      ! size of stress - strain law
+     n,&          ! element number
+     nn,&         ! integration point number
+     kcus,&       ! (1) layer number, (2) internal layer number
+     matus,&      ! (1) user material identification number, (2) internal material identification number
+     ndi,&        ! number of direct components
+     nshear,&     ! number of shear components
+     disp,&       ! incremental displacements
+     dispt,&      ! displacements at t=n (at assembly, lovl=4) and displacements at t=n+1 (at stress recovery, lovl=6)
+     coord,&      ! coordinates
+     ffn,&        ! deformation gradient
+     frotn,&      ! rotation tensor
+     strechn,&    ! square of principal stretch ratios, lambda(i)
+     eigvn,&      ! i principal direction components for j eigenvalues
+     ffn1,&       ! deformation gradient
+     frotn1,&     ! rotation tensor
+     strechn1,&   ! square of principal stretch ratios, lambda(i)
+     eigvn1,&     ! i principal direction components for j eigenvalues
+     ncrd,&       ! number of coordinates
+     itel,&       ! dimension of F and R, either 2 or 3
+     ndeg,&       ! number of degrees of freedom  ==> is this at correct list position ?!?
+     ndm,&        !
+     nnode,&      ! number of nodes per element
+     jtype,&      ! element type
+     lclass,&     ! element class
+     ifr,&        ! set to 1 if R has been calculated
+     ifu &        ! set to 1 if stretch has been calculated
+   )
+
  use prec, only: pReal,pInt, ijaco
  use FEsolving
  use CPFEM, only: CPFEM_general
  use math, only: invnrmMandel
  use debug
-!
  implicit none
  
 !     ** Start of generated type statements **
@@ -146,7 +137,7 @@
  integer(pInt) ndi, ndm, ngens, nn, nnode, nshear
  real(pReal) s, strechn, strechn1, t
  !     ** End of generated type statements **
- !
+
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
            frotn(itel,*),strechn(itel),eigvn(itel,*),ffn1(itel,*),frotn1(itel,*),strechn1(itel),eigvn1(itel,*),kcus(2), lclass(2)
 
@@ -158,8 +149,6 @@
 
  integer(pInt) computationMode,i
 
-! write(6,'(3(3(f10.3,x),/))') ffn1(:,1),ffn1(:,2),ffn1(:,3)
-
  if (inc == 0) then
    cycleCounter = 4
  else
@@ -169,13 +158,7 @@
      outdatedFFN1 = .false.
      write (6,*) n(1),nn,'cycleCounter',cycleCounter
      call debug_info()                          ! output of debugging/performance statistics of former
-     debug_cutbackDistribution   = 0_pInt       ! initialize debugging data
-     debug_InnerLoopDistribution = 0_pInt
-     debug_OuterLoopDistribution = 0_pInt
-     debug_cumLpTicks = 0
-     debug_cumDotStateTicks = 0
-     debug_cumLpCalls = 0_pInt
-     debug_cumDotStateCalls = 0_pInt
+     call debug_reset()
    endif
  endif
  if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence
@@ -213,48 +196,47 @@
 
  return
  
- END SUBROUTINE
-!
+end subroutine
 
- SUBROUTINE plotv(v,s,sp,etot,eplas,ecreep,t,m,nn,layer,ndi,nshear,jpltcd)
+
 !********************************************************************
 !     This routine sets user defined output variables for Marc
 !********************************************************************
 !
 !     select a variable contour plotting (user subroutine).
 !
-!     v            variable
-!     s (idss)     stress array
-!     sp           stresses in preferred direction
-!     etot         total strain (generalized)
-!     eplas        total plastic strain
-!     ecreep       total creep strain
-!     t            current temperature
-!     m            element number
-!     nn           integration point number
-!     layer        layer number
-!     ndi (3)      number of direct stress components
-!     nshear (3)   number of shear stress components
-!
 !********************************************************************
+subroutine plotv(&
+     v,&          ! variable
+     s,&          ! stress array
+     sp,&         ! stresses in preferred direction
+     etot,&       ! total strain (generalized)
+     eplas,&      ! total plastic strain
+     ecreep,&     ! total creep strain
+     t,&          ! current temperature
+     m,&          ! element number
+     nn,&         ! integration point number
+     layer,&      ! layer number
+     ndi,&        ! number of direct stress components
+     nshear,&     ! number of shear stress components
+     jpltcd &     ! user variable index
+    )
  use prec,  only: pReal,pInt
- use CPFEM, only: CPFEM_results, CPFEM_Nresults
- use constitutive, only: constitutive_maxSizePostResults
  use mesh,  only: mesh_FEasCP
+ use homogenization, only: materialpoint_results
  implicit none
-!
+
  real(pReal) s(*),etot(*),eplas(*),ecreep(*),sp(*)
  real(pReal) v, t(*)
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
-!
-! assign result variable
- v = CPFEM_results(mod(jpltcd-1_pInt, CPFEM_Nresults+constitutive_maxSizePostResults)+1_pInt,&
-                   (jpltcd-1_pInt)/(CPFEM_Nresults+constitutive_maxSizePostResults)+1_pInt,&
-                   nn, mesh_FEasCP('elem', m))
+
+ v = materialpoint_results(jpltcd,nn,mesh_FEasCP('elem', m))
  return
- END SUBROUTINE
-!
-!
+
+end subroutine
+
+
+
 ! subroutine utimestep(timestep,timestepold,icall,time,timeloadcase)
 !********************************************************************
 !     This routine modifies the addaptive time step of Marc

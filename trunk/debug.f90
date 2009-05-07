@@ -6,9 +6,10 @@
 
 
  implicit none
- integer(pInt), dimension(nCutback+1) :: debug_cutbackDistribution = 0_pInt
- integer(pInt), dimension(nInner) :: debug_InnerLoopDistribution = 0_pInt
- integer(pInt), dimension(nOuter) :: debug_OuterLoopDistribution = 0_pInt
+ integer(pInt), dimension(nLp) :: debug_LpLoopDistribution = 0_pInt
+ integer(pInt), dimension(nStress) :: debug_StressLoopDistribution = 0_pInt
+ integer(pInt), dimension(nCryst) :: debug_StateLoopDistribution = 0_pInt
+ integer(pInt), dimension(nCryst) :: debug_StiffnessStateLoopDistribution = 0_pInt
  integer(pLongInt) :: debug_cumLpTicks = 0_pInt
  integer(pLongInt) :: debug_cumDotStateTicks = 0_pInt
  integer(pInt) :: debug_cumLpCalls = 0_pInt
@@ -18,6 +19,24 @@
 
  CONTAINS
 
+!********************************************************************
+! reset debug distributions
+!********************************************************************
+SUBROUTINE debug_reset()
+
+ use prec
+ implicit none
+
+ debug_LpLoopDistribution             = 0_pInt ! initialize debugging data
+ debug_StressLoopDistribution         = 0_pInt
+ debug_StateLoopDistribution          = 0_pInt
+ debug_StiffnessStateLoopDistribution = 0_pInt
+ debug_cumLpTicks       = 0_pInt
+ debug_cumDotStateTicks = 0_pInt
+ debug_cumLpCalls       = 0_pInt
+ debug_cumDotStateCalls = 0_pInt
+
+END SUBROUTINE
 
 !********************************************************************
 ! write debug statements to standard out
@@ -47,34 +66,50 @@
      dble(debug_cumDotStateTicks)/tickrate/1.0e-6_pReal/debug_cumDotStateCalls
    write(6,'(a33,x,i12)')   'total CPU ticks                 :',debug_cumDotStateTicks
  endif
- write(6,*)
- write(6,*)	'distribution_cutback :'
- do i=0,nCutback
-   if (debug_cutbackDistribution(i+1) /= 0) write(6,*) i,debug_cutbackDistribution(i+1)
- enddo
- write(6,*) 'total',sum(debug_cutbackDistribution)
- write(6,*)
- 
+
  integral = 0_pInt
- write(6,*)	'distribution_InnerLoop :'
- do i=1,nInner
-   if (debug_InnerLoopDistribution(i) /= 0) then
-     integral = integral + i*debug_InnerLoopDistribution(i)
-     write(6,*) i,debug_InnerLoopDistribution(i)
+ write(6,*)
+ write(6,*)	'distribution_LpLoop :'
+ do i=1,nLp
+   if (debug_LpLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_LpLoopDistribution(i)
+     write(6,*) i,debug_LpLoopDistribution(i)
    endif
  enddo
- write(6,*) 'total',sum(debug_InnerLoopDistribution),integral
- write(6,*)
+ write(6,*) 'total',sum(debug_LpLoopDistribution),integral
  
  integral = 0_pInt
- write(6,*)	'distribution_OuterLoop :'
- do i=1,nOuter
-   if (debug_OuterLoopDistribution(i) /= 0) then
-     integral = integral + i*debug_OuterLoopDistribution(i)
-     write(6,*) i,debug_OuterLoopDistribution(i)
+ write(6,*)
+ write(6,*)	'distribution_StressLoop :'
+ do i=1,nStress
+   if (debug_StressLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_StressLoopDistribution(i)
+     write(6,*) i,debug_StressLoopDistribution(i)
    endif
  enddo
- write(6,*) 'total',sum(debug_OuterLoopDistribution),integral
+ write(6,*) 'total',sum(debug_StressLoopDistribution),integral
+ 
+ integral = 0_pInt
+ write(6,*)
+ write(6,*)	'distribution_StateLoop :'
+ do i=1,nCryst
+   if (debug_StateLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_StateLoopDistribution(i)
+     write(6,*) i,debug_StateLoopDistribution(i)
+   endif
+ enddo
+ write(6,*) 'total',sum(debug_StateLoopDistribution),integral
+
+ integral = 0_pInt
+ write(6,*)
+ write(6,*)	'distribution_StiffnessStateLoop :'
+ do i=1,nCryst
+   if (debug_StiffnessStateLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_StiffnessStateLoopDistribution(i)
+     write(6,*) i,debug_StiffnessStateLoopDistribution(i)
+   endif
+ enddo
+ write(6,*) 'total',sum(debug_StiffnessStateLoopDistribution),integral
  write(6,*)
 
  END SUBROUTINE

@@ -879,6 +879,8 @@ END FUNCTION
  select case (ID)
  case (650)
    msg = 'Polar decomposition failed'
+ case (600)
+   msg = 'Crystallite responds elastically'
  case default
    msg = 'Unknown warning number...'
  end select

@@ -1009,7 +1009,6 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  
  END SUBROUTINE
 
-
 !********************************************************************
 ! get count of elements, nodes, and cp elements in mesh
 ! for subsequent array allocations
@@ -1685,18 +1684,18 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
  
 !$OMP CRITICAL (write2out)
 
- !write (6,*)
- !write (6,*) "Input Parser: IP NEIGHBORHOOD"
- !write (6,*)
- !write (6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
- !do e = 1,mesh_NcpElems                  ! loop over cpElems
- !  t = mesh_element(2,e)                 ! get elemType
- !  do i = 1,FE_Nips(t)                   ! loop over IPs of elem
- !    do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
- !      write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
- !    enddo
- !  enddo
- !enddo
+ write (6,*)
+ write (6,*) "Input Parser: IP NEIGHBORHOOD"
+ write (6,*)
+ write (6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
+ do e = 1,mesh_NcpElems                  ! loop over cpElems
+   t = mesh_element(2,e)                 ! get elemType
+   do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+     do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
+       write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
+     enddo
+   enddo
+ enddo
  write (6,*)
  write (6,*) "Input Parser: ELEMENT VOLUME"
  write (6,*)
@@ -1706,9 +1705,9 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
  do e = 1,mesh_NcpElems
    do i = 1,FE_Nips(mesh_element(2,e))
      write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
- !    do f = 1,FE_NipNeighbors(mesh_element(2,e))
- !      write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
- !    end do
+     do f = 1,FE_NipNeighbors(mesh_element(2,e))
+       write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
+     end do
    end do
  end do
  !write (6,*)
@@ -1746,11 +1745,11 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
  write (6,*) mesh_maxValStateVar(1), " : maximum homogenization index"
  write (6,*) mesh_maxValStateVar(2), " : maximum microstructure index"
  write (6,*)
- write (fmt,"(a,i5,a)") "(9(x),a1,x,",mesh_maxValStateVar(2),"(i8))"
- write (6,fmt) "+",math_range(mesh_maxValStateVar(2))
- write (fmt,"(a,i5,a)") "(i8,x,a1,x,",mesh_maxValStateVar(2),"(i8))"
+ write (fmt,"(a,i5,a)") "(9(x),a2,x,",mesh_maxValStateVar(2),"(i8))"
+ write (6,fmt) "+-",math_range(mesh_maxValStateVar(2))
+ write (fmt,"(a,i5,a)") "(i8,x,a2,x,",mesh_maxValStateVar(2),"(i8))"
  do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
-   write (6,fmt) i,"|",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
+   write (6,fmt) i,"| ",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
  enddo
  write (6,*)
 !$OMP END CRITICAL (write2out)

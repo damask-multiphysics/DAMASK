@@ -13,11 +13,13 @@ MODULE constitutive
  use prec
  implicit none
 
- type(p_vec),   dimension(:,:,:), allocatable :: constitutive_state_old, &     ! pointer array to old state variables of each grain
-                                                 constitutive_state_new        ! pointer array to new state variables of each grain
- integer(pInt), dimension(:,:,:), allocatable :: constitutive_sizeDotState, &  ! size of dotState array
-                                                 constitutive_sizeState, &     ! size of state array per grain
-                                                 constitutive_sizePostResults  ! size of postResults array per grain
+ type(p_vec),   dimension(:,:,:), allocatable :: constitutive_state0, &          ! pointer array to microstructure at start of FE inc
+                                                 constitutive_partionedState0, & ! pointer array to microstructure at start of homogenization inc
+                                                 constitutive_subState0, &       ! pointer array to microstructure at start of crystallite inc
+                                                 constitutive_state              ! pointer array to current microstructure (end of converged time step)
+ integer(pInt), dimension(:,:,:), allocatable :: constitutive_sizeDotState, &    ! size of dotState array
+                                                 constitutive_sizeState, &       ! size of state array per grain
+                                                 constitutive_sizePostResults    ! size of postResults array per grain
  integer(pInt) constitutive_maxSizeDotState,constitutive_maxSizeState,constitutive_maxSizePostResults
 
 CONTAINS
@@ -44,7 +46,7 @@ subroutine constitutive_init()
  use constitutive_dislobased
 
  integer(pInt), parameter :: fileunit = 200
- integer(pInt) e,i,g,myInstance
+ integer(pInt) e,i,g,myInstance,myNgrains
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
 
@@ -54,50 +56,71 @@ subroutine constitutive_init()
 
  close(fileunit)
 
- allocate(constitutive_state_old(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
- allocate(constitutive_state_new(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_state0(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_partionedState0(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_subState0(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_state(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_sizeDotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;    constitutive_sizeDotState = 0_pInt
  allocate(constitutive_sizeState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;       constitutive_sizeState = 0_pInt
  allocate(constitutive_sizePostResults(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; constitutive_sizePostResults = 0_pInt
 
  do e = 1,mesh_NcpElems                                  ! loop over elements
+   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    do i = 1,FE_Nips(mesh_element(2,e))                   ! loop over IPs
-     do g = 1,homogenization_Ngrains(mesh_element(3,e))  ! loop over grains
+     do g = 1,myNgrains                                  ! loop over grains
        myInstance = phase_constitutionInstance(material_phase(g,i,e))
        select case(phase_constitution(material_phase(g,i,e)))
          case (constitutive_phenomenological_label)
-           allocate(constitutive_state_old(g,i,e)%p(constitutive_phenomenological_sizeState(myInstance)))
-           allocate(constitutive_state_new(g,i,e)%p(constitutive_phenomenological_sizeState(myInstance)))
-           constitutive_state_new(g,i,e)%p =        constitutive_phenomenological_stateInit(myInstance)
-           constitutive_state_old(g,i,e)%p =        constitutive_phenomenological_stateInit(myInstance)
+           allocate(constitutive_state0(g,i,e)%p(constitutive_phenomenological_sizeState(myInstance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenomenological_sizeState(myInstance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_phenomenological_sizeState(myInstance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_phenomenological_sizeState(myInstance)))
+           constitutive_state0(g,i,e)%p =           constitutive_phenomenological_stateInit(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_phenomenological_sizeDotState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_phenomenological_sizeState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_phenomenological_sizePostResults(myInstance)
          case (constitutive_j2_label)
-           allocate(constitutive_state_old(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
-           allocate(constitutive_state_new(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
-           constitutive_state_new(g,i,e)%p =        constitutive_j2_stateInit(myInstance)
-           constitutive_state_old(g,i,e)%p =        constitutive_j2_stateInit(myInstance)
+           allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
+           constitutive_state0(g,i,e)%p =           constitutive_j2_stateInit(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(myInstance)
          case (constitutive_dislobased_label)
-           allocate(constitutive_state_old(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
-           allocate(constitutive_state_new(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
-           constitutive_state_new(g,i,e)%p =        constitutive_dislobased_stateInit(myInstance)
-           constitutive_state_old(g,i,e)%p =        constitutive_dislobased_stateInit(myInstance)
+           allocate(constitutive_state0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
+           constitutive_state0(g,i,e)%p =           constitutive_dislobased_stateInit(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_dislobased_sizeDotState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_dislobased_sizeState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_dislobased_sizePostResults(myInstance)
          case default
            call IO_error(200,material_phase(g,i,e))      ! unknown constitution
        end select
+       constitutive_partionedState0(g,i,e)%p =  constitutive_state0(g,i,e)%p
      enddo
    enddo
  enddo
  constitutive_maxSizeDotState    = maxval(constitutive_sizeDotState)
  constitutive_maxSizeState       = maxval(constitutive_sizeState)
  constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
+
+ write(6,*)
+ write(6,*) '<<<+-  constitutive init  -+>>>'
+ write(6,*)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_state0:          ', shape(constitutive_state0)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_state:           ', shape(constitutive_state)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
+ write(6,*)
+ write(6,'(a32,x,7(i5,x))') 'maxSizeState:       ', constitutive_maxSizeState
+ write(6,'(a32,x,7(i5,x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
 
  return
 
@@ -126,11 +149,11 @@ function constitutive_homogenizedC(ipc,ip,el)
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
-     constitutive_homogenizedC = constitutive_phenomenological_homogenizedC(constitutive_state_new,ipc,ip,el)
+     constitutive_homogenizedC = constitutive_phenomenological_homogenizedC(constitutive_state,ipc,ip,el)
    case (constitutive_j2_label)
-     constitutive_homogenizedC = constitutive_j2_homogenizedC(constitutive_state_new,ipc,ip,el)
+     constitutive_homogenizedC = constitutive_j2_homogenizedC(constitutive_state,ipc,ip,el)
    case (constitutive_dislobased_label)
-     constitutive_homogenizedC = constitutive_dislobased_homogenizedC(constitutive_state_new,ipc,ip,el)
+     constitutive_homogenizedC = constitutive_dislobased_homogenizedC(constitutive_state,ipc,ip,el)
 
  end select
 
@@ -161,11 +184,11 @@ real(pReal) Temperature
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
-     call constitutive_phenomenological_microstructure(Temperature,constitutive_state_new,ipc,ip,el)
+     call constitutive_phenomenological_microstructure(Temperature,constitutive_state,ipc,ip,el)
    case (constitutive_j2_label)
-     call constitutive_j2_microstructure(Temperature,constitutive_state_new,ipc,ip,el)
+     call constitutive_j2_microstructure(Temperature,constitutive_state,ipc,ip,el)
    case (constitutive_dislobased_label)
-     call constitutive_dislobased_microstructure(Temperature,constitutive_state_new,ipc,ip,el)
+     call constitutive_dislobased_microstructure(Temperature,constitutive_state,ipc,ip,el)
 
  end select
 
@@ -201,11 +224,11 @@ subroutine constitutive_LpAndItsTangent(Lp,dLp_dTstar, Tstar_v,Temperature,ipc,i
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
-     call constitutive_phenomenological_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+     call constitutive_phenomenological_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
    case (constitutive_j2_label)
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
    case (constitutive_dislobased_label)
-     call constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+     call constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
 
  end select
 
@@ -241,11 +264,11 @@ function constitutive_dotState(Tstar_v,Temperature,ipc,ip,el)
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
-     constitutive_dotState = constitutive_phenomenological_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+     constitutive_dotState = constitutive_phenomenological_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
    case (constitutive_j2_label)
-     constitutive_dotState = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+     constitutive_dotState = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
    case (constitutive_dislobased_label)
-     constitutive_dotState = constitutive_dislobased_dotState(Tstar_v,Temperature,constitutive_state_new,ipc,ip,el)
+     constitutive_dotState = constitutive_dislobased_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
 
  end select
  return
@@ -278,11 +301,11 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
  constitutive_postResults = 0.0_pReal
  select case (phase_constitution(material_phase(ipc,ip,el)))
    case (constitutive_phenomenological_label)
-     constitutive_postResults = constitutive_phenomenological_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
+     constitutive_postResults = constitutive_phenomenological_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
    case (constitutive_j2_label)
-     constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
+     constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
    case (constitutive_dislobased_label)
-     constitutive_postResults = constitutive_dislobased_postResults(Tstar_v,Temperature,dt,constitutive_state_new,ipc,ip,el)
+     constitutive_postResults = constitutive_dislobased_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
 
  end select
 

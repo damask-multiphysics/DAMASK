@@ -12,6 +12,8 @@
  logical :: lastIncConverged = .false.,outdatedByNewInc = .false.,outdatedFFN1 = .false.
  logical :: symmetricSolver = .false. 
  logical :: parallelExecution = .true. 
+ integer(pInt), dimension(:,:), allocatable :: FEsolving_execIP
+ integer(pInt), dimension(2) :: FEsolving_execElem
 
 
  CONTAINS
@@ -26,7 +28,8 @@
  implicit none
  
  integer(pInt), parameter :: fileunit = 222
- integer(pInt), dimension (1+2*2) :: pos
+ integer(pInt), parameter :: maxNchunks = 2
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=1024) line
 
  if (IO_open_inputFile(fileunit)) then
@@ -34,11 +37,11 @@
    rewind(fileunit)
    do
      read (fileunit,'(a1024)',END=100) line
-     pos = IO_stringPos(line,1)
-     if( IO_lc(IO_stringValue(line,pos,1)) == 'solver' ) then
+     positions = IO_stringPos(line,1)
+     if( IO_lc(IO_stringValue(line,positions,1)) == 'solver' ) then
        read (fileunit,'(a1024)',END=100) line  ! Garbage line
-       pos = IO_stringPos(line,2)
-       symmetricSolver = (IO_intValue(line,pos,2) /= 1_pInt)
+       positions = IO_stringPos(line,2)
+       symmetricSolver = (IO_intValue(line,positions,2) /= 1_pInt)
        exit
      endif
    enddo
