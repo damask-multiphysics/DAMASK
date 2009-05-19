@@ -610,6 +610,7 @@ subroutine lattice_init()
  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipSlip = 0_pInt
  allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt
+ allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt
 
 end subroutine
 
@@ -746,6 +747,7 @@ function lattice_initializeStructure(struct,CoverA)
    lattice_interactionSlipSlip(1:myNslip,1:myNslip,myStructure) = interactionSlipSlip(1:myNslip,1:myNslip)
    lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myStructure) = interactionSlipTwin(1:myNslip,1:myNtwin)
    lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myStructure) = interactionTwinTwin(1:myNtwin,1:myNtwin)
+   lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myStructure) = interactionTwinSlip(1:myNtwin,1:myNslip)
  endif
 
  lattice_initializeStructure = myStructure
