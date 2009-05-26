@@ -610,7 +610,7 @@ subroutine lattice_init()
  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipSlip = 0_pInt
  allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt
- allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt
+ allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt
 
 end subroutine
 
