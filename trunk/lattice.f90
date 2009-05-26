@@ -723,7 +723,7 @@ function lattice_initializeStructure(struct,CoverA)
        interactionSlipSlip => lattice_hex_interactionSlipSlip
        interactionSlipTwin => lattice_hex_interactionSlipTwin
        interactionTwinTwin => lattice_hex_interactionTwinTwin
-       interactionTwinTwin => lattice_hex_interactionTwinSlip
+       interactionTwinSlip => lattice_hex_interactionTwinSlip
      endif
    end select
 
