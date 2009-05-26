@@ -117,7 +117,7 @@ subroutine constitutive_phenomenological_init(file)
  allocate(constitutive_phenomenological_h0(maxNinstance)) ;             constitutive_phenomenological_h0 = 0.0_pReal
  allocate(constitutive_phenomenological_s_sat(maxNinstance)) ;          constitutive_phenomenological_s_sat = 0.0_pReal
  allocate(constitutive_phenomenological_w0(maxNinstance)) ;             constitutive_phenomenological_w0 = 0.0_pReal
- allocate(constitutive_phenomenological_latent(maxNinstance)) ;         constitutive_phenomenological_latent = 1.0_pReal
+ allocate(constitutive_phenomenological_latent(maxNinstance)) ;         constitutive_phenomenological_latent = 0.0_pReal
  
  rewind(file)
  line = ''
@@ -144,13 +144,10 @@ subroutine constitutive_phenomenological_init(file)
          output = output + 1
          constitutive_phenomenological_output(output,i) = IO_lc(IO_stringValue(line,positions,2))
        case ('lattice_structure')
-
               constitutive_phenomenological_structureName(i) = IO_lc(IO_stringValue(line,positions,2))
        case ('nslip')
               constitutive_phenomenological_Nslip(i) = IO_intValue(line,positions,2)
-
-	   case ('covera_ratio')
-
+	     case ('covera_ratio')
               constitutive_phenomenological_CoverA(i) = IO_floatValue(line,positions,2)
        case ('c11')
               constitutive_phenomenological_C11(i) = IO_floatValue(line,positions,2)
@@ -194,7 +191,7 @@ subroutine constitutive_phenomenological_init(file)
    if (constitutive_phenomenological_h0(i) <= 0.0_pReal)         call IO_error(206)
    if (constitutive_phenomenological_s_sat(i) <= 0.0_pReal)      call IO_error(207)
    if (constitutive_phenomenological_w0(i) <= 0.0_pReal)         call IO_error(208)
-   if (constitutive_phenomenological_latent(i) < 0.0_pReal)      call IO_error(209)
+   if (constitutive_phenomenological_latent(i) <= 0.0_pReal)      call IO_error(209)
  enddo
 
  allocate(constitutive_phenomenological_hardeningMatrix(maxval(constitutive_phenomenological_Nslip),&
