@@ -155,6 +155,8 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionTwinSlip
  1,1,1,1,1,1,1,1,1,0,0,0, &
  1,1,1,1,1,1,1,1,1,0,0,0  &
    /),(/lattice_fcc_Ntwin,lattice_fcc_Ntwin/))
+   
+ integer(pInt), target, dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip) :: lattice_fcc_interactionTwinSlip = 0
 
 
 !============================== bcc (2) =================================
@@ -343,6 +345,8 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionTwinSlip
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0  &
    /),(/lattice_bcc_Ntwin,lattice_bcc_Ntwin/))
+ 
+ integer(pInt), target, dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip) :: lattice_bcc_interactionTwinSlip = 0
 
 
 
@@ -662,6 +666,7 @@ function lattice_initializeStructure(struct,CoverA)
        interactionSlipSlip => lattice_fcc_interactionSlipSlip
        interactionSlipTwin => lattice_fcc_interactionSlipTwin
        interactionTwinTwin => lattice_fcc_interactionTwinTwin
+       interactionTwinSlip => lattice_fcc_interactionTwinSlip
      endif
      
    case ('bcc')
@@ -685,6 +690,7 @@ function lattice_initializeStructure(struct,CoverA)
        interactionSlipSlip => lattice_bcc_interactionSlipSlip
        interactionSlipTwin => lattice_bcc_interactionSlipTwin
        interactionTwinTwin => lattice_bcc_interactionTwinTwin
+       interactionTwinSlip => lattice_bcc_interactionTwinSlip
      endif
      
    case ('hex')
