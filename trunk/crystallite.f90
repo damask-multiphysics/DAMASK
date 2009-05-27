@@ -187,7 +187,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  real(pReal), dimension(constitutive_maxSizeState) :: myState
  integer(pInt) crystallite_Niteration
  integer(pInt) g,i,e,k,l, myNgrains, mySizeState
- logical, dimension(2) :: doneAndHappy
+ logical converged
 
 ! ------ initialize to starting condition ------
 
@@ -388,25 +388,24 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            myLp = crystallite_Lp(:,:,g,i,e)
            myP  = crystallite_P(:,:,g,i,e)
            do k = 1,3                                                   ! perturbation...
-             do l = 1,3                                                 ! ...components
-               crystallite_subF(:,:,g,i,e) = myF                        ! initialize perturbed F to match converged
-               crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg  ! perturb single component
-               doneAndHappy = .false.
-               crystallite_Niteration = 0_pInt
-               do while(.not. doneAndHappy(1) .and. crystallite_Niteration < nCryst) ! keep cycling until done (though unhappy)
-                 crystallite_Niteration = crystallite_Niteration + 1_pInt
-                 doneAndHappy = crystallite_integrateStress(g,i,e)      ! stress of perturbed situation (overwrites _P,_Tstar_v,_Fp,_Lp,_Fe)
-                 if (doneAndHappy(2)) &                                 ! happy stress allows for state update
-                   doneAndHappy = crystallite_updateState(g,i,e)
-               end do
-               if (doneAndHappy(2)) &                                   ! happy outcome warrants stiffness update
-                 crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_p(:,:,g,i,e) - myP)/pert_Fg ! tangent dP_ij/dFg_kl
+              do l = 1,3                                                 ! ...components
+                crystallite_subF(:,:,g,i,e) =  myF                        ! initialize perturbed F to match converged
+                crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg  ! perturb single component
+                converged = .false.
+                crystallite_Niteration = 0_pInt
+                do while(.not. converged .and. crystallite_Niteration < nCryst) ! keep cycling until done (potentially non-converged)
+                  crystallite_Niteration = crystallite_Niteration + 1_pInt
+                  if(crystallite_integrateStress(g,i,e))  &               ! stress of perturbed situation (overwrites_P,_Tstar_v,_Fp,_Lp,_Fe)
+                    converged = crystallite_updateState(g,i,e)
+                end do
+                if (converged)  &                                         ! converged state warrants  stiffness update
+                  crystallite_dPdF(:,:,k,l,g,i,e) =(crystallite_p(:,:,g,i,e) - myP)/pert_Fg ! tangent dP_ij/dFg_kl 
 !$OMP CRITICAL (out)
-               debug_StiffnessStateLoopDistribution(crystallite_Niteration) = &
-               debug_StiffnessstateLoopDistribution(crystallite_Niteration) + 1
+                debug_StiffnessStateLoopDistribution(crystallite_Niteration) = &
+                  debug_StiffnessstateLoopDistribution(crystallite_Niteration) + 1 
 !$OMP END CRITICAL (out)
-             end do
-           end do
+              end do
+            end do
            constitutive_state(g,i,e)%p = myState                        ! restore unperturbed, converged state...
            crystallite_Fp(:,:,g,i,e) = myFp                             ! ... and kinematics
            crystallite_Fe(:,:,g,i,e) = myFe
@@ -751,7 +750,7 @@ function crystallite_postResults(&
  use prec,     only: pInt,pReal
  use math,     only: math_pDecomposition,math_RtoEuler, inDeg
  use IO,       only: IO_warning
- use material, only: material_phase,material_volfrac
+ use material, only: material_phase,material_volume
  use constitutive, only: constitutive_sizePostResults, constitutive_postResults
  implicit none
 
@@ -765,7 +764,7 @@ function crystallite_postResults(&
  
  if (crystallite_Nresults >= 2) then
    crystallite_postResults(1) = material_phase(g,i,e)
-   crystallite_postResults(2) = material_volfrac(g,i,e)
+   crystallite_postResults(2) = material_volume(g,i,e)
  endif
  if (crystallite_Nresults >= 5) then
    call math_pDecomposition(crystallite_Fe(:,:,g,i,e),U,R,error)               ! polar decomposition of Fe
