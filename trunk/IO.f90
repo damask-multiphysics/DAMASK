@@ -837,19 +837,19 @@ END FUNCTION
  
  !$OMP CRITICAL (write2out)
  write(6,*)
- write(6,*) '+------------------------------+'
- write(6,*) '+            ERROR             +'
- write(6,*) '+                              +'
- write(6,*) msg
- if (present(ext_msg)) write(6,*) ext_msg
+ write(6,'(a38)') '+------------------------------------+'
+ write(6,'(a38)') '+               error                +'
+ write(6,'(a38)') '+                                    +'
+ write(6,*)       '+ ',msg
+ if (present(ext_msg))  write(6,*) '+ ',ext_msg
  if (present(e)) then
    if (present(i) .and. present(g)) then
-     write(6,'(a10,x,i6,x,a2,x,i2,x,a5,x,i4)') 'at element',e,'IP',i,'grain',g
+     write(6,'(a12,x,i6,x,a2,x,i2,x,a5,x,i4,a2)') '+ at element',e,'IP',i,'grain',g,' +'
    else
-     write(6,'(a2,x,i6)') 'at',e
+     write(6,'(a17,i6,a14)') '+              at ',e,'             +'
    endif
  endif
- write(6,*) '+------------------------------+'
+ write(6,'(a38)') '+------------------------------------+'
 
  call debug_info()
  call flush(6)
@@ -877,29 +877,29 @@ END FUNCTION
  character(len=80) msg
 
  select case (ID)
- case (650)
-   msg = 'Polar decomposition failed'
  case (600)
-   msg = 'Crystallite responds elastically'
+   msg = '+  Crystallite responds elastically  +'
+ case (650)
+   msg = '+     Polar decomposition failed     +'
  case default
-   msg = 'Unknown warning number...'
+   msg = '+     Unknown warning number...      +'
  end select
  
  !$OMP CRITICAL (write2out)
  write(6,*)
- write(6,*) '+------------------------------+'
- write(6,*) '+           warning            +'
- write(6,*) '+                              +'
- write(6,*) msg
- if (present(ext_msg))  write(6,*) ext_msg
+ write(6,'(a38)') '+------------------------------------+'
+ write(6,'(a38)') '+              warning               +'
+ write(6,'(a38)') '+                                    +'
+ write(6,'(a38)') msg
+ if (present(ext_msg))  write(6,*) '+ ',ext_msg
  if (present(e)) then
    if (present(i) .and. present(g)) then
-     write(6,'(a10,x,i6,x,a2,x,i2,x,a5,x,i4)') 'at element',e,'IP',i,'grain',g
+     write(6,'(a12,x,i6,x,a2,x,i2,x,a5,x,i4,a2)') '+ at element',e,'IP',i,'grain',g,' +'
    else
-     write(6,'(a2,x,i6)') 'at',e
+     write(6,'(a17,i6,a14)') '+              at ',e,'             +'
    endif
  endif
- write(6,*) '+------------------------------+'
+ write(6,'(a38)') '+------------------------------------+'
 
  END SUBROUTINE
  

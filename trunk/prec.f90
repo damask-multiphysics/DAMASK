@@ -23,9 +23,9 @@
  real(pReal),   parameter :: pert_Fg      = 1.0e-6_pReal ! strain perturbation for FEM Jacobi
  integer(pInt), parameter :: nReg         = 1_pInt       ! regularization attempts for Jacobi inversion
  integer(pInt), parameter :: nHomog       = 10_pInt      ! homogenization loop limit
- integer(pInt), parameter :: nCryst       = 10_pInt      ! crystallite loop limit (state update)
- integer(pInt), parameter :: nStress      = 20_pInt      ! stress loop limit
- integer(pInt), parameter :: nLp          = 40_pInt      ! stress loop limit
+ integer(pInt), parameter :: nCryst       = 20_pInt      ! crystallite loop limit (only for debugging info, real loop limit is "subStepMin")
+ integer(pInt), parameter :: nState       = 10_pInt      ! state loop limit
+ integer(pInt), parameter :: nStress      = 40_pInt      ! stress loop limit
  real(pReal),   parameter :: rTol_crystalliteState  = 1.0e-5_pReal ! relative tolerance in crystallite state loop 
  real(pReal),   parameter :: rTol_crystalliteStress = 1.0e-6_pReal ! relative tolerance in crystallite stress loop
  real(pReal),   parameter :: aTol_crystalliteStress = 1.0e-8_pReal ! absolute tolerance in crystallite stress loop

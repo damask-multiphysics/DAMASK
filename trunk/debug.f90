@@ -6,10 +6,10 @@
 
 
  implicit none
- integer(pInt), dimension(nLp) :: debug_LpLoopDistribution = 0_pInt
  integer(pInt), dimension(nStress) :: debug_StressLoopDistribution = 0_pInt
- integer(pInt), dimension(nCryst) :: debug_StateLoopDistribution = 0_pInt
- integer(pInt), dimension(nCryst) :: debug_StiffnessStateLoopDistribution = 0_pInt
+ integer(pInt), dimension(nState) :: debug_StateLoopDistribution = 0_pInt
+ integer(pInt), dimension(nState) :: debug_StiffnessStateLoopDistribution = 0_pInt
+ integer(pInt), dimension(nCryst) :: debug_CrystalliteLoopDistribution = 0_pInt
  integer(pLongInt) :: debug_cumLpTicks = 0_pInt
  integer(pLongInt) :: debug_cumDotStateTicks = 0_pInt
  integer(pInt) :: debug_cumLpCalls = 0_pInt
@@ -27,10 +27,10 @@ SUBROUTINE debug_reset()
  use prec
  implicit none
 
- debug_LpLoopDistribution             = 0_pInt ! initialize debugging data
- debug_StressLoopDistribution         = 0_pInt
+ debug_StressLoopDistribution         = 0_pInt ! initialize debugging data
  debug_StateLoopDistribution          = 0_pInt
  debug_StiffnessStateLoopDistribution = 0_pInt
+ debug_CrystalliteLoopDistribution    = 0_pInt
  debug_cumLpTicks       = 0_pInt
  debug_cumDotStateTicks = 0_pInt
  debug_cumLpCalls       = 0_pInt
@@ -69,47 +69,47 @@ END SUBROUTINE
 
  integral = 0_pInt
  write(6,*)
- write(6,*)	'distribution_LpLoop :'
- do i=1,nLp
-   if (debug_LpLoopDistribution(i) /= 0) then
-     integral = integral + i*debug_LpLoopDistribution(i)
-     write(6,*) i,debug_LpLoopDistribution(i)
-   endif
- enddo
- write(6,*) 'total',sum(debug_LpLoopDistribution),integral
- 
- integral = 0_pInt
- write(6,*)
  write(6,*)	'distribution_StressLoop :'
  do i=1,nStress
    if (debug_StressLoopDistribution(i) /= 0) then
      integral = integral + i*debug_StressLoopDistribution(i)
-     write(6,*) i,debug_StressLoopDistribution(i)
+     write(6,'(i25,i10)') i,debug_StressLoopDistribution(i)
    endif
  enddo
- write(6,*) 'total',sum(debug_StressLoopDistribution),integral
+ write(6,'(a15,i10,i10)') '          total',sum(debug_StressLoopDistribution),integral
  
  integral = 0_pInt
  write(6,*)
  write(6,*)	'distribution_StateLoop :'
- do i=1,nCryst
+ do i=1,nState
    if (debug_StateLoopDistribution(i) /= 0) then
      integral = integral + i*debug_StateLoopDistribution(i)
-     write(6,*) i,debug_StateLoopDistribution(i)
+     write(6,'(i25,i10)') i,debug_StateLoopDistribution(i)
    endif
  enddo
- write(6,*) 'total',sum(debug_StateLoopDistribution),integral
+ write(6,'(a15,i10,i10)') '          total',sum(debug_StateLoopDistribution),integral
 
  integral = 0_pInt
  write(6,*)
  write(6,*)	'distribution_StiffnessStateLoop :'
- do i=1,nCryst
+ do i=1,nState
    if (debug_StiffnessStateLoopDistribution(i) /= 0) then
      integral = integral + i*debug_StiffnessStateLoopDistribution(i)
-     write(6,*) i,debug_StiffnessStateLoopDistribution(i)
+     write(6,'(i25,i10)') i,debug_StiffnessStateLoopDistribution(i)
    endif
  enddo
- write(6,*) 'total',sum(debug_StiffnessStateLoopDistribution),integral
+ write(6,'(a15,i10,i10)') '          total',sum(debug_StiffnessStateLoopDistribution),integral
+ 
+ integral = 0_pInt
+ write(6,*)
+ write(6,*)	'distribution_CrystalliteLoop :'
+ do i=1,nCryst
+   if (debug_CrystalliteLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_CrystalliteLoopDistribution(i)
+     write(6,'(i25,i10)') i,debug_CrystalliteLoopDistribution(i)
+   endif
+ enddo
+ write(6,'(a15,i10,i10)') '          total',sum(debug_CrystalliteLoopDistribution),integral
  write(6,*)
 
  END SUBROUTINE

@@ -257,17 +257,6 @@ subroutine materialpoint_stressAndItsTangent(&
    enddo
 !$OMP END PARALLEL DO
 
-! tell what is requested
-     write(6,'(a14,x,16(l,x))') 'matpnt_req',materialpoint_requested
-     write(6,'(a14,x,16(l,x))') 'matpnt_don',materialpoint_doneAndHappy(1,:,:)
-     write(6,'(a14,x,16(l,x))') 'matpnt_hpy',materialpoint_doneAndHappy(1,:,:)
-     write(6,'(a14,x,16(f6.4,x))') 'matpnt_frac',materialpoint_subFrac
-     write(6,'(a14,x,16(f6.4,x))') 'matpnt_step',materialpoint_subStep
-     write(6,'(a10,x,16(e8.3,x))') 'matpnt_dt',materialpoint_subdt
-     write(6,*)
-     write (6,'(a,/,3(3(f12.7,x)/))') 'subF0 of 8 1',materialpoint_subF0(1:3,:,8,1)
-     write (6,'(a,/,3(3(f12.7,x)/))') 'subF  of 8 1',materialpoint_subF(1:3,:,8,1)
-
 ! ------ convergence loop material point homogenization ------
 
    homogenization_Niteration = 0_pInt

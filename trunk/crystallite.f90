@@ -164,7 +164,7 @@ MODULE crystallite
  
  return
 
- end subroutine
+ endsubroutine
 
 
 !********************************************************************
@@ -176,7 +176,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  use debug
  use IO,           only: IO_warning
  use math
- use FEsolving,    only: FEsolving_execElem, FEsolving_execIP
+ use FEsolving,    only: FEsolving_execElem, FEsolving_execIP, theInc
  use mesh,         only: mesh_element
  use material,     only: homogenization_Ngrains
  use constitutive
@@ -185,18 +185,18 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  logical, intent(in) :: updateJaco
  real(pReal), dimension(3,3) :: invFp,Fe_guess,PK2,myF,myFp,myFe,myLp,myP
  real(pReal), dimension(constitutive_maxSizeState) :: myState
- integer(pInt) crystallite_Niteration
+ integer(pInt) NiterationCrystallite, NiterationState
  integer(pInt) g,i,e,k,l, myNgrains, mySizeState
- logical converged
+ logical onTrack,converged
 
 ! ------ initialize to starting condition ------
 
  write (6,*)
  write (6,*) 'Crystallite request from Materialpoint'
- write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF0  of 1 8 1',crystallite_partionedF0(1:3,:,1,8,1)
- write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedFp0 of 1 8 1',crystallite_partionedFp0(1:3,:,1,8,1)
- write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF   of 1 8 1',crystallite_partionedF(1:3,:,1,8,1)
- write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedLp0 of 1 8 1',crystallite_partionedLp0(1:3,:,1,8,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF0  of 1 1 1',crystallite_partionedF0(1:3,:,1,1,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedFp0 of 1 1 1',crystallite_partionedFp0(1:3,:,1,1,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF   of 1 1 1',crystallite_partionedF(1:3,:,1,1,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedLp0 of 1 1 1',crystallite_partionedLp0(1:3,:,1,1,1)
 
 
 !$OMP PARALLEL DO
@@ -222,19 +222,24 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
 ! ------ cutback loop ------
 
+ NiterationCrystallite = 0_pInt
+
  do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMin))  ! cutback loop for crystallites
-   write(6,*)
-   write(6,*) 'entering cutback at crystallite_stress'
+   
+   NiterationCrystallite = NiterationCrystallite + 1
+   
    if (any(.not. crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) .and. &         ! any non-converged grain
            .not. crystallite_localConstitution(:,:,FEsolving_execELem(1):FEsolving_execElem(2))) ) &    ! has non-local constitution?
      crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) = &
-       crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) .and. &
-       crystallite_localConstitution(:,:,FEsolving_execELem(1):FEsolving_execElem(2))       ! reset non-local grains' convergence status
+        crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) .and. &
+        crystallite_localConstitution(:,:,FEsolving_execELem(1):FEsolving_execElem(2))       ! reset non-local grains' convergence status
+   
 !$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
        do g = 1,myNgrains
+         debugger = (g == 1 .and. i == 1 .and. e == 1)
          if (crystallite_converged(g,i,e)) then
            crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
            crystallite_subStep(g,i,e) = min(1.0_pReal-crystallite_subFrac(g,i,e), 2.0_pReal * crystallite_subStep(g,i,e))
@@ -244,11 +249,26 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              crystallite_subLp0(:,:,g,i,e)   = crystallite_Lp(:,:,g,i,e)           ! ...plastic velocity gradient
              constitutive_subState0(g,i,e)%p = constitutive_state(g,i,e)%p         ! ...microstructure
            endif
+           if (debugger) then
+!$OMP CRITICAL (write2out)
+             write(6,'(a21,f6.4,a28,f6.4,a35)') 'winding forward from ', &
+                crystallite_subFrac(g,i,e)-crystallite_subStep(g,i,e),' to new crystallite_subfrac ', &
+                crystallite_subFrac(g,i,e),' in crystallite_stressAndItsTangent'
+             write(6,*)
+!$OMP END CRITICAL (write2out)
+           endif
          else
            crystallite_subStep(g,i,e) = 0.5_pReal * crystallite_subStep(g,i,e)     ! cut step in half and restore...
            crystallite_Fp(:,:,g,i,e) = crystallite_subFp0(:,:,g,i,e)               ! ...plastic def grad
            crystallite_Lp(:,:,g,i,e) = crystallite_subLp0(:,:,g,i,e)               ! ...plastic velocity grad
            constitutive_state(g,i,e)%p = constitutive_subState0(g,i,e)%p           ! ...microstructure
+           if (debugger) then
+!$OMP CRITICAL (write2out)
+             write(6,'(a78,f6.4)') 'cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
+                                    crystallite_subStep(g,i,e)
+             write(6,*)
+!$OMP END CRITICAL (write2out)
+           endif
          endif
      
          crystallite_onTrack(g,i,e) = crystallite_subStep(g,i,e) > subStepMin      ! still on track or already done (beyond repair)
@@ -257,6 +277,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                           crystallite_subStep(g,i,e) * &
                                           (crystallite_partionedF(:,:,g,i,e) - crystallite_partionedF0(:,:,g,i,e))
            crystallite_subdt(g,i,e)     = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
+           if (debugger) then
+!$OMP CRITICAL (write2out)
+             write(6,'(a36,e8.3)') 'current timestep crystallite_subdt: ',crystallite_subdt(g,i,e)
+             write(6,*)
+!$OMP END CRITICAL (write2out)
+           endif
            crystallite_converged(g,i,e) = .false.                                  ! start out non-converged
          endif
        enddo
@@ -266,14 +292,15 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
 ! ------ convergence loop for stress and state ------
 
-   crystallite_Niteration = 0_pInt
+   NiterationState = 0_pInt
+   if (debugger)  write(6,*) 'state integration started'
    
    do while (any(            crystallite_requested(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  .and.       crystallite_onTrack(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  .and. .not. crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
-                ) .and. crystallite_Niteration < nCryst)              ! convergence loop for crystallite
-     crystallite_Niteration = crystallite_Niteration + 1
-
+                ) .and. NiterationState < nState)              ! convergence loop for crystallite
+     
+     NiterationState = NiterationState + 1
 
 ! --+>> stress integration <<+--
 !
@@ -282,6 +309,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 !          constitutive_state is internally interpolated with .._subState0
 !          to account for substepping within _integrateStress
 ! results in crystallite_Fp,.._Lp
+
+     if (debugger)  write(6,*) 'stress integration started'
 
 !$OMP PARALLEL DO
      do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
@@ -296,8 +325,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      enddo
 !$OMP END PARALLEL DO
 
-     write(6,'(i2,x,a10,x,16(l,x))') crystallite_Niteration,'cryst_onT',crystallite_onTrack
- write (6,'(a,/,3(3(f12.7,x)/))') 'Lp of 1 8 1',crystallite_Lp(1:3,:,1,8,1)
+     if (crystallite_requested(1,1,1) .and. crystallite_onTrack(1,1,1)) then
+       write(6,*) 'stress integration converged'
+       write(6,'(a,/,3(3(e15.7,x)/))') 'P of 1 1 1',crystallite_P(:,:,1,1,1)
+       write(6,'(a,/,3(3(f12.7,x)/))') 'Lp of 1 1 1',crystallite_Lp(:,:,1,1,1)
+     endif
      
 ! --+>> state integration <<+--
 !
@@ -315,9 +347,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              crystallite_converged(g,i,e) = crystallite_updateState(g,i,e)
              if (crystallite_converged(g,i,e)) then
 !$OMP CRITICAL (distributionState)
-               debug_StateLoopDistribution(crystallite_Niteration) = &
-               debug_StateLoopDistribution(crystallite_Niteration) + 1
+               debug_StateLoopDistribution(NiterationState) = debug_StateLoopDistribution(NiterationState) + 1
 !$OMP END CRITICAL (distributionState)
+!$OMP CRITICAL (distributionCrystallite)
+               debug_CrystalliteLoopDistribution(NiterationCrystallite) = &
+                  debug_CrystalliteLoopDistribution(NiterationCrystallite) + 1
+!$OMP END CRITICAL (distributionCrystallite)
              endif
            endif
          enddo
@@ -325,15 +360,14 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      enddo
 !$OMP END PARALLEL DO
 
+     if (crystallite_requested(1,1,1) .and. crystallite_onTrack(1,1,1) .and. crystallite_converged(1,1,1)) then
+       write(6,*) 'state integration converged'
+       write(6,'(a20,e8.3)') 'state of 1 1 1: ', constitutive_state(1,1,1)%p(1)
+       write(6,*)
+     endif
+     
    enddo                                                         ! crystallite convergence loop  
 
-   write(6,*)
-   write(6,'(a10,x,16(f6.4,x))') 'cryst_frac',crystallite_subFrac
-   write(6,'(a10,x,16(f6.4,x))') 'cryst_step',crystallite_subStep
-   write(6,'(a10,x,16(l,x))') 'cryst_req',crystallite_requested
-   write(6,'(a10,x,16(l,x))') 'cryst_onT',crystallite_onTrack
-   write(6,'(a10,x,16(l,x))') 'cryst_cvg',crystallite_converged
-   write(6,'(a10,x,16(e8.3,x))') 'cryst_dt',crystallite_subdt
  enddo                                                           ! cutback loop
 
  
@@ -368,9 +402,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
  if(updateJaco) then                                                  ! Jacobian required
    if (debugger) then
-!$OMP CRITICAL (write2out)
-     write (6,*) 'Jacobian calc'
-     write(6,'(a10,x,16(f6.4,x))') 'cryst_dt',crystallite_subdt
+     write (6,*) 'Stiffness calculation started'
+!$OMP CRITICAL (write2out)  
+!     write(6,'(a10,x,16(f6.4,x))') 'cryst_dt',crystallite_subdt
 !$OMP END CRITICAL (write2out)
    endif
 
@@ -387,30 +421,63 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            myFe = crystallite_Fe(:,:,g,i,e)
            myLp = crystallite_Lp(:,:,g,i,e)
            myP  = crystallite_P(:,:,g,i,e)
+		   if (debugger) then
+			 write (6,*) '#############'
+			 write (6,*) 'central solution'
+			 write (6,*) '#############'
+			 write (6,'(a,/,3(3(f12.4,x)/))') '    P of 1 1 1',myP(1:3,:)/1e6
+			 write (6,'(a,/,3(3(f12.8,x)/))') '   Fp of 1 1 1',myFp(1:3,:)
+			 write (6,'(a,/,3(3(f12.8,x)/))') '   Lp of 1 1 1',myLp(1:3,:)
+			 write (6,'(a,/,f12.4)') 'state of 1 1 1',myState/1e6
+		   endif
            do k = 1,3                                                   ! perturbation...
-              do l = 1,3                                                 ! ...components
-                crystallite_subF(:,:,g,i,e) =  myF                        ! initialize perturbed F to match converged
-                crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg  ! perturb single component
-                converged = .false.
-                crystallite_Niteration = 0_pInt
-                do while(.not. converged .and. crystallite_Niteration < nCryst) ! keep cycling until done (potentially non-converged)
-                  crystallite_Niteration = crystallite_Niteration + 1_pInt
-                  if(crystallite_integrateStress(g,i,e))  &               ! stress of perturbed situation (overwrites_P,_Tstar_v,_Fp,_Lp,_Fe)
-                    converged = crystallite_updateState(g,i,e)
-                end do
-                if (converged)  &                                         ! converged state warrants  stiffness update
-                  crystallite_dPdF(:,:,k,l,g,i,e) =(crystallite_p(:,:,g,i,e) - myP)/pert_Fg ! tangent dP_ij/dFg_kl 
+             do l = 1,3                                                 ! ...components
+               crystallite_subF(:,:,g,i,e) = myF                        ! initialize perturbed F to match converged
+               crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg  ! perturb single component
+               onTrack = .true.
+               converged = .false.
+               NiterationState = 0_pInt
+               if (debugger) then
+                 write (6,*) '============='
+                 write (6,'(i1,x,i1)') k,l
+                 write (6,*) '============='
+                 write (6,'(a,/,3(3(f12.6,x)/))') 'pertF of 1 1 1',crystallite_subF(1:3,:,g,i,e)
+               endif
+               do while(.not. converged .and. onTrack .and. NiterationState < nState) ! keep cycling until done (potentially non-converged)
+                 NiterationState = NiterationState + 1_pInt
+                 if (debugger) write (6,'(a4,x,i6)') 'loop',NiterationState
+                 onTrack = crystallite_integrateStress(g,i,e)           ! stress of perturbed situation (overwrites _P,_Tstar_v,_Fp,_Lp,_Fe)
+                 if(onTrack) converged = crystallite_updateState(g,i,e)
+                 if (debugger) then
+                 write (6,*) '-------------'
+                   write (6,'(l,x,l)') onTrack,converged
+                   write (6,'(a,/,3(3(f12.4,x)/))') 'pertP of 1 1 1',crystallite_P(1:3,:,g,i,e)/1e6
+                   write (6,'(a,/,3(3(f12.4,x)/))') 'DP    of 1 1 1',(crystallite_P(1:3,:,g,i,e)-myP(1:3,:))/1e6
+                   write (6,'(a,/,f12.4)') 'state  of 1 1 1',constitutive_state(g,i,e)%p/1e6
+                   write (6,'(a,/,f12.4)') 'Dstate of 1 1 1',(constitutive_state(g,i,e)%p-myState)/1e6
+                 endif
+               enddo
+               if (converged) &                                         ! converged state warrants stiffness update
+                 crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - myP)/pert_Fg ! tangent dP_ij/dFg_kl
+               constitutive_state(g,i,e)%p = myState                        ! restore unperturbed, converged state...
+               crystallite_Fp(:,:,g,i,e) = myFp                             ! ... and kinematics
+               crystallite_Fe(:,:,g,i,e) = myFe
+               crystallite_Lp(:,:,g,i,e) = myLp
+               crystallite_P(:,:,g,i,e)  = myP
 !$OMP CRITICAL (out)
-                debug_StiffnessStateLoopDistribution(crystallite_Niteration) = &
-                  debug_StiffnessstateLoopDistribution(crystallite_Niteration) + 1 
+               debug_StiffnessStateLoopDistribution(NiterationState) = &
+               debug_StiffnessstateLoopDistribution(NiterationState) + 1
 !$OMP END CRITICAL (out)
-              end do
-            end do
+             enddo
+           enddo
            constitutive_state(g,i,e)%p = myState                        ! restore unperturbed, converged state...
            crystallite_Fp(:,:,g,i,e) = myFp                             ! ... and kinematics
            crystallite_Fe(:,:,g,i,e) = myFe
            crystallite_Lp(:,:,g,i,e) = myLp
            crystallite_P(:,:,g,i,e)  = myP
+           if (e == 1 .and. i == 1 .and. g == 1) then
+             write (6,'(a,/,9(9(f12.4,x)/))') 'dPdF/GPa',crystallite_dPdF(:,:,:,:,1,1,1)/1e9
+           endif
          else                                                           ! grain has not converged
            crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)  ! use fallback
          endif
@@ -420,7 +487,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 !$OMP END PARALLEL DO
  endif
  
-end subroutine
+endsubroutine
 
 
 
@@ -434,9 +501,13 @@ end subroutine
    i,&              ! integration point number
    e &              ! element number
  )
- use prec, only: pReal,pInt,rTol_crystalliteState
- use constitutive, only: constitutive_dotState,constitutive_sizeDotState,&
-                         constitutive_subState0,constitutive_state
+ use prec, only:  pReal, &
+                  pInt, &
+                  rTol_crystalliteState
+ use constitutive, only:  constitutive_dotState, &
+                          constitutive_sizeDotState, &
+                          constitutive_subState0, &
+                          constitutive_state
  use debug
  
  logical crystallite_updateState
@@ -455,18 +526,21 @@ end subroutine
  debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
  debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
  if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
+ 
+ if (any(constitutive_state(g,i,e)%p(1:mySize)/=constitutive_state(g,i,e)%p(1:mySize))) return           ! NaN occured?
+ 
  constitutive_state(g,i,e)%p(1:mySize) = constitutive_state(g,i,e)%p(1:mySize) - residuum              ! update of microstructure
  crystallite_updateState = maxval(abs(residuum/constitutive_state(g,i,e)%p(1:mySize)),&
                                   constitutive_state(g,i,e)%p(1:mySize) /= 0.0_pReal) < rTol_crystalliteState
  return
 
- end function
+ endfunction
 
 
 
 !***********************************************************************
-!***     calculation of stress (P), stiffness (dPdF),                ***
-!***     and announcement of any                                     ***
+!***     calculation of stress (P) with time integration             ***
+!***     based on a residuum in Lp and intermediate                  ***
 !***     acceleration of the Newton-Raphson correction               ***
 !***********************************************************************
  function crystallite_integrateStress(&
@@ -474,266 +548,226 @@ end subroutine
      i,&          ! integration point number
      e)           ! element number
 
- use prec, only: pReal,pInt,subStepMin
- use debug
- use constitutive, only: constitutive_state,constitutive_subState0,constitutive_sizeState
- use math
-
- implicit none
-
- integer(pInt), intent(in) :: e,i,g
- integer(pInt) mySize, Niteration
- real(pReal) dt_aim,subFrac,subStep,det
- real(pReal), dimension(3,3)     :: inv
- real(pReal), dimension(3,3)     :: Fg_current,Fg_aim,deltaFg
- real(pReal), dimension(3,3)     :: Fp_current,Fp_new
- real(pReal), dimension(3,3)     :: Fe_current,Fe_new
- real(pReal), dimension(constitutive_sizeState(g,i,e)) :: interpolatedState
- 
- logical crystallite_integrateStress              ! still on track?
-
- mySize = constitutive_sizeState(g,i,e)
- deltaFg = crystallite_subF(:,:,g,i,e) - crystallite_subF0(:,:,g,i,e)
- Fg_current = crystallite_subF0(:,:,g,i,e)                        ! initialize to start of inc
- Fp_current = crystallite_subFp0(:,:,g,i,e)
- Fe_current = math_mul33x33(Fg_current,math_inv3x3(Fp_current))
- subFrac = 0.0_pReal
- subStep = 1.0_pReal
- Niteration = 0_pInt
- crystallite_integrateStress = .false.                             ! be pessimisitc
-
-! begin the cutback loop
- do while (subStep > subStepMin)                                   ! continue until finished or too much cut backing
-   Niteration = Niteration + 1
-   Fg_aim = Fg_current + subStep*deltaFg                           ! aim for Fg
-   dt_aim = subStep*crystallite_subdt(g,i,e)                       ! aim for dt
-   debugger = (g == 1 .and. i == 8 .and. e == 1)
-   call TimeIntegration(crystallite_integrateStress,&
-                        crystallite_Lp(:,:,g,i,e),crystallite_Fp(:,:,g,i,e),crystallite_Fe(:,:,g,i,e),&
-                        crystallite_Tstar_v(:,g,i,e),crystallite_P(:,:,g,i,e), &
-                        Fg_aim,Fp_current,crystallite_Temperature(g,i,e),&
-                        (          subFrac+subStep)*constitutive_state(g,i,e)%p(1:mySize) + &
-                        (1.0_pReal-subFrac-subStep)*constitutive_subState0(g,i,e)%p(1:mySize),&    ! interpolated state
-                        dt_aim,g,i,e)
-   if (crystallite_integrateStress) then                           ! happy with time integration
-     if (e == 1 .and. i == 8 .and. g == 1) then
-       write(6,*) '*** winding forward in IntegrateStress ***'
-       write(6,*) subFrac, subFrac+subStep
-       write (6,'(a,/,3(3(f12.7,x)/))') 'Lp of 1 8 1',crystallite_Lp(1:3,:,1,8,1)
-       write (6,'(a,/,3(3(f12.7,x)/))') 'Fp of 1 8 1',crystallite_Fp(1:3,:,1,8,1)
-     endif
-     Fg_current = Fg_aim                                           ! wind forward
-     Fe_current = crystallite_Fe(:,:,g,i,e)
-     Fp_current = crystallite_Fp(:,:,g,i,e)
-     subFrac = subFrac + subStep
-     subStep = min(1.0_pReal-subFrac, subStep*2.0_pReal)           ! accelerate
-   else                                                            ! time integration encountered trouble
-     subStep = 0.5_pReal * subStep                                 ! cut time step in half
-     crystallite_Lp(:,:,g,i,e) = 0.5_pReal*(crystallite_Lp(:,:,g,i,e) + &  ! interpolate Lp  and L
-                                            (math_I3 - math_mul33x33(Fp_current,&
-                                                       math_mul33x33(math_inv3x3(Fg_aim),Fe_current)))/dt_aim)
-   endif
- enddo  ! potential substepping
-
-!$OMP CRITICAL (distributionStress)
- debug_StressLoopDistribution(Niteration) = debug_StressLoopDistribution(Niteration) + 1
-!$OMP END CRITICAL (distributionStress)
-
- return                                                            ! with final happyness
-
- end function
-
-
-!***********************************************************************
-!***     fully-implicit two-level time integration                   ***
-!***     based on a residuum in Lp and intermediate                  ***
-!***     acceleration of the Newton-Raphson correction               ***
-!***********************************************************************
-subroutine TimeIntegration(&
-     happy,&            ! return status
-     Lpguess,&          ! guess of plastic velocity gradient
-     Fp_new,&           ! new plastic deformation gradient
-     Fe_new,&           ! new "elastic" deformation gradient
-     Tstar_v,&          ! Stress vector
-     P,&                ! 1st PK stress (taken as initial guess if /= 0)
-!
-     Fg_new,&           ! new total def gradient
-     Fp_old,&           ! former plastic def gradient
-     Temperature,&      ! temperature
-     state,&            ! microstructural state
-     dt,&               ! time increment
-     grain,&            ! grain number
-     ip,&               ! integration point number
-     cp_en &            ! element number
-    )
-    
  use prec
  use debug
- use mesh, only: mesh_element
- use constitutive, only: constitutive_microstructure,constitutive_homogenizedC,constitutive_LpAndItsTangent,&
-                         constitutive_sizeState
+ use constitutive, only:  constitutive_microstructure, &
+                          constitutive_homogenizedC, &
+                          constitutive_LpAndItsTangent
  use math
- use IO
+
  implicit none
 
- logical, intent(out) :: happy
- real(pReal), dimension(3,3), intent(inout) :: Lpguess
- real(pReal), dimension(3,3), intent(out) :: Fp_new,Fe_new,P
- real(pReal), dimension(6),   intent(out) :: Tstar_v
- real(pReal), dimension(3,3), intent(in)  :: Fg_new,Fp_old
- real(pReal), intent(in) :: Temperature,dt
- integer(pInt), intent(in) :: cp_en, ip, grain
- real(pReal), dimension(constitutive_sizeState(grain,ip,cp_en)), intent(in) :: state
-
- logical error
- integer(pInt) Niteration,dummy, i,j,k,l,m,n
- integer(pLongInt) tick,tock,tickrate,maxticks
- real(pReal) p_hydro,det, leapfrog,maxleap
- real(pReal), dimension(3,3,3,3) :: C
- real(pReal), dimension(9,9) :: dLp,dTdLp,dRdLp,invdRdLp,eye2
- real(pReal), dimension(6,6) :: C_66
- real(pReal), dimension(3,3) :: invFp_new,invFp_old,Lp,Lpguess_old,Rinner,Rinner_old,A,B,BT,AB,BTA
-
- happy = .false.                            ! be pessimistic
- eye2 = math_identity2nd(9)
-
- invFp_old = math_inv3x3(Fp_old)            ! inversion of Fp_old
- if (all(invFp_old == 0.0_pReal)) return    ! failed
-! write (6,'(a,/,3(3(f12.7,x)/))') 'Fp old',Fp_old
-! write (6,'(a,/,3(3(f12.7,x)/))') 'Fp old inv',invFp_old
+ !*** input variables ***!
+ integer(pInt), intent(in)        :: e, &                         ! element index
+                                     i, &                         ! integration point index
+                                     g                            ! grain index
  
- A = math_mul33x33(transpose(invFp_old), math_mul33x33(transpose(Fg_new),math_mul33x33(Fg_new,invFp_old)))
+ !*** output variables ***!
+ logical                             crystallite_integrateStress  ! flag indicating if integration suceeded
+ 
+ !*** internal variables ***!
+ real(pReal), dimension(3,3)      :: Fg_current, &                ! deformation gradient at start of timestep
+                                     Fg_new, &                    ! deformation gradient at end of timestep
+                                     Fp_current, &                ! plastic deformation gradient at start of timestep
+                                     Fp_new, &                    ! plastic deformation gradient at end of timestep
+                                     Fe_current, &                ! elastic deformation gradient at start of timestep
+                                     Fe_new, &                    ! elastic deformation gradient at end of timestep
+                                     invFp_new, &                 ! inverse of Fp_new
+                                     invFp_current, &             ! inverse of Fp_current
+                                     Lpguess, &                   ! current guess for plastic velocity gradient
+                                     Lpguess_old, &               ! known last good guess for plastic velocity gradient
+                                     Lp_constitutive, &           ! plastic velocity gradient resulting from constitutive law
+                                     residuum, &                  ! current residuum of plastic velocity gradient
+                                     residuum_old, &              ! last residuum of plastic velocity gradient
+                                     A, &
+                                     B, &
+                                     BT, &
+                                     AB, &
+                                     BTA
+ real(pReal), dimension(6)        :: Tstar_v                      ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
+ real(pReal), dimension(9,9)      :: dLp_constitutive, &          ! partial derivative of plastic velocity gradient calculated by constitutive law
+                                     dTdLp, &                     ! partial derivative of 2nd Piola-Kirchhoff stress
+                                     dRdLp, &                     ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
+                                     invdRdLp                     ! inverse of dRdLp
+ real(pReal), dimension(3,3,3,3)  :: C                            ! 4th rank elasticity tensor
+ real(pReal), dimension(6,6)      :: C_66                         ! simplified 2nd rank elasticity tensor 
+ real(pReal)                         p_hydro, &                   ! volumetric part of 2nd Piola-Kirchhoff Stress
+                                     det, &                       ! determinant
+                                     leapfrog, &                  ! acceleration factor for Newton-Raphson scheme
+                                     maxleap                      ! maximum acceleration factor
+ logical                             error                        ! flag indicating an error
+ integer(pInt)                       NiterationStress, &          ! number of stress integrations
+                                     dummy, &
+                                     h, &
+                                     j, &
+                                     k, &
+                                     l, &
+                                     m, &
+                                     n
+ integer(pLongInt)                   tick, &
+                                     tock, &
+                                     tickrate, &
+                                     maxticks
+                                     
 
-!$OMP CRITICAL (write2out)
-! if (debugger) write (6,'(a,/,3(3(f12.7,x)/))') 'Fg to be calculated',Fg_new
-!$OMP END CRITICAL (write2out)
+ ! be pessimistic
+ crystallite_integrateStress = .false.
 
- call constitutive_microstructure(Temperature,grain,ip,cp_en)
- C_66 = constitutive_homogenizedC(grain,ip,cp_en)
- C = math_Mandel66to3333(C_66)         ! 4th rank elasticity tensor
+ ! feed local variables
+ Fg_current =   crystallite_subF0(:,:,g,i,e)
+ Fg_new =       crystallite_subF(:,:,g,i,e)
+ Fp_current =   crystallite_subFp0(:,:,g,i,e)
+ Fe_current =   math_mul33x33(Fg_current,math_inv3x3(Fp_current))
+ Tstar_v =      crystallite_Tstar_v(:,g,i,e)
+ Lpguess_old =  crystallite_Lp(:,:,g,i,e)                           ! consider present Lp good (i.e. worth remembering) ...
+ Lpguess =      crystallite_Lp(:,:,g,i,e)                           ! ... and take it as first guess
+ 
+ ! inversion of Fp_current...
+ invFp_current = math_inv3x3(Fp_current)                            
+ if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
+   if (debugger) write(6,*) '::: integrateStress failed on invFp_current inversion'
+   return
+ endif
+ 
+ A = math_mul33x33(transpose(invFp_current), math_mul33x33(transpose(Fg_new),math_mul33x33(Fg_new,invFp_current)))
+ 
+ ! update microstructure
+ call constitutive_microstructure(crystallite_Temperature(g,i,e),g,i,e)
+ 
+ ! get elasticity tensor
+ C_66 = constitutive_homogenizedC(g,i,e)
+ C = math_Mandel66to3333(C_66)
+ 
+ ! start LpLoop with no acceleration
+ NiterationStress = 0_pInt
+ leapfrog = 1.0_pReal
+ maxleap = 1024.0_pReal
 
- Niteration = 0_pInt
- leapfrog = 1.0_pReal                  ! correction as suggested by invdRdLp-step
- maxleap = 1024.0_pReal                ! preassign maximum acceleration level
-
- Lpguess_old = Lpguess                 ! consider present Lpguess good (i.e. worth remembering)
-
-Inner: do              ! inner iteration: Lp
-   Niteration = Niteration + 1
-   if (Niteration > nLp) then          ! too many loops required
-     Lpguess = Lpguess_old             ! do not trust the last update but resort to former one
+LpLoop: do
+   
+   ! increase loop counter
+   NiterationStress = NiterationStress + 1
+   
+   ! too many loops required ?
+   if (NiterationStress > nStress) then
+     if (debugger) write(6,*) '::: integrateStress exceeded nStress loopcount'
      return
    endif
-
-!   write(6,*) 'iteration',Niteration
-!   write (6,'(a,/,3(3(f12.7,x)/))') 'Lpguess',Lpguess
-
-   B = math_i3 - dt*Lpguess
+   
+   B = math_i3 - crystallite_subdt(g,i,e)*Lpguess
    BT = transpose(B)
    AB = math_mul33x33(A,B)
    BTA = math_mul33x33(BT,A)
+   
+   ! calculate 2nd Piola-Kirchhoff stress tensor
    Tstar_v = 0.5_pReal*math_mul66x6(C_66,math_mandel33to6(math_mul33x33(BT,AB)-math_I3))
-   p_hydro = (Tstar_v(1) + Tstar_v(2) + Tstar_v(3))/3.0_pReal
-   forall(i=1:3) Tstar_v(i) = Tstar_v(i) - p_hydro              ! subtract hydrostatic pressure
-!   write (6,'(a,/,6(f12.7,x))') 'Tstar',Tstar_v
+   p_hydro = sum(Tstar_v(1:3))/3.0_pReal
+   forall(n=1:3) Tstar_v(n) = Tstar_v(n) - p_hydro                  ! get deviatoric stress tensor
+   
+   ! calculate plastic velocity gradient and its tangent according to constitutive law
    call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
-   call constitutive_LpAndItsTangent(Lp,dLp, Tstar_v,Temperature,grain,ip,cp_en)
+   call constitutive_LpAndItsTangent(Lp_constitutive,dLp_constitutive,Tstar_v,crystallite_Temperature(g,i,e),g,i,e)
    call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
    debug_cumLpCalls = debug_cumLpCalls + 1_pInt
    debug_cumLpTicks  = debug_cumLpTicks + tock-tick
    if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
 
-   Rinner = Lpguess - Lp                                        ! update current residuum
-!   write (6,'(a,/,3(3(f12.7,x)/))') 'Lp',Lp
-!   write (6,'(a,/,3(3(f12.7,x)/))') 'Residuum',Rinner
+   ! update current residuum
+   residuum = Lpguess - Lp_constitutive
 
-   if (.not.(any(Rinner/=Rinner)) .and. &                       ! exclude any NaN in residuum
-       ( ( maxval(abs(Rinner)) < aTol_crystalliteStress) .or. & ! below abs tol .or.
-         ( any(abs(dt*Lpguess) > relevantStrain) .and. &        ! worth checking? .and.
-           maxval(abs(Rinner/Lpguess),abs(dt*Lpguess) > relevantStrain) < rTol_crystalliteStress &  ! below rel tol
+   ! Check for convergence of loop
+   if (.not.(any(residuum/=residuum)) .and. &                       ! exclude any NaN in residuum
+       ( maxval(abs(residuum)) < aTol_crystalliteStress .or. &      ! below absolute tolerance .or.
+         ( any(abs(crystallite_subdt(g,i,e)*Lpguess) > relevantStrain) .and. & ! worth checking? .and.
+             maxval(abs(residuum/Lpguess), abs(crystallite_subdt(g,i,e)*Lpguess) > relevantStrain) < rTol_crystalliteStress & ! below relative tolerance
          ) &
-       )   &
-      )    &
-     exit Inner                                                 ! convergence
-!
-!          check for acceleration/deceleration in Newton--Raphson correction
-!
-   if (any(Rinner/=Rinner) .and. &                              ! NaN occured at regular speed
-       leapfrog == 1.0) then
-     Lpguess = Lpguess_old                                      ! restore known good guess and croak for cutback
+       ) &
+      ) &
+     exit LpLoop
+   
+   ! NaN occured at regular speed?
+   if (any(residuum/=residuum) .and. leapfrog == 1.0) then
+     if (debugger) write(6,*) '::: integrateStress encountered NaN at iteration', NiterationStress
      return
 
-   elseif (leapfrog > 1.0_pReal .and. &                         ! at fast pace ?
-           (sum(Rinner*Rinner) > sum(Rinner_old*Rinner_old) .or. &  ! worse residuum
-            sum(Rinner*Rinner_old) < 0.0_pReal) .or. &              ! residuum changed sign (overshoot)
-           any(Rinner/=Rinner) ) then                           ! NaN
-     maxleap = 0.5_pReal * leapfrog                             ! limit next acceleration
-     leapfrog = 1.0_pReal                                       ! grinding halt
+   ! something went wrong at accelerated speed?
+   elseif (leapfrog > 1.0_pReal .and. &                             ! at fast pace .and.
+            ( sum(residuum*residuum) > sum(residuum_old*residuum_old) .or. &  ! worse residuum .or.
+              sum(residuum*residuum_old) < 0.0_pReal .or. &         ! residuum changed sign (overshoot) .or.
+              any(residuum/=residuum) &                             ! NaN occured
+            ) &
+          ) then
+     maxleap = 0.5_pReal * leapfrog                                 ! limit next acceleration
+     leapfrog = 1.0_pReal                                           ! grinding halt
+     
+     ! restore old residuum and Lp
+     Lpguess = Lpguess_old                                       
+     residuum  = residuum_old
 
-   else                                                         ! better residuum
-     dTdLp = 0.0_pReal                                          ! calc dT/dLp
-     forall (i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
-       dTdLp(3*(i-1)+j,3*(k-1)+l) = dTdLp(3*(i-1)+j,3*(k-1)+l) + &
-                                    C(i,j,l,n)*AB(k,n)+C(i,j,m,l)*BTA(m,k)
-     dTdLp = -0.5_pReal*dt*dTdLp
-     dRdLp = eye2 - math_mul99x99(dLp,dTdLp)                    ! calc dR/dLp
+   ! residuum got better
+   else
+     ! calculate Jacobian for correction term 
+     dTdLp = 0.0_pReal
+     forall (h=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
+       dTdLp(3*(h-1)+j,3*(k-1)+l) = dTdLp(3*(h-1)+j,3*(k-1)+l) + &
+                                    C(h,j,l,n)*AB(k,n)+C(h,j,m,l)*BTA(m,k)
+     dTdLp = -0.5_pReal*crystallite_subdt(g,i,e)*dTdLp
+     dRdLp = math_identity2nd(9) - math_mul99x99(dLp_constitutive,dTdLp)
      invdRdLp = 0.0_pReal
-     call math_invert(9,dRdLp,invdRdLp,dummy,error)             ! invert dR/dLp --> dLp/dR
+     call math_invert(9,dRdLp,invdRdLp,dummy,error)                 ! invert dR/dLp --> dLp/dR
      if (error) then
-       if (debugger) then
-!$OMP CRITICAL (write2out)
-                 write (6,*) 'inversion dR/dLp failed',grain,ip,cp_en
-!                 write (6,'(a,/,9(9(e9.3,x)/))') 'dRdLp', dRdLp(1:9,:)
-!                 write (6,'(a,/,3(4(f9.3,x)/))') 'state_new / MPa',state/1e6_pReal
-                 write (6,'(a,/,3(3(f12.7,x)/))') 'Lpguess',Lpguess(1:3,:)
-                 write (6,'(a,/,3(3(e12.7,x)/))') 'Lp',Lp(1:3,:)
-                 write (6,'(a,/,6(f9.3,x))') 'Tstar / MPa',Tstar_v/1e6_pReal
-!$OMP END CRITICAL (write2out)
-       endif 
+       if (debugger) write(6,*) '::: integrateStress failed on dR/dLp inversion at iteration', NiterationStress
        return
      endif
 
-     Rinner_old = Rinner                                        ! remember current residuum
-     Lpguess_old = Lpguess                                      ! remember current Lp guess 
-     if (Niteration > 1 .and. leapfrog < maxleap) leapfrog = 2.0_pReal * leapfrog   ! accelerate if ok
+     ! remember current residuum and Lpguess
+     residuum_old = residuum
+     Lpguess_old = Lpguess 
+     
+     ! accelerate?
+     if (NiterationStress > 1 .and. leapfrog < maxleap) leapfrog = 2.0_pReal * leapfrog
    endif
 
-   Lpguess = Lpguess_old                                        ! start from current guess                                       
-   Rinner  = Rinner_old                                         ! use current residuum
-   forall (i=1:3,j=1:3,k=1:3,l=1:3) &                           ! leapfrog to updated Lpguess 
-     Lpguess(i,j) = Lpguess(i,j) - leapfrog*invdRdLp(3*(i-1)+j,3*(k-1)+l)*Rinner(k,l)
- enddo Inner
+   ! leapfrog to updated Lp
+   forall (k=1:3,l=1:3,m=1:3,n=1:3) & 
+     Lpguess(k,l) = Lpguess(k,l) - leapfrog*invdRdLp(3*(k-1)+l,3*(m-1)+n)*residuum(m,n)
+ enddo LpLoop
 
-!$OMP CRITICAL (distributionLp)
- debug_LpLoopDistribution(Niteration) = debug_LpLoopDistribution(Niteration) + 1
-!$OMP END CRITICAL (distributionLp)
- invFp_new = math_mul33x33(invFp_old,B)
- if (debugger) then
-   write (6,'(a,x,f10.6,/,3(3(f12.7,x)/))') 'Lp(guess)',dt,Lpguess(1:3,:)
-   write (6,'(a,/,3(3(f12.7,x)/))') 'invFp_old',invFp_old(1:3,:)
-   write (6,'(a,/,3(3(f12.7,x)/))') 'B',B(1:3,:)
-   write (6,'(a,/,3(3(f12.7,x)/))') 'invFp_new',invFp_new(1:3,:)
- endif
+ ! calculate new plastic and elastic deformation gradient
+ invFp_new = math_mul33x33(invFp_current,B)
+ invFp_new = invFp_new/math_det3x3(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
  call math_invert3x3(invFp_new,Fp_new,det,error)
- if (debugger) then
-   write (6,'(a,/,3(3(f12.7,x)/))') 'invFp_new',invFp_new(1:3,:)
-   write (6,'(a,/,3(3(f12.7,x)/))') 'Fp_new',Fp_new(1:3,:)
-   write (6,'(a,x,l,x,a,f10.6)') 'with inversion error:',error,'and determinant:',det
+ if (error) then
+   if (debugger) write(6,*) '::: integrateStress failed on invFp_new inversion at iteration', NiterationStress
+   return
  endif
- if (error) return                                             ! inversion failed
+ Fe_new = math_mul33x33(Fg_new,invFp_new)                             ! calc resulting Fe
 
- Fp_new = Fp_new*det**(1.0_pReal/3.0_pReal)                    ! regularize Fp by det = det(InvFp_new) !!
- forall (i=1:3) Tstar_v(i) = Tstar_v(i) + p_hydro              ! add hydrostatic component back
- Fe_new = math_mul33x33(Fg_new,invFp_new)                      ! calc resulting Fe
- P = math_mul33x33(Fe_new,math_mul33x33(math_Mandel6to33(Tstar_v),transpose(invFp_new)))    ! first PK stress
+ ! add volumetric component to 2nd Piola-Kirchhoff stress
+ forall (n=1:3) Tstar_v(n) = Tstar_v(n) + p_hydro
+ 
+ ! calculate 1st Piola-Kirchhoff stress
+ crystallite_P(:,:,g,i,e) = math_mul33x33(Fe_new,math_mul33x33(math_Mandel6to33(Tstar_v),transpose(invFp_new)))
+ 
+ ! store local values in global variables
+ crystallite_Lp(:,:,g,i,e) = Lpguess
+ crystallite_Tstar_v(:,g,i,e) = Tstar_v
+ crystallite_Fp(:,:,g,i,e) = Fp_new
+ crystallite_Fe(:,:,g,i,e) = Fe_new
 
- happy = .true.                                                ! now smile...
+ ! set return flag to true
+ crystallite_integrateStress = .true.
+ if (debugger) write(6,*) '::: integrateStress finished at iteration', NiterationStress
+
+!$OMP CRITICAL (distributionStress)
+ debug_StressLoopDistribution(NiterationStress) = debug_StressLoopDistribution(NiterationStress) + 1
+!$OMP END CRITICAL (distributionStress)
 
  return
 
-end subroutine
-
-
+ endfunction
+ 
+ 
  
 !********************************************************************
 ! return results of particular grain
@@ -780,8 +814,9 @@ function crystallite_postResults(&
    constitutive_postResults(Tstar_v,Temperature,dt,g,i,e)
  return 
  
-end function
+endfunction
 
 
 END MODULE
 !##############################################################
+
