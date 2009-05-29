@@ -2277,7 +2277,7 @@ slip-slip interaction matrix,
 \noun off
 \color none
 \begin_inset Formula \begin{equation}
-M_{\mathrm{slip-slip}}=h_{o}^{\alpha}\left(1+C\cdot F^{b}\right)\left(1-\frac{s^{\alpha}}{s_{so}^{\alpha}+s_{\mathrm{pr}}\cdot\sqrt{F}}\right)\cdot M_{\mathrm{slip-slip}}^{'}\label{eq:SlipResisEvolutionEq}\end{equation}
+M_{\mathrm{slip-slip}}=h_{\mathrm{slip}}\left(1+C\cdot F^{b}\right)\left(1-\frac{s^{\alpha}}{s_{so}^{\alpha}+s_{\mathrm{pr}}\cdot\sqrt{F}}\right)\cdot M_{\mathrm{slip-slip}}^{'}\label{eq:SlipResisEvolutionEq}\end{equation}
 
 \end_inset
 
@@ -2293,15 +2293,15 @@ M_{\mathrm{slip-slip}}=h_{o}^{\alpha}\left(1+C\cdot F^{b}\right)\left(1-\frac{s^
 
 \begin_layout Standard
 , where 
-\begin_inset Formula $h_{o}^{\alpha}$
+\begin_inset Formula $h_{\mathrm{slip}}$
 \end_inset
 
-and 
-\begin_inset Formula $S_{so}^{\alpha}$
+represent a hardening rate, and 
+\begin_inset Formula $S_{\mathrm{so}}^{\alpha}$
 \end_inset
 
- represent hardening rate and saturation slip resistance for slip system
- without mechanical twinning 
+ saturation slip resistance for slip system without mechanical twinning
+ 
 \begin_inset Formula $\left(\sum_{\beta}f^{\beta}=0\right)$
 \end_inset
 
