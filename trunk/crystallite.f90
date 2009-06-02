@@ -501,14 +501,18 @@ endsubroutine
    i,&              ! integration point number
    e &              ! element number
  )
- use prec, only:  pReal, &
-                  pInt, &
-                  rTol_crystalliteState
- use constitutive, only:  constitutive_dotState, &
-                          constitutive_sizeDotState, &
-                          constitutive_subState0, &
-                          constitutive_state
- use debug
+ 
+ !*** variables and functions from other modules ***!
+ use prec, only:                pReal, &
+                                pInt, &
+                                pLongInt, &
+                                rTol_crystalliteState
+ use constitutive, only:        constitutive_dotState, &
+                                constitutive_sizeDotState, &
+                                constitutive_subState0, &
+                                constitutive_state
+ use debug, only:               debug_cumDotStateCalls, &
+                                debug_cumDotStateTicks
  
  logical crystallite_updateState
 
@@ -551,6 +555,7 @@ endsubroutine
  !*** variables and functions from other modules ***!
  use prec, only:                      pReal, &
                                       pInt, &
+                                      pLongInt, &
                                       nStress, &
                                       aTol_crystalliteStress, &
                                       rTol_crystalliteStress, &
@@ -567,9 +572,12 @@ endsubroutine
                                       math_mul99x99, &
                                       math_inv3x3, &
                                       math_invert3x3, &
+                                      math_invert, &
+                                      math_det3x3, &
                                       math_i3, &
                                       math_identity2nd, &
                                       math_Mandel66to3333, &
+                                      math_Mandel6to33, &
                                       math_mandel33to6
 
  implicit none
