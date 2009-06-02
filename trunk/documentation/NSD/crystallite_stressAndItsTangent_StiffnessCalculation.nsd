@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<root text="&#34;crystallite_stressAndItsTangent (stiffness calculation)&#34;" comment="" color="ffffff" type="sub" style="nice">
+	<children>
+		<alternative text="&#34;crystallite_converged&#34;" comment="&#34;&#34;" color="ffffff">
+			<qTrue>
+				<instruction text="&#34;myState = constitutive_state&#34;,&#34;myF  = crystallite_subF&#34;,&#34;myFp = crystallite_Fp&#34;,&#34;myFe = crystallite_Fe&#34;,&#34;myLp = crystallite_Lp&#34;,&#34;myP  = crystallite_P&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+				<for text="&#34;k = 1 , 3&#34;" comment="&#34;&#34;" color="ffffff">
+					<qFor>
+						<while text="&#34;l = 1 , 3&#34;" comment="&#34;&#34;" color="ffffff">
+							<qWhile>
+								<instruction text="&#34;crystallite_subF(:,:) = myF&#34;,&#34;crystallite_subF(k,l) = crystallite_subF(k,l) + pert_Fg&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+								<instruction text="&#34;onTrack = .true.&#34;,&#34;converged = .false.&#34;,&#34;NiterationState = 0&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+								<for text="&#34;STIFFNESS LOOP: .not. converged .and. onTrack .and. NiterationState &#60; nState&#34;" comment="&#34;&#34;" color="ffffff">
+									<qFor>
+										<instruction text="&#34;NiterationState = NiterationState + 1&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+										<call text="&#34;onTrack = crystallite_integrateStress&#34;" comment="&#34;&#34;" color="ffffff"></call>
+										<alternative text="&#34;onTrack&#34;" comment="&#34;&#34;" color="ffffff">
+											<qTrue>
+												<call text="&#34;converged = crystallite_updateState&#34;" comment="&#34;&#34;" color="ffffff"></call>
+											</qTrue>
+											<qFalse>
+											</qFalse>
+										</alternative>
+									</qFor>
+								</for>
+								<alternative text="&#34;converged&#34;" comment="&#34;&#34;" color="ffffff">
+									<qTrue>
+										<instruction text="&#34;crystallite_dPdF = ( crystallite_P - myP ) / pert_Fg&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+									</qTrue>
+									<qFalse>
+									</qFalse>
+								</alternative>
+								<instruction text="&#34;constitutive_state = myState&#34;,&#34;crystallite_Fp = myFp&#34;,&#34;crystallite_Fe = myFe&#34;,&#34;crystallite_Lp = myLp&#34;,&#34;crystallite_P  = myP&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+							</qWhile>
+						</while>
+					</qFor>
+				</for>
+			</qTrue>
+			<qFalse>
+				<instruction text="&#34;crystallite_dPdF = crystallite_fallbackdPdF&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+			</qFalse>
+		</alternative>
+	</children>
+</root>
