@@ -548,67 +548,93 @@ endsubroutine
      i,&          ! integration point number
      e)           ! element number
 
- use prec
- use debug
- use constitutive, only:  constitutive_microstructure, &
-                          constitutive_homogenizedC, &
-                          constitutive_LpAndItsTangent
- use math
+ !*** variables and functions from other modules ***!
+ use prec, only:                      pReal, &
+                                      pInt, &
+                                      nStress, &
+                                      aTol_crystalliteStress, &
+                                      rTol_crystalliteStress, &
+                                      relevantStrain
+ use debug, only:                     debugger, &
+                                      debug_cumLpCalls, &
+                                      debug_cumLpTicks, &
+                                      debug_StressLoopDistribution
+ use constitutive, only:              constitutive_microstructure, &
+                                      constitutive_homogenizedC, &
+                                      constitutive_LpAndItsTangent
+ use math, only:                      math_mul33x33, &
+                                      math_mul66x6, &
+                                      math_mul99x99, &
+                                      math_inv3x3, &
+                                      math_invert3x3, &
+                                      math_i3, &
+                                      math_identity2nd, &
+                                      math_Mandel66to3333, &
+                                      math_mandel33to6
 
  implicit none
 
  !*** input variables ***!
- integer(pInt), intent(in)        :: e, &                         ! element index
-                                     i, &                         ! integration point index
-                                     g                            ! grain index
+ integer(pInt), intent(in)::          e, &                          ! element index
+                                      i, &                          ! integration point index
+                                      g                             ! grain index
  
  !*** output variables ***!
- logical                             crystallite_integrateStress  ! flag indicating if integration suceeded
+ logical                              crystallite_integrateStress   ! flag indicating if integration suceeded
  
- !*** internal variables ***!
- real(pReal), dimension(3,3)      :: Fg_current, &                ! deformation gradient at start of timestep
-                                     Fg_new, &                    ! deformation gradient at end of timestep
-                                     Fp_current, &                ! plastic deformation gradient at start of timestep
-                                     Fp_new, &                    ! plastic deformation gradient at end of timestep
-                                     Fe_current, &                ! elastic deformation gradient at start of timestep
-                                     Fe_new, &                    ! elastic deformation gradient at end of timestep
-                                     invFp_new, &                 ! inverse of Fp_new
-                                     invFp_current, &             ! inverse of Fp_current
-                                     Lpguess, &                   ! current guess for plastic velocity gradient
-                                     Lpguess_old, &               ! known last good guess for plastic velocity gradient
-                                     Lp_constitutive, &           ! plastic velocity gradient resulting from constitutive law
-                                     residuum, &                  ! current residuum of plastic velocity gradient
-                                     residuum_old, &              ! last residuum of plastic velocity gradient
-                                     A, &
-                                     B, &
-                                     BT, &
-                                     AB, &
-                                     BTA
- real(pReal), dimension(6)        :: Tstar_v                      ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
- real(pReal), dimension(9,9)      :: dLp_constitutive, &          ! partial derivative of plastic velocity gradient calculated by constitutive law
-                                     dTdLp, &                     ! partial derivative of 2nd Piola-Kirchhoff stress
-                                     dRdLp, &                     ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
-                                     invdRdLp                     ! inverse of dRdLp
- real(pReal), dimension(3,3,3,3)  :: C                            ! 4th rank elasticity tensor
- real(pReal), dimension(6,6)      :: C_66                         ! simplified 2nd rank elasticity tensor 
- real(pReal)                         p_hydro, &                   ! volumetric part of 2nd Piola-Kirchhoff Stress
-                                     det, &                       ! determinant
-                                     leapfrog, &                  ! acceleration factor for Newton-Raphson scheme
-                                     maxleap                      ! maximum acceleration factor
- logical                             error                        ! flag indicating an error
- integer(pInt)                       NiterationStress, &          ! number of stress integrations
-                                     dummy, &
-                                     h, &
-                                     j, &
-                                     k, &
-                                     l, &
-                                     m, &
-                                     n
- integer(pLongInt)                   tick, &
-                                     tock, &
-                                     tickrate, &
-                                     maxticks
-                                     
+ !*** internal local variables ***!
+ real(pReal), dimension(3,3)::        Fg_current, &                 ! deformation gradient at start of timestep
+                                      Fg_new, &                     ! deformation gradient at end of timestep
+                                      Fp_current, &                 ! plastic deformation gradient at start of timestep
+                                      Fp_new, &                     ! plastic deformation gradient at end of timestep
+                                      Fe_current, &                 ! elastic deformation gradient at start of timestep
+                                      Fe_new, &                     ! elastic deformation gradient at end of timestep
+                                      invFp_new, &                  ! inverse of Fp_new
+                                      invFp_current, &              ! inverse of Fp_current
+                                      Lpguess, &                    ! current guess for plastic velocity gradient
+                                      Lpguess_old, &                ! known last good guess for plastic velocity gradient
+                                      Lp_constitutive, &            ! plastic velocity gradient resulting from constitutive law
+                                      residuum, &                   ! current residuum of plastic velocity gradient
+                                      residuum_old, &               ! last residuum of plastic velocity gradient
+                                      A, &
+                                      B, &
+                                      BT, &
+                                      AB, &
+                                      BTA
+ real(pReal), dimension(6)::          Tstar_v                       ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
+ real(pReal), dimension(9,9)::        dLp_constitutive, &           ! partial derivative of plastic velocity gradient calculated by constitutive law
+                                      dTdLp, &                      ! partial derivative of 2nd Piola-Kirchhoff stress
+                                      dRdLp, &                      ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
+                                      invdRdLp                      ! inverse of dRdLp
+ real(pReal), dimension(3,3,3,3)::    C                             ! 4th rank elasticity tensor
+ real(pReal), dimension(6,6)::        C_66                          ! simplified 2nd rank elasticity tensor 
+ real(pReal)                          p_hydro, &                    ! volumetric part of 2nd Piola-Kirchhoff Stress
+                                      det, &                        ! determinant
+                                      leapfrog, &                   ! acceleration factor for Newton-Raphson scheme
+                                      maxleap                       ! maximum acceleration factor
+ logical                              error                         ! flag indicating an error
+ integer(pInt)                        NiterationStress, &           ! number of stress integrations
+                                      dummy, &
+                                      h, &
+                                      j, &
+                                      k, &
+                                      l, &
+                                      m, &
+                                      n
+ integer(pLongInt)                    tick, &
+                                      tock, &
+                                      tickrate, &
+                                      maxticks
+ 
+ !*** global variables ***!
+ ! crystallite_subF0
+ ! crystallite_subF
+ ! crystallite_subFp0
+ ! crystallite_Tstar_v
+ ! crystallite_Lp
+ ! crystallite_subdt
+ ! crystallite_Temperature
+ 
 
  ! be pessimistic
  crystallite_integrateStress = .false.
