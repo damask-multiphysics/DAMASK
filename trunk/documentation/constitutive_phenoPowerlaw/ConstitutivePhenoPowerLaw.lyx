@@ -159,7 +159,7 @@ hex (hcp)
 placement tbph
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \align center
@@ -569,9 +569,120 @@ name "Flo:DeformationSystemTable"
 
 \end_layout
 
+\begin_layout Itemize
+Slip/twin system for HCP are illustrated in Figures 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Fig:slipSystemHCP"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Fig:twinSystemHCP"
+
+\end_inset
+
+.
+\end_layout
+
 \begin_layout Standard
-Slip/twin system figure for HCP is coming soon.
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/slipSystemForHCP.jpg
+	lyxscale 20
+	scale 25
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Drawing for slip system for HCP.
+ Burgers vectors were scaled.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Fig:slipSystemHCP"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/twinSystemForHCP.jpg
+	lyxscale 20
+	scale 25
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Drawing for twin system for HCP (
+\begin_inset Formula $\alpha$
+\end_inset
+
+- Ti).
+ Twin directions are not scaled yet.
  
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Fig:twinSystemHCP"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Standard
