@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <root text="&#34;crystallite_integrateStress&#34;" comment="" color="ffffff" type="sub" style="nice">
 	<children>
-		<instruction text="&#34;Fg_current = crystallite_subF0&#34;,&#34;Fg_new = crystallite_subF&#34;,&#34;Fp_current = crystallite_subFp0&#34;,&#34;Fe_current = Fg_current * Fp_current ^ -1&#34;,&#34;Tstar_v = crystallite_Tstar_v&#34;,&#34;Lpguess_old = crystallite_Lp&#34;,&#34;Lpguess = crystallite_Lp&#34;,&#34;crystallite_integrateStress = .false. &#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+		<instruction text="&#34;Fg_new = crystallite_subF&#34;,&#34;Fp_current = crystallite_subFp0&#34;,&#34;Tstar_v = crystallite_Tstar_v&#34;,&#34;Lpguess_old = crystallite_Lp&#34;,&#34;Lpguess = crystallite_Lp&#34;,&#34;crystallite_integrateStress = .false. &#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
 		<call text="&#34;invFp_current = math_inv3x3(Fp_current)&#34;" comment="" color="ffffff"></call>
 		<alternative text="&#34;invFp_current == 0.0&#34;" comment="" color="ffffff">
 			<qTrue>
@@ -29,6 +29,6 @@
 			</qFalse>
 		</alternative>
 		<instruction text="&#34;Fe_new = Fg_new * invFp_new&#34;,&#34;Tstar_v = Tstar_v + p_hydro&#34;" comment="" color="ffffff" rotated="0"></instruction>
-		<instruction text="&#34;crystallite_P = Fe_new * Tstar_v * invFp_new^T&#34;,&#34;crystallite_Lp = Lpguess&#34;,&#34;crystallite_Tstar_v = Tstar_v&#34;,&#34;crystallite_Fp = Fp_new&#34;,&#34;crystallite_Fe = Fe_new&#34;,&#34;crystallite_integrateStress = .true.&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+		<instruction text="&#34;crystallite_P = Fe_new * Tstar_v * invFp_new^T&#34;,&#34;crystallite_Lp = Lpguess&#34;,&#34;crystallite_Tstar_v = Tstar_v&#34;,&#34;crystallite_Fp = Fp_new&#34;,&#34;crystallite_Fe = Fe_new&#34;,&#34;crystallite_integrateStress = .true.&#34;" comment="" color="ffffff" rotated="0"></instruction>
 	</children>
 </root>
