@@ -1,0 +1,2708 @@
+#LyX 1.6.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 345
+\begin_document
+\begin_header
+\textclass scrartcl
+\use_default_options true
+\begin_modules
+endnotes
+foottoend
+hanging
+linguistics
+logicalmkup
+minimalistic
+braille
+theorems-std
+\end_modules
+\language english
+\inputencoding auto
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\paperfontsize default
+\spacing onehalf
+\use_hyperref false
+\papersize letterpaper
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\cite_engine natbib_authoryear
+\use_bibtopic false
+\paperorientation portrait
+\leftmargin 2cm
+\topmargin 2cm
+\rightmargin 2cm
+\bottommargin 2cm
+\headheight 2cm
+\headsep 1cm
+\footskip 1cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\author "" 
+\author "" 
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Summary of constitutive_phenoPowerlaw
+\end_layout
+
+\begin_layout Author
+YUN JO RO
+\end_layout
+
+\begin_layout Standard
+This document contains information for constitutive_phenoPowerlaw.f90.
+ This constitutive subroutine is modified from the current contitutive_phenomeno
+logical.f90.
+ We introduce slip and twin family as additional index (or input) for each
+ crystal structure in lattice.f90 subroutine (e.g., for HCP crystal: slip and
+ twin system has four faimilies, respectively).
+ The current State variables in constitutive_phenoPowerlaw are 
+\begin_inset Quotes eld
+\end_inset
+
+slip resistance 
+\begin_inset Formula $\left(s^{\alpha}\right)$
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+, 
+\begin_inset Quotes erd
+\end_inset
+
+twin resistance 
+\begin_inset Formula $\left(s^{\beta}\right)$
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+, 
+\begin_inset Quotes eld
+\end_inset
+
+cumulative shear strain 
+\begin_inset Formula $\left(\gamma^{\alpha}\right)$
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+, and 
+\begin_inset Quotes eld
+\end_inset
+
+twin volume fraction 
+\begin_inset Formula $\left(f^{\beta}\right)$
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+ Superscript 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ and 
+\begin_inset Formula $\beta$
+\end_inset
+
+ denote to slip and twin systems, respectively, in this entire document.
+ Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:DeformationSystemTable"
+
+\end_inset
+
+ lists slip/twin systems for the 
+\begin_inset Quotes eld
+\end_inset
+
+hex (hcp)
+\begin_inset Quotes erd
+\end_inset
+
+ case.
+\begin_inset VSpace medskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement tbph
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="9" columns="4">
+<features>
+<column alignment="center" valignment="middle" width="0">
+<column alignment="center" valignment="middle" width="0">
+<column alignment="center" valignment="middle" width="0">
+<column alignment="center" valignment="middle" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+No.
+ of slip system
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+slip system
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+basal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 0001\right\} \left\langle 1\bar{2}10\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+prism
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 10\bar{1}0\right\} \left\langle 1\bar{2}10\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <a>
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 10\bar{1}1\right\} \left\langle 1\bar{2}10\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <c+a>
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 10\bar{1}1\right\} \left\langle 2\bar{1}\bar{1}3\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+12
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+twin system
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+tensile (T1)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 10\bar{1}2\right\} \left\langle \bar{1}011\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+compressive (C1)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 11\bar{2}2\right\} \left\langle 11\bar{2}\bar{3}\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+tensile (T2)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 11\bar{2}1\right\} \left\langle \bar{1}\bar{1}26\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+compressive (C1)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 10\bar{1}1\right\} \left\langle 10\bar{1}\bar{2}\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Implemented deformation mechanims in 
+\begin_inset Formula $\alpha$
+\end_inset
+
+-Ti 
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Flo:DeformationSystemTable"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Slip/twin system for HCP are illustrated in Figures 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Fig:slipSystemHCP"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Fig:twinSystemHCP"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/slipSystemForHCP.jpg
+	lyxscale 20
+	scale 25
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Drawing for slip system for HCP.
+ Burgers vectors were scaled.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Fig:slipSystemHCP"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/twinSystemForHCP.jpg
+	lyxscale 20
+	scale 25
+	clip
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Drawing for twin system for HCP (
+\begin_inset Formula $\alpha$
+\end_inset
+
+- Ti).
+ Twin directions are not scaled yet.
+ 
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Fig:twinSystemHCP"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage clearpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Kinetics
+\end_layout
+
+\begin_layout Standard
+Shear strain rate due to slip is described by following eqation 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Salem2005,Wu2007"
+
+\end_inset
+
+:
+\begin_inset Formula \begin{equation}
+\dot{\gamma}^{\alpha}=\dot{\gamma_{o}}\left|\frac{\tau^{\alpha}}{s^{\alpha}}\right|^{n}sign\left(\tau^{\alpha}\right)\label{eq:slipStrainRate}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+, where 
+\begin_inset Formula $\dot{\gamma}^{\alpha}$
+\end_inset
+
+; shear strain rate, 
+\begin_inset Formula $\dot{\gamma}_{o}$
+\end_inset
+
+; reference shear strain rate, 
+\begin_inset Formula $\tau^{\alpha}$
+\end_inset
+
+; resolved shear stress on the slip system, 
+\begin_inset Formula $n$
+\end_inset
+
+; stress exponent, and 
+\begin_inset Formula $s^{\alpha}$
+\end_inset
+
+; slip resistance.
+\end_layout
+
+\begin_layout Standard
+Twin volume fraction rate is described by following eqation 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Salem2005,Wu2007"
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{equation}
+\dot{f}^{\beta}=\frac{\dot{\gamma_{o}}}{\gamma^{\beta}}\left|\frac{\tau^{\beta}}{s^{\beta}}\right|^{n}\mathbb{\mathcal{H}}\left(\tau^{\beta}\right)\label{eq:twinVolrate}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+, where 
+\begin_inset Formula $\dot{f}^{\beta}$
+\end_inset
+
+; twin volume fraction rate, 
+\begin_inset Formula $\dot{\gamma}_{o}$
+\end_inset
+
+; reference shear strain rate, 
+\begin_inset Formula $\gamma^{\beta}$
+\end_inset
+
+;shear strain due to mechanical twinning, 
+\begin_inset Formula $\tau^{\beta}$
+\end_inset
+
+; resolved shear stress on the twin system, and 
+\begin_inset Formula $s^{\beta}$
+\end_inset
+
+; twin resistance.
+ 
+\begin_inset Formula $\mathcal{H}$
+\end_inset
+
+ is Heaviside function.
+ 
+\end_layout
+
+\begin_layout Section
+Structure Evolution
+\end_layout
+
+\begin_layout Standard
+In this present section, we attempt to show how we establish the relationship
+ between the evolutoin of slip/twin resistance and the evolution of shear
+ strain/twin volume fraction.
+ 
+\end_layout
+
+\begin_layout Subsection
+Interaction matrix.
+ 
+\end_layout
+
+\begin_layout Standard
+Conceptual relationship between the evolution of state and kinetic variables
+ is shown in Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:InteractionMatrix"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{equation}
+\left[\begin{array}{c}
+\dot{s}^{\alpha}\\
+\dot{s}^{\beta}\end{array}\right]=\left[\begin{array}{cc}
+M_{\mathrm{slip-slip}} & M_{\mathrm{slip-twin}}\\
+M_{\mathrm{twin-slip}} & M_{\mathrm{twin-twin}}\end{array}\right]\left[\begin{array}{c}
+\dot{\gamma}^{\alpha}\\
+\dot{f}^{\beta}\end{array}\right]\label{eq:InteractionMatrix}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Four interaction martices are followings; i) slip-slip interaction matrix
+ 
+\begin_inset Formula $\left(M_{\mathrm{{\scriptstyle slip-slip}}}\right)$
+\end_inset
+
+, ii) slip-twin interaction matrix 
+\begin_inset Formula $\left(M_{\mathrm{slip-twin}}\right)$
+\end_inset
+
+, iii) twin-slip interaction matrix 
+\begin_inset Formula $\left(M_{\mathrm{twin-slip}}\right)$
+\end_inset
+
+, and iv) twin-twin interaction matrix 
+\begin_inset Formula $\left(M_{\mathrm{twin-twin}}\right)$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Detailed interaction type matrices in Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:InteractionMatrix"
+
+\end_inset
+
+ will be further discussed in the following Section.
+\end_layout
+
+\begin_layout Subsection
+Interaction type matrix
+\end_layout
+
+\begin_layout Standard
+Following sections are sparated into four based on each interaction type
+ matrix alluded.
+ Numbers in Tables 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:SlipSlipIntTypeTable"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:SlipTwinIntTypeTable"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:TwinSlipIntTypeTable"
+
+\end_inset
+
+, and 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:TwinTwinIntTypeTable"
+
+\end_inset
+
+ denote the type of interaction between deformation systems (The first column
+ vs.
+ The first row).
+\end_layout
+
+\begin_layout Subsubsection
+Slip-Slip interaction type matrix
+\end_layout
+
+\begin_layout Itemize
+There are 20 types of slip-slip interaction as shown in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:SlipSlipIntTypeTable"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+In Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:SlipSlipIntTypeTable"
+
+\end_inset
+
+, types of latent hardening among slip systems are listed.
+ 
+\end_layout
+
+\begin_layout Itemize
+Actual slip-slip interaction type matrix, 
+\begin_inset Formula $M_{\mathrm{slip-slip}}^{'}$
+\end_inset
+
+, is listed in Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:SlipSlipIntMatrix"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="5">
+<features>
+<column alignment="center" valignment="middle" width="0.8in">
+<column alignment="center" valignment="middle" width="0.7in">
+<column alignment="center" valignment="middle" width="0.6in">
+<column alignment="center" valignment="middle" width="0.6in">
+<column alignment="center" valignment="middle" width="0.7in">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+basal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+prism
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <a>
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr<c+a>
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+basal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1, 5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+14
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+prism
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+15
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2, 6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+13
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <a>
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+18
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+16
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3, 7
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+11
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <c+a>
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+20
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+19
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+17
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4, 8
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Slip-slip interaction type
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Flo:SlipSlipIntTypeTable"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{equation}
+M_{\mathrm{slip-slip}}^{'}=\left[\begin{array}{ccc|ccc|cccccc|cccccccccccc}
+1 & 5 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ & 1 & 5 & \cdot & 9 & \cdot & \cdot & \cdot & 12 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 14 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ &  & 1 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & 2 & 6 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & 15 & \cdot &  & 2 & 6 & \cdot & \cdot & 10 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 13 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot &  &  & 2 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 3 & 7 & 7 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 3 & 7 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 3 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & 11 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & 18 & \cdot & \cdot & 16 & \cdot &  &  &  & 3 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  & 3 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 3 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & 20 & \cdot & \cdot & 19 & \cdot & \cdot & \cdot & 17 & \cdot & \cdot & \cdot &  &  &  &  & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 4 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  & 4 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  & 4 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  &  & 4 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  &  &  & 4 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  &  &  &  & 4 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  &  &  &  &  & 4\end{array}\right]\label{eq:SlipSlipIntMatrix}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace vfill
+\end_inset
+
+
+\begin_inset VSpace vfill
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Slip-Twin interaction type matrix
+\end_layout
+
+\begin_layout Itemize
+There are 16 types of slip-twin interaction in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:SlipTwinIntTypeTable"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+Meaning of T1, C1, T2, C2 is listed in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:DeformationSystemTable"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+Actual slip-twin interaction type matrix, 
+\begin_inset Formula $M_{\mathrm{slip-twin}}^{'}$
+\end_inset
+
+, is listed in Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:SlipTwinIntMatrix"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="5">
+<features>
+<column alignment="center" valignment="middle" width="0.8in">
+<column alignment="center" valignment="middle" width="0.7in">
+<column alignment="center" valignment="middle" width="0.6in">
+<column alignment="center" valignment="middle" width="0.6in">
+<column alignment="center" valignment="middle" width="0.7in">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+T1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+T2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C1
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+basal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+prism
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+7
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+8
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <a>
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+11
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+12
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <c+a>
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+13
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+14
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+15
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+16
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Slip-twin interaction type
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Flo:SlipTwinIntTypeTable"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{equation}
+M_{\mathrm{slip-twin}}^{'}=\left[\begin{array}{c|c|c|c}
+1 & 2 & 3 & 4\\
+\hline 5 & 6 & 7 & 8\\
+\hline 9 & 10 & 11 & 12\\
+\hline 13 & 14 & 15 & 16\end{array}\right]\label{eq:SlipTwinIntMatrix}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Twin-Slip interaction type matrix
+\end_layout
+
+\begin_layout Itemize
+There 16 types of twin-slip interaction in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:TwinSlipIntTypeTable"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+Meaning of T1, C1, T2, C2 is listed in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:DeformationSystemTable"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+Actual twin-slip interaction type matrix, 
+\begin_inset Formula $M_{\mathrm{twin-slip}}^{'}$
+\end_inset
+
+, is listed in Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:TwinSlipIntMatrix"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="5">
+<features>
+<column alignment="center" valignment="middle" width="0.8in">
+<column alignment="center" valignment="middle" width="0.7in">
+<column alignment="center" valignment="middle" width="0.6in">
+<column alignment="center" valignment="middle" width="0.6in">
+<column alignment="center" valignment="middle" width="0.7in">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+basal
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+prism
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <a>
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+pyr <c+a>
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+T1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+13
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+14
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+T2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+7
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+11
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+15
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+16
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Twin-slip interaction type
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Flo:TwinSlipIntTypeTable"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{equation}
+M_{\mathrm{twin-slip}}^{'}=\left[\begin{array}{c|c|c|c}
+1 & 5 & 9 & 13\\
+\hline 2 & 6 & 10 & 14\\
+\hline 3 & 7 & 11 & 15\\
+\hline 4 & 8 & 12 & 16\end{array}\right]\label{eq:TwinSlipIntMatrix}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Twin-twin interaction type matrix
+\end_layout
+
+\begin_layout Itemize
+There are 20 types of twin-twin interaction as shown in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:TwinTwinIntTypeTable"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+In Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:TwinTwinIntTypeTable"
+
+\end_inset
+
+, types of latent hardening among twin systems are listed.
+ 
+\end_layout
+
+\begin_layout Itemize
+Actual twin-twin interaction type marix, 
+\begin_inset Formula $M_{\mathrm{twin-twin}}^{'}$
+\end_inset
+
+, is listed in Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:TwinTwinIntMatrix"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="5">
+<features>
+<column alignment="center" valignment="middle" width="0.8in">
+<column alignment="center" valignment="middle" width="0.7in">
+<column alignment="center" valignment="middle" width="0.6in">
+<column alignment="center" valignment="middle" width="0.6in">
+<column alignment="center" valignment="middle" width="0.7in">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+T1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+T2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+T1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1, 5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+12
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+14
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+15
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2, 6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+13
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+T2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+18
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+16
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3, 7
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+11
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+C2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+20
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+19
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+17
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4, 8
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Twin-twin interaction type
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Flo:TwinTwinIntTypeTable"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{equation}
+M_{\mathrm{twin-twin}}^{'}=\left[\begin{array}{cccccc|cccccc|cccccc|cccccc}
+1 & 5 & 5 & 5 & 5 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ & 1 & 5 & 5 & 5 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ &  & 1 & 5 & 5 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ &  &  & 1 & 5 & 5 & \cdot & \cdot & \cdot & 9 & \cdot & \cdot & \cdot & \cdot & \cdot & 12 & \cdot & \cdot & \cdot & \cdot & \cdot & 14 & \cdot & \cdot\\
+ &  &  &  & 1 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ &  &  &  &  & 1 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 2 & 6 & 6 & 6 & 6 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 2 & 6 & 6 & 6 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 2 & 6 & 6 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & 15 & \cdot & \cdot &  &  &  & 2 & 6 & 6 & \cdot & \cdot & \cdot & 10 & \cdot & \cdot & \cdot & \cdot & \cdot & 13 & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  & 2 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 2 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 3 & 7 & 7 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 3 & 7 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 3 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & 18 & \cdot & \cdot & \cdot & \cdot & \cdot & 16 & \cdot & \cdot &  &  &  & 3 & 7 & 7 & \cdot & \cdot & \cdot & 11 & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  & 3 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 3 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 4 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 4 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 4 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & 20 & \cdot & \cdot & \cdot & \cdot & \cdot & 19 & \cdot & \cdot & \cdot & \cdot & \cdot & 17 & \cdot & \cdot &  &  &  & 4 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  & 4 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 4\end{array}\right]\label{eq:TwinTwinIntMatrix}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Prefactor (nonlinear factor)
+\end_layout
+
+\begin_layout Subsubsection
+Prefactors for slip resistance 
+\begin_inset Formula $\left(s^{\alpha}\right)$
+\end_inset
+
+; 
+\begin_inset Formula $M_{\mathrm{slip-slip}}$
+\end_inset
+
+ and 
+\begin_inset Formula $M_{\mathrm{slip-twin}}$
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Wu2007"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $M_{\mathrm{slip-slip}}$
+\end_inset
+
+ and 
+\begin_inset Formula $M_{\mathrm{slip-twin}}$
+\end_inset
+
+ use for slip resistance evolution 
+\begin_inset Formula $\left(\dot{s}^{\alpha}\right)$
+\end_inset
+
+.
+ Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:SlipResisEvolutionEq"
+
+\end_inset
+
+ is for a slip resistance rate evolution.
+ This currently shows the prefactor for 
+\begin_inset Quotes eld
+\end_inset
+
+slip-slip interaction matrix, 
+\begin_inset Formula $M_{\mathrm{slip-slip}}$
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace medskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+\begin_inset Formula \begin{equation}
+M_{\mathrm{slip-slip}}=h_{\mathrm{slip}}\left(1+C\cdot F^{b}\right)\left(1-\frac{s^{\alpha}}{s_{so}^{\alpha}+s_{\mathrm{pr}}\cdot\sqrt{F}}\right)\cdot M_{\mathrm{slip-slip}}^{'}\label{eq:SlipResisEvolutionEq}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace medskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+, where 
+\begin_inset Formula $h_{\mathrm{slip}}$
+\end_inset
+
+represent a hardening rate, and 
+\begin_inset Formula $S_{\mathrm{so}}^{\alpha}$
+\end_inset
+
+ saturation slip resistance for slip system without mechanical twinning
+ 
+\begin_inset Formula $\left(\sum_{\beta}f^{\beta}=0\right)$
+\end_inset
+
+, respectively.
+ And, 
+\begin_inset Formula $F$
+\end_inset
+
+ is 
+\begin_inset Formula $\sum_{\beta}f^{\beta}$
+\end_inset
+
+, and 
+\begin_inset Formula $N^{S}$
+\end_inset
+
+is the total number of slip system.
+\begin_inset Formula $C$
+\end_inset
+
+, 
+\begin_inset Formula $s_{\mathrm{pr}}$
+\end_inset
+
+, and 
+\begin_inset Formula $b$
+\end_inset
+
+ are coefficients to introduce the effect of interaction between slip and
+ mechanical twin in Equation 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:SlipResisEvolutionEq"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+Slip-twin interaction matrix, 
+\begin_inset Formula $M_{\mathrm{slip-twin}}$
+\end_inset
+
+, has not been implemented with any prefactor in the present version.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Prefactors for twin resistance 
+\begin_inset Formula $\left(s^{\beta}\right)$
+\end_inset
+
+; 
+\begin_inset Formula $M_{\mathrm{twin-slip}}$
+\end_inset
+
+ and 
+\begin_inset Formula $M_{\mathrm{twin-twin}}$
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Salem2005"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $M_{\mathrm{twin-sli}p}$
+\end_inset
+
+ and 
+\begin_inset Formula $M_{\mathrm{twin-twin}}$
+\end_inset
+
+ use for twin resistance evolution 
+\begin_inset Formula $\left(\dot{s}^{\beta}\right)$
+\end_inset
+
+.
+ Twin-twin and twin-slip interaction matrices are described in Equations
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:TwinTwinContributionToTwinResis"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:TwinSlipContributionToTwinResis"
+
+\end_inset
+
+.
+ 
+\begin_inset VSpace medskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{equation}
+M_{\mathrm{twin-twin}}=h_{\mathrm{tw}}\cdot F^{d}\cdot M_{\mathrm{twin-twin}}^{'}\label{eq:TwinTwinContributionToTwinResis}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+,where 
+\begin_inset Formula $h_{\mathrm{tw}}$
+\end_inset
+
+ and 
+\begin_inset Formula $d$
+\end_inset
+
+ are coefficients for twin-twin contribution.
+ 
+\begin_inset Formula $F$
+\end_inset
+
+ is 
+\begin_inset Formula $\sum_{\beta}f^{\beta}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace medskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{equation}
+M_{\mathrm{twin-slip}}=h_{\mathrm{tw-sl}}\cdot\Gamma^{e}\cdot M_{\mathrm{twin-slip}}^{'}\label{eq:TwinSlipContributionToTwinResis}\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+,where 
+\begin_inset Formula $h_{\mathrm{tw-sl}}$
+\end_inset
+
+ and 
+\begin_inset Formula $e$
+\end_inset
+
+ are coefficients for twin-slip contribution
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+, and 
+\begin_inset Formula $\Gamma=\sum_{\alpha}\gamma^{\alpha}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage clearpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Material Parameters (Material Configuration file)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbph
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figures/ExpectedMaterialConfigFile.jpg
+	lyxscale 30
+	scale 80
+	clip
+
+\end_inset
+
+
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Expected of phenomenological modelling parameters.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Fig:ModelParameters"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+The sequence for hardening coefficients in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Fig:ModelParameters"
+
+\end_inset
+
+ is the sequence of numbering in Tables 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:SlipSlipIntTypeTable"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:SlipTwinIntTypeTable"
+
+\end_inset
+
+, 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:TwinSlipIntTypeTable"
+
+\end_inset
+
+, and 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Flo:TwinTwinIntTypeTable"
+
+\end_inset
+
+ above.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage clearpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "MPIEyjr"
+options "bibtotoc,plain"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
