@@ -790,7 +790,7 @@ END FUNCTION
  case (200)
    msg = 'Unknown constitution specified'
  case (201)
-   msg = 'Unknown lattice type specified'
+   msg = 'Unknown homogenization specified'
  case (202)
    msg = 'Number of slip systems too small'
  case (203)

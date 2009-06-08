@@ -109,7 +109,7 @@ subroutine homogenization_init()
          endif
          homogenization_sizePostResults(i,e) = homogenization_isostrain_sizePostResults(myInstance)
        case default
-         call IO_error(200,ext_msg=homogenization_type(mesh_element(3,e)))      ! unknown type 200 is phase!
+         call IO_error(201,ext_msg=homogenization_type(mesh_element(3,e)))      ! unknown type 201 is homogenization!
      end select
    enddo
  enddo
