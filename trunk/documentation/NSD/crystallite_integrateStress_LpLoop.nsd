@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<root text="&#34;crystallite_integrateStress LpLoop&#34;" comment="&#34;&#34;" color="ffffff" type="sub" style="nice">
+<root text="&#34;crystallite_integrateStress LpLoop&#34;" comment="" color="ffffff" type="sub" style="nice">
 	<children>
 		<instruction text="&#34;NiterationStress = NiterationStress + 1&#34;" comment="" color="ffffff" rotated="0"></instruction>
 		<alternative text="&#34;NiterationStress &#62; nStress&#34;" comment="" color="ffffff">
@@ -12,33 +12,39 @@
 		<instruction text="&#34;B = math_i3 - crystallite_subdt(g,i,e)*Lpguess&#34;,&#34;Tstar_v = 0.5 * C * (B^T * A * B - math_I3)&#34;,&#34;p_hydro = sum(Tstar_v(1:3))/3.0&#34;,&#34;forall (i=1:3) Tstar_v(i) = Tstar_v(i) - p_hydro&#34;" comment="" color="ffffff" rotated="0"></instruction>
 		<call text="&#34;[Lp_constitutive, dLp_constitutive] = constitutive_LpAndItsTangent (Tstar_v, crystallite_Temperature)&#34;" comment="" color="ffffff"></call>
 		<instruction text="&#34;residuum = Lpguess - Lp_constitutive&#34;" comment="" color="ffffff" rotated="0"></instruction>
-		<alternative text="&#34;no NaN ocuured in residuum&#34;,&#34;.and. (residuum below absolute tolerance .or. (above relevant strain .and. residuum below relative tolerance))&#34;" comment="&#34;&#34;" color="ffffff">
+		<alternative text="&#34;no NaN ocuured in residuum&#34;,&#34;.and. (residuum below absolute tolerance .or. (above relevant strain .and. residuum below relative tolerance))&#34;" comment="" color="ffffff">
 			<qTrue>
 				<jump text="&#34;LOOP CONVERGED: exit LpLoop&#34;" comment="" color="ffffff"></jump>
 			</qTrue>
 			<qFalse>
 			</qFalse>
 		</alternative>
-		<alternative text="&#34;NaN occured in residuum .and. leapfrog == 1.0&#34;" comment="&#34;&#34;" color="ffffff">
+		<alternative text="&#34;NaN occured in residuum .and. leapfrog == 1.0&#34;" comment="" color="ffffff">
 			<qTrue>
 				<instruction text="&#34;NO CONVERGENCE: return&#34;" comment="" color="ffffff" rotated="0"></instruction>
 			</qTrue>
 			<qFalse>
-				<alternative text="&#34;leapfrog &#62; 1.0&#34;,&#34;.and. (worse residuum .or. residuum changed sign .or. NaN occured)&#34;" comment="&#34;&#34;" color="ffffff">
+				<alternative text="&#34;leapfrog &#62; 1.0&#34;,&#34;.and. (worse residuum .or. residuum changed sign .or. NaN occured)&#34;" comment="" color="ffffff">
 					<qTrue>
-						<instruction text="&#34;maxleap = 0.5 * leapfrog&#34;,&#34;leapfrog = 1.0&#34;,&#34;Lpguess = Lpguess_old&#34;,&#34;residuum  = residuum_old&#34;" comment="" color="ffffff" rotated="0"></instruction>
+						<instruction text="&#34;maxleap = 0.5 * leapfrog&#34;,&#34;leapfrog = 1.0&#34;,&#34;jacoCounter = 0&#34;,&#34;Lpguess = Lpguess_old&#34;,&#34;residuum  = residuum_old&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
 					</qTrue>
 					<qFalse>
-						<instruction text="&#34;dTdLp = - 0.5 * crystallite_subdt * C * (A*B + B^T*A)&#34;,&#34;dRdLp = math_identity2nd(9) - dLp_constitutive * dTdLp&#34;" comment="" color="ffffff" rotated="0"></instruction>
-						<call text="&#34;[invdRdLp,dummy,error] = math_invert(9,dRdLp)&#34;" comment="" color="ffffff"></call>
-						<alternative text="&#34;error&#34;" comment="" color="ffffff">
+						<alternative text="&#34;mod(jacoCounter,iJacoLpresiduum) == 0&#34;" comment="&#34;&#34;" color="ffffff">
 							<qTrue>
-								<instruction text="&#34;INVERSION FAILED: return&#34;" comment="" color="ffffff" rotated="0"></instruction>
+								<instruction text="&#34;dTdLp = - 0.5 * crystallite_subdt * C * (A*B + B^T*A)&#34;,&#34;dRdLp = math_identity2nd(9) - dLp_constitutive * dTdLp&#34;" comment="" color="ffffff" rotated="0"></instruction>
+								<call text="&#34;[invdRdLp,dummy,error] = math_invert(9,dRdLp)&#34;" comment="" color="ffffff"></call>
+								<alternative text="&#34;error&#34;" comment="" color="ffffff">
+									<qTrue>
+										<instruction text="&#34;INVERSION FAILED: return&#34;" comment="" color="ffffff" rotated="0"></instruction>
+									</qTrue>
+									<qFalse>
+									</qFalse>
+								</alternative>
 							</qTrue>
 							<qFalse>
 							</qFalse>
 						</alternative>
-						<instruction text="&#34;residuum_old = residuum&#34;,&#34;Lpguess_old = Lpguess&#34;" comment="" color="ffffff" rotated="0"></instruction>
+						<instruction text="&#34;jacoCounter = jacoCounter + 1&#34;,&#34;residuum_old = residuum&#34;,&#34;Lpguess_old = Lpguess&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
 						<alternative text="&#34;NiterationStress &#62; 1 .and. leapfrog &#60; maxleap&#34;" comment="" color="ffffff">
 							<qTrue>
 								<instruction text="&#34;leapfrog = 2.0 * leapfrog&#34;" comment="" color="ffffff" rotated="0"></instruction>

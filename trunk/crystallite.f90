@@ -7,7 +7,7 @@
 !* - materialpoint_stressAndItsTangent *
 !* - _partitionDeformation             *
 !* - _updateState                      *
-!* - _averageStressAndItsTangent       *
+!* - _stressAndItsTangent       *
 !* - _postResults                      *
 !***************************************
 
@@ -19,7 +19,7 @@ MODULE crystallite
 ! ****************************************************************
 ! *** General variables for the crystallite calculation        ***
 ! ****************************************************************
- integer(pInt), parameter :: crystallite_Nresults = 5_pInt                        ! phaseID, volfrac within this phase, Euler angles 
+ integer(pInt), parameter :: crystallite_Nresults = 5_pInt                        ! phaseID, volume, Euler angles 
 
  real(pReal), dimension (:,:,:,:,:),    allocatable :: crystallite_Fe, &          ! current "elastic" def grad (end of converged time step)
                                                        crystallite_Fp, &          ! current plastic def grad (end of converged time step)
@@ -48,7 +48,9 @@ MODULE crystallite
  logical, dimension (:,:,:),      allocatable :: crystallite_localConstitution, & ! indicates this grain to have purely local constitutive law
                                                  crystallite_requested, &         ! flag to request crystallite calculation
                                                  crystallite_onTrack, &           ! flag to indicate ongoing calculation
-                                                 crystallite_converged            ! convergence flag
+                                                 crystallite_converged, &         ! convergence flag
+                                                 crystallite_stressConverged, &   ! convergence flag for stress
+                                                 crystallite_stateConverged       ! convergence flag for state
 
 
  CONTAINS
@@ -58,16 +60,70 @@ MODULE crystallite
 !********************************************************************
  subroutine crystallite_init()
 
- use prec,      only: pInt,pReal
- use debug,     only: debug_info,debug_reset
- use math,      only: math_I3,math_EulerToR
- use FEsolving, only: FEsolving_execElem,FEsolving_execIP
- use mesh,      only: mesh_element,mesh_NcpElems,mesh_maxNips
- use material,  only: homogenization_Ngrains,homogenization_maxNgrains,&
-                      material_EulerAngles,material_phase,phase_localConstitution
+ !*** variables and functions from other modules ***!
+ use prec, only:                      pInt, &
+                                      pReal
+ use debug, only:                     debug_info, &
+                                      debug_reset
+ use math, only:                      math_I3, &
+                                      math_EulerToR
+ use FEsolving, only:                 FEsolving_execElem, &
+                                      FEsolving_execIP
+ use mesh, only:                      mesh_element, &
+                                      mesh_NcpElems, &
+                                      mesh_maxNips
+ use material, only:                  homogenization_Ngrains, &
+                                      homogenization_maxNgrains, &
+                                      material_EulerAngles, &
+                                      material_phase, &
+                                      phase_localConstitution
  implicit none
 
- integer(pInt) g,i,e, gMax,iMax,eMax, myNgrains
+ !*** input variables ***!
+ 
+ !*** output variables ***!
+ 
+ !*** local variables ***!
+ integer(pInt)                        g, &                          ! grain number
+                                      i, &                          ! integration point number
+                                      e, &                          ! element number
+                                      gMax, &                       ! maximum number of grains
+                                      iMax, &                       ! maximum number of integration points
+                                      eMax, &                       ! maximum  number of elements
+                                      myNgrains
+ 
+ !*** global variables ***!
+ ! crystallite_Fe
+ ! crystallite_Fp
+ ! crystallite_Lp
+ ! crystallite_F0
+ ! crystallite_Fp0
+ ! crystallite_Lp0
+ ! crystallite_partionedF
+ ! crystallite_partionedF0
+ ! crystallite_partionedFp0
+ ! crystallite_partionedLp0
+ ! crystallite_subF
+ ! crystallite_subF0
+ ! crystallite_subFp0
+ ! crystallite_subLp0
+ ! crystallite_P
+ ! crystallite_Tstar_v
+ ! crystallite_dPdF
+ ! crystallite_fallbackdPdF
+ ! crystallite_dt
+ ! crystallite_subdt
+ ! crystallite_subFrac
+ ! crystallite_subStep
+ ! crystallite_Temperature
+ ! crystallite_localConstitution
+ ! crystallite_requested
+ ! crystallite_onTrack
+ ! crystallite_converged
+ 
+ !*** global functions or subroutines ***!
+ ! crystallite_stressAndItsTangent
+ 
  
  gMax = homogenization_maxNgrains
  iMax = mesh_maxNips
@@ -99,6 +155,8 @@ MODULE crystallite
  allocate(crystallite_localConstitution(gMax,iMax,eMax));
  allocate(crystallite_requested(gMax,iMax,eMax));               crystallite_requested = .false.
  allocate(crystallite_onTrack(gMax,iMax,eMax));                   crystallite_onTrack = .false.
+ allocate(crystallite_stressConverged(gMax,iMax,eMax));   crystallite_stressConverged = .false.
+ allocate(crystallite_stateConverged(gMax,iMax,eMax));     crystallite_stateConverged = .false.
  allocate(crystallite_converged(gMax,iMax,eMax));               crystallite_converged = .true.
 
 !$OMP PARALLEL DO
@@ -153,6 +211,8 @@ MODULE crystallite
  write(6,'(a32,x,7(i5,x))') 'crystallite_localConstitution: ', shape(crystallite_localConstitution)
  write(6,'(a32,x,7(i5,x))') 'crystallite_requested:         ', shape(crystallite_requested)
  write(6,'(a32,x,7(i5,x))') 'crystallite_onTrack:           ', shape(crystallite_onTrack)
+ write(6,'(a32,x,7(i5,x))') 'crystallite_stressConverged:   ', shape(crystallite_stressConverged)
+ write(6,'(a32,x,7(i5,x))') 'crystallite_stateConverged:    ', shape(crystallite_stateConverged)
  write(6,'(a32,x,7(i5,x))') 'crystallite_converged:         ', shape(crystallite_converged)
  write(6,*)
  write(6,*) 'Number of non-local grains: ',count(.not. crystallite_localConstitution)
@@ -167,28 +227,103 @@ MODULE crystallite
  endsubroutine
 
 
+ 
 !********************************************************************
 ! calculate stress (P) and tangent (dPdF) for crystallites
 !********************************************************************
 subroutine crystallite_stressAndItsTangent(updateJaco)
 
- use prec,         only: pInt,pReal,subStepMin,nCryst
- use debug
- use IO,           only: IO_warning
- use math
- use FEsolving,    only: FEsolving_execElem, FEsolving_execIP, theInc
- use mesh,         only: mesh_element
- use material,     only: homogenization_Ngrains
- use constitutive
+ !*** variables and functions from other modules ***!
+ use prec, only:                      pInt, &
+                                      pReal, &
+                                      subStepMin, &
+                                      pert_Fg, &
+                                      nState, &
+                                      nCryst
+ use debug, only:                     debugger, &
+                                      debug_CrystalliteLoopDistribution, &
+                                      debug_StateLoopDistribution, &
+                                      debug_StiffnessStateLoopDistribution
+ use IO, only:                        IO_warning
+ use math, only:                      math_inv3x3, &
+                                      math_mul33x33, &
+                                      math_mul66x6, &
+                                      math_Mandel6to33, &
+                                      math_Mandel33to6, &
+                                      math_I3
+ use FEsolving, only:                 FEsolving_execElem, & 
+                                      FEsolving_execIP, &
+                                      theInc
+ use mesh, only:                      mesh_element
+ use material, only:                  homogenization_Ngrains
+ use constitutive, only:              constitutive_maxSizeState, &
+                                      constitutive_sizeState, &
+                                      constitutive_state, &
+                                      constitutive_subState0, &
+                                      constitutive_partionedState0, &
+                                      constitutive_homogenizedC
  implicit none
  
- logical, intent(in) :: updateJaco
- real(pReal), dimension(3,3) :: invFp,Fe_guess,PK2,myF,myFp,myFe,myLp,myP
- real(pReal), dimension(constitutive_maxSizeState) :: myState
- integer(pInt) NiterationCrystallite, NiterationState
- integer(pInt) g,i,e,k,l, myNgrains, mySizeState
- logical onTrack,converged
+ !*** input variables ***!
+ logical, intent(in) ::               updateJaco                    ! flag indicating wehther we want to update the Jacobian (stiffness) or not
 
+ !*** output variables ***!
+ 
+ !*** local variables ***!
+ real(pReal), dimension(3,3) ::       invFp, &                      ! inverse of the plastic deformation gradient
+                                      Fe_guess, &                   ! guess for elastic deformation gradient
+                                      Tstar, &                      ! 2nd Piola-Kirchhoff stress tensor
+                                      myF, &                        ! local copy of the deformation gradient
+                                      myFp, &                       ! local copy of the plastic deformation gradient
+                                      myFe, &                       ! local copy of the elastic deformation gradient
+                                      myLp, &                       ! local copy of the plastic velocity gradient
+                                      myP                           ! local copy of the 1st Piola-Kirchhoff stress tensor
+ real(pReal), dimension(constitutive_maxSizeState) :: myState       ! local copy of the state
+ integer(pInt)                        NiterationCrystallite, &      ! number of iterations in crystallite loop
+                                      NiterationState               ! number of iterations in state loop
+ integer(pInt)                        e, &                          ! element index
+                                      i, &                          ! integration point index
+                                      g, &                          ! grain index
+                                      k, &
+                                      l, &
+                                      myNgrains, &
+                                      mySizeState
+ logical                              onTrack, &                    ! flag indicating wether we are still on track
+                                      converged                     ! flag indicating if iteration converged
+ 
+ !*** global variables ***!
+ ! crystallite_Fe
+ ! crystallite_Fp
+ ! crystallite_Lp
+ ! crystallite_partionedF
+ ! crystallite_partionedF0
+ ! crystallite_partionedFp0
+ ! crystallite_partionedLp0
+ ! crystallite_subF
+ ! crystallite_subF0
+ ! crystallite_subFp0
+ ! crystallite_subLp0
+ ! crystallite_P
+ ! crystallite_Tstar_v
+ ! crystallite_dPdF
+ ! crystallite_fallbackdPdF
+ ! crystallite_dt
+ ! crystallite_subdt
+ ! crystallite_subFrac
+ ! crystallite_subStep
+ ! crystallite_Temperature
+ ! crystallite_localConstitution
+ ! crystallite_requested
+ ! crystallite_onTrack
+ ! crystallite_stressConverged
+ ! crystallite_stateConverged
+ ! crystallite_converged
+ 
+ !*** global functions or subroutines ***!
+ ! crystallite_integrateStress
+ ! crystallite_updateState
+
+ 
 ! ------ initialize to starting condition ------
 
  write (6,*)
@@ -200,11 +335,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
 
 !$OMP PARALLEL DO
- do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
+ do e = FEsolving_execElem(1),FEsolving_execElem(2)                 ! iterate over elements to be processed
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)               ! iterate over IPs of this element to be processed
      do g = 1,myNgrains
-       if (crystallite_requested(g,i,e)) then                 ! initialize restoration point of ...
+       if (crystallite_requested(g,i,e)) then                       ! initialize restoration point of ...
          constitutive_subState0(g,i,e)%p = constitutive_partionedState0(g,i,e)%p  ! ...microstructure
          crystallite_subFp0(:,:,g,i,e)   = crystallite_partionedFp0(:,:,g,i,e)    ! ...plastic def grad
          crystallite_subLp0(:,:,g,i,e)   = crystallite_partionedLp0(:,:,g,i,e)    ! ...plastic velocity grad
@@ -213,7 +348,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          crystallite_subFrac(g,i,e) = 0.0_pReal
          crystallite_subStep(g,i,e) = 2.0_pReal
          crystallite_onTrack(g,i,e) = .true.
-         crystallite_converged(g,i,e) = .false.               ! pretend failed step of twice the required size
+         crystallite_converged(g,i,e) = .false.                     ! pretend failed step of twice the required size
        endif
      enddo
    enddo
@@ -235,11 +370,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         crystallite_localConstitution(:,:,FEsolving_execELem(1):FEsolving_execElem(2))       ! reset non-local grains' convergence status
    
 !$OMP PARALLEL DO
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)               ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
        do g = 1,myNgrains
-         debugger = (g == 1 .and. i == 1 .and. e == 1)
          if (crystallite_converged(g,i,e)) then
            crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
            crystallite_subStep(g,i,e) = min(1.0_pReal-crystallite_subFrac(g,i,e), 2.0_pReal * crystallite_subStep(g,i,e))
@@ -292,45 +426,16 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
 ! ------ convergence loop for stress and state ------
 
-   NiterationState = 0_pInt
+   NiterationState = 1_pInt
    if (debugger)  write(6,*) 'state integration started'
    
    do while (any(            crystallite_requested(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  .and.       crystallite_onTrack(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  .and. .not. crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
-                ) .and. NiterationState < nState)              ! convergence loop for crystallite
+                ) .and. NiterationState < nState)                   ! convergence loop for crystallite
      
      NiterationState = NiterationState + 1
 
-! --+>> stress integration <<+--
-!
-! incrementing by crystallite_subdt
-! based on crystallite_subF0,.._subFp0,.._subLp0
-!          constitutive_state is internally interpolated with .._subState0
-!          to account for substepping within _integrateStress
-! results in crystallite_Fp,.._Lp
-
-     if (debugger)  write(6,*) 'stress integration started'
-
-!$OMP PARALLEL DO
-     do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
-       myNgrains = homogenization_Ngrains(mesh_element(3,e))
-       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
-         do g = 1,myNgrains
-           if (crystallite_requested(g,i,e) .and. &
-               crystallite_onTrack(g,i,e)) &                      ! all undone crystallites
-             crystallite_onTrack(g,i,e) = crystallite_integrateStress(g,i,e)
-         enddo
-       enddo
-     enddo
-!$OMP END PARALLEL DO
-
-     if (crystallite_requested(1,1,1) .and. crystallite_onTrack(1,1,1)) then
-       write(6,*) 'stress integration converged'
-       write(6,'(a,/,3(3(e15.7,x)/))') 'P of 1 1 1',crystallite_P(:,:,1,1,1)
-       write(6,'(a,/,3(3(f12.7,x)/))') 'Lp of 1 1 1',crystallite_Lp(:,:,1,1,1)
-     endif
-     
 ! --+>> state integration <<+--
 !
 ! incrementing by crystallite_subdt
@@ -338,13 +443,38 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 ! results in constitutive_state
 
 !$OMP PARALLEL DO
-     do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
+     do e = FEsolving_execElem(1),FEsolving_execElem(2)             ! iterate over elements to be processed
        myNgrains = homogenization_Ngrains(mesh_element(3,e))
-       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
+       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)           ! iterate over IPs of this element to be processed
          do g = 1,myNgrains
-           if (crystallite_requested(g,i,e) .and. &
-               crystallite_onTrack(g,i,e)) then                   ! all undone crystallites
-             crystallite_converged(g,i,e) = crystallite_updateState(g,i,e)
+           if (             crystallite_requested(g,i,e) & 
+                .and.       crystallite_onTrack(g,i,e) &
+                .and. .not. crystallite_converged(g,i,e)) &         ! all undone crystallites
+             crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)
+         enddo
+       enddo
+     enddo
+!$OMP END PARALLEL DO
+     
+! --+>> stress integration <<+--
+!
+! incrementing by crystallite_subdt
+! based on crystallite_subF0,.._subFp0,.._subLp0
+!          constitutive_state is internally interpolated with .._subState0
+!          to account for substepping within _integrateStress
+! results in crystallite_Fp,.._Lp
+     
+!$OMP PARALLEL DO
+     do e = FEsolving_execElem(1),FEsolving_execElem(2)             ! iterate over elements to be processed
+       myNgrains = homogenization_Ngrains(mesh_element(3,e))
+       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)           ! iterate over IPs of this element to be processed
+         do g = 1,myNgrains
+           if (             crystallite_requested(g,i,e) & 
+                .and.       crystallite_onTrack(g,i,e) &
+                .and. .not. crystallite_converged(g,i,e)) then      ! all undone crystallites
+             crystallite_stressConverged(g,i,e) = crystallite_integrateStress(g,i,e)
+             crystallite_onTrack(g,i,e) = crystallite_stressConverged(g,i,e)
+             crystallite_converged(g,i,e) = crystallite_stateConverged(g,i,e) .and. crystallite_stressConverged(g,i,e)
              if (crystallite_converged(g,i,e)) then
 !$OMP CRITICAL (distributionState)
                debug_StateLoopDistribution(NiterationState) = debug_StateLoopDistribution(NiterationState) + 1
@@ -359,39 +489,31 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        enddo
      enddo
 !$OMP END PARALLEL DO
-
-     if (crystallite_requested(1,1,1) .and. crystallite_onTrack(1,1,1) .and. crystallite_converged(1,1,1)) then
-       write(6,*) 'state integration converged'
-       write(6,'(a20,e8.3)') 'state of 1 1 1: ', constitutive_state(1,1,1)%p(1)
-       write(6,*)
-     endif
      
-   enddo                                                         ! crystallite convergence loop  
+   enddo                                                            ! crystallite convergence loop  
+   
+   if (debugger) write(6,*) 'state integration converged'
 
- enddo                                                           ! cutback loop
+ enddo                                                              ! cutback loop
 
- 
 
 ! ------ check for non-converged crystallites ------
 
 !$OMP PARALLEL DO
- do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
+ do e = FEsolving_execElem(1),FEsolving_execElem(2)                 ! iterate over elements to be processed
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)               ! iterate over IPs of this element to be processed
      do g = 1,myNgrains
-       if (.not. crystallite_converged(g,i,e)) then           ! respond fully elastically
+       if (.not. crystallite_converged(g,i,e)) then                 ! respond fully elastically
          call IO_warning(600,e,i,g)
          invFp = math_inv3x3(crystallite_partionedFp0(:,:,g,i,e))
          Fe_guess = math_mul33x33(crystallite_partionedF(:,:,g,i,e),invFp)
-         PK2 = math_Mandel6to33( &
-                 math_mul66x6( &
-                   0.5_pReal*constitutive_homogenizedC(g,i,e), &
-                   math_Mandel33to6( &
-                     math_mul33x33(transpose(Fe_guess),Fe_guess) - math_I3 &
-                   ) &
-                 ) &
-               )
-         crystallite_P(:,:,g,i,e) = math_mul33x33(Fe_guess,math_mul33x33(PK2,transpose(invFp)))
+         Tstar = math_Mandel6to33( &
+                                    math_mul66x6( 0.5_pReal*constitutive_homogenizedC(g,i,e), &
+                                                  math_Mandel33to6( math_mul33x33(transpose(Fe_guess),Fe_guess) - math_I3 ) &
+                                                ) &
+                                 )
+         crystallite_P(:,:,g,i,e) = math_mul33x33(Fe_guess,math_mul33x33(Tstar,transpose(invFp)))
        endif
      enddo
    enddo
@@ -400,39 +522,34 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
 ! ------ stiffness calculation ------
 
- if(updateJaco) then                                                  ! Jacobian required
-   if (debugger) then
-     write (6,*) 'Stiffness calculation started'
-!$OMP CRITICAL (write2out)  
-!     write(6,'(a10,x,16(f6.4,x))') 'cryst_dt',crystallite_subdt
-!$OMP END CRITICAL (write2out)
-   endif
+ if(updateJaco) then                                                ! Jacobian required
+   if (debugger) write (6,*) 'Stiffness calculation started'
 
 !$OMP PARALLEL DO
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)               ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
        do g = 1,myNgrains
-         if (crystallite_converged(g,i,e)) then                         ! grain converged in above iteration
-           mySizeState = constitutive_sizeState(g,i,e)                  ! number of state variables for this grain
-           myState(1:mySizeState) = constitutive_state(g,i,e)%p         ! remember unperturbed, converged state...
-           myF  = crystallite_subF(:,:,g,i,e)                           ! ... and kinematics
+         if (crystallite_converged(g,i,e)) then                     ! grain converged in above iteration
+           mySizeState = constitutive_sizeState(g,i,e)              ! number of state variables for this grain
+           myState(1:mySizeState) = constitutive_state(g,i,e)%p     ! remember unperturbed, converged state...
+           myF  = crystallite_subF(:,:,g,i,e)                       ! ... and kinematics
            myFp = crystallite_Fp(:,:,g,i,e)
            myFe = crystallite_Fe(:,:,g,i,e)
            myLp = crystallite_Lp(:,:,g,i,e)
            myP  = crystallite_P(:,:,g,i,e)
-		   if (debugger) then
-			 write (6,*) '#############'
-			 write (6,*) 'central solution'
-			 write (6,*) '#############'
-			 write (6,'(a,/,3(3(f12.4,x)/))') '    P of 1 1 1',myP(1:3,:)/1e6
-			 write (6,'(a,/,3(3(f12.8,x)/))') '   Fp of 1 1 1',myFp(1:3,:)
-			 write (6,'(a,/,3(3(f12.8,x)/))') '   Lp of 1 1 1',myLp(1:3,:)
-			 write (6,'(a,/,f12.4)') 'state of 1 1 1',myState/1e6
-		   endif
-           do k = 1,3                                                   ! perturbation...
-             do l = 1,3                                                 ! ...components
-               crystallite_subF(:,:,g,i,e) = myF                        ! initialize perturbed F to match converged
+           if (debugger) then
+             write (6,*) '#############'
+             write (6,*) 'central solution'
+             write (6,*) '#############'
+             write (6,'(a,/,3(3(f12.4,x)/))') '    P of 1 1 1',myP(1:3,:)/1e6
+             write (6,'(a,/,3(3(f12.8,x)/))') '   Fp of 1 1 1',myFp(1:3,:)
+             write (6,'(a,/,3(3(f12.8,x)/))') '   Lp of 1 1 1',myLp(1:3,:)
+             write (6,'(a,/,f12.4)') 'state of 1 1 1',myState/1e6
+           endif
+           do k = 1,3                                               ! perturbation...
+             do l = 1,3                                             ! ...components
+               crystallite_subF(:,:,g,i,e) = myF                    ! initialize perturbed F to match converged
                crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg  ! perturb single component
                onTrack = .true.
                converged = .false.
@@ -446,8 +563,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                do while(.not. converged .and. onTrack .and. NiterationState < nState) ! keep cycling until done (potentially non-converged)
                  NiterationState = NiterationState + 1_pInt
                  if (debugger) write (6,'(a4,x,i6)') 'loop',NiterationState
-                 onTrack = crystallite_integrateStress(g,i,e)           ! stress of perturbed situation (overwrites _P,_Tstar_v,_Fp,_Lp,_Fe)
-                 if(onTrack) converged = crystallite_updateState(g,i,e)
+                 converged = crystallite_updateState(g,i,e)         ! update state
+                 onTrack = crystallite_integrateStress(g,i,e)       ! stress of perturbed situation (overwrites _P,_Tstar_v,_Fp,_Lp,_Fe)
+                 converged = converged .and. onTrack 
                  if (debugger) then
                  write (6,*) '-------------'
                    write (6,'(l,x,l)') onTrack,converged
@@ -457,10 +575,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                    write (6,'(a,/,f12.4)') 'Dstate of 1 1 1',(constitutive_state(g,i,e)%p-myState)/1e6
                  endif
                enddo
-               if (converged) &                                         ! converged state warrants stiffness update
+               if (converged) &                                     ! converged state warrants stiffness update
                  crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - myP)/pert_Fg ! tangent dP_ij/dFg_kl
-               constitutive_state(g,i,e)%p = myState                        ! restore unperturbed, converged state...
-               crystallite_Fp(:,:,g,i,e) = myFp                             ! ... and kinematics
+               constitutive_state(g,i,e)%p = myState                ! restore unperturbed, converged state...
+               crystallite_Fp(:,:,g,i,e) = myFp                     ! ... and kinematics
                crystallite_Fe(:,:,g,i,e) = myFe
                crystallite_Lp(:,:,g,i,e) = myLp
                crystallite_P(:,:,g,i,e)  = myP
@@ -470,25 +588,21 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 !$OMP END CRITICAL (out)
              enddo
            enddo
-           constitutive_state(g,i,e)%p = myState                        ! restore unperturbed, converged state...
-           crystallite_Fp(:,:,g,i,e) = myFp                             ! ... and kinematics
-           crystallite_Fe(:,:,g,i,e) = myFe
-           crystallite_Lp(:,:,g,i,e) = myLp
-           crystallite_P(:,:,g,i,e)  = myP
-           if (e == 1 .and. i == 1 .and. g == 1) then
-             write (6,'(a,/,9(9(f12.4,x)/))') 'dPdF/GPa',crystallite_dPdF(:,:,:,:,1,1,1)/1e9
-           endif
-         else                                                           ! grain has not converged
+           if (debugger) write (6,'(a,/,9(9(f12.4,x)/))') 'dPdF/GPa',crystallite_dPdF(:,:,:,:,1,1,1)/1e9
+           
+         else                                                       ! grain did not converged
            crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)  ! use fallback
          endif
        enddo
      enddo
    enddo
 !$OMP END PARALLEL DO
+
+  if (debugger) write (6,*) 'Stiffness calculation finished'
+  
  endif
  
 endsubroutine
-
 
 
 
@@ -503,39 +617,66 @@ endsubroutine
  )
  
  !*** variables and functions from other modules ***!
- use prec, only:                pReal, &
-                                pInt, &
-                                pLongInt, &
-                                rTol_crystalliteState
- use constitutive, only:        constitutive_dotState, &
-                                constitutive_sizeDotState, &
-                                constitutive_subState0, &
-                                constitutive_state
- use debug, only:               debug_cumDotStateCalls, &
-                                debug_cumDotStateTicks
+ use prec, only:                      pReal, &
+                                      pInt, &
+                                      pLongInt, &
+                                      rTol_crystalliteState
+ use constitutive, only:              constitutive_dotState, &
+                                      constitutive_sizeDotState, &
+                                      constitutive_subState0, &
+                                      constitutive_state
+ use debug, only:                     debugger, &
+                                      debug_cumDotStateCalls, &
+                                      debug_cumDotStateTicks
  
- logical crystallite_updateState
+ !*** input variables ***!
+ integer(pInt), intent(in)::          e, &                          ! element index
+                                      i, &                          ! integration point index
+                                      g                             ! grain index
+ 
+ !*** output variables ***!
+ logical                              crystallite_updateState       ! flag indicating if integration suceeded
 
- integer(pLongInt) tick,tock,tickrate,maxticks
- integer(pInt) g,i,e,mySize
- real(pReal), dimension(6) :: Tstar_v
- real(pReal), dimension(constitutive_sizeDotState(g,i,e)) :: residuum
+ !*** local variables ***!
+ real(pReal), dimension(6) ::         Tstar_v                       ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
+ real(pReal), dimension(constitutive_sizeDotState(g,i,e)) :: residuum ! residuum from evolution of microstructure
+ integer(pInt)                        mySize
+ integer(pLongInt)                    tick, &
+                                      tock, &
+                                      tickrate, &
+                                      maxticks
+ 
+ !*** global variables ***!
+ ! crystallite_Tstar_v
+ ! crystallite_subdt
+ ! crystallite_Temperature
 
  mySize = constitutive_sizeDotState(g,i,e)
+ 
+ ! calculate the residuum
  call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
  residuum = constitutive_state(g,i,e)%p(1:mySize) - constitutive_subState0(g,i,e)%p(1:mySize) - &
-            crystallite_subdt(g,i,e)*&
-            constitutive_dotState(crystallite_Tstar_v(:,g,i,e),crystallite_Temperature(g,i,e),g,i,e)   ! residuum from evolution of microstructure
+            crystallite_subdt(g,i,e) * constitutive_dotState(crystallite_Tstar_v(:,g,i,e),crystallite_Temperature(g,i,e),g,i,e)
  call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
  debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
  debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
  if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
  
- if (any(constitutive_state(g,i,e)%p(1:mySize)/=constitutive_state(g,i,e)%p(1:mySize))) return           ! NaN occured?
+ ! if NaN occured then return without changing the state
+ if (any(constitutive_state(g,i,e)%p(1:mySize)/=constitutive_state(g,i,e)%p(1:mySize))) then
+   if (debugger) write(6,*) '::: updateState encountered NaN'
+   return
+ endif
  
- constitutive_state(g,i,e)%p(1:mySize) = constitutive_state(g,i,e)%p(1:mySize) - residuum              ! update of microstructure
- crystallite_updateState = maxval(abs(residuum/constitutive_state(g,i,e)%p(1:mySize)),&
+ ! update the microstructure
+ constitutive_state(g,i,e)%p(1:mySize) = constitutive_state(g,i,e)%p(1:mySize) - residuum
+ 
+ ! setting flag to true if state is below relative Tolerance, otherwise set it to false
+ crystallite_updateState = maxval(abs(residuum/constitutive_state(g,i,e)%p(1:mySize)), &
                                   constitutive_state(g,i,e)%p(1:mySize) /= 0.0_pReal) < rTol_crystalliteState
+                                  
+ if (debugger) write(6,'(a,/,f12.4)') 'updated state: ', constitutive_state(g,i,e)%p(1)
+ 
  return
 
  endfunction
@@ -559,7 +700,8 @@ endsubroutine
                                       nStress, &
                                       aTol_crystalliteStress, &
                                       rTol_crystalliteStress, &
-                                      relevantStrain
+                                      relevantStrain, &
+                                      iJacoLpresiduum
  use debug, only:                     debugger, &
                                       debug_cumLpCalls, &
                                       debug_cumLpTicks, &
@@ -574,7 +716,7 @@ endsubroutine
                                       math_invert3x3, &
                                       math_invert, &
                                       math_det3x3, &
-                                      math_i3, &
+                                      math_I3, &
                                       math_identity2nd, &
                                       math_Mandel66to3333, &
                                       math_Mandel6to33, &
@@ -590,12 +732,10 @@ endsubroutine
  !*** output variables ***!
  logical                              crystallite_integrateStress   ! flag indicating if integration suceeded
  
- !*** internal local variables ***!
- real(pReal), dimension(3,3)::        Fg_current, &                 ! deformation gradient at start of timestep
-                                      Fg_new, &                     ! deformation gradient at end of timestep
+ !*** local variables ***!
+ real(pReal), dimension(3,3)::        Fg_new, &                     ! deformation gradient at end of timestep
                                       Fp_current, &                 ! plastic deformation gradient at start of timestep
                                       Fp_new, &                     ! plastic deformation gradient at end of timestep
-                                      Fe_current, &                 ! elastic deformation gradient at start of timestep
                                       Fe_new, &                     ! elastic deformation gradient at end of timestep
                                       invFp_new, &                  ! inverse of Fp_new
                                       invFp_current, &              ! inverse of Fp_current
@@ -628,14 +768,14 @@ endsubroutine
                                       k, &
                                       l, &
                                       m, &
-                                      n
+                                      n, &
+                                      jacoCounter                   ! counter to check for Jacobian update
  integer(pLongInt)                    tick, &
                                       tock, &
                                       tickrate, &
                                       maxticks
  
  !*** global variables ***!
- ! crystallite_subF0
  ! crystallite_subF
  ! crystallite_subFp0
  ! crystallite_Tstar_v
@@ -643,15 +783,14 @@ endsubroutine
  ! crystallite_subdt
  ! crystallite_Temperature
  
+ if (debugger)  write(6,*) '::: integrateStress started'
 
  ! be pessimistic
  crystallite_integrateStress = .false.
 
  ! feed local variables
- Fg_current =   crystallite_subF0(:,:,g,i,e)
  Fg_new =       crystallite_subF(:,:,g,i,e)
  Fp_current =   crystallite_subFp0(:,:,g,i,e)
- Fe_current =   math_mul33x33(Fg_current,math_inv3x3(Fp_current))
  Tstar_v =      crystallite_Tstar_v(:,g,i,e)
  Lpguess_old =  crystallite_Lp(:,:,g,i,e)                           ! consider present Lp good (i.e. worth remembering) ...
  Lpguess =      crystallite_Lp(:,:,g,i,e)                           ! ... and take it as first guess
@@ -676,6 +815,7 @@ endsubroutine
  NiterationStress = 0_pInt
  leapfrog = 1.0_pReal
  maxleap = 1024.0_pReal
+ jacoCounter = 0_pInt
 
 LpLoop: do
    
@@ -688,7 +828,7 @@ LpLoop: do
      return
    endif
    
-   B = math_i3 - crystallite_subdt(g,i,e)*Lpguess
+   B = math_I3 - crystallite_subdt(g,i,e)*Lpguess
    BT = transpose(B)
    AB = math_mul33x33(A,B)
    BTA = math_mul33x33(BT,A)
@@ -733,6 +873,7 @@ LpLoop: do
           ) then
      maxleap = 0.5_pReal * leapfrog                                 ! limit next acceleration
      leapfrog = 1.0_pReal                                           ! grinding halt
+     jacoCounter = 0_pInt                                           ! reset counter for Jacobian update (we want to do an update next time!)
      
      ! restore old residuum and Lp
      Lpguess = Lpguess_old                                       
@@ -741,19 +882,22 @@ LpLoop: do
    ! residuum got better
    else
      ! calculate Jacobian for correction term 
-     dTdLp = 0.0_pReal
-     forall (h=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
-       dTdLp(3*(h-1)+j,3*(k-1)+l) = dTdLp(3*(h-1)+j,3*(k-1)+l) + &
-                                    C(h,j,l,n)*AB(k,n)+C(h,j,m,l)*BTA(m,k)
-     dTdLp = -0.5_pReal*crystallite_subdt(g,i,e)*dTdLp
-     dRdLp = math_identity2nd(9) - math_mul99x99(dLp_constitutive,dTdLp)
-     invdRdLp = 0.0_pReal
-     call math_invert(9,dRdLp,invdRdLp,dummy,error)                 ! invert dR/dLp --> dLp/dR
-     if (error) then
-       if (debugger) write(6,*) '::: integrateStress failed on dR/dLp inversion at iteration', NiterationStress
-       return
+     if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
+       dTdLp = 0.0_pReal
+       forall (h=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
+         dTdLp(3*(h-1)+j,3*(k-1)+l) = dTdLp(3*(h-1)+j,3*(k-1)+l) + &
+                                      C(h,j,l,n)*AB(k,n)+C(h,j,m,l)*BTA(m,k)
+       dTdLp = -0.5_pReal*crystallite_subdt(g,i,e)*dTdLp
+       dRdLp = math_identity2nd(9) - math_mul99x99(dLp_constitutive,dTdLp)
+       invdRdLp = 0.0_pReal
+       call math_invert(9,dRdLp,invdRdLp,dummy,error)               ! invert dR/dLp --> dLp/dR
+       if (error) then
+         if (debugger) write(6,*) '::: integrateStress failed on dR/dLp inversion at iteration', NiterationStress
+         return
+       endif
      endif
-
+     jacoCounter = jacoCounter + 1_pInt                             ! increase counter for jaco update
+     
      ! remember current residuum and Lpguess
      residuum_old = residuum
      Lpguess_old = Lpguess 
@@ -791,7 +935,12 @@ LpLoop: do
 
  ! set return flag to true
  crystallite_integrateStress = .true.
- if (debugger) write(6,*) '::: integrateStress finished at iteration', NiterationStress
+ if (debugger) then 
+   write(6,*) '::: integrateStress converged at iteration', NiterationStress
+   write(6,*)
+   write(6,'(a,/,3(3(e15.7,x)/))') 'P of 1 1 1',crystallite_P(:,:,1,1,1)
+   write(6,'(a,/,3(3(f12.7,x)/))') 'Lp of 1 1 1',crystallite_Lp(:,:,1,1,1)
+ endif
 
 !$OMP CRITICAL (distributionStress)
  debug_StressLoopDistribution(NiterationStress) = debug_StressLoopDistribution(NiterationStress) + 1
@@ -800,6 +949,7 @@ LpLoop: do
  return
 
  endfunction
+ 
  
  
  
@@ -815,20 +965,39 @@ function crystallite_postResults(&
    e &              ! element number
  )
 
- use prec,     only: pInt,pReal
- use math,     only: math_pDecomposition,math_RtoEuler, inDeg
- use IO,       only: IO_warning
- use material, only: material_phase,material_volume
- use constitutive, only: constitutive_sizePostResults, constitutive_postResults
+ !*** variables and functions from other modules ***!
+ use prec, only:                      pInt, &
+                                      pReal
+ use math, only:                      math_pDecomposition, &
+                                      math_RtoEuler, &
+                                      inDeg
+ use IO, only:                        IO_warning
+ use material, only:                  material_phase, &
+                                      material_volume
+ use constitutive, only:              constitutive_sizePostResults, &
+                                      constitutive_postResults
+ 
  implicit none
 
- integer(pInt), intent(in) :: g,i,e
- real(pReal), intent(in) ::   Temperature,dt
- real(pReal), dimension(6), intent(in) :: Tstar_v
- real(pReal), dimension(3,3) :: U,R
- logical error
+ !*** input variables ***!
+ integer(pInt), intent(in)::          e, &                          ! element index
+                                      i, &                          ! integration point index
+                                      g                             ! grain index
+ real(pReal), intent(in)::            Temperature, &                ! temperature
+                                      dt                            ! time increment
+ real(pReal), dimension(6), intent(in):: Tstar_v                    ! 2nd Piola-Kirchhoff stress in Mandel notation
 
+ !*** output variables ***!
  real(pReal), dimension(crystallite_Nresults + constitutive_sizePostResults(g,i,e)) :: crystallite_postResults
+ 
+ !*** local variables ***!
+ real(pReal), dimension(3,3) ::       U, &
+                                      R
+ logical error
+ 
+ !*** global variables ***!
+ ! crystallite_Nresults
+ ! crystallite_Fe
  
  if (crystallite_Nresults >= 2) then
    crystallite_postResults(1) = material_phase(g,i,e)

@@ -123,7 +123,7 @@ subroutine hypela2(&
      ifu &        ! set to 1 if stretch has been calculated
    )
 
- use prec, only: pReal,pInt, ijaco
+ use prec, only: pReal,pInt, iJacoStiffness
  use FEsolving
  use CPFEM, only: CPFEM_general
  use math, only: invnrmMandel
@@ -186,7 +186,7 @@ subroutine hypela2(&
  theCycle = ncycle                                  ! record current cycle count
  theLovl  = lovl                                    ! record current lovl
 
- call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(cycleCounter-4,4_pInt*ijaco)==0,d,ngens)
+ call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(cycleCounter-4,4_pInt*iJacoStiffness)==0,d,ngens)
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13
