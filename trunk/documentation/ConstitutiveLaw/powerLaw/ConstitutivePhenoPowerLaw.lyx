@@ -74,7 +74,15 @@ logical.f90.
  We introduce slip and twin family as additional index (or input) for each
  crystal structure in lattice.f90 subroutine (e.g., for HCP crystal: slip and
  twin system has four faimilies, respectively).
- The current State variables in constitutive_phenoPowerlaw are 
+ 
+\end_layout
+
+\begin_layout Section
+State Variables in constitutive_phenoPowelaw.f90
+\end_layout
+
+\begin_layout Standard
+The current State variables in constitutive_phenoPowerlaw are 
 \begin_inset Quotes eld
 \end_inset
 
@@ -132,7 +140,15 @@ twin volume fraction
 \end_inset
 
  denote to slip and twin systems, respectively, in this entire document.
- Table 
+ 
+\end_layout
+
+\begin_layout Section
+Considered Deformation Mechanisms
+\end_layout
+
+\begin_layout Standard
+Table 
 \begin_inset CommandInset ref
 LatexCommand ref
 reference "Flo:DeformationSystemTable"
@@ -823,7 +839,7 @@ reference "eq:InteractionMatrix"
 M_{\mathrm{slip-slip}} & M_{\mathrm{slip-twin}}\\
 M_{\mathrm{twin-slip}} & M_{\mathrm{twin-twin}}\end{array}\right]\left[\begin{array}{c}
 \dot{\gamma}^{\alpha}\\
-\dot{f}^{\beta}\end{array}\right]\label{eq:InteractionMatrix}\end{equation}
+\gamma^{\beta}\cdot\dot{f}^{\beta}\end{array}\right]\label{eq:InteractionMatrix}\end{equation}
 
 \end_inset
 

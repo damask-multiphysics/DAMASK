@@ -1,0 +1,475 @@
+%% LyX 1.6.2 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[english]{scrartcl}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage[letterpaper]{geometry}
+\geometry{verbose,tmargin=2cm,bmargin=2cm,lmargin=2cm,rmargin=2cm,headheight=2cm,headsep=1cm,footskip=1cm}
+\usepackage{array}
+\usepackage{float}
+\usepackage{endnotes}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{amssymb}
+\usepackage[authoryear]{natbib}
+\onehalfspacing
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
+ \let\footnote=\endnote
+\usepackage{braille}
+\newcommand{\braillenormal}[1]
+ {\setlength{\brailleunit}{2.4mm}\braille{#1}}
+% With \brailleunit == 0.75ex, the braille letters will
+% approximately match the other letters in size.
+\newcommand{\brailletext}[1]
+ {\setlength{\brailleunit}{0.75ex}\braille{#1}}
+
+\usepackage{babel}
+
+\begin{document}
+
+\title{Summary of constitutive\_phenoPowerlaw}
+
+
+\author{YUN JO RO}
+
+\maketitle
+This document contains information for constitutive\_phenoPowerlaw.f90.
+This constitutive subroutine is modified from the current contitutive\_phenomenological.f90.
+We introduce slip and twin family as additional index (or input) for
+each crystal structure in lattice.f90 subroutine (e.g., for HCP crystal:
+slip and twin system has four faimilies, respectively). 
+
+
+\section{State Variables in constitutive\_phenoPowelaw.f90}
+
+The current State variables in constitutive\_phenoPowerlaw are {}``slip
+resistance $\left(s^{\alpha}\right)$'', ''twin resistance $\left(s^{\beta}\right)$'',
+{}``cumulative shear strain $\left(\gamma^{\alpha}\right)$'', and
+{}``twin volume fraction $\left(f^{\beta}\right)$''. Superscript
+$\alpha$ and $\beta$ denote to slip and twin systems, respectively,
+in this entire document. 
+
+
+\section{Considered Deformation Mechanisms}
+
+Table \ref{Flo:DeformationSystemTable} lists slip/twin systems for
+the {}``hex (hcp)'' case.\medskip{}
+
+
+%
+\begin{table}[tbph]
+\centering{}\begin{tabular}{|c|c|c|c|}
+\hline 
+ &  &  & No. of slip system\tabularnewline
+\hline 
+slip system & basal & $\left\{ 0001\right\} \left\langle 1\bar{2}10\right\rangle $ & 3\tabularnewline
+\cline{2-4} 
+ & prism & $\left\{ 10\bar{1}0\right\} \left\langle 1\bar{2}10\right\rangle $ & 3\tabularnewline
+\cline{2-4} 
+ & pyr <a> & $\left\{ 10\bar{1}1\right\} \left\langle 1\bar{2}10\right\rangle $ & 6\tabularnewline
+\cline{2-4} 
+ & pyr <c+a> & $\left\{ 10\bar{1}1\right\} \left\langle 2\bar{1}\bar{1}3\right\rangle $ & 12\tabularnewline
+\hline
+twin system & tensile (T1) & $\left\{ 10\bar{1}2\right\} \left\langle \bar{1}011\right\rangle $ & 6\tabularnewline
+\cline{2-4} 
+ & compressive (C1) & $\left\{ 11\bar{2}2\right\} \left\langle 11\bar{2}\bar{3}\right\rangle $ & 6\tabularnewline
+\cline{2-4} 
+ & tensile (T2) & $\left\{ 11\bar{2}1\right\} \left\langle \bar{1}\bar{1}26\right\rangle $ & 6\tabularnewline
+\cline{2-4} 
+ & compressive (C1) & $\left\{ 10\bar{1}1\right\} \left\langle 10\bar{1}\bar{2}\right\rangle $ & 6\tabularnewline
+\hline
+\end{tabular}\caption{Implemented deformation mechanims in $\alpha$-Ti }
+\label{Flo:DeformationSystemTable}
+\end{table}
+
+\begin{itemize}
+\item Slip/twin system for HCP are illustrated in Figures \ref{Fig:slipSystemHCP}
+and \ref{Fig:twinSystemHCP}.
+\end{itemize}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[clip,scale=0.25]{figures/slipSystemForHCP}
+\par\end{centering}
+
+\caption{Drawing for slip system for HCP. Burgers vectors were scaled.}
+\label{Fig:slipSystemHCP}
+
+
+\end{figure}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[clip,scale=0.25]{figures/twinSystemForHCP}
+\par\end{centering}
+
+\caption{Drawing for twin system for HCP ($\alpha$- Ti). Twin directions are
+not scaled yet. }
+\label{Fig:twinSystemHCP}
+
+
+\end{figure}
+
+
+\clearpage{}
+
+
+\section{Kinetics}
+
+Shear strain rate due to slip is described by following eqation \citet{Salem2005,Wu2007}:\begin{equation}
+\dot{\gamma}^{\alpha}=\dot{\gamma_{o}}\left|\frac{\tau^{\alpha}}{s^{\alpha}}\right|^{n}sign\left(\tau^{\alpha}\right)\label{eq:slipStrainRate}\end{equation}
+
+
+, where $\dot{\gamma}^{\alpha}$; shear strain rate, $\dot{\gamma}_{o}$;
+reference shear strain rate, $\tau^{\alpha}$; resolved shear stress
+on the slip system, $n$; stress exponent, and $s^{\alpha}$; slip
+resistance.
+
+Twin volume fraction rate is described by following eqation \citet{Salem2005,Wu2007}:
+
+\begin{equation}
+\dot{f}^{\beta}=\frac{\dot{\gamma_{o}}}{\gamma^{\beta}}\left|\frac{\tau^{\beta}}{s^{\beta}}\right|^{n}\mathbb{\mathcal{H}}\left(\tau^{\beta}\right)\label{eq:twinVolrate}\end{equation}
+
+
+, where $\dot{f}^{\beta}$; twin volume fraction rate, $\dot{\gamma}_{o}$;
+reference shear strain rate, $\gamma^{\beta}$;shear strain due to
+mechanical twinning, $\tau^{\beta}$; resolved shear stress on the
+twin system, and $s^{\beta}$; twin resistance. $\mathcal{H}$ is
+Heaviside function. 
+
+
+\section{Structure Evolution}
+
+In this present section, we attempt to show how we establish the relationship
+between the evolutoin of slip/twin resistance and the evolution of
+shear strain/twin volume fraction. 
+
+
+\subsection{Interaction matrix. }
+
+Conceptual relationship between the evolution of state and kinetic
+variables is shown in Equation \ref{eq:InteractionMatrix}.
+
+\begin{equation}
+\left[\begin{array}{c}
+\dot{s}^{\alpha}\\
+\dot{s}^{\beta}\end{array}\right]=\left[\begin{array}{cc}
+M_{\mathrm{slip-slip}} & M_{\mathrm{slip-twin}}\\
+M_{\mathrm{twin-slip}} & M_{\mathrm{twin-twin}}\end{array}\right]\left[\begin{array}{c}
+\dot{\gamma}^{\alpha}\\
+\gamma^{\beta}\cdot\dot{f}^{\beta}\end{array}\right]\label{eq:InteractionMatrix}\end{equation}
+
+
+Four interaction martices are followings; i) slip-slip interaction
+matrix $\left(M_{\mathrm{{\scriptstyle slip-slip}}}\right)$, ii)
+slip-twin interaction matrix $\left(M_{\mathrm{slip-twin}}\right)$,
+iii) twin-slip interaction matrix $\left(M_{\mathrm{twin-slip}}\right)$,
+and iv) twin-twin interaction matrix $\left(M_{\mathrm{twin-twin}}\right)$. 
+
+Detailed interaction type matrices in Equation \ref{eq:InteractionMatrix}
+will be further discussed in the following Section.
+
+
+\subsection{Interaction type matrix}
+
+Following sections are sparated into four based on each interaction
+type matrix alluded. Numbers in Tables \ref{Flo:SlipSlipIntTypeTable},
+\ref{Flo:SlipTwinIntTypeTable}, \ref{Flo:TwinSlipIntTypeTable},
+and \ref{Flo:TwinTwinIntTypeTable} denote the type of interaction
+between deformation systems (The first column vs. The first row).
+
+
+\subsubsection{Slip-Slip interaction type matrix}
+\begin{itemize}
+\item There are 20 types of slip-slip interaction as shown in Table \ref{Flo:SlipSlipIntTypeTable}. 
+\item In Table \ref{Flo:SlipSlipIntTypeTable}, types of latent hardening
+among slip systems are listed. 
+\item Actual slip-slip interaction type matrix, $M_{\mathrm{slip-slip}}^{'}$,
+is listed in Equation \ref{eq:SlipSlipIntMatrix}.
+\end{itemize}
+%
+\begin{table}[H]
+\begin{centering}
+\begin{tabular}{|>{\centering}m{0.8in}|>{\centering}m{0.7in}|>{\centering}m{0.6in}|>{\centering}m{0.6in}|>{\centering}m{0.7in}|}
+\hline 
+ & basal & prism & pyr <a> & pyr<c+a>\tabularnewline
+\hline 
+basal & 1, 5 & 9 & 12 & 14\tabularnewline
+\hline 
+prism & 15 & 2, 6 & 10 & 13\tabularnewline
+\hline 
+pyr <a> & 18 & 16 & 3, 7 & 11\tabularnewline
+\hline 
+pyr <c+a> & 20 & 19 & 17 & 4, 8\tabularnewline
+\hline
+\end{tabular}
+\par\end{centering}
+
+\caption{Slip-slip interaction type}
+\label{Flo:SlipSlipIntTypeTable}
+\end{table}
+
+
+\begin{equation}
+M_{\mathrm{slip-slip}}^{'}=\left[\begin{array}{ccc|ccc|cccccc|cccccccccccc}
+1 & 5 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ & 1 & 5 & \cdot & 9 & \cdot & \cdot & \cdot & 12 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 14 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ &  & 1 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & 2 & 6 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & 15 & \cdot &  & 2 & 6 & \cdot & \cdot & 10 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 13 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot &  &  & 2 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 3 & 7 & 7 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 3 & 7 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 3 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & 11 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & 18 & \cdot & \cdot & 16 & \cdot &  &  &  & 3 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  & 3 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 3 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & 20 & \cdot & \cdot & 19 & \cdot & \cdot & \cdot & 17 & \cdot & \cdot & \cdot &  &  &  &  & 4 & 8 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 4 & 8 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  & 4 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  & 4 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  &  & 4 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  &  &  & 4 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  &  &  &  & 4 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  &  &  &  &  &  &  & 4\end{array}\right]\label{eq:SlipSlipIntMatrix}\end{equation}
+
+
+\vfill{}
+\vfill{}
+
+
+
+\subsubsection{Slip-Twin interaction type matrix}
+\begin{itemize}
+\item There are 16 types of slip-twin interaction in Table \ref{Flo:SlipTwinIntTypeTable}. 
+\item Meaning of T1, C1, T2, C2 is listed in Table \ref{Flo:DeformationSystemTable}.
+\item Actual slip-twin interaction type matrix, $M_{\mathrm{slip-twin}}^{'}$,
+is listed in Equation \ref{eq:SlipTwinIntMatrix}.
+\end{itemize}
+%
+\begin{table}[H]
+\begin{centering}
+\begin{tabular}{|>{\centering}m{0.8in}|>{\centering}m{0.7in}|>{\centering}m{0.6in}|>{\centering}m{0.6in}|>{\centering}m{0.7in}|}
+\hline 
+ & T1 & C1 & T2 & C1\tabularnewline
+\hline 
+basal & 1 & 2 & 3 & 4\tabularnewline
+\hline 
+prism & 5 & 6 & 7 & 8\tabularnewline
+\hline 
+pyr <a> & 9 & 10 & 11 & 12\tabularnewline
+\hline 
+pyr <c+a> & 13 & 14 & 15 & 16\tabularnewline
+\hline
+\end{tabular}
+\par\end{centering}
+
+\caption{Slip-twin interaction type}
+\label{Flo:SlipTwinIntTypeTable}
+\end{table}
+
+
+\begin{equation}
+M_{\mathrm{slip-twin}}^{'}=\left[\begin{array}{c|c|c|c}
+1 & 2 & 3 & 4\\
+\hline 5 & 6 & 7 & 8\\
+\hline 9 & 10 & 11 & 12\\
+\hline 13 & 14 & 15 & 16\end{array}\right]\label{eq:SlipTwinIntMatrix}\end{equation}
+
+
+
+\subsubsection{Twin-Slip interaction type matrix}
+\begin{itemize}
+\item There 16 types of twin-slip interaction in Table \ref{Flo:TwinSlipIntTypeTable}.
+\item Meaning of T1, C1, T2, C2 is listed in Table \ref{Flo:DeformationSystemTable}.
+\item Actual twin-slip interaction type matrix, $M_{\mathrm{twin-slip}}^{'}$,
+is listed in Equation \ref{eq:TwinSlipIntMatrix}.
+\end{itemize}
+%
+\begin{table}[H]
+\begin{centering}
+\begin{tabular}{|>{\centering}m{0.8in}|>{\centering}m{0.7in}|>{\centering}m{0.6in}|>{\centering}m{0.6in}|>{\centering}m{0.7in}|}
+\hline 
+ & basal & prism & pyr <a> & pyr <c+a>\tabularnewline
+\hline 
+T1 & 1 & 5 & 9 & 13\tabularnewline
+\hline 
+C1 & 2 & 6 & 10 & 14\tabularnewline
+\hline 
+T2 & 3 & 7 & 11 & 15\tabularnewline
+\hline 
+C2 & 4 & 8 & 12 & 16\tabularnewline
+\hline
+\end{tabular}
+\par\end{centering}
+
+\caption{Twin-slip interaction type}
+\label{Flo:TwinSlipIntTypeTable}
+\end{table}
+
+
+\begin{equation}
+M_{\mathrm{twin-slip}}^{'}=\left[\begin{array}{c|c|c|c}
+1 & 5 & 9 & 13\\
+\hline 2 & 6 & 10 & 14\\
+\hline 3 & 7 & 11 & 15\\
+\hline 4 & 8 & 12 & 16\end{array}\right]\label{eq:TwinSlipIntMatrix}\end{equation}
+
+
+
+\subsubsection{Twin-twin interaction type matrix}
+\begin{itemize}
+\item There are 20 types of twin-twin interaction as shown in Table \ref{Flo:TwinTwinIntTypeTable}. 
+\item In Table \ref{Flo:TwinTwinIntTypeTable}, types of latent hardening
+among twin systems are listed. 
+\item Actual twin-twin interaction type marix, $M_{\mathrm{twin-twin}}^{'}$,
+is listed in Equation \ref{eq:TwinTwinIntMatrix}.
+\end{itemize}
+%
+\begin{table}[H]
+\begin{centering}
+\begin{tabular}{|>{\centering}m{0.8in}|>{\centering}m{0.7in}|>{\centering}m{0.6in}|>{\centering}m{0.6in}|>{\centering}m{0.7in}|}
+\hline 
+ & T1 & C1 & T2 & C2\tabularnewline
+\hline 
+T1 & 1, 5 & 9 & 12 & 14\tabularnewline
+\hline 
+C1 & 15 & 2, 6 & 10 & 13\tabularnewline
+\hline 
+T2 & 18 & 16 & 3, 7 & 11\tabularnewline
+\hline 
+C2 & 20 & 19 & 17 & 4, 8\tabularnewline
+\hline
+\end{tabular}
+\par\end{centering}
+
+\caption{Twin-twin interaction type}
+\label{Flo:TwinTwinIntTypeTable}
+\end{table}
+
+
+\begin{equation}
+M_{\mathrm{twin-twin}}^{'}=\left[\begin{array}{cccccc|cccccc|cccccc|cccccc}
+1 & 5 & 5 & 5 & 5 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ & 1 & 5 & 5 & 5 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ &  & 1 & 5 & 5 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ &  &  & 1 & 5 & 5 & \cdot & \cdot & \cdot & 9 & \cdot & \cdot & \cdot & \cdot & \cdot & 12 & \cdot & \cdot & \cdot & \cdot & \cdot & 14 & \cdot & \cdot\\
+ &  &  &  & 1 & 5 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+ &  &  &  &  & 1 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 2 & 6 & 6 & 6 & 6 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 2 & 6 & 6 & 6 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 2 & 6 & 6 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & 15 & \cdot & \cdot &  &  &  & 2 & 6 & 6 & \cdot & \cdot & \cdot & 10 & \cdot & \cdot & \cdot & \cdot & \cdot & 13 & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  & 2 & 6 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 2 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 3 & 7 & 7 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 3 & 7 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 3 & 7 & 7 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & 18 & \cdot & \cdot & \cdot & \cdot & \cdot & 16 & \cdot & \cdot &  &  &  & 3 & 7 & 7 & \cdot & \cdot & \cdot & 11 & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  & 3 & 7 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 3 & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot\\
+\hline \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & 4 & 8 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  & 4 & 8 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  & 4 & 8 & 8 & 8\\
+\cdot & \cdot & \cdot & 20 & \cdot & \cdot & \cdot & \cdot & \cdot & 19 & \cdot & \cdot & \cdot & \cdot & \cdot & 17 & \cdot & \cdot &  &  &  & 4 & 8 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  & 4 & 8\\
+\cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \cdot &  &  &  &  &  & 4\end{array}\right]\label{eq:TwinTwinIntMatrix}\end{equation}
+
+
+
+\subsection{Prefactor (nonlinear factor)}
+
+
+\subsubsection{Prefactors for slip resistance $\left(s^{\alpha}\right)$; $M_{\mathrm{slip-slip}}$
+and $M_{\mathrm{slip-twin}}$\citet{Wu2007}}
+
+$M_{\mathrm{slip-slip}}$ and $M_{\mathrm{slip-twin}}$ use for slip
+resistance evolution $\left(\dot{s}^{\alpha}\right)$. Equation \ref{eq:SlipResisEvolutionEq}
+is for a slip resistance rate evolution. This currently shows the
+prefactor for {}``slip-slip interaction matrix, $M_{\mathrm{slip-slip}}$''.
+
+\medskip{}
+
+
+\begin{equation}
+M_{\mathrm{slip-slip}}=h_{\mathrm{slip}}\left(1+C\cdot F^{b}\right)\left(1-\frac{s^{\alpha}}{s_{so}^{\alpha}+s_{\mathrm{pr}}\cdot\sqrt{F}}\right)\cdot M_{\mathrm{slip-slip}}^{'}\label{eq:SlipResisEvolutionEq}\end{equation}
+
+
+\medskip{}
+
+
+, where $h_{\mathrm{slip}}$represent a hardening rate, and $S_{\mathrm{so}}^{\alpha}$
+saturation slip resistance for slip system without mechanical twinning
+$\left(\sum_{\beta}f^{\beta}=0\right)$, respectively. And, $F$ is
+$\sum_{\beta}f^{\beta}$, and $N^{S}$is the total number of slip
+system.$C$, $s_{\mathrm{pr}}$, and $b$ are coefficients to introduce
+the effect of interaction between slip and mechanical twin in Equation
+\ref{eq:SlipResisEvolutionEq}.
+\begin{itemize}
+\item Slip-twin interaction matrix, $M_{\mathrm{slip-twin}}$, has not been
+implemented with any prefactor in the present version. 
+\end{itemize}
+
+\subsubsection{Prefactors for twin resistance $\left(s^{\beta}\right)$; $M_{\mathrm{twin-slip}}$
+and $M_{\mathrm{twin-twin}}$\citet{Salem2005}}
+
+$M_{\mathrm{twin-sli}p}$ and $M_{\mathrm{twin-twin}}$ use for twin
+resistance evolution $\left(\dot{s}^{\beta}\right)$. Twin-twin and
+twin-slip interaction matrices are described in Equations \ref{eq:TwinTwinContributionToTwinResis}
+and \ref{eq:TwinSlipContributionToTwinResis}. \medskip{}
+
+
+\begin{equation}
+M_{\mathrm{twin-twin}}=h_{\mathrm{tw}}\cdot F^{d}\cdot M_{\mathrm{twin-twin}}^{'}\label{eq:TwinTwinContributionToTwinResis}\end{equation}
+
+
+,where $h_{\mathrm{tw}}$ and $d$ are coefficients for twin-twin
+contribution. $F$ is $\sum_{\beta}f^{\beta}$.
+
+\medskip{}
+
+
+\begin{equation}
+M_{\mathrm{twin-slip}}=h_{\mathrm{tw-sl}}\cdot\Gamma^{e}\cdot M_{\mathrm{twin-slip}}^{'}\label{eq:TwinSlipContributionToTwinResis}\end{equation}
+
+
+,where $h_{\mathrm{tw-sl}}$ and $e$ are coefficients for twin-slip
+contribution, and $\Gamma=\sum_{\alpha}\gamma^{\alpha}$.
+
+\clearpage{}
+
+
+\section{Material Parameters (Material Configuration file)}
+
+%
+\begin{figure}[tbph]
+\begin{centering}
+\includegraphics[clip,scale=0.8]{figures/ExpectedMaterialConfigFile}\caption{Expected of phenomenological modelling parameters.}
+\label{Fig:ModelParameters}
+\par\end{centering}
+
+
+\end{figure}
+
+\begin{itemize}
+\item The sequence for hardening coefficients in Figure \ref{Fig:ModelParameters}
+is the sequence of numbering in Tables \ref{Flo:SlipSlipIntTypeTable},
+\ref{Flo:SlipTwinIntTypeTable}, \ref{Flo:TwinSlipIntTypeTable},
+and \ref{Flo:TwinTwinIntTypeTable} above.
+\end{itemize}
+\clearpage{}
+
+\bibliographystyle{plain}
+\addcontentsline{toc}{section}{\refname}\bibliography{MPIEyjr}
+
+\end{document}
