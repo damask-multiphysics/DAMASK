@@ -391,53 +391,53 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionTwinSlip
 
  real(pReal), dimension(4+4,lattice_hex_Ntwin), parameter :: lattice_hex_systemTwin = &
  reshape((/&
-  0,  1, -1,  1,     0, -1,  1,  2, & ! <1011>{1012} Twin: shear 0.169 -1.26 compression
+  0,  1, -1,  1,     0, -1,  1,  2, & ! <1011>{1012} Twin: shear 0.169 -1.26 tensile
  -1,  1,  0,  1,     1, -1,  0,  2, &
  -1,  0,  1,  1,     1,  0, -1,  2, &
   0, -1,  1,  1,     0,  1, -1,  2, &
   1, -1,  0,  1,    -1,  1,  0,  2, &
   1,  0, -1,  1,    -1,  0,  1,  2, &
-  2, -1, -1, -3,     2, -1, -1,  2, & ! <211-2>{2112} Twin: shear 0.224 1.19 tension
+  2, -1, -1, -3,     2, -1, -1,  2, & ! <211-2>{2112} Twin: shear 0.224 1.19 compressive
   1,  1, -2, -3,     1,  1, -2,  2, &
  -1,  2, -1, -3,    -1,  2, -1,  2, &
  -2,  1,  1, -3,    -2,  1,  1,  2, &
  -1, -1,  2, -3,    -1, -1,  2,  2, &
   1, -2,  1, -3,     1, -2,  1,  2, &
- -2,  1,  1,  6,     2, -1, -1,  1, & ! <211-6>{2111} Twin: shear 0.628 -0.39 compression
+ -2,  1,  1,  6,     2, -1, -1,  1, & ! <211-6>{2111} Twin: shear 0.628 -0.39 tensile
  -1, -1,  2,  6,     1,  1, -2,  1, &
   1, -2,  1,  6,    -1,  2, -1,  1, &
   2, -1, -1,  6,    -2,  1,  1,  1, &
   1,  1, -2,  6,    -1, -1,  2,  1, &
  -1,  2, -1,  6,     1, -2,  1,  1, &
-  1,  0, -1, -2,     1,  0, -1,  1, & ! <101-2>{1011} Twin: shear 0.103 1.09 tension
- -1,  0,  1, -2,    -1,  0,  1,  1, &
-  0,  1, -1, -2,     0,  1, -1,  1, &
-  0, -1,  1, -2,     0, -1,  1,  1, &
+  0, -1,  1, -2,     0, -1,  1,  1, & ! <101-2>{1011} Twin: shear 0.103 1.09 compressive
   1, -1,  0, -2,     1, -1,  0,  1, &
+  1,  0, -1, -2,     1,  0, -1,  1, & 
+  0,  1, -1, -2,     0,  1, -1,  1, & 
+ -1,  0,  1, -2,    -1,  0,  1,  1, &
  -1,  1,  0, -2,    -1,  1,  0,  1  &
    /),(/4+4,lattice_hex_Ntwin/))                 !* Sort? Numbering of twin system follows Prof. Tom Bieler's scheme (to be consistent with his work); but numbering in data was restarted from 1 &
 
  real(pReal), dimension(lattice_hex_Ntwin), parameter :: lattice_hex_shearTwin = &
  reshape((/&
- 0.169, &  ! <1011>{1012} Twin: shear 0.169 -1.26 compression
+ 0.169, &  ! <1011>{1012} Twin: shear 0.169 -1.26 tensile
  0.169, &
  0.169, &
  0.169, &
  0.169, &
  0.169, &
- 0.224, &  ! <211-2>{2112} Twin: shear 0.224 1.19 tension
+ 0.224, &  ! <211-2>{2112} Twin: shear 0.224 1.19 compressive
  0.224, &
  0.224, &
  0.224, &
  0.224, &
  0.224, &
- 0.628, &  ! <211-6>{2111} Twin: shear 0.628 -0.39 compression
+ 0.628, &  ! <211-6>{2111} Twin: shear 0.628 -0.39 tensile
  0.628, &
  0.628, &
  0.628, &
  0.628, &
  0.628, &
- 0.103, &  ! <101-2>{1011} Twin: shear 0.103 1.09 tension
+ 0.103, &  ! <101-2>{1011} Twin: shear 0.103 1.09 compressive
  0.103, &
  0.103, &
  0.103, &
