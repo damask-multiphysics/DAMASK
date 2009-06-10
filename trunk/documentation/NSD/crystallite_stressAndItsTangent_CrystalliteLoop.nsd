@@ -32,21 +32,21 @@
 			<qFalse>
 			</qFalse>
 		</alternative>
+		<call text="&#34;crystallite_updateState&#34;" comment="&#34;&#34;" color="ffffff"></call>
 		<instruction text="&#34;NiterationState = 0&#34;" comment="" color="ffffff" rotated="0"></instruction>
 		<for text="&#34;STATE LOOP: any: crystallite_requested .and. crystallite_onTrack .and. .not. crystallite_converged&#34;,&#34;                          .and. NiterationState &#60; ncryst&#34;" comment="" color="ffffff">
 			<qFor>
 				<instruction text="&#34;NiterationState = NiterationState + 1&#34;" comment="" color="ffffff" rotated="0"></instruction>
-				<alternative text="&#34;crystallite_requested .and. crystallite_onTrack .and. .not. crystallite_converged&#34;" comment="&#34;&#34;" color="ffffff">
+				<alternative text="&#34;crystallite_requested .and. crystallite_onTrack .and. .not. crystallite_converged&#34;" comment="" color="ffffff">
 					<qTrue>
-						<call text="&#34;crystallite_stateConverged = crystallite_updateState&#34;" comment="&#34;&#34;" color="ffffff"></call>
+						<call text="&#34;crystallite_onTrack = crystallite_integrateStress&#34;" comment="&#34;&#34;" color="ffffff"></call>
 					</qTrue>
 					<qFalse>
 					</qFalse>
 				</alternative>
-				<alternative text="&#34;crystallite_requested .and. crystallite_onTrack .and. .not. crystallite_converged&#34;" comment="&#34;&#34;" color="ffffff">
+				<alternative text="&#34;crystallite_requested .and. crystallite_onTrack .and. .not. crystallite_converged&#34;" comment="" color="ffffff">
 					<qTrue>
-						<call text="&#34;crystallite_stressConverged = crystallite_integrateStress&#34;" comment="&#34;&#34;" color="ffffff"></call>
-						<instruction text="&#34;crystallite_onTrack = crystallite_stressConverged&#34;,&#34;crystallite_converged = crystallite_stateConverged .and. crystallite_stressConverged&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+						<call text="&#34;crystallite_converged = crystallite_updateState&#34;" comment="&#34;&#34;" color="ffffff"></call>
 					</qTrue>
 					<qFalse>
 					</qFalse>

@@ -13,9 +13,14 @@
 								<for text="&#34;STIFFNESS LOOP: .not. converged .and. onTrack .and. NiterationState &#60; nState&#34;" comment="" color="ffffff">
 									<qFor>
 										<instruction text="&#34;NiterationState = NiterationState + 1&#34;" comment="" color="ffffff" rotated="0"></instruction>
-										<call text="&#34;converged = crystallite_updateState&#34;" comment="" color="ffffff"></call>
 										<call text="&#34;onTrack = crystallite_integrateStress&#34;" comment="" color="ffffff"></call>
-										<instruction text="&#34;converged = onTrack .and. converged&#34;" comment="&#34;&#34;" color="ffffff" rotated="0"></instruction>
+										<alternative text="&#34;onTrack&#34;" comment="&#34;&#34;" color="ffffff">
+											<qTrue>
+												<call text="&#34;converged = crystallite_updateState&#34;" comment="" color="ffffff"></call>
+											</qTrue>
+											<qFalse>
+											</qFalse>
+										</alternative>
 									</qFor>
 								</for>
 								<alternative text="&#34;converged&#34;" comment="" color="ffffff">
