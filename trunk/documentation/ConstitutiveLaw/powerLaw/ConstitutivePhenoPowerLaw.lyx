@@ -175,7 +175,7 @@ hex (hcp)
 placement tbph
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \align center
@@ -607,7 +607,7 @@ reference "Fig:twinSystemHCP"
 \begin_inset Float figure
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \align center
@@ -676,8 +676,15 @@ Drawing for twin system for HCP (
 \end_inset
 
 - Ti).
- Twin directions are not scaled yet.
- 
+ Twin directions are not scaled because the 
+\begin_inset Quotes eld
+\end_inset
+
+twin Burgers vector
+\begin_inset Quotes erd
+\end_inset
+
+ magnitude is too small to show in the current figures.
 \end_layout
 
 \end_inset
@@ -686,6 +693,382 @@ Drawing for twin system for HCP (
 \begin_inset CommandInset label
 LatexCommand label
 name "Fig:twinSystemHCP"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newpage clearpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Tab:TwinBurgersVector"
+
+\end_inset
+
+ shows the twin Burgers vector and its maganitude.
+ The magnitude of twin Burgers vector for each system is not shown in Figure
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Fig:twinSystemHCP"
+
+\end_inset
+
+ since the scale of twin Burgers vector is too small to put in figures.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement tbph
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="5">
+<features>
+<column alignment="center" valignment="middle" width="0">
+<column alignment="center" valignment="middle" width="0">
+<column alignment="center" valignment="middle" width="0">
+<column alignment="center" valignment="middle" width="0">
+<column alignment="center" valignment="middle" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Twin Burgers vector
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Magnitude
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+twin system
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+tensile (T1)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 10\bar{1}2\right\} \left\langle \bar{1}011\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $b_{T}=\frac{3-\left(\frac{c}{a}\right)^{2}}{3+\left(\frac{c}{a}\right)^{2}}\left\langle \bar{1}011\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $|b_{T}|=\frac{3-\left(\frac{c}{a}\right)^{2}}{\sqrt{3+\left(\frac{c}{a}\right)^{2}}}\cdot a$
+\end_inset
+
+, 0.20
+\begin_inset Formula $\cdot a$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+compressive (C1)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 11\bar{2}2\right\} \left\langle 11\bar{2}\bar{3}\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $b_{T}=\frac{\left(\frac{c}{a}\right)^{2}-2}{3\cdot\left(\left(\frac{c}{a}\right)^{2}+1\right)}\left\langle 11\bar{2}\bar{3}\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $|b_{T}|=\frac{\left(\frac{c}{a}\right)^{2}-2}{\sqrt{\left(\frac{c}{a}\right)^{2}+1}}\cdot a$
+\end_inset
+
+, 0.30
+\begin_inset Formula $\cdot a$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+tensile (T2)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 11\bar{2}1\right\} \left\langle \bar{1}\bar{1}26\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $b_{T}=\frac{1}{3\cdot\left(4\cdot\left(\frac{c}{a}\right)^{2}+1\right)}\left\langle \bar{1}\bar{1}26\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $|b_{T}|=\frac{1}{\sqrt{1+4\cdot\left(\frac{c}{a}\right)^{2}}}\cdot a$
+\end_inset
+
+, 0.24
+\begin_inset Formula $\cdot a$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+compressive (C1)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\left\{ 10\bar{1}1\right\} \left\langle 10\bar{1}\bar{2}\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $b_{T}=\frac{4\cdot\left(\frac{c}{a}\right)^{2}-9}{4\cdot\left(\frac{c}{a}\right)^{2}+3}\left\langle 10\bar{1}\bar{2}\right\rangle $
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $|b_{T}|=\frac{\sqrt{2}\cdot\left(4\cdot\left(\frac{c}{a}\right)^{2}-9\right)}{\sqrt{3\cdot\left(4\cdot\left(\frac{c}{a}\right)^{2}+3\right)}}\cdot a$
+\end_inset
+
+, 0.28
+\begin_inset Formula $\cdot a$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Twin Burgers vector, 
+\begin_inset Formula $\frac{c}{a}=1.587$
+\end_inset
+
+ .
+ Equations in Table are adopted from reference 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Christian1995"
+
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Tab:TwinBurgersVector"
 
 \end_inset
 
