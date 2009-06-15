@@ -155,7 +155,7 @@ subroutine homogenization_init()
 
  return
 
-end subroutine
+endsubroutine
 
 
 !********************************************************************
@@ -168,11 +168,17 @@ subroutine materialpoint_stressAndItsTangent(&
      dt &             ! time increment
     )
 
- use prec,         only: pInt,pReal, subStepMin,nHomog
- use FEsolving,    only: FEsolving_execElem, FEsolving_execIP
- use mesh,         only: mesh_element
- use material,     only: homogenization_Ngrains
- use constitutive, only: constitutive_state0, constitutive_partionedState0, constitutive_state
+ use prec, only:          pInt, &
+                          pReal
+ use numerics, only:      subStepMin, &
+                          nHomog
+ use FEsolving, only:     FEsolving_execElem, &
+                          FEsolving_execIP
+ use mesh, only:          mesh_element
+ use material, only:      homogenization_Ngrains
+ use constitutive, only:  constitutive_state0, &
+                          constitutive_partionedState0, &
+                          constitutive_state
  use crystallite
  implicit none
  
@@ -331,7 +337,7 @@ subroutine materialpoint_stressAndItsTangent(&
  ! how to deal with stiffness?
  return
  
-end subroutine
+endsubroutine
 
 
 !********************************************************************
@@ -371,7 +377,7 @@ subroutine materialpoint_postResults(dt)
    enddo
 !$OMP END PARALLEL DO
 
- end subroutine
+ endsubroutine
  
  
 !********************************************************************
@@ -400,7 +406,7 @@ subroutine homogenization_partitionDeformation(&
                                                         homogenization_state(ip,el),ip,el)
  end select
 
-end subroutine
+endsubroutine
 
 
 !********************************************************************
@@ -431,7 +437,7 @@ function homogenization_updateState(&
 
  return
  
-end function
+endfunction
 
 
 !********************************************************************
@@ -459,7 +465,7 @@ subroutine homogenization_averageStressAndItsTangent(&
 
  return
  
-end subroutine
+endsubroutine
 
 
 !********************************************************************
@@ -489,6 +495,6 @@ function homogenization_postResults(&
 
  return
 
-end function
+endfunction
 
 END MODULE

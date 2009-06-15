@@ -30,7 +30,7 @@
 ! open existing file to given unit
 ! path to file is relative to working directory
 !********************************************************************
- logical FUNCTION IO_open_file(unit,relPath)
+ logical function IO_open_file(unit,relPath)
 
  use prec, only: pInt
  implicit none
@@ -47,13 +47,13 @@
 100 IO_open_file = .false.
  return
  
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! open FEM inputfile to given unit
 !********************************************************************
- logical FUNCTION IO_open_inputFile(unit)
+ logical function IO_open_inputFile(unit)
 
  use prec, only: pReal, pInt
  implicit none
@@ -68,20 +68,20 @@
      ext='dat' ! MARC
  else
      ext='inp' ! ABAQUS
- end if
+ endif
  open(unit,status='old',err=100,file=outName(1:extPos-1)//ext)
  IO_open_inputFile = .true.
  return
 100 IO_open_inputFile = .false.
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! hybrid IA repetition counter
 !********************************************************************
- FUNCTION hybridIA_reps(dV_V,steps,C)
+ function hybridIA_reps(dV_V,steps,C)
 
  use prec, only: pReal, pInt
  implicit none
@@ -96,18 +96,18 @@
    do Phi =1,steps(2)
      do phi2=1,steps(3)
        hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
-     end do
-   end do
- end do
+     enddo
+   enddo
+ enddo
  return
  
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! hybrid IA sampling of ODFfile
 !********************************************************************
- FUNCTION IO_hybridIA(Nast,ODFfileName)
+ function IO_hybridIA(Nast,ODFfileName)
 
  use prec, only: pReal, pInt
  use math, only: inRad
@@ -135,7 +135,7 @@
  if (pos(1).ne.3) goto 100
  do i=1,3
    limits(i) = IO_intValue(line,pos,i)*inRad
- end do
+ enddo
 
 !--- deltas in phi1, Phi, phi2 ---
  read(999,fmt=fileFormat,end=100) line
@@ -143,7 +143,7 @@
  if (pos(1).ne.3) goto 100
  do i=1,3
    deltas(i) = IO_intValue(line,pos,i)*inRad
- end do
+ enddo
  steps = nint(limits/deltas,pInt)
  allocate(dV_V(steps(3),steps(2),steps(1)))
 
@@ -153,7 +153,7 @@
    center = 0.5_pReal
  else
    center = 0.0_pReal
- end if
+ endif
  
 !--- skip blank line ---
  read(999,fmt=fileFormat,end=100) line
@@ -172,11 +172,11 @@
          sum_dV_V = sum_dV_V+prob
        else
          prob = 0.0_pReal
-       end if
+       endif
        dV_V(phi2,Phi,phi1) = prob*dg_0*sin((Phi-1.0_pReal+center)*deltas(2))
-     end do
-   end do
- end do  
+     enddo
+   enddo
+ enddo  
  
  dV_V = dV_V/sum_dV_V  ! normalize to 1
  
@@ -188,7 +188,7 @@
  do while (hybridIA_reps(dV_V,steps,upperC) < Nset)
    lowerC = upperC
    upperC = upperC*2.0_pReal
- end do
+ enddo
 !--- binary search for best C ---
  do
    C = (upperC+lowerC)/2.0_pReal
@@ -203,8 +203,8 @@
      upperC = C
    else
      exit
-   end if
- end do
+   endif
+ enddo
  
  allocate(binSet(Nreps))
  bin = 0 ! bin counter
@@ -216,9 +216,9 @@
        binSet(i:i+reps-1) = bin
        bin = bin+1 ! advance bin
        i = i+reps ! advance set
-     end do
-   end do
- end do
+     enddo
+   enddo
+ enddo
 
  do i=1,Nast
    if (i < Nast) then
@@ -226,13 +226,13 @@
      j = nint(rnd*(Nast-i)+i+0.5_pReal,pInt)
    else
      j = i
-   end if
+   endif
    bin = binSet(j)
    IO_hybridIA(1,i) = deltas(1)*(mod(bin/(steps(3)*steps(2)),steps(1))+center)  ! phi1
    IO_hybridIA(2,i) = deltas(2)*(mod(bin/ steps(3)          ,steps(2))+center)  ! Phi
    IO_hybridIA(3,i) = deltas(3)*(mod(bin                    ,steps(3))+center)  ! phi2
    binSet(j) = binSet(i)
- end do
+ enddo
  close(999)
  return
 
@@ -241,13 +241,13 @@
  close(999)
  return
  
- END FUNCTION 
+ endfunction 
 
 
 !********************************************************************
 ! identifies lines without content
 !********************************************************************
- PURE FUNCTION IO_isBlank (line)
+ pure function IO_isBlank (line)
 
  use prec, only: pInt
  implicit none
@@ -264,12 +264,12 @@
 
  return
  
- END FUNCTION
+ endfunction
 
 !********************************************************************
 ! get tagged content of line
 !********************************************************************
- PURE FUNCTION IO_getTag (line,openChar,closechar)
+ pure function IO_getTag (line,openChar,closechar)
 
  use prec, only: pInt
  implicit none
@@ -288,11 +288,11 @@
 
  return
  
- END FUNCTION
+ endfunction
 
 
 !*********************************************************************
- FUNCTION IO_countSections(file,part)
+ function IO_countSections(file,part)
 !*********************************************************************
  use prec, only: pInt
  implicit none
@@ -321,13 +321,13 @@
 
 100 return
 
- END FUNCTION
+ endfunction
  
 
 !*********************************************************************
 ! return array of myTag counts within <part> for at most N[sections]
 !*********************************************************************
- FUNCTION IO_countTagInPart(file,part,myTag,Nsections)
+ function IO_countTagInPart(file,part,myTag,Nsections)
 
  use prec, only: pInt
  implicit none
@@ -367,13 +367,13 @@
 100 IO_countTagInPart = counter
  return
 
-END FUNCTION
+endfunction
 
 
 !*********************************************************************
 ! return array of myTag presence within <part> for at most N[sections]
 !*********************************************************************
- FUNCTION IO_spotTagInPart(file,part,myTag,Nsections)
+ function IO_spotTagInPart(file,part,myTag,Nsections)
 
  use prec, only: pInt
  implicit none
@@ -412,7 +412,7 @@ END FUNCTION
 
 100 return
 
-END FUNCTION
+endfunction
 
 
 !********************************************************************
@@ -420,7 +420,7 @@ END FUNCTION
 ! return array containing number of parts found and
 ! their left/right positions to be used by IO_xxxVal
 !********************************************************************
- PURE FUNCTION IO_stringPos (line,N)
+ pure function IO_stringPos (line,N)
 
  use prec, only: pReal,pInt
  implicit none
@@ -438,17 +438,17 @@ END FUNCTION
    IO_stringPos(part*2) = IO_stringPos(part*2-1)+verify(line(IO_stringPos(part*2-1)+1:),sep)
    IO_stringPos(part*2+1) = IO_stringPos(part*2)+scan(line(IO_stringPos(part*2):),sep)-2
    part = part+1
- end do
+ enddo
  IO_stringPos(1) = part-1
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! read string value at pos from line
 !********************************************************************
- PURE FUNCTION IO_stringValue (line,positions,pos)
+ pure function IO_stringValue (line,positions,pos)
  
  use prec, only: pReal,pInt
  implicit none
@@ -464,13 +464,13 @@ END FUNCTION
  endif
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! read string value at pos from fixed format line
 !********************************************************************
- PURE FUNCTION IO_fixedStringValue (line,ends,pos)
+ pure function IO_fixedStringValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
@@ -482,13 +482,13 @@ END FUNCTION
  IO_fixedStringValue = line(ends(pos)+1:ends(pos+1))
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! read float value at pos from line
 !********************************************************************
- PURE FUNCTION IO_floatValue (line,positions,pos)
+ pure function IO_floatValue (line,positions,pos)
  
  use prec, only: pReal,pInt
  implicit none
@@ -504,13 +504,13 @@ END FUNCTION
 100 IO_floatValue = huge(1.0_pReal)
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! read float value at pos from fixed format line
 !********************************************************************
- PURE FUNCTION IO_fixedFloatValue (line,ends,pos)
+ pure function IO_fixedFloatValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
@@ -524,13 +524,13 @@ END FUNCTION
 100 IO_fixedFloatValue = huge(1.0_pReal)
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! read float x.y+z value at pos from format line line
 !********************************************************************
- PURE FUNCTION IO_fixedNoEFloatValue (line,ends,pos)
+ pure function IO_fixedNoEFloatValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
@@ -553,13 +553,13 @@ END FUNCTION
 100 IO_fixedNoEFloatValue = huge(1.0_pReal)
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! read int value at pos from line
 !********************************************************************
- PURE FUNCTION IO_intValue (line,positions,pos)
+ pure function IO_intValue (line,positions,pos)
  
  use prec, only: pReal,pInt
  implicit none
@@ -575,13 +575,13 @@ END FUNCTION
 100 IO_intValue = huge(1_pInt)
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! read int value at pos from fixed format line
 !********************************************************************
- PURE FUNCTION IO_fixedIntValue (line,ends,pos)
+ pure function IO_fixedIntValue (line,ends,pos)
  
  use prec, only: pReal,pInt
  implicit none
@@ -595,13 +595,13 @@ END FUNCTION
 100 IO_fixedIntValue = huge(1_pInt)
  return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! change character in line to lower case
 !********************************************************************
- PURE FUNCTION IO_lc (line)
+ pure function IO_lc (line)
 
  use prec, only: pInt
  implicit none
@@ -616,13 +616,13 @@ END FUNCTION
  enddo
  return 
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
 ! in place change of character in line to lower case
 !********************************************************************
- SUBROUTINE IO_lcInplace (line)
+ subroutine IO_lcInplace (line)
 
  use prec, only: pInt
  implicit none
@@ -638,13 +638,13 @@ END FUNCTION
  line = IO_lc
  return 
 
- END SUBROUTINE
+ endsubroutine
 
 
 !********************************************************************
 ! read on in file to skip (at least) N chunks (may be over multiple lines)
 !********************************************************************
- SUBROUTINE IO_skipChunks (unit,N)
+ subroutine IO_skipChunks (unit,N)
 
  use prec, only: pReal,pInt
  implicit none
@@ -659,17 +659,17 @@ END FUNCTION
    read(unit,'(A300)',end=100) line
    pos = IO_stringPos(line,maxNchunks)
    remainingChunks = remainingChunks - pos(1)
- end do
+ enddo
 100 return
 
- END SUBROUTINE
+ endsubroutine
 
  
 !********************************************************************
 ! count items in consecutive lines of ints concatenated by "c"
 ! as last char or range of values a "to" b
 !********************************************************************
- FUNCTION IO_countContinousIntValues (unit)
+ function IO_countContinousIntValues (unit)
 
  use prec, only: pReal,pInt
  implicit none
@@ -695,13 +695,13 @@ END FUNCTION
  enddo
 100 return
 
- END FUNCTION
+ endfunction
 
 !*********************************************************************
 ! read consecutive lines of ints concatenated by "c" as last char
 ! or range of values a "to" b
 !*********************************************************************
- FUNCTION IO_continousIntValues (unit,maxN,lookupName,lookupMap,lookupMaxN)
+ function IO_continousIntValues (unit,maxN,lookupName,lookupMap,lookupMaxN)
 
  use prec, only: pReal,pInt
  implicit none
@@ -746,7 +746,7 @@ END FUNCTION
  enddo
 100 return
 
- END FUNCTION
+ endfunction
 
 
 !********************************************************************
@@ -754,11 +754,9 @@ END FUNCTION
 ! and terminate the Marc run with exit #9xxx
 ! in ABAQUS either time step is reduced or execution terminated
 !********************************************************************
- SUBROUTINE IO_error(ID,e,i,g,ext_msg)
+ subroutine IO_error(ID,e,i,g,ext_msg)
 
  use prec, only: pInt
-
- use debug
  implicit none
 
  integer(pInt), intent(in) :: ID
@@ -819,6 +817,38 @@ END FUNCTION
    msg = 'Negative diffusion constant'
  case (240)
    msg = 'Non-positive Taylor factor'
+ case (260)
+   msg = 'Non-positive relevant strain'
+ case (261)
+   msg = 'Frequency for Stiffness update smaller than zero'
+ case (262)
+   msg = 'Frequency for Jacobian update of Lp residuum smaller than zero'
+ case (263)
+   msg = 'Non-positive perturbation value'
+ case (264)
+   msg = 'Limit for homogenization loop too small'
+ case (265)
+   msg = 'Limit for crystallite loop too small'
+ case (266)
+   msg = 'Limit for state loop too small'
+ case (267)
+   msg = 'Limit for stress loop too small'
+ case (268)
+   msg = 'Non-positive minimum substep size'
+ case (269)
+   msg = 'Non-positive relative tolerance for state'
+ case (270)
+   msg = 'Non-positive relative tolerance for stress'
+ case (271)
+   msg = 'Non-positive absolute tolerance for stress'
+ case (272)
+   msg = 'Non-positive relative tolerance of residual in GIA iteration'
+ case (273)
+   msg = 'Non-positive absolute tolerance of residual in GIA iteration'
+ case (274)
+   msg = 'Non-positive relative maximum value (upper bound) for GIA residual'
+ case (275)
+   msg = 'Limit for GIA iteration too small' 
  case (300)
    msg = 'This material can only be used with elements with three direct stress components'
  case (500)
@@ -850,8 +880,7 @@ END FUNCTION
    endif
  endif
  write(6,'(a38)') '+------------------------------------+'
-
- call debug_info()
+ 
  call flush(6)
  call quit(9000+ID)
 !$OMP END CRITICAL (write2out)
@@ -859,16 +888,15 @@ END FUNCTION
 ! ABAQUS returns in some cases
  return
 
- END SUBROUTINE
+ endsubroutine
 
 
 !********************************************************************
 ! write warning statements to standard out
 !********************************************************************
- SUBROUTINE IO_warning(ID,e,i,g,ext_msg)
+ subroutine IO_warning(ID,e,i,g,ext_msg)
 
  use prec, only: pInt
- use debug
  implicit none
 
  integer(pInt), intent(in) :: ID
@@ -901,6 +929,6 @@ END FUNCTION
  endif
  write(6,'(a38)') '+------------------------------------+'
 
- END SUBROUTINE
+ endsubroutine
  
  END MODULE IO

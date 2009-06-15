@@ -176,7 +176,7 @@ subroutine constitutive_j2_init(file)
 
  return
 
-end subroutine
+endsubroutine
 
 
 function constitutive_j2_stateInit(myInstance)
@@ -193,7 +193,7 @@ function constitutive_j2_stateInit(myInstance)
  constitutive_j2_stateInit = constitutive_j2_s0(myInstance)
 
  return
-end function
+endfunction
 
 
 function constitutive_j2_homogenizedC(state,ipc,ip,el)
@@ -221,7 +221,7 @@ function constitutive_j2_homogenizedC(state,ipc,ip,el)
 
  return
 
-end function
+endfunction
 
 
 subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
@@ -245,7 +245,7 @@ subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
 
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
 
-end subroutine
+endsubroutine
 
 
 subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,state,ipc,ip,el)
@@ -310,7 +310,7 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,sta
  
  return
 
-end subroutine
+endsubroutine
 
 
 function constitutive_j2_dotState(Tstar_v,Temperature,state,ipc,ip,el)
@@ -351,7 +351,7 @@ function constitutive_j2_dotState(Tstar_v,Temperature,state,ipc,ip,el)
 
  return
 
-end function
+endfunction
 
 
 pure function constitutive_j2_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el)
@@ -401,6 +401,6 @@ pure function constitutive_j2_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el
  
  return
 
-end function
+endfunction
 
 END MODULE

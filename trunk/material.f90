@@ -102,7 +102,7 @@ subroutine material_init()
 
  call material_populateGrains()
 
-end subroutine
+endsubroutine
 
 
 !*********************************************************************
@@ -170,7 +170,7 @@ subroutine material_parseHomogenization(file,myPart)
 100 homogenization_maxNgrains = maxval(homogenization_Ngrains)
   return
 
- end subroutine
+ endsubroutine
 
 
 !*********************************************************************
@@ -240,7 +240,7 @@ subroutine material_parseMicrostructure(file,myPart)
 
 100 return
 
- end subroutine
+ endsubroutine
 
 
 !*********************************************************************
@@ -302,7 +302,7 @@ subroutine material_parsePhase(file,myPart)
 
 100 return
 
- end subroutine
+ endsubroutine
 
 
 !*********************************************************************
@@ -418,7 +418,7 @@ subroutine material_parseTexture(file,myPart)
 
 100 return
 
- end subroutine
+ endsubroutine
 
 
 !*********************************************************************
@@ -499,7 +499,7 @@ subroutine material_populateGrains()
            endif
          enddo
          NgrainsOfConstituent(t) = NgrainsOfConstituent(t) + sgn               ! change that by one
-       end do
+       enddo
 ! ----------------------------------------------------------------------------
        phaseOfGrain = 0_pInt
        orientationOfGrain = 0.0_pReal
@@ -563,7 +563,7 @@ subroutine material_populateGrains()
          endif
          
          grain = grain + NgrainsOfConstituent(i)                              ! advance microstructure grain index
-       end do  ! constituent
+       enddo  ! constituent
 
 ! ----------------------------------------------------------------------------
        do i=1,myNgrains-1                                                     ! walk thru grains
@@ -575,7 +575,7 @@ subroutine material_populateGrains()
          orientation             = orientationOfGrain(:,t)
          orientationOfGrain(:,t) = orientationOfGrain(:,i)
          orientationOfGrain(:,i) = orientation
-       end do
+       enddo
        !calc fraction after weighing with volumePerGrain
        !exchange in MC steps to improve result...
 
@@ -606,7 +606,7 @@ subroutine material_populateGrains()
  
  return
 
- end subroutine
+ endsubroutine
 
 
 END MODULE

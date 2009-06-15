@@ -16,6 +16,8 @@
 !             - set statevariable 3 to index of microstructure
 !             - make sure the file "material.config" exists in the working
 !               directory
+!             - make sure the file "numerics.config" exists in the working 
+!               directory
 !             - use nonsymmetric option for solver (e.g. direct 
 !               profile or multifrontal sparse, the latter seems
 !               to be faster!)
@@ -33,9 +35,10 @@
 !********************************************************************
 !
  include "prec.f90"             ! uses nothing else
- include "debug.f90"            ! uses prec
  include "math.f90"             ! uses prec
- include "IO.f90"               ! uses prec, debug, math
+ include "IO.f90"               ! uses prec, math
+ include "numerics.f90"         ! uses prec, IO
+ include "debug.f90"            ! uses prec, numerics
  include "FEsolving.f90"        ! uses prec, IO
  include "mesh.f90"             ! uses prec, math, IO, FEsolving
  include "material.f90"         ! uses prec, math, IO, mesh
@@ -44,10 +47,10 @@
  include "constitutive_j2.f90"                   ! uses prec, math, IO, lattice, material, debug
  include "constitutive_dislobased.f90"           ! uses prec, math, IO, lattice, material, debug
  include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
- include "crystallite.f90"      ! uses
- include "homogenization_isostrain.f90"          ! uses
- include "homogenization.f90"   ! uses
- include "CPFEM.f90"            ! uses prec, math, mesh, constitutive, FEsolving, debug, lattice, IO, crystallite
+ include "crystallite.f90"      ! uses prec, math, IO, numerics 
+ include "homogenization_isostrain.f90"          ! uses prec, math, IO, 
+ include "homogenization.f90"   ! uses prec, math, IO, numerics
+ include "CPFEM.f90"            ! uses prec, math, IO, numerics, debug, FEsolving, mesh, lattice, constitutive, crystallite
 
 
 !********************************************************************
@@ -123,11 +126,21 @@ subroutine hypela2(&
      ifu &        ! set to 1 if stretch has been calculated
    )
 
- use prec, only: pReal,pInt, iJacoStiffness
- use FEsolving
- use CPFEM, only: CPFEM_general
- use math, only: invnrmMandel
- use debug
+ use prec, only:      pReal, &
+                      pInt
+ use FEsolving, only: cycleCounter, &
+                      theInc, &
+                      theCycle, &
+                      theLovl, &
+                      theTime, &
+                      lastIncConverged, &
+                      outdatedByNewInc, &
+                      outdatedFFN1, &
+                      symmetricSolver
+ use CPFEM, only:     CPFEM_general
+ use math, only:      invnrmMandel
+ use debug, only:     debug_info, &
+                      debug_reset
  implicit none
  
 !     ** Start of generated type statements **
@@ -147,7 +160,7 @@ subroutine hypela2(&
  include "concom%%MARCVERSION%%"     ! concom is needed for inc, subinc, ncycle, lovl
  include "creeps%%MARCVERSION%%"     ! creeps is needed for timinc (time increment)
 
- integer(pInt) computationMode,i
+ integer(pInt)        computationMode, i
 
  if (inc == 0) then
    cycleCounter = 4
@@ -186,7 +199,7 @@ subroutine hypela2(&
  theCycle = ncycle                                  ! record current cycle count
  theLovl  = lovl                                    ! record current lovl
 
- call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,mod(cycleCounter-4,4_pInt*iJacoStiffness)==0,d,ngens)
+ call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,d,ngens)
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13

@@ -585,38 +585,38 @@ subroutine lattice_init()
 !**************************************
 !*      Module initialization         *
 !**************************************
- use IO, only: IO_open_file,IO_countSections,IO_countTagInPart,IO_error
- use material, only: material_configfile,material_partPhase
- implicit none
+  use IO, only: IO_open_file,IO_countSections,IO_countTagInPart,IO_error
+  use material, only: material_configfile,material_partPhase
+  implicit none
  
- integer(pInt), parameter :: fileunit = 200
- integer(pInt) i,Nsections
+  integer(pInt), parameter :: fileunit = 200
+  integer(pInt) i,Nsections
 
- if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
- Nsections = IO_countSections(fileunit,material_partPhase)
- lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
- close(fileunit)
+  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
+  Nsections = IO_countSections(fileunit,material_partPhase)
+  lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
+  close(fileunit)
 
- allocate(lattice_Sslip(3,3,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip = 0.0_pReal
- allocate(lattice_Sslip_v(6,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip_v = 0.0_pReal
- allocate(lattice_sd(3,lattice_maxNslip,lattice_Nstructure)); lattice_sd = 0.0_pReal
- allocate(lattice_st(3,lattice_maxNslip,lattice_Nstructure)); lattice_st = 0.0_pReal
- allocate(lattice_sn(3,lattice_maxNslip,lattice_Nstructure)); lattice_sn = 0.0_pReal
+  allocate(lattice_Sslip(3,3,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip = 0.0_pReal
+  allocate(lattice_Sslip_v(6,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip_v = 0.0_pReal
+  allocate(lattice_sd(3,lattice_maxNslip,lattice_Nstructure)); lattice_sd = 0.0_pReal
+  allocate(lattice_st(3,lattice_maxNslip,lattice_Nstructure)); lattice_st = 0.0_pReal
+  allocate(lattice_sn(3,lattice_maxNslip,lattice_Nstructure)); lattice_sn = 0.0_pReal
 
- allocate(lattice_Qtwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Qtwin = 0.0_pReal
- allocate(lattice_Stwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin = 0.0_pReal
- allocate(lattice_Stwin_v(6,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin_v = 0.0_pReal
- allocate(lattice_td(3,lattice_maxNtwin,lattice_Nstructure)); lattice_td = 0.0_pReal
- allocate(lattice_tt(3,lattice_maxNtwin,lattice_Nstructure)); lattice_tt = 0.0_pReal
- allocate(lattice_tn(3,lattice_maxNtwin,lattice_Nstructure)); lattice_tn = 0.0_pReal
- allocate(lattice_shearTwin(lattice_maxNtwin,lattice_Nstructure)); lattice_shearTwin = 0.0_pReal
+  allocate(lattice_Qtwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Qtwin = 0.0_pReal
+  allocate(lattice_Stwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin = 0.0_pReal
+  allocate(lattice_Stwin_v(6,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin_v = 0.0_pReal
+  allocate(lattice_td(3,lattice_maxNtwin,lattice_Nstructure)); lattice_td = 0.0_pReal
+  allocate(lattice_tt(3,lattice_maxNtwin,lattice_Nstructure)); lattice_tt = 0.0_pReal
+  allocate(lattice_tn(3,lattice_maxNtwin,lattice_Nstructure)); lattice_tn = 0.0_pReal
+  allocate(lattice_shearTwin(lattice_maxNtwin,lattice_Nstructure)); lattice_shearTwin = 0.0_pReal
 
- allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipSlip = 0_pInt
- allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt
- allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt
- allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt
-
-end subroutine
+  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipSlip = 0_pInt
+  allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt
+  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt
+  allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt
+  
+endsubroutine
 
 
 function lattice_initializeStructure(struct,CoverA)
@@ -758,7 +758,7 @@ function lattice_initializeStructure(struct,CoverA)
 
  lattice_initializeStructure = myStructure
 
-end function
+endfunction
 
 
 END MODULE

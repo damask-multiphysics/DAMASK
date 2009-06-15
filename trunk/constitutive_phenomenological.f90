@@ -180,7 +180,6 @@ subroutine constitutive_phenomenological_init(file)
 100 do i = 1,maxNinstance
 
    constitutive_phenomenological_structure(i) = lattice_initializeStructure(constitutive_phenomenological_structureName(i), &
-
                                                                       constitutive_phenomenological_CoverA(i))                                        ! sanity checks
    if (constitutive_phenomenological_structure(i) < 1 .or. &
        constitutive_phenomenological_structure(i) > 3)           call IO_error(201)

@@ -229,8 +229,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
  !*** variables and functions from other modules ***!
  use prec, only:                      pInt, &
-                                      pReal, &
-                                      subStepMin, &
+                                      pReal
+ use numerics, only:                  subStepMin, &
                                       pert_Fg, &
                                       nState, &
                                       nCryst
@@ -325,7 +325,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF   of 1 1 1',crystallite_partionedF(1:3,:,1,1,1)
  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedLp0 of 1 1 1',crystallite_partionedLp0(1:3,:,1,1,1)
 
-
+ 
  !$OMP PARALLEL DO
  do e = FEsolving_execElem(1),FEsolving_execElem(2)                 ! iterate over elements to be processed
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -346,6 +346,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    enddo
  enddo
  !$OMPEND PARALLEL DO
+ 
 
  ! --+>> crystallite loop <<+--
 
@@ -458,7 +459,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      !          constitutive_state is internally interpolated with .._subState0
      !          to account for substepping within _integrateStress
      ! results in crystallite_Fp,.._Lp
-     
      !$OMP PARALLEL DO
      do e = FEsolving_execElem(1),FEsolving_execElem(2)             ! iterate over elements to be processed
        myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -610,7 +610,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    enddo
    !$OMPEND PARALLEL DO
 
-  if (debugger) write (6,*) 'Stiffness calculation finished'
+   if (debugger) write (6,*) 'Stiffness calculation finished'
   
  endif
  
@@ -631,8 +631,8 @@ endsubroutine
  !*** variables and functions from other modules ***!
  use prec, only:                      pReal, &
                                       pInt, &
-                                      pLongInt, &
-                                      rTol_crystalliteState
+                                      pLongInt
+ use numerics, only:                  rTol_crystalliteState
  use constitutive, only:              constitutive_dotState, &
                                       constitutive_sizeDotState, &
                                       constitutive_subState0, &
@@ -708,12 +708,12 @@ endsubroutine
  !*** variables and functions from other modules ***!
  use prec, only:                      pReal, &
                                       pInt, &
-                                      pLongInt, &
-                                      nStress, &
+                                      pLongInt
+ use numerics, only:                  nStress, &
                                       aTol_crystalliteStress, &
                                       rTol_crystalliteStress, &
-                                      relevantStrain, &
-                                      iJacoLpresiduum
+                                      iJacoLpresiduum, &
+                                      relevantStrain
  use debug, only:                     debugger, &
                                       debug_cumLpCalls, &
                                       debug_cumLpTicks, &

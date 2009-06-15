@@ -4,12 +4,11 @@
 !##############################################################
  use prec
 
-
  implicit none
- integer(pInt), dimension(nStress) :: debug_StressLoopDistribution = 0_pInt
- integer(pInt), dimension(nState) :: debug_StateLoopDistribution = 0_pInt
- integer(pInt), dimension(nState) :: debug_StiffnessStateLoopDistribution = 0_pInt
- integer(pInt), dimension(nCryst) :: debug_CrystalliteLoopDistribution = 0_pInt
+ integer(pInt), dimension(:), allocatable :: debug_StressLoopDistribution
+ integer(pInt), dimension(:), allocatable :: debug_StateLoopDistribution
+ integer(pInt), dimension(:), allocatable :: debug_StiffnessStateLoopDistribution
+ integer(pInt), dimension(:), allocatable :: debug_CrystalliteLoopDistribution
  integer(pLongInt) :: debug_cumLpTicks = 0_pInt
  integer(pLongInt) :: debug_cumDotStateTicks = 0_pInt
  integer(pInt) :: debug_cumLpCalls = 0_pInt
@@ -19,35 +18,53 @@
 
  CONTAINS
 
+subroutine debug_init()
+  
+  use prec,     only: pInt  
+  use numerics, only: nStress, &
+                      nState, &
+                      nCryst
+  implicit none
+ 
+  allocate(debug_StressLoopDistribution(nStress)) ;        debug_StressLoopDistribution = 0_pInt
+  allocate(debug_StateLoopDistribution(nState)) ;          debug_StateLoopDistribution = 0_pInt
+  allocate(debug_StiffnessStateLoopDistribution(nState)) ; debug_StiffnessStateLoopDistribution = 0_pInt
+  allocate(debug_CrystalliteLoopDistribution(nCryst)) ;    debug_CrystalliteLoopDistribution = 0_pInt
+endsubroutine
+ 
 !********************************************************************
 ! reset debug distributions
 !********************************************************************
-SUBROUTINE debug_reset()
+subroutine debug_reset()
 
- use prec
- implicit none
+  use prec
+  implicit none
 
- debug_StressLoopDistribution         = 0_pInt ! initialize debugging data
- debug_StateLoopDistribution          = 0_pInt
- debug_StiffnessStateLoopDistribution = 0_pInt
- debug_CrystalliteLoopDistribution    = 0_pInt
- debug_cumLpTicks       = 0_pInt
- debug_cumDotStateTicks = 0_pInt
- debug_cumLpCalls       = 0_pInt
- debug_cumDotStateCalls = 0_pInt
+  debug_StressLoopDistribution         = 0_pInt ! initialize debugging data
+  debug_StateLoopDistribution          = 0_pInt
+  debug_StiffnessStateLoopDistribution = 0_pInt
+  debug_CrystalliteLoopDistribution    = 0_pInt
+  debug_cumLpTicks       = 0_pInt
+  debug_cumDotStateTicks = 0_pInt
+  debug_cumLpCalls       = 0_pInt
+  debug_cumDotStateCalls = 0_pInt
 
-END SUBROUTINE
+endsubroutine
 
 !********************************************************************
 ! write debug statements to standard out
 !********************************************************************
- SUBROUTINE debug_info()
+ subroutine debug_info()
 
  use prec
+ use numerics, only: nStress, &
+                      nState, &
+                      nCryst
  implicit none
 
  integer(pInt) i,integral
  integer(pLongInt) tickrate
+ 
 
  write(6,*)
  write(6,*) 'DEBUG Info'
@@ -112,6 +129,6 @@ END SUBROUTINE
  write(6,'(a15,i10,i10)') '          total',sum(debug_CrystalliteLoopDistribution),integral
  write(6,*)
 
- END SUBROUTINE
+ endsubroutine
  
  END MODULE debug

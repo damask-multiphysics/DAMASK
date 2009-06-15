@@ -181,15 +181,16 @@
 !***********************************************************
 ! initialization 
 !***********************************************************
- SUBROUTINE mesh_init ()
+ subroutine mesh_init ()
 
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile
- use FEsolving, only: parallelExecution
+ use FEsolving, only: parallelExecution, FEsolving_execElem, FEsolving_execIP
  
  implicit none
  
  integer(pInt), parameter :: fileUnit = 222
+ integer(pInt) e
 
  mesh_Nelems          = 0_pInt
  mesh_NcpElems        = 0_pInt
@@ -228,14 +229,18 @@
    call IO_error(100) ! cannot open input file
  endif
  
- END SUBROUTINE
+ FEsolving_execElem = (/1,mesh_NcpElems/)
+ allocate(FEsolving_execIP(2,mesh_NcpElems)); FEsolving_execIP = 1_pInt
+ forall (e = 1:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(mesh_element(2,e))
+ 
+ endsubroutine
  
 
 
 !***********************************************************
 ! mapping of FE element types to internal representation
 !***********************************************************
- FUNCTION FE_mapElemtype(what)
+ function FE_mapElemtype(what)
 
  implicit none
  
@@ -259,9 +264,9 @@
        FE_mapElemtype = 7            ! Three-dimensional Arbitrarily Distorted qudratic hexahedral
 	case default 
 	   FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
- end select
+ endselect
 
- END FUNCTION
+ endfunction
 
 
 
@@ -270,7 +275,7 @@
 !
 ! valid questions are 'elem', 'node'
 !***********************************************************
- FUNCTION mesh_FEasCP(what,id)
+ function mesh_FEasCP(what,id)
  
  use prec, only: pInt
  use IO, only: IO_lc
@@ -289,7 +294,7 @@
      lookupMap => mesh_mapFEtoCPnode
    case default
      return
- end select
+ endselect
  
  lower = 1_pInt
  upper = size(lookupMap,2)
@@ -313,17 +318,17 @@
    else
      mesh_FEasCP = lookupMap(2,center)
      exit
-   end if
- end do
+   endif
+ enddo
  return
  
- END FUNCTION
+ endfunction
 
 
 !***********************************************************
 ! find face-matching element of same type
 !!***********************************************************
- FUNCTION mesh_faceMatch(face,elem)
+ function mesh_faceMatch(face,elem)
 
  use prec, only: pInt
  implicit none
@@ -344,7 +349,7 @@
      minN = NsharedElems       ! remember min # shared elems
      lonelyNode = faceNode     ! remember most lonely node
    endif
- end do
+ enddo
 candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    mesh_faceMatch = mesh_sharedElem(1+i,nodeMap(lonelyNode)) ! present candidate elem
    if (mesh_faceMatch == elem) then   ! my own element ?
@@ -358,13 +363,13 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
        mesh_faceMatch = 0_pInt         ! set to "no match" (so far)
        cycle candidate                 ! next candidate elem
      endif
-   end do
+   enddo
    exit        ! surviving candidate
- end do candidate
+ enddo candidate
   
  return
  
- END FUNCTION
+ endfunction
 
  
 !********************************************************************
@@ -373,7 +378,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! assign globals:
 ! FE_nodesAtIP, FE_ipNeighbor, FE_subNodeParent, FE_subNodeOnIPFace
 !********************************************************************
- SUBROUTINE mesh_get_FEdata ()
+ subroutine mesh_get_FEdata ()
  
  use prec, only: pInt
  implicit none
@@ -1007,7 +1012,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  
  return
  
- END SUBROUTINE
+ endsubroutine
 
 !********************************************************************
 ! get count of elements, nodes, and cp elements in mesh
@@ -1016,7 +1021,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! assign globals:
 ! _Nelems, _Nnodes, _NcpElems
 !********************************************************************
- SUBROUTINE mesh_get_meshDimensions (unit)
+ subroutine mesh_get_meshDimensions (unit)
 
  use prec, only: pInt
  use IO
@@ -1046,19 +1051,19 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
           case('element')                                ! Count the number of encountered element sets
             mesh_NelemSets=mesh_NelemSets+1
             mesh_maxNelemInSet = max(mesh_maxNelemInSet,IO_countContinousIntValues(unit))
-        end select
+        endselect
      case('hypoelastic')
        do i=1,3+hypoelasticTableStyle  ! Skip 3 or 4 lines
          read (unit,610,END=620) line
-       end do
+       enddo
        mesh_NcpElems = mesh_NcpElems + IO_countContinousIntValues(unit)
-   end select
+   endselect
 
- end do
+ enddo
 
 620 return
  
- END SUBROUTINE
+ endsubroutine
 
  
 !!********************************************************************
@@ -1068,7 +1073,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 ! assign globals:
 ! _maxNnodes, _maxNips, _maxNipNeighbors, _maxNsharedElems
 !********************************************************************
-SUBROUTINE mesh_get_nodeElemDimensions (unit)
+subroutine mesh_get_nodeElemDimensions (unit)
  
  use prec, only: pInt
  use IO
@@ -1107,25 +1112,25 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
            n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
            if (all(node_seen /= n)) node_count(n) = node_count(n)+1
            node_seen(j) = n
-         end do
+         enddo
          call IO_skipChunks(unit,FE_NoriginalNodes(t)-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
-	   end if
-     end do
+	   endif
+     enddo
      exit
-   end if
- end do
+   endif
+ enddo
  
 630 mesh_maxNsharedElems = maxval(node_count)
  
  return
- END SUBROUTINE
+ endsubroutine
 
 !********************************************************************
 ! Build element set mapping 
 !
 ! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !********************************************************************
- SUBROUTINE mesh_build_elemSetMapping (unit)
+ subroutine mesh_build_elemSetMapping (unit)
 
  use prec, only: pInt
  use IO
@@ -1151,10 +1156,10 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
       elem_set = elem_set+1
       mesh_nameElemSet(elem_set) = IO_stringValue(line,pos,4)
       mesh_mapElemSet(:,elem_set) = IO_continousIntValues(unit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
-   end if
- end do
+   endif
+ enddo
 640 return
- END SUBROUTINE
+ endsubroutine
 
  
 !********************************************************************
@@ -1163,7 +1168,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals:
 ! _mapFEtoCPnode
 !********************************************************************
- SUBROUTINE mesh_build_nodeMapping (unit)
+ subroutine mesh_build_nodeMapping (unit)
 
  use prec, only: pInt
  use math, only: qsort
@@ -1191,15 +1196,15 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
        read (unit,610,END=650) line
        mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (line,(/0,10/),1)
        mesh_mapFEtoCPnode(2,i) = i
-     end do
+     enddo
      exit
-   end if
- end do
+   endif
+ enddo
 
 650 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
 
  return
- END SUBROUTINE
+ endsubroutine
 
 
 !********************************************************************
@@ -1208,7 +1213,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals:
 ! _mapFEtoCPelem
 !********************************************************************
- SUBROUTINE mesh_build_elemMapping (unit)
+ subroutine mesh_build_elemMapping (unit)
 
  use prec, only: pInt
  use math, only: qsort
@@ -1234,20 +1239,20 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'hypoelastic' ) then
      do i=1,3+hypoelasticTableStyle          ! skip three (or four if new table style!) lines
        read (unit,610,END=660) line 
-     end do
+     enddo
      contInts = IO_continousIntValues(unit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
      do i = 1,contInts(1)
        CP_elem = CP_elem+1
        mesh_mapFEtoCPelem(1,CP_elem) = contInts(1+i)
        mesh_mapFEtoCPelem(2,CP_elem) = CP_elem
      enddo
-   end if
- end do
+   endif
+ enddo
 
 660 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))  ! should be mesh_NcpElems
 
  return
- END SUBROUTINE
+ endsubroutine
 
 
 !********************************************************************
@@ -1256,7 +1261,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals:
 ! _node
 !********************************************************************
- SUBROUTINE mesh_build_nodes (unit)
+ subroutine mesh_build_nodes (unit)
 
  use prec, only: pInt
  use IO
@@ -1283,15 +1288,15 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
        m = mesh_FEasCP('node',IO_fixedIntValue (line,node_ends,1))
        do j=1,3
          mesh_node(j,m) = IO_fixedNoEFloatValue (line,node_ends,j+1)
-       end do
-     end do
+       enddo
+     enddo
      exit
-   end if
- end do
+   endif
+ enddo
 
 670 return
 
- END SUBROUTINE
+ endsubroutine
 
 
 !********************************************************************
@@ -1300,7 +1305,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals:
 ! _element
 !********************************************************************
- SUBROUTINE mesh_build_elements (unit)
+ subroutine mesh_build_elements (unit)
 
  use prec, only: pInt
  use IO
@@ -1334,8 +1339,8 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
          forall (j=1:FE_Nnodes(mesh_element(2,e))) &
            mesh_element(j+4,e) = IO_IntValue (line,pos,j+2) ! copy FE ids of nodes
          call IO_skipChunks(unit,FE_NoriginalNodes(mesh_element(2,e))-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
-	   end if
-     end do
+	   endif
+     enddo
 
      exit
    endif
@@ -1378,7 +1383,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 
 620 return
 
- END SUBROUTINE
+ endsubroutine
 
  
 !********************************************************************
@@ -1387,7 +1392,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals:
 ! _sharedElem
 !********************************************************************
- SUBROUTINE mesh_build_sharedElems (unit)
+ subroutine mesh_build_sharedElems (unit)
 
  use prec, only: pInt
  use IO
@@ -1422,19 +1427,19 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
            if (all(node_seen /= n)) then
 		     mesh_sharedElem(1,n) = mesh_sharedElem(1,n) + 1
 		     mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e
-           end if
+           endif
            node_seen(j) = n
 		 enddo
          call IO_skipChunks(unit,FE_NoriginalNodes(mesh_element(2,e))-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
-	   end if
-     end do
+	   endif
+     enddo
      exit
-   end if
- end do
+   endif
+ enddo
 
 620 return
 
- END SUBROUTINE
+ endsubroutine
  
 
 !***********************************************************
@@ -1443,7 +1448,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals
 ! _ipNeighborhood
 !***********************************************************
- SUBROUTINE mesh_build_ipNeighborhood()
+ subroutine mesh_build_ipNeighborhood()
  
  use prec, only: pInt
  implicit none
@@ -1508,7 +1513,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
  
  return
 
- END SUBROUTINE
+ endsubroutine
 
 
 
@@ -1518,7 +1523,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals
 ! _subNodeCoord
 !***********************************************************
- SUBROUTINE mesh_build_subNodeCoords()
+ subroutine mesh_build_subNodeCoords()
  
  use prec, only: pInt,pReal
  implicit none
@@ -1545,7 +1550,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 
  return
  
- END SUBROUTINE
+ endsubroutine
 
 
 !***********************************************************
@@ -1554,7 +1559,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals
 ! _ipVolume
 !***********************************************************
- SUBROUTINE mesh_build_ipVolumes()
+ subroutine mesh_build_ipVolumes()
  
  use prec, only: pInt
  use math, only: math_volTetrahedron
@@ -1578,8 +1583,8 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
        do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
          gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = 1
          gravityNodePos(:,FE_subNodeOnIPFace(n,f,i,t)) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
-       end do
-     end do
+       enddo
+     enddo
      
      do j = 1,mesh_maxNnodes+mesh_maxNsubNodes-1        ! walk through entire flagList except last
        if (gravityNode(j) > 0_pInt) then                ! valid node index
@@ -1588,10 +1593,10 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
              gravityNode(j) = 0_pInt                    ! delete first instance
              gravityNodePos(:,j) = 0.0_pReal
              exit                                       ! continue with next suspect
-           end if
-         end do
-       end if
-     end do
+           endif
+         enddo
+       endif
+     enddo
      centerOfGravity = sum(gravityNodePos,2)/count(gravityNode > 0)
 
      do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
@@ -1602,13 +1607,13 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
                                            nPos(:,1+mod(n+j-0,FE_NipFaceNodes)), &
                                            centerOfGravity)
        mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
-     end do
+     enddo
      mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes  ! renormalize with interfaceNodeNum due to loop over them
-   end do
- end do
+   enddo
+ enddo
  return
  
- END SUBROUTINE
+ endsubroutine
 
 
 !***********************************************************
@@ -1617,7 +1622,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! allocate globals
 ! _ipArea, _ipAreaNormal
 !***********************************************************
- SUBROUTINE mesh_build_ipAreas()
+ subroutine mesh_build_ipAreas()
  
  use prec, only: pInt,pReal
  use math
@@ -1652,7 +1657,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
  enddo
  return
  
- END SUBROUTINE
+ endsubroutine
 
 
 !***********************************************************
@@ -1660,7 +1665,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 ! to the output file
 ! 
 !***********************************************************
- SUBROUTINE mesh_tell_statistics()
+ subroutine mesh_tell_statistics()
 
  use prec, only: pInt
  use math, only: math_range
@@ -1707,9 +1712,9 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
      write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
      do f = 1,FE_NipNeighbors(mesh_element(2,e))
        write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
-     end do
-   end do
- end do
+     enddo
+   enddo
+ enddo
  !write (6,*)
  !write (6,*) "Input Parser: SUBNODE COORDINATES"
  !write (6,*)
@@ -1723,10 +1728,10 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
  !                                                           mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
  !                                                           mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
  !                                                           mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
- !      end do
- !    end do
- !  end do
- !end do
+ !      enddo
+ !    enddo
+ !  enddo
+ !enddo
  write (6,*)
  write (6,*)
  write (6,*) "Input Parser: STATISTICS"
@@ -1757,7 +1762,7 @@ SUBROUTINE mesh_get_nodeElemDimensions (unit)
 
  return
  
- END SUBROUTINE
+ endsubroutine
  
  
  END MODULE mesh

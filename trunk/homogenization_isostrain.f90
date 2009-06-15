@@ -109,7 +109,7 @@ subroutine homogenization_isostrain_init(&
 
  return
 
-end subroutine
+endsubroutine
 
 
 !*********************************************************************
@@ -127,7 +127,7 @@ function homogenization_isostrain_stateInit(myInstance)
 
  return
  
-end function
+endfunction
 
 
 !********************************************************************
@@ -161,7 +161,7 @@ subroutine homogenization_isostrain_partitionDeformation(&
 
  return
 
-end subroutine
+endsubroutine
 
 
 !********************************************************************
@@ -195,7 +195,7 @@ function homogenization_isostrain_updateState(&
 
  return 
  
-end function
+endfunction
 
 
 !********************************************************************
@@ -232,7 +232,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(&
 
  return
 
-end subroutine
+endsubroutine
 
 
 !********************************************************************
@@ -270,6 +270,6 @@ pure function homogenization_isostrain_postResults(&
  
  return
 
-end function
+endfunction
 
 END MODULE
