@@ -21,29 +21,30 @@ MODULE homogenization
 ! *** General variables for the homogenization at a            ***
 ! *** material point                                           ***
 ! ****************************************************************
- type(p_vec),   dimension(:,:),   allocatable :: homogenization_state0, &        ! pointer array to homogenization state at start of FE increment
-                                                 homogenization_subState0, &     ! pointer array to homogenization state at start of homogenization increment
-                                                 homogenization_state            ! pointer array to current homogenization state (end of converged time step)
- integer(pInt), dimension(:,:),   allocatable :: homogenization_sizeState, &     ! size of state array per grain
-                                                 homogenization_sizePostResults  ! size of postResults array per material point
+ type(p_vec), dimension(:,:), allocatable ::         homogenization_state0, &        ! pointer array to homogenization state at start of FE increment
+                                                     homogenization_subState0, &     ! pointer array to homogenization state at start of homogenization increment
+                                                     homogenization_state            ! pointer array to current homogenization state (end of converged time step)
+ integer(pInt), dimension(:,:), allocatable ::       homogenization_sizeState, &     ! size of state array per grain
+                                                     homogenization_sizePostResults  ! size of postResults array per material point
 
- real(pReal), dimension(:,:,:,:,:,:), allocatable :: materialpoint_dPdF          ! tangent of first P--K stress at IP
- real(pReal), dimension(:,:,:,:), allocatable :: materialpoint_F0, &             ! def grad of IP at start of FE increment
-                                                 materialpoint_F, &              ! def grad of IP to be reached at end of FE increment
-                                                 materialpoint_subF0, &          ! def grad of IP at beginning of homogenization increment
-                                                 materialpoint_subF, &           ! def grad of IP to be reached at end of homog inc
-                                                 materialpoint_P                 ! first P--K stress of IP
- real(pReal), dimension(:,:), allocatable ::     materialpoint_Temperature, &    ! temperature at IP
-                                                 materialpoint_subFrac, &
-                                                 materialpoint_subStep, &
-                                                 materialpoint_subdt
+ real(pReal), dimension(:,:,:,:,:,:), allocatable :: materialpoint_dPdF              ! tangent of first P--K stress at IP
+ real(pReal), dimension(:,:,:,:), allocatable ::     materialpoint_F0, &             ! def grad of IP at start of FE increment
+                                                     materialpoint_F, &              ! def grad of IP to be reached at end of FE increment
+                                                     materialpoint_subF0, &          ! def grad of IP at beginning of homogenization increment
+                                                     materialpoint_subF, &           ! def grad of IP to be reached at end of homog inc
+                                                     materialpoint_P                 ! first P--K stress of IP
+ real(pReal), dimension(:,:), allocatable ::         materialpoint_Temperature, &    ! temperature at IP
+                                                     materialpoint_subFrac, &
+                                                     materialpoint_subStep, &
+                                                     materialpoint_subdt
 
- real(pReal), dimension(:,:,:), allocatable ::   materialpoint_results           ! results array of material point
+ real(pReal), dimension(:,:,:), allocatable ::       materialpoint_results           ! results array of material point
 
- logical, dimension(:,:), allocatable ::         materialpoint_requested, &
-                                                 materialpoint_converged
- logical, dimension(:,:,:), allocatable ::       materialpoint_doneAndHappy
- integer(pInt) homogenization_maxSizeState,homogenization_maxSizePostResults
+ logical, dimension(:,:), allocatable ::             materialpoint_requested, &
+                                                     materialpoint_converged
+ logical, dimension(:,:,:), allocatable ::           materialpoint_doneAndHappy
+ integer(pInt)                                       homogenization_maxSizeState, &
+                                                     homogenization_maxSizePostResults
 
 CONTAINS
 
@@ -179,7 +180,22 @@ subroutine materialpoint_stressAndItsTangent(&
  use constitutive, only:  constitutive_state0, &
                           constitutive_partionedState0, &
                           constitutive_state
- use crystallite
+ use crystallite, only:   crystallite_F0, &
+                          crystallite_Fp0, &
+                          crystallite_Fp, &
+                          crystallite_Lp0, &
+                          crystallite_Lp, &
+                          crystallite_Tstar0_v, &
+                          crystallite_Tstar_v, &
+                          crystallite_partionedF0, &
+                          crystallite_partionedF, &
+                          crystallite_partionedFp0, &
+                          crystallite_partionedLp0, &
+                          crystallite_partionedTstar0_v, &
+                          crystallite_dt, &
+                          crystallite_requested, &
+                          crystallite_stressAndItsTangent
+                          
  implicit none
  
  real(pReal), intent(in) :: dt
@@ -197,23 +213,26 @@ subroutine materialpoint_stressAndItsTangent(&
  write (6,'(a,/,3(3(f12.7,x)/))') 'Lp0 of 1 8 1',crystallite_Lp0(1:3,:,1,8,1)
 
 !$OMP PARALLEL DO
- do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
+ do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                 ! iterate over elements to be processed
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
-                                                              ! initialize restoration points of grain...
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                               ! iterate over IPs of this element to be processed
+     
+     ! initialize restoration points of grain...
      forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p  ! ...microstructures
-     crystallite_partionedFp0(:,:,1:myNgrains,i,e)   = crystallite_Fp0(:,:,1:myNgrains,i,e)    ! ...plastic def grads
-     crystallite_partionedLp0(:,:,1:myNgrains,i,e)   = crystallite_Lp0(:,:,1:myNgrains,i,e)    ! ...plastic velocity grads
-     crystallite_partionedF0(:,:,1:myNgrains,i,e)    = crystallite_F0(:,:,1:myNgrains,i,e)     ! ...def grads
-                                                              ! initialize restoration points of ...
+     crystallite_partionedFp0(:,:,1:myNgrains,i,e)   = crystallite_Fp0(:,:,1:myNgrains,i,e)         ! ...plastic def grads
+     crystallite_partionedLp0(:,:,1:myNgrains,i,e)   = crystallite_Lp0(:,:,1:myNgrains,i,e)         ! ...plastic velocity grads
+     crystallite_partionedF0(:,:,1:myNgrains,i,e)    = crystallite_F0(:,:,1:myNgrains,i,e)          ! ...def grads
+     crystallite_partionedTstar0_v(:,1:myNgrains,i,e)= crystallite_Tstar0_v(:,1:myNgrains,i,e)      ! ...2nd PK stress
+     
+     ! initialize restoration points of ...
      if (homogenization_sizeState(i,e) > 0_pInt) &
-       homogenization_subState0(i,e)%p = homogenization_state0(i,e)%p   ! ...internal homogenizaiton state
-     materialpoint_subF0(:,:,i,e) = materialpoint_F0(:,:,i,e)           ! ...def grad
+       homogenization_subState0(i,e)%p = homogenization_state0(i,e)%p                               ! ...internal homogenization state
+     materialpoint_subF0(:,:,i,e) = materialpoint_F0(:,:,i,e)                                       ! ...def grad
 
      materialpoint_subFrac(i,e) = 0.0_pReal
      materialpoint_subStep(i,e) = 2.0_pReal
-     materialpoint_converged(i,e) = .false.                   ! pretend failed step of twice the required size
-     materialpoint_requested(i,e) = .true.                    ! everybody requires calculation
+     materialpoint_converged(i,e) = .false.                                                         ! pretend failed step of twice the required size
+     materialpoint_requested(i,e) = .true.                                                          ! everybody requires calculation
    enddo
  enddo
 !$OMP END PARALLEL DO
@@ -224,32 +243,45 @@ subroutine materialpoint_stressAndItsTangent(&
  do while (any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMin))  ! cutback loop for material points
 
 !$OMP PARALLEL DO
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)                                               ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                             ! iterate over IPs of this element to be processed
+       
+       ! if our materialpoint converged then we are either finished or have to wind forward
        if (materialpoint_converged(i,e)) then
+         
+         ! calculate new subStep and new subFrac
          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), 2.0_pReal * materialpoint_subStep(i,e))
-         if (materialpoint_subStep(i,e) > subStepMin) then                       ! still stepping needed
-                                                                                 ! wind forward grain starting point of...
-           crystallite_partionedF0(:,:,1:myNgrains,i,e)  = crystallite_partionedF(:,:,1:myNgrains,i,e) ! ...def grads
-           crystallite_partionedFp0(:,:,1:myNgrains,i,e) = crystallite_Fp(:,:,1:myNgrains,i,e)         ! ...plastic def grads
-           crystallite_partionedLp0(:,:,1:myNgrains,i,e) = crystallite_Lp(:,:,1:myNgrains,i,e)         ! ...plastic velocity grads
-           forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state(g,i,e)%p  ! ...microstructures
+         
+         ! still stepping needed
+         if (materialpoint_subStep(i,e) > subStepMin) then
+         
+           ! wind forward grain starting point of...
+           crystallite_partionedF0(:,:,1:myNgrains,i,e)     = crystallite_partionedF(:,:,1:myNgrains,i,e) ! ...def grads
+           crystallite_partionedFp0(:,:,1:myNgrains,i,e)    = crystallite_Fp(:,:,1:myNgrains,i,e)         ! ...plastic def grads
+           crystallite_partionedLp0(:,:,1:myNgrains,i,e)    = crystallite_Lp(:,:,1:myNgrains,i,e)         ! ...plastic velocity grads
+           crystallite_partionedTstar0_v(:,1:myNgrains,i,e) = crystallite_Tstar_v(:,1:myNgrains,i,e)      ! ...2nd PK stress
+           forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state(g,i,e)%p   ! ...microstructures
            if (homogenization_sizeState(i,e) > 0_pInt) &
-             homogenization_subState0(i,e)%p = homogenization_state(i,e)%p       ! ...internal state of homog scheme
-           materialpoint_subF0(:,:,i,e) = materialpoint_subF(:,:,i,e)            ! ...def grad
+             homogenization_subState0(i,e)%p = homogenization_state(i,e)%p                                ! ...internal state of homog scheme
+           materialpoint_subF0(:,:,i,e) = materialpoint_subF(:,:,i,e)                                     ! ...def grad
+           
          endif
+       
+       ! materialpoint didn't converge, so we need a cutback here
        else
-         materialpoint_subStep(i,e) = 0.5_pReal * materialpoint_subStep(i,e)     ! cut step in half and restore...
+       
+         materialpoint_subStep(i,e) = 0.5_pReal * materialpoint_subStep(i,e)
 
-! ####### why not resetting F0 ?!?!?
-
-         crystallite_Fp(:,:,1:myNgrains,i,e) = crystallite_partionedFp0(:,:,1:myNgrains,i,e)           ! ...plastic def grads
-         crystallite_Lp(:,:,1:myNgrains,i,e) = crystallite_partionedLp0(:,:,1:myNgrains,i,e)           ! ...plastic velocity grads
-         forall (g = 1:myNgrains) constitutive_state(g,i,e)%p = constitutive_partionedState0(g,i,e)%p  ! ...microstructures
+         ! restore...
+         crystallite_Fp(:,:,1:myNgrains,i,e)    = crystallite_partionedFp0(:,:,1:myNgrains,i,e)           ! ...plastic def grads
+         crystallite_Lp(:,:,1:myNgrains,i,e)    = crystallite_partionedLp0(:,:,1:myNgrains,i,e)           ! ...plastic velocity grads
+         crystallite_Tstar_v(:,1:myNgrains,i,e) = crystallite_partionedTstar0_v(:,1:myNgrains,i,e)        ! ...2nd PK stress
+         forall (g = 1:myNgrains) constitutive_state(g,i,e)%p = constitutive_partionedState0(g,i,e)%p     ! ...microstructures
          if (homogenization_sizeState(i,e) > 0_pInt) &
-           homogenization_state(i,e)%p = homogenization_subState0(i,e)%p         ! ...internal state of homog scheme
+           homogenization_state(i,e)%p = homogenization_subState0(i,e)%p                                  ! ...internal state of homog scheme
+       
        endif
      
        materialpoint_requested(i,e) = materialpoint_subStep(i,e) > subStepMin
@@ -403,7 +435,9 @@ subroutine homogenization_partitionDeformation(&
      call homogenization_isostrain_partitionDeformation(crystallite_partionedF(:,:,:,ip,el), &
                                                         crystallite_partionedF0(:,:,:,ip,el),&
                                                         materialpoint_subF(:,:,ip,el),&
-                                                        homogenization_state(ip,el),ip,el)
+                                                        homogenization_state(ip,el), &
+                                                        ip, &
+                                                        el)
  end select
 
 endsubroutine
@@ -430,9 +464,11 @@ function homogenization_updateState(&
  
  select case(homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label)
-     homogenization_updateState = &
-     homogenization_isostrain_updateState(homogenization_state(ip,el), &
-                                          crystallite_P(:,:,:,ip,el),crystallite_dPdF(:,:,:,:,:,ip,el),ip,el)
+     homogenization_updateState = homogenization_isostrain_updateState( homogenization_state(ip,el), &
+                                                                        crystallite_P(:,:,:,ip,el), &
+                                                                        crystallite_dPdF(:,:,:,:,:,ip,el), &
+                                                                        ip, &
+                                                                        el)
  end select
 
  return
@@ -459,8 +495,12 @@ subroutine homogenization_averageStressAndItsTangent(&
  
  select case(homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label)
-     call homogenization_isostrain_averageStressAndItsTangent(materialpoint_P(:,:,ip,el), materialpoint_dPdF(:,:,:,:,ip,el),&
-                                                              crystallite_P(:,:,:,ip,el),crystallite_dPdF(:,:,:,:,:,ip,el),ip,el)
+     call homogenization_isostrain_averageStressAndItsTangent( materialpoint_P(:,:,ip,el), &
+                                                               materialpoint_dPdF(:,:,:,:,ip,el),&
+                                                               crystallite_P(:,:,:,ip,el), &
+                                                               crystallite_dPdF(:,:,:,:,:,ip,el), &
+                                                               ip, &
+                                                               el)
  end select
 
  return
