@@ -592,6 +592,10 @@ subroutine lattice_init()
   integer(pInt), parameter :: fileunit = 200
   integer(pInt) i,Nsections
 
+  write(6,*)
+  write(6,*) '<<<+-  lattice init  -+>>>'
+  write(6,*)
+  
   if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
   Nsections = IO_countSections(fileunit,material_partPhase)
   lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex

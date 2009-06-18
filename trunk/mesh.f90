@@ -191,6 +191,10 @@
  
  integer(pInt), parameter :: fileUnit = 222
  integer(pInt) e
+ 
+ write(6,*)
+ write(6,*) '<<<+-  mesh init  -+>>>'
+ write(6,*)
 
  mesh_Nelems          = 0_pInt
  mesh_NcpElems        = 0_pInt

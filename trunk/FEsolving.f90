@@ -32,6 +32,10 @@
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=1024) line
 
+ write(6,*)
+ write(6,*) '<<<+-  FEsolving init  -+>>>'
+ write(6,*)
+ 
  if (IO_open_inputFile(fileunit)) then
  
    rewind(fileunit)
@@ -50,7 +54,7 @@
  endif
 
 100 close(fileunit)
-
+ 
  return
 
  end subroutine

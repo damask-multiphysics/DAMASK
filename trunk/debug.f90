@@ -25,6 +25,10 @@ subroutine debug_init()
                       nState, &
                       nCryst
   implicit none
+  
+  write(6,*)
+  write(6,*) '<<<+-  debug init  -+>>>'
+  write(6,*)
  
   allocate(debug_StressLoopDistribution(nStress)) ;        debug_StressLoopDistribution = 0_pInt
   allocate(debug_StateLoopDistribution(nState)) ;          debug_StateLoopDistribution = 0_pInt

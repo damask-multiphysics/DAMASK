@@ -72,7 +72,11 @@ subroutine material_init()
 !* Definition of variables
  integer(pInt), parameter :: fileunit = 200
  integer(pInt) i
-
+ 
+ write(6,*)
+ write(6,*) '<<<+-  material init  -+>>>'
+ write(6,*)
+  
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
  call material_parseHomogenization(fileunit,material_partHomogenization)
  call material_parseMicrostructure(fileunit,material_partMicrostructure)

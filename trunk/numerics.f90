@@ -74,71 +74,105 @@ subroutine numerics_init()
   ! resBound
   ! NRiterMax
   
-  ! initialize all values to zero
-  relevantStrain          = 0.0_pReal
-  iJacoStiffness          = 0_pInt
-  iJacoLpresiduum         = 0_pInt
-  pert_Fg                 = 0.0_pReal
-  nHomog                  = 0_pInt
-  nCryst                  = 0_pInt
-  nState                  = 0_pInt
-  nStress                 = 0_pInt
-  subStepMin              = 0.0_pReal
-  rTol_crystalliteState   = 0.0_pReal
-  rTol_crystalliteStress  = 0.0_pReal
-  aTol_crystalliteStress  = 0.0_pReal
-  resToler                = 0.0_pReal
-  resAbsol                = 0.0_pReal
-  resBound                = 0.0_pReal
-  NRiterMax               = 0_pInt
+  write(6,*)
+  write(6,*) '<<<+-  numerics init  -+>>>'
+  write(6,*)
+  
+  ! initialize all parameters with standard values
+  relevantStrain          = 1.0e-7_pReal
+  iJacoStiffness          = 1_pInt
+  iJacoLpresiduum         = 1_pInt
+  pert_Fg                 = 1.0e-6_pReal
+  nHomog                  = 10_pInt
+  nCryst                  = 20_pInt
+  nState                  = 10_pInt
+  nStress                 = 40_pInt
+  subStepMin              = 1.0e-3_pReal
+  rTol_crystalliteState   = 1.0e-6_pReal
+  rTol_crystalliteStress  = 1.0e-6_pReal
+  aTol_crystalliteStress  = 1.0e-8_pReal
+  resToler                = 1.0e-4_pReal
+  resAbsol                = 1.0e+2_pReal
+  resBound                = 1.0e+1_pReal
+  NRiterMax               = 24_pInt
 
-  ! try to open the config file and call error if corrupt
-  if(.not. IO_open_file(fileunit,numerics_configFile)) call IO_error (100)
- 
-  line = ''
-  ! read variables from config file
-  do
-    read(fileunit,'(a1024)',END=100) line
-    if (IO_isBlank(line)) cycle                           ! skip empty lines
-    positions = IO_stringPos(line,maxNchunks)
-    tag = IO_lc(IO_stringValue(line,positions,1))         ! extract key
-    select case(tag)
-      case ('relevantstrain')
-            relevantStrain = IO_floatValue(line,positions,2)
-      case ('ijacostiffness')
-            iJacoStiffness = IO_intValue(line,positions,2)
-      case ('ijacolpresiduum')
-            iJacoLpresiduum = IO_intValue(line,positions,2)
-      case ('pert_fg')
-            pert_Fg = IO_floatValue(line,positions,2)
-      case ('nhomog')
-            nHomog = IO_intValue(line,positions,2)
-      case ('ncryst')
-            nCryst = IO_intValue(line,positions,2)
-      case ('nstate')
-            nState = IO_intValue(line,positions,2)
-      case ('nstress')
-            nStress = IO_intValue(line,positions,2)
-      case ('substepmin')
-            subStepMin = IO_floatValue(line,positions,2)
-      case ('rtol_crystallitestate')
-            rTol_crystalliteState = IO_floatValue(line,positions,2)
-      case ('rtol_crystallitestress')
-            rTol_crystalliteStress = IO_floatValue(line,positions,2)
-      case ('atol_crystallitestress')
-            aTol_crystalliteStress = IO_floatValue(line,positions,2)
-      case ('restoler')
-            resToler = IO_floatValue(line,positions,2)
-      case ('resabsol')
-            resAbsol = IO_floatValue(line,positions,2)
-      case ('resbound')
-            resBound = IO_floatValue(line,positions,2)
-      case ('nritermax')
-            NRiterMax = IO_intValue(line,positions,2)
-    end select
-  enddo
+  ! try to open the config file
+  if(IO_open_file(fileunit,numerics_configFile)) then 
+  
+    write(6,*) '   ... using values from config file'
+    write(6,*)
+    
+    line = ''
+    ! read variables from config file and overwrite parameters
+    do
+      read(fileunit,'(a1024)',END=100) line
+      if (IO_isBlank(line)) cycle                           ! skip empty lines
+      positions = IO_stringPos(line,maxNchunks)
+      tag = IO_lc(IO_stringValue(line,positions,1))         ! extract key
+      select case(tag)
+        case ('relevantstrain')
+              relevantStrain = IO_floatValue(line,positions,2)
+        case ('ijacostiffness')
+              iJacoStiffness = IO_intValue(line,positions,2)
+        case ('ijacolpresiduum')
+              iJacoLpresiduum = IO_intValue(line,positions,2)
+        case ('pert_fg')
+              pert_Fg = IO_floatValue(line,positions,2)
+        case ('nhomog')
+              nHomog = IO_intValue(line,positions,2)
+        case ('ncryst')
+              nCryst = IO_intValue(line,positions,2)
+        case ('nstate')
+              nState = IO_intValue(line,positions,2)
+        case ('nstress')
+              nStress = IO_intValue(line,positions,2)
+        case ('substepmin')
+              subStepMin = IO_floatValue(line,positions,2)
+        case ('rtol_crystallitestate')
+              rTol_crystalliteState = IO_floatValue(line,positions,2)
+        case ('rtol_crystallitestress')
+              rTol_crystalliteStress = IO_floatValue(line,positions,2)
+        case ('atol_crystallitestress')
+              aTol_crystalliteStress = IO_floatValue(line,positions,2)
+        case ('restoler')
+              resToler = IO_floatValue(line,positions,2)
+        case ('resabsol')
+              resAbsol = IO_floatValue(line,positions,2)
+        case ('resbound')
+              resBound = IO_floatValue(line,positions,2)
+        case ('nritermax')
+              NRiterMax = IO_intValue(line,positions,2)
+      endselect
+    enddo
+    100 close(fileunit)
+  
+  ! no config file, so we use standard values
+  else 
+  
+    write(6,*) '   ... using standard values'
+    write(6,*)
+    
+  endif
 
-  100 write(6,*)
+  ! writing parameters to output file
+  write(6,'(a24,x,e8.1)') 'relevantStrain:         ',relevantStrain
+  write(6,'(a24,x,i8)')   'iJacoStiffness:         ',iJacoStiffness
+  write(6,'(a24,x,i8)')   'iJacoLpresiduum:        ',iJacoLpresiduum
+  write(6,'(a24,x,e8.1)') 'pert_Fg:                ',pert_Fg
+  write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
+  write(6,'(a24,x,i8)')   'nCryst:                 ',nCryst
+  write(6,'(a24,x,i8)')   'nState:                 ',nState
+  write(6,'(a24,x,i8)')   'nStress:                ',nStress
+  write(6,'(a24,x,e8.1)') 'subStepMin:             ',subStepMin
+  write(6,'(a24,x,e8.1)') 'rTol_crystalliteState:  ',rTol_crystalliteState
+  write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
+  write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
+  write(6,'(a24,x,e8.1)') 'resToler:               ',resToler
+  write(6,'(a24,x,e8.1)') 'resAbsol:               ',resAbsol
+  write(6,'(a24,x,e8.1)') 'resBound:               ',resBound
+  write(6,'(a24,x,i8)')   'NRiterMax:              ',NRiterMax
+  write(6,*)
+  
   ! sanity check  
   if (relevantStrain <= 0.0_pReal)          call IO_error(260)
   if (iJacoStiffness < 1_pInt)              call IO_error(261)
@@ -156,13 +190,6 @@ subroutine numerics_init()
   if (resAbsol <= 0.0_pReal)                call IO_error(273)
   if (resBound <= 0.0_pReal)                call IO_error(274)
   if (NRiterMax < 1_pInt)                   call IO_error(275)
-  
-  close(fileunit)
-  
-  write(6,*)
-  write(6,*) '<<<+-  numerics init  -+>>>'
-  write(6,*) '...done'
-  write(6,*)
  
 endsubroutine
 
