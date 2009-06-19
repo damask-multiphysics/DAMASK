@@ -497,10 +497,12 @@ endfunction
  integer(pInt), intent(in) :: positions(*),pos
  real(pReal) IO_floatValue
 
- if (positions(1) >= pos) then
+ if (positions(1) < pos) then
+   IO_floatValue = 0.0_pReal
+ else
    read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_floatValue
-   return
  endif
+ return
 100 IO_floatValue = huge(1.0_pReal)
  return
 
@@ -568,10 +570,12 @@ endfunction
  integer(pInt), intent(in) :: positions(*),pos
  integer(pInt) IO_intValue
 
- if (positions(1) >= pos) then
+ if (positions(1) < pos) then
+   IO_intValue = 0_pInt
+ else
    read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_intValue
-   return
  endif
+ return
 100 IO_intValue = huge(1_pInt)
  return
 
