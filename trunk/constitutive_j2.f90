@@ -14,11 +14,11 @@
 !	c11                     110.9e9    # (3 C11 + 2 C12 + 2 C44) / 5  ... with C44 = C11-C12 !!
 !	c12                     58.34e9    # (1 C11 + 4 C12 - 1 C44) / 5
 !	taylorfactor            3
-!	s0                      31e6
+!	tau0                    31e6
 !	gdot0                   0.001
 !	n                       20
 !	h0                      75e6
-!	s_sat                   63e6
+!	tau_sat                 63e6
 !	w0                      2.25
 
 MODULE constitutive_j2
@@ -38,11 +38,11 @@ MODULE constitutive_j2
  real(pReal), dimension(:,:,:), allocatable :: constitutive_j2_Cslip_66
 !* Visco-plastic constitutive_j2 parameters
  real(pReal), dimension(:),     allocatable :: constitutive_j2_fTaylor
- real(pReal), dimension(:),     allocatable :: constitutive_j2_s0
+ real(pReal), dimension(:),     allocatable :: constitutive_j2_tau0
  real(pReal), dimension(:),     allocatable :: constitutive_j2_gdot0
  real(pReal), dimension(:),     allocatable :: constitutive_j2_n
  real(pReal), dimension(:),     allocatable :: constitutive_j2_h0
- real(pReal), dimension(:),     allocatable :: constitutive_j2_s_sat
+ real(pReal), dimension(:),     allocatable :: constitutive_j2_tau_sat
  real(pReal), dimension(:),     allocatable :: constitutive_j2_w0
 
 
@@ -85,11 +85,11 @@ subroutine constitutive_j2_init(file)
  allocate(constitutive_j2_C12(maxNinstance)) ;            constitutive_j2_C12 = 0.0_pReal
  allocate(constitutive_j2_Cslip_66(6,6,maxNinstance)) ;   constitutive_j2_Cslip_66 = 0.0_pReal
  allocate(constitutive_j2_fTaylor(maxNinstance)) ;        constitutive_j2_fTaylor = 0.0_pReal
- allocate(constitutive_j2_s0(maxNinstance)) ;             constitutive_j2_s0 = 0.0_pReal
+ allocate(constitutive_j2_tau0(maxNinstance)) ;           constitutive_j2_tau0 = 0.0_pReal
  allocate(constitutive_j2_gdot0(maxNinstance)) ;          constitutive_j2_gdot0 = 0.0_pReal
  allocate(constitutive_j2_n(maxNinstance)) ;              constitutive_j2_n = 0.0_pReal
  allocate(constitutive_j2_h0(maxNinstance)) ;             constitutive_j2_h0 = 0.0_pReal
- allocate(constitutive_j2_s_sat(maxNinstance)) ;          constitutive_j2_s_sat = 0.0_pReal
+ allocate(constitutive_j2_tau_sat(maxNinstance)) ;        constitutive_j2_tau_sat = 0.0_pReal
  allocate(constitutive_j2_w0(maxNinstance)) ;             constitutive_j2_w0 = 0.0_pReal
  
  rewind(file)
@@ -120,16 +120,16 @@ subroutine constitutive_j2_init(file)
               constitutive_j2_C11(i) = IO_floatValue(line,positions,2)
        case ('c12')
               constitutive_j2_C12(i) = IO_floatValue(line,positions,2)
-       case ('s0')
-              constitutive_j2_s0(i) = IO_floatValue(line,positions,2)
+       case ('tau0')
+              constitutive_j2_tau0(i) = IO_floatValue(line,positions,2)
        case ('gdot0')
               constitutive_j2_gdot0(i) = IO_floatValue(line,positions,2)
        case ('n')
               constitutive_j2_n(i) = IO_floatValue(line,positions,2)
        case ('h0')
               constitutive_j2_h0(i) = IO_floatValue(line,positions,2)
-       case ('s_sat')
-              constitutive_j2_s_sat(i) = IO_floatValue(line,positions,2)
+       case ('tau_sat')
+              constitutive_j2_tau_sat(i) = IO_floatValue(line,positions,2)
        case ('w0')
               constitutive_j2_w0(i) = IO_floatValue(line,positions,2)
        case ('taylorfactor')
@@ -139,11 +139,11 @@ subroutine constitutive_j2_init(file)
  enddo
 
 100 do i = 1,maxNinstance                                        ! sanity checks
-   if (constitutive_j2_s0(i) < 0.0_pReal)          call IO_error(203)
+   if (constitutive_j2_tau0(i) < 0.0_pReal)          call IO_error(203)
    if (constitutive_j2_gdot0(i) <= 0.0_pReal)      call IO_error(204)
    if (constitutive_j2_n(i) <= 0.0_pReal)          call IO_error(205)
    if (constitutive_j2_h0(i) <= 0.0_pReal)         call IO_error(206)
-   if (constitutive_j2_s_sat(i) <= 0.0_pReal)      call IO_error(207)
+   if (constitutive_j2_tau_sat(i) <= 0.0_pReal)      call IO_error(207)
    if (constitutive_j2_w0(i) <= 0.0_pReal)         call IO_error(208)
    if (constitutive_j2_fTaylor(i) <= 0.0_pReal)    call IO_error(240)
  enddo
@@ -179,20 +179,31 @@ subroutine constitutive_j2_init(file)
 endsubroutine
 
 
-function constitutive_j2_stateInit(myInstance)
 !*********************************************************************
 !* initial microstructural state                                     *
 !*********************************************************************
- use prec, only: pReal,pInt
- implicit none
+pure function constitutive_j2_stateInit(myInstance)
+  
+  !*** variables and functions from other modules ***!
+  use prec, only: pReal,pInt
+  
+  implicit none
+  
+  !*** input variables ***!
+  integer(pInt), intent(in) :: myInstance
+  
+  !*** output variables ***!
+  real(pReal), dimension(1) :: constitutive_j2_stateInit
+  
+  !*** local variables ***!
+  
+  !*** global variables ***!
+  ! constitutive_j2_tau0
 
-!* Definition of variables
- integer(pInt), intent(in) :: myInstance
- real(pReal), dimension(1) :: constitutive_j2_stateInit
+  
+  constitutive_j2_stateInit = constitutive_j2_tau0(myInstance)
 
- constitutive_j2_stateInit = constitutive_j2_s0(myInstance)
-
- return
+  return
 endfunction
 
 
@@ -248,156 +259,233 @@ subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
 endsubroutine
 
 
-subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,state,ipc,ip,el)
-!*********************************************************************
-!* plastic velocity gradient and its tangent                         *
-!* INPUT:                                                            *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
-!*  - ipc             : component-ID at current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!* OUTPUT:                                                           *
-!*  - Lp              : plastic velocity gradient                    *
-!*  - dLp_dTstar      : derivative of Lp (4th-rank tensor)           *
-!*********************************************************************
- use prec, only: pReal,pInt,p_vec
- use math, only: math_mul6x6,math_Mandel6to33,math_Plain3333to99
- use lattice, only: lattice_Sslip,lattice_Sslip_v
- use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+!****************************************************************
+!* calculates plastic velocity gradient and its tangent         *
+!****************************************************************
+pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, Temperature, state, g, ip, el)
 
- implicit none
+  !*** variables and functions from other modules ***!
+  use prec,     only: pReal, &
+                      pInt, &
+                      p_vec
+  use math,     only: math_mul6x6, &
+                      math_Mandel6to33, &
+                      math_Plain3333to99, &
+                      math_spectral1
+  use lattice,  only: lattice_Sslip, &
+                      lattice_Sslip_v
+  use mesh,     only: mesh_NcpElems, &
+                      mesh_maxNips
+  use material, only: homogenization_maxNgrains, &
+                      material_phase, &
+                      phase_constitutionInstance
 
-!* Definition of variables
- integer(pInt) ipc,ip,el
- integer(pInt) matID,i,k,l,m,n
- real(pReal) Temperature
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
- real(pReal), dimension(6) :: Tstar_v
- real(pReal), dimension(3,3) :: Tstar33
- real(pReal), dimension(3,3) :: Lp
- real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
- real(pReal), dimension(9,9) :: dLp_dTstar
- real(pReal) norm_Tstar, squarenorm_Tstar, factor
+  implicit none
+
+  !*** input variables ***!
+  real(pReal), dimension(6), intent(in)::       Tstar_dev_v               ! deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
+  real(pReal), intent(in)::                     Temperature
+  integer(pInt), intent(in)::                   g, &                      ! grain number
+                                                ip, &                     ! integration point number
+                                                el                        ! element number
+  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in):: state ! state of the current microstructure
+
+  !*** output variables ***!
+  real(pReal), dimension(3,3), intent(out) ::   Lp                        ! plastic velocity gradient
+  real(pReal), dimension(9,9), intent(out) ::   dLp_dTstar_99             ! derivative of Lp with respect to Tstar (9x9 matrix)
+
+  !*** local variables ***!
+  real(pReal), dimension(3,3) ::                Tstar_dev_33              ! deviatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
+  real(pReal), dimension(3,3,3,3) ::            dLp_dTstar_3333           ! derivative of Lp with respect to Tstar as 4th order tensor
+  real(pReal)                                   gamma_dot, &              ! strainrate
+                                                norm_Tstar_dev, &         ! euclidean norm of Tstar_dev
+                                                squarenorm_Tstar_dev      ! square of the euclidean norm of Tstar_dev
+  integer(pInt)                                 matID, &
+                                                k, &
+                                                l, &
+                                                m, &
+                                                n
+
+  !*** global variables ***!
+  ! constitutive_j2_gdot0
+  ! constitutive_j2_fTaylor
+  ! constitutive_j2_n
+  
  
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+  matID = phase_constitutionInstance(material_phase(g,ip,el))
 
- Tstar33 = math_Mandel6to33(Tstar_v)
- squarenorm_Tstar = math_mul6x6(Tstar_v,Tstar_v)
- norm_Tstar = dsqrt(squarenorm_Tstar) 
+  ! convert Tstar to matrix and calculate euclidean norm
+  Tstar_dev_33 = math_Mandel6to33(Tstar_dev_v)
+  squarenorm_Tstar_dev = math_mul6x6(Tstar_dev_v,Tstar_dev_v)
+  norm_Tstar_dev = dsqrt(squarenorm_Tstar_dev) 
 
-!* Initialization of Lp and dLp_dTstar
- Lp = 0.0_pReal
- dLp_dTstar = 0.0_pReal
+  ! Initialization of Lp and dLp_dTstar
+  Lp = 0.0_pReal
+  dLp_dTstar_99 = 0.0_pReal
 
-!* for Tstar==0 both Lp and dLp_dTstar are zero (if not n==1)
- if (norm_Tstar > 0) then
-   !* Calculation of Lp
-   Lp = dsqrt(1.5_pReal)*Tstar33/norm_Tstar*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
-        (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID)
+  ! for Tstar==0 both Lp and dLp_dTstar are zero (if not n==1)
+  if (norm_Tstar_dev > 0) then
+   
+    ! Calculation of gamma_dot
+    gamma_dot = constitutive_j2_gdot0(matID) * (            dsqrt(1.5_pReal) * norm_Tstar_dev & 
+                                               / &!---------------------------------------------------
+                                                 (constitutive_j2_fTaylor(matID) * state(g,ip,el)%p(1)) ) **constitutive_j2_n(matID)
 
-   !* Calculation of the tangent of Lp
-   factor = dsqrt(1.5_pReal)*constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
-            (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)/state(ipc,ip,el)%p(1))**constitutive_j2_n(matID) * &
-            norm_Tstar**(constitutive_j2_n(matID)-1.0_pReal)
-   dLp_dTstar3333 = 0.0_pReal
-   forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-     dLp_dTstar3333(k,l,m,n) = Tstar33(k,l)*Tstar33(m,n) * (constitutive_j2_n(matID)-1.0_pReal)/squarenorm_Tstar
-   forall (k=1:3,l=1:3) &
-     dLp_dTstar3333(k,l,k,l) = dLp_dTstar3333(k,l,k,l) + 1.0_pReal
-   dLp_dTstar = math_Plain3333to99(factor * dLp_dTstar3333)
- end if
- 
- return
+    ! Calculation of Lp
+    Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/constitutive_j2_fTaylor(matID)
+
+    !* Calculation of the tangent of Lp
+    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+      dLp_dTstar_3333(k,l,m,n) = (constitutive_j2_n(matID)-1.0_pReal) * Tstar_dev_33(k,l)*Tstar_dev_33(m,n) / squarenorm_Tstar_dev
+    forall (k=1:3,l=1:3) &
+      dLp_dTstar_3333(k,l,k,l) = dLp_dTstar_3333(k,l,k,l) + 1.0_pReal
+    dLp_dTstar_99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(matID) * dLp_dTstar_3333 / norm_Tstar_dev)
+  end if
+
+  return
 
 endsubroutine
 
 
-function constitutive_j2_dotState(Tstar_v,Temperature,state,ipc,ip,el)
-!*********************************************************************
-!* rate of change of microstructure                                  *
-!* INPUT:                                                            *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
-!*  - ipc             : component-ID at current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!* OUTPUT:                                                           *
-!*  - constitutive_dotState : evolution of state variable            *
-!*********************************************************************
- use prec, only: pReal,pInt,p_vec
- use math, only: math_mul6x6
- use lattice, only: lattice_Sslip_v
- use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
- implicit none
+!****************************************************************
+!* calculates the rate of change of microstructure              *
+!****************************************************************
+pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
 
-!* Definition of variables
- integer(pInt) ipc,ip,el
- integer(pInt) matID
- real(pReal) Temperature
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
- real(pReal), dimension(6) :: Tstar_v
- real(pReal), dimension(1) :: constitutive_j2_dotState
- real(pReal) norm_Tstar
+  !*** variables and functions from other modules ***!
+  use prec,     only: pReal, &
+                      pInt, &
+                      p_vec
+  use math,     only: math_mul6x6
+  use lattice,  only: lattice_Sslip_v
+  use mesh,     only: mesh_NcpElems, &
+                      mesh_maxNips
+  use material, only: homogenization_maxNgrains, &
+                      material_phase, &
+                      phase_constitutionInstance
+  
+  implicit none
 
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+  !*** input variables ***!
+  real(pReal), dimension(6), intent(in) ::  Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
+  real(pReal), intent(in) ::                Temperature
+  integer(pInt), intent(in)::               g, &                      ! grain number
+                                            ip, &                     ! integration point number
+                                            el                        ! element number
+  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state ! state of the current microstructure
+  
+  !*** output variables ***!
+  real(pReal), dimension(1) ::              constitutive_j2_dotState  ! evolution of state variable
+  
+  !*** local variables ***!
+  real(pReal), dimension(6) ::              Tstar_dev_v               ! deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
+  real(pReal)                               gamma_dot, &              ! strainrate
+                                            hardening, &              ! hardening coefficient
+                                            norm_Tstar_dev            ! euclidean norm of Tstar_dev
+  integer(pInt)                             matID
 
- norm_Tstar = dsqrt(math_mul6x6(Tstar_v,Tstar_v))
- constitutive_j2_dotState = constitutive_j2_h0(matID)*(1.0_pReal-state(ipc,ip,el)%p(1)/constitutive_j2_s_sat(matID))** &
-                            constitutive_j2_w0(matID) * &
-                            constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
-                            (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))** &
-                            constitutive_j2_n(matID) 
+  !*** global variables ***!
+  ! constitutive_j2_gdot0
+  ! constitutive_j2_fTaylor
+  ! constitutive_j2_n
+  ! constitutive_j2_h0
+  ! constitutive_j2_tau_sat
+  ! constitutive_j2_w0
+  
+  matID = phase_constitutionInstance(material_phase(g,ip,el))
 
- return
+  ! caclulate deviatoric part of 2nd Piola-Kirchhoff stress
+  Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3_pReal
+  Tstar_dev_v(4:6) = Tstar_v(4:6)
+  
+  norm_Tstar_dev = dsqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
+  
+  ! Calculation of gamma_dot
+  gamma_dot = constitutive_j2_gdot0(matID) * (            dsqrt(1.5_pReal) * norm_Tstar_dev & 
+                                             / &!---------------------------------------------------
+                                               (constitutive_j2_fTaylor(matID) * state(g,ip,el)%p(1)) ) ** constitutive_j2_n(matID)
+  
+  ! calculate hardening coefficient
+  hardening = constitutive_j2_h0(matID) * &
+                  ( 1.0_pReal - state(g,ip,el)%p(1) / constitutive_j2_tau_sat(matID) ) ** constitutive_j2_w0(matID)
+  
+  ! finally calculate dotState
+  constitutive_j2_dotState =  hardening * gamma_dot
+
+  return
 
 endfunction
 
 
-pure function constitutive_j2_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el)
 !*********************************************************************
 !* return array of constitutive results                              *
-!* INPUT:                                                            *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
-!*  - dt              : current time increment                       *
-!*  - ipc             : component-ID at current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
 !*********************************************************************
- use prec, only: pReal,pInt,p_vec
- use math, only: math_mul6x6
- use lattice, only: lattice_Sslip_v
- use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
- implicit none
+pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip, el)
 
-!* Definition of variables
- integer(pInt), intent(in) :: ipc,ip,el
- real(pReal), intent(in) :: dt,Temperature
- real(pReal), dimension(6), intent(in) :: Tstar_v
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
- integer(pInt) matID,o,i,c,n
- real(pReal) norm_Tstar
- real(pReal), dimension(constitutive_j2_sizePostResults(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
-   constitutive_j2_postResults
+!*** variables and functions from other modules ***!
+  use prec,     only: pReal, &
+                      pInt, &
+                      p_vec
+  use math,     only: math_mul6x6
+  use lattice,  only: lattice_Sslip_v
+  use mesh,     only: mesh_NcpElems, &
+                      mesh_maxNips
+  use material, only: homogenization_maxNgrains, &
+                      material_phase, &
+                      phase_constitutionInstance, &
+                      phase_Noutput
 
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- norm_Tstar = dsqrt(math_mul6x6(Tstar_v,Tstar_v))
- c = 0_pInt
- constitutive_j2_postResults = 0.0_pReal
+  implicit none
 
- do o = 1,phase_Noutput(material_phase(ipc,ip,el))
-   select case(constitutive_j2_output(o,matID))
-     case ('flowstress')
-       constitutive_j2_postResults(c+1) = state(ipc,ip,el)%p(1)
-       c = c + 1
-     case ('strainrate')
-       constitutive_j2_postResults(c+1) = constitutive_j2_gdot0(matID)/constitutive_j2_fTaylor(matID)* &
-                                          (dsqrt(1.5_pReal)/constitutive_j2_fTaylor(matID)*norm_Tstar/state(ipc,ip,el)%p(1))** &
-                                          constitutive_j2_n(matID)
-       c = c + 1
-   end select
- enddo
+  !*** input variables ***!
+  real(pReal), dimension(6), intent(in)::   Tstar_v                    ! 2nd Piola Kirchhoff stress tensor in Mandel notation
+  real(pReal), intent(in)::                 Temperature, &
+                                            dt                         ! current time increment
+  integer(pInt), intent(in)::               g, &                       ! grain number
+                                            ip, &                      ! integration point number
+                                            el                         ! element number
+  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state ! state of the current microstructure
+  
+  !*** output variables ***!
+  real(pReal), dimension(constitutive_j2_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+                                            constitutive_j2_postResults
+  
+  !*** local variables ***!
+  real(pReal), dimension(6) ::              Tstar_dev_v                ! deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
+  real(pReal)                               norm_Tstar_dev             ! euclidean norm of Tstar_dev
+  integer(pInt)                             matID, &
+                                            o, &
+                                            c
+
+  !*** global variables ***!
+  ! constitutive_j2_gdot0
+  ! constitutive_j2_fTaylor
+  ! constitutive_j2_n
+  
+  
+  matID = phase_constitutionInstance(material_phase(g,ip,el))
+  
+  ! calculate deviatoric part of 2nd Piola-Kirchhoff stress and its norm
+  Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3_pReal
+  Tstar_dev_v(4:6) = Tstar_v(4:6)
+  norm_Tstar_dev = dsqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
+  
+  c = 0_pInt
+  constitutive_j2_postResults = 0.0_pReal
+
+  do o = 1,phase_Noutput(material_phase(g,ip,el))
+    select case(constitutive_j2_output(o,matID))
+      case ('flowstress')
+        constitutive_j2_postResults(c+1) = state(g,ip,el)%p(1)
+        c = c + 1
+      case ('strainrate')
+        constitutive_j2_postResults(c+1) = &
+              constitutive_j2_gdot0(matID) * (            dsqrt(1.5_pReal) * norm_Tstar_dev & 
+                                             / &!---------------------------------------------------
+                                               (constitutive_j2_fTaylor(matID) * state(g,ip,el)%p(1)) ) ** constitutive_j2_n(matID)
+        c = c + 1
+    end select
+  enddo
  
  return
 
