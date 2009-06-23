@@ -672,7 +672,6 @@ endsubroutine
  logical                              crystallite_updateState       ! flag indicating if integration suceeded
 
  !*** local variables ***!
- real(pReal), dimension(6) ::         Tstar_v                       ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
  real(pReal), dimension(constitutive_sizeDotState(g,i,e)) :: residuum ! residuum from evolution of microstructure
  integer(pInt)                        mySize
  integer(pLongInt)                    tick, &
@@ -697,7 +696,8 @@ endsubroutine
  if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
  
  ! if NaN occured then return without changing the state
- if (any(constitutive_state(g,i,e)%p(1:mySize)/=constitutive_state(g,i,e)%p(1:mySize))) then
+ if (any(residuum/=residuum)) then
+   crystallite_updateState = .false.                                  ! indicate state update failed
    if (debugger) write(6,*) '::: updateState encountered NaN'
    return
  endif
