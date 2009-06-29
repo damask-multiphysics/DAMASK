@@ -223,7 +223,7 @@ real(pReal), dimension(132,3), parameter :: sym = &
  call halton_seed_set(seed)
  call halton_ndim_set(3)
    
- END SUBROUTINE
+ ENDSUBROUTINE
  
 
 
@@ -343,7 +343,7 @@ do s1=1,nosym
 
 ang=ang*180/pi
 return
-end subroutine
+endsubroutine
 
 
 
@@ -368,7 +368,7 @@ end subroutine
  endif
  return
   
- END SUBROUTINE
+ ENDSUBROUTINE
 
 !**************************************************************************
 ! Partitioning required for quicksort
@@ -412,7 +412,7 @@ end subroutine
    endif
  enddo
 
- END FUNCTION
+ ENDFUNCTION
  
 
 !**************************************************************************
@@ -430,7 +430,7 @@ end subroutine
  forall (i=1:N) math_range(i) = i
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 !**************************************************************************
 ! second rank identity tensor of specified dimension
@@ -447,7 +447,7 @@ end subroutine
  forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 !**************************************************************************
 ! permutation tensor e_ijk used for computing cross product of two tensors
@@ -472,7 +472,7 @@ end subroutine
      ((i == 3).and.(j == 2).and.(k == 1))) math_permut = -1.0_pReal
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 !**************************************************************************
 ! kronecker delta function d_ij
@@ -492,7 +492,7 @@ end subroutine
 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 !**************************************************************************
 ! fourth rank identity tensor of specified dimension
@@ -510,7 +510,7 @@ end subroutine
  	0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
  
 !**************************************************************************
@@ -530,7 +530,7 @@ end subroutine
 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !**************************************************************************
@@ -549,7 +549,7 @@ end subroutine
 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !**************************************************************************
@@ -571,7 +571,7 @@ end subroutine
  
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !**************************************************************************
@@ -593,7 +593,7 @@ end subroutine
  
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 !**************************************************************************
 ! matrix multiplication 33x33 = 3x3
@@ -612,7 +612,7 @@ end subroutine
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !**************************************************************************
@@ -632,7 +632,7 @@ end subroutine
    A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !**************************************************************************
@@ -653,7 +653,7 @@ end subroutine
    A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
  return
 
- END FUNCTION
+ ENDFUNCTION
 
  
 !**************************************************************************
@@ -676,7 +676,7 @@ end subroutine
    A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
  return
 
- END FUNCTION
+ ENDFUNCTION
 
  
 
@@ -717,7 +717,7 @@ end subroutine
  endif
  return
 
- end function
+ endfunction
 
 
 
@@ -764,7 +764,7 @@ end subroutine
  endif
  return
 
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
 
@@ -798,7 +798,7 @@ end subroutine
  CALL Gauss(dimen,B,InvA,LogAbsDetA,AnzNegEW,error)
  RETURN
 
- END SUBROUTINE math_invert
+ ENDSUBROUTINE math_invert
 
  
 
@@ -854,7 +854,7 @@ end subroutine
 
  DO  I = 1, dimen
     XNr(I) = I
- END DO
+ ENDDO
 
 !   Genauigkeitsschranke und Bestimmung des groessten Pivotelementes
 
@@ -869,9 +869,9 @@ end subroutine
             PivotWert   = AbsA
             PivotZeile  = I
             PivotSpalte = J
-        END IF
-    END DO
- END DO
+        ENDIF
+    ENDDO
+ ENDDO
 
  IF (PivotWert .LT. 0.0000001) RETURN   ! Pivotelement = 0?
 
@@ -889,7 +889,7 @@ end subroutine
         B(I,1:dimen)           = B(PivotZeile,1:dimen)
         B(PivotZeile,1:dimen)  = StoreB(1:dimen)
         SortX                = .TRUE.
-    END IF
+    ENDIF
 !     Spaltentausch?
     IF (PivotSpalte .NE. I) THEN
         StoreA(1:dimen)        = A(1:dimen,I)
@@ -899,17 +899,17 @@ end subroutine
         XNr(I)                = XNr(PivotSpalte)
         XNr(PivotSpalte)      = StoreI
         SortX                 = .TRUE.
-    END IF
+    ENDIF
 !     Triangulation
     DO  J = I + 1, dimen
         Quote = A(J,I) / A(I,I)
         DO  K = I + 1, dimen
             A(J,K) = A(J,K) - Quote * A(I,K)
-        END DO
+        ENDDO
         DO  K = 1, dimen
             B(J,K) = B(J,K) - Quote * B(I,K)
-        END DO
-    END DO
+        ENDDO
+    ENDDO
 !     Bestimmung des groessten Pivotelementes
     IP1         = I + 1
     PivotWert   = ABS(A(IP1,IP1))
@@ -922,13 +922,13 @@ end subroutine
                 PivotWert   = AbsA
                 PivotZeile  = J
                 PivotSpalte = K
-            END IF
-        END DO
-    END DO
+            ENDIF
+        ENDDO
+    ENDDO
 
     IF (PivotWert .LT. EpsAbs) RETURN   ! Pivotelement = 0?
 
- END DO
+ ENDDO
 
 !   R U E C K W A E R T S A U F L O E S U N G
 
@@ -936,10 +936,10 @@ end subroutine
     DO  L = 1, dimen
         DO  J = I + 1, dimen
             B(I,L) = B(I,L) - A(I,J) * B(J,L)
-        END DO
+        ENDDO
         B(I,L) = B(I,L) / A(I,I)
-    END DO
- END DO
+    ENDDO
+ ENDDO
 
 !   Sortieren der Unbekanntenvektoren?
 
@@ -949,9 +949,9 @@ end subroutine
         DO  I = 1, dimen
             J      = XNr(I)
             B(J,L) = StoreA(I)
-        END DO
-    END DO
- END IF
+        ENDDO
+    ENDDO
+ ENDIF
 
 !   Determinante
 
@@ -962,13 +962,13 @@ end subroutine
     IF (A(I,I) .LT. 0.0_pReal) NegHDK = NegHDK + 1
     AbsA       = ABS(A(I,I))
     LogAbsDetA = LogAbsDetA + LOG10(AbsA)
- END DO
+ ENDDO
 
  error = .false.
 
  RETURN
 
- END SUBROUTINE Gauss
+ ENDSUBROUTINE Gauss
 
 
 
@@ -985,7 +985,7 @@ end subroutine
  
  forall (i=1:3,j=1:3) math_symmetric3x3(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- END FUNCTION
+ ENDFUNCTION
  
 
 !********************************************************************
@@ -1002,7 +1002,7 @@ end subroutine
  
  forall (i=1:6,j=1:6) math_symmetric6x6(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- END FUNCTION
+ ENDFUNCTION
  
 
 !********************************************************************
@@ -1021,7 +1021,7 @@ end subroutine
               +m(1,3)*(m(2,1)*m(3,2)-m(2,2)*m(3,1))
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !********************************************************************
@@ -1039,7 +1039,7 @@ end subroutine
  forall (i=1:9) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !********************************************************************
@@ -1057,7 +1057,7 @@ end subroutine
  forall (i=1:9) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
  return
 
- END FUNCTION
+ ENDFUNCTION
  
 
 !********************************************************************
@@ -1075,7 +1075,7 @@ end subroutine
  forall (i=1:6) math_Mandel33to6(i) = nrmMandel(i)*m33(mapMandel(1,i),mapMandel(2,i))
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !********************************************************************
@@ -1096,7 +1096,7 @@ end subroutine
  end forall
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !********************************************************************
@@ -1115,7 +1115,7 @@ end subroutine
    m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !********************************************************************
@@ -1134,7 +1134,7 @@ end subroutine
    nrmMandel(i)*nrmMandel(j)*m3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j))
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !********************************************************************
@@ -1157,7 +1157,7 @@ end subroutine
  end forall
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 
@@ -1181,7 +1181,7 @@ end subroutine
  end forall
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 
@@ -1236,7 +1236,7 @@ end subroutine
  end if
  return
  
- END FUNCTION
+ ENDFUNCTION
 
 
 !****************************************************************
@@ -1275,7 +1275,7 @@ end subroutine
 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !****************************************************************
@@ -1307,7 +1307,7 @@ end subroutine
  math_EulerToR(3,3)=C
  return
  
- END FUNCTION
+ ENDFUNCTION
 
 
 !**************************************************************************
@@ -1328,7 +1328,7 @@ end subroutine
  math_disorient = abs(0.5_pReal*pi-asin(tr))
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !********************************************************************
@@ -1347,7 +1347,7 @@ end subroutine
  math_sampleRandomOri(3) = rnd(3)*2.0_pReal*pi
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 !********************************************************************
@@ -1388,7 +1388,7 @@ endif
 
  return
  
- END FUNCTION
+ ENDFUNCTION
  
 
 !********************************************************************
@@ -1463,7 +1463,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 
@@ -1507,7 +1507,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 
@@ -1531,7 +1531,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return 
  
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
 !**********************************************************************
@@ -1626,7 +1626,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
    END IF
  END IF
  RETURN
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
 !********************************************************************** 
@@ -1644,7 +1644,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 ! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
  return  
 
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
  SUBROUTINE get_seed(seed)
@@ -1723,7 +1723,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
 
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
  subroutine halton ( ndim, r )
@@ -1778,7 +1778,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
 
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
  subroutine halton_memory ( action, name, ndim, value )
@@ -1871,7 +1871,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
   allocate ( base(ndim_save) )
   do i = 1, ndim_save
     base(i) = prime ( i )
-  end do
+  enddo
      else
   ndim_save = value(1)
      end if
@@ -1889,7 +1889,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
   allocate ( base(ndim_save) )
   do i = 1, ndim_save
     base(i) = prime(i)
-  end do
+  enddo
      end if
      value(1:ndim_save) = base(1:ndim_save)
    else if ( name(1:1) == 'N' .or. name(1:1) == 'n' ) then
@@ -1908,8 +1908,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
 
- END SUBROUTINE
-
+ ENDSUBROUTINE
 
 
  subroutine halton_ndim_set ( ndim )
@@ -1950,7 +1949,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
 
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
  subroutine halton_seed_set ( seed )
@@ -2007,7 +2006,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
 
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
  subroutine i_to_halton ( seed, base, ndim, r )
@@ -2080,7 +2079,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
    write ( *, '(a)' ) ' An input base BASE is <= 1!'
    do i = 1, ndim
      write ( *, '(i6,i6)' ) i, base(i)
-   end do
+   enddo
    call flush(6)
 !$OMP END CRITICAL (write2out)
    stop
@@ -2093,11 +2092,11 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
    r(1:ndim) = r(1:ndim) + real ( digit(1:ndim), pReal ) * base_inv(1:ndim)
    base_inv(1:ndim) = base_inv(1:ndim) / real ( base(1:ndim), pReal )
    seed2(1:ndim) = seed2(1:ndim) / base(1:ndim)
- end do
+ enddo
 
  return
 
- END SUBROUTINE
+ ENDSUBROUTINE
 
 
  function prime ( n )
@@ -2195,7 +2194,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
       1597, 1601, 1607, 1609, 1613, 1619, 1621, 1627, 1637, 1657, &
       1663, 1667, 1669, 1693, 1697, 1699, 1709, 1721, 1723, 1733, &
       1741, 1747, 1753, 1759, 1777, 1783, 1787, 1789, 1801, 1811, &
-      91823, 1831, 1847, 1861, 1867, 1871, 1873, 1877, 1879, 1889, &
+      1823, 1831, 1847, 1861, 1867, 1871, 1873, 1877, 1879, 1889, &
       1901, 1907, 1913, 1931, 1933, 1949, 1951, 1973, 1979, 1987 /)
 
  npvec(301:400) = (/ &
@@ -2366,7 +2365,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
  
- END FUNCTION
+ ENDFUNCTION
 
 !**************************************************************************
 ! volume of tetrahedron given by four vertices
@@ -2387,7 +2386,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
  math_volTetrahedron = math_det3x3(m)/6.0_pReal 
  return
 
- END FUNCTION
+ ENDFUNCTION
 
 
 
