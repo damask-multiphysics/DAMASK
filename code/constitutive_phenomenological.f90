@@ -355,8 +355,10 @@ subroutine constitutive_phenomenological_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,T
  Lp = 0.0_pReal
  do i = 1,constitutive_phenomenological_Nslip(matID)
    tau_slip(i)  = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_phenomenological_structure(matID)))
+
    gdot_slip(i) = constitutive_phenomenological_gdot0_slip(matID)*(abs(tau_slip(i))/state(ipc,ip,el)%p(i))**&
                   constitutive_phenomenological_n_slip(matID)*sign(1.0_pReal,tau_slip(i))
+   
    Lp = Lp + gdot_slip(i)*lattice_Sslip(:,:,i,constitutive_phenomenological_structure(matID))
  enddo
 
@@ -364,9 +366,11 @@ subroutine constitutive_phenomenological_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,T
  dLp_dTstar3333 = 0.0_pReal
  dLp_dTstar = 0.0_pReal
  do i = 1,constitutive_phenomenological_Nslip(matID)
+
    dgdot_dtauslip(i) = constitutive_phenomenological_gdot0_slip(matID)*(abs(tau_slip(i))/state(ipc,ip,el)%p(i))**&
                       (constitutive_phenomenological_n_slip(matID)-1.0_pReal)*&
                       constitutive_phenomenological_n_slip(matID)/state(ipc,ip,el)%p(i)
+
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
           dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
              dgdot_dtauslip(i)*lattice_Sslip(k,l,i,constitutive_phenomenological_structure(matID))* &
@@ -409,9 +413,12 @@ function constitutive_phenomenological_dotState(Tstar_v,Temperature,state,ipc,ip
 
 !* Self-Hardening of each system
  do i = 1,n
+
    tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_phenomenological_structure(matID)))
+
    gdot_slip = constitutive_phenomenological_gdot0_slip(matID)*(abs(tau_slip)/state(ipc,ip,el)%p(i))**&
                constitutive_phenomenological_n_slip(matID)*sign(1.0_pReal,tau_slip)
+
    self_hardening(i) = constitutive_phenomenological_h0(matID)*(1.0_pReal-state(ipc,ip,el)%p(i)/&
                        constitutive_phenomenological_s_sat(matID))**constitutive_phenomenological_w0(matID)*abs(gdot_slip)
  enddo
@@ -421,6 +428,37 @@ function constitutive_phenomenological_dotState(Tstar_v,Temperature,state,ipc,ip
 !$OMP END CRITICAL (evilmatmul)
  return
 
+end function
+
+
+function constitutive_phenomenological_dotTemperature(Tstar_v,Temperature,state,ipc,ip,el)
+!*********************************************************************
+!* rate of change of microstructure                                  *
+!* INPUT:                                                            *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
+!*  - ipc             : component-ID at current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
+!* OUTPUT:                                                           *
+!*  - constitutive_dotTemperature : evolution of temperature         *
+!*********************************************************************
+ use prec, only: pReal,pInt,p_vec
+ use lattice, only: lattice_Sslip_v
+ use mesh, only: mesh_NcpElems,mesh_maxNips
+ use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ implicit none
+
+!* Definition of variables
+ integer(pInt) ipc,ip,el
+ integer(pInt) matID,i,n
+ real(pReal) Temperature
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
+ real(pReal), dimension(6) :: Tstar_v
+ real(pReal) constitutive_phenomenological_dotTemperature
+
+ constitutive_phenomenological_dotTemperature = 0.0_pReal
+
+ return
 end function
 
 
@@ -457,9 +495,11 @@ pure function constitutive_phenomenological_postResults(Tstar_v,Temperature,dt,s
 
  do o = 1,phase_Noutput(material_phase(ipc,ip,el))
    select case(constitutive_phenomenological_output(o,matID))
+
      case ('slipresistance')
        constitutive_phenomenological_postResults(c+1:c+n) = state(ipc,ip,el)%p(1:n)
        c = c + n
+
      case ('rateofshear')
        do i = 1,n
          tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_phenomenological_structure(matID)))
@@ -468,6 +508,7 @@ pure function constitutive_phenomenological_postResults(Tstar_v,Temperature,dt,s
                                                            constitutive_phenomenological_n_slip(matID)
        enddo
        c = c + n
+
    end select
  enddo
  

@@ -19,42 +19,41 @@ implicit none
 ! ****************************************************************
 ! *** General variables for the crystallite calculation        ***
 ! ****************************************************************
-integer(pInt), parameter :: crystallite_Nresults = 5_pInt                                 ! phaseID, volume, Euler angles 
+integer(pInt), parameter :: crystallite_Nresults = 5_pInt                                    ! phaseID, volume, Euler angles 
 
-real(pReal), dimension (:,:,:), allocatable ::          crystallite_dt, &                 ! requested time increment of each grain
-                                                        crystallite_subdt, &              ! substepped time increment of each grain
-                                                        crystallite_subFrac, &            ! already calculated fraction of increment
-                                                        crystallite_subStep, &            ! size of next integration step
-                                                        crystallite_Temperature, &          ! Temp of each grain 
-                                                        crystallite_Temperature0, &         ! Temp of each grain at start of FE inc
+real(pReal), dimension (:,:,:), allocatable ::          crystallite_dt, &                    ! requested time increment of each grain
+                                                        crystallite_subdt, &                 ! substepped time increment of each grain
+                                                        crystallite_subFrac, &               ! already calculated fraction of increment
+                                                        crystallite_subStep, &               ! size of next integration step
+                                                        crystallite_Temperature, &           ! Temp of each grain 
                                                         crystallite_partionedTemperature0, & ! Temp of each grain at start of homog inc
-                                                        crystallite_subTemperature0       ! Temp of each grain at start of crystallite inc
-real(pReal), dimension (:,:,:,:), allocatable ::        crystallite_Tstar_v, &            ! current 2nd Piola-Kirchhoff stress vector (end of converged time step)
-                                                        crystallite_Tstar0_v, &           ! 2nd Piola-Kirchhoff stress vector at start of FE inc
-                                                        crystallite_partionedTstar0_v, &  ! 2nd Piola-Kirchhoff stress vector at start of homog inc
-                                                        crystallite_subTstar0_v           ! 2nd Piola-Kirchhoff stress vector at start of crystallite inc
-real(pReal), dimension (:,:,:,:,:), allocatable ::      crystallite_Fe, &                 ! current "elastic" def grad (end of converged time step)
-                                                        crystallite_Fp, &                 ! current plastic def grad (end of converged time step)
-                                                        crystallite_Fp0, &                ! plastic def grad at start of FE inc
-                                                        crystallite_partionedFp0,&        ! plastic def grad at start of homog inc
-                                                        crystallite_subFp0,&              ! plastic def grad at start of crystallite inc
-                                                        crystallite_F0, &                 ! def grad at start of FE inc
-                                                        crystallite_partionedF,  &        ! def grad to be reached at end of homog inc
-                                                        crystallite_partionedF0, &        ! def grad at start of homog inc
-                                                        crystallite_subF,  &              ! def grad to be reached at end of crystallite inc
-                                                        crystallite_subF0, &              ! def grad at start of crystallite inc
-                                                        crystallite_Lp, &                 ! current plastic velocitiy grad (end of converged time step)
-                                                        crystallite_Lp0, &                ! plastic velocitiy grad at start of FE inc
-                                                        crystallite_partionedLp0,&        ! plastic velocity grad at start of homog inc
-                                                        crystallite_subLp0,&              ! plastic velocity grad at start of crystallite inc
-                                                        crystallite_P                     ! 1st Piola-Kirchhoff stress per grain
-real(pReal), dimension (:,:,:,:,:,:,:), allocatable ::  crystallite_dPdF, &               ! individual dPdF per grain
-                                                        crystallite_fallbackdPdF          ! dPdF fallback for non-converged grains (elastic prediction)
+                                                        crystallite_subTemperature0          ! Temp of each grain at start of crystallite inc
+real(pReal), dimension (:,:,:,:), allocatable ::        crystallite_Tstar_v, &               ! current 2nd Piola-Kirchhoff stress vector (end of converged time step)
+                                                        crystallite_Tstar0_v, &              ! 2nd Piola-Kirchhoff stress vector at start of FE inc
+                                                        crystallite_partionedTstar0_v, &     ! 2nd Piola-Kirchhoff stress vector at start of homog inc
+                                                        crystallite_subTstar0_v              ! 2nd Piola-Kirchhoff stress vector at start of crystallite inc
+real(pReal), dimension (:,:,:,:,:), allocatable ::      crystallite_Fe, &                    ! current "elastic" def grad (end of converged time step)
+                                                        crystallite_Fp, &                    ! current plastic def grad (end of converged time step)
+                                                        crystallite_Fp0, &                   ! plastic def grad at start of FE inc
+                                                        crystallite_partionedFp0,&           ! plastic def grad at start of homog inc
+                                                        crystallite_subFp0,&                 ! plastic def grad at start of crystallite inc
+                                                        crystallite_F0, &                    ! def grad at start of FE inc
+                                                        crystallite_partionedF,  &           ! def grad to be reached at end of homog inc
+                                                        crystallite_partionedF0, &           ! def grad at start of homog inc
+                                                        crystallite_subF,  &                 ! def grad to be reached at end of crystallite inc
+                                                        crystallite_subF0, &                 ! def grad at start of crystallite inc
+                                                        crystallite_Lp, &                    ! current plastic velocitiy grad (end of converged time step)
+                                                        crystallite_Lp0, &                   ! plastic velocitiy grad at start of FE inc
+                                                        crystallite_partionedLp0,&           ! plastic velocity grad at start of homog inc
+                                                        crystallite_subLp0,&                 ! plastic velocity grad at start of crystallite inc
+                                                        crystallite_P                        ! 1st Piola-Kirchhoff stress per grain
+real(pReal), dimension (:,:,:,:,:,:,:), allocatable ::  crystallite_dPdF, &                  ! individual dPdF per grain
+                                                        crystallite_fallbackdPdF             ! dPdF fallback for non-converged grains (elastic prediction)
 
-logical, dimension (:,:,:), allocatable ::              crystallite_localConstitution, &  ! indicates this grain to have purely local constitutive law
-                                                        crystallite_requested, &          ! flag to request crystallite calculation
-                                                        crystallite_onTrack, &            ! flag to indicate ongoing calculation
-                                                        crystallite_converged             ! convergence flag
+logical, dimension (:,:,:), allocatable ::              crystallite_localConstitution, &     ! indicates this grain to have purely local constitutive law
+                                                        crystallite_requested, &             ! flag to request crystallite calculation
+                                                        crystallite_onTrack, &               ! flag to indicate ongoing calculation
+                                                        crystallite_converged                ! convergence flag
 
 
 CONTAINS
@@ -62,7 +61,7 @@ CONTAINS
 !********************************************************************
 ! allocate and initialize per grain variables
 !********************************************************************
-subroutine crystallite_init()
+subroutine crystallite_init(Temperature)
 
   !*** variables and functions from other modules ***!
   use prec, only:             pInt, &
@@ -84,6 +83,7 @@ subroutine crystallite_init()
   implicit none
 
   !*** input variables ***!
+  real(pReal) Temperature
  
   !*** output variables ***!
  
@@ -100,13 +100,12 @@ subroutine crystallite_init()
   iMax = mesh_maxNips
   eMax = mesh_NcpElems
 
-  allocate(crystallite_Temperature(gMax,iMax,eMax));                crystallite_Temperature = 0.0_pReal
+  allocate(crystallite_Temperature(gMax,iMax,eMax));                crystallite_Temperature = Temperature
   allocate(crystallite_P(3,3,gMax,iMax,eMax));                                crystallite_P = 0.0_pReal
   allocate(crystallite_Fe(3,3,gMax,iMax,eMax));                              crystallite_Fe = 0.0_pReal
   allocate(crystallite_Fp(3,3,gMax,iMax,eMax));                              crystallite_Fp = 0.0_pReal
   allocate(crystallite_Lp(3,3,gMax,iMax,eMax));                              crystallite_Lp = 0.0_pReal
   allocate(crystallite_Tstar_v(6,gMax,iMax,eMax));                      crystallite_Tstar_v = 0.0_pReal
-  allocate(crystallite_Temperature0(gMax,iMax,eMax));              crystallite_Temperature0 = 0.0_pReal
   allocate(crystallite_F0(3,3,gMax,iMax,eMax));                              crystallite_F0 = 0.0_pReal
   allocate(crystallite_Fp0(3,3,gMax,iMax,eMax));                            crystallite_Fp0 = 0.0_pReal
   allocate(crystallite_Lp0(3,3,gMax,iMax,eMax));                            crystallite_Lp0 = 0.0_pReal
@@ -139,8 +138,8 @@ subroutine crystallite_init()
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element
         do g = 1,myNgrains
-          crystallite_partionedTemperature0(g,i,e) = crystallite_Temperature0(g,i,e)
-          crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(:,g,i,e))          ! plastic def gradient reflects init orientation
+          crystallite_partionedTemperature0(g,i,e) = Temperature                   ! isothermal assumption
+          crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(:,g,i,e))    ! plastic def gradient reflects init orientation
           crystallite_F0(:,:,g,i,e)  = math_I3
           crystallite_partionedFp0(:,:,g,i,e) = crystallite_Fp0(:,:,g,i,e)
           crystallite_partionedF0(:,:,g,i,e)  = crystallite_F0(:,:,g,i,e)
@@ -166,7 +165,6 @@ subroutine crystallite_init()
     write(6,'(a32,x,7(i5,x))') 'crystallite_Fe:                ', shape(crystallite_Fe)
     write(6,'(a32,x,7(i5,x))') 'crystallite_Fp:                ', shape(crystallite_Fp)
     write(6,'(a32,x,7(i5,x))') 'crystallite_Lp:                ', shape(crystallite_Lp)
-    write(6,'(a32,x,7(i5,x))') 'crystallite_Temperature0:      ', shape(crystallite_Temperature0)
     write(6,'(a32,x,7(i5,x))') 'crystallite_F0:                ', shape(crystallite_F0)
     write(6,'(a32,x,7(i5,x))') 'crystallite_Fp0:               ', shape(crystallite_Fp0)
     write(6,'(a32,x,7(i5,x))') 'crystallite_Lp0:               ', shape(crystallite_Lp0)
@@ -281,11 +279,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
   write (6,*)
   write (6,*) 'Crystallite request from Materialpoint'
-  write (6,'(a,/,(f12.7,x))') 'crystallite_partionedTemperature0  of 1 1 1',crystallite_partionedTemperature0(1,1,1)
-  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF0  of 1 1 1',crystallite_partionedF0(1:3,:,1,1,1)
-  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedFp0 of 1 1 1',crystallite_partionedFp0(1:3,:,1,1,1)
-  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF   of 1 1 1',crystallite_partionedF(1:3,:,1,1,1)
-  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedLp0 of 1 1 1',crystallite_partionedLp0(1:3,:,1,1,1)
+  write (6,'(a,/,(f12.7,x))')      'crystallite_partionedTemp0 of 1 1 1' ,crystallite_partionedTemperature0(1,1,1)
+  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF0  of 1 1 1'   ,crystallite_partionedF0(1:3,:,1,1,1)
+  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedFp0 of 1 1 1'   ,crystallite_partionedFp0(1:3,:,1,1,1)
+  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedF   of 1 1 1'   ,crystallite_partionedF(1:3,:,1,1,1)
+  write (6,'(a,/,3(3(f12.7,x)/))') 'crystallite_partionedLp0 of 1 1 1'   ,crystallite_partionedLp0(1:3,:,1,1,1)
 
  
   !$OMP PARALLEL DO
@@ -456,8 +454,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               if (             crystallite_requested(g,i,e) & 
                   .and.       crystallite_onTrack(g,i,e) &
                   .and. .not. crystallite_converged(g,i,e)) then                      ! all undone crystallites
-                crystallite_converged(g,i,e) = crystallite_updateState(g,i,e).AND.&
-				                               crystallite_updateTemperature(g,i,e)				                                 
+                crystallite_converged(g,i,e) = (crystallite_updateState(g,i,e).AND.&
+				                               crystallite_updateTemperature(g,i,e))			                                 
                 if (crystallite_converged(g,i,e)) then
                   !$OMP CRITICAL (distributionState)
                     debug_StateLoopDistribution(NiterationState) = debug_StateLoopDistribution(NiterationState) + 1
@@ -724,8 +722,7 @@ endsubroutine
  crystallite_Temperature(g,i,e) = crystallite_Temperature(g,i,e) - residuum
  
  ! setting flag to true if state is below relative Tolerance, otherwise set it to false
- crystallite_updateTemperature = maxval(abs(residuum/crystallite_Temperature(g,i,e)), &
-                                  crystallite_Temperature(g,i,e) /= 0.0_pReal) < rTol_crystalliteTemperature
+ crystallite_updateTemperature = abs(residuum/crystallite_Temperature(g,i,e)) < rTol_crystalliteTemperature
                                   
  if (debugger) write(6,'(a,/,f12.4)') 'updated temperature: ', crystallite_Temperature(g,i,e)
  

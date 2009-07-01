@@ -257,7 +257,7 @@ function homogenization_isostrain_averageTemperature(&
 
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
- homogenization_isostrain_averageTemperature = sum(Temperature)/Ngrains
+ homogenization_isostrain_averageTemperature = sum(Temperature(1:Ngrains))/Ngrains
 
  return
 

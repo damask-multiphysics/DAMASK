@@ -417,6 +417,36 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
 endfunction
 
 
+!****************************************************************
+!* calculates the rate of change of microstructure              *
+!****************************************************************
+pure function constitutive_j2_dotTemperature(Tstar_v, Temperature, state, g, ip, el)
+
+  !*** variables and functions from other modules ***!
+  use prec,     only: pReal,pInt,p_vec
+  use lattice,  only: lattice_Sslip_v
+  use mesh,     only: mesh_NcpElems,mesh_maxNips
+  use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance  
+  implicit none
+
+  !*** input variables ***!
+  real(pReal), dimension(6), intent(in) ::  Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
+  real(pReal), intent(in) ::                Temperature
+  integer(pInt), intent(in)::               g, &                      ! grain number
+                                            ip, &                     ! integration point number
+                                            el                        ! element number
+  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state ! state of the current microstructure
+  
+  !*** output variables ***!
+  real(pReal) constitutive_j2_dotTemperature  ! evolution of state variable
+  
+  ! calculate dotTemperature
+  constitutive_j2_dotTemperature = 0.0_pReal
+
+  return
+endfunction
+
+
 !*********************************************************************
 !* return array of constitutive results                              *
 !*********************************************************************

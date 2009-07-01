@@ -121,8 +121,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   integer(pInt), intent(in) ::                        element, &          ! FE element number
                                                       IP, &               ! FE integration point number
                                                       ngens               ! size of stress strain law
-  real(pReal), intent(in) ::                          Temperature, &      ! temperature
-                                                      dt                  ! time increment
+  real(pReal), intent(inout) ::                       Temperature         ! temperature
+  real(pReal), intent(in) ::                          dt                  ! time increment
   real(pReal), dimension (3,3), intent(in) ::         ffn, &              ! deformation gradient for t=t0
                                                       ffn1                ! deformation gradient for t=t1
   integer(pInt), intent(in) ::                        mode                ! computation mode  1: regular computation with aged results
@@ -170,8 +170,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     call lattice_init()
     call material_init()
     call constitutive_init()
-    call crystallite_init()
-    call homogenization_init()
+    call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
+    call homogenization_init(Temperature)
     call CPFEM_init()
     CPFEM_init_done = .true.
   endif
@@ -262,6 +262,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     
     ! --+>> COLLECTION OF FEM DATA AND RETURN OF ODD STRESS AND JACOBIAN <<+-- 
     case (3)
+	  if (IP==1.AND.cp_en==1) write(6,*) 'Temp from CPFEM', Temperature
       materialpoint_Temperature(IP,cp_en)   = Temperature
       materialpoint_F0(:,:,IP,cp_en)        = ffn
       materialpoint_F(:,:,IP,cp_en)         = ffn1
@@ -287,7 +288,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   cauchyStress(1:ngens) = CPFEM_cs(1:ngens,IP,cp_en)
   jacobian(1:ngens,1:ngens) = CPFEM_dcsdE(1:ngens,1:ngens,IP,cp_en)
   ! return temperature
-  Temperature = materialpoint_Temperature(IP,cp_en)
+  if (theInc > 0_pInt) Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
   
   return
 

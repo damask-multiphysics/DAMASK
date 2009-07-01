@@ -17,6 +17,7 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
                                 subStepMin, &                           ! minimum (relative) size of sub-step allowed during cutback in crystallite
                                 rTol_crystalliteState, &                ! relative tolerance in crystallite state loop 
+                                rTol_crystalliteTemperature, &          ! relative tolerance in crystallite temperature loop 
                                 rTol_crystalliteStress, &               ! relative tolerance in crystallite stress loop
                                 aTol_crystalliteStress, &               ! absolute tolerance in crystallite stress loop
                                 resToler, &                             ! relative tolerance of residual in GIA iteration
@@ -89,6 +90,7 @@ subroutine numerics_init()
   nStress                 = 40_pInt
   subStepMin              = 1.0e-3_pReal
   rTol_crystalliteState   = 1.0e-6_pReal
+  rTol_crystalliteTemperature = 1.0e-6_pReal
   rTol_crystalliteStress  = 1.0e-6_pReal
   aTol_crystalliteStress  = 1.0e-8_pReal
   resToler                = 1.0e-4_pReal
@@ -130,6 +132,8 @@ subroutine numerics_init()
               subStepMin = IO_floatValue(line,positions,2)
         case ('rtol_crystallitestate')
               rTol_crystalliteState = IO_floatValue(line,positions,2)
+        case ('rtol_crystalliteTemperature')
+              rTol_crystalliteTemperature = IO_floatValue(line,positions,2)
         case ('rtol_crystallitestress')
               rTol_crystalliteStress = IO_floatValue(line,positions,2)
         case ('atol_crystallitestress')
@@ -165,6 +169,7 @@ subroutine numerics_init()
   write(6,'(a24,x,i8)')   'nStress:                ',nStress
   write(6,'(a24,x,e8.1)') 'subStepMin:             ',subStepMin
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteState:  ',rTol_crystalliteState
+  write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
   write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
   write(6,'(a24,x,e8.1)') 'resToler:               ',resToler
@@ -173,7 +178,7 @@ subroutine numerics_init()
   write(6,'(a24,x,i8)')   'NRiterMax:              ',NRiterMax
   write(6,*)
   
-  ! sanity check  
+  ! sanity check  (Temperature check missing!!!!!!!)
   if (relevantStrain <= 0.0_pReal)          call IO_error(260)
   if (iJacoStiffness < 1_pInt)              call IO_error(261)
   if (iJacoLpresiduum < 1_pInt)             call IO_error(262)

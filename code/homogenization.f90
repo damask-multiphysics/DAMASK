@@ -51,7 +51,7 @@ CONTAINS
 !**************************************
 !*      Module initialization         *
 !**************************************
-subroutine homogenization_init()
+subroutine homogenization_init(Temperature)
  use prec, only: pReal,pInt
  use math, only: math_I3
  use IO, only: IO_error, IO_open_file
@@ -62,6 +62,7 @@ subroutine homogenization_init()
  use homogenization_isostrain
 ! use homogenization_RGC
 
+ real(pReal) Temperature
  integer(pInt), parameter :: fileunit = 200
  integer(pInt) e,i,g,myInstance
 
@@ -83,7 +84,7 @@ subroutine homogenization_init()
  allocate(materialpoint_subF0(3,3,mesh_maxNips,mesh_NcpElems));        materialpoint_subF0   = 0.0_pReal
  allocate(materialpoint_subF(3,3,mesh_maxNips,mesh_NcpElems));         materialpoint_subF    = 0.0_pReal
  allocate(materialpoint_P(3,3,mesh_maxNips,mesh_NcpElems));            materialpoint_P       = 0.0_pReal
- allocate(materialpoint_Temperature(mesh_maxNips,mesh_NcpElems));      materialpoint_Temperature = 0.0_pReal
+ allocate(materialpoint_Temperature(mesh_maxNips,mesh_NcpElems));      materialpoint_Temperature = Temperature
  allocate(materialpoint_subFrac(mesh_maxNips,mesh_NcpElems));          materialpoint_subFrac = 0.0_pReal
  allocate(materialpoint_subStep(mesh_maxNips,mesh_NcpElems));          materialpoint_subStep = 0.0_pReal
  allocate(materialpoint_subdt(mesh_maxNips,mesh_NcpElems));            materialpoint_subdt   = 0.0_pReal
@@ -180,8 +181,7 @@ subroutine materialpoint_stressAndItsTangent(&
  use constitutive, only:  constitutive_state0, &
                           constitutive_partionedState0, &
                           constitutive_state
- use crystallite, only:   crystallite_Temperature0, &
-                          crystallite_Temperature, &
+ use crystallite, only:   crystallite_Temperature, &
                           crystallite_F0, &
                           crystallite_Fp0, &
                           crystallite_Fp, &
@@ -210,6 +210,7 @@ subroutine materialpoint_stressAndItsTangent(&
 
  write (6,*)
  write (6,*) 'Material Point start'
+ write (6,'(a,/,(f12.7,x))') 'Temp0  of   8 1'  ,materialpoint_Temperature(8,1)
  write (6,'(a,/,3(3(f12.7,x)/))') 'F0  of   8 1',materialpoint_F0(1:3,:,8,1)
  write (6,'(a,/,3(3(f12.7,x)/))') 'F   of   8 1',materialpoint_F(1:3,:,8,1)
  write (6,'(a,/,3(3(f12.7,x)/))') 'Fp0 of 1 8 1',crystallite_Fp0(1:3,:,1,8,1)
@@ -222,7 +223,7 @@ subroutine materialpoint_stressAndItsTangent(&
      
      ! initialize restoration points of grain...
      forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p   ! ...microstructures
-     crystallite_partionedTemperature0(1:myNgrains,i,e)   = crystallite_Temperature0(1:myNgrains,i,e)! ...temperatures
+     crystallite_partionedTemperature0(1:myNgrains,i,e) = materialpoint_Temperature(i,e)             ! ...temperatures
      crystallite_partionedFp0(:,:,1:myNgrains,i,e)   = crystallite_Fp0(:,:,1:myNgrains,i,e)          ! ...plastic def grads
      crystallite_partionedLp0(:,:,1:myNgrains,i,e)   = crystallite_Lp0(:,:,1:myNgrains,i,e)          ! ...plastic velocity grads
      crystallite_partionedF0(:,:,1:myNgrains,i,e)    = crystallite_F0(:,:,1:myNgrains,i,e)           ! ...def grads

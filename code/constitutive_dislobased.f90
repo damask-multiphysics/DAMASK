@@ -373,7 +373,6 @@ subroutine constitutive_dislobased_microstructure(Temperature,state,ipc,ip,el)
  real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
 
- Temperature = 298.0
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
  n = constitutive_dislobased_Nslip(matID)
  !* Quantities derived from state - slip
@@ -448,7 +447,6 @@ subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Tempera
  real(pReal), dimension(constitutive_dislobased_Nslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip,dgdot_dtauslip,tau_slip
 
- Temperature = 298.0
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
  n = constitutive_dislobased_Nslip(matID)
 
@@ -512,7 +510,6 @@ function constitutive_dislobased_dotState(Tstar_v,Temperature,state,ipc,ip,el)
  real(pReal), dimension(constitutive_dislobased_Nslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_dislobased_dotState
 
- Temperature = 298.0
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
  n = constitutive_dislobased_Nslip(matID)
 
@@ -605,7 +602,7 @@ pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,i
    select case(constitutive_dislobased_output(o,matID))
 
      case ('dislodensity')
-       constitutive_dislobased_postResults(c+1:c+n) = state(ipc,ip,el)%p(1:n)
+       constitutive_dislobased_postResults(c+1:c+n) = state(ipc,ip,el)%p(6*n+1:7*n)
        c = c + n
 
      case ('rateofshear')
@@ -613,7 +610,7 @@ pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,i
          tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
 		 if ((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))>0) then
             constitutive_dislobased_postResults(c+i) = state(ipc,ip,el)%p(7*n+i)*sign(1.0_pReal,tau_slip)*&
-            sinh(((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*298.0))
+            sinh(((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature))
 	     else
 		    constitutive_dislobased_postResults(c+i) = 0.0_pReal
 		 endif
