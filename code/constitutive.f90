@@ -29,6 +29,7 @@ CONTAINS
 !* - constitutive_microstructure
 !* - constitutive_LpAndItsTangent
 !* - constitutive_dotState
+!* - constitutive_dotTemperature
 !* - constitutive_postResults
 !****************************************
 
@@ -269,6 +270,45 @@ function constitutive_dotState(Tstar_v,Temperature,ipc,ip,el)
      constitutive_dotState = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
    case (constitutive_dislobased_label)
      constitutive_dotState = constitutive_dislobased_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+
+ end select
+ return
+end function
+
+
+function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
+!*********************************************************************
+!* This subroutine contains the constitutive equation for            *
+!* calculating the rate of change of microstructure                  *
+!* INPUT:                                                            *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
+!*  - state           : current microstructure                       *
+!*  - ipc             : component-ID of current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
+!* OUTPUT:                                                           *
+!*  - constitutive_dotTemperature : evolution of temperature         *
+!*********************************************************************
+ use prec, only: pReal,pInt
+ use material, only: phase_constitution,material_phase
+ use constitutive_phenomenological
+ use constitutive_j2
+ use constitutive_dislobased
+ implicit none
+
+!* Definition of variables
+ integer(pInt) ipc,ip,el
+ real(pReal) Temperature
+ real(pReal), dimension(6) :: Tstar_v
+ real(pReal) constitutive_dotTemperature
+
+ select case (phase_constitution(material_phase(ipc,ip,el)))
+   case (constitutive_phenomenological_label)
+     constitutive_dotTemperature = constitutive_phenomenological_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   case (constitutive_j2_label)
+     constitutive_dotTemperature = constitutive_j2_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   case (constitutive_dislobased_label)
+     constitutive_dotTemperature = constitutive_dislobased_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
 
  end select
  return

@@ -286,7 +286,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   ! return the local stress and the jacobian from storage
   cauchyStress(1:ngens) = CPFEM_cs(1:ngens,IP,cp_en)
   jacobian(1:ngens,1:ngens) = CPFEM_dcsdE(1:ngens,1:ngens,IP,cp_en)
-
+  ! return temperature
+  Temperature = materialpoint_Temperature(IP,cp_en)
+  
   return
 
 end subroutine

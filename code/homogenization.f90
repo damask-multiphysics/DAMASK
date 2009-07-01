@@ -180,13 +180,16 @@ subroutine materialpoint_stressAndItsTangent(&
  use constitutive, only:  constitutive_state0, &
                           constitutive_partionedState0, &
                           constitutive_state
- use crystallite, only:   crystallite_F0, &
+ use crystallite, only:   crystallite_Temperature0, &
+                          crystallite_Temperature, &
+                          crystallite_F0, &
                           crystallite_Fp0, &
                           crystallite_Fp, &
                           crystallite_Lp0, &
                           crystallite_Lp, &
                           crystallite_Tstar0_v, &
                           crystallite_Tstar_v, &
+                          crystallite_partionedTemperature0, &
                           crystallite_partionedF0, &
                           crystallite_partionedF, &
                           crystallite_partionedFp0, &
@@ -218,11 +221,12 @@ subroutine materialpoint_stressAndItsTangent(&
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                               ! iterate over IPs of this element to be processed
      
      ! initialize restoration points of grain...
-     forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p  ! ...microstructures
-     crystallite_partionedFp0(:,:,1:myNgrains,i,e)   = crystallite_Fp0(:,:,1:myNgrains,i,e)         ! ...plastic def grads
-     crystallite_partionedLp0(:,:,1:myNgrains,i,e)   = crystallite_Lp0(:,:,1:myNgrains,i,e)         ! ...plastic velocity grads
-     crystallite_partionedF0(:,:,1:myNgrains,i,e)    = crystallite_F0(:,:,1:myNgrains,i,e)          ! ...def grads
-     crystallite_partionedTstar0_v(:,1:myNgrains,i,e)= crystallite_Tstar0_v(:,1:myNgrains,i,e)      ! ...2nd PK stress
+     forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p   ! ...microstructures
+     crystallite_partionedTemperature0(1:myNgrains,i,e)   = crystallite_Temperature0(1:myNgrains,i,e)! ...temperatures
+     crystallite_partionedFp0(:,:,1:myNgrains,i,e)   = crystallite_Fp0(:,:,1:myNgrains,i,e)          ! ...plastic def grads
+     crystallite_partionedLp0(:,:,1:myNgrains,i,e)   = crystallite_Lp0(:,:,1:myNgrains,i,e)          ! ...plastic velocity grads
+     crystallite_partionedF0(:,:,1:myNgrains,i,e)    = crystallite_F0(:,:,1:myNgrains,i,e)           ! ...def grads
+     crystallite_partionedTstar0_v(:,1:myNgrains,i,e)= crystallite_Tstar0_v(:,1:myNgrains,i,e)       ! ...2nd PK stress
      
      ! initialize restoration points of ...
      if (homogenization_sizeState(i,e) > 0_pInt) &
@@ -258,6 +262,7 @@ subroutine materialpoint_stressAndItsTangent(&
          if (materialpoint_subStep(i,e) > subStepMin) then
          
            ! wind forward grain starting point of...
+           crystallite_partionedTemperature0(1:myNgrains,i,e) = crystallite_Temperature(1:myNgrains,i,e)  ! ...temperatures
            crystallite_partionedF0(:,:,1:myNgrains,i,e)     = crystallite_partionedF(:,:,1:myNgrains,i,e) ! ...def grads
            crystallite_partionedFp0(:,:,1:myNgrains,i,e)    = crystallite_Fp(:,:,1:myNgrains,i,e)         ! ...plastic def grads
            crystallite_partionedLp0(:,:,1:myNgrains,i,e)    = crystallite_Lp(:,:,1:myNgrains,i,e)         ! ...plastic velocity grads
@@ -275,6 +280,7 @@ subroutine materialpoint_stressAndItsTangent(&
          materialpoint_subStep(i,e) = 0.5_pReal * materialpoint_subStep(i,e)
 
          ! restore...
+         crystallite_Temperature(1:myNgrains,i,e) = crystallite_partionedTemperature0(1:myNgrains,i,e)    ! ...temperatures
          crystallite_Fp(:,:,1:myNgrains,i,e)    = crystallite_partionedFp0(:,:,1:myNgrains,i,e)           ! ...plastic def grads
          crystallite_Lp(:,:,1:myNgrains,i,e)    = crystallite_partionedLp0(:,:,1:myNgrains,i,e)           ! ...plastic velocity grads
          crystallite_Tstar_v(:,1:myNgrains,i,e) = crystallite_partionedTstar0_v(:,1:myNgrains,i,e)        ! ...2nd PK stress
@@ -341,7 +347,7 @@ subroutine materialpoint_stressAndItsTangent(&
        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
          if (      materialpoint_requested(i,e) .and. &
              .not. materialpoint_doneAndHappy(1,i,e)) then
-           materialpoint_doneAndHappy(:,i,e) = homogenization_updateState(i,e)
+           materialpoint_doneAndHappy(:,i,e) = homogenization_updateState(i,e) 
            materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(:,i,e))  ! converged if done and happy
          endif
        enddo
@@ -359,6 +365,7 @@ subroutine materialpoint_stressAndItsTangent(&
  do e = FEsolving_execElem(1),FEsolving_execElem(2)                   ! iterate over elements to be processed
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                 ! iterate over IPs of this element to be processed
      call homogenization_averageStressAndItsTangent(i,e)
+     call homogenization_averageTemperature(i,e)	 
    enddo
  enddo
 !$OMP END PARALLEL DO
@@ -501,6 +508,33 @@ subroutine homogenization_averageStressAndItsTangent(&
                                                                crystallite_dPdF(:,:,:,:,:,ip,el), &
                                                                ip, &
                                                                el)
+ end select
+
+ return
+ 
+endsubroutine
+
+
+!********************************************************************
+! derive average stress and stiffness from constituent quantities
+!********************************************************************
+subroutine homogenization_averageTemperature(&
+   ip, &            ! integration point
+   el  &            ! element
+  )
+ use prec,        only: pReal,pInt
+ use mesh,        only: mesh_element
+ use material,    only: homogenization_type, homogenization_maxNgrains
+ use crystallite, only: crystallite_Temperature
+
+ use homogenization_isostrain
+ implicit none
+ 
+ integer(pInt), intent(in) :: ip,el
+ 
+ select case(homogenization_type(mesh_element(3,el)))
+   case (homogenization_isostrain_label)
+     materialpoint_Temperature(ip,el) =  homogenization_isostrain_averageTemperature(crystallite_Temperature(:,ip,el), ip, el)
  end select
 
  return

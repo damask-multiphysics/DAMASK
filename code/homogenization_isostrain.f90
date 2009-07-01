@@ -236,6 +236,35 @@ endsubroutine
 
 
 !********************************************************************
+! derive average stress and stiffness from constituent quantities
+!********************************************************************
+function homogenization_isostrain_averageTemperature(&
+   Temperature, &   ! temperature
+   ip, &            ! my integration point
+   el  &            ! my element
+  )
+
+ use prec, only: pReal,pInt,p_vec
+ use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
+ use material, only: homogenization_maxNgrains, homogenization_Ngrains
+ implicit none
+
+!* Definition of variables
+ real(pReal), dimension (homogenization_maxNgrains), intent(in) :: Temperature
+ integer(pInt), intent(in) :: ip,el
+ real(pReal) homogenization_isostrain_averageTemperature
+ integer(pInt) homID, i, Ngrains
+
+! homID = homogenization_typeInstance(mesh_element(3,el))
+ Ngrains = homogenization_Ngrains(mesh_element(3,el))
+ homogenization_isostrain_averageTemperature = sum(Temperature)/Ngrains
+
+ return
+
+endfunction
+
+
+!********************************************************************
 ! return array of homogenization results for post file inclusion
 !********************************************************************
 pure function homogenization_isostrain_postResults(&

@@ -11,8 +11,10 @@
  integer(pInt), dimension(:), allocatable :: debug_CrystalliteLoopDistribution
  integer(pLongInt) :: debug_cumLpTicks = 0_pInt
  integer(pLongInt) :: debug_cumDotStateTicks = 0_pInt
+ integer(pLongInt) :: debug_cumDotTemperatureTicks = 0_pInt
  integer(pInt) :: debug_cumLpCalls = 0_pInt
  integer(pInt) :: debug_cumDotStateCalls = 0_pInt
+ integer(pInt) :: debug_cumDotTemperatureCalls = 0_pInt
  logical :: debugger = .false.
  logical :: distribution_init = .false.
 
@@ -50,8 +52,10 @@ subroutine debug_reset()
   debug_CrystalliteLoopDistribution    = 0_pInt
   debug_cumLpTicks       = 0_pInt
   debug_cumDotStateTicks = 0_pInt
+  debug_cumDotTemperatureTicks = 0_pInt
   debug_cumLpCalls       = 0_pInt
   debug_cumDotStateCalls = 0_pInt
+  debug_cumDotTemperatureCalls = 0_pInt
 
 endsubroutine
 
@@ -86,6 +90,14 @@ endsubroutine
    write(6,'(a33,x,f12.6)') 'avg CPU time/microsecs per call :',&
      dble(debug_cumDotStateTicks)/tickrate/1.0e-6_pReal/debug_cumDotStateCalls
    write(6,'(a33,x,i12)')   'total CPU ticks                 :',debug_cumDotStateTicks
+ endif
+ write(6,*)
+ write(6,'(a33,x,i12)')	'total calls to dotTemperature       :',debug_cumDotTemperatureCalls
+ if (debug_cumdotTemperatureCalls > 0_pInt) then
+   call system_clock(count_rate=tickrate)
+   write(6,'(a33,x,f12.6)') 'avg CPU time/microsecs per call :',&
+     dble(debug_cumDotTemperatureTicks)/tickrate/1.0e-6_pReal/debug_cumDotTemperatureCalls
+   write(6,'(a33,x,i12)')   'total CPU ticks                 :',debug_cumDotTemperatureTicks
  endif
 
  integral = 0_pInt

@@ -93,6 +93,7 @@ CONTAINS
 !* - constitutive_microstructure
 !* - constitutive_LpAndItsTangent
 !* - consistutive_dotState
+!* - constitutive_dotTemperature
 !* - consistutive_postResults
 !****************************************
 
@@ -372,6 +373,7 @@ subroutine constitutive_dislobased_microstructure(Temperature,state,ipc,ip,el)
  real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
 
+ Temperature = 298.0
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
  n = constitutive_dislobased_Nslip(matID)
  !* Quantities derived from state - slip
@@ -401,10 +403,10 @@ subroutine constitutive_dislobased_microstructure(Temperature,state,ipc,ip,el)
    constitutive_dislobased_c3(matID)*state(ipc,ip,el)%p(4*n+i)*constitutive_dislobased_bg(matID)**2.0_pReal
 
    state(ipc,ip,el)%p(6*n+i) = &
-   (2.0_pReal*kB*Temperature*sqrt(state(ipc,ip,el)%p(2*n+i)))/&
-   (constitutive_dislobased_c1(matID)*constitutive_dislobased_c3(matID)*constitutive_dislobased_Gmod(matID)*&
-   state(ipc,ip,el)%p(4*n+i)*constitutive_dislobased_bg(matID)**3.0_pReal)
-    
+   (2.0_pReal*kB*Temperature)/(constitutive_dislobased_c1(matID)*constitutive_dislobased_c2(matID)*&
+   constitutive_dislobased_c3(matID)*constitutive_dislobased_Gmod(matID)*constitutive_dislobased_bg(matID)**3.0_pReal)*&
+   sqrt(state(ipc,ip,el)%p(n+i)*state(ipc,ip,el)%p(2*n+i))
+
    state(ipc,ip,el)%p(7*n+i) = &
    state(ipc,ip,el)%p(6*n+i)*constitutive_dislobased_bg(matID)*attack_frequency*state(ipc,ip,el)%p(4*n+i)*&
    exp(-constitutive_dislobased_Qedge(matID)/(kB*Temperature))
@@ -427,7 +429,7 @@ subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Tempera
 !*  - dLp_dTstar      : derivative of Lp (4th-rank tensor)           *
 !*********************************************************************
  use prec, only: pReal,pInt,p_vec
- use math, only: math_Plain3333to99, math_mul6x6
+ use math, only: math_Plain3333to99
  use lattice, only: lattice_Sslip,lattice_Sslip_v
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
@@ -446,6 +448,7 @@ subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Tempera
  real(pReal), dimension(constitutive_dislobased_Nslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip,dgdot_dtauslip,tau_slip
 
+ Temperature = 298.0
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
  n = constitutive_dislobased_Nslip(matID)
 
@@ -453,10 +456,11 @@ subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Tempera
  Lp = 0.0_pReal
  gdot_slip = 0.0_pReal
  do i = 1,constitutive_dislobased_Nslip(matID)
-   tau_slip(i)  = math_mul6x6(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
-   if ((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))>0) &
+   tau_slip(i) = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
+
+   if (abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i)>0) &
       gdot_slip(i) = state(ipc,ip,el)%p(7*n+i)*sign(1.0_pReal,tau_slip(i))*&
-                     sinh(((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)) 
+                     sinh(((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature) ) 
 				   
    Lp = Lp + gdot_slip(i)*lattice_Sslip(:,:,i,constitutive_dislobased_structure(matID))
  enddo
@@ -466,9 +470,11 @@ subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Tempera
  dLp_dTstar = 0.0_pReal
  dgdot_dtauslip = 0.0_pReal
  do i = 1,constitutive_dislobased_Nslip(matID)
+
    if ((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))>0) &
       dgdot_dtauslip(i) = (state(ipc,ip,el)%p(7*n+i)*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)*&
-                          cosh(((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)) 
+                          cosh(((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature))
+						   
    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
           dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
              dgdot_dtauslip(i)*lattice_Sslip(k,l,i,constitutive_dislobased_structure(matID))* &
@@ -506,13 +512,16 @@ function constitutive_dislobased_dotState(Tstar_v,Temperature,state,ipc,ip,el)
  real(pReal), dimension(constitutive_dislobased_Nslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_dislobased_dotState
 
+ Temperature = 298.0
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
  n = constitutive_dislobased_Nslip(matID)
 
 !* Dislocation density evolution
  constitutive_dislobased_dotState = 0.0_pReal
  do i = 1,n
+
    tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
+
    if (abs(tau_slip) > state(ipc,ip,el)%p(3*n+i)) then
       gdot_slip = state(ipc,ip,el)%p(7*n+i)*sign(1.0_pReal,tau_slip)*&
                   sinh(((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature))
@@ -522,16 +531,44 @@ function constitutive_dislobased_dotState(Tstar_v,Temperature,state,ipc,ip,el)
 				   
       athermal_recovery = constitutive_dislobased_c7(matID)*state(ipc,ip,el)%p(i)*abs(gdot_slip)
       
-	  !thermal_recovery  = constitutive_dislobased_c8(matID)*abs(tau_slip)*state(ipc,ip,el)%p(i)**(2.0_pReal)*&
-      !                    ((constitutive_dislobased_D0(matID)*constitutive_dislobased_bg(matID)**(3.0_pReal))/&
-      !                    (kB*Temperature))*exp(-constitutive_dislobased_Qsd(matID)/(kB*Temperature))
-
       constitutive_dislobased_dotState(i) = locks - athermal_recovery
    endif
  enddo
 
  return
 end function
+
+
+function constitutive_dislobased_dotTemperature(Tstar_v,Temperature,state,ipc,ip,el)
+!*********************************************************************
+!* rate of change of microstructure                                  *
+!* INPUT:                                                            *
+!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
+!*  - ipc             : component-ID at current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
+!* OUTPUT:                                                           *
+!*  - constitutive_dotTemperature : evolution of Temperature         *
+!*********************************************************************
+ use prec, only: pReal,pInt,p_vec
+ use lattice, only: lattice_Sslip_v
+ use mesh, only: mesh_NcpElems,mesh_maxNips
+ use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ implicit none
+
+!* Definition of variables
+ integer(pInt) ipc,ip,el
+ integer(pInt) matID,i,n
+ real(pReal) Temperature
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
+ real(pReal), dimension(6) :: Tstar_v
+ real(pReal) constitutive_dislobased_dotTemperature
+     
+ constitutive_dislobased_dotTemperature = 0.0_pReal
+   
+ return
+end function
+
 
 pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el)
 !*********************************************************************
@@ -544,7 +581,6 @@ pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,i
 !*  - el              : current element                              *
 !*********************************************************************
  use prec, only: pReal,pInt,p_vec
- use math, only: math_mul6x6
  use lattice, only: lattice_Sslip_v
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
@@ -556,7 +592,7 @@ pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,i
  real(pReal), dimension(6), intent(in) :: Tstar_v
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
  integer(pInt) matID,o,i,c,n
- real(pReal) tau_slip, active_rate
+ real(pReal) tau_slip
  real(pReal), dimension(constitutive_dislobased_sizePostResults(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_dislobased_postResults
 
@@ -567,20 +603,23 @@ pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,i
 
  do o = 1,phase_Noutput(material_phase(ipc,ip,el))
    select case(constitutive_dislobased_output(o,matID))
+
      case ('dislodensity')
        constitutive_dislobased_postResults(c+1:c+n) = state(ipc,ip,el)%p(1:n)
        c = c + n
+
      case ('rateofshear')
        do i = 1,n
-         tau_slip = math_mul6x6(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
+         tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
 		 if ((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))>0) then
             constitutive_dislobased_postResults(c+i) = state(ipc,ip,el)%p(7*n+i)*sign(1.0_pReal,tau_slip)*&
-            sinh(((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature))
+            sinh(((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*298.0))
 	     else
 		    constitutive_dislobased_postResults(c+i) = 0.0_pReal
 		 endif
        enddo
        c = c + n
+
    end select
  enddo
  
