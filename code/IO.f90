@@ -852,7 +852,9 @@ endfunction
  case (274)
    msg = 'Non-positive relative maximum value (upper bound) for GIA residual'
  case (275)
-   msg = 'Limit for GIA iteration too small' 
+   msg = 'Limit for GIA iteration too small'
+ case (276)
+   msg = 'Non-positive relative tolerance for temperature'   
  case (300)
    msg = 'This material can only be used with elements with three direct stress components'
  case (500)
