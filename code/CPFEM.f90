@@ -90,10 +90,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   use mesh, only:                                     mesh_init, &
                                                       mesh_FEasCP, &
                                                       mesh_NcpElems, &
-                                                      mesh_maxNips
+                                                      mesh_maxNips, &
+													  mesh_element
   use lattice, only:                                  lattice_init
   use material, only:                                 material_init, &
-                                                      homogenization_maxNgrains
+                                                      homogenization_maxNgrains, &
+													  homogenization_Ngrains
   use constitutive, only:                             constitutive_init,&
                                                       constitutive_state0,constitutive_state
   use crystallite, only:                              crystallite_init, &
@@ -142,6 +144,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   real(pReal), dimension (3,3,3,3) ::                 H, &
                                                       H_sym
   integer(pInt)                                       cp_en, &            ! crystal plasticity element number
+                                                      e, &
+                                                      g, &
                                                       i, &
                                                       j, &
                                                       k, &
@@ -195,16 +199,19 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       if (mode == 1) then
         crystallite_F0  = crystallite_partionedF                          ! crystallite deformation (_subF is perturbed...)
         crystallite_Fp0 = crystallite_Fp                                  ! crystallite plastic deformation
-        crystallite_Lp0 = crystallite_Lp                                  ! crystallite plastic velocity
-        forall ( i = 1:homogenization_maxNgrains, &
-                 j = 1:mesh_maxNips, &
-                 k = 1:mesh_NcpElems ) &
-          constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-        write(6,'(a10,/,4(3(f10.3,x),/))') 'aged state',constitutive_state(1,1,1)%p/1e6
-        do j = 1,mesh_maxNips
-          do k = 1,mesh_NcpElems
-            if (homogenization_sizeState(j,k) > 0_pInt) &
-              homogenization_state0(j,k)%p = homogenization_state(j,k)%p  ! internal state of homogenization scheme
+        crystallite_Lp0 = crystallite_Lp                                  ! crystallite plastic velocity                                 
+        do e = 1,mesh_NcpElems		
+		  do g = 1,homogenization_Ngrains(mesh_element(3,e))
+		    do i = 1,mesh_maxNips
+               constitutive_state0(g,i,e)%p = constitutive_state(g,i,e)%p      ! microstructure of crystallites
+            enddo
+		  enddo
+		enddo      
+		write(6,'(a10,/,4(3(f10.3,x),/))') 'aged state',constitutive_state(1,1,1)%p/1e6
+        do e = 1,mesh_NcpElems
+          do i = 1,mesh_maxNips
+            if (homogenization_sizeState(i,e) > 0_pInt) &
+              homogenization_state0(i,e)%p = homogenization_state(i,e)%p  ! internal state of homogenization scheme
           enddo
         enddo
       endif
