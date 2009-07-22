@@ -57,25 +57,6 @@ subroutine numerics_init()
   character(len=64)                           tag
   character(len=1024)                         line
   
-  !*** global variables ***!
-  ! relevantStrain
-  ! iJacoStiffness
-  ! iJacoLpresiduum
-  ! pert_Fg
-  ! nHomog
-  ! nCryst
-  ! nState
-  ! nStress
-  ! subStepMin
-  ! rTol_crystalliteState
-  ! rTol_crystalliteTemperature
-  ! rTol_crystalliteStress
-  ! aTol_crystalliteStress
-  ! resToler
-  ! resAbsol
-  ! resBound
-  ! NRiterMax
-  
   write(6,*)
   write(6,*) '<<<+-  numerics init  -+>>>'
   write(6,*)

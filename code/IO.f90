@@ -58,8 +58,9 @@
  use prec, only: pReal, pInt
  implicit none
 
+ integer(pInt), intent(in) :: unit
+ integer(pInt) extPos
  character(256) outName
- integer(pInt) unit, extPos
  character(3) ext
 
  inquire(6, name=outName) ! determine outputfileName
@@ -73,6 +74,29 @@
  IO_open_inputFile = .true.
  return
 100 IO_open_inputFile = .false.
+ return
+
+ endfunction
+
+
+!********************************************************************
+! open (write) file related to current job
+! but with different extension to given unit
+!********************************************************************
+ logical function IO_open_jobFile(unit,newExt)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt), intent(in) :: unit
+ character(*), intent(in) :: newExt
+ character(256) outName
+
+ inquire(6, name=outName) ! determine outputfileName
+ open(unit,status='replace',err=100,file=outName(1:len_trim(outName)-3)//newExt)
+ IO_open_jobFile = .true.
+ return
+100 IO_open_jobFile = .false.
  return
 
  endfunction
@@ -771,6 +795,8 @@ endfunction
  select case (ID)
  case (0)
    msg = 'Unable to open input file'
+ case (50)
+   msg = 'Error writing constitutive output description'
  case (100)
    msg = 'Error reading from configuration file'
  case (105)
@@ -793,22 +819,16 @@ endfunction
    msg = 'Unknown constitution specified'
  case (201)
    msg = 'Unknown homogenization specified'
- case (202)
-   msg = 'Number of slip systems too small'
- case (203)
-   msg = 'Negative initial slip resistance'
- case (204)
-   msg = 'Non-positive reference shear rate'
  case (205)
+   msg = 'Unknown lattice structure encountered'
+ case (210)
+   msg = 'Negative initial resistance'
+ case (211)
+   msg = 'Non-positive reference shear rate'
+ case (212)
    msg = 'Non-positive stress exponent'
- case (206)
-   msg = 'Non-positive initial hardening slope'
- case (207)
+ case (213)
    msg = 'Non-positive saturation stress'
- case (208)
-   msg = 'Non-positive w0'
- case (209)
-   msg = 'Negative latent hardening ratio'
  case (220)
    msg = 'Negative initial dislocation density'
  case (221)
@@ -818,9 +838,13 @@ endfunction
  case (223)
    msg = 'Negative self diffusion energy'
  case (224)
-   msg = 'Negative diffusion constant'
+   msg = 'Non-positive diffusion prefactor'
+ case (225)
+   msg = 'No slip systems specified'
  case (240)
    msg = 'Non-positive Taylor factor'
+ case (241)
+   msg = 'Non-positive hardening exponent'
  case (260)
    msg = 'Non-positive relevant strain'
  case (261)
@@ -852,9 +876,7 @@ endfunction
  case (274)
    msg = 'Non-positive relative maximum value (upper bound) for GIA residual'
  case (275)
-   msg = 'Limit for GIA iteration too small'
- case (276)
-   msg = 'Non-positive relative tolerance for temperature'   
+   msg = 'Limit for GIA iteration too small' 
  case (300)
    msg = 'This material can only be used with elements with three direct stress components'
  case (500)
@@ -866,7 +888,7 @@ endfunction
  case (700)
    msg = 'Singular matrix in stress iteration'
  case (800)
-   msg = 'GIA requires 8 grains per IP (bonehead, you!)'
+   msg = 'RGC requires 8 grains per IP (bonehead, you!) -- but now outdated'
  case default
    msg = 'Unknown error number...'
  end select

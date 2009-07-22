@@ -36,16 +36,16 @@ subroutine CPFEM_init()
 
   ! initialize stress and jacobian to zero 
   allocate(CPFEM_cs(6,mesh_maxNips,mesh_NcpElems)) ;                CPFEM_cs              = 0.0_pReal
-  allocate(CPFEM_dcsdE(6,6,mesh_maxNips,mesh_NcpElems)) ;           CPFEM_dcsde           = 0.0_pReal
-  allocate(CPFEM_dcsdE_knownGood(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_dcsde_knownGood = 0.0_pReal
+  allocate(CPFEM_dcsdE(6,6,mesh_maxNips,mesh_NcpElems)) ;           CPFEM_dcsdE           = 0.0_pReal
+  allocate(CPFEM_dcsdE_knownGood(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_dcsdE_knownGood = 0.0_pReal
 
   !$OMP CRITICAL (write2out)
     write(6,*)
     write(6,*) '<<<+-  cpfem init  -+>>>'
     write(6,*)
     write(6,'(a32,x,6(i5,x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
-    write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsde:           ', shape(CPFEM_dcsde)
-    write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsde_knownGood: ', shape(CPFEM_dcsde_knownGood)
+    write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
+    write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
     write(6,*)
     write(6,*) 'parallelExecution:    ', parallelExecution
     write(6,*) 'symmetricSolver:      ', symmetricSolver
@@ -61,7 +61,7 @@ endsubroutine
 !***    call the actual material model                               ***
 !***********************************************************************
 subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress, jacobian, ngens)
-  ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/de
+  ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
 
   !*** variables and functions from other modules ***!
   use prec, only:                                     pReal, &
@@ -90,12 +90,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   use mesh, only:                                     mesh_init, &
                                                       mesh_FEasCP, &
                                                       mesh_NcpElems, &
-                                                      mesh_maxNips, &
-													  mesh_element
+                                                      mesh_maxNips
   use lattice, only:                                  lattice_init
   use material, only:                                 material_init, &
-                                                      homogenization_maxNgrains, &
-													  homogenization_Ngrains
+                                                      homogenization_maxNgrains
   use constitutive, only:                             constitutive_init,&
                                                       constitutive_state0,constitutive_state
   use crystallite, only:                              crystallite_init, &
@@ -144,8 +142,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   real(pReal), dimension (3,3,3,3) ::                 H, &
                                                       H_sym
   integer(pInt)                                       cp_en, &            ! crystal plasticity element number
-                                                      e, &
-                                                      g, &
                                                       i, &
                                                       j, &
                                                       k, &
@@ -183,6 +179,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   cp_en = mesh_FEasCP('elem',element)
   
   if (cp_en == 1 .and. IP == 1) then
+    write(6,*)
     write(6,*) '#####################################'
     write(6,'(a10,1x,f8.4,1x,a10,1x,i4,1x,a10,1x,i3,1x,a10,1x,i2,x,a10,1x,i2)') &
     'theTime',theTime,'theInc',theInc,'theCycle',theCycle,'theLovl',theLovl,&
@@ -199,19 +196,16 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       if (mode == 1) then
         crystallite_F0  = crystallite_partionedF                          ! crystallite deformation (_subF is perturbed...)
         crystallite_Fp0 = crystallite_Fp                                  ! crystallite plastic deformation
-        crystallite_Lp0 = crystallite_Lp                                  ! crystallite plastic velocity                                 
-        do e = 1,mesh_NcpElems		
-		  do g = 1,homogenization_Ngrains(mesh_element(3,e))
-		    do i = 1,mesh_maxNips
-               constitutive_state0(g,i,e)%p = constitutive_state(g,i,e)%p      ! microstructure of crystallites
-            enddo
-		  enddo
-		enddo      
-		write(6,'(a10,/,4(3(f10.3,x),/))') 'aged state',constitutive_state(1,1,1)%p/1e6
-        do e = 1,mesh_NcpElems
-          do i = 1,mesh_maxNips
-            if (homogenization_sizeState(i,e) > 0_pInt) &
-              homogenization_state0(i,e)%p = homogenization_state(i,e)%p  ! internal state of homogenization scheme
+        crystallite_Lp0 = crystallite_Lp                                  ! crystallite plastic velocity
+        forall ( i = 1:homogenization_maxNgrains, &
+                 j = 1:mesh_maxNips, &
+                 k = 1:mesh_NcpElems ) &
+          constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
+        write(6,'(a10,/,4(3(f20.8,x),/))') 'aged state',constitutive_state(1,1,1)%p
+        do k = 1,mesh_NcpElems
+          do j = 1,mesh_maxNips
+            if (homogenization_sizeState(j,k) > 0_pInt) &
+              homogenization_state0(j,k)%p = homogenization_state(j,k)%p  ! internal state of homogenization scheme
           enddo
         enddo
       endif
@@ -269,7 +263,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     
     ! --+>> COLLECTION OF FEM DATA AND RETURN OF ODD STRESS AND JACOBIAN <<+-- 
     case (3)
-	  if (IP==1.AND.cp_en==1) write(6,*) 'Temp from CPFEM', Temperature
       materialpoint_Temperature(IP,cp_en)   = Temperature
       materialpoint_F0(:,:,IP,cp_en)        = ffn
       materialpoint_F(:,:,IP,cp_en)         = ffn1
@@ -294,13 +287,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   ! return the local stress and the jacobian from storage
   cauchyStress(1:ngens) = CPFEM_cs(1:ngens,IP,cp_en)
   jacobian(1:ngens,1:ngens) = CPFEM_dcsdE(1:ngens,1:ngens,IP,cp_en)
+  if (IP == 1 .and. cp_en == 1) write(6,'(a,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip 1 el 1',jacobian/1e9
   ! return temperature
   if (theInc > 0_pInt) Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
-  
   return
 
 end subroutine
-
 
 
  END MODULE CPFEM

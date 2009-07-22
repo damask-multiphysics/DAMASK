@@ -28,7 +28,7 @@ integer(pInt) material_Nhomogenization, &                                       
               material_Nphase, &                                                       ! number of phases
               material_Ntexture, &                                                     ! number of textures
               microstructure_maxNconstituents, &                                       ! max number of constituents in any phase
-              homogenization_maxNgrains, &                                             ! max number of grains in any homogenization
+              homogenization_maxNgrains, &                                             ! max number of grains in any USED homogenization
               texture_maxNgauss, &                                                     ! max number of Gauss components in any texture
               texture_maxNfiber                                                        ! max number of Fiber components in any texture
 character(len=64), dimension(:),       allocatable :: homogenization_name, &           ! name of each homogenization
@@ -44,10 +44,12 @@ integer(pInt),     dimension(:),       allocatable :: homogenization_Ngrains, & 
                                                       microstructure_Nconstituents, &  ! number of constituents in each microstructure
                                                       phase_constitutionInstance, &    ! instance of particular constitution of each phase
                                                       phase_Noutput, &                 ! number of '(output)' items per phase
-                                                      phase_localConstitution, &       ! flag phases with local constitutive law
                                                       texture_symmetry, &              ! number of symmetric orientations per texture
                                                       texture_Ngauss, &                ! number of Gauss components per texture
                                                       texture_Nfiber                   ! number of Fiber components per texture
+logical,           dimension(:),       allocatable :: homogenization_active, &         !
+                                                      microstructure_active, &         ! 
+                                                      phase_localConstitution          ! flags phases with local constitutive law
 integer(pInt),     dimension(:,:),     allocatable :: microstructure_phase, &          ! phase IDs of each microstructure
                                                       microstructure_texture           ! texture IDs of each microstructure
 real(pReal),       dimension(:,:),     allocatable :: microstructure_fraction          ! vol fraction of each constituent in microstructure
@@ -71,7 +73,7 @@ subroutine material_init()
 
 !* Definition of variables
  integer(pInt), parameter :: fileunit = 200
- integer(pInt) i
+ integer(pInt) i,j
  
  write(6,*)
  write(6,*) '<<<+-  material init  -+>>>'
@@ -94,14 +96,22 @@ subroutine material_init()
  write (6,*)
  write (6,*) 'MATERIAL configuration'
  write (6,*)
- write (6,*) 'Homogenization'
+ write (6,'(a32,x,a16,x,a6)') 'homogenization                  ','type            ','grains'
  do i = 1,material_Nhomogenization
-   write (6,'(a32,x,a16,x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
+   write (6,'(x,a32,x,a16,x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
  enddo
  write (6,*)
- write (6,*) 'Microstructure'
+ write (6,'(a32,x,a12)') 'microstructure                  ','constituents'
  do i = 1,material_Nmicrostructure
    write (6,'(a32,x,i4)') microstructure_name(i),microstructure_Nconstituents(i)
+   if (microstructure_Nconstituents(i) > 0_pInt) then
+     do j = 1,microstructure_Nconstituents(i)
+       write (6,'(a1,x,a32,x,a32,x,f6.4)') '>',phase_name(microstructure_phase(j,i)),&
+                                               texture_name(microstructure_texture(j,i)),&
+                                               microstructure_fraction(j,i)
+     enddo
+     write (6,*)
+   endif
  enddo
 
  call material_populateGrains()
@@ -115,6 +125,7 @@ subroutine material_parseHomogenization(file,myPart)
 
  use prec, only: pInt
  use IO
+ use mesh, only: mesh_element
  implicit none
 
  character(len=*), intent(in) :: myPart
@@ -128,16 +139,15 @@ subroutine material_parseHomogenization(file,myPart)
  Nsections = IO_countSections(file,myPart)
  material_Nhomogenization = Nsections
  
- write (6,*) 'homogenization sections found',material_Nhomogenization
  allocate(homogenization_name(Nsections));    homogenization_name = ''
  allocate(homogenization_type(Nsections));    homogenization_type = ''
  allocate(homogenization_typeInstance(Nsections));  homogenization_typeInstance = 0_pInt
  allocate(homogenization_Ngrains(Nsections)); homogenization_Ngrains = 0_pInt
  allocate(homogenization_Noutput(Nsections)); homogenization_Noutput = 0_pInt
- 
- write(6,*) 'scanning for (output)',homogenization_Noutput
+ allocate(homogenization_active(Nsections));  homogenization_active = .false.
+
+ forall (s = 1:Nsections) homogenization_active(s) = any(mesh_element(3,:) == s)    ! current homogenization used in model?
  homogenization_Noutput = IO_countTagInPart(file,myPart,'(output)',Nsections)
- write(6,*) 'count of (output)',homogenization_Noutput
  
  rewind(file)
  line = ''
@@ -171,7 +181,7 @@ subroutine material_parseHomogenization(file,myPart)
    endif
  enddo
 
-100 homogenization_maxNgrains = maxval(homogenization_Ngrains)
+100 homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
   return
 
  endsubroutine
@@ -183,6 +193,7 @@ subroutine material_parseMicrostructure(file,myPart)
 
  use prec, only: pInt
  use IO
+ use mesh, only: mesh_element
  implicit none
 
  character(len=*), intent(in) :: myPart
@@ -197,6 +208,9 @@ subroutine material_parseMicrostructure(file,myPart)
  material_Nmicrostructure = Nsections
  allocate(microstructure_name(Nsections));    microstructure_name = ''
  allocate(microstructure_Nconstituents(Nsections))
+ allocate(microstructure_active(Nsections))
+
+ forall (i = 1:Nsections) microstructure_active(i) = any(mesh_element(4,:) == i)    ! current microstructure used in model?
 
  microstructure_Nconstituents = IO_countTagInPart(file,myPart,'(constituent)',Nsections)
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
@@ -452,7 +466,7 @@ subroutine material_populateGrains()
  
  allocate(Ngrains(material_Nhomogenization,material_Nmicrostructure)); Ngrains = 0_pInt
 
-! count grains per homog/micro pair
+! identify maximum grain count per IP (from element) and find grains per homog/micro pair
  do e = 1,mesh_NcpElems
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
@@ -463,7 +477,7 @@ subroutine material_populateGrains()
    Ngrains(homog,micro) = Ngrains(homog,micro) + homogenization_Ngrains(homog) * FE_Nips(mesh_element(2,e))
  enddo
 
- allocate(volumeOfGrain(maxval(Ngrains)))          ! reserve memory for maximum case
+ allocate(volumeOfGrain(maxval(Ngrains)))           ! reserve memory for maximum case
  allocate(phaseOfGrain(maxval(Ngrains)))            ! reserve memory for maximum case
  allocate(orientationOfGrain(3,maxval(Ngrains)))    ! reserve memory for maximum case
  

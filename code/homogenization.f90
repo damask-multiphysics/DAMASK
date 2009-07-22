@@ -119,7 +119,7 @@ subroutine homogenization_init(Temperature)
  homogenization_maxSizeState       = maxval(homogenization_sizeState)
  homogenization_maxSizePostResults = maxval(homogenization_sizePostResults)
 
- allocate(materialpoint_results(     1+homogenization_maxSizePostResults + &
+ allocate(materialpoint_results(  1+ 1+homogenization_maxSizePostResults + &    ! grain count, homogSize, homogResult
           homogenization_maxNgrains*(1+crystallite_Nresults+constitutive_maxSizePostResults), mesh_maxNips,mesh_NcpElems))
 
 
@@ -348,7 +348,7 @@ subroutine materialpoint_stressAndItsTangent(&
        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
          if (      materialpoint_requested(i,e) .and. &
              .not. materialpoint_doneAndHappy(1,i,e)) then
-           materialpoint_doneAndHappy(:,i,e) = homogenization_updateState(i,e) 
+           materialpoint_doneAndHappy(:,i,e) = homogenization_updateState(i,e)
            materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(:,i,e))  ! converged if done and happy
          endif
        enddo
@@ -372,7 +372,7 @@ subroutine materialpoint_stressAndItsTangent(&
 !$OMP END PARALLEL DO
 
  write (6,*) 'Material Point finished'
- write (6,'(a,/,3(3(f12.7,x)/))') 'Lp of 1 8 1',crystallite_Lp(1:3,:,1,8,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'Lp of 1 1 1',crystallite_Lp(1:3,:,1,1,1)
  
  ! how to deal with stiffness?
  return
@@ -401,9 +401,10 @@ subroutine materialpoint_postResults(dt)
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
        c = 0_pInt
+       materialpoint_results(c+1,i,e) = myNgrains; c = c+1_pInt ! tell number of grains at materialpoint
        d = homogenization_sizePostResults(i,e)
        materialpoint_results(c+1,i,e) = d; c = c+1_pInt         ! tell size of homogenization results
-       if (d > 0_pInt) then                                        ! any homogenization results to mention?
+       if (d > 0_pInt) then                                     ! any homogenization results to mention?
          materialpoint_results(c+1:c+d,i,e) = &                 ! tell homogenization results
          homogenization_postResults(i,e);  c = c+d
        endif

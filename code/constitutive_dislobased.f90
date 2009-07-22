@@ -8,48 +8,72 @@
 !* - orientations                   *
 !************************************
 
+!	[Alu]
+!	constitution             dislobased
+!	(output)                 dislodensity
+!	(output)                 rateofshear
+!	lattice_structure        1
+!	Nslip                    12
+!	
+!	c11                      106.75e9
+!	c12                      60.41e9
+!	c44                      28.34e9
+!	
+!	burgers                  2.86e-10	# Burgers vector [m]
+!	Qedge                    3e-19		# Activation energy for dislocation glide [J/K] (0.5*G*b^3)
+!	Qsd                      2.4e-19		# Activation energy for self diffusion [J/K] (gamma-iron)
+!	diff0                    1e-3		# prefactor vacancy diffusion coeffficent (gamma-iron)
+!	interaction_coefficients 1.0 2.2 3.0 1.6 3.8 4.5		# Dislocation interaction coefficients
+!	
+!	rho0                     6.0e12		# Initial dislocation density [m/m^3]
+!	
+!	c1                       0.1		# Passing stress adjustment
+!	c2                       2.0		# Jump width adjustment
+!	c3                       1.0		# Activation volume adjustment
+!	c4                       50.0		# Average slip distance adjustment for lock formation
+!	c7                       8.0		# Athermal recovery adjustment
+!	c8                       1.0e10		# Thermal recovery adjustment (plays no role for me)
+
 MODULE constitutive_dislobased
 !*** Include other modules ***
  use prec, only: pReal,pInt
  implicit none
 
  character (len=*), parameter :: constitutive_dislobased_label = 'dislobased'
- integer(pInt),     dimension(:),     allocatable :: constitutive_dislobased_sizeDotState, &
-                                                     constitutive_dislobased_sizeState, &
-                                                     constitutive_dislobased_sizePostResults
- character(len=64), dimension(:,:),         allocatable :: constitutive_dislobased_output
- character(len=32), dimension(:),           allocatable :: constitutive_dislobased_structureName
- integer(pInt),     dimension(:),           allocatable :: constitutive_dislobased_structure
- integer(pInt),     dimension(:),           allocatable :: constitutive_dislobased_Nslip
- integer(pInt),     dimension(:),           allocatable :: constitutive_dislobased_Ntwin
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_C11
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_C12
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_C13
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_C33
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_C44
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Gmod
- real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislobased_Cslip_66
- real(pReal),       dimension(:,:,:,:),     allocatable :: constitutive_dislobased_Ctwin_66
- real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_dislobased_Cslip_3333
- real(pReal),       dimension(:,:,:,:,:,:), allocatable :: constitutive_dislobased_Ctwin_3333
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_rho0
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_bg
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Qedge
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_grainsize
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_stacksize
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_fmax
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Ndot0
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Cmfpslip
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Cmfptwin
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Cthresholdslip
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Cthresholdtwin
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Cactivolume
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Cstorage
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_Carecovery
- real(pReal),       dimension(:),           allocatable :: constitutive_dislobased_CoverA
- real(pReal),       dimension(:,:),         allocatable :: constitutive_dislobased_SlipIntCoeff
- real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislobased_Iparallel
- real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislobased_Iforest
+ 
+ integer(pInt),   dimension(:),     allocatable :: constitutive_dislobased_sizeDotState, &
+                                                   constitutive_dislobased_sizeState, &
+                                                   constitutive_dislobased_sizePostResults
+ integer(pInt),   dimension(:,:),   allocatable,target :: constitutive_dislobased_sizePostResult     ! size of each post result output
+ character(len=64), dimension(:,:), allocatable,target :: constitutive_dislobased_output             ! name of each post result output
+ character(len=32), dimension(:),   allocatable :: constitutive_dislobased_structureName
+ integer(pInt),   dimension(:),     allocatable :: constitutive_dislobased_structure
+ integer(pInt),   dimension(:),     allocatable :: constitutive_dislobased_Nslip
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_C11
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_C12
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_C13
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_C33
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_C44
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_Gmod
+ real(pReal), dimension(:,:,:), allocatable :: constitutive_dislobased_Cslip_66
+!* Visco-plastic constitutive_phenomenological parameters
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_rho0
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_bg
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_Qedge
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_Qsd
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_D0
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_c1
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_c2
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_c3
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_c4
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_c5
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_c6
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_c7
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_c8
+ real(pReal), dimension(:),     allocatable :: constitutive_dislobased_CoverA
+ real(pReal), dimension(:,:),   allocatable :: constitutive_dislobased_SlipIntCoeff
+ real(pReal), dimension(:,:,:), allocatable :: constitutive_dislobased_Iparallel
+ real(pReal), dimension(:,:,:), allocatable :: constitutive_dislobased_Iforest
 
 !*************************************
 !* Definition of material properties *
@@ -70,7 +94,6 @@ CONTAINS
 !* - constitutive_microstructure
 !* - constitutive_LpAndItsTangent
 !* - consistutive_dotState
-!* - constitutive_dotTemperature
 !* - consistutive_postResults
 !****************************************
 
@@ -82,50 +105,54 @@ subroutine constitutive_dislobased_init(file)
  use math, only: math_Mandel3333to66, math_Voigt66to3333, math_mul3x3
  use IO
  use material
- use lattice, only: lattice_sn,lattice_st,lattice_interactionSlipSlip,lattice_initializeStructure,lattice_Qtwin,lattice_tn
+ use lattice, only: lattice_sn, lattice_st, lattice_interactionSlipSlip, lattice_initializeStructure
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 7
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section,maxNinstance,i,j,k,l,m,n,o,p,q,r,s,output
+ integer(pInt) section, maxNinstance, i,j,k,l, output, mySize
  character(len=64) tag
  character(len=1024) line
  real(pReal) x,y
  
+ write(6,*)
+ write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_dislobased_label,' init  -+>>>'
+ write(6,*)
+ 
  maxNinstance = count(phase_constitution == constitutive_dislobased_label)
  if (maxNinstance == 0) return
 
- allocate(constitutive_dislobased_sizeDotState(maxNinstance))       ; constitutive_dislobased_sizeDotState = 0_pInt
- allocate(constitutive_dislobased_sizeState(maxNinstance))          ; constitutive_dislobased_sizeState = 0_pInt
- allocate(constitutive_dislobased_sizePostResults(maxNinstance))    ; constitutive_dislobased_sizePostResults = 0_pInt
- allocate(constitutive_dislobased_structureName(maxNinstance))      ; constitutive_dislobased_structureName = ''
- allocate(constitutive_dislobased_structure(maxNinstance))          ; constitutive_dislobased_structure = 0_pInt
- allocate(constitutive_dislobased_Nslip(maxNinstance))              ; constitutive_dislobased_Nslip = 0_pInt
- allocate(constitutive_dislobased_Ntwin(maxNinstance))              ; constitutive_dislobased_Ntwin = 0_pInt
- allocate(constitutive_dislobased_C11(maxNinstance))                ; constitutive_dislobased_C11 = 0.0_pReal
- allocate(constitutive_dislobased_C12(maxNinstance))                ; constitutive_dislobased_C12 = 0.0_pReal
- allocate(constitutive_dislobased_C13(maxNinstance))                ; constitutive_dislobased_C13 = 0.0_pReal
- allocate(constitutive_dislobased_C33(maxNinstance))                ; constitutive_dislobased_C33 = 0.0_pReal
- allocate(constitutive_dislobased_C44(maxNinstance))                ; constitutive_dislobased_C44 = 0.0_pReal
- allocate(constitutive_dislobased_Gmod(maxNinstance))               ; constitutive_dislobased_Gmod = 0.0_pReal
- allocate(constitutive_dislobased_Cslip_66(6,6,maxNinstance))       ; constitutive_dislobased_Cslip_66 = 0.0_pReal
- allocate(constitutive_dislobased_Cslip_3333(3,3,3,3,maxNinstance)) ; constitutive_dislobased_Ctwin_3333 = 0.0_pReal
- allocate(constitutive_dislobased_rho0(maxNinstance))               ; constitutive_dislobased_rho0 = 0.0_pReal
- allocate(constitutive_dislobased_bg(maxNinstance))                 ; constitutive_dislobased_bg = 0.0_pReal
- allocate(constitutive_dislobased_Qedge(maxNinstance))              ; constitutive_dislobased_Qedge = 0.0_pReal
- allocate(constitutive_dislobased_grainsize(maxNinstance))          ; constitutive_dislobased_grainsize = 0.0_pReal
- allocate(constitutive_dislobased_stacksize(maxNinstance))          ; constitutive_dislobased_stacksize = 0.0_pReal
- allocate(constitutive_dislobased_fmax(maxNinstance))               ; constitutive_dislobased_fmax = 0.0_pReal
- allocate(constitutive_dislobased_Ndot0(maxNinstance))              ; constitutive_dislobased_Ndot0 = 0.0_pReal
- allocate(constitutive_dislobased_Cmfpslip(maxNinstance))           ; constitutive_dislobased_Cmfpslip = 0.0_pReal
- allocate(constitutive_dislobased_Cmfptwin(maxNinstance))           ; constitutive_dislobased_Cmfptwin = 0.0_pReal
- allocate(constitutive_dislobased_Cthresholdslip(maxNinstance))     ; constitutive_dislobased_Cthresholdslip = 0.0_pReal
- allocate(constitutive_dislobased_Cthresholdtwin(maxNinstance))     ; constitutive_dislobased_Cthresholdtwin = 0.0_pReal
- allocate(constitutive_dislobased_Cactivolume(maxNinstance))        ; constitutive_dislobased_Cactivolume = 0.0_pReal
- allocate(constitutive_dislobased_Cstorage(maxNinstance))           ; constitutive_dislobased_Cstorage = 0.0_pReal
- allocate(constitutive_dislobased_Carecovery(maxNinstance))         ; constitutive_dislobased_Carecovery = 0.0_pReal
- allocate(constitutive_dislobased_CoverA(maxNinstance))             ; constitutive_dislobased_CoverA = 0.0_pReal
- allocate(constitutive_dislobased_SlipIntCoeff(6,maxNinstance))     ; constitutive_dislobased_SlipIntCoeff = 0.0_pReal
- allocate(constitutive_dislobased_output(maxval(phase_Noutput),maxNinstance)) ; constitutive_dislobased_output = ''
+ allocate(constitutive_dislobased_sizeDotState(maxNinstance)) ;   constitutive_dislobased_sizeDotState = 0_pInt
+ allocate(constitutive_dislobased_sizeState(maxNinstance)) ;      constitutive_dislobased_sizeState = 0_pInt
+ allocate(constitutive_dislobased_sizePostResults(maxNinstance)); constitutive_dislobased_sizePostResults = 0_pInt
+ allocate(constitutive_dislobased_sizePostResult(maxval(phase_Noutput), &
+                                                 maxNinstance)) ; constitutive_dislobased_sizePostResult = 0_pInt
+ allocate(constitutive_dislobased_output(maxval(phase_Noutput), &
+                                         maxNinstance)) ;         constitutive_dislobased_output = ''
+ allocate(constitutive_dislobased_structureName(maxNinstance)) ;  constitutive_dislobased_structureName = ''
+ allocate(constitutive_dislobased_structure(maxNinstance)) ;      constitutive_dislobased_structure = 0_pInt
+ allocate(constitutive_dislobased_Nslip(maxNinstance)) ;          constitutive_dislobased_Nslip = 0_pInt
+ allocate(constitutive_dislobased_C11(maxNinstance)) ;            constitutive_dislobased_C11 = 0.0_pReal
+ allocate(constitutive_dislobased_C12(maxNinstance)) ;            constitutive_dislobased_C12 = 0.0_pReal
+ allocate(constitutive_dislobased_C13(maxNinstance)) ;            constitutive_dislobased_C13 = 0.0_pReal
+ allocate(constitutive_dislobased_C33(maxNinstance)) ;            constitutive_dislobased_C33 = 0.0_pReal
+ allocate(constitutive_dislobased_C44(maxNinstance)) ;            constitutive_dislobased_C44 = 0.0_pReal
+ allocate(constitutive_dislobased_Gmod(maxNinstance)) ;           constitutive_dislobased_Gmod = 0.0_pReal
+ allocate(constitutive_dislobased_Cslip_66(6,6,maxNinstance)) ;   constitutive_dislobased_Cslip_66 = 0.0_pReal
+ allocate(constitutive_dislobased_rho0(maxNinstance))         ;   constitutive_dislobased_rho0 = 0.0_pReal
+ allocate(constitutive_dislobased_bg(maxNinstance))           ;   constitutive_dislobased_bg = 0.0_pReal
+ allocate(constitutive_dislobased_Qedge(maxNinstance))        ;   constitutive_dislobased_Qedge = 0.0_pReal
+ allocate(constitutive_dislobased_Qsd(maxNinstance))          ;   constitutive_dislobased_Qsd = 0.0_pReal
+ allocate(constitutive_dislobased_D0(maxNinstance))           ;   constitutive_dislobased_D0 = 0.0_pReal
+ allocate(constitutive_dislobased_c1(maxNinstance))           ;   constitutive_dislobased_c1 = 0.0_pReal
+ allocate(constitutive_dislobased_c2(maxNinstance))           ;   constitutive_dislobased_c2 = 0.0_pReal
+ allocate(constitutive_dislobased_c3(maxNinstance))           ;   constitutive_dislobased_c3 = 0.0_pReal
+ allocate(constitutive_dislobased_c4(maxNinstance))           ;   constitutive_dislobased_c4 = 0.0_pReal
+ allocate(constitutive_dislobased_c5(maxNinstance))           ;   constitutive_dislobased_c5 = 0.0_pReal
+ allocate(constitutive_dislobased_c6(maxNinstance))           ;   constitutive_dislobased_c6 = 0.0_pReal
+ allocate(constitutive_dislobased_c7(maxNinstance))           ;   constitutive_dislobased_c7 = 0.0_pReal
+ allocate(constitutive_dislobased_c8(maxNinstance))           ;   constitutive_dislobased_c8 = 0.0_pReal
+ allocate(constitutive_dislobased_CoverA(maxNinstance))       ;   constitutive_dislobased_CoverA = 0.0_pReal
+ allocate(constitutive_dislobased_SlipIntCoeff(6,maxNinstance)) ; constitutive_dislobased_SlipIntCoeff = 0.0_pReal
 
  rewind(file)
  line = ''
@@ -157,8 +184,6 @@ subroutine constitutive_dislobased_init(file)
               constitutive_dislobased_CoverA(i) = IO_floatValue(line,positions,2)
        case ('nslip')
               constitutive_dislobased_Nslip(i) = IO_intValue(line,positions,2)
-       case ('ntwin')
-              constitutive_dislobased_Ntwin(i) = IO_intValue(line,positions,2)
        case ('c11')
               constitutive_dislobased_C11(i) = IO_floatValue(line,positions,2)
        case ('c12')
@@ -175,31 +200,29 @@ subroutine constitutive_dislobased_init(file)
               constitutive_dislobased_bg(i) = IO_floatValue(line,positions,2)
        case ('qedge')
               constitutive_dislobased_Qedge(i) = IO_floatValue(line,positions,2)
-       case ('grainsize')
-              constitutive_dislobased_grainsize(i) = IO_floatValue(line,positions,2)
-       case ('stacksize')
-              constitutive_dislobased_stacksize(i) = IO_floatValue(line,positions,2)
-       case ('fmax')
-              constitutive_dislobased_fmax(i) = IO_floatValue(line,positions,2)
-       case ('ndot0')
-              constitutive_dislobased_Ndot0(i) = IO_floatValue(line,positions,2)
-       case ('cmfpslip')
-              constitutive_dislobased_Cmfpslip(i) = IO_floatValue(line,positions,2)
-       case ('cmfptwin') 
-              constitutive_dislobased_Cmfptwin(i) = IO_floatValue(line,positions,2)
-       case ('cthresholdslip')
-              constitutive_dislobased_Cthresholdslip(i) = IO_floatValue(line,positions,2)
-       case ('cthresholdtwin') 
-              constitutive_dislobased_Cthresholdtwin(i) = IO_floatValue(line,positions,2)
-       case ('cactivolume') 
-              constitutive_dislobased_Cactivolume(i) = IO_floatValue(line,positions,2)
-       case ('cstorage') 
-              constitutive_dislobased_Cstorage(i) = IO_floatValue(line,positions,2)
-       case ('carecovery') 
-              constitutive_dislobased_Carecovery(i) = IO_floatValue(line,positions,2)
+       case ('qsd')
+              constitutive_dislobased_Qsd(i) = IO_floatValue(line,positions,2)
+       case ('diff0')
+              constitutive_dislobased_D0(i) = IO_floatValue(line,positions,2)
+       case ('c1')
+              constitutive_dislobased_c1(i) = IO_floatValue(line,positions,2)
+       case ('c2') 
+              constitutive_dislobased_c2(i) = IO_floatValue(line,positions,2)
+       case ('c3') 
+              constitutive_dislobased_c3(i) = IO_floatValue(line,positions,2)
+       case ('c4') 
+              constitutive_dislobased_c4(i) = IO_floatValue(line,positions,2)
+       case ('c5') 
+              constitutive_dislobased_c5(i) = IO_floatValue(line,positions,2)
+       case ('c6') 
+              constitutive_dislobased_c6(i) = IO_floatValue(line,positions,2)
+       case ('c7') 
+              constitutive_dislobased_c7(i) = IO_floatValue(line,positions,2)
+       case ('c8') 
+              constitutive_dislobased_c8(i) = IO_floatValue(line,positions,2)
        case ('interaction_coefficients') 
-         forall (j=2:min(7,positions(1))) &
-           constitutive_dislobased_SlipIntCoeff(j-1,i) = IO_floatValue(line,positions,j)
+         forall (j=1:6) &
+           constitutive_dislobased_SlipIntCoeff(j,i) = IO_floatValue(line,positions,1+j)
      end select
    endif
  enddo
@@ -209,46 +232,43 @@ subroutine constitutive_dislobased_init(file)
    constitutive_dislobased_structure(i) = lattice_initializeStructure(constitutive_dislobased_structureName(i), &
                                                                       constitutive_dislobased_CoverA(i))
 ! sanity checks
-   if (constitutive_dislobased_structure(i) < 1)           call IO_error(201)
-   if (constitutive_dislobased_Nslip(i) < 1)               call IO_error(202)
+   if (constitutive_dislobased_structure(i) < 1)           call IO_error(205)
    if (constitutive_dislobased_rho0(i) < 0.0_pReal)        call IO_error(220)
    if (constitutive_dislobased_bg(i) <= 0.0_pReal)         call IO_error(221)
    if (constitutive_dislobased_Qedge(i) <= 0.0_pReal)      call IO_error(222)
+   if (constitutive_dislobased_Qsd(i) <= 0.0_pReal)        call IO_error(223)
+   if (constitutive_dislobased_D0(i) <= 0.0_pReal)         call IO_error(224)
+   if (constitutive_dislobased_Nslip(i) < 1)               call IO_error(225)
  enddo
 
- allocate(constitutive_dislobased_Iparallel(maxval(constitutive_dislobased_Nslip),maxval(constitutive_dislobased_Nslip),maxNinstance))
- constitutive_dislobased_Iparallel = 0.0_pReal
- allocate(constitutive_dislobased_Iforest(maxval(constitutive_dislobased_Nslip),maxval(constitutive_dislobased_Nslip),maxNinstance))
- constitutive_dislobased_Iforest = 0.0_pReal
- allocate(constitutive_dislobased_Ctwin_66(6,6,maxval(constitutive_dislobased_Ntwin),maxNinstance))
- constitutive_dislobased_Ctwin_66 = 0.0_pReal
- allocate(constitutive_dislobased_Ctwin_3333(3,3,3,3,maxval(constitutive_dislobased_Ntwin),maxNinstance))
- constitutive_dislobased_Ctwin_3333 = 0.0_pReal
+ allocate(constitutive_dislobased_Iparallel(maxval(constitutive_dislobased_Nslip),&
+                                            maxval(constitutive_dislobased_Nslip),&
+                                            maxNinstance))
 
- do i = 1,maxNinstance   
-   constitutive_dislobased_sizeDotState(i) = constitutive_dislobased_Nslip(i)+constitutive_dislobased_Ntwin(i)
-   constitutive_dislobased_sizeState(i)    = 10*constitutive_dislobased_Nslip(i)+5*constitutive_dislobased_Ntwin(i)
+ allocate(constitutive_dislobased_Iforest(maxval(constitutive_dislobased_Nslip),&
+                                          maxval(constitutive_dislobased_Nslip),&
+                                          maxNinstance))
 
+ do i = 1,maxNinstance
    do j = 1,maxval(phase_Noutput)
-     select case(constitutive_dislobased_output(j,i))
-       case('state_slip')
-         constitutive_dislobased_sizePostResults(i) = constitutive_dislobased_sizePostResults(i) + constitutive_dislobased_Nslip(i)
-       case('rateofshear_slip')
-         constitutive_dislobased_sizePostResults(i) = constitutive_dislobased_sizePostResults(i) + constitutive_dislobased_Nslip(i)
-       case('mfp_slip')
-         constitutive_dislobased_sizePostResults(i) = constitutive_dislobased_sizePostResults(i) + constitutive_dislobased_Nslip(i)
-       case('thresholdstress_slip')
-         constitutive_dislobased_sizePostResults(i) = constitutive_dislobased_sizePostResults(i) + constitutive_dislobased_Nslip(i)
-       case('state_twin')
-         constitutive_dislobased_sizePostResults(i) = constitutive_dislobased_sizePostResults(i) + constitutive_dislobased_Ntwin(i)
-       case('rateofshear_twin')
-         constitutive_dislobased_sizePostResults(i) = constitutive_dislobased_sizePostResults(i) + constitutive_dislobased_Ntwin(i)
-       case('mfp_twin')
-         constitutive_dislobased_sizePostResults(i) = constitutive_dislobased_sizePostResults(i) + constitutive_dislobased_Ntwin(i)
-       case('thresholdstress_twin')
-         constitutive_dislobased_sizePostResults(i) = constitutive_dislobased_sizePostResults(i) + constitutive_dislobased_Ntwin(i)
-     end select
+	 select case(constitutive_dislobased_output(j,i))
+	   case('dislodensity')
+		 mySize = constitutive_dislobased_Nslip(i)
+	   case('rateofshear')
+		 mySize = constitutive_dislobased_Nslip(i)
+	   case default
+		 mySize = 0_pInt
+	 end select
+
+	 if (mySize > 0_pInt) then                               ! any meaningful output found
+	   constitutive_dislobased_sizePostResult(j,i) = mySize
+	   constitutive_dislobased_sizePostResults(i) = &
+	   constitutive_dislobased_sizePostResults(i) + mySize
+	 endif
    enddo
+   
+   constitutive_dislobased_sizeDotState(i) = constitutive_dislobased_Nslip(i)
+   constitutive_dislobased_sizeState(i)    = 8*constitutive_dislobased_Nslip(i)
 
    constitutive_dislobased_Gmod(i) = constitutive_dislobased_C44(i)
    select case (constitutive_dislobased_structure(i))
@@ -274,33 +294,9 @@ subroutine constitutive_dislobased_init(file)
      constitutive_dislobased_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_dislobased_C11(i)- &
                                                           constitutive_dislobased_C12(i))
    end select
-   constitutive_dislobased_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_dislobased_Cslip_66(:,:,i)))
-     
-   !* Construction of the twin elasticity matrices
-   !* Iteration over the systems
-   constitutive_dislobased_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_dislobased_Cslip_66(:,:,i))
-   do j=1,constitutive_dislobased_Ntwin(i)
-      do k=1,3
-      do l=1,3
-      do m=1,3
-      do n=1,3
-         do p=1,3
-	     do q=1,3
-	     do r=1,3
-	     do s=1,3
-	        constitutive_dislobased_Ctwin_3333(k,l,m,n,j,i) = constitutive_dislobased_Ctwin_3333(k,l,m,n,j,i) + &
-			constitutive_dislobased_Cslip_3333(p,q,r,s,i)*&
-			lattice_Qtwin(k,p,j,i)*lattice_Qtwin(l,q,j,i)*lattice_Qtwin(m,r,j,i)*lattice_Qtwin(n,s,j,i)
-	     enddo
-	     enddo
-	     enddo
-	     enddo
-      enddo
-      enddo
-      enddo
-      enddo
-      constitutive_dislobased_Ctwin_66(:,:,j,i) = math_Mandel3333to66(constitutive_dislobased_Ctwin_3333(:,:,:,:,j,i))
-   enddo
+   constitutive_dislobased_Cslip_66(:,:,i) = &
+     math_Mandel3333to66(math_Voigt66to3333(constitutive_dislobased_Cslip_66(:,:,i)))
+
 
    !* Construction of the hardening matrices
    !* Iteration over the systems
@@ -321,6 +317,7 @@ subroutine constitutive_dislobased_init(file)
  enddo
 
  return
+
 end subroutine
 
 
@@ -331,193 +328,108 @@ function constitutive_dislobased_stateInit(myInstance)
  use prec, only: pReal,pInt
  implicit none
 
- !* Definition of variables
+!* Definition of variables
  integer(pInt), intent(in) :: myInstance
- real(pReal), dimension(constitutive_dislobased_sizeState(myInstance)) :: constitutive_dislobased_stateInit
- 
- constitutive_dislobased_stateInit = 0.0_pReal 
- constitutive_dislobased_stateInit(1:constitutive_dislobased_Nslip(myInstance)) = constitutive_dislobased_rho0(myInstance)
+ real(pReal), dimension(constitutive_dislobased_Nslip(myInstance)) :: constitutive_dislobased_stateInit
+
+ constitutive_dislobased_stateInit = constitutive_dislobased_rho0(myInstance)
 
  return
 end function
 
-
 function constitutive_dislobased_homogenizedC(state,ipc,ip,el)
 !*********************************************************************
-!* calculates homogenized elacticity matrix                          *
-!*  - state           : microstructure quantities                    *
+!* homogenized elacticity matrix                                     *
+!* INPUT:                                                            *
+!*  - state           : state variables                              *
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec,     only: pReal,pInt,p_vec
- use mesh,     only: mesh_NcpElems,mesh_maxNips
+ use prec, only: pReal,pInt,p_vec
+ use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
  implicit none
 
- !* Definition of variables
+!* Definition of variables
  integer(pInt), intent(in) :: ipc,ip,el
- integer(pInt) matID,ns,nt,i
- real(pReal) sumf
+ integer(pInt) matID
  real(pReal), dimension(6,6) :: constitutive_dislobased_homogenizedC
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  
- !* Shortened notation
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- ns = constitutive_dislobased_Nslip(matID)
- nt = constitutive_dislobased_Ntwin(matID)
-
- !* Total twin volume fraction
- sumf = 0.0_pReal
- if (nt > 0_pInt) sumf = sum(state(ipc,ip,el)%p((ns+1):(ns+nt)))
-
- !* Homogenized elasticity matrix
- constitutive_dislobased_homogenizedC = (1.0_pReal-sumf)*constitutive_dislobased_Cslip_66(:,:,matID)
- do i=1,nt
-   constitutive_dislobased_homogenizedC = constitutive_dislobased_homogenizedC + &
-                                          state(ipc,ip,el)%p(ns+i)*constitutive_dislobased_Ctwin_66(:,:,i,matID)
- enddo 
+ constitutive_dislobased_homogenizedC = constitutive_dislobased_Cslip_66(:,:,matID)
 
  return
+
 end function
 
 
 subroutine constitutive_dislobased_microstructure(Temperature,state,ipc,ip,el)
 !*********************************************************************
-!* calculates quantities characterizing the microstructure           *
-!*  - Temperature     : temperature                                  *
-!*  - state           : microstructure quantities                    *
+!* calculate derived quantities from state (not used here)           *
+!* INPUT:                                                            *
+!*  - Tp              : temperature                                  *
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec,     only: pReal,pInt,p_vec
- use math,     only: pi
- use mesh,     only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
- use lattice,  only: lattice_interactionSlipTwin,lattice_interactionTwinTwin
+ use prec, only: pReal,pInt,p_vec
+ use mesh, only: mesh_NcpElems,mesh_maxNips
+ use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
  implicit none
 
- !* Definition of variables
- integer(pInt), intent(in) :: ipc,ip,el
- integer(pInt) matID,ns,nt,i
- real(pReal) Temperature,sumf
+!* Definition of variables
+ integer(pInt) ipc,ip,el,matID,n,i
+ real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
 
- !* Shortened notation
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- ns = constitutive_dislobased_Nslip(matID)
- nt = constitutive_dislobased_Ntwin(matID)
- !* State: 1           :  ns         rho_ssd
- !* State: ns+1        :  ns+nt      f
- !* State: ns+nt+1     :  2*ns+nt    rho_forest
- !* State: 2*ns+nt+1   :  3*ns+nt    rho_parallel
- !* State: 3*ns+nt+1   :  4*ns+nt    1/lambda_slip
- !* State: 4*ns+nt+1   :  5*ns+nt    1/lambda_sliptwin
- !* State: 5*ns+nt+1   :  5*ns+2*nt  1/lambda_twin
- !* State: 5*ns+2*nt+1 :  6*ns+2*nt  mfp_slip
- !* State: 6*ns+2*nt+1 :  6*ns+3*nt  mfp_twin
- !* State: 6*ns+3*nt+1 :  7*ns+3*nt  threshold_stress_slip
- !* State: 7*ns+3*nt+1 :  7*ns+4*nt  threshold_stress_twin
- !* State: 7*ns+4*nt+1 :  8*ns+4*nt  activation volume
- !* State: 8*ns+4*nt+1 :  8*ns+5*nt  twin volume
- !* State: 8*ns+5*nt+1 :  9*ns+5*nt  rho_mobile
- !* State: 9*ns+5*nt+1 : 10*ns+5*nt  initial shear rate
-
- !* Total twin volume fraction
- sumf = 0.0_pReal
- if (nt > 0_pInt) sumf = sum(state(ipc,ip,el)%p((ns+1):(ns+nt)))
-
- !* Forest and parallel dislocation densities
+ n = constitutive_dislobased_Nslip(matID)
+ !* Quantities derived from state - slip
+ !* State: 1    : n   rho
+ !*        n+1  : 2n  rho_f
+ !*        2n+1 : 3n  rho_p
+ !*        3n+1 : 4n  passing stress
+ !*        4n+1 : 5n  jump width
+ !*        5n+1 : 6n  activation volume
+ !*        6n+1 : 7n  rho_m
+ !*        7n+1 : 8n  g0_slip
  !$OMP CRITICAL (evilmatmul)
- state(ipc,ip,el)%p((ns+nt+1):(2*ns+nt))   = matmul(constitutive_dislobased_Iforest  (1:ns,1:ns,matID),state(ipc,ip,el)%p(1:ns)) 
- state(ipc,ip,el)%p((2*ns+nt+1):(3*ns+nt)) = matmul(constitutive_dislobased_Iparallel(1:ns,1:ns,matID),state(ipc,ip,el)%p(1:ns)) 
- !$OMP END CRITICAL (evilmatmul)
- 
- !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
- do i=1,ns
-   state(ipc,ip,el)%p(3*ns+nt+i) = sqrt(state(ipc,ip,el)%p(ns+nt+i))
- enddo 
-
- !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
- !$OMP CRITICAL (evilmatmul)
- state(ipc,ip,el)%p((4*ns+nt+1):(5*ns+nt)) = 0.0_pReal
- if (nt > 0_pInt) state(ipc,ip,el)%p((4*ns+nt+1):(5*ns+nt)) = &
- matmul(lattice_interactionSlipTwin(1:ns,1:nt,constitutive_dislobased_structure(matID)),state(ipc,ip,el)%p((ns+1):(ns+nt)))/&
- (2.0_pReal*constitutive_dislobased_stacksize(matID)*(1.0_pReal-sumf)) 
+ state(ipc,ip,el)%p((n+1):(2*n))   = matmul(constitutive_dislobased_Iforest  (1:n,1:n,matID),state(ipc,ip,el)%p(1:n))
+ state(ipc,ip,el)%p((2*n+1):(3*n)) = matmul(constitutive_dislobased_Iparallel(1:n,1:n,matID),state(ipc,ip,el)%p(1:n))
  !$OMP END CRITICAL (evilmatmul)
 
- !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
- !$OMP CRITICAL (evilmatmul)
- if (nt > 0_pInt) state(ipc,ip,el)%p((5*ns+nt+1):(5*ns+2*nt)) = &
- matmul(lattice_interactionTwinTwin(1:nt,1:nt,constitutive_dislobased_structure(matID)),state(ipc,ip,el)%p((ns+1):(ns+nt)))/&
- (2.0_pReal*constitutive_dislobased_stacksize(matID)*(1.0_pReal-sumf)) 
- !$OMP END CRITICAL (evilmatmul)
+ do i=1,n
 
- !* mean free path between 2 obstacles seen by a moving dislocation
- do i=1,ns
-    if (nt > 0_pInt) then
-       state(ipc,ip,el)%p(5*ns+2*nt+i) = (constitutive_dislobased_Cmfpslip(matID)*constitutive_dislobased_grainsize(matID))/&
-	   (1.0_pReal+constitutive_dislobased_grainsize(matID)*&
-	   (state(ipc,ip,el)%p(3*ns+nt+i)+state(ipc,ip,el)%p(4*ns+nt+i)))  
-	else
-       state(ipc,ip,el)%p(5*ns+i) = (constitutive_dislobased_Cmfpslip(matID)*constitutive_dislobased_grainsize(matID))/&
-	   (1.0_pReal+constitutive_dislobased_grainsize(matID)*(state(ipc,ip,el)%p(3*ns+i)))
-	endif
- enddo
+   state(ipc,ip,el)%p(3*n+i) = &
+   constitutive_dislobased_c1(matID)*constitutive_dislobased_Gmod(matID)*&
+   constitutive_dislobased_bg(matID)*sqrt(state(ipc,ip,el)%p(2*n+i)) 
+   
+   state(ipc,ip,el)%p(4*n+i) = &
+   constitutive_dislobased_c2(matID)/sqrt(state(ipc,ip,el)%p(n+i))
 
- !* mean free path between 2 obstacles seen by a growing twin
- do i=1,nt
-    state(ipc,ip,el)%p(6*ns+2*nt+i) = (constitutive_dislobased_Cmfptwin(matID)*constitutive_dislobased_grainsize(matID))/&
-	(1.0_pReal+constitutive_dislobased_grainsize(matID)*state(ipc,ip,el)%p(5*ns+nt+i))     
+   state(ipc,ip,el)%p(5*n+i) = &
+   constitutive_dislobased_c3(matID)*state(ipc,ip,el)%p(4*n+i)*constitutive_dislobased_bg(matID)**2.0_pReal
+
+   state(ipc,ip,el)%p(6*n+i) = &
+   (2.0_pReal*kB*Temperature*sqrt(state(ipc,ip,el)%p(2*n+i)))/&
+   (constitutive_dislobased_c1(matID)*constitutive_dislobased_c3(matID)*constitutive_dislobased_Gmod(matID)*&
+   state(ipc,ip,el)%p(4*n+i)*constitutive_dislobased_bg(matID)**3.0_pReal)
+    
+   state(ipc,ip,el)%p(7*n+i) = &
+   state(ipc,ip,el)%p(6*n+i)*constitutive_dislobased_bg(matID)*attack_frequency*state(ipc,ip,el)%p(4*n+i)*&
+   exp(-constitutive_dislobased_Qedge(matID)/(kB*Temperature))
+
  enddo
 
- !* threshold stress for dislocation motion
- do i=1,ns
-   state(ipc,ip,el)%p(6*ns+3*nt+i) = constitutive_dislobased_Cthresholdslip(matID)*&
-   constitutive_dislobased_bg(matID)*constitutive_dislobased_Gmod(matID)*sqrt(state(ipc,ip,el)%p(2*ns+nt+i))
- enddo
-
- !* threshold stress for growing twin
- do i=1,nt
-   state(ipc,ip,el)%p(7*ns+3*nt+i) = constitutive_dislobased_Cthresholdtwin(matID)*(sqrt(3.0_pReal)/3.0_pReal)*(&
-   (0.0002_pReal*Temperature-0.0396_pReal)/constitutive_dislobased_bg(matID)+&
-   (constitutive_dislobased_bg(matID)*constitutive_dislobased_Gmod(matID))/state(ipc,ip,el)%p(5*ns+2*nt+i))
- enddo
-
- !* activation volume for dislocation glide
- do i=1,ns
-   state(ipc,ip,el)%p(7*ns+4*nt+i) = constitutive_dislobased_Cactivolume(matID)*&
-   constitutive_dislobased_bg(matID)*constitutive_dislobased_bg(matID)*state(ipc,ip,el)%p(5*ns+2*nt+i)
- enddo
-
- !* final twin volume after growth
- do i=1,nt
-   state(ipc,ip,el)%p(8*ns+4*nt+i) = (pi/6.0_pReal)*constitutive_dislobased_stacksize(matID)*&
-   state(ipc,ip,el)%p(6*ns+2*nt+i)*state(ipc,ip,el)%p(6*ns+2*nt+i)
- enddo
- 
- !* mobile dislocation densities
- do i=1,ns
-   state(ipc,ip,el)%p(8*ns+5*nt+i) = (2.0_pReal*kB*Temperature*state(ipc,ip,el)%p(2*ns+nt+i))/&
-   (state(ipc,ip,el)%p(6*ns+3*nt+i)*state(ipc,ip,el)%p(7*ns+4*nt+i))
- enddo
-
- !* initial shear rate for slip
- do i=1,ns
-   state(ipc,ip,el)%p(9*ns+5*nt+i) = state(ipc,ip,el)%p(8*ns+5*nt+i)*constitutive_dislobased_bg(matID)*attack_frequency*&
-   state(ipc,ip,el)%p(5*ns+2*nt+i)*exp(-constitutive_dislobased_Qedge(matID)/(kB*Temperature))
- enddo
- 
 end subroutine
 
 
 subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,state,ipc,ip,el)
 !*********************************************************************
-!* calculates plastic velocity gradient and its tangent              *
+!* plastic velocity gradient and its tangent                         *
 !* INPUT:                                                            *
-!*  - Temperature     : temperature                                  *
-!*  - state           : microstructure quantities                    *
 !*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
 !*  - ipc             : component-ID at current integration point    *
 !*  - ip              : current integration point                    *
@@ -526,17 +438,18 @@ subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Tempera
 !*  - Lp              : plastic velocity gradient                    *
 !*  - dLp_dTstar      : derivative of Lp (4th-rank tensor)           *
 !*********************************************************************
- use prec,     only: pReal,pInt,p_vec
- use math,     only: math_Plain3333to99
- use mesh,     only: mesh_NcpElems,mesh_maxNips
+ use prec, only: pReal,pInt,p_vec
+ use math, only: math_Plain3333to99, math_mul6x6
+ use lattice, only: lattice_Sslip,lattice_Sslip_v
+ use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
- use lattice,  only: lattice_Sslip,lattice_Stwin,lattice_Sslip_v,lattice_Stwin_v,lattice_shearTwin
+
  implicit none
 
- !* Definition of variables
+!* Definition of variables
  integer(pInt) ipc,ip,el
- integer(pInt) matID,i,k,l,m,n,ns,nt
- real(pReal) Temperature,sumf
+ integer(pInt) matID,i,k,l,m,n
+ real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(3,3) :: Lp
@@ -544,71 +457,34 @@ subroutine constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Tempera
  real(pReal), dimension(9,9) :: dLp_dTstar
  real(pReal), dimension(constitutive_dislobased_Nslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip,dgdot_dtauslip,tau_slip
- real(pReal), dimension(constitutive_dislobased_Ntwin(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
-   gdot_twin,dgdot_dtautwin,tau_twin
 
- !* Shortened notation
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- ns = constitutive_dislobased_Nslip(matID)
- nt = constitutive_dislobased_Ntwin(matID)
+ n = constitutive_dislobased_Nslip(matID)
 
- !* Total twin volume fraction
- sumf = 0.0_pReal
- if (nt > 0_pInt) sumf = sum(state(ipc,ip,el)%p((ns+1):(ns+nt)))
-
- !* Calculation of Lp from dislocation glide
+!* Calculation of Lp
  Lp = 0.0_pReal
  gdot_slip = 0.0_pReal
- do i = 1,ns
-    tau_slip(i) = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
-
-    if ( abs(tau_slip(i)) > state(ipc,ip,el)%p(6*ns+3*nt+i) ) &
-       gdot_slip(i) = state(ipc,ip,el)%p(9*ns+5*nt+i)*sign(1.0_pReal,tau_slip(i))*&
-       sinh(((abs(tau_slip(i))-state(ipc,ip,el)%p(6*ns+3*nt+i))*state(ipc,ip,el)%p(7*ns+4*nt+i))/(kB*Temperature)) 
+ do i = 1,constitutive_dislobased_Nslip(matID)
+   tau_slip(i)  = math_mul6x6(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
+   if ((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))>0) &
+      gdot_slip(i) = state(ipc,ip,el)%p(7*n+i)*sign(1.0_pReal,tau_slip(i))*&
+                     sinh(((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)) 
 				   
-    Lp = Lp + (1.0_pReal - sumf)*gdot_slip(i)*lattice_Sslip(:,:,i,constitutive_dislobased_structure(matID))
+   Lp = Lp + gdot_slip(i)*lattice_Sslip(:,:,i,constitutive_dislobased_structure(matID))
  enddo
 
- !* Calculation of Lp from deformation twinning
- gdot_twin = 0.0_pReal
- do i = 1,nt
-    tau_twin(i) = dot_product(Tstar_v,lattice_Stwin_v(:,i,constitutive_dislobased_structure(matID)))
- 
-    if ( tau_twin(i) > 0.0_pReal ) &    
-       gdot_twin(i) = (constitutive_dislobased_fmax(matID) - sumf)*lattice_shearTwin(i,constitutive_dislobased_structure(matID))*&
- 	   state(ipc,ip,el)%p(8*ns+4*nt+i)*constitutive_dislobased_Ndot0(matID)*&
-       exp(-(state(ipc,ip,el)%p(7*ns+3*nt+i)/tau_twin(i))**10.0_pReal) 
- 						   
-     Lp = Lp + gdot_twin(i)*lattice_Stwin(:,:,i,constitutive_dislobased_structure(matID))
- enddo
-
- !* Calculation of the tangent of Lp from dislocation glide
+!* Calculation of the tangent of Lp
  dLp_dTstar3333 = 0.0_pReal
  dLp_dTstar = 0.0_pReal
  dgdot_dtauslip = 0.0_pReal
- do i = 1,ns
-
-    if ( abs(tau_slip(i)) > state(ipc,ip,el)%p(6*ns+3*nt+i) ) &
-       dgdot_dtauslip(i) = (state(ipc,ip,el)%p(9*ns+5*nt+i)*state(ipc,ip,el)%p(7*ns+4*nt+i))/(kB*Temperature)*&
-       cosh(((abs(tau_slip(i))-state(ipc,ip,el)%p(6*ns+3*nt+i))*state(ipc,ip,el)%p(7*ns+4*nt+i))/(kB*Temperature))
-						   
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-           dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-           dgdot_dtauslip(i)*lattice_Sslip(k,l,i,constitutive_dislobased_structure(matID))&
-                            *lattice_Sslip(m,n,i,constitutive_dislobased_structure(matID))
- enddo
-
- !* Calculation of the tangent of Lp from deformation twinning
- dgdot_dtautwin = 0.0_pReal
- do i = 1,nt
-
-    if ( tau_twin(i) > 0.0_pReal ) &    
-       dgdot_dtautwin(i) = (gdot_twin(i)*10.0_pReal*state(ipc,ip,el)%p(7*ns+3*nt+i)**10.0_pReal)/(tau_twin(i)**11.0_pReal)
-						   
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
-           dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-           dgdot_dtautwin(i)*lattice_Stwin(k,l,i,constitutive_dislobased_structure(matID)) &
-                            *lattice_Stwin(m,n,i,constitutive_dislobased_structure(matID))
+ do i = 1,constitutive_dislobased_Nslip(matID)
+   if ((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))>0) &
+      dgdot_dtauslip(i) = (state(ipc,ip,el)%p(7*n+i)*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)*&
+                          cosh(((abs(tau_slip(i))-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature)) 
+   forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
+             dgdot_dtauslip(i)*lattice_Sslip(k,l,i,constitutive_dislobased_structure(matID))* &
+                               lattice_Sslip(m,n,i,constitutive_dislobased_structure(matID))
  enddo
  dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 
@@ -620,8 +496,6 @@ function constitutive_dislobased_dotState(Tstar_v,Temperature,state,ipc,ip,el)
 !*********************************************************************
 !* rate of change of microstructure                                  *
 !* INPUT:                                                            *
-!*  - Temperature     : temperature                                  *
-!*  - state           : microstructure quantities                    *
 !*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
 !*  - ipc             : component-ID at current integration point    *
 !*  - ip              : current integration point                    *
@@ -629,94 +503,78 @@ function constitutive_dislobased_dotState(Tstar_v,Temperature,state,ipc,ip,el)
 !* OUTPUT:                                                           *
 !*  - constitutive_dotState : evolution of state variable            *
 !*********************************************************************
- use prec,     only: pReal,pInt,p_vec
- use mesh,     only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
- use lattice,  only: lattice_Sslip_v,lattice_Stwin_v
- implicit none
-
-!* Definition of variables
- integer(pInt) ipc,ip,el
- integer(pInt) matID,i,ns,nt
- real(pReal) Temperature,sumf,tau_slip,tau_twin,gdot_slip,gdot_twin,storage,arecovery
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
- real(pReal), dimension(6) :: Tstar_v
- real(pReal), dimension(constitutive_dislobased_sizeDotState(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
-   constitutive_dislobased_dotState
-   
- !* Shortened notation
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- ns = constitutive_dislobased_Nslip(matID)
- nt = constitutive_dislobased_Ntwin(matID)
-
- !* Total twin volume fraction
- sumf = 0.0_pReal
- if (nt > 0_pInt) sumf = sum(state(ipc,ip,el)%p((ns+1):(ns+nt)))
-
- !* Dislocation density evolution
- constitutive_dislobased_dotState = 0.0_pReal
- do i = 1,ns
-
-   tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
-
-   if ( abs(tau_slip) > state(ipc,ip,el)%p(6*ns+3*nt+i) ) then
-      gdot_slip = state(ipc,ip,el)%p(9*ns+5*nt+i)*sign(1.0_pReal,tau_slip)*&
-      sinh(((abs(tau_slip)-state(ipc,ip,el)%p(6*ns+3*nt+i))*state(ipc,ip,el)%p(7*ns+4*nt+i))/(kB*Temperature) ) 
-
-      storage = (constitutive_dislobased_Cstorage(matID)*abs(gdot_slip))/&
-	  (constitutive_dislobased_bg(matID)*state(ipc,ip,el)%p(5*ns+2*nt+i))
-				   
-      arecovery = constitutive_dislobased_Carecovery(matID)*state(ipc,ip,el)%p(i)*abs(gdot_slip)
-      
-      constitutive_dislobased_dotState(i) = storage - arecovery
-   endif
- enddo
-
- !* Twin volume fraction evolution
- do i = 1,nt
- 
-   tau_twin = dot_product(Tstar_v,lattice_Stwin_v(:,i,constitutive_dislobased_structure(matID)))
- 
-    if ( tau_twin > 0.0_pReal ) &    
-       constitutive_dislobased_dotState(ns+i) = (constitutive_dislobased_fmax(matID) - sumf)*&
- 	   state(ipc,ip,el)%p(8*ns+4*nt+i)*constitutive_dislobased_Ndot0(matID)*&
-       exp(-(state(ipc,ip,el)%p(7*ns+3*nt+i)/tau_twin)**10.0_pReal) 
- 
- enddo
-
- return
-end function
-
-
-function constitutive_dislobased_dotTemperature(Tstar_v,Temperature,state,ipc,ip,el)
-!*********************************************************************
-!* rate of change of microstructure                                  *
-!* INPUT:                                                            *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
-!*  - ipc             : component-ID at current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!* OUTPUT:                                                           *
-!*  - constitutive_dotTemperature : evolution of Temperature         *
-!*********************************************************************
- use prec,     only: pReal,pInt,p_vec
- use lattice,  only: lattice_Sslip_v
- use mesh,     only: mesh_NcpElems,mesh_maxNips
+ use prec, only: pReal,pInt,p_vec
+ use lattice, only: lattice_Sslip_v
+ use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
  implicit none
 
 !* Definition of variables
  integer(pInt) ipc,ip,el
  integer(pInt) matID,i,n
- real(pReal) Temperature
+ real(pReal) Temperature,tau_slip,gdot_slip,locks,athermal_recovery,thermal_recovery
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  real(pReal), dimension(6) :: Tstar_v
- real(pReal) constitutive_dislobased_dotTemperature
-     
- constitutive_dislobased_dotTemperature = 0.0_pReal
-   
+ real(pReal), dimension(constitutive_dislobased_Nslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
+   constitutive_dislobased_dotState
+
+ matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+ n = constitutive_dislobased_Nslip(matID)
+
+!* Dislocation density evolution
+ constitutive_dislobased_dotState = 0.0_pReal
+ do i = 1,n
+   tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
+   if (abs(tau_slip) > state(ipc,ip,el)%p(3*n+i)) then
+      gdot_slip = state(ipc,ip,el)%p(7*n+i)*sign(1.0_pReal,tau_slip)*&
+                  sinh(((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature))
+
+      locks     = (sqrt(state(ipc,ip,el)%p(n+i))*abs(gdot_slip))/&
+                  (constitutive_dislobased_c4(matID)*constitutive_dislobased_bg(matID))
+				   
+      athermal_recovery = constitutive_dislobased_c7(matID)*state(ipc,ip,el)%p(i)*abs(gdot_slip)
+      
+	  !thermal_recovery  = constitutive_dislobased_c8(matID)*abs(tau_slip)*state(ipc,ip,el)%p(i)**(2.0_pReal)*&
+      !                    ((constitutive_dislobased_D0(matID)*constitutive_dislobased_bg(matID)**(3.0_pReal))/&
+      !                    (kB*Temperature))*exp(-constitutive_dislobased_Qsd(matID)/(kB*Temperature))
+
+      constitutive_dislobased_dotState(i) = locks - athermal_recovery
+   endif
+ enddo
+
  return
 end function
+
+
+!****************************************************************
+!* calculates the rate of change of temperature                 *
+!****************************************************************
+pure function constitutive_dislobased_dotTemperature(Tstar_v,Temperature,state,ipc,ip,el)
+
+  !*** variables and functions from other modules ***!
+  use prec,     only: pReal,pInt,p_vec
+  use lattice,  only: lattice_Sslip_v
+  use mesh,     only: mesh_NcpElems,mesh_maxNips
+  use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance  
+  implicit none
+
+  !*** input variables ***!
+  real(pReal), dimension(6), intent(in) ::  Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
+  real(pReal), intent(in) ::                Temperature
+  integer(pInt), intent(in)::               ipc, &                    ! grain number
+                                            ip, &                     ! integration point number
+                                            el                        ! element number
+  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state ! state of the current microstructure
+  
+  !*** output variables ***!
+  real(pReal) constitutive_dislobased_dotTemperature                  ! rate of change of temparature
+  
+  ! calculate dotTemperature
+  constitutive_dislobased_dotTemperature = 0.0_pReal
+
+  return
+endfunction
+
 
 
 pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el)
@@ -729,9 +587,10 @@ pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,i
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec,     only: pReal,pInt,p_vec
- use lattice,  only: lattice_Sslip_v,lattice_Stwin_v,lattice_shearTwin
- use mesh,     only: mesh_NcpElems,mesh_maxNips
+ use prec, only: pReal,pInt,p_vec
+ use math, only: math_mul6x6
+ use lattice, only: lattice_Sslip_v
+ use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
  implicit none
 
@@ -740,85 +599,37 @@ pure function constitutive_dislobased_postResults(Tstar_v,Temperature,dt,state,i
  real(pReal), intent(in) :: dt,Temperature
  real(pReal), dimension(6), intent(in) :: Tstar_v
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
- integer(pInt) matID,o,i,c,ns,nt
- real(pReal) sumf,tau_slip,tau_twin
+ integer(pInt) matID,o,i,c,n
+ real(pReal) tau_slip, active_rate
  real(pReal), dimension(constitutive_dislobased_sizePostResults(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_dislobased_postResults
 
- !* Shortened notation
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- ns = constitutive_dislobased_Nslip(matID)
- nt = constitutive_dislobased_Ntwin(matID)
-
- !* Total twin volume fraction
- sumf = 0.0_pReal
- if (nt > 0_pInt) sumf = sum(state(ipc,ip,el)%p((ns+1):(ns+nt)))
-
- !* Required output 
+ n = constitutive_dislobased_Nslip(matID)
  c = 0_pInt
  constitutive_dislobased_postResults = 0.0_pReal
 
  do o = 1,phase_Noutput(material_phase(ipc,ip,el))
    select case(constitutive_dislobased_output(o,matID))
-
-     case ('state_slip')
-       constitutive_dislobased_postResults(c+1:c+ns) = state(ipc,ip,el)%p(1:ns)
-       c = c + ns
-
-     case ('rateofshear_slip')
-       do i = 1,ns
-         tau_slip = dot_product(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
-       
-         if ( abs(tau_slip) > state(ipc,ip,el)%p(6*ns+3*nt+i) ) then
-            constitutive_dislobased_postResults(c+i) = state(ipc,ip,el)%p(9*ns+5*nt+i)*sign(1.0_pReal,tau_slip)*&
-            sinh(((abs(tau_slip)-state(ipc,ip,el)%p(6*ns+3*nt+i))*state(ipc,ip,el)%p(7*ns+4*nt+i))/(kB*Temperature) ) 
+     case ('dislodensity')
+       constitutive_dislobased_postResults(c+1:c+n) = state(ipc,ip,el)%p(1:n)
+       c = c + n
+     case ('rateofshear')
+       do i = 1,n
+         tau_slip = math_mul6x6(Tstar_v,lattice_Sslip_v(:,i,constitutive_dislobased_structure(matID)))
+		 if ((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))>0) then
+            constitutive_dislobased_postResults(c+i) = state(ipc,ip,el)%p(7*n+i)*sign(1.0_pReal,tau_slip)*&
+            sinh(((abs(tau_slip)-state(ipc,ip,el)%p(3*n+i))*state(ipc,ip,el)%p(5*n+i))/(kB*Temperature))
 	     else
-	   	    constitutive_dislobased_postResults(c+i) = 0.0_pReal
-	     endif
+		    constitutive_dislobased_postResults(c+i) = 0.0_pReal
+		 endif
        enddo
-       c = c + ns
-
-     case ('mfp_slip')
-       constitutive_dislobased_postResults(c+1:c+ns) = state(ipc,ip,el)%p((5*ns+2*nt+1):(6*ns+2*nt))
-       c = c + ns
-   
-     case ('thresholdstress_slip')
-       constitutive_dislobased_postResults(c+1:c+ns) = state(ipc,ip,el)%p((6*ns+3*nt+1):(7*ns+3*nt))
-       c = c + ns
-
-     case ('state_twin')
-       if (nt > 0_pInt) constitutive_dislobased_postResults(c+1:c+nt) = state(ipc,ip,el)%p((ns+1):(ns+nt))
-       c = c + nt
-
-     case ('rateofshear_twin')
-	   if (nt > 0_pInt) then 
-          do i = 1,nt
-             tau_twin = dot_product(Tstar_v,lattice_Stwin_v(:,i,constitutive_dislobased_structure(matID)))
-       
-             if ( tau_twin > 0.0_pReal ) then    
-                constitutive_dislobased_postResults(c+i) = (constitutive_dislobased_fmax(matID) - sumf)*&
-			    lattice_shearTwin(i,constitutive_dislobased_structure(matID))*&
- 	            state(ipc,ip,el)%p(8*ns+4*nt+i)*constitutive_dislobased_Ndot0(matID)*&
-                exp(-(state(ipc,ip,el)%p(7*ns+3*nt+i)/tau_twin)**10.0_pReal) 
-	         else
-	   	        constitutive_dislobased_postResults(c+i) = 0.0_pReal
-	         endif
-          enddo
-	   endif
-       c = c + nt
-
-     case ('mfp_twin')
-       if (nt > 0_pInt) constitutive_dislobased_postResults(c+1:c+nt) = state(ipc,ip,el)%p((6*ns+2*nt+1):(6*ns+3*nt))
-       c = c + nt
-
-     case ('thresholdstress_twin')
-       if (nt > 0_pInt) constitutive_dislobased_postResults(c+1:c+nt) = state(ipc,ip,el)%p((7*ns+3*nt+1):(7*ns+4*nt))
-       c = c + nt
-
+       c = c + n
    end select
  enddo
  
  return
+
 end function
 
 END MODULE

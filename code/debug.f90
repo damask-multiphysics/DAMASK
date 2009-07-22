@@ -81,7 +81,7 @@ endsubroutine
  if (debug_cumLpCalls > 0_pInt) then
    call system_clock(count_rate=tickrate)
    write(6,'(a33,x,f12.6)') 'avg CPU time/microsecs per call :',dble(debug_cumLpTicks)/tickrate/1.0e-6_pReal/debug_cumLpCalls
-   write(6,'(a33,x,i12)')   'total CPU ticks                 :',debug_cumLpTicks
+   write(6,'(a33,x,f12.3)') 'total CPU time/s                :',dble(debug_cumLpTicks)/tickrate
  endif
  write(6,*)
  write(6,'(a33,x,i12)')	'total calls to dotState             :',debug_cumDotStateCalls
@@ -89,7 +89,7 @@ endsubroutine
    call system_clock(count_rate=tickrate)
    write(6,'(a33,x,f12.6)') 'avg CPU time/microsecs per call :',&
      dble(debug_cumDotStateTicks)/tickrate/1.0e-6_pReal/debug_cumDotStateCalls
-   write(6,'(a33,x,i12)')   'total CPU ticks                 :',debug_cumDotStateTicks
+   write(6,'(a33,x,f12.3)') 'total CPU time/s                :',dble(debug_cumDotStateTicks)/tickrate
  endif
  write(6,*)
  write(6,'(a33,x,i12)')	'total calls to dotTemperature       :',debug_cumDotTemperatureCalls
@@ -97,7 +97,7 @@ endsubroutine
    call system_clock(count_rate=tickrate)
    write(6,'(a33,x,f12.6)') 'avg CPU time/microsecs per call :',&
      dble(debug_cumDotTemperatureTicks)/tickrate/1.0e-6_pReal/debug_cumDotTemperatureCalls
-   write(6,'(a33,x,i12)')   'total CPU ticks                 :',debug_cumDotTemperatureTicks
+   write(6,'(a33,x,f12.3)') 'total CPU time/s                :',dble(debug_cumDotTemperatureTicks)/tickrate
  endif
 
  integral = 0_pInt
@@ -109,7 +109,7 @@ endsubroutine
      write(6,'(i25,i10)') i,debug_StressLoopDistribution(i)
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',sum(debug_StressLoopDistribution),integral
+ write(6,'(a15,i10,i10)') '          total',integral,sum(debug_StressLoopDistribution)
  
  integral = 0_pInt
  write(6,*)
@@ -120,7 +120,7 @@ endsubroutine
      write(6,'(i25,i10)') i,debug_StateLoopDistribution(i)
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',sum(debug_StateLoopDistribution),integral
+ write(6,'(a15,i10,i10)') '          total',integral,sum(debug_StateLoopDistribution)
 
  integral = 0_pInt
  write(6,*)
@@ -131,7 +131,7 @@ endsubroutine
      write(6,'(i25,i10)') i,debug_StiffnessStateLoopDistribution(i)
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',sum(debug_StiffnessStateLoopDistribution),integral
+ write(6,'(a15,i10,i10)') '          total',integral,sum(debug_StiffnessStateLoopDistribution)
  
  integral = 0_pInt
  write(6,*)
@@ -142,7 +142,7 @@ endsubroutine
      write(6,'(i25,i10)') i,debug_CrystalliteLoopDistribution(i)
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',sum(debug_CrystalliteLoopDistribution),integral
+ write(6,'(a15,i10,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
  write(6,*)
 
  endsubroutine
