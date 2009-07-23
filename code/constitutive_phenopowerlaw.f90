@@ -331,7 +331,11 @@ subroutine constitutive_phenopowerlaw_init(file)
  allocate(constitutive_phenopowerlaw_hardeningMatrix_twintwin(maxval(constitutive_phenopowerlaw_totalNtwin),&
                                                               maxval(constitutive_phenopowerlaw_totalNtwin),&
                                                               maxNinstance))
-
+ constitutive_phenopowerlaw_hardeningMatrix_slipslip = 0.0_pReal
+ constitutive_phenopowerlaw_hardeningMatrix_sliptwin = 0.0_pReal
+ constitutive_phenopowerlaw_hardeningMatrix_twinslip = 0.0_pReal
+ constitutive_phenopowerlaw_hardeningMatrix_twintwin = 0.0_pReal
+ 
  do i = 1,maxNinstance
    do j = 1,maxval(phase_Noutput)
 	 select case(constitutive_phenopowerlaw_output(j,i))
@@ -460,8 +464,7 @@ function constitutive_phenopowerlaw_stateInit(myInstance)
 !* Definition of variables
  integer(pInt), intent(in) :: myInstance
  integer(pInt) i
- real(pReal), dimension(constitutive_phenopowerlaw_totalNslip(myInstance) + &
-                        constitutive_phenopowerlaw_totalNtwin(myInstance) + 2) :: constitutive_phenopowerlaw_stateInit
+ real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(myInstance)) :: constitutive_phenopowerlaw_stateInit
 
  constitutive_phenopowerlaw_stateInit = 0.0_pReal
  
