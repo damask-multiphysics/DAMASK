@@ -339,21 +339,19 @@ subroutine constitutive_phenopowerlaw_init(file)
  do i = 1,maxNinstance
    do j = 1,maxval(phase_Noutput)
 	 select case(constitutive_phenopowerlaw_output(j,i))
-	   case('resistance_slip')
+	   case('resistance_slip', &
+	        'shearrate_slip', &
+	        'resolvedstress_slip' &
+	        )
 		 mySize = constitutive_phenopowerlaw_totalNslip(i)
-	   case('shearrate_slip')
-		 mySize = constitutive_phenopowerlaw_totalNslip(i)
-	   case('resolvedstress_slip')
-		 mySize = constitutive_phenopowerlaw_totalNslip(i)
-	   case('totalshear')
-		 mySize = 1_pInt
-	   case('resistance_twin')
+	   case('resistance_twin', &
+	        'shearrate_twin', &
+	        'resolvedstress_twin' &
+	        )
 		 mySize = constitutive_phenopowerlaw_totalNtwin(i)
-	   case('shearrate_twin')
-		 mySize = constitutive_phenopowerlaw_totalNtwin(i)
-	   case('resolvedstress_twin')
-		 mySize = constitutive_phenopowerlaw_totalNtwin(i)
-	   case('totalvolfrac')
+	   case('totalshear', &
+	        'totalvolfrac' &
+	        )
 		 mySize = 1_pInt
 	   case default
 		 mySize = 0_pInt
