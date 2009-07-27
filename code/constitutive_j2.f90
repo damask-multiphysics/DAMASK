@@ -482,7 +482,7 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
   matID = phase_constitutionInstance(material_phase(g,ip,el))
   
   ! calculate deviatoric part of 2nd Piola-Kirchhoff stress and its norm
-  Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3_pReal
+  Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
   Tstar_dev_v(4:6) = Tstar_v(4:6)
   norm_Tstar_dev = dsqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
   
