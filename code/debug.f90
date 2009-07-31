@@ -9,6 +9,7 @@
  integer(pInt), dimension(:), allocatable :: debug_StateLoopDistribution
  integer(pInt), dimension(:), allocatable :: debug_StiffnessStateLoopDistribution
  integer(pInt), dimension(:), allocatable :: debug_CrystalliteLoopDistribution
+ integer(pInt), dimension(:), allocatable :: debug_MaterialpointLoopDistribution          ! added <<<updated 31.07.2009>>>
  integer(pLongInt) :: debug_cumLpTicks = 0_pInt
  integer(pLongInt) :: debug_cumDotStateTicks = 0_pInt
  integer(pLongInt) :: debug_cumDotTemperatureTicks = 0_pInt
@@ -25,7 +26,8 @@ subroutine debug_init()
   use prec,     only: pInt  
   use numerics, only: nStress, &
                       nState, &
-                      nCryst
+                      nCryst, &
+                      nHomog                                                              ! added <<<updated 31.07.2009>>>
   implicit none
   
   write(6,*)
@@ -36,6 +38,7 @@ subroutine debug_init()
   allocate(debug_StateLoopDistribution(nState)) ;          debug_StateLoopDistribution = 0_pInt
   allocate(debug_StiffnessStateLoopDistribution(nState)) ; debug_StiffnessStateLoopDistribution = 0_pInt
   allocate(debug_CrystalliteLoopDistribution(nCryst)) ;    debug_CrystalliteLoopDistribution = 0_pInt
+  allocate(debug_MaterialpointLoopDistribution(nhomog)) ;  debug_MaterialpointLoopDistribution = 0_pInt ! added <<<updated 31.07.2009>>>
 endsubroutine
  
 !********************************************************************
@@ -50,6 +53,7 @@ subroutine debug_reset()
   debug_StateLoopDistribution          = 0_pInt
   debug_StiffnessStateLoopDistribution = 0_pInt
   debug_CrystalliteLoopDistribution    = 0_pInt
+  debug_MaterialpointLoopDistribution  = 0_pInt ! added <<<updated 31.07.2009>>>
   debug_cumLpTicks       = 0_pInt
   debug_cumDotStateTicks = 0_pInt
   debug_cumDotTemperatureTicks = 0_pInt
@@ -67,7 +71,8 @@ endsubroutine
  use prec
  use numerics, only: nStress, &
                       nState, &
-                      nCryst
+                      nCryst, &
+                      nHomog              ! added <<<updated 31.07.2009>>>
  implicit none
 
  integer(pInt) i,integral
@@ -143,6 +148,19 @@ endsubroutine
    endif
  enddo
  write(6,'(a15,i10,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
+ write(6,*)
+
+!* Material point loop counter <<<updated 31.07.2009>>>
+ integral = 0_pInt
+ write(6,*)
+ write(6,*)	'distribution_MaterialpointLoop :'
+ do i=1,nCryst
+   if (debug_MaterialpointLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_MaterialpointLoopDistribution(i)
+     write(6,'(i25,i10)') i,debug_MaterialpointLoopDistribution(i)
+   endif
+ enddo
+ write(6,'(a15,i10,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
  write(6,*)
 
  endsubroutine

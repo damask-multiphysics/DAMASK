@@ -121,7 +121,8 @@ function homogenization_isostrain_stateInit(myInstance)
 
 !* Definition of variables
  integer(pInt), intent(in) :: myInstance
- real(pReal), dimension(1) :: homogenization_isostrain_stateInit
+ real(pReal), dimension(homogenization_isostrain_sizeState(myInstance)) :: &
+              homogenization_isostrain_stateInit  ! modified <<<updated 31.07.2009>>>
 
  homogenization_isostrain_stateInit = 0.0_pReal
 
@@ -227,8 +228,8 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(&
 
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
- avgP = sum(P,3)/Ngrains
- dAvgPdAvgF = sum(dPdF,5)/Ngrains
+ avgP = sum(P,3)/dble(Ngrains)
+ dAvgPdAvgF = sum(dPdF,5)/dble(Ngrains)
 
  return
 
@@ -257,7 +258,7 @@ function homogenization_isostrain_averageTemperature(&
 
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
- homogenization_isostrain_averageTemperature = sum(Temperature(1:Ngrains))/Ngrains
+ homogenization_isostrain_averageTemperature = sum(Temperature(1:Ngrains))/dble(Ngrains)
 
  return
 

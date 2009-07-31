@@ -455,21 +455,22 @@ endsubroutine
 ! e_ijk = -1 if odd permutation of ijk
 ! e_ijk =  0 otherwise
 !**************************************************************************
- FUNCTION math_permut(i,j,k)
+ FUNCTION math_civita(i,j,k)     ! change its name from math_permut 
+                                 ! to math_civita <<<updated 31.07.2009>>>
 
  use prec, only: pReal, pInt
  implicit none
 
  integer(pInt)  i,j,k
- real(pReal) math_permut
+ real(pReal) math_civita
 
- math_permut = 0.0_pReal
+ math_civita = 0.0_pReal
  if (((i == 1).and.(j == 2).and.(k == 3)) .or. &
      ((i == 2).and.(j == 3).and.(k == 1)) .or. &
-     ((i == 3).and.(j == 1).and.(k == 2))) math_permut = 1.0_pReal
+     ((i == 3).and.(j == 1).and.(k == 2))) math_civita = 1.0_pReal
  if (((i == 1).and.(j == 3).and.(k == 2)) .or. &
      ((i == 2).and.(j == 1).and.(k == 3)) .or. &
-     ((i == 3).and.(j == 2).and.(k == 1))) math_permut = -1.0_pReal
+     ((i == 3).and.(j == 2).and.(k == 1))) math_civita = -1.0_pReal
  return
 
  ENDFUNCTION

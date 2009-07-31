@@ -11,8 +11,7 @@ integer(pInt)                   iJacoStiffness, &                       ! freque
                                 nHomog, &                               ! homogenization loop limit
                                 nCryst, &                               ! crystallite loop limit (only for debugging info, real loop limit is "subStepMin")
                                 nState, &                               ! state loop limit
-                                nStress, &                              ! stress loop limit
-                                NRiterMax                               ! maximum number of GIA iteration
+                                nStress                                 ! stress loop limit
 real(pReal)                     relevantStrain, &                       ! strain increment considered significant
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
                                 subStepMin, &                           ! minimum (relative) size of sub-step allowed during cutback in crystallite
@@ -20,10 +19,14 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 rTol_crystalliteTemperature, &          ! relative tolerance in crystallite temperature loop 
                                 rTol_crystalliteStress, &               ! relative tolerance in crystallite stress loop
                                 aTol_crystalliteStress, &               ! absolute tolerance in crystallite stress loop
-                                resToler, &                             ! relative tolerance of residual in GIA iteration
-                                resAbsol, &                             ! absolute tolerance of residual in GIA iteration (corresponds to ~1 Pa)
-                                resBound                                ! relative maximum value (upper bound) for GIA residual
-                                
+
+!* RGC parameters: added <<<updated 31.07.2009>>>
+                                absTol_RGC, &                           ! absolute tolerance of RGC residuum
+                                relTol_RGC, &                           ! relative tolerance of RGC residuum
+                                absMax_RGC, &                           ! absolute maximum of RGC residuum
+                                relMax_RGC, &                           ! relative maximum of RGC residuum
+                                pPert_RGC, &                            ! perturbation for computing RGC penalty tangent
+                                xSmoo_RGC                               ! RGC penalty smoothing parameter (hyperbolic tangent)
 
 CONTAINS
  
@@ -62,23 +65,27 @@ subroutine numerics_init()
   write(6,*)
   
   ! initialize all parameters with standard values
-  relevantStrain              = 1.0e-7_pReal
-  iJacoStiffness              = 1_pInt
-  iJacoLpresiduum             = 1_pInt
-  pert_Fg                     = 1.0e-6_pReal
-  nHomog                      = 10_pInt
-  nCryst                      = 20_pInt
-  nState                      = 10_pInt
-  nStress                     = 40_pInt
-  subStepMin                  = 1.0e-3_pReal
-  rTol_crystalliteState       = 1.0e-6_pReal
+  relevantStrain          = 1.0e-7_pReal
+  iJacoStiffness          = 1_pInt
+  iJacoLpresiduum         = 1_pInt
+  pert_Fg                 = 1.0e-6_pReal
+  nHomog                  = 10_pInt
+  nCryst                  = 20_pInt
+  nState                  = 10_pInt
+  nStress                 = 40_pInt
+  subStepMin              = 1.0e-3_pReal
+  rTol_crystalliteState   = 1.0e-6_pReal
   rTol_crystalliteTemperature = 1.0e-6_pReal
-  rTol_crystalliteStress      = 1.0e-6_pReal
-  aTol_crystalliteStress      = 1.0e-8_pReal
-  resToler                    = 1.0e-4_pReal
-  resAbsol                    = 1.0e+2_pReal
-  resBound                    = 1.0e+1_pReal
-  NRiterMax                   = 24_pInt
+  rTol_crystalliteStress  = 1.0e-6_pReal
+  aTol_crystalliteStress  = 1.0e-8_pReal
+
+!* RGC parameters: added <<<updated 31.07.2009>>>
+  absTol_RGC              = 1.0e+3
+  relTol_RGC              = 1.0e-3
+  absMax_RGC              = 1.0e+9
+  relMax_RGC              = 1.0e+2
+  pPert_RGC               = 1.0e-8
+  xSmoo_RGC               = 1.0e-5
 
   ! try to open the config file
   if(IO_open_file(fileunit,numerics_configFile)) then 
@@ -120,14 +127,21 @@ subroutine numerics_init()
               rTol_crystalliteStress = IO_floatValue(line,positions,2)
         case ('atol_crystallitestress')
               aTol_crystalliteStress = IO_floatValue(line,positions,2)
-        case ('restoler')
-              resToler = IO_floatValue(line,positions,2)
-        case ('resabsol')
-              resAbsol = IO_floatValue(line,positions,2)
-        case ('resbound')
-              resBound = IO_floatValue(line,positions,2)
-        case ('nritermax')
-              NRiterMax = IO_intValue(line,positions,2)
+
+!* RGC parameters: added <<<updated 31.07.2009>>>
+        case ('atol_rgc')
+              absTol_RGC = IO_floatValue(line,positions,2)
+        case ('rtol_rgc')
+              relTol_RGC = IO_floatValue(line,positions,2)
+        case ('amax_rgc')
+              absMax_RGC = IO_floatValue(line,positions,2)
+        case ('rmax_rgc')
+              relMax_RGC = IO_floatValue(line,positions,2)
+        case ('perturbpenalty_rgc')
+              pPert_RGC = IO_floatValue(line,positions,2)
+        case ('relevantmismatch_rgc')
+              xSmoo_RGC = IO_floatValue(line,positions,2)
+
       endselect
     enddo
     100 close(fileunit)
@@ -154,30 +168,38 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
   write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
-  write(6,'(a24,x,e8.1)') 'resToler:               ',resToler
-  write(6,'(a24,x,e8.1)') 'resAbsol:               ',resAbsol
-  write(6,'(a24,x,e8.1)') 'resBound:               ',resBound
-  write(6,'(a24,x,i8)')   'NRiterMax:              ',NRiterMax
+
+!* RGC parameters: added <<<updated 31.07.2009>>>
+  write(6,'(a24,x,e8.1)') 'aTol_RGC:             ',absTol_RGC
+  write(6,'(a24,x,e8.1)') 'rTol_RGC:             ',relTol_RGC
+  write(6,'(a24,x,e8.1)') 'aMax_RGC:             ',absMax_RGC
+  write(6,'(a24,x,e8.1)') 'rMax_RGC:             ',relMax_RGC
+  write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:   ',pPert_RGC
+  write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC: ',xSmoo_RGC
   write(6,*)
   
-  ! sanity check
-  if (relevantStrain <= 0.0_pReal)              call IO_error(260)
-  if (iJacoStiffness < 1_pInt)                  call IO_error(261)
-  if (iJacoLpresiduum < 1_pInt)                 call IO_error(262)
-  if (pert_Fg <= 0.0_pReal)                     call IO_error(263)
-  if (nHomog < 1_pInt)                          call IO_error(264)
-  if (nCryst < 1_pInt)                          call IO_error(265)
-  if (nState < 1_pInt)                          call IO_error(266)
-  if (nStress < 1_pInt)                         call IO_error(267)
-  if (subStepMin <= 0.0_pReal)                  call IO_error(268)
-  if (rTol_crystalliteState <= 0.0_pReal)       call IO_error(269)
+  ! sanity check  
+  if (relevantStrain <= 0.0_pReal)          call IO_error(260)
+  if (iJacoStiffness < 1_pInt)              call IO_error(261)
+  if (iJacoLpresiduum < 1_pInt)             call IO_error(262)
+  if (pert_Fg <= 0.0_pReal)                 call IO_error(263)
+  if (nHomog < 1_pInt)                      call IO_error(264)
+  if (nCryst < 1_pInt)                      call IO_error(265)
+  if (nState < 1_pInt)                      call IO_error(266)
+  if (nStress < 1_pInt)                     call IO_error(267)
+  if (subStepMin <= 0.0_pReal)              call IO_error(268)
+  if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(269)
   if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(276)
-  if (rTol_crystalliteStress <= 0.0_pReal)      call IO_error(270)
-  if (aTol_crystalliteStress <= 0.0_pReal)      call IO_error(271)
-  if (resToler <= 0.0_pReal)                    call IO_error(272)
-  if (resAbsol <= 0.0_pReal)                    call IO_error(273)
-  if (resBound <= 0.0_pReal)                    call IO_error(274)
-  if (NRiterMax < 1_pInt)                       call IO_error(275)
+  if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(270)
+  if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(271)
+
+!* RGC parameters: added <<<updated 31.07.2009>>>
+  if (absTol_RGC <= 0.0_pReal)              call IO_error(272)
+  if (relTol_RGC <= 0.0_pReal)              call IO_error(273)
+  if (absMax_RGC <= 0.0_pReal)              call IO_error(274)
+  if (relMax_RGC <= 0.0_pReal)              call IO_error(275)
+  if (pPert_RGC <= 0.0_pReal)               call IO_error(276)
+  if (xSmoo_RGC <= 0.0_pReal)               call IO_error(277)
  
 endsubroutine
 

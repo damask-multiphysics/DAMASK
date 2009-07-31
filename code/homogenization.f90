@@ -60,15 +60,16 @@ subroutine homogenization_init(Temperature)
  use constitutive, only: constitutive_maxSizePostResults
  use crystallite, only: crystallite_Nresults
  use homogenization_isostrain
-! use homogenization_RGC
+ use homogenization_RGC                             ! RGC homogenization added <<<updated 31.07.2009>>>
 
  real(pReal) Temperature
  integer(pInt), parameter :: fileunit = 200
- integer(pInt) e,i,g,myInstance
+ integer(pInt) e,i,g,myInstance,j
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
 
  call homogenization_isostrain_init(fileunit)       ! parse all homogenizations of this type
+ call homogenization_RGC_init(fileunit)             ! RGC homogenization added <<<updated 31.07.2009>>>
 
  close(fileunit)
 
@@ -101,6 +102,7 @@ subroutine homogenization_init(Temperature)
    myInstance = homogenization_typeInstance(mesh_element(3,e))
    do i = 1,FE_Nips(mesh_element(2,e))                   ! loop over IPs
      select case(homogenization_type(mesh_element(3,e)))
+!* isostrain    
        case (homogenization_isostrain_label)
          if (homogenization_isostrain_sizeState(myInstance) > 0_pInt) then
            allocate(homogenization_state0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
@@ -110,6 +112,16 @@ subroutine homogenization_init(Temperature)
            homogenization_sizeState(i,e) = homogenization_isostrain_sizeState(myInstance)
          endif
          homogenization_sizePostResults(i,e) = homogenization_isostrain_sizePostResults(myInstance)
+!* RGC homogenization: added <<<updated 31.07.2009>>>
+       case (homogenization_RGC_label)
+         if (homogenization_RGC_sizeState(myInstance) > 0_pInt) then
+           allocate(homogenization_state0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
+           allocate(homogenization_subState0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
+           allocate(homogenization_state(i,e)%p(homogenization_RGC_sizeState(myInstance)))
+           homogenization_state0(i,e)%p  = homogenization_RGC_stateInit(myInstance)
+           homogenization_sizeState(i,e) = homogenization_RGC_sizeState(myInstance)
+         endif
+         homogenization_sizePostResults(i,e) = homogenization_RGC_sizePostResults(myInstance)
        case default
          call IO_error(201,ext_msg=homogenization_type(mesh_element(3,e)))      ! unknown type 201 is homogenization!
      end select
@@ -198,6 +210,7 @@ subroutine materialpoint_stressAndItsTangent(&
                           crystallite_dt, &
                           crystallite_requested, &
                           crystallite_stressAndItsTangent
+ use debug, only:         debug_MaterialpointLoopdistribution                  ! added <<<updated 31.07.2009>>>
                           
  implicit none
  
@@ -210,11 +223,11 @@ subroutine materialpoint_stressAndItsTangent(&
 
  write (6,*)
  write (6,*) 'Material Point start'
- write (6,'(a,/,(f12.7,x))') 'Temp0  of   8 1'  ,materialpoint_Temperature(8,1)
- write (6,'(a,/,3(3(f12.7,x)/))') 'F0  of   8 1',materialpoint_F0(1:3,:,8,1)
- write (6,'(a,/,3(3(f12.7,x)/))') 'F   of   8 1',materialpoint_F(1:3,:,8,1)
- write (6,'(a,/,3(3(f12.7,x)/))') 'Fp0 of 1 8 1',crystallite_Fp0(1:3,:,1,8,1)
- write (6,'(a,/,3(3(f12.7,x)/))') 'Lp0 of 1 8 1',crystallite_Lp0(1:3,:,1,8,1)
+ write (6,'(a,/,(f12.7,x))')      'Temp0  of   1 1'  ,materialpoint_Temperature(1,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'F0     of   1 1',materialpoint_F0(1:3,:,1,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'F      of   1 1',materialpoint_F(1:3,:,1,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'Fp0    of 1 1 1',crystallite_Fp0(1:3,:,1,1,1)
+ write (6,'(a,/,3(3(f12.7,x)/))') 'Lp0    of 1 1 1',crystallite_Lp0(1:3,:,1,1,1)
 
 !$OMP PARALLEL DO
  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                 ! iterate over elements to be processed
@@ -302,6 +315,12 @@ subroutine materialpoint_stressAndItsTangent(&
    enddo
 !$OMP END PARALLEL DO
 
+!* Checks for cutback/substepping loops: added <<<updated 31.07.2009>>>
+ write (6,'(a,/,8(L,x))') 'MP exceeds substep min',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMin
+ write (6,'(a,/,8(L,x))') 'MP requested',materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2))
+ write (6,'(a,/,8(f6.4,x))') 'MP subFrac',materialpoint_subFrac(:,FEsolving_execELem(1):FEsolving_execElem(2))
+ write (6,'(a,/,8(f6.4,x))') 'MP subStep',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2))
+
 ! ------ convergence loop material point homogenization ------
 
    homogenization_Niteration = 0_pInt
@@ -350,6 +369,9 @@ subroutine materialpoint_stressAndItsTangent(&
              .not. materialpoint_doneAndHappy(1,i,e)) then
            materialpoint_doneAndHappy(:,i,e) = homogenization_updateState(i,e)
            materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(:,i,e))  ! converged if done and happy
+           if (materialpoint_converged(i,e)) &                                    ! added <<<updated 31.07.2009>>>
+             debug_MaterialpointLoopdistribution(homogenization_Niteration) = &
+             debug_MaterialpointLoopdistribution(homogenization_Niteration) + 1
          endif
        enddo
      enddo
@@ -434,6 +456,7 @@ subroutine homogenization_partitionDeformation(&
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_partionedF0,crystallite_partionedF
  use homogenization_isostrain
+ use homogenization_RGC                          ! RGC homogenization added <<<updated 31.07.2009>>>
 
  implicit none
  
@@ -441,12 +464,21 @@ subroutine homogenization_partitionDeformation(&
  
  select case(homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label)
+!* isostrain
      call homogenization_isostrain_partitionDeformation(crystallite_partionedF(:,:,:,ip,el), &
                                                         crystallite_partionedF0(:,:,:,ip,el),&
                                                         materialpoint_subF(:,:,ip,el),&
                                                         homogenization_state(ip,el), &
                                                         ip, &
                                                         el)
+!* RGC homogenization added <<<updated 31.07.2009>>>
+   case (homogenization_RGC_label)
+     call homogenization_RGC_partitionDeformation(crystallite_partionedF(:,:,:,ip,el), &
+                                                  crystallite_partionedF0(:,:,:,ip,el),&
+                                                  materialpoint_subF(:,:,ip,el),&
+                                                  homogenization_state(ip,el), &
+                                                  ip, &
+                                                  el)
  end select
 
 endsubroutine
@@ -463,21 +495,33 @@ function homogenization_updateState(&
  use prec,        only: pReal,pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
- use crystallite, only: crystallite_P,crystallite_dPdF
+ use crystallite, only: crystallite_P,crystallite_dPdF,crystallite_partionedF,crystallite_partionedF0  ! modified <<<updated 31.07.2009>>>
 
  use homogenization_isostrain
+ use homogenization_RGC              ! RGC homogenization added <<<updated 31.07.2009>>>
  implicit none
  
  integer(pInt), intent(in) :: ip,el
  logical, dimension(2) :: homogenization_updateState
  
  select case(homogenization_type(mesh_element(3,el)))
+!* isostrain
    case (homogenization_isostrain_label)
      homogenization_updateState = homogenization_isostrain_updateState( homogenization_state(ip,el), &
                                                                         crystallite_P(:,:,:,ip,el), &
                                                                         crystallite_dPdF(:,:,:,:,:,ip,el), &
                                                                         ip, &
                                                                         el)
+!* RGC homogenization added <<<updated 31.07.2009>>>
+   case (homogenization_RGC_label)
+     homogenization_updateState = homogenization_RGC_updateState( homogenization_state(ip,el), &
+                                                                  crystallite_P(:,:,:,ip,el), &
+                                                                  crystallite_partionedF(:,:,:,ip,el), &
+                                                                  crystallite_partionedF0(:,:,:,ip,el),&
+                                                                  materialpoint_subF(:,:,ip,el),&
+                                                                  crystallite_dPdF(:,:,:,:,:,ip,el), &
+                                                                  ip, &
+                                                                  el)
  end select
 
  return
@@ -497,12 +541,14 @@ subroutine homogenization_averageStressAndItsTangent(&
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_P,crystallite_dPdF
 
+ use homogenization_RGC            ! RGC homogenization added <<<updated 31.07.2009>>>
  use homogenization_isostrain
  implicit none
  
  integer(pInt), intent(in) :: ip,el
  
  select case(homogenization_type(mesh_element(3,el)))
+!* isostrain
    case (homogenization_isostrain_label)
      call homogenization_isostrain_averageStressAndItsTangent( materialpoint_P(:,:,ip,el), &
                                                                materialpoint_dPdF(:,:,:,:,ip,el),&
@@ -510,6 +556,14 @@ subroutine homogenization_averageStressAndItsTangent(&
                                                                crystallite_dPdF(:,:,:,:,:,ip,el), &
                                                                ip, &
                                                                el)
+!* RGC homogenization added <<<updated 31.07.2009>>>
+   case (homogenization_RGC_label)
+     call homogenization_RGC_averageStressAndItsTangent( materialpoint_P(:,:,ip,el), &
+                                                         materialpoint_dPdF(:,:,:,:,ip,el),&
+                                                         crystallite_P(:,:,:,ip,el), &
+                                                         crystallite_dPdF(:,:,:,:,:,ip,el), &
+                                                         ip, &
+                                                         el)
  end select
 
  return
@@ -530,13 +584,18 @@ subroutine homogenization_averageTemperature(&
  use crystallite, only: crystallite_Temperature
 
  use homogenization_isostrain
+ use homogenization_RGC               ! RGC homogenization added <<<updated 31.07.2009>>>
  implicit none
  
  integer(pInt), intent(in) :: ip,el
  
  select case(homogenization_type(mesh_element(3,el)))
+!* isostrain
    case (homogenization_isostrain_label)
      materialpoint_Temperature(ip,el) =  homogenization_isostrain_averageTemperature(crystallite_Temperature(:,ip,el), ip, el)
+!* RGC homogenization added <<<updated 31.07.2009>>>
+   case (homogenization_RGC_label)
+     materialpoint_Temperature(ip,el) =  homogenization_RGC_averageTemperature(crystallite_Temperature(:,ip,el), ip, el)
  end select
 
  return
@@ -556,6 +615,7 @@ function homogenization_postResults(&
  use mesh,     only: mesh_element
  use material, only: homogenization_type
  use homogenization_isostrain
+ use homogenization_RGC             ! RGC homogenization added <<<updated 31.07.2009>>>
  implicit none
 
 !* Definition of variables
@@ -564,9 +624,12 @@ function homogenization_postResults(&
 
  homogenization_postResults = 0.0_pReal
  select case (homogenization_type(mesh_element(3,el)))
+!* isostrain
    case (homogenization_isostrain_label)
      homogenization_postResults = homogenization_isostrain_postResults(homogenization_state(ip,el),ip,el)
-
+!* RGC homogenization added <<<updated 31.07.2009>>>
+   case (homogenization_RGC_label)
+     homogenization_postResults = homogenization_RGC_postResults(homogenization_state(ip,el),ip,el)
  end select
 
  return

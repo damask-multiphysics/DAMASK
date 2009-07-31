@@ -869,14 +869,21 @@ endfunction
    msg = 'Non-positive relative tolerance for stress'
  case (271)
    msg = 'Non-positive absolute tolerance for stress'
+
+!* Error messages related to RGC numerical parameters <<<updated 31.07.2009>>>
  case (272)
-   msg = 'Non-positive relative tolerance of residual in GIA iteration'
+   msg = 'Non-positive relative tolerance of residual in RGC'
  case (273)
-   msg = 'Non-positive absolute tolerance of residual in GIA iteration'
+   msg = 'Non-positive absolute tolerance of residual in RGC'
  case (274)
-   msg = 'Non-positive relative maximum value (upper bound) for GIA residual'
+   msg = 'Non-positive relative maximum of residual in RGC'
  case (275)
-   msg = 'Limit for GIA iteration too small' 
+   msg = 'Non-positive absolute maximum of residual in RGC'
+ case (276)
+   msg = 'Non-positive penalty perturbation in RGC'
+ case (277)
+   msg = 'Non-positive relevant mismatch in RGC'
+
  case (300)
    msg = 'This material can only be used with elements with three direct stress components'
  case (500)
@@ -887,8 +894,6 @@ endfunction
    msg = 'Stress loop not converged'
  case (700)
    msg = 'Singular matrix in stress iteration'
- case (800)
-   msg = 'RGC requires 8 grains per IP (bonehead, you!) -- but now outdated'
  case default
    msg = 'Unknown error number...'
  end select

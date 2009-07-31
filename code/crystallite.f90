@@ -410,7 +410,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    
     NiterationState = 0_pInt
    
-    do while ( any(            crystallite_requested(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
+    do while ( any(           crystallite_requested(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                   .and.       crystallite_onTrack(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                   .and. .not. crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) ) &
              .and. NiterationState < nState)                                          ! convergence loop for crystallite
@@ -451,12 +451,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                          ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
               debugger = (e == 1 .and. i == 1 .and. g == 1)
-              if (             crystallite_requested(g,i,e) & 
+              if (            crystallite_requested(g,i,e) & 
                   .and.       crystallite_onTrack(g,i,e) &
                   .and. .not. crystallite_converged(g,i,e)) then                      ! all undone crystallites
-                crystallite_converged(g,i,e) = (crystallite_updateState(g,i,e) .and. &
-				                                crystallite_updateTemperature(g,i,e))			                                 
-                if  (debugger) write (6,*) g,i,e,'converged after updState',crystallite_converged(g,i,e) 
+                crystallite_converged(g,i,e) = crystallite_updateState(g,i,e) .and. &
+                                               crystallite_updateTemperature(g,i,e)
+                if  (debugger) write (6,*) g,i,e,'converged after updState',crystallite_converged(g,i,e)
                 if (crystallite_converged(g,i,e)) then
                   !$OMP CRITICAL (distributionState)
                     debug_StateLoopDistribution(NiterationState) = debug_StateLoopDistribution(NiterationState) + 1
@@ -653,10 +653,12 @@ endsubroutine
  ! update the microstructure
  constitutive_state(g,i,e)%p(1:mySize) = constitutive_state(g,i,e)%p(1:mySize) - residuum
  
- ! setting flag to true if state is below relative tolerance, otherwise set it to false
- crystallite_updateState = maxval(abs(residuum/constitutive_state(g,i,e)%p(1:mySize)), &
-                                  constitutive_state(g,i,e)%p(1:mySize) /= 0.0_pReal) < rTol_crystalliteState
-                                  
+ ! setting flag to true if state is below relative tolerance, otherwise set it to false <<<updated 31.07.2009>>>
+ crystallite_updateState = all(constitutive_state(g,i,e)%p(1:mySize) == 0.0_pReal .or. &
+                               abs(residuum) < rTol_crystalliteState*abs(constitutive_state(g,i,e)%p(1:mySize)))
+ if (debugger) then
+   write(6,'(a,/,12(f10.5,x))') 'resid tolerance',abs(residuum/rTol_crystalliteState/constitutive_state(g,i,e)%p(1:mySize))
+ endif
  return
 
  endfunction
@@ -697,7 +699,7 @@ endsubroutine
                                       tickrate, &
                                       maxticks
  
- ! calculate the residuum
+ ! calculate the residuum 
  call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
  residuum = crystallite_Temperature(g,i,e) - crystallite_subTemperature0(g,i,e) - &
             crystallite_subdt(g,i,e) * constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e),crystallite_Temperature(g,i,e),g,i,e)
@@ -718,12 +720,9 @@ endsubroutine
  ! update the microstructure
  crystallite_Temperature(g,i,e) = crystallite_Temperature(g,i,e) - residuum
  
- ! setting flag to true if residuum is below relative tolerance (or zero Kelvin), otherwise set it to false
- if (crystallite_Temperature(g,i,e) /= 0.0_pReal) then
-   crystallite_updateTemperature = abs(residuum/crystallite_Temperature(g,i,e)) < rTol_crystalliteTemperature
- else
-   crystallite_updateTemperature = .true.
- endif
+ ! setting flag to true if residuum is below relative tolerance (or zero Kelvin), otherwise set it to false <<<updated 31.07.2009>>>
+ crystallite_updateTemperature = crystallite_Temperature(g,i,e) == 0.0_pReal .or. &
+                                  abs(residuum) < rTol_crystalliteTemperature*crystallite_Temperature(g,i,e)
  
  return
 

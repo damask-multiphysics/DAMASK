@@ -170,7 +170,7 @@ subroutine material_parseHomogenization(file,myPart)
      tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
      select case(tag)
        case ('type')
-         homogenization_type(section) = IO_stringValue(line,positions,2)
+         homogenization_type(section) = IO_lc(IO_stringValue(line,positions,2))  ! adding: IO_lc function <<<updated 31.07.2009>>>
          do s = 1,section
            if (homogenization_type(s) == homogenization_type(section)) &
              homogenization_typeInstance(section) = homogenization_typeInstance(section) + 1  ! count instances
