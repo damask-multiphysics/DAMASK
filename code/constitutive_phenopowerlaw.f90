@@ -194,14 +194,14 @@ subroutine constitutive_phenopowerlaw_init(file)
  allocate(constitutive_phenopowerlaw_h0_twinslip(maxNinstance)) ;    constitutive_phenopowerlaw_h0_twinslip = 0.0_pReal
  allocate(constitutive_phenopowerlaw_h0_twintwin(maxNinstance)) ;    constitutive_phenopowerlaw_h0_twintwin = 0.0_pReal
 
- allocate(constitutive_phenopowerlaw_interaction_slipslip(lattice_maxNinteraction,&
-                                                          maxNinstance)) ; constitutive_phenopowerlaw_interaction_slipslip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_interaction_sliptwin(lattice_maxNinteraction,&
-                                                          maxNinstance)) ; constitutive_phenopowerlaw_interaction_sliptwin = 0.0_pReal
- allocate(constitutive_phenopowerlaw_interaction_twinslip(lattice_maxNinteraction,&
-                                                          maxNinstance)) ; constitutive_phenopowerlaw_interaction_twinslip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_interaction_twintwin(lattice_maxNinteraction,&
-                                                          maxNinstance)) ; constitutive_phenopowerlaw_interaction_twintwin = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_interaction_slipslip(lattice_maxNinteraction,maxNinstance))
+ allocate(constitutive_phenopowerlaw_interaction_sliptwin(lattice_maxNinteraction,maxNinstance))
+ allocate(constitutive_phenopowerlaw_interaction_twinslip(lattice_maxNinteraction,maxNinstance))
+ allocate(constitutive_phenopowerlaw_interaction_twintwin(lattice_maxNinteraction,maxNinstance))
+ constitutive_phenopowerlaw_interaction_slipslip = 0.0_pReal
+ constitutive_phenopowerlaw_interaction_sliptwin = 0.0_pReal
+ constitutive_phenopowerlaw_interaction_twinslip = 0.0_pReal
+ constitutive_phenopowerlaw_interaction_twintwin = 0.0_pReal
 
  rewind(file)
  line = ''
@@ -402,9 +402,9 @@ subroutine constitutive_phenopowerlaw_init(file)
            constitutive_phenopowerlaw_hardeningMatrix_slipslip(sum(constitutive_phenopowerlaw_Nslip(1:j-1,i))+k,&
                                                                sum(constitutive_phenopowerlaw_Nslip(1:l-1,i))+m,  i) = &
             constitutive_phenopowerlaw_interaction_slipslip(lattice_interactionSlipSlip( &
-                                                               sum(lattice_NslipSystem(1:j-1,constitutive_phenopowerlaw_structure(i)))+k, &
-                                                               sum(lattice_NslipSystem(1:l-1,constitutive_phenopowerlaw_structure(i)))+m, &
-                                                               constitutive_phenopowerlaw_structure(i)), i ) 
+                                                        sum(lattice_NslipSystem(1:j-1,constitutive_phenopowerlaw_structure(i)))+k, &
+                                                        sum(lattice_NslipSystem(1:l-1,constitutive_phenopowerlaw_structure(i)))+m, &
+                                                        constitutive_phenopowerlaw_structure(i)), i ) 
    enddo; enddo; enddo; enddo
 
    do j = 1,lattice_maxNslipFamily
@@ -412,11 +412,11 @@ subroutine constitutive_phenopowerlaw_init(file)
        do l = 1,lattice_maxNtwinFamily
          do m = 1,constitutive_phenopowerlaw_Ntwin(l,i)
            constitutive_phenopowerlaw_hardeningMatrix_sliptwin(sum(constitutive_phenopowerlaw_Nslip(1:j-1,i))+k,&
-                                                                 sum(constitutive_phenopowerlaw_Ntwin(1:l-1,i))+m,  i) = &
+                                                               sum(constitutive_phenopowerlaw_Ntwin(1:l-1,i))+m,  i) = &
              constitutive_phenopowerlaw_interaction_sliptwin(lattice_interactionSlipTwin( &
-                                                               sum(lattice_NslipSystem(1:j-1,constitutive_phenopowerlaw_structure(i)))+k, &
-                                                               sum(lattice_NtwinSystem(1:l-1,constitutive_phenopowerlaw_structure(i)))+m, &
-                                                               constitutive_phenopowerlaw_structure(i)) ,i )
+                                                        sum(lattice_NslipSystem(1:j-1,constitutive_phenopowerlaw_structure(i)))+k, &
+                                                        sum(lattice_NtwinSystem(1:l-1,constitutive_phenopowerlaw_structure(i)))+m, &
+                                                        constitutive_phenopowerlaw_structure(i)) ,i )
    enddo; enddo; enddo; enddo
 
    do j = 1,lattice_maxNtwinFamily
@@ -424,11 +424,11 @@ subroutine constitutive_phenopowerlaw_init(file)
        do l = 1,lattice_maxNslipFamily
          do m = 1,constitutive_phenopowerlaw_Nslip(l,i)
            constitutive_phenopowerlaw_hardeningMatrix_twinslip(sum(constitutive_phenopowerlaw_Ntwin(1:j-1,i))+k,&
-                                                                 sum(constitutive_phenopowerlaw_Nslip(1:l-1,i))+m,  i) = &
+                                                               sum(constitutive_phenopowerlaw_Nslip(1:l-1,i))+m,  i) = &
              constitutive_phenopowerlaw_interaction_twinslip(lattice_interactionTwinSlip( &
-                                                               sum(lattice_NtwinSystem(1:j-1,constitutive_phenopowerlaw_structure(i)))+k, &
-                                                               sum(lattice_NslipSystem(1:l-1,constitutive_phenopowerlaw_structure(i)))+m, &
-                                                               constitutive_phenopowerlaw_structure(i)), i )
+                                                        sum(lattice_NtwinSystem(1:j-1,constitutive_phenopowerlaw_structure(i)))+k, &
+                                                        sum(lattice_NslipSystem(1:l-1,constitutive_phenopowerlaw_structure(i)))+m, &
+                                                        constitutive_phenopowerlaw_structure(i)), i )
    enddo; enddo; enddo; enddo
 
    do j = 1,lattice_maxNtwinFamily
@@ -436,18 +436,18 @@ subroutine constitutive_phenopowerlaw_init(file)
        do l = 1,lattice_maxNtwinFamily
          do m = 1,constitutive_phenopowerlaw_Ntwin(l,i)
            constitutive_phenopowerlaw_hardeningMatrix_twintwin(sum(constitutive_phenopowerlaw_Ntwin(1:j-1,i))+k,&
-                                                                 sum(constitutive_phenopowerlaw_Ntwin(1:l-1,i))+m,  i) = &
+                                                               sum(constitutive_phenopowerlaw_Ntwin(1:l-1,i))+m,  i) = &
              constitutive_phenopowerlaw_interaction_twintwin(lattice_interactionTwinTwin( &
-                                                               sum(lattice_NtwinSystem(1:j-1,constitutive_phenopowerlaw_structure(i)))+k, &
-                                                               sum(lattice_NtwinSystem(1:l-1,constitutive_phenopowerlaw_structure(i)))+m, &
-                                                               constitutive_phenopowerlaw_structure(i)), i )
+                                                        sum(lattice_NtwinSystem(1:j-1,constitutive_phenopowerlaw_structure(i)))+k, &
+                                                        sum(lattice_NtwinSystem(1:l-1,constitutive_phenopowerlaw_structure(i)))+m, &
+                                                        constitutive_phenopowerlaw_structure(i)), i )
    enddo; enddo; enddo; enddo
 
  enddo
 
  return
 
-end subroutine
+endsubroutine
 
 
 function constitutive_phenopowerlaw_stateInit(myInstance)
@@ -482,7 +482,7 @@ function constitutive_phenopowerlaw_stateInit(myInstance)
  enddo
  return
 
-end function
+endfunction
 
 
 function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
@@ -510,7 +510,7 @@ function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
 
  return
 
-end function
+endfunction
 
 
 subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el)
@@ -534,7 +534,7 @@ subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el
 
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
 
-end subroutine
+endsubroutine
 
 
 subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,state,ipc,ip,el)
@@ -636,7 +636,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
  dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 
  return
-end subroutine
+endsubroutine
 
 
 function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el)
@@ -766,7 +766,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 
  return
 
-end function
+endfunction
 
 
 !****************************************************************
@@ -908,6 +908,6 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
  
  return
 
-end function
+endfunction
 
 END MODULE
