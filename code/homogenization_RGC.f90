@@ -594,7 +594,7 @@ pure function homogenization_RGC_postResults(&
 
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
- use material, only: homogenization_typeInstance,homogenization_Noutput,homogenization_typeInstance,homogenization_Ngrains
+ use material, only: homogenization_typeInstance,homogenization_Noutput,homogenization_Ngrains
  implicit none
 
 !* Definition of variables
