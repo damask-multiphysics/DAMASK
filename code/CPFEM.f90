@@ -73,6 +73,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   use FEsolving, only:                                FE_init, &
                                                       parallelExecution, &
                                                       outdatedFFN1, &
+                                                      terminallyIll, &
                                                       cycleCounter, &
                                                       theInc, &
                                                       theCycle, &
@@ -201,7 +202,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-        write(6,'(a10,/,4(3(f20.8,x),/))') 'aged state',constitutive_state(1,1,1)%p
+        write(6,'(a10,/,4(3(e20.8,x),/))') 'aged state',constitutive_state(1,1,1)%p
         do k = 1,mesh_NcpElems
           do j = 1,mesh_maxNips
             if (homogenization_sizeState(j,k) > 0_pInt) &
@@ -211,10 +212,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       endif
 
       ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
-      if (outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > relevantStrain)) then
-        if (.not. outdatedFFN1) & 
+      if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > relevantStrain)) then
+        if (.not. terminallyIll .and. .not. outdatedFFN1) then 
           write(6,'(a11,x,i5,x,i2,x,a10,/,3(3(f10.3,x),/))') 'outdated at',cp_en,IP,'FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
-        outdatedFFN1 = .true.
+          outdatedFFN1 = .true.
+        endif
         CPFEM_cs(1:ngens,IP,cp_en)              = CPFEM_odd_stress
         CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en)   = CPFEM_odd_jacobian*math_identity2nd(ngens)
       
@@ -240,25 +242,29 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           CPFEM_calc_done = .true.
         endif
         
+        if (terminallyIll) then
+          CPFEM_cs(1:ngens,IP,cp_en)              = CPFEM_odd_stress
+          CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en)   = CPFEM_odd_jacobian*math_identity2nd(ngens)
+        else  
         !  translate from P to CS
-        Kirchhoff = math_mul33x33(materialpoint_P(:,:,IP, cp_en),transpose(materialpoint_F(:,:,IP, cp_en)))
-        J_inverse  = 1.0_pReal/math_det3x3(materialpoint_F(:,:,IP, cp_en))
-        CPFEM_cs(1:ngens,IP,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff)
+          Kirchhoff = math_mul33x33(materialpoint_P(:,:,IP, cp_en),transpose(materialpoint_F(:,:,IP, cp_en)))
+          J_inverse  = 1.0_pReal/math_det3x3(materialpoint_F(:,:,IP, cp_en))
+          CPFEM_cs(1:ngens,IP,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff)
 
         !  translate from dP/dF to dCS/dE
-        H = 0.0_pReal
-        forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
-          H(i,j,k,l) = H(i,j,k,l) + &
-                        materialpoint_F(j,m,IP,cp_en) * &
-                        materialpoint_F(l,n,IP,cp_en) * &
-                        materialpoint_dPdF(i,m,k,n,IP,cp_en) - &
-                        math_I3(j,l)*materialpoint_F(i,m,IP,cp_en)*materialpoint_P(k,m,IP,cp_en) + &
-                        0.5_pReal*(math_I3(i,k)*Kirchhoff(j,l) + math_I3(j,l)*Kirchhoff(i,k) + &
-                                   math_I3(i,l)*Kirchhoff(j,k) + math_I3(j,k)*Kirchhoff(i,l))
-        forall(i=1:3,j=1:3,k=1:3,l=1:3) &
-          H_sym(i,j,k,l)= 0.25_pReal*(H(i,j,k,l)+H(j,i,k,l)+H(i,j,l,k)+H(j,i,l,k))  ! where to use the symmetric version??
-        CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en) = math_Mandel3333to66(J_inverse*H)
-        
+          H = 0.0_pReal
+          forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
+            H(i,j,k,l) = H(i,j,k,l) + &
+                          materialpoint_F(j,m,IP,cp_en) * &
+                          materialpoint_F(l,n,IP,cp_en) * &
+                          materialpoint_dPdF(i,m,k,n,IP,cp_en) - &
+                          math_I3(j,l)*materialpoint_F(i,m,IP,cp_en)*materialpoint_P(k,m,IP,cp_en) + &
+                          0.5_pReal*(math_I3(i,k)*Kirchhoff(j,l) + math_I3(j,l)*Kirchhoff(i,k) + &
+                                     math_I3(i,l)*Kirchhoff(j,k) + math_I3(j,k)*Kirchhoff(i,l))
+          forall(i=1:3,j=1:3,k=1:3,l=1:3) &
+            H_sym(i,j,k,l)= 0.25_pReal*(H(i,j,k,l)+H(j,i,k,l)+H(i,j,l,k)+H(j,i,l,k))  ! where to use the symmetric version??
+          CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en) = math_Mandel3333to66(J_inverse*H)
+        endif
       endif
     
     ! --+>> COLLECTION OF FEM DATA AND RETURN OF ODD STRESS AND JACOBIAN <<+-- 

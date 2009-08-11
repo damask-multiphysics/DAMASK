@@ -46,14 +46,15 @@
  integer(pInt), dimension(2) :: mesh_maxValStateVar = 0_pInt
  character(len=64), dimension(:),   allocatable :: mesh_nameElemSet
  integer(pInt), dimension(:,:),     allocatable :: mesh_mapElemSet
- integer(pInt), dimension(:,:),     allocatable, target :: mesh_mapFEtoCPelem,mesh_mapFEtoCPnode
+ integer(pInt), dimension(:,:),     allocatable, target :: mesh_mapFEtoCPelem, mesh_mapFEtoCPnode
  integer(pInt), dimension(:,:),     allocatable :: mesh_element, mesh_sharedElem
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
 
- real(pReal),   dimension(:,:,:),   allocatable :: mesh_subNodeCoord    ! coordinates of subnodes per element
- real(pReal),   dimension(:,:),     allocatable :: mesh_ipVolume        ! volume associated with IP
- real(pReal),   dimension(:,:,:),   allocatable :: mesh_ipArea          ! area of interface to neighboring IP
- real(pReal),   dimension(:,:,:,:), allocatable :: mesh_ipAreaNormal    ! area normal of interface to neighboring IP
+ real(pReal),   dimension(:,:,:),   allocatable :: mesh_subNodeCoord      ! coordinates of subnodes per element
+ real(pReal),   dimension(:,:),     allocatable :: mesh_ipVolume          ! volume associated with IP
+ real(pReal),   dimension(:,:,:),   allocatable :: mesh_ipArea, &         ! area of interface to neighboring IP
+                                                   mesh_ipCenterOfGravity ! center of gravity of IP
+ real(pReal),   dimension(:,:,:,:), allocatable :: mesh_ipAreaNormal      ! area normal of interface to neighboring IP
  real(pReal),                       allocatable :: mesh_node (:,:)
  
  integer(pInt), dimension(:,:,:,:), allocatable :: FE_nodesAtIP
@@ -1577,7 +1578,9 @@ subroutine mesh_get_nodeElemDimensions (unit)
  real(pReal), dimension(Ntriangles,FE_NipFaceNodes) :: volume                   ! volumes of possible tetrahedra
  real(pReal), dimension(3) :: centerOfGravity
 
- allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems)) ; mesh_ipVolume = 0.0_pReal
+ allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems)) ;                      mesh_ipVolume = 0.0_pReal
+ allocate(mesh_ipCenterOfGravity(3,mesh_maxNips,mesh_NcpElems)) ;  mesh_ipCenterOfGravity = 0.0_pReal
+ 
  do e = 1,mesh_NcpElems                  ! loop over cpElems
    t = mesh_element(2,e)                 ! get elemType
    do i = 1,FE_Nips(t)                   ! loop over IPs of elem
@@ -1613,6 +1616,7 @@ subroutine mesh_get_nodeElemDimensions (unit)
        mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
      enddo
      mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes  ! renormalize with interfaceNodeNum due to loop over them
+     mesh_ipCenterOfGravity(:,i,e) = centerOfGravity
    enddo
  enddo
  return
@@ -1645,17 +1649,17 @@ subroutine mesh_get_nodeElemDimensions (unit)
    t = mesh_element(2,e)                    ! get elemType
    do i = 1,FE_Nips(t)                      ! loop over IPs of elem
      do f = 1,FE_NipNeighbors(t)            ! loop over interfaces of IP 
-	   forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+	     forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
        forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles)   ! start at each interface node and build valid triangles to cover interface
          normal(:,j,n) = math_vectorproduct(nPos(:,1+mod(n+j-1,FE_NipFaceNodes)) - nPos(:,n), &    ! calc their normal vectors
                                             nPos(:,1+mod(n+j-0,FE_NipFaceNodes)) - nPos(:,n))
          area(j,n) = dsqrt(sum(normal(:,j,n)*normal(:,j,n)))                                       ! and area
        end forall
-	   forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles, area(j,n) > 0.0_pReal) &
-	     normal(:,j,n) = normal(:,j,n) / area(j,n)        ! make unit normal
-
+	     forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles, area(j,n) > 0.0_pReal) &
+	       normal(:,j,n) = normal(:,j,n) / area(j,n)        ! make unit normal
+       
        mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)          ! area of parallelograms instead of triangles
-	   mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2) / count(area > 0.0_pReal)  ! average of all valid normals
+	     mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2) / count(area > 0.0_pReal)  ! average of all valid normals
      enddo
    enddo
  enddo

@@ -9,7 +9,7 @@
  integer(pInt) cycleCounter
  integer(pInt) theInc,theCycle,theLovl
  real(pReal)   theTime
- logical :: lastIncConverged = .false.,outdatedByNewInc = .false.,outdatedFFN1 = .false.
+ logical :: lastIncConverged = .false.,outdatedByNewInc = .false.,outdatedFFN1 = .false.,terminallyIll = .false.
  logical :: symmetricSolver = .false. 
  logical :: parallelExecution = .true. 
  integer(pInt), dimension(:,:), allocatable :: FEsolving_execIP

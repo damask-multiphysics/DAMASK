@@ -9,6 +9,7 @@ character(len=64), parameter :: numerics_configFile = 'numerics.config' ! name o
 integer(pInt)                   iJacoStiffness, &                       ! frequency of stiffness update
                                 iJacoLpresiduum, &                      ! frequency of Jacobian update of residuum in Lp
                                 nHomog, &                               ! homogenization loop limit
+                                nMPstate, &                             ! materialpoint state loop limit
                                 nCryst, &                               ! crystallite loop limit (only for debugging info, real loop limit is "subStepMin")
                                 nState, &                               ! state loop limit
                                 nStress                                 ! stress loop limit
@@ -69,7 +70,8 @@ subroutine numerics_init()
   iJacoStiffness          = 1_pInt
   iJacoLpresiduum         = 1_pInt
   pert_Fg                 = 1.0e-6_pReal
-  nHomog                  = 10_pInt
+  nHomog                  = 20_pInt
+  nMPstate                = 10_pInt
   nCryst                  = 20_pInt
   nState                  = 10_pInt
   nStress                 = 40_pInt
@@ -111,6 +113,8 @@ subroutine numerics_init()
               pert_Fg = IO_floatValue(line,positions,2)
         case ('nhomog')
               nHomog = IO_intValue(line,positions,2)
+        case ('nmpstate')
+              nMPstate = IO_intValue(line,positions,2)
         case ('ncryst')
               nCryst = IO_intValue(line,positions,2)
         case ('nstate')
@@ -160,6 +164,7 @@ subroutine numerics_init()
   write(6,'(a24,x,i8)')   'iJacoLpresiduum:        ',iJacoLpresiduum
   write(6,'(a24,x,e8.1)') 'pert_Fg:                ',pert_Fg
   write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
+  write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
   write(6,'(a24,x,i8)')   'nCryst:                 ',nCryst
   write(6,'(a24,x,i8)')   'nState:                 ',nState
   write(6,'(a24,x,i8)')   'nStress:                ',nStress
@@ -184,12 +189,13 @@ subroutine numerics_init()
   if (iJacoLpresiduum < 1_pInt)             call IO_error(262)
   if (pert_Fg <= 0.0_pReal)                 call IO_error(263)
   if (nHomog < 1_pInt)                      call IO_error(264)
+  if (nMPstate < 1_pInt)                    call IO_error(279)  !! missing in IO !!
   if (nCryst < 1_pInt)                      call IO_error(265)
   if (nState < 1_pInt)                      call IO_error(266)
   if (nStress < 1_pInt)                     call IO_error(267)
   if (subStepMin <= 0.0_pReal)              call IO_error(268)
   if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(269)
-  if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(276)
+  if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(276) !! oops !!
   if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(270)
   if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(271)
 
@@ -198,7 +204,7 @@ subroutine numerics_init()
   if (relTol_RGC <= 0.0_pReal)              call IO_error(273)
   if (absMax_RGC <= 0.0_pReal)              call IO_error(274)
   if (relMax_RGC <= 0.0_pReal)              call IO_error(275)
-  if (pPert_RGC <= 0.0_pReal)               call IO_error(276)
+  if (pPert_RGC <= 0.0_pReal)               call IO_error(276)   !! oops !!
   if (xSmoo_RGC <= 0.0_pReal)               call IO_error(277)
  
 endsubroutine

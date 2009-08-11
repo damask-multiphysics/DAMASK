@@ -64,8 +64,7 @@ subroutine homogenization_RGC_init(&
  allocate(homogenization_RGC_Ngrains(3,maxNinstance));       homogenization_RGC_Ngrains = 0_pInt
  allocate(homogenization_RGC_ciAlpha(3,maxNinstance));       homogenization_RGC_ciAlpha = 0.0_pReal
  allocate(homogenization_RGC_xiAlpha(3,maxNinstance));       homogenization_RGC_xiAlpha = 0.0_pReal
- allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance)); &
-                                                             homogenization_RGC_output = ''
+ allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance)); homogenization_RGC_output = ''
  
  rewind(file)
  line = ''

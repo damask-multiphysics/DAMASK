@@ -556,7 +556,6 @@ endsubroutine
 !**************************************************************************
 ! matrix multiplication 3x3 = 1
 !**************************************************************************
-
  PURE FUNCTION math_mul3x3(A,B)  
 
  use prec, only: pReal, pInt
@@ -578,7 +577,6 @@ endsubroutine
 !**************************************************************************
 ! matrix multiplication 6x6 = 1
 !**************************************************************************
-
  PURE FUNCTION math_mul6x6(A,B)  
 
  use prec, only: pReal, pInt
@@ -596,10 +594,10 @@ endsubroutine
 
  ENDFUNCTION
 
+ 
 !**************************************************************************
 ! matrix multiplication 33x33 = 3x3
-!**************************************************************************
-
+!**************************************************************************´
  PURE FUNCTION math_mul33x33(A,B)  
 
  use prec, only: pReal, pInt
@@ -635,27 +633,6 @@ endsubroutine
 
  ENDFUNCTION
 
-
-!**************************************************************************
-! matrix multiplication 66x6 = 6
-!**************************************************************************
- PURE FUNCTION math_mul66x6(A,B)  
-
- use prec, only: pReal, pInt
- implicit none
-
- integer(pInt)  i
- real(pReal), dimension(6,6), intent(in) ::  A
- real(pReal), dimension(6),   intent(in) ::  B
- real(pReal), dimension(6) ::  math_mul66x6
-
- forall (i=1:6) math_mul66x6(i) = &
-   A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
-   A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
- return
-
- ENDFUNCTION
-
  
 !**************************************************************************
 ! matrix multiplication 99x99 = 9x9
@@ -679,6 +656,62 @@ endsubroutine
 
  ENDFUNCTION
 
+ 
+!**************************************************************************
+! matrix multiplication 33x3 = 3
+!**************************************************************************
+ PURE FUNCTION math_mul33x3(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i
+ real(pReal), dimension(3,3), intent(in) ::  A
+ real(pReal), dimension(3),   intent(in) ::  B
+ real(pReal), dimension(3) ::  math_mul33x3
+
+ forall (i=1:3) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
+ return
+
+ ENDFUNCTION 
+
+ 
+!**************************************************************************
+! matrix multiplication 66x6 = 6
+!**************************************************************************
+ PURE FUNCTION math_mul66x6(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i
+ real(pReal), dimension(6,6), intent(in) ::  A
+ real(pReal), dimension(6),   intent(in) ::  B
+ real(pReal), dimension(6) ::  math_mul66x6
+
+ forall (i=1:6) math_mul66x6(i) = &
+   A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
+   A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
+ return
+
+ ENDFUNCTION
+
+ 
+!**************************************************************************
+! transposition of a 3x3 matrix
+!**************************************************************************
+function math_transpose3x3(A)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal),dimension(3,3),intent(in)  :: A
+ real(pReal),dimension(3,3) :: math_transpose3x3
+ 
+ math_transpose3x3 = reshape( (/A(1,1), A(1,2), A(1,3), A(2,1), A(2,2), A(2,3), A(3,1), A(3,2), A(3,3) /),(/3,3/) )
+ return
+
+ endfunction
  
 
 !**************************************************************************
@@ -1024,7 +1057,24 @@ endsubroutine
 
  ENDFUNCTION
 
+ 
+!********************************************************************
+! euclidic norm of a 3x1 vector
+!********************************************************************
+ pure function math_norm3(v3)
 
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3), intent(in) :: v3
+ real(pReal) math_norm3
+
+ math_norm3 = sqrt(v3(1)*v3(1)+v3(2)*v3(2)+v3(3)*v3(3))
+ return
+ 
+ endfunction
+
+ 
 !********************************************************************
 ! convert 3x3 matrix into vector 9x1
 !********************************************************************

@@ -858,7 +858,7 @@ endfunction
  case (265)
    msg = 'Limit for crystallite loop too small'
  case (266)
-   msg = 'Limit for state loop too small'
+   msg = 'Limit for crystallite state loop too small'
  case (267)
    msg = 'Limit for stress loop too small'
  case (268)
@@ -883,6 +883,9 @@ endfunction
    msg = 'Non-positive penalty perturbation in RGC'
  case (277)
    msg = 'Non-positive relevant mismatch in RGC'
+
+ case (279)
+   msg = 'Limit for materialpoint state loop too small'
 
  case (300)
    msg = 'This material can only be used with elements with three direct stress components'

@@ -6,10 +6,11 @@
 
  implicit none
  integer(pInt), dimension(:), allocatable :: debug_StressLoopDistribution
- integer(pInt), dimension(:), allocatable :: debug_StateLoopDistribution
+ integer(pInt), dimension(:), allocatable :: debug_CrystalliteStateLoopDistribution
  integer(pInt), dimension(:), allocatable :: debug_StiffnessStateLoopDistribution
  integer(pInt), dimension(:), allocatable :: debug_CrystalliteLoopDistribution
- integer(pInt), dimension(:), allocatable :: debug_MaterialpointLoopDistribution          ! added <<<updated 31.07.2009>>>
+ integer(pInt), dimension(:), allocatable :: debug_MaterialpointStateLoopDistribution
+ integer(pInt), dimension(:), allocatable :: debug_MaterialpointLoopDistribution
  integer(pLongInt) :: debug_cumLpTicks = 0_pInt
  integer(pLongInt) :: debug_cumDotStateTicks = 0_pInt
  integer(pLongInt) :: debug_cumDotTemperatureTicks = 0_pInt
@@ -27,18 +28,20 @@ subroutine debug_init()
   use numerics, only: nStress, &
                       nState, &
                       nCryst, &
-                      nHomog                                                              ! added <<<updated 31.07.2009>>>
+                      nMPstate, &
+                      nHomog
   implicit none
   
   write(6,*)
   write(6,*) '<<<+-  debug init  -+>>>'
   write(6,*)
  
-  allocate(debug_StressLoopDistribution(nStress)) ;        debug_StressLoopDistribution = 0_pInt
-  allocate(debug_StateLoopDistribution(nState)) ;          debug_StateLoopDistribution = 0_pInt
-  allocate(debug_StiffnessStateLoopDistribution(nState)) ; debug_StiffnessStateLoopDistribution = 0_pInt
-  allocate(debug_CrystalliteLoopDistribution(nCryst)) ;    debug_CrystalliteLoopDistribution = 0_pInt
-  allocate(debug_MaterialpointLoopDistribution(nhomog)) ;  debug_MaterialpointLoopDistribution = 0_pInt ! added <<<updated 31.07.2009>>>
+  allocate(debug_StressLoopDistribution(nStress)) ;         debug_StressLoopDistribution = 0_pInt
+  allocate(debug_CrystalliteStateLoopDistribution(nState)); debug_CrystalliteStateLoopDistribution = 0_pInt
+  allocate(debug_StiffnessStateLoopDistribution(nState)) ;  debug_StiffnessStateLoopDistribution = 0_pInt
+  allocate(debug_CrystalliteLoopDistribution(nCryst+1)) ;   debug_CrystalliteLoopDistribution = 0_pInt
+  allocate(debug_MaterialpointStateLoopDistribution(nMPstate)) ; debug_MaterialpointStateLoopDistribution = 0_pInt
+  allocate(debug_MaterialpointLoopDistribution(nHomog+1)) ;      debug_MaterialpointLoopDistribution = 0_pInt
 endsubroutine
  
 !********************************************************************
@@ -49,11 +52,12 @@ subroutine debug_reset()
   use prec
   implicit none
 
-  debug_StressLoopDistribution         = 0_pInt ! initialize debugging data
-  debug_StateLoopDistribution          = 0_pInt
-  debug_StiffnessStateLoopDistribution = 0_pInt
-  debug_CrystalliteLoopDistribution    = 0_pInt
-  debug_MaterialpointLoopDistribution  = 0_pInt ! added <<<updated 31.07.2009>>>
+  debug_StressLoopDistribution              = 0_pInt ! initialize debugging data
+  debug_CrystalliteStateLoopDistribution    = 0_pInt
+  debug_StiffnessStateLoopDistribution      = 0_pInt
+  debug_CrystalliteLoopDistribution         = 0_pInt
+  debug_MaterialpointStateLoopDistribution  = 0_pInt
+  debug_MaterialpointLoopDistribution       = 0_pInt
   debug_cumLpTicks       = 0_pInt
   debug_cumDotStateTicks = 0_pInt
   debug_cumDotTemperatureTicks = 0_pInt
@@ -70,9 +74,10 @@ endsubroutine
 
  use prec
  use numerics, only: nStress, &
-                      nState, &
-                      nCryst, &
-                      nHomog              ! added <<<updated 31.07.2009>>>
+                     nState, &
+                     nCryst, &
+                     nMPstate, &
+                     nHomog
  implicit none
 
  integer(pInt) i,integral
@@ -111,21 +116,21 @@ endsubroutine
  do i=1,nStress
    if (debug_StressLoopDistribution(i) /= 0) then
      integral = integral + i*debug_StressLoopDistribution(i)
-     write(6,'(i25,i10)') i,debug_StressLoopDistribution(i)
+     write(6,'(i25,x,i10)') i,debug_StressLoopDistribution(i)
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',integral,sum(debug_StressLoopDistribution)
+ write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_StressLoopDistribution)
  
  integral = 0_pInt
  write(6,*)
- write(6,*)	'distribution_StateLoop :'
+ write(6,*)	'distribution_CrystalliteStateLoop :'
  do i=1,nState
-   if (debug_StateLoopDistribution(i) /= 0) then
-     integral = integral + i*debug_StateLoopDistribution(i)
-     write(6,'(i25,i10)') i,debug_StateLoopDistribution(i)
+   if (debug_CrystalliteStateLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_CrystalliteStateLoopDistribution(i)
+     write(6,'(i25,x,i10)') i,debug_CrystalliteStateLoopDistribution(i)
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',integral,sum(debug_StateLoopDistribution)
+ write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_CrystalliteStateLoopDistribution)
 
  integral = 0_pInt
  write(6,*)
@@ -133,35 +138,56 @@ endsubroutine
  do i=1,nState
    if (debug_StiffnessStateLoopDistribution(i) /= 0) then
      integral = integral + i*debug_StiffnessStateLoopDistribution(i)
-     write(6,'(i25,i10)') i,debug_StiffnessStateLoopDistribution(i)
+     write(6,'(i25,x,i10)') i,debug_StiffnessStateLoopDistribution(i)
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',integral,sum(debug_StiffnessStateLoopDistribution)
+ write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_StiffnessStateLoopDistribution)
  
  integral = 0_pInt
  write(6,*)
  write(6,*)	'distribution_CrystalliteLoop :'
- do i=1,nCryst
+ do i=1,nCryst+1
    if (debug_CrystalliteLoopDistribution(i) /= 0) then
      integral = integral + i*debug_CrystalliteLoopDistribution(i)
-     write(6,'(i25,i10)') i,debug_CrystalliteLoopDistribution(i)
+     if (i <= nCryst) then
+       write(6,'(i25,x,i10)') i,debug_CrystalliteLoopDistribution(i)
+     else
+       write(6,'(i25,a1,i10)') i-1,'+',debug_CrystalliteLoopDistribution(i)
+     endif
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
+ write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
  write(6,*)
 
 !* Material point loop counter <<<updated 31.07.2009>>>
  integral = 0_pInt
  write(6,*)
- write(6,*)	'distribution_MaterialpointLoop :'
- do i=1,nCryst
-   if (debug_MaterialpointLoopDistribution(i) /= 0) then
-     integral = integral + i*debug_MaterialpointLoopDistribution(i)
-     write(6,'(i25,i10)') i,debug_MaterialpointLoopDistribution(i)
+ write(6,*)	'distribution_MaterialpointStateLoop :'
+ do i=1,nMPstate
+   if (debug_MaterialpointStateLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_MaterialpointStateLoopDistribution(i)
+     write(6,'(i25,x,i10)') i,debug_MaterialpointStateLoopDistribution(i)
    endif
  enddo
- write(6,'(a15,i10,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
+ write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution)
  write(6,*)
+
+ integral = 0_pInt
+ write(6,*)
+ write(6,*)	'distribution_MaterialpointLoop :'
+ do i=1,nHomog+1
+   if (debug_MaterialpointLoopDistribution(i) /= 0) then
+     integral = integral + i*debug_MaterialpointLoopDistribution(i)
+     if (i <= nHomog) then
+       write(6,'(i25,x,i10)') i,debug_MaterialpointLoopDistribution(i)
+     else
+       write(6,'(i25,a1,i10)') i-1,'+',debug_MaterialpointLoopDistribution(i)
+     endif
+   endif
+ enddo
+ write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
+ write(6,*)
+
 
  endsubroutine
  
