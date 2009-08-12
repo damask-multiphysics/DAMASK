@@ -138,6 +138,7 @@ subroutine hypela2(&
                       lastIncConverged, &
                       outdatedByNewInc, &
                       outdatedFFN1, &
+                      terminallyIll, &
                       symmetricSolver
  use CPFEM, only:     CPFEM_general
  use math, only:      invnrmMandel
