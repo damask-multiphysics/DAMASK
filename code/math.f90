@@ -707,8 +707,9 @@ function math_transpose3x3(A)
 
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal),dimension(3,3) :: math_transpose3x3
+ integer(pInt) i,j
  
- math_transpose3x3 = reshape( (/A(1,1), A(1,2), A(1,3), A(2,1), A(2,2), A(2,3), A(3,1), A(3,2), A(3,3) /),(/3,3/) )
+ forall(i=1:3, j=1:3) math_transpose3x3(i,j) = A(j,i)
  return
 
  endfunction

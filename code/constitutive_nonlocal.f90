@@ -57,8 +57,10 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_
                                                           constitutive_nonlocal_rhoEdgeNeg0, &                  ! initial edge_neg dislocation density per slip system for each family and instance
                                                           constitutive_nonlocal_rhoScrewPos0, &                 ! initial screw_pos dislocation density per slip system for each family and instance
                                                           constitutive_nonlocal_rhoScrewNeg0, &                 ! initial screw_neg dislocation density per slip system for each family and instance
-                                                          constitutive_nonlocal_v0BySlipFamily, &               ! initial dislocation velocity [m/s] for each family and instance
-                                                          constitutive_nonlocal_v0BySlipSystem, &               ! initial dislocation velocity [m/s] for each slip system and instance
+                                                          constitutive_nonlocal_v0BySlipFamily, &               ! dislocation velocity prefactor [m/s] for each family and instance
+                                                          constitutive_nonlocal_v0BySlipSystem, &               ! dislocation velocity prefactor [m/s] for each slip system and instance
+                                                          constitutive_nonlocal_lambda0BySlipFamily, &          ! mean free path prefactor for each family and instance
+                                                          constitutive_nonlocal_lambda0BySlipSystem, &          ! mean free path prefactor for each slip system and instance
                                                           constitutive_nonlocal_burgersBySlipFamily, &          ! absolute length of burgers vector [m] for each family and instance
                                                           constitutive_nonlocal_burgersBySlipSystem, &          ! absolute length of burgers vector [m] for each slip system and instance
                                                           constitutive_nonlocal_interactionSlipSlip             ! coefficients for slip-slip interaction for each interaction type and instance
@@ -184,6 +186,8 @@ allocate(constitutive_nonlocal_v0BySlipFamily(lattice_maxNslipFamily, maxNinstan
                                                                               constitutive_nonlocal_v0BySlipFamily = 0.0_pReal
 allocate(constitutive_nonlocal_burgersBySlipFamily(lattice_maxNslipFamily, maxNinstance));
                                                                               constitutive_nonlocal_burgersBySlipFamily = 0.0_pReal
+allocate(constitutive_nonlocal_Lambda0BySlipFamily(lattice_maxNslipFamily, maxNinstance));
+                                                                              constitutive_nonlocal_lambda0BySlipFamily = 0.0_pReal
 
 allocate(constitutive_nonlocal_interactionSlipSlip(lattice_maxNinteraction, maxNinstance))
                                                                               constitutive_nonlocal_interactionSlipSlip = 0.0_pReal
@@ -241,6 +245,8 @@ do                                                                              
         forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_rhoScrewNeg0(f,i) = IO_floatValue(line,positions,1+f)
       case ('v0')
         forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_v0BySlipFamily(f,i) = IO_floatValue(line,positions,1+f)
+      case ('lambda0')
+        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_lambda0BySlipFamily(f,i) = IO_floatValue(line,positions,1+f)
       case ('burgers')
         forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_burgersBySlipFamily(f,i) = IO_floatValue(line,positions,1+f)
       case ('interaction_slipslip')
@@ -256,29 +262,23 @@ enddo
     lattice_initializeStructure(constitutive_nonlocal_structureName(i), constitutive_nonlocal_CoverA(i))                            ! our lattice structure is defined in the material.config file by the structureName (and the c/a ratio)
   
   
-!*** sanity checks
+!*** sanity checks 
+!*** !!! not yet complete !!!
   
-  if (constitutive_nonlocal_structure(i) < 1 .or. constitutive_nonlocal_structure(i) > 3) call IO_error(205)
+  if (constitutive_nonlocal_structure(i) < 1 .or. constitutive_nonlocal_structure(i) > 3)   call IO_error(205)
+  if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0)                                           call IO_error(225)
   
-  if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0)                                         call IO_error(225)
-  
-  if (any(      constitutive_nonlocal_rhoEdgePos0(:,i) < 0.0_pReal &
-          .and. constitutive_nonlocal_Nslip(:,i) > 0))                                    call IO_error(220)
-  
-  if (any(      constitutive_nonlocal_rhoEdgeNeg0(:,i) < 0.0_pReal &
-          .and. constitutive_nonlocal_Nslip(:,i) > 0))                                    call IO_error(220)
-  
-  if (any(      constitutive_nonlocal_rhoScrewPos0(:,i) < 0.0_pReal &
-          .and. constitutive_nonlocal_Nslip(:,i) > 0))                                    call IO_error(220)
-  
-  if (any(      constitutive_nonlocal_rhoScrewNeg0(:,i) < 0.0_pReal &
-          .and. constitutive_nonlocal_Nslip(:,i) > 0))                                    call IO_error(220)
-  
-  if (any(      constitutive_nonlocal_burgersBySlipFamily(:,i) <= 0.0_pReal &
-          .and. constitutive_nonlocal_Nslip(:,i) > 0))                                    call IO_error(221)
-  
-  if (any(      constitutive_nonlocal_v0BySlipFamily(:,i) <= 0.0_pReal &
-          .and. constitutive_nonlocal_Nslip(:,i) > 0))                                    call IO_error(-1)
+  do f = 1,lattice_maxNslipFamily
+    if (constitutive_nonlocal_Nslip(f,i) > 0) then
+      if (constitutive_nonlocal_rhoEdgePos0(f,i) < 0.0_pReal)                               call IO_error(220)
+      if (constitutive_nonlocal_rhoEdgeNeg0(f,i) < 0.0_pReal)                               call IO_error(220)
+      if (constitutive_nonlocal_rhoScrewPos0(f,i) < 0.0_pReal)                              call IO_error(220)
+      if (constitutive_nonlocal_rhoScrewNeg0(f,i) < 0.0_pReal)                              call IO_error(220)
+      if (constitutive_nonlocal_burgersBySlipFamily(f,i) <= 0.0_pReal)                      call IO_error(221)
+      if (constitutive_nonlocal_v0BySlipFamily(f,i) <= 0.0_pReal)                           call IO_error(-1)
+      if (constitutive_nonlocal_lambda0BySlipFamily(f,i) <= 0.0_pReal)                      call IO_error(-1)
+    endif
+  enddo
   
   
 !*** determine total number of active slip systems
@@ -297,6 +297,8 @@ allocate(constitutive_nonlocal_burgersBySlipSystem(maxTotalNslip, maxNinstance))
                                                                                constitutive_nonlocal_burgersBySlipSystem = 0.0_pReal
 allocate(constitutive_nonlocal_v0BySlipSystem(maxTotalNslip, maxNinstance))
                                                                                     constitutive_nonlocal_v0BySlipSystem = 0.0_pReal
+allocate(constitutive_nonlocal_lambda0BySlipSystem(maxTotalNslip, maxNinstance))
+                                                                               constitutive_nonlocal_lambda0BySlipSystem = 0.0_pReal
 allocate(constitutive_nonlocal_forestProjectionEdge(maxTotalNslip, maxTotalNslip, maxNinstance))
                                                                               constitutive_nonlocal_forestProjectionEdge = 0.0_pReal
 allocate(constitutive_nonlocal_forestProjectionScrew(maxTotalNslip, maxTotalNslip, maxNinstance))
@@ -375,12 +377,18 @@ do i = 1,maxNinstance
   constitutive_nonlocal_nu(i) = constitutive_nonlocal_C12(i) / constitutive_nonlocal_C11(i)
   
   
-!*** burgers vector and initial dislocation velocity for each slip system
+!*** burgers vector, dislocation velocity prefactor and mean free path prefactor for each slip system
   
   do s = 1,constitutive_nonlocal_totalNslip(i)
+    
     constitutive_nonlocal_burgersBySlipSystem(s,i) &
         = constitutive_nonlocal_burgersBySlipFamily( constitutive_nonlocal_slipFamily(s,i), i )
+    
     constitutive_nonlocal_v0BySlipSystem(s,i) = constitutive_nonlocal_v0BySlipFamily(constitutive_nonlocal_slipFamily(s,i),i)
+    
+    constitutive_nonlocal_lambda0BySlipSystem(s,i) &
+        = constitutive_nonlocal_lambda0BySlipFamily( constitutive_nonlocal_slipFamily(s,i), i )
+  
   enddo
   
   
@@ -852,11 +860,12 @@ do s = 1,constitutive_nonlocal_totalNslip(myInstance)
     dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) + dgdot_dtauSlip(s) * lattice_Sslip(i,j, sLattice,myStructure) &
                                                                           * lattice_Sslip(k,l, sLattice,myStructure) 
 enddo
+
+dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
+
 !if (debugger) write(6,'(a26,3(i3,x),/,12(f10.3,x),/)') 'tauSlipThreshold / MPa at ',g,ip,el, tauSlipThreshold/1e6
 !if (debugger) write(6,'(a15,3(i3,x),/,12(f10.3,x),/)') 'tauSlip / MPa at ',g,ip,el, tauSlip/1e6
 !if (debugger) write(6,'(a15,3(i3,x),/,12(e10.3,x),/)') 'gdotSlip at ',g,ip,el, gdotSlip
-
-dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 endsubroutine
 
@@ -882,7 +891,6 @@ use mesh,     only: mesh_NcpElems, &
                     FE_NipNeighbors, &
                     mesh_ipNeighborhood, &
                     mesh_ipVolume, &
-                    mesh_ipCenterOfGravity, &
                     mesh_ipArea, &
                     mesh_ipAreaNormal
 use material, only: homogenization_maxNgrains, &
@@ -922,30 +930,32 @@ integer(pInt)                               myInstance, &             ! current 
                                             neighboring_ip, &         ! integration point of my neighbor
                                             n, &                      ! index of my current neighbor
                                             t, &                      ! type of dislocation
-                                            s, &                      ! index of my current slip system
-                                            sLattice                  ! index of my current slip system as specified by lattice
+                                            s                         ! index of my current slip system
 real(pReal), dimension(4,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             rho, &                    ! dislocation densities
-                                            gdot                      ! shear rates
+                                            gdot, &                   ! shear rates
+                                            lineLength                ! dislocation line length leaving the current interface
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &              ! forest dislocation density
                                             tauSlipThreshold, &       ! threshold shear stress
                                             tauSlip, &                ! resolved shear stress
-                                            v                         ! dislocation velocity
+                                            v, &                      ! dislocation velocity
+                                            invLambda                 ! inverse of mean free path for dislocations
 real(pReal), dimension(3,4,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             m                         ! direction of dislocation motion
 real(pReal), dimension(6) ::                backStress_v              ! backstress resulting from the neighboring excess dislocation densities as 2nd Piola-Kirchhoff stress
-real(pReal), dimension(4) ::                leavingRho                ! dislocation densities leaving the current interface
 real(pReal), dimension(3) ::                surfaceNormal             ! surface normal of the current interface
 real(pReal)                                 norm_surfaceNormal, &     ! euclidic norm of the surface normal
                                             area                      ! area of the current interface
 
  
-
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
 ns = constitutive_nonlocal_totalNslip(myInstance)
 
+tauSlip = 0.0_pReal
+v = 0.0_pReal
+gdot = 0.0_pReal
 
 !*** shortcut to state variables 
 
@@ -955,65 +965,80 @@ tauSlipThreshold = state(g,ip,el)%p(5*ns+1:6*ns)
 backStress_v     = state(g,ip,el)%p(6*ns+1:6*ns+6)
 
 
+!****************************************************************************
+!*** Calculate shear rate
+
 do s = 1,ns
 
-!*** Calculate gdot for each type of dislocation
-  
-  sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
-  tauSlip(s) = math_mul6x6( Tstar_v + backStress_v, lattice_Sslip_v(:,sLattice,myStructure) )
-  
-  v(s) =  constitutive_nonlocal_v0BySlipSystem(s,myInstance) &
-        * exp( - ( tauSlipThreshold(s) - abs(tauSlip(s)) ) &
-               * constitutive_nonlocal_burgersBySlipSystem(s,myInstance)**2.0_pReal &
-               / ( kB * Temperature * sqrt(rhoForest(s)) ) ) &
-        * sign(1.0_pReal,tauSlip(s))
-  
-  forall (t = 1:4) gdot(t,s) = rho(t,s) * constitutive_nonlocal_burgersBySlipSystem(s,myInstance) * v(s)
+  tauSlip(s) = math_mul6x6( Tstar_v + backStress_v, &
+                         lattice_Sslip_v(:,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure) )
 
-  
-!*** Direction of dislocation motion
-
-  m(:,1,s) =  lattice_sd(:, sLattice, myStructure)
-  m(:,2,s) = -lattice_sd(:, sLattice, myStructure)
-  m(:,3,s) =  lattice_st(:, sLattice, myStructure)
-  m(:,4,s) = -lattice_st(:, sLattice, myStructure)
+  forall (s = 1:ns, rhoForest(s) > 0.0_pReal) &
+    v(s) =  constitutive_nonlocal_v0BySlipSystem(s,myInstance) &
+          * exp( - ( tauSlipThreshold(s) - abs(tauSlip(s)) ) * constitutive_nonlocal_burgersBySlipSystem(s,myInstance)**2.0_pReal &
+                   / ( kB * Temperature * sqrt(rhoForest(s)) ) ) &
+          * sign(1.0_pReal,tauSlip(s))
+    
+  forall (t = 1:4, s = 1:ns) &
+    gdot(t,s) = rho(t,s) * constitutive_nonlocal_burgersBySlipSystem(s,myInstance) * v(s)
 
 enddo
+  
+
+!****************************************************************************
+!*** calculate dislocation multiplication
+
+invLambda = sqrt(rhoForest) / constitutive_nonlocal_lambda0BySlipSystem(:,myInstance)
+
+forall (t = 1:4, s = 1:ns) &
+  dotState(1,ip,el)%p((t-1)*ns+s) = dotState(1,ip,el)%p((t-1)*ns+s) + 0.25_pReal * sum(gdot(:,s)) * invLambda(s) &
+                                                                           / constitutive_nonlocal_burgersBySlipSystem(s,myInstance)
 
 
-!*** loop through my neighbors if existent and calculate the area and the surface normal of the interface
+!****************************************************************************
+!*** calculate dislocation fluxes
 
+! Direction of dislocation motion
+m(:,1,:) =  lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+m(:,2,:) = -lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+m(:,3,:) =  lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+m(:,4,:) = -lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+
+! loop through my neighbors
 do n = 1,FE_NipNeighbors(mesh_element(2,el))
 
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
   neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
    
+  ! calculate the area and the surface normal of the interface
   surfaceNormal = math_mul33x3(math_transpose3x3(invFp), mesh_ipAreaNormal(:,n,ip,el))
   norm_surfaceNormal = math_norm3(surfaceNormal)
   surfaceNormal = surfaceNormal / norm_surfaceNormal
   area = mesh_ipArea(n,ip,el) / norm_surfaceNormal
 
-  
-!*** loop through my interfaces
-!*** subtract dislocation densities that leave through an interface from my dotState and add them to the neighboring dotState
-  
+  ! loop through my interfaces
   do s = 1,ns
   
-    leavingRho = 0.0_pReal
+    lineLength = 0.0_pReal
+    
+    ! loop through dislocation types
     do t = 1,4
       if ( sign(1.0_pReal,math_mul3x3(m(:,t,s),surfaceNormal)) == sign(1.0_pReal,gdot(t,s)) ) then
         
-        leavingRho(t) = gdot(t,s) / constitutive_nonlocal_burgersBySlipSystem(s,myInstance) &
-                                  * math_mul3x3(m(:,t,s),surfaceNormal) * area
+        ! dislocation line length that leaves this interface per second
+        lineLength(t,s) = gdot(t,s) / constitutive_nonlocal_burgersBySlipSystem(s,myInstance) &
+                                    * math_mul3x3(m(:,t,s),surfaceNormal) * area
         
-        dotState(1,ip,el)%p((t-1)*ns+s) = dotState(1,ip,el)%p((t-1)*ns+s) - leavingRho(t)
+        ! subtract dislocation density rate (= line length over volume) that leaves through an interface from my dotState ...
+        dotState(1,ip,el)%p((t-1)*ns+s) = dotState(1,ip,el)%p((t-1)*ns+s) - lineLength(t,s) / mesh_ipVolume(ip,el)
         
+        ! ... and add them to the neighboring dotState (if neighbor exists)
         if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then
 !*****************************************************************************************************
 !***   OMP locking for this neighbor missing
 !*****************************************************************************************************
-          dotState(1,neighboring_ip,neighboring_el)%p((t-1)*ns+s) = &
-                dotState(1,neighboring_ip,neighboring_el)%p((t-1)*ns+s) + leavingRho(t)
+          dotState(1,neighboring_ip,neighboring_el)%p((t-1)*ns+s) = dotState(1,neighboring_ip,neighboring_el)%p((t-1)*ns+s) &
+                                                                  + lineLength(t,s) / mesh_ipVolume(neighboring_ip,neighboring_el)
         endif
       endif
     enddo
