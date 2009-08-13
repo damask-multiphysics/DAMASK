@@ -334,7 +334,7 @@ function homogenization_RGC_updateState(&
 !               '@ grain',stresLoc(3),'in component',stresLoc(1),stresLoc(2)
 !    write(1978,'(x,a15,x,e10.4,x,a7,i3,x,a12,i2)')'Max residual: ',residMax, &
 !               '@ iface',residLoc(1),'in direction',residLoc(2)
- endif
+! endif
  homogenization_RGC_updateState = .false.
 !* If convergence reached => done and happy
  if (residMax < relTol_RGC*stresMax .or. residMax < absTol_RGC) then 
