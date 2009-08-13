@@ -314,10 +314,10 @@ subroutine constitutive_phenopowerlaw_init(file)
 
    if (any(constitutive_phenopowerlaw_tau0_twin(:,i) < 0.0_pReal .and. &
            constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(210)
-   if (constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal)  .and. &
-           constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211)
-   if (constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal)      .and. &
-           constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(212)
+   if (    constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal  .and. &
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))         call IO_error(211)
+   if (    constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal .and. &
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(212)
 
  enddo
           
