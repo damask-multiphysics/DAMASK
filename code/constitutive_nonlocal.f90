@@ -138,6 +138,7 @@ integer(pInt)                               section, &
                                             s, &                ! index of my slip system
                                             s1, &               ! index of my slip system
                                             s2, &               ! index of my slip system
+                                            it, &               ! index of my interaction type
                                             output, &
                                             mySize
 character(len=64)                           tag
@@ -250,7 +251,7 @@ do                                                                              
       case ('burgers')
         forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_burgersBySlipFamily(f,i) = IO_floatValue(line,positions,1+f)
       case ('interaction_slipslip')
-        forall (f = 1:lattice_maxNinteraction) constitutive_nonlocal_interactionSlipSlip(f,i) = IO_floatValue(line,positions,1+f)
+        forall (it = 1:lattice_maxNinteraction) constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1+it)
     end select
   endif
 enddo
@@ -267,7 +268,6 @@ enddo
   
   if (constitutive_nonlocal_structure(i) < 1 .or. constitutive_nonlocal_structure(i) > 3)   call IO_error(205)
   if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0)                                           call IO_error(225)
-  
   do f = 1,lattice_maxNslipFamily
     if (constitutive_nonlocal_Nslip(f,i) > 0) then
       if (constitutive_nonlocal_rhoEdgePos0(f,i) < 0.0_pReal)                               call IO_error(220)
@@ -279,7 +279,8 @@ enddo
       if (constitutive_nonlocal_lambda0BySlipFamily(f,i) <= 0.0_pReal)                      call IO_error(-1)
     endif
   enddo
-  
+  if (sum(constitutive_nonlocal_interactionSlipSlip(:,i)) <= 0)                             call IO_error(-1)
+    
   
 !*** determine total number of active slip systems
   
@@ -331,10 +332,15 @@ do i = 1,maxNinstance
   
     do o = 1,maxval(phase_Noutput)
     select case(constitutive_nonlocal_output(o,i))
-      case( 'dislocationdensity', &
-            'shearrate_slip', &
-            'resolvedstress_slip', &
-            'resistance_slip')
+      case( 'rho', &
+            'rho_edge', &
+            'rho_screw', &
+            'excess_rho_edge', &
+            'excess_rho_screw', &
+            'rho_forest', &
+            'shearrate', &
+            'resolvedstress', &
+            'resistance')
         mySize = constitutive_nonlocal_totalNslip(i)
       case default
         mySize = 0_pInt
@@ -373,7 +379,7 @@ do i = 1,maxNinstance
   constitutive_nonlocal_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_nonlocal_Cslip_66(:,:,i)))
   constitutive_nonlocal_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_nonlocal_Cslip_66(:,:,i))
 
-  constitutive_nonlocal_Gmod(i) = constitutive_nonlocal_C44(i)                                                                      ! shear modulus is given by elastic constant C44
+  constitutive_nonlocal_Gmod(i) = constitutive_nonlocal_C44(i)
   constitutive_nonlocal_nu(i) = constitutive_nonlocal_C12(i) / constitutive_nonlocal_C11(i)
   
   
@@ -559,7 +565,6 @@ use math,     only: math_Plain3333to99, &
                     math_mul33x33, &
                     math_mul3x3, &
                     math_mul33x3, &
-                    math_transpose3x3, &
                     pi
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
@@ -680,7 +685,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
   
   ! calculate the connecting vector between me and my neighbor and his excess dislocation density
   
-  connectingVector = math_mul33x3( Fp(:,:,g,ip,el), &
+  connectingVector = math_mul33x3( Fp(:,:,g,neighboring_ip,neighboring_el), &
                                   (mesh_ipCenterOfGravity(:,ip,el) - mesh_ipCenterOfGravity(:,neighboring_ip,neighboring_el)) )
   
   neighboring_rhoEdgePos  = state(1, neighboring_ip, neighboring_el)%p(     1:  ns)
@@ -732,7 +737,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
     sigma(3,1) = 0.0_pReal
     
     ! coordinate transformation from the slip coordinate system to the lattice coordinate system
-    backStress_v = backStress_v + math_Mandel33to6( math_mul33x33(math_transpose3x3(transform), math_mul33x33(sigma, transform) ) )
+    backStress_v = backStress_v + math_Mandel33to6( math_mul33x33(transpose(transform), math_mul33x33(sigma, transform) ) )
     
   enddo
 enddo
@@ -830,12 +835,11 @@ backStress_v     = state(g,ip,el)%p(6*ns+1:6*ns+6)
 ! if (debugger) write(6,'(a15,3(i3,x),/,3(3(f12.3,x)/))') 'Tstar / MPa at ',g,ip,el, math_Mandel6to33(Tstar_v/1e6)
 
 !*** loop over slip systems
-  
-do s = 1,constitutive_nonlocal_totalNslip(myInstance)
+
+do s = 1,ns
 
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
 
-  
   !*** Calculation of Lp
   
   tauSlip(s) = math_mul6x6( Tstar_v + backStress_v, lattice_Sslip_v(:,sLattice,myStructure) )
@@ -849,7 +853,7 @@ do s = 1,constitutive_nonlocal_totalNslip(myInstance)
   gdotSlip(s) =  sum(rho(:,s)) * constitutive_nonlocal_burgersBySlipSystem(s,myInstance) * v(s)
   
   Lp = Lp + gdotSlip(s) * lattice_Sslip(:,:,sLattice,myStructure)
-  
+  ! if (debugger) write(6,'(a4,i2,a3,/,3(3(f15.7)/))') 'dLp(',s,'): ',gdotSlip(s) * lattice_Sslip(:,:,sLattice,myStructure)
   
   !*** Calculation of the tangent of Lp
   
@@ -863,9 +867,12 @@ enddo
 
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
-!if (debugger) write(6,'(a26,3(i3,x),/,12(f10.3,x),/)') 'tauSlipThreshold / MPa at ',g,ip,el, tauSlipThreshold/1e6
-!if (debugger) write(6,'(a15,3(i3,x),/,12(f10.3,x),/)') 'tauSlip / MPa at ',g,ip,el, tauSlip/1e6
-!if (debugger) write(6,'(a15,3(i3,x),/,12(e10.3,x),/)') 'gdotSlip at ',g,ip,el, gdotSlip
+! if (debugger) write(6,'(a23,3(i3,x),/,12(e10.3,x),/)') 'dislocation density at ',g,ip,el, rho
+! if (debugger) write(6,'(a26,3(i3,x),/,12(f10.5,x),/)') 'tauSlipThreshold / MPa at ',g,ip,el, tauSlipThreshold/1e6
+! if (debugger) write(6,'(a15,3(i3,x),/,12(f10.5,x),/)') 'tauSlip / MPa at ',g,ip,el, tauSlip/1e6
+! if (debugger) write(6,'(a5,3(i3,x),/,12(e10.3,x),/)') 'v at ',g,ip,el, v
+! if (debugger) write(6,'(a15,3(i3,x),/,12(e10.3,x),/)') 'gdotSlip at ',g,ip,el, gdotSlip
+! if (debugger) write(6,'(a6,3(i3,x),/,3(3(f15.7)/))') 'Lp at ',g,ip,el, Lp
 
 endsubroutine
 
@@ -983,16 +990,18 @@ do s = 1,ns
     gdot(t,s) = rho(t,s) * constitutive_nonlocal_burgersBySlipSystem(s,myInstance) * v(s)
 
 enddo
-  
+
 
 !****************************************************************************
 !*** calculate dislocation multiplication
 
 invLambda = sqrt(rhoForest) / constitutive_nonlocal_lambda0BySlipSystem(:,myInstance)
 
-forall (t = 1:4, s = 1:ns) &
-  dotState(1,ip,el)%p((t-1)*ns+s) = dotState(1,ip,el)%p((t-1)*ns+s) + 0.25_pReal * sum(gdot(:,s)) * invLambda(s) &
-                                                                           / constitutive_nonlocal_burgersBySlipSystem(s,myInstance)
+forall (t = 1:4) &
+  dotState(1,ip,el)%p((t-1)*ns+1:t*ns) = dotState(1,ip,el)%p((t-1)*ns+1:t*ns) + 0.25_pReal * sum(abs(gdot),1) * invLambda &
+                                                                           / constitutive_nonlocal_burgersBySlipSystem(:,myInstance)
+! if (debugger) write(6,'(a30,3(i3,x),/,12(e10.3,x),/)') 'dislocation multiplication at ',g,ip,el, &
+                          ! 0.25_pReal * sum(abs(gdot),1) * invLambda / constitutive_nonlocal_burgersBySlipSystem(:,myInstance)
 
 
 !****************************************************************************
@@ -1086,49 +1095,116 @@ endfunction
 
 !*********************************************************************
 !* return array of constitutive results                              *
-!* INPUT:                                                            *
-!*  - Temperature     : temperature                                  *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
-!*  - dt              : current time increment                       *
-!*  - ipc             : component-ID at current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
 !*********************************************************************
-pure function constitutive_nonlocal_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el)
+pure function constitutive_nonlocal_postResults(Tstar_v, Temperature, dt, state, g, ip, el)
 
-use prec,     only: pReal,pInt,p_vec
-use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
-use lattice,  only: lattice_Sslip_v,lattice_Stwin_v,lattice_maxNslipFamily,lattice_maxNtwinFamily, &
-         lattice_NslipSystem,lattice_NtwinSystem,lattice_shearTwin  
+use prec,     only: pReal, &
+                    pInt, &
+                    p_vec
+use math,     only: math_mul6x6
+use mesh,     only: mesh_NcpElems, &
+                    mesh_maxNips
+use material, only: homogenization_maxNgrains, &
+                    material_phase, &
+                    phase_constitutionInstance, &
+                    phase_Noutput
+use lattice,  only: lattice_Sslip_v, &
+                    lattice_NslipSystem
 implicit none
 
-!* Definition of variables
-integer(pInt), intent(in) :: ipc,ip,el
-real(pReal), intent(in) :: dt,Temperature
-real(pReal), dimension(6), intent(in) :: Tstar_v
-type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
-integer(pInt) matID,structID,ns,nt,f,o,i,c,j,index_myFamily
-real(pReal) sumf,tau
-real(pReal), dimension(constitutive_nonlocal_sizePostResults(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
- constitutive_nonlocal_postResults
+!*** input variables
+integer(pInt), intent(in) ::              g, &                ! current grain number
+                                          ip, &               ! current integration point
+                                          el                  ! current element number
+real(pReal), intent(in) ::                dt, &               ! time increment
+                                          Temperature         ! temperature
+real(pReal), dimension(6), intent(in) ::  Tstar_v             ! 2nd Piola-Kirchhoff stress in Mandel notation
+type(p_vec), dimension(homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems), intent(in) :: &
+                                          state               ! microstructural state
 
-!* Shortened notation
-matID    = phase_constitutionInstance(material_phase(ipc,ip,el))
-structID = constitutive_nonlocal_structure(matID) 
-ns = constitutive_nonlocal_totalNslip(matID)
+!*** output variables
+real(pReal), dimension(constitutive_nonlocal_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+                                          constitutive_nonlocal_postResults
+
+!*** local variables
+integer(pInt)                             myInstance, &       ! current instance of this constitution
+                                          myStructure, &      ! current lattice structure
+                                          ns, &               ! short notation for the total number of active slip systems
+                                          o, &                ! index of current output
+                                          s, &                ! index of current slip system
+                                          sLattice, &         ! index of current slip system as specified by lattice
+                                          c
+real(pReal)                               tau, &              ! resolved shear stress on current slip system
+                                          v                   ! dislocation velocity on current slip system
 
 
-!* Required output 
+myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myStructure = constitutive_nonlocal_structure(myInstance) 
+ns = constitutive_nonlocal_totalNslip(myInstance)
+
+
 c = 0_pInt
 constitutive_nonlocal_postResults = 0.0_pReal
 
-do o = 1,phase_Noutput(material_phase(ipc,ip,el))
- select case(constitutive_nonlocal_output(o,matID))
-
-   case ('dislocationdensity')
-     constitutive_nonlocal_postResults(c+1:c+ns) = state(ipc,ip,el)%p(1:ns)
-     c = c + ns
+do o = 1,phase_Noutput(material_phase(g,ip,el))
+  select case(constitutive_nonlocal_output(o,myInstance))
+    
+    case ('rho')
+      constitutive_nonlocal_postResults(c+1:c+ns) =   state(g,ip,el)%p(1:ns) + state(g,ip,el)%p(ns+1:2*ns) &
+                                                    + state(g,ip,el)%p(2*ns+1:3*ns) + state(g,ip,el)%p(3*ns+1:4*ns)
+      c = c + ns
+      
+    case ('rho_edge')
+      constitutive_nonlocal_postResults(c+1:c+ns) = state(g,ip,el)%p(1:ns) + state(g,ip,el)%p(ns+1:2*ns)
+      c = c + ns
+      
+    case ('rho_screw')
+      constitutive_nonlocal_postResults(c+1:c+ns) = state(g,ip,el)%p(2*ns+1:3*ns) + state(g,ip,el)%p(3*ns+1:4*ns)
+      c = c + ns
+      
+    case ('excess_rho_edge')
+      constitutive_nonlocal_postResults(c+1:c+ns) = state(g,ip,el)%p(1:ns) - state(g,ip,el)%p(ns+1:2*ns)
+      c = c + ns
+      
+    case ('excess_rho_screw')
+      constitutive_nonlocal_postResults(c+1:c+ns) = state(g,ip,el)%p(2*ns+1:3*ns) - state(g,ip,el)%p(3*ns+1:4*ns)
+      c = c + ns
+      
+    case ('rho_forest')
+      constitutive_nonlocal_postResults(c+1:c+ns) = state(g,ip,el)%p(4*ns+1:5*ns)
+      c = c + ns
+      
+    case ('shearrate')
+      do s = 1,ns
+        sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
+        tau = math_mul6x6( Tstar_v + state(g,ip,el)%p(6*ns+1:6*ns+6), lattice_Sslip_v(:,sLattice,myStructure) )
+        
+        if (state(g,ip,el)%p(4*ns+s) > 0.0_pReal) then
+          v =  constitutive_nonlocal_v0BySlipSystem(s,myInstance) &
+             * exp( - ( state(g,ip,el)%p(5*ns+s) - abs(tau) ) * constitutive_nonlocal_burgersBySlipSystem(s,myInstance)**2.0_pReal &
+                      / ( kB * Temperature * sqrt(state(g,ip,el)%p(4*ns+s)) ) ) &
+             * sign(1.0_pReal,tau)
+        else
+          v = 0.0_pReal
+        endif
+        
+        constitutive_nonlocal_postResults(c+s) =  (   state(g,ip,el)%p(s) + state(g,ip,el)%p(ns+s) &
+                                                    + state(g,ip,el)%p(2*ns+s) + state(g,ip,el)%p(3*ns+s) ) &
+                                                  * constitutive_nonlocal_burgersBySlipSystem(s,myInstance) * v
+      enddo
+      c = c + ns
+      
+    case ('resolvedstress')
+      do s = 1,ns  
+        sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
+        constitutive_nonlocal_postResults(c+s) = math_mul6x6( Tstar_v + state(g,ip,el)%p(6*ns+1:6*ns+6), &
+                                                              lattice_Sslip_v(:,sLattice,myStructure) )
+      enddo
+      c = c + ns
+      
+    case ('resistance')
+      constitutive_nonlocal_postResults(c+1:c+ns) = state(g,ip,el)%p(5*ns+1:6*ns)
+      c = c + ns
 
  end select
 enddo

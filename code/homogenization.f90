@@ -213,7 +213,8 @@ subroutine materialpoint_stressAndItsTangent(&
                           crystallite_requested, &
                           crystallite_converged, &
                           crystallite_stressAndItsTangent
- use debug, only:         debug_MaterialpointLoopDistribution, &
+ use debug, only:         debugger, &
+                          debug_MaterialpointLoopDistribution, &
                           debug_MaterialpointStateLoopDistribution
                           
  implicit none
@@ -270,12 +271,22 @@ subroutine materialpoint_stressAndItsTangent(&
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                             ! iterate over IPs of this element to be processed
        
+       ! debugger = (e == 1 .and. i == 1)
+       
        ! if our materialpoint converged then we are either finished or have to wind forward
        if (materialpoint_converged(i,e)) then
          
          ! calculate new subStep and new subFrac
          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), 2.0_pReal * materialpoint_subStep(i,e))
+         
+         if (debugger) then
+           !$OMP CRITICAL (write2out)
+             write(6,'(a21,f10.8,a34,f10.8,a37,/)') 'winding forward from ', &
+               materialpoint_subFrac(i,e) - materialpoint_subStep(i,e),' to current materialpoint_subFrac ', &
+               materialpoint_subFrac(i,e),' in materialpoint_stressAndItsTangent'
+           !$OMPEND CRITICAL (write2out)
+         endif
          
          ! still stepping needed
          if (materialpoint_subStep(i,e) > subStepMin) then
@@ -301,6 +312,13 @@ subroutine materialpoint_stressAndItsTangent(&
        else
        
          materialpoint_subStep(i,e) = 0.5_pReal * materialpoint_subStep(i,e)
+         
+         if (debugger) then
+           !$OMP CRITICAL (write2out)
+             write(6,'(a82,f10.8,/)') 'cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep: ',&
+                                       materialpoint_subStep(i,e)
+           !$OMPEND CRITICAL (write2out)
+         endif
 
          ! restore...
          crystallite_Temperature(1:myNgrains,i,e) = crystallite_partionedTemperature0(1:myNgrains,i,e)    ! ...temperatures
@@ -415,8 +433,7 @@ elementLoop: do e = FEsolving_execElem(1),FEsolving_execElem(2)       ! iterate 
 !$OMP END PARALLEL DO
 
  write (6,*) 'Material Point finished'
- write (6,'(a,/,3(3(f12.7,x)/))') 'Lp of 1 1 1',crystallite_Lp(1:3,:,1,1,1)
- 
+
  ! how to deal with stiffness?
  return
  

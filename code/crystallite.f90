@@ -204,7 +204,7 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_temperatureConverged:  ', shape(crystallite_temperatureConverged)
     write(6,'(a35,x,7(i5,x))') 'crystallite_nonfinished:           ', shape(crystallite_nonfinished)
     write(6,*)
-    write(6,*) 'Number of non-local grains: ',count(.not. crystallite_localConstitution)
+    write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localConstitution)
     call flush(6)
   !$OMPEND CRITICAL (write2out)
 
@@ -347,6 +347,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
+            debugger = (e == 1 .and. i == 1 .and. g == 1)
             if (crystallite_converged(g,i,e)) then
               if (debugger) then
                 !$OMP CRITICAL (write2out)
@@ -424,7 +425,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-            constitutive_dotState(g,i,e)%p = 0.0_pReal                                ! zero out dotState
+            if (crystallite_nonfinished(g,i,e)) &                                     ! all undone crystallites
+              constitutive_dotState(g,i,e)%p = 0.0_pReal                              ! zero out dotState
       enddo; enddo; enddo
     !$OMPEND PARALLEL DO
     !$OMP PARALLEL DO
@@ -470,11 +472,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         do e = FEsolving_execElem(1),FEsolving_execElem(2)                            ! iterate over elements to be processed
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                          ! iterate over IPs of this element to be processed
-          do g = 1,myNgrains
-            debugger = (e == 1 .and. i == 1 .and. g == 1)
-            if (crystallite_nonfinished(g,i,e)) &                                     ! all undone crystallites
-              crystallite_onTrack(g,i,e) = crystallite_integrateStress(g,i,e)
-          enddo
+            do g = 1,myNgrains
+              debugger = (e == 1 .and. i == 1 .and. g == 1)
+              if (crystallite_nonfinished(g,i,e)) &                                     ! all undone crystallites
+                crystallite_onTrack(g,i,e) = crystallite_integrateStress(g,i,e)
+            enddo
           enddo
         enddo
       !$OMPEND PARALLEL DO
@@ -494,7 +496,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-              constitutive_dotState(g,i,e)%p = 0.0_pReal                                ! zero out dotState
+              if (crystallite_nonfinished(g,i,e)) &                                     ! all undone crystallites
+                constitutive_dotState(g,i,e)%p = 0.0_pReal                              ! zero out dotState
         enddo; enddo; enddo
       !$OMPEND PARALLEL DO
       !$OMP PARALLEL DO
@@ -502,6 +505,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
+              debugger = (e == 1 .and. i == 1 .and. g == 1)
               if (crystallite_nonfinished(g,i,e)) &                                     ! all undone crystallites
                 call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fp(:,:,g,i,e), &
                                                   crystallite_invFp(:,:,g,i,e), crystallite_Temperature(g,i,e), g, i, e)
@@ -517,7 +521,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                 crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)    ! update state
                 crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)  ! update temperature
                 crystallite_converged(g,i,e) = crystallite_stateConverged(g,i,e) .and. crystallite_temperatureConverged(g,i,e)
-                if  (debugger) write (6,*) g,i,e,'converged after updState',crystallite_converged(g,i,e)
                 if (crystallite_converged(g,i,e)) then
                   !$OMP CRITICAL (distributionState)
                     debug_CrystalliteStateLoopDistribution(NiterationState) = &
@@ -529,15 +532,18 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           enddo
         enddo
       !$OMPEND PARALLEL DO
-
-      crystallite_nonfinished = crystallite_nonfinished .and. .not. crystallite_converged
+      
+      write(6,*) 'NiterationState: ',NiterationState
+      crystallite_nonfinished = crystallite_nonfinished .and. crystallite_onTrack .and. .not. crystallite_converged
       
     enddo                                                                             ! crystallite convergence loop  
 
     NiterationCrystallite = NiterationCrystallite + 1
-   
+    
   enddo                                                                               ! cutback loop
-
+  
+  ! write (6,'(a,/,8(L,x))') 'crystallite_nonfinished',crystallite_nonfinished
+  ! write (6,'(a,/,8(L,x))') 'crystallite_converged',crystallite_converged
 
   ! ------ check for non-converged crystallites ------
 
@@ -614,7 +620,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                     NiterationState = NiterationState + 1_pInt
                     onTrack = crystallite_integrateStress(g,i,e)                          ! stress of perturbed situation (overwrites _P,_Tstar_v,_Fp,_Lp,_Fe)
                     if (onTrack) then 
-					  call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fp(:,:,g,i,e), &
+                      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fp(:,:,g,i,e), &
                                                         crystallite_invFp(:,:,g,i,e), crystallite_Temperature(g,i,e), g, i, e)
 
                       stateConverged = crystallite_updateState(g,i,e)                     ! update state
@@ -645,8 +651,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   crystallite_P(:,:,g,i,e)        = myP
                   !$OMP CRITICAL (out)
                     debug_StiffnessStateLoopDistribution(NiterationState) = &
-                    debug_StiffnessstateLoopDistribution(NiterationState) + 1
-                    if (nState < NiterationState) write(6,*) 'ohh shit!! stiffenss state loop debugging exceeded',NiterationState
+                      debug_StiffnessstateLoopDistribution(NiterationState) + 1
                   !$OMPEND CRITICAL (out)
                 enddo
               enddo
@@ -718,9 +723,13 @@ endsubroutine
  ! if NaN occured then return without changing the state
  if (any(residuum/=residuum)) then
    crystallite_updateState = .false.                                  ! indicate state update failed
-   !$OMP CRITICAL (write2out)
-   write(6,*) '::: updateState encountered NaN',e,i,g
-   !$OMPEND CRITICAL (write2out)
+   crystallite_onTrack(g,i,e) = .false.                               ! no need to calculate any further
+   crystallite_onTrack = crystallite_onTrack .and. crystallite_localConstitution  ! all nonlocal crystallites have to be redone
+   if (debugger) then
+     !$OMP CRITICAL (write2out)
+       write(6,*) '::: updateState encountered NaN',g,i,e
+     !$OMPEND CRITICAL (write2out)
+   endif   
    return
  endif
  
@@ -731,7 +740,19 @@ endsubroutine
  crystallite_updateState = all(constitutive_state(g,i,e)%p(1:mySize) == 0.0_pReal .or. &
                                abs(residuum) < rTol_crystalliteState*abs(constitutive_state(g,i,e)%p(1:mySize)))
  if (debugger) then
-   write(6,'(a,/,12(f10.5,x))') 'resid tolerance',abs(residuum/rTol_crystalliteState/constitutive_state(g,i,e)%p(1:mySize))
+   !$OMP CRITICAL (write2out)
+     if (crystallite_updateState) then
+       write(6,*) '::: updateState converged',g,i,e
+       write(6,*)
+       write(6,'(a10,/,12(e12.3,x))') 'new state ',constitutive_state(g,i,e)%p(1:mySize)
+       write(6,*)
+     else
+       write(6,*) '::: updateState did not converge',g,i,e
+       write(6,*)
+     endif
+     write(6,'(a,/,12(f10.5,x))') 'resid tolerance',abs(residuum/rTol_crystalliteState/constitutive_state(g,i,e)%p(1:mySize))
+     write(6,*)
+   !$OMPEND CRITICAL (write2out)
  endif
  return
 
@@ -787,7 +808,7 @@ endsubroutine
  if (residuum/=residuum) then
    crystallite_updateTemperature = .false.                                  ! indicate update failed
    !$OMP CRITICAL (write2out)
-   write(6,*) '::: updateTemperature encountered NaN',e,i,g
+   write(6,*) '::: updateTemperature encountered NaN',g,i,e
    !$OMPEND CRITICAL (write2out)
    return
  endif
@@ -795,7 +816,7 @@ endsubroutine
  ! update the microstructure
  crystallite_Temperature(g,i,e) = crystallite_Temperature(g,i,e) - residuum
  
- ! setting flag to true if residuum is below relative tolerance (or zero Kelvin), otherwise set it to false <<<updated 31.07.2009>>>
+ ! setting flag to true if residuum is below relative tolerance (or zero Kelvin), otherwise set it to false
  crystallite_updateTemperature = crystallite_Temperature(g,i,e) == 0.0_pReal .or. &
                                   abs(residuum) < rTol_crystalliteTemperature*crystallite_Temperature(g,i,e)
  
@@ -910,9 +931,13 @@ endsubroutine
  ! inversion of Fp_current...
  invFp_current = math_inv3x3(Fp_current)                            
  if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
-   !$OMP CRITICAL (write2out)
-   write(6,*) '::: integrateStress failed on invFp_current inversion',e,i,g
-   !$OMPEND CRITICAL (write2out)
+   if (debugger) then 
+     !$OMP CRITICAL (write2out)
+       write(6,*) '::: integrateStress failed on invFp_current inversion',g,i,e
+       write(6,*)
+       write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
+     !$OMPEND CRITICAL (write2out)
+   endif
    return
  endif
  
@@ -973,9 +998,11 @@ LpLoop: do
    
    ! NaN occured at regular speed?
    if (any(residuum/=residuum) .and. leapfrog == 1.0) then
-     !$OMP CRITICAL (write2out)
-     write(6,*) '::: integrateStress encountered NaN at iteration', NiterationStress,'at',e,i,g
-     !$OMPEND CRITICAL (write2out)
+     if (debugger) then 
+       !$OMP CRITICAL (write2out)
+         write(6,*) '::: integrateStress encountered NaN at iteration', NiterationStress,'at',g,i,e
+       !$OMPEND CRITICAL (write2out)
+     endif
      return
 
    ! something went wrong at accelerated speed?
@@ -1008,11 +1035,11 @@ LpLoop: do
        if (error) then
          if (debugger) then
            !$OMP CRITICAL (write2out)
-           write(6,*) '::: integrateStress failed on dR/dLp inversion at iteration', NiterationStress
-           write(6,'(a9,3(i3,x),/,9(9(e12.2,x)/))') 'dTdLp at ',g,i,e,dTdLp
-           write(6,'(a20,3(i3,x),/,9(9(e12.2,x)/))') 'dLp_constitutive at ',g,i,e,dLp_constitutive
-           write(6,'(a9,3(i3,x),/,9(9(f12.7,x)/))') 'dRdLp at ',g,i,e,dRdLp
-           write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'Lpguess at ',g,i,e,Lpguess
+             write(6,*) '::: integrateStress failed on dR/dLp inversion at iteration', NiterationStress
+             write(6,*)
+             write(6,'(a9,3(i3,x),/,9(9(f12.7,x)/))') 'dRdLp at ',g,i,e,dRdLp
+             write(6,'(a20,3(i3,x),/,9(9(e12.2,x)/))') 'dLp_constitutive at ',g,i,e,dLp_constitutive
+             write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'Lpguess at ',g,i,e,Lpguess
            !$OMPEND CRITICAL (write2out)
          endif
          return
@@ -1040,7 +1067,9 @@ LpLoop: do
  if (error) then
    if (debugger) then
      !$OMP CRITICAL (write2out)
-     write(6,*) '::: integrateStress failed on invFp_new inversion at iteration', NiterationStress
+       write(6,*) '::: integrateStress failed on invFp_new inversion at iteration', NiterationStress
+       write(6,*)
+       write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
      !$OMPEND CRITICAL (write2out)
    endif
    return
@@ -1068,12 +1097,12 @@ LpLoop: do
    write(6,*)
    write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',crystallite_P(:,:,g,i,e)/1e6
    write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',crystallite_Lp(:,:,g,i,e)
+   write(6,'(a,/,3(3(f12.7,x)/))') 'Fp',crystallite_Fp(:,:,g,i,e)
    !$OMP CRITICAL (write2out)
  endif
 
  !$OMP CRITICAL (distributionStress)
  debug_StressLoopDistribution(NiterationStress) = debug_StressLoopDistribution(NiterationStress) + 1
- if (nStress < NiterationStress) write(6,*) 'ohh shit!! debug loop of stress exceeded',NiterationStress
  !$OMPEND CRITICAL (distributionStress)
 
  return
