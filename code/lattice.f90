@@ -359,7 +359,59 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  0,0,0,0,0,0,0,0,0,0,0,0  &
    /),(/lattice_bcc_Ntwin,lattice_bcc_Ntwin/))
  
- integer(pInt), target, dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip) :: lattice_bcc_interactionTwinSlip = 0
+!*** Twin-slip interactions for BCC structures (2) ***
+! MISSING: not implemented yet
+ integer(pInt), target, dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip) :: lattice_bcc_interactionTwinSlip = &
+ reshape((/&
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0, &
+ 0,0,0,0,0,0,0,0,0,0,0,0  &
+   /),(/lattice_bcc_Ntwin,lattice_bcc_Ntwin/))
 
 
 
@@ -606,21 +658,22 @@ subroutine lattice_init()
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
  Nsections = IO_countSections(fileunit,material_partPhase)
- lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
+! lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
+ lattice_Nstructure = Nsections                                                                   ! most conservative assumption
  close(fileunit)
 
- allocate(lattice_Sslip(3,3,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip = 0.0_pReal
+ allocate(lattice_Sslip(3,3,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip   = 0.0_pReal
  allocate(lattice_Sslip_v(6,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip_v = 0.0_pReal
- allocate(lattice_sd(3,lattice_maxNslip,lattice_Nstructure)); lattice_sd = 0.0_pReal
- allocate(lattice_st(3,lattice_maxNslip,lattice_Nstructure)); lattice_st = 0.0_pReal
- allocate(lattice_sn(3,lattice_maxNslip,lattice_Nstructure)); lattice_sn = 0.0_pReal
+ allocate(lattice_sd(3,lattice_maxNslip,lattice_Nstructure));      lattice_sd      = 0.0_pReal
+ allocate(lattice_st(3,lattice_maxNslip,lattice_Nstructure));      lattice_st      = 0.0_pReal
+ allocate(lattice_sn(3,lattice_maxNslip,lattice_Nstructure));      lattice_sn      = 0.0_pReal
 
- allocate(lattice_Qtwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Qtwin = 0.0_pReal
- allocate(lattice_Stwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin = 0.0_pReal
+ allocate(lattice_Qtwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Qtwin   = 0.0_pReal
+ allocate(lattice_Stwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin   = 0.0_pReal
  allocate(lattice_Stwin_v(6,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin_v = 0.0_pReal
- allocate(lattice_td(3,lattice_maxNtwin,lattice_Nstructure)); lattice_td = 0.0_pReal
- allocate(lattice_tt(3,lattice_maxNtwin,lattice_Nstructure)); lattice_tt = 0.0_pReal
- allocate(lattice_tn(3,lattice_maxNtwin,lattice_Nstructure)); lattice_tn = 0.0_pReal
+ allocate(lattice_td(3,lattice_maxNtwin,lattice_Nstructure));      lattice_td      = 0.0_pReal
+ allocate(lattice_tt(3,lattice_maxNtwin,lattice_Nstructure));      lattice_tt      = 0.0_pReal
+ allocate(lattice_tn(3,lattice_maxNtwin,lattice_Nstructure));      lattice_tn      = 0.0_pReal
 
  allocate(lattice_shearTwin(lattice_maxNtwin,lattice_Nstructure)); lattice_shearTwin = 0.0_pReal
 
@@ -629,8 +682,8 @@ subroutine lattice_init()
 
  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipSlip = 0_pInt
  allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt
+ allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNslip,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt
- allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt
 
 end subroutine
 
@@ -667,19 +720,19 @@ function lattice_initializeStructure(struct,CoverA)
  select case(struct(1:3))                          ! check first three chars of structure name
    case ('fcc')
      myStructure = 1_pInt
-     myNslipSystem = lattice_fcc_NslipSystem
-     myNtwinSystem = lattice_fcc_NtwinSystem
-     myNslip = lattice_fcc_Nslip
-     myNtwin = lattice_fcc_Ntwin
-     lattice_fcc_Nstructure = lattice_fcc_Nstructure + 1_pInt
-     if (lattice_fcc_Nstructure == 1_pInt) then
+     myNslipSystem = lattice_fcc_NslipSystem       ! size of slip system families
+     myNtwinSystem = lattice_fcc_NtwinSystem       ! size of twin system families
+     myNslip = lattice_fcc_Nslip                   ! overall number of slip systems
+     myNtwin = lattice_fcc_Ntwin                   ! overall number of twin systems
+     lattice_fcc_Nstructure = lattice_fcc_Nstructure + 1_pInt    ! count fcc instances
+     if (lattice_fcc_Nstructure == 1_pInt) then    ! me is first fcc structure
        processMe = .true.
-       do i = 1,myNslip
+       do i = 1,myNslip                            ! calculate slip system vectors
          sd(:,i) = lattice_fcc_systemSlip(1:3,i)/dsqrt(math_mul3x3(lattice_fcc_systemSlip(1:3,i),lattice_fcc_systemSlip(1:3,i)))
          sn(:,i) = lattice_fcc_systemSlip(4:6,i)/dsqrt(math_mul3x3(lattice_fcc_systemSlip(4:6,i),lattice_fcc_systemSlip(4:6,i)))
          st(:,i) = math_vectorproduct(sd(:,i),sn(:,i))
        enddo
-       do i = 1,myNtwin
+       do i = 1,myNtwin                            ! calculate twin system vectors and (assign) shears
          td(:,i) = lattice_fcc_systemTwin(1:3,i)/dsqrt(math_mul3x3(lattice_fcc_systemTwin(1:3,i),lattice_fcc_systemTwin(1:3,i)))
          tn(:,i) = lattice_fcc_systemTwin(4:6,i)/dsqrt(math_mul3x3(lattice_fcc_systemTwin(4:6,i),lattice_fcc_systemTwin(4:6,i)))
          tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
@@ -687,25 +740,25 @@ function lattice_initializeStructure(struct,CoverA)
        enddo
        interactionSlipSlip => lattice_fcc_interactionSlipSlip
        interactionSlipTwin => lattice_fcc_interactionSlipTwin
-       interactionTwinTwin => lattice_fcc_interactionTwinTwin
        interactionTwinSlip => lattice_fcc_interactionTwinSlip
+       interactionTwinTwin => lattice_fcc_interactionTwinTwin
      endif
      
    case ('bcc')
      myStructure = 2_pInt
-     myNslipSystem = lattice_bcc_NslipSystem
-     myNtwinSystem = lattice_bcc_NtwinSystem
-     myNslip = lattice_bcc_Nslip
-     myNtwin = lattice_bcc_Ntwin
-     lattice_bcc_Nstructure = lattice_bcc_Nstructure + 1_pInt
-     if (lattice_bcc_Nstructure == 1_pInt) then
+     myNslipSystem = lattice_bcc_NslipSystem       ! size of slip system families
+     myNtwinSystem = lattice_bcc_NtwinSystem       ! size of twin system families
+     myNslip = lattice_bcc_Nslip                   ! overall number of slip systems
+     myNtwin = lattice_bcc_Ntwin                   ! overall number of twin systems
+     lattice_bcc_Nstructure = lattice_bcc_Nstructure + 1_pInt    ! count bcc instances
+     if (lattice_bcc_Nstructure == 1_pInt) then    ! me is first bcc structure
        processMe = .true.
-       do i = 1,myNslip
+       do i = 1,myNslip                            ! calculate slip system vectors
          sd(:,i) = lattice_bcc_systemSlip(1:3,i)/dsqrt(math_mul3x3(lattice_bcc_systemSlip(1:3,i),lattice_bcc_systemSlip(1:3,i)))
          sn(:,i) = lattice_bcc_systemSlip(4:6,i)/dsqrt(math_mul3x3(lattice_bcc_systemSlip(4:6,i),lattice_bcc_systemSlip(4:6,i)))
          st(:,i) = math_vectorproduct(sd(:,i),sn(:,i))
        enddo
-       do i = 1,myNtwin
+       do i = 1,myNtwin                            ! calculate twin system vectors and (assign) shears
          td(:,i) = lattice_bcc_systemTwin(1:3,i)/dsqrt(math_mul3x3(lattice_bcc_systemTwin(1:3,i),lattice_bcc_systemTwin(1:3,i)))
          tn(:,i) = lattice_bcc_systemTwin(4:6,i)/dsqrt(math_mul3x3(lattice_bcc_systemTwin(4:6,i),lattice_bcc_systemTwin(4:6,i)))
          tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
@@ -713,18 +766,18 @@ function lattice_initializeStructure(struct,CoverA)
        enddo
        interactionSlipSlip => lattice_bcc_interactionSlipSlip
        interactionSlipTwin => lattice_bcc_interactionSlipTwin
-       interactionTwinTwin => lattice_bcc_interactionTwinTwin
        interactionTwinSlip => lattice_bcc_interactionTwinSlip
+       interactionTwinTwin => lattice_bcc_interactionTwinTwin
      endif
      
    case ('hex')
-     if (CoverA > 0.0_pReal) then
-       lattice_hex_Nstructure = lattice_hex_Nstructure + 1_pInt
-       myStructure = 2_pInt + lattice_hex_Nstructure
-       myNslipSystem = lattice_hex_NslipSystem
-       myNtwinSystem = lattice_hex_NtwinSystem
-       myNslip = lattice_hex_Nslip
-       myNtwin = lattice_hex_Ntwin
+     if (CoverA >= 1.0_pReal) then                 ! checking physical significance of c/a
+       lattice_hex_Nstructure = lattice_hex_Nstructure + 1_pInt  ! count instances of hex structures
+       myStructure = 2_pInt + lattice_hex_Nstructure             ! 3,4,5,.. for hex
+       myNslipSystem = lattice_hex_NslipSystem     ! size of slip system families
+       myNtwinSystem = lattice_hex_NtwinSystem     ! size of twin system families
+       myNslip = lattice_hex_Nslip                 ! overall number of slip systems
+       myNtwin = lattice_hex_Ntwin                 ! overall number of twin systems
        processMe = .true.
 ! converting from 4 axes coordinate system (a1=a2=a3=c) to ortho-hexgonal system (a, b, c)
        do i = 1,myNslip
@@ -754,20 +807,20 @@ function lattice_initializeStructure(struct,CoverA)
        enddo
        interactionSlipSlip => lattice_hex_interactionSlipSlip
        interactionSlipTwin => lattice_hex_interactionSlipTwin
-       interactionTwinTwin => lattice_hex_interactionTwinTwin
        interactionTwinSlip => lattice_hex_interactionTwinSlip
+       interactionTwinTwin => lattice_hex_interactionTwinTwin
      endif
    end select
 
  if (processMe) then
-   do i = 1,myNslip
+   do i = 1,myNslip                               ! store slip system vectors and Schmid matrix for my structure
      lattice_sd(:,i,myStructure) = sd(:,i)
      lattice_st(:,i,myStructure) = st(:,i)
      lattice_sn(:,i,myStructure) = sn(:,i)
      lattice_Sslip(:,:,i,myStructure) = math_tensorproduct(sd(:,i),sn(:,i))
      lattice_Sslip_v(:,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Sslip(:,:,i,myStructure)))
    enddo
-   do i = 1,myNtwin
+   do i = 1,myNtwin                               ! store twin system vectors and Schmid plus rotation matrix for my structure
      lattice_td(:,i,myStructure) = td(:,i)
      lattice_tt(:,i,myStructure) = tt(:,i)
      lattice_tn(:,i,myStructure) = tn(:,i)
@@ -784,7 +837,7 @@ function lattice_initializeStructure(struct,CoverA)
    lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myStructure) = interactionTwinTwin(1:myNtwin,1:myNtwin)
  endif
 
- lattice_initializeStructure = myStructure
+ lattice_initializeStructure = myStructure        ! report my structure index back
 
 end function
 
