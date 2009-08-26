@@ -411,7 +411,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0  &
-   /),(/lattice_bcc_Ntwin,lattice_bcc_Ntwin/))
+   /),(/lattice_bcc_Ntwin,lattice_bcc_Nslip/))
 
 
 
