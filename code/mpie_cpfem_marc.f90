@@ -35,9 +35,9 @@
 !********************************************************************
 !
  include "prec.f90"             ! uses nothing else
- include "math.f90"             ! uses prec
- include "IO.f90"               ! uses prec, math
+ include "IO.f90"               ! uses prec
  include "numerics.f90"         ! uses prec, IO
+ include "math.f90"             ! uses prec, numerics
  include "debug.f90"            ! uses prec, numerics
  include "FEsolving.f90"        ! uses prec, IO
  include "mesh.f90"             ! uses prec, math, IO, FEsolving

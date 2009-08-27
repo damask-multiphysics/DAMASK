@@ -29,6 +29,9 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 pPert_RGC, &                            ! perturbation for computing RGC penalty tangent
                                 xSmoo_RGC                               ! RGC penalty smoothing parameter (hyperbolic tangent)
 
+!* Random seeding parameters: added <<<updated 27.08.2009>>>
+integer(pInt)                   fixedSeed                            ! fixed seeding for pseudo-random number generator
+								
 CONTAINS
  
 !*******************************************
@@ -89,6 +92,9 @@ subroutine numerics_init()
   pPert_RGC               = 1.0e-8
   xSmoo_RGC               = 1.0e-5
 
+!* Random seeding parameters: added <<<updated 27.08.2009>>>
+  fixedSeed               = 0_pInt
+
   ! try to open the config file
   if(IO_open_file(fileunit,numerics_configFile)) then 
   
@@ -146,6 +152,9 @@ subroutine numerics_init()
         case ('relevantmismatch_rgc')
               xSmoo_RGC = IO_floatValue(line,positions,2)
 
+!* Random seeding parameters: added <<<updated 27.08.2009>>>
+        case ('fixed_seed')
+              fixedSeed = IO_floatValue(line,positions,2)
       endselect
     enddo
     100 close(fileunit)
@@ -181,6 +190,9 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'rMax_RGC:             ',relMax_RGC
   write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:   ',pPert_RGC
   write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC: ',xSmoo_RGC
+
+!* Random seeding parameters: added <<<updated 27.08.2009>>>
+  write(6,'(a24,x,i8)')   'fixed_seed:           ',fixedSeed
   write(6,*)
   
   ! sanity check  
@@ -207,6 +219,7 @@ subroutine numerics_init()
   if (pPert_RGC <= 0.0_pReal)               call IO_error(276)   !! oops !!
   if (xSmoo_RGC <= 0.0_pReal)               call IO_error(277)
  
+  if (fixedSeed <= 0_pInt)                  write(6,'(a)') 'Random is random!'
 endsubroutine
 
 END MODULE numerics

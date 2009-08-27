@@ -134,7 +134,6 @@
  function IO_hybridIA(Nast,ODFfileName)
 
  use prec, only: pReal, pInt
- use math, only: inRad
 
  implicit none
  
@@ -149,6 +148,9 @@
  real(pReal), dimension(3) :: limits,deltas
  real(pReal), dimension(:,:,:), allocatable :: dV_V
  real(pReal), dimension(3,Nast) :: IO_hybridIA
+
+ real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
+ real(pReal), parameter :: inRad = pi/180.0_pReal
 
  if (.not. IO_open_file(999,ODFfileName)) goto 100
  

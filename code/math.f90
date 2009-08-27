@@ -213,13 +213,22 @@ real(pReal), dimension(132,3), parameter :: sym = &
  SUBROUTINE math_init ()
 
  use prec, only: pReal,pInt
+ use numerics, only: fixedSeed
  implicit none
 
+ integer (pInt), dimension(1) :: randInit
  integer (pInt) seed
  
- call random_seed()
+ if (fixedSeed > 0_pInt) then
+   randInit = fixedSeed
+   call random_seed(put=randInit)
+ else
+   call random_seed()
+ endif
+
  call get_seed(seed)
- seed = 1
+ if (fixedSeed > 0_pInt) seed = int(dble(fixedSeed)/2.0) + 1_pInt
+ 
  call halton_seed_set(seed)
  call halton_ndim_set(3)
    
