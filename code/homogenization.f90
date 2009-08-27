@@ -266,28 +266,28 @@ subroutine materialpoint_stressAndItsTangent(&
 
  do while (any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMin))  ! cutback loop for material points
 
+!    write(6,'(a,/,125(8(f8.5,x),/))') 'mp_subSteps',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2))
 !$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                               ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                             ! iterate over IPs of this element to be processed
        
-       ! debugger = (e == 1 .and. i == 1)
+       debugger = (e == 1 .and. i == 1)
        
        ! if our materialpoint converged then we are either finished or have to wind forward
        if (materialpoint_converged(i,e)) then
+         if (debugger) then
+           !$OMP CRITICAL (write2out)
+             write(6,'(a21,f10.8,a34,f10.8,a37,/)') 'winding forward from ', &
+               materialpoint_subFrac(i,e), ' to current materialpoint_subFrac ', &
+               materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),' in materialpoint_stressAndItsTangent'
+           !$OMPEND CRITICAL (write2out)
+         endif
          
          ! calculate new subStep and new subFrac
          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), 2.0_pReal * materialpoint_subStep(i,e))
-         
-         if (debugger) then
-           !$OMP CRITICAL (write2out)
-             write(6,'(a21,f10.8,a34,f10.8,a37,/)') 'winding forward from ', &
-               materialpoint_subFrac(i,e) - materialpoint_subStep(i,e),' to current materialpoint_subFrac ', &
-               materialpoint_subFrac(i,e),' in materialpoint_stressAndItsTangent'
-           !$OMPEND CRITICAL (write2out)
-         endif
-         
+                  
          ! still stepping needed
          if (materialpoint_subStep(i,e) > subStepMin) then
          
@@ -357,6 +357,9 @@ subroutine materialpoint_stressAndItsTangent(&
                 ) .and. NiterationMPstate < nMPstate)           ! convergence loop for materialpoint
      NiterationMPstate = NiterationMPstate + 1
 
+!      write(6,'(a,/,125(8(l,x),/))') 'material point request and not done', &
+!                                     materialpoint_requested .and. .not. materialpoint_doneAndHappy(1,:,:)
+
 ! --+>> deformation partitioning <<+--
 !
 ! based on materialpoint_subF0,.._subF,
@@ -373,19 +376,22 @@ subroutine materialpoint_stressAndItsTangent(&
            call homogenization_partitionDeformation(i,e)              ! partition deformation onto constituents
            crystallite_dt(1:myNgrains,i,e) = materialpoint_subdt(i,e) ! propagate materialpoint dt to grains
            crystallite_requested(1:myNgrains,i,e) = .true.            ! request calculation for constituents
+         else
+           crystallite_requested(1:myNgrains,i,e) = .false.           ! calculation for constituents not required anymore
          endif
        enddo
      enddo
 !$OMP END PARALLEL DO
-
+!      write(6,'(a,/,125(8(8(l,x),2x),/))') 'crystallite request with updated partitioning', crystallite_requested
  
      
 ! --+>> crystallite integration <<+--
 !
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
-
      call crystallite_stressAndItsTangent(updateJaco)                 ! request stress and tangent calculation for constituent grains
+
+!      write(6,'(a,/,125(8(8(l,x),2x),/))') 'crystallite converged', crystallite_converged
      
 ! --+>> state update <<+--
 
@@ -407,6 +413,8 @@ subroutine materialpoint_stressAndItsTangent(&
        enddo
      enddo
 !$OMP END PARALLEL DO
+!      write(6,'(a,/,125(8(l,x),/))') 'material point done', materialpoint_doneAndHappy(1,:,:)
+!      write(6,'(a,/,125(8(l,x),/))') 'material point converged', materialpoint_converged
 
    enddo                                                           ! homogenization convergence loop  
 
@@ -417,7 +425,6 @@ subroutine materialpoint_stressAndItsTangent(&
  ! check for non-performer: any(.not. converged)
  ! replace everybody with odd response ?
 
- 
 !$OMP PARALLEL DO
 elementLoop: do e = FEsolving_execElem(1),FEsolving_execElem(2)       ! iterate over elements to be processed
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                 ! iterate over IPs of this element to be processed
@@ -432,9 +439,9 @@ elementLoop: do e = FEsolving_execElem(1),FEsolving_execElem(2)       ! iterate 
  enddo elementLoop
 !$OMP END PARALLEL DO
 
- write (6,*) 'Material Point finished'
-
- ! how to deal with stiffness?
+ write (6,*)
+ write (6,*) 'Material Point end'
+ write (6,*)
  return
  
 endsubroutine
