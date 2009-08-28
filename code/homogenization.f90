@@ -301,7 +301,7 @@ subroutine materialpoint_stressAndItsTangent(&
            if (homogenization_sizeState(i,e) > 0_pInt) &
              homogenization_subState0(i,e)%p = homogenization_state(i,e)%p                                ! ...internal state of homog scheme
            materialpoint_subF0(:,:,i,e) = materialpoint_subF(:,:,i,e)                                     ! ...def grad
-         else                                                                                             ! already at final time
+         elseif (materialpoint_requested(i,e))                                                            ! this materialpoint just converged                                      ! already at final time
           !$OMP CRITICAL (distributionHomog)
             debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
               debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1

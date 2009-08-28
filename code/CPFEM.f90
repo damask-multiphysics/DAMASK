@@ -217,7 +217,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > relevantStrain)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
-          write(6,'(a11,x,i5,x,i2,x,a10,/,3(3(f10.3,x),/))') 'outdated at',cp_en,IP,'FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
+          write(6,'(a11,x,i5,x,i2,x,a10,/,3(3(f10.6,x),/))') 'outdated at',cp_en,IP,'FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
           outdatedFFN1 = .true.
         endif
         CPFEM_cs(1:ngens,IP,cp_en)              = CPFEM_odd_stress
