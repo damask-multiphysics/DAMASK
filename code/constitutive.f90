@@ -327,7 +327,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
 endsubroutine
 
 
-subroutine constitutive_collectDotState(Tstar_v, Fp, invFp, Temperature, ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fp, invFp, Temperature, subdt, ipc, ip, el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
@@ -351,9 +351,9 @@ subroutine constitutive_collectDotState(Tstar_v, Fp, invFp, Temperature, ipc, ip
 
 !* Definition of variables
  integer(pInt) ipc,ip,el
- real(pReal) Temperature
+ real(pReal) Temperature, subdt
  real(pReal), dimension(3,3) :: Fp, invFp
- real(pReal), dimension(6) :: Tstar_v
+ real(pReal), dimension(6) :: Tstar_v, subTstar0_v
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
  
@@ -367,7 +367,8 @@ subroutine constitutive_collectDotState(Tstar_v, Fp, invFp, Temperature, ipc, ip
      constitutive_dotState(ipc,ip,el)%p = constitutive_dislobased_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     call constitutive_nonlocal_dotState(constitutive_dotState,Tstar_v,Fp,invFp,Temperature,constitutive_state,ipc,ip,el)
+     call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fp, invFp, Temperature, subdt, &
+                                         constitutive_state, constitutive_subState0, ipc, ip, el)
      
  end select
  return
