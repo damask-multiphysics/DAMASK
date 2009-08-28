@@ -368,7 +368,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                 crystallite_subLp0(:,:,g,i,e)     = crystallite_Lp(:,:,g,i,e)           ! ...plastic velocity gradient
                 constitutive_subState0(g,i,e)%p   = constitutive_state(g,i,e)%p         ! ...microstructure
                 crystallite_subTstar0_v(:,g,i,e)  = crystallite_Tstar_v(:,g,i,e)        ! ...2nd PK stress
-              elseif (crystallite_onTrack(g,i,e))                                       ! this crystallite just converged
+              elseif (crystallite_onTrack(g,i,e)) then                                       ! this crystallite just converged
                !$OMP CRITICAL (distributionCrystallite)
                  debug_CrystalliteLoopDistribution(min(nCryst+1,NiterationCrystallite)) = &
                    debug_CrystalliteLoopDistribution(min(nCryst+1,NiterationCrystallite)) + 1
