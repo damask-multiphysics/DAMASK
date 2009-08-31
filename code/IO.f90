@@ -831,6 +831,8 @@ endfunction
    msg = 'Non-positive stress exponent'
  case (213)
    msg = 'Non-positive saturation stress'
+ case (214)
+   msg = 'Zero hardening exponent'
  case (220)
    msg = 'Negative initial dislocation density'
  case (221)

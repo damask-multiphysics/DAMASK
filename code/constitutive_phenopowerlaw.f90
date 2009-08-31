@@ -1,4 +1,4 @@
-
+!* $Id$                                              
 !*****************************************************
 !*      Module: CONSTITUTIVE_PHENOPOWERLAW           *
 !*****************************************************
@@ -140,6 +140,7 @@ subroutine constitutive_phenopowerlaw_init(file)
 
  write(6,*)
  write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_phenopowerlaw_label,' init  -+>>>'
+ write(6,*) '$Id$'
  write(6,*)
   
  
@@ -253,6 +254,8 @@ subroutine constitutive_phenopowerlaw_init(file)
               forall (j = 1:lattice_maxNslipFamily) constitutive_phenopowerlaw_tau0_slip(j,i) = IO_floatValue(line,positions,1+j)
        case ('tausat_slip')
               forall (j = 1:lattice_maxNslipFamily) constitutive_phenopowerlaw_tausat_slip(j,i) = IO_floatValue(line,positions,1+j)
+       case ('w0_slip')
+              constitutive_phenopowerlaw_w0_slip(i) = IO_floatValue(line,positions,2)
        case ('ntwin')
               forall (j = 1:lattice_maxNtwinFamily) constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1+j)
        case ('gdot0_twin')
@@ -291,44 +294,29 @@ subroutine constitutive_phenopowerlaw_init(file)
        case ('interaction_twintwin')
               forall (j = 1:lattice_maxNinteraction) &
                 constitutive_phenopowerlaw_interaction_twintwin(j,i) = IO_floatValue(line,positions,1+j)
-       case ('w0_slip')
-              constitutive_phenopowerlaw_w0_slip(i) = IO_floatValue(line,positions,2)
      end select
    endif
  enddo
 
-   write(6,*)'constitutive_phenopowerlaw_structureName = ',constitutive_phenopowerlaw_structureName
-   write(6,*)'constitutive_phenopowerlaw_structure = ',constitutive_phenopowerlaw_structure
-
 100 do i = 1,maxNinstance
-   write(6,*)'1constitutive_phenopowerlaw_gdot0_slip = ',constitutive_phenopowerlaw_gdot0_slip(i)
-   write(6,*)'1constitutive_phenopowerlaw_w0_slip = ',constitutive_phenopowerlaw_w0_slip(i)
    constitutive_phenopowerlaw_structure(i) = lattice_initializeStructure(constitutive_phenopowerlaw_structureName(i), &    ! get structure
                                                                          constitutive_phenopowerlaw_CoverA(i))
-   write(6,*)'>constitutive_phenopowerlaw_structure = ',constitutive_phenopowerlaw_structure(i)
-   write(6,*)'2constitutive_phenopowerlaw_gdot0_slip = ',constitutive_phenopowerlaw_gdot0_slip(i)
    constitutive_phenopowerlaw_Nslip(:,i) = min(lattice_NslipSystem(:,constitutive_phenopowerlaw_structure(i)),&   ! limit active slip systems per family to max
                                                constitutive_phenopowerlaw_Nslip(:,i))
-   write(6,*)'3constitutive_phenopowerlaw_gdot0_slip = ',constitutive_phenopowerlaw_gdot0_slip(i)
    constitutive_phenopowerlaw_Ntwin(:,i) = min(lattice_NtwinSystem(:,constitutive_phenopowerlaw_structure(i)),&   ! limit active twin systems per family to max
                                                constitutive_phenopowerlaw_Ntwin(:,i))
-   write(6,*)'4constitutive_phenopowerlaw_gdot0_slip = ',constitutive_phenopowerlaw_gdot0_slip(i)
    constitutive_phenopowerlaw_totalNslip(i) = sum(constitutive_phenopowerlaw_Nslip(:,i))      ! how many slip systems altogether
-   write(6,*)'5constitutive_phenopowerlaw_gdot0_slip = ',constitutive_phenopowerlaw_gdot0_slip(i)
    constitutive_phenopowerlaw_totalNtwin(i) = sum(constitutive_phenopowerlaw_Ntwin(:,i))      ! how many twin systems altogether
-   write(6,*)'6constitutive_phenopowerlaw_gdot0_slip = ',constitutive_phenopowerlaw_gdot0_slip(i)
 
    if (constitutive_phenopowerlaw_structure(i) < 1 )          call IO_error(205)
-   write(6,*)'7constitutive_phenopowerlaw_gdot0_slip = ',constitutive_phenopowerlaw_gdot0_slip(i)
    if (any(constitutive_phenopowerlaw_tau0_slip(:,i) < 0.0_pReal .and. &
            constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(210)
-   write(6,*)'8constitutive_phenopowerlaw_gdot0_slip = ',constitutive_phenopowerlaw_gdot0_slip(i)
-   write(6,*)'8constitutive_phenopowerlaw_w0_slip = ',constitutive_phenopowerlaw_w0_slip(i)
    if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal) call IO_error(211)
    if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)     call IO_error(212)
    if (any(constitutive_phenopowerlaw_tausat_slip(:,i) <= 0.0_pReal .and. &
            constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(213)
-
+   if (any(constitutive_phenopowerlaw_w0_slip(i) == 0.0_pReal .and. &
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(214)
    if (any(constitutive_phenopowerlaw_tau0_twin(:,i) < 0.0_pReal .and. &
            constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(210)
    if (    constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal  .and. &
@@ -547,7 +535,7 @@ subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el
  implicit none
 
 !* Definition of variables
- integer(pInt) ipc,ip,el, matID,nSlip,nTwin
+ integer(pInt) ipc,ip,el, matID
  real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
 
