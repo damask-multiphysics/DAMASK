@@ -1,4 +1,4 @@
-
+!* $Id$
 !************************************
 !*      Module: MATERIAL            *
 !************************************
@@ -77,6 +77,7 @@ subroutine material_init()
  
  write(6,*)
  write(6,*) '<<<+-  material init  -+>>>'
+ write(6,*) '$Id$'
  write(6,*)
   
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file

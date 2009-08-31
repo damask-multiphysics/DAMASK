@@ -1,3 +1,4 @@
+!* $Id$
 !##############################################################
 MODULE numerics
 !##############################################################
@@ -66,6 +67,7 @@ subroutine numerics_init()
   
   write(6,*)
   write(6,*) '<<<+-  numerics init  -+>>>'
+  write(6,*) '$Id$'
   write(6,*)
   
   ! initialize all parameters with standard values

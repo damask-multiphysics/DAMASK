@@ -1,4 +1,4 @@
-
+!* $Id$
 !************************************
 !*      Module: CONSTITUTIVE        *
 !************************************
@@ -174,6 +174,7 @@ subroutine constitutive_init()
 
  write(6,*)
  write(6,*) '<<<+-  constitutive init  -+>>>'
+ write(6,*) '$Id$'
  write(6,*)
  write(6,'(a32,x,7(i5,x))') 'constitutive_state0:          ', shape(constitutive_state0)
  write(6,'(a32,x,7(i5,x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)

@@ -1,4 +1,4 @@
-
+!* $Id$
 !##############################################################
  MODULE prec
 !##############################################################
@@ -13,5 +13,16 @@
  type :: p_vec
      real(pReal), dimension(:), pointer :: p
  end type p_vec
+
+CONTAINS
+
+subroutine prec_init
+ write(6,*)
+ write(6,*) '<<<+-  prec init  -+>>>'
+ write(6,*) '$Id$'
+ write(6,*)
+ return
+end subroutine
+
 
  END MODULE prec

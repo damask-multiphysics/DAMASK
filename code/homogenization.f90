@@ -1,4 +1,4 @@
-
+!* $Id$
 !***************************************
 !*      Module: HOMOGENIZATION         *
 !***************************************
@@ -139,6 +139,7 @@ subroutine homogenization_init(Temperature)
 !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  homogenization init  -+>>>'
+ write(6,*) '$Id$'
  write(6,*)
  write(6,'(a32,x,7(i5,x))') 'homogenization_state0:          ', shape(homogenization_state0)
  write(6,'(a32,x,7(i5,x))') 'homogenization_subState0:       ', shape(homogenization_subState0)

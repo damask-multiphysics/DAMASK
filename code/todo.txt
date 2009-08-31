@@ -1,3 +1,4 @@
+$Id$
 Things to be implemented into the code
 
 # adopt CPFEM_GIA8.f90 to new scheme, use "select case" to switch between homogenization schemes in CPFEM.f90

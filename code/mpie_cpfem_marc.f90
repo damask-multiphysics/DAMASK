@@ -1,3 +1,4 @@
+!* $Id$
 !********************************************************************
 ! Material subroutine for MSC.Marc
 !
@@ -6,6 +7,7 @@
 !            L. Hantcherli,
 !            W.A. Counts
 !            D.D. Tjahjanto
+!            C. Kords
 !
 ! MPI fuer Eisenforschung, Duesseldorf
 !
@@ -34,6 +36,14 @@
 !             - creeps: timinc
 !********************************************************************
 !
+subroutine mpie_cpfem_init
+ write(6,*)
+ write(6,*) '<<<+-  mpie_cpfem init  -+>>>'
+ write(6,*) '$Id$'
+ write(6,*)
+ return
+end subroutine
+
  include "prec.f90"             ! uses nothing else
  include "IO.f90"               ! uses prec
  include "numerics.f90"         ! uses prec, IO

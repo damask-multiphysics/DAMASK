@@ -1,4 +1,4 @@
-
+!* $Id$
 !************************************
 !*      Module: CONSTITUTIVE        *
 !************************************
@@ -156,6 +156,7 @@ subroutine constitutive_dislobased_init(file)
 
  write(6,*)
  write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_dislobased_label,' init  -+>>>'
+ write(6,*) '$Id$'
  write(6,*)
 
  maxNinstance = count(phase_constitution == constitutive_dislobased_label)

@@ -1,4 +1,4 @@
-
+!* $Id$
 !************************************
 !*         Module: LATTICE          *
 !************************************
@@ -654,6 +654,7 @@ subroutine lattice_init()
 
  write(6,*)
  write(6,*) '<<<+-  lattice init  -+>>>'
+ write(6,*) '$Id$'
  write(6,*)
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file

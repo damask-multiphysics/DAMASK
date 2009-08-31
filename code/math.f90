@@ -1,4 +1,4 @@
-
+!* $Id$
 !##############################################################
  MODULE math   
 !##############################################################
@@ -219,6 +219,11 @@ real(pReal), dimension(132,3), parameter :: sym = &
  integer (pInt), dimension(1) :: randInit
  integer (pInt) seed
  
+ write(6,*)
+ write(6,*) '<<<+-  math init  -+>>>'
+ write(6,*) '$Id$'
+ write(6,*)
+  
  if (fixedSeed > 0_pInt) then
    randInit = fixedSeed
    call random_seed(put=randInit)

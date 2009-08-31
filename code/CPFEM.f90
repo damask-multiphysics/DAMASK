@@ -1,3 +1,4 @@
+!* $Id$
 !##############################################################
 MODULE CPFEM
 !##############################################################
@@ -42,6 +43,7 @@ subroutine CPFEM_init()
   !$OMP CRITICAL (write2out)
     write(6,*)
     write(6,*) '<<<+-  cpfem init  -+>>>'
+    write(6,*) '$Id$'
     write(6,*)
     write(6,'(a32,x,6(i5,x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
     write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
@@ -165,6 +167,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
 
   ! initialization step (three dimensional stress state check missing?)
   if (.not. CPFEM_init_done) then
+    call prec_init()
+    call IO_init()
     call numerics_init()
     call debug_init()
     call math_init()
@@ -176,6 +180,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
     call homogenization_init(Temperature)
     call CPFEM_init()
+    call mpie_cpfem_init()
     CPFEM_init_done = .true.
   endif
 

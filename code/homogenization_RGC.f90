@@ -1,4 +1,4 @@
-
+!* $Id$
 !*****************************************************
 !*      Module: HOMOGENIZATION_RGC                   *
 !*****************************************************
@@ -55,6 +55,11 @@ subroutine homogenization_RGC_init(&
  character(len=64) tag
  character(len=1024) line
  
+    write(6,*)
+    write(6,'(a20,a20,a12)') '<<<+-  homogenization',homogenization_RGC_label,' init  -+>>>'
+    write(6,*) '$Id$'
+    write(6,*)
+
  maxNinstance = count(homogenization_type == homogenization_RGC_label)
  if (maxNinstance == 0) return
 

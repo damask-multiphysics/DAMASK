@@ -1,4 +1,4 @@
-
+!* $Id$
 !***************************************
 !*      Module: CRYSTALLITE            *
 !***************************************
@@ -165,6 +165,7 @@ subroutine crystallite_init(Temperature)
   !$OMP CRITICAL (write2out)
     write(6,*)
     write(6,*) '<<<+-  crystallite init  -+>>>'
+    write(6,*) '$Id$'
     write(6,*)
     write(6,'(a35,x,7(i5,x))') 'crystallite_Nresults:              ', crystallite_Nresults
     write(6,*)

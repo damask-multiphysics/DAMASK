@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# $Id$
 import os,sys
 
 sys.argv += ['' for i in range(2 - len(sys.argv))]
