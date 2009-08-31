@@ -36,13 +36,19 @@
 !             - creeps: timinc
 !********************************************************************
 !
+MODULE cpfem_interface
+
+CONTAINS
+
 subroutine mpie_cpfem_init
  write(6,*)
- write(6,*) '<<<+-  mpie_cpfem init  -+>>>'
+ write(6,*) '<<<+-  mpie_cpfem_marc init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
  return
 end subroutine
+
+END MODULE
 
  include "prec.f90"             ! uses nothing else
  include "IO.f90"               ! uses prec

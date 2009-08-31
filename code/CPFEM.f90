@@ -67,7 +67,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
 
   !*** variables and functions from other modules ***!
   use prec, only:                                     pReal, &
-                                                      pInt
+                                                      pInt, &
+                                                      prec_init
   use numerics, only:                                 numerics_init, & 
                                                       relevantStrain, &
                                                       iJacoStiffness
@@ -119,6 +120,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       materialpoint_Temperature, &
                                                       materialpoint_stressAndItsTangent, &
                                                       materialpoint_postResults
+ use IO, only:                                        IO_init
+ use cpfem_interface
   
   implicit none
   
