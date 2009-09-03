@@ -343,10 +343,10 @@ function homogenization_RGC_updateState(&
  enddo
 
 !* Convergence check for stress residual
- stresMax = maxval(P)
- stresLoc = maxloc(P)
- residMax = maxval(tract)
- residLoc = maxloc(tract)
+ stresMax = maxval(abs(P))
+ stresLoc = maxloc(abs(P))
+ residMax = maxval(abs(tract))
+ residLoc = maxloc(abs(tract))
 !* Debugging the convergent criteria
  if (RGCdebug) then
    write(1978,'(x,a)')' '
