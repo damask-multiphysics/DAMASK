@@ -1,4 +1,4 @@
-!* $Id$
+
 !*****************************************************
 !*      Module: HOMOGENIZATION_RGC                   *
 !*****************************************************
@@ -132,7 +132,7 @@ subroutine homogenization_RGC_init(&
        = 3*(homogenization_RGC_Ngrains(1,i)-1)*homogenization_RGC_Ngrains(2,i)*homogenization_RGC_Ngrains(3,i) &
          + 3*homogenization_RGC_Ngrains(1,i)*(homogenization_RGC_Ngrains(2,i)-1)*homogenization_RGC_Ngrains(3,i) &
          + 3*homogenization_RGC_Ngrains(1,i)*homogenization_RGC_Ngrains(2,i)*(homogenization_RGC_Ngrains(3,i)-1) &
-         + homogenization_RGC_sizePostResults(i)
+         + 3_pInt   ! (1) Average constitutive work, (2) Average penalty energy, (3) Overall mismatch
  enddo
 
  return
@@ -152,7 +152,7 @@ function homogenization_RGC_stateInit(myInstance)
  real(pReal), dimension(homogenization_RGC_sizeState(myInstance)) :: homogenization_RGC_stateInit
 
 !* Open a debugging file 
- open(1978,file='homogenization_RGC_debugging.out')
+!  open(1978,file='homogenization_RGC_debugging.out',status='unknown')
  homogenization_RGC_stateInit = 0.0_pReal
 
  return
@@ -175,6 +175,8 @@ subroutine homogenization_RGC_partitionDeformation(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,homogenization_Ngrains,homogenization_typeInstance
+ use FEsolving, only: theInc,theCycle,theTime
+
  implicit none
 
 !* Definition of variables
@@ -192,15 +194,17 @@ subroutine homogenization_RGC_partitionDeformation(&
 !
  integer(pInt), parameter :: nFace = 6
  
- RGCdebug = (el == 1 .and. ip == 1)
+ RGCdebug = .false.
 
 !* Debugging the overall deformation gradient
  if (RGCdebug) then
-   write(1978,'(x,a32,i3,i3)')'Overall deformation gradient: '
+   write(6,'(x,a,i3,a,i3,a)')'========== Increment: ',theInc,' Cycle: ',theCycle,' =========='
+   write(6,'(x,a32)')'Overall deformation gradient: '
    do i = 1,3
-     write(1978,'(x,3(e10.4,x))')(avgF(i,j), j = 1,3)
+     write(6,'(x,3(e14.8,x))')(avgF(i,j), j = 1,3)
    enddo
-   write(1978,*)' '
+   write(6,*)' '
+   call flush(6)
  endif
 
 !* Compute the deformation gradient of individual grains due to relaxations
@@ -218,11 +222,12 @@ subroutine homogenization_RGC_partitionDeformation(&
    F(:,:,iGrain) = F(:,:,iGrain) + avgF(:,:)                         ! relaxed deformation gradient
 !* Debugging the grain deformation gradients
    if (RGCdebug) then
-     write(1978,'(x,a32,x,i3)')'Deformation gradient of grain: ',iGrain
+     write(6,'(x,a32,x,i3)')'Deformation gradient of grain: ',iGrain
      do i = 1,3
-       write(1978,'(x,3(e10.4,x))')(F(i,j,iGrain), j = 1,3)
+       write(6,'(x,3(e14.8,x))')(F(i,j,iGrain), j = 1,3)
      enddo
-     write(1978,*)' '
+     write(6,*)' '
+     call flush(6)
    endif
  enddo
  
@@ -251,6 +256,7 @@ function homogenization_RGC_updateState(&
  use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,homogenization_typeInstance,homogenization_Ngrains
  use numerics, only: absTol_RGC,relTol_RGC,absMax_RGC,relMax_RGC,pPert_RGC
+ use FEsolving, only: theInc,theCycle,theTime
 
  implicit none
 
@@ -269,14 +275,16 @@ function homogenization_RGC_updateState(&
  real(pReal), dimension (homogenization_maxNgrains)     :: NN,pNN
  real(pReal), dimension (3)   :: normP,normN,mornP,mornN
  real(pReal) residMax,stresMax,constitutiveWork,penaltyEnergy
- logical error,RGCdebug,RGCdebugJacobi
+ logical error,RGCdebug,RGCdebugJacobi,RGCcheck
 !
  integer(pInt), parameter :: nFace = 6
+ real(pInt), parameter    :: max_drelax = 0.5_pReal
 !
  real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix
- real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid
+ real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
 
- RGCdebug = (el == 1 .and. ip == 1)
+ RGCcheck       = (el == 1 .and. ip == 1)
+ RGCdebug       = .false.
  RGCdebugJacobi = .false.
 
 !* Get the dimension of the cluster (grains and interfaces)
@@ -286,16 +294,17 @@ function homogenization_RGC_updateState(&
                + nGDim(1)*nGDim(2)*(nGDim(3)-1)
 
 !* Allocate the size of the arrays/matrices depending on the size of the cluster
- allocate(resid(3*nIntFaceTot)); resid = 0.0_pReal
- allocate(tract(nIntFaceTot,3)); tract = 0.0_pReal
- allocate(relax(3*nIntFaceTot)); relax = state%p(1:3*nIntFaceTot)
+ allocate(resid(3*nIntFaceTot));  resid = 0.0_pReal
+ allocate(tract(nIntFaceTot,3));  tract = 0.0_pReal
+ allocate(relax(3*nIntFaceTot));  relax = state%p(1:3*nIntFaceTot)
+ allocate(drelax(3*nIntFaceTot)); drelax = 0.0_pReal
 !* Debugging the obtained state
  if (RGCdebug) then
-   write(1978,'(x,a30)')'Obtained state: '
+   write(6,'(x,a30)')'Obtained state: '
    do i = 1,3*nIntFaceTot
-     write(1978,'(x,2(e10.4,x))')state%p(i)
+     write(6,'(x,2(e14.8,x))')state%p(i)
    enddo
-   write(1978,*)' '
+   write(6,*)' '
  endif
 
 !* Stress-like penalty related to mismatch or incompatibility at interfaces
@@ -303,13 +312,13 @@ function homogenization_RGC_updateState(&
 !* Debugging the mismatch, stress and penalty of grains
  if (RGCdebug) then
    do iGrain = 1,homogenization_Ngrains(mesh_element(3,el))
-     write(1978,'(x,a30,x,i3,x,a4,x,e10.4)')'Mismatch magnitude of grain(',iGrain,') :',NN(iGrain)
-     write(1978,*)' '
-     write(1978,'(x,a30,x,i3)')'Stress and penalty of grain: ',iGrain
+     write(6,'(x,a30,x,i3,x,a4,x,e14.8)')'Mismatch magnitude of grain(',iGrain,') :',NN(iGrain)
+     write(6,*)' '
+     write(6,'(x,a30,x,i3)')'Stress and penalty of grain: ',iGrain
      do i = 1,3
-       write(1978,'(x,3(e10.4,x),x,3(e10.4,x))')(P(i,j,iGrain), j = 1,3),(R(i,j,iGrain), j = 1,3)
+       write(6,'(x,3(e14.8,x),x,3(e14.8,x))')(P(i,j,iGrain), j = 1,3),(R(i,j,iGrain), j = 1,3)
      enddo
-     write(1978,*)' '
+     write(6,*)' '
    enddo
  endif
 
@@ -336,9 +345,9 @@ function homogenization_RGC_updateState(&
    enddo
 !* Debugging the residual stress
    if (RGCdebug) then
-     write(1978,'(x,a30,x,i3)')'Traction difference: ',iNum
-     write(1978,'(x,3(e10.4,x))')(tract(iNum,j), j = 1,3)
-     write(1978,*)' '
+     write(6,'(x,a30,x,i3)')'Traction at interface: ',iNum
+     write(6,'(x,3(e14.8,x))')(tract(iNum,j), j = 1,3)
+     write(6,*)' '
    endif
  enddo
 
@@ -348,23 +357,25 @@ function homogenization_RGC_updateState(&
  residMax = maxval(abs(tract))
  residLoc = maxloc(abs(tract))
 !* Debugging the convergent criteria
- if (RGCdebug) then
-   write(1978,'(x,a)')' '
-   write(1978,'(x,a)')'Residual check ...'
-   write(1978,'(x,a15,x,e10.4,x,a7,i3,x,a12,i2,i2)')'Max stress: ',stresMax, &
+ if (RGCcheck) then
+   write(6,'(x,a)')' '
+   write(6,'(x,a,x,i2,x,i4)')'RGC residual check ...',ip,el
+   write(6,'(x,a15,x,e14.8,x,a7,i3,x,a12,i2,i2)')'Max stress: ',stresMax, &
               '@ grain',stresLoc(3),'in component',stresLoc(1),stresLoc(2)
-   write(1978,'(x,a15,x,e10.4,x,a7,i3,x,a12,i2)')'Max residual: ',residMax, &
+   write(6,'(x,a15,x,e14.8,x,a7,i3,x,a12,i2)')'Max residual: ',residMax, &
               '@ iface',residLoc(1),'in direction',residLoc(2)
+   call flush(6)
  endif
  homogenization_RGC_updateState = .false.
 !*** If convergence reached => done and happy
  if (residMax < relTol_RGC*stresMax .or. residMax < absTol_RGC) then 
    homogenization_RGC_updateState = .true.
-   if (RGCdebug) then 
-     write(1978,'(x,a55)')'... done and happy'
-     write(1978,*)' '
+   if (RGCcheck) then 
+     write(6,'(x,a55)')'... done and happy'
+     write(6,*)' '
+     call flush(6)
    endif
-   write(6,'(x,a,x,i3,x,a6,x,i3,x,a12)')'RGC_updateState: ip',ip,'| el',el,'converged :)'
+!    write(6,'(x,a,x,i3,x,a6,x,i3,x,a12)')'RGC_updateState: ip',ip,'| el',el,'converged :)'
 !* Then compute/update the state for postResult, i.e., ...
 !* ... the (bulk) constitutive work and penalty energy
    constitutiveWork = state%p(3*nIntFaceTot+1)
@@ -382,28 +393,36 @@ function homogenization_RGC_updateState(&
 !* ... the overall mismatch
    state%p(3*nIntFaceTot+3) = sum(NN)
    if (RGCdebug) then
-     write(1978,'(x,a30,x,e10.4)')'Constitutive work: ',constitutiveWork
-     write(1978,'(x,a30,x,e10.4)')'Penalty energy: ',penaltyEnergy
-     write(1978,'(x,a30,x,e10.4)')'Magnitude mismatch: ',sum(NN)
-     write(1978,*)' '
+     write(6,'(x,a30,x,e14.8)')'Constitutive work: ',constitutiveWork
+     write(6,'(x,a30,x,e14.8)')'Penalty energy: ',penaltyEnergy
+     write(6,'(x,a30,x,e14.8)')'Magnitude mismatch: ',sum(NN)
+     write(6,*)''
+     call flush(6)
    endif
-   deallocate(tract,resid,relax)
+   deallocate(tract,resid,relax,drelax)
    return
 !*** If residual blows-up => done but unhappy
  elseif (residMax > relMax_RGC*stresMax .or. residMax > absMax_RGC) then
-   homogenization_RGC_updateState = (/.true.,.false./)
-   if (RGCdebug) then
-     write(1978,'(x,a55)')'... broken'
-     write(1978,*)' '
+!* Try to restart when residual blows up exceeding maximum bound
+   homogenization_RGC_updateState = (/.true.,.false./)     ! ... with direct cut-back
+   write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
+   write(6,'(x,a,x,e14.8,x,a,x,e14.8)')'due to high residual =',residMax,'for stress =',stresMax
+!    state%p(1:3*nIntFaceTot) = 0.0_pReal                    ! ... with full Taylor assumption
+!    write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'relaxation vectors reset to zero'
+   if (RGCcheck) then
+     write(6,'(x,a55)')'... broken'
+     write(6,*)' '
+     call flush(6)
    endif
-   write(6,'(x,a,x,i3,x,a6,x,i3,x,a9)')'RGC_updateState: ip',ip,'| el',el,'broken :('
-   deallocate(tract,resid,relax)
+!    write(6,'(x,a,x,i3,x,a6,x,i3,x,a9)')'RGC_updateState: ip',ip,'| el',el,'broken :('
+   deallocate(tract,resid,relax,drelax)
    return 
 !*** Otherwise, proceed with computing the Jacobian and state update
  else
-   if (RGCdebug) then
-     write(1978,'(x,a55)')'... not yet done'
-     write(1978,*)' '
+   if (RGCcheck) then
+     write(6,'(x,a55)')'... not yet done'
+     write(6,*)' '
+     call flush(6)
    endif
  endif
 
@@ -443,11 +462,12 @@ function homogenization_RGC_updateState(&
  enddo
 !* Debugging the global Jacobian matrix of stress tangent
  if (RGCdebugJacobi) then
-   write(1978,'(x,a30)')'Jacobian matrix of stress'
+   write(6,'(x,a30)')'Jacobian matrix of stress'
    do i = 1,3*nIntFaceTot
-     write(1978,'(x,100(e10.4,x))')(smatrix(i,j), j = 1,3*nIntFaceTot)
+     write(6,'(x,100(e10.4,x))')(smatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
-   write(1978,*)' '
+   write(6,*)' '
+   call flush(6)
  endif
 
 !* Compute the Jacobian of the stress-like penalty (penalty tangent) using perturbation technique
@@ -486,46 +506,63 @@ function homogenization_RGC_updateState(&
  enddo
 !* Debugging the global Jacobian matrix of penalty tangent
  if (RGCdebugJacobi) then
-   write(1978,'(x,a30)')'Jacobian matrix of penalty'
+   write(6,'(x,a30)')'Jacobian matrix of penalty'
    do i = 1,3*nIntFaceTot
-     write(1978,'(x,100(e10.4,x))')(pmatrix(i,j), j = 1,3*nIntFaceTot)
+     write(6,'(x,100(e10.4,x))')(pmatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
-   write(1978,*)' '
+   write(6,*)' '
+   call flush(6)
  endif
 
 !* The overall Jacobian matrix (due to constitutive and penalty tangents)
  allocate(jmatrix(3*nIntFaceTot,3*nIntFaceTot)); jmatrix = smatrix + pmatrix
  if (RGCdebugJacobi) then
-   write(1978,'(x,a30)')'Jacobian matrix (total)'
+   write(6,'(x,a30)')'Jacobian matrix (total)'
    do i = 1,3*nIntFaceTot
-     write(1978,'(x,100(e10.4,x))')(jmatrix(i,j), j = 1,3*nIntFaceTot)
+     write(6,'(x,100(e10.4,x))')(jmatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
-   write(1978,*)' '
+   write(6,*)' '
+   call flush(6)
  endif
  allocate(jnverse(3*nIntFaceTot,3*nIntFaceTot)); jnverse = 0.0_pReal
  call math_invert(3*nIntFaceTot,jmatrix,jnverse,ival,error)
 !* Debugging the inverse Jacobian matrix
  if (RGCdebugJacobi) then
-   write(1978,'(x,a30)')'Jacobian inverse'
+   write(6,'(x,a30)')'Jacobian inverse'
    do i = 1,3*nIntFaceTot
-     write(1978,'(x,100(e10.4,x))')(jnverse(i,j), j = 1,3*nIntFaceTot)
+     write(6,'(x,100(e10.4,x))')(jnverse(i,j), j = 1,3*nIntFaceTot)
    enddo
-   write(1978,*)' '
+   write(6,*)' '
+   call flush(6)
  endif
 
 !* Calculate the state update (i.e., new relaxation vectors)
- forall(i=1:3*nIntFaceTot,j=1:3*nIntFaceTot) relax(i) = relax(i) - jnverse(i,j)*resid(j)
+ do i = 1,3*nIntFaceTot
+   do j = 1,3*nIntFaceTot
+     drelax(i) = drelax(i) - jnverse(i,j)*resid(j)
+   enddo
+ enddo
+ relax = relax + drelax
  state%p(1:3*nIntFaceTot) = relax
+ if (any(abs(drelax(:)) > max_drelax)) then
+!    state%p(1:3*nIntFaceTot) = 0.0_pReal
+!    write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'relaxation vectors reset to zero'
+   homogenization_RGC_updateState = (/.true.,.false./)
+   write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
+   write(6,'(x,a,x,e14.8)')'due to large relaxation change =',maxval(abs(drelax))
+   call flush(6)
+ endif
 !* Debugging the return state
  if (RGCdebugJacobi) then
-   write(1978,'(x,a30)')'Returned state: '
+   write(6,'(x,a30)')'Returned state: '
    do i = 1,3*nIntFaceTot
-     write(1978,'(x,2(e10.4,x))')state%p(i)
+     write(6,'(x,2(e14.8,x))')state%p(i)
    enddo
-   write(1978,*)' '
+   write(6,*)' '
+   call flush(6)
  endif
 
- deallocate(tract,resid,jmatrix,jnverse,relax,pmatrix,smatrix,p_relax,p_resid)
+ deallocate(tract,resid,jmatrix,jnverse,relax,drelax,pmatrix,smatrix,p_relax,p_resid)
  return 
  
 endfunction
@@ -567,12 +604,13 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
  if (RGCdebug) then
    do iGrain = 1,homogenization_Ngrains(mesh_element(3,el))
      dPdF99 = math_Plain3333to99(dPdF(:,:,:,:,iGrain))
-     write(1978,'(x,a30,x,i3)')'Stress tangent of grain: ',iGrain
+     write(6,'(x,a30,x,i3)')'Stress tangent of grain: ',iGrain
      do i = 1,9
-       write(1978,'(x,(e10.4,x))') (dPdF99(i,j), j = 1,9)
+       write(6,'(x,(e14.8,x))') (dPdF99(i,j), j = 1,9)
      enddo
-     write(1978,*)' '
+     write(6,*)' '
    enddo
+   call flush(6)
  endif
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
  avgP = sum(P,3)/dble(Ngrains)
@@ -732,11 +770,11 @@ subroutine homogenization_RGC_stressPenalty(&
      nDefNorm = max(nDefToler,sqrt(nDefNorm))                           ! zero mismatch approximation if too small
 !* Debugging the mismatch tensor
 !      if (ip == 1 .and. el == 1) then
-!        write(1978,'(x,a20,i2,x,a20,x,i3)')'Mismatch to face: ',intFace(1),'neighbor grain: ',iGNghb
+!        write(6,'(x,a20,i2,x,a20,x,i3)')'Mismatch to face: ',intFace(1),'neighbor grain: ',iGNghb
 !        do i = 1,3
-!          write(1978,'(x,3(e10.4,x))')(nDef(i,j), j = 1,3)
+!          write(6,'(x,3(e10.4,x))')(nDef(i,j), j = 1,3)
 !        enddo
-!        write(1978,'(x,a20,e10.4))')'with magnitude: ',nDefNorm
+!        write(6,'(x,a20,e10.4))')'with magnitude: ',nDefNorm
 !      endif
 !* Compute the stress-like penalty from all six interfaces
      do i = 1,3
@@ -756,9 +794,9 @@ subroutine homogenization_RGC_stressPenalty(&
    enddo
 !* Debugging the stress-like penalty
 !    if (ip == 1 .and. el == 1) then
-!      write(1978,'(x,a20,i2)')'Penalty of grain: ',iGrain
+!      write(6,'(x,a20,i2)')'Penalty of grain: ',iGrain
 !      do i = 1,3
-!        write(1978,'(x,3(e10.4,x))')(rPen(i,j,iGrain), j = 1,3)
+!        write(6,'(x,3(e10.4,x))')(rPen(i,j,iGrain), j = 1,3)
 !      enddo
 !    endif
  enddo
