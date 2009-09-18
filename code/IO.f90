@@ -33,7 +33,7 @@ subroutine IO_init
  write(6,*) '$Id$'
  write(6,*)
  return
-end subroutine
+endsubroutine
 
 !********************************************************************
 ! open existing file to given unit
@@ -854,10 +854,28 @@ endfunction
    msg = 'Non-positive diffusion prefactor'
  case (225)
    msg = 'No slip systems specified'
+ case (226)
+   msg = 'Non-positive prefactor for dislocation velocity'
+ case (227)
+   msg = 'Non-positive prefactor for mean free path'
+ case (228)
+   msg = 'Non-positive minimum stable dipole distance'
+ case (229)
+   msg = 'Hardening interaction coefficients below one'
+ case (230)
+   msg = 'Non-positive atomic volume'
+ case (231)
+   msg = 'Non-positive prefactor for self-diffusion coefficient'
+ case (232)
+   msg = 'Non-positive activation energy for dislocation climb'   
+ case (233)
+   msg = 'Non-positive relevant dislocation density'   
  case (240)
    msg = 'Non-positive Taylor factor'
  case (241)
    msg = 'Non-positive hardening exponent'
+ case (242)
+   msg = 'Non-positive relevant slip resistance'   
  case (260)
    msg = 'Non-positive relevant strain'
  case (261)

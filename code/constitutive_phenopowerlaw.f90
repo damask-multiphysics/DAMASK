@@ -46,6 +46,7 @@
 !   interaction_sliptwin    1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
 !   interaction_twinslip    1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
 !   interaction_twintwin    1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+! relevantResistance      1e2
 
 MODULE constitutive_phenopowerlaw
 
@@ -106,6 +107,8 @@ MODULE constitutive_phenopowerlaw
  real(pReal), dimension(:,:,:), allocatable :: constitutive_phenopowerlaw_hardeningMatrix_twintwin
  
  real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_w0_slip
+ 
+ real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_relevantResistance
  
 CONTAINS
 !****************************************
@@ -205,7 +208,11 @@ subroutine constitutive_phenopowerlaw_init(file)
  constitutive_phenopowerlaw_interaction_twinslip = 0.0_pReal
  constitutive_phenopowerlaw_interaction_twintwin = 0.0_pReal
 
- allocate(constitutive_phenopowerlaw_w0_slip(maxNinstance))     ;    constitutive_phenopowerlaw_w0_slip = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_w0_slip(maxNinstance))
+ constitutive_phenopowerlaw_w0_slip = 0.0_pReal
+ 
+ allocate(constitutive_phenopowerlaw_relevantResistance(maxNinstance))
+ constitutive_phenopowerlaw_relevantResistance = 0.0_pReal
 
  rewind(file)
  line = ''
@@ -282,6 +289,8 @@ subroutine constitutive_phenopowerlaw_init(file)
               constitutive_phenopowerlaw_h0_twinslip(i) = IO_floatValue(line,positions,2)
        case ('h0_twintwin')
               constitutive_phenopowerlaw_h0_twintwin(i) = IO_floatValue(line,positions,2)
+       case ('relevantresistance')
+              constitutive_phenopowerlaw_relevantResistance(i) = IO_floatValue(line,positions,2)
        case ('interaction_slipslip')
               forall (j = 1:lattice_maxNinteraction) &
                 constitutive_phenopowerlaw_interaction_slipslip(j,i) = IO_floatValue(line,positions,1+j)
@@ -308,21 +317,22 @@ subroutine constitutive_phenopowerlaw_init(file)
    constitutive_phenopowerlaw_totalNslip(i) = sum(constitutive_phenopowerlaw_Nslip(:,i))      ! how many slip systems altogether
    constitutive_phenopowerlaw_totalNtwin(i) = sum(constitutive_phenopowerlaw_Ntwin(:,i))      ! how many twin systems altogether
 
-   if (constitutive_phenopowerlaw_structure(i) < 1 )          call IO_error(205)
+   if (constitutive_phenopowerlaw_structure(i) < 1 )                  call IO_error(205)
    if (any(constitutive_phenopowerlaw_tau0_slip(:,i) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(210)
-   if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal) call IO_error(211)
-   if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)     call IO_error(212)
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(210)
+   if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal)         call IO_error(211)
+   if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)             call IO_error(212)
    if (any(constitutive_phenopowerlaw_tausat_slip(:,i) <= 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(213)
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(213)
    if (any(constitutive_phenopowerlaw_w0_slip(i) == 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(214)
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(214)
    if (any(constitutive_phenopowerlaw_tau0_twin(:,i) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(210)
-   if (    constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal  .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))         call IO_error(211)
+           constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(210)
+   if (    constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal .and. &
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(211)
    if (    constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(212)
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(212)
+   if (constitutive_phenopowerlaw_relevantResistance(i) <= 0.0_pReal) call IO_error(242)
 
  enddo
           
@@ -488,6 +498,29 @@ function constitutive_phenopowerlaw_stateInit(myInstance)
      constitutive_phenopowerlaw_tau0_twin(i,myInstance)
  enddo
  return
+
+endfunction
+
+
+!*********************************************************************
+!* relevant microstructural state                                    *
+!*********************************************************************
+pure function constitutive_phenopowerlaw_relevantState(myInstance)
+
+use prec,     only: pReal, &
+                    pInt
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
+
+!*** output variables
+real(pReal), dimension(constitutive_phenopowerlaw_sizeState(myInstance)) :: &
+                              constitutive_phenopowerlaw_relevantState ! relevant state values for the current instance of this constitution
+
+!*** local variables
+
+constitutive_phenopowerlaw_relevantState = constitutive_phenopowerlaw_relevantResistance(myInstance)
 
 endfunction
 

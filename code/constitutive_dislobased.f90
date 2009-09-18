@@ -543,6 +543,29 @@ function constitutive_dislobased_stateInit(myInstance)
 end function
 
 
+!*********************************************************************
+!* relevant microstructural state                                    *
+!*********************************************************************
+pure function constitutive_dislobased_relevantState(myInstance)
+
+use prec,     only: pReal, &
+                    pInt
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
+
+!*** output variables
+real(pReal), dimension(constitutive_dislobased_sizeState(myInstance)) :: &
+                              constitutive_dislobased_relevantState ! relevant state values for the current instance of this constitution
+
+!*** local variables
+
+constitutive_dislobased_relevantState = 1.0e-200_pReal
+
+endfunction
+
+
 function constitutive_dislobased_homogenizedC(state,ipc,ip,el)
 !*********************************************************************
 !* calculates homogenized elacticity matrix                          *

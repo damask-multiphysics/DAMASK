@@ -17,7 +17,8 @@ MODULE constitutive
                                                  constitutive_partionedState0, & ! pointer array to microstructure at start of homogenization inc
                                                  constitutive_subState0, &       ! pointer array to microstructure at start of crystallite inc
                                                  constitutive_state, &           ! pointer array to current microstructure (end of converged time step)
-                                                 constitutive_dotState           ! pointer array to evolution of current microstructure
+                                                 constitutive_dotState, &        ! pointer array to evolution of current microstructure
+                                                 constitutive_relevantState      ! relevant state values
  integer(pInt), dimension(:,:,:), allocatable :: constitutive_sizeDotState, &    ! size of dotState array
                                                  constitutive_sizeState, &       ! size of state array per grain
                                                  constitutive_sizePostResults    ! size of postResults array per grain
@@ -110,58 +111,74 @@ subroutine constitutive_init()
  allocate(constitutive_subState0(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_state(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_dotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_relevantState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_sizeDotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;   constitutive_sizeDotState = 0_pInt
  allocate(constitutive_sizeState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;      constitutive_sizeState = 0_pInt
  allocate(constitutive_sizePostResults(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)); constitutive_sizePostResults = 0_pInt
+ 
  do e = 1,mesh_NcpElems                                  ! loop over elements
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    do i = 1,FE_Nips(mesh_element(2,e))                   ! loop over IPs
      do g = 1,myNgrains                                  ! loop over grains
        debugger = (e == 1 .and. i == 1 .and. g == 1)
        myInstance = phase_constitutionInstance(material_phase(g,i,e))
-       select case(phase_constitution(material_phase(g,i,e)))
+       select case(phase_constitution(material_phase(g,i,e)))  
+       
          case (constitutive_j2_label)
            allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
+           allocate(constitutive_relevantState(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
            constitutive_state0(g,i,e)%p =           constitutive_j2_stateInit(myInstance)
+           constitutive_relevantState(g,i,e)%p =    constitutive_j2_relevantState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(myInstance)
+           
          case (constitutive_phenopowerlaw_label)
            allocate(constitutive_state0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
+           allocate(constitutive_relevantState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
            constitutive_state0(g,i,e)%p =           constitutive_phenopowerlaw_stateInit(myInstance)
+           constitutive_relevantState(g,i,e)%p =    constitutive_phenopowerlaw_relevantState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(myInstance)
+           
          case (constitutive_dislobased_label)
            allocate(constitutive_state0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
+           allocate(constitutive_relevantState(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_dislobased_sizeDotState(myInstance)))
            constitutive_state0(g,i,e)%p =           constitutive_dislobased_stateInit(myInstance)
+           constitutive_relevantState(g,i,e)%p =    constitutive_dislobased_relevantState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_dislobased_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_dislobased_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_dislobased_sizePostResults(myInstance)
+           
          case (constitutive_nonlocal_label)
            allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
+           allocate(constitutive_relevantState(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
            constitutive_state0(g,i,e)%p =           constitutive_nonlocal_stateInit(myInstance)
+           constitutive_relevantState(g,i,e)%p =    constitutive_nonlocal_relevantState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(myInstance)
+           
          case default
            call IO_error(200,material_phase(g,i,e))      ! unknown constitution
+           
        end select
        constitutive_partionedState0(g,i,e)%p =  constitutive_state0(g,i,e)%p
      enddo
@@ -180,6 +197,7 @@ subroutine constitutive_init()
  write(6,'(a32,x,7(i5,x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
  write(6,'(a32,x,7(i5,x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
  write(6,'(a32,x,7(i5,x))') 'constitutive_state:           ', shape(constitutive_state)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_relevantState:   ', shape(constitutive_relevantState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)

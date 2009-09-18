@@ -45,6 +45,7 @@ MODULE constitutive_j2
  real(pReal), dimension(:),     allocatable :: constitutive_j2_h0
  real(pReal), dimension(:),     allocatable :: constitutive_j2_tausat
  real(pReal), dimension(:),     allocatable :: constitutive_j2_w0
+ real(pReal), dimension(:),     allocatable :: constitutive_j2_relevantResistance
 
 
 CONTAINS
@@ -82,23 +83,22 @@ subroutine constitutive_j2_init(file)
  maxNinstance = count(phase_constitution == constitutive_j2_label)
  if (maxNinstance == 0) return
 
- allocate(constitutive_j2_sizeDotState(maxNinstance)) ;   constitutive_j2_sizeDotState = 0_pInt
- allocate(constitutive_j2_sizeState(maxNinstance)) ;      constitutive_j2_sizeState = 0_pInt
- allocate(constitutive_j2_sizePostResults(maxNinstance)); constitutive_j2_sizePostResults = 0_pInt
- allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), &
-                                         maxNinstance)) ; constitutive_j2_sizePostResult = 0_pInt
- allocate(constitutive_j2_output(maxval(phase_Noutput), &
-                                 maxNinstance)) ;         constitutive_j2_output = ''
- allocate(constitutive_j2_C11(maxNinstance)) ;            constitutive_j2_C11 = 0.0_pReal
- allocate(constitutive_j2_C12(maxNinstance)) ;            constitutive_j2_C12 = 0.0_pReal
- allocate(constitutive_j2_Cslip_66(6,6,maxNinstance)) ;   constitutive_j2_Cslip_66 = 0.0_pReal
- allocate(constitutive_j2_fTaylor(maxNinstance)) ;        constitutive_j2_fTaylor = 0.0_pReal
- allocate(constitutive_j2_tau0(maxNinstance)) ;           constitutive_j2_tau0 = 0.0_pReal
- allocate(constitutive_j2_gdot0(maxNinstance)) ;          constitutive_j2_gdot0 = 0.0_pReal
- allocate(constitutive_j2_n(maxNinstance)) ;              constitutive_j2_n = 0.0_pReal
- allocate(constitutive_j2_h0(maxNinstance)) ;             constitutive_j2_h0 = 0.0_pReal
- allocate(constitutive_j2_tausat(maxNinstance)) ;         constitutive_j2_tausat = 0.0_pReal
- allocate(constitutive_j2_w0(maxNinstance)) ;             constitutive_j2_w0 = 0.0_pReal
+ allocate(constitutive_j2_sizeDotState(maxNinstance)) ;                         constitutive_j2_sizeDotState = 0_pInt
+ allocate(constitutive_j2_sizeState(maxNinstance)) ;                            constitutive_j2_sizeState = 0_pInt
+ allocate(constitutive_j2_sizePostResults(maxNinstance));                       constitutive_j2_sizePostResults = 0_pInt
+ allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), maxNinstance)); constitutive_j2_sizePostResult = 0_pInt
+ allocate(constitutive_j2_output(maxval(phase_Noutput), maxNinstance)) ;        constitutive_j2_output = ''
+ allocate(constitutive_j2_C11(maxNinstance)) ;                                  constitutive_j2_C11 = 0.0_pReal
+ allocate(constitutive_j2_C12(maxNinstance)) ;                                  constitutive_j2_C12 = 0.0_pReal
+ allocate(constitutive_j2_Cslip_66(6,6,maxNinstance)) ;                         constitutive_j2_Cslip_66 = 0.0_pReal
+ allocate(constitutive_j2_fTaylor(maxNinstance)) ;                              constitutive_j2_fTaylor = 0.0_pReal
+ allocate(constitutive_j2_tau0(maxNinstance)) ;                                 constitutive_j2_tau0 = 0.0_pReal
+ allocate(constitutive_j2_gdot0(maxNinstance)) ;                                constitutive_j2_gdot0 = 0.0_pReal
+ allocate(constitutive_j2_n(maxNinstance)) ;                                    constitutive_j2_n = 0.0_pReal
+ allocate(constitutive_j2_h0(maxNinstance)) ;                                   constitutive_j2_h0 = 0.0_pReal
+ allocate(constitutive_j2_tausat(maxNinstance)) ;                               constitutive_j2_tausat = 0.0_pReal
+ allocate(constitutive_j2_w0(maxNinstance)) ;                                   constitutive_j2_w0 = 0.0_pReal
+ allocate(constitutive_j2_relevantResistance(maxNinstance)) ;                   constitutive_j2_relevantResistance = 0.0_pReal
  
  rewind(file)
  line = ''
@@ -142,17 +142,20 @@ subroutine constitutive_j2_init(file)
               constitutive_j2_w0(i) = IO_floatValue(line,positions,2)
        case ('taylorfactor')
               constitutive_j2_fTaylor(i) = IO_floatValue(line,positions,2)
+       case ('relevantresistance')
+              constitutive_j2_relevantResistance(i) = IO_floatValue(line,positions,2)
      end select
    endif
  enddo
 
 100 do i = 1,maxNinstance                                        ! sanity checks
-   if (constitutive_j2_tau0(i) < 0.0_pReal)        call IO_error(210)
-   if (constitutive_j2_gdot0(i) <= 0.0_pReal)      call IO_error(211)
-   if (constitutive_j2_n(i) <= 0.0_pReal)          call IO_error(212)
-   if (constitutive_j2_tausat(i) <= 0.0_pReal)     call IO_error(213)
-   if (constitutive_j2_w0(i) <= 0.0_pReal)         call IO_error(241)
-   if (constitutive_j2_fTaylor(i) <= 0.0_pReal)    call IO_error(240)
+   if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(210)
+   if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211)
+   if (constitutive_j2_n(i) <= 0.0_pReal)                 call IO_error(212)
+   if (constitutive_j2_tausat(i) <= 0.0_pReal)            call IO_error(213)
+   if (constitutive_j2_w0(i) <= 0.0_pReal)                call IO_error(241)
+   if (constitutive_j2_fTaylor(i) <= 0.0_pReal)           call IO_error(240)
+   if (constitutive_j2_relevantResistance(i) <= 0.0_pReal) call IO_error(242)
  enddo
 
  do i = 1,maxNinstance
@@ -206,6 +209,29 @@ pure function constitutive_j2_stateInit(myInstance)
   constitutive_j2_stateInit = constitutive_j2_tau0(myInstance)
 
   return
+endfunction
+
+
+!*********************************************************************
+!* relevant microstructural state                                    *
+!*********************************************************************
+pure function constitutive_j2_relevantState(myInstance)
+
+use prec,     only: pReal, &
+                    pInt
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
+
+!*** output variables
+real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
+                              constitutive_j2_relevantState   ! relevant state values for the current instance of this constitution
+
+!*** local variables
+
+constitutive_j2_relevantState = constitutive_j2_relevantResistance(myInstance)
+
 endfunction
 
 

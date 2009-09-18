@@ -17,18 +17,16 @@ implicit none
 
 !* Definition of parameters
 character (len=*), parameter :: constitutive_nonlocal_label = 'nonlocal'
-character(len=16), dimension(9), parameter :: constitutive_nonlocal_stateList = (/ 'rhoEdgePos      ', &
-                                                                                   'rhoEdgeNeg      ', &
-                                                                                   'rhoScrewPos     ', &
-                                                                                   'rhoScrewNeg     ', &
-                                                                                   'rhoEdgeDip      ', &
-                                                                                   'rhoScrewDip     ', &
-                                                                                   'rhoForest       ', &
-                                                                                   'tauSlipThreshold', &
-                                                                                   'Tdislocation_v  ' /)                            ! list of microstructural state variables
-character(len=16), dimension(6), parameter :: constitutive_nonlocal_stateListBasic = constitutive_nonlocal_stateList(1:6)           ! list of "basic" microstructural state variables that are independent from other state variables
-character(len=16), dimension(3), parameter :: constitutive_nonlocal_stateListDependent = constitutive_nonlocal_stateList(7:9)       ! list of microstructural state variables that depend on other state variables
-real(pReal), parameter :: kB = 1.38e-23_pReal                                                                                       ! Physical parameter, Boltzmann constant in J/Kelvin
+character(len=16), dimension(6), parameter ::     constitutive_nonlocal_listBasicStates = (/'rhoEdgePos      ', &
+                                                                                            'rhoEdgeNeg      ', &
+                                                                                            'rhoScrewPos     ', &
+                                                                                            'rhoScrewNeg     ', &
+                                                                                            'rhoEdgeDip      ', &
+                                                                                            'rhoScrewDip     ' /) ! list of "basic" microstructural state variables that are independent from other state variables
+character(len=16), dimension(3), parameter :: constitutive_nonlocal_listDependentStates = (/'rhoForest       ', &
+                                                                                            'tauSlipThreshold', &
+                                                                                            'Tdislocation_v  ' /) ! list of microstructural state variables that depend on other state variables
+real(pReal), parameter :: kB = 1.38e-23_pReal                                                                   ! Physical parameter, Boltzmann constant in J/Kelvin
 
 
 !* Definition of global variables
@@ -54,8 +52,9 @@ real(pReal), dimension(:), allocatable ::                 constitutive_nonlocal_
                                                           constitutive_nonlocal_Gmod, &                         ! shear modulus
                                                           constitutive_nonlocal_nu, &                           ! poisson's ratio
                                                           constitutive_nonlocal_atomicVolume, &                 ! atomic volume
-                                                          constitutive_nonlocal_D0, &                           ! 
-                                                          constitutive_nonlocal_Qsd
+                                                          constitutive_nonlocal_D0, &                           ! prefactor for self-diffusion coefficient
+                                                          constitutive_nonlocal_Qsd, &                          ! activation energy for dislocation climb
+                                                          constitutive_nonlocal_relevantRho                     ! dislocation density considered relevant
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_Cslip_66                        ! elasticity matrix in Mandel notation for each instance
 real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_Cslip_3333                      ! elasticity matrix for each instance
 real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_rhoEdgePos0, &                  ! initial edge_pos dislocation density per slip system for each family and instance
@@ -145,6 +144,7 @@ integer(pInt)                               section, &
                                             j, &
                                             k, &
                                             l, &
+                                            ns, &               ! short notation for total number of active slip systems for the current instance
                                             o, &                ! index of my output
                                             s, &                ! index of my slip system
                                             s1, &               ! index of my slip system
@@ -202,6 +202,7 @@ allocate(constitutive_nonlocal_nu(maxNinstance))
 allocate(constitutive_nonlocal_atomicVolume(maxNinstance))
 allocate(constitutive_nonlocal_D0(maxNinstance))
 allocate(constitutive_nonlocal_Qsd(maxNinstance))
+allocate(constitutive_nonlocal_relevantRho(maxNinstance))
 allocate(constitutive_nonlocal_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_nonlocal_Cslip_3333(3,3,3,3,maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
@@ -214,6 +215,7 @@ constitutive_nonlocal_Gmod = 0.0_pReal
 constitutive_nonlocal_atomicVolume = 0.0_pReal
 constitutive_nonlocal_D0 = 0.0_pReal
 constitutive_nonlocal_Qsd = 0.0_pReal
+constitutive_nonlocal_relevantRho = 0.0_pReal
 constitutive_nonlocal_nu = 0.0_pReal
 constitutive_nonlocal_Cslip_66 = 0.0_pReal
 constitutive_nonlocal_Cslip_3333 = 0.0_pReal
@@ -316,6 +318,8 @@ do                                                                              
         constitutive_nonlocal_D0(i) = IO_floatValue(line,positions,2)
       case('qsd')
         constitutive_nonlocal_Qsd(i) = IO_floatValue(line,positions,2)
+      case('relevantrho')
+        constitutive_nonlocal_relevantRho(i) = IO_floatValue(line,positions,2)
       case ('interaction_slipslip')
         forall (it = 1:lattice_maxNinteraction) constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1+it)
     end select
@@ -327,15 +331,14 @@ enddo
 
   constitutive_nonlocal_structure(i) = &
     lattice_initializeStructure(constitutive_nonlocal_structureName(i), constitutive_nonlocal_CoverA(i))                            ! our lattice structure is defined in the material.config file by the structureName (and the c/a ratio)
+  myStructure = constitutive_nonlocal_structure(i)
   
+!*** sanity checks
   
-!*** sanity checks 
-!*** !!! not yet complete !!!
-  
-  if (constitutive_nonlocal_structure(i) < 1 .or. constitutive_nonlocal_structure(i) > 3)   call IO_error(205)
-  if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0)                                           call IO_error(225)
+  if (myStructure < 1 .or. myStructure > 3)                                                 call IO_error(205)
+  if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0_pInt)                                      call IO_error(225)
   do f = 1,lattice_maxNslipFamily
-    if (constitutive_nonlocal_Nslip(f,i) > 0) then
+    if (constitutive_nonlocal_Nslip(f,i) > 0_pInt) then
       if (constitutive_nonlocal_rhoEdgePos0(f,i) < 0.0_pReal)                               call IO_error(220)
       if (constitutive_nonlocal_rhoEdgeNeg0(f,i) < 0.0_pReal)                               call IO_error(220)
       if (constitutive_nonlocal_rhoScrewPos0(f,i) < 0.0_pReal)                              call IO_error(220)
@@ -343,19 +346,23 @@ enddo
       if (constitutive_nonlocal_rhoEdgeDip0(f,i) < 0.0_pReal)                               call IO_error(220)
       if (constitutive_nonlocal_rhoScrewDip0(f,i) < 0.0_pReal)                              call IO_error(220)
       if (constitutive_nonlocal_burgersPerSlipFamily(f,i) <= 0.0_pReal)                     call IO_error(221)
-      if (constitutive_nonlocal_v0PerSlipFamily(f,i) <= 0.0_pReal)                          call IO_error(-1)
-      if (constitutive_nonlocal_lambda0PerSlipFamily(f,i) <= 0.0_pReal)                     call IO_error(-1)
-      if (constitutive_nonlocal_dDipMinEdgePerSlipFamily(f,i) <= 0.0_pReal)                 call IO_error(-1)
-      if (constitutive_nonlocal_dDipMinScrewPerSlipFamily(f,i) <= 0.0_pReal)                call IO_error(-1)
+      if (constitutive_nonlocal_v0PerSlipFamily(f,i) <= 0.0_pReal)                          call IO_error(226)
+      if (constitutive_nonlocal_lambda0PerSlipFamily(f,i) <= 0.0_pReal)                     call IO_error(227)
+      if (constitutive_nonlocal_dDipMinEdgePerSlipFamily(f,i) <= 0.0_pReal)                 call IO_error(228)
+      if (constitutive_nonlocal_dDipMinScrewPerSlipFamily(f,i) <= 0.0_pReal)                call IO_error(228)
     endif
   enddo
-  if (sum(constitutive_nonlocal_interactionSlipSlip(:,i)) <= 0.0_pReal)                     call IO_error(-1)
+  if (any(constitutive_nonlocal_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 1.0_pReal)) &
+                                                                                            call IO_error(229)
+  if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)                                   call IO_error(230)
+  if (constitutive_nonlocal_D0(i) <= 0.0_pReal)                                             call IO_error(231)
+  if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                                            call IO_error(232)
+  if (constitutive_nonlocal_relevantRho(i) <= 0.0_pReal)                                    call IO_error(233)
     
   
 !*** determine total number of active slip systems
   
-  constitutive_nonlocal_Nslip(:,i)  & 
-      = min( lattice_NslipSystem(:, constitutive_nonlocal_structure(i)), constitutive_nonlocal_Nslip(:,i) )                         ! we can't use more slip systems per family than specified in lattice 
+  constitutive_nonlocal_Nslip(:,i) = min( lattice_NslipSystem(:, myStructure), constitutive_nonlocal_Nslip(:,i) )                         ! we can't use more slip systems per family than specified in lattice 
   constitutive_nonlocal_totalNslip(i) = sum(constitutive_nonlocal_Nslip(:,i))
 
 enddo
@@ -407,8 +414,10 @@ do i = 1,maxNinstance
   
 !*** determine size of state array
   
-  constitutive_nonlocal_sizeState(i) = (size(constitutive_nonlocal_stateList)-1) * constitutive_nonlocal_totalNslip(i) + 6_pInt     ! the size of the list of states times the number of active slip systems gives the required size for the state array
-  constitutive_nonlocal_sizeDotState(i) = size(constitutive_nonlocal_stateListBasic) * constitutive_nonlocal_totalNslip(i)          ! the size of the list of basic states times the number of active slip systems gives the required size for the dotState array
+  ns = constitutive_nonlocal_totalNslip(i)
+  constitutive_nonlocal_sizeState(i) = size(constitutive_nonlocal_listBasicStates) * ns & 
+                                       + ( size(constitutive_nonlocal_listDependentStates) - 1_pInt ) * ns + 6_pInt
+  constitutive_nonlocal_sizeDotState(i) = size(constitutive_nonlocal_listBasicStates) * ns
   
   
 !*** determine size of postResults array
@@ -528,7 +537,6 @@ pure function constitutive_nonlocal_stateInit(myInstance)
 use prec,     only: pReal, &
                     pInt
 use lattice,  only: lattice_maxNslipFamily
-use IO,       only: IO_error
 implicit none
 
 !*** input variables
@@ -605,6 +613,30 @@ constitutive_nonlocal_stateInit(4*ns+1:5*ns) = rhoEdgeDip
 constitutive_nonlocal_stateInit(5*ns+1:6*ns) = rhoScrewDip
 constitutive_nonlocal_stateInit(6*ns+1:7*ns) = rhoForest
 constitutive_nonlocal_stateInit(7*ns+1:8*ns) = tauSlipThreshold
+
+endfunction
+
+
+
+!*********************************************************************
+!* relevant microstructural state                                    *
+!*********************************************************************
+pure function constitutive_nonlocal_relevantState(myInstance)
+
+use prec,     only: pReal, &
+                    pInt
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
+
+!*** output variables
+real(pReal), dimension(constitutive_nonlocal_sizeState(myInstance)) :: &
+                              constitutive_nonlocal_relevantState ! relevant state values for the current instance of this constitution
+
+!*** local variables
+
+constitutive_nonlocal_relevantState = constitutive_nonlocal_relevantRho(myInstance)
 
 endfunction
 
@@ -838,7 +870,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
     sigma(3,1) = 0.0_pReal
     
     ! coordinate transformation from the slip coordinate system to the lattice coordinate system
-    Tdislocation_v = Tdislocation_v + math_Mandel33to6( math_mul33x33(transpose(transform), math_mul33x33(sigma, transform) ) )
+    Tdislocation_v = Tdislocation_v + math_Mandel33to6( math_mul33x33(transform, math_mul33x33(sigma, transpose(transform)) ) )
     ! if (debugger) write(6,'(a15,3(i3,x),/,3(3(f12.3,x)/))') 'sigma / MPa at ',g,ip,el, sigma/1e6
     ! if (debugger) write(6,'(a15,3(i3,x),/,3(3(f12.3,x)/))') 'Tdislocation / MPa at ',g,ip,el, math_Mandel6to33(Tdislocation_v/1e6)
   enddo
@@ -1142,7 +1174,7 @@ if (debugger) then
   write(6,*)
   write(6,'(a,/,12(f12.5,x),/)') 'tauSlip / MPa', tauSlip/1e6_pReal
   write(6,'(a,/,12(f12.5,x),/)') 'tauSlipThreshold / MPa', tauSlipThreshold/1e6_pReal
-  ! write(6,'(a,/,12(e10.3,x),/)') 'v', v
+  write(6,'(a,/,12(e10.3,x),/)') 'v', v
   write(6,'(a,/,4(12(f12.5,x),/))') 'gdot / 1e-3', gdot*1e3_pReal
   write(6,'(a,/,(12(f12.5,x),/))') 'gdot total/ 1e-3', sum(gdot,2)*1e3_pReal
   write(6,'(a,/,6(12(e12.5,x),/))') 'dislocation multiplication', &
@@ -1221,7 +1253,7 @@ dDipMaxDot(:,2) = (dDipMax(:,2) - dDipMax0(:,2)) / subdt
 
 forall (c=1:2) &  
   rhoDotTransfer(:,c) = 2.0_pReal * dDipMax(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                  * ( rho(:,2*c-1)*gdot(:,2*c) + rho(:,2*c)*gdot(:,2*c-1) )
+                                  * ( rho(:,2*c-1)*abs(gdot(:,2*c)) + rho(:,2*c)*abs(gdot(:,2*c-1)) )
 if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'dipole formation by glide', &
                                                         -rhoDotTransfer*subdt,-rhoDotTransfer*subdt,2.0_pReal*rhoDotTransfer*subdt
   
@@ -1234,7 +1266,7 @@ rhoDipDot = rhoDipDot + 2.0_pReal * rhoDotTransfer                              
 
 forall (c=1:2) &  
   rhoDotTransfer(:,c) = - 2.0_pReal * dDipMin(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                    * ( rho(:,2*c-1)*gdot(:,2*c) + rho(:,2*c)*gdot(:,2*c-1) )
+                                    * ( rho(:,2*c-1)*abs(gdot(:,2*c)) + rho(:,2*c)*abs(gdot(:,2*c-1)) )
 if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'athermal dipole annihilation', &
                                                  0.0_pReal*rhoDotTransfer,0.0_pReal*rhoDotTransfer,2.0_pReal*rhoDotTransfer*subdt
 

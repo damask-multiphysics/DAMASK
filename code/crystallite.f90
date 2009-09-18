@@ -701,6 +701,7 @@ endsubroutine
                                       constitutive_sizeDotState, &
                                       constitutive_subState0, &
                                       constitutive_state, &
+                                      constitutive_relevantState, &
                                       constitutive_microstructure
  use debug, only:                     debugger, &
                                       debug_cumDotStateCalls, &
@@ -751,7 +752,7 @@ endsubroutine
  
  
  ! setting flag to true if state is below relative tolerance, otherwise set it to false
- crystallite_updateState = all(    constitutive_state(g,i,e)%p(1:mySize) == 0.0_pReal &
+ crystallite_updateState = all(    constitutive_state(g,i,e)%p(1:mySize) < constitutive_relevantState(g,i,e)%p(1:mySize) &
                               .or. abs(residuum) < rTol_crystalliteState*abs(constitutive_state(g,i,e)%p(1:mySize)))
  if (debugger) then
    !$OMP CRITICAL (write2out)
