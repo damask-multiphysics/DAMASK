@@ -1036,9 +1036,9 @@ LpLoop: do
      ! calculate Jacobian for correction term 
      if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
        dTdLp = 0.0_pReal
-       forall (h=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
+       forall (h=1:3,j=1:3,k=1:3,l=1:3,m=1:3) &
          dTdLp(3*(h-1)+j,3*(k-1)+l) = dTdLp(3*(h-1)+j,3*(k-1)+l) + &
-                                      C(h,j,l,n)*AB(k,n)+C(h,j,m,l)*BTA(m,k)
+                                      C(h,j,l,m)*AB(k,m)+C(h,j,m,l)*BTA(m,k)
        dTdLp = -0.5_pReal*crystallite_subdt(g,i,e)*dTdLp
        dRdLp = math_identity2nd(9) - math_mul99x99(dLp_constitutive,dTdLp)
        invdRdLp = 0.0_pReal
