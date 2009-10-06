@@ -49,7 +49,7 @@ subroutine constitutive_init()
  use material
  use constitutive_j2
  use constitutive_phenopowerlaw
- use constitutive_dislobased
+ use constitutive_dislotwin
  use constitutive_nonlocal
 
  integer(pInt), parameter :: fileunit = 200
@@ -62,7 +62,7 @@ subroutine constitutive_init()
 
  call constitutive_j2_init(fileunit)                     ! parse all phases of this constitution
  call constitutive_phenopowerlaw_init(fileunit)
- call constitutive_dislobased_init(fileunit)
+ call constitutive_dislotwin_init(fileunit)
  call constitutive_nonlocal_init(fileunit)
 
  close(fileunit)
@@ -81,9 +81,9 @@ subroutine constitutive_init()
      case (constitutive_phenopowerlaw_label)
        thisOutput => constitutive_phenopowerlaw_output
        thisSize   => constitutive_phenopowerlaw_sizePostResult
-     case (constitutive_dislobased_label)
-       thisOutput => constitutive_dislobased_output
-       thisSize   => constitutive_dislobased_sizePostResult
+     case (constitutive_dislotwin_label)
+       thisOutput => constitutive_dislotwin_output
+       thisSize   => constitutive_dislotwin_sizePostResult
      case (constitutive_nonlocal_label)
        thisOutput => constitutive_nonlocal_output
        thisSize   => constitutive_nonlocal_sizePostResult
@@ -150,18 +150,18 @@ subroutine constitutive_init()
            constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(myInstance)
            
-         case (constitutive_dislobased_label)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
-           allocate(constitutive_relevantState(g,i,e)%p(constitutive_dislobased_sizeState(myInstance)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_dislobased_sizeDotState(myInstance)))
-           constitutive_state0(g,i,e)%p =           constitutive_dislobased_stateInit(myInstance)
-           constitutive_relevantState(g,i,e)%p =    constitutive_dislobased_relevantState(myInstance)
-           constitutive_sizeState(g,i,e) =          constitutive_dislobased_sizeState(myInstance)
-           constitutive_sizeDotState(g,i,e) =       constitutive_dislobased_sizeDotState(myInstance)
-           constitutive_sizePostResults(g,i,e) =    constitutive_dislobased_sizePostResults(myInstance)
+         case (constitutive_dislotwin_label)
+           allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
+           allocate(constitutive_relevantState(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
+           constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(myInstance)
+           constitutive_relevantState(g,i,e)%p =    constitutive_dislotwin_relevantState(myInstance)
+           constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(myInstance)
+           constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(myInstance)
+           constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(myInstance)
            
          case (constitutive_nonlocal_label)
            allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
@@ -224,7 +224,7 @@ function constitutive_homogenizedC(ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
- use constitutive_dislobased
+ use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
 
@@ -240,8 +240,8 @@ function constitutive_homogenizedC(ipc,ip,el)
    case (constitutive_phenopowerlaw_label)
      constitutive_homogenizedC = constitutive_phenopowerlaw_homogenizedC(constitutive_state,ipc,ip,el)
      
-   case (constitutive_dislobased_label)
-     constitutive_homogenizedC = constitutive_dislobased_homogenizedC(constitutive_state,ipc,ip,el)
+   case (constitutive_dislotwin_label)
+     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
      constitutive_homogenizedC = constitutive_nonlocal_homogenizedC(constitutive_state,ipc,ip,el)
@@ -270,7 +270,7 @@ subroutine constitutive_microstructure(Temperature,Fp,ipc,ip,el)
                       mesh_maxNips
  use constitutive_j2
  use constitutive_phenopowerlaw
- use constitutive_dislobased
+ use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
 
@@ -287,8 +287,8 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)
    case (constitutive_phenopowerlaw_label)
      call constitutive_phenopowerlaw_microstructure(Temperature,constitutive_state,ipc,ip,el)
      
-   case (constitutive_dislobased_label)
-     call constitutive_dislobased_microstructure(Temperature,constitutive_state,ipc,ip,el)
+   case (constitutive_dislotwin_label)
+     call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
      call constitutive_nonlocal_microstructure(Temperature, Fp, constitutive_state,ipc,ip,el)
@@ -315,7 +315,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
- use constitutive_dislobased
+ use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
 
@@ -334,8 +334,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
    case (constitutive_phenopowerlaw_label)
      call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
-   case (constitutive_dislobased_label)
-     call constitutive_dislobased_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   case (constitutive_dislotwin_label)
+     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
      call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, constitutive_state, ipc, ip, el)
@@ -364,7 +364,7 @@ subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fp, invFp, Tempera
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
- use constitutive_dislobased
+ use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
 
@@ -382,8 +382,8 @@ subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fp, invFp, Tempera
    case (constitutive_phenopowerlaw_label)
      constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
-   case (constitutive_dislobased_label)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_dislobased_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   case (constitutive_dislotwin_label)
+     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
      call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fp, invFp, Temperature, subdt, &
@@ -411,7 +411,7 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
- use constitutive_dislobased
+ use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
 
@@ -429,8 +429,8 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
    case (constitutive_phenopowerlaw_label)
      constitutive_dotTemperature = constitutive_phenopowerlaw_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
-   case (constitutive_dislobased_label)
-     constitutive_dotTemperature = constitutive_dislobased_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   case (constitutive_dislotwin_label)
+     constitutive_dotTemperature = constitutive_dislotwin_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
      constitutive_dotTemperature = constitutive_nonlocal_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
@@ -454,7 +454,7 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
- use constitutive_dislobased
+ use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
 
@@ -473,8 +473,8 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
    case (constitutive_phenopowerlaw_label)
      constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
      
-   case (constitutive_dislobased_label)
-     constitutive_postResults = constitutive_dislobased_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
+   case (constitutive_dislotwin_label)
+     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
      constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)

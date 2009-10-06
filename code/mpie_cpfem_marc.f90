@@ -61,7 +61,7 @@ END MODULE
  include "lattice.f90"          ! uses prec, math, IO, material
  include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, lattice, material, debug
  include "constitutive_j2.f90"            ! uses prec, math, IO, lattice, material, debug
- include "constitutive_dislobased.f90"    ! uses prec, math, IO, lattice, material, debug
+ include "constitutive_dislotwin.f90"    ! uses prec, math, IO, lattice, material, debug
  include "constitutive_nonlocal.f90"      ! uses prec, math, IO, lattice, material, debug
  include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
  include "crystallite.f90"      ! uses prec, math, IO, numerics 
