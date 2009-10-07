@@ -397,6 +397,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               crystallite_subF(:,:,g,i,e)  = crystallite_subF0(:,:,g,i,e) + &
                                              crystallite_subStep(g,i,e) * &
                                              (crystallite_partionedF(:,:,g,i,e) - crystallite_partionedF0(:,:,g,i,e))
+              crystallite_Fe(:,:,g,i,e)    = math_mul33x33(crystallite_subF(:,:,g,i,e),crystallite_invFp(:,:,g,i,e))
               crystallite_subdt(g,i,e)     = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
               crystallite_converged(g,i,e) = .false.                                  ! start out non-converged
             endif
@@ -431,11 +432,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-            debugger = (e == 1 .and. i == 1 .and. g == 1)
+            ! debugger = (e == 1 .and. i == 1 .and. g == 1)
             if (crystallite_todo(g,i,e)) &                                     ! all undone crystallites
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                                crystallite_Fp(:,:,g,i,e), crystallite_invFp(:,:,g,i,e), &
-                                                crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g, i, e)
+                                                crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
+                                                crystallite_subdt(g,i,e), g, i, e)
       enddo; enddo; enddo
     !$OMPEND PARALLEL DO
     !$OMP PARALLEL DO
@@ -443,7 +444,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                              ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-            debugger = (e == 1 .and. i == 1 .and. g == 1)
+            ! debugger = (e == 1 .and. i == 1 .and. g == 1)
             if (crystallite_todo(g,i,e)) then                                    ! all undone crystallites
               crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)        ! update state
               crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e) ! update temperature
@@ -451,7 +452,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             endif
       enddo; enddo; enddo
     !$OMPEND PARALLEL DO
-    write(6,*) count(.not. crystallite_onTrack(1,:,:)),'IPs not onTrack after preguess for state'
+    write(6,*) count(crystallite_onTrack(1,:,:)),'IPs onTrack after preguess for state'
    
     ! --+>> state loop <<+--
    
@@ -474,7 +475,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                          ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-              debugger = (e == 1 .and. i == 1 .and. g == 1)
+              ! debugger = (e == 1 .and. i == 1 .and. g == 1)
               if (crystallite_todo(g,i,e)) &                                     ! all undone crystallites
                 crystallite_onTrack(g,i,e) = crystallite_integrateStress(g,i,e)
             enddo
@@ -482,7 +483,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         enddo
       !$OMPEND PARALLEL DO
 
-      write(6,*) count(.not. crystallite_onTrack(1,:,:)),'IPs not onTrack after stress integration'
+      write(6,*) count(crystallite_onTrack(1,:,:)),'IPs onTrack after stress integration'
       
       crystallite_todo = crystallite_todo .and. crystallite_onTrack
       if (any(.not. crystallite_onTrack .and. .not. crystallite_localConstitution)) &
@@ -510,11 +511,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-              debugger = (e == 1 .and. i == 1 .and. g == 1)
+              ! debugger = (e == 1 .and. i == 1 .and. g == 1)
               if (crystallite_todo(g,i,e)) &                                            ! all undone crystallites
                 call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                                  crystallite_Fp(:,:,g,i,e), crystallite_invFp(:,:,g,i,e), &
-                                                  crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g, i, e)
+                                                  crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
+                                                  crystallite_subdt(g,i,e), g, i, e)
         enddo; enddo; enddo
       !$OMPEND PARALLEL DO
       !$OMP PARALLEL DO
@@ -522,7 +523,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                          ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-              debugger = (e == 1 .and. i == 1 .and. g == 1)
+              ! debugger = (e == 1 .and. i == 1 .and. g == 1)
               if (crystallite_todo(g,i,e)) then                                       ! all undone crystallites
                 crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)    ! update state
                 crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)  ! update temperature
@@ -543,9 +544,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       if (any(.not. crystallite_onTrack .and. .not. crystallite_localConstitution)) &
           crystallite_todo = crystallite_todo .and. crystallite_localConstitution     ! all nonlocal crystallites can be skipped
       
-      write(6,*) count(.not. crystallite_onTrack(1,:,:)),'IPs not onTrack after state update'
+      write(6,*) count(crystallite_onTrack(1,:,:)),'IPs onTrack after state update'
       write(6,*) count(crystallite_converged(1,:,:)),'IPs converged'
       write(6,*) count(crystallite_todo(1,:,:)),'IPs todo'
+      write(6,*)
       
     enddo                                                                             ! crystallite convergence loop  
 
@@ -748,7 +750,7 @@ endsubroutine
  
  ! update the microstructure
  constitutive_state(g,i,e)%p(1:mySize) = constitutive_state(g,i,e)%p(1:mySize) - residuum
- call constitutive_microstructure(crystallite_subTemperature0(g,i,e), crystallite_subFp0, g, i, e)
+ call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Fe, crystallite_Fp, g, i, e)
  
  
  ! setting flag to true if state is below relative tolerance, otherwise set it to false
@@ -906,7 +908,7 @@ endsubroutine
                                       AB, &
                                       BTA
  real(pReal), dimension(6)::          Tstar_v                       ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
- real(pReal), dimension(9,9)::        dLp_constitutive, &           ! partial derivative of plastic velocity gradient calculated by constitutive law
+ real(pReal), dimension(9,9)::        dLpdT_constitutive, &         ! partial derivative of plastic velocity gradient calculated by constitutive law
                                       dTdLp, &                      ! partial derivative of 2nd Piola-Kirchhoff stress
                                       dRdLp, &                      ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
                                       invdRdLp                      ! inverse of dRdLp
@@ -974,7 +976,15 @@ LpLoop: do
    NiterationStress = NiterationStress + 1
    
    ! too many loops required ?
-   if (NiterationStress > nStress) return
+   if (NiterationStress > nStress) then
+     if (debugger) then 
+       !$OMP CRITICAL (write2out)
+         write(6,*) '::: integrateStress reached loop limit',g,i,e
+         write(6,*)
+       !$OMPEND CRITICAL (write2out)
+     endif
+     return
+   endif
    
    B = math_I3 - crystallite_subdt(g,i,e)*Lpguess
    BT = transpose(B)
@@ -988,11 +998,19 @@ LpLoop: do
    
    ! calculate plastic velocity gradient and its tangent according to constitutive law
    call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
-   call constitutive_LpAndItsTangent(Lp_constitutive, dLp_constitutive, Tstar_v, crystallite_Temperature(g,i,e), g, i, e)
+   call constitutive_LpAndItsTangent(Lp_constitutive, dLpdT_constitutive, Tstar_v, crystallite_Temperature(g,i,e), g, i, e)
    call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
    debug_cumLpCalls = debug_cumLpCalls + 1_pInt
    debug_cumLpTicks  = debug_cumLpTicks + tock-tick
    if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
+   if (debugger) then
+     !$OMP CRITICAL (write2out)
+       write(6,*) '::: integrateStress at iteration', NiterationStress
+       write(6,*)
+       write(6,'(a19,3(i3,x),/,3(3(f20.7,x)/))') 'Lp_constitutive at ',g,i,e,Lp_constitutive
+       write(6,'(a11,3(i3,x),/,3(3(f20.7,x)/))') 'Lpguess at ',g,i,e,Lpguess
+     !$OMPEND CRITICAL (write2out)
+   endif
 
    ! update current residuum
    residuum = Lpguess - Lp_constitutive
@@ -1037,10 +1055,9 @@ LpLoop: do
      if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
        dTdLp = 0.0_pReal
        forall (h=1:3,j=1:3,k=1:3,l=1:3,m=1:3) &
-         dTdLp(3*(h-1)+j,3*(k-1)+l) = dTdLp(3*(h-1)+j,3*(k-1)+l) + &
-                                      C(h,j,l,m)*AB(k,m)+C(h,j,m,l)*BTA(m,k)
+         dTdLp(3*(h-1)+j,3*(k-1)+l) = dTdLp(3*(h-1)+j,3*(k-1)+l) + C(h,j,l,m)*AB(k,m)+C(h,j,m,l)*BTA(m,k)
        dTdLp = -0.5_pReal*crystallite_subdt(g,i,e)*dTdLp
-       dRdLp = math_identity2nd(9) - math_mul99x99(dLp_constitutive,dTdLp)
+       dRdLp = math_identity2nd(9) - math_mul99x99(dLpdT_constitutive,dTdLp)
        invdRdLp = 0.0_pReal
        call math_invert(9,dRdLp,invdRdLp,dummy,error)               ! invert dR/dLp --> dLp/dR
        if (error) then
@@ -1048,10 +1065,10 @@ LpLoop: do
            !$OMP CRITICAL (write2out)
              write(6,*) '::: integrateStress failed on dR/dLp inversion at iteration', NiterationStress
              write(6,*)
-             write(6,'(a9,3(i3,x),/,9(9(f12.7,x)/))') 'dRdLp at ',g,i,e,dRdLp
-             write(6,'(a20,3(i3,x),/,9(9(e12.2,x)/))') 'dLp_constitutive at ',g,i,e,dLp_constitutive
-             write(6,'(a19,3(i3,x),/,3(3(f12.7,x)/))') 'Lp_constitutive at ',g,i,e,Lp_constitutive
-             write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'Lpguess at ',g,i,e,Lpguess
+             write(6,'(a9,3(i3,x),/,9(9(f15.3,x)/))') 'dRdLp at ',g,i,e,dRdLp
+             write(6,'(a20,3(i3,x),/,9(9(f15.3,x)/))') 'dLpdT_constitutive at ',g,i,e,dLpdT_constitutive
+             write(6,'(a19,3(i3,x),/,3(3(f20.7,x)/))') 'Lp_constitutive at ',g,i,e,Lp_constitutive
+             write(6,'(a11,3(i3,x),/,3(3(f20.7,x)/))') 'Lpguess at ',g,i,e,Lpguess
            !$OMPEND CRITICAL (write2out)
          endif
          return

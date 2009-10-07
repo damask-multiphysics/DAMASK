@@ -27,7 +27,7 @@ character(len=16), dimension(3), parameter :: constitutive_nonlocal_listDependen
                                                                                             'tauSlipThreshold', &
                                                                                             'Tdislocation_v  ' /) ! list of microstructural state variables that depend on other state variables
 real(pReal), parameter :: kB = 1.38e-23_pReal                                                                   ! Physical parameter, Boltzmann constant in J/Kelvin
-
+real(pReal), parameter :: constitutive_nonlocal_G = 2.5e-19_pReal
 
 !* Definition of global variables
 integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_sizeDotState, &                 ! number of dotStates
@@ -476,53 +476,44 @@ do i = 1,maxNinstance
   constitutive_nonlocal_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_nonlocal_Cslip_66(:,:,i))
 
   constitutive_nonlocal_Gmod(i) = constitutive_nonlocal_C44(i)
-  constitutive_nonlocal_nu(i) = constitutive_nonlocal_C12(i) / constitutive_nonlocal_C11(i)
+  constitutive_nonlocal_nu(i) = 0.3_pReal ! harcoded version, since not clear how to exactly calculate that value from C11,C12,C44 etc
+  ! constitutive_nonlocal_nu(i) = constitutive_nonlocal_C12(i) / constitutive_nonlocal_C11(i)
   
   
+  do s1 = 1,ns
+    
+    f = constitutive_nonlocal_slipFamily(s1,i)
+    
 !*** burgers vector, dislocation velocity prefactor, mean free path prefactor and minimum dipole distance for each slip system
   
-  do s = 1,constitutive_nonlocal_totalNslip(i)
-    
-    f = constitutive_nonlocal_slipFamily(s,i)
-    
-    constitutive_nonlocal_burgersPerSlipSystem(s,i) = constitutive_nonlocal_burgersPerSlipFamily(f,i)
-    constitutive_nonlocal_v0PerSlipSystem(s,i) = constitutive_nonlocal_v0PerSlipFamily(f,i)
-    constitutive_nonlocal_lambda0PerSlipSystem(s,i) = constitutive_nonlocal_lambda0PerSlipFamily(f,i)
-    constitutive_nonlocal_dDipMinEdgePerSlipSystem(s,i) = constitutive_nonlocal_dDipMinEdgePerSlipFamily(f,i)
-    constitutive_nonlocal_dDipMinScrewPerSlipSystem(s,i) = constitutive_nonlocal_dDipMinScrewPerSlipFamily(f,i)
-  
-  enddo
-  
-  
-!*** calculation of forest projections for edge and screw dislocations
-  
-  do s1 = 1,constitutive_nonlocal_totalNslip(i)
-    do s2 = 1,constitutive_nonlocal_totalNslip(i)
+    constitutive_nonlocal_burgersPerSlipSystem(s1,i) = constitutive_nonlocal_burgersPerSlipFamily(f,i)
+    constitutive_nonlocal_v0PerSlipSystem(s1,i) = constitutive_nonlocal_v0PerSlipFamily(f,i)
+    constitutive_nonlocal_lambda0PerSlipSystem(s1,i) = constitutive_nonlocal_lambda0PerSlipFamily(f,i)
+    constitutive_nonlocal_dDipMinEdgePerSlipSystem(s1,i) = constitutive_nonlocal_dDipMinEdgePerSlipFamily(f,i)
+    constitutive_nonlocal_dDipMinScrewPerSlipSystem(s1,i) = constitutive_nonlocal_dDipMinScrewPerSlipFamily(f,i)
+
+    do s2 = 1,ns
       
+!*** calculation of forest projections for edge and screw dislocations. s2 acts as forest to s1
+
       constitutive_nonlocal_forestProjectionEdge(s1, s2, i) &
           = abs(math_mul3x3(lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
-                            lattice_st(:, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                              ! forest projection of edge dislocations is the projection of (b x n) onto the slip normal of the respective splip plane
-  
+                            lattice_st(:, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                              ! forest projection of edge dislocations is the projection of (t = b x n) onto the slip normal of the respective slip plane
       
       constitutive_nonlocal_forestProjectionScrew(s1, s2, i) &
           = abs(math_mul3x3(lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
                             lattice_sd(:, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                              ! forest projection of screw dislocations is the projection of b onto the slip normal of the respective splip plane
   
-  enddo; enddo
-  
 !*** calculation of interaction matrices
-  
-  do s1 = 1,constitutive_nonlocal_totalNslip(i)
-    do s2 = 1,constitutive_nonlocal_totalNslip(i)
-      
+
       constitutive_nonlocal_interactionMatrixSlipSlip(s1, s2, i) &
           = constitutive_nonlocal_interactionSlipSlip( lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s1,i), &
                                                                                    constitutive_nonlocal_slipSystemLattice(s2,i), &
                                                                                    myStructure), &
                                                        i )
-          
-  enddo; enddo
   
+  enddo; enddo
+
 enddo
 
 endsubroutine
@@ -558,31 +549,25 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(myInstance)) :: &
                               tauSlipThreshold                ! threshold shear stress for slip
 integer(pInt)                 ns, &                           ! short notation for total number of active slip systems 
                               f, &                            ! index of lattice family
-                              s0, &
-                              s1, &
+                              from, &
+                              upto, &
                               s                               ! index of slip system
 
 
 constitutive_nonlocal_stateInit = 0.0_pReal
 ns = constitutive_nonlocal_totalNslip(myInstance)
 
-
 !*** set the basic state variables
 
-s1 = 0_pInt
 do f = 1,lattice_maxNslipFamily
-
-  s0 = s1 + 1_pInt
-  s1 = s0 + constitutive_nonlocal_Nslip(f,myInstance) - 1_pInt
-  
-  do s = s0,s1
-    rhoEdgePos(s) = constitutive_nonlocal_rhoEdgePos0(f, myInstance)
-    rhoEdgeNeg(s) = constitutive_nonlocal_rhoEdgeNeg0(f, myInstance)
-    rhoScrewPos(s) = constitutive_nonlocal_rhoScrewPos0(f, myInstance)
-    rhoScrewNeg(s) = constitutive_nonlocal_rhoScrewNeg0(f, myInstance)
-    rhoEdgeDip(s) = constitutive_nonlocal_rhoEdgeDip0(f, myInstance)
-    rhoScrewDip(s) = constitutive_nonlocal_rhoScrewDip0(f, myInstance)
-  enddo 
+  from = 1+sum(constitutive_nonlocal_Nslip(1:f-1,myInstance))
+  upto = sum(constitutive_nonlocal_Nslip(1:f,myInstance))
+  rhoEdgePos(from:upto)  = constitutive_nonlocal_rhoEdgePos0(f, myInstance)
+  rhoEdgeNeg(from:upto)  = constitutive_nonlocal_rhoEdgeNeg0(f, myInstance)
+  rhoScrewPos(from:upto) = constitutive_nonlocal_rhoScrewPos0(f, myInstance)
+  rhoScrewNeg(from:upto) = constitutive_nonlocal_rhoScrewNeg0(f, myInstance)
+  rhoEdgeDip(from:upto)  = constitutive_nonlocal_rhoEdgeDip0(f, myInstance)
+  rhoScrewDip(from:upto) = constitutive_nonlocal_rhoScrewDip0(f, myInstance)
 enddo
 
 
@@ -591,16 +576,16 @@ enddo
 ! forest dislocation density
 forall (s = 1:ns) &
   rhoForest(s) &
-      = dot_product( (rhoEdgePos + rhoEdgeNeg + rhoEdgeDip), constitutive_nonlocal_forestProjectionEdge(1:ns, s, myInstance) ) & 
-      + dot_product( (rhoScrewPos + rhoScrewNeg + rhoScrewDip), constitutive_nonlocal_forestProjectionScrew(1:ns, s, myInstance) )      ! calculation of forest dislocation density as projection of screw and edge dislocations
+      = dot_product( (rhoEdgePos + rhoEdgeNeg + rhoEdgeDip), constitutive_nonlocal_forestProjectionEdge(s, 1:ns, myInstance) ) & 
+      + dot_product( (rhoScrewPos + rhoScrewNeg + rhoScrewDip), constitutive_nonlocal_forestProjectionScrew(s, 1:ns, myInstance) )      ! calculation of forest dislocation density as projection of screw and edge dislocations
 
 
 ! threshold shear stress for dislocation slip 
 forall (s = 1:ns) &
   tauSlipThreshold(s) =   constitutive_nonlocal_Gmod(myInstance) & 
                         * constitutive_nonlocal_burgersPerSlipSystem(s, myInstance) &
-                        * sqrt( dot_product( (rhoEdgePos + rhoEdgeNeg + rhoScrewPos + rhoScrewNeg), &
-                                             constitutive_nonlocal_interactionMatrixSlipSlip(1:ns, s, myInstance) ) )
+                        * sqrt( dot_product( (rhoEdgePos + rhoEdgeNeg + rhoScrewPos + rhoScrewNeg + rhoEdgeDip + rhoScrewDip), &
+                                             constitutive_nonlocal_interactionMatrixSlipSlip(s, 1:ns, myInstance) ) )
 
 
 !*** put everything together and in right order
@@ -680,7 +665,7 @@ endfunction
 !*********************************************************************
 !* calculates quantities characterizing the microstructure           *
 !*********************************************************************
-subroutine constitutive_nonlocal_microstructure(Temperature, Fp, state, g, ip, el)
+subroutine constitutive_nonlocal_microstructure(Temperature, Fe, Fp, state, g, ip, el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -691,6 +676,8 @@ use math,     only: math_Plain3333to99, &
                     math_mul33x33, &
                     math_mul3x3, &
                     math_mul33x3, &
+                    math_inv3x3, &
+                    math_det3x3, &
                     pi
 use debug,    only: debugger
 use mesh,     only: mesh_NcpElems, &
@@ -720,6 +707,7 @@ integer(pInt), intent(in) ::      g, &                        ! current grain ID
                                   el                          ! current element
 real(pReal), intent(in) ::        Temperature                 ! temperature
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                  Fe, &                       ! elastic deformation gradient
                                   Fp                          ! plastic deformation gradient
 
 !*** input/output variables
@@ -740,11 +728,19 @@ integer(pInt)                     myInstance, &               ! current instance
 real(pReal)                       gb, &                       ! short notation for G*b/2/pi
                                   x, &                        ! coordinate in direction of lvec
                                   y, &                        ! coordinate in direction of bvec
-                                  z                           ! coordinate in direction of nvec
+                                  z, &                        ! coordinate in direction of nvec
+                                  detFe, &                    ! determinant of elastic deformation gradient
+                                  neighboring_detFe           ! determinant of my neighboring elastic deformation gradient
 real(pReal), dimension(3) ::      connectingVector            ! vector connecting the centers of gravity of me and my neigbor
 real(pReal), dimension(6) ::      Tdislocation_v              ! dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress in Mandel notation
-real(pReal), dimension(3,3) ::    transform, &                ! orthogonal transformation matrix from slip coordinate system with e1=bxn, e2=b, e3=n to lattice coordinate system 
-                                  sigma                       ! Tdislocation resulting from the excess dislocation density of a single slip system and a single neighbor calculated in the coordinate system of the slip system
+real(pReal), dimension(3,3) ::    lattice2slip, &             ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system with e1=bxn, e2=b, e3=n
+                                  neighboringSlip2myLattice, &! mapping from my neighbors slip coordinate system to my lattice coordinate system
+                                  sigma, &                    ! Tdislocation resulting from the excess dislocation density of a single slip system and a single neighbor calculated in the coordinate system of the slip system
+                                  F, &                        ! total deformation gradient
+                                  neighboring_F, &            ! total deformation gradient of my neighbor
+                                  Favg, &                     ! average total deformation gradient of me and my neighbor
+                                  invFe, &                    ! inverse of elastic deformation gradient
+                                  neighboring_invFe           ! inverse of my neighboring elastic deformation gradient 
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                   rhoEdgePos, &               ! positive edge dislocation density
                                   rhoEdgeNeg, &               ! negative edge dislocation density
@@ -791,12 +787,13 @@ forall (s = 1:ns) &
       + dot_product( (rhoScrewPos + rhoScrewNeg + rhoScrewDip), constitutive_nonlocal_forestProjectionScrew(1:ns, s, myInstance) )  ! calculation of forest dislocation density as projection of screw and edge dislocations
 ! if (debugger) write(6,'(a23,3(i3,x),/,12(e10.3,x),/)') 'forest dislocation density at ',g,ip,el, rhoForest
 
+
 !*** calculate the threshold shear stress for dislocation slip 
 
 forall (s = 1:ns) &
   tauSlipThreshold(s) =   constitutive_nonlocal_Gmod(myInstance) & 
                         * constitutive_nonlocal_burgersPerSlipSystem(s, myInstance) &
-                        * sqrt( dot_product( (rhoEdgePos + rhoEdgeNeg + rhoScrewPos + rhoScrewNeg), &
+                        * sqrt( dot_product( (rhoEdgePos + rhoEdgeNeg + rhoEdgeDip + rhoScrewPos + rhoScrewNeg + rhoScrewDip), &
                                              constitutive_nonlocal_interactionMatrixSlipSlip(1:ns, s, myInstance) ) )
 ! if (debugger) write(6,'(a26,3(i3,x),/,12(f10.5,x),/)') 'tauSlipThreshold / MPa at ',g,ip,el, tauSlipThreshold/1e6
 
@@ -804,10 +801,11 @@ forall (s = 1:ns) &
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
 
 Tdislocation_v = 0.0_pReal
-
+F = math_mul33x33(Fe(:,:,g,ip,el), Fp(:,:,g,ip,el))
+detFe = math_det3x3(Fe)
+invFe = math_inv3x3(Fe)
 
 ! loop through my neighbors (if existent!)
-
 do n = 1,FE_NipNeighbors(mesh_element(2,el))
 
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
@@ -815,17 +813,21 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
   
   if ( neighboring_el == 0 .or. neighboring_ip == 0 ) cycle
 
+  ! deformation gradients needed for mapping between configurations
+  neighboring_F = math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el), Fp(:,:,g,neighboring_ip,neighboring_el))
+  Favg = 0.5_pReal * (F + neighboring_F)
+  neighboring_detFe = math_det3x3(Fe(:,:,g,neighboring_ip,neighboring_el))
+  neighboring_invFe = math_inv3x3(Fe(:,:,g,neighboring_ip,neighboring_el))
   
-  ! calculate the connecting vector between me and my neighbor and his excess dislocation density
+  ! calculate connection vector between me and my neighbor in its lattice configuration
+  connectingVector = math_mul33x3(neighboring_invFe, math_mul33x3(Favg, &
+                                   (mesh_ipCenterOfGravity(:,neighboring_ip,neighboring_el) - mesh_ipCenterOfGravity(:,ip,el)) ) )
   
-  connectingVector = math_mul33x3( Fp(:,:,g,neighboring_ip,neighboring_el), &
-                                  (mesh_ipCenterOfGravity(:,ip,el) - mesh_ipCenterOfGravity(:,neighboring_ip,neighboring_el)) )
-  
+  ! neighboring dislocation densities
   neighboring_rhoEdgePos  = state(1, neighboring_ip, neighboring_el)%p(     1:  ns)
   neighboring_rhoEdgeNeg  = state(1, neighboring_ip, neighboring_el)%p(  ns+1:2*ns)
   neighboring_rhoScrewPos = state(1, neighboring_ip, neighboring_el)%p(2*ns+1:3*ns)
   neighboring_rhoScrewNeg = state(1, neighboring_ip, neighboring_el)%p(3*ns+1:4*ns)
-  
   neighboring_rhoEdgeExcess = neighboring_rhoEdgePos - neighboring_rhoEdgeNeg
   neighboring_rhoScrewExcess = neighboring_rhoScrewPos - neighboring_rhoScrewNeg
   
@@ -833,19 +835,16 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
   neighboring_Nscrew = neighboring_rhoScrewExcess * mesh_ipVolume(neighboring_ip, neighboring_el) ** (2.0_pReal/3.0_pReal)
   
   ! loop over slip systems and get their slip directions, slip normals, and sd x sn
-  
   do s = 1,ns
 
-    transform = reshape( (/lattice_st(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
-                           lattice_sd(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
-                           lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure)/), (/3,3/) )
+    lattice2slip = reshape( (/lattice_st(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
+                              lattice_sd(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
+                              lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure)/), (/3,3/) )
                            
-    
-    ! coordinate transformation of p from the lattice coordinate system to the slip coordinate system
-    x = math_mul3x3(connectingVector, transform(:,1))
-    y = math_mul3x3(connectingVector, transform(:,2))
-    z = math_mul3x3(connectingVector, transform(:,3))
-    
+    ! coordinate transformation of connecting vector from the lattice coordinate system to the slip coordinate system
+    x = math_mul3x3(lattice2slip(1,:), -connectingVector)
+    y = math_mul3x3(lattice2slip(2,:), -connectingVector)
+    z = math_mul3x3(lattice2slip(3,:), -connectingVector)
     
     ! calculate the back stress in the slip coordinate system for this slip system
     gb = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) / (2.0_pReal*pi)
@@ -861,7 +860,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
     sigma(1,2) = gb * neighboring_Nscrew(s) * z / (x**2.0_pReal + z**2.0_pReal)
     
     sigma(2,3) = gb * (   neighboring_Nedge(s) / (1.0_pReal-constitutive_nonlocal_nu(myInstance)) &
-                             * (y**2.0_pReal - z**2.0_pReal) / (y**2.0_pReal + z**2.0_pReal) &
+                             * y * (y**2.0_pReal - z**2.0_pReal) / (y**2.0_pReal + z**2.0_pReal)**2.0_pReal &
                         - neighboring_Nscrew(s) * x / (x**2.0_pReal + z**2.0_pReal) )
     
     sigma(2,1) = sigma(1,2)
@@ -870,11 +869,19 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
     sigma(3,1) = 0.0_pReal
     
     ! coordinate transformation from the slip coordinate system to the lattice coordinate system
-    Tdislocation_v = Tdislocation_v + math_Mandel33to6( math_mul33x33(transform, math_mul33x33(sigma, transpose(transform)) ) )
-    ! if (debugger) write(6,'(a15,3(i3,x),/,3(3(f12.3,x)/))') 'sigma / MPa at ',g,ip,el, sigma/1e6
-    ! if (debugger) write(6,'(a15,3(i3,x),/,3(3(f12.3,x)/))') 'Tdislocation / MPa at ',g,ip,el, math_Mandel6to33(Tdislocation_v/1e6)
+    neighboringSlip2myLattice = math_mul33x33(invFe,math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el),transpose(lattice2slip)))
+    Tdislocation_v = Tdislocation_v + math_Mandel33to6( detFe / neighboring_detFe &
+                           * math_mul33x33(neighboringSlip2myLattice, math_mul33x33(sigma, transpose(neighboringSlip2myLattice))) )
   enddo
 enddo
+! if (debugger) then 
+  ! !$OMP CRITICAL (write2out)
+    ! write(6,*) '::: constitutive_nonlocal_microstructure at ',g,ip,el
+    ! write(6,*)
+    ! write(6,'(a,/,6(f12.5,x),/)') 'Tdislocation_v / MPa', Tdislocation_v/1e6_pReal
+  ! !$OMP CRITICAL (write2out)
+! endif
+
 
 
 !**********************************************************************
@@ -965,9 +972,6 @@ forall (t = 1:4) rho(:,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
 rhoForest        = state(g,ip,el)%p(6*ns+1:7*ns)
 tauSlipThreshold = state(g,ip,el)%p(7*ns+1:8*ns)
 Tdislocation_v   = state(g,ip,el)%p(8*ns+1:8*ns+6)
-! if (debugger) write(6,'(a20,3(i3,x),/,3(3(f12.3,x)/))') 'Tdislocation / MPa at ', g,ip,el, math_Mandel6to33(Tdislocation_v/1e6)
-! if (debugger) write(6,'(a15,3(i3,x),/,3(3(f12.3,x)/))') 'Tstar / MPa at ',g,ip,el, math_Mandel6to33(Tstar_v/1e6)
-
 
 !*** calculation of resolved stress
 
@@ -975,19 +979,15 @@ forall (s =1:ns) &
   tauSlip(s) = math_mul6x6( Tstar_v + Tdislocation_v, &
                             lattice_Sslip_v(:,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure) )
 
-
 !*** Calculation of gdot and its tangent
 
 v = constitutive_nonlocal_v0PerSlipSystem(:,myInstance) &
-    * exp( - ( tauSlipThreshold - abs(tauSlip) ) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance)**2.0_pReal &
-             / ( kB * Temperature * sqrt(rhoForest) ) ) &
+    * exp( - constitutive_nonlocal_G / ( kB * Temperature) * (1.0_pReal - (abs(tauSlip)/tauSlipThreshold) ) ) &
     * sign(1.0_pReal,tauSlip)
 
 gdotSlip =  sum(rho,2) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * v    
 
-dgdot_dtauSlip = gdotSlip * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance)**2.0_pReal &
-                          / ( kB * Temperature * sqrt(rhoForest) )
-
+dgdot_dtauSlip = gdotSlip * constitutive_nonlocal_G / ( kB * Temperature * tauSlipThreshold )
 
 !*** Calculation of Lp and its tangent
 
@@ -996,7 +996,6 @@ do s = 1,ns
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
   
   Lp = Lp + gdotSlip(s) * lattice_Sslip(:,:,sLattice,myStructure)
-  ! if (debugger) write(6,'(a4,i2,a3,/,3(3(f15.7)/))') 'dLp(',s,'): ',gdotSlip(s) * lattice_Sslip(:,:,sLattice,myStructure)
   
   forall (i=1:3,j=1:3,k=1:3,l=1:3) &
     dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) + dgdot_dtauSlip(s) * lattice_Sslip(i,j, sLattice,myStructure) &
@@ -1006,14 +1005,15 @@ enddo
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 ! if (debugger) then 
- ! !$OMP CRITICAL (write2out)
-   ! write(6,*) '::: LpandItsTangent',g,ip,el
-   ! write(6,*)
-   ! write(6,'(a,/,12(f12.5,x))') 'gdot/1e-3',gdotSlip*1e3_pReal
-   ! write(6,*)
-   ! write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',Lp
-   ! write(6,*)
- ! !$OMPEND CRITICAL (write2out)
+ !  !$OMP CRITICAL (write2out)
+   !  write(6,*) '::: LpandItsTangent',g,ip,el
+   !  write(6,*)
+   !  write(6,'(a,/,12(f12.5,x),/)') 'tauSlip / MPa', tauSlip/1e6_pReal
+   !  write(6,'(a,/,12(f12.5,x),/)') 'tauSlipThreshold / MPa', tauSlipThreshold/1e6_pReal
+   !  write(6,'(a,/,12(f12.5,x),/)') 'v', v
+   !  write(6,'(a,/,12(f12.5,x),/)') 'gdot total /1e-3',gdotSlip*1e3_pReal
+   !  write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',Lp
+ !  !$OMPEND CRITICAL (write2out)
 ! endif
 
 endsubroutine
@@ -1023,7 +1023,7 @@ endsubroutine
 !*********************************************************************
 !* rate of change of microstructure                                  *
 !*********************************************************************
-subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, subTstar0_v, Fp, invFp, Temperature, subdt, state, subState0, g,ip,el)
+subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, state, subState0, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1033,7 +1033,9 @@ use math,     only: math_norm3, &
                     math_mul6x6, &
                     math_mul3x3, &
                     math_mul33x3, &
-                    math_transpose3x3, &
+                    math_mul33x33, &
+                    math_inv3x3, &
+                    math_det3x3, &
                     pi
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
@@ -1063,8 +1065,9 @@ real(pReal), intent(in) ::                  Temperature, &            ! temperat
                                             subdt                     ! substepped crystallite time increment
 real(pReal), dimension(6), intent(in) ::    Tstar_v, &                ! current 2nd Piola-Kirchhoff stress in Mandel notation
                                             subTstar0_v               ! 2nd Piola-Kirchhoff stress in Mandel notation at start of crystallite increment
-real(pReal), dimension(3,3), intent(in) ::  Fp, &                     ! plastic deformation gradient
-                                            invFp                     ! inverse of plastic deformation gradient
+real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                            Fe, &                     ! elastic deformation gradient
+                                            Fp                        ! plastic deformation gradient
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             state, &                  ! current microstructural state
                                             subState0                 ! microstructural state at start of crystallite increment
@@ -1087,7 +1090,8 @@ integer(pInt)                               myInstance, &             ! current 
                                             s                         ! index of my current slip system
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
                                             rho, &                    ! dislocation densities (positive/negative screw and edge without dipoles)
-                                            rhoDot, &                 ! rate of change of dislocation densities
+                                            totalRhoDot, &            ! total rate of change of dislocation densities
+                                            thisRhoDot, &             ! rate of change of dislocation densities for this mechanism
                                             gdot, &                   ! shear rates
                                             lineLength                ! dislocation line length leaving the current interface
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
@@ -1100,21 +1104,24 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                             vClimb                    ! climb velocity of edge dipoles
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),2) :: &
                                             rhoDip, &                 ! dipole dislocation densities (screw and edge dipoles)
-                                            rhoDipDot, &              ! rate of change of dipole dislocation densities
-                                            rhoDotTransfer, &         ! dislocation density rate that is transferred from single dislocation to dipole dislocation
+                                            totalRhoDipDot, &         ! total rate of change of dipole dislocation densities
+                                            thisRhoDipDot, &          ! rate of change of dipole dislocation densities for this mechanism
                                             dDipMin, &                ! minimum stable dipole distance for edges and screws
                                             dDipMax, &                ! current maximum stable dipole distance for edges and screws
                                             dDipMax0, &               ! maximum stable dipole distance for edges and screws at start of crystallite increment
                                             dDipMaxDot                ! rate of change of the maximum stable dipole distance for edges and screws
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
                                             m                         ! direction of dislocation motion
+real(pReal), dimension(3,3) ::              F, &                      ! total deformation gradient
+                                            neighboring_F, &          ! total deformation gradient of my neighbor
+                                            Favg                      ! average total deformation gradient of me and my neighbor
 real(pReal), dimension(6) ::                Tdislocation_v, &         ! current dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress
                                             subTdislocation0_v        ! dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress at start of crystallite increment
 real(pReal), dimension(3) ::                surfaceNormal             ! surface normal of the current interface
 real(pReal)                                 norm_surfaceNormal, &     ! euclidic norm of the surface normal
                                             area, &                   ! area of the current interface
+                                            detFe, &                  ! determinant of elastic defornmation gradient
                                             D                         ! self diffusion
-                                            
 
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
@@ -1128,9 +1135,10 @@ dDipMin = 0.0_pReal
 dDipMax = 0.0_pReal
 dDipMax0 = 0.0_pReal
 dDipMaxDot = 0.0_pReal
-rhoDot = 0.0_pReal
-rhoDipDot = 0.0_pReal
-rhoDotTransfer = 0.0_pReal
+totalRhoDot = 0.0_pReal
+thisRhoDot = 0.0_pReal
+totalRhoDipDot = 0.0_pReal
+thisRhoDipDot = 0.0_pReal
 
 !*** shortcut to state variables 
 
@@ -1150,70 +1158,94 @@ do s = 1,ns   ! loop over slip systems
   tauSlip(s) = math_mul6x6( Tstar_v + Tdislocation_v, &
                          lattice_Sslip_v(:,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure) )
   
-  subTauSlip0(s) = math_mul6x6( subTstar0_v + subTdislocation0_v, &
+  subTauSlip0(s) = math_mul6x6( subTstar0_v - subTdislocation0_v, &
                          lattice_Sslip_v(:,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure) )
 enddo
 
 v = constitutive_nonlocal_v0PerSlipSystem(:,myInstance) &
-    * exp( - ( tauSlipThreshold - abs(tauSlip) ) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance)**2.0_pReal &
-             / ( kB * Temperature * sqrt(rhoForest) ) ) &
+    * exp( - constitutive_nonlocal_G / ( kB * Temperature) * (1.0_pReal - (abs(tauSlip)/tauSlipThreshold) ) ) &
     * sign(1.0_pReal,tauSlip)
     
 forall (t = 1:4) &
   gdot(:,t) = rho(:,t) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * v
 
+if (debugger) then 
+  !$OMP CRITICAL (write2out)
+    write(6,*) '::: constitutive_nonlocal_dotState at ',g,ip,el
+    write(6,*)
+    write(6,'(a,/,12(f12.5,x),/)') 'tauSlip / MPa', tauSlip/1e6_pReal
+    write(6,'(a,/,12(f12.5,x),/)') 'tauSlipThreshold / MPa', tauSlipThreshold/1e6_pReal
+    write(6,'(a,/,12(e12.3,x),/)') 'v', v
+    write(6,'(a,/,4(12(f12.5,x),/))') 'gdot / 1e-3', gdot*1e3_pReal
+    write(6,'(a,/,(12(f12.5,x),/))') 'gdot total/ 1e-3', sum(gdot,2)*1e3_pReal
+  !$OMP CRITICAL (write2out)
+endif
+
 
 !****************************************************************************
 !*** calculate dislocation multiplication
 
+thisRhoDot = 0.0_pReal
+thisRhoDipDot = 0.0_pReal
+
 invLambda = sqrt(rhoForest) / constitutive_nonlocal_lambda0PerSlipSystem(:,myInstance)
 
-rhoDot = rhoDot + spread(0.25_pReal * sum(abs(gdot),2) * invLambda / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance), 2, 4)
-if (debugger) then 
-  write(6,*) '::: constitutive_nonlocal_dotState at ',g,ip,el
-  write(6,*)
-  write(6,'(a,/,12(f12.5,x),/)') 'tauSlip / MPa', tauSlip/1e6_pReal
-  write(6,'(a,/,12(f12.5,x),/)') 'tauSlipThreshold / MPa', tauSlipThreshold/1e6_pReal
-  write(6,'(a,/,12(e10.3,x),/)') 'v', v
-  write(6,'(a,/,4(12(f12.5,x),/))') 'gdot / 1e-3', gdot*1e3_pReal
-  write(6,'(a,/,(12(f12.5,x),/))') 'gdot total/ 1e-3', sum(gdot,2)*1e3_pReal
-  write(6,'(a,/,6(12(e12.5,x),/))') 'dislocation multiplication', &
-        spread(0.25_pReal * sum(abs(gdot),2) * invLambda / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance), 2, 4)*subdt, &
-        0.0_pReal*rhoDotTransfer
+thisRhoDot = spread(0.25_pReal * sum(abs(gdot),2) * invLambda / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance), 2, 4)
+
+totalRhoDot = totalRhoDot + thisRhoDot
+totalRhoDipDot = totalRhoDipDot + thisRhoDipDot
+
+if (debugger) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a,/,6(12(e12.5,x),/))') 'dislocation multiplication', thisRhoDot * subdt, thisRhoDipDot * subdt
+  !$OMP CRITICAL (write2out)
 endif
 
 
 !****************************************************************************
 !*** calculate dislocation fluxes
 
+thisRhoDot = 0.0_pReal
+thisRhoDipDot = 0.0_pReal
+
 m(:,:,1) =  lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
 m(:,:,2) = -lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
 m(:,:,3) =  lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
 m(:,:,4) = -lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+
+F = math_mul33x33(Fe(:,:,g,ip,el), Fp(:,:,g,ip,el))
+detFe = math_det3x3(Fe(:,:,g,ip,el))
 
 do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                        ! loop through my neighbors
 
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
   neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
    
-  ! calculate the area and the surface normal of the interface
-  surfaceNormal = math_mul33x3(math_transpose3x3(invFp), mesh_ipAreaNormal(:,n,ip,el))
+  ! if neighbor exists, total deformation gradient is averaged over me and my neighbor
+  if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then
+    neighboring_F = math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el), Fp(:,:,g,neighboring_ip,neighboring_el))
+    Favg = 0.5_pReal * (F + neighboring_F)
+  else
+    Favg = F
+  endif 
+    
+  ! calculate the area and the surface normal (of unit length) of the interface in lattice configuration
+  surfaceNormal = math_det3x3(Favg) / detFe &
+                                  * math_mul33x3(transpose(Fe(:,:,g,ip,el)), math_mul33x3(Favg,mesh_ipAreaNormal(:,n,ip,el)))
   norm_surfaceNormal = math_norm3(surfaceNormal)
   surfaceNormal = surfaceNormal / norm_surfaceNormal
-  area = mesh_ipArea(n,ip,el) / norm_surfaceNormal
+  area = mesh_ipArea(n,ip,el) * norm_surfaceNormal
 
   lineLength = 0.0_pReal
   
   do s = 1,ns                                                                                       ! loop over slip systems
-  
     do t = 1,4                                                                                      ! loop over dislocation types
-      
       if ( sign(1.0_pReal,math_mul3x3(m(:,s,t),surfaceNormal)) == sign(1.0_pReal,gdot(s,t)) ) then
         
         lineLength(s,t) = gdot(s,t) / constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
                                     * math_mul3x3(m(:,s,t),surfaceNormal) * area                    ! dislocation line length that leaves this interface per second
         
-        rhoDot(s,t) = rhoDot(s,t) - lineLength(s,t) / mesh_ipVolume(ip,el)                          ! subtract dislocation density rate (= line length over volume) that leaves through an interface from my dotState ...
+        thisRhoDot(s,t) = thisRhoDot(s,t) - lineLength(s,t) / mesh_ipVolume(ip,el)                          ! subtract dislocation density rate (= line length over volume) that leaves through an interface from my dotState ...
         
         if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then
 !*****************************************************************************************************
@@ -1226,7 +1258,15 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
     enddo
   enddo
 enddo
-if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'dislocation flux', lineLength/mesh_ipVolume(ip,el)*subdt, 0.0_pReal*rhoDotTransfer
+
+totalRhoDot = totalRhoDot + thisRhoDot
+totalRhoDipDot = totalRhoDipDot + thisRhoDipDot
+
+if (debugger) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a,/,6(12(e12.5,x),/))') 'dislocation flux', thisRhoDot * subdt, thisRhoDipDot * subdt
+  !$OMP CRITICAL (write2out)
+endif
 
 
 !****************************************************************************
@@ -1236,11 +1276,13 @@ if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'dislocation flux', lineLength/m
   
 dDipMin(:,1) = constitutive_nonlocal_dDipMinEdgePerSlipSystem(:,myInstance)
 dDipMin(:,2) = constitutive_nonlocal_dDipMinScrewPerSlipSystem(:,myInstance)
-dDipMax(:,2) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                  / ( 8.0_pReal * pi * abs(tauSlip) )
+dDipMax(:,2) = min( constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
+                                                           / ( 8.0_pReal * pi * abs(tauSlip) ), &
+                    1.0_pReal / sqrt( 0.5_pReal * (rhoDip(:,1)+rhoDip(:,2)) ) )
 dDipMax(:,1) = dDipMax(:,2) / ( 1.0_pReal - constitutive_nonlocal_nu(myInstance) )
-dDipMax0(:,2) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                  / ( 8.0_pReal * pi * abs(subTauSlip0) )
+dDipMax0(:,2) = min( constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
+                                                            / ( 8.0_pReal * pi * abs(subTauSlip0) ), &
+                     1.0_pReal / sqrt( 0.5_pReal * (rhoDip(:,1)+rhoDip(:,2)) ) )
 dDipMax0(:,1) = dDipMax0(:,2) / ( 1.0_pReal - constitutive_nonlocal_nu(myInstance) )
   
 dDipMaxDot(:,1) = (dDipMax(:,1) - dDipMax0(:,1)) / subdt
@@ -1251,29 +1293,50 @@ dDipMaxDot(:,2) = (dDipMax(:,2) - dDipMax0(:,2)) / subdt
   
 !*** formation by glide
 
+thisRhoDot = 0.0_pReal
+thisRhoDipDot = 0.0_pReal
+
 forall (c=1:2) &  
-  rhoDotTransfer(:,c) = 2.0_pReal * dDipMax(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
+  thisRhoDipDot(:,c) = 4.0_pReal * dDipMax(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
                                   * ( rho(:,2*c-1)*abs(gdot(:,2*c)) + rho(:,2*c)*abs(gdot(:,2*c-1)) )
-if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'dipole formation by glide', &
-                                                        -rhoDotTransfer*subdt,-rhoDotTransfer*subdt,2.0_pReal*rhoDotTransfer*subdt
+
+forall (t=1:4) &
+  thisRhoDot(:,t) = 0.5_pReal * thisRhoDipDot(:,mod(t+1,2)+1)
   
-rhoDot(:,(/1,3/)) = rhoDot(:,(/1,3/)) - rhoDotTransfer                                            ! subtract from positive single dislocation density of this character
-rhoDot(:,(/2,4/)) = rhoDot(:,(/2,4/)) - rhoDotTransfer                                            ! subtract from negative single dislocation density of this character
-rhoDipDot = rhoDipDot + 2.0_pReal * rhoDotTransfer                                                ! add twice to dipole dislocation density of this character
-  
+totalRhoDot = totalRhoDot + thisRhoDot
+totalRhoDipDot = totalRhoDipDot + thisRhoDipDot
+
+if (debugger) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a,/,6(12(e12.5,x),/))') 'dipole formation by glide', thisRhoDot * subdt, thisRhoDipDot * subdt
+  !$OMP CRITICAL (write2out)
+endif
+
 
 !*** athermal annihilation
 
-forall (c=1:2) &  
-  rhoDotTransfer(:,c) = - 2.0_pReal * dDipMin(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                    * ( rho(:,2*c-1)*abs(gdot(:,2*c)) + rho(:,2*c)*abs(gdot(:,2*c-1)) )
-if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'athermal dipole annihilation', &
-                                                 0.0_pReal*rhoDotTransfer,0.0_pReal*rhoDotTransfer,2.0_pReal*rhoDotTransfer*subdt
+thisRhoDot = 0.0_pReal
+thisRhoDipDot = 0.0_pReal
 
-rhoDipDot = rhoDipDot + 2.0_pReal * rhoDotTransfer                                                ! add twice to dipole dislocation density of this character
+forall (c=1:2) &  
+  thisRhoDipDot(:,c) = - 4.0_pReal * dDipMin(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
+                                    * (   rho(:,2*c-1)*abs(gdot(:,2*c)) + rho(:,2*c)*abs(gdot(:,2*c-1)) &        ! single hits single
+                                        + 0.5_pReal * rhoDip(:,c) * (abs(gdot(:,2*c-1))+abs(gdot(:,2*c))) )      ! single knocks dipole constituent
+
+totalRhoDot = totalRhoDot + thisRhoDot
+totalRhoDipDot = totalRhoDipDot + thisRhoDipDot
+
+if (debugger) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a,/,6(12(e12.5,x),/))') 'athermal dipole annihilation', thisRhoDot * subdt, thisRhoDipDot * subdt
+  !$OMP CRITICAL (write2out)
+endif
   
   
 !*** thermally activated annihilation
+
+thisRhoDot = 0.0_pReal
+thisRhoDipDot = 0.0_pReal
 
 D = constitutive_nonlocal_D0(myInstance) * exp(-constitutive_nonlocal_Qsd(myInstance) / (kB * Temperature))
 
@@ -1281,46 +1344,40 @@ vClimb =  constitutive_nonlocal_atomicVolume(myInstance) * D / ( kB * Temperatur
           * constitutive_nonlocal_Gmod(myInstance) / ( 2.0_pReal * pi * (1.0_pReal-constitutive_nonlocal_nu(myInstance)) ) &
           * 2.0_pReal / ( dDipMax(:,1) + dDipMin(:,1) )
           
-rhoDipDot(:,1) = rhoDipDot(:,1) - 4.0_pReal * rho(:,1) * vClimb / ( dDipMax(:,1) - dDipMin(:,1) )
-if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'thermally activated dipole annihilation', &
-      0.0_pReal*rhoDotTransfer, 0.0_pReal*rhoDotTransfer, - 4.0_pReal * rho(:,1) * vClimb / ( dDipMax(:,1) - dDipMin(:,1) )*subdt, &
-      0.0_pReal*vClimb
+thisRhoDipDot(:,1) = - 4.0_pReal * rho(:,1) * vClimb / ( dDipMax(:,1) - dDipMin(:,1) )
+
+totalRhoDot = totalRhoDot + thisRhoDot
+totalRhoDipDot = totalRhoDipDot + thisRhoDipDot
+
+if (debugger) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a,/,6(12(e12.5,x),/))') 'thermally activated dipole annihilation', thisRhoDot * subdt, thisRhoDipDot * subdt
+  !$OMP CRITICAL (write2out)
+endif
 
 
-! !*** formation by stress decrease = increase in dDipMax
+!*** formation by stress decrease = increase in dDipMax
 
-! forall (s=1:ns, dDipMaxDot(s,1) > 0.0_pReal) &  
-  ! rhoDotTransfer(s,:) = 4.0_pReal * rho(s,(/1,3/)) * rho(s,(/2,4/)) * dDipMax0(s,:) * dDipMaxDot(s,:)
-
-! if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'dipole formation by stress decrease',& 
-                                                        ! -rhoDotTransfer*subdt,-rhoDotTransfer*subdt,2.0_pReal*rhoDotTransfer*subdt
-
-! rhoDot(:,(/1,3/)) = rhoDot(:,(/1,3/)) - rhoDotTransfer                                            ! subtract from positive single dislocation density of this character
-! rhoDot(:,(/2,4/)) = rhoDot(:,(/2,4/)) - rhoDotTransfer                                            ! subtract from negative single dislocation density of this character
-! rhoDipDot = rhoDipDot + 2.0_pReal * rhoDotTransfer                                                ! add twice to dipole dislocation density of this character
+! !!! MISSING !!!
 
 
-! !*** dipole dissociation by increased stress = decrease in dDipMax
+!*** dipole dissociation by increased stress = decrease in dDipMax
 
-! forall (s=1:ns, dDipMaxDot(s,1) < 0.0_pReal) &  
-  ! rhoDotTransfer(s,:) = 0.5_pReal * rhoDip(s,:) * dDipMaxDot(s,:) / (dDipMax0(s,:) - dDipMin(s,:))
-
-! if (debugger) write(6,'(a,/,6(12(e12.5,x),/))') 'dipole formation by stress decrease',& 
-                                                        ! -rhoDotTransfer*subdt,-rhoDotTransfer*subdt,2.0_pReal*rhoDotTransfer*subdt
-  
-! rhoDot(:,(/1,3/)) = rhoDot(:,(/1,3/)) - rhoDotTransfer                                            ! subtract from positive single dislocation density of this character
-! rhoDot(:,(/2,4/)) = rhoDot(:,(/2,4/)) - rhoDotTransfer                                            ! subtract from negative single dislocation density of this character
-! rhoDipDot = rhoDipDot + 2.0_pReal * rhoDotTransfer                                                ! add twice to dipole dislocation density of this character
+! !!! MISSING !!!
 
 
 !****************************************************************************
 !*** assign the rates of dislocation densities to my dotState
 
-dotState(1,ip,el)%p(1:4*ns) = reshape(rhoDot,(/4*ns/))
-dotState(1,ip,el)%p(4*ns+1:6*ns) = reshape(rhoDipDot,(/2*ns/))
+dotState(1,ip,el)%p(1:4*ns) = reshape(totalRhoDot,(/4*ns/))
+dotState(1,ip,el)%p(4*ns+1:6*ns) = reshape(totalRhoDipDot,(/2*ns/))
 
-if (debugger) write(6,'(a,/,4(12(e12.5,x),/))') 'deltaRho:',rhoDot*subdt
-if (debugger) write(6,'(a,/,2(12(e12.5,x),/))') 'deltaRhoDip:',rhoDipDot*subdt
+if (debugger) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a,/,4(12(e12.5,x),/))') 'deltaRho:', totalRhoDot * subdt
+    write(6,'(a,/,2(12(e12.5,x),/))') 'deltaRhoDip:', totalRhoDipDot * subdt
+  !$OMP CRITICAL (write2out)
+endif
 
 endsubroutine
 
@@ -1462,11 +1519,10 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
         sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
         tau = math_mul6x6( Tstar_v + state(g,ip,el)%p(8*ns+1:8*ns+6), lattice_Sslip_v(:,sLattice,myStructure) )
         
-        if (state(g,ip,el)%p(4*ns+s) > 0.0_pReal) then
-          v =  constitutive_nonlocal_v0PerSlipSystem(s,myInstance) &
-             * exp( - ( state(g,ip,el)%p(7*ns+s) - abs(tau) ) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance)**2.0_pReal &
-                      / ( kB * Temperature * sqrt(state(g,ip,el)%p(4*ns+s)) ) ) &
-             * sign(1.0_pReal,tau)
+        if (state(g,ip,el)%p(7*ns+s) > 0.0_pReal) then
+          v =   constitutive_nonlocal_v0PerSlipSystem(s,myInstance) &
+              * exp( - constitutive_nonlocal_G / ( kB * Temperature) * (1.0_pReal - (abs(tau)/state(g,ip,el)%p(7*ns+s)) ) ) &
+              * sign(1.0_pReal,tau)
         else
           v = 0.0_pReal
         endif
