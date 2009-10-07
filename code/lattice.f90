@@ -121,6 +121,13 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
 
  integer(pInt), target, dimension(lattice_fcc_Nslip,lattice_fcc_Nslip) :: lattice_fcc_interactionSlipSlip = &
  reshape((/&
+! Interaction types
+! 1 --- self interaction
+! 2 --- coplanar interaction
+! 3 --- collinear interaction
+! 4 --- Hirth locks
+! 5 --- glissile junctions
+! 6 --- Lomer locks
  1,2,2,4,6,5,3,5,5,4,5,6, &
  2,1,2,6,4,5,5,4,6,5,3,5, &
  2,2,1,5,5,3,5,6,4,6,5,4, &
