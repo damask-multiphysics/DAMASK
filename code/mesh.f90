@@ -222,7 +222,7 @@
    call mesh_get_nodeElemDimensions(fileUnit)
    call mesh_build_nodes(fileUnit)
    call mesh_build_elements(fileUnit)
-   call mesh_build_sharedElems(fileUnit)
+   call mesh_build_sharedElems()
    call mesh_build_ipNeighborhood()
    call mesh_build_subNodeCoords()
    call mesh_build_ipVolumes()
