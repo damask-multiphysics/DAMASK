@@ -1398,54 +1398,37 @@ subroutine mesh_get_nodeElemDimensions (unit)
 ! allocate globals:
 ! _sharedElem
 !********************************************************************
- subroutine mesh_build_sharedElems (unit)
+ subroutine mesh_build_sharedElems ()
 
  use prec, only: pInt
  use IO
  implicit none
 
- integer(pInt), parameter :: maxNchunks = 66
- integer(pint) unit,i,j,n,e
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pint) e,n,j
  integer(pInt), dimension (:), allocatable :: node_seen
- character*300 line
-
-610 FORMAT(A300)
 
  allocate(node_seen(maxval(FE_Nnodes)))
  allocate ( mesh_sharedElem( 1+mesh_maxNsharedElems,mesh_Nnodes) )
  mesh_sharedElem(:,:) = 0_pInt
 
- rewind(unit)
- do
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,1)
-   if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
-     read (unit,610,END=620) line  ! Garbage line
-	 do i=1,mesh_Nelems
-	   read (unit,610,END=620) line
-	   pos = IO_stringPos(line,maxNchunks)  ! limit to 64 nodes max (plus ID, type)
-	   e = mesh_FEasCP('elem',IO_IntValue(line,pos,1))
-	   if (e /= 0) then  ! disregard non CP elems
-	     node_seen = 0_pInt
-         do j = 1,FE_Nnodes(FE_mapElemtype(IO_StringValue(line,pos,2)))
-           n = mesh_FEasCP('node',IO_IntValue (line,pos,j+2))
-           if (all(node_seen /= n)) then
-		     mesh_sharedElem(1,n) = mesh_sharedElem(1,n) + 1
-		     mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e
-           endif
-           node_seen(j) = n
-		 enddo
-         call IO_skipChunks(unit,FE_NoriginalNodes(mesh_element(2,e))-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
-	   endif
-     enddo
-     exit
-   endif
+ do e = 1,mesh_NcpElems
+   node_seen = 0_pInt
+   do j = 1,FE_Nnodes(mesh_element(2,e))
+     n = mesh_FEasCP('node',mesh_element(4+j,e))
+     if (all(node_seen /= n)) then
+       mesh_sharedElem(1,n) = mesh_sharedElem(1,n) + 1
+       mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e
+     endif
+     node_seen(j) = n
+   enddo
  enddo
 
-620 return
+ deallocate (node_seen)
+
+ return
 
  endsubroutine
+ 
  
 
 !***********************************************************
