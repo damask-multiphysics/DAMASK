@@ -79,8 +79,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       terminallyIll, &
                                                       cycleCounter, &
                                                       theInc, &
-                                                      theCycle, &
-                                                      theLovl, &
                                                       theTime, &
                                                       FEsolving_execElem, &
                                                       FEsolving_execIP
@@ -120,8 +118,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       materialpoint_Temperature, &
                                                       materialpoint_stressAndItsTangent, &
                                                       materialpoint_postResults
- use IO, only:                                        IO_init
- use cpfem_interface
+  use IO, only:                                       IO_init
+  use cpfem_interface
   
   implicit none
   
@@ -133,12 +131,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   real(pReal), intent(in) ::                          dt                  ! time increment
   real(pReal), dimension (3,3), intent(in) ::         ffn, &              ! deformation gradient for t=t0
                                                       ffn1                ! deformation gradient for t=t1
-  integer(pInt), intent(in) ::                        mode                ! computation mode  1: regular computation with aged results
+  integer(pInt), intent(in) ::                        mode                ! computation mode  1: regular computation plus aging of results
                                                                           !                   2: regular computation
                                                                           !                   3: collection of FEM data
-                                                                          !                   4: recycling of former results (MARC speciality)
-                                                                          !                   5: record tangent from former converged inc
-                                                                          !                   6: restore tangent from former converged inc
+                                                                          !                   4: backup tangent from former converged inc
+                                                                          !                   5: restore tangent from former converged inc
+                                                                          !                   6: recycling of former results (MARC speciality)
   
   !*** output variables ***!
   real(pReal), dimension(ngens), intent(out) ::       cauchyStress        ! stress vector in Mandel notation
@@ -176,7 +174,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     call debug_init()
     call math_init()
     call FE_init()
-    call mesh_init()
+    call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
     call lattice_init()
     call material_init()
     call constitutive_init()
@@ -190,12 +188,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   cp_en = mesh_FEasCP('elem',element)
   
   if (cp_en == 1 .and. IP == 1) then
+  !$OMP CRITICAL (write2out)
     write(6,*)
     write(6,*) '#####################################'
-    write(6,'(a10,1x,f8.4,1x,a10,1x,i4,1x,a10,1x,i3,1x,a10,1x,i2,x,a10,1x,i2)') &
-    'theTime',theTime,'theInc',theInc,'theCycle',theCycle,'theLovl',theLovl,&
-    'mode',mode
+    write(6,'(a10,x,f8.4,x,a10,x,i4,x,a10,x,i3,x,a16,x,i2,x,a16,x,i2)') &
+    'theTime',theTime,'theInc',theInc,'cycleCounter',cycleCounter,'computationMode',mode
     write(6,*) '#####################################'
+    call flush (6)
+  !$OMP END CRITICAL (write2out)
   endif
 
   ! according to our "mode" we decide what to do
@@ -213,7 +213,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
+  !$OMP CRITICAL (write2out)
         write(6,'(a10,/,4(3(e20.8,x),/))') 'aged state',constitutive_state(1,1,1)%p
+  !$OMP END CRITICAL (write2out)
         do k = 1,mesh_NcpElems
           do j = 1,mesh_maxNips
             if (homogenization_sizeState(j,k) > 0_pInt) &
@@ -225,7 +227,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > relevantStrain)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
+  !$OMP CRITICAL (write2out)
           write(6,'(a11,x,i5,x,i2,x,a10,/,3(3(f10.6,x),/))') 'outdated at',cp_en,IP,'FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
+  !$OMP END CRITICAL (write2out)
           outdatedFFN1 = .true.
         endif
         CPFEM_cs(1:ngens,IP,cp_en)              = CPFEM_odd_stress
@@ -234,7 +238,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       ! deformation gradient is not outdated
       else
         ! set flag for Jacobian update
-        updateJaco = (mod(cycleCounter-4,4_pInt*iJacoStiffness)==0)
+        updateJaco = mod(cycleCounter,iJacoStiffness) == 0
         
         ! no parallel computation
         if (.not. parallelExecution) then
@@ -278,8 +282,13 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         endif
       endif
     
-    ! --+>> COLLECTION OF FEM DATA AND RETURN OF ODD STRESS AND JACOBIAN <<+-- 
-    case (3)
+    ! --+>> COLLECTION OF FEM INPUT WITH RETURNING OF ODD STRESS AND JACOBIAN <<+-- 
+    case (3,4,5)
+      if (mode == 4) then
+        CPFEM_dcsde_knownGood = CPFEM_dcsde  ! --+>> BACKUP JACOBIAN FROM FORMER CONVERGED INC
+      else if (mode == 5) then
+        CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
+      end if
       materialpoint_Temperature(IP,cp_en)   = Temperature
       materialpoint_F0(:,:,IP,cp_en)        = ffn
       materialpoint_F(:,:,IP,cp_en)         = ffn1
@@ -288,29 +297,26 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       CPFEM_calc_done = .false.
     
     ! --+>> RECYCLING OF FORMER RESULTS (MARC SPECIALTY) <<+--
-    case (4)
+    case (6)
       ! do nothing
     
-    ! --+>> RECORD JACOBIAN FROM FORMER CONVERGED INC <<+--
-    case (5)
-       CPFEM_dcsde_knownGood = CPFEM_dcsde
-    
-    ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC <<+--
-    case (6)
-       CPFEM_dcsde = CPFEM_dcsde_knownGood
-       
   end select
 
   ! return the local stress and the jacobian from storage
   cauchyStress(1:ngens) = CPFEM_cs(1:ngens,IP,cp_en)
   jacobian(1:ngens,1:ngens) = CPFEM_dcsdE(1:ngens,1:ngens,IP,cp_en)
-  if (IP == 1 .and. cp_en == 1) write(6,'(a,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip 1 el 1',jacobian/1e9
+  if (IP == 1 .and. cp_en == 1) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip 1 el 1',jacobian/1e9
+    call flush(6)
+  !$OMP END CRITICAL (write2out)
+  endif
+  
   ! return temperature
   if (theInc > 0_pInt) Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
   return
 
 end subroutine
 
-
- END MODULE CPFEM
+END MODULE CPFEM
  

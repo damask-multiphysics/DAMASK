@@ -6,12 +6,13 @@
  use prec, only: pInt,pReal
  implicit none
 
- integer(pInt) cycleCounter
- integer(pInt) theInc,theCycle,theLovl
- real(pReal)   theTime
+ integer(pInt) cycleCounter, theInc
+ real(pReal)   theTime, theDelta
  logical :: lastIncConverged = .false.,outdatedByNewInc = .false.,outdatedFFN1 = .false.,terminallyIll = .false.
  logical :: symmetricSolver = .false. 
  logical :: parallelExecution = .true. 
+ logical :: lastMode = .true., cutBack = .false.
+ logical, dimension(:,:), allocatable :: calcMode
  integer(pInt), dimension(:,:), allocatable :: FEsolving_execIP
  integer(pInt), dimension(2) :: FEsolving_execElem
 

@@ -38,6 +38,8 @@
 !
 MODULE cpfem_interface
 
+character(len=64), parameter :: FEsolver = 'Marc'
+
 CONTAINS
 
 subroutine mpie_cpfem_init
@@ -61,7 +63,7 @@ END MODULE
  include "lattice.f90"          ! uses prec, math, IO, material
  include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, lattice, material, debug
  include "constitutive_j2.f90"            ! uses prec, math, IO, lattice, material, debug
- include "constitutive_dislotwin.f90"    ! uses prec, math, IO, lattice, material, debug
+ include "constitutive_dislobased.f90"    ! uses prec, math, IO, lattice, material, debug
  include "constitutive_nonlocal.f90"      ! uses prec, math, IO, lattice, material, debug
  include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
  include "crystallite.f90"      ! uses prec, math, IO, numerics 
@@ -148,18 +150,22 @@ subroutine hypela2(&
                       pInt
  use FEsolving, only: cycleCounter, &
                       theInc, &
-                      theCycle, &
-                      theLovl, &
+                      cutBack, &
+                      calcMode, &
+                      lastMode, &
                       theTime, &
+                      theDelta, &
                       lastIncConverged, &
                       outdatedByNewInc, &
                       outdatedFFN1, &
                       terminallyIll, &
                       symmetricSolver
- use CPFEM, only:     CPFEM_general
  use math, only:      invnrmMandel
  use debug, only:     debug_info, &
                       debug_reset
+ use mesh, only:      mesh_FEasCP
+ use CPFEM, only:     CPFEM_general,CPFEM_init_done
+ use homogenization, only: materialpoint_sizeResults, materialpoint_results
  implicit none
  
 !     ** Start of generated type statements **
@@ -179,47 +185,74 @@ subroutine hypela2(&
  include "concom%%MARCVERSION%%"     ! concom is needed for inc, subinc, ncycle, lovl
  include "creeps%%MARCVERSION%%"     ! creeps is needed for timinc (time increment)
 
- integer(pInt)        computationMode, i
+ integer(pInt) computationMode, i, cp_en
 
- if (inc == 0) then
-   cycleCounter = 4
+ if ( .not. CPFEM_init_done ) then
+
+   computationMode = 2                                                    ! calc + init
+!$OMP CRITICAL (write2out)
+   write (6,'(i6,x,i2,x,a)') n(1),nn,'first call special case..!'; call flush(6)
+!$OMP END CRITICAL (write2out)
+
+ else if (lovl == 4) then                                                 ! Marc requires stiffness in separate call
+   computationMode = 6                                                    !  --> just return known value
  else
-   if (theCycle > ncycle .or. theInc /= inc) then
-     cycleCounter = 0                  ! reset counter for each cutback or new inc
+   cp_en = mesh_FEasCP('elem',n(1))
+   if (theTime < cptim .or. theInc /= inc) then                           ! reached convergence
+     lastIncConverged = .true.
+     outdatedByNewInc = .true.
      terminallyIll = .false.
+     cycleCounter = 0
+!$OMP CRITICAL (write2out)
+     write (6,'(i6,x,i2,x,a)') n(1),nn,'lastIncConverged + outdated'; call flush(6)
+!$OMP END CRITICAL (write2out)
    endif
-   if (theCycle /= ncycle .or. theLovl /= lovl) then
-     cycleCounter = cycleCounter+1   ! ping pong
-     outdatedFFN1 = .false.
-     write (6,*) n(1),nn,'cycleCounter',cycleCounter
-     call debug_info()                          ! output of debugging/performance statistics of former
-     call debug_reset()
+
+   if ( timinc < theDelta ) then                                          ! cutBack
+     calcMode = .true.                                                    ! pretend last step was calculation
+     cutBack = .true.
+     terminallyIll = .false.
+     cycleCounter = 0
+!$OMP CRITICAL (write2out)
+     write(6,'(i6,x,i2,x,a)') n(1),nn,'cutback detected..!'; call flush(6)
+!$OMP END CRITICAL (write2out)
    endif
- endif
- if (cptim > theTime .or. theInc /= inc) then                                   ! reached convergence
-   lastIncConverged = .true.
-   outdatedByNewInc = .true.
-   write (6,*) n(1),nn,'lastIncConverged + outdated'
+
+   calcMode(nn,cp_en) = .not. calcMode(nn,cp_en)                          ! ping pong (calc <--> collect)
+
+   if ( calcMode(nn,cp_en) ) then                                         ! now calc
+     if ( lastMode .ne. calcMode(nn,cp_en) ) then                         ! first after ping pong
+       call debug_reset()                                                 ! resets debugging
+       outdatedFFN1 = .false.
+       cycleCounter = cycleCounter + 1
+     endif
+     if ( outdatedByNewInc ) then
+       outdatedByNewInc = .false.
+       computationMode = 1                                                ! calc and age results
+     else
+       computationMode = 2                                                ! plain calc
+     endif
+   else                                                                   ! now collect
+     if ( lastMode .ne. calcMode(nn,cp_en) ) call debug_info()            ! first after ping pong reports debugging
+     if ( lastIncConverged ) then
+       lastIncConverged = .false.
+       computationMode = 4                                                ! collect and backup Jacobian after convergence
+     elseif ( cutBack ) then
+       cutBack = .false.
+       computationMode = 5                                                ! collect and restore Jacobian after cutback
+     else
+       computationMode = 3                                                ! plain collect
+     endif
+   endif
+
  endif
 
- if (mod(cycleCounter,2) /= 0) computationMode = 4   ! recycle in odd cycles
- if (mod(cycleCounter,4) == 2) computationMode = 3   ! collect in 2,6,10,...
- if (mod(cycleCounter,4) == 0) computationMode = 2   ! compute in 0,4,8,...
- if (computationMode == 4 .and. ncycle == 0 .and. .not. lastIncConverged) &
-   computationMode = 6    ! recycle but restore known good consistent tangent
- if (computationMode == 4 .and. lastIncConverged) then
-   computationMode  = 5   ! recycle and record former consistent tangent
-   lastIncConverged = .false.
+ if (lovl /= 4) then                                                      ! pass-by for Marc recycle
+   theTime  = cptim                                                       ! record current starting time
+   theDelta = timinc                                                      ! record current time increment
+   theInc   = inc                                                         ! record current increment number
+   if (CPFEM_init_done) lastMode = calcMode(nn,cp_en)                     ! record calculationMode
  endif
- if (computationMode == 2 .and. outdatedByNewInc) then
-   computationMode  = 1   ! compute and age former results
-   outdatedByNewInc = .false.
- endif
-
- theTime  = cptim                                   ! record current starting time
- theInc   = inc                                     ! record current increment number
- theCycle = ncycle                                  ! record current cycle count
- theLovl  = lovl                                    ! record current lovl
 
  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,d,ngens)
 
@@ -269,55 +302,3 @@ subroutine plotv(&
  return
 
 end subroutine
-
-
-
-! subroutine utimestep(timestep,timestepold,icall,time,timeloadcase)
-!********************************************************************
-!     This routine modifies the addaptive time step of Marc
-!********************************************************************
-! use prec, only: pReal,pInt
-! use CPFEM, only : CPFEM_timefactor_max
-! implicit none
-!
-! real(pReal) timestep, timestepold, time,timeloadcase 
-! integer(pInt) icall
-!
-! user subroutine for modifying the time step in auto step
-!
-!   timestep    :  the current time step as suggested by marc
-!                  to be modified in this routine
-!   timestepold :  the current time step before it was modified by marc
-!   icall       :  =1 for setting the initial time step
-!                  =2 if this routine is called during an increment
-!                  =3 if this routine is called at the beginning
-!                     of the increment
-!   time        :  time at the start of the current increment
-!   timeloadcase:  time period of the current load case
-!
-!   it is in general not recommended to increase the time step
-!   during the increment.
-!   this routine is called right after the time step has (possibly)
-!   been updated by marc.
-!
-!  user coding
-!     reduce timestep during increment in case mpie_timefactor is too large
-! if(icall==2_pInt) then
-!    if(mpie_timefactor_max>1.25_pReal) then
-!        timestep=min(timestep,timestepold*0.8_pReal)
-!    end if
-! return
-!     modify timestep at beginning of new increment
-! else if(icall==3_pInt) then
-!    if(mpie_timefactor_max<=0.8_pReal) then
-!        timestep=min(timestep,timestepold*1.25_pReal)
-!    else if (mpie_timefactor_max<=1.0_pReal) then
-!        timestep=min(timestep,timestepold/mpie_timefactor_max)
-!    else if (mpie_timefactor_max<=1.25_pReal) then
-!        timestep=min(timestep,timestepold*1.01_pReal)
-!    else
-!        timestep=min(timestep,timestepold*0.8_pReal)
-!    end if
-! end if
-! return
-! end

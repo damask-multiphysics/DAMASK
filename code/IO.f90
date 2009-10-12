@@ -27,11 +27,16 @@
 !********************************************************************
 ! output version number
 !********************************************************************
-subroutine IO_init
- write(6,*)
- write(6,*) '<<<+-  IO init  -+>>>'
- write(6,*) '$Id$'
- write(6,*)
+subroutine IO_init ()
+
+  !$OMP CRITICAL (write2out)
+  write(6,*)
+  write(6,*) '<<<+-  IO init  -+>>>'
+  write(6,*) '$Id$'
+  write(6,*)
+  call flush(6)
+  !$OMP END CRITICAL (write2out)
+ 
  return
 endsubroutine
 
@@ -64,6 +69,7 @@ endsubroutine
 !********************************************************************
  logical function IO_open_inputFile(unit)
 
+ use cpfem_interface
  use prec, only: pReal, pInt
  implicit none
 
@@ -74,11 +80,18 @@ endsubroutine
 
  inquire(6, name=outName) ! determine outputfileName
  extPos = len_trim(outName)-2
- if(outName(extPos:extPos+2)=='out') then
-     ext='dat' ! MARC
- else
-     ext='inp' ! ABAQUS
- endif
+! if(outName(extPos:extPos+2)=='out') then
+!     ext='dat' ! MARC
+! else
+!     ext='inp' ! ABAQUS
+! endif
+ select case (FEsolver)
+   case ('Marc')
+     ext='dat' 
+   case ('Abaqus')
+     ext='inp' 
+ end select
+
  open(unit,status='old',err=100,file=outName(1:extPos-1)//ext)
  IO_open_inputFile = .true.
  return
@@ -461,7 +474,7 @@ endfunction
  implicit none
 
  character(len=*), intent(in) :: line
- character(len=*), parameter :: sep=achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
+ character(len=*), parameter :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13) ! comma and whitespaces
  integer(pInt), intent(in) :: N
  integer(pInt)  part
  integer(pInt) IO_stringPos(1+N*2)
@@ -703,89 +716,209 @@ endfunction
 
  endsubroutine
 
+
+!********************************************************************
+! extract value from key=value pair and check whether key matches
+!********************************************************************
+ pure function IO_extractValue (line,key)
  
+ use prec, only: pReal,pInt
+ implicit none
+
+ character(len=*), intent(in) :: line,key
+ character(len=*), parameter :: sep = achar(61)         ! '='
+ integer(pInt) pos
+ character(len=300) IO_extractValue
+
+ IO_extractValue = ''
+
+ pos = scan(line,sep)
+ if (pos > 0 .and. line(:pos-1) == key(:pos-1)) &       ! key matches expected key
+   IO_extractValue = line(pos+1:)                       ! extract value
+
+ return
+
+ endfunction
+
+
 !********************************************************************
-! count items in consecutive lines of ints concatenated by "c"
-! as last char or range of values a "to" b
+! count lines containig data up to next *keyword
 !********************************************************************
- function IO_countContinousIntValues (unit)
+ function IO_countDataLines (unit)
 
  use prec, only: pReal,pInt
  implicit none
 
- integer(pInt)  IO_countContinousIntValues,unit
- integer(pInt), dimension(67) :: pos  ! allow for 32 values excl "c"
- character(len=300) line
+ integer(pInt)  IO_countDataLines,unit
+ integer(pInt), parameter :: maxNchunks = 64
+ integer(pInt), dimension(1+2*maxNchunks) :: pos
+ character(len=300) line,tmp
 
- IO_countContinousIntValues = 0
+ IO_countDataLines = 0
  do
    read(unit,'(A300)',end=100) line
-   pos = IO_stringPos(line,33)
-   if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then  ! found range indicator
-     IO_countContinousIntValues = IO_countContinousIntValues+1+IO_intValue(line,pos,3)-IO_intValue(line,pos,1)
-	 exit
+   pos = IO_stringPos(line,maxNchunks)
+   tmp = IO_lc(IO_stringValue(line,pos,1))
+   if (tmp(1:1) == '*' ) then  ! found keyword
+     exit
    else
-     IO_countContinousIntValues = IO_countContinousIntValues+pos(1)-1
-     if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then  ! line finished, read last value
-       IO_countContinousIntValues = IO_countContinousIntValues+1
-       exit
-     endif
+     IO_countDataLines = IO_countDataLines + 1_pInt
    endif
  enddo
+100 backspace(unit)
+ return
+
+ endfunction
+
+ 
+!********************************************************************
+! count items in consecutive lines
+! Marc:   ints concatenated by "c" as last char or range of values a "to" b
+! Abaqus: triplet of start,stop,inc
+!********************************************************************
+ function IO_countContinousIntValues (unit)
+
+ use cpfem_interface
+ use prec, only: pReal,pInt
+ implicit none
+
+ integer(pInt)  unit,i,j,l,count
+ integer(pInt)  IO_countContinousIntValues
+ integer(pInt), parameter :: maxNchunks = 64
+ integer(pInt), dimension(1+2*maxNchunks) :: pos
+ character(len=300) line
+
+ IO_countContinousIntValues = 0_pInt
+
+ select case (FEsolver)
+   case ('Marc')
+   
+     do
+       read(unit,'(A300)',end=100) line
+       pos = IO_stringPos(line,maxNchunks)
+       if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then               ! found range indicator
+         IO_countContinousIntValues = 1 + IO_intValue(line,pos,3) - IO_intValue(line,pos,1)
+         exit                                                             ! only one single range indicator allowed
+       else
+         IO_countContinousIntValues = IO_countContinousIntValues+pos(1)-1 ! add line's count when assuming 'c'
+         if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then        ! line finished, read last value
+           IO_countContinousIntValues = IO_countContinousIntValues+1
+           exit                                                           ! data ended
+         endif
+       endif
+     enddo
+   
+   case('Abaqus')
+
+     count = IO_countDataLines(unit)
+     do l = 1,count
+       backspace(unit)
+     enddo
+     
+     do l = 1,count
+       read(unit,'(A300)',end=100) line
+       pos = IO_stringPos(line,maxNchunks)
+       IO_countContinousIntValues = IO_countContinousIntValues + 1 + &    ! assuming range generation
+                                    (IO_intValue(line,pos,2)-IO_intValue(line,pos,1))/max(1,IO_intValue(line,pos,3))
+     enddo
+ 
+ endselect
+
 100 return
 
  endfunction
 
-!*********************************************************************
-! read consecutive lines of ints concatenated by "c" as last char
-! or range of values a "to" b
-!*********************************************************************
+
+!********************************************************************
+! return integer list corrsponding to items in consecutive lines
+! Marc:   ints concatenated by "c" as last char, range of a "to" b, or named set
+! Abaqus: triplet of start,stop,inc or named set
+!********************************************************************
  function IO_continousIntValues (unit,maxN,lookupName,lookupMap,lookupMaxN)
 
+ use cpfem_interface
  use prec, only: pReal,pInt
  implicit none
 
- integer(pInt)  unit,maxN,i
+ integer(pInt)  unit,maxN,i,j,l,count,first,last
  integer(pInt), dimension(1+maxN) :: IO_continousIntValues
- integer(pInt), dimension(67) :: pos  ! allow for 32 values excl "c"
+ integer(pInt), parameter :: maxNchunks = 64
+ integer(pInt), dimension(1+2*maxNchunks) :: pos
  character(len=64), dimension(:) :: lookupName
  integer(pInt) :: lookupMaxN
  integer(pInt), dimension(:,:) :: lookupMap
  character(len=300) line
 
- IO_continousIntValues = 0_pInt
- do
-   read(unit,'(A300)',end=100) line
-   pos = IO_stringPos(line,33)
-   if (verify(IO_stringValue(line,pos,1),"0123456789") > 0) then     ! a non-int, i.e. set name
-     do i = 1,lookupMaxN                                       ! loop over known set names
-       if (IO_stringValue(line,pos,1) == lookupName(i)) then   ! found matching name
-         IO_continousIntValues = lookupMap(:,i)                ! return resp. entity list
+ IO_continousIntValues = 0
+
+ select case (FEsolver)
+   case ('Marc')
+   
+     do
+       read(unit,'(A300)',end=100) line
+       pos = IO_stringPos(line,maxNchunks)
+       if (verify(IO_stringValue(line,pos,1),"0123456789") > 0) then     ! a non-int, i.e. set name
+         do i = 1,lookupMaxN                                             ! loop over known set names
+           if (IO_stringValue(line,pos,1) == lookupName(i)) then         ! found matching name
+             IO_continousIntValues = lookupMap(:,i)                      ! return resp. entity list
+             exit
+           endif
+         enddo
          exit
+       else if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then         ! found range indicator
+         do i = IO_intValue(line,pos,1),IO_intValue(line,pos,3)
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1
+           IO_continousIntValues(1+IO_continousIntValues(1)) = i
+         enddo
+         exit
+       else
+         do i = 1,pos(1)-1  ! interpret up to second to last value
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1
+           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,i)
+         enddo
+         if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then       ! line finished, read last value
+           IO_continousIntValues(1) = IO_continousIntValues(1)+1
+           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,pos(1))
+           exit
+         endif
        endif
      enddo
-     exit
-   else if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then   ! found range indicator
-     do i = IO_intValue(line,pos,1),IO_intValue(line,pos,3)
-       IO_continousIntValues(1) = IO_continousIntValues(1)+1
-	   IO_continousIntValues(1+IO_continousIntValues(1)) = i
+   
+   case('Abaqus')
+
+     count = IO_countDataLines(unit)
+     do l = 1,count
+       backspace(unit)
      enddo
-     exit
-   else
-     do i = 1,pos(1)-1  ! interpret up to second to last value
-       IO_continousIntValues(1) = IO_continousIntValues(1)+1
-       IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,i)
+     
+     do l = 1,count
+       read(unit,'(A300)',end=100) line
+       pos = IO_stringPos(line,maxNchunks)
+       if (verify(IO_stringValue(line,pos,1),"0123456789") > 0) then     ! a non-int, i.e. set names follow on this line
+         do i = 1,pos(1)                                                 ! loop over set names in line
+           do j = 1,lookupMaxN                                           ! look thru known set names
+             if (IO_stringValue(line,pos,i) == lookupName(j)) then       ! found matching name
+               first = 2 + IO_continousIntValues(1)                      ! where to start appending data
+               last  = first + lookupMap(1,j) - 1                        ! up to where to append data
+               IO_continousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)    ! add resp. entity list
+               IO_continousIntValues(1) = IO_continousIntValues(1) + lookupMap(1,j)   ! count them
+             endif
+           enddo
+         enddo
+       else                                                              ! assuming range generation
+         do i = IO_intValue(line,pos,1),IO_intValue(line,pos,2),max(1,IO_intValue(line,pos,3))
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1
+           IO_continousIntValues(1+IO_continousIntValues(1)) = i
+         enddo
+       endif
      enddo
-     if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then  ! line finished, read last value
-       IO_continousIntValues(1) = IO_continousIntValues(1)+1
-       IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,pos(1))
-       exit
-     endif
-   endif
- enddo
+ 
+ endselect
+
 100 return
 
  endfunction
+
 
 
 !********************************************************************

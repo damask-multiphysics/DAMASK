@@ -175,7 +175,7 @@ subroutine homogenization_RGC_partitionDeformation(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,homogenization_Ngrains,homogenization_typeInstance
- use FEsolving, only: theInc,theCycle,theTime
+ use FEsolving, only: theInc,cycleCounter,theTime
 
  implicit none
 
@@ -198,7 +198,7 @@ subroutine homogenization_RGC_partitionDeformation(&
 
 !* Debugging the overall deformation gradient
  if (RGCdebug) then
-   write(6,'(x,a,i3,a,i3,a)')'========== Increment: ',theInc,' Cycle: ',theCycle,' =========='
+   write(6,'(x,a,i3,a,i3,a)')'========== Increment: ',theInc,' Cycle: ',cycleCounter,' =========='
    write(6,'(x,a32)')'Overall deformation gradient: '
    do i = 1,3
      write(6,'(x,3(e14.8,x))')(avgF(i,j), j = 1,3)
@@ -256,7 +256,7 @@ function homogenization_RGC_updateState(&
  use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,homogenization_typeInstance,homogenization_Ngrains
  use numerics, only: absTol_RGC,relTol_RGC,absMax_RGC,relMax_RGC,pPert_RGC
- use FEsolving, only: theInc,theCycle,theTime
+ use FEsolving, only: theInc,cycleCounter,theTime
 
  implicit none
 
