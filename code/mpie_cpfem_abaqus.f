@@ -8,6 +8,10 @@
 !
 ! MPI fuer Eisenforschung, Duesseldorf
 ! PSI, Switzerland
+!
+! REMARK: change compile command to include the switch
+!         "-free" in "abaqus_v6.env"
+!
 !********************************************************************
 
 MODULE cpfem_interface
