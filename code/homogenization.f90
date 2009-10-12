@@ -44,7 +44,8 @@ MODULE homogenization
                                                      materialpoint_converged
  logical, dimension(:,:,:), allocatable ::           materialpoint_doneAndHappy
  integer(pInt)                                       homogenization_maxSizeState, &
-                                                     homogenization_maxSizePostResults
+                                                     homogenization_maxSizePostResults, &
+                                                     materialpoint_sizeResults
 
 CONTAINS
 
@@ -131,8 +132,9 @@ subroutine homogenization_init(Temperature)
  homogenization_maxSizeState       = maxval(homogenization_sizeState)
  homogenization_maxSizePostResults = maxval(homogenization_sizePostResults)
 
- allocate(materialpoint_results(  1+ 1+homogenization_maxSizePostResults + &    ! grain count, homogSize, homogResult
-          homogenization_maxNgrains*(1+crystallite_Nresults+constitutive_maxSizePostResults), mesh_maxNips,mesh_NcpElems))
+ materialpoint_sizeResults = 1+ 1+homogenization_maxSizePostResults + &    ! grain count, homogSize, homogResult
+          homogenization_maxNgrains*(1+crystallite_Nresults+constitutive_maxSizePostResults)
+ allocate(materialpoint_results(  materialpoint_sizeResults, mesh_maxNips,mesh_NcpElems))
 
 
 !    *** Output to MARC output file ***

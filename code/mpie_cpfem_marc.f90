@@ -165,7 +165,6 @@ subroutine hypela2(&
                       debug_reset
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_general,CPFEM_init_done
- use homogenization, only: materialpoint_sizeResults, materialpoint_results
  implicit none
  
 !     ** Start of generated type statements **
