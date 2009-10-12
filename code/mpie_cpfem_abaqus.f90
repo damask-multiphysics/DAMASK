@@ -21,6 +21,7 @@ subroutine mpie_cpfem_init ()
 !$OMP CRITICAL (write2out)
   write(6,*)
   write(6,*) '<<<+-  mpie_cpfem_abaqus init  -+>>>'
+  write(6,*) '$Id$'
   write(6,*)
   call flush(6)
 !$OMP END CRITICAL (write2out)
