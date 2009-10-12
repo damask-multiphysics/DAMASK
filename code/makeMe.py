@@ -2,19 +2,18 @@
 # $Id$
 import os,sys
 
-sys.argv += ['' for i in range(2 - len(sys.argv))]
 architectures = { 
                  'marc': { 
                           'parent': 'mpie_cpfem_marc.f90', 
                           'versions' : ['%%MARCVERSION%%','2007r1','2008r1'],
-                          'substitutions' : {'%%REVISION%%': sys.argv[1],},
                          }, 
                 }
 
+wd = os.path.dirname(sys.argv[0])
 for arch in architectures:
 	me = architectures[arch]
 	try:
-		parentFile = open(me['parent'])
+		parentFile = open(wd+os.sep+me['parent'])
 		parentContent = parentFile.readlines()
 		parentFile.close()
 	except IOError:
@@ -23,9 +22,7 @@ for arch in architectures:
 
 	
 	for version in me['versions'][1:]:
-		childFile = open(version.join(os.path.splitext(me['parent'])),'w')
+		childFile = open(wd+os.sep+version.join(os.path.splitext(me['parent'])),'w')
 		for line in parentContent:
-			for substitution in me['substitutions']:
-				line = line.replace(substitution,me['substitutions'][substitution])
 			childFile.write(line.replace(me['versions'][0],version))
 		childFile.close()
