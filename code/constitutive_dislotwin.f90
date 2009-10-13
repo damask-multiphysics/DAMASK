@@ -642,7 +642,7 @@ constitutive_dislotwin_stateInit(4*ns+2*nt+1:5*ns+2*nt) = MeanFreePathSlip0
 forall (s = 1:ns) &
 tauSlipThreshold0(s) = &
 constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(s,myInstance)* &
-sqrt(dot_product(rhoEdge0,constitutive_dislotwin_interactionMatrixSlipSlip(1:ns,s,myInstance)))
+sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrixSlipSlip(1:ns,s,myInstance)))
 constitutive_dislotwin_stateInit(5*ns+3*nt+1:6*ns+3*nt) = tauSlipThreshold0
 
 
@@ -762,7 +762,6 @@ myStructure = constitutive_dislotwin_structure(myInstance)
 ns = constitutive_dislotwin_totalNslip(myInstance)
 nt = constitutive_dislotwin_totalNtwin(myInstance)
 !* State: 1           :  ns         rho_edge
-
 !* State: ns+1        :  2*ns       rho_dipole
 !* State: 2*ns+1      :  2*ns+nt    f
 !* State: 2*ns+nt+1   :  3*ns+nt    1/lambda_slip
@@ -776,12 +775,9 @@ nt = constitutive_dislotwin_totalNtwin(myInstance)
 
 
 !* Total twin volume fraction
-
 sumf = sum(state(g,ip,el)%p((2*ns+1):(2*ns+nt))) ! safe for nt == 0
 
-
 !* Stacking fault energy
-
 sfe = 0.0002_pReal*Temperature-0.0396_pReal
 
 !* rescaled twin volume fraction for topology
@@ -834,7 +830,8 @@ forall (t = 1:nt) &
 forall (s = 1:ns) &
   state(g,ip,el)%p(5*ns+3*nt+s) = &
     constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(s,myInstance)*&
-    sqrt(dot_product(state(g,ip,el)%p(1:ns),constitutive_dislotwin_interactionMatrixSlipSlip(1:ns,s,myInstance)))
+    sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns+1:2*ns)),&
+	                 constitutive_dislotwin_interactionMatrixSlipSlip(1:ns,s,myInstance)))
 
 
 !* threshold stress for growing twin
@@ -1001,10 +998,13 @@ dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 
 
 !if ((ip==1).and.(el==1)) then
-!   write(6,*) '#MICROSTRUCTURE#'
-! write(6,*)
-! write(6,'(a,/,4(3(f10.4,x)/))') 'rhoEdge',state(g,ip,el)%p(1:12)
-! write(6,'(a,/,4(3(f10.4,x)/))') 'rhoEdgeDip',state(g,ip,el)%p(13:24)
+!   write(6,*) '#LP/TANGENT#'
+!   write(6,*)
+!   write(6,*) 'Tstar_v', Tstar_v
+!   write(6,*) 'tau_slip', tau_slip
+!   write(6,'(a10,/,4(3(e20.8,x),/))') 'state',state(1,1,1)%p
+!   write(6,'(a,/,3(3(f10.4,x)/))') 'Lp',Lp
+!   write(6,'(a,/,9(9(f10.4,x)/))') 'dLp_dTstar',dLp_dTstar
 !endif
 
 
@@ -1094,9 +1094,8 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
                                 (constitutive_dislotwin_burgersPerSlipSystem(f,myInstance)*state(g,ip,el)%p(4*ns+2*nt+j))
 
       !* Dipole formation
-
       if (tau_slip(j) == 0.0_pReal) then
-         DotRhoDipFormation(j) = 0.0_pReal
+        DotRhoDipFormation(j) = 0.0_pReal
       else 
         EdgeDipDistance(j) = &
           (3.0_pReal*constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(f,myInstance))/&
@@ -1121,14 +1120,17 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
       !* Dislocation dipole climb
       AtomicVolume = &
         constitutive_dislotwin_CAtomicVolume(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(f,myInstance)**(3.0_pReal)
-
       VacancyDiffusion = &
         constitutive_dislotwin_D0(myInstance)*exp(-constitutive_dislotwin_Qsd(myInstance)/(kB*Temperature))
-      ClimbVelocity(j) = &
-        ((3.0_pReal*constitutive_dislotwin_Gmod(myInstance)*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
-        (1/(EdgeDipDistance(j)+EdgeDipMinDistance))
-      DotRhoEdgeDipClimb(j) = &
-        (4.0_pReal*ClimbVelocity(j)*state(g,ip,el)%p(ns+j))/(EdgeDipDistance(j)+EdgeDipMinDistance)
+      if (tau_slip(j) == 0.0_pReal) then
+	     DotRhoEdgeDipClimb(j) = 0.0_pReal
+	  else	  
+	     ClimbVelocity(j) = &
+          ((3.0_pReal*constitutive_dislotwin_Gmod(myInstance)*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
+          (1/(EdgeDipDistance(j)+EdgeDipMinDistance))
+         DotRhoEdgeDipClimb(j) = &
+          (4.0_pReal*ClimbVelocity(j)*state(g,ip,el)%p(ns+j))/(EdgeDipDistance(j)+EdgeDipMinDistance)
+	  endif
 
       !* Edge dislocation density rate of change
       constitutive_dislotwin_dotState(j) = &
@@ -1143,7 +1145,6 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
 enddo
 
 !* Twin volume fraction evolution
-gdot_twin = 0.0_pReal
 j = 0_pInt
 do f = 1,lattice_maxNtwinFamily                                 ! loop over all twin families
    index_myFamily = sum(lattice_NtwinSystem(1:f-1,MyStructure)) ! at which index starts my family
@@ -1157,7 +1158,7 @@ do f = 1,lattice_maxNtwinFamily                                 ! loop over all 
       
       !* Shear rates and their derivatives due to twin
       if ( tau_twin(j) > 0.0_pReal ) then
-        gdot_twin(j) = &
+        constitutive_dislotwin_dotState(2*ns+j) = &
           (constitutive_dislotwin_MaxTwinFraction(myInstance)-sumf)*&
           state(g,ip,el)%p(6*ns+4*nt+j)*constitutive_dislotwin_Ndot0PerTwinSystem(f,myInstance)*exp(-StressRatio_r) 
       endif
@@ -1165,22 +1166,17 @@ do f = 1,lattice_maxNtwinFamily                                 ! loop over all 
    enddo
 enddo
 
-
-!if ((ip==1).and.(el==1)) then
-!    write(6,*) '#DOTSTATE#'
-!   write(6,*)
-!   write(6,'(a,/,4(3(f30.20,x)/))') 'tau slip',tau_slip
-!   write(6,'(a,/,4(3(f30.20,x)/))') 'gamma slip',gdot_slip
-!    write(6,'(a,/,4(3(f30.20,x)/))') 'RhoEdge',state(g,ip,el)%p(1:ns)
-!   write(6,'(a,/,4(3(f30.20,x)/))') 'Threshold Slip', state(g,ip,el)%p(5*ns+3*nt+1:6*ns+3*nt)
-!   write(6,'(a,/,4(3(f30.20,x)/))') 'Multiplication',DotRhoMultiplication
-!   write(6,'(a,/,4(3(f30.20,x)/))') 'DipFormation',DotRhoDipFormation
-!   write(6,'(a,/,4(3(f30.20,x)/))') 'SingleSingle',DotRhoEdgeEdgeAnnihilation
-!   write(6,'(a,/,4(3(f30.20,x)/))') 'SingleDipole',DotRhoEdgeDipAnnihilation
-!   write(6,'(a,/,4(3(f30.20,x)/))') 'DipClimb',DotRhoEdgeDipClimb 
-!endif
-
-
+!write(6,*) '#DOTSTATE#'
+!write(6,*)
+!write(6,'(a,/,4(3(f30.20,x)/))') 'tau slip',tau_slip
+!write(6,'(a,/,4(3(f30.20,x)/))') 'gamma slip',gdot_slip
+!write(6,'(a,/,4(3(f30.20,x)/))') 'RhoEdge',state(g,ip,el)%p(1:ns)
+!write(6,'(a,/,4(3(f30.20,x)/))') 'Threshold Slip', state(g,ip,el)%p(5*ns+3*nt+1:6*ns+3*nt)
+!write(6,'(a,/,4(3(f30.20,x)/))') 'Multiplication',DotRhoMultiplication
+!write(6,'(a,/,4(3(f30.20,x)/))') 'DipFormation',DotRhoDipFormation
+!write(6,'(a,/,4(3(f30.20,x)/))') 'SingleSingle',DotRhoEdgeEdgeAnnihilation
+!write(6,'(a,/,4(3(f30.20,x)/))') 'SingleDipole',DotRhoEdgeDipAnnihilation
+!write(6,'(a,/,4(3(f30.20,x)/))') 'DipClimb',DotRhoEdgeDipClimb 
 
 return
 end function
