@@ -208,25 +208,15 @@
 
  select case (FEsolver)
      case ('Marc')
- write(6,*) '<<---mesh_marc_get_tableStyles--->>'; call flush(6)
                          call mesh_marc_get_tableStyles(fileUnit)
- write(6,*) '<<---mesh_marc_count_nodesAndElements--->>'; call flush(6)
                          call mesh_marc_count_nodesAndElements(fileUnit)
- write(6,*) '<<---mesh_marc_count_elementSets--->>'; call flush(6)
                          call mesh_marc_count_elementSets(fileUnit)
- write(6,*) '<<---mesh_marc_map_elementSets--->>'; call flush(6)
                          call mesh_marc_map_elementSets(fileUnit)
- write(6,*) '<<---mesh_marc_count_cpElements--->>'; call flush(6)
                          call mesh_marc_count_cpElements(fileUnit)
- write(6,*) '<<---mesh_marc_map_elements--->>'; call flush(6)
                          call mesh_marc_map_elements(fileUnit)
- write(6,*) '<<---mesh_marc_map_nodes--->>'; call flush(6)
                          call mesh_marc_map_nodes(fileUnit)
- write(6,*) '<<---mesh_marc_build_nodes--->>'; call flush(6)
                          call mesh_marc_build_nodes(fileUnit)
- write(6,*) '<<---mesh_marc_count_cpSizes--->>'; call flush(6)
                          call mesh_marc_count_cpSizes(fileunit)
- write(6,*) '<<---mesh_marc_build_elements--->>'; call flush(6)
                          call mesh_marc_build_elements(fileUnit)
      case ('Abaqus')
                          call mesh_abaqus_count_nodesAndElements(fileUnit)
@@ -243,15 +233,10 @@
    end select
    close (fileUnit)
    
- write(6,*) '<<---mesh_build_sharedElems--->>'; call flush(6)
    call mesh_build_sharedElems()
- write(6,*) '<<---mesh_build_ipNeighborhood--->>'; call flush(6)
    call mesh_build_ipNeighborhood()
- write(6,*) '<<---mesh_build_subNodeCoords--->>'; call flush(6)
    call mesh_build_subNodeCoords()
- write(6,*) '<<---mesh_build_ipVolumes--->>'; call flush(6)
    call mesh_build_ipVolumes()
- write(6,*) '<<---mesh_build_ipAreas--->>'; call flush(6)
    call mesh_build_ipAreas()
    call mesh_tell_statistics()
 
@@ -2200,7 +2185,6 @@ subroutine mesh_marc_count_cpSizes (unit)
  do e = 1,mesh_NcpElems
 
    t = mesh_element(2,e)                                                  ! my type
-   write(6,*) e,t; call flush(6)
    node_seen = 0_pInt                                                     ! reset node duplicates
    do j = 1,FE_Nnodes(t)                                                  ! check each node of element
      n = mesh_FEasCP('node',mesh_element(4+j,e))
