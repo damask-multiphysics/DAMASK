@@ -229,7 +229,7 @@ endsubroutine
  dV_V = dV_V/sum_dV_V  ! normalize to 1
  
 !--- now fix bounds ---
- Nset = max(Nast,NnonZero)
+ Nset = max(Nast,NnonZero)                             ! if less than non-zero voxel count requested, sample at least that much
  lowerC = 0.0_pReal
  upperC = real(Nset, pReal)
  
