@@ -145,11 +145,13 @@ subroutine constitutive_phenopowerlaw_init(file)
  write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_phenopowerlaw_label,' init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
-  
  
  maxNinstance = count(phase_constitution == constitutive_phenopowerlaw_label)
  if (maxNinstance == 0) return
- 
+
+ write(6,'(a16,x,i5)') '# instances:',maxNinstance
+ write(6,*)
+
  allocate(constitutive_phenopowerlaw_sizeDotState(maxNinstance)) ;   constitutive_phenopowerlaw_sizeDotState = 0_pInt
  allocate(constitutive_phenopowerlaw_sizeState(maxNinstance)) ;      constitutive_phenopowerlaw_sizeState = 0_pInt
  allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance)); constitutive_phenopowerlaw_sizePostResults = 0_pInt
@@ -217,6 +219,7 @@ subroutine constitutive_phenopowerlaw_init(file)
  rewind(file)
  line = ''
  section = 0
+ 
  do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
    read(file,'(a1024)',END=100) line
  enddo
@@ -308,6 +311,7 @@ subroutine constitutive_phenopowerlaw_init(file)
  enddo
 
 100 do i = 1,maxNinstance
+
    constitutive_phenopowerlaw_structure(i) = lattice_initializeStructure(constitutive_phenopowerlaw_structureName(i), &    ! get structure
                                                                          constitutive_phenopowerlaw_CoverA(i))
    constitutive_phenopowerlaw_Nslip(:,i) = min(lattice_NslipSystem(:,constitutive_phenopowerlaw_structure(i)),&   ! limit active slip systems per family to max
@@ -352,33 +356,34 @@ subroutine constitutive_phenopowerlaw_init(file)
  constitutive_phenopowerlaw_hardeningMatrix_sliptwin = 0.0_pReal
  constitutive_phenopowerlaw_hardeningMatrix_twinslip = 0.0_pReal
  constitutive_phenopowerlaw_hardeningMatrix_twintwin = 0.0_pReal
+
  
  do i = 1,maxNinstance
    do j = 1,maxval(phase_Noutput)
-	 select case(constitutive_phenopowerlaw_output(j,i))
-	   case('resistance_slip', &
-	        'shearrate_slip', &
-	        'resolvedstress_slip' &
-	        )
-		 mySize = constitutive_phenopowerlaw_totalNslip(i)
-	   case('resistance_twin', &
-	        'shearrate_twin', &
-	        'resolvedstress_twin' &
-	        )
-		 mySize = constitutive_phenopowerlaw_totalNtwin(i)
-	   case('totalshear', &
-	        'totalvolfrac' &
-	        )
-		 mySize = 1_pInt
-	   case default
-		 mySize = 0_pInt
-	 end select
+     select case(constitutive_phenopowerlaw_output(j,i))
+       case('resistance_slip', &
+            'shearrate_slip', &
+            'resolvedstress_slip' &
+            )
+         mySize = constitutive_phenopowerlaw_totalNslip(i)
+       case('resistance_twin', &
+            'shearrate_twin', &
+            'resolvedstress_twin' &
+            )
+         mySize = constitutive_phenopowerlaw_totalNtwin(i)
+       case('totalshear', &
+            'totalvolfrac' &
+            )
+         mySize = 1_pInt
+       case default
+         mySize = 0_pInt
+     end select
 
-	 if (mySize > 0_pInt) then                               ! any meaningful output found
-	   constitutive_phenopowerlaw_sizePostResult(j,i) = mySize
-	   constitutive_phenopowerlaw_sizePostResults(i) = &
-	   constitutive_phenopowerlaw_sizePostResults(i) + mySize
-	 endif
+     if (mySize > 0_pInt) then                               ! any meaningful output found
+       constitutive_phenopowerlaw_sizePostResult(j,i) = mySize
+       constitutive_phenopowerlaw_sizePostResults(i) = &
+       constitutive_phenopowerlaw_sizePostResults(i) + mySize
+     endif
    enddo
 
    constitutive_phenopowerlaw_sizeDotState(i) = constitutive_phenopowerlaw_totalNslip(i)+ &
@@ -387,27 +392,27 @@ subroutine constitutive_phenopowerlaw_init(file)
                                                 constitutive_phenopowerlaw_totalNtwin(i)+ 2    ! s_slip, s_twin, sum(gamma), sum(f)
 
    select case (constitutive_phenopowerlaw_structure(i))     ! assign elasticity tensor
-   case(1:2) ! cubic(s)
-     forall(k=1:3)
-       forall(j=1:3) &
-         constitutive_phenopowerlaw_Cslip_66(k,j,i) =   constitutive_phenopowerlaw_C12(i)
-       constitutive_phenopowerlaw_Cslip_66(k,k,i) =     constitutive_phenopowerlaw_C11(i)
-       constitutive_phenopowerlaw_Cslip_66(k+3,k+3,i) = constitutive_phenopowerlaw_C44(i)
-     end forall
-   case(3)   ! hex
-     constitutive_phenopowerlaw_Cslip_66(1,1,i) = constitutive_phenopowerlaw_C11(i)
-     constitutive_phenopowerlaw_Cslip_66(2,2,i) = constitutive_phenopowerlaw_C11(i)
-     constitutive_phenopowerlaw_Cslip_66(3,3,i) = constitutive_phenopowerlaw_C33(i)
-     constitutive_phenopowerlaw_Cslip_66(1,2,i) = constitutive_phenopowerlaw_C12(i)
-     constitutive_phenopowerlaw_Cslip_66(2,1,i) = constitutive_phenopowerlaw_C12(i)
-     constitutive_phenopowerlaw_Cslip_66(1,3,i) = constitutive_phenopowerlaw_C13(i)
-     constitutive_phenopowerlaw_Cslip_66(3,1,i) = constitutive_phenopowerlaw_C13(i)
-     constitutive_phenopowerlaw_Cslip_66(2,3,i) = constitutive_phenopowerlaw_C13(i)
-     constitutive_phenopowerlaw_Cslip_66(3,2,i) = constitutive_phenopowerlaw_C13(i)
-     constitutive_phenopowerlaw_Cslip_66(4,4,i) = constitutive_phenopowerlaw_C44(i)
-     constitutive_phenopowerlaw_Cslip_66(5,5,i) = constitutive_phenopowerlaw_C44(i)
-     constitutive_phenopowerlaw_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_phenopowerlaw_C11(i)- &
-                                                                constitutive_phenopowerlaw_C12(i))
+     case(1:2) ! cubic(s)
+       forall(k=1:3)
+         forall(j=1:3) &
+           constitutive_phenopowerlaw_Cslip_66(k,j,i) =   constitutive_phenopowerlaw_C12(i)
+         constitutive_phenopowerlaw_Cslip_66(k,k,i) =     constitutive_phenopowerlaw_C11(i)
+         constitutive_phenopowerlaw_Cslip_66(k+3,k+3,i) = constitutive_phenopowerlaw_C44(i)
+       end forall
+     case(3)   ! hex
+       constitutive_phenopowerlaw_Cslip_66(1,1,i) = constitutive_phenopowerlaw_C11(i)
+       constitutive_phenopowerlaw_Cslip_66(2,2,i) = constitutive_phenopowerlaw_C11(i)
+       constitutive_phenopowerlaw_Cslip_66(3,3,i) = constitutive_phenopowerlaw_C33(i)
+       constitutive_phenopowerlaw_Cslip_66(1,2,i) = constitutive_phenopowerlaw_C12(i)
+       constitutive_phenopowerlaw_Cslip_66(2,1,i) = constitutive_phenopowerlaw_C12(i)
+       constitutive_phenopowerlaw_Cslip_66(1,3,i) = constitutive_phenopowerlaw_C13(i)
+       constitutive_phenopowerlaw_Cslip_66(3,1,i) = constitutive_phenopowerlaw_C13(i)
+       constitutive_phenopowerlaw_Cslip_66(2,3,i) = constitutive_phenopowerlaw_C13(i)
+       constitutive_phenopowerlaw_Cslip_66(3,2,i) = constitutive_phenopowerlaw_C13(i)
+       constitutive_phenopowerlaw_Cslip_66(4,4,i) = constitutive_phenopowerlaw_C44(i)
+       constitutive_phenopowerlaw_Cslip_66(5,5,i) = constitutive_phenopowerlaw_C44(i)
+       constitutive_phenopowerlaw_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_phenopowerlaw_C11(i)- &
+                                                                  constitutive_phenopowerlaw_C12(i))
    end select
    constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))

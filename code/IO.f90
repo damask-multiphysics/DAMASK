@@ -1056,6 +1056,10 @@ endfunction
    msg = 'Convergence not reached'
  case (610)
    msg = 'Stress loop not converged'
+
+ case (666)
+   msg = 'Memory leak detected'
+
  case (700)
    msg = 'Singular matrix in stress iteration'
  case default

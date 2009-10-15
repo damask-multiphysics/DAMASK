@@ -29,7 +29,7 @@ integer(pInt), parameter :: lattice_maxNinteraction = 20          ! max # of int
 integer(pInt), pointer, dimension(:,:) :: interactionSlipSlip, &
                                           interactionSlipTwin, &
                                           interactionTwinSlip, &
-										  interactionTwinTwin
+                                          interactionTwinTwin
 
 ! Schmid matrices, normal, shear direction and d x n of slip systems
 real(pReal), allocatable, dimension(:,:,:,:) :: lattice_Sslip
@@ -666,9 +666,13 @@ subroutine lattice_init()
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
  Nsections = IO_countSections(fileunit,material_partPhase)
-! lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
- lattice_Nstructure = Nsections                                                                   ! most conservative assumption
+ lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
+! lattice_Nstructure = Nsections + 2_pInt                                                ! most conservative assumption
  close(fileunit)
+
+ write(6,'(a16,x,i5)') '# sections:',Nsections
+ write(6,'(a16,x,i5)') '# structures:',lattice_Nstructure
+ write(6,*)
 
  allocate(lattice_Sslip(3,3,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip   = 0.0_pReal
  allocate(lattice_Sslip_v(6,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip_v = 0.0_pReal
@@ -703,6 +707,7 @@ function lattice_initializeStructure(struct,CoverA)
 !**************************************
  use prec, only: pReal,pInt
  use math
+ use IO, only: IO_error
  implicit none
 
  character(len=*) struct
@@ -818,17 +823,19 @@ function lattice_initializeStructure(struct,CoverA)
        interactionTwinSlip => lattice_hex_interactionTwinSlip
        interactionTwinTwin => lattice_hex_interactionTwinTwin
      endif
-   end select
+ end select
 
  if (processMe) then
-   do i = 1,myNslip                               ! store slip system vectors and Schmid matrix for my structure
+   if  (myStructure > lattice_Nstructure) &
+     call IO_error(666,0,0,0,'structure index too large')        ! check for memory leakage
+   do i = 1,myNslip                                              ! store slip system vectors and Schmid matrix for my structure
      lattice_sd(:,i,myStructure) = sd(:,i)
      lattice_st(:,i,myStructure) = st(:,i)
      lattice_sn(:,i,myStructure) = sn(:,i)
      lattice_Sslip(:,:,i,myStructure) = math_tensorproduct(sd(:,i),sn(:,i))
      lattice_Sslip_v(:,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Sslip(:,:,i,myStructure)))
    enddo
-   do i = 1,myNtwin                               ! store twin system vectors and Schmid plus rotation matrix for my structure
+   do i = 1,myNtwin                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
      lattice_td(:,i,myStructure) = td(:,i)
      lattice_tt(:,i,myStructure) = tt(:,i)
      lattice_tn(:,i,myStructure) = tn(:,i)

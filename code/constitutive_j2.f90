@@ -83,6 +83,9 @@ subroutine constitutive_j2_init(file)
  maxNinstance = count(phase_constitution == constitutive_j2_label)
  if (maxNinstance == 0) return
 
+ write(6,'(a16,x,i5)') '# instances:',maxNinstance
+ write(6,*)
+ 
  allocate(constitutive_j2_sizeDotState(maxNinstance)) ;                         constitutive_j2_sizeDotState = 0_pInt
  allocate(constitutive_j2_sizeState(maxNinstance)) ;                            constitutive_j2_sizeState = 0_pInt
  allocate(constitutive_j2_sizePostResults(maxNinstance));                       constitutive_j2_sizePostResults = 0_pInt

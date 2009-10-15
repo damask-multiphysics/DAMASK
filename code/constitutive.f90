@@ -55,7 +55,7 @@ subroutine constitutive_init()
  integer(pInt), parameter :: fileunit = 200
  integer(pInt) e,i,g,p,myInstance,myNgrains
  integer(pInt), dimension(:,:), pointer :: thisSize
- character(64), dimension(:,:), pointer :: thisOutput
+ character(len=64), dimension(:,:), pointer :: thisOutput
  logical knownConstitution
  
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
@@ -64,6 +64,7 @@ subroutine constitutive_init()
  call constitutive_phenopowerlaw_init(fileunit)
  call constitutive_dislotwin_init(fileunit)
  call constitutive_nonlocal_init(fileunit)
+
 
  close(fileunit)
 
