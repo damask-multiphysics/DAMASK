@@ -297,7 +297,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       CPFEM_calc_done = .false.
     
     ! --+>> RECYCLING OF FORMER RESULTS (MARC SPECIALTY) <<+--
-    case (6)
+    case (6,7)
+      if (mode == 7) CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
       ! do nothing
     
   end select

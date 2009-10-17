@@ -190,11 +190,15 @@ subroutine hypela2(&
 
    computationMode = 2                                                    ! calc + init
 !$OMP CRITICAL (write2out)
-   write (6,'(i6,x,i2,x,a)') n(1),nn,'first call special case..!'; call flush(6)
+   write (6,'(a,x,i6,x,i2)') '<< hypela2 >> first call special case..!',n(1),nn; call flush(6)
 !$OMP END CRITICAL (write2out)
 
  else if (lovl == 4) then                                                 ! Marc requires stiffness in separate call
-   computationMode = 6                                                    !  --> just return known value
+   if ( timinc < theDelta ) then                                          ! first after cutback
+     computationMode = 7                                                  !  --> restore tangent and return
+   else
+     computationMode = 6                                                  !  --> just return known value
+   endif
  else
    cp_en = mesh_FEasCP('elem',n(1))
    if (theTime < cptim .or. theInc /= inc) then                           ! reached convergence
@@ -203,17 +207,16 @@ subroutine hypela2(&
      terminallyIll = .false.
      cycleCounter = 0
 !$OMP CRITICAL (write2out)
-     write (6,'(i6,x,i2,x,a)') n(1),nn,'lastIncConverged + outdated'; call flush(6)
+     write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> lastIncConverged + outdated'; call flush(6)
 !$OMP END CRITICAL (write2out)
    endif
 
    if ( timinc < theDelta ) then                                          ! cutBack
      calcMode = .true.                                                    ! pretend last step was calculation
-     cutBack = .true.
      terminallyIll = .false.
      cycleCounter = 0
 !$OMP CRITICAL (write2out)
-     write(6,'(i6,x,i2,x,a)') n(1),nn,'cutback detected..!'; call flush(6)
+     write(6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> cutback detected..!'; call flush(6)
 !$OMP END CRITICAL (write2out)
    endif
 
@@ -232,13 +235,10 @@ subroutine hypela2(&
        computationMode = 2                                                ! plain calc
      endif
    else                                                                   ! now collect
-     if ( lastMode .ne. calcMode(nn,cp_en) ) call debug_info()            ! first after ping pong reports debugging
+     if ( lastMode /= calcMode(nn,cp_en) ) call debug_info()              ! first after ping pong reports debugging
      if ( lastIncConverged ) then
        lastIncConverged = .false.
        computationMode = 4                                                ! collect and backup Jacobian after convergence
-     elseif ( cutBack ) then
-       cutBack = .false.
-       computationMode = 5                                                ! collect and restore Jacobian after cutback
      else
        computationMode = 3                                                ! plain collect
      endif
