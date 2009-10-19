@@ -189,6 +189,9 @@ subroutine hypela2(&
  if ( .not. CPFEM_init_done ) then
 
    computationMode = 2                                                    ! calc + init
+   theTime  = cptim                                                       ! record current starting time
+   theDelta = timinc                                                      ! record current time increment
+   theInc   = inc                                                         ! record current increment number
 !$OMP CRITICAL (write2out)
    write (6,'(a,x,i6,x,i2)') '<< hypela2 >> first call special case..!',n(1),nn; call flush(6)
 !$OMP END CRITICAL (write2out)
@@ -244,13 +247,10 @@ subroutine hypela2(&
      endif
    endif
 
- endif
-
- if (lovl /= 4) then                                                      ! pass-by for Marc recycle
    theTime  = cptim                                                       ! record current starting time
    theDelta = timinc                                                      ! record current time increment
    theInc   = inc                                                         ! record current increment number
-   if (CPFEM_init_done) lastMode = calcMode(nn,cp_en)                     ! record calculationMode
+   lastMode = calcMode(nn,cp_en)                                          ! record calculationMode
  endif
 
  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,d,ngens)
