@@ -361,7 +361,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                 !$OMPEND CRITICAL (write2out)
               endif
               crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
-              crystallite_subStep(g,i,e) = min(1.0_pReal-crystallite_subFrac(g,i,e), 2.0_pReal * crystallite_subStep(g,i,e))
+              crystallite_subStep(g,i,e) = min(1.0_pReal-crystallite_subFrac(g,i,e), 1.0_pReal * crystallite_subStep(g,i,e))   ! keep cut back step size (no acceleration)
               if (crystallite_subStep(g,i,e) > subStepMin) then
                 crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)     ! wind forward...
                 crystallite_subF0(:,:,g,i,e)      = crystallite_subF(:,:,g,i,e)         ! ...def grad

@@ -256,7 +256,7 @@ subroutine materialpoint_stressAndItsTangent(&
      materialpoint_subF0(:,:,i,e) = materialpoint_F0(:,:,i,e)                                       ! ...def grad
 
      materialpoint_subFrac(i,e) = 0.0_pReal
-     materialpoint_subStep(i,e) = 2.0_pReal
+     materialpoint_subStep(i,e) = 8.0_pReal
      materialpoint_converged(i,e) = .false.                                                         ! pretend failed step of twice the required size
      materialpoint_requested(i,e) = .true.                                                          ! everybody requires calculation
    enddo
@@ -289,7 +289,7 @@ subroutine materialpoint_stressAndItsTangent(&
          
          ! calculate new subStep and new subFrac
          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
-         materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), 2.0_pReal * materialpoint_subStep(i,e))
+         materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), 1.0_pReal * materialpoint_subStep(i,e))   ! keep cut back time step (no acceleration)
                   
          ! still stepping needed
          if (materialpoint_subStep(i,e) > subStepMin) then
@@ -304,7 +304,7 @@ subroutine materialpoint_stressAndItsTangent(&
            if (homogenization_sizeState(i,e) > 0_pInt) &
              homogenization_subState0(i,e)%p = homogenization_state(i,e)%p                                ! ...internal state of homog scheme
            materialpoint_subF0(:,:,i,e) = materialpoint_subF(:,:,i,e)                                     ! ...def grad
-         elseif (materialpoint_requested(i,e)) then                                                           ! this materialpoint just converged                                      ! already at final time
+         elseif (materialpoint_requested(i,e)) then                                                       ! this materialpoint just converged    ! already at final time (??)
           !$OMP CRITICAL (distributionHomog)
             debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
               debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
@@ -314,7 +314,7 @@ subroutine materialpoint_stressAndItsTangent(&
        ! materialpoint didn't converge, so we need a cutback here
        else
        
-         materialpoint_subStep(i,e) = 0.5_pReal * materialpoint_subStep(i,e)
+         materialpoint_subStep(i,e) = 0.125_pReal * materialpoint_subStep(i,e)                            ! crystallite had severe trouble, so do a significant cutback
          
          if (debugger) then
            !$OMP CRITICAL (write2out)
