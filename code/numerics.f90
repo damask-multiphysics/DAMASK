@@ -84,7 +84,7 @@ subroutine numerics_init()
   rTol_crystalliteState   = 1.0e-6_pReal
   rTol_crystalliteTemperature = 1.0e-6_pReal
   rTol_crystalliteStress  = 1.0e-6_pReal
-  aTol_crystalliteStress  = 1.0e-8_pReal
+  aTol_crystalliteStress  = 1.0e+0_pReal
 
 !* RGC parameters: added <<<updated 31.07.2009>>>
   absTol_RGC              = 1.0e+3
