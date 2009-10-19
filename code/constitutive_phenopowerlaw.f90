@@ -216,6 +216,8 @@ subroutine constitutive_phenopowerlaw_init(file)
  allocate(constitutive_phenopowerlaw_relevantResistance(maxNinstance))
  constitutive_phenopowerlaw_relevantResistance = 0.0_pReal
 
+ write(6,*) '++++ allocating to cope with',maxNinstance
+
  rewind(file)
  line = ''
  section = 0
@@ -399,7 +401,7 @@ subroutine constitutive_phenopowerlaw_init(file)
          constitutive_phenopowerlaw_Cslip_66(k,k,i) =     constitutive_phenopowerlaw_C11(i)
          constitutive_phenopowerlaw_Cslip_66(k+3,k+3,i) = constitutive_phenopowerlaw_C44(i)
        end forall
-     case(3)   ! hex
+     case(3:)   ! hex
        constitutive_phenopowerlaw_Cslip_66(1,1,i) = constitutive_phenopowerlaw_C11(i)
        constitutive_phenopowerlaw_Cslip_66(2,2,i) = constitutive_phenopowerlaw_C11(i)
        constitutive_phenopowerlaw_Cslip_66(3,3,i) = constitutive_phenopowerlaw_C33(i)
@@ -417,6 +419,13 @@ subroutine constitutive_phenopowerlaw_init(file)
    constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))
 
+  write(6,'(a,x,i3,x,a,x,i3)') 'phaseInstance',i,constitutive_phenopowerlaw_structureName(i),constitutive_phenopowerlaw_structure(i)
+  write(6,'(a,/,6(6(f10.3,x),/))') 'stiffness / GPa',constitutive_phenopowerlaw_Cslip_66(:,:,i)/1e9_pReal
+  write(6,'(a,x,f10.3)') 'c11',constitutive_phenopowerlaw_C11(i)/1e9
+  write(6,'(a,x,f10.3)') 'c12',constitutive_phenopowerlaw_C12(i)/1e9
+  write(6,'(a,x,f10.3)') 'c13',constitutive_phenopowerlaw_C13(i)/1e9
+  write(6,'(a,x,f10.3)') 'c33',constitutive_phenopowerlaw_C33(i)/1e9
+  write(6,'(a,x,f10.3)') 'c44',constitutive_phenopowerlaw_C44(i)/1e9
    do j = 1,lattice_maxNslipFamily
      do k = 1,constitutive_phenopowerlaw_Nslip(j,i)
        do l = 1,lattice_maxNslipFamily
