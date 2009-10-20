@@ -465,25 +465,25 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
 
  real(pReal), dimension(4+4,lattice_hex_Ntwin), parameter :: lattice_hex_systemTwin = &
  reshape((/&
-  0,  1, -1,  1,     0, -1,  1,  2, & ! <1011>{1012} Twin: shear 0.169 -1.26 compression
+  0,  1, -1,  1,     0, -1,  1,  2, & ! <-10.1>{10.2} shear = (3-(c/a)^2)/(sqrt(3) c/a)
  -1,  1,  0,  1,     1, -1,  0,  2, &
- -1,  0,  1,  1,     1,  0, -1,  2, &
+ -1,  0,  1,  1,     1,  0, -1,  2, & !!
   0, -1,  1,  1,     0,  1, -1,  2, &
   1, -1,  0,  1,    -1,  1,  0,  2, &
   1,  0, -1,  1,    -1,  0,  1,  2, &
-  2, -1, -1, -3,     2, -1, -1,  2, & ! <211-2>{2112} Twin: shear 0.224 1.19 tension
-  1,  1, -2, -3,     1,  1, -2,  2, &
+  2, -1, -1, -3,     2, -1, -1,  2, & ! <11.-3>{11.2} shear = 2((c/a)^2-2)/(3 c/a)
+  1,  1, -2, -3,     1,  1, -2,  2, & !!
  -1,  2, -1, -3,    -1,  2, -1,  2, &
  -2,  1,  1, -3,    -2,  1,  1,  2, &
  -1, -1,  2, -3,    -1, -1,  2,  2, &
   1, -2,  1, -3,     1, -2,  1,  2, &
- -2,  1,  1,  6,     2, -1, -1,  1, & ! <211-6>{2111} Twin: shear 0.628 -0.39 compression
- -1, -1,  2,  6,     1,  1, -2,  1, &
+ -2,  1,  1,  6,     2, -1, -1,  1, & ! <-1-1.6>{11.1} shear = 1/(c/a)
+ -1, -1,  2,  6,     1,  1, -2,  1, & !!
   1, -2,  1,  6,    -1,  2, -1,  1, &
   2, -1, -1,  6,    -2,  1,  1,  1, &
   1,  1, -2,  6,    -1, -1,  2,  1, &
  -1,  2, -1,  6,     1, -2,  1,  1, &
-  1,  0, -1, -2,     1,  0, -1,  1, & ! <101-2>{1011} Twin: shear 0.103 1.09 tension
+  1,  0, -1, -2,     1,  0, -1,  1, & !! <10.-2>{10.1} shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)
  -1,  0,  1, -2,    -1,  0,  1,  1, &
   0,  1, -1, -2,     0,  1, -1,  1, &
   0, -1,  1, -2,     0, -1,  1,  1, &
@@ -491,32 +491,32 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  -1,  1,  0, -2,    -1,  1,  0,  1  &
    /),(/4+4,lattice_hex_Ntwin/))                 !* Sort? Numbering of twin system follows Prof. Tom Bieler's scheme (to be consistent with his work); but numbering in data was restarted from 1 &
 
- real(pReal), dimension(lattice_hex_Ntwin), parameter :: lattice_hex_shearTwin = &
+ integer(pInt), dimension(lattice_hex_Ntwin), parameter :: lattice_hex_shearTwin = &    ! indicator to formula further below
  reshape((/&
- 0.169, &  ! <1011>{1012} Twin: shear 0.169 -1.26 tensile
- 0.169, &
- 0.169, &
- 0.169, &
- 0.169, &
- 0.169, &
- 0.224, &  ! <211-2>{2112} Twin: shear 0.224 1.19 compressive
- 0.224, &
- 0.224, &
- 0.224, &
- 0.224, &
- 0.224, &
- 0.628, &  ! <211-6>{2111} Twin: shear 0.628 -0.39 tensile
- 0.628, &
- 0.628, &
- 0.628, &
- 0.628, &
- 0.628, &
- 0.103, &  ! <101-2>{1011} Twin: shear 0.103 1.09 compressive
- 0.103, &
- 0.103, &
- 0.103, &
- 0.103, &
- 0.103  &
+ 1, &  ! {10.2}<-10.1>
+ 1, &
+ 1, &
+ 1, &
+ 1, &
+ 1, &
+ 2, &  ! {11.2}<11.-3>
+ 2, &
+ 2, &
+ 2, &
+ 2, &
+ 2, &
+ 3, &  ! {11.1}<-1-1.6>
+ 3, &
+ 3, &
+ 3, &
+ 3, &
+ 3, &
+ 4, &  ! {10.1}<10.-2>
+ 4, &
+ 4, &
+ 4, &
+ 4, &
+ 4  &
    /),(/lattice_hex_Ntwin/))
 
 !* four different interaction type matrix
@@ -809,14 +809,25 @@ function lattice_initializeStructure(struct,CoverA)
          hex_d(1) =  lattice_hex_systemTwin(1,i)*1.5_pReal
          hex_d(2) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*(0.5_pReal*dsqrt(3.0_pReal))
          hex_d(3) =  lattice_hex_systemTwin(4,i)*CoverA
-         hex_n(1) =  lattice_hex_systemTwin(4,i)
-         hex_n(2) = (lattice_hex_systemTwin(4,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/dsqrt(3.0_pReal)
+         hex_n(1) =  lattice_hex_systemTwin(5,i)
+         hex_n(2) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/dsqrt(3.0_pReal)
          hex_n(3) =  lattice_hex_systemTwin(8,i)/CoverA
 
          td(:,i) = hex_d/dsqrt(math_mul3x3(hex_d,hex_d))
          tn(:,i) = hex_n/dsqrt(math_mul3x3(hex_n,hex_n))
          tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
-         ts(i)   = lattice_hex_shearTwin(i)
+
+         select case(lattice_hex_shearTwin(i))                                     ! from Christian & Mahajan 1995 p.29
+           case (1)                                                                ! {10.2}<-10.1>
+                    ts(i) = (3.0_pReal-CoverA*CoverA)/dsqrt(3.0_pReal)/CoverA
+           case (2)                                                                ! {11.2}<11.-3>
+                    ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
+           case (3)                                                                ! {11.1}<-1-1.6>
+                    ts(i) = 1.0_pReal/CoverA
+           case (4)                                                                ! {10.1}<10.-2>
+                    ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/dsqrt(3.0_pReal)/CoverA
+         end select
+
        enddo
        interactionSlipSlip => lattice_hex_interactionSlipSlip
        interactionSlipTwin => lattice_hex_interactionSlipTwin
