@@ -188,6 +188,7 @@ endsubroutine
  enddo
  write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
  write(6,*)
+ call flush(6)
 
 
  endsubroutine

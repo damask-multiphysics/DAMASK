@@ -236,6 +236,7 @@ subroutine materialpoint_stressAndItsTangent(&
  write (6,'(a,/,3(3(f12.7,x)/))') 'F      of   1 1',materialpoint_F(1:3,:,1,1)
  write (6,'(a,/,3(3(f12.7,x)/))') 'Fp0    of 1 1 1',crystallite_Fp0(1:3,:,1,1,1)
  write (6,'(a,/,3(3(f12.7,x)/))') 'Lp0    of 1 1 1',crystallite_Lp0(1:3,:,1,1,1)
+ call flush(6)
 
 !$OMP PARALLEL DO
  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                 ! iterate over elements to be processed
@@ -284,6 +285,7 @@ subroutine materialpoint_stressAndItsTangent(&
              write(6,'(a21,f10.8,a34,f10.8,a37,/)') 'winding forward from ', &
                materialpoint_subFrac(i,e), ' to current materialpoint_subFrac ', &
                materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),' in materialpoint_stressAndItsTangent'
+             call flush(6)
            !$OMPEND CRITICAL (write2out)
          endif
          
@@ -320,6 +322,7 @@ subroutine materialpoint_stressAndItsTangent(&
            !$OMP CRITICAL (write2out)
              write(6,'(a82,f10.8,/)') 'cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep: ',&
                                        materialpoint_subStep(i,e)
+             call flush(6)
            !$OMPEND CRITICAL (write2out)
          endif
 
@@ -460,7 +463,7 @@ subroutine materialpoint_postResults(dt)
  use mesh,         only: mesh_element
  use material,     only: homogenization_Ngrains
  use constitutive, only: constitutive_sizePostResults, constitutive_postResults
- use crystallite
+ use crystallite,  only: crystallite_Nresults, crystallite_postResults
  implicit none
 
  real(pReal), intent(in) :: dt
@@ -476,13 +479,13 @@ subroutine materialpoint_postResults(dt)
        materialpoint_results(c+1,i,e) = d; c = c+1_pInt         ! tell size of homogenization results
        if (d > 0_pInt) then                                     ! any homogenization results to mention?
          materialpoint_results(c+1:c+d,i,e) = &                 ! tell homogenization results
-         homogenization_postResults(i,e);  c = c+d
+           homogenization_postResults(i,e);  c = c+d
        endif
        do g = 1,myNgrains                                       ! 
-         d = crystallite_Nresults+constitutive_sizePostResults(g,i,e)
+         d = crystallite_Nresults + constitutive_sizePostResults(g,i,e)
          materialpoint_results(c+1,i,e) = d; c = c+1_pInt       ! tell size of crystallite results
          materialpoint_results(c+1:c+d,i,e) = &                 ! tell crystallite results
-           crystallite_postResults(crystallite_Tstar_v(:,g,i,e),crystallite_Temperature(g,i,e),dt,g,i,e); c = c+d
+           crystallite_postResults(dt,g,i,e); c = c+d
        enddo
      enddo
    enddo

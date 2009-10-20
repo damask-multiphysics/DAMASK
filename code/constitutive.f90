@@ -205,6 +205,7 @@ subroutine constitutive_init()
  write(6,'(a32,x,7(i5,x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
  write(6,*)
  write(6,'(a32,x,7(i5,x))') 'maxSizeState:       ', constitutive_maxSizeState
+ write(6,'(a32,x,7(i5,x))') 'maxSizeDotState:    ', constitutive_maxSizeDotState
  write(6,'(a32,x,7(i5,x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
 
  return
@@ -293,7 +294,7 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)
      call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     call constitutive_nonlocal_microstructure(Temperature, Fe, Fp, constitutive_state, ipc, ip, el)
+     call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Fe, Fp, ipc, ip, el)
      
  end select
 
@@ -374,7 +375,7 @@ subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperatur
 !* Definition of variables
  integer(pInt), intent(in) :: ipc,ip,el
  real(pReal), intent(in) :: Temperature, subdt
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
+ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
  real(pReal), dimension(6), intent(in) :: Tstar_v, subTstar0_v
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
@@ -443,7 +444,7 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
 endfunction
 
 
-pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
+pure function constitutive_postResults(Tstar_v,subTstar0_v,Temperature,dt,subdt,ipc,ip,el)
 !*********************************************************************
 !* return array of constitutive results                              *
 !* INPUT:                                                            *
@@ -463,8 +464,8 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
 
 !* Definition of variables
  integer(pInt), intent(in) :: ipc,ip,el
- real(pReal), intent(in) :: dt,Temperature
- real(pReal), dimension(6), intent(in) :: Tstar_v
+ real(pReal), intent(in) :: dt, Temperature, subdt
+ real(pReal), dimension(6), intent(in) :: Tstar_v, subTstar0_v
  real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: constitutive_postResults
 
  constitutive_postResults = 0.0_pReal
@@ -480,10 +481,10 @@ pure function constitutive_postResults(Tstar_v,Temperature,dt,ipc,ip,el)
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
-     
+     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, subTstar0_v, Temperature, dt, subdt, constitutive_state,&
+                                                                  constitutive_subState0, constitutive_dotstate, ipc, ip, el)
  end select
-
+ 
 return
 
 endfunction

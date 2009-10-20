@@ -994,7 +994,7 @@ endfunction
  case (228)
    msg = 'Non-positive minimum stable dipole distance'
  case (229)
-   msg = 'Hardening interaction coefficients below one'
+   msg = 'Non-positive hardening interaction coefficients'
  case (230)
    msg = 'Non-positive atomic volume'
  case (231)
@@ -1129,6 +1129,7 @@ endfunction
    endif
  endif
  write(6,'(a38)') '+------------------------------------+'
+ call flush(6)
 
  endsubroutine
  
