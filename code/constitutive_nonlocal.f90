@@ -79,7 +79,7 @@ real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_
                                                           constitutive_nonlocal_forestProjectionScrew, &        ! matrix of forest projections of screw dislocations for each instance
                                                           constitutive_nonlocal_interactionMatrixSlipSlip       ! interaction matrix of the different slip systems for each instance    
 
-logical periodicBC = .false.
+logical :: periodicBC = .false.
 
 
 CONTAINS
