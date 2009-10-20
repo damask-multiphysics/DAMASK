@@ -216,8 +216,6 @@ subroutine constitutive_phenopowerlaw_init(file)
  allocate(constitutive_phenopowerlaw_relevantResistance(maxNinstance))
  constitutive_phenopowerlaw_relevantResistance = 0.0_pReal
 
- write(6,*) '++++ allocating to cope with',maxNinstance
-
  rewind(file)
  line = ''
  section = 0
@@ -419,13 +417,6 @@ subroutine constitutive_phenopowerlaw_init(file)
    constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))
 
-  write(6,'(a,x,i3,x,a,x,i3)') 'phaseInstance',i,constitutive_phenopowerlaw_structureName(i),constitutive_phenopowerlaw_structure(i)
-  write(6,'(a,/,6(6(f10.3,x),/))') 'stiffness / GPa',constitutive_phenopowerlaw_Cslip_66(:,:,i)/1e9_pReal
-  write(6,'(a,x,f10.3)') 'c11',constitutive_phenopowerlaw_C11(i)/1e9
-  write(6,'(a,x,f10.3)') 'c12',constitutive_phenopowerlaw_C12(i)/1e9
-  write(6,'(a,x,f10.3)') 'c13',constitutive_phenopowerlaw_C13(i)/1e9
-  write(6,'(a,x,f10.3)') 'c33',constitutive_phenopowerlaw_C33(i)/1e9
-  write(6,'(a,x,f10.3)') 'c44',constitutive_phenopowerlaw_C44(i)/1e9
    do j = 1,lattice_maxNslipFamily
      do k = 1,constitutive_phenopowerlaw_Nslip(j,i)
        do l = 1,lattice_maxNslipFamily
@@ -792,10 +783,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
  do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
    do i = 1,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
      j = j+1_pInt
-     forall (k=1:nSlip) N_slipslip(k) = constitutive_phenopowerlaw_hardeningMatrix_slipslip(j,k,matID) * &
-                                        abs(gdot_slip(k))                    ! dot gamma_slip
-     forall (k=1:nTwin) N_sliptwin(k) = constitutive_phenopowerlaw_hardeningMatrix_sliptwin(j,k,matID) * &
-                                        gdot_twin(k)                         ! dot gamma_twin
+     N_slipslip = constitutive_phenopowerlaw_hardeningMatrix_slipslip(j,:,matID) * abs(gdot_slip)   ! dot gamma_slip
+     N_sliptwin = constitutive_phenopowerlaw_hardeningMatrix_sliptwin(j,:,matID) * gdot_twin        ! dot gamma_twin
      constitutive_phenopowerlaw_dotState(j) = h_slipslip(j)*sum(N_slipslip) + &  ! evolution of slip resistance j
                                               h_sliptwin(j)*sum(N_sliptwin)
      constitutive_phenopowerlaw_dotState(index_Gamma) = constitutive_phenopowerlaw_dotState(index_Gamma) + &
@@ -808,10 +797,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
    index_myFamily = sum(lattice_NtwinSystem(1:f-1,structID))                 ! at which index starts my family
    do i = 1,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
      j = j+1_pInt
-     forall (k=1:nSlip) N_twinslip(k) = constitutive_phenopowerlaw_hardeningMatrix_twinslip(j,k,matID) * &
-                                        gdot_slip(k)                         ! dot gamma_slip
-     forall (k=1:nTwin) N_twintwin(k) = constitutive_phenopowerlaw_hardeningMatrix_twintwin(j,k,matID) * &
-                                        gdot_twin(k)                         ! dot gamma_twin
+     N_twinslip = constitutive_phenopowerlaw_hardeningMatrix_twinslip(j,:,matID) * abs(gdot_slip)   ! dot gamma_slip
+     N_twintwin = constitutive_phenopowerlaw_hardeningMatrix_twintwin(j,:,matID) * gdot_twin        ! dot gamma_twin
      constitutive_phenopowerlaw_dotState(j+nSlip) = h_twinslip(j)*sum(N_twinslip) + &  ! evolution of twin resistance j
                                                     h_twintwin(j)*sum(N_twintwin)
      constitutive_phenopowerlaw_dotState(index_F) = constitutive_phenopowerlaw_dotState(index_F) + &
