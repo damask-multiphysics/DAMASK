@@ -156,7 +156,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  2,1,2,1,2,2,2,2,1,1,1,1, &
  2,1,2,1,2,2,2,2,1,1,1,1, &
  2,1,2,1,2,2,2,2,1,1,1,1  &
-   /),(/lattice_fcc_Nslip,lattice_fcc_Ntwin/))
+   /),(/lattice_fcc_Ntwin,lattice_fcc_Nslip/))
 
  integer(pInt), target, dimension(lattice_fcc_Nslip,lattice_fcc_Ntwin) :: lattice_fcc_interactionTwinSlip = 0
 
