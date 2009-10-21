@@ -477,33 +477,6 @@ subroutine constitutive_phenopowerlaw_init(file)
        enddo; enddo
 
    enddo; enddo
-   
-   write(6,*)
-   write(6,'(a,x,i)') 'instance',i
-   
-   write(6,*)
-   write(6,'(a)') 'SlipSlip'
-   do j = 1,24!constitutive_phenopowerlaw_totalNslip(i)
-     write(6,'(i2,x,24(f6.2,x))') j,constitutive_phenopowerlaw_hardeningMatrix_slipslip(:,j,i)
-   enddo
-
-   write(6,*)
-   write(6,'(a)') 'SlipTwin'
-   do j = 1,constitutive_phenopowerlaw_totalNslip(i)
-     write(6,'(i2,x,24(f6.2,x))') j,constitutive_phenopowerlaw_hardeningMatrix_sliptwin(:,j,i)
-   enddo
-
-   write(6,*)
-   write(6,'(a)') 'TwinSlip'
-   do j = 1,constitutive_phenopowerlaw_totalNtwin(i)
-     write(6,'(i2,x,24(f6.2,x))') j,constitutive_phenopowerlaw_hardeningMatrix_twinslip(:,j,i)
-   enddo
-
-   write(6,*)
-   write(6,'(a)') 'TwinTwin'
-   do j = 1,constitutive_phenopowerlaw_totalNtwin(i)
-     write(6,'(i2,x,24(f6.2,x))') j,constitutive_phenopowerlaw_hardeningMatrix_twintwin(:,j,i)
-   enddo
 
  enddo
 
