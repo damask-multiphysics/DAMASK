@@ -125,6 +125,11 @@ subroutine homogenization_RGC_init(&
        case('magnitudemismatch')
          homogenization_RGC_sizePostResults(i) = &
          homogenization_RGC_sizePostResults(i) + 1
+       case('grainsdeformation')
+         homogenization_RGC_sizePostResults(i) = &
+         homogenization_RGC_sizePostResults(i) + 9_pInt*(homogenization_RGC_Ngrains(1,i)* &
+                                                         homogenization_RGC_Ngrains(2,i)* &
+                                                         homogenization_RGC_Ngrains(3,i))
      end select
    enddo
 
@@ -582,7 +587,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
 
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains, homogenization_Ngrains,homogenization_typeInstance
+ use material, only: homogenization_maxNgrains,homogenization_Ngrains,homogenization_typeInstance
  use math, only: math_Plain3333to99
  implicit none
 
@@ -652,6 +657,7 @@ endfunction
 ! return array of homogenization results for post file inclusion
 !********************************************************************
 pure function homogenization_RGC_postResults(&
+   F, &             ! array of current grain deformation gradients
    state, &         ! my state
    ip, &            ! my integration point
    el  &            ! my element
@@ -659,14 +665,16 @@ pure function homogenization_RGC_postResults(&
 
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
- use material, only: homogenization_typeInstance,homogenization_Noutput,homogenization_Ngrains
+ use material, only: homogenization_typeInstance,homogenization_Noutput,homogenization_Ngrains, &
+                     homogenization_maxNgrains
  implicit none
 
 !* Definition of variables
+ real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in) :: F
  type(p_vec), intent(in) :: state
  integer(pInt), intent(in) :: ip,el
 !
- integer(pInt) homID,o,c,nIntFaceTot
+ integer(pInt) homID,o,c,nIntFaceTot,i,j,k
  real(pReal), dimension(homogenization_RGC_sizePostResults(homogenization_typeInstance(mesh_element(3,el)))) :: &
    homogenization_RGC_postResults
 
@@ -688,6 +696,15 @@ pure function homogenization_RGC_postResults(&
      case('magnitudemismatch')
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+3)
        c = c + 1
+     case('grainsdeformation')
+       do k = 1,homogenization_RGC_Ngrains(1,homID)*homogenization_RGC_Ngrains(2,homID)*homogenization_RGC_Ngrains(3,homID)
+         do i = 1,3
+         do j = 1,3
+           homogenization_RGC_postResults(c+1) = F(i,j,k)
+           c = c + 1
+         enddo
+         enddo
+       enddo
    end select
  enddo
  

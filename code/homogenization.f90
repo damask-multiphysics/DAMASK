@@ -662,11 +662,12 @@ function homogenization_postResults(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,     only: pReal,pInt
- use mesh,     only: mesh_element
- use material, only: homogenization_type
+ use prec,        only: pReal,pInt
+ use mesh,        only: mesh_element
+ use material,    only: homogenization_type
+ use crystallite, only: crystallite_partionedF
  use homogenization_isostrain
- use homogenization_RGC             ! RGC homogenization added <<<updated 31.07.2009>>>
+ use homogenization_RGC             ! RGC homogenization added <<<updated 22.10.2009>>>
  implicit none
 
 !* Definition of variables
@@ -678,9 +679,10 @@ function homogenization_postResults(&
 !* isostrain
    case (homogenization_isostrain_label)
      homogenization_postResults = homogenization_isostrain_postResults(homogenization_state(ip,el),ip,el)
-!* RGC homogenization added <<<updated 31.07.2009>>>
+!* RGC homogenization added <<<updated 22.10.2009>>>
    case (homogenization_RGC_label)
-     homogenization_postResults = homogenization_RGC_postResults(homogenization_state(ip,el),ip,el)
+     homogenization_postResults = homogenization_RGC_postResults(crystallite_partionedF(:,:,:,ip,el), &
+                                                                 homogenization_state(ip,el),ip,el)
  end select
 
  return
