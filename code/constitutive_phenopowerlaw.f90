@@ -344,10 +344,11 @@ subroutine constitutive_phenopowerlaw_init(file)
        any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(211)
    if (    constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal .and. &
        any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(212)
-   if (constitutive_phenopowerlaw_relevantResistance(i) <= 0.0_pReal) call IO_error(242)
+   if (constitutive_phenopowerlaw_relevantResistance(i) <= 0.0_pReal) &
+     constitutive_phenopowerlaw_relevantResistance(i) = 1.0_pReal              ! default absolute tolerance 1 Pa
 
  enddo
-          
+
  allocate(constitutive_phenopowerlaw_hardeningMatrix_slipslip(maxval(constitutive_phenopowerlaw_totalNslip),&
                                                               maxval(constitutive_phenopowerlaw_totalNslip),&
                                                               maxNinstance))
@@ -655,7 +656,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
      tau_slip(j)  = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,structID)) 
      gdot_slip(j) = constitutive_phenopowerlaw_gdot0_slip(matID)*(abs(tau_slip(j))/state(ipc,ip,el)%p(j))**&
                     constitutive_phenopowerlaw_n_slip(matID)*sign(1.0_pReal,tau_slip(j))
-     Lp = Lp + (1.0_pReal-state(ipc,ip,el)%p(index_F))*&          ! 1-F
+     Lp = Lp + (1.0_pReal-state(ipc,ip,el)%p(index_F))*&                     ! 1-F
                gdot_slip(j)*lattice_Sslip(:,:,index_myFamily+i,structID)
 
 !* Calculation of the tangent of Lp
@@ -679,7 +680,8 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
 !* Calculation of Lp
 
      tau_twin(j)  = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,structID)) 
-     gdot_twin(j) = constitutive_phenopowerlaw_gdot0_twin(matID)*&
+     gdot_twin(j) = (1.0_pReal-state(ipc,ip,el)%p(index_F))*&                ! 1-F
+                    constitutive_phenopowerlaw_gdot0_twin(matID)*&
                     (abs(tau_twin(j))/state(ipc,ip,el)%p(nSlip+j))**&
                     constitutive_phenopowerlaw_n_twin(matID)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
      Lp = Lp + gdot_twin(j)*lattice_Stwin(:,:,index_myFamily+i,structID)
@@ -724,7 +726,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 !* Definition of variables
  integer(pInt) ipc,ip,el
  integer(pInt) matID,nSlip,nTwin,f,i,j,k, structID,index_Gamma,index_F,index_myFamily 
- real(pReal) Temperature,c_slipslip,c_sliptwin,c_twinslip,c_twintwin, ssat
+ real(pReal) Temperature,c_slipslip,c_sliptwin,c_twinslip,c_twintwin, ssat_offset
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  real(pReal), dimension(6) :: Tstar_v
  real(pReal), dimension(constitutive_phenopowerlaw_totalNslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
@@ -758,15 +760,16 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 
 !-- add system-dependent part and calculate dot gammas
 
+ ssat_offset = constitutive_phenopowerlaw_spr(matID)*dsqrt(state(ipc,ip,el)%p(index_F))
  j = 0_pInt
  do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
    index_myFamily = sum(lattice_NslipSystem(1:f-1,structID))                 ! at which index starts my family
-   ssat = constitutive_phenopowerlaw_tausat_slip(f,matID) + &
-          constitutive_phenopowerlaw_spr(matID)*dsqrt(state(ipc,ip,el)%p(index_F))
    do i = 1,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
      j = j+1_pInt
-     h_slipslip(j) = c_slipslip*(1.0_pReal-state(ipc,ip,el)%p(j)/ssat)**constitutive_phenopowerlaw_w0_slip(matID)
-                                                                             ! system-dependent prefactor for slip--slip interaction
+     h_slipslip(j) = c_slipslip*(1.0_pReal-state(ipc,ip,el)%p(j) / &         ! system-dependent prefactor for slip--slip interaction
+
+                                 (constitutive_phenopowerlaw_tausat_slip(f,matID)+ssat_offset))** &
+                                constitutive_phenopowerlaw_w0_slip(matID)
                      
      h_sliptwin(j) = c_sliptwin                                              ! no system-dependent part
      
@@ -789,7 +792,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 !* Calculation of dot vol frac
 
      tau_twin(j)  = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,structID)) 
-     gdot_twin(j) = constitutive_phenopowerlaw_gdot0_twin(matID)*&
+     gdot_twin(j) = (1.0_pReal-state(ipc,ip,el)%p(index_F))*&                ! 1-F
+                    constitutive_phenopowerlaw_gdot0_twin(matID)*&
                     (abs(tau_twin(j))/state(ipc,ip,el)%p(nSlip+j))**&
                     constitutive_phenopowerlaw_n_twin(matID)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
     enddo
@@ -870,7 +874,7 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
 !*********************************************************************
  use prec, only: pReal,pInt,p_vec
  use lattice, only: lattice_Sslip_v,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
-					lattice_NslipSystem,lattice_NtwinSystem   
+                    lattice_NslipSystem,lattice_NtwinSystem   
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
  implicit none
@@ -941,7 +945,8 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
          do i = 1,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
            j = j + 1_pInt
            tau = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,structID))
-           constitutive_phenopowerlaw_postResults(c+j) = constitutive_phenopowerlaw_gdot0_twin(matID)*&
+           constitutive_phenopowerlaw_postResults(c+j) = (1.0_pReal-state(ipc,ip,el)%p(index_F))*&          ! 1-F
+                                                         constitutive_phenopowerlaw_gdot0_twin(matID)*&
                                                          (abs(tau)/state(ipc,ip,el)%p(j+nSlip))**&
                                                          constitutive_phenopowerlaw_n_twin(matID)*max(0.0_pReal,sign(1.0_pReal,tau))
        enddo; enddo
