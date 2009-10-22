@@ -19,7 +19,7 @@ implicit none
 ! ****************************************************************
 ! *** General variables for the crystallite calculation        ***
 ! ****************************************************************
-integer(pInt), parameter :: crystallite_Nresults = 5_pInt                                    ! phaseID, volume, Euler angles 
+integer(pInt), parameter :: crystallite_Nresults = 14_pInt                                   ! phaseID, volume, Euler angles, def gradient
 
 real(pReal), dimension (:,:,:), allocatable ::          crystallite_dt, &                    ! requested time increment of each grain
                                                         crystallite_subdt, &                 ! substepped time increment of each grain
@@ -1201,29 +1201,39 @@ function crystallite_postResults(&
  real(pReal), intent(in)::            dt                            ! time increment
 
  !*** output variables ***!
- real(pReal), dimension(crystallite_Nresults + constitutive_sizePostResults(g,i,e)) :: crystallite_postResults
+ real(pReal), dimension(1+crystallite_Nresults + 1+constitutive_sizePostResults(g,i,e)) :: crystallite_postResults
  
  !*** local variables ***!
  real(pReal), dimension(3,3) ::       U, R
+ integer(pInt)						  k,l,c
  logical error
-  
+
+ c = 0_pInt 
+ crystallite_postResults(c+1) = crystallite_Nresults; c = c+1_pInt         ! size of (hardwired) results
  if (crystallite_Nresults >= 2) then
-   crystallite_postResults(1) = material_phase(g,i,e)
-   crystallite_postResults(2) = material_volume(g,i,e)
+   crystallite_postResults(c+1) = material_phase(g,i,e)
+   crystallite_postResults(c+2) = material_volume(g,i,e)
+   c = c+2_pInt
  endif
  if (crystallite_Nresults >= 5) then
-   call math_pDecomposition(crystallite_Fe(:,:,g,i,e),U,R,error)               ! polar decomposition of Fe
+   call math_pDecomposition(crystallite_Fe(:,:,g,i,e),U,R,error)          ! polar decomposition of Fe
    if (error) then
      call IO_warning(650,e,i,g)
-     crystallite_postResults(3:5) = (/400.0,400.0,400.0/)                 ! fake orientation
+     crystallite_postResults(c+1:c+3) = (/400.0,400.0,400.0/)                 ! fake orientation
    else
-     crystallite_postResults(3:5) = math_RtoEuler(transpose(R))*inDeg     ! orientation
+     crystallite_postResults(c+1:c+3) = math_RtoEuler(transpose(R))*inDeg     ! orientation
    endif
+   c = c+3_pInt
+ endif
+ if (crystallite_Nresults >= 14) then                                     ! deformation gradient
+   forall (k=0:2,l=0:2) crystallite_postResults(c+1+k*3+l) = crystallite_partionedF(k+1,l+1,g,i,e)
+   c = c+9_pInt
  endif
  
- crystallite_postResults(crystallite_Nresults+1:crystallite_Nresults+constitutive_sizePostResults(g,i,e)) = &
+ crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e); c = c+1_pInt  ! size of constitutive results
+ crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = &
    constitutive_postResults(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Temperature(g,i,e), &
-                            dt, crystallite_subdt(g,i,e), g, i, e)
+                            dt, crystallite_subdt(g,i,e), g, i, e); c = c+constitutive_sizePostResults(g,i,e)
  
  return 
  

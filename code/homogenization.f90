@@ -133,7 +133,7 @@ subroutine homogenization_init(Temperature)
  homogenization_maxSizePostResults = maxval(homogenization_sizePostResults)
 
  materialpoint_sizeResults = 1+ 1+homogenization_maxSizePostResults + &    ! grain count, homogSize, homogResult
-          homogenization_maxNgrains*(1+crystallite_Nresults+constitutive_maxSizePostResults)
+          homogenization_maxNgrains*(1+crystallite_Nresults+1+constitutive_maxSizePostResults)
  allocate(materialpoint_results(  materialpoint_sizeResults, mesh_maxNips,mesh_NcpElems))
 
 
@@ -481,9 +481,8 @@ subroutine materialpoint_postResults(dt)
          materialpoint_results(c+1:c+d,i,e) = &                 ! tell homogenization results
            homogenization_postResults(i,e);  c = c+d
        endif
-       do g = 1,myNgrains                                       ! 
-         d = crystallite_Nresults + constitutive_sizePostResults(g,i,e)
-         materialpoint_results(c+1,i,e) = d; c = c+1_pInt       ! tell size of crystallite results
+       do g = 1,myNgrains                                       ! loop over all grains
+         d = 1+crystallite_Nresults + 1+constitutive_sizePostResults(g,i,e)
          materialpoint_results(c+1:c+d,i,e) = &                 ! tell crystallite results
            crystallite_postResults(dt,g,i,e); c = c+d
        enddo
@@ -662,12 +661,11 @@ function homogenization_postResults(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,        only: pReal,pInt
- use mesh,        only: mesh_element
- use material,    only: homogenization_type
- use crystallite, only: crystallite_partionedF
+ use prec,     only: pReal,pInt
+ use mesh,     only: mesh_element
+ use material, only: homogenization_type
  use homogenization_isostrain
- use homogenization_RGC             ! RGC homogenization added <<<updated 22.10.2009>>>
+ use homogenization_RGC             ! RGC homogenization added <<<updated 31.07.2009>>>
  implicit none
 
 !* Definition of variables
@@ -679,10 +677,9 @@ function homogenization_postResults(&
 !* isostrain
    case (homogenization_isostrain_label)
      homogenization_postResults = homogenization_isostrain_postResults(homogenization_state(ip,el),ip,el)
-!* RGC homogenization added <<<updated 22.10.2009>>>
+!* RGC homogenization added <<<updated 31.07.2009>>>
    case (homogenization_RGC_label)
-     homogenization_postResults = homogenization_RGC_postResults(crystallite_partionedF(:,:,:,ip,el), &
-                                                                 homogenization_state(ip,el),ip,el)
+     homogenization_postResults = homogenization_RGC_postResults(homogenization_state(ip,el),ip,el)
  end select
 
  return
