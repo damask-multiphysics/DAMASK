@@ -226,7 +226,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
   !*** variables and functions from other modules ***!
   use prec, only:                                       pInt, &
                                                         pReal
-  use numerics, only:                                   subStepMin, &
+  use numerics, only:                                   subStepMinCryst, &
                                                         pert_Fg, &
                                                         nState, &
                                                         nCryst
@@ -337,7 +337,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
   NiterationCrystallite = 0_pInt
 
-  do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMin))      ! cutback loop for crystallites
+  do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinCryst))      ! cutback loop for crystallites
    
     if (any(.not. crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) .and. &         ! any non-converged grain
             .not. crystallite_localConstitution(:,:,FEsolving_execELem(1):FEsolving_execElem(2))) ) &    ! has non-local constitution?
@@ -358,12 +358,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                     crystallite_subFrac(g,i,e),' to current crystallite_subfrac ', &
                     crystallite_subFrac(g,i,e)+crystallite_subStep(g,i,e),' in crystallite_stressAndItsTangent'
                   write(6,*)
-                  call flush(6)
                 !$OMPEND CRITICAL (write2out)
               endif
               crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
               crystallite_subStep(g,i,e) = min(1.0_pReal-crystallite_subFrac(g,i,e), 1.0_pReal * crystallite_subStep(g,i,e))   ! keep cut back step size (no acceleration)
-              if (crystallite_subStep(g,i,e) > subStepMin) then
+              if (crystallite_subStep(g,i,e) > subStepMinCryst) then
                 crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)     ! wind forward...
                 crystallite_subF0(:,:,g,i,e)      = crystallite_subF(:,:,g,i,e)         ! ...def grad
                 crystallite_subFp0(:,:,g,i,e)     = crystallite_Fp(:,:,g,i,e)           ! ...plastic def grad
@@ -389,12 +388,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   write(6,'(a78,f10.8)') 'cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
                                          crystallite_subStep(g,i,e)
                   write(6,*)
-                  call flush(6)
                 !$OMPEND CRITICAL (write2out)
               endif
             endif
 
-            crystallite_onTrack(g,i,e) = crystallite_subStep(g,i,e) > subStepMin      ! still on track or already done (beyond repair)
+            crystallite_onTrack(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst ! still on track or already done (beyond repair)
             if (crystallite_onTrack(g,i,e)) then                                      ! specify task (according to substep)
               crystallite_subF(:,:,g,i,e)  = crystallite_subF0(:,:,g,i,e) + &
                                              crystallite_subStep(g,i,e) * &
@@ -457,7 +455,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
     if (debugger) then
       !$OMP CRITICAL (write2out)
         write(6,*) count(crystallite_onTrack(1,:,:)),'IPs onTrack after preguess for state'
-        call flush(6)
       !$OMPEND CRITICAL (write2out)
     endif
    
@@ -492,7 +489,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       if (debugger) then
         !$OMP CRITICAL (write2out)
           write(6,*) count(crystallite_onTrack(1,:,:)),'IPs onTrack after stress integration'
-          call flush(6)
         !$OMPEND CRITICAL (write2out)
       endif
             
@@ -561,7 +557,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           write(6,*) count(crystallite_converged(1,:,:)),'IPs converged'
           write(6,*) count(crystallite_todo(1,:,:)),'IPs todo'
           write(6,*)
-          call flush(6)
         !$OMPEND CRITICAL (write2out)
       endif
       
@@ -628,7 +623,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   write (6,'(a,/,3(3(f12.8,x)/))') '   Fp of 1 1 1',myFp(1:3,:)
                   write (6,'(a,/,3(3(f12.8,x)/))') '   Lp of 1 1 1',myLp(1:3,:)
                   write (6,'(a,/,16(6(e12.4,x)/),2(f12.4,x))') 'state of 1 1 1',myState/1e6
-                  call flush(6)
                   !$OMPEND CRITICAL (write2out)
                 endif
                 do k = 1,3                                                              ! perturbation...
@@ -641,7 +635,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                       write (6,'(i1,x,i1)') k,l
                       write (6,*) '============='
                       write (6,'(a,/,3(3(f12.6,x)/))') 'pertF of 1 1 1',crystallite_subF(1:3,:,g,i,e)
-                      call flush(6)
                       !$OMPEND CRITICAL (write2out)
                     endif
                     onTrack = .true.
@@ -667,7 +660,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                         write (6,'(a,/,3(3(f12.4,x)/))') 'DP    of 1 1 1',(crystallite_P(1:3,:,g,i,e)-myP(1:3,:))/1e6
                         write (6,'(a,/,16(6(e12.4,x)/),/,2(f12.4,x))') 'state  of 1 1 1',constitutive_state(g,i,e)%p/1e6
                         write (6,'(a,/,16(6(e12.4,x)/),/,2(f12.4,x))') 'Dstate of 1 1 1',(constitutive_state(g,i,e)%p-myState)/1e6
-                        call flush(6)
                         !$OMPEND CRITICAL (write2out)
                       endif
                     enddo
@@ -762,7 +754,6 @@ endsubroutine
    if (debugger) then
      !$OMP CRITICAL (write2out)
        write(6,*) '::: updateState encountered NaN',g,i,e
-       call flush(6)
      !$OMPEND CRITICAL (write2out)
    endif   
    return
@@ -788,7 +779,6 @@ endsubroutine
      write(6,*)
      write(6,'(a,/,12(f12.5,x))') 'resid tolerance',abs(residuum/rTol_crystalliteState/constitutive_state(g,i,e)%p(1:mySize))
      write(6,*)
-     call flush(6)
    !$OMPEND CRITICAL (write2out)
  endif
  return
@@ -846,7 +836,6 @@ endsubroutine
    crystallite_updateTemperature = .false.                                  ! indicate update failed
    !$OMP CRITICAL (write2out)
    write(6,*) '::: updateTemperature encountered NaN',g,i,e
-   call flush(6)
    !$OMPEND CRITICAL (write2out)
    return
  endif
@@ -974,7 +963,6 @@ endsubroutine
        write(6,*) '::: integrateStress failed on invFp_current inversion',g,i,e
        write(6,*)
        write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
-       call flush(6)
      !$OMPEND CRITICAL (write2out)
    endif
    return
@@ -1004,7 +992,6 @@ LpLoop: do
        !$OMP CRITICAL (write2out)
          write(6,*) '::: integrateStress reached loop limit',g,i,e
          write(6,*)
-         call flush(6)
        !$OMPEND CRITICAL (write2out)
      endif
      return
@@ -1033,7 +1020,6 @@ LpLoop: do
        write(6,*)
        write(6,'(a19,3(i3,x),/,3(3(f20.7,x)/))') 'Lp_constitutive at ',g,i,e,Lp_constitutive
        write(6,'(a11,3(i3,x),/,3(3(f20.7,x)/))') 'Lpguess at ',g,i,e,Lpguess
-       call flush(6)
      !$OMPEND CRITICAL (write2out)
    endif
 
@@ -1055,7 +1041,6 @@ LpLoop: do
      if (debugger) then 
        !$OMP CRITICAL (write2out)
          write(6,*) '::: integrateStress encountered NaN at iteration', NiterationStress,'at',g,i,e
-         call flush(6)
        !$OMPEND CRITICAL (write2out)
      endif
      return
@@ -1095,7 +1080,6 @@ LpLoop: do
              write(6,'(a20,3(i3,x),/,9(9(f15.3,x)/))') 'dLpdT_constitutive at ',g,i,e,dLpdT_constitutive
              write(6,'(a19,3(i3,x),/,3(3(f20.7,x)/))') 'Lp_constitutive at ',g,i,e,Lp_constitutive
              write(6,'(a11,3(i3,x),/,3(3(f20.7,x)/))') 'Lpguess at ',g,i,e,Lpguess
-             call flush(6)
            !$OMPEND CRITICAL (write2out)
          endif
          return
@@ -1126,7 +1110,6 @@ LpLoop: do
        write(6,*) '::: integrateStress failed on invFp_new inversion at iteration', NiterationStress
        write(6,*)
        write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
-       call flush(6)
      !$OMPEND CRITICAL (write2out)
    endif
    return
@@ -1155,7 +1138,6 @@ LpLoop: do
    write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',crystallite_P(:,:,g,i,e)/1e6
    write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',crystallite_Lp(:,:,g,i,e)
    write(6,'(a,/,3(3(f12.7,x)/))') 'Fp',crystallite_Fp(:,:,g,i,e)
-   call flush(6)
    !$OMP CRITICAL (write2out)
  endif
 

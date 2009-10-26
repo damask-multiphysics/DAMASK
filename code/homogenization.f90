@@ -187,7 +187,7 @@ subroutine materialpoint_stressAndItsTangent(&
 
  use prec, only:          pInt, &
                           pReal
- use numerics, only:      subStepMin, &
+ use numerics, only:      subStepMinHomog, &
                           nHomog, &
                           nMPstate
  use FEsolving, only:     FEsolving_execElem, &
@@ -236,7 +236,6 @@ subroutine materialpoint_stressAndItsTangent(&
  write (6,'(a,/,3(3(f12.7,x)/))') 'F      of   1 1',materialpoint_F(1:3,:,1,1)
  write (6,'(a,/,3(3(f12.7,x)/))') 'Fp0    of 1 1 1',crystallite_Fp0(1:3,:,1,1,1)
  write (6,'(a,/,3(3(f12.7,x)/))') 'Lp0    of 1 1 1',crystallite_Lp0(1:3,:,1,1,1)
- call flush(6)
 
 !$OMP PARALLEL DO
  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                 ! iterate over elements to be processed
@@ -268,7 +267,7 @@ subroutine materialpoint_stressAndItsTangent(&
  
 ! ------ cutback loop ------
 
- do while (any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMin))  ! cutback loop for material points
+ do while (any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog))  ! cutback loop for material points
 
 !    write(6,'(a,/,125(8(f8.5,x),/))') 'mp_subSteps',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2))
 !$OMP PARALLEL DO
@@ -285,7 +284,6 @@ subroutine materialpoint_stressAndItsTangent(&
              write(6,'(a21,f10.8,a34,f10.8,a37,/)') 'winding forward from ', &
                materialpoint_subFrac(i,e), ' to current materialpoint_subFrac ', &
                materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),' in materialpoint_stressAndItsTangent'
-             call flush(6)
            !$OMPEND CRITICAL (write2out)
          endif
          
@@ -294,7 +292,7 @@ subroutine materialpoint_stressAndItsTangent(&
          materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), 1.0_pReal * materialpoint_subStep(i,e))   ! keep cut back time step (no acceleration)
                   
          ! still stepping needed
-         if (materialpoint_subStep(i,e) > subStepMin) then
+         if (materialpoint_subStep(i,e) > subStepMinHomog) then
          
            ! wind forward grain starting point of...
            crystallite_partionedTemperature0(1:myNgrains,i,e) = crystallite_Temperature(1:myNgrains,i,e)  ! ...temperatures
@@ -322,7 +320,6 @@ subroutine materialpoint_stressAndItsTangent(&
            !$OMP CRITICAL (write2out)
              write(6,'(a82,f10.8,/)') 'cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep: ',&
                                        materialpoint_subStep(i,e)
-             call flush(6)
            !$OMPEND CRITICAL (write2out)
          endif
 
@@ -337,7 +334,7 @@ subroutine materialpoint_stressAndItsTangent(&
        
        endif
      
-       materialpoint_requested(i,e) = materialpoint_subStep(i,e) > subStepMin
+       materialpoint_requested(i,e) = materialpoint_subStep(i,e) > subStepMinHomog
        if (materialpoint_requested(i,e)) then
          materialpoint_subF(:,:,i,e) = materialpoint_subF0(:,:,i,e) + &
                                        materialpoint_subStep(i,e) * (materialpoint_F(:,:,i,e) - materialpoint_F0(:,:,i,e))
@@ -349,7 +346,7 @@ subroutine materialpoint_stressAndItsTangent(&
 !$OMP END PARALLEL DO
 
 !* Checks for cutback/substepping loops: added <<<updated 31.07.2009>>>
- ! write (6,'(a,/,8(L,x))') 'MP exceeds substep min',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMin
+ ! write (6,'(a,/,8(L,x))') 'MP exceeds substep min',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog
  ! write (6,'(a,/,8(L,x))') 'MP requested',materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2))
  ! write (6,'(a,/,8(f6.4,x))') 'MP subFrac',materialpoint_subFrac(:,FEsolving_execELem(1):FEsolving_execElem(2))
  ! write (6,'(a,/,8(f6.4,x))') 'MP subStep',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2))

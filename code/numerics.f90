@@ -9,14 +9,15 @@ implicit none
 character(len=64), parameter :: numerics_configFile = 'numerics.config' ! name of configuration file
 integer(pInt)                   iJacoStiffness, &                       ! frequency of stiffness update
                                 iJacoLpresiduum, &                      ! frequency of Jacobian update of residuum in Lp
-                                nHomog, &                               ! homogenization loop limit
+                                nHomog, &                               ! homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
                                 nMPstate, &                             ! materialpoint state loop limit
-                                nCryst, &                               ! crystallite loop limit (only for debugging info, real loop limit is "subStepMin")
+                                nCryst, &                               ! crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
                                 nState, &                               ! state loop limit
                                 nStress                                 ! stress loop limit
 real(pReal)                     relevantStrain, &                       ! strain increment considered significant
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
-                                subStepMin, &                           ! minimum (relative) size of sub-step allowed during cutback in crystallite
+                                subStepMinCryst, &                      ! minimum (relative) size of sub-step allowed during cutback in crystallite
+                                subStepMinHomog, &                      ! minimum (relative) size of sub-step allowed during cutback in homogenization
                                 rTol_crystalliteState, &                ! relative tolerance in crystallite state loop 
                                 rTol_crystalliteTemperature, &          ! relative tolerance in crystallite temperature loop 
                                 rTol_crystalliteStress, &               ! relative tolerance in crystallite stress loop
@@ -76,11 +77,12 @@ subroutine numerics_init()
   iJacoLpresiduum         = 1_pInt
   pert_Fg                 = 1.0e-6_pReal
   nHomog                  = 20_pInt
+  subStepMinHomog         = 1.0e-3_pReal
   nMPstate                = 10_pInt
   nCryst                  = 20_pInt
+  subStepMinCryst         = 1.0e-3_pReal
   nState                  = 10_pInt
   nStress                 = 40_pInt
-  subStepMin              = 1.0e-3_pReal
   rTol_crystalliteState   = 1.0e-6_pReal
   rTol_crystalliteTemperature = 1.0e-6_pReal
   rTol_crystalliteStress  = 1.0e-6_pReal
@@ -129,8 +131,10 @@ subroutine numerics_init()
               nState = IO_intValue(line,positions,2)
         case ('nstress')
               nStress = IO_intValue(line,positions,2)
-        case ('substepmin')
-              subStepMin = IO_floatValue(line,positions,2)
+        case ('substepmincryst')
+              subStepMinCryst = IO_floatValue(line,positions,2)
+        case ('substepminhomog')
+              subStepMinHomog = IO_floatValue(line,positions,2)
         case ('rtol_crystallitestate')
               rTol_crystalliteState = IO_floatValue(line,positions,2)
         case ('rtol_crystallitetemperature')
@@ -175,11 +179,12 @@ subroutine numerics_init()
   write(6,'(a24,x,i8)')   'iJacoLpresiduum:        ',iJacoLpresiduum
   write(6,'(a24,x,e8.1)') 'pert_Fg:                ',pert_Fg
   write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
+  write(6,'(a24,x,e8.1)') 'subStepMinHomog:        ',subStepMinHomog
   write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
   write(6,'(a24,x,i8)')   'nCryst:                 ',nCryst
+  write(6,'(a24,x,e8.1)') 'subStepMinCryst:        ',subStepMinCryst
   write(6,'(a24,x,i8)')   'nState:                 ',nState
   write(6,'(a24,x,i8)')   'nStress:                ',nStress
-  write(6,'(a24,x,e8.1)') 'subStepMin:             ',subStepMin
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteState:  ',rTol_crystalliteState
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
@@ -207,7 +212,8 @@ subroutine numerics_init()
   if (nCryst < 1_pInt)                      call IO_error(265)
   if (nState < 1_pInt)                      call IO_error(266)
   if (nStress < 1_pInt)                     call IO_error(267)
-  if (subStepMin <= 0.0_pReal)              call IO_error(268)
+  if (subStepMinCryst <= 0.0_pReal)         call IO_error(268)
+  if (subStepMinHomog <= 0.0_pReal)         call IO_error(268)
   if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(269)
   if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(276) !! oops !!
   if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(270)
