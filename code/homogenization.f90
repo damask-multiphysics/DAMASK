@@ -271,14 +271,14 @@ subroutine materialpoint_stressAndItsTangent(&
 
 !    write(6,'(a,/,125(8(f8.5,x),/))') 'mp_subSteps',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2))
 !$OMP PARALLEL DO
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)                                               ! iterate over elements to be processed
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)                                     ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                             ! iterate over IPs of this element to be processed
        
        debugger = (e == 1 .and. i == 1)
        
-       ! if our materialpoint converged then we are either finished or have to wind forward
-       if (materialpoint_converged(i,e)) then
+       ! if our materialpoint converged or consists of only one single grain then we are either finished or have to wind forward
+       if ( materialpoint_converged(i,e) .or. (myNgrains == 1_pInt .and. materialpoint_subStep(i,e) <= 1.0_pReal) ) then
          if (debugger) then
            !$OMP CRITICAL (write2out)
              write(6,'(a21,f10.8,a34,f10.8,a37,/)') 'winding forward from ', &
