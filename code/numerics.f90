@@ -88,12 +88,12 @@ subroutine numerics_init()
   rTol_crystalliteStress  = 1.0e-6_pReal
   aTol_crystalliteStress  = 1.0e-8_pReal            ! residuum is in Lp (hence strain on the order of 1e-8 here)
 
-!* RGC parameters: added <<<updated 31.07.2009>>>
-  absTol_RGC              = 1.0e+3
+!* RGC parameters: added <<<updated 31.07.2009>>> with moderate setting
+  absTol_RGC              = 1.0e+4
   relTol_RGC              = 1.0e-3
-  absMax_RGC              = 1.0e+9
+  absMax_RGC              = 1.0e+10
   relMax_RGC              = 1.0e+2
-  pPert_RGC               = 1.0e-8
+  pPert_RGC               = 1.0e-7
   xSmoo_RGC               = 1.0e-5
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
