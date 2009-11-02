@@ -23,7 +23,7 @@
 \setbeamertemplate{blocks}[rounded][shadow=true]
 
 \title{Dislocation structure and kinetics in slip-twin model}
-\date{MSU Twin Meeting, Duesseldorf -- October 6$^{\textsf{th}}$, 2009}
+\date{MSU Twin Meeting, D\"usseldorf -- October 6\textsuperscript{th}, 2009}
 
 \begin{document}
 
@@ -98,6 +98,13 @@
   \slip{\dot\varrho_{\text{multiplication}}} = \dfrac{|\slip{\dot\gamma}|}{\slip b\,\slip\lambda} \nonumber
   \end{equation}
  \end{block}
+
+ \begin{block}{Multiplication constant:}
+  \begin{equation}
+  \slip\lambda = k_{\lambda} \left(\slip\varrho\right)^{-1/2}
+\nonumber
+  \end{equation}
+ \end{block}
 }
 
 \frame {
@@ -105,11 +112,11 @@
 
  \begin{block}{Dipole formation:}
   \begin{equation}
-  \slip{\dot\varrho_{\text{formation}}} = 2\,\dfrac{2\,\slip{\hat d}}{\slip b}\,\dfrac{\slip\varrho_{\text{edge}}}{2}\,|\slip{\dot\gamma}| \nonumber
+  \slip{\dot\varrho_{\text{formation}}} = 2\,\dfrac{2\,\operatorname{max}(\slip{\hat d},\slip{\check d})}{\slip b}\,\dfrac{\slip\varrho_{\text{edge}}}{2}\,|\slip{\dot\gamma}| \nonumber
   \end{equation}
  \end{block}
 
- \begin{block}{Length $\slip{\hat d}$:}
+ \begin{block}{Upper stability limit for dipoles $\slip{\hat d}$:}
   \begin{equation}
   \slip{\hat d} = \dfrac{1}{8\,\pi}\,\dfrac{G_{\text{iso}}\,\slip b}{1-\nu}\,\dfrac{1}{|\slip\tau|} \nonumber
   \end{equation}
@@ -119,13 +126,13 @@
 \frame {
  \frametitle{Spontaneous annihilation of 2 single dislocations}
 
- \begin{block}{Single-single annihilation:}
+ \begin{block}{Single--single annihilation:}
   \begin{equation}
-  \slip{\dot\varrho_{\text{single-single}}} = 2\,\dfrac{2\,\slip{\check d}}{\slip b}\,\dfrac{\slip\varrho_{\text{edge}}}{2}\,|\slip{\dot\gamma}| \nonumber
+  \slip{\dot\varrho_{\text{single--single}}} = 2\,\dfrac{2\,\slip{\check d}}{\slip b}\,\dfrac{\slip\varrho_{\text{edge}}}{2}\,|\slip{\dot\gamma}| \nonumber
   \end{equation}
  \end{block}
 
- \begin{block}{Length $\slip{\check d}$:}
+ \begin{block}{Lower stability limit of dipoles $\slip{\check d}$:}
   \begin{equation}
   \slip{\check d} \propto \slip b \nonumber
   \end{equation}
@@ -133,11 +140,11 @@
 }
 
 \frame {
- \frametitle{Spontaneous annihilation of one single dislocation and one dipole constituent}
+ \frametitle{Spontaneous annihilation of one single dislocation with a dipole constituent}
 
- \begin{block}{Single-dipole constituent annihilation:}
+ \begin{block}{Single--dipole constituent annihilation:}
   \begin{equation}
-  \slip{\dot\varrho_{\text{single-dipole}}} = 2\,\dfrac{2\,\slip{\check d}}{\slip b}\,\dfrac{\slip\varrho_{\text{dipole}}}{2}\,|\slip{\dot\gamma}| \nonumber
+  \slip{\dot\varrho_{\text{single--dipole}}} = 2\,\dfrac{2\,\slip{\check d}}{\slip b}\,\dfrac{\slip\varrho_{\text{dipole}}}{2}\,|\slip{\dot\gamma}| \nonumber
   \end{equation}
  \end{block}
 }
@@ -147,13 +154,13 @@
 
  \begin{block}{Dipole climb:}
   \begin{equation}
-  \slip{\dot\varrho_{\text{climb}}} = \slip\varrho_{\text{dipole}}\,\dfrac{4\,v_{\text{climb}}}{\slip{\hat d}+\slip{\check d}} \nonumber
+  \slip{\dot\varrho_{\text{climb}}} = \slip\varrho_{\text{dipole}}\,\dfrac{2\,v_{\text{climb}}}{(\slip{\hat d}-\slip{\check d})/2} \nonumber
   \end{equation}
  \end{block}
 
   \begin{block}{Climb velocity $\slip v_{\text{climb}}$:}
   \begin{equation}
-  \slip v_{\text{climb}} = \dfrac{D\,\slip\Omega}{\slip b\,k_{\text{B}}\,T}\,\dfrac{G_{\text{iso}}\,\slip b}{2\,\pi\,(1-\nu)}\,\dfrac{2}{\slip{\hat d}+\slip{\check d}} \nonumber
+  \slip v_{\text{climb}} = \dfrac{D\,\slip\Omega}{\slip b\,k_{\text{B}}\,T}\,\dfrac{G_{\text{iso}}\,\slip b}{2\,\pi\,(1-\nu)}\,\dfrac{1}{(\slip{\hat d}+\slip{\check d})/2} \nonumber
   \end{equation}
  \end{block}
 }
@@ -163,13 +170,13 @@
 
  \begin{block}{Edge dislocation density rate:}
   \begin{equation}
-  \slip{\dot\varrho_{\text{edge}}} = \slip{\dot\varrho_{\text{multiplication}}} - \slip{\dot\varrho_{\text{formation}}} - \slip{\dot\varrho_{\text{single-single}}} \nonumber
+  \slip{\dot\varrho_{\text{edge}}} = \slip{\dot\varrho_{\text{multiplication}}} - \slip{\dot\varrho_{\text{formation}}} - \slip{\dot\varrho_{\text{single--single}}} \nonumber
   \end{equation}
  \end{block}
 
 \begin{block}{Dislocation dipole density rate:}
   \begin{equation}
-  \slip{\dot\varrho_{\text{dipole}}} = \slip{\dot\varrho_{\text{formation}}} - \slip{\dot\varrho_{\text{single-dipole}}} - \slip{\dot\varrho_{\text{climb}}} \nonumber
+  \slip{\dot\varrho_{\text{dipole}}} = \slip{\dot\varrho_{\text{formation}}} - \slip{\dot\varrho_{\text{single--dipole}}} - \slip{\dot\varrho_{\text{climb}}} \nonumber
   \end{equation}
  \end{block}
 }
