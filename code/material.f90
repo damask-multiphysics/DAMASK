@@ -484,29 +484,31 @@ subroutine material_populateGrains()
  
  write (6,*)
  write (6,*) 'MATERIAL grain population'
+ write (6,*)
+ write (6,'(a32,x,a32,x,a6)') 'homogenization_name','microstructure_name','grain#'
  do homog = 1,material_Nhomogenization              ! loop over homogenizations
    dGrains = homogenization_Ngrains(homog)          ! grain number per material point
    do micro = 1,material_Nmicrostructure            ! all pairs of homog and micro
      if (Ngrains(homog,micro) > 0) then             ! an active pair of homog and micro
-       myNgrains = Ngrains(homog,micro)             ! assign short name
+       myNgrains = Ngrains(homog,micro)             ! assign short name for total number of grains to populate
        write (6,*)
        write (6,'(a32,x,a32,x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
      
-! ----------------------------------------------------------------------------
+! ----------------------------------------------------------------------------  calculate volume of each grain
        volumeOfGrain = 0.0_pReal
        grain = 0_pInt                               ! microstructure grain index
        do e = 1,mesh_NcpElems                       ! check each element
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
            forall (i = 1:FE_Nips(mesh_element(2,e))) &                          ! loop over IPs
              volumeOfGrain(grain+(i-1)*dGrains+1:grain+i*dGrains) = &
-               mesh_ipVolume(i,e)/dGrains                                       ! assign IPvolume/Ngrains to grains
+               mesh_ipVolume(i,e)/dGrains                                       ! assign IPvolume/Ngrains to all grains of IP
            grain = grain + FE_Nips(mesh_element(2,e)) * dGrains                 ! wind forward by Nips*NgrainsPerIP
          endif
        enddo
-! ----------------------------------------------------------------------------
+! ----------------------------------------------------------------------------  divide myNgrains as best over constituents
        NgrainsOfConstituent = 0_pInt
        forall (i = 1:microstructure_Nconstituents(micro)) &
-         NgrainsOfConstituent(i) = nint(microstructure_fraction(i,micro) * myNgrains, pInt)
+         NgrainsOfConstituent(i) = nint(microstructure_fraction(i,micro) * myNgrains, pInt)  ! do rounding integer conversion
        do while (sum(NgrainsOfConstituent) /= myNgrains)                        ! total grain count over constituents wrong?
          sgn = sign(1_pInt, myNgrains - sum(NgrainsOfConstituent))              ! direction of required change
          extreme = 0.0_pReal
@@ -524,7 +526,7 @@ subroutine material_populateGrains()
        orientationOfGrain = 0.0_pReal
        grain = 0_pInt                                                         ! reset microstructure grain index
 
-       do i = 1,microstructure_Nconstituents(micro)                            ! loop over constituents
+       do i = 1,microstructure_Nconstituents(micro)                           ! loop over constituents
          phaseID   = microstructure_phase(i,micro)
          textureID = microstructure_texture(i,micro)
          phaseOfGrain(grain+1:grain+NgrainsOfConstituent(i)) = phaseID        ! assign resp. phase
@@ -544,7 +546,7 @@ subroutine material_populateGrains()
              constituentGrain = constituentGrain + int(myNorientations*texture_Gauss(5,t,textureID))
            enddo
 
-           do t = 1,texture_Nfiber(textureID)                                   ! loop over fiber components
+           do t = 1,texture_Nfiber(textureID)                                 ! loop over fiber components
              do g = 1,int(myNorientations*texture_Fiber(6,t,textureID))       ! loop over required grain count
                orientationOfGrain(:,grain+constituentGrain+g) = &
                  math_sampleFiberOri(texture_Fiber(1:2,t,textureID),&
@@ -599,8 +601,8 @@ subroutine material_populateGrains()
        !exchange in MC steps to improve result...
 
 ! ----------------------------------------------------------------------------
-       grain = 0_pInt                               ! microstructure grain index
-       do e = 1,mesh_NcpElems                       ! check each element
+       grain = 0_pInt                                                           ! microstructure grain index
+       do e = 1,mesh_NcpElems                                                   ! check each element
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
            forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)             ! loop over IPs and grains
              material_volume(g,i,e) = volumeOfGrain(grain+(i-1)*dGrains+g)
