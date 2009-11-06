@@ -1044,7 +1044,7 @@ v = constitutive_nonlocal_v0PerSlipSystem(:,myInstance) &
 
 gdotSlip =  sum(rho,2) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * v    
 
-dgdot_dtauSlip = gdotSlip * constitutive_nonlocal_Q0(myInstance) / ( kB * Temperature * tauSlipThreshold )
+dgdot_dtauSlip = abs(gdotSlip) * constitutive_nonlocal_Q0(myInstance) / ( kB * Temperature * tauSlipThreshold )
 
 !*** Calculation of Lp and its tangent
 
