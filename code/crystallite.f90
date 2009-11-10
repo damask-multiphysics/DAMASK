@@ -227,7 +227,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
   use prec, only:                                       pInt, &
                                                         pReal
   use numerics, only:                                   subStepMinCryst, &
+                                                        subStepSizeCryst, &
+                                                        stepIncreaseCryst, &
                                                         pert_Fg, &
+                                                        pert_method, &
                                                         nState, &
                                                         nCryst
   use debug, only:                                      debugger, &
@@ -293,11 +296,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         temperatureConverged, &       ! flag indicating if temperature converged
                                                         stateConverged, &             ! flag indicating if state converged
                                                         converged                     ! flag indicating if iteration converged
-
-  real(pReal), dimension(9,9) ::                          dPdF99
+  real(pReal), dimension(9,9) ::                        dPdF99
+  real(pReal), dimension(3,3,3,3) ::                    dPdF_pos,dPdF_neg
 
   ! ------ initialize to starting condition ------
-
+  centralDifference = .true.
+  
 !$OMP CRITICAL (write2out)
 !  write (6,*)
 !  write (6,*) 'Crystallite request from Materialpoint'
@@ -323,7 +327,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             crystallite_subTstar0_v(:,g,i,e)  = crystallite_partionedTstar0_v(:,g,i,e)    ! ...2nd PK stress
 
             crystallite_subFrac(g,i,e) = 0.0_pReal
-            crystallite_subStep(g,i,e) = 2.0_pReal
+            crystallite_subStep(g,i,e) = 1.0_pReal/subStepSizeCryst    ! <<added flexibility in cutback size>>
             crystallite_onTrack(g,i,e) = .true.
             crystallite_converged(g,i,e) = .false.                     ! pretend failed step of twice the required size
           endif
@@ -361,7 +365,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                 !$OMPEND CRITICAL (write2out)
               endif
               crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
-              crystallite_subStep(g,i,e) = min(1.0_pReal-crystallite_subFrac(g,i,e), 1.0_pReal * crystallite_subStep(g,i,e))   ! keep cut back step size (no acceleration)
+              crystallite_subStep(g,i,e) = min(1.0_pReal-crystallite_subFrac(g,i,e), &
+                                               stepIncreaseCryst*crystallite_subStep(g,i,e))   ! <<introduce possibility for acceleration>>
               if (crystallite_subStep(g,i,e) > subStepMinCryst) then
                 crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)     ! wind forward...
                 crystallite_subF0(:,:,g,i,e)      = crystallite_subF(:,:,g,i,e)         ! ...def grad
@@ -376,7 +381,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                !$OMPEND CRITICAL (distributionCrystallite)
               endif
             else
-              crystallite_subStep(g,i,e)    = 0.5_pReal * crystallite_subStep(g,i,e)    ! cut step in half and restore...
+              crystallite_subStep(g,i,e)    = subStepSizeCryst*crystallite_subStep(g,i,e)   ! cut step in half and restore...
               crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e)       ! ...temperature
               crystallite_Fp(:,:,g,i,e)     = crystallite_subFp0(:,:,g,i,e)             ! ...plastic def grad
               crystallite_invFp(:,:,g,i,e)  = math_inv3x3(crystallite_Fp(:,:,g,i,e))
@@ -625,8 +630,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   write (6,'(a,/,16(6(e12.4,x)/),2(f12.4,x))') 'state of 1 1 1',myState/1e6
                   !$OMPEND CRITICAL (write2out)
                 endif
-                do k = 1,3                                                              ! perturbation...
-                  do l = 1,3                                                            ! ...components
+
+!             begin perturbation of components of F
+                if (pert_method == 1_pInt .or. pert_method == 3_pInt) then              ! <<< when forward or central difference is desired >>>
+                  do k = 1,3                                                            ! perturbation...
+                  do l = 1,3                                                            ! ...components to the positive direction
                     crystallite_subF(:,:,g,i,e) = myF                                   ! initialize perturbed F to match converged
                     crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg ! perturb single component
                     if (debugger) then
@@ -663,8 +671,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                         !$OMPEND CRITICAL (write2out)
                       endif
                     enddo
-                    if (converged) &                                                    ! converged state warrants stiffness update
-                      crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - myP)/pert_Fg ! tangent dP_ij/dFg_kl
+                    if (converged) then                                                 ! converged state warrants stiffness update
+                      dPdF_pos(:,:,k,l) = (crystallite_P(:,:,g,i,e) - myP)/pert_Fg      ! tangent dP_ij/dFg_kl
+                      if (pert_method == 1_pInt) crystallite_dPdF(:,:,k,l,g,i,e) = dPdF_pos(:,:,k,l)
+                    endif
                     constitutive_state(g,i,e)%p     = myState                           ! restore unperturbed, converged state, ...
                     constitutive_dotState(g,i,e)%p  = myDotState                        ! ... dotState, ...
                     crystallite_Temperature(g,i,e)  = myTemperature                     ! ... temperature, ...
@@ -679,7 +689,68 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                         debug_StiffnessstateLoopDistribution(NiterationState) + 1
                     !$OMPEND CRITICAL (out)
                   enddo
-                enddo
+                  enddo
+                endif
+                if (pert_method == 2_pInt .or. pert_method == 3_pInt) then              ! <<< when backward or central difference is desired >>>
+                  do k = 1,3                                                            ! perturbation...
+                  do l = 1,3                                                            ! ...components to the negative direction
+                    crystallite_subF(:,:,g,i,e) = myF                                   ! initialize perturbed F to match converged
+                    crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) - pert_Fg ! perturb single component
+                    if (debugger) then
+                      !$OMP CRITICAL (write2out)
+                      write (6,*) '============='
+                      write (6,'(i1,x,i1)') k,l
+                      write (6,*) '============='
+                      write (6,'(a,/,3(3(f12.6,x)/))') 'pertF of 1 1 1',crystallite_subF(1:3,:,g,i,e)
+                      !$OMPEND CRITICAL (write2out)
+                    endif
+                    onTrack = .true.
+                    converged = .false.
+                    NiterationState = 0_pInt
+                    do while(.not. converged .and. onTrack .and. NiterationState < nState)  ! keep cycling until done (potentially non-converged)
+                      NiterationState = NiterationState + 1_pInt
+                      onTrack = crystallite_integrateStress(g,i,e)                          ! stress of perturbed situation (overwrites _P,_Tstar_v,_Fp,_Lp,_Fe)
+                      if (onTrack) then 
+                        call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
+                                                          crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), &
+                                                          crystallite_subdt(g,i,e), g, i, e)
+
+                        stateConverged = crystallite_updateState(g,i,e)                     ! update state
+                        temperatureConverged = crystallite_updateTemperature(g,i,e)         ! update temperature
+                        converged = stateConverged .and. temperatureConverged
+                      endif
+                      if (debugger) then
+                        !$OMP CRITICAL (write2out)
+                        write (6,*) '-------------'
+                        write (6,'(a,x,l,x,l)') 'ontrack + converged:',onTrack,converged
+                        write (6,'(a,/,3(3(f12.4,x)/))') 'pertP of 1 1 1',crystallite_P(1:3,:,g,i,e)/1e6
+                        write (6,'(a,/,3(3(f12.4,x)/))') 'DP    of 1 1 1',(crystallite_P(1:3,:,g,i,e)-myP(1:3,:))/1e6
+                        write (6,'(a,/,16(6(e12.4,x)/),/,2(f12.4,x))') 'state  of 1 1 1',constitutive_state(g,i,e)%p/1e6
+                        write (6,'(a,/,16(6(e12.4,x)/),/,2(f12.4,x))') 'Dstate of 1 1 1',(constitutive_state(g,i,e)%p-myState)/1e6
+                        !$OMPEND CRITICAL (write2out)
+                      endif
+                    enddo
+                    if (converged) then                                                 ! converged state warrants stiffness update
+                      dPdF_neg(:,:,k,l) = (myP - crystallite_P(:,:,g,i,e))/pert_Fg      ! tangent dP_ij/dFg_kl
+                      if (pert_method == 2_pInt) crystallite_dPdF(:,:,k,l,g,i,e) = dPdF_neg(:,:,k,l)
+                    endif
+                    constitutive_state(g,i,e)%p     = myState                           ! restore unperturbed, converged state, ...
+                    constitutive_dotState(g,i,e)%p  = myDotState                        ! ... dotState, ...
+                    crystallite_Temperature(g,i,e)  = myTemperature                     ! ... temperature, ...
+                    crystallite_Fp(:,:,g,i,e)       = myFp                              ! ... and kinematics
+                    crystallite_invFp(:,:,g,i,e)    = myInvFp
+                    crystallite_Fe(:,:,g,i,e)       = myFe
+                    crystallite_Lp(:,:,g,i,e)       = myLp
+                    crystallite_Tstar_v(:,g,i,e)    = myTstar_v
+                    crystallite_P(:,:,g,i,e)        = myP
+                    !$OMP CRITICAL (out)
+                      debug_StiffnessStateLoopDistribution(NiterationState) = &
+                        debug_StiffnessstateLoopDistribution(NiterationState) + 1
+                    !$OMPEND CRITICAL (out)
+                  enddo
+                  enddo
+                endif
+                if (pert_method == 3_pInt) crystallite_dPdF(:,:,:,:,g,i,e) = 0.5_pReal*(dPdF_neg + dPdF_pos)
               else                                                                      ! grain did not converged
                 crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e) ! use (elastic) fallback
               endif               ! grain convergence

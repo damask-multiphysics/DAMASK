@@ -188,6 +188,8 @@ subroutine materialpoint_stressAndItsTangent(&
  use prec, only:          pInt, &
                           pReal
  use numerics, only:      subStepMinHomog, &
+                          subStepSizeHomog, &
+                          stepIncreaseHomog, &
                           nHomog, &
                           nMPstate
  use FEsolving, only:     FEsolving_execElem, &
@@ -256,7 +258,7 @@ subroutine materialpoint_stressAndItsTangent(&
      materialpoint_subF0(:,:,i,e) = materialpoint_F0(:,:,i,e)                                       ! ...def grad
 
      materialpoint_subFrac(i,e) = 0.0_pReal
-     materialpoint_subStep(i,e) = 8.0_pReal
+     materialpoint_subStep(i,e) = 1.0_pReal/subStepSizeHomog                                        ! <<added to adopt flexibility in cutback size>>
      materialpoint_converged(i,e) = .false.                                                         ! pretend failed step of twice the required size
      materialpoint_requested(i,e) = .true.                                                          ! everybody requires calculation
    enddo
@@ -289,7 +291,8 @@ subroutine materialpoint_stressAndItsTangent(&
          
          ! calculate new subStep and new subFrac
          materialpoint_subFrac(i,e) = materialpoint_subFrac(i,e) + materialpoint_subStep(i,e)
-         materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), 1.0_pReal * materialpoint_subStep(i,e))   ! keep cut back time step (no acceleration)
+         materialpoint_subStep(i,e) = min(1.0_pReal-materialpoint_subFrac(i,e), &
+                                          stepIncreaseHomog*materialpoint_subStep(i,e))                   ! <<introduce flexibility for step increase/acceleration>>
                   
          ! still stepping needed
          if (materialpoint_subStep(i,e) > subStepMinHomog) then
@@ -314,7 +317,8 @@ subroutine materialpoint_stressAndItsTangent(&
        ! materialpoint didn't converge, so we need a cutback here
        else
        
-         materialpoint_subStep(i,e) = 0.125_pReal * materialpoint_subStep(i,e)                            ! crystallite had severe trouble, so do a significant cutback
+         materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)                       ! crystallite had severe trouble, so do a significant cutback
+                                                                                                          ! <<modified to add more flexibility in cutback>>
          
          if (debugger) then
            !$OMP CRITICAL (write2out)
@@ -436,6 +440,7 @@ elementLoop: do e = FEsolving_execElem(1),FEsolving_execElem(2)       ! iterate 
        call homogenization_averageTemperature(i,e)	 
      else
        terminallyIll = .true.
+       write(6,'(a48,i4,i4,/)') 'homogenization terminally-ill ',i,e
        exit elementLoop
      endif
    enddo

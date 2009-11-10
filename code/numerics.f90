@@ -13,11 +13,16 @@ integer(pInt)                   iJacoStiffness, &                       ! freque
                                 nMPstate, &                             ! materialpoint state loop limit
                                 nCryst, &                               ! crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
                                 nState, &                               ! state loop limit
-                                nStress                                 ! stress loop limit
+                                nStress, &                              ! stress loop limit
+                                pert_method                             ! method used in perturbation technique for tangent
 real(pReal)                     relevantStrain, &                       ! strain increment considered significant
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
                                 subStepMinCryst, &                      ! minimum (relative) size of sub-step allowed during cutback in crystallite
                                 subStepMinHomog, &                      ! minimum (relative) size of sub-step allowed during cutback in homogenization
+                                subStepSizeCryst, &                     ! size of first substep when cutback in crystallite
+                                subStepSizeHomog, &                     ! size of first substep when cutback in homogenization
+                                stepIncreaseCryst, &                    ! increase of next substep size when previous substep converged in crystallite
+                                stepIncreaseHomog, &                    ! increase of next substep size when previous substep converged in homogenization
                                 rTol_crystalliteState, &                ! relative tolerance in crystallite state loop 
                                 rTol_crystalliteTemperature, &          ! relative tolerance in crystallite temperature loop 
                                 rTol_crystalliteStress, &               ! relative tolerance in crystallite stress loop
@@ -33,7 +38,7 @@ real(pReal)                     relevantStrain, &                       ! strain
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
 integer(pInt)                   fixedSeed                            ! fixed seeding for pseudo-random number generator
-								
+
 CONTAINS
  
 !*******************************************
@@ -75,12 +80,17 @@ subroutine numerics_init()
   relevantStrain          = 1.0e-7_pReal
   iJacoStiffness          = 1_pInt
   iJacoLpresiduum         = 1_pInt
-  pert_Fg                 = 1.0e-6_pReal
+  pert_Fg                 = 1.0e-7_pReal
+  pert_method             = 1
   nHomog                  = 20_pInt
   subStepMinHomog         = 1.0e-3_pReal
+  subStepSizeHomog        = 0.25
+  stepIncreaseHomog       = 1.5
   nMPstate                = 10_pInt
   nCryst                  = 20_pInt
   subStepMinCryst         = 1.0e-3_pReal
+  subStepsizeCryst        = 0.25
+  stepIncreaseCryst       = 1.5
   nState                  = 10_pInt
   nStress                 = 40_pInt
   rTol_crystalliteState   = 1.0e-6_pReal
@@ -121,6 +131,8 @@ subroutine numerics_init()
               iJacoLpresiduum = IO_intValue(line,positions,2)
         case ('pert_fg')
               pert_Fg = IO_floatValue(line,positions,2)
+        case ('pert_method')
+              pert_method = IO_intValue(line,positions,2)
         case ('nhomog')
               nHomog = IO_intValue(line,positions,2)
         case ('nmpstate')
@@ -133,8 +145,16 @@ subroutine numerics_init()
               nStress = IO_intValue(line,positions,2)
         case ('substepmincryst')
               subStepMinCryst = IO_floatValue(line,positions,2)
+        case ('substepsizecryst')
+              subStepSizeCryst = IO_floatValue(line,positions,2)
+        case ('stepincreasecryst')
+              stepIncreaseCryst = IO_floatValue(line,positions,2)
         case ('substepminhomog')
               subStepMinHomog = IO_floatValue(line,positions,2)
+        case ('substepsizehomog')
+              subStepSizeHomog = IO_floatValue(line,positions,2)
+        case ('stepincreasehomog')
+              stepIncreaseHomog = IO_floatValue(line,positions,2)
         case ('rtol_crystallitestate')
               rTol_crystalliteState = IO_floatValue(line,positions,2)
         case ('rtol_crystallitetemperature')
@@ -178,17 +198,25 @@ subroutine numerics_init()
   write(6,'(a24,x,i8)')   'iJacoStiffness:         ',iJacoStiffness
   write(6,'(a24,x,i8)')   'iJacoLpresiduum:        ',iJacoLpresiduum
   write(6,'(a24,x,e8.1)') 'pert_Fg:                ',pert_Fg
-  write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
-  write(6,'(a24,x,e8.1)') 'subStepMinHomog:        ',subStepMinHomog
-  write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
+  write(6,'(a24,x,i8)')   'pert_method:            ',pert_method
   write(6,'(a24,x,i8)')   'nCryst:                 ',nCryst
   write(6,'(a24,x,e8.1)') 'subStepMinCryst:        ',subStepMinCryst
+  write(6,'(a24,x,e8.1)') 'subStepSizeCryst:       ',subStepSizeCryst
+  write(6,'(a24,x,e8.1)') 'stepIncreaseCryst:      ',stepIncreaseCryst
   write(6,'(a24,x,i8)')   'nState:                 ',nState
   write(6,'(a24,x,i8)')   'nStress:                ',nStress
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteState:  ',rTol_crystalliteState
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
   write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
+  write(6,*)
+
+  write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
+  write(6,'(a24,x,e8.1)') 'subStepMinHomog:        ',subStepMinHomog
+  write(6,'(a24,x,e8.1)') 'subStepSizeHomog:       ',subStepSizeHomog
+  write(6,'(a24,x,e8.1)') 'stepIncreaseHomog:      ',stepIncreaseHomog
+  write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
+  write(6,*)
 
 !* RGC parameters: added <<<updated 31.07.2009>>>
   write(6,'(a24,x,e8.1)') 'aTol_RGC:             ',absTol_RGC
@@ -197,6 +225,7 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'rMax_RGC:             ',relMax_RGC
   write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:   ',pPert_RGC
   write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC: ',xSmoo_RGC
+  write(6,*)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   write(6,'(a24,x,i8)')   'fixed_seed:           ',fixedSeed
@@ -207,13 +236,19 @@ subroutine numerics_init()
   if (iJacoStiffness < 1_pInt)              call IO_error(261)
   if (iJacoLpresiduum < 1_pInt)             call IO_error(262)
   if (pert_Fg <= 0.0_pReal)                 call IO_error(263)
+  if (pert_method <= 0_pInt .or. pert_method >= 4_pInt) &
+                                            call IO_error(299)
   if (nHomog < 1_pInt)                      call IO_error(264)
   if (nMPstate < 1_pInt)                    call IO_error(279)  !! missing in IO !!
   if (nCryst < 1_pInt)                      call IO_error(265)
   if (nState < 1_pInt)                      call IO_error(266)
   if (nStress < 1_pInt)                     call IO_error(267)
   if (subStepMinCryst <= 0.0_pReal)         call IO_error(268)
+  if (subStepSizeCryst <= 0.0_pReal)        call IO_error(268)
+  if (stepIncreaseCryst <= 0.0_pReal)       call IO_error(268)
   if (subStepMinHomog <= 0.0_pReal)         call IO_error(268)
+  if (subStepSizeHomog <= 0.0_pReal)        call IO_error(268)
+  if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(268)
   if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(269)
   if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(276) !! oops !!
   if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(270)

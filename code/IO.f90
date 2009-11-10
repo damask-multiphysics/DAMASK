@@ -1048,6 +1048,10 @@ endfunction
  case (277)
    msg = 'Non-positive relevant mismatch in RGC'
 
+!* Error message when selected perturbation method is not defined
+ case (299)
+   msg = 'Chosen prturbation method does not exist'
+
  case (300)
    msg = 'This material can only be used with elements with three direct stress components'
  case (500)
