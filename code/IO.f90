@@ -1047,6 +1047,10 @@ endfunction
    msg = 'Non-positive penalty perturbation in RGC'
  case (277)
    msg = 'Non-positive relevant mismatch in RGC'
+ case (278)
+   msg = 'Non-positive positive definite viscosity model in RGC'
+ case (288)
+   msg = 'Non-positive maximum threshold of relaxation change in RGC'
 
 !* Error message when selected perturbation method is not defined
  case (299)

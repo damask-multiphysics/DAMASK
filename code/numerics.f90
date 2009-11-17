@@ -28,13 +28,16 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 rTol_crystalliteStress, &               ! relative tolerance in crystallite stress loop
                                 aTol_crystalliteStress, &               ! absolute tolerance in crystallite stress loop
 
-!* RGC parameters: added <<<updated 31.07.2009>>>
+!* RGC parameters: added <<<updated 17.11.2009>>>
                                 absTol_RGC, &                           ! absolute tolerance of RGC residuum
                                 relTol_RGC, &                           ! relative tolerance of RGC residuum
                                 absMax_RGC, &                           ! absolute maximum of RGC residuum
                                 relMax_RGC, &                           ! relative maximum of RGC residuum
                                 pPert_RGC, &                            ! perturbation for computing RGC penalty tangent
-                                xSmoo_RGC                               ! RGC penalty smoothing parameter (hyperbolic tangent)
+                                xSmoo_RGC, &                            ! RGC penalty smoothing parameter (hyperbolic tangent)
+                                ratePower_RGC, &                        ! power (sensitivity rate) of numerical viscosity in RGC scheme
+                                viscModus_RGC, &                        ! stress modulus of RGC numerical viscosity
+                                maxdRelax_RGC                           ! threshold of maximum relaxation vector increment (if exceed this then cutback)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
 integer(pInt)                   fixedSeed                            ! fixed seeding for pseudo-random number generator
@@ -98,14 +101,17 @@ subroutine numerics_init()
   rTol_crystalliteStress  = 1.0e-6_pReal
   aTol_crystalliteStress  = 1.0e-8_pReal            ! residuum is in Lp (hence strain on the order of 1e-8 here)
 
-!* RGC parameters: added <<<updated 31.07.2009>>> with moderate setting
+!* RGC parameters: added <<<updated 17.11.2009>>> with moderate setting
   absTol_RGC              = 1.0e+4
   relTol_RGC              = 1.0e-3
   absMax_RGC              = 1.0e+10
   relMax_RGC              = 1.0e+2
   pPert_RGC               = 1.0e-7
   xSmoo_RGC               = 1.0e-5
-
+  ratePower_RGC           = 1.0e+0  ! Newton viscosity (linear model)
+  viscModul_RGC           = 0.0e+0  ! No viscosity is applied
+  maxdRelax_RGC           = 1.0e+0
+  
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
 
@@ -164,7 +170,7 @@ subroutine numerics_init()
         case ('atol_crystallitestress')
               aTol_crystalliteStress = IO_floatValue(line,positions,2)
 
-!* RGC parameters: added <<<updated 31.07.2009>>>
+!* RGC parameters: added <<<updated 17.11.2009>>>
         case ('atol_rgc')
               absTol_RGC = IO_floatValue(line,positions,2)
         case ('rtol_rgc')
@@ -177,6 +183,12 @@ subroutine numerics_init()
               pPert_RGC = IO_floatValue(line,positions,2)
         case ('relevantmismatch_rgc')
               xSmoo_RGC = IO_floatValue(line,positions,2)
+        case ('viscosityrate_rgc')
+              ratePower_RGC = IO_floatValue(line,positions,2)
+        case ('viscositymodulus_rgc')
+              viscModul_RGC = IO_floatValue(line,positions,2)
+        case ('maxrelaxation_rgc')
+              maxdRelax_RGC = IO_floatValue(line,positions,2)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
         case ('fixed_seed')
@@ -218,13 +230,16 @@ subroutine numerics_init()
   write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
   write(6,*)
 
-!* RGC parameters: added <<<updated 31.07.2009>>>
+!* RGC parameters: added <<<updated 17.11.2009>>>
   write(6,'(a24,x,e8.1)') 'aTol_RGC:             ',absTol_RGC
   write(6,'(a24,x,e8.1)') 'rTol_RGC:             ',relTol_RGC
   write(6,'(a24,x,e8.1)') 'aMax_RGC:             ',absMax_RGC
   write(6,'(a24,x,e8.1)') 'rMax_RGC:             ',relMax_RGC
   write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:   ',pPert_RGC
   write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC: ',xSmoo_RGC
+  write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:    ',ratePower_RGC
+  write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC: ',viscModul_RGC
+  write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:    ',maxdRelax_RGC
   write(6,*)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
@@ -254,13 +269,16 @@ subroutine numerics_init()
   if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(270)
   if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(271)
 
-!* RGC parameters: added <<<updated 31.07.2009>>>
+!* RGC parameters: added <<<updated 17.11.2009>>>
   if (absTol_RGC <= 0.0_pReal)              call IO_error(272)
   if (relTol_RGC <= 0.0_pReal)              call IO_error(273)
   if (absMax_RGC <= 0.0_pReal)              call IO_error(274)
   if (relMax_RGC <= 0.0_pReal)              call IO_error(275)
   if (pPert_RGC <= 0.0_pReal)               call IO_error(276)   !! oops !!
   if (xSmoo_RGC <= 0.0_pReal)               call IO_error(277)
+  if (ratePower_RGC < 0.0_pReal)            call IO_error(278)
+  if (viscModul_RGC < 0.0_pReal)            call IO_error(278)
+  if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(288)
  
   if (fixedSeed <= 0_pInt)                  write(6,'(a)') 'Random is random!'
 endsubroutine

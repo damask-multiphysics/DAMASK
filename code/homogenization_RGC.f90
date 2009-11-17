@@ -241,11 +241,13 @@ endsubroutine
 !********************************************************************
 function homogenization_RGC_updateState(&
    state, &         ! my state
+   state0, &        ! my state at the beginning of increment
 !
    P, &             ! array of current grain stresses
    F, &             ! array of current grain deformation gradients
    F0, &            ! array of initial grain deformation gradients
    avgF, &          ! average deformation gradient
+   dt, &            ! time increment
    dPdF, &          ! array of current grain stiffnesses
    ip, &            ! my integration point
    el  &            ! my element
@@ -254,18 +256,23 @@ function homogenization_RGC_updateState(&
  use prec, only: pReal,pInt,p_vec
  use math, only: math_invert
  use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,homogenization_typeInstance,homogenization_Ngrains
- use numerics, only: absTol_RGC,relTol_RGC,absMax_RGC,relMax_RGC,pPert_RGC
+ use material, only: homogenization_maxNgrains,homogenization_typeInstance, &
+                     homogenization_Ngrains
+ use numerics, only: absTol_RGC,relTol_RGC,absMax_RGC,relMax_RGC,pPert_RGC, &
+                     maxdRelax_RGC,ratePower_RGC,viscModus_RGC
  use FEsolving, only: theInc,cycleCounter,theTime
 
  implicit none
 
 !* Definition of variables
  type(p_vec), intent(inout) :: state
- real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in) :: P,F,F0
+ type(p_vec), intent(in)    :: state0
+ real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)     :: P,F,F0
  real(pReal), dimension (3,3,3,3,homogenization_maxNgrains), intent(in) :: dPdF
  real(pReal), dimension (3,3), intent(in) :: avgF
- integer(pInt), intent(in)    :: ip,el
+ real(pReal), intent(in)                  :: dt
+ integer(pInt), intent(in)                :: ip,el
+! 
  logical, dimension(2)        :: homogenization_RGC_updateState
  integer(pInt), dimension (4) :: intFaceN,intFaceP,faceID
  integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P,stresLoc
@@ -278,9 +285,8 @@ function homogenization_RGC_updateState(&
  logical error,RGCdebug,RGCdebugJacobi,RGCcheck
 !
  integer(pInt), parameter :: nFace = 6
- real(pInt), parameter    :: max_drelax = 0.5_pReal
 !
- real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix
+ real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix,rmatrix
  real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
 
  RGCcheck       = (el == 1 .and. ip == 1)
@@ -297,7 +303,8 @@ function homogenization_RGC_updateState(&
  allocate(resid(3*nIntFaceTot));  resid = 0.0_pReal
  allocate(tract(nIntFaceTot,3));  tract = 0.0_pReal
  allocate(relax(3*nIntFaceTot));  relax = state%p(1:3*nIntFaceTot)
- allocate(drelax(3*nIntFaceTot)); drelax = 0.0_pReal
+ allocate(drelax(3*nIntFaceTot)); &
+   drelax = state%p(1:3*nIntFaceTot) - state0%p(1:3*nIntFaceTot)
 !* Debugging the obtained state
  if (RGCdebug) then
    write(6,'(x,a30)')'Obtained state: '
@@ -337,11 +344,13 @@ function homogenization_RGC_updateState(&
    call homogenization_RGC_getInterface(intFaceP,2*faceID(1)-1,iGr3P)
    call homogenization_RGC_interfaceNormal(normP,intFaceP)            ! get the interface normal
    do i = 1,3                                                         ! compute the traction balance at the interface
-   do j = 1,3
-     tract(iNum,i) = tract(iNum,i) + (P(i,j,iGrP) + R(i,j,iGrP))*normP(j) &
-                                   + (P(i,j,iGrN) + R(i,j,iGrN))*normN(j)
-     resid(i+3*(iNum-1)) = tract(iNum,i)                              ! map into 1D residual array
-   enddo
+     tract(iNum,i) = sign(viscModus_RGC*(abs(drelax(i+3*(iNum-1))/dt))**ratePower_RGC, &
+                          drelax(i+3*(iNum-1)))
+     do j = 1,3
+       tract(iNum,i) = tract(iNum,i) + (P(i,j,iGrP) + R(i,j,iGrP))*normP(j) &
+                                     + (P(i,j,iGrN) + R(i,j,iGrN))*normN(j)
+       resid(i+3*(iNum-1)) = tract(iNum,i)                              ! map into 1D residual array
+     enddo
    enddo
 !* Debugging the residual stress
    if (RGCdebug) then
@@ -470,7 +479,7 @@ function homogenization_RGC_updateState(&
    call flush(6)
  endif
 
-!* Compute the Jacobian of the stress-like penalty (penalty tangent) using perturbation technique
+!* Compute the Jacobian of the stress-like penalty (penalty tangent)
  allocate(pmatrix(3*nIntFaceTot,3*nIntFaceTot)); pmatrix = 0.0_pReal
  allocate(p_relax(3*nIntFaceTot));               p_relax = 0.0_pReal
  allocate(p_resid(3*nIntFaceTot));               p_resid = 0.0_pReal
@@ -513,9 +522,24 @@ function homogenization_RGC_updateState(&
    write(6,*)' '
    call flush(6)
  endif
+ 
+!* Construct the Jacobian matrix of the numerical viscosity tangent
+ allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot)); rmatrix = 0.0_pReal
+ forall (i=1,3*nIntFaceTot) &
+   rmatrix(i,i) = viscModus_RGC*ratePower_RGC/dt*(abs(drelax(i)/dt))**(ratePower_RGC - 1.0_pReal)
+!* Debugging the global Jacobian matrix of numerical viscosity tangent
+ if (RGCdebugJacobi) then
+   write(6,'(x,a30)')'Jacobian matrix of penalty'
+   do i = 1,3*nIntFaceTot
+     write(6,'(x,100(e10.4,x))')(rmatrix(i,j), j = 1,3*nIntFaceTot)
+   enddo
+   write(6,*)' '
+   call flush(6)
+ endif
+
 
 !* The overall Jacobian matrix (due to constitutive and penalty tangents)
- allocate(jmatrix(3*nIntFaceTot,3*nIntFaceTot)); jmatrix = smatrix + pmatrix
+ allocate(jmatrix(3*nIntFaceTot,3*nIntFaceTot)); jmatrix = smatrix + pmatrix + rmatrix
  if (RGCdebugJacobi) then
    write(6,'(x,a30)')'Jacobian matrix (total)'
    do i = 1,3*nIntFaceTot
@@ -537,6 +561,7 @@ function homogenization_RGC_updateState(&
  endif
 
 !* Calculate the state update (i.e., new relaxation vectors)
+ drelax = 0.0_pReal
  do i = 1,3*nIntFaceTot
    do j = 1,3*nIntFaceTot
      drelax(i) = drelax(i) - jnverse(i,j)*resid(j)
@@ -544,7 +569,8 @@ function homogenization_RGC_updateState(&
  enddo
  relax = relax + drelax
  state%p(1:3*nIntFaceTot) = relax
- if (any(abs(drelax(:)) > max_drelax)) then
+ if (any(abs(drelax(:)) > maxdRelax_RGC)) then   !* forcing cutback when the incremental change
+                                                 !  of relaxation vector becomes too large
 !    state%p(1:3*nIntFaceTot) = 0.0_pReal
 !    write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'relaxation vectors reset to zero'
    homogenization_RGC_updateState = (/.true.,.false./)

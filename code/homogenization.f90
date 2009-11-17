@@ -567,10 +567,12 @@ function homogenization_updateState(&
 !* RGC homogenization added <<<updated 31.07.2009>>>
    case (homogenization_RGC_label)
      homogenization_updateState = homogenization_RGC_updateState( homogenization_state(ip,el), &
+                                                                  homogenization_subState0(ip,el), &
                                                                   crystallite_P(:,:,:,ip,el), &
                                                                   crystallite_partionedF(:,:,:,ip,el), &
                                                                   crystallite_partionedF0(:,:,:,ip,el),&
                                                                   materialpoint_subF(:,:,ip,el),&
+                                                                  materialpoint_subdt(ip,el), &
                                                                   crystallite_dPdF(:,:,:,:,:,ip,el), &
                                                                   ip, &
                                                                   el)
