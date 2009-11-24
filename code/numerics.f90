@@ -109,7 +109,7 @@ subroutine numerics_init()
   pPert_RGC               = 1.0e-7
   xSmoo_RGC               = 1.0e-5
   ratePower_RGC           = 1.0e+0  ! Newton viscosity (linear model)
-  viscModul_RGC           = 0.0e+0  ! No viscosity is applied
+  viscModus_RGC           = 0.0e+0  ! No viscosity is applied
   maxdRelax_RGC           = 1.0e+0
   
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
@@ -186,7 +186,7 @@ subroutine numerics_init()
         case ('viscosityrate_rgc')
               ratePower_RGC = IO_floatValue(line,positions,2)
         case ('viscositymodulus_rgc')
-              viscModul_RGC = IO_floatValue(line,positions,2)
+              viscModus_RGC = IO_floatValue(line,positions,2)
         case ('maxrelaxation_rgc')
               maxdRelax_RGC = IO_floatValue(line,positions,2)
 
@@ -238,7 +238,7 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:   ',pPert_RGC
   write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC: ',xSmoo_RGC
   write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:    ',ratePower_RGC
-  write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC: ',viscModul_RGC
+  write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC: ',viscModus_RGC
   write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:    ',maxdRelax_RGC
   write(6,*)
 
@@ -277,7 +277,7 @@ subroutine numerics_init()
   if (pPert_RGC <= 0.0_pReal)               call IO_error(276)   !! oops !!
   if (xSmoo_RGC <= 0.0_pReal)               call IO_error(277)
   if (ratePower_RGC < 0.0_pReal)            call IO_error(278)
-  if (viscModul_RGC < 0.0_pReal)            call IO_error(278)
+  if (viscModus_RGC < 0.0_pReal)            call IO_error(278)
   if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(288)
  
   if (fixedSeed <= 0_pInt)                  write(6,'(a)') 'Random is random!'

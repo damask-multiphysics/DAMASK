@@ -49,6 +49,7 @@ integer(pInt),     dimension(:),       allocatable :: homogenization_Ngrains, & 
                                                       texture_Nfiber                   ! number of Fiber components per texture
 logical,           dimension(:),       allocatable :: homogenization_active, &         !
                                                       microstructure_active, &         ! 
+                                                      microstructure_elemhomo, &       ! flag to indicate homogeneous microstructure distribution over element's IPs
                                                       phase_localConstitution          ! flags phases with local constitutive law
 integer(pInt),     dimension(:,:),     allocatable :: microstructure_phase, &          ! phase IDs of each microstructure
                                                       microstructure_texture           ! texture IDs of each microstructure
@@ -102,9 +103,9 @@ subroutine material_init()
    write (6,'(x,a32,x,a16,x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
  enddo
  write (6,*)
- write (6,'(a32,x,a12)') 'microstructure                  ','constituents'
+ write (6,'(a32,x,a12,x,a13)') 'microstructure                  ','constituents','homogeneous'
  do i = 1,material_Nmicrostructure
-   write (6,'(a32,x,i4)') microstructure_name(i),microstructure_Nconstituents(i)
+   write (6,'(a32,4x,i4,8x,l)') microstructure_name(i),microstructure_Nconstituents(i),microstructure_elemhomo(i)
    if (microstructure_Nconstituents(i) > 0_pInt) then
      do j = 1,microstructure_Nconstituents(i)
        write (6,'(a1,x,a32,x,a32,x,f6.4)') '>',phase_name(microstructure_phase(j,i)),&
@@ -207,14 +208,17 @@ subroutine material_parseMicrostructure(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Nmicrostructure = Nsections
- allocate(microstructure_name(Nsections));    microstructure_name = ''
+ allocate(microstructure_name(Nsections));     microstructure_name = ''
  allocate(microstructure_Nconstituents(Nsections))
  allocate(microstructure_active(Nsections))
+ allocate(microstructure_elemhomo(Nsections))
 
  forall (i = 1:Nsections) microstructure_active(i) = any(mesh_element(4,:) == i)    ! current microstructure used in model?
 
  microstructure_Nconstituents = IO_countTagInPart(file,myPart,'(constituent)',Nsections)
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
+ microstructure_elemhomo = IO_spotTagInPart(file,myPart,'/elementhomogeneous/',Nsections)
+
  allocate(microstructure_phase   (microstructure_maxNconstituents,Nsections)); microstructure_phase    = 0_pInt
  allocate(microstructure_texture (microstructure_maxNconstituents,Nsections)); microstructure_texture  = 0_pInt
  allocate(microstructure_fraction(microstructure_maxNconstituents,Nsections)); microstructure_fraction = 0.0_pReal
@@ -475,7 +479,12 @@ subroutine material_populateGrains()
      call IO_error(130,e,0,0)
    if (micro < 1 .or. micro > material_Nmicrostructure) &   ! out of bounds
      call IO_error(140,e,0,0)
-   Ngrains(homog,micro) = Ngrains(homog,micro) + homogenization_Ngrains(homog) * FE_Nips(mesh_element(2,e))
+   if (microstructure_elemhomo(micro)) then
+     dGrains = homogenization_Ngrains(homog)
+   else
+     dGrains = homogenization_Ngrains(homog) * FE_Nips(mesh_element(2,e))
+   endif
+   Ngrains(homog,micro) = Ngrains(homog,micro) + dGrains
  enddo
 
  allocate(volumeOfGrain(maxval(Ngrains)))           ! reserve memory for maximum case
@@ -499,10 +508,15 @@ subroutine material_populateGrains()
        grain = 0_pInt                               ! microstructure grain index
        do e = 1,mesh_NcpElems                       ! check each element
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
-           forall (i = 1:FE_Nips(mesh_element(2,e))) &                          ! loop over IPs
-             volumeOfGrain(grain+(i-1)*dGrains+1:grain+i*dGrains) = &
-               mesh_ipVolume(i,e)/dGrains                                       ! assign IPvolume/Ngrains to all grains of IP
-           grain = grain + FE_Nips(mesh_element(2,e)) * dGrains                 ! wind forward by Nips*NgrainsPerIP
+           if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
+             volumeOfGrain(grain+1:grain+dGrains) = sum(mesh_ipVolume(1:FE_Nips(mesh_element(2,e)),e))/dGrains
+             grain = grain + dGrains                                            ! wind forward by NgrainsPerIP
+           else
+             forall (i = 1:FE_Nips(mesh_element(2,e))) &                        ! loop over IPs
+               volumeOfGrain(grain+(i-1)*dGrains+1:grain+i*dGrains) = &
+                 mesh_ipVolume(i,e)/dGrains                                     ! assign IPvolume/Ngrains to all grains of IP
+             grain = grain + FE_Nips(mesh_element(2,e)) * dGrains               ! wind forward by Nips*NgrainsPerIP
+           endif
          endif
        enddo
 ! ----------------------------------------------------------------------------  divide myNgrains as best over constituents
@@ -604,15 +618,24 @@ subroutine material_populateGrains()
        grain = 0_pInt                                                           ! microstructure grain index
        do e = 1,mesh_NcpElems                                                   ! check each element
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
-           forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)             ! loop over IPs and grains
-             material_volume(g,i,e) = volumeOfGrain(grain+(i-1)*dGrains+g)
-             material_phase(g,i,e) = phaseOfGrain(grain+(i-1)*dGrains+g)
-             material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+(i-1)*dGrains+g)
-           end forall
+           if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
+             forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)           ! loop over IPs and grains
+               material_volume(g,i,e) = volumeOfGrain(grain+g)
+               material_phase(g,i,e) = phaseOfGrain(grain+g)
+               material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+g)
+             end forall
+             grain = grain + dGrains                                            ! wind forward by NgrainsPerIP
+           else
+             forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)           ! loop over IPs and grains
+               material_volume(g,i,e) = volumeOfGrain(grain+(i-1)*dGrains+g)
+               material_phase(g,i,e) = phaseOfGrain(grain+(i-1)*dGrains+g)
+               material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+(i-1)*dGrains+g)
+             end forall
+             grain = grain + FE_Nips(mesh_element(2,e)) * dGrains               ! wind forward by Nips*NgrainsPerIP
+           endif
            ! write (6,*) e
            ! write (6,*) material_phase(:,:,e)
            ! write (6,*) material_EulerAngles(:,:,:,e)
-           grain = grain + FE_Nips(mesh_element(2,e)) * dGrains                 ! wind forward by Nips*NgrainsPerIP
          endif
        enddo
 

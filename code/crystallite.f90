@@ -300,7 +300,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
   real(pReal), dimension(3,3,3,3) ::                    dPdF_pos,dPdF_neg
 
   ! ------ initialize to starting condition ------
-  centralDifference = .true.
   
 !$OMP CRITICAL (write2out)
 !  write (6,*)

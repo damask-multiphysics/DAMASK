@@ -303,7 +303,7 @@ function homogenization_RGC_updateState(&
  allocate(resid(3*nIntFaceTot));  resid = 0.0_pReal
  allocate(tract(nIntFaceTot,3));  tract = 0.0_pReal
  allocate(relax(3*nIntFaceTot));  relax = state%p(1:3*nIntFaceTot)
- allocate(drelax(3*nIntFaceTot)); &
+ allocate(drelax(3*nIntFaceTot))
    drelax = state%p(1:3*nIntFaceTot) - state0%p(1:3*nIntFaceTot)
 !* Debugging the obtained state
  if (RGCdebug) then
@@ -525,7 +525,7 @@ function homogenization_RGC_updateState(&
  
 !* Construct the Jacobian matrix of the numerical viscosity tangent
  allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot)); rmatrix = 0.0_pReal
- forall (i=1,3*nIntFaceTot) &
+ forall (i=1:3*nIntFaceTot) &
    rmatrix(i,i) = viscModus_RGC*ratePower_RGC/dt*(abs(drelax(i)/dt))**(ratePower_RGC - 1.0_pReal)
 !* Debugging the global Jacobian matrix of numerical viscosity tangent
  if (RGCdebugJacobi) then
