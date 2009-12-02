@@ -93,7 +93,10 @@ subroutine material_init()
        maxval(microstructure_phase(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(150,i)
    if (minval(microstructure_texture(1:microstructure_Nconstituents(i),i)) < 1 .or. &
        maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Ntexture) call IO_error(160,i)
-   if (sum(microstructure_fraction(:,i)) /= 1.0_pReal) call IO_error(170,i)
+   if (abs(sum(microstructure_fraction(:,i)) - 1.0_pReal) >= 1.0e-10_pReal) then
+     write(6,*)'sum of microstructure fraction = ',sum(microstructure_fraction(:,i))
+     call IO_error(170,i)
+   endif
  enddo
  write (6,*)
  write (6,*) 'MATERIAL configuration'
