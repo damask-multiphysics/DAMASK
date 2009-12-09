@@ -143,7 +143,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   real(pReal), dimension(ngens,ngens), intent(out) :: jacobian            ! jacobian in Mandel notation
   
   !*** local variables ***!
-  real(pReal)                                         J_inverse           ! inverse of Jacobian
+  real(pReal)                                         J_inverse, &        ! inverse of Jacobian
+                                                      rnd
   real(pReal), dimension (3,3) ::                     Kirchhoff
   real(pReal), dimension (3,3,3,3) ::                 H, &
                                                       H_sym
@@ -289,10 +290,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       else if (mode == 5) then
         CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
       end if
+	  call random_number(rnd)
+	  if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
       materialpoint_Temperature(IP,cp_en)   = Temperature
       materialpoint_F0(:,:,IP,cp_en)        = ffn
       materialpoint_F(:,:,IP,cp_en)         = ffn1
-      CPFEM_cs(1:ngens,IP,cp_en)            = CPFEM_odd_stress
+      CPFEM_cs(1:ngens,IP,cp_en)            = rnd*CPFEM_odd_stress
       CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en) = CPFEM_odd_jacobian*math_identity2nd(ngens)
       CPFEM_calc_done = .false.
     
