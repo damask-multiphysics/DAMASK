@@ -65,143 +65,143 @@
 
  
 
-! Symmetry operators for 3 different materials
+! Symmetry Operations for 3 different materials
 ! 24 for cubic, 12 for hexagonal, 8 for tetragonal (24+12+8)x3=132
-real(pReal), dimension(132,3), parameter :: sym = &
- reshape((/&
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
- -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  -0.5_pReal,0.866025403_pReal,0.0_pReal, &
-  -0.866025403_pReal,-0.5_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  -0.5_pReal,-0.866025403_pReal,0.0_pReal, &
-  0.866025403_pReal,-0.5_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.5_pReal,0.866025403_pReal,0.0_pReal, &
-  -0.866025403_pReal,0.5_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.5_pReal,-0.866025403_pReal,0.0_pReal, &
-  0.866025403_pReal,0.5_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  -0.5_pReal,-0.866025403_pReal,0.0_pReal, &
-  -0.866025403_pReal,0.5_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  -0.5_pReal,0.866025403_pReal,0.0_pReal, &
-  0.866025403_pReal,0.5_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.5_pReal,0.866025403_pReal,0.0_pReal, &
-  0.866025403_pReal,-0.5_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.5_pReal,-0.866025403_pReal,0.0_pReal, &
-  -0.866025403_pReal,-0.5_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,1.0_pReal, &
-  0.0_pReal,1.0_pReal,0.0_pReal, &
-  1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal, &
-  0.0_pReal,-1.0_pReal,0.0_pReal, &
-  -1.0_pReal,0.0_pReal,0.0_pReal, &
-  0.0_pReal,0.0_pReal,-1.0_pReal &
- /),(/132,3/))
+real(pReal), dimension(3,3,44), parameter :: symOperations = &
+  reshape((/&
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+    -0.5_pReal, 0.866025403_pReal, 0.0_pReal,  &
+    -0.866025403_pReal, -0.5_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+    -0.5_pReal, -0.866025403_pReal, 0.0_pReal,  &
+     0.866025403_pReal, -0.5_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.5_pReal, 0.866025403_pReal, 0.0_pReal,  &
+    -0.866025403_pReal, 0.5_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.5_pReal, -0.866025403_pReal, 0.0_pReal,  &
+     0.866025403_pReal, 0.5_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+    -0.5_pReal, -0.866025403_pReal, 0.0_pReal,  &
+    -0.866025403_pReal, 0.5_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+    -0.5_pReal, 0.866025403_pReal, 0.0_pReal,  &
+     0.866025403_pReal, 0.5_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.5_pReal, 0.866025403_pReal, 0.0_pReal,  &
+     0.866025403_pReal, -0.5_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.5_pReal, -0.866025403_pReal, 0.0_pReal,  &
+    -0.866025403_pReal, -0.5_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
+     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
+     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
+     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
+    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
+     0.0_pReal, 0.0_pReal, -1.0_pReal &
+  /),(/3,3,44/))
 
 
 
@@ -241,125 +241,108 @@ real(pReal), dimension(132,3), parameter :: sym = &
  
 
 
+!**************************************************************************
+! calculates the misorientation for 2 orientations C1 and C2
+!**************************************************************************
+subroutine math_misorientation(axis, angle, rot, ori1, ori2, symmetryType)
 
-
-!	This subroutine calculates the misorientation
-!	INPUTS:
-!	g1:		1st orientation 
-!	g2:		2nd orientation
-!	typ:	Type of crystal symmetry; 1:cubic, 2:hexagonal, 3:tetragonal
-!	OUTPUTS:
-!	uvw:	Misorientation axis
-!	ang:	Misorientation angle (in degrees)
-!	dg:		net rotation
-!	USES:
-!	Vars:	cubsym,tetsym,hcpsym
-!	Consts:	pi
-subroutine misorientation(g1,g2,typ,uvw,ang,dg)
-implicit none
-real(8) g1(3,3),g2(3,3),uvw(3),ang,dg(3,3)
-integer typ,nosym,s1,s2
-real(8) g11(3,3),g22(3,3),dg1(3,3),dg2(3,3),sq,x1,x2,x3
-real(8) trace,temp_ang
-real(8), allocatable :: symop(:,:,:)
-integer i,j
-
-
-if (typ==1) then
-	nosym=24
-	allocate(symop(nosym,3,3))
-	do i=1,nosym
-		do j=1,3
-			symop(i,j,:)=sym(i*j,:)
-		enddo
-	enddo
-elseif (typ==2) then
-	nosym=12
-	allocate(symop(nosym,3,3))
-	do i=1,nosym
-		do j=1,3
-			symop(i,j,:)=sym(72+(i*j),:)
-		enddo
-	enddo
-else
-	nosym=8
-	allocate(symop(nosym,3,3))
-	do i=1,nosym
-		do j=1,3
-			symop(i,j,:)=sym(108+(i*j),:)
-		enddo
-	enddo
-endif
-
-!	Initially set the angle to be maximum
-ang=2*pi
-
-!	1: Crystal Symmetry to 1st orientation
-do s1=1,nosym	
-	g11=matmul(symop(s1,:,:),g1)
-!	2: Crystal Symmetry to 2nd orientation
-	do s2=1,nosym
-		g22=matmul(symop(s2,:,:),g2)
-!	3: Net rotations (g2*inv(g1)=g2*transpose(g1))
-		dg1=matmul(g2,transpose(g11))										
-		dg2=matmul(g1,transpose(g22))		
-
-!	5. CHECK IF THE MISORIENTATION IS IN FUNDAMENTAL ZONE
-!	5.a. For 1st result: (dg1)
- 		sq=dsqrt((dg1(2,3)-dg1(3,2))**2+(dg1(1,3)-dg1(3,1))**2+&
- 			(dg1(2,1)-dg1(1,2))**2)
-		x1=(dg1(2,3)-dg1(3,2))/sq
-		x2=(dg1(3,1)-dg1(1,3))/sq
-		x3=(dg1(1,2)-dg1(2,1))/sq
-		if (x1>=0) then
-			if (x2>=0) then
-				if (x3>=0) then
-					if (x1<=x2) then
-						if (x2<=x3) then
-							trace=dg1(1,1)+dg1(2,2)+dg1(3,3)
-							temp_ang=acos((trace-1)/2)
-							if (abs(temp_ang).lt.ang) then
-								ang=temp_ang
-								dg=dg1		
-								uvw(1)=x1;uvw(2)=x2;uvw(3)=x3;				
-							endif
-						endif
-					endif
-				endif
-			endif
-		endif			
-
-!	5.a. For the 2nd result: (dg2)
- 		sq=dsqrt((dg2(2,3)-dg2(3,2))**2+(dg2(1,3)-dg2(3,1))**2+&
- 			(dg2(2,1)-dg2(1,2))**2)
-		x1=(dg2(2,3)-dg2(3,2))/sq
-		x2=(dg2(3,1)-dg2(1,3))/sq
-		x3=(dg2(1,2)-dg2(2,1))/sq
-		if (x1>=0) then
-			if (x2>=0) then
-				if (x3>=0) then
-					if (x1<=x2) then
-						if (x2<=x3) then
-							trace=dg2(1,1)+dg2(2,2)+dg2(3,3)
-							temp_ang=acos((trace-1)/2)
-							if (abs(temp_ang).lt.ang) then
-								ang=temp_ang
-								dg=dg2		
-								uvw(1)=x1;uvw(2)=x2;uvw(3)=x3;				
-							endif
-						endif
-					endif
-				endif
-			endif
-		endif			
- 	enddo
+  use prec, only: pReal, pInt
+  use IO,   only: IO_warning
+  implicit none
+  
+  !*** input variables 
+  real(pReal), dimension(3,3), intent(in) ::    ori1, &         ! 1st orientation
+                                                ori2            ! 2nd orientation
+  integer(pInt), intent(in) ::                  symmetryType    ! Type of crystal symmetry; 1:cubic, 2:hexagonal, 3:tetragonal
+  
+  !*** output variables
+  real(pReal), intent(out) ::                   angle           ! misorientation angle in degrees       
+  real(pReal), dimension(3), intent(out) ::     axis            ! rotation axis of misorientation
+  real(pReal), dimension(3,3), intent(out) ::   rot             ! net rotation of the misorientation
+  
+  !*** local variables
+  real(pReal)                                   this_angle      ! candidate for misorientation angle
+  real(pReal), dimension(3) ::                  this_axis       ! candidate for rotation axis
+  real(pReal), dimension(3,3,2) ::              these_rots      ! 2 candidates for net rotation
+  real(pReal), dimension(3,3) ::                ori1sym, ori2sym ! symmetrical counterpart of 1st and 2nd orientation respectively
+  real(pReal)                                   invNorm
+  integer(pInt)                                 NsymOperations, & ! number of possible symmetry operations
+                                                startindex, endindex, &
+                                                s1, s2, &
+                                                i
+  real(pReal), dimension(:,:,:), allocatable :: mySymOperations  ! symmetry Operations for my crystal symmetry
+  
+  
+  axis = 0.0_pReal
+  angle = 0.0_pReal
+  rot = 0.0_pReal
+  
+  ! choose my symmetry operations according to my crystal symetry
+  if (symmetryType == 1_pInt) then
+    NsymOperations = 24_pInt
+    startindex = 1_pInt
+  elseif (symmetryType == 2_pInt) then
+    NsymOperations = 12_pInt
+    startindex = 25_pInt
+  elseif (symmetryType == 3_pInt) then
+    NsymOperations = 8_pInt
+    startindex = 37_pInt
+  else
+    call IO_warning(700)
+    return
+  endif    
+  allocate(mySymOperations(NsymOperations,3,3))
+  endindex = startindex + NsymOperations - 1_pInt
+  mySymOperations = symOperations(:,:,startindex:endindex)
+  
+  
+  !	Initially set the orientation angle to maximum
+  angle = 2.0_pReal * pi
+  
+  !	apply symmetry operation to 1st orientation
+  do s1 = 1,NsymOperations	
+    ori1sym = math_mul33x33(mySymOperations(:,:,s1), ori1)
+    
+    ! apply symmetry operation to 2nd orientation
+    do s2 = 1,NsymOperations
+      ori2sym = math_mul33x33(mySymOperations(:,:,s2), ori2)
+      
+      ! calculate 2 possible net rotations
+      these_rots(:,:,1) = math_mul33x33(ori2, transpose(ori1sym))										
+      these_rots(:,:,2) = math_mul33x33(ori1, transpose(ori2sym))										
+      
+      ! store smallest misorientation for an axis inside standard orientation triangle 
+      do i = 1,2
+        
+        ! calculate rotation axis
+        invNorm = (   (these_rots(1,2,i) - these_rots(2,1,i))**2.0_pReal &
+                    + (these_rots(2,3,i) - these_rots(3,2,i))**2.0_pReal &
+                    + (these_rots(3,1,i) - these_rots(1,3,i))**2.0_pReal ) ** (-0.5_pReal)
+        this_axis(1) = (these_rots(2,3,i) - these_rots(3,2,i)) * invNorm
+        this_axis(2) = (these_rots(3,1,i) - these_rots(1,3,i)) * invNorm
+        this_axis(3) = (these_rots(1,2,i) - these_rots(2,1,i)) * invNorm
+        
+        if (      (this_axis(1) >= 0.0_pReal) .and. (this_axis(2) >= 0.0_pReal) .and. (this_axis(3) >= 0.0_pReal) &
+            .and. (this_axis(1) <= this_axis(2)) .and. (this_axis(2) <= this_axis(3)) ) then
+            
+          ! calculate rotation angle
+          this_angle = acos(0.5_pReal * (ori1sym(1,1) + ori1sym(2,2) + ori1sym(3,3) - 1.0_pReal))
+          
+          if (abs(this_angle) < angle) then
+            angle = this_angle
+            rot = these_rots(:,:,i)
+            axis = this_axis			
+          endif
+          
+        endif
+      enddo
+    enddo
   enddo
-
-ang=ang*180/pi
-return
+  
+  ! convert angle to degrees
+  angle = angle * inDeg
+  
 endsubroutine
-
-
 
 
 
@@ -449,12 +432,13 @@ endsubroutine
 !**************************************************************************
 ! second rank identity tensor of specified dimension
 !**************************************************************************
- FUNCTION math_identity2nd(dimen)  
+ PURE FUNCTION math_identity2nd(dimen)  
 
  use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,dimen
+ integer(pInt), intent(in) :: dimen
+ integer(pInt)  i
  real(pReal), dimension(dimen,dimen) :: math_identity2nd
 
  math_identity2nd = 0.0_pReal 
@@ -469,13 +453,13 @@ endsubroutine
 ! e_ijk = -1 if odd permutation of ijk
 ! e_ijk =  0 otherwise
 !**************************************************************************
- FUNCTION math_civita(i,j,k)     ! change its name from math_permut 
+ PURE FUNCTION math_civita(i,j,k)     ! change its name from math_permut 
                                  ! to math_civita <<<updated 31.07.2009>>>
 
  use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,j,k
+ integer(pInt), intent(in) :: i,j,k
  real(pReal) math_civita
 
  math_civita = 0.0_pReal
@@ -494,12 +478,12 @@ endsubroutine
 ! d_ij = 1 if i = j
 ! d_ij = 0 otherwise
 !**************************************************************************
- FUNCTION math_delta(i,j)
+ PURE FUNCTION math_delta(i,j)
 
  use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,j
+ integer(pInt), intent (in) :: i,j
  real(pReal) math_delta
 
  math_delta = 0.0_pReal
@@ -714,7 +698,7 @@ endsubroutine
 !**************************************************************************
 ! transposition of a 3x3 matrix
 !**************************************************************************
-function math_transpose3x3(A)
+pure function math_transpose3x3(A)
 
  use prec, only: pReal,pInt
  implicit none
@@ -732,7 +716,7 @@ function math_transpose3x3(A)
 !**************************************************************************
 ! Cramer inversion of 3x3 matrix (function)
 !**************************************************************************
- function math_inv3x3(A)
+ pure function math_inv3x3(A)
 
 !   direct Cramer inversion of matrix A.
 !   returns all zeroes if not possible, i.e. if det close to zero
@@ -773,7 +757,7 @@ function math_transpose3x3(A)
 !**************************************************************************
 ! Cramer inversion of 3x3 matrix (subroutine)
 !**************************************************************************
- SUBROUTINE math_invert3x3(A, InvA, DetA, error)
+ PURE SUBROUTINE math_invert3x3(A, InvA, DetA, error)
 
 !   Bestimmung der Determinanten und Inversen einer 3x3-Matrix
 !   A      = Matrix A
@@ -820,7 +804,7 @@ function math_transpose3x3(A)
 !**************************************************************************
 ! Gauss elimination to invert 6x6 matrix
 !**************************************************************************
- SUBROUTINE math_invert(dimen,A, InvA, AnzNegEW, error)
+ PURE SUBROUTINE math_invert(dimen,A, InvA, AnzNegEW, error)
 
 !   Invertieren einer dimen x dimen - Matrix
 !   A        = Matrix A
@@ -853,7 +837,7 @@ function math_transpose3x3(A)
 
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- SUBROUTINE Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
+ PURE SUBROUTINE Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
 
 !   Loesung eines linearen Gleichungsssystem A * X = B mit Hilfe des
 !   GAUSS-Algorithmus
@@ -1578,14 +1562,16 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
 
 !****************************************************************
- subroutine math_pDecomposition(FE,U,R,error)
+ pure subroutine math_pDecomposition(FE,U,R,error)
 !-----FE=RU 
 !****************************************************************
  use prec, only: pReal, pInt
  implicit none
 
- logical error
- real(pReal) FE(3,3),R(3,3),U(3,3),CE(3,3),EW1,EW2,EW3,EB1(3,3),EB2(3,3),EB3(3,3),UI(3,3),det
+ real(pReal), intent(in) :: FE(3,3)
+ real(pReal), intent(out) :: R(3,3), U(3,3)
+ logical, intent(out) :: error
+ real(pReal) CE(3,3),EW1,EW2,EW3,EB1(3,3),EB2(3,3),EB3(3,3),UI(3,3),det
 
  error = .false.
  ce = math_mul33x33(transpose(FE),FE)
@@ -1601,13 +1587,14 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
 
 !**********************************************************************
- subroutine math_spectral1(M,EW1,EW2,EW3,EB1,EB2,EB3)
+ pure subroutine math_spectral1(M,EW1,EW2,EW3,EB1,EB2,EB3)
 !**** EIGENWERTE UND EIGENWERTBASIS DER SYMMETRISCHEN 3X3 MATRIX M
 
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal) M(3,3),EB1(3,3),EB2(3,3),EB3(3,3),EW1,EW2,EW3
+ real(pReal), intent(in) :: M(3,3)
+ real(pReal), intent(out) :: EB1(3,3),EB2(3,3),EB3(3,3),EW1,EW2,EW3
  real(pReal) HI1M,HI2M,HI3M,TOL,R,S,T,P,Q,RHO,PHI,Y1,Y2,Y3,D1,D2,D3
  real(pReal) C1,C2,C3,M1(3,3),M2(3,3),M3(3,3),arg
  TOL=1.e-14_pReal
@@ -1698,11 +1685,12 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 !********************************************************************** 
 !**** HAUPTINVARIANTEN HI1M, HI2M, HI3M DER 3X3 MATRIX M
 
- SUBROUTINE math_hi(M,HI1M,HI2M,HI3M)
+ PURE SUBROUTINE math_hi(M,HI1M,HI2M,HI3M)
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal) M(3,3),HI1M,HI2M,HI3M 
+ real(pReal), intent(in) :: M(3,3) 
+ real(pReal), intent(out) :: HI1M, HI2M, HI3M 
 
  HI1M=M(1,1)+M(2,2)+M(3,3)
  HI2M=HI1M**2/2.0_pReal-(M(1,1)**2+M(2,2)**2+M(3,3)**2)/2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
