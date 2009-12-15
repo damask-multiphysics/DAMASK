@@ -100,7 +100,7 @@ endsubroutine
      dble(debug_cumLpTicks)*1.0e6_pReal/tickrate/debug_cumLpCalls
  endif
  write(6,*)
- write(6,'(a33,x,i12)')	     'total calls to dotState         :',debug_cumDotStateCalls
+ write(6,'(a33,x,i12)')	     'total calls to collectDotState  :',debug_cumDotStateCalls
  if (debug_cumdotStateCalls > 0_pInt) then
    write(6,'(a33,x,f12.3)')  'total CPU time/s                :',dble(debug_cumDotStateTicks)/tickrate
    write(6,'(a33,x,f12.6)')  'avg CPU time/microsecs per call :',&
@@ -191,7 +191,6 @@ endsubroutine
  enddo
  write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
  write(6,*)
- call flush(6)
 
 
  endsubroutine

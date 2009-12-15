@@ -1118,6 +1118,8 @@ endfunction
    msg = '+  Crystallite responds elastically  +'
  case (650)
    msg = '+     Polar decomposition failed     +'
+ case (700)
+   msg = '+      unknown crystal symmetry      +'
  case default
    msg = '+     Unknown warning number...      +'
  end select

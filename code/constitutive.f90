@@ -18,6 +18,8 @@ MODULE constitutive
                                                  constitutive_subState0, &       ! pointer array to microstructure at start of crystallite inc
                                                  constitutive_state, &           ! pointer array to current microstructure (end of converged time step)
                                                  constitutive_dotState, &        ! pointer array to evolution of current microstructure
+                                                 constitutive_previousDotState, &! pointer array to previous evolution of current microstructure
+                                                 constitutive_previousDotState2, &! pointer array to previous evolution of current microstructure
                                                  constitutive_relevantState      ! relevant state values
  integer(pInt), dimension(:,:,:), allocatable :: constitutive_sizeDotState, &    ! size of dotState array
                                                  constitutive_sizeState, &       ! size of state array per grain
@@ -112,6 +114,8 @@ subroutine constitutive_init()
  allocate(constitutive_subState0(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_state(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_dotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_previousDotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_previousDotState2(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_relevantState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_sizeDotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;   constitutive_sizeDotState = 0_pInt
  allocate(constitutive_sizeState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;      constitutive_sizeState = 0_pInt
@@ -132,6 +136,8 @@ subroutine constitutive_init()
            allocate(constitutive_state(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_relevantState(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
            constitutive_state0(g,i,e)%p =           constitutive_j2_stateInit(myInstance)
            constitutive_relevantState(g,i,e)%p =    constitutive_j2_relevantState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(myInstance)
@@ -145,6 +151,8 @@ subroutine constitutive_init()
            allocate(constitutive_state(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_relevantState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
            constitutive_state0(g,i,e)%p =           constitutive_phenopowerlaw_stateInit(myInstance)
            constitutive_relevantState(g,i,e)%p =    constitutive_phenopowerlaw_relevantState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(myInstance)
@@ -158,6 +166,8 @@ subroutine constitutive_init()
            allocate(constitutive_state(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
            allocate(constitutive_relevantState(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
            constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(myInstance)
            constitutive_relevantState(g,i,e)%p =    constitutive_dislotwin_relevantState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(myInstance)
@@ -171,6 +181,8 @@ subroutine constitutive_init()
            allocate(constitutive_state(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_relevantState(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
            constitutive_state0(g,i,e)%p =           constitutive_nonlocal_stateInit(myInstance)
            constitutive_relevantState(g,i,e)%p =    constitutive_nonlocal_relevantState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(myInstance)
@@ -190,6 +202,7 @@ subroutine constitutive_init()
  constitutive_maxSizeDotState    = maxval(constitutive_sizeDotState)
  constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
 
+ !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  constitutive init  -+>>>'
  write(6,*) '$Id$'
@@ -200,6 +213,7 @@ subroutine constitutive_init()
  write(6,'(a32,x,7(i5,x))') 'constitutive_state:           ', shape(constitutive_state)
  write(6,'(a32,x,7(i5,x))') 'constitutive_relevantState:   ', shape(constitutive_relevantState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_previousDotState:', shape(constitutive_previousDotState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
@@ -207,7 +221,8 @@ subroutine constitutive_init()
  write(6,'(a32,x,7(i5,x))') 'maxSizeState:       ', constitutive_maxSizeState
  write(6,'(a32,x,7(i5,x))') 'maxSizeDotState:    ', constitutive_maxSizeDotState
  write(6,'(a32,x,7(i5,x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
-
+ call flush(6)
+ !$OMP END CRITICAL (write2out)
  return
 
 endsubroutine
@@ -279,8 +294,7 @@ subroutine constitutive_microstructure(Temperature,Fe,Fp,ipc,ip,el)
 !* Definition of variables
 integer(pInt), intent(in) :: ipc,ip,el
 real(pReal), intent(in) :: Temperature
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fp
+real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
  
@@ -362,39 +376,62 @@ subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperatur
 !* OUTPUT:                                                           *
 !*  - constitutive_dotState : evolution of state variable            *
 !*********************************************************************
- use prec, only: pReal, pInt
- use debug
- use mesh, only: mesh_NcpElems, mesh_maxNips
- use material, only: phase_constitution, material_phase, homogenization_maxNgrains
- use constitutive_j2
- use constitutive_phenopowerlaw
- use constitutive_dislotwin
- use constitutive_nonlocal
- implicit none
+use prec, only:     pReal, pInt
+use debug, only:    debug_cumDotStateCalls, &
+                    debug_cumDotStateTicks
+use mesh, only:     mesh_NcpElems, &
+                    mesh_maxNips
+use material, only: phase_constitution, &
+                    material_phase, &
+                    homogenization_maxNgrains
+use constitutive_j2
+use constitutive_phenopowerlaw
+use constitutive_dislotwin
+use constitutive_nonlocal
 
-!* Definition of variables
- integer(pInt), intent(in) :: ipc,ip,el
- real(pReal), intent(in) :: Temperature, subdt
- real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
- real(pReal), dimension(6), intent(in) :: Tstar_v, subTstar0_v
+implicit none
 
- select case (phase_constitution(material_phase(ipc,ip,el)))
+!*** input  variables
+integer(pInt), intent(in) ::    ipc, ip, el
+real(pReal), intent(in) ::      Temperature, &
+                                subdt
+real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                Fe, &
+                                Fp
+real(pReal), dimension(6), intent(in) :: &
+                                Tstar_v, &
+                                subTstar0_v
+
+!*** local variables
+integer(pLongInt)               tick, tock, & 
+                                tickrate, &
+                                maxticks
+
+call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
+
+select case (phase_constitution(material_phase(ipc,ip,el)))
+
+  case (constitutive_j2_label)
+    constitutive_dotState(ipc,ip,el)%p = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
-   case (constitutive_j2_label)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_phenopowerlaw_label)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_dislotwin_label)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_nonlocal_label)
-     call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, &
-                                         constitutive_state, constitutive_subState0, ipc, ip, el)
-     
- end select
- return
+  case (constitutive_phenopowerlaw_label)
+    constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+ 
+  case (constitutive_dislotwin_label)
+    constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+ 
+  case (constitutive_nonlocal_label)
+    call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, &
+                                        constitutive_state, constitutive_subState0, subdt, ipc, ip, el)
+ 
+end select
+
+call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
+debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
+debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
+if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
+
+return
 endsubroutine
 
 
@@ -444,7 +481,7 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
 endfunction
 
 
-pure function constitutive_postResults(Tstar_v,subTstar0_v,Temperature,dt,subdt,ipc,ip,el)
+function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, dt, subdt, ipc, ip, el)
 !*********************************************************************
 !* return array of constitutive results                              *
 !* INPUT:                                                            *
@@ -454,8 +491,12 @@ pure function constitutive_postResults(Tstar_v,subTstar0_v,Temperature,dt,subdt,
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec, only: pReal,pInt
- use material, only: phase_constitution,material_phase
+ use prec, only:     pReal,pInt
+ use mesh, only:     mesh_NcpElems, &
+                     mesh_maxNips
+ use material, only: phase_constitution, &
+                     material_phase, &
+                     homogenization_maxNgrains
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_dislotwin
@@ -466,6 +507,7 @@ pure function constitutive_postResults(Tstar_v,subTstar0_v,Temperature,dt,subdt,
  integer(pInt), intent(in) :: ipc,ip,el
  real(pReal), intent(in) :: dt, Temperature, subdt
  real(pReal), dimension(6), intent(in) :: Tstar_v, subTstar0_v
+ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
  real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: constitutive_postResults
 
  constitutive_postResults = 0.0_pReal
@@ -481,8 +523,9 @@ pure function constitutive_postResults(Tstar_v,subTstar0_v,Temperature,dt,subdt,
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, subTstar0_v, Temperature, dt, subdt, constitutive_state,&
-                                                                  constitutive_subState0, constitutive_dotstate, ipc, ip, el)
+     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, dt, subdt, &
+                                                                  constitutive_state, constitutive_subState0, &
+                                                                  constitutive_dotstate, ipc, ip, el)
  end select
  
 return
