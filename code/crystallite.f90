@@ -553,7 +553,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-              ! debugger = (e == 1 .and. i == 1 .and. g == 1)
+              !debugger = (e == 1 .and. i == 1 .and. g == 1)
               if (crystallite_todo(g,i,e)) then                                         ! all undone crystallites
                 call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                   crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
@@ -575,7 +575,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                          ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-              ! debugger = (e == 1 .and. i == 1 .and. g == 1)
+              !debugger = (e == 1 .and. i == 1 .and. g == 1)
               if (crystallite_todo(g,i,e)) then                                       ! all undone crystallites
                 crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)    ! update state
                 crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)  ! update temperature
@@ -920,6 +920,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   crystallite_Tstar_v(:,gg,ii,ee) = storedTstar_v(:,gg,ii,ee)
                   crystallite_P(:,:,gg,ii,ee) = storedP(:,:,gg,ii,ee)
             enddo; enddo; enddo
+            
+						!$OMP CRITICAL (out)
+							debug_StiffnessStateLoopDistribution(NiterationState) = debug_StiffnessstateLoopDistribution(NiterationState) + 1
+						!$OMPEND CRITICAL (out)
               
       enddo; enddo; enddo         ! element,ip,grain loop (e,i,g)
       crystallite_converged = storedConvergenceFlag
