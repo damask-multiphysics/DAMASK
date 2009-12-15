@@ -465,10 +465,11 @@ endfunction
 
 !********************************************************************
 ! locate at most N space-separated parts in line
-! return array containing number of parts found and
-! their left/right positions to be used by IO_xxxVal
+! return array containing number of parts in line and
+! the left/right positions of at most N to be used by IO_xxxVal
 !********************************************************************
- pure function IO_stringPos (line,N)
+! pure function IO_stringPos (line,N)
+ function IO_stringPos (line,N)
 
  use prec, only: pReal,pInt
  implicit none
@@ -476,18 +477,23 @@ endfunction
  character(len=*), intent(in) :: line
  character(len=*), parameter :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13) ! comma and whitespaces
  integer(pInt), intent(in) :: N
- integer(pInt)  part
+ integer(pInt)  left,right
  integer(pInt) IO_stringPos(1+N*2)
 
  IO_stringPos = -1
  IO_stringPos(1) = 0
- part = 1
- do while ((N<1 .or. part<=N) .and. verify(line(IO_stringPos(part*2-1)+1:),sep)>0)
-   IO_stringPos(part*2) = IO_stringPos(part*2-1)+verify(line(IO_stringPos(part*2-1)+1:),sep)
-   IO_stringPos(part*2+1) = IO_stringPos(part*2)+scan(line(IO_stringPos(part*2):),sep)-2
-   part = part+1
+ right = 0
+
+ do while (verify(line(right+1:),sep)>0)
+   left  = right + verify(line(right+1:),sep)
+   right = left + scan(line(left:),sep) - 2
+   if ( IO_stringPos(1)<N ) then
+     IO_stringPos(1+IO_stringPos(1)*2+1) = left
+     IO_stringPos(1+IO_stringPos(1)*2+2) = right
+   endif
+   IO_stringPos(1) = IO_stringPos(1)+1
  enddo
- IO_stringPos(1) = part-1
+
  return
 
  endfunction
