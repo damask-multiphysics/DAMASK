@@ -263,7 +263,7 @@ subroutine math_misorientation(axis, angle, rot, ori1, ori2, symmetryType)
   !*** local variables
   real(pReal)                                   this_angle      ! candidate for misorientation angle
   real(pReal), dimension(3) ::                  this_axis       ! candidate for rotation axis
-  real(pReal), dimension(3,3,2) ::              these_rots      ! 2 candidates for net rotation
+  real(pReal), dimension(3,3) ::                this_rot        ! candidate for net rotation
   real(pReal), dimension(3,3) ::                ori1sym, ori2sym ! symmetrical counterpart of 1st and 2nd orientation respectively
   real(pReal)                                   invNorm
   integer(pInt)                                 NsymOperations, & ! number of possible symmetry operations
@@ -291,7 +291,7 @@ subroutine math_misorientation(axis, angle, rot, ori1, ori2, symmetryType)
     call IO_warning(700)
     return
   endif    
-  allocate(mySymOperations(NsymOperations,3,3))
+  allocate(mySymOperations(3,3,NsymOperations))
   endindex = startindex + NsymOperations - 1_pInt
   mySymOperations = symOperations(:,:,startindex:endindex)
   
@@ -300,7 +300,7 @@ subroutine math_misorientation(axis, angle, rot, ori1, ori2, symmetryType)
   angle = 2.0_pReal * pi
   
   !	apply symmetry operation to 1st orientation
-  do s1 = 1,NsymOperations	
+  do s1 = 1,NsymOperations
     ori1sym = math_mul33x33(mySymOperations(:,:,s1), ori1)
     
     ! apply symmetry operation to 2nd orientation
@@ -308,34 +308,30 @@ subroutine math_misorientation(axis, angle, rot, ori1, ori2, symmetryType)
       ori2sym = math_mul33x33(mySymOperations(:,:,s2), ori2)
       
       ! calculate 2 possible net rotations
-      these_rots(:,:,1) = math_mul33x33(ori2, transpose(ori1sym))										
-      these_rots(:,:,2) = math_mul33x33(ori1, transpose(ori2sym))										
+      this_rot = math_mul33x33(ori1sym, transpose(ori2sym))
       
-      ! store smallest misorientation for an axis inside standard orientation triangle 
-      do i = 1,2
-        
-        ! calculate rotation axis
-        invNorm = (   (these_rots(1,2,i) - these_rots(2,1,i))**2.0_pReal &
-                    + (these_rots(2,3,i) - these_rots(3,2,i))**2.0_pReal &
-                    + (these_rots(3,1,i) - these_rots(1,3,i))**2.0_pReal ) ** (-0.5_pReal)
-        this_axis(1) = (these_rots(2,3,i) - these_rots(3,2,i)) * invNorm
-        this_axis(2) = (these_rots(3,1,i) - these_rots(1,3,i)) * invNorm
-        this_axis(3) = (these_rots(1,2,i) - these_rots(2,1,i)) * invNorm
-        
-        if (      (this_axis(1) >= 0.0_pReal) .and. (this_axis(2) >= 0.0_pReal) .and. (this_axis(3) >= 0.0_pReal) &
-            .and. (this_axis(1) <= this_axis(2)) .and. (this_axis(2) <= this_axis(3)) ) then
-            
-          ! calculate rotation angle
-          this_angle = acos(0.5_pReal * (ori1sym(1,1) + ori1sym(2,2) + ori1sym(3,3) - 1.0_pReal))
+      ! store smallest misorientation for an axis inside standard orientation triangle         
+      ! calculate rotation axis
+      invNorm = (   (this_rot(1,2) - this_rot(2,1))**2.0_pReal &
+                  + (this_rot(2,3) - this_rot(3,2))**2.0_pReal &
+                  + (this_rot(3,1) - this_rot(1,3))**2.0_pReal ) ** (-0.5_pReal)
+      this_axis(1) = (this_rot(2,3) - this_rot(3,2)) * invNorm
+      this_axis(2) = (this_rot(3,1) - this_rot(1,3)) * invNorm
+      this_axis(3) = (this_rot(1,2) - this_rot(2,1)) * invNorm
+      
+      if (      (this_axis(1) >= 0.0_pReal) .and. (this_axis(2) >= 0.0_pReal) .and. (this_axis(3) >= 0.0_pReal) &
+          .and. (this_axis(1) <= this_axis(2)) .and. (this_axis(2) <= this_axis(3)) ) then
           
-          if (abs(this_angle) < angle) then
-            angle = this_angle
-            rot = these_rots(:,:,i)
-            axis = this_axis			
-          endif
-          
+        ! calculate rotation angle
+        this_angle = acos(0.5_pReal * (this_rot(1,1) + this_rot(2,2) + this_rot(3,3) - 1.0_pReal))
+        
+        if (abs(this_angle) < angle) then
+          angle = this_angle
+          rot = this_rot
+          axis = this_axis
         endif
-      enddo
+          
+      endif
     enddo
   enddo
   
