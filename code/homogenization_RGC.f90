@@ -23,6 +23,8 @@ MODULE homogenization_RGC
  integer(pInt),     dimension(:,:),   allocatable :: homogenization_RGC_Ngrains
  real(pReal),       dimension(:,:),   allocatable :: homogenization_RGC_xiAlpha, &
                                                      homogenization_RGC_ciAlpha
+ real(pReal),       dimension(:),     allocatable :: homogenization_RGC_maxVol0, &
+                                                     homogenization_RGC_vPower0
  character(len=64), dimension(:,:),   allocatable :: homogenization_RGC_output
 
 CONTAINS
@@ -68,6 +70,8 @@ subroutine homogenization_RGC_init(&
  allocate(homogenization_RGC_Ngrains(3,maxNinstance));       homogenization_RGC_Ngrains = 0_pInt
  allocate(homogenization_RGC_ciAlpha(3,maxNinstance));       homogenization_RGC_ciAlpha = 0.0_pReal
  allocate(homogenization_RGC_xiAlpha(3,maxNinstance));       homogenization_RGC_xiAlpha = 0.0_pReal
+ allocate(homogenization_RGC_maxVol0(maxNinstance));         homogenization_RGC_maxVol0 = 0.0_pReal
+ allocate(homogenization_RGC_vPower0(maxNinstance));         homogenization_RGC_vPower0 = 0.0_pReal
  allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance)); homogenization_RGC_output = ''
  
  rewind(file)
@@ -106,6 +110,10 @@ subroutine homogenization_RGC_init(&
               homogenization_RGC_ciAlpha(1,i) = IO_floatValue(line,positions,2)
               homogenization_RGC_ciAlpha(2,i) = IO_floatValue(line,positions,3)
               homogenization_RGC_ciAlpha(3,i) = IO_floatValue(line,positions,4)
+       case ('maxvoldiscrepancy')
+              homogenization_RGC_maxVol0(i) = IO_floatValue(line,positions,2)
+       case ('discrepancypower')
+              homogenization_RGC_vPower0(i) = IO_floatValue(line,positions,2)
      end select
    endif
  enddo
@@ -119,10 +127,13 @@ subroutine homogenization_RGC_init(&
        case('constitutivework')
          homogenization_RGC_sizePostResults(i) = &
          homogenization_RGC_sizePostResults(i) + 1
+       case('magnitudemismatch')
+         homogenization_RGC_sizePostResults(i) = &
+         homogenization_RGC_sizePostResults(i) + 1
        case('penaltyenergy')
          homogenization_RGC_sizePostResults(i) = &
          homogenization_RGC_sizePostResults(i) + 1
-       case('magnitudemismatch')
+       case('volumediscrepancy')
          homogenization_RGC_sizePostResults(i) = &
          homogenization_RGC_sizePostResults(i) + 1
      end select
@@ -132,7 +143,8 @@ subroutine homogenization_RGC_init(&
        = 3*(homogenization_RGC_Ngrains(1,i)-1)*homogenization_RGC_Ngrains(2,i)*homogenization_RGC_Ngrains(3,i) &
          + 3*homogenization_RGC_Ngrains(1,i)*(homogenization_RGC_Ngrains(2,i)-1)*homogenization_RGC_Ngrains(3,i) &
          + 3*homogenization_RGC_Ngrains(1,i)*homogenization_RGC_Ngrains(2,i)*(homogenization_RGC_Ngrains(3,i)-1) &
-         + 3_pInt   ! (1) Average constitutive work, (2) Average penalty energy, (3) Overall mismatch
+         + 4_pInt   ! (1) Average constitutive work, (2) Overall mismatch, (3) Average penalty energy, 
+                    ! (4) Volume discrepancy
  enddo
 
  return
@@ -277,11 +289,11 @@ function homogenization_RGC_updateState(&
  integer(pInt), dimension (4) :: intFaceN,intFaceP,faceID
  integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P,stresLoc
  integer(pInt), dimension (2) :: residLoc
- integer(pInt) homID,i1,i2,i3,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ival,ipert,iGrain
- real(pReal), dimension (3,3,homogenization_maxNgrains) :: R,pF,pR
+ integer(pInt) homID,i1,i2,i3,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ival,ipert,iGrain,nGrain
+ real(pReal), dimension (3,3,homogenization_maxNgrains) :: R,pF,pR,D,pD
  real(pReal), dimension (homogenization_maxNgrains)     :: NN,pNN
  real(pReal), dimension (3)   :: normP,normN,mornP,mornN
- real(pReal) residMax,stresMax,constitutiveWork,penaltyEnergy
+ real(pReal) residMax,stresMax,constitutiveWork,penaltyEnergy,volDiscrep,penDiscrep
  logical error,RGCdebug,RGCdebugJacobi,RGCcheck
 !
  integer(pInt), parameter :: nFace = 6
@@ -294,8 +306,9 @@ function homogenization_RGC_updateState(&
  RGCdebugJacobi = .false.
 
 !* Get the dimension of the cluster (grains and interfaces)
- homID = homogenization_typeInstance(mesh_element(3,el))
- nGDim = homogenization_RGC_Ngrains(:,homID)
+ homID  = homogenization_typeInstance(mesh_element(3,el))
+ nGDim  = homogenization_RGC_Ngrains(:,homID)
+ nGrain = homogenization_Ngrains(mesh_element(3,el))
  nIntFaceTot = (nGDim(1)-1)*nGDim(2)*nGDim(3) + nGDim(1)*(nGDim(2)-1)*nGDim(3) &
                + nGDim(1)*nGDim(2)*(nGDim(3)-1)
 
@@ -316,18 +329,25 @@ function homogenization_RGC_updateState(&
 
 !* Stress-like penalty related to mismatch or incompatibility at interfaces
  call homogenization_RGC_stressPenalty(R,NN,F,ip,el,homID)
-!* Debugging the mismatch, stress and penalty of grains
- if (RGCdebug) then
-   do iGrain = 1,homogenization_Ngrains(mesh_element(3,el))
+
+!* Stress-like penalty related to overall volume discrepancy 
+ call homogenization_RGC_volumePenalty(D,volDiscrep,F,avgF,ip,el,homID)
+
+!* Debugging the mismatch, stress and penalties of grains
+ if (el == 1 .and. ip == 1) then
+   do iGrain = 1,nGrain
      write(6,'(x,a30,x,i3,x,a4,x,e14.8)')'Mismatch magnitude of grain(',iGrain,') :',NN(iGrain)
      write(6,*)' '
-     write(6,'(x,a30,x,i3)')'Stress and penalty of grain: ',iGrain
+     write(6,'(x,a30,x,i3)')'Stress and penalties of grain: ',iGrain
      do i = 1,3
-       write(6,'(x,3(e14.8,x),x,3(e14.8,x))')(P(i,j,iGrain), j = 1,3),(R(i,j,iGrain), j = 1,3)
+       write(6,'(x,3(e14.8,x),x,3(e14.8,x),x,3(e14.8,x))')(P(i,j,iGrain), j = 1,3), &
+                                                          (R(i,j,iGrain), j = 1,3), &
+                                                          (D(i,j,iGrain), j = 1,3)
      enddo
      write(6,*)' '
    enddo
  endif
+
 
 !* Compute the residual stress from the balance of traction at all (interior) interfaces
  do iNum = 1,nIntFaceTot
@@ -347,8 +367,8 @@ function homogenization_RGC_updateState(&
      tract(iNum,i) = sign(viscModus_RGC*(abs(drelax(i+3*(iNum-1))/dt))**ratePower_RGC, &
                           drelax(i+3*(iNum-1)))
      do j = 1,3
-       tract(iNum,i) = tract(iNum,i) + (P(i,j,iGrP) + R(i,j,iGrP))*normP(j) &
-                                     + (P(i,j,iGrN) + R(i,j,iGrN))*normN(j)
+       tract(iNum,i) = tract(iNum,i) + (P(i,j,iGrP) + R(i,j,iGrP) + D(i,j,iGrP))*normP(j) &
+                                     + (P(i,j,iGrN) + R(i,j,iGrN) + D(i,j,iGrN))*normN(j)
        resid(i+3*(iNum-1)) = tract(iNum,i)                              ! map into 1D residual array
      enddo
    enddo
@@ -386,25 +406,29 @@ function homogenization_RGC_updateState(&
    endif
 !    write(6,'(x,a,x,i3,x,a6,x,i3,x,a12)')'RGC_updateState: ip',ip,'| el',el,'converged :)'
 !* Then compute/update the state for postResult, i.e., ...
-!* ... the (bulk) constitutive work and penalty energy
+!* ... all energy densities computed by time-integration
    constitutiveWork = state%p(3*nIntFaceTot+1)
-   penaltyEnergy    = state%p(3*nIntFaceTot+2)
+   penaltyEnergy    = state%p(3*nIntFaceTot+3)
    do iGrain = 1,homogenization_Ngrains(mesh_element(3,el))
      do i = 1,3
      do j = 1,3
-       constitutiveWork = constitutiveWork + P(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))
-       penaltyEnergy    = penaltyEnergy    + R(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))
+       constitutiveWork = constitutiveWork + P(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/dble(nGrain)
+       penaltyEnergy    = penaltyEnergy    + R(i,j,iGrain)*(F(i,j,iGrain) - F0(i,j,iGrain))/dble(nGrain)
      enddo
      enddo
    enddo
+!* ... the bulk mechanical/constitutive work
    state%p(3*nIntFaceTot+1) = constitutiveWork
-   state%p(3*nIntFaceTot+2) = penaltyEnergy
 !* ... the overall mismatch
-   state%p(3*nIntFaceTot+3) = sum(NN)
-   if (RGCdebug) then
+   state%p(3*nIntFaceTot+2) = sum(NN)/dble(nGrain)
+   state%p(3*nIntFaceTot+3) = penaltyEnergy
+!* ... the volume discrepancy
+   state%p(3*nIntFaceTot+4) = volDiscrep
+   if (el == 1 .and. ip == 1) then
      write(6,'(x,a30,x,e14.8)')'Constitutive work: ',constitutiveWork
-     write(6,'(x,a30,x,e14.8)')'Penalty energy: ',penaltyEnergy
      write(6,'(x,a30,x,e14.8)')'Magnitude mismatch: ',sum(NN)
+     write(6,'(x,a30,x,e14.8)')'Penalty energy: ',penaltyEnergy
+     write(6,'(x,a30,x,e14.8)')'Volume discrepancy: ',volDiscrep
      write(6,*)''
      call flush(6)
    endif
@@ -489,6 +513,7 @@ function homogenization_RGC_updateState(&
    state%p(1:3*nIntFaceTot) = p_relax
    call homogenization_RGC_grainDeformation(pF,F0,avgF,state,el)
    call homogenization_RGC_stressPenalty(pR,pNN,pF,ip,el,homID)
+   call homogenization_RGC_volumePenalty(pD,volDiscrep,pF,avgF,ip,el,homID)
    p_resid = 0.0_pReal
    do iNum = 1,nIntFaceTot
      call homogenization_RGC_interface1to4(faceID,iNum,homID)
@@ -507,7 +532,9 @@ function homogenization_RGC_updateState(&
      do i = 1,3
      do j = 1,3
        p_resid(i+3*(iNum-1)) = p_resid(i+3*(iNum-1)) + (pR(i,j,iGrP) - R(i,j,iGrP))*normP(j) &
-                                                     + (pR(i,j,iGrN) - R(i,j,iGrN))*normN(j)
+                                                     + (pR(i,j,iGrN) - R(i,j,iGrN))*normN(j) &
+                                                     + (pD(i,j,iGrP) - D(i,j,iGrP))*normP(j) &
+                                                     + (pD(i,j,iGrN) - D(i,j,iGrN))*normN(j)
      enddo
      enddo
    enddo
@@ -708,11 +735,14 @@ pure function homogenization_RGC_postResults(&
      case('constitutivework')
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+1)
        c = c + 1
+     case('magnitudemismatch')
+       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+3)
+       c = c + 1
      case('penaltyenergy')
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+2)
        c = c + 1
-     case('magnitudemismatch')
-       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+3)
+     case('volumediscrepancy')
+       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+4)
        c = c + 1
    end select
  enddo
@@ -722,13 +752,13 @@ pure function homogenization_RGC_postResults(&
 endfunction
 
 !********************************************************************
-! subroutine to calculate stress-like penalty due to mismatch
+! subroutine to calculate stress-like penalty due to deformation mismatch
 !********************************************************************
 subroutine homogenization_RGC_stressPenalty(&
    rPen, &          ! stress-like penalty
    nMis, &          ! total amount of mismatch
 !
-   fDef, &          ! relaxation vectors
+   fDef, &          ! deformation gradients
    ip, &            ! integration point
    el, &            ! element
    homID &          ! homogenization ID
@@ -761,7 +791,7 @@ subroutine homogenization_RGC_stressPenalty(&
  rPen = 0.0_pReal
  nMis = 0.0_pReal
  do iGrain = 1,homogenization_Ngrains(mesh_element(3,el))
-   call homogenization_RGC_equivalentShearMod(muGrain,constitutive_homogenizedC(iGrain,ip,el))
+   call homogenization_RGC_equivalentModuli(muGrain,constitutive_homogenizedC(iGrain,ip,el))
    call homogenization_RGC_grain1to3(iGrain3,iGrain,homID)
 !* Compute the mismatch tensor at all six interfaces
    do iFace = 1,nFace
@@ -779,7 +809,7 @@ subroutine homogenization_RGC_stressPenalty(&
      if (iGNghb3(3) < 1)        iGNghb3(3) = nGDim(3)
      if (iGNghb3(3) > nGDim(3)) iGNghb3(3) = 1
      call homogenization_RGC_grain3to1(iGNghb,iGNghb3,homID)            ! get the grain neighbor
-     call homogenization_RGC_equivalentShearMod(muGNghb,constitutive_homogenizedC(iGNghb,ip,el))
+     call homogenization_RGC_equivalentModuli(muGNghb,constitutive_homogenizedC(iGNghb,ip,el))
      gDef = 0.5_pReal*(fDef(:,:,iGNghb) - fDef(:,:,iGrain))             ! difference in F with the neighbor
      nDefNorm = 0.0_pReal
      nDef = 0.0_pReal
@@ -832,9 +862,69 @@ subroutine homogenization_RGC_stressPenalty(&
 endsubroutine
 
 !********************************************************************
-! subroutine to compute the equivalent shear modulus from the elasticity tensor
+! subroutine to calculate stress-like penalty due to volume discrepancy
 !********************************************************************
-subroutine homogenization_RGC_equivalentShearMod(&
+subroutine homogenization_RGC_volumePenalty(&
+   vPen, &          ! stress-like penalty due to volume
+   vDiscrep, &      ! total volume discrepancy
+!
+   fDef, &          ! deformation gradients
+   fAvg, &          ! overall deformation gradient
+   ip, &            ! integration point
+   el, &            ! element
+   homID &          ! homogenization ID
+  )
+ use prec, only: pReal,pInt,p_vec
+ use mesh, only: mesh_element
+ use constitutive, only: constitutive_homogenizedC
+ use math, only: math_det3x3,math_inv3x3
+ use material, only: homogenization_maxNgrains,homogenization_Ngrains
+ use numerics, only: maxVolDiscr_RGC,volDiscrMod_RGC,volDiscrPow_RGC
+
+ implicit none
+
+!* Definition of variables
+ real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: vPen
+ real(pReal), intent(out)                  :: vDiscrep
+ real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef
+ real(pReal), dimension (3,3), intent(in)  :: fAvg
+ integer(pInt), intent(in)                 :: ip,el
+ real(pReal), dimension (homogenization_maxNgrains) :: gVol
+ integer(pInt) homID,iGrain,nGrain,i,j
+! 
+ nGrain = homogenization_Ngrains(mesh_element(3,el))
+
+!* Compute volumes of grain and the effective volume and the total volume discrepancy
+ vDiscrep   = math_det3x3(fAvg)
+ do iGrain = 1,nGrain
+   gVol(iGrain) = math_det3x3(fDef(:,:,iGrain))
+   vDiscrep     = vDiscrep - gVol(iGrain)/dble(nGrain)
+ enddo
+
+!* Calculate the stress and penalty due to volume discrepancy
+ vPen       = 0.0_pReal
+ do iGrain = 1,nGrain
+   vPen(:,:,iGrain) = -1.0_pReal*sign(volDiscrMod_RGC*volDiscrPow_RGC/maxVolDiscr_RGC* &
+                      (abs(vDiscrep)/maxVolDiscr_RGC)**(volDiscrPow_RGC - 1.0)*gVol(iGrain)/dble(nGrain),vDiscrep)* &
+                      transpose(math_inv3x3(fDef(:,:,iGrain)))
+
+!* Debugging the stress-like penalty of volume discrepancy
+!    if (ip == 1 .and. el == 1) then
+!      write(6,'(x,a30,i2)')'Volume penalty of grain: ',iGrain
+!      do i = 1,3
+!        write(6,'(x,3(e10.4,x))')(vPen(i,j,iGrain), j = 1,3)
+!      enddo
+!    endif
+ enddo
+
+ return
+
+endsubroutine
+
+!********************************************************************
+! subroutine to compute the equivalent shear and bulk moduli from the elasticity tensor
+!********************************************************************
+subroutine homogenization_RGC_equivalentModuli(&
    shearMod, &       ! equivalent (isotropic) shear modulus
 !
    elasTens &        ! elasticity tensor in Mandel notation

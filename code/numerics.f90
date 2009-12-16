@@ -28,7 +28,7 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 rTol_crystalliteStress, &               ! relative tolerance in crystallite stress loop
                                 aTol_crystalliteStress, &               ! absolute tolerance in crystallite stress loop
 
-!* RGC parameters: added <<<updated 17.11.2009>>>
+!* RGC parameters: added <<<updated 17.12.2009>>>
                                 absTol_RGC, &                           ! absolute tolerance of RGC residuum
                                 relTol_RGC, &                           ! relative tolerance of RGC residuum
                                 absMax_RGC, &                           ! absolute maximum of RGC residuum
@@ -37,7 +37,10 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 xSmoo_RGC, &                            ! RGC penalty smoothing parameter (hyperbolic tangent)
                                 ratePower_RGC, &                        ! power (sensitivity rate) of numerical viscosity in RGC scheme
                                 viscModus_RGC, &                        ! stress modulus of RGC numerical viscosity
-                                maxdRelax_RGC                           ! threshold of maximum relaxation vector increment (if exceed this then cutback)
+                                maxdRelax_RGC, &                        ! threshold of maximum relaxation vector increment (if exceed this then cutback)
+                                maxVolDiscr_RGC, &                      ! threshold of maximum volume discrepancy allowed
+                                volDiscrMod_RGC, &                      ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
+                                volDiscrPow_RGC                         ! powerlaw penalty for volume discrepancy
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
 integer(pInt)                   fixedSeed                            ! fixed seeding for pseudo-random number generator
@@ -101,7 +104,7 @@ subroutine numerics_init()
   rTol_crystalliteStress  = 1.0e-6_pReal
   aTol_crystalliteStress  = 1.0e-8_pReal            ! residuum is in Lp (hence strain on the order of 1e-8 here)
 
-!* RGC parameters: added <<<updated 17.11.2009>>> with moderate setting
+!* RGC parameters: added <<<updated 17.12.2009>>> with moderate setting
   absTol_RGC              = 1.0e+4
   relTol_RGC              = 1.0e-3
   absMax_RGC              = 1.0e+10
@@ -111,6 +114,9 @@ subroutine numerics_init()
   ratePower_RGC           = 1.0e+0  ! Newton viscosity (linear model)
   viscModus_RGC           = 0.0e+0  ! No viscosity is applied
   maxdRelax_RGC           = 1.0e+0
+  maxVolDiscr_RGC         = 1.0e-5  ! tolerance for volume discrepancy allowed
+  volDiscrMod_RGC         = 1.0e+12
+  volDiscrPow_RGC         = 5.0
   
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
@@ -170,7 +176,7 @@ subroutine numerics_init()
         case ('atol_crystallitestress')
               aTol_crystalliteStress = IO_floatValue(line,positions,2)
 
-!* RGC parameters: added <<<updated 17.11.2009>>>
+!* RGC parameters: added <<<updated 17.12.2009>>>
         case ('atol_rgc')
               absTol_RGC = IO_floatValue(line,positions,2)
         case ('rtol_rgc')
@@ -189,6 +195,12 @@ subroutine numerics_init()
               viscModus_RGC = IO_floatValue(line,positions,2)
         case ('maxrelaxation_rgc')
               maxdRelax_RGC = IO_floatValue(line,positions,2)
+        case ('maxvoldiscrepancy_rgc')
+              maxVolDiscr_RGC = IO_floatValue(line,positions,2)
+        case ('voldiscrepancymod_rgc')
+              volDiscrMod_RGC = IO_floatValue(line,positions,2)
+        case ('discrepancypower_rgc')
+              volDiscrPow_RGC = IO_floatValue(line,positions,2)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
         case ('fixed_seed')
@@ -230,7 +242,7 @@ subroutine numerics_init()
   write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
   write(6,*)
 
-!* RGC parameters: added <<<updated 17.11.2009>>>
+!* RGC parameters: added <<<updated 17.12.2009>>>
   write(6,'(a24,x,e8.1)') 'aTol_RGC:             ',absTol_RGC
   write(6,'(a24,x,e8.1)') 'rTol_RGC:             ',relTol_RGC
   write(6,'(a24,x,e8.1)') 'aMax_RGC:             ',absMax_RGC
@@ -240,6 +252,10 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:    ',ratePower_RGC
   write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC: ',viscModus_RGC
   write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:    ',maxdRelax_RGC
+  write(6,'(a24,x,e8.1)') 'maxVolDiscrepancy_RGC:',maxVolDiscr_RGC
+  write(6,'(a24,x,e8.1)') 'volDiscrepancyMod_RGC:',volDiscrMod_RGC
+  write(6,'(a24,x,e8.1)') 'discrepancyPower_RGC: ',volDiscrPow_RGC
+
   write(6,*)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
@@ -279,6 +295,9 @@ subroutine numerics_init()
   if (ratePower_RGC < 0.0_pReal)            call IO_error(278)
   if (viscModus_RGC < 0.0_pReal)            call IO_error(278)
   if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(288)
+  if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(289)
+  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(289)
+  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(289)
  
   if (fixedSeed <= 0_pInt)                  write(6,'(a)') 'Random is random!'
 endsubroutine
