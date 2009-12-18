@@ -363,7 +363,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
 endsubroutine
 
 
-subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperature, misorientation, subdt, ipc, ip, el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
@@ -380,7 +380,8 @@ use prec, only:     pReal, pInt
 use debug, only:    debug_cumDotStateCalls, &
                     debug_cumDotStateTicks
 use mesh, only:     mesh_NcpElems, &
-                    mesh_maxNips
+                    mesh_maxNips, &
+                    mesh_maxNipNeighbors
 use material, only: phase_constitution, &
                     material_phase, &
                     homogenization_maxNgrains
@@ -395,6 +396,8 @@ implicit none
 integer(pInt), intent(in) ::    ipc, ip, el
 real(pReal), intent(in) ::      Temperature, &
                                 subdt
+real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: &
+                                misorientation
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                 Fe, &
                                 Fp
@@ -421,7 +424,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
   case (constitutive_nonlocal_label)
-    call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, &
+    call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, misorientation, subdt, &
                                         constitutive_state, constitutive_subState0, subdt, ipc, ip, el)
  
 end select
@@ -481,7 +484,7 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
 endfunction
 
 
-function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, dt, subdt, ipc, ip, el)
+function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, misorientation, dt, subdt, ipc, ip, el)
 !*********************************************************************
 !* return array of constitutive results                              *
 !* INPUT:                                                            *
@@ -493,7 +496,8 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, dt,
 !*********************************************************************
  use prec, only:     pReal,pInt
  use mesh, only:     mesh_NcpElems, &
-                     mesh_maxNips
+                     mesh_maxNips, &
+                     mesh_maxNipNeighbors
  use material, only: phase_constitution, &
                      material_phase, &
                      homogenization_maxNgrains
@@ -507,6 +511,7 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, dt,
  integer(pInt), intent(in) :: ipc,ip,el
  real(pReal), intent(in) :: dt, Temperature, subdt
  real(pReal), dimension(6), intent(in) :: Tstar_v, subTstar0_v
+ real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: misorientation
  real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
  real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: constitutive_postResults
 
@@ -523,8 +528,8 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, dt,
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, dt, subdt, &
-                                                                  constitutive_state, constitutive_subState0, &
+     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, misorientation, &
+                                                                  dt, subdt, constitutive_state, constitutive_subState0, &
                                                                   constitutive_dotstate, ipc, ip, el)
  end select
  

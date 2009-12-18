@@ -31,7 +31,8 @@ real(pReal), dimension (:,:,:), allocatable ::          crystallite_dt, &       
 real(pReal), dimension (:,:,:,:), allocatable ::        crystallite_Tstar_v, &               ! current 2nd Piola-Kirchhoff stress vector (end of converged time step)
                                                         crystallite_Tstar0_v, &              ! 2nd Piola-Kirchhoff stress vector at start of FE inc
                                                         crystallite_partionedTstar0_v, &     ! 2nd Piola-Kirchhoff stress vector at start of homog inc
-                                                        crystallite_subTstar0_v              ! 2nd Piola-Kirchhoff stress vector at start of crystallite inc
+                                                        crystallite_subTstar0_v, &           ! 2nd Piola-Kirchhoff stress vector at start of crystallite inc
+                                                        crystallite_eulerangles              ! euler angles phi1 Phi phi2
 real(pReal), dimension (:,:,:,:,:), allocatable ::      crystallite_Fe, &                    ! current "elastic" def grad (end of converged time step)
                                                         crystallite_Fp, &                    ! current plastic def grad (end of converged time step)
                                                         crystallite_invFp, &                 ! inverse of current plastic def grad (end of converged time step)
@@ -47,7 +48,9 @@ real(pReal), dimension (:,:,:,:,:), allocatable ::      crystallite_Fe, &       
                                                         crystallite_Lp0, &                   ! plastic velocitiy grad at start of FE inc
                                                         crystallite_partionedLp0,&           ! plastic velocity grad at start of homog inc
                                                         crystallite_subLp0,&                 ! plastic velocity grad at start of crystallite inc
-                                                        crystallite_P                        ! 1st Piola-Kirchhoff stress per grain
+                                                        crystallite_P, &                     ! 1st Piola-Kirchhoff stress per grain
+                                                        crystallite_R, &                     ! crystal orientation (rotation matrix current -> lattice conf)
+                                                        crystallite_misorientation           ! misorientation between two neighboring ips (only calculated for single grain IPs)
 real(pReal), dimension (:,:,:,:,:,:,:), allocatable ::  crystallite_dPdF, &                  ! individual dPdF per grain
                                                         crystallite_fallbackdPdF             ! dPdF fallback for non-converged grains (elastic prediction)
 real(pReal)                                             crystallite_statedamper              ! damping for state update
@@ -78,7 +81,8 @@ subroutine crystallite_init(Temperature)
                               FEsolving_execIP
   use mesh, only:             mesh_element, &
                               mesh_NcpElems, &
-                              mesh_maxNips
+                              mesh_maxNips, &
+                              mesh_maxNipNeighbors
   use material, only:         homogenization_Ngrains, &
                               homogenization_maxNgrains, &
                               material_EulerAngles, &
@@ -98,11 +102,13 @@ subroutine crystallite_init(Temperature)
                               gMax, &                       ! maximum number of grains
                               iMax, &                       ! maximum number of integration points
                               eMax, &                       ! maximum  number of elements
+                              nMax, &                       ! maximum number of ip neighbors
                               myNgrains
 
   gMax = homogenization_maxNgrains
   iMax = mesh_maxNips
   eMax = mesh_NcpElems
+  nMax = mesh_maxNipNeighbors
 
   allocate(crystallite_Temperature(gMax,iMax,eMax));                     crystallite_Temperature = Temperature
   allocate(crystallite_P(3,3,gMax,iMax,eMax));                                     crystallite_P = 0.0_pReal
@@ -126,6 +132,9 @@ subroutine crystallite_init(Temperature)
   allocate(crystallite_subF0(3,3,gMax,iMax,eMax));                             crystallite_subF0 = 0.0_pReal
   allocate(crystallite_subFp0(3,3,gMax,iMax,eMax));                           crystallite_subFp0 = 0.0_pReal
   allocate(crystallite_subLp0(3,3,gMax,iMax,eMax));                           crystallite_subLp0 = 0.0_pReal
+  allocate(crystallite_R(3,3,gMax,iMax,eMax));                                     crystallite_R = 0.0_pReal
+  allocate(crystallite_eulerangles(3,gMax,iMax,eMax));                   crystallite_eulerangles = 0.0_pReal
+  allocate(crystallite_misorientation(4,nMax,gMax,iMax,eMax));        crystallite_misorientation = 0.0_pReal
   allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax));                   crystallite_subTstar0_v = 0.0_pReal
   allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax));                           crystallite_dPdF = 0.0_pReal
   allocate(crystallite_fallbackdPdF(3,3,3,3,gMax,iMax,eMax));           crystallite_fallbackdPdF = 0.0_pReal
@@ -148,6 +157,7 @@ subroutine crystallite_init(Temperature)
         do g = 1,myNgrains
           crystallite_partionedTemperature0(g,i,e) = Temperature                       ! isothermal assumption
           crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(:,g,i,e))    ! plastic def gradient reflects init orientation
+          crystallite_Fe(:,:,g,i,e)  = transpose(crystallite_Fp0(:,:,g,i,e))
           crystallite_F0(:,:,g,i,e)  = math_I3
           crystallite_partionedFp0(:,:,g,i,e) = crystallite_Fp0(:,:,g,i,e)
           crystallite_partionedF0(:,:,g,i,e)  = crystallite_F0(:,:,g,i,e)
@@ -159,6 +169,7 @@ subroutine crystallite_init(Temperature)
     enddo
   !$OMPEND PARALLEL DO
   
+  call crystallite_orientations()
   call crystallite_stressAndItsTangent(.true.)                 ! request elastic answers
   crystallite_fallbackdPdF = crystallite_dPdF                  ! use initial elastic stiffness as fallback
  
@@ -194,6 +205,9 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subTstar0_v:           ', shape(crystallite_subTstar0_v)
     write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
     write(6,'(a35,x,7(i5,x))') 'crystallite_fallbackdPdF:          ', shape(crystallite_fallbackdPdF)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_R:                     ', shape(crystallite_R)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_eulerangles:           ', shape(crystallite_eulerangles)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_misorientation:        ', shape(crystallite_misorientation)
     write(6,'(a35,x,7(i5,x))') 'crystallite_dt:                    ', shape(crystallite_dt)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subdt:                 ', shape(crystallite_subdt)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subFrac:               ', shape(crystallite_subFrac)
@@ -204,7 +218,7 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_converged:             ', shape(crystallite_converged)
     write(6,'(a35,x,7(i5,x))') 'crystallite_stateConverged:        ', shape(crystallite_stateConverged)
     write(6,'(a35,x,7(i5,x))') 'crystallite_temperatureConverged:  ', shape(crystallite_temperatureConverged)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_todo:           ', shape(crystallite_todo)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_todo:                  ', shape(crystallite_todo)
     write(6,*)
     write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localConstitution)
     call flush(6)
@@ -316,7 +330,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
   real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                         storedTemperature
   real(pReal), dimension(constitutive_maxSizeState,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        storedState, &
+                                                        storedState
+  real(pReal), dimension(constitutive_maxSizeDotState,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                         storedDotState
   logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                         storedConvergenceFlag
@@ -371,7 +386,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-            ! debugger = (e == 1 .and. i == 1 .and. g == 1) 
+            debugger = (e == 1 .and. i == 1 .and. g == 1) 
             if (crystallite_converged(g,i,e)) then
               if (debugger) then
                 !$OMP CRITICAL (write2out)
@@ -464,7 +479,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             if (crystallite_todo(g,i,e)) then                                         ! all undone crystallites
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                 crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                                crystallite_subdt(g,i,e), g, i, e)
+                                                crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)
             endif
       enddo; enddo; enddo
     !$OMPEND PARALLEL DO
@@ -557,7 +572,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               if (crystallite_todo(g,i,e)) then                                         ! all undone crystallites
                 call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                   crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                                  crystallite_subdt(g,i,e), g, i, e)                
+                                                  crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)                
                 delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
                 delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
                 dot_prod12 = dot_product(delta_dotState1, delta_dotState2)
@@ -595,6 +610,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       if (debugger) then
         !$OMP CRITICAL (write2out)
           write(6,*) count(crystallite_converged(:,:,:)),'grains converged after state integration no.', NiterationState
+          write(6,*)
+          !write(6,'(8(L,x))') crystallite_converged(:,:,:)
         !$OMPEND CRITICAL (write2out)
       endif
       if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) & ! any non-local not yet converged?
@@ -705,7 +722,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                           constitutive_dotState(g,i,e)%p = 0.0_pReal
                           call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                             crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), &
-                                                            crystallite_subdt(g,i,e), g, i, e)
+                                                            crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
+                                                            g, i, e)
                           stateConverged = crystallite_updateState(g,i,e)                                 ! update state
                           temperatureConverged = crystallite_updateTemperature(g,i,e)                     ! update temperature
                           converged = stateConverged .and. temperatureConverged
@@ -768,7 +786,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                           constitutive_dotState(g,i,e)%p = 0.0_pReal
                           call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                             crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), &
-                                                            crystallite_subdt(g,i,e), g, i, e)
+                                                            crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
+                                                            g, i, e)
                           stateConverged = crystallite_updateState(g,i,e)                                 ! update state
                           temperatureConverged = crystallite_updateTemperature(g,i,e)                     ! update temperature
                           converged = stateConverged .and. temperatureConverged
@@ -873,7 +892,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                     if (crystallite_todo(gg,ii,ee)) &
                       call constitutive_collectDotState(crystallite_Tstar_v(:,gg,ii,ee), crystallite_subTstar0_v(:,gg,ii,ee), &
                                                         crystallite_Fe, crystallite_Fp, crystallite_Temperature(gg,ii,ee), & 
-                                                        crystallite_subdt(gg,ii,ee), gg, ii, ee)           ! collect dot state                
+                                                        crystallite_misorientation(:,:,g,i,e), crystallite_subdt(gg,ii,ee), &
+                                                        gg, ii, ee)                                        ! collect dot state                
               enddo; enddo; enddo
 
               do ee = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -921,16 +941,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   crystallite_P(:,:,gg,ii,ee) = storedP(:,:,gg,ii,ee)
             enddo; enddo; enddo
             
-						!$OMP CRITICAL (out)
-							debug_StiffnessStateLoopDistribution(NiterationState) = debug_StiffnessstateLoopDistribution(NiterationState) + 1
-						!$OMPEND CRITICAL (out)
+            !$OMP CRITICAL (out)
+              debug_StiffnessStateLoopDistribution(NiterationState) = debug_StiffnessstateLoopDistribution(NiterationState) + 1
+            !$OMPEND CRITICAL (out)
               
       enddo; enddo; enddo         ! element,ip,grain loop (e,i,g)
       crystallite_converged = storedConvergenceFlag
-
-      
-      
-      
       
     endif
 
@@ -1396,6 +1412,147 @@ LpLoop: do
  
  
  
+!********************************************************************
+! calculates orientations and misorientations (in case of single grain ips)
+!******************************************************************** 
+subroutine crystallite_orientations()
+  
+!*** variables and functions from other modules ***!
+use prec, only:												pInt, &
+																			pReal
+use math, only:               				math_pDecomposition, &
+																			math_RtoEuler, &
+																			math_misorientation, &
+																			inDeg
+use FEsolving, only:          				FEsolving_execElem, & 
+														  				FEsolving_execIP
+use IO, only:                 				IO_warning
+use material, only:           				material_phase, &
+																			homogenization_Ngrains, &
+																			phase_constitution, &
+                              				phase_constitutionInstance
+use mesh, only:               				mesh_element, &
+                              				mesh_ipNeighborhood, &
+														  				FE_NipNeighbors
+use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
+																			constitutive_phenopowerlaw_structure
+use constitutive_dislotwin, only: 		constitutive_dislotwin_label, &
+																			constitutive_dislotwin_structure
+use constitutive_nonlocal, only: 			constitutive_nonlocal_label, &
+																			constitutive_nonlocal_structure
+
+implicit none
+
+!*** input variables ***!
+
+!*** output variables ***!
+
+!*** local variables ***!
+integer(pInt)                 	e, &                          ! element index
+																i, &                          ! integration point index
+																g, &                          ! grain index
+																n, &													! neighbor index 
+																myPhase, &									  ! phase
+																myStructure, &                ! lattice structure
+																neighboring_e, &              ! element index of my neighbor
+																neighboring_i, &              ! integration point index of my neighbor
+																neighboringPhase, &           ! phase of my neighbor
+																neighboringStructure, &       ! lattice structure of my neighbor
+																symmetryType                  ! type of crystal symmetry
+real(pReal), dimension(3,3) ::  U, R, &											  ! polar decomposition of Fe
+																netRotation                   ! net rotation between two orientations
+logical error
+
+
+!$OMP PARALLEL DO
+	do e = FEsolving_execElem(1),FEsolving_execElem(2)
+		do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+			do g = 1,homogenization_Ngrains(mesh_element(3,e))
+			  
+			  ! calculate orientation in terms of rotation matrix and euler angles
+				call math_pDecomposition(crystallite_Fe(:,:,g,i,e), U, R, error)          		! polar decomposition of Fe
+				if (error) then
+					call IO_warning(650, e, i, g)
+					crystallite_R(:,:,g,i,e) = 0.0_pReal
+					crystallite_eulerangles(:,g,i,e) = (/400.0, 400.0, 400.0/)                 		! fake orientation
+				else
+					crystallite_R(:,:,g,i,e) = transpose(R)
+					crystallite_eulerangles(:,g,i,e) = math_RtoEuler(crystallite_R(:,:,g,i,e)) * inDeg
+				endif
+				
+			enddo
+		enddo
+	enddo
+!$OMPEND PARALLEL DO
+
+!$OMP PARALLEL DO
+	do e = FEsolving_execElem(1),FEsolving_execElem(2)
+		do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+		  if (homogenization_Ngrains(mesh_element(3,e)) == 1_pInt) then                   ! if single grain ip
+
+        myPhase = material_phase(1,i,e)                																! get my crystal structure
+				select case (phase_constitution(myPhase))
+					case (constitutive_phenopowerlaw_label)
+						myStructure = constitutive_phenopowerlaw_structure(phase_constitutionInstance(myPhase))
+					case (constitutive_dislotwin_label)
+						myStructure = constitutive_dislotwin_structure(phase_constitutionInstance(myPhase))
+					case (constitutive_nonlocal_label)
+						myStructure = constitutive_nonlocal_structure(phase_constitutionInstance(myPhase))
+					case default
+						myStructure = ''
+				end select   
+			  
+			  do n = 1,FE_NipNeighbors(mesh_element(2,e))                                   ! loop through my neighbors
+					
+					neighboring_e = mesh_ipNeighborhood(1,n,i,e)
+					neighboring_i = mesh_ipNeighborhood(2,n,i,e)
+
+					if ((neighboring_e > 0) .and. (neighboring_i > 0)) then										  ! if neighbor exists
+
+						neighboringPhase = material_phase(1,neighboring_i,neighboring_e)        	! get my neighbor's crystal structure		
+						select case (phase_constitution(neighboringPhase))
+							case (constitutive_phenopowerlaw_label)
+								neighboringStructure = constitutive_phenopowerlaw_structure(phase_constitutionInstance(neighboringPhase))
+							case (constitutive_dislotwin_label)
+								neighboringStructure = constitutive_dislotwin_structure(phase_constitutionInstance(neighboringPhase))
+							case (constitutive_nonlocal_label)
+								neighboringStructure = constitutive_nonlocal_structure(phase_constitutionInstance(neighboringPhase))
+							case default
+								neighboringStructure = ''
+						end select   
+						
+						if (myStructure == neighboringStructure) then                           	! if my neighbor has same crystal structure as me
+						
+							select case (myStructure)                                               ! get type of symmetry
+								case (1_pInt, 2_pInt)                                                 ! fcc and bcc:
+									symmetryType = 1_pInt																								! -> cubic symmetry
+								case (3_pInt)																													! hex:
+									symmetryType = 2_pInt																								! -> hexagonal symmetry
+								case default
+									symmetryType = 0_pInt
+							end select
+							
+							call math_misorientation( crystallite_misorientation(1:3,n,1,i,e), &
+																				crystallite_misorientation(4,n,1,i,e), &
+																				netRotation, &
+																				crystallite_R(:,:,1,i,e), &
+																				crystallite_R(:,:,1,neighboring_i,neighboring_e), & 
+																				symmetryType)   																! calculate misorientation
+				    
+				    else
+				      call IO_warning(-1, e, i, g, 'couldnt calculate misorientation because of two different lattice structures')
+				      
+				    endif
+				  endif
+				enddo
+			endif
+		enddo
+	enddo
+!$OMPEND PARALLEL DO
+
+endsubroutine
+
+
  
 !********************************************************************
 ! return results of particular grain
@@ -1410,10 +1567,6 @@ function crystallite_postResults(&
  !*** variables and functions from other modules ***!
  use prec, only:                      pInt, &
                                       pReal
- use math, only:                      math_pDecomposition, &
-                                      math_RtoEuler, &
-                                      inDeg
- use IO, only:                        IO_warning
  use material, only:                  material_phase, &
                                       material_volume
  use constitutive, only:              constitutive_sizePostResults, &
@@ -1443,13 +1596,7 @@ function crystallite_postResults(&
    c = c+2_pInt
  endif
  if (crystallite_Nresults >= 5) then
-   call math_pDecomposition(crystallite_Fe(:,:,g,i,e),U,R,error)          ! polar decomposition of Fe
-   if (error) then
-     call IO_warning(650,e,i,g)
-     crystallite_postResults(c+1:c+3) = (/400.0,400.0,400.0/)                 ! fake orientation
-   else
-     crystallite_postResults(c+1:c+3) = math_RtoEuler(transpose(R))*inDeg     ! orientation
-   endif
+   crystallite_postResults(c+1:c+3) = crystallite_eulerangles(:,i,e,g)                 ! fake orientation
    c = c+3_pInt
  endif
  if (crystallite_Nresults >= 14) then                                     ! deformation gradient
@@ -1460,7 +1607,8 @@ function crystallite_postResults(&
  crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e); c = c+1_pInt  ! size of constitutive results
  crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = &
          constitutive_postResults(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                  crystallite_Temperature(g,i,e), dt, crystallite_subdt(g,i,e), g, i, e)
+                                  crystallite_Temperature(g,i,e), crystallite_misorientation(:,:,g,i,e), dt, &
+                                  crystallite_subdt(g,i,e), g, i, e)
  c = c + constitutive_sizePostResults(g,i,e)
  
  return 

@@ -1071,7 +1071,7 @@ endsubroutine
 !*********************************************************************
 !* rate of change of microstructure                                  *
 !*********************************************************************
-subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, previousTstar_v, Fe, Fp, Temperature, dt_previous, &
+subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, previousTstar_v, Fe, Fp, Temperature, misorientation, dt_previous, &
                                           state, previousState, timestep, g,ip,el)
 
 use prec,     only: pReal, &
@@ -1089,6 +1089,7 @@ use math,     only: math_norm3, &
                     pi
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
+                    mesh_maxNipNeighbors, &
                     mesh_element, &
                     FE_NipNeighbors, &
                     mesh_ipNeighborhood, &
@@ -1116,6 +1117,8 @@ real(pReal), intent(in) ::                  Temperature, &            ! temperat
                                             dt_previous               ! time increment between previous and current state
 real(pReal), dimension(6), intent(in) ::    Tstar_v, &                ! current 2nd Piola-Kirchhoff stress in Mandel notation
                                             previousTstar_v           ! previous 2nd Piola-Kirchhoff stress in Mandel notation
+real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: &
+                                            misorientation            ! crystal misorientation between me and my neighbor (axis, angle pair)
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             Fe, &                     ! elastic deformation gradient
                                             Fp                        ! plastic deformation gradient
@@ -1331,7 +1334,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
         
         lineLength(s,t) = gdot(s,t) / constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
                                     * math_mul3x3(m(:,s,t), surfaceNormal) * area &
-                                    * constitutive_nonlocal_transmissivity(Fe, ip, el, neighboring_ip, neighboring_el)  ! dislocation line length that leaves this interface per second; weighted by a transmissivity factor
+                                    * constitutive_nonlocal_transmissivity(misorientation(4,n), misorientation(1:3,n))  ! dislocation line length that leaves this interface per second; weighted by a transmissivity factor
         
         thisRhoDot(s,t) = thisRhoDot(s,t) - lineLength(s,t) / mesh_ipVolume(ip,el)                  ! subtract dislocation density rate (= line length over volume) that leaves through an interface from my dotState ...
         
@@ -1463,92 +1466,32 @@ endsubroutine
 !*********************************************************************
 !* transmissivity of IP interface                                    *
 !*********************************************************************
-function constitutive_nonlocal_transmissivity(Fe, ip,el, neighboring_ip,neighboring_el)
+function constitutive_nonlocal_transmissivity(misorientationAngle, misorientationAxis)
 
 use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips
-use material, only: homogenization_maxNgrains, &
-                    material_phase, &
-                    phase_constitutionInstance
-use math,     only:	math_inv3x3, &
-					          math_mul33x33, &
-					          math_pDecomposition, &
-					          math_misorientation
-use IO,       only: IO_warning
+                    pInt
+
 implicit none
 
 !* input variables
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            Fe                 ! elastic deformation gradient
-integer(pInt), intent(in) ::                ip, &              ! my IP
-                                            el, &              ! my element number
-                                            neighboring_ip, &  ! neighboring IP
-                                            neighboring_el     ! neighboring elment number 
+real(pReal), dimension(3), intent(in) ::    misorientationAxis    ! misorientation axis
+real(pReal), intent(in) ::                  misorientationAngle   ! misorientation angle
                                             
 !* output variables
-real(pReal) constitutive_nonlocal_transmissivity			   ! factor determining the transmissivity of an IP interface for dislocations
+real(pReal) constitutive_nonlocal_transmissivity                  ! transmissivity of an IP interface for dislocations
 
 !* local variables
-real(pReal), dimension(3,3) ::              U, R, &            ! polar decomposition of my Fe
-                                            neighboring_U, neighboring_R, & ! polar decomposition of my neighbor's Fe
-                                            dR                 ! net misorientation
-real(pReal), dimension(3) ::                axis               ! rotation axis
-real(pReal)                                 angle              ! misorientation angle
-integer(pInt)                               myInstance, &      ! current instance of this constitution
-                                            symmetryType
-logical error
 
-! initialize with perfect transmissivity
-constitutive_nonlocal_transmissivity = 1.0_pReal
 
-! only change transmissivity when we have a valid neighbor
-if ((neighboring_el > 0) .and. (neighboring_ip > 0)) then
-
-  ! calculate orientations from elastic deformation gradients
-!  write(6,'(a,/,3(3(f12.8),/))') 'my Fe', Fe(:,:,1,ip,el)
-!  write(6,'(a,/,3(3(f12.8),/))') 'neighboring Fe', Fe(:,:,1,neighboring_ip,neighboring_el)
-  call math_pDecomposition(Fe(:,:,1,ip,el), U, R, error)                                                    ! polar decomposition of Fe
-  if (.not. error) &
-    call math_pDecomposition(Fe(:,:,1,neighboring_ip,neighboring_el), neighboring_U, neighboring_R, error)  ! polar decomposition of my neighbors Fe
-  if (error) then                                                                                           ! polar decomposition failed?
-    call IO_warning(650, el, ip, 1)
+! transmissivity depends on misorientation angle
+if (misorientationAngle < 3.0_pReal) then
+  constitutive_nonlocal_transmissivity = 1.0_pReal
+elseif (misorientationAngle < 10.0_pReal) then
+  constitutive_nonlocal_transmissivity = 0.5_pReal
+else
+  constitutive_nonlocal_transmissivity = 0.1_pReal
+endif     
   
-  else
-    ! choose symmetry type of my crystal structure
-    myInstance = phase_constitutionInstance(material_phase(1,ip,el))
-    select case (constitutive_nonlocal_structureName(myInstance))
-      case ('fcc','bcc')
-        symmetryType = 1_pInt
-      case ('hex')
-        symmetryType = 2_pInt
-      case default
-        symmetryType = 0_pInt
-      end select
-    
-    ! calculate misorientation
-    R = transpose(R)																																												! transpose defines orientation (rotation from current into lattice conf)
-    neighboring_R = transpose(neighboring_R) 
-    call math_misorientation(axis, angle, dR, R, neighboring_R, symmetryType)
-!    write(6,'(a,2(x,i3),/,3(3(f12.8),/))') 'my R at',ip,el, R
-!    write(6,'(a,2(x,i3),/,3(3(f12.8),/))') 'neighboring R at',neighboring_ip, neighboring_el, neighboring_R
-!    write(6,'(a,x,i3,x,i3,x,f10.3,x,3(f8.5,x),/)') 'constitutive_nonlocal_transmissivity', ip,el, angle, axis 
-
-    ! transmissivity depends on misorientation angle
-    if (angle < 3.0_pReal) then
-      constitutive_nonlocal_transmissivity = 1.0_pReal
-    elseif (angle < 10.0_pReal) then
-      constitutive_nonlocal_transmissivity = 0.5_pReal
-    else
-      constitutive_nonlocal_transmissivity = 0.1_pReal
-    endif     
-  
-  endif
-  
-endif 
-
 endfunction 
 
 
@@ -1589,7 +1532,7 @@ endfunction
 !*********************************************************************
 !* return array of constitutive results                              *
 !*********************************************************************
-function constitutive_nonlocal_postResults(Tstar_v, previousTstar_v, Fe, Fp, Temperature, dt, dt_previous, &
+function constitutive_nonlocal_postResults(Tstar_v, previousTstar_v, Fe, Fp, Temperature, misorientation, dt, dt_previous, &
                                                 state, previousState, dotState, g,ip,el)
 
 use prec,     only: pReal, &
@@ -1606,6 +1549,7 @@ use math,     only: math_norm3, &
                     pi
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
+                    mesh_maxNipNeighbors, &
                     mesh_element, &
                     FE_NipNeighbors, &
                     mesh_ipNeighborhood, &
@@ -1634,6 +1578,8 @@ real(pReal), intent(in) ::                  Temperature, &            ! temperat
                                             dt_previous               ! time increment between previous and current state
 real(pReal), dimension(6), intent(in) ::    Tstar_v, &                ! current 2nd Piola-Kirchhoff stress in Mandel notation
                                             previousTstar_v           ! previous 2nd Piola-Kirchhoff stress in Mandel notation
+real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: &
+                                            misorientation            ! crystal misorientation between me and my neighbor (axis, angle pair)
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             Fe, &                     ! elastic deformation gradient
                                             Fp                        ! plastic deformation gradient
@@ -1644,7 +1590,7 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 
 !*** output variables
 real(pReal), dimension(constitutive_nonlocal_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-                                          constitutive_nonlocal_postResults
+                                            constitutive_nonlocal_postResults
 
 !*** local variables
 integer(pInt)                               myInstance, &             ! current instance of this constitution
@@ -1789,7 +1735,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
       if ( sign(1.0_pReal,math_mul3x3(m(:,s,t),surfaceNormal)) == sign(1.0_pReal,gdot(s,t)) ) &
         fluxes(s,n,t) = gdot(s,t) / constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
                                   * math_mul3x3(m(:,s,t), surfaceNormal) * area &
-                                  * constitutive_nonlocal_transmissivity(Fe, ip, el, neighboring_ip, neighboring_el) &
+                                  * constitutive_nonlocal_transmissivity(misorientation(4,n), misorientation(1:3,n)) &
                                   / mesh_ipVolume(ip,el)
     enddo
   enddo

@@ -217,7 +217,8 @@ subroutine materialpoint_stressAndItsTangent(&
                           crystallite_dt, &
                           crystallite_requested, &
                           crystallite_converged, &
-                          crystallite_stressAndItsTangent
+                          crystallite_stressAndItsTangent, &
+                          crystallite_orientations
  use debug, only:         debugger, &
                           debug_MaterialpointLoopDistribution, &
                           debug_MaterialpointStateLoopDistribution
@@ -429,6 +430,9 @@ subroutine materialpoint_stressAndItsTangent(&
 
  enddo                                                             ! cutback loop
 
+ ! calculate crystal orientations
+ call crystallite_orientations()
+ 
  ! check for non-performer: any(.not. converged)
  ! replace everybody with odd response ?
 
@@ -437,7 +441,7 @@ elementLoop: do e = FEsolving_execElem(1),FEsolving_execElem(2)       ! iterate 
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                 ! iterate over IPs of this element to be processed
      if (materialpoint_converged(i,e)) then
        call homogenization_averageStressAndItsTangent(i,e)
-       call homogenization_averageTemperature(i,e)	 
+       call homogenization_averageTemperature(i,e)   
      else
        terminallyIll = .true.
        write(6,'(a48,i4,i4,/)') 'homogenization terminally-ill ',i,e
