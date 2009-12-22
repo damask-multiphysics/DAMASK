@@ -2345,7 +2345,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  
  integer(pInt) e,f,t,i,j,k,n
  integer(pInt), parameter :: Ntriangles = FE_NipFaceNodes-2                     ! each interface is made up of this many triangles
- integer(pInt), dimension(mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNode      ! flagList to find subnodes determining center of grav
+ logical(pInt), dimension(mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNode      ! flagList to find subnodes determining center of grav
  real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos   ! coordinates of subnodes determining center of grav
  real(pReal), dimension(3,FE_NipFaceNodes) :: nPos                              ! coordinates of nodes on IP face
  real(pReal), dimension(Ntriangles,FE_NipFaceNodes) :: volume                   ! volumes of possible tetrahedra
@@ -2357,27 +2357,27 @@ subroutine mesh_marc_count_cpSizes (unit)
  do e = 1,mesh_NcpElems                                    ! loop over cpElems
    t = mesh_element(2,e)                                   ! get elemType
    do i = 1,FE_Nips(t)                                     ! loop over IPs of elem
-     gravityNode = 0_pInt                                  ! reset flagList
+     gravityNode = .false.                                 ! reset flagList
      gravityNodePos = 0.0_pReal                            ! reset coordinates
      do f = 1,FE_NipNeighbors(t)                           ! loop over interfaces of IP
        do n = 1,FE_NipFaceNodes                            ! loop over nodes on interface
-         gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = 1
+         gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = .true.
          gravityNodePos(:,FE_subNodeOnIPFace(n,f,i,t)) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
        enddo
      enddo
-
+     
      do j = 1,mesh_maxNnodes+mesh_maxNsubNodes-1           ! walk through entire flagList except last
-       if (gravityNode(j) > 0_pInt) then                   ! valid node index
+       if (gravityNode(j)) then                            ! valid node index
          do k = j+1,mesh_maxNnodes+mesh_maxNsubNodes       ! walk through remainder of list
-           if (all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < 1.0e-100_pReal)) then   ! found duplicate
-             gravityNode(j) = 0_pInt                       ! delete first instance
+           if (gravityNode(k) .and. all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < 1.0e-100_pReal)) then   ! found duplicate
+             gravityNode(j) = .false.                      ! delete first instance
              gravityNodePos(:,j) = 0.0_pReal
              exit                                          ! continue with next suspect
            endif
          enddo
        endif
      enddo
-     centerOfGravity = sum(gravityNodePos,2)/count(gravityNode > 0)
+     centerOfGravity = sum(gravityNodePos,2)/count(gravityNode)
      
      do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
        forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
@@ -2470,19 +2470,27 @@ subroutine mesh_marc_count_cpSizes (unit)
  
 !$OMP CRITICAL (write2out)
 
- ! write (6,*)
- ! write (6,*) "Input Parser: IP NEIGHBORHOOD"
- ! write (6,*)
- ! write (6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
- ! do e = 1,mesh_NcpElems                  ! loop over cpElems
-   ! t = mesh_element(2,e)                 ! get elemType
-   ! do i = 1,FE_Nips(t)                   ! loop over IPs of elem
-     ! do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
-       ! write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
-     ! enddo
-   ! enddo
- ! enddo
- ! write (6,*)
+! write(6,*)
+! write(6,*) 'Input Parser: IP COORDINATES'
+! write(6,'(a5,x,a5,3(x,a12))') 'elem','IP','x','y','z'
+! do e = 1,mesh_NcpElems
+!   do i = 1,FE_Nips(mesh_element(2,e))
+!     write (6,'(i5,x,i5,3(x,f12.8))') e, i, mesh_ipCenterOfGravity(:,i,e)
+!   enddo
+! enddo 
+! write(6,*)
+! write(6,*) "Input Parser: IP NEIGHBORHOOD"
+! write(6,*)
+! write(6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
+! do e = 1,mesh_NcpElems                  ! loop over cpElems
+!   t = mesh_element(2,e)                 ! get elemType
+!   do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+!     do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
+!       write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
+!     enddo
+!   enddo
+! enddo
+! write (6,*)
  ! write (6,*) "Input Parser: ELEMENT VOLUME"
  ! write (6,*)
  ! write (6,"(a13,x,e15.8)") "total volume", sum(mesh_ipVolume)
@@ -2497,23 +2505,23 @@ subroutine mesh_marc_count_cpSizes (unit)
    ! enddo
  ! enddo
  ! write (6,*)
- ! write (6,*) "Input Parser: SUBNODE COORDINATES"
- ! write (6,*)
- ! write(6,'(a5,x,a5,x,a15,x,a15,x,a20,3(x,a8))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
- ! do e = 1,mesh_NcpElems                  ! loop over cpElems
-  ! t = mesh_element(2,e)                 ! get elemType
-  ! do i = 1,FE_Nips(t)                   ! loop over IPs of elem
-    ! do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP
-      ! do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
-        ! write(6,'(i5,x,i5,x,i15,x,i15,x,i20,3(x,f8.3))') e,i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
-                                                           ! mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
-                                                           ! mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
-                                                           ! mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
-      ! enddo
-    ! enddo
-  ! enddo
- ! enddo
- ! write (6,*)
+! write (6,*) "Input Parser: SUBNODE COORDINATES"
+! write (6,*)
+! write(6,'(a5,x,a5,x,a15,x,a15,x,a20,3(x,a12))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
+! do e = 1,mesh_NcpElems                  ! loop over cpElems
+!   t = mesh_element(2,e)                 ! get elemType
+!   do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+!     do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP
+!       do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
+!         write(6,'(i5,x,i5,x,i15,x,i15,x,i20,3(x,f12.8))') e,i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
+!                                                            mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
+!                                                            mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
+!                                                            mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
+!       enddo
+!     enddo
+!   enddo
+! enddo
+ write (6,*)
  write (6,*) "Input Parser: STATISTICS"
  write (6,*)
  write (6,*) mesh_Nelems,           " : total number of elements in mesh"
