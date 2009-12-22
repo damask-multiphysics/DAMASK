@@ -334,7 +334,7 @@ function homogenization_RGC_updateState(&
  call homogenization_RGC_volumePenalty(D,volDiscrep,F,avgF,ip,el,homID)
 
 !* Debugging the mismatch, stress and penalties of grains
- if (el == 1 .and. ip == 1) then
+ if (RGCdebug) then
    do iGrain = 1,nGrain
      write(6,'(x,a30,x,i3,x,a4,x,e14.8)')'Mismatch magnitude of grain(',iGrain,') :',NN(iGrain)
      write(6,*)' '

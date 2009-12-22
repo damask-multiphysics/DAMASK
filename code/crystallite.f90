@@ -19,7 +19,7 @@ implicit none
 ! ****************************************************************
 ! *** General variables for the crystallite calculation        ***
 ! ****************************************************************
-integer(pInt), parameter :: crystallite_Nresults = 5_pInt                                   ! phaseID, volume, Euler angles, def gradient
+integer(pInt), parameter :: crystallite_Nresults = 14_pInt                                   ! phaseID, volume, Euler angles, def gradient
 
 real(pReal), dimension (:,:,:), allocatable ::          crystallite_dt, &                    ! requested time increment of each grain
                                                         crystallite_subdt, &                 ! substepped time increment of each grain
@@ -168,7 +168,7 @@ subroutine crystallite_init(Temperature)
       enddo
     enddo
   !$OMPEND PARALLEL DO
-  
+
   call crystallite_orientations()
   call crystallite_stressAndItsTangent(.true.)                 ! request elastic answers
   crystallite_fallbackdPdF = crystallite_dPdF                  ! use initial elastic stiffness as fallback
@@ -292,7 +292,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
   !*** output variables ***!
 
   !*** local variables ***!
-  real(pReal)                                           myTemperature                 ! local copy of the temperature
+  real(pReal)                                           myTemperature, &              ! local copy of the temperature
+                                                        myPert                        ! perturbation with correct sign
   real(pReal), dimension(3,3) ::                        invFp, &                      ! inverse of the plastic deformation gradient
                                                         Fe_guess, &                   ! guess for elastic deformation gradient
                                                         Tstar                         ! 2nd Piola-Kirchhoff stress tensor
@@ -303,6 +304,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         g, gg, &                      ! grain index
                                                         k, &
                                                         l, &
+                                                        perturbation , &              ! loop counter for forward,backward perturbation mode
                                                         comp, &
                                                         myNgrains, &
                                                         mySizeState, &
@@ -313,7 +315,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         stateConverged, &             ! flag indicating if state converged
                                                         converged                     ! flag indicating if iteration converged
   real(pReal), dimension(9,9) ::                        dPdF99
-  real(pReal), dimension(3,3,3,3) ::                    dPdF_pos,dPdF_neg
+  real(pReal), dimension(3,3,3,3,2) ::                  dPdF_perturbation
   real(pReal), dimension(constitutive_maxSizeDotState) :: delta_dotState1, &          ! difference between current and previous dotstate
                                                         delta_dotState2               ! difference between previousDotState and previousDotState2
   real(pReal)                                           dot_prod12, &
@@ -380,13 +382,13 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
   NiterationCrystallite = 0_pInt
 
   do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinCryst))      ! cutback loop for crystallites
-      
+
     !$OMP PARALLEL DO
       do e = FEsolving_execElem(1),FEsolving_execElem(2)               ! iterate over elements to be processed
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-            debugger = (e == 1 .and. i == 1 .and. g == 1) 
+!             debugger = (e == 1 .and. i == 1 .and. g == 1) 
             if (crystallite_converged(g,i,e)) then
               if (debugger) then
                 !$OMP CRITICAL (write2out)
@@ -446,9 +448,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
     crystallite_todo = (            crystallite_requested & 
                         .and.       crystallite_onTrack &
                         .and. .not. crystallite_converged)
-                        
-    crystallite_statedamper = 1.0_pReal
-    
+
     ! --+>> preguess for state <<+--
     !
     ! incrementing by crystallite_subdt
@@ -468,7 +468,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               constitutive_previousDotState(g,i,e)%p = 0.0_pReal
               constitutive_dotState(g,i,e)%p = 0.0_pReal                              ! zero out dotStates
             endif
-    enddo; enddo; enddo
+     enddo; enddo; enddo
     !$OMPEND PARALLEL DO
     !$OMP PARALLEL DO
       do e = FEsolving_execElem(1),FEsolving_execElem(2)                              ! iterate over elements to be processed
@@ -483,7 +483,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             endif
       enddo; enddo; enddo
     !$OMPEND PARALLEL DO
+
     crystallite_statedamper = 1.0_pReal
+
     !$OMP PARALLEL DO
       do e = FEsolving_execElem(1),FEsolving_execElem(2)                                ! iterate over elements to be processed
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -501,12 +503,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
     ! --+>> state loop <<+--
    
     NiterationState = 0_pInt
-   
+    
     do while ( any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2))) &
              .and. NiterationState < nState)                                          ! convergence loop for crystallite
      
       NiterationState = NiterationState + 1_pInt
-
       ! --+>> stress integration <<+--
       !
       ! incrementing by crystallite_subdt
@@ -515,24 +516,24 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       !          to account for substepping within _integrateStress
       ! results in crystallite_Fp,.._Lp
       !$OMP PARALLEL DO
-        do e = FEsolving_execElem(1),FEsolving_execElem(2)                            ! iterate over elements to be processed
-          myNgrains = homogenization_Ngrains(mesh_element(3,e))
-          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                          ! iterate over IPs of this element to be processed
-            do g = 1,myNgrains
-              ! debugger = (e == 1 .and. i == 1 .and. g == 1)
-              if (crystallite_todo(g,i,e)) &                                          ! all undone crystallites
-                crystallite_onTrack(g,i,e) = crystallite_integrateStress(g,i,e)
-            enddo
-          enddo
-        enddo
+      do e = FEsolving_execElem(1),FEsolving_execElem(2)                            ! iterate over elements to be processed
+        myNgrains = homogenization_Ngrains(mesh_element(3,e))
+        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                          ! iterate over IPs of this element to be processed
+          do g = 1,myNgrains
+          ! debugger = (e == 1 .and. i == 1 .and. g == 1)
+            if (crystallite_todo(g,i,e)) &                                          ! all undone crystallites
+              crystallite_onTrack(g,i,e) = crystallite_integrateStress(g,i,e)
+      enddo; enddo; enddo
       !$OMPEND PARALLEL DO
+
       if (debugger) then
         !$OMP CRITICAL (write2out)
           write(6,*) count(crystallite_onTrack(:,:,:)),'grains onTrack after stress integration'
         !$OMPEND CRITICAL (write2out)
       endif
-            
+
       crystallite_todo = crystallite_todo .and. crystallite_onTrack                   ! continue with non-broken grains
+
       if (any(.not. crystallite_onTrack .and. .not. crystallite_localConstitution)) & ! any non-local is broken?
           crystallite_todo = crystallite_todo .and. crystallite_localConstitution     ! all nonlocal crystallites can be skipped
 
@@ -551,40 +552,43 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       ! second loop for updating to new state
 
       !$OMP PARALLEL DO
-        do e = FEsolving_execElem(1),FEsolving_execElem(2)                              ! iterate over elements to be processed
-          myNgrains = homogenization_Ngrains(mesh_element(3,e))
-          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
-            do g = 1,myNgrains
-              if (crystallite_todo(g,i,e)) then                                         ! all undone crystallites
-                constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
-                constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p
-                constitutive_dotState(g,i,e)%p = 0.0_pReal                              ! zero out dotState
-              endif
-        enddo; enddo; enddo
+      do e = FEsolving_execElem(1),FEsolving_execElem(2)                              ! iterate over elements to be processed
+        myNgrains = homogenization_Ngrains(mesh_element(3,e))
+        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
+          do g = 1,myNgrains
+            if (crystallite_todo(g,i,e)) then                                         ! all undone crystallites
+              constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
+              constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p
+              constitutive_dotState(g,i,e)%p = 0.0_pReal                              ! zero out dotState
+            endif
+      enddo; enddo; enddo
       !$OMPEND PARALLEL DO
+
       crystallite_statedamper = 1.0_pReal
+
       !$OMP PARALLEL DO
-        do e = FEsolving_execElem(1),FEsolving_execElem(2)                              ! iterate over elements to be processed
-          myNgrains = homogenization_Ngrains(mesh_element(3,e))
-          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
-            do g = 1,myNgrains
-              !debugger = (e == 1 .and. i == 1 .and. g == 1)
-              if (crystallite_todo(g,i,e)) then                                         ! all undone crystallites
-                call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                                  crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                                  crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)                
-                delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
-                delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
-                dot_prod12 = dot_product(delta_dotState1, delta_dotState2)
-                dot_prod22 = dot_product(delta_dotState2, delta_dotState2)
-                if (      dot_prod22 > 0.0_pReal &
-                    .and. (     dot_prod12 < 0.0_pReal &
-                           .or. dot_product(constitutive_dotState(g,i,e)%p, constitutive_previousDotState(g,i,e)%p) < 0.0_pReal) ) &
-                  crystallite_statedamper = min(crystallite_statedamper, &
-                                                0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22) )
+      do e = FEsolving_execElem(1),FEsolving_execElem(2)                              ! iterate over elements to be processed
+        myNgrains = homogenization_Ngrains(mesh_element(3,e))
+        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
+          do g = 1,myNgrains
+          !debugger = (e == 1 .and. i == 1 .and. g == 1)
+            if (crystallite_todo(g,i,e)) then                                         ! all undone crystallites
+              call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
+                                                crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
+                                                crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)                
+              delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
+              delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
+              dot_prod12 = dot_product(delta_dotState1, delta_dotState2)
+              dot_prod22 = dot_product(delta_dotState2, delta_dotState2)
+              if (      dot_prod22 > 0.0_pReal &
+                  .and. (     dot_prod12 < 0.0_pReal &
+                         .or. dot_product(constitutive_dotState(g,i,e)%p, constitutive_previousDotState(g,i,e)%p) < 0.0_pReal) ) &
+                crystallite_statedamper = min(crystallite_statedamper, &
+                                              0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22) )
               endif
-        enddo; enddo; enddo
+      enddo; enddo; enddo
       !$OMPEND PARALLEL DO
+
       !$OMP PARALLEL DO
         do e = FEsolving_execElem(1),FEsolving_execElem(2)                            ! iterate over elements to be processed
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -628,13 +632,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       endif
       
     enddo                                                                             ! crystallite convergence loop  
-
     NiterationCrystallite = NiterationCrystallite + 1
     
   enddo                                                                               ! cutback loop
   
   ! ------ check for non-converged crystallites ------
-
   !$OMP PARALLEL DO
     do e = FEsolving_execElem(1),FEsolving_execElem(2)                                ! iterate over elements to be processed
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -689,6 +691,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                              ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
+!               debugger = (e==1 .and. i==1 .and. g==1)
               if (crystallite_requested(g,i,e)) then                                                      ! first check whether is requested at all!
                 if (crystallite_converged(g,i,e)) then                                                    ! grain converged in above iteration
                   if (debugger) then
@@ -701,11 +704,13 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                     write (6,'(a,/,3(3(f12.8,x)/))') '   Lp of 1 1 1',storedLp(1:3,:,g,i,e)
                     !$OMPEND CRITICAL (write2out)
                   endif
-  
-                  if (pert_method == 1_pInt .or. pert_method == 3_pInt) then                              ! <<< when forward or central difference is desired >>>
-                    do k = 1,3                                                                            ! perturbation...
-                    do l = 1,3                                                                            ! ...components to the positive direction
-                      crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg                 ! perturb single component
+                  
+                  do perturbation = 1,2
+                    if (iand(pert_method,perturbation) > 0) then
+                      myPert = -pert_Fg * (-1.0_pReal)**perturbation                                        ! forward or backward perturbation
+                      do k = 1,3                                                                            ! perturbation...
+                      do l = 1,3                                                                            ! ...components to the positive direction
+                      crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + myPert                    ! perturb single component (either forward or backward)
                       if (debugger) then
                         !$OMP CRITICAL (write2out)
                         write (6,'(i1,x,i1)') k,l
@@ -723,7 +728,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                           call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                             crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), &
                                                             crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
-                                                            g, i, e)
+                                                            g,i,e)
                           stateConverged = crystallite_updateState(g,i,e)                                 ! update state
                           temperatureConverged = crystallite_updateTemperature(g,i,e)                     ! update temperature
                           converged = stateConverged .and. temperatureConverged
@@ -732,106 +737,41 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                           !$OMP CRITICAL (write2out)
                           write (6,*) '-------------'
                           write (6,'(a,x,l,x,l)') 'ontrack + converged:',onTrack,converged
-                          write (6,'(a,/,3(3(f12.4,x)/))') 'pertP of 1 1 1',crystallite_P(1:3,:,g,i,e)/1e6
-                          write (6,'(a,/,3(3(f12.4,x)/))') 'DP    of 1 1 1',(crystallite_P(1:3,:,g,i,e)-storedP(1:3,:,g,i,e))/1e6
+                          write (6,'(a,/,3(3(f12.4,x)/))') 'pertP/MPa of 1 1 1',crystallite_P(1:3,:,g,i,e)/1e6
+                          write (6,'(a,/,3(3(f12.4,x)/))') 'DP/MPa    of 1 1 1',(crystallite_P(1:3,:,g,i,e)-storedP(1:3,:,g,i,e))/1e6
                           !$OMPEND CRITICAL (write2out)
                         endif
                       enddo
-                      if (converged) then                                                                 ! converged state warrants stiffness update
-                        dPdF_pos(:,:,k,l) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/pert_Fg       ! tangent dP_ij/dFg_kl
-                        if (pert_method == 1_pInt) crystallite_dPdF(:,:,k,l,g,i,e) = dPdF_pos(:,:,k,l)
-                      endif
-                      do ee = FEsolving_execElem(1),FEsolving_execElem(2)
-                        myNgrains = homogenization_Ngrains(mesh_element(3,ee))
-                        do ii = FEsolving_execIP(1,ee),FEsolving_execIP(2,ee)
-                          do gg = 1,myNgrains
-                            mySizeState = constitutive_sizeState(gg,ii,ee)                                ! number of state variables for this grain
-                            mySizeDotState = constitutive_sizeDotState(gg,ii,ee)                          ! number of dotStates for this grain
-                            constitutive_state(gg,ii,ee)%p = storedState(1:mySizeState,gg,ii,ee)
-                            constitutive_dotState(gg,ii,ee)%p = storedDotState(1:mySizeDotState,gg,ii,ee)
-                            crystallite_Temperature(gg,ii,ee) = storedTemperature(gg,ii,ee)
-                            crystallite_subF(:,:,gg,ii,ee) = storedF(:,:,gg,ii,ee)
-                            crystallite_Fp(:,:,gg,ii,ee) = storedFp(:,:,gg,ii,ee) 
-                            crystallite_invFp(:,:,gg,ii,ee) = storedInvFp(:,:,gg,ii,ee)
-                            crystallite_Fe(:,:,gg,ii,ee) = storedFe(:,:,gg,ii,ee)
-                            crystallite_Lp(:,:,gg,ii,ee) = storedLp(:,:,gg,ii,ee)
-                            crystallite_Tstar_v(:,gg,ii,ee) = storedTstar_v(:,gg,ii,ee)
-                            crystallite_P(:,:,gg,ii,ee) = storedP(:,:,gg,ii,ee)
-                      enddo; enddo; enddo
+                      if (converged) &                                                                    ! converged state warrants stiffness update
+                        dPdF_perturbation(:,:,k,l,perturbation) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/myPert       ! tangent dP_ij/dFg_kl
+
+                      mySizeState = constitutive_sizeState(g,i,e)                                                   ! number of state variables for this grain
+                      mySizeDotState = constitutive_sizeDotState(g,i,e)                                             ! number of dotStates for this grain
+                      constitutive_state(g,i,e)%p = storedState(1:mySizeState,g,i,e)
+                      constitutive_dotState(g,i,e)%p = storedDotState(1:mySizeDotState,g,i,e)
+                      crystallite_Temperature(g,i,e) = storedTemperature(g,i,e)
+                      crystallite_subF(:,:,g,i,e) = storedF(:,:,g,i,e)
+                      crystallite_Fp(:,:,g,i,e) = storedFp(:,:,g,i,e) 
+                      crystallite_invFp(:,:,g,i,e) = storedInvFp(:,:,g,i,e)
+                      crystallite_Fe(:,:,g,i,e) = storedFe(:,:,g,i,e)
+                      crystallite_Lp(:,:,g,i,e) = storedLp(:,:,g,i,e)
+                      crystallite_Tstar_v(:,g,i,e) = storedTstar_v(:,g,i,e)
+                      crystallite_P(:,:,g,i,e) = storedP(:,:,g,i,e)
                       !$OMP CRITICAL (out)
                         debug_StiffnessStateLoopDistribution(NiterationState) = &
                           debug_StiffnessstateLoopDistribution(NiterationState) + 1
                       !$OMPEND CRITICAL (out)
-                    enddo
-                    enddo
-                  endif
-                  
-                  if (pert_method == 2_pInt .or. pert_method == 3_pInt) then                              ! <<< when backward or central difference is desired >>>
-                    do k = 1,3                                                                            ! perturbation...
-                    do l = 1,3                                                                            ! ...components to the negative direction
-                      crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) - pert_Fg                 ! perturb single component
-                      if (debugger) then
-                        !$OMP CRITICAL (write2out)
-                        write (6,'(i1,x,i1)') k,l
-                        write (6,'(a,/,3(3(f12.6,x)/))') 'pertF of 1 1 1',crystallite_subF(1:3,:,g,i,e)
-                        !$OMPEND CRITICAL (write2out)
-                      endif
-                      onTrack = .true.
-                      converged = .false.
-                      NiterationState = 0_pInt
-                      do while(.not. converged .and. onTrack .and. NiterationState < nState)              ! keep cycling until done (potentially non-converged)
-                        NiterationState = NiterationState + 1_pInt
-                        onTrack = crystallite_integrateStress(g,i,e)                                      ! stress of perturbed situation (overwrites _P,_Tstar_v,_Fp,_Lp,_Fe)
-                        if (onTrack) then 
-                          constitutive_dotState(g,i,e)%p = 0.0_pReal
-                          call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                                            crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), &
-                                                            crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
-                                                            g, i, e)
-                          stateConverged = crystallite_updateState(g,i,e)                                 ! update state
-                          temperatureConverged = crystallite_updateTemperature(g,i,e)                     ! update temperature
-                          converged = stateConverged .and. temperatureConverged
-                        endif
-                        if (debugger) then
-                          !$OMP CRITICAL (write2out)
-                          write (6,*) '-------------'
-                          write (6,'(a,x,l,x,l)') 'ontrack + converged:',onTrack,converged
-                          write (6,'(a,/,3(3(f12.4,x)/))') 'pertP of 1 1 1',crystallite_P(1:3,:,g,i,e)/1e6
-                          write (6,'(a,/,3(3(f12.4,x)/))') 'DP    of 1 1 1',(crystallite_P(1:3,:,g,i,e)-storedP(1:3,:,g,i,e))/1e6
-                          !$OMPEND CRITICAL (write2out)
-                        endif
-                      enddo
-                      if (converged) then                                                                 ! converged state warrants stiffness update
-                        dPdF_neg(:,:,k,l) = (storedP(:,:,g,i,e) - crystallite_P(:,:,g,i,e))/pert_Fg       ! tangent dP_ij/dFg_kl
-                        if (pert_method == 2_pInt) crystallite_dPdF(:,:,k,l,g,i,e) = dPdF_neg(:,:,k,l)
-                      endif
-                      do ee = FEsolving_execElem(1),FEsolving_execElem(2)
-                        myNgrains = homogenization_Ngrains(mesh_element(3,ee))
-                        do ii = FEsolving_execIP(1,ee),FEsolving_execIP(2,ee)
-                          do gg = 1,myNgrains
-                            mySizeState = constitutive_sizeState(gg,ii,ee)                                ! number of state variables for this grain
-                            mySizeDotState = constitutive_sizeDotState(gg,ii,ee)                          ! number of dotStates for this grain
-                            constitutive_state(gg,ii,ee)%p = storedState(1:mySizeState,gg,ii,ee)
-                            constitutive_dotState(gg,ii,ee)%p = storedDotState(1:mySizeDotState,gg,ii,ee)
-                            crystallite_Temperature(gg,ii,ee) = storedTemperature(gg,ii,ee)
-                            crystallite_subF(:,:,gg,ii,ee) = storedF(:,:,gg,ii,ee)
-                            crystallite_Fp(:,:,gg,ii,ee) = storedFp(:,:,gg,ii,ee) 
-                            crystallite_invFp(:,:,gg,ii,ee) = storedInvFp(:,:,gg,ii,ee)
-                            crystallite_Fe(:,:,gg,ii,ee) = storedFe(:,:,gg,ii,ee)
-                            crystallite_Lp(:,:,gg,ii,ee) = storedLp(:,:,gg,ii,ee)
-                            crystallite_Tstar_v(:,gg,ii,ee) = storedTstar_v(:,gg,ii,ee)
-                            crystallite_P(:,:,gg,ii,ee) = storedP(:,:,gg,ii,ee)
-                      enddo; enddo; enddo
-                      !$OMP CRITICAL (out)
-                        debug_StiffnessStateLoopDistribution(NiterationState) = &
-                          debug_StiffnessstateLoopDistribution(NiterationState) + 1
-                      !$OMPEND CRITICAL (out)
-                    enddo
-                    enddo
-                  endif
-                  
-                  if (pert_method == 3_pInt) crystallite_dPdF(:,:,:,:,g,i,e) = 0.5_pReal*(dPdF_neg + dPdF_pos)
-                  
+                      enddo; enddo
+                    endif
+                  enddo                                                                                    ! perturbation direction
+                  select case(pert_method)
+                    case (1)
+                       crystallite_dPdF(:,:,:,:,g,i,e) = dPdF_perturbation(:,:,:,:,1)
+                    case (2)
+                       crystallite_dPdF(:,:,:,:,g,i,e) = dPdF_perturbation(:,:,:,:,2)
+                    case (3)
+                       crystallite_dPdF(:,:,:,:,g,i,e) = 0.5_pReal*(dPdF_perturbation(:,:,:,:,1)+dPdF_perturbation(:,:,:,:,2))
+                  end select
                 else                                                                                    ! grain did not converge
                   crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)             ! use (elastic) fallback
                 endif               ! grain convergence
