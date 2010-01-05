@@ -571,7 +571,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                            ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-          !debugger = (e == 1 .and. i == 1 .and. g == 1)
+            ! debugger = (e == 1 .and. i == 1 .and. g == 1)
             if (crystallite_todo(g,i,e)) then                                         ! all undone crystallites
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                 crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
@@ -594,7 +594,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                          ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-              !debugger = (e == 1 .and. i == 1 .and. g == 1)
+              ! debugger = (e == 1 .and. i == 1 .and. g == 1)
               if (crystallite_todo(g,i,e)) then                                       ! all undone crystallites
                 crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)    ! update state
                 crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)  ! update temperature
@@ -673,16 +673,16 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           mySizeDotState = constitutive_sizeDotState(g,i,e)                                             ! number of dotStates for this grain
           storedState(1:mySizeState,g,i,e) = constitutive_state(g,i,e)%p                                ! remember unperturbed, converged state, ...
           storedDotState(1:mySizeDotState,g,i,e) = constitutive_dotState(g,i,e)%p                       ! ... dotStates, ...
-          storedTemperature(g,i,e)   = crystallite_Temperature(g,i,e)                                   ! ... Temperature, ...
-          storedF(:,:,g,i,e)         = crystallite_subF(:,:,g,i,e)                                      ! ... and kinematics
-          storedFp(:,:,g,i,e)        = crystallite_Fp(:,:,g,i,e)
-          storedInvFp(:,:,g,i,e)     = crystallite_invFp(:,:,g,i,e)
-          storedFe(:,:,g,i,e)        = crystallite_Fe(:,:,g,i,e)
-          storedLp(:,:,g,i,e)        = crystallite_Lp(:,:,g,i,e)
-          storedTstar_v(:,g,i,e)     = crystallite_Tstar_v(:,g,i,e)
-          storedP(:,:,g,i,e)         = crystallite_P(:,:,g,i,e)
-          storedConvergenceFlag(g,i,e) = crystallite_converged(g,i,e)
     enddo; enddo; enddo
+		storedTemperature = crystallite_Temperature                                         								! ... Temperature, ...
+		storedF = crystallite_subF                                            															! ... and kinematics
+		storedFp = crystallite_Fp
+		storedInvFp = crystallite_invFp
+		storedFe = crystallite_Fe
+		storedLp = crystallite_Lp
+		storedTstar_v = crystallite_Tstar_v
+		storedP = crystallite_P
+		storedConvergenceFlag = crystallite_converged
 
     if (all(crystallite_localConstitution) .or. theInc < 2) then                                          ! all grains have local constitution, so local convergence of perturbed grain is sufficient
     
@@ -871,15 +871,15 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   mySizeDotState = constitutive_sizeDotState(gg,ii,ee)
                   constitutive_state(gg,ii,ee)%p = storedState(1:mySizeState,gg,ii,ee)
                   constitutive_dotState(gg,ii,ee)%p = storedDotState(1:mySizeDotState,gg,ii,ee)
-                  crystallite_Temperature(gg,ii,ee) = storedTemperature(gg,ii,ee)
-                  crystallite_subF(:,:,gg,ii,ee) = storedF(:,:,gg,ii,ee)
-                  crystallite_Fp(:,:,gg,ii,ee) = storedFp(:,:,gg,ii,ee) 
-                  crystallite_invFp(:,:,gg,ii,ee) = storedInvFp(:,:,gg,ii,ee)
-                  crystallite_Fe(:,:,gg,ii,ee) = storedFe(:,:,gg,ii,ee)
-                  crystallite_Lp(:,:,gg,ii,ee) = storedLp(:,:,gg,ii,ee)
-                  crystallite_Tstar_v(:,gg,ii,ee) = storedTstar_v(:,gg,ii,ee)
-                  crystallite_P(:,:,gg,ii,ee) = storedP(:,:,gg,ii,ee)
             enddo; enddo; enddo
+						crystallite_Temperature = storedTemperature
+						crystallite_subF = storedF
+						crystallite_Fp = storedFp 
+						crystallite_invFp = storedInvFp
+						crystallite_Fe = storedFe
+						crystallite_Lp = storedLp
+						crystallite_Tstar_v = storedTstar_v
+						crystallite_P = storedP
             
             !$OMP CRITICAL (out)
               debug_StiffnessStateLoopDistribution(NiterationState) = debug_StiffnessstateLoopDistribution(NiterationState) + 1
@@ -1449,19 +1449,8 @@ logical error
 
 					if ((neighboring_e > 0) .and. (neighboring_i > 0)) then										  ! if neighbor exists
 
-						neighboringPhase = material_phase(1,neighboring_i,neighboring_e)        	! get my neighbor's crystal structure		
-						select case (phase_constitution(neighboringPhase))
-							case (constitutive_phenopowerlaw_label)
-								neighboringStructure = constitutive_phenopowerlaw_structure(phase_constitutionInstance(neighboringPhase))
-							case (constitutive_dislotwin_label)
-								neighboringStructure = constitutive_dislotwin_structure(phase_constitutionInstance(neighboringPhase))
-							case (constitutive_nonlocal_label)
-								neighboringStructure = constitutive_nonlocal_structure(phase_constitutionInstance(neighboringPhase))
-							case default
-								neighboringStructure = ''
-						end select   
-						
-						if (myStructure == neighboringStructure) then                           	! if my neighbor has same crystal structure as me
+						neighboringPhase = material_phase(1,neighboring_i,neighboring_e)        	! get my neighbor's crystal structure								
+						if (myPhase == neighboringPhase) then                           	        ! if my neighbor has same phase like me
 						
 							select case (myStructure)                                               ! get type of symmetry
 								case (1_pInt, 2_pInt)                                                 ! fcc and bcc:
@@ -1480,7 +1469,8 @@ logical error
 																				symmetryType)   																! calculate misorientation
 				    
 				    else
-				      call IO_warning(-1, e, i, g, 'couldnt calculate misorientation because of two different lattice structures')
+				      crystallite_misorientation(4,n,1,i,e) = 400.0_pReal
+!				      call IO_warning(-1, e, i, g, 'couldnt calculate misorientation because of two different lattice structures')
 				      
 				    endif
 				  endif
