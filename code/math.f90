@@ -302,37 +302,27 @@ subroutine math_misorientation(axis, angle, rot, ori1, ori2, symmetryType)
   !	apply symmetry operation to 1st orientation
   do s1 = 1,NsymOperations
     ori1sym = math_mul33x33(mySymOperations(:,:,s1), ori1)
+          
+    ! calculate possible net rotation
+    this_rot = math_mul33x33(ori1sym, transpose(ori2))
     
-    ! apply symmetry operation to 2nd orientation
-    do s2 = 1,NsymOperations
-      ori2sym = math_mul33x33(mySymOperations(:,:,s2), ori2)
-      
-      ! calculate 2 possible net rotations
-      this_rot = math_mul33x33(ori1sym, transpose(ori2sym))
-      
-      ! store smallest misorientation for an axis inside standard orientation triangle         
-      ! calculate rotation axis
-      invNorm = (   (this_rot(1,2) - this_rot(2,1))**2.0_pReal &
-                  + (this_rot(2,3) - this_rot(3,2))**2.0_pReal &
-                  + (this_rot(3,1) - this_rot(1,3))**2.0_pReal ) ** (-0.5_pReal)
-      this_axis(1) = (this_rot(2,3) - this_rot(3,2)) * invNorm
-      this_axis(2) = (this_rot(3,1) - this_rot(1,3)) * invNorm
-      this_axis(3) = (this_rot(1,2) - this_rot(2,1)) * invNorm
-      
-      if (      (this_axis(1) >= 0.0_pReal) .and. (this_axis(2) >= 0.0_pReal) .and. (this_axis(3) >= 0.0_pReal) &
-          .and. (this_axis(1) <= this_axis(2)) .and. (this_axis(2) <= this_axis(3)) ) then
-          
-        ! calculate rotation angle
-        this_angle = acos(0.5_pReal * (this_rot(1,1) + this_rot(2,2) + this_rot(3,3) - 1.0_pReal))
-        
-        if (abs(this_angle) < angle) then
-          angle = this_angle
-          rot = this_rot
-          axis = this_axis
-        endif
-          
-      endif
-    enddo
+    ! store smallest misorientation for an axis inside standard orientation triangle         
+    ! calculate rotation axis
+    invNorm = (   (this_rot(1,2) - this_rot(2,1))**2.0_pReal &
+                + (this_rot(2,3) - this_rot(3,2))**2.0_pReal &
+                + (this_rot(3,1) - this_rot(1,3))**2.0_pReal ) ** (-0.5_pReal)
+    this_axis(1) = (this_rot(2,3) - this_rot(3,2)) * invNorm
+    this_axis(2) = (this_rot(3,1) - this_rot(1,3)) * invNorm
+    this_axis(3) = (this_rot(1,2) - this_rot(2,1)) * invNorm
+    
+    ! calculate rotation angle
+    this_angle = abs(0.5_pReal * pi - asin(0.4999999_pReal * (this_rot(1,1) + this_rot(2,2) + this_rot(3,3) - 1.0_pReal)))
+
+    if (abs(this_angle) < angle) then
+      angle = this_angle
+      rot = this_rot
+      axis = this_axis
+    endif
   enddo
   
   ! convert angle to degrees
