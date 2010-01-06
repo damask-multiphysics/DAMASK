@@ -1279,7 +1279,7 @@ endif
 
 
 !****************************************************************************
-!*** dislocation remobilization (changing direction of slip remobilizes used dislocation densities)
+!*** dislocation remobilization (bauschinger effect)
 
 thisRhoDotSgl = 0.0_pReal
 if (timestep > 0.0_pReal) then
@@ -1287,7 +1287,9 @@ if (timestep > 0.0_pReal) then
     do s = 1,ns
       if (rhoSgl(s,t+4) * v(s) < 0.0_pReal) then
         thisRhoDotSgl(s,t) = abs(rhoSgl(s,t+4)) / timestep
+        rhoSgl(s,t) = rhoSgl(s,t) + abs(rhoSgl(s,t+4))
         thisRhoDotSgl(s,t+4) = - sign(1.0_pReal,rhoSgl(s,t+4)) * rhoSgl(s,t+4) / timestep
+        rhoSgl(s,t+4) = 0.0_pReal
       endif
     enddo
   enddo
@@ -1400,14 +1402,10 @@ endif
 !*** formation by glide
 
 do c = 1,2
-  thisRhoDotSgl(:,2*c-1) = - 2.0_pReal * dUpper(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                  * abs(rhoSgl(:,2*c-1)) * abs(gdot(:,2*c))
-  thisRhoDotSgl(:,2*c)   = - 2.0_pReal * dUpper(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                  * abs(rhoSgl(:,2*c)) * abs(gdot(:,2*c-1))  
-  thisRhoDotSgl(:,2*c+3) = - 2.0_pReal * dUpper(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                  * abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c))
-  thisRhoDotSgl(:,2*c+4) = - 2.0_pReal * dUpper(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                  * abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1))
+  thisRhoDotSgl(:,2*c-1) = - 4.0_pReal * dUpper(:,c) * rhoSgl(:,2*c-1) * rhoSgl(:,2*c) * abs(v)
+  thisRhoDotSgl(:,2*c) = thisRhoDotSgl(:,2*c-1)
+  thisRhoDotSgl(:,2*c+3) = - 2.0_pReal * dUpper(:,c) * abs(rhoSgl(:,2*c+3)) * rhoSgl(:,2*c) * abs(v)
+  thisRhoDotSgl(:,2*c+4) = - 2.0_pReal * dUpper(:,c) * abs(rhoSgl(:,2*c+4)) * rhoSgl(:,2*c-1) * abs(v)
   thisRhoDotDip(:,c) = - thisRhoDotSgl(:,2*c-1) - thisRhoDotSgl(:,2*c) - thisRhoDotSgl(:,2*c+3) - thisRhoDotSgl(:,2*c+4)
 enddo
 
@@ -1424,10 +1422,10 @@ endif
 !*** athermal annihilation
 
 forall (c=1:2) &  
-  thisRhoDotDip(:,c) = - 4.0_pReal * dLower(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                    * (   ( rhoSgl(:,2*c-1) + abs(rhoSgl(:,2*c+3)) ) * abs(gdot(:,2*c)) &         ! was single hitting (used) single
-                                        + ( rhoSgl(:,2*c) + abs(rhoSgl(:,2*c+4)) ) * abs(gdot(:,2*c-1)) &         ! was single hitting (used) single
-                                        + 0.5_pReal * rhoDip(:,c) * (abs(gdot(:,2*c-1))+abs(gdot(:,2*c))) )       ! single knocks dipole constituent
+  thisRhoDotDip(:,c) = - 2.0_pReal * dLower(:,c) * abs(v) &
+                                   * (  4.0_pReal * rhoSgl(:,2*c-1) * rhoSgl(:,2*c) &                                       ! was single hitting single
+                                      + abs(rhoSgl(:,2*c+3)) * rhoSgl(:,2*c) + abs(rhoSgl(:,2*c+4)) * rhoSgl(:,2*c-1) &     ! was single hitting immobile/used single
+                                      + rhoDip(:,c) * ( rhoSgl(:,2*c-1) + rhoSgl(:,2*c) ) )                                 ! single knocks dipole constituent
 thisRhoDotSgl = 0.0_pReal          ! singles themselves don't annihilate
 
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
@@ -1691,7 +1689,8 @@ cs = 0_pInt
 constitutive_nonlocal_postResults = 0.0_pReal
 
 
-! short hand notations for state variables
+!* short hand notations for state variables
+
 forall (t = 1:8) rhoSgl(:,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
 forall (t = 1:8) previousRhoSgl(:,t) = previousState(g,ip,el)%p((t-1)*ns+1:t*ns)
 forall (c = 1:2) rhoDip(:,c) = state(g,ip,el)%p((7+c)*ns+1:(8+c)*ns)
@@ -1704,7 +1703,8 @@ forall (t = 1:8) rhoDotSgl(:,t) = dotState(g,ip,el)%p((t-1)*ns+1:t*ns)
 forall (c = 1:2) rhoDotDip(:,c) = dotState(g,ip,el)%p((7+c)*ns+1:(8+c)*ns)
 
 
-! Calculate shear rate
+!* Calculate shear rate
+
 do s = 1,ns
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
   tauSlip(s) = math_mul6x6( Tstar_v + Tdislocation_v, lattice_Sslip_v(:,sLattice,myStructure) )
@@ -1714,14 +1714,21 @@ enddo
 v = constitutive_nonlocal_v0PerSlipSystem(:,myInstance) &
     * exp( - constitutive_nonlocal_Q0(myInstance) / ( kB * Temperature) * (1.0_pReal - (abs(tauSlip)/tauSlipThreshold) ) ) &
     * sign(1.0_pReal,tauSlip)
+
+do t = 1,4
+  do s = 1,ns
+    if (rhoSgl(s,t+4) * v(s) < 0.0_pReal) then
+      rhoSgl(s,t) = rhoSgl(s,t) + abs(rhoSgl(s,t+4))                                                                  ! remobilization of immobile singles for changing sign of v (bauschinger effect)
+      rhoSgl(s,t+4) = 0.0_pReal                                                                                       ! remobilization of immobile singles for changing sign of v (bauschinger effect)
+    endif
+  enddo
+enddo
     
-forall (t = 1:4) &
-  gdot(:,t) = rhoSgl(:,t) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * v
-forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * v(s) < 0.0_pReal) &                                                           ! contribution of used rho for changing sign of v
-  gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) * v(s)
+forall (t = 1:4) gdot(:,t) = rhoSgl(:,t) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * v
 
   
-! calculate limits for stable dipole height and its rate of change
+!* calculate limits for stable dipole height and its rate of change
+
 dLower(:,1) = constitutive_nonlocal_dLowerEdgePerSlipSystem(:,myInstance)
 dLower(:,2) = constitutive_nonlocal_dLowerScrewPerSlipSystem(:,myInstance)
 dUpper(:,2) = min( constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
@@ -1740,7 +1747,8 @@ else
 endif
 
 
-! calculate fluxes
+!* calculate fluxes
+
 m(:,:,1) =  lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
 m(:,:,2) = -lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
 m(:,:,3) =  lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
@@ -1750,30 +1758,26 @@ F = math_mul33x33(Fe(:,:,g,ip,el), Fp(:,:,g,ip,el))
 detFe = math_det3x3(Fe(:,:,g,ip,el)) 
 
 fluxes = 0.0_pReal
-do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                        ! loop through my neighbors
+do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                                          ! loop through my neighbors
 
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
   neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
   
-  ! if neighbor exists, total deformation gradient is averaged over me and my neighbor
-  if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then
+  if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then                                                             ! if neighbor exists, total deformation gradient is averaged over me and my neighbor
     neighboring_F = math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el), Fp(:,:,g,neighboring_ip,neighboring_el))
     Favg = 0.5_pReal * (F + neighboring_F)
   else
     Favg = F
   endif 
-    
-  ! calculate the normal of the interface in current and lattice configuration
-  surfaceNormal_currentconf = math_det3x3(Favg) * math_mul33x3(math_inv3x3(transpose(Favg)), mesh_ipAreaNormal(:,n,ip,el))
-  surfaceNormal = math_mul33x3(transpose(Fe(:,:,g,ip,el)), surfaceNormal_currentconf) / detFe
-  ! normalize the surface normal to unit length
-  surfaceNormal = surfaceNormal / math_norm3(surfaceNormal)
   
-  ! calculate the area of the interface
-  area = mesh_ipArea(n,ip,el) * math_norm3(surfaceNormal)
+  surfaceNormal_currentconf = math_det3x3(Favg) * math_mul33x3(math_inv3x3(transpose(Favg)), mesh_ipAreaNormal(:,n,ip,el))  ! normal of the interface in current configuration
+  surfaceNormal = math_mul33x3(transpose(Fe(:,:,g,ip,el)), surfaceNormal_currentconf) / detFe                         ! normal of the interface in lattice configuration
+  surfaceNormal = surfaceNormal / math_norm3(surfaceNormal)                                                           ! normalize the surface normal to unit length
+  
+  area = mesh_ipArea(n,ip,el) * math_norm3(surfaceNormal)                                                             ! area of the interface
 
-  do s = 1,ns                                                                                       ! loop over slip systems
-    do t = 1,4                                                                                      ! loop over dislocation types
+  do s = 1,ns                                                                                                         ! loop over slip systems
+    do t = 1,4                                                                                                        ! loop over dislocation types
       if ( sign(1.0_pReal,math_mul3x3(m(:,s,t),surfaceNormal)) == sign(1.0_pReal,gdot(s,t)) ) &
         fluxes(s,n,t) = gdot(s,t) / constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
                                   * math_mul3x3(m(:,s,t), surfaceNormal) * area &
@@ -1974,11 +1978,8 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
     case ('rho_dot_sgl2dip')
       do c=1,2                                 ! dipole formation by glide
         constitutive_nonlocal_postResults(cs+1:cs+ns) = constitutive_nonlocal_postResults(cs+1:cs+ns) + &
-                                              2.0_pReal * dUpper(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                                        * (       rhoSgl(:,2*c-1)  * abs(gdot(:,2*c  )) &
-                                                            +     rhoSgl(:,2*c  )  * abs(gdot(:,2*c-1)) &
-                                                            + abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c  )) &
-                                                            + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1)) )
+            2.0_pReal * dUpper(:,c) * abs(v) * (  4.0_pReal * rhoSgl(:,2*c-1) * rhoSgl(:,2*c) &                                     ! was single hitting single 
+                                                + abs(rhoSgl(:,2*c+3)) * rhoSgl(:,2*c) + abs(rhoSgl(:,2*c+4)) * rhoSgl(:,2*c-1) )   ! was single hitting immobile/used single
       enddo
       ! do c=1,2
         ! forall (s=1:ns, dUpperDot(s,c) > 0.0_pReal) &    ! dipole formation by stress decrease
@@ -1999,10 +2000,9 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
     case ('rho_dot_ann_ath')
       do c=1,2
         constitutive_nonlocal_postResults(cs+1:cs+ns) = constitutive_nonlocal_postResults(cs+1:cs+ns) + &
-                                  4.0_pReal * dLower(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
-                                            * (   ( rhoSgl(:,2*c-1) + abs(rhoSgl(:,2*c+3)) ) * abs(gdot(:,2*c)) &         ! was single hitting (used) single
-                                                + ( rhoSgl(:,2*c) + abs(rhoSgl(:,2*c+4)) ) * abs(gdot(:,2*c-1)) &         ! was single hitting (used) single
-                                                + 0.5_pReal * rhoDip(:,c) * ( abs(gdot(:,2*c-1)) + abs(gdot(:,2*c)) ) )       ! single knocks dipole constituent
+            2.0_pReal * dLower(:,c) * abs(v) * (  4.0_pReal * rhoSgl(:,2*c-1) * rhoSgl(:,2*c) &                                     ! was single hitting single
+                                                + abs(rhoSgl(:,2*c+3)) * rhoSgl(:,2*c) + abs(rhoSgl(:,2*c+4)) * rhoSgl(:,2*c-1) &   ! was single hitting immobile/used single
+                                                + rhoDip(:,c) * ( rhoSgl(:,2*c-1) + rhoSgl(:,2*c) ) )                               ! single knocks dipole constituent
       enddo
       cs = cs + ns
       
