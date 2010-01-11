@@ -5,7 +5,7 @@ import os,sys
 architectures = { 
                  'marc': { 
                           'parent': 'mpie_cpfem_marc.f90', 
-                          'versions' : ['%%MARCVERSION%%','2007r1','2008r1'],
+                          'versions' : ['%%MARCVERSION%%','2007r1','2008r1','2010r1'],
                          }, 
                 }
 
