@@ -15,8 +15,9 @@ real(pReal), dimension (:,:,:),   allocatable ::  CPFEM_cs                      
 real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE                         ! Cauchy stress tangent
 real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE_knownGood               ! known good tangent
 
-logical ::                                        CPFEM_init_done     = .false., &    ! remember whether init has been done already
-                                                  CPFEM_calc_done     = .false.       ! remember whether first IP has already calced the results
+logical ::                                        CPFEM_init_done       = .false., &  ! remember whether init has been done already
+                                                  CPFEM_init_inProgress = .false., &  ! remember whether first IP is currently performing init
+                                                  CPFEM_calc_done       = .false.     ! remember whether first IP has already calced the results
  
 
 CONTAINS
@@ -169,21 +170,33 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
 
   ! initialization step (three dimensional stress state check missing?)
   if (.not. CPFEM_init_done) then
-    call prec_init()
-    call IO_init()
-    call numerics_init()
-    call debug_init()
-    call math_init()
-    call FE_init()
-    call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
-    call lattice_init()
-    call material_init()
-    call constitutive_init()
-    call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
-    call homogenization_init(Temperature)
-    call CPFEM_init()
-    call mpie_cpfem_init()
-    CPFEM_init_done = .true.
+    call random_number(rnd)
+    do i=1,int(256.0*rnd)
+      n = n+1_pInt                                                      ! wasting random amount of time...
+    enddo                                                               ! ...to break potential race in multithreading
+    n = n+1_pInt
+    if (.not. CPFEM_init_inProgress) then                               ! yes my thread won!
+			CPFEM_init_inProgress = .true.
+			call prec_init()
+			call IO_init()
+			call numerics_init()
+			call debug_init()
+			call math_init()
+			call FE_init()
+			call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
+			call lattice_init()
+			call material_init()
+			call constitutive_init()
+			call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
+			call homogenization_init(Temperature)
+			call CPFEM_init()
+			call mpie_cpfem_init()
+			CPFEM_init_done = .true.
+			CPFEM_init_inProgress = .false.
+	  else                                                                ! loser, loser...
+      do while (CPFEM_init_inProgress)
+      end do
+		endif
   endif
 
   cp_en = mesh_FEasCP('elem',element)
