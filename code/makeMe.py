@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # $Id$
+# Writes version specific files for different MARC releases
 import os,sys
 
 architectures = { 
