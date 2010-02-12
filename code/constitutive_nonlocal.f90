@@ -915,11 +915,11 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
     
     sigma(1,1) = constitutive_nonlocal_nu(myInstance) * (sigma(2,2) + sigma(3,3))
     
-    sigma(1,2) = gb * neighboring_Nscrew(s) * z / (x**2.0_pReal + z**2.0_pReal)
+    sigma(1,2) = - gb * neighboring_Nscrew(s) * z / (x**2.0_pReal + z**2.0_pReal)
     
     sigma(2,3) = gb * (   neighboring_Nedge(s) / (1.0_pReal-constitutive_nonlocal_nu(myInstance)) &
                              * y * (y**2.0_pReal - z**2.0_pReal) / (y**2.0_pReal + z**2.0_pReal)**2.0_pReal &
-                        - neighboring_Nscrew(s) * x / (x**2.0_pReal + z**2.0_pReal) )
+                        + neighboring_Nscrew(s) * x / (x**2.0_pReal + z**2.0_pReal) )
     
     sigma(2,1) = sigma(1,2)
     sigma(3,2) = sigma(2,3)
