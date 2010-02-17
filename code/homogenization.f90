@@ -220,6 +220,9 @@ subroutine materialpoint_stressAndItsTangent(&
                           crystallite_stressAndItsTangent, &
                           crystallite_orientations
  use debug, only:         debugger, &
+                          selectiveDebugger, &
+                          debug_e, &
+                          debug_i, &
                           debug_MaterialpointLoopDistribution, &
                           debug_MaterialpointStateLoopDistribution
                           
@@ -278,11 +281,11 @@ subroutine materialpoint_stressAndItsTangent(&
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                             ! iterate over IPs of this element to be processed
        
-       debugger = (e == 1 .and. i == 1)
+       selectiveDebugger = (e == debug_e .and. i == debug_i)
        
        ! if our materialpoint converged or consists of only one single grain then we are either finished or have to wind forward
        if ( materialpoint_converged(i,e) .or. (myNgrains == 1_pInt .and. materialpoint_subStep(i,e) <= 1.0_pReal) ) then
-         if (debugger) then
+         if (selectiveDebugger) then
            !$OMP CRITICAL (write2out)
              write(6,'(a21,f10.8,a34,f10.8,a37,/)') 'winding forward from ', &
                materialpoint_subFrac(i,e), ' to current materialpoint_subFrac ', &
@@ -321,7 +324,7 @@ subroutine materialpoint_stressAndItsTangent(&
          materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)                       ! crystallite had severe trouble, so do a significant cutback
                                                                                                           ! <<modified to add more flexibility in cutback>>
          
-         if (debugger) then
+         if (selectiveDebugger) then
            !$OMP CRITICAL (write2out)
              write(6,'(a82,f10.8,/)') 'cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep: ',&
                                        materialpoint_subStep(i,e)

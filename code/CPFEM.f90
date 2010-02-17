@@ -73,7 +73,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   use numerics, only:                                 numerics_init, & 
                                                       relevantStrain, &
                                                       iJacoStiffness
-  use debug, only:                                    debug_init
+  use debug, only:                                    debug_init, &
+                                                      debug_g, &
+                                                      debug_i, &
+                                                      debug_e
   use FEsolving, only:                                FE_init, &
                                                       parallelExecution, &
                                                       outdatedFFN1, &
@@ -81,6 +84,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       cycleCounter, &
                                                       theInc, &
                                                       theTime, &
+                                                      theDelta, &
                                                       FEsolving_execElem, &
                                                       FEsolving_execIP
   use math, only:                                     math_init, &
@@ -205,8 +209,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   !$OMP CRITICAL (write2out)
     write(6,*)
     write(6,*) '#####################################'
-    write(6,'(a10,x,f8.4,x,a10,x,i4,x,a10,x,i3,x,a16,x,i2,x,a16,x,i2)') &
-    'theTime',theTime,'theInc',theInc,'cycleCounter',cycleCounter,'computationMode',mode
+    write(6,'(a10,x,f8.4,x,a10,x,f8.4,x,a10,x,i6,x,a10,x,i3,x,a16,x,i2,x,a16,x,i2)') &
+    'theTime',theTime,'theDelta',theDelta,'theInc',theInc,'cycleCounter',cycleCounter,'computationMode',mode
     write(6,*) '#####################################'
     call flush (6)
   !$OMP END CRITICAL (write2out)
@@ -228,7 +232,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
   !$OMP CRITICAL (write2out)
-        write(6,'(a10,/,4(3(e20.8,x),/))') 'aged state',constitutive_state(1,1,1)%p
+        write(6,'(a,3(x,i4),/,4(3(e20.8,x),/))') 'aged state at', debug_g, debug_i, debug_e, &
+                                                                  constitutive_state(debug_g,debug_i,debug_e)%p
   !$OMP END CRITICAL (write2out)
         do k = 1,mesh_NcpElems
           do j = 1,mesh_maxNips

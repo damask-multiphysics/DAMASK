@@ -45,7 +45,7 @@ subroutine constitutive_init()
 !*      Module initialization         *
 !**************************************
  use prec, only: pReal,pInt
- use debug, only: debugger
+ use debug, only: debugger, selectiveDebugger, debug_e, debug_i, debug_g
  use IO, only: IO_error, IO_open_file, IO_open_jobFile
  use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
  use material
@@ -125,7 +125,7 @@ subroutine constitutive_init()
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    do i = 1,FE_Nips(mesh_element(2,e))                   ! loop over IPs
      do g = 1,myNgrains                                  ! loop over grains
-       debugger = (e == 1 .and. i == 1 .and. g == 1)
+       selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
        myInstance = phase_constitutionInstance(material_phase(g,i,e))
        select case(phase_constitution(material_phase(g,i,e)))  
        
@@ -269,7 +269,7 @@ return
 endfunction
 
 
-subroutine constitutive_microstructure(Temperature,Fe,Fp,ipc,ip,el)
+subroutine constitutive_microstructure(Temperature,Tstar_v,Fe,Fp,ipc,ip,el)
 !*********************************************************************
 !* This function calculates from state needed variables              *
 !* INPUT:                                                            *
@@ -294,6 +294,7 @@ subroutine constitutive_microstructure(Temperature,Fe,Fp,ipc,ip,el)
 !* Definition of variables
 integer(pInt), intent(in) :: ipc,ip,el
 real(pReal), intent(in) :: Temperature
+real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
@@ -308,7 +309,7 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)
      call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Fe, Fp, ipc, ip, el)
+     call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Tstar_v, Fe, Fp, ipc, ip, el)
      
  end select
 

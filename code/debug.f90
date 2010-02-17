@@ -17,6 +17,10 @@
  integer(pInt) :: debug_cumLpCalls = 0_pInt
  integer(pInt) :: debug_cumDotStateCalls = 0_pInt
  integer(pInt) :: debug_cumDotTemperatureCalls = 0_pInt
+ integer(pInt) :: debug_e = 1_pInt
+ integer(pInt) :: debug_i = 1_pInt
+ integer(pInt) :: debug_g = 1_pInt
+ logical :: selectiveDebugger = .false.
  logical :: debugger = .false.
  logical :: distribution_init = .false.
 
