@@ -452,21 +452,23 @@ subroutine material_populateGrains()
 !*********************************************************************
 
  use prec, only: pInt, pReal
- use math, only: math_sampleRandomOri, math_sampleGaussOri, math_sampleFiberOri, math_symmetricEulers
+ use math, only: math_sampleRandomOri, math_sampleGaussOri, math_sampleFiberOri, math_symmetricEulers, inDeg
  use mesh, only: mesh_element, mesh_maxNips, mesh_NcpElems, mesh_ipVolume, FE_Nips
  use IO,   only: IO_error, IO_hybridIA
  implicit none
 
  integer(pInt), dimension (:,:), allocatable :: Ngrains
  integer(pInt), dimension (microstructure_maxNconstituents) :: NgrainsOfConstituent
- real(pReal), dimension (:),     allocatable :: volumeOfGrain, phaseOfGrain
+ real(pReal), dimension (:),     allocatable :: volumeOfGrain
  real(pReal), dimension (:,:),   allocatable :: orientationOfGrain
  real(pReal), dimension (3) :: orientation
  real(pReal), dimension (3,3) :: symOrientation
+ integer(pInt), dimension (:),   allocatable :: phaseOfGrain
  integer(pInt) t,e,i,g,j,m,homog,micro,sgn
  integer(pInt) phaseID,textureID,dGrains,myNgrains,myNorientations, &
                grain,constituentGrain,symExtension
  real(pReal) extreme,rnd
+
 
  allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; material_volume = 0.0_pReal
  allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; material_phase = 0_pInt
@@ -604,16 +606,18 @@ subroutine material_populateGrains()
        enddo  ! constituent
 
 ! ----------------------------------------------------------------------------
-       do i=1,myNgrains-1                                                     ! walk thru grains
-         call random_number(rnd)
-         t = nint(rnd*(myNgrains-i)+i+0.5_pReal,pInt)                         ! select a grain in remaining list
-         m                       = phaseOfGrain(t)                            ! exchange current with random
-         phaseOfGrain(t)         = phaseOfGrain(i)
-         phaseOfGrain(i)         = m
-         orientation             = orientationOfGrain(:,t)
-         orientationOfGrain(:,t) = orientationOfGrain(:,i)
-         orientationOfGrain(:,i) = orientation
-       enddo
+       if (.not. microstructure_elemhomo(micro)) then                           ! unless element homogeneous, reshuffle grains
+         do i=1,myNgrains-1                                                     ! walk thru grains
+           call random_number(rnd)
+           t = nint(rnd*(myNgrains-i)+i+0.5_pReal,pInt)                         ! select a grain in remaining list
+           m                       = phaseOfGrain(t)                            ! exchange current with random
+           phaseOfGrain(t)         = phaseOfGrain(i)
+           phaseOfGrain(i)         = m
+           orientation             = orientationOfGrain(:,t)
+           orientationOfGrain(:,t) = orientationOfGrain(:,i)
+           orientationOfGrain(:,i) = orientation
+         enddo
+       endif
        !calc fraction after weighing with volumePerGrain
        !exchange in MC steps to improve result...
 
