@@ -52,7 +52,7 @@
      endif
    enddo
  else
-   call IO_error(100) ! cannot open input file
+   call IO_error(101) ! cannot open input file
  endif
 
 100 close(fileunit)

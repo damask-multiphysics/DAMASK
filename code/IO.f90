@@ -52,8 +52,9 @@ endsubroutine
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
  character(len=*) relPath
  integer(pInt) unit
- character(256) path
+ character(1024) path
 
+ path=''
  inquire(6, name=path) ! determine outputfile
  open(unit,status='old',err=100,file=path(1:scan(path,pathSep,back=.true.))//relPath)
  IO_open_file = .true.
@@ -75,9 +76,10 @@ endsubroutine
 
  integer(pInt), intent(in) :: unit
  integer(pInt) extPos
- character(256) outName
+ character(1024) outName
  character(3) ext
 
+ outName=''
  inquire(6, name=outName) ! determine outputfileName
  extPos = len_trim(outName)-2
 ! if(outName(extPos:extPos+2)=='out') then
@@ -788,7 +790,7 @@ endfunction
  use prec, only: pReal,pInt
  implicit none
 
- integer(pInt)  unit,i,j,l,count
+ integer(pInt)  unit,l,count
  integer(pInt)  IO_countContinousIntValues
  integer(pInt), parameter :: maxNchunks = 64
  integer(pInt), dimension(1+2*maxNchunks) :: pos
@@ -948,7 +950,9 @@ endfunction
  case (50)
    msg = 'Error writing constitutive output description'
  case (100)
-   msg = 'Error reading from configuration file'
+   msg = 'Cannot open config file'
+ case (101)
+   msg = 'Cannot open input file'
  case (105)
    msg = 'Error reading from ODF file'
  case (110)

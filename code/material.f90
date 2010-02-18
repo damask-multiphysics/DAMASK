@@ -81,7 +81,7 @@ subroutine material_init()
  write(6,*) '$Id$'
  write(6,*)
   
- if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
+ if(.not. IO_open_file(fileunit,material_configFile)) call IO_error(100) ! cannot open config file
  call material_parseHomogenization(fileunit,material_partHomogenization)
  call material_parseMicrostructure(fileunit,material_partMicrostructure)
  call material_parseTexture(fileunit,material_partTexture)

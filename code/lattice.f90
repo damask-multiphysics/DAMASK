@@ -675,7 +675,7 @@ subroutine lattice_init()
  write(6,*) '$Id$'
  write(6,*)
 
- if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
+ if(.not. IO_open_file(fileunit,material_configFile)) call IO_error(100) ! cannot open config file
  Nsections = IO_countSections(fileunit,material_partPhase)
  lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
 ! lattice_Nstructure = Nsections + 2_pInt                                                ! most conservative assumption

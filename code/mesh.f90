@@ -242,7 +242,7 @@
 
    parallelExecution = (mesh_Nelems == mesh_NcpElems)      ! plus potential killer from non-local constitutive
  else
-   call IO_error(100) ! cannot open input file
+   call IO_error(101) ! cannot open input file
  endif
  
  FEsolving_execElem = (/1,mesh_NcpElems/)
