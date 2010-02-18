@@ -123,19 +123,21 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
      outdatedByNewInc = .true.
      terminallyIll = .false.
      cycleCounter = 0
-!$OMP CRITICAL (write2out)
-     write (6,'(i6,x,i2,x,a)') noel,npt,'lastIncConverged + outdated'; call flush(6)
-!$OMP END CRITICAL (write2out)
-   endif
 
-   if ( dtime < theDelta ) then                                           ! cutBack
+     !$OMP CRITICAL (write2out)
+     write (6,'(i6,x,i2,x,a)') noel,npt,'lastIncConverged + outdated'; call flush(6)
+     !$OMP END CRITICAL (write2out)
+
+   else if ( dtime < theDelta ) then                                      ! or check for cutBack
      calcMode = .true.                                                    ! pretend last step was calculation
      cutBack = .true.
      terminallyIll = .false.
      cycleCounter = 0
-!$OMP CRITICAL (write2out)
+
+     !$OMP CRITICAL (write2out)
      write(6,'(i6,x,i2,x,a)') noel,npt,'cutback detected..!'; call flush(6)
-!$OMP END CRITICAL (write2out)
+     !$OMP END CRITICAL (write2out)
+
    endif
 
    calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                        ! ping pong (calc <--> collect)
@@ -176,24 +178,27 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  write(6,'(a16,x,i2,x,a,i5,a,i5,x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
 !$OMP END CRITICAL (write2out)
    
- call CPFEM_general(computationMode,dfgrd0,dfgrd1,temp,dtime,noel,npt,stress,ddsdde,ntens)
+ call CPFEM_general(computationMode,dfgrd0,dfgrd1,temp,dtime,noel,npt,stress_h,ddsdde_h)
 
-!     Mandel:     11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
-!     straight:   11, 22, 33, 12, 23, 13
- forall(i=1:ntens) ddsdde(1:ntens,i) = invnrmMandel(i)*ddsdde(1:ntens,i)*invnrmMandel(1:ntens)
- stress(1:ntens) = stress(1:ntens)*invnrmMandel(1:ntens)
+!     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
+!     straight:            11, 22, 33, 12, 23, 13
+!     ABAQUS explicit:     11, 22, 33, 12, 23, 13
+!     ABAQUS implicit:     11, 22, 33, 12, 13, 23
+!     ABAQUS implicit:     11, 22, 33, 12
+
+ forall(i=1:ntens) ddsdde(1:ntens,i) = invnrmMandel(i)*ddsdde_h(1:ntens,i)*invnrmMandel(1:ntens)
+ stress(1:ntens) = stress_h(1:ntens)*invnrmMandel(1:ntens)
  if(symmetricSolver) ddsdde(1:ntens,1:ntens) = 0.5_pReal*(ddsdde(1:ntens,1:ntens) + transpose(ddsdde(1:ntens,1:ntens)))
-!     ABAQUS:     11, 22, 33, 12, 13, 23
  if(ntens == 6) then
-   stress_h=stress
-   stress(5)=stress_h(6)
-   stress(6)=stress_h(5)
-   ddsdde_h=ddsdde
-   ddsdde(:,5)=ddsdde_h(:,6)
-   ddsdde(:,6)=ddsdde_h(:,5)
-   ddsdde_h=ddsdde
-   ddsdde(5,:)=ddsdde_h(6,:)
-   ddsdde(6,:)=ddsdde_h(5,:)
+   stress_h = stress
+   stress(5) = stress_h(6)
+   stress(6) = stress_h(5)
+   ddsdde_h = ddsdde
+   ddsdde(:,5) = ddsdde_h(:,6)
+   ddsdde(:,6) = ddsdde_h(:,5)
+   ddsdde_h = ddsdde
+   ddsdde(5,:) = ddsdde_h(6,:)
+   ddsdde(6,:) = ddsdde_h(5,:)
  end if
 
  statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
