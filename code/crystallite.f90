@@ -21,47 +21,52 @@ implicit none
 ! ****************************************************************
 integer(pInt), parameter :: crystallite_Nresults = 14_pInt                                   ! phaseID, volume, Euler angles, def gradient
 
-real(pReal), dimension (:,:,:), allocatable ::          crystallite_dt, &                    ! requested time increment of each grain
-                                                        crystallite_subdt, &                 ! substepped time increment of each grain
-                                                        crystallite_subFrac, &               ! already calculated fraction of increment
-                                                        crystallite_subStep, &               ! size of next integration step
-                                                        crystallite_Temperature, &           ! Temp of each grain 
-                                                        crystallite_partionedTemperature0, & ! Temp of each grain at start of homog inc
-                                                        crystallite_subTemperature0          ! Temp of each grain at start of crystallite inc
-real(pReal), dimension (:,:,:,:), allocatable ::        crystallite_Tstar_v, &               ! current 2nd Piola-Kirchhoff stress vector (end of converged time step)
-                                                        crystallite_Tstar0_v, &              ! 2nd Piola-Kirchhoff stress vector at start of FE inc
-                                                        crystallite_partionedTstar0_v, &     ! 2nd Piola-Kirchhoff stress vector at start of homog inc
-                                                        crystallite_subTstar0_v, &           ! 2nd Piola-Kirchhoff stress vector at start of crystallite inc
-                                                        crystallite_eulerangles              ! euler angles phi1 Phi phi2
-real(pReal), dimension (:,:,:,:,:), allocatable ::      crystallite_Fe, &                    ! current "elastic" def grad (end of converged time step)
-                                                        crystallite_Fp, &                    ! current plastic def grad (end of converged time step)
-                                                        crystallite_invFp, &                 ! inverse of current plastic def grad (end of converged time step)
-                                                        crystallite_Fp0, &                   ! plastic def grad at start of FE inc
-                                                        crystallite_partionedFp0,&           ! plastic def grad at start of homog inc
-                                                        crystallite_subFp0,&                 ! plastic def grad at start of crystallite inc
-                                                        crystallite_F0, &                    ! def grad at start of FE inc
-                                                        crystallite_partionedF,  &           ! def grad to be reached at end of homog inc
-                                                        crystallite_partionedF0, &           ! def grad at start of homog inc
-                                                        crystallite_subF,  &                 ! def grad to be reached at end of crystallite inc
-                                                        crystallite_subF0, &                 ! def grad at start of crystallite inc
-                                                        crystallite_Lp, &                    ! current plastic velocitiy grad (end of converged time step)
-                                                        crystallite_Lp0, &                   ! plastic velocitiy grad at start of FE inc
-                                                        crystallite_partionedLp0,&           ! plastic velocity grad at start of homog inc
-                                                        crystallite_subLp0,&                 ! plastic velocity grad at start of crystallite inc
-                                                        crystallite_P, &                     ! 1st Piola-Kirchhoff stress per grain
-                                                        crystallite_R, &                     ! crystal orientation (rotation matrix current -> lattice conf)
-                                                        crystallite_misorientation           ! misorientation between two neighboring ips (only calculated for single grain IPs)
-real(pReal), dimension (:,:,:,:,:,:,:), allocatable ::  crystallite_dPdF, &                  ! individual dPdF per grain
-                                                        crystallite_fallbackdPdF             ! dPdF fallback for non-converged grains (elastic prediction)
-real(pReal)                                             crystallite_statedamper              ! damping for state update
-
-logical, dimension (:,:,:), allocatable ::              crystallite_localConstitution, &     ! indicates this grain to have purely local constitutive law
-                                                        crystallite_requested, &             ! flag to request crystallite calculation
-                                                        crystallite_onTrack, &               ! flag to indicate ongoing calculation
-                                                        crystallite_converged, &             ! convergence flag
-                                                        crystallite_stateConverged, &        ! flag indicating convergence of state
-                                                        crystallite_temperatureConverged, &  ! flag indicating convergence of temperature
-                                                        crystallite_todo                     ! requested and ontrack but not converged
+real(pReal), dimension (:,:,:), allocatable :: &
+    crystallite_dt, &                    ! requested time increment of each grain
+    crystallite_subdt, &                 ! substepped time increment of each grain
+    crystallite_subFrac, &               ! already calculated fraction of increment
+    crystallite_subStep, &               ! size of next integration step
+    crystallite_Temperature, &           ! Temp of each grain
+    crystallite_partionedTemperature0, & ! Temp of each grain at start of homog inc
+    crystallite_subTemperature0          ! Temp of each grain at start of crystallite inc
+real(pReal), dimension (:,:,:,:), allocatable :: &
+    crystallite_Tstar_v, &               ! current 2nd Piola-Kirchhoff stress vector (end of converged time step)
+    crystallite_Tstar0_v, &              ! 2nd Piola-Kirchhoff stress vector at start of FE inc
+    crystallite_partionedTstar0_v, &     ! 2nd Piola-Kirchhoff stress vector at start of homog inc
+    crystallite_subTstar0_v, &           ! 2nd Piola-Kirchhoff stress vector at start of crystallite inc
+    crystallite_eulerangles              ! euler angles phi1 Phi phi2
+real(pReal), dimension (:,:,:,:,:), allocatable :: &
+    crystallite_Fe, &                    ! current "elastic" def grad (end of converged time step)
+    crystallite_Fp, &                    ! current plastic def grad (end of converged time step)
+    crystallite_invFp, &                 ! inverse of current plastic def grad (end of converged time step)
+    crystallite_Fp0, &                   ! plastic def grad at start of FE inc
+    crystallite_partionedFp0,&           ! plastic def grad at start of homog inc
+    crystallite_subFp0,&                 ! plastic def grad at start of crystallite inc
+    crystallite_F0, &                    ! def grad at start of FE inc
+    crystallite_partionedF,  &           ! def grad to be reached at end of homog inc
+    crystallite_partionedF0, &           ! def grad at start of homog inc
+    crystallite_subF,  &                 ! def grad to be reached at end of crystallite inc
+    crystallite_subF0, &                 ! def grad at start of crystallite inc
+    crystallite_Lp, &                    ! current plastic velocitiy grad (end of converged time step)
+    crystallite_Lp0, &                   ! plastic velocitiy grad at start of FE inc
+    crystallite_partionedLp0,&           ! plastic velocity grad at start of homog inc
+    crystallite_subLp0,&                 ! plastic velocity grad at start of crystallite inc
+    crystallite_P, &                     ! 1st Piola-Kirchhoff stress per grain
+    crystallite_R, &                     ! crystal orientation (rotation matrix current -> lattice conf)
+    crystallite_misorientation           ! misorientation between two neighboring ips (only calculated for single grain IPs)
+real(pReal), dimension (:,:,:,:,:,:,:), allocatable :: &
+    crystallite_dPdF, &                  ! individual dPdF per grain
+    crystallite_fallbackdPdF             ! dPdF fallback for non-converged grains (elastic prediction)
+real(pReal) &
+    crystallite_statedamper              ! damping for state update
+logical, dimension (:,:,:), allocatable :: &
+    crystallite_localConstitution, &     ! indicates this grain to have purely local constitutive law
+    crystallite_requested, &             ! flag to request crystallite calculation
+    crystallite_onTrack, &               ! flag to indicate ongoing calculation
+    crystallite_converged, &             ! convergence flag
+    crystallite_stateConverged, &        ! flag indicating convergence of state
+    crystallite_temperatureConverged, &  ! flag indicating convergence of temperature
+    crystallite_todo                     ! requested and ontrack but not converged
 
 CONTAINS
 
