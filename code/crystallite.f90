@@ -1546,10 +1546,10 @@ function crystallite_postResults(&
    c = c+2_pInt
  endif
  if (crystallite_Nresults >= 5) then
-   crystallite_postResults(c+1:c+3) = crystallite_eulerangles(:,i,e,g)                 ! fake orientation
+   crystallite_postResults(c+1:c+3) = crystallite_eulerangles(:,g,i,e)     ! grain orientation
    c = c+3_pInt
  endif
- if (crystallite_Nresults >= 14) then                                     ! deformation gradient
+ if (crystallite_Nresults >= 14) then                                      ! deformation gradient 11,12,13,21,...
    forall (k=0:2,l=0:2) crystallite_postResults(c+1+k*3+l) = crystallite_partionedF(k+1,l+1,g,i,e)
    c = c+9_pInt
  endif
