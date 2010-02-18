@@ -184,6 +184,9 @@ subroutine hypela2(&
  include "concom%%MARCVERSION%%"     ! concom is needed for inc, subinc, ncycle, lovl
  include "creeps%%MARCVERSION%%"     ! creeps is needed for timinc (time increment)
 
+ real(pReal), dimension(6) ::   stress
+ real(pReal), dimension(6,6) :: ddsdde
+
  integer(pInt) computationMode, i, cp_en
 
  if ( .not. CPFEM_init_done ) then
@@ -197,7 +200,7 @@ subroutine hypela2(&
 !$OMP END CRITICAL (write2out)
 
  else if (lovl == 4) then                                                 ! Marc requires stiffness in separate call
-   if ( timinc < theDelta ) then                                          ! first after cutback
+   if ( timinc < theDelta .and. theInc == inc ) then                      ! first after cutback
      computationMode = 7                                                  !  --> restore tangent and return
    else
      computationMode = 6                                                  !  --> just return known value
@@ -209,12 +212,12 @@ subroutine hypela2(&
      outdatedByNewInc = .true.
      terminallyIll = .false.
      cycleCounter = 0
+
 !$OMP CRITICAL (write2out)
      write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> lastIncConverged + outdated'; call flush(6)
 !$OMP END CRITICAL (write2out)
-   endif
 
-   if ( timinc < theDelta ) then                                          ! cutBack
+   else if ( timinc < theDelta ) then                                     ! cutBack
      calcMode = .true.                                                    ! pretend last step was calculation
      terminallyIll = .false.
      cycleCounter = 0
@@ -253,12 +256,14 @@ subroutine hypela2(&
    lastMode = calcMode(nn,cp_en)                                          ! record calculationMode
  endif
 
- call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,s,d,ngens)
+ call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,stress,ddsdde)
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13
- forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*d(1:ngens,i)*invnrmMandel(1:ngens)
- s(1:ngens) = s(1:ngens)*invnrmMandel(1:ngens)
+!     Marc:   11, 22, 33, 12
+
+ forall(i=1:ngens) d(1:ngens,i) = invnrmMandel(i)*ddsdde(1:ngens,i)*invnrmMandel(1:ngens)
+ s(1:ngens) = stress(1:ngens)*invnrmMandel(1:ngens)
  if(symmetricSolver) d(1:ngens,1:ngens) = 0.5_pReal*(d(1:ngens,1:ngens)+transpose(d(1:ngens,1:ngens)))
 
  return
