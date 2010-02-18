@@ -1064,9 +1064,8 @@ endfunction
  case (289)
    msg = 'Non-positive definite volume discrepancy penalty in RGC'
 
-!* Error message when selected perturbation method is not defined
  case (299)
-   msg = 'Chosen prturbation method does not exist'
+   msg = 'Chosen perturbation method does not exist'
 
  case (300)
    msg = 'This material can only be used with elements with three direct stress components'
@@ -1091,7 +1090,7 @@ endfunction
  write(6,'(a38)') '+------------------------------------+'
  write(6,'(a38)') '+               error                +'
  write(6,'(a38)') '+                                    +'
- write(6,*)       '+ ',msg
+ write(6,'(a2,a)')       '+ ',msg
  if (present(ext_msg))  write(6,*) '+ ',ext_msg
  if (present(e)) then
    if (present(i) .and. present(g)) then
@@ -1104,7 +1103,7 @@ endfunction
  
  call flush(6)
  call quit(9000+ID)
-!$OMP END CRITICAL (write2out)
+ !$OMP END CRITICAL (write2out)
 
 ! ABAQUS returns in some cases
  return
