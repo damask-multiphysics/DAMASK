@@ -342,7 +342,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
   logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                         storedConvergenceFlag
   logical, dimension(3,3) ::                            mask
-  logical																								forceLocalStiffnessCalculation = .true. ! flag indicating that stiffness calculation is always done locally 
+  logical												forceLocalStiffnessCalculation
+  forceLocalStiffnessCalculation = .true. ! flag indicating that stiffness calculation is always done locally 
                                                         
   ! ------ initialize to starting condition ------
   
