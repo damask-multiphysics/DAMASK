@@ -63,7 +63,7 @@ endsubroutine
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
 !***********************************************************************
-subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress, jacobian, ngens)
+subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress, jacobian)
   ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
 
   !*** variables and functions from other modules ***!
@@ -130,8 +130,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   
   !*** input variables ***!
   integer(pInt), intent(in) ::                        element, &          ! FE element number
-                                                      IP, &               ! FE integration point number
-                                                      ngens               ! size of stress strain law
+                                                      IP                  ! FE integration point number
   real(pReal), intent(inout) ::                       Temperature         ! temperature
   real(pReal), intent(in) ::                          dt                  ! time increment
   real(pReal), dimension (3,3), intent(in) ::         ffn, &              ! deformation gradient for t=t0
@@ -144,8 +143,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                                           !                   6: recycling of former results (MARC speciality)
   
   !*** output variables ***!
-  real(pReal), dimension(ngens), intent(out) ::       cauchyStress        ! stress vector in Mandel notation
-  real(pReal), dimension(ngens,ngens), intent(out) :: jacobian            ! jacobian in Mandel notation
+  real(pReal), dimension(6), intent(out) ::           cauchyStress        ! stress vector in Mandel notation
+  real(pReal), dimension(6,6), intent(out) ::         jacobian            ! jacobian in Mandel notation
   
   !*** local variables ***!
   real(pReal)                                         J_inverse, &        ! inverse of Jacobian
@@ -220,9 +219,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   select case (mode)
     
     ! --+>> REGULAR COMPUTATION (WITH AGING OF RESULTS IF MODE == 1) <<+-- 
-    case (1,2)
+    case (1,2,8,9)
       ! age results if mode == 1
-      if (mode == 1) then
+      if (mode == 1 .or. mode == 8) then
         crystallite_F0  = crystallite_partionedF                          ! crystallite deformation (_subF is perturbed...)
         crystallite_Fp0 = crystallite_Fp                                  ! crystallite plastic deformation
         crystallite_Lp0 = crystallite_Lp                                  ! crystallite plastic velocity
@@ -243,6 +242,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         enddo
       endif
 
+      if (mode == 8 .or. mode == 9) then                                  ! Abaqus explicit skips collect
+        materialpoint_Temperature(IP,cp_en)   = Temperature
+        materialpoint_F0(:,:,IP,cp_en)        = ffn
+        materialpoint_F(:,:,IP,cp_en)         = ffn1
+      endif
+
       ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > relevantStrain)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
@@ -251,8 +256,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   !$OMP END CRITICAL (write2out)
           outdatedFFN1 = .true.
         endif
-        CPFEM_cs(1:ngens,IP,cp_en)              = CPFEM_odd_stress
-        CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en)   = CPFEM_odd_jacobian*math_identity2nd(ngens)
+        CPFEM_cs(:,IP,cp_en)              = CPFEM_odd_stress
+        CPFEM_dcsde(:,:,IP,cp_en)         = CPFEM_odd_jacobian*math_identity2nd(6)
       
       ! deformation gradient is not outdated
       else
@@ -277,13 +282,13 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         endif
         
         if (terminallyIll) then
-          CPFEM_cs(1:ngens,IP,cp_en)              = CPFEM_odd_stress
-          CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en)   = CPFEM_odd_jacobian*math_identity2nd(ngens)
+          CPFEM_cs(:,IP,cp_en)              = CPFEM_odd_stress
+          CPFEM_dcsde(:,:,IP,cp_en)         = CPFEM_odd_jacobian*math_identity2nd(6)
         else  
         !  translate from P to CS
           Kirchhoff = math_mul33x33(materialpoint_P(:,:,IP, cp_en),transpose(materialpoint_F(:,:,IP, cp_en)))
           J_inverse  = 1.0_pReal/math_det3x3(materialpoint_F(:,:,IP, cp_en))
-          CPFEM_cs(1:ngens,IP,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff)
+          CPFEM_cs(:,IP,cp_en) = math_Mandel33to6(J_inverse*Kirchhoff)
 
         !  translate from dP/dF to dCS/dE
           H = 0.0_pReal
@@ -297,7 +302,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                      math_I3(i,l)*Kirchhoff(j,k) + math_I3(j,k)*Kirchhoff(i,l))
           forall(i=1:3,j=1:3,k=1:3,l=1:3) &
             H_sym(i,j,k,l)= 0.25_pReal*(H(i,j,k,l)+H(j,i,k,l)+H(i,j,l,k)+H(j,i,l,k))  ! where to use the symmetric version??
-          CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en) = math_Mandel3333to66(J_inverse*H)
+          CPFEM_dcsde(:,:,IP,cp_en) = math_Mandel3333to66(J_inverse*H)
         endif
       endif
     
@@ -308,25 +313,26 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       else if (mode == 5) then
         CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
       end if
-	  call random_number(rnd)
-	  if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
+      call random_number(rnd)
+      if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
       materialpoint_Temperature(IP,cp_en)   = Temperature
       materialpoint_F0(:,:,IP,cp_en)        = ffn
       materialpoint_F(:,:,IP,cp_en)         = ffn1
-      CPFEM_cs(1:ngens,IP,cp_en)            = rnd*CPFEM_odd_stress
-      CPFEM_dcsde(1:ngens,1:ngens,IP,cp_en) = CPFEM_odd_jacobian*math_identity2nd(ngens)
+      CPFEM_cs(:,IP,cp_en)                  = rnd*CPFEM_odd_stress
+      CPFEM_dcsde(:,:,IP,cp_en)             = CPFEM_odd_jacobian*math_identity2nd(6)
       CPFEM_calc_done = .false.
     
     ! --+>> RECYCLING OF FORMER RESULTS (MARC SPECIALTY) <<+--
-    case (6,7)
-      if (mode == 7) CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
+    case (6)
       ! do nothing
+    case (7)
+      CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
     
   end select
 
   ! return the local stress and the jacobian from storage
-  cauchyStress(1:ngens) = CPFEM_cs(1:ngens,IP,cp_en)
-  jacobian(1:ngens,1:ngens) = CPFEM_dcsdE(1:ngens,1:ngens,IP,cp_en)
+  cauchyStress(:) = CPFEM_cs(:,IP,cp_en)
+  jacobian(:,:)   = CPFEM_dcsdE(:,:,IP,cp_en)
   if (IP == 1 .and. cp_en == 1) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip 1 el 1',jacobian/1e9
@@ -335,7 +341,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   endif
   
   ! return temperature
-  if (theInc > 0_pInt) Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
+  if (theTime > 0.0_pReal) Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
   return
 
 end subroutine
