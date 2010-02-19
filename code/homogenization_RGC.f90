@@ -20,12 +20,13 @@ MODULE homogenization_RGC
  
  integer(pInt),     dimension(:),     allocatable :: homogenization_RGC_sizeState, &
                                                      homogenization_RGC_sizePostResults
+ integer(pInt),     dimension(:,:),   allocatable,target :: homogenization_RGC_sizePostResult
  integer(pInt),     dimension(:,:),   allocatable :: homogenization_RGC_Ngrains
  real(pReal),       dimension(:,:),   allocatable :: homogenization_RGC_xiAlpha, &
                                                      homogenization_RGC_ciAlpha
  real(pReal),       dimension(:),     allocatable :: homogenization_RGC_maxVol0, &
                                                      homogenization_RGC_vPower0
- character(len=64), dimension(:,:),   allocatable :: homogenization_RGC_output
+ character(len=64), dimension(:,:),   allocatable,target :: homogenization_RGC_output             ! name of each post result output
 
 CONTAINS
 !****************************************
@@ -53,7 +54,7 @@ subroutine homogenization_RGC_init(&
  integer(pInt), intent(in) :: file
  integer(pInt), parameter  :: maxNchunks = 4
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k,l, output
+ integer(pInt) section, maxNinstance, i,j,k,l, output, mySize
  character(len=64) tag
  character(len=1024) line
  
@@ -67,6 +68,8 @@ subroutine homogenization_RGC_init(&
 
  allocate(homogenization_RGC_sizeState(maxNinstance));       homogenization_RGC_sizeState = 0_pInt
  allocate(homogenization_RGC_sizePostResults(maxNinstance)); homogenization_RGC_sizePostResults = 0_pInt
+ allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput), &
+                                                  maxNinstance)); homogenization_RGC_sizePostResult = 0_pInt
  allocate(homogenization_RGC_Ngrains(3,maxNinstance));       homogenization_RGC_Ngrains = 0_pInt
  allocate(homogenization_RGC_ciAlpha(3,maxNinstance));       homogenization_RGC_ciAlpha = 0.0_pReal
  allocate(homogenization_RGC_xiAlpha(3,maxNinstance));       homogenization_RGC_xiAlpha = 0.0_pReal
@@ -125,20 +128,25 @@ subroutine homogenization_RGC_init(&
    do j = 1,maxval(homogenization_Noutput)
      select case(homogenization_RGC_output(j,i))
        case('constitutivework')
-         homogenization_RGC_sizePostResults(i) = &
-         homogenization_RGC_sizePostResults(i) + 1
+         mySize = 1
        case('magnitudemismatch')
-         homogenization_RGC_sizePostResults(i) = &
-         homogenization_RGC_sizePostResults(i) + 1
+         mySize = 1
        case('penaltyenergy')
-         homogenization_RGC_sizePostResults(i) = &
-         homogenization_RGC_sizePostResults(i) + 1
+         mySize = 1
        case('volumediscrepancy')
-         homogenization_RGC_sizePostResults(i) = &
-         homogenization_RGC_sizePostResults(i) + 1
+         mySize = 1
+       case default
+         mySize = 0      
      end select
+
+     if (mySize > 0_pInt) then                               ! any meaningful output found
+	     homogenization_RGC_sizePostResult(j,i) = mySize
+	     homogenization_RGC_sizePostResults(i) = &
+	     homogenization_RGC_sizePostResults(i) + mySize
+     endif
    enddo
 
+   
    homogenization_RGC_sizeState(i) &
        = 3*(homogenization_RGC_Ngrains(1,i)-1)*homogenization_RGC_Ngrains(2,i)*homogenization_RGC_Ngrains(3,i) &
          + 3*homogenization_RGC_Ngrains(1,i)*(homogenization_RGC_Ngrains(2,i)-1)*homogenization_RGC_Ngrains(3,i) &

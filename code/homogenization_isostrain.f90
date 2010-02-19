@@ -19,9 +19,10 @@ MODULE homogenization_isostrain
  character (len=*), parameter :: homogenization_isostrain_label = 'isostrain'
  
  integer(pInt),     dimension(:),     allocatable :: homogenization_isostrain_sizeState, &
-                                                     homogenization_isostrain_sizePostResults, &
                                                      homogenization_isostrain_Ngrains
- character(len=64), dimension(:,:),   allocatable :: homogenization_isostrain_output
+ integer(pInt),     dimension(:),     allocatable :: homogenization_isostrain_sizePostResults
+ integer(pInt),     dimension(:,:),   allocatable,target :: homogenization_isostrain_sizePostResult
+ character(len=64), dimension(:,:),   allocatable,target :: homogenization_isostrain_output             ! name of each post result output
 
 
 CONTAINS
@@ -49,7 +50,7 @@ subroutine homogenization_isostrain_init(&
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 2
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k,l, output
+ integer(pInt) section, maxNinstance, i,j,k,l, output, mySize
  character(len=64) tag
  character(len=1024) line
  
@@ -63,6 +64,8 @@ subroutine homogenization_isostrain_init(&
 
  allocate(homogenization_isostrain_sizeState(maxNinstance)) ;      homogenization_isostrain_sizeState = 0_pInt
  allocate(homogenization_isostrain_sizePostResults(maxNinstance)); homogenization_isostrain_sizePostResults = 0_pInt
+ allocate(homogenization_isostrain_sizePostResult(maxval(homogenization_Noutput), &
+                                                  maxNinstance)); homogenization_isostrain_sizePostResult = 0_pInt
  allocate(homogenization_isostrain_Ngrains(maxNinstance));         homogenization_isostrain_Ngrains = 0_pInt
  allocate(homogenization_isostrain_output(maxval(homogenization_Noutput), &
                                           maxNinstance)) ;         homogenization_isostrain_output = ''
@@ -106,9 +109,16 @@ subroutine homogenization_isostrain_init(&
    do j = 1,maxval(homogenization_Noutput)
      select case(homogenization_isostrain_output(j,i))
        case('ngrains')
-         homogenization_isostrain_sizePostResults(i) = &
-         homogenization_isostrain_sizePostResults(i) + 1
+         mySize = 1
+       case default
+         mySize = 0      
      end select
+
+     if (mySize > 0_pInt) then                               ! any meaningful output found
+	     homogenization_isostrain_sizePostResult(j,i) = mySize
+	     homogenization_isostrain_sizePostResults(i) = &
+	     homogenization_isostrain_sizePostResults(i) + mySize
+     endif
    enddo
  enddo
 

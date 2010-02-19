@@ -55,7 +55,7 @@ CONTAINS
 subroutine homogenization_init(Temperature)
  use prec, only: pReal,pInt
  use math, only: math_I3
- use IO, only: IO_error, IO_open_file
+ use IO, only: IO_error, IO_open_file, IO_open_jobFile
  use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
  use material
  use constitutive, only: constitutive_maxSizePostResults
@@ -65,7 +65,10 @@ subroutine homogenization_init(Temperature)
 
  real(pReal) Temperature
  integer(pInt), parameter :: fileunit = 200
- integer(pInt) e,i,g,myInstance,j
+ integer(pInt) e,i,g,p,myInstance,j
+ integer(pInt), dimension(:,:), pointer :: thisSize
+ character(len=64), dimension(:,:), pointer :: thisOutput
+ logical knownHomogenization
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
 
@@ -73,6 +76,38 @@ subroutine homogenization_init(Temperature)
  call homogenization_RGC_init(fileunit)             ! RGC homogenization added <<<updated 31.07.2009>>>
 
  close(fileunit)
+
+! write description file for homogenization output
+
+ if(.not. IO_open_jobFile(fileunit,'outputHomogenization')) call IO_error (50) ! problems in writing file
+ 
+ do p = 1,material_Nhomogenization
+   i = homogenization_typeInstance(p)                    ! which instance of this homogenization type
+   knownHomogenization = .true.                          ! assume valid
+   select case(homogenization_type(p))                   ! split per homogenization type
+     case (homogenization_isostrain_label)
+       thisOutput => homogenization_isostrain_output
+       thisSize   => homogenization_isostrain_sizePostResult
+     case (homogenization_RGC_label)
+       thisOutput => homogenization_RGC_output
+       thisSize   => homogenization_RGC_sizePostResult
+     case default
+       knownHomogenization = .false.
+   end select   
+
+   write(fileunit,*)
+   write(fileunit,'(a)') '['//trim(homogenization_name(p))//']'
+   write(fileunit,*)
+   if (knownHomogenization) then
+     write(fileunit,'(a)') '#'//char(9)//'homogenization'//char(9)//trim(homogenization_type(p))
+     do e = 1,homogenization_Noutput(p)
+       write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+     enddo
+   endif
+ enddo
+
+ close(fileunit)
+
 
  allocate(homogenization_state0(mesh_maxNips,mesh_NcpElems))
  allocate(homogenization_subState0(mesh_maxNips,mesh_NcpElems))
