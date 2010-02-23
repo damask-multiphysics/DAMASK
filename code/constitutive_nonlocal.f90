@@ -490,6 +490,7 @@ do i = 1,maxNinstance
             'rho_dot_dip2sgl', &
             'rho_dot_ann_ath', &
             'rho_dot_ann_the', &
+            'dislocationvelocity', &
             'fluxdensity_edge_pos_x', &
             'fluxdensity_edge_pos_y', &
             'fluxdensity_edge_pos_z', &
@@ -2090,7 +2091,11 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       constitutive_nonlocal_postResults(cs+1:cs+ns) = 4.0_pReal * rhoDip(:,1) * vClimb / ( dUpper(:,1) - dLower(:,1) )
       ! !!! cross-slip of screws missing !!!
       cs = cs + ns
-      
+
+    case ('dislocationvelocity')
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = constitutive_nonlocal_v(:,1,g,ip,el)
+      cs = cs + ns
+    
     case ('fluxdensity_edge_pos_x')
       constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,1) * constitutive_nonlocal_v(:,1,g,ip,el) * m_currentconf(1,:,1)
       cs = cs + ns
