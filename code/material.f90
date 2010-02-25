@@ -15,6 +15,7 @@ implicit none
 character(len=64), parameter :: material_configFile = 'material.config'
 character(len=32), parameter :: material_partHomogenization = 'homogenization'
 character(len=32), parameter :: material_partMicrostructure = 'microstructure'
+character(len=32), parameter :: material_partCrystallite =    'crystallite'
 character(len=32), parameter :: material_partPhase =          'phase'
 character(len=32), parameter :: material_partTexture =        'texture'
 
@@ -25,6 +26,7 @@ character(len=32), parameter :: material_partTexture =        'texture'
 !* Number of materials
 integer(pInt) material_Nhomogenization, &                                              ! number of homogenizations
               material_Nmicrostructure, &                                              ! number of microstructures
+              material_Ncrystallite, &                                                 ! number of crystallite settings
               material_Nphase, &                                                       ! number of phases
               material_Ntexture, &                                                     ! number of textures
               microstructure_maxNconstituents, &                                       ! max number of constituents in any phase
@@ -34,6 +36,7 @@ integer(pInt) material_Nhomogenization, &                                       
 character(len=64), dimension(:),       allocatable :: homogenization_name, &           ! name of each homogenization
                                                       homogenization_type, &           ! type of each homogenization
                                                       microstructure_name, &           ! name of each microstructure
+                                                      crystallite_name, &              ! name of each crystallite setting
                                                       phase_name, &                    ! name of each phase
                                                       phase_constitution, &            ! constitution of each phase
                                                       texture_name                     ! name of each texture
@@ -42,6 +45,7 @@ integer(pInt),     dimension(:),       allocatable :: homogenization_Ngrains, & 
                                                       homogenization_typeInstance, &   ! instance of particular type of each homogenization
                                                       homogenization_Noutput, &        ! number of '(output)' items per homogenization
                                                       microstructure_Nconstituents, &  ! number of constituents in each microstructure
+                                                      crystallite_Noutput, &           ! number of '(output)' items per crystallite setting
                                                       phase_constitutionInstance, &    ! instance of particular constitution of each phase
                                                       phase_Noutput, &                 ! number of '(output)' items per phase
                                                       texture_symmetry, &              ! number of symmetric orientations per texture
@@ -51,6 +55,7 @@ logical,           dimension(:),       allocatable :: homogenization_active, &  
                                                       microstructure_active, &         ! 
                                                       microstructure_elemhomo, &       ! flag to indicate homogeneous microstructure distribution over element's IPs
                                                       phase_localConstitution          ! flags phases with local constitutive law
+integer(pInt),     dimension(:),       allocatable :: microstructure_crystallite       ! crystallite setting ID of each microstructure
 integer(pInt),     dimension(:,:),     allocatable :: microstructure_phase, &          ! phase IDs of each microstructure
                                                       microstructure_texture           ! texture IDs of each microstructure
 real(pReal),       dimension(:,:),     allocatable :: microstructure_fraction          ! vol fraction of each constituent in microstructure
@@ -84,13 +89,20 @@ subroutine material_init()
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error(100) ! cannot open config file
  call material_parseHomogenization(fileunit,material_partHomogenization)
  call material_parseMicrostructure(fileunit,material_partMicrostructure)
+ call material_parseCrystallite(fileunit,material_partCrystallite)
  call material_parseTexture(fileunit,material_partTexture)
  call material_parsePhase(fileunit,material_partPhase)
  close(fileunit)
+ write(6,*) '<<<+-  done  -+>>>'; call flush(6)
 
+write(6,*) 'material_Nmicrostructure',material_Nmicrostructure
+write(6,*) 'microstructure_crystallite',microstructure_crystallite
+write(6,*) 'material_Ncrystallite',material_Ncrystallite
  do i = 1,material_Nmicrostructure
+   if (microstructure_crystallite(i) < 1 .or. &
+       microstructure_crystallite(i) > material_Ncrystallite) call IO_error(150,i)
    if (minval(microstructure_phase(1:microstructure_Nconstituents(i),i)) < 1 .or. &
-       maxval(microstructure_phase(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(150,i)
+       maxval(microstructure_phase(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(155,i)
    if (minval(microstructure_texture(1:microstructure_Nconstituents(i),i)) < 1 .or. &
        maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Ntexture) call IO_error(160,i)
    if (abs(sum(microstructure_fraction(:,i)) - 1.0_pReal) >= 1.0e-10_pReal) then
@@ -106,9 +118,12 @@ subroutine material_init()
    write (6,'(x,a32,x,a16,x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
  enddo
  write (6,*)
- write (6,'(a32,x,a12,x,a13)') 'microstructure                  ','constituents','homogeneous'
+ write (6,'(a32,x,a11,x,a12,x,a13)') 'microstructure                  ','crystallite','constituents','homogeneous'
  do i = 1,material_Nmicrostructure
-   write (6,'(a32,4x,i4,8x,l)') microstructure_name(i),microstructure_Nconstituents(i),microstructure_elemhomo(i)
+   write (6,'(a32,4x,i4,8x,i4,8x,l)') microstructure_name(i), &
+                                microstructure_crystallite(i), &
+                                microstructure_Nconstituents(i), &
+                                microstructure_elemhomo(i)
    if (microstructure_Nconstituents(i) > 0_pInt) then
      do j = 1,microstructure_Nconstituents(i)
        write (6,'(a1,x,a32,x,a32,x,f6.4)') '>',phase_name(microstructure_phase(j,i)),&
@@ -143,6 +158,7 @@ subroutine material_parseHomogenization(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Nhomogenization = Nsections
+ if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
  
  allocate(homogenization_name(Nsections));    homogenization_name = ''
  allocate(homogenization_type(Nsections));    homogenization_type = ''
@@ -211,7 +227,10 @@ subroutine material_parseMicrostructure(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Nmicrostructure = Nsections
- allocate(microstructure_name(Nsections));     microstructure_name = ''
+ if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+
+ allocate(microstructure_name(Nsections));            microstructure_name = ''
+ allocate(microstructure_crystallite(Nsections));     microstructure_crystallite = 0_pInt
  allocate(microstructure_Nconstituents(Nsections))
  allocate(microstructure_active(Nsections))
  allocate(microstructure_elemhomo(Nsections))
@@ -247,6 +266,8 @@ subroutine material_parseMicrostructure(file,myPart)
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
      select case(tag)
+       case ('crystallite')
+         microstructure_crystallite(section) = IO_intValue(line,positions,2)
        case ('(constituent)')
          constituent = constituent + 1
          do i=2,6,2
@@ -261,6 +282,53 @@ subroutine material_parseMicrostructure(file,myPart)
            end select
          enddo
      end select
+   endif
+ enddo
+
+100 return
+
+ endsubroutine
+
+
+!*********************************************************************
+subroutine material_parseCrystallite(file,myPart)
+!*********************************************************************
+
+ use prec, only: pInt
+ use IO
+ use mesh, only: mesh_element
+ implicit none
+
+ character(len=*), intent(in) :: myPart
+ integer(pInt), intent(in) :: file
+ integer(pInt) Nsections, section
+ character(len=64) tag
+ character(len=1024) line
+ 
+ Nsections = IO_countSections(file,myPart)
+ material_Ncrystallite = Nsections
+ if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+
+ allocate(crystallite_name(Nsections));       crystallite_name = ''
+ allocate(crystallite_Noutput(Nsections));    crystallite_Noutput = 0_pInt
+
+ crystallite_Noutput = IO_countTagInPart(file,myPart,'(output)',Nsections)
+ 
+ rewind(file)
+ line = ''
+ section = 0
+ 
+ do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)      ! wind forward to myPart
+   read(file,'(a1024)',END=100) line
+ enddo
+
+ do
+   read(file,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') then                ! next section
+     section = section + 1
+     crystallite_name(section) = IO_getTag(line,'[',']')
    endif
  enddo
 
@@ -287,6 +355,8 @@ subroutine material_parsePhase(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Nphase = Nsections
+ if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+
  allocate(phase_name(Nsections));          phase_name = ''
  allocate(phase_constitution(Nsections));  phase_constitution = ''
  allocate(phase_constitutionInstance(Nsections));  phase_constitutionInstance = 0_pInt
@@ -351,6 +421,8 @@ subroutine material_parseTexture(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Ntexture = Nsections
+ if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+
  allocate(texture_name(Nsections));     texture_name = ''
  allocate(texture_ODFfile(Nsections));  texture_ODFfile = ''
  allocate(texture_symmetry(Nsections)); texture_symmetry = 1_pInt

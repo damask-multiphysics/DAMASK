@@ -959,11 +959,15 @@ endfunction
    msg = 'No homogenization specified via State Variable 2'
  case (120)
    msg = 'No microstructure specified via State Variable 3'
+ case (125)
+   msg = 'No entries in config part'
  case (130)
    msg = 'Homogenization index out of bounds'
  case (140)
    msg = 'Microstructure index out of bounds'
  case (150)
+   msg = 'Crystallite index out of bounds'
+ case (155)
    msg = 'Phase index out of bounds'
  case (160)
    msg = 'Texture index out of bounds'

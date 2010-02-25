@@ -1,4 +1,4 @@
-!* $Id: mpie_cpfem_abaqus.f 431 2009-10-13 06:55:15Z MPIE\f.roters $
+!* $Id$
 !********************************************************************
 ! Material subroutine for Abaqus
 !
@@ -25,7 +25,7 @@ subroutine mpie_cpfem_init ()
 !$OMP CRITICAL (write2out)
   write(6,*)
   write(6,*) '<<<+-  mpie_cpfem_abaqus_exp init  -+>>>'
-  write(6,*) '$Id: mpie_cpfem_abaqus.f 431 2009-10-13 06:55:15Z MPIE\f.roters $'
+  write(6,*) '$Id$'
   write(6,*)
   call flush(6)
 !$OMP END CRITICAL (write2out)

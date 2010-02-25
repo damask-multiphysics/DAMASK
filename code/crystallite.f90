@@ -19,8 +19,12 @@ implicit none
 ! ****************************************************************
 ! *** General variables for the crystallite calculation        ***
 ! ****************************************************************
-integer(pInt), parameter :: crystallite_Nresults = 14_pInt                                   ! phaseID, volume, Euler angles, def gradient
 
+integer(pInt) crystallite_maxSizePostResults
+integer(pInt), dimension(:),       allocatable :: crystallite_sizePostResults
+integer(pInt), dimension(:,:),     allocatable :: crystallite_sizePostResult
+character(len=64), dimension(:,:),   allocatable :: crystallite_output             ! name of each post result output
+    
 real(pReal), dimension (:,:,:), allocatable :: &
     crystallite_dt, &                    ! requested time increment of each grain
     crystallite_subdt, &                 ! substepped time increment of each grain
@@ -73,104 +77,185 @@ CONTAINS
 ! allocate and initialize per grain variables
 !********************************************************************
 subroutine crystallite_init(Temperature)
-
-  !*** variables and functions from other modules ***!
-  use prec, only:             pInt, &
-                              pReal
-  use debug, only:            debug_info, &
-                              debug_reset
-  use math, only:             math_I3, &
-                              math_EulerToR
-  use FEsolving, only:        FEsolving_execElem, &
-                              FEsolving_execIP
-  use mesh, only:             mesh_element, &
-                              mesh_NcpElems, &
-                              mesh_maxNips, &
-                              mesh_maxNipNeighbors
-  use material, only:         homogenization_Ngrains, &
-                              homogenization_maxNgrains, &
-                              material_EulerAngles, &
-                              material_phase, &
-                              phase_localConstitution
-  implicit none
-
-  !*** input variables ***!
-  real(pReal) Temperature
+  
+ !*** variables and functions from other modules ***!
+ use prec, only:             pInt, &
+                             pReal
+ use debug, only:            debug_info, &
+                             debug_reset
+ use math, only:             math_I3, &
+                             math_EulerToR
+ use FEsolving, only:        FEsolving_execElem, &
+                             FEsolving_execIP
+ use mesh, only:             mesh_element, &
+                             mesh_NcpElems, &
+                             mesh_maxNips, &
+                             mesh_maxNipNeighbors
+ use IO
+ use material
  
-  !*** output variables ***!
+ implicit none
+ integer(pInt), parameter :: file = 200
  
-  !*** local variables ***!
-  integer(pInt)               g, &                          ! grain number
-                              i, &                          ! integration point number
-                              e, &                          ! element number
-                              gMax, &                       ! maximum number of grains
-                              iMax, &                       ! maximum number of integration points
-                              eMax, &                       ! maximum  number of elements
-                              nMax, &                       ! maximum number of ip neighbors
-                              myNgrains
+ !*** input variables ***!
+ real(pReal) Temperature
+ 
+ !*** output variables ***!
+ 
+ !*** local variables ***!
+ integer(pInt), parameter :: maxNchunks = 2
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt)               g, &                          ! grain number
+                             i, &                          ! integration point number
+                             e, &                          ! element number
+                             gMax, &                       ! maximum number of grains
+                             iMax, &                       ! maximum number of integration points
+                             eMax, &                       ! maximum number of elements
+                             nMax, &                       ! maximum number of ip neighbors
+                             myNgrains, &                  ! number of grains in current IP
+                             myCrystallite                 ! crystallite of current elem
+ integer(pInt) section, j,p, output, mySize
+ character(len=64) tag
+ character(len=1024) line
+ 
+ gMax = homogenization_maxNgrains
+ iMax = mesh_maxNips
+ eMax = mesh_NcpElems
+ nMax = mesh_maxNipNeighbors
+ 
+ allocate(crystallite_Temperature(gMax,iMax,eMax));                     crystallite_Temperature = Temperature
+ allocate(crystallite_P(3,3,gMax,iMax,eMax));                                     crystallite_P = 0.0_pReal
+ allocate(crystallite_Fe(3,3,gMax,iMax,eMax));                                   crystallite_Fe = 0.0_pReal
+ allocate(crystallite_Fp(3,3,gMax,iMax,eMax));                                   crystallite_Fp = 0.0_pReal
+ allocate(crystallite_invFp(3,3,gMax,iMax,eMax));                             crystallite_invFp = 0.0_pReal
+ allocate(crystallite_Lp(3,3,gMax,iMax,eMax));                                   crystallite_Lp = 0.0_pReal
+ allocate(crystallite_Tstar_v(6,gMax,iMax,eMax));                           crystallite_Tstar_v = 0.0_pReal
+ allocate(crystallite_F0(3,3,gMax,iMax,eMax));                                   crystallite_F0 = 0.0_pReal
+ allocate(crystallite_Fp0(3,3,gMax,iMax,eMax));                                 crystallite_Fp0 = 0.0_pReal
+ allocate(crystallite_Lp0(3,3,gMax,iMax,eMax));                                 crystallite_Lp0 = 0.0_pReal
+ allocate(crystallite_Tstar0_v(6,gMax,iMax,eMax));                         crystallite_Tstar0_v = 0.0_pReal
+ allocate(crystallite_partionedTemperature0(gMax,iMax,eMax)); crystallite_partionedTemperature0 = 0.0_pReal
+ allocate(crystallite_partionedF(3,3,gMax,iMax,eMax));                   crystallite_partionedF = 0.0_pReal
+ allocate(crystallite_partionedF0(3,3,gMax,iMax,eMax));                 crystallite_partionedF0 = 0.0_pReal
+ allocate(crystallite_partionedFp0(3,3,gMax,iMax,eMax));               crystallite_partionedFp0 = 0.0_pReal
+ allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax));               crystallite_partionedLp0 = 0.0_pReal
+ allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax));       crystallite_partionedTstar0_v = 0.0_pReal
+ allocate(crystallite_subTemperature0(gMax,iMax,eMax));             crystallite_subTemperature0 = 0.0_pReal
+ allocate(crystallite_subF(3,3,gMax,iMax,eMax));                               crystallite_subF = 0.0_pReal
+ allocate(crystallite_subF0(3,3,gMax,iMax,eMax));                             crystallite_subF0 = 0.0_pReal
+ allocate(crystallite_subFp0(3,3,gMax,iMax,eMax));                           crystallite_subFp0 = 0.0_pReal
+ allocate(crystallite_subLp0(3,3,gMax,iMax,eMax));                           crystallite_subLp0 = 0.0_pReal
+ allocate(crystallite_R(3,3,gMax,iMax,eMax));                                     crystallite_R = 0.0_pReal
+ allocate(crystallite_eulerangles(3,gMax,iMax,eMax));                   crystallite_eulerangles = 0.0_pReal
+ allocate(crystallite_misorientation(4,nMax,gMax,iMax,eMax));        crystallite_misorientation = 0.0_pReal
+ allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax));                   crystallite_subTstar0_v = 0.0_pReal
+ allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax));                           crystallite_dPdF = 0.0_pReal
+ allocate(crystallite_fallbackdPdF(3,3,3,3,gMax,iMax,eMax));           crystallite_fallbackdPdF = 0.0_pReal
+ allocate(crystallite_dt(gMax,iMax,eMax));                                       crystallite_dt = 0.0_pReal
+ allocate(crystallite_subdt(gMax,iMax,eMax));                                 crystallite_subdt = 0.0_pReal
+ allocate(crystallite_subFrac(gMax,iMax,eMax));                             crystallite_subFrac = 0.0_pReal
+ allocate(crystallite_subStep(gMax,iMax,eMax));                             crystallite_subStep = 0.0_pReal
+ allocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
+ allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
+ allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
+ allocate(crystallite_stateConverged(gMax,iMax,eMax));               crystallite_stateConverged = .false.
+ allocate(crystallite_temperatureConverged(gMax,iMax,eMax));   crystallite_temperatureConverged = .false.
+ allocate(crystallite_todo(gMax,iMax,eMax));                                   crystallite_todo = .true.
 
-  gMax = homogenization_maxNgrains
-  iMax = mesh_maxNips
-  eMax = mesh_NcpElems
-  nMax = mesh_maxNipNeighbors
+ allocate(crystallite_output(maxval(crystallite_Noutput), &
+                             material_Ncrystallite)) ;                       crystallite_output = ''
+ allocate(crystallite_sizePostResults(material_Ncrystallite)) ;     crystallite_sizePostResults = 0_pInt
+ allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
+                             material_Ncrystallite)) ;               crystallite_sizePostResult = 0_pInt
+ 
+ if(.not. IO_open_file(file,material_configFile)) call IO_error (100) ! corrupt config file
+ line = ''
+ section = 0
+ 
+ do while (IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)     ! wind forward to <crystallite>
+   read(file,'(a1024)',END=100) line
+ enddo
 
-  allocate(crystallite_Temperature(gMax,iMax,eMax));                     crystallite_Temperature = Temperature
-  allocate(crystallite_P(3,3,gMax,iMax,eMax));                                     crystallite_P = 0.0_pReal
-  allocate(crystallite_Fe(3,3,gMax,iMax,eMax));                                   crystallite_Fe = 0.0_pReal
-  allocate(crystallite_Fp(3,3,gMax,iMax,eMax));                                   crystallite_Fp = 0.0_pReal
-  allocate(crystallite_invFp(3,3,gMax,iMax,eMax));                             crystallite_invFp = 0.0_pReal
-  allocate(crystallite_Lp(3,3,gMax,iMax,eMax));                                   crystallite_Lp = 0.0_pReal
-  allocate(crystallite_Tstar_v(6,gMax,iMax,eMax));                           crystallite_Tstar_v = 0.0_pReal
-  allocate(crystallite_F0(3,3,gMax,iMax,eMax));                                   crystallite_F0 = 0.0_pReal
-  allocate(crystallite_Fp0(3,3,gMax,iMax,eMax));                                 crystallite_Fp0 = 0.0_pReal
-  allocate(crystallite_Lp0(3,3,gMax,iMax,eMax));                                 crystallite_Lp0 = 0.0_pReal
-  allocate(crystallite_Tstar0_v(6,gMax,iMax,eMax));                         crystallite_Tstar0_v = 0.0_pReal
-  allocate(crystallite_partionedTemperature0(gMax,iMax,eMax)); crystallite_partionedTemperature0 = 0.0_pReal
-  allocate(crystallite_partionedF(3,3,gMax,iMax,eMax));                   crystallite_partionedF = 0.0_pReal
-  allocate(crystallite_partionedF0(3,3,gMax,iMax,eMax));                 crystallite_partionedF0 = 0.0_pReal
-  allocate(crystallite_partionedFp0(3,3,gMax,iMax,eMax));               crystallite_partionedFp0 = 0.0_pReal
-  allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax));               crystallite_partionedLp0 = 0.0_pReal
-  allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax));       crystallite_partionedTstar0_v = 0.0_pReal
-  allocate(crystallite_subTemperature0(gMax,iMax,eMax));             crystallite_subTemperature0 = 0.0_pReal
-  allocate(crystallite_subF(3,3,gMax,iMax,eMax));                               crystallite_subF = 0.0_pReal
-  allocate(crystallite_subF0(3,3,gMax,iMax,eMax));                             crystallite_subF0 = 0.0_pReal
-  allocate(crystallite_subFp0(3,3,gMax,iMax,eMax));                           crystallite_subFp0 = 0.0_pReal
-  allocate(crystallite_subLp0(3,3,gMax,iMax,eMax));                           crystallite_subLp0 = 0.0_pReal
-  allocate(crystallite_R(3,3,gMax,iMax,eMax));                                     crystallite_R = 0.0_pReal
-  allocate(crystallite_eulerangles(3,gMax,iMax,eMax));                   crystallite_eulerangles = 0.0_pReal
-  allocate(crystallite_misorientation(4,nMax,gMax,iMax,eMax));        crystallite_misorientation = 0.0_pReal
-  allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax));                   crystallite_subTstar0_v = 0.0_pReal
-  allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax));                           crystallite_dPdF = 0.0_pReal
-  allocate(crystallite_fallbackdPdF(3,3,3,3,gMax,iMax,eMax));           crystallite_fallbackdPdF = 0.0_pReal
-  allocate(crystallite_dt(gMax,iMax,eMax));                                       crystallite_dt = 0.0_pReal
-  allocate(crystallite_subdt(gMax,iMax,eMax));                                 crystallite_subdt = 0.0_pReal
-  allocate(crystallite_subFrac(gMax,iMax,eMax));                             crystallite_subFrac = 0.0_pReal
-  allocate(crystallite_subStep(gMax,iMax,eMax));                             crystallite_subStep = 0.0_pReal
-  allocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
-  allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
-  allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
-  allocate(crystallite_stateConverged(gMax,iMax,eMax));               crystallite_stateConverged = .false.
-  allocate(crystallite_temperatureConverged(gMax,iMax,eMax));   crystallite_temperatureConverged = .false.
-  allocate(crystallite_todo(gMax,iMax,eMax));                                   crystallite_todo = .true.
+ do                                                       ! read thru sections of phase part
+   read(file,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') then                ! next section
+     section = section + 1
+     output = 0                                           ! reset output counter
+   endif
+   if (section > 0) then
+     positions = IO_stringPos(line,maxNchunks)
+     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     select case(tag)
+       case ('(output)')
+         output = output + 1
+         crystallite_output(output,section) = IO_lc(IO_stringValue(line,positions,2))
+     end select
+   endif
+ enddo
 
-  !$OMP PARALLEL DO
-    do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over all cp elements
-      myNgrains = homogenization_Ngrains(mesh_element(3,e))
-      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element
-        do g = 1,myNgrains
-          crystallite_partionedTemperature0(g,i,e) = Temperature                       ! isothermal assumption
-          crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(:,g,i,e))    ! plastic def gradient reflects init orientation
-          crystallite_Fe(:,:,g,i,e)  = transpose(crystallite_Fp0(:,:,g,i,e))
-          crystallite_F0(:,:,g,i,e)  = math_I3
-          crystallite_partionedFp0(:,:,g,i,e) = crystallite_Fp0(:,:,g,i,e)
-          crystallite_partionedF0(:,:,g,i,e)  = crystallite_F0(:,:,g,i,e)
-          crystallite_partionedF(:,:,g,i,e)   = crystallite_F0(:,:,g,i,e)
-          crystallite_requested(g,i,e)        = .true.
-          crystallite_localConstitution(g,i,e) = phase_localConstitution(material_phase(g,i,e))
-        enddo
-      enddo
-    enddo
-  !$OMPEND PARALLEL DO
+100 close(file)
+ do i = 1,material_Ncrystallite                        ! sanity checks
+ enddo
+
+ do i = 1,material_Ncrystallite
+   do j = 1,crystallite_Noutput(i)
+     select case(crystallite_output(j,i))
+       case('phase')
+         mySize = 1
+       case('volume')
+         mySize = 1
+       case('orientation')
+         mySize = 3
+       case('defgrad')
+         mySize = 9
+       case default
+         mySize = 0      
+     end select
+
+     if (mySize > 0_pInt) then                               ! any meaningful output found
+       crystallite_sizePostResult(j,i) = mySize
+       crystallite_sizePostResults(i) = crystallite_sizePostResults(i) + mySize
+     endif
+   enddo
+ enddo
+ crystallite_maxSizePostResults = maxval(crystallite_sizePostResults)
+
+! write description file for crystallite output
+
+ if(.not. IO_open_jobFile(file,'outputCrystallite')) call IO_error (50) ! problems in writing file
+ 
+ do p = 1,material_Ncrystallite
+   write(file,*)
+   write(file,'(a)') '['//trim(crystallite_name(p))//']'
+   write(file,*)
+   do e = 1,crystallite_Noutput(p)
+     write(file,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
+   enddo
+ enddo
+
+ close(file)
+
+
+ !$OMP PARALLEL DO
+ do e = FEsolving_execElem(1),FEsolving_execElem(2)                       ! iterate over all cp elements
+   myNgrains = homogenization_Ngrains(mesh_element(3,e))                  ! look up homogenization-->grainCount
+   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                     ! iterate over IPs of this element
+     do g = 1,myNgrains
+       crystallite_partionedTemperature0(g,i,e) = Temperature                       ! isothermal assumption
+       crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(:,g,i,e))    ! plastic def gradient reflects init orientation
+       crystallite_Fe(:,:,g,i,e)  = transpose(crystallite_Fp0(:,:,g,i,e))
+       crystallite_F0(:,:,g,i,e)  = math_I3
+       crystallite_partionedFp0(:,:,g,i,e) = crystallite_Fp0(:,:,g,i,e)
+       crystallite_partionedF0(:,:,g,i,e)  = crystallite_F0(:,:,g,i,e)
+       crystallite_partionedF(:,:,g,i,e)   = crystallite_F0(:,:,g,i,e)
+       crystallite_requested(g,i,e)        = .true.
+       crystallite_localConstitution(g,i,e) = phase_localConstitution(material_phase(g,i,e))
+     enddo
+   enddo
+ enddo
+ !$OMPEND PARALLEL DO
 
   call crystallite_orientations()
   call crystallite_stressAndItsTangent(.true.)                 ! request elastic answers
@@ -181,8 +266,6 @@ subroutine crystallite_init(Temperature)
     write(6,*)
     write(6,*) '<<<+-  crystallite init  -+>>>'
     write(6,*) '$Id$'
-    write(6,*)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Nresults:              ', crystallite_Nresults
     write(6,*)
     write(6,'(a35,x,7(i5,x))') 'crystallite_Temperature:           ', shape(crystallite_Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
@@ -221,6 +304,8 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_converged:             ', shape(crystallite_converged)
     write(6,'(a35,x,7(i5,x))') 'crystallite_stateConverged:        ', shape(crystallite_stateConverged)
     write(6,'(a35,x,7(i5,x))') 'crystallite_temperatureConverged:  ', shape(crystallite_temperatureConverged)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_sizePostResults:       ', shape(crystallite_sizePostResults)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_sizePostResult:        ', shape(crystallite_sizePostResult)
     write(6,*)
     write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localConstitution)
     call flush(6)
@@ -1505,7 +1590,10 @@ function crystallite_postResults(&
  !*** variables and functions from other modules ***!
  use prec, only:                      pInt, &
                                       pReal
- use material, only:                  material_phase, &
+ use mesh, only:                      mesh_element
+ use material, only:                  microstructure_crystallite, &
+                                      crystallite_Noutput, &
+                                      material_phase, &
                                       material_volume
  use constitutive, only:              constitutive_sizePostResults, &
                                       constitutive_postResults
@@ -1519,29 +1607,37 @@ function crystallite_postResults(&
  real(pReal), intent(in)::            dt                            ! time increment
 
  !*** output variables ***!
- real(pReal), dimension(1+crystallite_Nresults + 1+constitutive_sizePostResults(g,i,e)) :: crystallite_postResults
+ real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,e)))+ &
+                        1+constitutive_sizePostResults(g,i,e)) :: crystallite_postResults
  
  !*** local variables ***!
  real(pReal), dimension(3,3) ::       U, R
- integer(pInt)              k,l,c
- logical error
+ integer(pInt)                        k,l,o,c,crystID
+ logical                              error
 
- c = 0_pInt 
- crystallite_postResults(c+1) = crystallite_Nresults; c = c+1_pInt         ! size of (hardwired) results
- if (crystallite_Nresults >= 2) then
-   crystallite_postResults(c+1) = material_phase(g,i,e)
-   crystallite_postResults(c+2) = material_volume(g,i,e)
-   c = c+2_pInt
- endif
- if (crystallite_Nresults >= 5) then
-   crystallite_postResults(c+1:c+3) = crystallite_eulerangles(:,g,i,e)     ! grain orientation
-   c = c+3_pInt
- endif
- if (crystallite_Nresults >= 14) then                                      ! deformation gradient 11,12,13,21,...
-   forall (k=0:2,l=0:2) crystallite_postResults(c+1+k*3+l) = crystallite_partionedF(k+1,l+1,g,i,e)
-   c = c+9_pInt
- endif
+ crystID = microstructure_crystallite(mesh_element(4,e))
+
+ crystallite_postResults = 0.0_pReal
+ c = 0_pInt
+ crystallite_postResults(c+1) = crystallite_sizePostResults(crystID); c = c+1_pInt         ! size of results from cryst
  
+ do o = 1,crystallite_Noutput(crystID)
+   select case(crystallite_output(o,crystID))
+     case ('phase')
+       crystallite_postResults(c+1) = material_phase(g,i,e)                    ! phaseID of grain
+       c = c + 1_pInt
+     case ('volume')
+       crystallite_postResults(c+1) = material_volume(g,i,e)                   ! grain volume (not fraction but absolute, right?)
+       c = c + 1_pInt
+     case ('orientation')
+       crystallite_postResults(c+1:c+3) = crystallite_eulerangles(:,g,i,e)     ! grain orientation
+       c = c + 3_pInt
+     case ('defgrad')
+       forall (k=0:2,l=0:2) crystallite_postResults(c+1+k*3+l) = crystallite_partionedF(k+1,l+1,g,i,e)
+       c = c+9_pInt
+   end select
+ enddo
+  
  crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e); c = c+1_pInt  ! size of constitutive results
  crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = &
          constitutive_postResults(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &

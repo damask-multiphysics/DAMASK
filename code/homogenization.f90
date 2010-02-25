@@ -59,7 +59,7 @@ subroutine homogenization_init(Temperature)
  use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
  use material
  use constitutive, only: constitutive_maxSizePostResults
- use crystallite, only: crystallite_Nresults
+ use crystallite, only: crystallite_maxSizePostResults
  use homogenization_isostrain
  use homogenization_RGC                             ! RGC homogenization added <<<updated 31.07.2009>>>
 
@@ -99,7 +99,8 @@ subroutine homogenization_init(Temperature)
    write(fileunit,'(a)') '['//trim(homogenization_name(p))//']'
    write(fileunit,*)
    if (knownHomogenization) then
-     write(fileunit,'(a)') '#'//char(9)//'homogenization'//char(9)//trim(homogenization_type(p))
+     write(fileunit,'(a)') '(type)'//char(9)//trim(homogenization_type(p))
+     write(fileunit,'(a,i)') '(ngrains)'//char(9),homogenization_Ngrains(p)
      do e = 1,homogenization_Noutput(p)
        write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
      enddo
@@ -168,8 +169,9 @@ subroutine homogenization_init(Temperature)
  homogenization_maxSizePostResults = maxval(homogenization_sizePostResults)
 
  materialpoint_sizeResults = 1+ 1+homogenization_maxSizePostResults + &    ! grain count, homogSize, homogResult
-          homogenization_maxNgrains*(1+crystallite_Nresults+1+constitutive_maxSizePostResults)
- allocate(materialpoint_results(  materialpoint_sizeResults, mesh_maxNips,mesh_NcpElems))
+          homogenization_maxNgrains*(1+crystallite_maxSizePostResults+ &   ! results count, cryst results
+                                     1+constitutive_maxSizePostResults)    ! results count, constitutive results
+ allocate(materialpoint_results(materialpoint_sizeResults, mesh_maxNips,mesh_NcpElems))
 
 
 !    *** Output to MARC output file ***
@@ -505,17 +507,18 @@ subroutine materialpoint_postResults(dt)
 
  use FEsolving,    only: FEsolving_execElem, FEsolving_execIP
  use mesh,         only: mesh_element
- use material,     only: homogenization_Ngrains
+ use material,     only: homogenization_Ngrains, microstructure_crystallite
  use constitutive, only: constitutive_sizePostResults, constitutive_postResults
- use crystallite,  only: crystallite_Nresults, crystallite_postResults
+ use crystallite,  only: crystallite_sizePostResults, crystallite_postResults
  implicit none
 
  real(pReal), intent(in) :: dt
- integer(pInt) g,i,e,c,d,myNgrains
+ integer(pInt) g,i,e,c,d,myNgrains,myCrystallite
 
 !$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
+     myCrystallite = microstructure_crystallite(mesh_element(4,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
        c = 0_pInt
        materialpoint_results(c+1,i,e) = myNgrains; c = c+1_pInt ! tell number of grains at materialpoint
@@ -526,7 +529,7 @@ subroutine materialpoint_postResults(dt)
            homogenization_postResults(i,e);  c = c+d
        endif
        do g = 1,myNgrains                                       ! loop over all grains
-         d = 1+crystallite_Nresults + 1+constitutive_sizePostResults(g,i,e)
+         d = 1+crystallite_sizePostResults(myCrystallite) + 1+constitutive_sizePostResults(g,i,e)
          materialpoint_results(c+1:c+d,i,e) = &                 ! tell crystallite results
            crystallite_postResults(dt,g,i,e); c = c+d
        enddo

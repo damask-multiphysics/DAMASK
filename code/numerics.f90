@@ -43,7 +43,7 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 volDiscrPow_RGC                         ! powerlaw penalty for volume discrepancy
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
-integer(pInt)                   fixedSeed                            ! fixed seeding for pseudo-random number generator
+integer(pInt)                   fixedSeed                               ! fixed seeding for pseudo-random number generator
 
 CONTAINS
  

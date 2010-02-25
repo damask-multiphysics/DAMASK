@@ -98,7 +98,7 @@ subroutine constitutive_init()
    write(fileunit,'(a)') '['//trim(phase_name(p))//']'
    write(fileunit,*)
    if (knownConstitution) then
-     write(fileunit,'(a)') '#'//char(9)//'constitution'//char(9)//trim(phase_constitution(p))
+     write(fileunit,'(a)') '(constitution)'//char(9)//trim(phase_constitution(p))
      do e = 1,phase_Noutput(p)
        write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
      enddo
