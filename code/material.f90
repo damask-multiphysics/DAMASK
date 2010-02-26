@@ -93,11 +93,7 @@ subroutine material_init()
  call material_parseTexture(fileunit,material_partTexture)
  call material_parsePhase(fileunit,material_partPhase)
  close(fileunit)
- write(6,*) '<<<+-  done  -+>>>'; call flush(6)
 
-write(6,*) 'material_Nmicrostructure',material_Nmicrostructure
-write(6,*) 'microstructure_crystallite',microstructure_crystallite
-write(6,*) 'material_Ncrystallite',material_Ncrystallite
  do i = 1,material_Nmicrostructure
    if (microstructure_crystallite(i) < 1 .or. &
        microstructure_crystallite(i) > material_Ncrystallite) call IO_error(150,i)
