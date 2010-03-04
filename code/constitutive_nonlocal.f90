@@ -1021,7 +1021,7 @@ if (selectiveDebugger) then
     write(6,'(a,/,3(3(f12.3,x)/))') 'Tstar / MPa', math_Mandel6to33(Tstar_v/1e6)
     write(6,'(a,/,12(f12.5,x),/)') 'tau / MPa', tau/1e6_pReal
     write(6,'(a,/,12(f12.5,x),/)') 'tauThreshold / MPa', tauThreshold/1e6_pReal
-    write(6,'(a,/,4(12(f12.5,x),/))') 'v', constitutive_nonlocal_v(:,:,g,ip,el)
+    write(6,'(a,/,4(12(f12.5,x),/))') 'v / 1e-3m/s', constitutive_nonlocal_v(:,:,g,ip,el)*1e3
   !$OMPEND CRITICAL (write2out)
 endif
 
@@ -1155,6 +1155,7 @@ subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, previousTstar_v, Fe
 use prec,     only: pReal, &
                     pInt, &
                     p_vec
+use IO,       only: IO_error
 use debug,    only: debugger, &
                     selectiveDebugger
 use math,     only: math_norm3, &
@@ -1174,10 +1175,12 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_ipNeighborhood, &
                     mesh_ipVolume, &
                     mesh_ipArea, &
-                    mesh_ipAreaNormal
+                    mesh_ipAreaNormal, &
+                    mesh_ipCenterOfGravity
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
-                    phase_constitutionInstance
+                    phase_constitutionInstance, &
+                    phase_localConstitution
 use lattice,  only: lattice_Sslip, &
                     lattice_Sslip_v, &
                     lattice_sd, &
@@ -1219,6 +1222,9 @@ integer(pInt)                               myInstance, &             ! current 
                                             neighboring_ip, &         ! integration point of my neighbor
                                             c, &                      ! character of dislocation
                                             n, &                      ! index of my current neighbor
+                                            opposite_n, &             ! index of my opposite neighbor
+                                            opposite_ip, &            ! ip of my opposite neighbor
+                                            opposite_el, &            ! element index of my opposite neighbor
                                             t, &                      ! type of dislocation
                                             s, &                      ! index of my current slip system
                                             sLattice                  ! index of my current slip system according to lattice order
@@ -1228,6 +1234,8 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                             totalRhoDotSgl, &         ! total rate of change of single dislocation densities
                                             thisRhoDotSgl             ! rate of change of single dislocation densities for this mechanism
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
+                                            fluxdensity, &            ! flux density at central material point
+                                            neighboring_fluxdensity, &! flux density at neighbroing material point
                                             gdot                      ! shear rates
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &              ! forest dislocation density
@@ -1257,11 +1265,22 @@ real(pReal), dimension(3) ::                surfaceNormal, &          ! surface 
 real(pReal)                                 area, &                   ! area of the current interface
                                             detFe, &                  ! determinant of elastic defornmation gradient
                                             transmissivity, &         ! transmissivity of interfaces for dislocation flux
-                                            rhoAvg, &                 ! average mobile single dislocation density at interface
-                                            vAvg, &                   ! average dislocation velocity at interface
+                                            average_fluxdensity, &    ! average flux density at interface
+                                            maximum_fluxdensity, &    ! upper bound for flux density at interface
+                                            weight, &                 ! weight for interpolation of flux density
                                             lineLength, &             ! dislocation line length leaving the current interface
                                             D                         ! self diffusion
+logical                                     highOrderScheme           ! flag indicating whether we use a high order interpolation scheme or not
 
+if (selectiveDebugger) then 
+  !$OMP CRITICAL (write2out)
+    write(6,*) '::: constitutive_nonlocal_dotState at ',g,ip,el
+    write(6,*)
+  !$OMPEND CRITICAL (write2out)
+endif
+
+if (.not. (mesh_element(2,el)==1_pInt .or. mesh_element(2,el)==6_pInt .or. mesh_element(2,el)==7_pInt)) &
+  call IO_error(-1,el,ip,g,'element type not supported for nonlocal constitution')
 
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
@@ -1290,6 +1309,18 @@ tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 Tdislocation_v = state(g,ip,el)%p(12*ns+1:12*ns+6)
 previousTdislocation_v = previousState(g,ip,el)%p(12*ns+1:12*ns+6)
 
+!*** sanity check for timestep
+
+if (timestep <= 0.0_pReal) then                                                                                                     ! if illegal timestep...
+  dotState(1,ip,el)%p(1:10*ns) = 0.0_pReal                                                                                          ! ...return without doing anything (-> zero dotState)
+  return
+endif
+
+if (any(constitutive_nonlocal_v(:,:,g,ip,el)*timestep > mesh_ipVolume(ip,el)**(1.0_pReal/3.0_pReal))) then                          ! if timestep is too large,...
+  dotState(1,ip,el)%p(1:10*ns) = sqrt(-1.0_pReal)                                                                                   ! ...create NaN and enforce a cutback
+  return
+endif
+
 
 !****************************************************************************
 !*** Calculate shear rate
@@ -1299,15 +1330,6 @@ forall (t = 1:4) &
 forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) < 0.0_pReal) &                                      ! contribution of used rho for changing sign of v
   gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
                                              * constitutive_nonlocal_v(s,t,g,ip,el)
-
-
-if (selectiveDebugger) then 
-  !$OMP CRITICAL (write2out)
-    write(6,*) '::: constitutive_nonlocal_dotState at ',g,ip,el
-    write(6,*)
-  !$OMPEND CRITICAL (write2out)
-endif
-
 
 !****************************************************************************
 !*** calculate limits for stable dipole height and its rate of change
@@ -1380,7 +1402,6 @@ thisRhoDotSgl(:,5:8) = 0.0_pReal      ! used dislocation densities don't multipl
 thisRhoDotDip = 0.0_pReal             ! dipoles don't multiplicate
 
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
-totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 
 if (selectiveDebugger) then
   !$OMP CRITICAL (write2out)
@@ -1393,7 +1414,6 @@ endif
 !*** calculate dislocation fluxes
 
 thisRhoDotSgl = 0.0_pReal
-thisRhoDotDip = 0.0_pReal
 
 m(:,:,1) =  lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
 m(:,:,2) = -lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
@@ -1404,11 +1424,13 @@ F = math_mul33x33(Fe(:,:,g,ip,el), Fp(:,:,g,ip,el))
 detFe = math_det3x3(Fe(:,:,g,ip,el)) 
 
 do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                        ! loop through my neighbors
-
-  transmissivity = constitutive_nonlocal_transmissivity(misorientation(4,n), misorientation(1:3,n))
-  
+  opposite_n = n - 1_pInt + 2_pInt*mod(n,2_pInt)
+    
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
   neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
+  
+  opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
+  opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
   
   if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then                                                                           ! if neighbor exists, average deformation gradient
     neighboring_F = math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el), Fp(:,:,g,neighboring_ip,neighboring_el))
@@ -1422,56 +1444,65 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   area = mesh_ipArea(n,ip,el) * math_norm3(surfaceNormal)
   surfaceNormal = surfaceNormal / math_norm3(surfaceNormal)                                                                         ! normalize the surface normal to unit length
   
+  transmissivity = constitutive_nonlocal_transmissivity(misorientation(4,n), misorientation(1:3,n))
+  
+  highOrderScheme = .false.
+  fluxdensity = rhoSgl(:,1:4) * constitutive_nonlocal_v(:,:,g,ip,el)
+  if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then                                                                           ! if neighbor exists...
+    if ( .not. phase_localConstitution(material_phase(1,neighboring_ip,neighboring_el))) then                                       !   ... and is of nonlocal constitution...
+      forall (t = 1:4) &                                                                                                            !     ... then calculate neighboring flux density
+        neighboring_fluxdensity(:,t) = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+1:t*ns) &
+                                     * constitutive_nonlocal_v(:,t,g,neighboring_ip,neighboring_el)
+      if (transmissivity == 1.0_pReal) then                                                                                         !     ... if additionally interface's transmission is perfect...
+        highOrderScheme = .true.                                                                                                    !       ... then use high order interpolation scheme
+        weight = 0.5_pReal * mesh_ipVolume(ip,el) / area &
+                           / math_norm3(math_mul33x3(Favg,(  mesh_ipCenterOfGravity(:,neighboring_ip,neighboring_el) &
+                                                           - mesh_ipCenterOfGravity(:,ip,el))))
+      endif
+    else                                                                                                                            !   ... and is of local constitution...
+      neighboring_fluxdensity = fluxdensity                                                                                         !     ... then copy flux density to neighbor
+    endif
+  else                                                                                                                              ! if no neighbor existent...
+    neighboring_fluxdensity = 0.0_pReal                                                                                             !   ... assume zero density
+  endif
+    
   do s = 1,ns
     do t = 1,4
-      if ( constitutive_nonlocal_v(s,t,g,ip,el) * math_mul3x3(m(:,s,t), surfaceNormal) > 0.0_pReal ) then                           ! outgoing flux
-
-        if (neighboring_el > 0 .and. neighboring_ip > 0) then                                                                       !   I have a neighbor ...
-          if (transmissivity > 0.99_pReal) then                                                                                     !   ... with perfect transmissivity of the interface
-            vAvg = 0.5_pReal * (constitutive_nonlocal_v(s,t,g,ip,el) + constitutive_nonlocal_v(s,t,g,neighboring_ip,neighboring_el))
-            rhoAvg = 0.5_pReal * ( rhoSgl(s,t) + state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+s) )
-          else                                                                                                                      !   ... with low transmissivity of the interface, i.e. a discontinuity in the dislocation flux 
-            vAvg = constitutive_nonlocal_v(s,t,g,ip,el)
-            rhoAvg = rhoSgl(s,t)
-          endif
-
-        else                                                                                                                        !   no neighbor
-          vAvg = constitutive_nonlocal_v(s,t,g,ip,el)
-          rhoAvg = rhoSgl(s,t)
+      
+      if ( fluxdensity(s,t) * math_mul3x3(m(:,s,t), surfaceNormal) > 0.0_pReal ) then                                               ! outgoing flux        
+        if ( highOrderScheme ) then
+          average_fluxdensity = fluxdensity(s,t) + weight * (neighboring_fluxdensity(s,t) - fluxdensity(s,t))
+          maximum_fluxdensity = rhoSgl(s,t) * mesh_ipVolume(ip,el)**(1.0_pReal/3.0_pReal) / timestep
+          average_fluxdensity = min(abs(average_fluxdensity),maximum_fluxdensity) * sign(1.0_pReal,average_fluxdensity)
+        else
+          average_fluxdensity = fluxdensity(s,t)
         endif
 
-        lineLength = rhoAvg * vAvg * math_mul3x3(m(:,s,t), surfaceNormal) * area                                                    !   line length that wants to leave this interface
-        thisRhoDotSgl(s,t) = thisRhoDotSgl(s,t) - lineLength / mesh_ipVolume(ip,el) * transmissivity                                !   subtract positive dislocation flux that leaves the material point
+        lineLength = average_fluxdensity * math_mul3x3(m(:,s,t), surfaceNormal) * area                                              !   line length that wants to leave this interface
+        thisRhoDotSgl(s,t) = thisRhoDotSgl(s,t) - lineLength / mesh_ipVolume(ip,el)                                                 !   subtract positive dislocation flux that leaves the material point
         thisRhoDotSgl(s,t+4) = thisRhoDotSgl(s,t+4) + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
-                                                                                        * sign(1.0_pReal, vAvg)                     !   dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point             
+                                                                                        * sign(1.0_pReal, average_fluxdensity)      !   dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
         
       else                                                                                                                          ! incoming flux
-
-        if (neighboring_el > 0 .and. neighboring_ip > 0) then                                                                       !   I have a neighbor ...
-          if (transmissivity > 0.99_pReal) then                                                                                     !   ... with perfect transmissivity of the interface
-            vAvg = 0.5_pReal * (constitutive_nonlocal_v(s,t,g,ip,el) + constitutive_nonlocal_v(s,t,g,neighboring_ip,neighboring_el))
-            rhoAvg = 0.5_pReal * ( rhoSgl(s,t) + state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+s) )
-          else                                                                                                                      !   ... with low transmissivity of the interface, i.e. a discontinuity in the dislocation flux 
-            vAvg = constitutive_nonlocal_v(s,t,g,neighboring_ip,neighboring_el)
-            rhoAvg = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+s)
-          endif
-
-        else                                                                                                                        !   no neighbor
-          vAvg = 0.0_pReal
-          rhoAvg = 0.0_pReal
+        if ( highOrderScheme ) then
+          average_fluxdensity = fluxdensity(s,t) + weight * (neighboring_fluxdensity(s,t) - fluxdensity(s,t))
+          maximum_fluxdensity = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+s) &
+                              * mesh_ipVolume(neighboring_ip,neighboring_el)**(1.0_pReal/3.0_pReal) / timestep
+          average_fluxdensity = min(abs(average_fluxdensity),maximum_fluxdensity) * sign(1.0_pReal,average_fluxdensity)
+        else
+          average_fluxdensity = neighboring_fluxdensity(s,t)
         endif
 
-        lineLength = rhoAvg * vAvg * math_mul3x3(m(:,s,t), surfaceNormal) * area                                                    !   line length that wants to leave this interface
+        lineLength = average_fluxdensity * math_mul3x3(m(:,s,t), surfaceNormal) * area                                              !   line length that wants to leave this interface
         thisRhoDotSgl(s,t) = thisRhoDotSgl(s,t) - lineLength / mesh_ipVolume(ip,el) * transmissivity                                !   subtract negative dislocation flux that enters the material point
-
       endif
+    
     enddo
   enddo
 
 enddo
 
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
-totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 
 if (selectiveDebugger) then
   !$OMP CRITICAL (write2out)
@@ -1522,11 +1553,9 @@ endif
 forall (c=1:2) &  
   thisRhoDotDip(:,c) = - 2.0_pReal * dLower(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
                          * (  2.0_pReal * ( rhoSgl(:,2*c-1) * abs(gdot(:,2*c)) + rhoSgl(:,2*c) * abs(gdot(:,2*c-1)) ) &             ! was single hitting single
-                            + 2.0_pReal * ( abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1)) ) & ! was single hitting immobile/used single
+                            + 2.0_pReal * ( abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1)) ) & ! was single hitting immobile single or was immobile single hit by single
                             + rhoDip(:,c) * ( abs(gdot(:,2*c-1)) + abs(gdot(:,2*c)) ) )                                             ! single knocks dipole constituent
-thisRhoDotSgl = 0.0_pReal                                                                                                           ! singles themselves don't annihilate
 
-totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 
 if (selectiveDebugger) then
@@ -1546,9 +1575,7 @@ vClimb =  constitutive_nonlocal_atomicVolume(myInstance) * D / ( kB * Temperatur
           
 thisRhoDotDip(:,1) = - 4.0_pReal * rhoDip(:,1) * vClimb / ( dUpper(:,1) - dLower(:,1) )                                             ! edge climb
 thisRhoDotDip(:,2) = 0.0_pReal                                                                                                      !!! cross slipping still has to be implemented !!!
-thisRhoDotSgl = 0.0_pReal
 
-totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 
 if (selectiveDebugger) then
@@ -1561,6 +1588,7 @@ endif
 
 !*** formation/dissociation by stress change = alteration in dUpper
 
+!thisRhoDotSgl = 0.0_pReal
 !thisRhoDotDip = 0.0_pReal
 !
 !! forall (c=1:2, s=1:ns, dUpperDot(s,c) > 0.0_pReal) &       ! stress decrease => dipole formation
@@ -1574,7 +1602,7 @@ endif
 !totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 !totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 !
-!if (debugger) then
+!if (selectiveDebugger) then
 !  !$OMP CRITICAL (write2out)
 !    write(6,'(a,/,10(12(e12.5,x),/))') 'dipole stability by stress change', thisRhoDotSgl * timestep, thisRhoDotDip * timestep
 !  !$OMPEND CRITICAL (write2out)
@@ -2066,7 +2094,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       do c=1,2
         forall (s=1:ns, dUpperDot(s,c) < 0.0_pReal) &
           constitutive_nonlocal_postResults(cs+s) = 0.0_pReal
-!                                                    constitutive_nonlocal_postResults(cs+s) - &
+!          constitutive_nonlocal_postResults(cs+s) = constitutive_nonlocal_postResults(cs+s) - &
 !                                                    rhoDip(s,c) * dUpperDot(s,c) / (previousDUpper(s,c) - dLower(s,c))
       enddo
       cs = cs + ns
@@ -2077,7 +2105,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
             2.0_pReal * dLower(:,c) / constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) &
                          * (  2.0_pReal * ( rhoSgl(:,2*c-1) * abs(gdot(:,2*c)) + rhoSgl(:,2*c) * abs(gdot(:,2*c-1)) ) &             ! was single hitting single
                             + 2.0_pReal * ( abs(rhoSgl(:,2*c+3)) * abs(gdot(:,2*c)) + abs(rhoSgl(:,2*c+4)) * abs(gdot(:,2*c-1)) ) & ! was single hitting immobile/used single
-                            + rhoDip(:,c) * ( rhoSgl(:,2*c-1) + rhoSgl(:,2*c) ) )                                                   ! single knocks dipole constituent
+                            + rhoDip(:,c) * ( abs(gdot(:,2*c-1)) + abs(gdot(:,2*c)) ) )                                             ! single knocks dipole constituent
       enddo
       cs = cs + ns
       
