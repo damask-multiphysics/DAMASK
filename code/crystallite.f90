@@ -400,7 +400,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         myNgrains, &
                                                         mySizeState, &
                                                         mySizeDotState
-  integer(pInt), dimension(2,9) ::                      kl
+  integer(pInt), dimension(2,9,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                                                        kl
   logical                                               onTrack, &                    ! flag indicating whether we are still on track
                                                         temperatureConverged, &       ! flag indicating if temperature converged
                                                         stateConverged, &             ! flag indicating if state converged
@@ -431,7 +432,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         storedConvergenceFlag
   logical, dimension(3,3) ::                            mask
   logical                                               forceLocalStiffnessCalculation ! flag indicating that stiffness calculation is always done locally
-  forceLocalStiffnessCalculation = .true. 
+  forceLocalStiffnessCalculation = .false. 
 
                                                         
   ! ------ initialize to starting condition ------
@@ -615,11 +616,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                          ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
 !            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
-            if (crystallite_todo(g,i,e)) &                                                          ! all undone crystallites
+            if (crystallite_todo(g,i,e)) then                                                       ! all undone crystallites
               crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
               if (      .not. crystallite_localConstitution(g,i,e) &
                   .and. .not. crystallite_todo(g,i,e)) &                                            ! if broken non-local... 
                 crystallite_todo = crystallite_todo .and. crystallite_localConstitution             ! ...all non-locals skipped
+            endif
       enddo; enddo; enddo
       !$OMPEND PARALLEL DO
 
@@ -714,7 +716,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       
       if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) &             ! any non-local not yet converged (or broken)...
         crystallite_converged = crystallite_converged .and. crystallite_localConstitution           ! ...restart all non-local as not converged
-         
+      
       crystallite_todo = crystallite_todo .and. .not. crystallite_converged                         ! skip all converged
       
       if (debugger) then
@@ -873,110 +875,148 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         enddo                       ! element loop
       !$OMPEND PARALLEL DO
       
-    elseif (any(.not. crystallite_localConstitution)) then                                              ! if any nonlocal grain present, we have to do a full loop over all grains after each perturbance
+    elseif (any(.not. crystallite_localConstitution)) then                                                                          ! if any nonlocal grain present, we have to do a full loop over all grains after each perturbance
       
       do e = FEsolving_execElem(1),FEsolving_execElem(2)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
           do g = 1,myNgrains
-            
-            ! perturb components in the order of biggest change in F (-> component with biggest change in F is perturbed in first cycle, component with second biggest change in next cycle, ...)
             mask = .true.
             do comp = 1,9
-              kl(:,comp) = maxloc(abs(crystallite_subF(:,:,g,i,e)-crystallite_F0(:,:,g,i,e)), mask)
-              mask(kl(1,comp),kl(2,comp)) = .false.
+              kl(:,comp,g,i,e) = maxloc(abs(crystallite_subF(:,:,g,i,e)-crystallite_F0(:,:,g,i,e)), mask)                           ! map from component to array indices for F (sorted in descending order of abs(deltaF))
+              mask(kl(1,comp,g,i,e),kl(2,comp,g,i,e)) = .false.
             enddo
-            k = kl(1,mod((cycleCounter-1)/2+1,9))
-            l = kl(2,mod((cycleCounter-1)/2+1,9))
-            
-            crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg                         ! perturb single component
-            
-            NiterationState = 0_pInt
-            crystallite_todo = .true.
-            do while ( any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2))) .and. NiterationState < nState)
-              NiterationState = NiterationState + 1_pInt
+            k = kl(1,mod((cycleCounter-1)/2+1,9),g,i,e)                                                                             ! perturb components in the descending order of change in F (-> component with biggest change in F is perturbed in first cycle, component with second biggest change in next cycle, ...)
+            l = kl(2,mod((cycleCounter-1)/2+1,9),g,i,e)      
+            crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg                                                     ! perturb single component
+      enddo; enddo; enddo
+      
+      !$OMP PARALLEL DO
+        do e = FEsolving_execElem(1),FEsolving_execElem(2) 
+          myNgrains = homogenization_Ngrains(mesh_element(3,e))
+          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+            do g = 1,myNgrains
+              if (crystallite_todo(g,i,e)) then
+                crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)                                                  ! preguess for state
+                crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)
+                if (      .not. crystallite_localConstitution(g,i,e) &
+                    .and. .not. crystallite_todo(g,i,e)) &                                                                          ! if broken non-local... 
+                  crystallite_todo = crystallite_todo .and. crystallite_localConstitution                                           ! ...all non-locals skipped
+              endif
+        enddo; enddo; enddo
+      !$OMPEND PARALLEL DO
 
-              do ee = FEsolving_execElem(1),FEsolving_execElem(2)
-                myNgrains = homogenization_Ngrains(mesh_element(3,ee))
-                do ii = FEsolving_execIP(1,ee),FEsolving_execIP(2,ee)
-                  do gg = 1,myNgrains
-                    if (crystallite_todo(gg,ii,ee)) &
-                      crystallite_todo(gg,ii,ee) = crystallite_integrateStress(gg,ii,ee)                ! stress integration
-                      if (      .not. crystallite_localConstitution(g,i,e) &
-                          .and. .not. crystallite_todo(g,i,e)) &                                        ! if broken non-local... 
-                        crystallite_todo = crystallite_todo .and. crystallite_localConstitution         ! ...all non-locals skipped
-              enddo; enddo; enddo
-                    
-              do ee = FEsolving_execElem(1),FEsolving_execElem(2)
-                myNgrains = homogenization_Ngrains(mesh_element(3,ee))
-                do ii = FEsolving_execIP(1,ee),FEsolving_execIP(2,ee)
-                  do gg = 1,myNgrains
-                    if (crystallite_todo(gg,ii,ee)) &
-                      constitutive_dotState(gg,ii,ee)%p = 0.0_pReal                                        ! zero out dotState
-              enddo; enddo; enddo
+      NiterationState = 0_pInt
+      crystallite_todo = .true.
+      do while ( any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2))) .and. NiterationState < nState)
+        NiterationState = NiterationState + 1_pInt
 
-              do ee = FEsolving_execElem(1),FEsolving_execElem(2)
-                myNgrains = homogenization_Ngrains(mesh_element(3,ee))
-                do ii = FEsolving_execIP(1,ee),FEsolving_execIP(2,ee)
-                  do gg = 1,myNgrains
-                    if (crystallite_todo(gg,ii,ee)) &
-                      call constitutive_collectDotState(crystallite_Tstar_v(:,gg,ii,ee), crystallite_subTstar0_v(:,gg,ii,ee), &
-                                                        crystallite_Fe, crystallite_Fp, crystallite_Temperature(gg,ii,ee), & 
-                                                        crystallite_misorientation(:,:,g,i,e), crystallite_subdt(gg,ii,ee), &
-                                                        gg, ii, ee)                                        ! collect dot state                
-              enddo; enddo; enddo
-
-              do ee = FEsolving_execElem(1),FEsolving_execElem(2)
-                myNgrains = homogenization_Ngrains(mesh_element(3,ee))
-                do ii = FEsolving_execIP(1,ee),FEsolving_execIP(2,ee)
-                  do gg = 1,myNgrains
-                    if (crystallite_todo(gg,ii,ee)) then
-                      crystallite_stateConverged(gg,ii,ee) = crystallite_updateState(gg,ii,ee)             ! update state
-                      crystallite_temperatureConverged(gg,ii,ee) = crystallite_updateTemperature(gg,ii,ee) ! update temperature
-                      crystallite_converged(gg,ii,ee) =       crystallite_stateConverged(gg,ii,ee) &
-                                                        .and. crystallite_temperatureConverged(gg,ii,ee)
-                      if (      .not. crystallite_localConstitution(g,i,e) &
-                          .and. .not. crystallite_todo(g,i,e)) &                                           ! if updateState signals broken non-local... 
-                        crystallite_todo = crystallite_todo .and. crystallite_localConstitution            ! ...all non-locals skipped
-                    endif
-              enddo; enddo; enddo
-        
-              if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) &            ! any non-local not yet converged?
-                  crystallite_converged = crystallite_converged .and. crystallite_localConstitution        ! all non-local not converged
-                 
-              crystallite_todo = crystallite_todo .and. .not. crystallite_converged                        ! skip all converged
-                              
-            enddo       ! state loop
-            
-            if (all(crystallite_converged(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))) then
-              crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/pert_Fg    ! tangent dP_ij/dFg_kl
-            else                                                                                           ! grain did not converge
-              crystallite_dPdF(:,:,k,l,g,i,e) = crystallite_fallbackdPdF(:,:,k,l,g,i,e)                    ! use (elastic) fallback
-            endif 
-            
-            do ee = FEsolving_execElem(1),FEsolving_execElem(2)
-              myNgrains = homogenization_Ngrains(mesh_element(3,ee))
-              do ii = FEsolving_execIP(1,ee),FEsolving_execIP(2,ee)
-                do gg = 1,myNgrains
-                  mySizeState = constitutive_sizeState(gg,ii,ee)
-                  mySizeDotState = constitutive_sizeDotState(gg,ii,ee)
-                  constitutive_state(gg,ii,ee)%p = storedState(1:mySizeState,gg,ii,ee)
-                  constitutive_dotState(gg,ii,ee)%p = storedDotState(1:mySizeDotState,gg,ii,ee)
-            enddo; enddo; enddo
-            crystallite_Temperature = storedTemperature
-            crystallite_subF = storedF
-            crystallite_Fp = storedFp 
-            crystallite_invFp = storedInvFp
-            crystallite_Fe = storedFe
-            crystallite_Lp = storedLp
-            crystallite_Tstar_v = storedTstar_v
-            crystallite_P = storedP
-            
-            !$OMP CRITICAL (out)
-              debug_StiffnessStateLoopDistribution(NiterationState) = debug_StiffnessstateLoopDistribution(NiterationState) + 1
-            !$OMPEND CRITICAL (out)
+        !$OMP PARALLEL DO
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              do g = 1,myNgrains
+                if (crystallite_todo(g,i,e)) then
+                  crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)                                                      ! stress integration
+                  if (      .not. crystallite_localConstitution(g,i,e) & 
+                      .and. .not. crystallite_todo(g,i,e)) &                                                                        ! if broken non-local... 
+                    crystallite_todo = crystallite_todo .and. crystallite_localConstitution                                         ! ...all non-locals skipped
+                endif
+          enddo; enddo; enddo
+        !$OMPEND PARALLEL DO
               
-      enddo; enddo; enddo         ! element,ip,grain loop (e,i,g)
+        do e = FEsolving_execElem(1),FEsolving_execElem(2)
+          myNgrains = homogenization_Ngrains(mesh_element(3,e))
+          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+            do g = 1,myNgrains
+              if (crystallite_todo(g,i,e)) &
+                constitutive_dotState(g,i,e)%p = 0.0_pReal                                                                          ! zero out dotState
+        enddo; enddo; enddo
+
+        crystallite_statedamper = 1.0_pReal
+
+        !$OMP PARALLEL DO        
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              do g = 1,myNgrains
+                if (crystallite_todo(g,i,e)) then
+                  call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
+                                                    crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
+                                                    crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
+                                                    g,i,e)                                        ! collect dot state
+                  delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
+                  delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
+                  dot_prod12 = dot_product(delta_dotState1, delta_dotState2)
+                  dot_prod22 = dot_product(delta_dotState2, delta_dotState2)
+                  if (      dot_prod22 > 0.0_pReal &
+                      .and. (     dot_prod12 < 0.0_pReal &
+                             .or. dot_product(constitutive_dotState(g,i,e)%p, constitutive_previousDotState(g,i,e)%p) < 0.0_pReal))&
+                    crystallite_statedamper = min(crystallite_statedamper, &
+                                                  0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22) )
+                endif
+          enddo; enddo; enddo
+        !$OMPEND PARALLEL DO
+
+        !$OMP PARALLEL DO
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              do g = 1,myNgrains
+                if (crystallite_todo(g,i,e)) then
+                  crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)                                                ! update state
+                  crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)                                    ! update temperature
+                  crystallite_converged(g,i,e) =      crystallite_stateConverged(g,i,e) &
+                                                .and. crystallite_temperatureConverged(g,i,e)
+                  if (      .not. crystallite_localConstitution(g,i,e) &
+                      .and. .not. crystallite_todo(g,i,e)) &                                                                        ! if updateState signals broken non-local... 
+                    crystallite_todo = crystallite_todo .and. crystallite_localConstitution                                         ! ...all non-locals skipped
+                endif
+          enddo; enddo; enddo
+        !$OMPEND PARALLEL DO
+  
+        if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) &                                           ! any non-local not yet converged?
+            crystallite_converged = crystallite_converged .and. crystallite_localConstitution                                       ! all non-local not converged
+           
+        crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                                       ! skip all converged
+                        
+      enddo
+      
+      do e = FEsolving_execElem(1),FEsolving_execElem(2)
+        myNgrains = homogenization_Ngrains(mesh_element(3,e))
+        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+          do g = 1,myNgrains
+            if (crystallite_converged(g,i,e)) then                                                                                  ! if stiffness calculation converged...
+              k = kl(1,mod((cycleCounter-1)/2+1,9),g,i,e)
+              l = kl(2,mod((cycleCounter-1)/2+1,9),g,i,e)      
+              crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/pert_Fg                             ! ... use tangent dP_ij/dFg_kl
+            elseif (.not. storedConvergenceFlag(g,i,e)) then                                                                        ! if crystallite didnÕt converge before...
+              crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                                             ! ... use (elastic) fallback
+            endif
+      enddo; enddo; enddo
+    
+      do e = FEsolving_execElem(1),FEsolving_execElem(2)
+        myNgrains = homogenization_Ngrains(mesh_element(3,e))
+        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+          do g = 1,myNgrains
+            mySizeState = constitutive_sizeState(g,i,e)
+            mySizeDotState = constitutive_sizeDotState(g,i,e)
+            constitutive_state(g,i,e)%p = storedState(1:mySizeState,g,i,e)
+            constitutive_dotState(g,i,e)%p = storedDotState(1:mySizeDotState,g,i,e)
+      enddo; enddo; enddo
+      crystallite_Temperature = storedTemperature
+      crystallite_subF = storedF
+      crystallite_Fp = storedFp 
+      crystallite_invFp = storedInvFp
+      crystallite_Fe = storedFe
+      crystallite_Lp = storedLp
+      crystallite_Tstar_v = storedTstar_v
+      crystallite_P = storedP
+      
+      !$OMP CRITICAL (out)
+        debug_StiffnessStateLoopDistribution(NiterationState) = debug_StiffnessstateLoopDistribution(NiterationState) + 1
+      !$OMPEND CRITICAL (out)
+
       crystallite_converged = storedConvergenceFlag
       
     endif
