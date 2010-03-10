@@ -335,7 +335,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         pert_method, &
                                                         nState, &
                                                         nCryst
-  use debug, only:                                      debugger, &
+  use debug, only:                                      iJacoStiffness, &
+                                                        debugger, &
                                                         selectiveDebugger, &
                                                         debug_e, &
                                                         debug_i, &
@@ -777,7 +778,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
     storedP = crystallite_P
     storedConvergenceFlag = crystallite_converged
 
-    if (all(crystallite_localConstitution) .or. theInc < 2 .or. forceLocalStiffnessCalculation) then      ! all grains have local constitution, so local convergence of perturbed grain is sufficient
+    if (all(crystallite_localConstitution) .or. theInc < 1 .or. forceLocalStiffnessCalculation) then      ! all grains have local constitution, so local convergence of perturbed grain is sufficient
     
       !$OMP PARALLEL DO
         do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                ! iterate over elements to be processed
@@ -886,8 +887,13 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               kl(:,comp,g,i,e) = maxloc(abs(crystallite_subF(:,:,g,i,e)-crystallite_F0(:,:,g,i,e)), mask)                           ! map from component to array indices for F (sorted in descending order of abs(deltaF))
               mask(kl(1,comp,g,i,e),kl(2,comp,g,i,e)) = .false.
             enddo
-            k = kl(1,mod((cycleCounter-1)/2+1,9),g,i,e)                                                                             ! perturb components in the descending order of change in F (-> component with biggest change in F is perturbed in first cycle, component with second biggest change in next cycle, ...)
-            l = kl(2,mod((cycleCounter-1)/2+1,9),g,i,e)      
+            k = kl(1,mod(cycleCounter/iJacoStiffness,9)+1,g,i,e)                                                                                     ! perturb components in the descending order of change in F (-> component with biggest change in F is perturbed in first cycle, component with second biggest change in next cycle, ...)
+            l = kl(2,mod(cycleCounter/iJacoStiffness,9)+1,g,i,e)      
+            if (e==debug_e .and. i==debug_i) then
+              !$OMP CRITICAL (write2out)
+                write (6,*) 'perturb component ',k,l
+              !$OMPEND CRITICAL (write2out)
+            endif
             crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + pert_Fg                                                     ! perturb single component
       enddo; enddo; enddo
       
@@ -987,8 +993,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
           do g = 1,myNgrains
             if (crystallite_converged(g,i,e)) then                                                                                  ! if stiffness calculation converged...
-              k = kl(1,mod((cycleCounter-1)/2+1,9),g,i,e)
-              l = kl(2,mod((cycleCounter-1)/2+1,9),g,i,e)      
+              k = kl(1,mod(cycleCounter/iJacoStiffness,9)+1,g,i,e)
+              l = kl(2,mod(cycleCounter/iJacoStiffness,9)+1,g,i,e)      
               crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/pert_Fg                             ! ... use tangent dP_ij/dFg_kl
             elseif (.not. storedConvergenceFlag(g,i,e)) then                                                                        ! if crystallite didn’t converge before...
               crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                                             ! ... use (elastic) fallback
@@ -1094,7 +1100,7 @@ endsubroutine
  
  ! setting flag to true if state is below relative tolerance, otherwise set it to false
  crystallite_updateState = all(    constitutive_state(g,i,e)%p(1:mySize) < constitutive_relevantState(g,i,e)%p(1:mySize) &
-                              .or. abs(residuum) < rTol_crystalliteState*abs(constitutive_state(g,i,e)%p(1:mySize)))
+                              .or. abs(residuum) < rTol_crystalliteState*abs(constitutive_state(g,i,e)%p(1:mySize)) )
  if (selectiveDebugger) then
    !$OMP CRITICAL (write2out)
      if (crystallite_updateState) then
