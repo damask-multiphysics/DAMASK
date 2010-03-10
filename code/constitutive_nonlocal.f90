@@ -78,7 +78,8 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_
                                                           constitutive_nonlocal_dLowerScrewPerSlipFamily, &     ! minimum stable screw dipole height for each family and instance
                                                           constitutive_nonlocal_dLowerScrewPerSlipSystem, &     ! minimum stable screw dipole height for each slip system and instance
                                                           constitutive_nonlocal_interactionSlipSlip             ! coefficients for slip-slip interaction for each interaction type and instance
-real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_v                               ! dislocation velocity
+real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_v, &                            ! dislocation velocity
+                                                          constitutive_nonlocal_rhoDotFlux                      ! dislocation convection term
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_forestProjectionEdge, &         ! matrix of forest projections of edge dislocations for each instance
                                                           constitutive_nonlocal_forestProjectionScrew, &        ! matrix of forest projections of screw dislocations for each instance
                                                           constitutive_nonlocal_interactionMatrixSlipSlip       ! interaction matrix of the different slip systems for each instance    
@@ -414,6 +415,9 @@ constitutive_nonlocal_interactionMatrixSlipSlip = 0.0_pReal
 allocate(constitutive_nonlocal_v(maxTotalNslip, 4, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_v = 0.0_pReal
 
+allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 8, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+constitutive_nonlocal_rhoDotFlux = 0.0_pReal
+
 do i = 1,maxNinstance
   
   myStructure = constitutive_nonlocal_structure(i)                                                                                  ! lattice structure of this instance
@@ -490,6 +494,7 @@ do i = 1,maxNinstance
             'rho_dot_dip2sgl', &
             'rho_dot_ann_ath', &
             'rho_dot_ann_the', &
+            'rho_dot_flux', &
             'dislocationvelocity', &
             'fluxdensity_edge_pos_x', &
             'fluxdensity_edge_pos_y', &
@@ -1423,6 +1428,8 @@ m(:,:,4) = -lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance),
 F = math_mul33x33(Fe(:,:,g,ip,el), Fp(:,:,g,ip,el))
 detFe = math_det3x3(Fe(:,:,g,ip,el)) 
 
+fluxdensity = rhoSgl(:,1:4) * constitutive_nonlocal_v(:,:,g,ip,el)
+
 do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                        ! loop through my neighbors
   opposite_n = n - 1_pInt + 2_pInt*mod(n,2_pInt)
     
@@ -1447,7 +1454,6 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   transmissivity = constitutive_nonlocal_transmissivity(misorientation(4,n), misorientation(1:3,n))
   
   highOrderScheme = .false.
-  fluxdensity = rhoSgl(:,1:4) * constitutive_nonlocal_v(:,:,g,ip,el)
   if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then                                                                           ! if neighbor exists...
     if ( .not. phase_localConstitution(material_phase(1,neighboring_ip,neighboring_el))) then                                       !   ... and is of nonlocal constitution...
       forall (t = 1:4) &                                                                                                            !     ... then calculate neighboring flux density
@@ -1501,6 +1507,8 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   enddo
 
 enddo
+
+constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) = thisRhoDotSgl
 
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 
@@ -1588,25 +1596,25 @@ endif
 
 !*** formation/dissociation by stress change = alteration in dUpper
 
-!thisRhoDotSgl = 0.0_pReal
-!thisRhoDotDip = 0.0_pReal
-!
-!! forall (c=1:2, s=1:ns, dUpperDot(s,c) > 0.0_pReal) &       ! stress decrease => dipole formation
-!  ! thisRhoDotDip(s,c) = 8.0_pReal * rhoSgl(s,2*c-1) * rhoSgl(s,2*c) * previousDUpper(s,c) * dUpperDot(s,c)
-!forall (c=1:2, s=1:ns, dUpperDot(s,c) < 0.0_pReal) &       ! increased stress => dipole dissociation
-!  thisRhoDotDip(s,c) = rhoDip(s,c) * dUpperDot(s,c) / (previousDUpper(s,c) - dLower(s,c))
-!
-!forall (t=1:4) &
-!  thisRhoDotSgl(:,t) = -0.5_pReal * thisRhoDotDip(:,(t-1)/2+1)
-! 
-!totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
-!totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
-!
-!if (selectiveDebugger) then
-!  !$OMP CRITICAL (write2out)
-!    write(6,'(a,/,10(12(e12.5,x),/))') 'dipole stability by stress change', thisRhoDotSgl * timestep, thisRhoDotDip * timestep
-!  !$OMPEND CRITICAL (write2out)
-!endif
+thisRhoDotSgl = 0.0_pReal
+thisRhoDotDip = 0.0_pReal
+
+! forall (c=1:2, s=1:ns, dUpperDot(s,c) > 0.0_pReal) &       ! stress decrease => dipole formation
+  ! thisRhoDotDip(s,c) = 8.0_pReal * rhoSgl(s,2*c-1) * rhoSgl(s,2*c) * previousDUpper(s,c) * dUpperDot(s,c)
+forall (c=1:2, s=1:ns, dUpperDot(s,c) < 0.0_pReal) &       ! increased stress => dipole dissociation
+  thisRhoDotDip(s,c) = rhoDip(s,c) * dUpperDot(s,c) / (previousDUpper(s,c) - dLower(s,c))
+
+forall (t=1:4) &
+  thisRhoDotSgl(:,t) = -0.5_pReal * thisRhoDotDip(:,(t-1)/2+1)
+ 
+totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
+totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
+
+if (selectiveDebugger) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a,/,10(12(e12.5,x),/))') 'dipole stability by stress change', thisRhoDotSgl * timestep, thisRhoDotDip * timestep
+  !$OMPEND CRITICAL (write2out)
+endif
 
 
 !****************************************************************************
@@ -2093,9 +2101,8 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
     case ('rho_dot_dip2sgl')
       do c=1,2
         forall (s=1:ns, dUpperDot(s,c) < 0.0_pReal) &
-          constitutive_nonlocal_postResults(cs+s) = 0.0_pReal
-!          constitutive_nonlocal_postResults(cs+s) = constitutive_nonlocal_postResults(cs+s) - &
-!                                                    rhoDip(s,c) * dUpperDot(s,c) / (previousDUpper(s,c) - dLower(s,c))
+          constitutive_nonlocal_postResults(cs+s) = constitutive_nonlocal_postResults(cs+s) - &
+                                                    rhoDip(s,c) * dUpperDot(s,c) / (previousDUpper(s,c) - dLower(s,c))
       enddo
       cs = cs + ns
     
@@ -2120,6 +2127,11 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       ! !!! cross-slip of screws missing !!!
       cs = cs + ns
 
+    case ('rho_dot_flux')
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(constitutive_nonlocal_rhoDotFlux(:,1:4,g,ip,el),2) &
+                                                      + sum(abs(constitutive_nonlocal_rhoDotFlux(:,5:8,g,ip,el)),2)
+      cs = cs + ns
+      
     case ('dislocationvelocity')
       constitutive_nonlocal_postResults(cs+1:cs+ns) = constitutive_nonlocal_v(:,1,g,ip,el)
       cs = cs + ns
