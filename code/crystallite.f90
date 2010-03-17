@@ -334,9 +334,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         pert_Fg, &
                                                         pert_method, &
                                                         nState, &
-                                                        nCryst
-  use debug, only:                                      iJacoStiffness, &
-                                                        debugger, &
+                                                        nCryst, &
+                                                        iJacoStiffness
+  use debug, only:                                      debugger, &
                                                         selectiveDebugger, &
                                                         debug_e, &
                                                         debug_i, &
