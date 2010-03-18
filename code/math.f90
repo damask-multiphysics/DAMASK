@@ -65,143 +65,47 @@
 
  
 
-! Symmetry Operations for 3 different materials
-! 24 for cubic, 12 for hexagonal, 8 for tetragonal (24+12+8)x3=132
-real(pReal), dimension(3,3,44), parameter :: symOperations = &
+! Symmetry operations as quaternions
+! 24 for cubic, 12 for hexagonal = 36
+real(pReal), dimension(4,36), parameter :: symOperations = &
   reshape((/&
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-    -0.5_pReal, 0.866025403_pReal, 0.0_pReal,  &
-    -0.866025403_pReal, -0.5_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-    -0.5_pReal, -0.866025403_pReal, 0.0_pReal,  &
-     0.866025403_pReal, -0.5_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.5_pReal, 0.866025403_pReal, 0.0_pReal,  &
-    -0.866025403_pReal, 0.5_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.5_pReal, -0.866025403_pReal, 0.0_pReal,  &
-     0.866025403_pReal, 0.5_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-    -0.5_pReal, -0.866025403_pReal, 0.0_pReal,  &
-    -0.866025403_pReal, 0.5_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-    -0.5_pReal, 0.866025403_pReal, 0.0_pReal,  &
-     0.866025403_pReal, 0.5_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.5_pReal, 0.866025403_pReal, 0.0_pReal,  &
-     0.866025403_pReal, -0.5_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.5_pReal, -0.866025403_pReal, 0.0_pReal,  &
-    -0.866025403_pReal, -0.5_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, 1.0_pReal,  &
-     0.0_pReal, 1.0_pReal, 0.0_pReal,  &
-     1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal,  &
-     0.0_pReal, -1.0_pReal, 0.0_pReal,  &
-    -1.0_pReal, 0.0_pReal, 0.0_pReal,  &
-     0.0_pReal, 0.0_pReal, -1.0_pReal &
-  /),(/3,3,44/))
+     1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! cubic symmetry operations
+     0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal, &       !     2-fold symmetry
+     0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
+     0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal, &
+     0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, -0.7071067811865476_pReal, &
+     0.0_pReal,                -0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
+     0.0_pReal,                 0.7071067811865476_pReal, -0.7071067811865476_pReal,  0.0_pReal, &
+     0.5_pReal,                 0.5_pReal,                 0.5_pReal,                 0.5_pReal, &                      !     3-fold symmetry
+    -0.5_pReal,                 0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
+     0.5_pReal,                -0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
+    -0.5_pReal,                -0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
+     0.5_pReal,                 0.5_pReal,                -0.5_pReal,                 0.5_pReal, &
+    -0.5_pReal,                 0.5_pReal,                -0.5_pReal,                 0.5_pReal, &
+     0.5_pReal,                 0.5_pReal,                 0.5_pReal,                -0.5_pReal, &
+    -0.5_pReal,                 0.5_pReal,                 0.5_pReal,                -0.5_pReal, &
+     0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal, &                      !     4-fold symmetry
+     0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &
+    -0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal, &
+     0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal, &
+     0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
+    -0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal, &
+     0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
+     0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal, &
+    -0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
+     1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! hexagonal symmetry operations
+     0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      !     2-fold symmetry
+     0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
+     0.0_pReal,                 0.5773502691896259_pReal,  1.154700538379252_pReal,   0.0_pReal, &
+     0.0_pReal,                -0.5773502691896259_pReal,  1.154700538379252_pReal,   0.0_pReal, &
+     0.0_pReal,                 1.154700538379252_pReal,   0.5773502691896259_pReal,  0.0_pReal, &
+     0.0_pReal,                -1.154700538379252_pReal,   0.5773502691896259_pReal,  0.0_pReal, &
+     0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &                      !     6-fold symmetry
+    -0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &
+     0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
+    -0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
+     0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal &
+  /),(/4,36/))
 
 
 
@@ -242,91 +146,44 @@ real(pReal), dimension(3,3,44), parameter :: symOperations = &
 
 
 !**************************************************************************
-! calculates the misorientation for 2 orientations C1 and C2
+! calculates the misorientation for 2 orientations Q1 and Q2 (needs quaternions)
 !**************************************************************************
-subroutine math_misorientation(axis, angle, rot, ori1, ori2, symmetryType)
+subroutine math_misorientation(dQ, Q1, Q2, symmetryType)
 
   use prec, only: pReal, pInt
   use IO,   only: IO_warning
   implicit none
   
   !*** input variables 
-  real(pReal), dimension(3,3), intent(in) ::    ori1, &         ! 1st orientation
-                                                ori2            ! 2nd orientation
-  integer(pInt), intent(in) ::                  symmetryType    ! Type of crystal symmetry; 1:cubic, 2:hexagonal, 3:tetragonal
+  real(pReal), dimension(4), intent(in) ::      Q1, &                       ! 1st orientation
+                                                Q2                          ! 2nd orientation
+  integer(pInt), intent(in) ::                  symmetryType                ! Type of crystal symmetry; 1:cubic, 2:hexagonal
   
   !*** output variables
-  real(pReal), intent(out) ::                   angle           ! misorientation angle in degrees       
-  real(pReal), dimension(3), intent(out) ::     axis            ! rotation axis of misorientation
-  real(pReal), dimension(3,3), intent(out) ::   rot             ! net rotation of the misorientation
+  real(pReal), dimension(4), intent(out) ::     dQ                          ! misorientation
   
   !*** local variables
-  real(pReal)                                   this_angle      ! candidate for misorientation angle
-  real(pReal), dimension(3) ::                  this_axis       ! candidate for rotation axis
-  real(pReal), dimension(3,3) ::                this_rot        ! candidate for net rotation
-  real(pReal), dimension(3,3) ::                ori1sym, ori2sym ! symmetrical counterpart of 1st and 2nd orientation respectively
-  real(pReal)                                   invNorm
-  integer(pInt)                                 NsymOperations, & ! number of possible symmetry operations
-                                                startindex, endindex, &
-                                                s1, s2, &
-                                                i
-  real(pReal), dimension(:,:,:), allocatable :: mySymOperations  ! symmetry Operations for my crystal symmetry
+  real(pReal), dimension(4) ::                  this_dQ                     ! candidate for misorientation
+  integer(pInt)                                 s
+  integer(pInt), dimension(2), parameter ::     NsymOperations = (/24,12/)  ! number of possible symmetry operations
+  real(pReal), dimension(:,:), allocatable ::   mySymOperations             ! symmetry Operations for my crystal symmetry
   
   
-  axis = 0.0_pReal
-  angle = 0.0_pReal
-  rot = 0.0_pReal
-  
-  ! choose my symmetry operations according to my crystal symetry
-  if (symmetryType == 1_pInt) then
-    NsymOperations = 24_pInt
-    startindex = 1_pInt
-  elseif (symmetryType == 2_pInt) then
-    NsymOperations = 12_pInt
-    startindex = 25_pInt
-  elseif (symmetryType == 3_pInt) then
-    NsymOperations = 8_pInt
-    startindex = 37_pInt
-  else
+  dQ = 0.0_pReal
+    
+  if (symmetryType < 1_pInt .or. symmetryType > 2_pInt) then
     call IO_warning(700)
     return
   endif    
-  allocate(mySymOperations(3,3,NsymOperations))
-  endindex = startindex + NsymOperations - 1_pInt
-  mySymOperations = symOperations(:,:,startindex:endindex)
   
+  allocate(mySymOperations(4,NsymOperations(symmetryType)))
+  mySymOperations = symOperations(:,sum(NsymOperations(1:symmetryType-1))+1:sum(NsymOperations(1:symmetryType)))                    ! choose symmetry operations according to crystal symmetry
   
-  !	Initially set the orientation angle to maximum
-  angle = 2.0_pReal * pi
-  
-  !	apply symmetry operation to 1st orientation
-  do s1 = 1,NsymOperations
-    ori1sym = math_mul33x33(mySymOperations(:,:,s1), ori1)
-          
-    ! calculate possible net rotation
-    this_rot = math_mul33x33(ori1sym, transpose(ori2))
-    
-    ! store smallest misorientation for an axis inside standard orientation triangle         
-    ! calculate rotation axis
-    invNorm = (   (this_rot(1,2) - this_rot(2,1))**2.0_pReal &
-                + (this_rot(2,3) - this_rot(3,2))**2.0_pReal &
-                + (this_rot(3,1) - this_rot(1,3))**2.0_pReal ) ** (-0.5_pReal)
-    this_axis(1) = (this_rot(2,3) - this_rot(3,2)) * invNorm
-    this_axis(2) = (this_rot(3,1) - this_rot(1,3)) * invNorm
-    this_axis(3) = (this_rot(1,2) - this_rot(2,1)) * invNorm
-    
-    ! calculate rotation angle
-    this_angle = abs(0.5_pReal * pi - asin(0.4999999_pReal * (this_rot(1,1) + this_rot(2,2) + this_rot(3,3) - 1.0_pReal)))
-
-    if (abs(this_angle) < angle) then
-      angle = this_angle
-      rot = this_rot
-      axis = this_axis
-    endif
+  dQ(1) = -1.0_pReal                                                                                                                ! start with maximum misorientation angle 
+  do s = 1,NsymOperations(symmetryType)                                                                                             ! loop ver symmetry operations    
+    this_dQ = math_qMul( math_qConj(Q1), math_qMul(mySymOperations(:,s),Q2) )                                                       ! misorientation candidate from Q1^-1*(sym*Q2)
+    if (this_dQ(1) > dQ(1)) dQ = this_dQ                                                                                            ! store if misorientation angle is smaller (cos is larger) than previous one
   enddo
-  
-  ! convert angle to degrees
-  angle = angle * inDeg
   
 endsubroutine
 
@@ -677,6 +534,124 @@ endsubroutine
    A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
    A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
  return
+
+ ENDFUNCTION
+
+ 
+!**************************************************************************
+! quaternion multiplication q1xq2 = q12
+!**************************************************************************
+ PURE FUNCTION math_qMul(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) ::  A, B
+ real(pReal), dimension(4) ::  math_qMul
+
+ math_qMul(1) = A(1)*B(1) - A(2)*B(2) - A(3)*B(3) - A(4)*B(4)
+ math_qMul(2) = A(1)*B(2) + A(2)*B(1) + A(3)*B(4) - A(4)*B(3)
+ math_qMul(3) = A(1)*B(3) - A(2)*B(4) + A(3)*B(1) + A(4)*B(2)
+ math_qMul(4) = A(1)*B(4) + A(2)*B(3) - A(3)*B(2) + A(4)*B(1)
+
+ ENDFUNCTION
+
+ 
+!**************************************************************************
+! quaternion dotproduct
+!**************************************************************************
+ PURE FUNCTION math_qDot(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) :: A, B
+ real(pReal) math_qDot
+
+ math_qDot = A(1)*B(1) + A(2)*B(2) + A(3)*B(3) + A(4)*B(4)
+
+ ENDFUNCTION
+
+ 
+!**************************************************************************
+! quaternion conjugation
+!**************************************************************************
+ PURE FUNCTION math_qConj(Q)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) ::  Q
+ real(pReal), dimension(4) ::  math_qConj
+
+ math_qConj(1) = Q(1)
+ math_qConj(2:4) = -Q(2:4)
+
+ ENDFUNCTION
+
+ 
+!**************************************************************************
+! quaternion norm
+!**************************************************************************
+ PURE FUNCTION math_qNorm(Q)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) ::  Q
+ real(pReal)  math_qNorm
+ 
+ math_qNorm = dsqrt(max(0.0_pReal, Q(1)*Q(1) + Q(2)*Q(2) + Q(3)*Q(3) + Q(4)*Q(4)))
+
+ ENDFUNCTION
+
+
+!**************************************************************************
+! quaternion inversion
+!**************************************************************************
+ PURE FUNCTION math_qInv(Q)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) ::  Q
+ real(pReal), dimension(4) ::  math_qInv
+ real(pReal) squareNorm
+ 
+ math_qInv = 0.0_pReal
+ 
+ squareNorm = math_qDot(Q,Q)
+ if (squareNorm > tiny(squareNorm)) &
+   math_qInv = math_qConj(Q) / squareNorm
+ 
+ ENDFUNCTION
+
+ 
+!**************************************************************************
+! quaternion inversion
+!**************************************************************************
+ PURE FUNCTION math_qRot(Q,v)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) :: Q
+ real(pReal), dimension(3), intent(in) :: v
+ real(pReal), dimension(3) :: math_qRot
+ real(pReal), dimension(4,4) :: T
+ integer(pInt) i, j
+ 
+ do i = 1,4
+   do j = 1,i
+     T(i,j) = Q(i) * Q(j)
+   enddo
+ enddo
+ 
+ math_qRot(1) = -v(1)*(T(3,3)+T(4,4)) + v(2)*(T(3,2)-T(4,1)) + v(3)*(T(4,2)+T(3,1))
+ math_qRot(2) =  v(1)*(T(3,2)+T(4,1)) - v(2)*(T(2,2)+T(4,4)) + v(3)*(T(4,3)-T(2,1))
+ math_qRot(3) =  v(1)*(T(4,2)-T(3,1)) + v(2)*(T(4,3)+T(2,1)) - v(3)*(T(2,2)+T(3,3))
+ 
+ math_qRot = 2.0_pReal * math_qRot + v
 
  ENDFUNCTION
 
@@ -1046,15 +1021,15 @@ pure function math_transpose3x3(A)
 !********************************************************************
 ! euclidic norm of a 3x1 vector
 !********************************************************************
- pure function math_norm3(v3)
+ pure function math_norm3(v)
 
  use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(3), intent(in) :: v3
+ real(pReal), dimension(3), intent(in) :: v
  real(pReal) math_norm3
 
- math_norm3 = sqrt(v3(1)*v3(1)+v3(2)*v3(2)+v3(3)*v3(3))
+ math_norm3 = dsqrt(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
  return
  
  endfunction
@@ -1276,6 +1251,138 @@ pure function math_transpose3x3(A)
 
 
 !****************************************************************
+! rotation matrix from Euler angles  
+!****************************************************************
+ PURE FUNCTION math_EulerToR (Euler)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3), intent(in) :: Euler
+ real(pReal), dimension(3,3) :: math_EulerToR
+ real(pReal) c1, c, c2, s1, s, s2
+
+ C1=COS(Euler(1))
+ C=COS(Euler(2))
+ C2=COS(Euler(3))
+ S1=SIN(Euler(1))
+ S=SIN(Euler(2))
+ S2=SIN(Euler(3))
+ math_EulerToR(1,1)=C1*C2-S1*S2*C
+ math_EulerToR(1,2)=S1*C2+C1*S2*C
+ math_EulerToR(1,3)=S2*S
+ math_EulerToR(2,1)=-C1*S2-S1*C2*C
+ math_EulerToR(2,2)=-S1*S2+C1*C2*C
+ math_EulerToR(2,3)=C2*S
+ math_EulerToR(3,1)=S1*S
+ math_EulerToR(3,2)=-C1*S
+ math_EulerToR(3,3)=C
+ return
+ 
+ ENDFUNCTION
+
+
+!********************************************************************
+! quaternion (w+ix+jy+kz) from orientation matrix
+!********************************************************************
+ PURE FUNCTION math_RtoQuaternion(R)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension (3,3), intent(in) :: R
+ real(pReal), dimension(4) :: math_RtoQuaternion, T
+ 
+ T(1) = max(0.0_pReal, 1.0_pReal + R(1,1) + R(2,2) + R(3,3))
+ T(2) = max(0.0_pReal, 1.0_pReal + R(1,1) - R(2,2) - R(3,3))
+ T(3) = max(0.0_pReal, 1.0_pReal - R(1,1) + R(2,2) - R(3,3))
+ T(4) = max(0.0_pReal, 1.0_pReal - R(1,1) - R(2,2) + R(3,3))
+ 
+ math_RtoQuaternion = 0.5_pReal * dsqrt(T)
+
+ math_RtoQuaternion(2) = sign(math_RtoQuaternion(2), R(3,2) - R(2,3))
+ math_RtoQuaternion(3) = sign(math_RtoQuaternion(3), R(1,3) - R(3,1))
+ math_RtoQuaternion(4) = sign(math_RtoQuaternion(4), R(2,1) - R(1,2))
+ 
+ ENDFUNCTION
+
+
+!********************************************************************
+! orientation matrix from quaternion (w+ix+jy+kz)
+!********************************************************************
+ PURE FUNCTION math_QuaternionToR(Q)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) :: Q
+ real(pReal), dimension(3,3) :: math_QuaternionToR, T
+ real(pReal) w2
+ integer(pInt) i, j
+ 
+ forall (i = 1:3, j = 1:3) &
+   T(i,j) = Q(i+1) * Q(j+1)
+ 
+ math_QuaternionToR = (2.0_pReal*Q(1)*Q(1) - 1.0_pReal) * math_I3 + 2.0_pReal * T                                                   ! symmetrical parts of R
+ 
+ w2 = 2.0_pReal * Q(1)
+ math_QuaternionToR(2,1) = math_QuaternionToR(2,1) + w2 * Q(4)                                                                      ! skew parts of R
+ math_QuaternionToR(1,2) = math_QuaternionToR(1,2) - w2 * Q(4)
+ math_QuaternionToR(3,1) = math_QuaternionToR(3,1) - w2 * Q(3)
+ math_QuaternionToR(1,3) = math_QuaternionToR(1,3) + w2 * Q(3)
+ math_QuaternionToR(3,2) = math_QuaternionToR(3,2) + w2 * Q(2)
+ math_QuaternionToR(2,3) = math_QuaternionToR(2,3) - w2 * Q(2)
+ 
+ ENDFUNCTION
+
+
+!********************************************************************
+! orientation matrix from quaternion (w+ix+jy+kz)
+!********************************************************************
+ PURE FUNCTION math_EulerToQuaternion(eulerangles)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3), intent(in) :: eulerangles
+ real(pReal), dimension(4) :: math_EulerToQuaternion
+ real(pReal), dimension(3) :: angles
+ real(pReal) c, s
+ 
+ angles = 0.5_pReal * eulerangles * inRad
+ 
+ c = dcos(angles(2))
+ s = dsin(angles(2))
+ 
+ math_EulerToQuaternion(1) = dcos(angles(1)+angles(3)) * c
+ math_EulerToQuaternion(2) = dcos(angles(1)-angles(3)) * s
+ math_EulerToQuaternion(3) = dsin(angles(1)-angles(3)) * s
+ math_EulerToQuaternion(4) = dsin(angles(1)+angles(3)) * c
+  
+ ENDFUNCTION
+
+
+!********************************************************************
+! orientation matrix from quaternion (w+ix+jy+kz)
+!********************************************************************
+ PURE FUNCTION math_QuaternionToEuler(Q)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) :: Q
+ real(pReal), dimension(3) :: math_QuaternionToEuler
+ 
+ math_QuaternionToEuler(1) = atan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
+ math_QuaternionToEuler(2) = acos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
+ math_QuaternionToEuler(3) = atan2(-Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)+Q(3)*Q(4))
+ 
+ math_QuaternionToEuler = math_QuaternionToEuler * inDeg
+ 
+ ENDFUNCTION
+
+
+!****************************************************************
 ! rotation matrix from axis and angle (in radians)  
 !****************************************************************
  PURE FUNCTION math_RodrigToR(axis,omega)
@@ -1311,38 +1418,6 @@ pure function math_transpose3x3(A)
 
  return
 
- ENDFUNCTION
-
-
-!****************************************************************
-! rotation matrix from Euler angles  
-!****************************************************************
- PURE FUNCTION math_EulerToR (Euler)
-
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal), dimension(3), intent(in) :: Euler
- real(pReal), dimension(3,3) :: math_EulerToR
- real(pReal) c1, c, c2, s1, s, s2
-
- C1=COS(Euler(1))
- C=COS(Euler(2))
- C2=COS(Euler(3))
- S1=SIN(Euler(1))
- S=SIN(Euler(2))
- S2=SIN(Euler(3))
- math_EulerToR(1,1)=C1*C2-S1*S2*C
- math_EulerToR(1,2)=S1*C2+C1*S2*C
- math_EulerToR(1,3)=S2*S
- math_EulerToR(2,1)=-C1*S2-S1*C2*C
- math_EulerToR(2,2)=-S1*S2+C1*C2*C
- math_EulerToR(2,3)=C2*S
- math_EulerToR(3,1)=S1*S
- math_EulerToR(3,2)=-C1*S
- math_EulerToR(3,3)=C
- return
- 
  ENDFUNCTION
 
 
@@ -1604,14 +1679,14 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
    EB2(2,2)=1.0_pReal
    EB3(3,3)=1.0_pReal
  ELSE
-   RHO=SQRT(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+   RHO=DSQRT(-3.0_pReal*P**3.0_pReal)/9.0_pReal
    arg=-Q/RHO/2.0_pReal
    if(arg.GT.1) arg=1
    if(arg.LT.-1) arg=-1
-   PHI=ACOS(arg)
-   Y1=2*RHO**(1.0_pReal/3.0_pReal)*COS(PHI/3.0_pReal)
-   Y2=2*RHO**(1.0_pReal/3.0_pReal)*COS(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
-   Y3=2*RHO**(1.0_pReal/3.0_pReal)*COS(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
+   PHI=DACOS(arg)
+   Y1=2*RHO**(1.0_pReal/3.0_pReal)*DCOS(PHI/3.0_pReal)
+   Y2=2*RHO**(1.0_pReal/3.0_pReal)*DCOS(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
+   Y3=2*RHO**(1.0_pReal/3.0_pReal)*DCOS(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
    EW1=Y1-R/3.0_pReal
    EW2=Y2-R/3.0_pReal
    EW3=Y3-R/3.0_pReal

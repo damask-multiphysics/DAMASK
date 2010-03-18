@@ -1451,7 +1451,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   area = mesh_ipArea(n,ip,el) * math_norm3(surfaceNormal)
   surfaceNormal = surfaceNormal / math_norm3(surfaceNormal)                                                                         ! normalize the surface normal to unit length
   
-  transmissivity = constitutive_nonlocal_transmissivity(misorientation(4,n), misorientation(1:3,n))
+  transmissivity = constitutive_nonlocal_transmissivity(misorientation(:,n))
   
   highOrderScheme = .false.
   if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then                                                                           ! if neighbor exists...
@@ -1637,24 +1637,34 @@ endsubroutine
 !*********************************************************************
 !* transmissivity of IP interface                                    *
 !*********************************************************************
-function constitutive_nonlocal_transmissivity(misorientationAngle, misorientationAxis)
+function constitutive_nonlocal_transmissivity(misorientation)
 
 use prec,     only: pReal, &
                     pInt
+use math,     only: inDeg, &
+                    math_norm3
 
 implicit none
 
 !* input variables
-real(pReal), dimension(3), intent(in) ::    misorientationAxis    ! misorientation axis
-real(pReal), intent(in) ::                  misorientationAngle   ! misorientation angle
+real(pReal), dimension(4), intent(in) ::    misorientation        ! misorientation as quaternion
                                             
 !* output variables
 real(pReal) constitutive_nonlocal_transmissivity                  ! transmissivity of an IP interface for dislocations
 
 !* local variables
+real(pReal)                                 misorientationAngle, &
+                                            axisNorm
+real(pReal), dimension(3) ::                misorientationAxis
 
 
-! transmissivity depends on misorientation angle
+misorientationAngle = 2.0_pReal * dacos(min(1.0_pReal, max(-1.0_pReal, misorientation(1)))) * inDeg
+
+misorientationAxis = misorientation(2:4)
+axisNorm = math_norm3(misorientationAxis)
+if (axisNorm > tiny(axisNorm)) &
+  misorientationAxis = misorientationAxis / axisNorm  
+
 if (misorientationAngle < 3.0_pReal) then
   constitutive_nonlocal_transmissivity = 1.0_pReal
 elseif (misorientationAngle < 10.0_pReal) then

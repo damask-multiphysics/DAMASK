@@ -38,7 +38,7 @@ real(pReal), dimension (:,:,:,:), allocatable :: &
     crystallite_Tstar0_v, &              ! 2nd Piola-Kirchhoff stress vector at start of FE inc
     crystallite_partionedTstar0_v, &     ! 2nd Piola-Kirchhoff stress vector at start of homog inc
     crystallite_subTstar0_v, &           ! 2nd Piola-Kirchhoff stress vector at start of crystallite inc
-    crystallite_eulerangles              ! euler angles phi1 Phi phi2
+    crystallite_orientation              ! orientation as quaternion
 real(pReal), dimension (:,:,:,:,:), allocatable :: &
     crystallite_Fe, &                    ! current "elastic" def grad (end of converged time step)
     crystallite_Fp, &                    ! current plastic def grad (end of converged time step)
@@ -56,7 +56,6 @@ real(pReal), dimension (:,:,:,:,:), allocatable :: &
     crystallite_partionedLp0,&           ! plastic velocity grad at start of homog inc
     crystallite_subLp0,&                 ! plastic velocity grad at start of crystallite inc
     crystallite_P, &                     ! 1st Piola-Kirchhoff stress per grain
-    crystallite_R, &                     ! crystal orientation (rotation matrix current -> lattice conf)
     crystallite_misorientation           ! misorientation between two neighboring ips (only calculated for single grain IPs)
 real(pReal), dimension (:,:,:,:,:,:,:), allocatable :: &
     crystallite_dPdF, &                  ! individual dPdF per grain
@@ -145,8 +144,7 @@ subroutine crystallite_init(Temperature)
  allocate(crystallite_subF0(3,3,gMax,iMax,eMax));                             crystallite_subF0 = 0.0_pReal
  allocate(crystallite_subFp0(3,3,gMax,iMax,eMax));                           crystallite_subFp0 = 0.0_pReal
  allocate(crystallite_subLp0(3,3,gMax,iMax,eMax));                           crystallite_subLp0 = 0.0_pReal
- allocate(crystallite_R(3,3,gMax,iMax,eMax));                                     crystallite_R = 0.0_pReal
- allocate(crystallite_eulerangles(3,gMax,iMax,eMax));                   crystallite_eulerangles = 0.0_pReal
+ allocate(crystallite_orientation(4,gMax,iMax,eMax));                   crystallite_orientation = 0.0_pReal
  allocate(crystallite_misorientation(4,nMax,gMax,iMax,eMax));        crystallite_misorientation = 0.0_pReal
  allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax));                   crystallite_subTstar0_v = 0.0_pReal
  allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax));                           crystallite_dPdF = 0.0_pReal
@@ -207,6 +205,8 @@ subroutine crystallite_init(Temperature)
        case('volume')
          mySize = 1
        case('orientation')
+         mySize = 4
+       case('eulerangles')
          mySize = 3
        case('defgrad')
          mySize = 9
@@ -291,8 +291,7 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subTstar0_v:           ', shape(crystallite_subTstar0_v)
     write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
     write(6,'(a35,x,7(i5,x))') 'crystallite_fallbackdPdF:          ', shape(crystallite_fallbackdPdF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_R:                     ', shape(crystallite_R)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_eulerangles:           ', shape(crystallite_eulerangles)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
     write(6,'(a35,x,7(i5,x))') 'crystallite_misorientation:        ', shape(crystallite_misorientation)
     write(6,'(a35,x,7(i5,x))') 'crystallite_dt:                    ', shape(crystallite_dt)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subdt:                 ', shape(crystallite_subdt)
@@ -1499,7 +1498,7 @@ subroutine crystallite_orientations()
 use prec, only:                       pInt, &
                                       pReal
 use math, only:                       math_pDecomposition, &
-                                      math_RtoEuler, &
+                                      math_RtoQuaternion, &
                                       math_misorientation, &
                                       inDeg
 use FEsolving, only:                  FEsolving_execElem, & 
@@ -1537,8 +1536,7 @@ integer(pInt)                   e, &                          ! element index
                                 neighboringPhase, &           ! phase of my neighbor
                                 neighboringStructure, &       ! lattice structure of my neighbor
                                 symmetryType                  ! type of crystal symmetry
-real(pReal), dimension(3,3) ::  U, R, &                       ! polar decomposition of Fe
-                                netRotation                   ! net rotation between two orientations
+real(pReal), dimension(3,3) ::  U, R
 logical error
 
 
@@ -1551,11 +1549,9 @@ logical error
         call math_pDecomposition(crystallite_Fe(:,:,g,i,e), U, R, error)              ! polar decomposition of Fe
         if (error) then
           call IO_warning(650, e, i, g)
-          crystallite_R(:,:,g,i,e) = 0.0_pReal
-          crystallite_eulerangles(:,g,i,e) = (/400.0, 400.0, 400.0/)                    ! fake orientation
+          crystallite_orientation(:,g,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! fake orientation
         else
-          crystallite_R(:,:,g,i,e) = transpose(R)
-          crystallite_eulerangles(:,g,i,e) = math_RtoEuler(crystallite_R(:,:,g,i,e)) * inDeg
+          crystallite_orientation(:,g,i,e) = math_RtoQuaternion(R)
         endif
         
       enddo
@@ -1599,19 +1595,17 @@ logical error
                   symmetryType = 0_pInt
               end select
               
-              call math_misorientation( crystallite_misorientation(1:3,n,1,i,e), &
-                                        crystallite_misorientation(4,n,1,i,e), &
-                                        netRotation, &
-                                        crystallite_R(:,:,1,i,e), &
-                                        crystallite_R(:,:,1,neighboring_i,neighboring_e), & 
-                                        symmetryType)                                   ! calculate misorientation
+              call math_misorientation( crystallite_misorientation(:,n,1,i,e), &
+                                        crystallite_orientation(:,1,i,e), &
+                                        crystallite_orientation(:,1,neighboring_i,neighboring_e), & 
+                                        symmetryType)                                 ! calculate misorientation
             
             else                                                                      ! for neighbor with different phase
-              crystallite_misorientation(4,n,1,i,e) = 400.0_pReal                     ! set misorientation angle to 400
+              crystallite_misorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! set misorientation to maximum
               
             endif
           else                                                                        ! no existing neighbor
-            crystallite_misorientation(4,n,1,i,e) = 0.0_pReal                         ! set misorientation angle to zero
+            crystallite_misorientation(:,n,1,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! set misorientation to zero
           endif
         enddo
       endif
@@ -1636,6 +1630,7 @@ function crystallite_postResults(&
  !*** variables and functions from other modules ***!
  use prec, only:                      pInt, &
                                       pReal
+ use math, only:                      math_QuaternionToEuler
  use mesh, only:                      mesh_element
  use material, only:                  microstructure_crystallite, &
                                       crystallite_Noutput, &
@@ -1676,7 +1671,10 @@ function crystallite_postResults(&
        crystallite_postResults(c+1) = material_volume(g,i,e)                   ! grain volume (not fraction but absolute, right?)
        c = c + 1_pInt
      case ('orientation')
-       crystallite_postResults(c+1:c+3) = crystallite_eulerangles(:,g,i,e)     ! grain orientation
+       crystallite_postResults(c+1:c+4) = crystallite_orientation(:,g,i,e)     ! grain orientation
+       c = c + 4_pInt
+     case ('eulerangles')
+       crystallite_postResults(c+1:c+3) = math_QuaternionToEuler(crystallite_orientation(:,g,i,e)) ! grain orientation
        c = c + 3_pInt
      case ('defgrad')
        forall (k=0:2,l=0:2) crystallite_postResults(c+1+k*3+l) = crystallite_partionedF(k+1,l+1,g,i,e)
