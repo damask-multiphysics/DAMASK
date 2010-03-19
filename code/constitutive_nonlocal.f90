@@ -961,7 +961,8 @@ use prec,     only: pReal, &
 use math,     only: math_mul6x6, &
                     math_Mandel6to33
 use debug,    only: debugger, &
-                    selectiveDebugger
+                    selectiveDebugger, &
+                    verboseDebugger
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
@@ -1018,7 +1019,7 @@ do s = 1,ns
   endif
 enddo
 
-if (selectiveDebugger) then 
+if (verboseDebugger .and. selectiveDebugger) then 
   !$OMP CRITICAL (write2out)
     write(6,*) '::: kinetics',g,ip,el
     write(6,*)
@@ -1046,7 +1047,8 @@ use math,     only: math_Plain3333to99, &
                     math_mul6x6, &
                     math_Mandel6to33
 use debug,    only: debugger, &
-                    selectiveDebugger
+                    selectiveDebugger, &
+                    verboseDebugger
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
@@ -1135,7 +1137,7 @@ enddo
 
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
-if (selectiveDebugger) then 
+if (verboseDebugger .and. selectiveDebugger) then 
   !$OMP CRITICAL (write2out)
     write(6,*) '::: LpandItsTangent',g,ip,el
     write(6,*)
@@ -1162,7 +1164,8 @@ use prec,     only: pReal, &
                     p_vec
 use IO,       only: IO_error
 use debug,    only: debugger, &
-                    selectiveDebugger
+                    selectiveDebugger, &
+                    verboseDebugger
 use math,     only: math_norm3, &
                     math_mul6x6, &
                     math_mul3x3, &
@@ -1277,7 +1280,7 @@ real(pReal)                                 area, &                   ! area of 
                                             D                         ! self diffusion
 logical                                     highOrderScheme           ! flag indicating whether we use a high order interpolation scheme or not
 
-if (selectiveDebugger) then 
+if (verboseDebugger .and. selectiveDebugger) then 
   !$OMP CRITICAL (write2out)
     write(6,*) '::: constitutive_nonlocal_dotState at ',g,ip,el
     write(6,*)
@@ -1360,13 +1363,6 @@ previousDUpper(:,1) = previousDUpper(:,2) / ( 1.0_pReal - constitutive_nonlocal_
 
 if (dt_previous > 0.0_pReal) dUpperDot = (dUpper - previousDUpper) / dt_previous
 
-if (debugger) then
-  !$OMP CRITICAL (write2out)
-    ! write(6,'(a,/,2(12(f12.5,x),/))') 'dUpper / micron', dUpper*1e6_pReal
-    ! write(6,'(a,/,2(12(f12.5,x),/))') 'dUpperDot / micron/s', dUpperDot * 1e6_pReal
-  !$OMPEND CRITICAL (write2out)
-endif
-
 
 !****************************************************************************
 !*** dislocation remobilization (bauschinger effect)
@@ -1387,7 +1383,7 @@ endif
 
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 
-if (selectiveDebugger) then
+if (verboseDebugger .and. selectiveDebugger) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,8(12(e12.5,x),/))') 'dislocation remobilization', thisRhoDotSgl * timestep
   !$OMPEND CRITICAL (write2out)
@@ -1408,7 +1404,7 @@ thisRhoDotDip = 0.0_pReal             ! dipoles don't multiplicate
 
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 
-if (selectiveDebugger) then
+if (verboseDebugger .and. selectiveDebugger) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,4(12(e12.5,x),/))') 'dislocation multiplication', thisRhoDotSgl(:,1:4) * timestep
   !$OMPEND CRITICAL (write2out)
@@ -1512,7 +1508,7 @@ constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) = thisRhoDotSgl
 
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 
-if (selectiveDebugger) then
+if (verboseDebugger .and. selectiveDebugger) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,8(12(e12.5,x),/))') 'dislocation flux', thisRhoDotSgl * timestep
   !$OMPEND CRITICAL (write2out)
@@ -1549,7 +1545,7 @@ enddo
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 
-if (selectiveDebugger) then
+if (verboseDebugger .and. selectiveDebugger) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,10(12(e12.5,x),/))') 'dipole formation by glide', thisRhoDotSgl * timestep, thisRhoDotDip * timestep
   !$OMPEND CRITICAL (write2out)
@@ -1566,7 +1562,7 @@ forall (c=1:2) &
 
 totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 
-if (selectiveDebugger) then
+if (verboseDebugger .and. selectiveDebugger) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,2(12(e12.5,x),/))') 'athermal dipole annihilation', thisRhoDotDip * timestep
   !$OMPEND CRITICAL (write2out)
@@ -1586,7 +1582,7 @@ thisRhoDotDip(:,2) = 0.0_pReal                                                  
 
 totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 
-if (selectiveDebugger) then
+if (verboseDebugger .and. selectiveDebugger) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,2(12(e12.5,x),/))') 'thermally activated dipole annihilation', thisRhoDotDip * timestep
   !$OMPEND CRITICAL (write2out)
@@ -1610,7 +1606,7 @@ forall (t=1:4) &
 totalRhoDotSgl = totalRhoDotSgl + thisRhoDotSgl
 totalRhoDotDip = totalRhoDotDip + thisRhoDotDip
 
-if (selectiveDebugger) then
+if (verboseDebugger .and. selectiveDebugger) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,10(12(e12.5,x),/))') 'dipole stability by stress change', thisRhoDotSgl * timestep, thisRhoDotDip * timestep
   !$OMPEND CRITICAL (write2out)
@@ -1623,7 +1619,7 @@ endif
 dotState(1,ip,el)%p(1:8*ns) = dotState(1,ip,el)%p(1:8*ns) + reshape(totalRhoDotSgl,(/8*ns/))
 dotState(1,ip,el)%p(8*ns+1:10*ns) = dotState(1,ip,el)%p(8*ns+1:10*ns) + reshape(totalRhoDotDip,(/2*ns/))
 
-if (selectiveDebugger) then
+if (verboseDebugger .and. selectiveDebugger) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,8(12(e12.5,x),/))') 'deltaRho:', totalRhoDotSgl * timestep
     write(6,'(a,/,2(12(e12.5,x),/))') 'deltaRhoDip:', totalRhoDotDip * timestep

@@ -21,7 +21,8 @@
  integer(pInt) :: debug_i = 1_pInt
  integer(pInt) :: debug_g = 1_pInt
  logical :: selectiveDebugger = .false.
- logical :: debugger = .false.
+ logical :: verboseDebugger = .false.
+ logical :: debugger = .true.
  logical :: distribution_init = .false.
 
  CONTAINS
@@ -39,6 +40,8 @@ subroutine debug_init()
                       nMPstate, &
                       nHomog
   implicit none
+  
+  if (.not. debugger) verboseDebugger = .false.
   
   write(6,*)
   write(6,*) '<<<+-  debug init  -+>>>'

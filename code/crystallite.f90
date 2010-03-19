@@ -337,6 +337,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         iJacoStiffness
   use debug, only:                                      debugger, &
                                                         selectiveDebugger, &
+                                                        verboseDebugger, &
                                                         debug_e, &
                                                         debug_i, &
                                                         debug_g, &
@@ -486,7 +487,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           do g = 1,myNgrains
             selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g) 
             if (crystallite_converged(g,i,e)) then
-              if (selectiveDebugger) then
+              if (verboseDebugger .and. selectiveDebugger) then
                 !$OMP CRITICAL (write2out)
                   write(6,'(a21,f10.8,a32,f10.8,a35)') 'winding forward from ', &
                     crystallite_subFrac(g,i,e),' to current crystallite_subfrac ', &
@@ -518,7 +519,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               crystallite_Lp(:,:,g,i,e)     = crystallite_subLp0(:,:,g,i,e)                         ! ...plastic velocity grad
               constitutive_state(g,i,e)%p   = constitutive_subState0(g,i,e)%p                       ! ...microstructure
               crystallite_Tstar_v(:,g,i,e)  = crystallite_subTstar0_v(:,g,i,e)                      ! ...2nd PK stress
-              if (selectiveDebugger) then
+              if (verboseDebugger .and. selectiveDebugger) then
                 !$OMP CRITICAL (write2out)
                   write(6,'(a78,f10.8)') 'cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
                                          crystallite_subStep(g,i,e)
@@ -568,7 +569,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                          ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-!            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
+            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
             if (crystallite_todo(g,i,e)) then                                                       ! all undone crystallites
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                 crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
@@ -584,7 +585,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                          ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-!            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
+            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
             if (crystallite_todo(g,i,e)) then                                                       ! all undone crystallites
               crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)                    ! update state
               crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)        ! update temperature
@@ -615,7 +616,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                          ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-!            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
+            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
             if (crystallite_todo(g,i,e)) then                                                       ! all undone crystallites
               crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
               if (      .not. crystallite_localConstitution(g,i,e) &
@@ -625,7 +626,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       enddo; enddo; enddo
       !$OMPEND PARALLEL DO
 
-      if (debugger) then
+      if (verboseDebugger) then
         !$OMP CRITICAL (write2out)
           write(6,*) count(crystallite_todo(:,:,:)),'grains todo after stress integration'
         !$OMPEND CRITICAL (write2out)
@@ -659,7 +660,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                        ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
-!            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
+            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
             if (crystallite_todo(g,i,e)) then                                                     ! all undone crystallites
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                 crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
@@ -682,7 +683,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                        ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-!              selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
+              selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
               if (crystallite_todo(g,i,e)) then                                                     ! all undone crystallites
                 crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)                  ! update state
                 crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)      ! update temperature
@@ -702,7 +703,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         enddo
       !$OMPEND PARALLEL DO
 
-      if (debugger) then
+      if (verboseDebugger) then
         !$OMP CRITICAL (write2out)
           write(6,*) count(crystallite_converged(:,:,:)),'grains converged after state integration no.', NiterationState
           write(6,*)
@@ -719,7 +720,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       
       crystallite_todo = crystallite_todo .and. .not. crystallite_converged                         ! skip all converged
       
-      if (debugger) then
+      if (verboseDebugger) then
         !$OMP CRITICAL (write2out)
           write(6,*) count(crystallite_converged(:,:,:)),'grains converged after non-local check'
           write(6,*) count(crystallite_todo(:,:,:)),'grains todo after state integration no.', NiterationState
@@ -784,10 +785,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
           do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                              ! iterate over IPs of this element to be processed
             do g = 1,myNgrains
-!               selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
+              selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
               if (crystallite_requested(g,i,e)) then                                                      ! first check whether is requested at all!
                 if (crystallite_converged(g,i,e)) then                                                    ! grain converged in above iteration
-                  if (selectiveDebugger) then
+                  if (verboseDebugger .and. selectiveDebugger) then
                     !$OMP CRITICAL (write2out)
                     write (6,*) '#############'
                     write (6,*) 'central solution of cryst_StressAndTangent'
@@ -804,7 +805,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                       do k = 1,3                                                                            ! perturbation...
                       do l = 1,3                                                                            ! ...components to the positive direction
                       crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + myPert                    ! perturb single component (either forward or backward)
-                      if (selectiveDebugger) then
+                      if (verboseDebugger .and. selectiveDebugger) then
                         !$OMP CRITICAL (write2out)
                         write (6,'(i1,x,i1)') k,l
                         write (6,'(a8,3(x,i4),/,3(3(f12.6,x)/))') 'pertF of', g, i, e, crystallite_subF(1:3,:,g,i,e)
@@ -826,7 +827,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                           temperatureConverged = crystallite_updateTemperature(g,i,e)                     ! update temperature
                           converged = stateConverged .and. temperatureConverged
                         endif
-                        if (selectiveDebugger) then
+                        if (verboseDebugger .and. selectiveDebugger) then
                           !$OMP CRITICAL (write2out)
                           write (6,*) '-------------'
                           write (6,'(a,x,l,x,l)') 'ontrack + converged:',onTrack,converged
@@ -881,6 +882,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
           do g = 1,myNgrains
+            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
             mask = .true.
             do comp = 1,9
               kl(:,comp,g,i,e) = maxloc(abs(crystallite_subF(:,:,g,i,e)-crystallite_F0(:,:,g,i,e)), mask)                           ! map from component to array indices for F (sorted in descending order of abs(deltaF))
@@ -888,7 +890,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             enddo
             k = kl(1,mod(cycleCounter/iJacoStiffness,9)+1,g,i,e)                                                                                     ! perturb components in the descending order of change in F (-> component with biggest change in F is perturbed in first cycle, component with second biggest change in next cycle, ...)
             l = kl(2,mod(cycleCounter/iJacoStiffness,9)+1,g,i,e)      
-            if (e==debug_e .and. i==debug_i) then
+            if (verboseDebugger .and. selectiveDebugger) then
               !$OMP CRITICAL (write2out)
                 write (6,*) 'perturb component ',k,l
               !$OMPEND CRITICAL (write2out)
@@ -1055,7 +1057,8 @@ endsubroutine
                                       constitutive_relevantState, &
                                       constitutive_microstructure
  use debug, only:                     debugger, &
-                                      selectiveDebugger
+                                      selectiveDebugger, &
+                                      verboseDebugger
  use FEsolving, only:                 cycleCounter, theInc
  
  !*** input variables ***!
@@ -1083,7 +1086,7 @@ endsubroutine
  if (any(residuum/=residuum)) then                                    ! if NaN occured then return without changing the state...
    crystallite_updateState = .false.                                  ! ...indicate state update failed
    crystallite_todo(g,i,e) = .false.                                  ! ...no need to calculate any further
-   if (debugger) then
+   if (verboseDebugger) then
      !$OMP CRITICAL (write2out)
        write(6,*) '::: updateState encountered NaN',g,i,e
      !$OMPEND CRITICAL (write2out)
@@ -1100,7 +1103,7 @@ endsubroutine
  ! setting flag to true if state is below relative tolerance, otherwise set it to false
  crystallite_updateState = all(    constitutive_state(g,i,e)%p(1:mySize) < constitutive_relevantState(g,i,e)%p(1:mySize) &
                               .or. abs(residuum) < rTol_crystalliteState*abs(constitutive_state(g,i,e)%p(1:mySize)) )
- if (selectiveDebugger) then
+ if (verboseDebugger .and. selectiveDebugger) then
    !$OMP CRITICAL (write2out)
      if (crystallite_updateState) then
        write(6,*) '::: updateState converged',g,i,e
@@ -1211,6 +1214,7 @@ endsubroutine
                                       relevantStrain
  use debug, only:                     debugger, &
                                       selectiveDebugger, &
+                                      verboseDebugger, &
                                       debug_cumLpCalls, &
                                       debug_cumLpTicks, &
                                       debug_StressLoopDistribution
@@ -1296,7 +1300,7 @@ endsubroutine
  ! inversion of Fp_current...
  invFp_current = math_inv3x3(Fp_current)                            
  if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
-   if (debugger) then 
+   if (verboseDebugger) then 
      !$OMP CRITICAL (write2out)
        write(6,*) '::: integrateStress failed on invFp_current inversion',g,i,e
        write(6,*)
@@ -1326,7 +1330,7 @@ LpLoop: do
    
    ! too many loops required ?
    if (NiterationStress > nStress) then
-     if (debugger) then 
+     if (verboseDebugger) then 
        !$OMP CRITICAL (write2out)
          write(6,*) '::: integrateStress reached loop limit at ',g,i,e
          write(6,*)
@@ -1352,7 +1356,7 @@ LpLoop: do
    debug_cumLpCalls = debug_cumLpCalls + 1_pInt
    debug_cumLpTicks  = debug_cumLpTicks + tock-tick
    if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
-   if (selectiveDebugger) then
+   if (verboseDebugger .and. selectiveDebugger) then
      !$OMP CRITICAL (write2out)
        write(6,*) '::: integrateStress at ' ,g,i,e, ' ; iteration ', NiterationStress
        write(6,*)
@@ -1376,7 +1380,7 @@ LpLoop: do
    
    ! NaN occured at regular speed?
    if (any(residuum/=residuum) .and. leapfrog == 1.0) then
-     if (debugger) then 
+     if (verboseDebugger) then 
        !$OMP CRITICAL (write2out)
          write(6,*) '::: integrateStress encountered NaN at ',g,i,e,' ; iteration ', NiterationStress
        !$OMPEND CRITICAL (write2out)
@@ -1410,7 +1414,7 @@ LpLoop: do
        invdRdLp = 0.0_pReal
        call math_invert(9,dRdLp,invdRdLp,dummy,error)               ! invert dR/dLp --> dLp/dR
        if (error) then
-         if (debugger) then
+         if (verboseDebugger) then
            !$OMP CRITICAL (write2out)
              write(6,*) '::: integrateStress failed on dR/dLp inversion at ',g,i,e,' ; iteration ', NiterationStress
              write(6,*)
@@ -1443,7 +1447,7 @@ LpLoop: do
  invFp_new = invFp_new/math_det3x3(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
  call math_invert3x3(invFp_new,Fp_new,det,error)
  if (error) then
-   if (debugger) then
+   if (verboseDebugger) then
      !$OMP CRITICAL (write2out)
        write(6,*) '::: integrateStress failed on invFp_new inversion at ',g,i,e,' ; iteration ', NiterationStress
        write(6,*)
@@ -1469,7 +1473,7 @@ LpLoop: do
 
  ! set return flag to true
  crystallite_integrateStress = .true.
- if (selectiveDebugger) then 
+ if (verboseDebugger .and. selectiveDebugger) then 
    !$OMP CRITICAL (write2out)
    write(6,*) '::: integrateStress converged at ',g,i,e,' ; iteration ', NiterationStress
    write(6,*)

@@ -76,7 +76,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   use debug, only:                                    debug_init, &
                                                       debug_g, &
                                                       debug_i, &
-                                                      debug_e
+                                                      debug_e, &
+                                                      debugger, &
+                                                      verboseDebugger
   use FEsolving, only:                                FE_init, &
                                                       parallelExecution, &
                                                       outdatedFFN1, &
@@ -205,14 +207,16 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   cp_en = mesh_FEasCP('elem',element)
   
   if (cp_en == 1 .and. IP == 1) then
-  !$OMP CRITICAL (write2out)
-    write(6,*)
-    write(6,*) '#####################################'
-    write(6,'(a10,x,f8.4,x,a10,x,f8.4,x,a10,x,i6,x,a10,x,i3,x,a16,x,i2,x,a16,x,i2)') &
-    'theTime',theTime,'theDelta',theDelta,'theInc',theInc,'cycleCounter',cycleCounter,'computationMode',mode
-    write(6,*) '#####################################'
-    call flush (6)
-  !$OMP END CRITICAL (write2out)
+    if (debugger) then
+      !$OMP CRITICAL (write2out)
+        write(6,*)
+        write(6,*) '#####################################'
+        write(6,'(a10,x,f8.4,x,a10,x,f8.4,x,a10,x,i6,x,a10,x,i3,x,a16,x,i2,x,a16,x,i2)') &
+        'theTime',theTime,'theDelta',theDelta,'theInc',theInc,'cycleCounter',cycleCounter,'computationMode',mode
+        write(6,*) '#####################################'
+        call flush (6)
+      !$OMP END CRITICAL (write2out)
+    endif
   endif
 
   ! according to our "mode" we decide what to do
@@ -230,10 +234,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-  !$OMP CRITICAL (write2out)
-        write(6,'(a,3(x,i4),/,4(3(e20.8,x),/))') 'aged state at', debug_g, debug_i, debug_e, &
+        if (debugger) then
+          !$OMP CRITICAL (write2out)
+            write(6,'(a,3(x,i4),/,4(3(e20.8,x),/))') 'aged state at', debug_g, debug_i, debug_e, &
                                                                   constitutive_state(debug_g,debug_i,debug_e)%p
-  !$OMP END CRITICAL (write2out)
+          !$OMP END CRITICAL (write2out)
+        endif
         do k = 1,mesh_NcpElems
           do j = 1,mesh_maxNips
             if (homogenization_sizeState(j,k) > 0_pInt) &
@@ -251,9 +257,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > relevantStrain)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
-  !$OMP CRITICAL (write2out)
-          write(6,'(a11,x,i5,x,i2,x,a10,/,3(3(f10.6,x),/))') 'outdated at',cp_en,IP,'FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
-  !$OMP END CRITICAL (write2out)
+          if (debugger) then
+            !$OMP CRITICAL (write2out)
+              write(6,'(a11,x,i5,x,i2,x,a10,/,3(3(f10.6,x),/))') 'outdated at',cp_en,IP,'FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
+            !$OMP END CRITICAL (write2out)
+          endif
           outdatedFFN1 = .true.
         endif
         CPFEM_cs(:,IP,cp_en)              = CPFEM_odd_stress
@@ -334,10 +342,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   cauchyStress(:) = CPFEM_cs(:,IP,cp_en)
   jacobian(:,:)   = CPFEM_dcsdE(:,:,IP,cp_en)
   if (IP == 1 .and. cp_en == 1) then
-  !$OMP CRITICAL (write2out)
-    write(6,'(a,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip 1 el 1',jacobian/1e9
-    call flush(6)
-  !$OMP END CRITICAL (write2out)
+    if (debugger) then
+      !$OMP CRITICAL (write2out)
+        write(6,'(a,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip 1 el 1',jacobian/1e9
+        call flush(6)
+      !$OMP END CRITICAL (write2out)
+    endif
   endif
   
   ! return temperature
