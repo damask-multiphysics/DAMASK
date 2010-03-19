@@ -24,46 +24,58 @@ character(len=32), parameter :: material_partTexture =        'texture'
 !* Definition of material properties *
 !*************************************
 !* Number of materials
-integer(pInt) material_Nhomogenization, &                                              ! number of homogenizations
-              material_Nmicrostructure, &                                              ! number of microstructures
-              material_Ncrystallite, &                                                 ! number of crystallite settings
-              material_Nphase, &                                                       ! number of phases
-              material_Ntexture, &                                                     ! number of textures
-              microstructure_maxNconstituents, &                                       ! max number of constituents in any phase
-              homogenization_maxNgrains, &                                             ! max number of grains in any USED homogenization
-              texture_maxNgauss, &                                                     ! max number of Gauss components in any texture
-              texture_maxNfiber                                                        ! max number of Fiber components in any texture
-character(len=64), dimension(:),       allocatable :: homogenization_name, &           ! name of each homogenization
-                                                      homogenization_type, &           ! type of each homogenization
-                                                      microstructure_name, &           ! name of each microstructure
-                                                      crystallite_name, &              ! name of each crystallite setting
-                                                      phase_name, &                    ! name of each phase
-                                                      phase_constitution, &            ! constitution of each phase
-                                                      texture_name                     ! name of each texture
-character(len=256),dimension(:),       allocatable :: texture_ODFfile                  ! name of each ODF file
-integer(pInt),     dimension(:),       allocatable :: homogenization_Ngrains, &        ! number of grains in each homogenization
-                                                      homogenization_typeInstance, &   ! instance of particular type of each homogenization
-                                                      homogenization_Noutput, &        ! number of '(output)' items per homogenization
-                                                      microstructure_Nconstituents, &  ! number of constituents in each microstructure
-                                                      crystallite_Noutput, &           ! number of '(output)' items per crystallite setting
-                                                      phase_constitutionInstance, &    ! instance of particular constitution of each phase
-                                                      phase_Noutput, &                 ! number of '(output)' items per phase
-                                                      texture_symmetry, &              ! number of symmetric orientations per texture
-                                                      texture_Ngauss, &                ! number of Gauss components per texture
-                                                      texture_Nfiber                   ! number of Fiber components per texture
-logical,           dimension(:),       allocatable :: homogenization_active, &         !
-                                                      microstructure_active, &         ! 
-                                                      microstructure_elemhomo, &       ! flag to indicate homogeneous microstructure distribution over element's IPs
-                                                      phase_localConstitution          ! flags phases with local constitutive law
-integer(pInt),     dimension(:),       allocatable :: microstructure_crystallite       ! crystallite setting ID of each microstructure
-integer(pInt),     dimension(:,:),     allocatable :: microstructure_phase, &          ! phase IDs of each microstructure
-                                                      microstructure_texture           ! texture IDs of each microstructure
-real(pReal),       dimension(:,:),     allocatable :: microstructure_fraction          ! vol fraction of each constituent in microstructure
-real(pReal),       dimension(:,:,:),   allocatable :: material_volume                  ! volume of each grain,IP,element
-integer(pInt),     dimension(:,:,:),   allocatable :: material_phase                   ! phase of each grain,IP,element
-real(pReal),       dimension(:,:,:,:), allocatable :: material_EulerAngles             ! initial orientation of each grain,IP,element
-real(pReal),       dimension(:,:,:),   allocatable :: texture_Gauss, &                 ! data of each Gauss component
-                                                      texture_Fiber                    ! data of each Fiber component
+integer(pInt) &
+    material_Nhomogenization, &      ! number of homogenizations
+    material_Nmicrostructure, &      ! number of microstructures
+    material_Ncrystallite, &         ! number of crystallite settings
+    material_Nphase, &               ! number of phases
+    material_Ntexture, &             ! number of textures
+    microstructure_maxNconstituents,&! max number of constituents in any phase
+    homogenization_maxNgrains, &     ! max number of grains in any USED homogenization
+    texture_maxNgauss, &             ! max number of Gauss components in any texture
+    texture_maxNfiber                ! max number of Fiber components in any texture
+character(len=64), dimension(:),       allocatable :: &
+    homogenization_name, &           ! name of each homogenization
+    homogenization_type, &           ! type of each homogenization
+    microstructure_name, &           ! name of each microstructure
+    crystallite_name, &              ! name of each crystallite setting
+    phase_name, &                    ! name of each phase
+    phase_constitution, &            ! constitution of each phase
+    texture_name                     ! name of each texture
+character(len=256),dimension(:),       allocatable :: &
+    texture_ODFfile                  ! name of each ODF file
+integer(pInt),     dimension(:),       allocatable :: &
+    homogenization_Ngrains, &        ! number of grains in each homogenization
+    homogenization_typeInstance, &   ! instance of particular type of each homogenization
+    homogenization_Noutput, &        ! number of '(output)' items per homogenization
+    microstructure_Nconstituents, &  ! number of constituents in each microstructure
+    crystallite_Noutput, &           ! number of '(output)' items per crystallite setting
+    phase_constitutionInstance, &    ! instance of particular constitution of each phase
+    phase_Noutput, &                 ! number of '(output)' items per phase
+    texture_symmetry, &              ! number of symmetric orientations per texture
+    texture_Ngauss, &                ! number of Gauss components per texture
+    texture_Nfiber                   ! number of Fiber components per texture
+logical,           dimension(:),       allocatable :: &
+    homogenization_active, &         !
+    microstructure_active, &         ! 
+    microstructure_elemhomo, &       ! flag to indicate homogeneous microstructure distribution over element's IPs
+    phase_localConstitution          ! flags phases with local constitutive law
+integer(pInt),     dimension(:),       allocatable :: &
+    microstructure_crystallite       ! crystallite setting ID of each microstructure
+integer(pInt),     dimension(:,:),     allocatable :: &
+    microstructure_phase, &          ! phase IDs of each microstructure
+    microstructure_texture           ! texture IDs of each microstructure
+real(pReal),       dimension(:,:),     allocatable :: &
+    microstructure_fraction          ! vol fraction of each constituent in microstructure
+real(pReal),       dimension(:,:,:),   allocatable :: &
+    material_volume                  ! volume of each grain,IP,element
+integer(pInt),     dimension(:,:,:),   allocatable :: &
+    material_phase                   ! phase of each grain,IP,element
+real(pReal),       dimension(:,:,:,:), allocatable :: &
+    material_EulerAngles             ! initial orientation of each grain,IP,element
+real(pReal),       dimension(:,:,:),   allocatable :: &
+    texture_Gauss, &                 ! data of each Gauss component
+    texture_Fiber                    ! data of each Fiber component
 
 CONTAINS
 
