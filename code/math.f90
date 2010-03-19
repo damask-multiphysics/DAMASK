@@ -1374,8 +1374,16 @@ pure function math_transpose3x3(A)
  real(pReal), dimension(3) :: math_QuaternionToEuler
  
  math_QuaternionToEuler(1) = atan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
+ if (math_QuaternionToEuler(1) < 0.0_pReal) &
+   math_QuaternionToEuler(1) = math_QuaternionToEuler(1) + 2.0_pReal * pi
+
  math_QuaternionToEuler(2) = acos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
+ if (math_QuaternionToEuler(2) < 0.0_pReal) &
+   math_QuaternionToEuler(2) = math_QuaternionToEuler(2) + pi
+
  math_QuaternionToEuler(3) = atan2(-Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)+Q(3)*Q(4))
+ if (math_QuaternionToEuler(3) < 0.0_pReal) &
+   math_QuaternionToEuler(3) = math_QuaternionToEuler(3) + 2.0_pReal * pi
  
  math_QuaternionToEuler = math_QuaternionToEuler * inDeg
  
