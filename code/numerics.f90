@@ -253,7 +253,7 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'rMax_RGC:             ',relMax_RGC
   write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:   ',pPert_RGC
   write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC: ',xSmoo_RGC
-  write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:    ',ratePower_RGC
+  write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:    ',viscPower_RGC
   write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC: ',viscModus_RGC
   write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:    ',maxdRelax_RGC
   write(6,'(a24,x,e8.1)') 'maxVolDiscrepancy_RGC:',maxVolDiscr_RGC

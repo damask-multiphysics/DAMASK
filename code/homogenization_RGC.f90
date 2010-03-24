@@ -20,14 +20,14 @@ MODULE homogenization_RGC
  
  integer(pInt),     dimension(:),       allocatable :: homogenization_RGC_sizeState, &
                                                        homogenization_RGC_sizePostResults
- integer(pInt),     dimension(:,:),   allocatable,target :: homogenization_RGC_sizePostResult
+ integer(pInt),     dimension(:,:),     allocatable,target :: homogenization_RGC_sizePostResult
  integer(pInt),     dimension(:,:),     allocatable :: homogenization_RGC_Ngrains
  real(pReal),       dimension(:,:),     allocatable :: homogenization_RGC_dAlpha, &
                                                        homogenization_RGC_angles
  real(pReal),       dimension(:,:,:,:), allocatable :: homogenization_RGC_orientation
  real(pReal),       dimension(:),       allocatable :: homogenization_RGC_xiAlpha, &
                                                        homogenization_RGC_ciAlpha
- character(len=64), dimension(:,:),   allocatable,target :: homogenization_RGC_output             ! name of each post result output
+ character(len=64), dimension(:,:),     allocatable,target :: homogenization_RGC_output             ! name of each post result output
 
 CONTAINS
 !****************************************
@@ -48,17 +48,17 @@ subroutine homogenization_RGC_init(&
   )
 
  use prec, only: pInt, pReal
- use math, only: math_Mandel3333to66, math_Voigt66to3333
- use mesh, only: mesh_maxNips,mesh_NcpElems
+ use math, only: math_Mandel3333to66, math_Voigt66to3333,math_I3,math_sampleRandomOri,math_EulerToR,inRad
+ use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
  use IO
  use material
  integer(pInt), intent(in) :: file
  integer(pInt), parameter  :: maxNchunks = 4
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k,l, output, mySize
+ integer(pInt) section, maxNinstance, i,j,k,l,e, output, mySize, myInstance
  character(len=64) tag
  character(len=1024) line
- 
+
     write(6,*)
     write(6,'(a20,a20,a12)') '<<<+-  homogenization',homogenization_RGC_label,' init  -+>>>'
     write(6,*) '$Id$'
@@ -69,14 +69,14 @@ subroutine homogenization_RGC_init(&
 
  allocate(homogenization_RGC_sizeState(maxNinstance));       homogenization_RGC_sizeState = 0_pInt
  allocate(homogenization_RGC_sizePostResults(maxNinstance)); homogenization_RGC_sizePostResults = 0_pInt
- allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput), &
-                                                  maxNinstance)); homogenization_RGC_sizePostResult = 0_pInt
  allocate(homogenization_RGC_Ngrains(3,maxNinstance));       homogenization_RGC_Ngrains = 0_pInt
  allocate(homogenization_RGC_ciAlpha(maxNinstance));         homogenization_RGC_ciAlpha = 0.0_pReal
  allocate(homogenization_RGC_xiAlpha(maxNinstance));         homogenization_RGC_xiAlpha = 0.0_pReal
  allocate(homogenization_RGC_dAlpha(3,maxNinstance));        homogenization_RGC_dAlpha = 0.0_pReal
  allocate(homogenization_RGC_angles(3,maxNinstance));        homogenization_RGC_angles = 400.0_pReal
  allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance)); homogenization_RGC_output = ''
+ allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),maxNinstance))
+  homogenization_RGC_sizePostResult = 0_pInt
  allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems))
  forall (i = 1:mesh_maxNips,e = 1:mesh_NcpElems)
    homogenization_RGC_orientation(:,:,i,e) = math_I3
@@ -148,10 +148,6 @@ subroutine homogenization_RGC_init(&
  enddo
 
 100 do i = 1,maxNinstance                                            ! sanity checks
-  write(6,*)
-  write(6,*) '<<<+-  homogenization_RGC init  -+>>>'
-  write(6,*) '$Id$'
-  write(6,*)
   write(6,'(a15,x,i4)')  'instance:  ', i
   write(6,*)
   write(6,'(a25,3(x,i8))')    'cluster size:         ',(homogenization_RGC_Ngrains(j,i),j=1,3)
@@ -173,7 +169,7 @@ subroutine homogenization_RGC_init(&
        case('volumediscrepancy')
          mySize = 1
        case default
-         mySize = 0      
+         mySize = 0
        case('averagerelaxrate')
          mySize = 1
        case('maximumrelaxrate')
@@ -186,6 +182,8 @@ subroutine homogenization_RGC_init(&
 	     homogenization_RGC_sizePostResults(i) + mySize
      endif
    enddo
+
+
 
    homogenization_RGC_sizeState(i) &
        = 3*(homogenization_RGC_Ngrains(1,i)-1)*homogenization_RGC_Ngrains(2,i)*homogenization_RGC_Ngrains(3,i) &

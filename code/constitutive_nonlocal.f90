@@ -73,10 +73,10 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_
                                                           constitutive_nonlocal_lambda0PerSlipSystem, &         ! mean free path prefactor for each slip system and instance
                                                           constitutive_nonlocal_burgersPerSlipFamily, &         ! absolute length of burgers vector [m] for each family and instance
                                                           constitutive_nonlocal_burgersPerSlipSystem, &         ! absolute length of burgers vector [m] for each slip system and instance
-                                                          constitutive_nonlocal_dLowerEdgePerSlipFamily, &     ! minimum stable edge dipole height for each family and instance
-                                                          constitutive_nonlocal_dLowerEdgePerSlipSystem, &     ! minimum stable edge dipole height for each slip system and instance
-                                                          constitutive_nonlocal_dLowerScrewPerSlipFamily, &    ! minimum stable screw dipole height for each family and instance
-                                                          constitutive_nonlocal_dLowerScrewPerSlipSystem, &    ! minimum stable screw dipole height for each slip system and instance
+                                                          constitutive_nonlocal_dLowerEdgePerSlipFamily, &      ! minimum stable edge dipole height for each family and instance
+                                                          constitutive_nonlocal_dLowerEdgePerSlipSystem, &      ! minimum stable edge dipole height for each slip system and instance
+                                                          constitutive_nonlocal_dLowerScrewPerSlipFamily, &     ! minimum stable screw dipole height for each family and instance
+                                                          constitutive_nonlocal_dLowerScrewPerSlipSystem, &     ! minimum stable screw dipole height for each slip system and instance
                                                           constitutive_nonlocal_interactionSlipSlip             ! coefficients for slip-slip interaction for each interaction type and instance
 real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_v, &                            ! dislocation velocity
                                                           constitutive_nonlocal_rhoDotFlux                      ! dislocation convection term
@@ -1230,9 +1230,17 @@ integer(pInt)                               myInstance, &             ! current 
                                             neighboring_ip, &         ! integration point of my neighbor
                                             c, &                      ! character of dislocation
                                             n, &                      ! index of my current neighbor
+                                            opposite_n, &             ! index of my opposite neighbor
+                                            opposite_ip, &            ! ip of my opposite neighbor
+                                            opposite_el, &            ! element index of my opposite neighbor
                                             t, &                      ! type of dislocation
                                             s, &                      ! index of my current slip system
                                             sLattice                  ! index of my current slip system according to lattice order
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),8) :: &
+                                            rhoSgl, &                 ! current single dislocation densities (positive/negative screw and edge without dipoles)
+                                            previousRhoSgl, &         ! previous single dislocation densities (positive/negative screw and edge without dipoles)
+                                            totalRhoDotSgl, &         ! total rate of change of single dislocation densities
+                                            thisRhoDotSgl             ! rate of change of single dislocation densities for this mechanism
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
                                             fluxdensity, &            ! flux density at central material point
                                             neighboring_fluxdensity, &! flux density at neighbroing material point

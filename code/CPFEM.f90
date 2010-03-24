@@ -86,6 +86,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       cycleCounter, &
                                                       theInc, &
                                                       theTime, &
+                                                      theDelta, &
                                                       FEsolving_execElem, &
                                                       FEsolving_execIP
   use math, only:                                     math_init, &
@@ -98,7 +99,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   use mesh, only:                                     mesh_init, &
                                                       mesh_FEasCP, &
                                                       mesh_NcpElems, &
-                                                      mesh_maxNips
+                                                      mesh_maxNips, &
+                                                      mesh_element, &
+                                                      FE_Nips
   use lattice, only:                                  lattice_init
   use material, only:                                 material_init, &
                                                       homogenization_maxNgrains, &
@@ -107,8 +110,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       constitutive_state0,constitutive_state
   use crystallite, only:                              crystallite_init, &
                                                       crystallite_F0, &
-                                                      crystallite_rexParm, &
-                                                      crystallite_critVal, &
                                                       crystallite_partionedF, &
                                                       crystallite_Fp0, &
                                                       crystallite_Fp, &
@@ -163,7 +164,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       k, &
                                                       l, &
                                                       m, &
-                                                      n
+                                                      n, &
+                                                      e
   logical                                             updateJaco          ! flag indicating if JAcobian has to be updated
   
   !*** global variables ***!
