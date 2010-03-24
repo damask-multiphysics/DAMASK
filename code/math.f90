@@ -176,8 +176,6 @@ subroutine math_misorientation(dQ, Q1, Q2, symmetryType)
     return
   endif    
   
-  allocate(mySymOperations(4,NsymOperations(symmetryType)))
-  mySymOperations = symOperations(:,sum(NsymOperations(1:symmetryType-1))+1:sum(NsymOperations(1:symmetryType)))                    ! choose symmetry operations according to crystal symmetry
   
   dQ(1) = -1.0_pReal                                                                                                                ! start with maximum misorientation angle 
   do s = 1,NsymOperations(symmetryType)                                                                                             ! loop ver symmetry operations    
@@ -998,6 +996,30 @@ pure function math_transpose3x3(A)
 
  ENDFUNCTION
  
+
+!********************************************************************
+! equivalent scalar quantity of a full strain tensor
+!********************************************************************
+ PURE FUNCTION math_equivStrain33(m)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) math_equivStrain33,e11,e22,e33,s12,s23,s31
+
+ e11 = (2.0_pReal*m(1,1)-m(2,2)-m(3,3))/3.0_pReal
+ e22 = (2.0_pReal*m(2,2)-m(3,3)-m(1,1))/3.0_pReal
+ e33 = (2.0_pReal*m(3,3)-m(1,1)-m(2,2))/3.0_pReal
+ s12 = 2.0_pReal*m(1,2)
+ s23 = 2.0_pReal*m(2,3)
+ s31 = 2.0_pReal*m(3,1)
+
+ math_equivStrain33 = 2.0_pReal*(1.50_pReal*(e11**2.0_pReal+e22**2.0_pReal+e33**2.0_pReal) + &
+                                 0.75_pReal*(s12**2.0_pReal+s23**2.0_pReal+s31**2.0_pReal))**(0.5_pReal)/3.0_pReal
+ return
+
+ ENDFUNCTION
 
 !********************************************************************
 ! determinant of a 3x3 matrix

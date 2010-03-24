@@ -535,6 +535,7 @@ subroutine material_populateGrains()
  use math, only: math_sampleRandomOri, math_sampleGaussOri, math_sampleFiberOri, math_symmetricEulers, inDeg
  use mesh, only: mesh_element, mesh_maxNips, mesh_NcpElems, mesh_ipVolume, FE_Nips
  use IO,   only: IO_error, IO_hybridIA
+ use FEsolving, only: FEsolving_execIP
  implicit none
 
  integer(pInt), dimension (:,:), allocatable :: Ngrains
@@ -711,6 +712,7 @@ subroutine material_populateGrains()
                material_phase(g,i,e) = phaseOfGrain(grain+g)
                material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+g)
              end forall
+             FEsolving_execIP(2,e) = 1_pInt                                     ! restrict calculation to first IP only, since all other results are to be copied from this
              grain = grain + dGrains                                            ! wind forward by NgrainsPerIP
            else
              forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)           ! loop over IPs and grains

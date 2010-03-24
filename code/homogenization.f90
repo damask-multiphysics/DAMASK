@@ -263,6 +263,7 @@ subroutine materialpoint_stressAndItsTangent(&
                           debug_i, &
                           debug_MaterialpointLoopDistribution, &
                           debug_MaterialpointStateLoopDistribution
+ use math, only:          math_pDecomposition
                           
  implicit none
  
@@ -270,6 +271,7 @@ subroutine materialpoint_stressAndItsTangent(&
  logical,     intent(in) :: updateJaco
  integer(pInt) NiterationHomog,NiterationMPstate
  integer(pInt) g,i,e,myNgrains
+ logical error
 
 ! ------ initialize to starting condition ------
 
@@ -282,6 +284,7 @@ subroutine materialpoint_stressAndItsTangent(&
    write (6,'(a,/,3(3(f12.7,x)/))') 'Fp0    of 1 1 1',crystallite_Fp0(1:3,:,1,1,1)
    write (6,'(a,/,3(3(f12.7,x)/))') 'Lp0    of 1 1 1',crystallite_Lp0(1:3,:,1,1,1)
  endif
+
 
 !$OMP PARALLEL DO
  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                 ! iterate over elements to be processed

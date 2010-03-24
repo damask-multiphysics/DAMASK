@@ -35,8 +35,9 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 relMax_RGC, &                           ! relative maximum of RGC residuum
                                 pPert_RGC, &                            ! perturbation for computing RGC penalty tangent
                                 xSmoo_RGC, &                            ! RGC penalty smoothing parameter (hyperbolic tangent)
-                                ratePower_RGC, &                        ! power (sensitivity rate) of numerical viscosity in RGC scheme
+                                viscPower_RGC, &                        ! power (sensitivity rate) of numerical viscosity in RGC scheme
                                 viscModus_RGC, &                        ! stress modulus of RGC numerical viscosity
+                                refRelaxRate_RGC, &                     ! reference relaxation rate in RGC viscosity
                                 maxdRelax_RGC, &                        ! threshold of maximum relaxation vector increment (if exceed this then cutback)
                                 maxVolDiscr_RGC, &                      ! threshold of maximum volume discrepancy allowed
                                 volDiscrMod_RGC, &                      ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
@@ -111,8 +112,9 @@ subroutine numerics_init()
   relMax_RGC              = 1.0e+2
   pPert_RGC               = 1.0e-7
   xSmoo_RGC               = 1.0e-5
-  ratePower_RGC           = 1.0e+0  ! Newton viscosity (linear model)
+  viscPower_RGC           = 1.0e+0  ! Newton viscosity (linear model)
   viscModus_RGC           = 0.0e+0  ! No viscosity is applied
+  refRelaxRate_RGC        = 1.0e-3
   maxdRelax_RGC           = 1.0e+0
   maxVolDiscr_RGC         = 1.0e-5  ! tolerance for volume discrepancy allowed
   volDiscrMod_RGC         = 1.0e+12
@@ -189,10 +191,12 @@ subroutine numerics_init()
               pPert_RGC = IO_floatValue(line,positions,2)
         case ('relevantmismatch_rgc')
               xSmoo_RGC = IO_floatValue(line,positions,2)
-        case ('viscosityrate_rgc')
-              ratePower_RGC = IO_floatValue(line,positions,2)
+        case ('viscositypower_rgc')
+              viscPower_RGC = IO_floatValue(line,positions,2)
         case ('viscositymodulus_rgc')
               viscModus_RGC = IO_floatValue(line,positions,2)
+        case ('refrelaxationrate_rgc')
+              refRelaxRate_RGC = IO_floatValue(line,positions,2)
         case ('maxrelaxation_rgc')
               maxdRelax_RGC = IO_floatValue(line,positions,2)
         case ('maxvoldiscrepancy_rgc')
@@ -292,8 +296,9 @@ subroutine numerics_init()
   if (relMax_RGC <= 0.0_pReal)              call IO_error(275)
   if (pPert_RGC <= 0.0_pReal)               call IO_error(276)   !! oops !!
   if (xSmoo_RGC <= 0.0_pReal)               call IO_error(277)
-  if (ratePower_RGC < 0.0_pReal)            call IO_error(278)
+  if (viscPower_RGC < 0.0_pReal)            call IO_error(278)
   if (viscModus_RGC < 0.0_pReal)            call IO_error(278)
+  if (refRelaxRate_RGC <= 0.0_pReal)        call IO_error(278)
   if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(288)
   if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(289)
   if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(289)

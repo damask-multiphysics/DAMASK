@@ -18,14 +18,15 @@ MODULE homogenization_RGC
 
  character (len=*), parameter :: homogenization_RGC_label = 'rgc'
  
- integer(pInt),     dimension(:),     allocatable :: homogenization_RGC_sizeState, &
-                                                     homogenization_RGC_sizePostResults
+ integer(pInt),     dimension(:),       allocatable :: homogenization_RGC_sizeState, &
+                                                       homogenization_RGC_sizePostResults
  integer(pInt),     dimension(:,:),   allocatable,target :: homogenization_RGC_sizePostResult
- integer(pInt),     dimension(:,:),   allocatable :: homogenization_RGC_Ngrains
- real(pReal),       dimension(:,:),   allocatable :: homogenization_RGC_xiAlpha, &
-                                                     homogenization_RGC_ciAlpha
- real(pReal),       dimension(:),     allocatable :: homogenization_RGC_maxVol0, &
-                                                     homogenization_RGC_vPower0
+ integer(pInt),     dimension(:,:),     allocatable :: homogenization_RGC_Ngrains
+ real(pReal),       dimension(:,:),     allocatable :: homogenization_RGC_dAlpha, &
+                                                       homogenization_RGC_angles
+ real(pReal),       dimension(:,:,:,:), allocatable :: homogenization_RGC_orientation
+ real(pReal),       dimension(:),       allocatable :: homogenization_RGC_xiAlpha, &
+                                                       homogenization_RGC_ciAlpha
  character(len=64), dimension(:,:),   allocatable,target :: homogenization_RGC_output             ! name of each post result output
 
 CONTAINS
@@ -71,11 +72,15 @@ subroutine homogenization_RGC_init(&
  allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput), &
                                                   maxNinstance)); homogenization_RGC_sizePostResult = 0_pInt
  allocate(homogenization_RGC_Ngrains(3,maxNinstance));       homogenization_RGC_Ngrains = 0_pInt
- allocate(homogenization_RGC_ciAlpha(3,maxNinstance));       homogenization_RGC_ciAlpha = 0.0_pReal
- allocate(homogenization_RGC_xiAlpha(3,maxNinstance));       homogenization_RGC_xiAlpha = 0.0_pReal
- allocate(homogenization_RGC_maxVol0(maxNinstance));         homogenization_RGC_maxVol0 = 0.0_pReal
- allocate(homogenization_RGC_vPower0(maxNinstance));         homogenization_RGC_vPower0 = 0.0_pReal
+ allocate(homogenization_RGC_ciAlpha(maxNinstance));         homogenization_RGC_ciAlpha = 0.0_pReal
+ allocate(homogenization_RGC_xiAlpha(maxNinstance));         homogenization_RGC_xiAlpha = 0.0_pReal
+ allocate(homogenization_RGC_dAlpha(3,maxNinstance));        homogenization_RGC_dAlpha = 0.0_pReal
+ allocate(homogenization_RGC_angles(3,maxNinstance));        homogenization_RGC_angles = 400.0_pReal
  allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance)); homogenization_RGC_output = ''
+ allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems))
+ forall (i = 1:mesh_maxNips,e = 1:mesh_NcpElems)
+   homogenization_RGC_orientation(:,:,i,e) = math_I3
+ end forall
  
  rewind(file)
  line = ''
@@ -105,23 +110,55 @@ subroutine homogenization_RGC_init(&
               homogenization_RGC_Ngrains(1,i) = IO_intValue(line,positions,2)
               homogenization_RGC_Ngrains(2,i) = IO_intValue(line,positions,3)
               homogenization_RGC_Ngrains(3,i) = IO_intValue(line,positions,4)
-       case ('grainsizeparameter')
-              homogenization_RGC_xiAlpha(1,i) = IO_floatValue(line,positions,2)
-              homogenization_RGC_xiAlpha(2,i) = IO_floatValue(line,positions,3)
-              homogenization_RGC_xiAlpha(3,i) = IO_floatValue(line,positions,4)
+       case ('scalingparameter')
+              homogenization_RGC_xiAlpha(i) = IO_floatValue(line,positions,2)
        case ('overproportionality')
-              homogenization_RGC_ciAlpha(1,i) = IO_floatValue(line,positions,2)
-              homogenization_RGC_ciAlpha(2,i) = IO_floatValue(line,positions,3)
-              homogenization_RGC_ciAlpha(3,i) = IO_floatValue(line,positions,4)
-       case ('maxvoldiscrepancy')
-              homogenization_RGC_maxVol0(i) = IO_floatValue(line,positions,2)
-       case ('discrepancypower')
-              homogenization_RGC_vPower0(i) = IO_floatValue(line,positions,2)
+              homogenization_RGC_ciAlpha(i) = IO_floatValue(line,positions,2)
+       case ('grainsize')
+              homogenization_RGC_dAlpha(1,i) = IO_floatValue(line,positions,2)
+              homogenization_RGC_dAlpha(2,i) = IO_floatValue(line,positions,3)
+              homogenization_RGC_dAlpha(3,i) = IO_floatValue(line,positions,4)
+       case ('clusterorientation')
+              homogenization_RGC_angles(1,i) = IO_floatValue(line,positions,2)
+              homogenization_RGC_angles(2,i) = IO_floatValue(line,positions,3)
+              homogenization_RGC_angles(3,i) = IO_floatValue(line,positions,4)
      end select
    endif
  enddo
 
-100 do i = 1,maxNinstance                                        ! sanity checks
+!*** assigning cluster orientations
+ do e = 1,mesh_NcpElems
+   if (homogenization_type(mesh_element(3,e)) == homogenization_RGC_label) then
+     myInstance = homogenization_typeInstance(mesh_element(3,e))
+     if (all (homogenization_RGC_angles(:,myInstance) >= 399.9_pReal)) then
+       homogenization_RGC_orientation(:,:,1,e) = math_EulerToR(math_sampleRandomOri())
+       do i = 1,FE_Nips(mesh_element(2,e))
+         if (microstructure_elemhomo(mesh_element(4,e))) then
+           homogenization_RGC_orientation(:,:,i,e) = homogenization_RGC_orientation(:,:,1,e)
+         else
+           homogenization_RGC_orientation(:,:,i,e) = math_EulerToR(math_sampleRandomOri())
+         endif
+       enddo
+     else
+       do i = 1,FE_Nips(mesh_element(2,e))
+         homogenization_RGC_orientation(:,:,i,e) = math_EulerToR(homogenization_RGC_angles(:,myInstance)*inRad)
+       enddo
+     endif
+   endif
+ enddo
+
+100 do i = 1,maxNinstance                                            ! sanity checks
+  write(6,*)
+  write(6,*) '<<<+-  homogenization_RGC init  -+>>>'
+  write(6,*) '$Id$'
+  write(6,*)
+  write(6,'(a15,x,i4)')  'instance:  ', i
+  write(6,*)
+  write(6,'(a25,3(x,i8))')    'cluster size:         ',(homogenization_RGC_Ngrains(j,i),j=1,3)
+  write(6,'(a25,x,e10.3)')    'scaling parameter:    ', homogenization_RGC_xiAlpha(i)
+  write(6,'(a25,x,e10.3)')    'over-proportionality: ', homogenization_RGC_ciAlpha(i)
+  write(6,'(a25,3(x,e10.3))') 'grain size:           ',(homogenization_RGC_dAlpha(j,i),j=1,3)
+  write(6,'(a25,3(x,e10.3))') 'cluster orientation:  ',(homogenization_RGC_angles(j,i),j=1,3)
  enddo
 
  do i = 1,maxNinstance
@@ -130,13 +167,17 @@ subroutine homogenization_RGC_init(&
        case('constitutivework')
          mySize = 1
        case('magnitudemismatch')
-         mySize = 1
+         mySize = 3
        case('penaltyenergy')
          mySize = 1
        case('volumediscrepancy')
          mySize = 1
        case default
          mySize = 0      
+       case('averagerelaxrate')
+         mySize = 1
+       case('maximumrelaxrate')
+         mySize = 1
      end select
 
      if (mySize > 0_pInt) then                               ! any meaningful output found
@@ -146,13 +187,12 @@ subroutine homogenization_RGC_init(&
      endif
    enddo
 
-   
    homogenization_RGC_sizeState(i) &
        = 3*(homogenization_RGC_Ngrains(1,i)-1)*homogenization_RGC_Ngrains(2,i)*homogenization_RGC_Ngrains(3,i) &
          + 3*homogenization_RGC_Ngrains(1,i)*(homogenization_RGC_Ngrains(2,i)-1)*homogenization_RGC_Ngrains(3,i) &
          + 3*homogenization_RGC_Ngrains(1,i)*homogenization_RGC_Ngrains(2,i)*(homogenization_RGC_Ngrains(3,i)-1) &
-         + 4_pInt   ! (1) Average constitutive work, (2) Overall mismatch, (3) Average penalty energy, 
-                    ! (4) Volume discrepancy
+         + 8_pInt   ! (1) Average constitutive work, (2-4) Overall mismatch, (5) Average penalty energy, 
+                    ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
  enddo
 
  return
@@ -235,7 +275,7 @@ subroutine homogenization_RGC_partitionDeformation(&
    do iFace = 1,nFace
      call homogenization_RGC_getInterface(intFace,iFace,iGrain3)
      call homogenization_RGC_relaxationVector(aVect,intFace,state,homID)
-     call homogenization_RGC_interfaceNormal(nVect,intFace)
+     call homogenization_RGC_interfaceNormal(nVect,intFace,ip,el)
      forall (i=1:3,j=1:3) &
      F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)               ! effective relaxations
    enddo
@@ -279,7 +319,7 @@ function homogenization_RGC_updateState(&
  use material, only: homogenization_maxNgrains,homogenization_typeInstance, &
                      homogenization_Ngrains
  use numerics, only: absTol_RGC,relTol_RGC,absMax_RGC,relMax_RGC,pPert_RGC, &
-                     maxdRelax_RGC,ratePower_RGC,viscModus_RGC
+                     maxdRelax_RGC,viscPower_RGC,viscModus_RGC,refRelaxRate_RGC
  use FEsolving, only: theInc,cycleCounter,theTime
 
  implicit none
@@ -299,7 +339,7 @@ function homogenization_RGC_updateState(&
  integer(pInt), dimension (2) :: residLoc
  integer(pInt) homID,i1,i2,i3,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ival,ipert,iGrain,nGrain
  real(pReal), dimension (3,3,homogenization_maxNgrains) :: R,pF,pR,D,pD
- real(pReal), dimension (homogenization_maxNgrains)     :: NN,pNN
+ real(pReal), dimension (3,homogenization_maxNgrains)   :: NN,pNN
  real(pReal), dimension (3)   :: normP,normN,mornP,mornN
  real(pReal) residMax,stresMax,constitutiveWork,penaltyEnergy,volDiscrep,penDiscrep
  logical error,RGCdebug,RGCdebugJacobi,RGCcheck
@@ -336,7 +376,7 @@ function homogenization_RGC_updateState(&
  endif
 
 !* Stress-like penalty related to mismatch or incompatibility at interfaces
- call homogenization_RGC_stressPenalty(R,NN,F,ip,el,homID)
+ call homogenization_RGC_stressPenalty(R,NN,avgF,F,ip,el,homID)
 
 !* Stress-like penalty related to overall volume discrepancy 
  call homogenization_RGC_volumePenalty(D,volDiscrep,F,avgF,ip,el,homID)
@@ -344,7 +384,7 @@ function homogenization_RGC_updateState(&
 !* Debugging the mismatch, stress and penalties of grains
  if (RGCdebug) then
    do iGrain = 1,nGrain
-     write(6,'(x,a30,x,i3,x,a4,x,e14.8)')'Mismatch magnitude of grain(',iGrain,') :',NN(iGrain)
+     write(6,'(x,a30,x,i3,x,a4,3(x,e14.8))')'Mismatch magnitude of grain(',iGrain,') :',NN(1,iGrain),NN(2,iGrain),NN(3,iGrain)
      write(6,*)' '
      write(6,'(x,a30,x,i3)')'Stress and penalties of grain: ',iGrain
      do i = 1,3
@@ -364,15 +404,15 @@ function homogenization_RGC_updateState(&
    iGr3N = faceID(2:4)
    call homogenization_RGC_grain3to1(iGrN,iGr3N,homID)
    call homogenization_RGC_getInterface(intFaceN,2*faceID(1),iGr3N)
-   call homogenization_RGC_interfaceNormal(normN,intFaceN)            ! get the interface normal
+   call homogenization_RGC_interfaceNormal(normN,intFaceN,ip,el)            ! get the interface normal
 !* Identify the right/up/front grain (+|P)
    iGr3P = iGr3N
    iGr3P(faceID(1)) = iGr3N(faceID(1))+1
    call homogenization_RGC_grain3to1(iGrP,iGr3P,homID)
    call homogenization_RGC_getInterface(intFaceP,2*faceID(1)-1,iGr3P)
-   call homogenization_RGC_interfaceNormal(normP,intFaceP)            ! get the interface normal
+   call homogenization_RGC_interfaceNormal(normP,intFaceP,ip,el)            ! get the interface normal
    do i = 1,3                                                         ! compute the traction balance at the interface
-     tract(iNum,i) = sign(viscModus_RGC*(abs(drelax(i+3*(iNum-1))/dt))**ratePower_RGC, &
+     tract(iNum,i) = sign(viscModus_RGC*(abs(drelax(i+3*(iNum-1)))/(refRelaxRate_RGC*dt))**viscPower_RGC, &
                           drelax(i+3*(iNum-1)))
      do j = 1,3
        tract(iNum,i) = tract(iNum,i) + (P(i,j,iGrP) + R(i,j,iGrP) + D(i,j,iGrP))*normP(j) &
@@ -416,7 +456,7 @@ function homogenization_RGC_updateState(&
 !* Then compute/update the state for postResult, i.e., ...
 !* ... all energy densities computed by time-integration
    constitutiveWork = state%p(3*nIntFaceTot+1)
-   penaltyEnergy    = state%p(3*nIntFaceTot+3)
+   penaltyEnergy    = state%p(3*nIntFaceTot+5)
    do iGrain = 1,homogenization_Ngrains(mesh_element(3,el))
      do i = 1,3
      do j = 1,3
@@ -428,15 +468,22 @@ function homogenization_RGC_updateState(&
 !* ... the bulk mechanical/constitutive work
    state%p(3*nIntFaceTot+1) = constitutiveWork
 !* ... the overall mismatch
-   state%p(3*nIntFaceTot+2) = sum(NN)/dble(nGrain)
-   state%p(3*nIntFaceTot+3) = penaltyEnergy
+   state%p(3*nIntFaceTot+2) = sum(NN(1,:))/dble(nGrain)
+   state%p(3*nIntFaceTot+3) = sum(NN(2,:))/dble(nGrain)
+   state%p(3*nIntFaceTot+4) = sum(NN(3,:))/dble(nGrain)
+   state%p(3*nIntFaceTot+5) = penaltyEnergy
 !* ... the volume discrepancy
-   state%p(3*nIntFaceTot+4) = volDiscrep
+   state%p(3*nIntFaceTot+6) = volDiscrep
+   state%p(3*nIntFaceTot+7) = sum(abs(drelax))/dt/dble(3*nIntFaceTot)
+   state%p(3*nIntFaceTot+8) = maxval(abs(drelax))/dt
    if (el == 1 .and. ip == 1) then
      write(6,'(x,a30,x,e14.8)')'Constitutive work: ',constitutiveWork
-     write(6,'(x,a30,x,e14.8)')'Magnitude mismatch: ',sum(NN)
+     write(6,'(x,a30,3(x,e14.8))')'Magnitude mismatch: ',sum(NN(1,:))/dble(nGrain),sum(NN(2,:))/dble(nGrain),sum(NN(3,:))/dble(nGrain)
      write(6,'(x,a30,x,e14.8)')'Penalty energy: ',penaltyEnergy
      write(6,'(x,a30,x,e14.8)')'Volume discrepancy: ',volDiscrep
+     write(6,*)''
+     write(6,'(x,a30,x,e14.8)')'Maximum relaxation rate: ',maxval(abs(drelax))/dt
+     write(6,'(x,a30,x,e14.8)')'Average relaxation rate: ',sum(abs(drelax))/dt/dble(3*nIntFaceTot)
      write(6,*)''
      call flush(6)
    endif
@@ -446,8 +493,8 @@ function homogenization_RGC_updateState(&
  elseif (residMax > relMax_RGC*stresMax .or. residMax > absMax_RGC) then
 !* Try to restart when residual blows up exceeding maximum bound
    homogenization_RGC_updateState = (/.true.,.false./)     ! ... with direct cut-back
-   write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
-   write(6,'(x,a,x,e14.8,x,a,x,e14.8)')'due to high residual =',residMax,'for stress =',stresMax
+!    write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
+!    write(6,'(x,a,x,e14.8,x,a,x,e14.8)')'due to high residual =',residMax,'for stress =',stresMax
 !    state%p(1:3*nIntFaceTot) = 0.0_pReal                    ! ... with full Taylor assumption
 !    write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'relaxation vectors reset to zero'
    if (RGCcheck) then
@@ -475,10 +522,10 @@ function homogenization_RGC_updateState(&
    iGr3N = faceID(2:4)
    call homogenization_RGC_grain3to1(iGrN,iGr3N,homID)
    call homogenization_RGC_getInterface(intFaceN,2*faceID(1),iGr3N)
-   call homogenization_RGC_interfaceNormal(normN,intFaceN)            ! get the interface normal
+   call homogenization_RGC_interfaceNormal(normN,intFaceN,ip,el)            ! get the interface normal
    do iFace = 1,nFace
      call homogenization_RGC_getInterface(intFaceN,iFace,iGr3N)
-     call homogenization_RGC_interfaceNormal(mornN,intFaceN)          ! get influencing interfaces normal
+     call homogenization_RGC_interfaceNormal(mornN,intFaceN,ip,el)          ! get influencing interfaces normal
      call homogenization_RGC_interface4to1(iMun,intFaceN,homID)
      if (iMun .gt. 0) then                                            ! get the tangent
        forall(i=1:3,j=1:3,k=1:3,l=1:3) &
@@ -490,10 +537,10 @@ function homogenization_RGC_updateState(&
    iGr3P(faceID(1)) = iGr3N(faceID(1))+1
    call homogenization_RGC_grain3to1(iGrP,iGr3P,homID)
    call homogenization_RGC_getInterface(intFaceP,2*faceID(1)-1,iGr3P)
-   call homogenization_RGC_interfaceNormal(normP,intFaceP)            ! get the interface normal
+   call homogenization_RGC_interfaceNormal(normP,intFaceP,ip,el)            ! get the interface normal
    do iFace = 1,nFace
      call homogenization_RGC_getInterface(intFaceP,iFace,iGr3P)
-     call homogenization_RGC_interfaceNormal(mornP,intFaceP)          ! get influencing interfaces normal
+     call homogenization_RGC_interfaceNormal(mornP,intFaceP,ip,el)          ! get influencing interfaces normal
      call homogenization_RGC_interface4to1(iMun,intFaceP,homID)
      if (iMun .gt. 0) then                                            ! get the tangent
        forall(i=1:3,j=1:3,k=1:3,l=1:3) &
@@ -519,8 +566,8 @@ function homogenization_RGC_updateState(&
    p_relax = relax
    p_relax(ipert) = relax(ipert) + pPert_RGC                            ! perturb the relaxation vector
    state%p(1:3*nIntFaceTot) = p_relax
-   call homogenization_RGC_grainDeformation(pF,F0,avgF,state,el)
-   call homogenization_RGC_stressPenalty(pR,pNN,pF,ip,el,homID)
+   call homogenization_RGC_grainDeformation(pF,F0,avgF,state,ip,el)
+   call homogenization_RGC_stressPenalty(pR,pNN,avgF,pF,ip,el,homID)
    call homogenization_RGC_volumePenalty(pD,volDiscrep,pF,avgF,ip,el,homID)
    p_resid = 0.0_pReal
    do iNum = 1,nIntFaceTot
@@ -529,13 +576,13 @@ function homogenization_RGC_updateState(&
      iGr3N = faceID(2:4)
      call homogenization_RGC_grain3to1(iGrN,iGr3N,homID)
      call homogenization_RGC_getInterface(intFaceN,2*faceID(1),iGr3N)
-     call homogenization_RGC_interfaceNormal(normN,intFaceN)            ! get the corresponding normal
+     call homogenization_RGC_interfaceNormal(normN,intFaceN,ip,el)            ! get the corresponding normal
 !* Identify the right/up/front grain (+|P)
      iGr3P = iGr3N
      iGr3P(faceID(1)) = iGr3N(faceID(1))+1
      call homogenization_RGC_grain3to1(iGrP,iGr3P,homID)
      call homogenization_RGC_getInterface(intFaceP,2*faceID(1)-1,iGr3P)
-     call homogenization_RGC_interfaceNormal(normP,intFaceP)            ! get the corresponding normal
+     call homogenization_RGC_interfaceNormal(normP,intFaceP,ip,el)            ! get the corresponding normal
 !* Compute the perturbed traction at interface
      do i = 1,3
      do j = 1,3
@@ -561,7 +608,8 @@ function homogenization_RGC_updateState(&
 !* Construct the Jacobian matrix of the numerical viscosity tangent
  allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot)); rmatrix = 0.0_pReal
  forall (i=1:3*nIntFaceTot) &
-   rmatrix(i,i) = viscModus_RGC*ratePower_RGC/dt*(abs(drelax(i)/dt))**(ratePower_RGC - 1.0_pReal)
+   rmatrix(i,i) = viscModus_RGC*viscPower_RGC/(refRelaxRate_RGC*dt)* &
+                  (abs(drelax(i))/(refRelaxRate_RGC*dt))**(viscPower_RGC - 1.0_pReal)
 !* Debugging the global Jacobian matrix of numerical viscosity tangent
  if (RGCdebugJacobi) then
    write(6,'(x,a30)')'Jacobian matrix of penalty'
@@ -609,9 +657,9 @@ function homogenization_RGC_updateState(&
 !    state%p(1:3*nIntFaceTot) = 0.0_pReal
 !    write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'relaxation vectors reset to zero'
    homogenization_RGC_updateState = (/.true.,.false./)
-   write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
-   write(6,'(x,a,x,e14.8)')'due to large relaxation change =',maxval(abs(drelax))
-   call flush(6)
+!    write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
+!    write(6,'(x,a,x,e14.8)')'due to large relaxation change =',maxval(abs(drelax))
+!    call flush(6)
  endif
 !* Debugging the return state
  if (RGCdebugJacobi) then
@@ -744,13 +792,21 @@ pure function homogenization_RGC_postResults(&
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+1)
        c = c + 1
      case('magnitudemismatch')
-       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+3)
-       c = c + 1
-     case('penaltyenergy')
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+2)
+       homogenization_RGC_postResults(c+2) = state%p(3*nIntFaceTot+3)
+       homogenization_RGC_postResults(c+3) = state%p(3*nIntFaceTot+4)
+       c = c + 3
+     case('penaltyenergy')
+       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+5)
        c = c + 1
      case('volumediscrepancy')
-       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+4)
+       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+6)
+       c = c + 1
+     case('averagerelaxrate')
+       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+7)
+       c = c + 1
+     case('maximumrelaxrate')
+       homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+8)
        c = c + 1
    end select
  enddo
@@ -766,6 +822,7 @@ subroutine homogenization_RGC_stressPenalty(&
    rPen, &          ! stress-like penalty
    nMis, &          ! total amount of mismatch
 !
+   avgF, &         ! initial effective stretch tensor
    fDef, &          ! deformation gradients
    ip, &            ! integration point
    el, &            ! element
@@ -774,22 +831,23 @@ subroutine homogenization_RGC_stressPenalty(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use constitutive, only: constitutive_homogenizedC
- use math, only: math_civita
+ use math, only: math_civita,math_invert3x3
  use material, only: homogenization_maxNgrains,homogenization_Ngrains
  use numerics, only: xSmoo_RGC
  implicit none
 
 !* Definition of variables
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: rPen
- real(pReal), dimension (homogenization_maxNgrains), intent(out)     :: nMis
+ real(pReal), dimension (3,homogenization_maxNgrains), intent(out)   :: nMis
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef
+ real(pReal), dimension (3,3), intent(in)                            :: avgF
  integer(pInt), intent(in)    :: ip,el
  integer(pInt), dimension (4) :: intFace
  integer(pInt), dimension (3) :: iGrain3,iGNghb3,nGDim
- real(pReal), dimension (3,3) :: gDef,nDef
- real(pReal), dimension (3)   :: nVect
- integer(pInt) homID,iGrain,iGNghb,iFace,i,j,k,l
- real(pReal) muGrain,muGNghb,nDefNorm
+ real(pReal), dimension (3,3) :: gDef,nDef,avgC
+ real(pReal), dimension (3)   :: nVect,surfCorr
+ integer(pInt) homID,iGrain,iGNghb,iFace,i,j,k,l,m
+ real(pReal) muGrain,muGNghb,nDefNorm,xiAlpha,ciAlpha,bgGrain,bgGNghb,detF
 ! 
  integer(pInt), parameter :: nFace = 6
  real(pReal), parameter   :: nDefToler = 1.0e-10
@@ -798,13 +856,23 @@ subroutine homogenization_RGC_stressPenalty(&
 
  rPen = 0.0_pReal
  nMis = 0.0_pReal
+
+!* Get the penalty correction factor representing surface evolution
+ call homogenization_RGC_surfaceCorrection(surfCorr,avgF,ip,el)
+
+!* Debugging the surface correction factor
+!  if (ip == 1 .and. el == 1) then
+!    write(6,'(x,a20,2(x,i3))')'Correction factor: ',ip,el
+!    write(6,'(x,3(e10.4,x))')(surfCorr(i), i = 1,3)
+!  endif
+
  do iGrain = 1,homogenization_Ngrains(mesh_element(3,el))
-   call homogenization_RGC_equivalentModuli(muGrain,constitutive_homogenizedC(iGrain,ip,el))
+   call homogenization_RGC_equivalentModuli(muGrain,bgGrain,iGrain,ip,el)
    call homogenization_RGC_grain1to3(iGrain3,iGrain,homID)
 !* Compute the mismatch tensor at all six interfaces
    do iFace = 1,nFace
      call homogenization_RGC_getInterface(intFace,iFace,iGrain3)
-     call homogenization_RGC_interfaceNormal(nVect,intFace)             ! get the interface normal
+     call homogenization_RGC_interfaceNormal(nVect,intFace,ip,el)             ! get the interface normal
      iGNghb3 = iGrain3                                                  ! identify the grain neighbor
      iGNghb3(abs(intFace(1))) = iGNghb3(abs(intFace(1))) + int(dble(intFace(1))/dble(abs(intFace(1))))
 !* The grain periodicity along e1
@@ -817,7 +885,7 @@ subroutine homogenization_RGC_stressPenalty(&
      if (iGNghb3(3) < 1)        iGNghb3(3) = nGDim(3)
      if (iGNghb3(3) > nGDim(3)) iGNghb3(3) = 1
      call homogenization_RGC_grain3to1(iGNghb,iGNghb3,homID)            ! get the grain neighbor
-     call homogenization_RGC_equivalentModuli(muGNghb,constitutive_homogenizedC(iGNghb,ip,el))
+     call homogenization_RGC_equivalentModuli(muGNghb,bgGNghb,iGNghb,ip,el)
      gDef = 0.5_pReal*(fDef(:,:,iGNghb) - fDef(:,:,iGrain))             ! difference in F with the neighbor
      nDefNorm = 0.0_pReal
      nDef = 0.0_pReal
@@ -845,8 +913,9 @@ subroutine homogenization_RGC_stressPenalty(&
      do j = 1,3
        do k = 1,3
        do l = 1,3
-         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain + muGNghb)/homogenization_RGC_xiAlpha(abs(intFace(1)),homID) &
-                                               *cosh(homogenization_RGC_ciAlpha(abs(intFace(1)),homID)*nDefNorm) &
+         rPen(i,j,iGrain) = rPen(i,j,iGrain) + 0.5_pReal*(muGrain*bgGrain + muGNghb*bgGNghb)*homogenization_RGC_xiAlpha(homID) &
+                                               *surfCorr(abs(intFace(1)))/homogenization_RGC_dAlpha(abs(intFace(1)),homID) &
+                                               *cosh(homogenization_RGC_ciAlpha(homID)*nDefNorm) &
                                                *0.5_pReal*nVect(l)*nDef(i,k)/nDefNorm*math_civita(k,l,j) &
                                                *tanh(nDefNorm/xSmoo_RGC)
        enddo
@@ -854,7 +923,7 @@ subroutine homogenization_RGC_stressPenalty(&
      enddo
      enddo
 !* Total amount of mismatch experienced by the grain (at all six interfaces)
-     nMis(iGrain) = nMis(iGrain) + nDefNorm
+     nMis(abs(intFace(1)),iGrain) = nMis(abs(intFace(1)),iGrain) + nDefNorm
    enddo
 !* Debugging the stress-like penalty
 !    if (ip == 1 .and. el == 1) then
@@ -884,7 +953,6 @@ subroutine homogenization_RGC_volumePenalty(&
   )
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
- use constitutive, only: constitutive_homogenizedC
  use math, only: math_det3x3,math_inv3x3
  use material, only: homogenization_maxNgrains,homogenization_Ngrains
  use numerics, only: maxVolDiscr_RGC,volDiscrMod_RGC,volDiscrPow_RGC
@@ -903,18 +971,18 @@ subroutine homogenization_RGC_volumePenalty(&
  nGrain = homogenization_Ngrains(mesh_element(3,el))
 
 !* Compute volumes of grain and the effective volume and the total volume discrepancy
- vDiscrep   = math_det3x3(fAvg)
+ vDiscrep = math_det3x3(fAvg)
  do iGrain = 1,nGrain
    gVol(iGrain) = math_det3x3(fDef(:,:,iGrain))
    vDiscrep     = vDiscrep - gVol(iGrain)/dble(nGrain)
  enddo
 
 !* Calculate the stress and penalty due to volume discrepancy
- vPen       = 0.0_pReal
+ vPen      = 0.0_pReal
  do iGrain = 1,nGrain
-   vPen(:,:,iGrain) = -1.0_pReal*sign(volDiscrMod_RGC*volDiscrPow_RGC/maxVolDiscr_RGC* &
-                      (abs(vDiscrep)/maxVolDiscr_RGC)**(volDiscrPow_RGC - 1.0)*gVol(iGrain)/dble(nGrain),vDiscrep)* &
-                      transpose(math_inv3x3(fDef(:,:,iGrain)))
+   vPen(:,:,iGrain) = -1.0_pReal/dble(nGrain)*volDiscrMod_RGC*volDiscrPow_RGC/maxVolDiscr_RGC* &
+                      sign((abs(vDiscrep)/maxVolDiscr_RGC)**(volDiscrPow_RGC - 1.0),vDiscrep)* &
+                      gVol(iGrain)*transpose(math_inv3x3(fDef(:,:,iGrain)))
 
 !* Debugging the stress-like penalty of volume discrepancy
 !    if (ip == 1 .and. el == 1) then
@@ -930,23 +998,77 @@ subroutine homogenization_RGC_volumePenalty(&
 endsubroutine
 
 !********************************************************************
+! subroutine to compute the correction factor due to surface area evolution
+!********************************************************************
+subroutine homogenization_RGC_surfaceCorrection(&
+   vSurf, &       ! surface correction factor
+!
+   avgF, &        ! average deformation gradient
+   ip, &          ! my IP
+   el &           ! my element
+  )
+
+ use prec, only: pReal,pInt,p_vec
+ use math, only: math_invert3x3,math_mul33x33
+ implicit none
+
+!* Definition of variables
+ real(pReal), dimension(3,3), intent(in) :: avgF
+ real(pReal), dimension(3), intent(out)  :: vSurf
+ integer(pInt), intent(in)               :: ip,el
+ real(pReal), dimension(3,3)             :: invC,avgC
+ real(pReal), dimension(3)               :: nVect
+ real(pReal)   detF
+ integer(pInt), dimension(4)             :: intFace
+ integer(pInt) i,j,iBase
+ logical       error
+
+!* Compute the correction factor accouted for surface evolution (area change)
+ avgC = 0.0_pReal
+ avgC = math_mul33x33(transpose(avgF),avgF)
+ invC = 0.0_pReal
+ call math_invert3x3(avgC,invC,detF,error)
+ vSurf = 0.0_pReal
+ do iBase = 1,3
+   intFace = (/iBase,1_pInt,1_pInt,1_pInt/)
+   call homogenization_RGC_interfaceNormal(nVect,intFace,ip,el)
+   do i = 1,3
+   do j = 1,3
+     vSurf(iBase) = vSurf(iBase) + invC(i,j)*nVect(i)*nVect(j)
+   enddo
+   enddo
+   vSurf(iBase) = sqrt(vSurf(iBase))*detF
+ enddo
+
+ return
+
+endsubroutine
+
+!********************************************************************
 ! subroutine to compute the equivalent shear and bulk moduli from the elasticity tensor
 !********************************************************************
 subroutine homogenization_RGC_equivalentModuli(&
    shearMod, &       ! equivalent (isotropic) shear modulus
+   vBurgers, &       ! length of burgers vector
 !
-   elasTens &        ! elasticity tensor in Mandel notation
+   grainID, &        ! grain ID
+   ip, &             ! IP number
+   el &              ! element number
   )
 
  use prec, only: pReal,pInt,p_vec
+ use constitutive, only: constitutive_homogenizedC,constitutive_averageBurgers
  use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_typeInstance
  implicit none
 
 !* Definition of variables
- real(pReal), dimension (6,6), intent(in) :: elasTens
- real(pReal), intent(out)                 :: shearMod
+ integer(pInt), intent(in)    :: grainID,ip,el
+ real(pReal), dimension (6,6) :: elasTens
+ real(pReal), intent(out)     :: shearMod,vBurgers
  real(pReal) cEquiv_11,cEquiv_12,cEquiv_44
+
+ elasTens = constitutive_homogenizedC(grainID,ip,el)
 
 !* Compute the equivalent shear modulus using Turterltaub and Suiker, JMPS (2005)
  cEquiv_11 = (elasTens(1,1) + elasTens(2,2) + elasTens(3,3))/3.0_pReal
@@ -954,6 +1076,8 @@ subroutine homogenization_RGC_equivalentModuli(&
               elasTens(1,3) + elasTens(2,1) + elasTens(3,2))/6.0_pReal
  cEquiv_44 = (elasTens(4,4) + elasTens(5,5) + elasTens(6,6))/3.0_pReal
  shearMod = 0.2_pReal*(cEquiv_11 - cEquiv_12) + 0.6_pReal*cEquiv_44
+
+ vBurgers = constitutive_averageBurgers(grainID,ip,el)
 
  return
 
@@ -998,22 +1122,35 @@ endsubroutine
 subroutine homogenization_RGC_interfaceNormal(&
    nVect, &          ! interface normal
 !
-   intFace &         ! interface ID in 4D array (normal and position)
+   intFace, &        ! interface ID in 4D array (normal and position)
+   ip, &             ! my IP
+   el &              ! my element
   )
 
  use prec, only: pReal,pInt,p_vec
+ use math, only: math_mul33x3
  use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
  implicit none
 
 !* Definition of variables
  real(pReal), dimension (3), intent(out)  :: nVect
  integer(pInt), dimension (4), intent(in) :: intFace
- integer(pInt) nPos
+ integer(pInt), intent(in)                :: ip,el
+ integer(pInt) nPos,i
 
 !* Get the normal of the interface, identified from the value of intFace(1)
  nVect = 0.0_pReal
  nPos = abs(intFace(1))
  nVect(nPos) = intFace(1)/abs(intFace(1))
+
+ nVect = math_mul33x3(homogenization_RGC_orientation(:,:,ip,el),nVect)
+
+!  if (ip == 1 .and. el == 1) then
+!    write(6,'(x,a32,3(x,i3))')'Interface normal: ',intFace(1)
+!    write(6,'(x,3(e14.8,x))')(nVect(i), i = 1,3)
+!    write(6,*)' '
+!    call flush(6)
+!  endif
 
  return
 
@@ -1211,6 +1348,7 @@ subroutine homogenization_RGC_grainDeformation(&
    F0, &            ! initial partioned def grad per grain
    avgF, &          ! my average def grad
    state, &         ! my state
+   ip, &            ! my IP
    el  &            ! my element
   )
  use prec, only: pReal,pInt,p_vec
@@ -1223,7 +1361,7 @@ subroutine homogenization_RGC_grainDeformation(&
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: F0
  real(pReal), dimension (3,3), intent(in) :: avgF
  type(p_vec), intent(in) :: state
- integer(pInt), intent(in) :: el
+ integer(pInt), intent(in) :: el,ip
 !
  real(pReal), dimension (3)   :: aVect,nVect
  integer(pInt), dimension (4) :: intFace
@@ -1240,7 +1378,7 @@ subroutine homogenization_RGC_grainDeformation(&
    do iFace = 1,nFace
      call homogenization_RGC_getInterface(intFace,iFace,iGrain3)
      call homogenization_RGC_relaxationVector(aVect,intFace,state,homID)
-     call homogenization_RGC_interfaceNormal(nVect,intFace)
+     call homogenization_RGC_interfaceNormal(nVect,intFace,ip,el)
      forall (i=1:3,j=1:3) &
      F(i,j,iGrain) = F(i,j,iGrain) + aVect(i)*nVect(j)               ! effective relaxations
    enddo

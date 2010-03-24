@@ -41,8 +41,6 @@ subroutine debug_init()
                       nHomog
   implicit none
   
-  if (.not. debugger) verboseDebugger = .false.
-  
   write(6,*)
   write(6,*) '<<<+-  debug init  -+>>>'
   write(6,*) '$Id$'

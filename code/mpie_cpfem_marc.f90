@@ -212,7 +212,6 @@ subroutine hypela2(&
      outdatedByNewInc = .true.
      terminallyIll = .false.
      cycleCounter = 0
-
 !$OMP CRITICAL (write2out)
      write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> lastIncConverged + outdated'; call flush(6)
 !$OMP END CRITICAL (write2out)

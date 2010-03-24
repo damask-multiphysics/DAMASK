@@ -32,6 +32,7 @@ CONTAINS
 !****************************************
 !* - constitutive_init
 !* - constitutive_homogenizedC
+!* - constitutive_averageBurgers
 !* - constitutive_microstructure
 !* - constitutive_LpAndItsTangent
 !* - constitutive_collectDotState
@@ -268,8 +269,48 @@ function constitutive_homogenizedC(ipc,ip,el)
 return
 endfunction
 
+function constitutive_averageBurgers(ipc,ip,el)
+!*********************************************************************
+!* This function returns the average length of Burgers vector        *
+!* INPUT:                                                            *
+!*  - state           : state variables                              *
+!*  - ipc             : component-ID of current integration point    *
+!*  - ip              : current integration point                    *
+!*  - el              : current element                              *
+!*********************************************************************
+ use prec, only: pReal,pInt
+ use material, only: phase_constitution,material_phase
+ use constitutive_j2
+ use constitutive_phenopowerlaw
+ use constitutive_dislotwin
+ use constitutive_nonlocal
+ implicit none
 
-subroutine constitutive_microstructure(Temperature,Tstar_v,Fe,Fp,ipc,ip,el)
+ !* Definition of variables
+ integer(pInt) ipc,ip,el
+ real(pReal) :: constitutive_averageBurgers
+
+ select case (phase_constitution(material_phase(ipc,ip,el)))
+ 
+   case (constitutive_j2_label)
+     constitutive_averageBurgers = 2.5e-10_pReal !constitutive_j2_averageBurgers(constitutive_state,ipc,ip,el)
+     
+   case (constitutive_phenopowerlaw_label)
+     constitutive_averageBurgers = 2.5e-10_pReal !constitutive_phenopowerlaw_averageBurgers(constitutive_state,ipc,ip,el)
+     
+   case (constitutive_dislotwin_label)
+     constitutive_averageBurgers = 2.5e-10_pReal !constitutive_dislotwin_averageBurgers(constitutive_state,ipc,ip,el)
+     
+   case (constitutive_nonlocal_label)
+     constitutive_averageBurgers = 2.5e-10_pReal !constitutive_nonlocal_averageBurgers(constitutive_state,ipc,ip,el)
+     
+ end select
+
+return
+endfunction
+
+
+subroutine constitutive_microstructure(Temperature,Fe,Fp,ipc,ip,el)
 !*********************************************************************
 !* This function calculates from state needed variables              *
 !* INPUT:                                                            *

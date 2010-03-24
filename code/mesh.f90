@@ -240,7 +240,7 @@
    call mesh_build_ipAreas()
    call mesh_tell_statistics()
 
-   parallelExecution = (mesh_Nelems == mesh_NcpElems)      ! plus potential STOP if non-local constitutive present
+   parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))      ! plus potential killer from non-local constitutive
  else
    call IO_error(101) ! cannot open input file
  endif

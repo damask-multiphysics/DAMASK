@@ -86,7 +86,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       cycleCounter, &
                                                       theInc, &
                                                       theTime, &
-                                                      theDelta, &
                                                       FEsolving_execElem, &
                                                       FEsolving_execIP
   use math, only:                                     math_init, &
@@ -102,11 +101,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       mesh_maxNips
   use lattice, only:                                  lattice_init
   use material, only:                                 material_init, &
-                                                      homogenization_maxNgrains
+                                                      homogenization_maxNgrains, &
+                                                      microstructure_elemhomo
   use constitutive, only:                             constitutive_init,&
                                                       constitutive_state0,constitutive_state
   use crystallite, only:                              crystallite_init, &
                                                       crystallite_F0, &
+                                                      crystallite_rexParm, &
+                                                      crystallite_critVal, &
                                                       crystallite_partionedF, &
                                                       crystallite_Fp0, &
                                                       crystallite_Fp, &
@@ -122,6 +124,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       materialpoint_F0, &
                                                       materialpoint_P, &
                                                       materialpoint_dPdF, &
+                                                      materialpoint_results, &
                                                       materialpoint_Temperature, &
                                                       materialpoint_stressAndItsTangent, &
                                                       materialpoint_postResults
@@ -286,6 +289,16 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         elseif (.not. CPFEM_calc_done) then
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent (parallel execution inside)
           call materialpoint_postResults(dt)                              ! post results
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)              ! loop over all parallely processed elements
+            if (microstructure_elemhomo(mesh_element(4,e))) then          ! dealing with homogeneous element?
+              forall (i = 2:FE_Nips(mesh_element(2,e)))                   ! copy results of first IP to all others
+                materialpoint_P(:,:,i,e)        = materialpoint_P(:,:,1,e) 
+                materialpoint_F(:,:,i,e)        = materialpoint_F(:,:,1,e) 
+                materialpoint_dPdF(:,:,:,:,i,e) = materialpoint_dPdF(:,:,:,:,1,e)
+                materialpoint_results(:,i,e)    = materialpoint_results(:,1,e)
+              end forall
+            endif
+          enddo
           CPFEM_calc_done = .true.
         endif
         
@@ -321,8 +334,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       else if (mode == 5) then
         CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
       end if
-      call random_number(rnd)
-      if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
+	  call random_number(rnd)
+	  if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
       materialpoint_Temperature(IP,cp_en)   = Temperature
       materialpoint_F0(:,:,IP,cp_en)        = ffn
       materialpoint_F(:,:,IP,cp_en)         = ffn1
