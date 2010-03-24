@@ -824,7 +824,7 @@ forall (t = 1:nt) &
   state(g,ip,el)%p(6*ns+3*nt+t) = &
     constitutive_dislotwin_Cthresholdtwin(myInstance)*&
     (sfe/(3.0_pReal*constitutive_dislotwin_burgersPerTwinSystem(t,myInstance))+&
-    (constitutive_dislotwin_burgersPerTwinSystem(t,myInstance)*constitutive_dislotwin_Gmod(myInstance))/&
+    3.0_pReal*constitutive_dislotwin_burgersPerTwinSystem(t,myInstance)*constitutive_dislotwin_Gmod(myInstance)/&
     state(g,ip,el)%p(5*ns+2*nt+t))
 
 !* final twin volume after growth
