@@ -76,7 +76,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
                       symmetricSolver
  use math, only:      invnrmMandel
  use debug, only:     debug_info, &
-                      debug_reset
+                      debug_reset, &
+                      verboseDebugger
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_general,CPFEM_init_done
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
@@ -100,21 +101,23 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) computationMode, i, cp_en
 
- if (noel == 1 .and. npt == 1) then
-!$OMP CRITICAL (write2out)
-   write(6,*) 'el',noel,'ip',npt
-   write(6,*) 'got kinc as',kinc
-   write(6,*) 'got dStran',dstran
-   call flush(6)
-!$OMP END CRITICAL (write2out)
+ if (verboseDebugger .and. noel == 1 .and. npt == 1) then
+   !$OMP CRITICAL (write2out)
+     write(6,*) 'el',noel,'ip',npt
+     write(6,*) 'got kinc as',kinc
+     write(6,*) 'got dStran',dstran
+     call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
 
  if ( .not. CPFEM_init_done ) then
 
    computationMode = 2                                                    ! calc + init
-!$OMP CRITICAL (write2out)
-   write(6,'(i6,x,i2,x,a)') noel,npt,'first call special case..!'; call flush(6)
-!$OMP END CRITICAL (write2out)
+   if ( verboseDebugger ) then
+     !$OMP CRITICAL (write2out)
+       write(6,'(i6,x,i2,x,a)') noel,npt,'first call special case..!'; call flush(6)
+     !$OMP END CRITICAL (write2out)
+   endif
 
  else
    cp_en = mesh_FEasCP('elem',noel)
@@ -124,9 +127,11 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
      terminallyIll = .false.
      cycleCounter = 0
 
-     !$OMP CRITICAL (write2out)
-     write (6,'(i6,x,i2,x,a)') noel,npt,'lastIncConverged + outdated'; call flush(6)
-     !$OMP END CRITICAL (write2out)
+     if ( verboseDebugger ) then
+       !$OMP CRITICAL (write2out)
+         write (6,'(i6,x,i2,x,a)') noel,npt,'lastIncConverged + outdated'; call flush(6)
+       !$OMP END CRITICAL (write2out)
+     endif
 
    else if ( dtime < theDelta ) then                                      ! or check for cutBack
      calcMode = .true.                                                    ! pretend last step was calculation
@@ -134,9 +139,11 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
      terminallyIll = .false.
      cycleCounter = 0
 
-     !$OMP CRITICAL (write2out)
-     write(6,'(i6,x,i2,x,a)') noel,npt,'cutback detected..!'; call flush(6)
-     !$OMP END CRITICAL (write2out)
+     if ( verboseDebugger ) then
+       !$OMP CRITICAL (write2out)
+         write(6,'(i6,x,i2,x,a)') noel,npt,'cutback detected..!'; call flush(6)
+       !$OMP END CRITICAL (write2out)
+     endif
 
    endif
 
@@ -174,9 +181,11 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  theInc   = kinc                                                          ! record current increment number
  if (CPFEM_init_done) lastMode = calcMode(npt,cp_en)                      ! record calculationMode
 
-!$OMP CRITICAL (write2out)
- write(6,'(a16,x,i2,x,a,i5,a,i5,x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
-!$OMP END CRITICAL (write2out)
+ if ( verboseDebugger ) then
+   !$OMP CRITICAL (write2out)
+     write(6,'(a16,x,i2,x,a,i5,a,i5,x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
+   !$OMP END CRITICAL (write2out)
+ endif
    
  call CPFEM_general(computationMode,dfgrd0,dfgrd1,temp,dtime,noel,npt,stress_h,ddsdde_h)
 

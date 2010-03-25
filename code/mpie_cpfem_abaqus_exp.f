@@ -114,7 +114,8 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
                       symmetricSolver
  use math, only:      invnrmMandel
  use debug, only:     debug_info, &
-                      debug_reset
+                      debug_reset, &
+                      verboseDebugger
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_general,CPFEM_init_done
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
@@ -149,16 +150,20 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
    if ( .not. CPFEM_init_done ) then
      outdatedByNewInc = .false.
 
-     !$OMP CRITICAL (write2out)
-     write(6,'(i6,x,i2,x,a)') nElement(n),nMatPoint(n),'first call special case..!'; call flush(6)
-     !$OMP END CRITICAL (write2out)
+     if ( verboseDebugger ) then
+       !$OMP CRITICAL (write2out)
+         write(6,'(i6,x,i2,x,a)') nElement(n),nMatPoint(n),'first call special case..!'; call flush(6)
+       !$OMP END CRITICAL (write2out)
+     endif
 
    else if (theTime < totalTime) then                                  ! reached convergence
      outdatedByNewInc = .true.
 
-     !$OMP CRITICAL (write2out)
-     write (6,'(i6,x,i2,x,a)') nElement(n),nMatPoint(n),'lastIncConverged + outdated'; call flush(6)
-     !$OMP END CRITICAL (write2out)
+     if ( verboseDebugger ) then
+       !$OMP CRITICAL (write2out)
+         write (6,'(i6,x,i2,x,a)') nElement(n),nMatPoint(n),'lastIncConverged + outdated'; call flush(6)
+       !$OMP END CRITICAL (write2out)
+     endif
 
    endif
 
@@ -176,14 +181,16 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
    theTime  = totalTime                                            ! record current starting time
 
-  !$OMP CRITICAL (write2out)
-   write(6,'(a16,x,i2,x,a,i5,x,i5,a)') 'computationMode',computationMode,'(',nElement(n),nMatPoint(n),')'; call flush(6)
-  !$OMP END CRITICAL (write2out)
+   if ( verboseDebugger ) then
+     !$OMP CRITICAL (write2out)
+       write(6,'(a16,x,i2,x,a,i5,x,i5,a)') 'computationMode',computationMode,'(',nElement(n),nMatPoint(n),')'; call flush(6)
+     !$OMP END CRITICAL (write2out)
+   endif
   
-  defgrd0 = 0.0_pReal
-  defgrd1 = 0.0_pReal
-  temp    = tempOld(n)
-  timeInc = dt
+   defgrd0 = 0.0_pReal
+   defgrd1 = 0.0_pReal
+   temp    = tempOld(n)
+   timeInc = dt
 
   !     ABAQUS explicit:     deformation gradient as vector 11, 22, 33, 12, 23, 31, 21, 32, 13
   !     ABAQUS explicit:     deformation gradient as vector 11, 22, 33, 12, 21
