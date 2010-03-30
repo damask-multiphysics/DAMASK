@@ -168,7 +168,6 @@ subroutine math_misorientation(dQ, Q1, Q2, symmetryType)
   integer(pInt), dimension(2), parameter ::     NsymOperations = (/24,12/)  ! number of possible symmetry operations
   real(pReal), dimension(:,:), allocatable ::   mySymOperations             ! symmetry Operations for my crystal symmetry
   
-  
   dQ = 0.0_pReal
     
   if (symmetryType < 1_pInt .or. symmetryType > 2_pInt) then
@@ -176,6 +175,8 @@ subroutine math_misorientation(dQ, Q1, Q2, symmetryType)
     return
   endif    
   
+  allocate(mySymOperations(4,NsymOperations(symmetryType)))
+  mySymOperations = symOperations(:,sum(NsymOperations(1:symmetryType-1))+1:sum(NsymOperations(1:symmetryType)))                    ! choose symmetry operations according to crystal symmetry
   
   dQ(1) = -1.0_pReal                                                                                                                ! start with maximum misorientation angle 
   do s = 1,NsymOperations(symmetryType)                                                                                             ! loop ver symmetry operations    
