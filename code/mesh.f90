@@ -543,7 +543,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
     /),(/FE_NipNeighbors(6),FE_Nips(6)/))
  FE_ipNeighbor(:FE_NipNeighbors(7),:FE_Nips(7),7) = &  ! element 21
     reshape((/&
-    2,-5, 4,-2,10,-1,  &
+     2,-5, 4,-2,10,-1,  &
      3, 1, 5,-2,11,-1,  &
     -3, 2, 6,-2,12,-1,  &
      5,-5, 7, 1,13,-1,  &
@@ -552,15 +552,15 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
      8,-5,-4, 4,16,-1,  &
      9, 7,-4, 5,17,-1,  &
     -3, 8,-4, 6,18,-1,  &
-    11,-5,13,-2,10, 1,  &
-    12,10,14,-2,11, 2,  &
-    -3,11,15,-2,12, 3,  &
-    14,-5,16,10,13, 4,  &
-    15,13,17,11,14, 5,  &
-    -3,14,18,12,15, 6,  &
-    17,-5,-4,13,16, 7,  &
-    18,16,-4,14,17, 8,  &
-    -3,17,-4,15,18, 9,  &
+    11,-5,13,-2,19, 1,  &
+    12,10,14,-2,20, 2,  &
+    -3,11,15,-2,21, 3,  &
+    14,-5,16,10,22, 4,  &
+    15,13,17,11,23, 5,  &
+    -3,14,18,12,24, 6,  &
+    17,-5,-4,13,25, 7,  &
+    18,16,-4,14,26, 8,  &
+    -3,17,-4,15,27, 9,  &
     20,-5,22,-2,-6,10,  &
     21,19,23,-2,-6,11,  &
     -3,20,24,-2,-6,12,  &
@@ -2491,20 +2491,20 @@ subroutine mesh_marc_count_cpSizes (unit)
 !   enddo
 ! enddo
 ! write (6,*)
- ! write (6,*) "Input Parser: ELEMENT VOLUME"
- ! write (6,*)
- ! write (6,"(a13,x,e15.8)") "total volume", sum(mesh_ipVolume)
- ! write (6,*)
- ! write (6,"(a5,x,a5,x,a15,x,a5,x,a15,x,a16)") "elem","IP","volume","face","area","-- normal --"
- ! do e = 1,mesh_NcpElems
-   ! do i = 1,FE_Nips(mesh_element(2,e))
-     ! write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
-     ! do f = 1,FE_NipNeighbors(mesh_element(2,e))
-       ! write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
-     ! enddo
-   ! enddo
- ! enddo
- ! write (6,*)
+!  write (6,*) "Input Parser: ELEMENT VOLUME"
+!  write (6,*)
+!  write (6,"(a13,x,e15.8)") "total volume", sum(mesh_ipVolume)
+!  write (6,*)
+!  write (6,"(a5,x,a5,x,a15,x,a5,x,a15,x,a16)") "elem","IP","volume","face","area","-- normal --"
+!  do e = 1,mesh_NcpElems
+!    do i = 1,FE_Nips(mesh_element(2,e))
+!      write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
+!      do f = 1,FE_NipNeighbors(mesh_element(2,e))
+!        write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
+!      enddo
+!    enddo
+!  enddo
+!  write (6,*)
 ! write (6,*) "Input Parser: SUBNODE COORDINATES"
 ! write (6,*)
 ! write(6,'(a5,x,a5,x,a15,x,a15,x,a20,3(x,a12))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
