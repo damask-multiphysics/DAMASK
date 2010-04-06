@@ -1480,7 +1480,7 @@ LpLoop: do
    write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',crystallite_P(:,:,g,i,e)/1e6
    write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',crystallite_Lp(:,:,g,i,e)
    write(6,'(a,/,3(3(f12.7,x)/))') 'Fp',crystallite_Fp(:,:,g,i,e)
-   !$OMP CRITICAL (write2out)
+   !$OMP END CRITICAL (write2out)
  endif
 
  !$OMP CRITICAL (distributionStress)

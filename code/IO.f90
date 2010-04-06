@@ -1155,6 +1155,7 @@ endfunction
  endif
  write(6,'(a38)') '+------------------------------------+'
  call flush(6)
+ !$OMP END CRITICAL (write2out)
 
  endsubroutine
  
