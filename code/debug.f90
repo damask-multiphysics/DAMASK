@@ -22,7 +22,7 @@
  integer(pInt) :: debug_g = 1_pInt
  logical :: selectiveDebugger = .false.
  logical :: verboseDebugger = .false.
- logical :: debugger = .true.
+ logical :: debugger = .false.
  logical :: distribution_init = .false.
 
  CONTAINS
