@@ -26,6 +26,9 @@ integer(pInt), parameter :: lattice_maxNslip = 48                 ! max # of sli
 integer(pInt), parameter :: lattice_maxNtwin = 24                 ! max # of twin systems over lattice structures
 integer(pInt), parameter :: lattice_maxNinteraction = 20          ! max # of interaction types (in hardening matrix part)
 
+integer(pInt), parameter, dimension(3) :: lattice_symmetryTypes =(/1, 1, 2/) ! maps crystal structures to symmetry tpyes
+
+
 integer(pInt), pointer, dimension(:,:) :: interactionSlipSlip, &
                                           interactionSlipTwin, &
                                           interactionTwinSlip, &
