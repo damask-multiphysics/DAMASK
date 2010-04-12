@@ -96,10 +96,10 @@ real(pReal), dimension(4,36), parameter :: symOperations = &
      1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! hexagonal symmetry operations
      0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      !     2-fold symmetry
      0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
-     0.0_pReal,                 0.5773502691896259_pReal,  1.154700538379252_pReal,   0.0_pReal, &
-     0.0_pReal,                -0.5773502691896259_pReal,  1.154700538379252_pReal,   0.0_pReal, &
-     0.0_pReal,                 1.154700538379252_pReal,   0.5773502691896259_pReal,  0.0_pReal, &
-     0.0_pReal,                -1.154700538379252_pReal,   0.5773502691896259_pReal,  0.0_pReal, &
+     0.0_pReal,                 0.5_pReal,                 0.866025403784439_pReal,   0.0_pReal, &
+     0.0_pReal,                -0.5_pReal,                 0.866025403784439_pReal,   0.0_pReal, &
+     0.0_pReal,                 0.866025403784439_pReal,   0.5_pReal,                 0.0_pReal, &
+     0.0_pReal,                -0.866025403784439_pReal,   0.5_pReal,                 0.0_pReal, &
      0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &                      !     6-fold symmetry
     -0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &
      0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
