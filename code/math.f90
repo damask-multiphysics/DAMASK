@@ -1413,6 +1413,38 @@ pure function math_transpose3x3(A)
  ENDFUNCTION
 
 
+!********************************************************************
+! axis-angle (x, y, z, ang in deg) from quaternion (w+ix+jy+kz)
+!********************************************************************
+ PURE FUNCTION math_QuaternionToAxisAngle(Q)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) :: Q
+ real(pReal) halfAngle, sinHalfAngle
+ real(pReal), dimension(4) :: math_QuaternionToAxisAngle  
+
+ halfAngle=acos(Q(1))
+ sinHalfAngle=sin(halfAngle)
+
+ math_QuaternionToAxisAngle(1)=Q(2)/sinHalfAngle
+ math_QuaternionToAxisAngle(2)=Q(3)/sinHalfAngle
+ math_QuaternionToAxisAngle(3)=Q(4)/sinHalfAngle
+! Remark: the above calculations gives problems 
+! for HalfAngle->0, i.e. for very small rotation angles
+! and always at inrement 0 where identical orientations 
+! are compared in the calculation of the grainrotation; 
+! the correct interpretation of these special cases 
+! is left to the postprocessing. 
+! A possible integrity check would be to check for 
+! the unit length of the resulting axis.
+
+ math_QuaternionToAxisAngle(4)=halfAngle*2.0_pReal*inDeg
+
+ ENDFUNCTION
+
+
 !****************************************************************
 ! rotation matrix from axis and angle (in radians)  
 !****************************************************************
