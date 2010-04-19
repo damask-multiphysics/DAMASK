@@ -10,6 +10,7 @@
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
+ real(pReal), parameter :: NaN = 0.0_pReal/0.0_pReal ! Not a number 
 ! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
  reshape( (/ &
@@ -171,7 +172,8 @@ subroutine math_misorientation(dQ, Q1, Q2, symmetryType)
   dQ = 0.0_pReal
     
   if (symmetryType < 1_pInt .or. symmetryType > 2_pInt) then
-    call IO_warning(700)
+    dQ=NaN 
+    !call IO_warning(700)
     return
   endif    
   
