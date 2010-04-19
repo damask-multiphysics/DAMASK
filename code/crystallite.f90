@@ -24,6 +24,8 @@ integer(pInt) crystallite_maxSizePostResults
 integer(pInt), dimension(:),       allocatable :: crystallite_sizePostResults
 integer(pInt), dimension(:,:),     allocatable :: crystallite_sizePostResult
 character(len=64), dimension(:,:),   allocatable :: crystallite_output             ! name of each post result output
+integer(pInt), dimension (:,:,:),  allocatable :: &    
+    crystallite_symmetryID               ! crystallographic symmetry 1=cubic 2=hexagonal, needed in all orientation calcs     
     
 real(pReal), dimension (:,:,:), allocatable :: &
     crystallite_dt, &                    ! requested time increment of each grain
@@ -94,6 +96,13 @@ subroutine crystallite_init(Temperature)
                              mesh_maxNipNeighbors
  use IO
  use material
+ use lattice, only:          lattice_symmetryTypes
+ use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
+                                      constitutive_phenopowerlaw_structure
+ use constitutive_dislotwin, only:     constitutive_dislotwin_label, &
+                                      constitutive_dislotwin_structure
+ use constitutive_nonlocal, only:      constitutive_nonlocal_label, &
+                                      constitutive_nonlocal_structure
  
  implicit none
  integer(pInt), parameter :: file = 200
@@ -118,6 +127,9 @@ subroutine crystallite_init(Temperature)
  integer(pInt) section, j,p, output, mySize
  character(len=64) tag
  character(len=1024) line
+ integer(pInt)               myStructure, &                ! lattice structure 
+                             myPhase
+ 
  
  gMax = homogenization_maxNgrains
  iMax = mesh_maxNips
@@ -142,6 +154,7 @@ subroutine crystallite_init(Temperature)
  allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax));               crystallite_partionedLp0 = 0.0_pReal
  allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax));       crystallite_partionedTstar0_v = 0.0_pReal
  allocate(crystallite_subTemperature0(gMax,iMax,eMax));             crystallite_subTemperature0 = 0.0_pReal
+ allocate(crystallite_symmetryID(gMax,iMax,eMax));                       crystallite_symmetryID = 0.0_pReal !NEW
  allocate(crystallite_subF(3,3,gMax,iMax,eMax));                               crystallite_subF = 0.0_pReal
  allocate(crystallite_subF0(3,3,gMax,iMax,eMax));                             crystallite_subF0 = 0.0_pReal
  allocate(crystallite_subFp0(3,3,gMax,iMax,eMax));                           crystallite_subFp0 = 0.0_pReal
@@ -263,6 +276,30 @@ subroutine crystallite_init(Temperature)
  enddo
  !$OMPEND PARALLEL DO
 
+! Initialize crystallite_symmetryID(g,i,e)
+!$OMP PARALLEL DO 
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+      do g = 1,homogenization_Ngrains(mesh_element(3,e))
+         myPhase = material_phase(g,i,e)
+         select case (phase_constitution(myPhase))
+                case (constitutive_phenopowerlaw_label)
+                  myStructure = constitutive_phenopowerlaw_structure(phase_constitutionInstance(myPhase))
+                case (constitutive_dislotwin_label)
+                  myStructure = constitutive_dislotwin_structure(phase_constitutionInstance(myPhase))
+                case (constitutive_nonlocal_label)
+                  myStructure = constitutive_nonlocal_structure(phase_constitutionInstance(myPhase))
+                case default
+                  myStructure = -1_pInt ! does this happen for j2 material?
+              end select
+         if (myStructure>0_pInt) then   
+           crystallite_symmetryID(g,i,e)=lattice_symmetryTypes(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2  
+         endif
+      enddo
+    enddo
+  enddo
+!$OMPEND PARALLEL DO         
+ 
   call crystallite_orientations()
   crystallite_orientation0=crystallite_orientation  ! Store initial orientations for calculation of grain rotations
 
@@ -289,6 +326,7 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subF:                  ', shape(crystallite_subF)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subTemperature0:       ', shape(crystallite_subTemperature0)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_symmetryID:            ', shape(crystallite_symmetryID)             !NEW
     write(6,'(a35,x,7(i5,x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
@@ -300,7 +338,7 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
     write(6,'(a35,x,7(i5,x))') 'crystallite_fallbackdPdF:          ', shape(crystallite_fallbackdPdF)
     write(6,'(a35,x,7(i5,x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_orientation0:          ', shape(crystallite_orientation)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_orientation0:          ', shape(crystallite_orientation0)
     write(6,'(a35,x,7(i5,x))') 'crystallite_rotation:              ', shape(crystallite_rotation)
     write(6,'(a35,x,7(i5,x))') 'crystallite_misorientation:        ', shape(crystallite_misorientation)
     write(6,'(a35,x,7(i5,x))') 'crystallite_dt:                    ', shape(crystallite_dt)
@@ -1518,7 +1556,7 @@ use math, only:                       math_pDecomposition, &
 use FEsolving, only:                  FEsolving_execElem, & 
                                       FEsolving_execIP
 use IO, only:                         IO_warning
-use lattice, only:                    lattice_symmetryTypes
+!use lattice, only:                    lattice_symmetryTypes
 use material, only:                   material_phase, &
                                       homogenization_Ngrains, &
                                       phase_constitution, &
@@ -1544,13 +1582,11 @@ integer(pInt)                   e, &                          ! element index
                                 i, &                          ! integration point index
                                 g, &                          ! grain index
                                 n, &                          ! neighbor index 
-                                myPhase, &                    ! phase
-                                myStructure, &                ! lattice structure
+                                myPhase, &                    ! phase         
                                 neighboring_e, &              ! element index of my neighbor
                                 neighboring_i, &              ! integration point index of my neighbor
                                 neighboringPhase, &           ! phase of my neighbor
-                                neighboringStructure, &       ! lattice structure of my neighbor
-                                symmetryType                  ! type of crystal symmetry
+                                neighboringStructure          ! lattice structure of my neighbor
 real(pReal), dimension(3,3) ::  U, R
 logical error
 
@@ -1569,23 +1605,9 @@ logical error
           crystallite_orientation(:,g,i,e) = math_RtoQuaternion(R)
         endif
 
-        myPhase = material_phase(g,i,e)
-        select case (phase_constitution(myPhase))
-          case (constitutive_phenopowerlaw_label)
-            myStructure = constitutive_phenopowerlaw_structure(phase_constitutionInstance(myPhase))
-          case (constitutive_dislotwin_label)
-            myStructure = constitutive_dislotwin_structure(phase_constitutionInstance(myPhase))
-          case (constitutive_nonlocal_label)
-            myStructure = constitutive_nonlocal_structure(phase_constitutionInstance(myPhase))
-          case default
-            myStructure = ''
-        end select
-
-        ! calculate grain rotation
-        symmetryType=lattice_symmetryTypes(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2
-        call math_misorientation( crystallite_rotation(:,g,i,e), &
-                                  crystallite_orientation(:,g,i,e), crystallite_orientation0(:,g,i,e), &
-                                  symmetryType)
+        call math_misorientation( crystallite_rotation(:,g,i,e), &                    ! calculate grainrotation
+                  crystallite_orientation(:,g,i,e), crystallite_orientation0(:,g,i,e), &
+                  crystallite_symmetryID(g,i,e))  
 
       enddo
     enddo
@@ -1598,8 +1620,8 @@ logical error
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       myPhase = material_phase(1,i,e)                                               ! get my crystal structure
       if (phase_constitution(myPhase) == constitutive_nonlocal_label) then          ! if nonlocal model
-        myStructure = constitutive_nonlocal_structure(phase_constitutionInstance(myPhase))
-        do n = 1,FE_NipNeighbors(mesh_element(2,e))                                   ! loop through my neighbors
+
+        do n = 1,FE_NipNeighbors(mesh_element(2,e))                                 ! loop through my neighbors
           
           neighboring_e = mesh_ipNeighborhood(1,n,i,e)
           neighboring_i = mesh_ipNeighborhood(2,n,i,e)
@@ -1609,11 +1631,10 @@ logical error
             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)          ! get my neighbor's crystal structure               
             if (myPhase == neighboringPhase) then                                     ! if my neighbor has same phase like me
             
-              symmetryType=lattice_symmetryTypes(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2
               call math_misorientation( crystallite_misorientation(:,n,1,i,e), &
                                         crystallite_orientation(:,1,i,e), &
                                         crystallite_orientation(:,1,neighboring_i,neighboring_e), & 
-                                        symmetryType)                                 ! calculate misorientation
+                                        crystallite_symmetryID(g,i,e))                ! calculate misorientation
             
             else                                                                      ! for neighbor with different phase
               crystallite_misorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! set misorientation to maximum
