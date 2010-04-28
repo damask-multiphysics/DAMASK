@@ -60,7 +60,7 @@ real(pReal), dimension (:,:,:,:,:), allocatable :: &
     crystallite_partionedLp0,&           ! plastic velocity grad at start of homog inc
     crystallite_subLp0,&                 ! plastic velocity grad at start of crystallite inc
     crystallite_P, &                     ! 1st Piola-Kirchhoff stress per grain
-    crystallite_misorientation           ! misorientation between two neighboring ips (only calculated for single grain IPs)
+    crystallite_disorientation           ! disorientation between two neighboring ips (only calculated for single grain IPs)
 real(pReal), dimension (:,:,:,:,:,:,:), allocatable :: &
     crystallite_dPdF, &                  ! individual dPdF per grain
     crystallite_fallbackdPdF             ! dPdF fallback for non-converged grains (elastic prediction)
@@ -340,7 +340,7 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
     write(6,'(a35,x,7(i5,x))') 'crystallite_orientation0:          ', shape(crystallite_orientation0)
     write(6,'(a35,x,7(i5,x))') 'crystallite_rotation:              ', shape(crystallite_rotation)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_misorientation:        ', shape(crystallite_misorientation)
+    write(6,'(a35,x,7(i5,x))') 'crystallite_disorientation:        ', shape(crystallite_disorientation)
     write(6,'(a35,x,7(i5,x))') 'crystallite_dt:                    ', shape(crystallite_dt)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subdt:                 ', shape(crystallite_subdt)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subFrac:               ', shape(crystallite_subFrac)
@@ -621,7 +621,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             if (crystallite_todo(g,i,e)) then                                                       ! all undone crystallites
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                 crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                                crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)
+                                                crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)
             endif
       enddo; enddo; enddo
     !$OMPEND PARALLEL DO
@@ -712,7 +712,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             if (crystallite_todo(g,i,e)) then                                                     ! all undone crystallites
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                 crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                                crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)                
+                                                crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)                
               delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
               delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
               dot_prod12 = dot_product(delta_dotState1, delta_dotState2)
@@ -869,7 +869,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                           constitutive_dotState(g,i,e)%p = 0.0_pReal
                           call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                             crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), &
-                                                            crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
+                                                            crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
                                                             g,i,e)
                           stateConverged = crystallite_updateState(g,i,e)                                 ! update state
                           temperatureConverged = crystallite_updateTemperature(g,i,e)                     ! update temperature
@@ -998,7 +998,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                 if (crystallite_todo(g,i,e)) then
                   call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                     crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                                    crystallite_misorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
+                                                    crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
                                                     g,i,e)                                        ! collect dot state
                   delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
                   delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
@@ -1348,11 +1348,11 @@ endsubroutine
  ! inversion of Fp_current...
  invFp_current = math_inv3x3(Fp_current)                            
  if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
-   if (verboseDebugger) then 
+   if (verboseDebugger .and. selectiveDebugger) then 
      !$OMP CRITICAL (write2out)
        write(6,*) '::: integrateStress failed on invFp_current inversion',g,i,e
        write(6,*)
-       write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
+       write(6,'(a11,i3,x,i2,x,i5,/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
      !$OMPEND CRITICAL (write2out)
    endif
    return
@@ -1406,10 +1406,10 @@ LpLoop: do
    if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
    if (verboseDebugger .and. selectiveDebugger) then
      !$OMP CRITICAL (write2out)
-       write(6,*) '::: integrateStress at ' ,g,i,e, ' ; iteration ', NiterationStress
+       write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress at ' ,g,i,e, ' ; iteration ', NiterationStress
        write(6,*)
-       write(6,'(a,/,3(3(f20.7,x)/))') 'Lp_constitutive', Lp_constitutive
-       write(6,'(a,/,3(3(f20.7,x)/))') 'Lpguess', Lpguess
+       write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive', Lp_constitutive
+       write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess', Lpguess
      !$OMPEND CRITICAL (write2out)
    endif
 
@@ -1430,7 +1430,7 @@ LpLoop: do
    if (any(residuum/=residuum) .and. leapfrog == 1.0) then
      if (verboseDebugger) then 
        !$OMP CRITICAL (write2out)
-         write(6,*) '::: integrateStress encountered NaN at ',g,i,e,' ; iteration ', NiterationStress
+         write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress encountered NaN at ',g,i,e,' ; iteration ', NiterationStress
        !$OMPEND CRITICAL (write2out)
      endif
      return
@@ -1462,14 +1462,14 @@ LpLoop: do
        invdRdLp = 0.0_pReal
        call math_invert(9,dRdLp,invdRdLp,dummy,error)               ! invert dR/dLp --> dLp/dR
        if (error) then
-         if (verboseDebugger) then
+         if (verboseDebugger .and. selectiveDebugger) then
            !$OMP CRITICAL (write2out)
-             write(6,*) '::: integrateStress failed on dR/dLp inversion at ',g,i,e,' ; iteration ', NiterationStress
+             write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on dR/dLp inversion at ',g,i,e,' ; iteration ', NiterationStress
              write(6,*)
-             write(6,'(a,/,9(9(f15.3,x)/))') 'dRdLp',dRdLp
-             write(6,'(a,/,9(9(f15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
-             write(6,'(a,/,3(3(f20.7,x)/))') 'Lp_constitutive',Lp_constitutive
-             write(6,'(a,/,3(3(f20.7,x)/))') 'Lpguess',Lpguess
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
+             write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive',Lp_constitutive
+             write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess',Lpguess
            !$OMPEND CRITICAL (write2out)
          endif
          return
@@ -1495,9 +1495,9 @@ LpLoop: do
  invFp_new = invFp_new/math_det3x3(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
  call math_invert3x3(invFp_new,Fp_new,det,error)
  if (error) then
-   if (verboseDebugger) then
+   if (verboseDebugger .and. selectiveDebugger) then
      !$OMP CRITICAL (write2out)
-       write(6,*) '::: integrateStress failed on invFp_new inversion at ',g,i,e,' ; iteration ', NiterationStress
+       write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on invFp_new inversion at ',g,i,e,' ; iteration ', NiterationStress
        write(6,*)
        write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
      !$OMPEND CRITICAL (write2out)
@@ -1523,7 +1523,7 @@ LpLoop: do
  crystallite_integrateStress = .true.
  if (verboseDebugger .and. selectiveDebugger) then 
    !$OMP CRITICAL (write2out)
-   write(6,*) '::: integrateStress converged at ',g,i,e,' ; iteration ', NiterationStress
+   write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress converged at ',g,i,e,' ; iteration ', NiterationStress
    write(6,*)
    write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',crystallite_P(:,:,g,i,e)/1e6
    write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',crystallite_Lp(:,:,g,i,e)
@@ -1542,7 +1542,7 @@ LpLoop: do
  
  
 !********************************************************************
-! calculates orientations and misorientations (in case of single grain ips)
+! calculates orientations and disorientations (in case of single grain ips)
 !******************************************************************** 
 subroutine crystallite_orientations()
   
@@ -1551,12 +1551,11 @@ use prec, only:                       pInt, &
                                       pReal
 use math, only:                       math_pDecomposition, &
                                       math_RtoQuaternion, &
-                                      math_misorientation, &
+                                      math_QuaternionDisorientation, &
                                       inDeg
 use FEsolving, only:                  FEsolving_execElem, & 
                                       FEsolving_execIP
 use IO, only:                         IO_warning
-!use lattice, only:                    lattice_symmetryTypes
 use material, only:                   material_phase, &
                                       homogenization_Ngrains, &
                                       phase_constitution, &
@@ -1597,7 +1596,7 @@ logical error
       do g = 1,homogenization_Ngrains(mesh_element(3,e))
 
         ! calculate orientation in terms of rotation matrix and euler angles
-        call math_pDecomposition(crystallite_Fe(:,:,g,i,e), U, R, error)              ! polar decomposition of Fe
+        call math_pDecomposition(crystallite_Fe(:,:,g,i,e), U, R, error)             ! polar decomposition of Fe
         if (error) then
           call IO_warning(650, e, i, g)
           crystallite_orientation(:,g,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! fake orientation
@@ -1605,9 +1604,10 @@ logical error
           crystallite_orientation(:,g,i,e) = math_RtoQuaternion(R)
         endif
 
-        call math_misorientation( crystallite_rotation(:,g,i,e), &                    ! calculate grainrotation
-                  crystallite_orientation(:,g,i,e), crystallite_orientation0(:,g,i,e), &
-                  crystallite_symmetryID(g,i,e))  
+        crystallite_rotation(:,g,i,e) = &
+          math_QuaternionDisorientation( crystallite_orientation(:,g,i,e), &         ! calculate grainrotation
+                                         crystallite_orientation0(:,g,i,e), &
+                                         crystallite_symmetryID(g,i,e) )  
 
       enddo
     enddo
@@ -1631,17 +1631,17 @@ logical error
             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)          ! get my neighbor's crystal structure               
             if (myPhase == neighboringPhase) then                                     ! if my neighbor has same phase like me
             
-              call math_misorientation( crystallite_misorientation(:,n,1,i,e), &
-                                        crystallite_orientation(:,1,i,e), &
-                                        crystallite_orientation(:,1,neighboring_i,neighboring_e), & 
-                                        crystallite_symmetryID(g,i,e))                ! calculate misorientation
+              crystallite_disorientation(:,n,1,i,e) = &
+                math_QuaternionDisorientation( crystallite_orientation(:,1,i,e), &
+                                               crystallite_orientation(:,1,neighboring_i,neighboring_e), & 
+                                               crystallite_symmetryID(1,i,e))         ! calculate disorientation
             
             else                                                                      ! for neighbor with different phase
-              crystallite_misorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! set misorientation to maximum
+              crystallite_disorientation(:,n,1,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! identity "rotation"
               
             endif
           else                                                                        ! no existing neighbor
-            crystallite_misorientation(:,n,1,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! set misorientation to zero
+            crystallite_disorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! homomorphic identity
           endif
         enddo
       endif
@@ -1729,7 +1729,7 @@ function crystallite_postResults(&
  crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e); c = c+1_pInt  ! size of constitutive results
  crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = &
          constitutive_postResults(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                  crystallite_Temperature(g,i,e), crystallite_misorientation(:,:,g,i,e), dt, &
+                                  crystallite_Temperature(g,i,e), crystallite_disorientation(:,:,g,i,e), dt, &
                                   crystallite_subdt(g,i,e), g, i, e)
  c = c + constitutive_sizePostResults(g,i,e)
  

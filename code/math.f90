@@ -68,7 +68,8 @@
 
 ! Symmetry operations as quaternions
 ! 24 for cubic, 12 for hexagonal = 36
-real(pReal), dimension(4,36), parameter :: symOperations = &
+integer(pInt), dimension(2), parameter :: math_NsymOperations = (/24,12/)
+real(pReal), dimension(4,36), parameter :: math_symOperations = &
   reshape((/&
      1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! cubic symmetry operations
      0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal, &       !     2-fold symmetry
@@ -145,48 +146,6 @@ real(pReal), dimension(4,36), parameter :: symOperations = &
  ENDSUBROUTINE
  
 
-
-!**************************************************************************
-! calculates the misorientation for 2 orientations Q1 and Q2 (needs quaternions)
-!**************************************************************************
-subroutine math_misorientation(dQ, Q1, Q2, symmetryType)
-
-  use prec, only: pReal, pInt
-  use IO,   only: IO_warning
-  implicit none
-  
-  !*** input variables 
-  real(pReal), dimension(4), intent(in) ::      Q1, &                       ! 1st orientation
-                                                Q2                          ! 2nd orientation
-  integer(pInt), intent(in) ::                  symmetryType                ! Type of crystal symmetry; 1:cubic, 2:hexagonal
-  
-  !*** output variables
-  real(pReal), dimension(4), intent(out) ::     dQ                          ! misorientation
-  
-  !*** local variables
-  real(pReal), dimension(4) ::                  this_dQ                     ! candidate for misorientation
-  integer(pInt)                                 s
-  integer(pInt), dimension(2), parameter ::     NsymOperations = (/24,12/)  ! number of possible symmetry operations
-  real(pReal), dimension(:,:), allocatable ::   mySymOperations             ! symmetry Operations for my crystal symmetry
-  
-  dQ = 0.0_pReal
-    
-  if (symmetryType < 1_pInt .or. symmetryType > 2_pInt) then
-    dQ=NaN 
-    !call IO_warning(700)
-    return
-  endif    
-  
-  allocate(mySymOperations(4,NsymOperations(symmetryType)))
-  mySymOperations = symOperations(:,sum(NsymOperations(1:symmetryType-1))+1:sum(NsymOperations(1:symmetryType)))                    ! choose symmetry operations according to crystal symmetry
-  
-  dQ(1) = -1.0_pReal                                                                                                                ! start with maximum misorientation angle 
-  do s = 1,NsymOperations(symmetryType)                                                                                             ! loop ver symmetry operations    
-    this_dQ = math_qMul( math_qConj(Q1), math_qMul(mySymOperations(:,s),Q2) )                                                       ! misorientation candidate from Q1^-1*(sym*Q2)
-    if (this_dQ(1) > dQ(1)) dQ = this_dQ                                                                                            ! store if misorientation angle is smaller (cos is larger) than previous one
-  enddo
-  
-endsubroutine
 
 
 
@@ -1446,6 +1405,25 @@ pure function math_transpose3x3(A)
 
  ENDFUNCTION
 
+!********************************************************************
+! Rodrigues vector (x, y, z) from quaternion (w+ix+jy+kz)
+!********************************************************************
+ PURE FUNCTION math_QuaternionToRodrig(Q)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) :: Q
+ real(pReal), dimension(3) :: math_QuaternionToRodrig
+
+ if (Q(1) /= 0.0_pReal) then
+   math_QuaternionToRodrig = Q(2:4)/Q(1)
+ else
+   math_QuaternionToRodrig = NaN
+ endif
+
+ ENDFUNCTION
+
 
 !****************************************************************
 ! rotation matrix from axis and angle (in radians)  
@@ -1489,22 +1467,100 @@ pure function math_transpose3x3(A)
 !**************************************************************************
 ! disorientation angle between two sets of Euler angles
 !**************************************************************************
- pure function math_disorient(EulerA,EulerB)
+ pure function math_EulerMisorientation(EulerA,EulerB)
 
  use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) :: EulerA,EulerB
  real(pReal), dimension(3,3) :: r
- real(pReal) math_disorient, tr
+ real(pReal) math_EulerMisorientation, tr
 
  r = math_mul33x33(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
 
  tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
- math_disorient = abs(0.5_pReal*pi-asin(tr))
+ math_EulerMisorientation = abs(0.5_pReal*pi-asin(tr))
  return
 
  ENDFUNCTION
+
+!**************************************************************************
+! figures whether quat falls into stereographicc standard triangle
+!**************************************************************************
+pure function math_QuaternionInSST(Q, symmetryType)
+
+  use prec, only: pReal, pInt
+  implicit none
+
+  !*** input variables 
+  real(pReal), dimension(4), intent(in) ::      Q                           ! orientation
+  integer(pInt), intent(in) ::                  symmetryType                ! Type of crystal symmetry; 1:cubic, 2:hexagonal
+
+  !*** output variables
+  logical                                       math_QuaternionInSST
+  
+  !*** local variables
+  real(pReal), dimension(3) ::                  Rodrig                      ! Rodrigues vector of Q
+ 
+  Rodrig = math_QuaternionToRodrig(Q)
+  select case (symmetryType)
+    case (1)
+      math_QuaternionInSST = Rodrig(1) > Rodrig(2) .and. &
+                             Rodrig(2) > Rodrig(3) .and. &
+                             Rodrig(3) > 0.0_pReal
+    case (2)
+      math_QuaternionInSST = Rodrig(1) > dsqrt(3.0_pReal)*Rodrig(2) .and. &
+                             Rodrig(2) > 0.0_pReal .and. &
+                             Rodrig(3) > 0.0_pReal
+    case default
+      math_QuaternionInSST = .true.
+  end select
+  
+endfunction
+
+!**************************************************************************
+! calculates the disorientation for 2 orientations Q1 and Q2 (needs quaternions)
+!**************************************************************************
+pure function math_QuaternionDisorientation(Q1, Q2, symmetryType)
+
+  use prec, only: pReal, pInt
+  use IO,   only: IO_warning
+  implicit none
+  
+  !*** input variables 
+  real(pReal), dimension(4), intent(in) ::      Q1, &                       ! 1st orientation
+                                                Q2                          ! 2nd orientation
+  integer(pInt), intent(in) ::                  symmetryType                ! Type of crystal symmetry; 1:cubic, 2:hexagonal
+  
+  !*** output variables
+  real(pReal), dimension(4) ::                  math_QuaternionDisorientation         ! disorientation
+  
+  !*** local variables
+  real(pReal), dimension(4) ::                  dQ,dQsymA,mis
+  integer(pInt)                                 i,j,k,s
+  
+  dQ = math_qMul(math_qConj(Q1),Q2)
+  math_QuaternionDisorientation = dQ
+    
+  if (symmetryType > 0_pInt .and. symmetryType <= 2_pInt) then
+    s = sum(math_NsymOperations(1:symmetryType-1))
+    do i = 1,2
+      dQ = math_qConj(dQ)                                     ! switch order of "from -- to"
+      do j = 1,math_NsymOperations(symmetryType)              ! run through first crystals symmetries
+        dQsymA = math_qMul(math_symOperations(:,s+j),dQ)      ! apply sym
+        do k = 1,math_NsymOperations(symmetryType)            ! run through 2nd crystals symmetries
+          mis = math_qMul(dQsymA,math_symOperations(:,s+k))   ! apply sym
+          if (mis(1) < 0) &                                   ! want positive angle
+            mis = -mis
+          if (mis(1)-math_QuaternionDisorientation(1) > -1e-8_pReal .and. &
+              math_QuaternionInSST(mis,symmetryType)) &
+            math_QuaternionDisorientation = mis               ! found better one
+    enddo; enddo; enddo
+  endif
+  
+  
+endfunction
+
 
 
 !********************************************************************
@@ -1557,7 +1613,7 @@ endif
    disturb(1) = scatter * rnd(1)                                                      ! phi1
    disturb(2) = sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)) ! Phi
    disturb(3) = scatter * rnd(2)                                                      ! phi2
-   if (rnd(5) <= exp(-1.0_pReal*(math_disorient(origin,disturb)/scatter)**2)) exit   
+   if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(origin,disturb)/scatter)**2)) exit   
  enddo
 
  math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
