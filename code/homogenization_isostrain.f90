@@ -55,7 +55,7 @@ subroutine homogenization_isostrain_init(&
  character(len=1024) line
  
     write(6,*)
-    write(6,'(a20,a20,a12)') '<<<+-  homogenization',homogenization_isostrain_label,' init  -+>>>'
+    write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_isostrain_label,' init  -+>>>'
     write(6,*) '$Id$'
     write(6,*)
 

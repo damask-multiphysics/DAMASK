@@ -60,7 +60,7 @@ subroutine homogenization_RGC_init(&
  character(len=1024) line
 
     write(6,*)
-    write(6,'(a20,a20,a12)') '<<<+-  homogenization',homogenization_RGC_label,' init  -+>>>'
+    write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_RGC_label,' init  -+>>>'
     write(6,*) '$Id$'
     write(6,*)
 
