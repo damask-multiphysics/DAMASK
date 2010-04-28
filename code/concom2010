@@ -22,9 +22,9 @@ integer(pInt) &
  ishrink,    ioffsflg,  isetoff,    ioffsetm,iharmt,     inc_incdat,  iautspc,   ibrake,     icbush,  istream_input,&
  iprsinp,    ivlsinp,   ifirst_time,ipin_m,  jgnstr_glb, imarc_return,iqvcinp,   nqvceid,    istpnx,  imicro1,&
  iaxisymm,   jbreakglue,iglstif,    jfastasm,iwear,      iwearcf,     imixmeth,  ielcmadyn,  idinout, igena_meth,&
- magf_meth,  nofsopt,   non_assumed
+ magf_meth,  non_assumed
 integer(pInt) num_concom
-parameter(num_concom=232)
+parameter(num_concom=231)
 common/marc_concom/&
  iacous,      iasmbl,    iautth,     ibear,   icompl,     iconj,       icreep,    ideva(60),  idyn,    idynt,&
  ielas,       ielcma,    ielect,     iform,   ifour,      iharm,       ihcps,     iheat,      iheatt,  ihresp,&
@@ -43,7 +43,7 @@ common/marc_concom/&
  ishrink,     ioffsflg,  isetoff,    ioffsetm,iharmt,     inc_incdat,  iautspc,   ibrake,     icbush , istream_input,&
  iprsinp,     ivlsinp,   ifirst_time,ipin_m,  jgnstr_glb, imarc_return,iqvcinp,   nqvceid,    istpnx,  imicro1,&
  iaxisymm,    jbreakglue,iglstif,    jfastasm,iwear,      iwearcf,     imixmeth,  ielcmadyn,  idinout,igena_meth,&
- magf_meth,   nofsopt,   non_assumed
+ magf_meth,   non_assumed
 !
 ! comments of variables:
 !
@@ -114,6 +114,11 @@ common/marc_concom/&
 !       50      generate a file containing the resistance or capacity matrix;
 !               this file can be used to compare results with a reference file
 !       51      print out detailed information for segment-to-segment contact
+!       52      print out detailed relative displacement information 
+!               for uniaxial sliding contact
+!       53      print out detailed sliding direction information for 
+!               uniaxial sliding contact
+!       54      print out detailed information for edges attached to a curve
 !
 !
 ! jactch        = 1 or 2 if elements are activated or deactivated
@@ -189,6 +194,6 @@ common/marc_concom/&
 ! magf_meth     =    - Method to compute force in magnetostatic - structural
 !               = 1  - Virtual work method 
 !               = 2  - Maxwell stress tensor
-! non_assumed   = 1  no assumed strain formulation (forced), for Sol400 only
+! non_assumed   = 1  no assumed strain formulation (forced)
 !
 !***********************************************************************
