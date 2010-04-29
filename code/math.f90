@@ -1386,23 +1386,16 @@ pure function math_transpose3x3(A)
  real(pReal) halfAngle, sinHalfAngle
  real(pReal), dimension(4) :: math_QuaternionToAxisAngle  
 
- halfAngle=acos(Q(1))
- sinHalfAngle=sin(halfAngle)
-
- math_QuaternionToAxisAngle(1)=Q(2)/sinHalfAngle
- math_QuaternionToAxisAngle(2)=Q(3)/sinHalfAngle
- math_QuaternionToAxisAngle(3)=Q(4)/sinHalfAngle
-! Remark: the above calculations gives problems 
-! for HalfAngle->0, i.e. for very small rotation angles
-! and always at inrement 0 where identical orientations 
-! are compared in the calculation of the grainrotation; 
-! the correct interpretation of these special cases 
-! is left to the postprocessing. 
-! A possible integrity check would be to check for 
-! the unit length of the resulting axis.
-
- math_QuaternionToAxisAngle(4)=halfAngle*2.0_pReal*inDeg
-
+ halfAngle = dacos(Q(1))                             ! value range 0 to 180 deg
+ sinHalfAngle = dsin(halfAngle)
+ 
+ if (sinHalfAngle <= 1.0e-4_pReal) then             ! very small rotation angle?
+   math_QuaternionToAxisAngle = 0.0_pReal
+ else
+   math_QuaternionToAxisAngle(1:3) = Q(2:4)/sinHalfAngle
+   math_QuaternionToAxisAngle(4) = halfAngle*2.0_pReal*inDeg
+ endif
+ 
  ENDFUNCTION
 
 !********************************************************************
