@@ -34,7 +34,8 @@ real(pReal), dimension (:,:,:), allocatable :: &
     crystallite_subStep, &               ! size of next integration step
     crystallite_Temperature, &           ! Temp of each grain
     crystallite_partionedTemperature0, & ! Temp of each grain at start of homog inc
-    crystallite_subTemperature0          ! Temp of each grain at start of crystallite inc
+    crystallite_subTemperature0, &       ! Temp of each grain at start of crystallite inc
+    crystallite_statedamper              ! damping for state update
 real(pReal), dimension (:,:,:,:), allocatable :: &
     crystallite_Tstar_v, &               ! current 2nd Piola-Kirchhoff stress vector (end of converged time step)
     crystallite_Tstar0_v, &              ! 2nd Piola-Kirchhoff stress vector at start of FE inc
@@ -64,8 +65,6 @@ real(pReal), dimension (:,:,:,:,:), allocatable :: &
 real(pReal), dimension (:,:,:,:,:,:,:), allocatable :: &
     crystallite_dPdF, &                  ! individual dPdF per grain
     crystallite_fallbackdPdF             ! dPdF fallback for non-converged grains (elastic prediction)
-real(pReal) &
-    crystallite_statedamper              ! damping for state update
 logical, dimension (:,:,:), allocatable :: &
     crystallite_localConstitution, &     ! indicates this grain to have purely local constitutive law
     crystallite_requested, &             ! flag to request crystallite calculation
@@ -130,7 +129,6 @@ subroutine crystallite_init(Temperature)
  integer(pInt)               myStructure, &                ! lattice structure 
                              myPhase
  
- 
  gMax = homogenization_maxNgrains
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
@@ -170,6 +168,7 @@ subroutine crystallite_init(Temperature)
  allocate(crystallite_subdt(gMax,iMax,eMax));                                 crystallite_subdt = 0.0_pReal
  allocate(crystallite_subFrac(gMax,iMax,eMax));                             crystallite_subFrac = 0.0_pReal
  allocate(crystallite_subStep(gMax,iMax,eMax));                             crystallite_subStep = 0.0_pReal
+ allocate(crystallite_statedamper(gMax,iMax,eMax));                     crystallite_statedamper = 1.0_pReal
  allocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
  allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
  allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
@@ -535,7 +534,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           do g = 1,myNgrains
             selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g) 
             if (crystallite_converged(g,i,e)) then
-              if (verboseDebugger .and. selectiveDebugger) then
+              if (debugger .and. selectiveDebugger) then
                 !$OMP CRITICAL (write2out)
                   write(6,'(a21,f10.8,a32,f10.8,a35)') 'winding forward from ', &
                     crystallite_subFrac(g,i,e),' to current crystallite_subfrac ', &
@@ -567,7 +566,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               crystallite_Lp(:,:,g,i,e)     = crystallite_subLp0(:,:,g,i,e)                         ! ...plastic velocity grad
               constitutive_state(g,i,e)%p   = constitutive_subState0(g,i,e)%p                       ! ...microstructure
               crystallite_Tstar_v(:,g,i,e)  = crystallite_subTstar0_v(:,g,i,e)                      ! ...2nd PK stress
-              if (verboseDebugger .and. selectiveDebugger) then
+              if (debugger .and. selectiveDebugger) then
                 !$OMP CRITICAL (write2out)
                   write(6,'(a78,f10.8)') 'cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
                                          crystallite_subStep(g,i,e)
@@ -603,6 +602,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                          ! iterate over IPs of this element to be processed
           do g = 1,myNgrains
+            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g) 
             if (crystallite_todo(g,i,e)) then                                                       ! all undone crystallites
               call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
                                                crystallite_Fp, g, i, e)                             ! update dependent state variables to be consistent with basic states
@@ -700,9 +700,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             endif
       enddo; enddo; enddo
       !$OMPEND PARALLEL DO
-
+      
       crystallite_statedamper = 1.0_pReal
-
+      
       !$OMP PARALLEL DO
       do e = FEsolving_execElem(1),FEsolving_execElem(2)                                          ! iterate over elements to be processed
         myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -720,9 +720,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               if (      dot_prod22 > 0.0_pReal &
                   .and. (     dot_prod12 < 0.0_pReal &
                          .or. dot_product(constitutive_dotState(g,i,e)%p, constitutive_previousDotState(g,i,e)%p) < 0.0_pReal) ) &
-                crystallite_statedamper = min(crystallite_statedamper, &
-                                              0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22) )
-              endif
+                crystallite_statedamper(g,i,e) = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
+            endif
       enddo; enddo; enddo
       !$OMPEND PARALLEL DO
 
@@ -1007,8 +1006,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   if (      dot_prod22 > 0.0_pReal &
                       .and. (     dot_prod12 < 0.0_pReal &
                              .or. dot_product(constitutive_dotState(g,i,e)%p, constitutive_previousDotState(g,i,e)%p) < 0.0_pReal))&
-                    crystallite_statedamper = min(crystallite_statedamper, &
-                                                  0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22) )
+                    crystallite_statedamper(g,i,e) = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
                 endif
           enddo; enddo; enddo
         !$OMPEND PARALLEL DO
@@ -1125,8 +1123,8 @@ endsubroutine
  mySize = constitutive_sizeDotState(g,i,e)
 
  ! correct my dotState 
- constitutive_dotState(g,i,e)%p(1:mySize) = constitutive_dotState(g,i,e)%p(1:mySize) * crystallite_statedamper &
-                                          + constitutive_previousDotState(g,i,e)%p(1:mySize) * (1.0_pReal-crystallite_statedamper)
+ constitutive_dotState(g,i,e)%p(1:mySize) = constitutive_dotState(g,i,e)%p(1:mySize) * crystallite_statedamper(g,i,e) &
+                                     + constitutive_previousDotState(g,i,e)%p(1:mySize) * (1.0_pReal-crystallite_statedamper(g,i,e))
  ! calculate the residuum
  residuum = constitutive_state(g,i,e)%p(1:mySize) - constitutive_subState0(g,i,e)%p(1:mySize) &
                                                   - constitutive_dotState(g,i,e)%p(1:mySize) * crystallite_subdt(g,i,e)
@@ -1159,7 +1157,7 @@ endsubroutine
        write(6,*) '::: updateState did not converge',g,i,e
      endif
      write(6,*)
-     write(6,'(a,f6.1)') 'crystallite_statedamper',crystallite_statedamper
+     write(6,'(a,f6.1)') 'crystallite_statedamper',crystallite_statedamper(g,i,e)
      write(6,*)
      write(6,'(a,/,12(e12.5,x))') 'dotState',constitutive_dotState(g,i,e)%p(1:mySize)
      write(6,*)
@@ -1558,17 +1556,15 @@ use FEsolving, only:                  FEsolving_execElem, &
 use IO, only:                         IO_warning
 use material, only:                   material_phase, &
                                       homogenization_Ngrains, &
-                                      phase_constitution, &
-                                      phase_constitutionInstance
+                                      phase_constitution
 use mesh, only:                       mesh_element, &
                                       mesh_ipNeighborhood, &
                                       FE_NipNeighbors
-use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
-                                      constitutive_phenopowerlaw_structure
-use constitutive_dislotwin, only:     constitutive_dislotwin_label, &
-                                      constitutive_dislotwin_structure
-use constitutive_nonlocal, only:      constitutive_nonlocal_label, &
-                                      constitutive_nonlocal_structure
+use debug, only:                      debugger, &
+                                      debug_e, debug_i, debug_g, &
+                                      verboseDebugger, &
+                                      selectiveDebugger
+use constitutive_nonlocal, only:      constitutive_nonlocal_label
 
 implicit none
 
@@ -1608,7 +1604,7 @@ logical error
           math_QuaternionDisorientation( crystallite_orientation(:,g,i,e), &         ! calculate grainrotation
                                          crystallite_orientation0(:,g,i,e), &
                                          crystallite_symmetryID(g,i,e) )  
-
+        
       enddo
     enddo
   enddo
@@ -1618,6 +1614,7 @@ logical error
   ! Another loop for nonlocal material which uses the orientations from the first one.
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+      selectiveDebugger = (e == debug_e .and. i == debug_i)
       myPhase = material_phase(1,i,e)                                               ! get my crystal structure
       if (phase_constitution(myPhase) == constitutive_nonlocal_label) then          ! if nonlocal model
 
@@ -1642,6 +1639,11 @@ logical error
             endif
           else                                                                        ! no existing neighbor
             crystallite_disorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! homomorphic identity
+          endif
+          if (verboseDebugger .and. selectiveDebugger) then
+            !$OMP CRITICAL (write2out)
+              write(6,'(a27,i2,a3,4(f12.5,x))') 'disorientation to neighbor ',n,' : ',crystallite_disorientation(:,n,1,i,e)
+            !$OMP END CRITICAL (write2out)
           endif
         enddo
       endif
