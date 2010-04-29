@@ -241,8 +241,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
         if (debugger) then
           !$OMP CRITICAL (write2out)
-            write(6,'(a,3(x,i4),/,4(3(e20.8,x),/))') 'aged state at', debug_g, debug_i, debug_e, &
-                                                                  constitutive_state(debug_g,debug_i,debug_e)%p
+            write(6,'(a,/,4(3(e20.8,x),/))') 'aged state at 1 1 1', constitutive_state(1,1,1)%p
           !$OMP END CRITICAL (write2out)
         endif
         do k = 1,mesh_NcpElems
