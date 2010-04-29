@@ -1386,7 +1386,7 @@ pure function math_transpose3x3(A)
  real(pReal) halfAngle, sinHalfAngle
  real(pReal), dimension(4) :: math_QuaternionToAxisAngle  
 
- halfAngle = dacos(Q(1))                             ! value range 0 to 180 deg
+ halfAngle = dacos(max(-1.0_pReal, min(1.0_pReal, Q(1))))                             ! value range 0 to 180 deg
  sinHalfAngle = dsin(halfAngle)
  
  if (sinHalfAngle <= 1.0e-4_pReal) then             ! very small rotation angle?
