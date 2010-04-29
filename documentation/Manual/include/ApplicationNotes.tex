@@ -1,0 +1,31 @@
+% #################
+\chapter{Application notes for different finite elements systems}
+% #################
+
+\section{MSC.MARC/Mentat}
+In MARC the CPFEM routine is interfaced through the {\ttfamily hypela2} subroutine. The routine {\ttfamily makeMe.py} produces the interface files such as {\ttfamily mpie\_cpfem\_marc2008r1.f90} that will can be called by the different MARC releases. 
+
+Necessary changes in the submit scripts
+
+Model definition for using the subroutine: In MARC, state variable 1 defines the temperature in Kelvin. State variables 2 and 3 define the homogenization and microstructure, respectively.
+
+Analysis options to invoke: Large Strain, Updated Lagrange. For most problems, using a constant dilatation formulation is important for robustness of the simulations. 
+%The analysis options are most conveniently defined through a procedure file.
+
+\subsection{Utility scripts}
+\begin{itemize}
+\item marcAddUserOutput.py [<No. of UserVars>] marcinput --- adds UserVariables to the marcinput file under the post section
+\end{itemize}
+
+\subsection{Practical hints}
+A copy of the subroutine on the home directory on the SAN makes the routine accessible from all workstations under /san/arbitraryfoldername/code/*.f90 .
+Under windows it is beneficial to keep an additional local copy of the routine to work with TortoiseSVN, since the change of folder icons seems to not work on the SAN. 
+
+
+\section{Troubleshooting}
+\subsection{Inside out element error}
+An inside out element error can occur if the number of increment is chosen too small. This was observed for revision 539 using the pheno-powerlaw constitutive formulation on a particle in mesh problem. 
+
+\section{Abaqus}
+Differences to Marc.
+
