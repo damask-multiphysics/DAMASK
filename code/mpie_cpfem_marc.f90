@@ -199,6 +199,8 @@ subroutine hypela2(&
    write (6,'(a,x,i6,x,i2)') '<< hypela2 >> first call special case..!',n(1),nn; call flush(6)
 !$OMP END CRITICAL (write2out)
 
+ else if (inc == 0 .and. lovl == 6) then                                  ! Marc2010 introduces second call (lovl=6) in inc 0
+     computationMode = 6                                                  !  --> just return known value
  else if (lovl == 4) then                                                 ! Marc requires stiffness in separate call
    if ( timinc < theDelta .and. theInc == inc ) then                      ! first after cutback
      computationMode = 7                                                  !  --> restore tangent and return
