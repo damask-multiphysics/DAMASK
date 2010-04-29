@@ -1634,7 +1634,7 @@ logical error
                                                crystallite_symmetryID(1,i,e))         ! calculate disorientation
             
             else                                                                      ! for neighbor with different phase
-              crystallite_disorientation(:,n,1,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! identity "rotation"
+              crystallite_disorientation(:,n,1,i,e) = (/0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal/) ! 180 degree rotation about 100 axis
               
             endif
           else                                                                        ! no existing neighbor
