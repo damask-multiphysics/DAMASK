@@ -99,10 +99,10 @@ In MARC the CPFEM routine is interfaced through the {\ttfamily hypela2} subrouti
 
 Necessary changes in the submit scripts
 
-Model definition for using the subroutine: In MARC, state variable 1 defines the temperature in Kelvin. State variables 2 and 3 define the microstructure and texture, respectively.
+Model definition for using the subroutine: In MARC, state variable 1 defines the temperature in Kelvin. State variables 2 and 3 define the homogenization and microstructure, respectively.
 
-Analysis options to invoke: Large Strain, Updated Lagrange. 
-% plan: The analysis options are most conveniently defined through the procedure file.
+Analysis options to invoke: Large Strain, Updated Lagrange. For most problems, using a constant dilatation formulation is important for robustness of the simulations. 
+%The analysis options are most conveniently defined through a procedure file.
 
 \subsection{Utility scripts}
 \begin{itemize}
