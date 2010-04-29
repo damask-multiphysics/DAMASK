@@ -1062,7 +1062,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    read (unit,610,END=620) line
    pos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_stringValue(line,pos,1)) == 'table' .and. pos(1) == 6) then
+   if ( IO_lc(IO_stringValue(line,pos,1)) == 'table' .and. pos(1) .GT. 5) then
      initialcondTableStyle = IO_intValue(line,pos,4)
      hypoelasticTableStyle = IO_intValue(line,pos,5)
      exit
