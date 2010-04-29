@@ -1,0 +1,181 @@
+\input{./header.tex}
+%\listfiles% outputs info about packages
+\bibpunct{(}{)}{,}{}{,}{,} % Zitierstil: {start}{ende}{multi-sep}{}{}...
+
+\newcommand{\marcinput}{<model>\_<job>.dat\xspace}
+
+\begin{document}
+% BLANK SPACES BEFORE AND AFTER SECTIONS ...
+% \@startsection {NAME}{LEVEL}{INDENT}{BEFORESKIP}{AFTERSKIP}{STYLE}
+%            optional * [ALTHEADING]{HEADING}
+%    Generic command to start a section.
+%    NAME       : e.g., 'subsection'
+%    LEVEL      : a number, denoting depth of section -- e.g., chapter=1,
+%                 section = 2, etc.  A section number will be printed if
+%                 and only if LEVEL < or = the value of the secnumdepth
+%                 counter.
+%    INDENT     : Indentation of heading from left margin
+%    BEFORESKIP : Absolute value = skip to leave above the heading.
+%                 If negative, then paragraph indent of text following
+%                 heading is suppressed.
+%    AFTERSKIP  : if positive, then skip to leave below heading,
+%                       else - skip to leave to right of run-in heading.
+%    STYLE      : commands to set style
+%  If '*' missing, then increments the counter.  If it is present, then
+%  there should be no [ALTHEADING] argument.  A sectioning command
+%  is normally defined to \@startsection + its first six arguments.
+
+%\renewcommand\section{\@startsection {section}{1}{\z@}{-3.5ex plus -1ex minus
+%    -.2ex}{2.3ex plus .2ex}{\Large\bf}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{-.5ex plus -.2ex minus
+   -.2ex}{.3ex plus .2ex}{\large\bf}} %\large\bf
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}{-.5ex plus
+-1ex minus -.2ex}{.2ex plus .5ex}{\normalsize\bf}}%\bf}}
+%\renewcommand\paragraph{\@startsection
+%     {paragraph}{4}{\z@}{3.25ex plus 1ex minus .2ex}{-1em}{\normalsize\bf}}
+%\renewcommand\subparagraph{\@startsection
+%     {subparagraph}{4}{\parindent}{3.25ex plus 1ex minus
+%     .2ex}{-1em}{\normalsize\bf}}
+%\renewcommand{\subsection}{\newpage \subsection}
+
+\input{./mpie_cpfem_macros}\newpage
+\input{titlepage.tex}\newpage
+%\input{titlepage}\cleardoublepage \phantomsection % set the hyperref anchor at the right position
+\addcontentsline{toc}{section}{Table of contents} %
+\tableofcontents
+%\listoftables \addcontentsline{toc}{section}{Tables} %
+%\listoffigures \addcontentsline{toc}{section}{Figures} %\newpage
+\renewcommand{\chaptermark}[1]{\markboth{{\thechapter\ \ #1}}{}}
+
+\chapter{Preliminaries}
+\section{Introduction}
+For the theory and some application examples, see \citet{Roters2010}.
+
+\section{History of the code}
+?, spaghetti version, 
+
+\input{svn_guide.tex}
+
+
+\section{Style guide for programming the CPFEM subroutine}
+Some hints
+\begin{itemize}
+\item This manual cannot substitute proper commenting in the Fortran code. Try to include as much comments as possible directly in the code. 
+\item When commenting, do not use cryptic comments such as \emph{Random is random!} -- an actual
+example from the code. 
+\end{itemize}
+
+
+\chapter{Organization of the code}
+
+
+\begin{figure}
+	\centering
+		\includegraphics[width=0.80\textwidth]{../../cpfem/documentation/NSD/crystallite_updateState.pdf}
+	\caption{updateState}
+	\label{fig:crystallite_updateState}
+\end{figure}
+
+
+\chapter{Homogenization schemes}
+%\section{Introduction}
+If more than one grain is simulated per integration point, a homogenization scheme is required to distribute the deformation gradient of the IP to the respective grains. The simplest choice is the \emph{isostrain approach} which simply consists in assuming the IP deformation gradient to be applicable directly to each grain. 
+%\section{Isostrain homogenization -- Taylor's assumption}
+%\section{RGC}
+
+cite RGC papers...
+
+\chapter{Constitutive Laws}
+\section{phenoPowerlaw}
+\subsection{The material file for phenoPowerlaw}
+\section{dislotwin}
+\section{The non-local model}
+
+\section{The material file: material.config}
+
+\chapter{Application notes for different finite elements systems}
+\section{MSC.MARC/Mentat}
+In MARC the CPFEM routine is interfaced through the {\ttfamily hypela2} subroutine. The routine {\ttfamily makeMe.py} produces the interface files such as {\ttfamily mpie\_cpfem\_marc2008r1.f90} that will can be called by the different MARC releases. 
+
+Necessary changes in the submit scripts
+
+Model definition for using the subroutine: In MARC, state variable 1 defines the temperature in Kelvin. State variables 2 and 3 define the microstructure and texture, respectively.
+
+Analysis options to invoke: Large Strain, Updated Lagrange. 
+% plan: The analysis options are most conveniently defined through the procedure file.
+
+\subsection{Utility scripts}
+\begin{itemize}
+\item marcAddUserOutput.py [<No. of UserVars>] \marcinput --- adds UserVariables to the \marcinput file under the "post" section
+\end{itemize}
+
+\subsection{Practical hints}
+A copy of the subroutine on the home directory on the SAN makes the routine accessible from all workstations under /san/arbitraryfoldername/code/*.f90 .
+Under windows it is beneficial to keep an additional local copy of the routine to work with TortoiseSVN, since the change of folder icons seems to not work on the SAN. 
+
+
+\section{Troubleshooting}
+\subsection{Inside out element error}
+An inside out element error can occur if the number of increment is chosen too small. This was observed for revision 539 using the pheno-powerlaw constitutive formulation on a particle in mesh problem. 
+
+\section{Abaqus}
+Differences to Marc.
+
+\chapter{Postprocessing of the results}
+mentat, py\_post, gri, ParaView, TSL-OIM
+
+\chapter{Worked examples}
+Refer to the corresponding publications ...
+
+
+
+\appendix \addcontentsline{toc}{chapter}{Appendix}
+\cleardoublepage \phantomsection % set the hyperref anchor at the right position
+
+\fancypagestyle{plain}
+{% Redefine "plain" style (e.g. for 1st side of chapters)
+\fancyhf{} % clear all header and footer fields
+\fancyfoot[ro,le]{\footnotesize\thepage}
+}
+
+\input{euler_angles.tex}\newpage
+
+\chapter{Related works}
+\section{Publications}
+
+\section{PhD thesises}
+KuoDiss MaDiss ZaafaraniDiss
+%
+% Quellenverzeichnis
+% http://www.cs.stir.ac.uk/~kjt/software/latex/showbst.html
+%\bibliographystyle{} %
+%\bibliographystyle{authordate3} %  EX: DEY, S.R., HAZOTTE, A., & BOUZY, E. 2006. Multiscale gamma variant selection in a quarternary near-gamma Ti-Al alloy. Philosophical Magazine, 86(20), 3089–3112.
+%
+%\bibliographystyle{chicago} %  EX: Appel and Christoph (1999) || Appel, F. and U. Christoph (1999). Coherency stresses and interface-related deformation phenomena in two-phase titanium aluminides. Intermetallics 7, 1173–1182.
+%\bibliographystyle{elsarticle-num-names}
+%
+%\bibliographystyle{test} %see zambaldi/makebstTest/latex makebst
+\bibliographystyle{diss_doi} %small manual changes from test.bst:
+% doi linking, no ISSN for articles
+%
+%\bibliographystyle{spmpsci} % Springer
+%\bibliographystyle{FRADINAT} %
+%\bibliographystyle{abbrv} % [1], numbered
+%\bibliographystyle{./bst/plainnat} % makes *everything* lower-case; plainnatm,abbrvnat,unsrtnat
+%\bibliographystyle{./plainnat} % makes *everything* lower-case; plainnatm,abbrvnat,unsrtnat
+% http://www.elisanet.fi/ptvirtan/misc/google-bibtex.html for doi linking
+% Literaturverzeichnis
+%\renewcommand{\bibname}{References} % default: Bibliography
+\cleardoublepage \phantomsection % set the hyperref anchor
+\addcontentsline{toc}{chapter}{\bibname} %
+\small
+%\footnotesize
+\setlength\bibsep{0.3ex plus 0.1ex}
+% Disable single lines at the start of a paragraph (Schusterjungen)
+\clubpenalty = 10000
+% Disable single lines at the end of a paragraph (Hurenkinder)
+\widowpenalty = 10000 \displaywidowpenalty = 10000
+%\pagestyle{fancy} %
+\bibliography{mpie_cpfem_manual} %Use more than one bib file by {bib1,bib2,...}
+\normalsize
+\end{document} 

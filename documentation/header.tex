@@ -1,0 +1,345 @@
+%\NeedsTeXFormat{LaTeX2e} 
+%%% check whether we are running pdflatex
+% http://www.db.informatik.uni-bremen.de/~mr/pdflatex.html
+%	\newif\ifpdf
+%	\ifx\pdfoutput\undefined
+%	  \pdffalse % we are not running pdflatex
+%	\else
+%	  \pdfoutput=1 % we are running pdflatex
+%	  \pdfcompresslevel=9     % compression level for text and image;
+%	  \pdftrue
+%	\fi
+
+%%% choose global options depending on whether
+%%% we are running under pdflatex
+	
+%	\ifpdf
+%\ifx\pdfoutput
+%\documentclass[pdftex,a4paper,10pt,makeidx]{article}
+%\documentclass[pdftex,a4paper,10pt,makeidx]{book}
+%\documentclass[pdftex,a4paper,12pt]{book}
+%\documentclass[pdftex,a4paper,12pt]{report}
+%\documentclass[pdftex,a5paper,9pt]{book}
+%\documentclass[pdftex,a4paper,11pt]{book}
+\documentclass[pdftex,a4paper,12pt]{book}   % DISS
+%\documentclass[pdftex,a4paper,12pt]{article} % List of publications
+%	\else
+%\fi
+%\ifx\pdfoutput\undefined
+%	  \documentclass[dvips,a4paper,10pt,makeidx]{article}
+%\fi
+
+% WINDOWS: use sumatra pdfviewer with TeXnicCenter to do inverse search
+%http://www.wi.uni-muenster.de/qm/studieren/LaTeXVorlage.html
+\usepackage{pdfsync}  % comment out for final document
+
+\usepackage{ifpdf}  % uses oberdiek, cannot be used before documentclass
+\usepackage{etex}  % Without there will be many "No room for a new \dimen" errors
+\usepackage{a4}
+\usepackage[T1]{fontenc}                      % EC-Schriften("richtige"Umlaute)
+\usepackage[latin1]{inputenc}                 % Input coding
+%\usepackage[utf8]{inputenc}                 % Input coding
+
+%\renewcommand\appendixname{}%    "
+\renewcommand\figurename{Fig.}
+\renewcommand\tablename{Tab.}
+%\usepackage{csquotes} % consistent quoting by \enquote{...}, without use \lq xyz\rq or \lqq xyz \rqq
+% TABLES
+%\usepackage{array,booktabs}
+\usepackage{upgreek}
+\usepackage{ulem} % provides \sout  strikeout
+\normalem % restore italics for emph   
+\usepackage{pifont}  % checkmark = \ding{52}
+\usepackage{textcomp} % provides \textnumero
+\usepackage{txfonts} % gammaup, upright greek characters
+\usepackage{booktabs}       % Nicer Tables, provides \toprule, \midrule, \bottomrule
+\usepackage{longtable}
+\usepackage{multirow}% added090731, \multirow{3}{*}{content}, * for width
+%\usepackage{ltablex}
+%\usepackage{tabulary}% 
+%\usepackage{ltxtable}% longable meet tabularx
+%\usepackage{tools}
+
+%\usepackage{sfheaders}              % SansSerif Font für Überschriften / for headings
+\usepackage{pictex}                 % Plot-Paket
+\usepackage{anysize}               % Uses full page, all of papersize, looks bad!
+%\usepackage{fullpage}
+\usepackage{xspace}                 % provides \xspace
+%\usepackage[pdftex]{lscape}                 % Provides \begin{landscape} environment
+\usepackage{pdflscape}                 % Provides \begin{landscape} environment
+%%%%%%%%%%%%%%%%%%%%%
+\usepackage{graphicx}               % PS-diagram package of pictures merge
+%\usepackage[draft]{graphicx}        % PS-Grafikpaket nur Rahmen
+%%%%%%%%%%%%%%%%%%%%%
+\usepackage{psfrag}                 % PS-Text durch LaTeX-Code ersetzen
+%\usepackage{draftstamp}    %%%%%%%%%% Entwurfstempel; draftstamp.sty %%%%%%%%%%%%%%%%%
+\usepackage{placeins}        % definiert Floatsperre \FloatBarrier; placeins.sty
+\usepackage[indent,bf]{caption}    % Einstellen des caption-Stils, war caption2
+%\captionindent2em                   % Maß für Einzug
+% Workaround for backcite problem 
+\usepackage{makerobust} 
+\makeatletter 
+\@ifundefined{caption@xref}{}{% 
+  \MakeRobustCommand\caption@xref 
+} 
+\makeatother 
+%I have notified the author of the caption package. 
+%Yours sincerely 
+%  Heiko <oberd...@uni-freiburg.de>
+
+% Workaround against double definition error by using amssymb and txfonts:iint
+\let\iint\dadada
+\let\iiint\dadadaa
+\let\iiiint\dadadab
+\let\idotsint\dadadac
+
+\usepackage{exscale}                % richtig skalierte Operatoren in Formeln
+\usepackage{amsmath}                % Mathematik-Erweiterungen der AMS
+\usepackage{amssymb}                % Mathematik-Erweiterungen der AMS
+%\usepackage{onlyamsmath}
+% ftp://tug.ctan.org/pub/tex-archive/info/Free_Math_Font_Survey/survey.html
+%\usepackage{concmath}                %
+%\usepackage{mathtime}
+%\usepackage{mnsymbol}                 % incompatible with amssymb & amsfonts, pixelig, neswarrows
+%\usepackage{cmbright}
+%\usepackage{mathpazo}								% funktioniert
+\usepackage{times}                  % von elsart abgeschaut
+%\usepackage[math]{anttor}
+%\usepackage{millennial}
+%\usepackage{fouriernc}              % schöneres gamma
+%\usepackage{yhmath}								%
+\usepackage{mathrsfs}               % for mathscr (Schreibschrift)
+%\usepackage[math]{isomath}
+
+%\ptexnoligatures%\textfont0 % bewirkt angebl. Unterdrückung von Ligaturen und kerning in pdftex
+
+\usepackage{afterpage}              % Befehlsausführung erst am Seitenende
+\usepackage{natbib}                 % ein natbib-Stil, der auch bei author-year eine
+% biblabel Marke im Literaturverzeichnis aufweist!
+% natbib.sty ruft eine eigene Konfiguration natbib.cfg auf
+
+\usepackage{xcolor}
+\definecolor{lbcolor}{rgb}{0.9,0.9,0.9}
+\definecolor{lightgrey}{rgb}{0.85,0.85,0.85} %
+\definecolor{gray}{rgb}{0.5,0.5,0.5}% gray=AE, grey=BE
+\definecolor{grey}{rgb}{0.5,0.5,0.5}% gray=AE, grey=BE
+
+\usepackage{upgreek}
+
+% KOPF- UND FUSSZEILEN
+\usepackage{fancyhdr}        % Erwieterte Optionen für
+\pagestyle{fancy}            % Kopf- und Fußzeilen
+\fancyhf{}                   % Alle Felder leeren
+%\fancyfoot{}\fancyhead{}     %CZ clear all fields
+%\fancyfoot[ro,le]{\footnotesize\thepage}  % Seitenzahl außen
+%\fancyfoot[l]{\footnotesize\today}
+% NUR SEITENZAHL
+\fancyfoot[ro,le]{\footnotesize\thepage}%\\\textcolor{gray}{C.\,Zambaldi, \today}}   % Seitenzahl
+% SEITENZAHL UND VERSION INFO
+%\fancyfoot[ro,le]{\footnotesize\thepage\\\textcolor{gray}{C.\,Zambaldi, \today}}   % Seitenzahl
+
+\fancyhead[ro]{\footnotesize{\leftmark} }    % Kapitel rechts auf geraden Seiten
+\fancyhead[le]{\footnotesize{\rightmark} }   % Abschnitt links auf ungeraden Seiten%
+%\fancyhead[ro]{\textsc{\small{\leftmark}}}  %Zambaldi  % Kapitel rechts auf geraden Seiten
+%\fancyhead[le]{\textsc{}} %2005  % Abschnitt links auf ungeraden Seiten%
+\setlength{\headheight}{15pt}% Höhe der Kopfzeile (def012pt) wg der Linie
+\renewcommand{\headrulewidth}{0pt} %def0.4pt
+\renewcommand{\footrulewidth}{0pt} %def0pt
+\renewcommand\chaptername{}      %fancyhdr: Kapitelüberschrift ohne "Kapitel"
+%\renewcommand{\chaptermark}[1]{\markboth{\textsc{\chaptername\ \thechapter\ \ #1}}{}}
+%\renewcommand{\chaptermark}[1]{\markboth{{\thepart-\thechapter\ \ #1}}{}}
+\renewcommand{\chaptermark}[1]{\markboth{{\thechapter\ \ #1}}{}}
+%\renewcommand{\chaptermark}[1]{\markboth{{\thechapter\ }}{}}
+%\renewcommand{\chaptermark}{\empty}
+%\markboth{Zambaldi}
+\renewcommand{\sectionmark}[1]{\markright{{\thesection\ #1}}}% Kein Punkt hinter Kapitelnummern in Kopfzeile
+%\renewcommand{\sectionmark}{\empty}
+%\renewcommand{\chaptermark}[1]{}
+%\renewcommand{\sectionmark}[1]{}
+\fancypagestyle{plain}{% Redefine "plain" style (e.g. for 1st side of chapters)
+\fancyhf{} % clear all header and footer fields
+%\fancyfoot[l]{{\tiny \today}}
+%\fancyfoot[ro,le]{\footnotesize\thepage}
+}
+% http://www-h.eng.cam.ac.uk/help/tpl/textprocessing/squeeze.html
+%\usepackage[medium,compact]{titlesec} % fontsize sections...
+\usepackage[small,compact]{titlesec} % fontsize sections...
+%\usepackage{sectsty} % An alternative to titlesec
+
+%\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{} %bfseries to add bold style
+%\titleformat{\subsubsection}%{\normalfont\normalsize\mdseries\itshape}{\thesubsubsection}{1em}{}
+%\titleformat{\subsubsection}{\normalfont\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+
+% TABELLENBESCHRIFTUNG
+%\usepackage[tableposition=top]{caption}
+
+% EINHEITEN
+\usepackage{units}
+% \unit[<wert>]{<einheit>}
+% \unitfrac[<wert>]{<zähler>}{<nenner>} 	
+% \nicefrac[<schrift>]{<zähler>}{<nenner>}
+
+% MILLERSCHE INDICES
+\usepackage{miller} % \hkl(123), \hkl<1 2 -3>, change spacing, with 
+%\renewcommand{\millerskip}{\,\,\,}
+
+% DOPPELTER ZEILENABSTAND mit \doublespace, weitere
+\usepackage{setspace}
+\singlespace % \singlespace, \onehalfspace, \doublespace
+
+% LISTINGS; Quellcode einbinden und formatieren.
+\usepackage{listings}       %[savemem]{listings}
+\lstloadlanguages{fortran} %TeX %[LaTeX]TeX
+\lstset{language={},
+  frame=none,
+  xleftmargin=10mm,
+  xrightmargin=10mm,
+	numbers=left,
+	stepnumber=1,
+	numbersep=5pt,
+	numberstyle=\tiny,
+	breaklines=true,
+	breakautoindent=true,
+	postbreak=...,%\space,
+	tabsize=2,
+	basicstyle=\ttfamily\footnotesize,
+	showspaces=false,
+	showstringspaces=false,
+	extendedchars=true,
+	backgroundcolor=\color{white}
+}
+
+% ---------------------------------------------------------------------------
+
+% BILDÜBERLAGERUNG
+%\usepackage[abs]{overpic} % [percent]
+
+%\usepackage{calc}
+
+% PARAGRAPH INDENTATION AND VERTICAL SPACE
+\setlength{\parindent}{0pt}                              % kein Einzug am Absatz
+%\parskip 1.0ex plus 0.2ex minus 0.2ex                    % Abstand Absatz FR:1.5ex plus 0.5ex minus 0.5ex
+\setlength\parskip{.5\baselineskip
+	plus .1\baselineskip
+	minus .4\baselineskip
+}
+
+\sloppy                                                  % Seitenende "schlampig"
+\setcounter{secnumdepth}{3}                              % Abschnitts-Num.tiefe(def=2)
+\setcounter{tocdepth}{3}                       % Inhaltsverzeichnistiefe (def=2)
+\setcounter{bottomnumber}{2}                   % Max. Gleitobjekte unten (def=1)
+\setcounter{totalnumber}{4}                    % Max. Gleitobjekte insg.  (def=3)
+\renewcommand{\topfraction}{0.75}              % Max. rel. Platz für Gleitobjekte
+\renewcommand{\bottomfraction}{0.65}           % oben bzw. unten (def=0.7 bzw. 0.3)
+\newcommand{\versetzung}[1]{\rotatebox{#1}{\rule[-2mm]{0cm}{4mm}\tiny $\bot$}}    % Versetzungssymbol{Winkel}
+\newcommand{\vernull}{\tiny $\bot$}            % Versetzungssymbol 0 Grad
+\newcommand{\vereinsachtnull}{\tiny $\top$}    % Versetzungssymbol 180 Grad
+\newcommand{\verneunnullp}{\tiny $\dashv$}     % Versetzungssymbol 90 Grad
+\newcommand{\verneunnullm}{\tiny $\vdash$}     % Versetzungssymbol -90 Grad
+%\newcommand{\RX}{Rekristallisation}
+%, als Dezimaltrennzeichen in Kommazahlen im Mathemodus
+\mathchardef\CommaOrdinary="013B
+\mathchardef\CommaPunct="613B
+\mathcode`,="8000 %, im Math-Mode aktiv machen
+{\catcode`\,=\active
+ \gdef,{\obeyspaces\futurelet\next\CommaCheck}}
+\def\CommaCheck{\if\space\next\CommaPunct\else\CommaOrdinary\fi}
+
+%\def\figurename{} % Fig. oder Abb.								
+\makeatletter                                                   % @ define as normal letters
+\def\cleardoublepage{\clearpage \if@twoside \ifodd\c@page       % with CLEAR double PAGE second side empty
+                     \else \hbox{} \thispagestyle{empty} \newpage
+                     \if@twocolumn \hbox{} \newpage \fi \fi \fi}
+%\renewcommand\part{%               % with part first side empty
+%  \if@openright
+%    \cleardoublepage
+%  \else
+%    \clearpage
+%  \fi
+%  \thispagestyle{empty}%
+%  \if@twocolumn
+%    \onecolumn
+%    \@tempswatrue
+%  \else
+%    \@tempswafalse
+%  \fi
+%  \null\vfil
+ % \secdef\@part\@spart}
+%\makeatother         % @ again as other indication define
+
+% Upright greek characters: http://www.superstrate.net/useful/useful.html
+\DeclareFontFamily{U}{euc}{}% I chose euc because the chart is called Euler cursive 
+\DeclareFontShape{U}{euc}{m}{n}{<-6>eurm5<6-8>eurm7<8->eurm10}{}% 
+\DeclareSymbolFont{AMSc}{U}{euc}{m}{n} % I chose AMSc because AMSa and AMSb are defined in the amsfonts-package 
+\DeclareMathSymbol{\umu}{\mathord}{AMSc}{"16}
+
+
+% HYPERREF   package definition
+\usepackage{color}
+\definecolor{lnkcol}{rgb}{0, .1, .5}
+\definecolor{lnkcol}{rgb}{0, .1, .5}
+
+
+%\ifpdf
+
+%\usepackage{pstricks, pst-plot}
+
+\ifpdf   % IFPDF
+  %\usepackage[pdftex]{thumbpdf}      %%% thumbnails for ps2pdf
+%\usepackage[ps2pdf]{hyperref}
+  \usepackage[pdftex,                %%% hyper-references for ps2pdf
+%backref=section,											 %%% bibliographical backlinks
+pagebackref=true,	                 %%% links in bibliography to pages
+bookmarks=true,%                   %%% generate bookmarks
+bookmarksnumbered=false,           %%% numbered bookmarks on/off
+bookmarksopen=true,                %%% bookmarkstree open/closed
+hypertexnames=false,%              %%% needed for correct links to figures!
+breaklinks=true,%                  %%% break lines on/off, on => links can become very small
+pdfborder=false,                   %%% Links mit Rahmen on/off
+pdfpagelabels=true,								 %%% logische/physikalische Seitenzahlen true/false*
+pdftoolbar=true,									 %%% Menüleisten true*/false	
+linkbordercolor={1 1 1},%    %%% color of frames around links
+citebordercolor={1 1 1},
+urlbordercolor={0.8 0.8 .8},
+colorlinks=true,
+linkcolor=lnkcol, % black, blue, red, green, cyan, ...
+urlcolor=lnkcol,%{.2 .2 1},
+citecolor=black,
+]{hyperref} %HYPERREF
+
+% PDF METAINFORMATION
+  \hypersetup{
+pdfauthor   = {},
+pdftitle    = {},
+pdfsubject  = {},
+pdfkeywords = {},
+pdfcreator  = {},
+pdfproducer = {pdftex}%,
+%pdfpagemode={FullScreen}
+}
+
+% ATTACH ARBITRAY FILES TO THE RESULTING PDF. FILES ARE STORED INSIDE OF THE PDF-FILE.
+%\usepackage{attachfile}  % Only with pdftex. Makes use of "oberdiek" package
+%\attachfilesetup{color=0 .1 .5}
+
+
+  \usepackage{pst-pdf} % pstricks for pdflatex
+
+\else
+  \usepackage{pstricks, pst-plot}
+  \usepackage[hypertex]{hyperref}
+\fi
+
+\usepackage{textcomp} %Dieses Paket enthaelt die Befehle %\textdegree%\textcentigrade%und eine Menge anderer nuetzlicher Symbole.
+
+
+% MULTIPLE BIBLIOGRAPHIES
+%\usepackage{bibunits}
+
+%\usepackage{makeidx}
+%\makeindex
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%% END OF HEADERFILE %%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 

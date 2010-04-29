@@ -1,0 +1,37 @@
+\section{Accessing the version controlled subroutine}
+% This section is copied from the msuwiki: http://msusrv4/msuwiki/Theory%20and%20Simulation/SVN
+Before you start: Before you are able to access the version-controlled software, you need to get a valid login to the msuhp9 server. Please ask either Berthold Becksch\"afer (-922) or Achim Kuhl (-923) to set up your permissions accordingly. 
+
+\subsection{Windows}
+\subsubsection{Putty}
+Get yourself PuTTY and PuTTYgen from http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html 
+Generate a RSA (SSH2) 2048 bit strong key pair with PuTTYgen. Save the private part of the key to a secure location (My Documents or such). Copy the public part from the PuTTYgen window, paste it into a text-editor and save. Append the contents of that file to \verb|~/.ssh/authorized_keys| on any workstation you can log on to. 
+Create a profile in PuTTY called "msuhp9" with host: msuhp9.mpie.de, your standard "MPIE\\myName" username and specify the above location of your private key file as means of authentication. 
+You should then be able to connect with this profile to msuhp9 WITHOUT password authentication! 
+
+\subsubsection{Tortoise}
+Install the subversion-client Tortoise at http://tortoisesvn.net/downloads 
+Create a directory to hold the CPFEM subroutine on your PC. 
+
+Right-Click in this folder and select "SVN checkout" from the context menu. Specify 
+svn+ssh://msuhp9/home/svn/repos/cpfem
+
+as the URL of the desired repository. This will use the profile named "msuhp9" from PuTTY and should hence not ask for any authentication from your end.
+
+\subsection{Linux workstations}
+
+\subsubsection{Key authentication}
+if not already done, generate a 2048 bit RSA key pair using 
+ssh-keygen -t rsa -b 2048 
+and go for the standard options offered. This will create "id\_rsa" (private key) and "id\_rsa.pub" (public key) within your \verb|~/.ssh| folder.
+
+Append \verb|id_rsa.pub| to \verb|~/.ssh/authorized_keys| and try logging into another workstation with 
+ssh MPIE\\\\myName@msuwsX
+(exchange X with 2...11). It should NOT require password authentication.
+
+\subsubsection{Checkout}
+create a directory to hold the subversion-controlled CPFEM routine and change into this. 
+svn checkout svn+ssh://MPIE\\\\myName@msuhp9.mpie.de/home/svn/repos/cpfem
+to copy the repository content to the current working directory -- done.
+
+familiarize yourself with svn: svn help
