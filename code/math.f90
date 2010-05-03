@@ -1391,6 +1391,7 @@ pure function math_transpose3x3(A)
  
  if (sinHalfAngle <= 1.0e-4_pReal) then             ! very small rotation angle?
    math_QuaternionToAxisAngle = 0.0_pReal
+   math_QuaternionToAxisAngle(1:3) = NaN
  else
    math_QuaternionToAxisAngle(1:3) = Q(2:4)/sinHalfAngle
    math_QuaternionToAxisAngle(4) = halfAngle*2.0_pReal*inDeg
