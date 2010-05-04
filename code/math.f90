@@ -1521,10 +1521,10 @@ endfunction
 !**************************************************************************
 ! calculates the disorientation for 2 orientations Q1 and Q2 (needs quaternions)
 !**************************************************************************
-pure function math_QuaternionDisorientation(Q1, Q2, symmetryType)
+function math_QuaternionDisorientation(Q1, Q2, symmetryType)
 
   use prec, only: pReal, pInt
-  use IO,   only: IO_warning
+  use IO,   only: IO_error
   implicit none
   
   !*** input variables 
@@ -1544,8 +1544,8 @@ pure function math_QuaternionDisorientation(Q1, Q2, symmetryType)
     
   select case (symmetryType)
     case (0)
-			if (math_QuaternionMisorientation(1) < 0.0_pReal) &
-				math_QuaternionMisorientation = -math_QuaternionMisorientation          ! keep omega within 0 to 180 deg
+			if (math_QuaternionDisorientation(1) < 0.0_pReal) &
+				math_QuaternionDisorientation = -math_QuaternionDisorientation          ! keep omega within 0 to 180 deg
     
     case (1,2)
 			s = sum(math_NsymOperations(1:symmetryType-1))
