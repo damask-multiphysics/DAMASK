@@ -123,6 +123,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  implicit none
 
  real(pReal), dimension(3,3) :: R
+ real(pReal), dimension(3) ::   Eulers
  real(pReal), dimension(4) ::   q
  integer (pInt), dimension(1) :: randInit
  integer (pInt) seed
@@ -144,6 +145,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  call halton_seed_set(seed)
  call halton_ndim_set(3)
+
  
  ENDSUBROUTINE
  
@@ -1542,7 +1544,7 @@ pure function math_QuaternionDisorientation(Q1, Q2, symmetryType)
     
   select case (symmetryType)
     case (0)
-			if math_QuaternionMisorientation(1) < 0.0_pReal &
+			if (math_QuaternionMisorientation(1) < 0.0_pReal) &
 				math_QuaternionMisorientation = -math_QuaternionMisorientation          ! keep omega within 0 to 180 deg
     
     case (1,2)
@@ -1561,7 +1563,7 @@ pure function math_QuaternionDisorientation(Q1, Q2, symmetryType)
 			enddo; enddo; enddo
   
     case default
-      IO_error(550,symmetryType)                                ! complain
+      call IO_error(550,symmetryType)                           ! complain
   end select
   
   
