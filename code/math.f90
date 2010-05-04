@@ -122,6 +122,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  use numerics, only: fixedSeed
  implicit none
 
+ real(pReal), dimension(3,3) :: R
+ real(pReal), dimension(4) ::   q
  integer (pInt), dimension(1) :: randInit
  integer (pInt) seed
  
@@ -142,7 +144,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  call halton_seed_set(seed)
  call halton_ndim_set(3)
-   
+ 
  ENDSUBROUTINE
  
 
@@ -1512,6 +1514,8 @@ pure function math_QuaternionInSST(Q, symmetryType)
   
 endfunction
 
+
+
 !**************************************************************************
 ! calculates the disorientation for 2 orientations Q1 and Q2 (needs quaternions)
 !**************************************************************************
@@ -1536,21 +1540,29 @@ pure function math_QuaternionDisorientation(Q1, Q2, symmetryType)
   dQ = math_qMul(math_qConj(Q1),Q2)
   math_QuaternionDisorientation = dQ
     
-  if (symmetryType > 0_pInt .and. symmetryType <= 2_pInt) then
-    s = sum(math_NsymOperations(1:symmetryType-1))
-    do i = 1,2
-      dQ = math_qConj(dQ)                                     ! switch order of "from -- to"
-      do j = 1,math_NsymOperations(symmetryType)              ! run through first crystals symmetries
-        dQsymA = math_qMul(math_symOperations(:,s+j),dQ)      ! apply sym
-        do k = 1,math_NsymOperations(symmetryType)            ! run through 2nd crystals symmetries
-          mis = math_qMul(dQsymA,math_symOperations(:,s+k))   ! apply sym
-          if (mis(1) < 0) &                                   ! want positive angle
-            mis = -mis
-          if (mis(1)-math_QuaternionDisorientation(1) > -1e-8_pReal .and. &
-              math_QuaternionInSST(mis,symmetryType)) &
-            math_QuaternionDisorientation = mis               ! found better one
-    enddo; enddo; enddo
-  endif
+  select case (symmetryType)
+    case (0)
+			if math_QuaternionMisorientation(1) < 0.0_pReal &
+				math_QuaternionMisorientation = -math_QuaternionMisorientation          ! keep omega within 0 to 180 deg
+    
+    case (1,2)
+			s = sum(math_NsymOperations(1:symmetryType-1))
+			do i = 1,2
+				dQ = math_qConj(dQ)                                     ! switch order of "from -- to"
+				do j = 1,math_NsymOperations(symmetryType)              ! run through first crystals symmetries
+					dQsymA = math_qMul(math_symOperations(:,s+j),dQ)      ! apply sym
+					do k = 1,math_NsymOperations(symmetryType)            ! run through 2nd crystals symmetries
+						mis = math_qMul(dQsymA,math_symOperations(:,s+k))   ! apply sym
+						if (mis(1) < 0) &                                   ! want positive angle
+							mis = -mis
+						if (mis(1)-math_QuaternionDisorientation(1) > -1e-8_pReal .and. &
+								math_QuaternionInSST(mis,symmetryType)) &
+							math_QuaternionDisorientation = mis               ! found better one
+			enddo; enddo; enddo
+  
+    case default
+      IO_error(550,symmetryType)                                ! complain
+  end select
   
   
 endfunction

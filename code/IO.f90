@@ -1075,6 +1075,8 @@ endfunction
    msg = 'This material can only be used with elements with three direct stress components'
  case (500)
    msg = 'Unknown lattice type specified'
+ case (550)
+   msg = 'Unknown symmetry type specified'
  case (600)
    msg = 'Convergence not reached'
  case (610)
