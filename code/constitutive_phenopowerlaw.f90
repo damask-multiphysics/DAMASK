@@ -29,12 +29,12 @@
 !c44                     46.7e9
 !
 !gdot0_slip              0.001
-!n_slip                  50
+!1_by_m_slip             50
 !tau0_slip               65e6 22e6 52e6 50e6               # per family
 !tausat_slip             80e6 180e6 140e6 140e6            # per family
 !w0_slip                 1
 !gdot0_twin              0.001
-!n_twin                  50
+!1_by_m_twin             50
 !tau0_twin               52e6 52e6 52e6 52e6              # per family
 !s_pr                    50e6                             # push-up stress for slip saturation due to twinning
 !twin_b                  2
@@ -329,21 +329,21 @@ subroutine constitutive_phenopowerlaw_init(file)
    constitutive_phenopowerlaw_totalNslip(i) = sum(constitutive_phenopowerlaw_Nslip(:,i))      ! how many slip systems altogether
    constitutive_phenopowerlaw_totalNtwin(i) = sum(constitutive_phenopowerlaw_Ntwin(:,i))      ! how many twin systems altogether
 
-   if (constitutive_phenopowerlaw_structure(i) < 1 )                  call IO_error(205)
+   if (constitutive_phenopowerlaw_structure(i) < 1 )                  call IO_error(205,i)
    if (any(constitutive_phenopowerlaw_tau0_slip(:,i) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(210)
-   if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal)         call IO_error(211)
-   if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)             call IO_error(212)
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(210,i)
+   if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal)         call IO_error(211,i)
+   if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)             call IO_error(212,i)
    if (any(constitutive_phenopowerlaw_tausat_slip(:,i) <= 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(213)
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(213,i)
    if (any(constitutive_phenopowerlaw_w0_slip(i) == 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(214)
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(214,i)
    if (any(constitutive_phenopowerlaw_tau0_twin(:,i) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(210)
+           constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(210,i)
    if (    constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(211)
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(211,i)
    if (    constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(212)
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(212,i)
    if (constitutive_phenopowerlaw_relevantResistance(i) <= 0.0_pReal) &
      constitutive_phenopowerlaw_relevantResistance(i) = 1.0_pReal              ! default absolute tolerance 1 Pa
 
