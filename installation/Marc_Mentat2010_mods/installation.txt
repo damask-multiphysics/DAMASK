@@ -28,7 +28,6 @@ The structure of this directory should be:
 ./Mentat_bin/submit3					modified version of original calling run_mp_marc
 ./Mentat_menus/job_run.ms.org			original file from installation
 ./Mentat_menus/job_run.ms				modified version
-./Mentat_menus/main.msb                 binary menu file compiled using modified version of job_run.ms
 
 1) Install Marc, Mantat and Documentation as ususal
 2) Run the apply_MPIE_modifications script from this directory.
