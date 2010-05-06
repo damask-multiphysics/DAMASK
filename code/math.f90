@@ -118,13 +118,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  SUBROUTINE math_init ()
 
- use prec, only: pReal,pInt
+ use prec,     only: pReal,pInt
  use numerics, only: fixedSeed
+ use IO,       only: IO_error
  implicit none
 
- real(pReal), dimension(3,3) :: R
+ real(pReal), dimension(3,3) :: R,R2
  real(pReal), dimension(3) ::   Eulers
- real(pReal), dimension(4) ::   q
+ real(pReal), dimension(4) ::   q,q2,axisangle
  integer (pInt), dimension(1) :: randInit
  integer (pInt) seed
  
@@ -146,11 +147,39 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  call halton_seed_set(seed)
  call halton_ndim_set(3)
 
+ ! --- check rotation dictionary ---
+
+ ! +++ q -> a -> q  +++
+ q = math_qRnd();
+ axisangle = math_QuaternionToAxisAngle(q);
+ q2 = math_AxisAngleToQuaternion(axisangle(1:3),axisangle(4))
+ if ( any(abs( q-q2) > 1.0e-8 ) .and. &
+      any(abs(-q-q2) > 1.0e-8 ) ) &
+   call IO_error(670)
+ 
+ ! +++ q -> R -> q  +++
+ R = math_QuaternionToR(q);
+ q2 = math_RToQuaternion(R)
+ if ( any(abs( q-q2) > 1.0e-8 ) .and. &
+      any(abs(-q-q2) > 1.0e-8 ) ) &
+   call IO_error(671)
+ 
+ ! +++ q -> euler -> q  +++
+ Eulers = math_QuaternionToEuler(q);
+ q2 = math_EulerToQuaternion(Eulers)
+ if ( any(abs( q-q2) > 1.0e-8 ) .and. &
+      any(abs(-q-q2) > 1.0e-8 ) ) &
+   call IO_error(672)
+ 
+ ! +++ R -> euler -> R  +++
+ Eulers = math_RToEuler(R);
+ R2 = math_EulerToR(Eulers)
+ if ( any(abs( R-R2) > 1.0e-8 ) ) &
+   call IO_error(673)
+ 
  
  ENDSUBROUTINE
  
-
-
 
 
 !**************************************************************************
@@ -177,7 +206,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
 ! Partitioning required for quicksort
 !**************************************************************************
- integer(pInt) FUNCTION math_partition(a, istart, iend)
+ integer(pInt) function math_partition(a, istart, iend)
 
  implicit none
  integer(pInt), dimension(:,:) :: a
@@ -216,13 +245,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    endif
  enddo
 
- ENDFUNCTION
+ endfunction
  
 
 !**************************************************************************
 ! range of integers starting at one
 !**************************************************************************
- PURE FUNCTION math_range(N)  
+ pure function math_range(N)  
 
  use prec, only: pInt
  implicit none
@@ -234,12 +263,12 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1:N) math_range(i) = i
  return
 
- ENDFUNCTION
+ endfunction
 
 !**************************************************************************
 ! second rank identity tensor of specified dimension
 !**************************************************************************
- PURE FUNCTION math_identity2nd(dimen)  
+ pure function math_identity2nd(dimen)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -252,7 +281,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
  return
 
- ENDFUNCTION
+ endfunction
 
 !**************************************************************************
 ! permutation tensor e_ijk used for computing cross product of two tensors
@@ -260,7 +289,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 ! e_ijk = -1 if odd permutation of ijk
 ! e_ijk =  0 otherwise
 !**************************************************************************
- PURE FUNCTION math_civita(i,j,k)     ! change its name from math_permut 
+ pure function math_civita(i,j,k)     ! change its name from math_permut 
                                  ! to math_civita <<<updated 31.07.2009>>>
 
  use prec, only: pReal, pInt
@@ -278,14 +307,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
      ((i == 3).and.(j == 2).and.(k == 1))) math_civita = -1.0_pReal
  return
 
- ENDFUNCTION
+ endfunction
 
 !**************************************************************************
 ! kronecker delta function d_ij
 ! d_ij = 1 if i = j
 ! d_ij = 0 otherwise
 !**************************************************************************
- PURE FUNCTION math_delta(i,j)
+ pure function math_delta(i,j)
 
  use prec, only: pReal, pInt
  implicit none
@@ -298,12 +327,12 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  return
 
- ENDFUNCTION
+ endfunction
 
 !**************************************************************************
 ! fourth rank identity tensor of specified dimension
 !**************************************************************************
- PURE FUNCTION math_identity4th(dimen)  
+ pure function math_identity4th(dimen)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -316,13 +345,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  	0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
  return
 
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
 ! vector product a x b
 !**************************************************************************
- PURE FUNCTION math_vectorproduct(A,B)  
+ pure function math_vectorproduct(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -336,13 +365,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !**************************************************************************
 ! tensor product a \otimes b
 !**************************************************************************
- PURE FUNCTION math_tensorproduct(A,B)  
+ pure function math_tensorproduct(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -355,13 +384,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !**************************************************************************
 ! matrix multiplication 3x3 = 1
 !**************************************************************************
- PURE FUNCTION math_mul3x3(A,B)  
+ pure function math_mul3x3(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -376,13 +405,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !**************************************************************************
 ! matrix multiplication 6x6 = 1
 !**************************************************************************
- PURE FUNCTION math_mul6x6(A,B)  
+ pure function math_mul6x6(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -397,13 +426,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  return
 
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
 ! matrix multiplication 33x33 = 3x3
 !**************************************************************************´
- PURE FUNCTION math_mul33x33(A,B)  
+ pure function math_mul33x33(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -416,13 +445,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !**************************************************************************
 ! matrix multiplication 66x66 = 6x6
 !**************************************************************************
- PURE FUNCTION math_mul66x66(A,B)  
+ pure function math_mul66x66(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -436,13 +465,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
  return
 
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
 ! matrix multiplication 99x99 = 9x9
 !**************************************************************************
- PURE FUNCTION math_mul99x99(A,B)  
+ pure function math_mul99x99(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -459,13 +488,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
  return
 
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
 ! matrix multiplication 33x3 = 3
 !**************************************************************************
- PURE FUNCTION math_mul33x3(A,B)  
+ pure function math_mul33x3(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -478,13 +507,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1:3) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
  return
 
- ENDFUNCTION 
+ endfunction 
 
  
 !**************************************************************************
 ! matrix multiplication 66x6 = 6
 !**************************************************************************
- PURE FUNCTION math_mul66x6(A,B)  
+ pure function math_mul66x6(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -499,13 +528,33 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
  return
 
- ENDFUNCTION
+ endfunction
+
+ 
+!**************************************************************************
+! random quaternion
+!**************************************************************************
+ function math_qRnd()  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4) :: math_qRnd
+ real(pReal), dimension(3) :: rnd
+ 
+ call halton(3,rnd)
+ math_qRnd(1) = dcos(2.0_pReal*pi*rnd(1))*dsqrt(rnd(3))
+ math_qRnd(2) = dsin(2.0_pReal*pi*rnd(2))*dsqrt(1.0_pReal-rnd(3))
+ math_qRnd(3) = dcos(2.0_pReal*pi*rnd(2))*dsqrt(1.0_pReal-rnd(3))
+ math_qRnd(4) = dsin(2.0_pReal*pi*rnd(1))*dsqrt(rnd(3))
+
+ endfunction
 
  
 !**************************************************************************
 ! quaternion multiplication q1xq2 = q12
 !**************************************************************************
- PURE FUNCTION math_qMul(A,B)  
+ pure function math_qMul(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -518,13 +567,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_qMul(3) = A(1)*B(3) - A(2)*B(4) + A(3)*B(1) + A(4)*B(2)
  math_qMul(4) = A(1)*B(4) + A(2)*B(3) - A(3)*B(2) + A(4)*B(1)
 
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
 ! quaternion dotproduct
 !**************************************************************************
- PURE FUNCTION math_qDot(A,B)  
+ pure function math_qDot(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -534,13 +583,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  math_qDot = A(1)*B(1) + A(2)*B(2) + A(3)*B(3) + A(4)*B(4)
 
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
 ! quaternion conjugation
 !**************************************************************************
- PURE FUNCTION math_qConj(Q)  
+ pure function math_qConj(Q)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -551,13 +600,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_qConj(1) = Q(1)
  math_qConj(2:4) = -Q(2:4)
 
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
 ! quaternion norm
 !**************************************************************************
- PURE FUNCTION math_qNorm(Q)  
+ pure function math_qNorm(Q)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -567,13 +616,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  math_qNorm = dsqrt(max(0.0_pReal, Q(1)*Q(1) + Q(2)*Q(2) + Q(3)*Q(3) + Q(4)*Q(4)))
 
- ENDFUNCTION
+ endfunction
 
 
 !**************************************************************************
 ! quaternion inversion
 !**************************************************************************
- PURE FUNCTION math_qInv(Q)  
+ pure function math_qInv(Q)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -588,13 +637,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  if (squareNorm > tiny(squareNorm)) &
    math_qInv = math_qConj(Q) / squareNorm
  
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
 ! quaternion inversion
 !**************************************************************************
- PURE FUNCTION math_qRot(Q,v)  
+ pure function math_qRot(Q,v)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -617,7 +666,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  math_qRot = 2.0_pReal * math_qRot + v
 
- ENDFUNCTION
+ endfunction
 
  
 !**************************************************************************
@@ -933,7 +982,7 @@ pure function math_transpose3x3(A)
 !********************************************************************
 ! symmetrize a 3x3 matrix
 !********************************************************************
- FUNCTION math_symmetric3x3(m)
+ function math_symmetric3x3(m)
 
  use prec, only: pReal,pInt
  implicit none
@@ -943,13 +992,13 @@ pure function math_transpose3x3(A)
  
  forall (i=1:3,j=1:3) math_symmetric3x3(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- ENDFUNCTION
+ endfunction
  
 
 !********************************************************************
 ! symmetrize a 6x6 matrix
 !********************************************************************
- PURE FUNCTION math_symmetric6x6(m)
+ pure function math_symmetric6x6(m)
 
  use prec, only: pReal,pInt
  implicit none
@@ -960,13 +1009,13 @@ pure function math_transpose3x3(A)
  
  forall (i=1:6,j=1:6) math_symmetric6x6(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- ENDFUNCTION
+ endfunction
  
 
 !********************************************************************
 ! equivalent scalar quantity of a full strain tensor
 !********************************************************************
- PURE FUNCTION math_equivStrain33(m)
+ pure function math_equivStrain33(m)
 
  use prec, only: pReal,pInt
  implicit none
@@ -985,12 +1034,12 @@ pure function math_transpose3x3(A)
                                  0.75_pReal*(s12**2.0_pReal+s23**2.0_pReal+s31**2.0_pReal))**(0.5_pReal)/3.0_pReal
  return
 
- ENDFUNCTION
+ endfunction
 
 !********************************************************************
 ! determinant of a 3x3 matrix
 !********************************************************************
- PURE FUNCTION math_det3x3(m)
+ pure function math_det3x3(m)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1003,7 +1052,7 @@ pure function math_transpose3x3(A)
               +m(1,3)*(m(2,1)*m(3,2)-m(2,2)*m(3,1))
  return
 
- ENDFUNCTION
+ endfunction
 
  
 !********************************************************************
@@ -1026,7 +1075,7 @@ pure function math_transpose3x3(A)
 !********************************************************************
 ! convert 3x3 matrix into vector 9x1
 !********************************************************************
- PURE FUNCTION math_Plain33to9(m33)
+ pure function math_Plain33to9(m33)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1038,13 +1087,13 @@ pure function math_transpose3x3(A)
  forall (i=1:9) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !********************************************************************
 ! convert Plain 9x1 back to 3x3 matrix
 !********************************************************************
- PURE FUNCTION math_Plain9to33(v9)
+ pure function math_Plain9to33(v9)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1056,13 +1105,13 @@ pure function math_transpose3x3(A)
  forall (i=1:9) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
  return
 
- ENDFUNCTION
+ endfunction
  
 
 !********************************************************************
 ! convert symmetric 3x3 matrix into Mandel vector 6x1
 !********************************************************************
- PURE FUNCTION math_Mandel33to6(m33)
+ pure function math_Mandel33to6(m33)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1074,13 +1123,13 @@ pure function math_transpose3x3(A)
  forall (i=1:6) math_Mandel33to6(i) = nrmMandel(i)*m33(mapMandel(1,i),mapMandel(2,i))
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !********************************************************************
 ! convert Mandel 6x1 back to symmetric 3x3 matrix
 !********************************************************************
- PURE FUNCTION math_Mandel6to33(v6)
+ pure function math_Mandel6to33(v6)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1095,13 +1144,13 @@ pure function math_transpose3x3(A)
  end forall
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !********************************************************************
 ! convert 3x3x3x3 tensor into plain matrix 9x9
 !********************************************************************
- PURE FUNCTION math_Plain3333to99(m3333)
+ pure function math_Plain3333to99(m3333)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1114,13 +1163,14 @@ pure function math_transpose3x3(A)
    m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
  return
 
- ENDFUNCTION
+ endfunction
+
 
 
 !********************************************************************
 ! convert symmetric 3x3x3x3 tensor into Mandel matrix 6x6
 !********************************************************************
- PURE FUNCTION math_Mandel3333to66(m3333)
+ pure function math_Mandel3333to66(m3333)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1133,13 +1183,14 @@ pure function math_transpose3x3(A)
    nrmMandel(i)*nrmMandel(j)*m3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j))
  return
 
- ENDFUNCTION
+ endfunction
+
 
 
 !********************************************************************
 ! convert Mandel matrix 6x6 back to symmetric 3x3x3x3 tensor
 !********************************************************************
- PURE FUNCTION math_Mandel66to3333(m66)
+ pure function math_Mandel66to3333(m66)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1156,14 +1207,14 @@ pure function math_transpose3x3(A)
  end forall
  return
 
- ENDFUNCTION
+ endfunction
 
 
 
 !********************************************************************
 ! convert Voigt matrix 6x6 back to symmetric 3x3x3x3 tensor
 !********************************************************************
- PURE FUNCTION math_Voigt66to3333(m66)
+ pure function math_Voigt66to3333(m66)
 
  use prec, only: pReal,pInt
  implicit none
@@ -1180,14 +1231,14 @@ pure function math_transpose3x3(A)
  end forall
  return
 
- ENDFUNCTION
+ endfunction
 
 
 
 !********************************************************************
-! Euler angles from orientation matrix
+! Euler angles (in radians) from rotation matrix
 !********************************************************************
- PURE FUNCTION math_RtoEuler(R)
+ pure function math_RtoEuler(R)
 
  use prec, only: pReal, pInt
  implicit none
@@ -1235,13 +1286,64 @@ pure function math_transpose3x3(A)
  end if
  return
  
- ENDFUNCTION
+ endfunction
+
+
+!********************************************************************
+! quaternion (w+ix+jy+kz) from orientation matrix
+!********************************************************************
+ pure function math_RtoQuaternion(R)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension (3,3), parameter :: evenPerm = reshape((/1,2,3,2,3,1,3,1,2/),(/3,3/))
+
+ real(pReal), dimension (3,3), intent(in) :: R
+ real(pReal), dimension(4) :: math_RtoQuaternion
+ real(pReal) largestDiagElem,root
+ integer(pInt) i,largest
+ 
+ ! math adopted from http://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternions_and_other_representations_of_rotations
+ ! assuming that above corresponds to active rotation, we negate rotation angle
+ 
+ largestDiagElem = 0.0_pReal
+ largest = 0_pInt
+ 
+ do i = 1,3
+   if (dabs(R(i,i)) >= largestDiagElem) then
+     largestDiagElem = dabs(R(i,i))
+     largest = i
+   endif
+ enddo
+ 
+ root = dsqrt( max(0.0_pReal, &
+                   1.0_pReal - (R(1,1)+R(2,2)+R(3,3)) + 2.0_pReal*R(largest,largest)) )
+ if (root < 1.0e-8_pReal) then
+   math_RtoQuaternion = 0.0_pReal
+   math_RtoQuaternion(1) = 1.0_pReal
+ else
+   math_RtoQuaternion(1) = 0.5_pReal / root * &
+                           ( R(evenPerm(2,largest),evenPerm(3,largest)) - &
+                             R(evenPerm(3,largest),evenPerm(2,largest)) )
+   math_RtoQuaternion(1+evenPerm(1,largest)) = 0.5_pReal * root
+   math_RtoQuaternion(1+evenPerm(2,largest)) = 0.5_pReal / root * &
+                                               ( R(evenPerm(1,largest),evenPerm(2,largest)) + &
+                                                 R(evenPerm(2,largest),evenPerm(1,largest)) )
+   math_RtoQuaternion(1+evenPerm(3,largest)) = 0.5_pReal / root * &
+                                               ( R(evenPerm(3,largest),evenPerm(1,largest)) + &
+                                                 R(evenPerm(1,largest),evenPerm(3,largest)) )
+ endif
+
+ return
+ 
+ endfunction
 
 
 !****************************************************************
-! rotation matrix from Euler angles  
+! rotation matrix from Euler angles (in radians)
 !****************************************************************
- PURE FUNCTION math_EulerToR (Euler)
+ pure function math_EulerToR (Euler)
 
  use prec, only: pReal, pInt
  implicit none
@@ -1250,12 +1352,12 @@ pure function math_transpose3x3(A)
  real(pReal), dimension(3,3) :: math_EulerToR
  real(pReal) c1, c, c2, s1, s, s2
 
- C1=COS(Euler(1))
- C=COS(Euler(2))
- C2=COS(Euler(3))
- S1=SIN(Euler(1))
- S=SIN(Euler(2))
- S2=SIN(Euler(3))
+ C1 = dcos(Euler(1))
+ C = dcos(Euler(2))
+ C2 = dcos(Euler(3))
+ S1 = dsin(Euler(1))
+ S = dsin(Euler(2))
+ S2 = dsin(Euler(3))
  math_EulerToR(1,1)=C1*C2-S1*S2*C
  math_EulerToR(1,2)=S1*C2+C1*S2*C
  math_EulerToR(1,3)=S2*S
@@ -1267,100 +1369,153 @@ pure function math_transpose3x3(A)
  math_EulerToR(3,3)=C
  return
  
- ENDFUNCTION
+ endfunction
 
 
 !********************************************************************
-! quaternion (w+ix+jy+kz) from orientation matrix
+! quaternion (w+ix+jy+kz) from 3-1-3 Euler angles (in radians)
 !********************************************************************
- PURE FUNCTION math_RtoQuaternion(R)
-
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal), dimension (3,3), intent(in) :: R
- real(pReal), dimension(4) :: math_RtoQuaternion, T
- 
- T(1) = max(0.0_pReal, 1.0_pReal + R(1,1) + R(2,2) + R(3,3))
- T(2) = max(0.0_pReal, 1.0_pReal + R(1,1) - R(2,2) - R(3,3))
- T(3) = max(0.0_pReal, 1.0_pReal - R(1,1) + R(2,2) - R(3,3))
- T(4) = max(0.0_pReal, 1.0_pReal - R(1,1) - R(2,2) + R(3,3))
- 
- math_RtoQuaternion = 0.5_pReal * dsqrt(T)
-
- math_RtoQuaternion(2) = sign(math_RtoQuaternion(2), R(3,2) - R(2,3))
- math_RtoQuaternion(3) = sign(math_RtoQuaternion(3), R(1,3) - R(3,1))
- math_RtoQuaternion(4) = sign(math_RtoQuaternion(4), R(2,1) - R(1,2))
- 
- ENDFUNCTION
-
-
-!********************************************************************
-! orientation matrix from quaternion (w+ix+jy+kz)
-!********************************************************************
- PURE FUNCTION math_QuaternionToR(Q)
-
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal), dimension(4), intent(in) :: Q
- real(pReal), dimension(3,3) :: math_QuaternionToR, T
- real(pReal) w2
- integer(pInt) i, j
- 
- forall (i = 1:3, j = 1:3) &
-   T(i,j) = Q(i+1) * Q(j+1)
- 
- math_QuaternionToR = (2.0_pReal*Q(1)*Q(1) - 1.0_pReal) * math_I3 + 2.0_pReal * T                                                   ! symmetrical parts of R
- 
- w2 = 2.0_pReal * Q(1)
- math_QuaternionToR(2,1) = math_QuaternionToR(2,1) + w2 * Q(4)                                                                      ! skew parts of R
- math_QuaternionToR(1,2) = math_QuaternionToR(1,2) - w2 * Q(4)
- math_QuaternionToR(3,1) = math_QuaternionToR(3,1) - w2 * Q(3)
- math_QuaternionToR(1,3) = math_QuaternionToR(1,3) + w2 * Q(3)
- math_QuaternionToR(3,2) = math_QuaternionToR(3,2) + w2 * Q(2)
- math_QuaternionToR(2,3) = math_QuaternionToR(2,3) - w2 * Q(2)
- 
- ENDFUNCTION
-
-
-!********************************************************************
-! orientation matrix from quaternion (w+ix+jy+kz)
-!********************************************************************
- PURE FUNCTION math_EulerToQuaternion(eulerangles)
+ pure function math_EulerToQuaternion(eulerangles)
 
  use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) :: eulerangles
  real(pReal), dimension(4) :: math_EulerToQuaternion
- real(pReal), dimension(3) :: angles
+ real(pReal), dimension(3) :: halfangles
  real(pReal) c, s
  
- angles = 0.5_pReal * eulerangles * inRad
+ halfangles = 0.5_pReal * eulerangles
  
- c = dcos(angles(2))
- s = dsin(angles(2))
+ c = dcos(halfangles(2))
+ s = dsin(halfangles(2))
  
- math_EulerToQuaternion(1) = dcos(angles(1)+angles(3)) * c
- math_EulerToQuaternion(2) = dcos(angles(1)-angles(3)) * s
- math_EulerToQuaternion(3) = dsin(angles(1)-angles(3)) * s
- math_EulerToQuaternion(4) = dsin(angles(1)+angles(3)) * c
+ math_EulerToQuaternion(1) = dcos(halfangles(1)+halfangles(3)) * c
+ math_EulerToQuaternion(2) = dcos(halfangles(1)-halfangles(3)) * s
+ math_EulerToQuaternion(3) = dsin(halfangles(1)-halfangles(3)) * s
+ math_EulerToQuaternion(4) = dsin(halfangles(1)+halfangles(3)) * c
   
- ENDFUNCTION
+ endfunction
+
+
+!****************************************************************
+! rotation matrix from axis and angle (in radians)  
+!****************************************************************
+ pure function math_AxisAngleToR(axis,omega)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3), intent(in) :: axis
+ real(pReal), intent(in) :: omega
+ real(pReal), dimension(3) :: axisNrm
+ real(pReal), dimension(3,3) :: math_AxisAngleToR
+ real(pReal) norm,s,c,c1
+ integer(pInt) i
+
+ norm = dsqrt(math_mul3x3(axis,axis))
+ if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
+   forall (i=1:3) axisNrm(i) = axis(i)/norm          ! normalize axis to be sure
+
+   s = dsin(omega)
+   c = dcos(omega)
+   c1 = 1.0_pReal - c
+  
+   ! formula for active rotation taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
+   ! below is transposed form to get passive rotation
+  
+   math_AxisAngleToR(1,1) = c + c1*axisNrm(1)**2
+   math_AxisAngleToR(2,1) = -s*axisNrm(3) + c1*axisNrm(1)*axisNrm(2) 
+   math_AxisAngleToR(3,1) =  s*axisNrm(2) + c1*axisNrm(1)*axisNrm(3)
+  
+   math_AxisAngleToR(1,2) =  s*axisNrm(3) + c1*axisNrm(2)*axisNrm(1)
+   math_AxisAngleToR(2,2) = c + c1*axisNrm(2)**2
+   math_AxisAngleToR(3,2) = -s*axisNrm(1) + c1*axisNrm(2)*axisNrm(3)
+  
+   math_AxisAngleToR(1,3) = -s*axisNrm(2) + c1*axisNrm(3)*axisNrm(1)
+   math_AxisAngleToR(2,3) =  s*axisNrm(1) + c1*axisNrm(3)*axisNrm(2)
+   math_AxisAngleToR(3,3) = c + c1*axisNrm(3)**2
+ else
+   math_AxisAngleToR = math_I3
+ endif
+ 
+ return
+
+ endfunction
+
+
+!****************************************************************
+! quaternion (w+ix+jy+kz) from axis and angle (in radians)  
+!****************************************************************
+ pure function math_AxisAngleToQuaternion(axis,omega)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3), intent(in) :: axis
+ real(pReal), intent(in) :: omega
+ real(pReal), dimension(3) :: axisNrm
+ real(pReal), dimension(4) :: math_AxisAngleToQuaternion
+ real(pReal) s,c,norm
+ integer(pInt) i
+
+ norm = dsqrt(math_mul3x3(axis,axis))
+ if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
+   forall (i=1:3) axisNrm(i) = axis(i)/norm          ! normalize axis to be sure
+   ! formula taken from http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
+   s = dsin(omega/2.0_pReal)
+   c = dcos(omega/2.0_pReal)
+   math_AxisAngleToQuaternion(1) =   c
+   math_AxisAngleToQuaternion(2:4) = s * axisNrm(1:3)
+ else
+   math_AxisAngleToQuaternion = (/1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal/)   ! no rotation
+ endif
+
+ return
+
+ endfunction
 
 
 !********************************************************************
 ! orientation matrix from quaternion (w+ix+jy+kz)
 !********************************************************************
- PURE FUNCTION math_QuaternionToEuler(Q)
+ pure function math_QuaternionToR(Q)
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(4), intent(in) :: Q
+ real(pReal), dimension(3,3) :: math_QuaternionToR, T,S
+ real(pReal) w2
+ integer(pInt) i, j
+ 
+ forall (i = 1:3, j = 1:3) &
+   T(i,j) = Q(i+1) * Q(j+1)
+ S = reshape( (/0.0_pReal,     Q(4),    -Q(3), &
+                    -Q(4),0.0_pReal,    +Q(2), &
+                     Q(3),    -Q(2),0.0_pReal/),(/3,3/))  ! notation is transposed!
+
+ math_QuaternionToR = (2.0_pReal * Q(1)*Q(1) - 1.0_pReal) * math_I3 + &
+                      2.0_pReal * T - &
+                      2.0_pReal * Q(1) * S
+ 
+ return
+ 
+ endfunction
+
+
+!********************************************************************
+! 3-1-3 Euler angles (in radians) from quaternion (w+ix+jy+kz)
+!********************************************************************
+ pure function math_QuaternionToEuler(Q)
 
  use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_QuaternionToEuler
- 
+
+
  math_QuaternionToEuler(1) = atan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
  if (math_QuaternionToEuler(1) < 0.0_pReal) &
    math_QuaternionToEuler(1) = math_QuaternionToEuler(1) + 2.0_pReal * pi
@@ -1373,15 +1528,15 @@ pure function math_transpose3x3(A)
  if (math_QuaternionToEuler(3) < 0.0_pReal) &
    math_QuaternionToEuler(3) = math_QuaternionToEuler(3) + 2.0_pReal * pi
  
- math_QuaternionToEuler = math_QuaternionToEuler * inDeg
+ return
  
- ENDFUNCTION
+ endfunction
 
 
 !********************************************************************
-! axis-angle (x, y, z, ang in deg) from quaternion (w+ix+jy+kz)
+! axis-angle (x, y, z, ang in radians) from quaternion (w+ix+jy+kz)
 !********************************************************************
- PURE FUNCTION math_QuaternionToAxisAngle(Q)
+ pure function math_QuaternionToAxisAngle(Q)
 
  use prec, only: pReal, pInt
  implicit none
@@ -1390,23 +1545,25 @@ pure function math_transpose3x3(A)
  real(pReal) halfAngle, sinHalfAngle
  real(pReal), dimension(4) :: math_QuaternionToAxisAngle  
 
- halfAngle = dacos(max(-1.0_pReal, min(1.0_pReal, Q(1))))                             ! value range 0 to 180 deg
+ halfAngle = dacos(max(-1.0_pReal, min(1.0_pReal, Q(1))))            ! limit to [-1,1] --> 0 to 180 deg
  sinHalfAngle = dsin(halfAngle)
  
- if (sinHalfAngle <= 1.0e-4_pReal) then             ! very small rotation angle?
+ if (sinHalfAngle <= 1.0e-4_pReal) then                              ! very small rotation angle?
    math_QuaternionToAxisAngle = 0.0_pReal
-   math_QuaternionToAxisAngle(1:3) = NaN
  else
    math_QuaternionToAxisAngle(1:3) = Q(2:4)/sinHalfAngle
-   math_QuaternionToAxisAngle(4) = halfAngle*2.0_pReal*inDeg
+   math_QuaternionToAxisAngle(4) = halfAngle*2.0_pReal
  endif
  
- ENDFUNCTION
+ return
+ 
+ endfunction
+
 
 !********************************************************************
-! Rodrigues vector (x, y, z) from quaternion (w+ix+jy+kz)
+! Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
 !********************************************************************
- PURE FUNCTION math_QuaternionToRodrig(Q)
+ pure function math_QuaternionToRodrig(Q)
 
  use prec, only: pReal, pInt
  implicit none
@@ -1414,56 +1571,19 @@ pure function math_transpose3x3(A)
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_QuaternionToRodrig
 
- if (Q(1) /= 0.0_pReal) then
+ if (Q(1) /= 0.0_pReal) then                                   ! unless rotation by 180 deg
    math_QuaternionToRodrig = Q(2:4)/Q(1)
  else
-   math_QuaternionToRodrig = NaN
+   math_QuaternionToRodrig = NaN                               ! Rodrig is unbound for 180 deg...
  endif
-
- ENDFUNCTION
-
-
-!****************************************************************
-! rotation matrix from axis and angle (in radians)  
-!****************************************************************
- PURE FUNCTION math_RodrigToR(axis,omega)
-
- use prec, only: pReal, pInt
- implicit none
-
- real(pReal), dimension(3), intent(in) :: axis
- real(pReal), intent(in) :: omega
- real(pReal), dimension(3) :: axisNrm
- real(pReal), dimension(3,3) :: math_RodrigToR
- real(pReal) s,c,c1
- integer(pInt) i
-
- forall (i=1:3) axisNrm(i) = axis(i)/dsqrt(math_mul3x3(axis,axis))
- s = sin(omega)
- c = cos(omega)
- c1 = 1.0_pReal - c
-
- ! formula taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
-
- math_RodrigtoR(1,1) = c + c1*axisNrm(1)**2
- math_RodrigtoR(1,2) = -s*axisNrm(3) + c1*axisNrm(1)*axisNrm(2) 
- math_RodrigtoR(1,3) =  s*axisNrm(2) + c1*axisNrm(1)*axisNrm(3)
-
- math_RodrigtoR(2,1) =  s*axisNrm(3) + c1*axisNrm(2)*axisNrm(1)
- math_RodrigtoR(2,2) = c + c1*axisNrm(2)**2
- math_RodrigtoR(2,3) = -s*axisNrm(1) + c1*axisNrm(2)*axisNrm(3)
-
- math_RodrigtoR(3,1) = -s*axisNrm(2) + c1*axisNrm(3)*axisNrm(1)
- math_RodrigtoR(3,2) =  s*axisNrm(1) + c1*axisNrm(3)*axisNrm(2)
- math_RodrigtoR(3,3) = c + c1*axisNrm(3)**2
 
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !**************************************************************************
-! disorientation angle between two sets of Euler angles
+! misorientation angle between two sets of Euler angles
 !**************************************************************************
  pure function math_EulerMisorientation(EulerA,EulerB)
 
@@ -1480,10 +1600,11 @@ pure function math_transpose3x3(A)
  math_EulerMisorientation = abs(0.5_pReal*pi-asin(tr))
  return
 
- ENDFUNCTION
+ endfunction
+
 
 !**************************************************************************
-! figures whether quat falls into stereographicc standard triangle
+! figures whether unit quat falls into stereographic standard triangle
 !**************************************************************************
 pure function math_QuaternionInSST(Q, symmetryType)
 
@@ -1517,9 +1638,8 @@ pure function math_QuaternionInSST(Q, symmetryType)
 endfunction
 
 
-
 !**************************************************************************
-! calculates the disorientation for 2 orientations Q1 and Q2 (needs quaternions)
+! calculates the disorientation for 2 unit quaternions
 !**************************************************************************
 function math_QuaternionDisorientation(Q1, Q2, symmetryType)
 
@@ -1544,37 +1664,36 @@ function math_QuaternionDisorientation(Q1, Q2, symmetryType)
     
   select case (symmetryType)
     case (0)
-			if (math_QuaternionDisorientation(1) < 0.0_pReal) &
-				math_QuaternionDisorientation = -math_QuaternionDisorientation          ! keep omega within 0 to 180 deg
+      if (math_QuaternionDisorientation(1) < 0.0_pReal) &
+        math_QuaternionDisorientation = -math_QuaternionDisorientation          ! keep omega within 0 to 180 deg
     
     case (1,2)
-			s = sum(math_NsymOperations(1:symmetryType-1))
-			do i = 1,2
-				dQ = math_qConj(dQ)                                     ! switch order of "from -- to"
-				do j = 1,math_NsymOperations(symmetryType)              ! run through first crystals symmetries
-					dQsymA = math_qMul(math_symOperations(:,s+j),dQ)      ! apply sym
-					do k = 1,math_NsymOperations(symmetryType)            ! run through 2nd crystals symmetries
-						mis = math_qMul(dQsymA,math_symOperations(:,s+k))   ! apply sym
-						if (mis(1) < 0) &                                   ! want positive angle
-							mis = -mis
-						if (mis(1)-math_QuaternionDisorientation(1) > -1e-8_pReal .and. &
-								math_QuaternionInSST(mis,symmetryType)) &
-							math_QuaternionDisorientation = mis               ! found better one
-			enddo; enddo; enddo
+      s = sum(math_NsymOperations(1:symmetryType-1))
+      do i = 1,2
+        dQ = math_qConj(dQ)                                     ! switch order of "from -- to"
+        do j = 1,math_NsymOperations(symmetryType)              ! run through first crystal's symmetries
+          dQsymA = math_qMul(math_symOperations(:,s+j),dQ)      ! apply sym
+          do k = 1,math_NsymOperations(symmetryType)            ! run through 2nd crystal's symmetries
+            mis = math_qMul(dQsymA,math_symOperations(:,s+k))   ! apply sym
+            if (mis(1) < 0.0_pReal) &                           ! want positive angle
+              mis = -mis
+            if (mis(1)-math_QuaternionDisorientation(1) > -1e-8_pReal .and. &
+                math_QuaternionInSST(mis,symmetryType)) &
+              math_QuaternionDisorientation = mis               ! found better one
+      enddo; enddo; enddo
   
     case default
-      call IO_error(550,symmetryType)                           ! complain
+      call IO_error(550,symmetryType)                           ! complain about unknown symmetry
   end select
   
   
 endfunction
 
 
-
 !********************************************************************
 !   draw a random sample from Euler space
 !********************************************************************
- FUNCTION math_sampleRandomOri()
+ function math_sampleRandomOri()
 
  use prec, only: pReal, pInt
  implicit none
@@ -1587,14 +1706,14 @@ endfunction
  math_sampleRandomOri(3) = rnd(3)*2.0_pReal*pi
  return
 
- ENDFUNCTION
+ endfunction
 
 
 !********************************************************************
 !   draw a random sample from Gauss component
 !   with noise (in radians) half-width 
 !********************************************************************
- FUNCTION math_sampleGaussOri(center,noise)
+ function math_sampleGaussOri(center,noise)
 
  use prec, only: pReal, pInt
  implicit none
@@ -1628,14 +1747,14 @@ endif
 
  return
  
- ENDFUNCTION
+ endfunction
  
 
 !********************************************************************
 !   draw a random sample from Fiber component
 !   with noise (in radians)
 !********************************************************************
- FUNCTION math_sampleFiberOri(alpha,beta,noise)
+ function math_sampleFiberOri(alpha,beta,noise)
 
  use prec, only: pReal, pInt
  implicit none
@@ -1662,21 +1781,21 @@ endif
  fiberInS(3)=cos(beta(1))
 
 ! ---# rotation matrix from sample to crystal system #---
- angle=-acos(dot_product(fiberInC,fiberInS))
+ angle = -dacos(dot_product(fiberInC,fiberInS))
  if(angle /= 0.0_pReal) then
 !   rotation axis between sample and crystal system (cross product)
    forall(i=1:3) axis(i) = fiberInC(rotMap(1,i))*fiberInS(rotMap(2,i))-fiberInC(rotMap(2,i))*fiberInS(rotMap(1,i))
-   oRot = math_RodrigtoR(axis,angle)
+   oRot = math_AxisAngleToR(math_vectorproduct(fiberInC,fiberInS),angle)
  else
    oRot = math_I3
  end if
 
 ! ---# rotation matrix about fiber axis (random angle) #---
  call halton(1,rnd)
- fRot = math_RodrigToR(fiberInS,axis(3)*2.0_pReal*pi)
+ fRot = math_AxisAngleToR(fiberInS,rnd(1)*2.0_pReal*pi)
 
 ! ---# rotation about random axis perpend to fiber #---
-! random axis pependicular to fiber axis
+! random axis pependicular to fiber axis 
  call halton(2,axis)
  if (fiberInS(3) /= 0.0_pReal) then
      axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))/fiberInS(3)
@@ -1696,14 +1815,14 @@ endif
  enddo
  call halton(1,rnd)
  if (rnd(1) <= 0.5) angle = -angle
- pRot = math_RodrigtoR(axis,angle)
+ pRot = math_AxisAngleToR(axis,angle)
 
 ! ---# apply the three rotations #---
-math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))) 
+ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))) 
 
  return
 
- ENDFUNCTION
+ endfunction
 
 
 
@@ -1711,7 +1830,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 !   symmetric Euler angles for given symmetry string
 !   'triclinic' or '', 'monoclinic', 'orthotropic'
 !********************************************************************
- PURE FUNCTION math_symmetricEulers(sym,Euler)
+ pure function math_symmetricEulers(sym,Euler)
 
  use prec, only: pReal, pInt
  implicit none
@@ -1747,13 +1866,13 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
 
- ENDFUNCTION
+ endfunction
 
 
 
 !****************************************************************
  pure subroutine math_pDecomposition(FE,U,R,error)
-!-----FE=RU 
+!-----FE = R.U 
 !****************************************************************
  use prec, only: pReal, pInt
  implicit none
@@ -2100,9 +2219,9 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
    if ( name(1:1) == 'B' .or. name(1:1) == 'b' ) then
 
      if ( ndim_save /= ndim ) then
-  deallocate ( base )
-  ndim_save = ndim
-  allocate ( base(ndim_save) )
+       deallocate ( base )
+       ndim_save = ndim
+       allocate ( base(ndim_save) )
      end if
 
      base(1:ndim) = value(1:ndim)
@@ -2110,14 +2229,14 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
    else if ( name(1:1) == 'N' .or. name(1:1) == 'n' ) then
 
      if ( ndim_save /= value(1) ) then
-  deallocate ( base )
-  ndim_save = value(1)
-  allocate ( base(ndim_save) )
-  do i = 1, ndim_save
-    base(i) = prime ( i )
-  enddo
+       deallocate ( base )
+       ndim_save = value(1)
+       allocate ( base(ndim_save) )
+       do i = 1, ndim_save
+         base(i) = prime ( i )
+       enddo
      else
-  ndim_save = value(1)
+       ndim_save = value(1)
      end if
    else if ( name(1:1) == 'S' .or. name(1:1) == 's' ) then
      seed = value(1)
@@ -2609,12 +2728,12 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
 
  return
  
- ENDFUNCTION
+ endfunction
 
 !**************************************************************************
 ! volume of tetrahedron given by four vertices
 !**************************************************************************
- PURE FUNCTION math_volTetrahedron(v1,v2,v3,v4)  
+ pure function math_volTetrahedron(v1,v2,v3,v4)  
 
  use prec, only: pReal
  implicit none
@@ -2630,7 +2749,7 @@ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))
  math_volTetrahedron = math_det3x3(m)/6.0_pReal 
  return
 
- ENDFUNCTION
+ endfunction
 
 
 

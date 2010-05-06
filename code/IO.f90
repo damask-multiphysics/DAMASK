@@ -1085,6 +1085,15 @@ endfunction
  case (666)
    msg = 'Memory leak detected'
 
+ case (670)
+   msg = 'math_check: quat -> axisAngle -> quat failed'
+ case (671)
+   msg = 'math_check: quat -> R -> quat failed'
+ case (672)
+   msg = 'math_check: quat -> euler -> quat failed'
+ case (673)
+   msg = 'math_check: R -> euler -> R failed'
+
  case (700)
    msg = 'Singular matrix in stress iteration'
  case default

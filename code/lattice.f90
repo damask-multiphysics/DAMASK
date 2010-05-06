@@ -866,7 +866,7 @@ function lattice_initializeStructure(struct,CoverA)
      lattice_tn(:,i,myStructure) = tn(:,i)
      lattice_Stwin(:,:,i,myStructure) = math_tensorproduct(td(:,i),tn(:,i))
      lattice_Stwin_v(:,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Stwin(:,:,i,myStructure)))
-     lattice_Qtwin(:,:,i,myStructure) = math_RodrigToR(tn(:,i),180.0_pReal*inRad)
+     lattice_Qtwin(:,:,i,myStructure) = math_AxisAngleToR(tn(:,i),180.0_pReal*inRad)
      lattice_shearTwin(i,myStructure) = ts(i)
    enddo
    lattice_NslipSystem(1:lattice_maxNslipFamily,myStructure) = myNslipSystem                                ! number of slip systems in each family
