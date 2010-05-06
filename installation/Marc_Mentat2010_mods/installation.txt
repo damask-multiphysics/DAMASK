@@ -1,0 +1,34 @@
+Install MPIE modifications to use MPIE CPFEM routine
+
+This is for the Linux64 version of Marc/Mentat2010
+
+Usually you will need to be root for this to work!
+
+The structure of this directory should be:
+
+./installation.txt						this text
+./apply_MPIE_modifications				script file to apply modifications to the installation
+./Marc_tools/comp_user.org				original file from installation
+./Marc_tools/comp_user					modified
+./Marc_tools/comp_user_h				modified version using -O3 optimization
+./Marc_tools/comp_user_mp				modified version using -O3 optimization and OpenMP
+./Marc_tools/run_marc.org				original file from installation
+./Marc_tools/run_marc					modified version
+./Marc_tools/run_h_marc					modified version using -O3 optimization
+./Marc_tools/run_mp_marc				modified version using -O3 optimization and OpenMP
+./Marc_tools/include_linux64.org		original file from installation
+./Marc_tools/include_linux64			modified version
+./Mentat_bin/edit_window.org			original file from installation
+./Mentat_bin/edit_window				modified version
+./Mentat_bin/submit1.org				original file from installation
+./Mentat_bin/submit1					modified version of original calling run_h_marc
+./Mentat_bin/submit2.org				original file from installation
+./Mentat_bin/submit2					modified version of original calling run_marc
+./Mentat_bin/submit3.org				original file from installation
+./Mentat_bin/submit3					modified version of original calling run_mp_marc
+./Mentat_menus/job_run.ms.org			original file from installation
+./Mentat_menus/job_run.ms				modified version
+./Mentat_menus/main.msb                 binary menu file compiled using modified version of job_run.ms
+
+1) Install Marc, Mantat and Documentation as ususal
+2) Run the apply_MPIE_modifications script from this directory.

@@ -1,0 +1,19 @@
+#!/bin/bash
+INSTALLDIR="/msc"
+echo "Input path of MARC/MENTAT installation: [$INSTALLDIR]"
+read INSTALLDIR
+cp ./Marc_tools/comp_user $INSTALLDIR/marc2010/tools
+cp ./Marc_tools/comp_user_h $INSTALLDIR/marc2010/tools
+cp ./Marc_tools/comp_user_mp $INSTALLDIR/marc2010/tools
+cp ./Marc_tools/run_marc $INSTALLDIR/marc2010/tools
+cp ./Marc_tools/run_h_marc $INSTALLDIR/marc2010/tools
+cp ./Marc_tools/run_mp_marc $INSTALLDIR/marc2010/tools
+cp ./Marc_tools/include_linux64 $INSTALLDIR/marc2010/tools
+cp ./Mentat_bin/edit_window $INSTALLDIR/mentat2010/bin
+cp ./Mentat_bin/submit1 $INSTALLDIR/mentat2010/bin
+cp ./Mentat_bin/submit2 $INSTALLDIR/mentat2010/bin
+cp ./Mentat_bin/submit3 $INSTALLDIR/mentat2010/bin
+cp ./Mentat_menus/job_run.ms $INSTALLDIR/mentat2010/menus
+cp ./Mentat_menus/main.msb $INSTALLDIR/mentat2010/menus/linux64
+chmod 555 $INSTALLDIR/marc2010/tools/run_*_marc
+chmod 555 $INSTALLDIR/marc2010/tools/comp_user?*
