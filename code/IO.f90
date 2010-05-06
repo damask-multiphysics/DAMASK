@@ -945,14 +945,18 @@ endfunction
  character(len=80) msg
 
  select case (ID)
- case (0)
-   msg = 'Unable to open input file'
  case (50)
    msg = 'Error writing constitutive output description'
  case (100)
    msg = 'Cannot open config file'
  case (101)
    msg = 'Cannot open input file'
+ case (102)
+   msg = 'missing descriptive information in spectral config file'
+ case (103)
+   msg = 'resolution error in spectral config file'
+ case (104)
+   msg = 'dimension error in spectral config file'
  case (105)
    msg = 'Error reading from ODF file'
  case (110)

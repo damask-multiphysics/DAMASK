@@ -207,6 +207,15 @@
  if (IO_open_inputFile(fileUnit)) then                         ! --- parse info from input file...
 
  select case (FEsolver)
+     case ('Spectral')
+                         call mesh_spectral_count_nodesAndElements(fileUnit)
+                         call mesh_spectral_count_cpElements()
+                         call mesh_spectral_map_elements()
+                         call mesh_spectral_map_nodes()
+                         call mesh_spectral_count_cpSizes()
+                         call mesh_spectral_build_nodes(fileUnit)
+                         call mesh_spectral_build_elements(fileUnit)
+     
      case ('Marc')
                          call mesh_marc_get_tableStyles(fileUnit)
                          call mesh_marc_count_nodesAndElements(fileUnit)
@@ -281,7 +290,7 @@
     case ('136', 'C3D6')
       FE_mapElemtype = 6            ! Three-dimensional Arbitrarily Distorted Pentahedral
     case ( '21', 'C3D20')
-       FE_mapElemtype = 7            ! Three-dimensional Arbitrarily Distorted qudratic hexahedral
+      FE_mapElemtype = 7            ! Three-dimensional Arbitrarily Distorted Quadratic Hexahedral
     case default 
       FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
  endselect
@@ -1079,6 +1088,54 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 !
 ! mesh_Nelems, mesh_Nnodes
 !********************************************************************
+ subroutine mesh_spectral_count_nodesAndElements (unit)
+
+ use prec, only: pInt
+ use IO
+ implicit none
+
+ integer(pInt), parameter :: maxNchunks = 7
+ integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt) a,b,c,i
+
+ integer(pInt) unit
+ character(len=1024) line
+
+ mesh_Nnodes = 0_pInt
+ mesh_Nelems = 0_pInt
+
+ rewind(unit)
+ do 
+   read(unit,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   pos = IO_stringPos(line,maxNchunks)
+
+   if ( IO_lc(IO_StringValue(line,pos,1)) == 'resolution') then
+		 do i = 2,6,2
+			 select case (IO_lc(IO_stringValue(line,pos,i)))
+				 case('a')
+						 a = IO_intValue(line,pos,i+1)
+				 case('b')
+						 b = IO_intValue(line,pos,i+1)
+				 case('c')
+						 c = IO_intValue(line,pos,i+1)
+       end select
+     enddo
+		 mesh_Nelems = 2**(a+b+c)
+		 mesh_Nnodes = (1+2**a)*(1+2**b)*(1+2**c)
+     exit
+   endif
+ enddo
+
+100 return
+ 
+ endsubroutine
+
+!********************************************************************
+! count overall number of nodes and elements in mesh
+!
+! mesh_Nelems, mesh_Nnodes
+!********************************************************************
  subroutine mesh_marc_count_nodesAndElements (unit)
 
  use prec, only: pInt
@@ -1293,6 +1350,22 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 
  endsubroutine
 
+
+!********************************************************************
+! count overall number of cpElements in mesh
+!
+! mesh_NcpElems
+!********************************************************************
+ subroutine mesh_spectral_count_cpElements ()
+
+ use prec, only: pInt
+ implicit none
+
+ mesh_NcpElems = mesh_Nelems
+ return
+ 
+ endsubroutine
+ 
 
 !********************************************************************
 ! count overall number of cpElements in mesh
@@ -1536,7 +1609,30 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 
 
 
- !********************************************************************
+!********************************************************************
+! map nodes from FE id to internal (consecutive) representation
+!
+! allocate globals: mesh_mapFEtoCPnode
+!********************************************************************
+ subroutine mesh_spectral_map_nodes ()
+
+ use prec, only: pInt
+
+ implicit none
+ integer(pInt) i
+
+ allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
+
+ forall (i = 1:mesh_Nnodes) &
+   mesh_mapFEtoCPnode(:,i) = i
+
+ return
+ 
+ endsubroutine
+
+
+
+!********************************************************************
 ! map nodes from FE id to internal (consecutive) representation
 !
 ! allocate globals: mesh_mapFEtoCPnode
@@ -1652,6 +1748,29 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 !
 ! allocate globals: mesh_mapFEtoCPelem
 !********************************************************************
+ subroutine mesh_spectral_map_elements ()
+
+ use prec, only: pInt
+
+ implicit none
+ integer(pInt) i
+
+ allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
+
+ forall (i = 1:mesh_NcpElems) &
+   mesh_mapFEtoCPelem(:,i) = i
+
+ return
+ 
+ endsubroutine
+
+
+
+!********************************************************************
+! map elements from FE id to internal (consecutive) representation
+!
+! allocate globals: mesh_mapFEtoCPelem
+!********************************************************************
  subroutine mesh_marc_map_elements (unit)
 
  use prec, only: pInt
@@ -1754,6 +1873,29 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
 660 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))             ! should be mesh_NcpElems
 
  return
+ endsubroutine
+
+
+!********************************************************************
+! get maximum count of nodes, IPs, IP neighbors, and subNodes
+! among cpElements
+!
+! _maxNnodes, _maxNips, _maxNipNeighbors, _maxNsubNodes
+!********************************************************************
+subroutine mesh_spectral_count_cpSizes ()
+ 
+ use prec, only: pInt
+ implicit none
+
+ integer(pInt) t
+ 
+ t = FE_mapElemtype('C3D8R')                   ! fake 3D hexahedral 8 node 1 IP element
+
+ mesh_maxNnodes =       FE_Nnodes(t)
+ mesh_maxNips =         FE_Nips(t)
+ mesh_maxNipNeighbors = FE_NipNeighbors(t)
+ mesh_maxNsubNodes =    FE_NsubNodes(t)
+ 
  endsubroutine
 
 
@@ -1878,6 +2020,92 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! allocate globals:
 ! _node
 !********************************************************************
+ subroutine mesh_spectral_build_nodes (unit)
+
+ use prec, only: pInt
+ use IO
+ implicit none
+
+ integer(pInt), parameter :: maxNchunks = 7
+ integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt) a,b,c,n,i
+ real(pReal)   x,y,z
+ logical gotResolution,gotDimension
+
+ integer(pInt) unit
+ character(len=64) tag
+ character(len=1024) line
+
+ a = 1_pInt
+ b = 1_pInt
+ c = 1_pInt
+ x = 1.0_pReal 
+ y = 1.0_pReal 
+ z = 1.0_pReal 
+
+ gotResolution = .false.
+ gotDimension =  .false.
+
+ rewind(unit)
+ do 
+   read(unit,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   pos = IO_stringPos(line,maxNchunks)
+
+   select case ( IO_lc(IO_StringValue(line,pos,1)) )
+     case ('resolution')
+         gotResolution = .true.
+				 do i = 2,6,2
+					 tag = IO_lc(IO_stringValue(line,pos,i))
+					 select case (tag)
+						 case('a')
+								 a = 1+2**IO_intValue(line,pos,i+1)
+						 case('b')
+								 b = 1+2**IO_intValue(line,pos,i+1)
+						 case('c')
+								 c = 1+2**IO_intValue(line,pos,i+1)
+					 end select
+				 enddo
+     case ('dimension')
+         gotDimension = .true.
+				 do i = 2,6,2
+					 tag = IO_lc(IO_stringValue(line,pos,i))
+					 select case (tag)
+						 case('x')
+								 x = IO_floatValue(line,pos,i+1)
+						 case('y')
+								 y = IO_floatValue(line,pos,i+1)
+						 case('z')
+								 z = IO_floatValue(line,pos,i+1)
+					 end select
+				 enddo
+	 end select
+   if (gotDimension .and. gotResolution) exit
+ enddo
+
+! --- sanity checks ---
+
+ if (.not. gotDimension .or. .not. gotResolution) call IO_error(102)
+ if (a < 2 .or. b < 2 .or. c < 2) call IO_error(103)
+ if (x <= 0.0_pReal .or. y <= 0.0_pReal .or. z <= 0.0_pReal) call IO_error(104)
+ 
+ forall (n = 0:mesh_Nnodes-1)
+   mesh_node(1,n+1) = x * dble(mod(n,a)     / (a-1.0_pReal))
+   mesh_node(2,n+1) = y * dble(mod(n/a,b)   / (b-1.0_pReal))
+   mesh_node(3,n+1) = z * dble(mod(n/a/b,c) / (c-1.0_pReal))
+ end forall
+
+100 return
+
+ endsubroutine
+
+
+!********************************************************************
+! store x,y,z coordinates of all nodes in mesh
+!
+! allocate globals:
+! _node
+!********************************************************************
  subroutine mesh_marc_build_nodes (unit)
 
  use prec, only: pInt
@@ -1970,6 +2198,93 @@ subroutine mesh_marc_count_cpSizes (unit)
 670 return
 
  endsubroutine
+
+
+!********************************************************************
+! store FEid, type, mat, tex, and node list per element
+!
+! allocate globals:
+! _element
+!********************************************************************
+ subroutine mesh_spectral_build_elements (unit)
+
+ use prec, only: pInt
+ use IO
+ implicit none
+
+ integer(pInt), parameter :: maxNchunks = 7
+ integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt) a,b,c,e,i,homog
+ logical gotResolution,gotDimension,gotHomogenization
+
+ integer(pInt) unit
+ character(len=1024) line
+
+ a = 1_pInt
+ b = 1_pInt
+ c = 1_pInt
+ 
+ gotResolution =      .false.
+ gotDimension =       .false.
+ gotHomogenization =  .false.
+
+ rewind(unit)
+ do 
+   read(unit,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   pos = IO_stringPos(line,maxNchunks)
+
+   select case ( IO_lc(IO_StringValue(line,pos,1)) )
+     case ('dimension')
+         gotDimension = .true.
+
+     case ('homogenization')
+         gotHomogenization = .true.
+				 homog = IO_intValue(line,pos,2)
+
+     case ('resolution')
+         gotResolution = .true.
+				 do i = 2,6,2
+					 select case (IO_lc(IO_stringValue(line,pos,i)))
+						 case('a')
+								 a = 2**IO_intValue(line,pos,i+1)
+						 case('b')
+								 b = 2**IO_intValue(line,pos,i+1)
+						 case('c')
+								 c = 2**IO_intValue(line,pos,i+1)
+					 end select
+				 enddo
+	 end select
+   if (gotDimension .and. gotHomogenization .and. gotResolution) exit
+ enddo
+
+100 allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
+
+ e = 0_pInt
+ do while (e < mesh_NcpElems)
+   read(unit,'(a1024)',END=110) line
+   if (IO_isBlank(line)) cycle                             ! skip empty lines
+   pos = IO_stringPos(line,1)
+  
+   e = e+1                                                 ! valid element entry
+	 mesh_element ( 1,e) = e                                 ! FE id
+	 mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
+	 mesh_element ( 3,e) = homog                             ! homogenization
+	 mesh_element ( 4,e) = IO_IntValue(line,pos,1)           ! microstructure
+	 mesh_element ( 5,e) = (e-1) + (e-1)/a + (e-1)/a/b*(a+1) ! base node
+	 mesh_element ( 6,e) = mesh_element ( 5,e) + 1
+	 mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
+	 mesh_element ( 8,e) = mesh_element ( 5,e) + (a+1)
+	 mesh_element ( 9,e) = mesh_element ( 5,e) + (a+1)*(b+1) ! second floor base node
+	 mesh_element (10,e) = mesh_element ( 9,e) + 1
+	 mesh_element (11,e) = mesh_element ( 9,e) + (a+1) + 1
+	 mesh_element (12,e) = mesh_element ( 9,e) + (a+1)
+ enddo
+ 
+110 return
+
+ endsubroutine
+
 
 
 !********************************************************************
