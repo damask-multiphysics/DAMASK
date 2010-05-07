@@ -1603,7 +1603,7 @@ logical error
         crystallite_rotation(:,g,i,e) = &
           math_QuaternionDisorientation( crystallite_orientation(:,g,i,e), &         ! calculate grainrotation
                                          crystallite_orientation0(:,g,i,e), &
-                                         crystallite_symmetryID(g,i,e) )  
+                                         0_pInt ) ! we don't want symmetry here  
         
       enddo
     enddo
@@ -1669,7 +1669,8 @@ function crystallite_postResults(&
  use prec, only:                      pInt, &
                                       pReal
  use math, only:                      math_QuaternionToEuler, &
-                                      math_QuaternionToAxisAngle
+                                      math_QuaternionToAxisAngle, &
+                                      inDeg
  use mesh, only:                      mesh_element
  use material, only:                  microstructure_crystallite, &
                                       crystallite_Noutput, &
@@ -1711,15 +1712,16 @@ function crystallite_postResults(&
        c = c + 1_pInt
      case ('orientation')
        crystallite_postResults(c+1:c+4) = &
-         crystallite_orientation(:,g,i,e)     ! grain orientation
+         crystallite_orientation(:,g,i,e)     ! grain orientation as quaternion
        c = c + 4_pInt
      case ('eulerangles')
-       crystallite_postResults(c+1:c+3) = &
-         math_QuaternionToEuler(crystallite_orientation(:,g,i,e)) ! grain orientation
+       crystallite_postResults(c+1:c+3) = inDeg * & 
+         math_QuaternionToEuler(crystallite_orientation(:,g,i,e)) ! grain orientation as Euler angles in degree
        c = c + 3_pInt
      case ('grainrotation')
        crystallite_postResults(c+1:c+4) = &
-         math_QuaternionToAxisAngle(crystallite_rotation(:,g,i,e)) ! grain rotation away from initial orientation
+         math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e)) ! grain rotation away from initial orientation as axis-angle 
+       crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4) ! angle in degree
        c = c + 4_pInt
      case ('defgrad')
        forall (k=0:2,l=0:2) crystallite_postResults(c+1+k*3+l) = &
