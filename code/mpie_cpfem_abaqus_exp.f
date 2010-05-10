@@ -14,27 +14,58 @@
 !
 !********************************************************************
 
+include "prec.f90"             ! uses nothing else
+
+
 MODULE cpfem_interface
 
 character(len=64), parameter :: FEsolver = 'Abaqus'
 
 CONTAINS
 
-subroutine mpie_cpfem_init ()
-
-!$OMP CRITICAL (write2out)
+subroutine mpie_cpfem_init
   write(6,*)
-  write(6,*) '<<<+-  mpie_cpfem_abaqus_exp init  -+>>>'
+  write(6,*) '<<<+-  mpie_cpfem_abaqus init  -+>>>'
   write(6,*) '$Id$'
   write(6,*)
-  call flush(6)
-!$OMP END CRITICAL (write2out)
-  return
+ return
 end subroutine
+
+function getWorkingDirectoryName
+ use prec
+ implicit none
+ character(1024) getWorkingDirectoryName
+ integer(pInt) LENOUTDIR
+
+ getWorkingDirectoryName=''
+ CALL VGETOUTDIR( getWorkingDirectoryName, LENOUTDIR )
+! write(6,*) 'getWorkingDirectoryName', getWorkingDirectoryName
+end function
+
+function getFullJobName
+ use prec
+ implicit none
+
+ character(1024) getFullJobName, JOBNAME
+ integer(pInt) LENJOBNAME
+
+ getFullJobName=''
+ CALL VGETJOBNAME(JOBNAME , LENJOBNAME )
+ getFullJobName=trim(getWorkingDirectoryName())//trim(JOBNAME)
+! write(6,*) 'getFullJobName', getFullJobName
+end function
+
+function getInputFileName
+ implicit none
+ character(1024) getInputFileName
+
+ getInputFileName=''
+ getInputFileName=trim(getFullJobName())//'.inp'
+! write(6,*) 'getInputFileName', getInputFileName
+end function
 
 END MODULE
 
- include "prec.f90"             ! uses nothing else
  include "IO.f90"               ! uses prec
  include "numerics.f90"         ! uses prec, IO
  include "math.f90"             ! uses prec, numerics

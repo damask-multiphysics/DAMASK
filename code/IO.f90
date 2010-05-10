@@ -47,16 +47,14 @@ endsubroutine
  logical function IO_open_file(unit,relPath)
 
  use prec, only: pInt
+ use cpfem_interface
  implicit none
 
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
  character(len=*) relPath
  integer(pInt) unit
- character(1024) path
 
- path=''
- inquire(6, name=path) ! determine outputfile
- open(unit,status='old',err=100,file=path(1:scan(path,pathSep,back=.true.))//relPath)
+ open(unit,status='old',err=100,file=trim(getWorkingDirectoryName())//relPath)
  IO_open_file = .true.
  return
 100 IO_open_file = .false.
@@ -75,26 +73,8 @@ endsubroutine
  implicit none
 
  integer(pInt), intent(in) :: unit
- integer(pInt) extPos
- character(1024) outName
- character(3) ext
 
- outName=''
- inquire(6, name=outName) ! determine outputfileName
- extPos = len_trim(outName)-2
-! if(outName(extPos:extPos+2)=='out') then
-!     ext='dat' ! MARC
-! else
-!     ext='inp' ! ABAQUS
-! endif
- select case (FEsolver)
-   case ('Marc')
-     ext='dat' 
-   case ('Abaqus')
-     ext='inp' 
- end select
-
- open(unit,status='old',err=100,file=outName(1:extPos-1)//ext)
+ open(unit,status='old',err=100,file=getInputFileName())
  IO_open_inputFile = .true.
  return
 100 IO_open_inputFile = .false.
@@ -110,14 +90,13 @@ endsubroutine
  logical function IO_open_jobFile(unit,newExt)
 
  use prec, only: pReal, pInt
+ use cpfem_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
  character(*), intent(in) :: newExt
- character(256) outName
 
- inquire(6, name=outName) ! determine outputfileName
- open(unit,status='replace',err=100,file=outName(1:len_trim(outName)-3)//newExt)
+ open(unit,status='replace',err=100,file=trim(getFullJobName())//'.'//newExt)
  IO_open_jobFile = .true.
  return
 100 IO_open_jobFile = .false.

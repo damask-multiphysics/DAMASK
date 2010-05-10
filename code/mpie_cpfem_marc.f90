@@ -36,6 +36,9 @@
 !             - creeps: timinc
 !********************************************************************
 !
+include "prec.f90"             ! uses nothing else
+
+
 MODULE cpfem_interface
 
 character(len=64), parameter :: FEsolver = 'Marc'
@@ -50,9 +53,44 @@ subroutine mpie_cpfem_init
  return
 end subroutine
 
+function getWorkingDirectoryName
+ implicit none
+ character(1024) getWorkingDirectoryName, outName
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+
+ getWorkingDirectoryName=''
+ outName=''
+ inquire(6, name=outName) ! determine outputfile
+ getWorkingDirectoryName=outName(1:scan(outName,pathSep,back=.true.))
+! write(6,*) 'getWorkingDirectoryName', getWorkingDirectoryName
+end function
+
+function getFullJobName
+ use prec
+ implicit none
+
+ character(1024) getFullJobName, outName
+ integer(pInt) extPos
+
+ getFullJobName=''
+ outName=''
+ inquire(6, name=outName) ! determine outputfile
+ extPos = len_trim(outName)-4
+ getFullJobName=outName(1:extPos)
+! write(6,*) 'getFullJobName', getFullJobName
+end function
+
+function getInputFileName
+ implicit none
+ character(1024) getInputFileName
+
+ getInputFileName=''
+ getInputFileName=trim(getFullJobName())//'.dat'
+! write(6,*) 'getInputFileName', getInputFileName
+end function
+
 END MODULE
 
- include "prec.f90"             ! uses nothing else
  include "IO.f90"               ! uses prec
  include "numerics.f90"         ! uses prec, IO
  include "math.f90"             ! uses prec, numerics
