@@ -35,6 +35,7 @@
 ! _NfaceNodes        : # nodes per face in a specific type of element
 
 ! _nodeOnFace        : list of node indices on each face of a specific type of element
+! _maxNnodesAtIP     : max number of (equivalent) nodes attached to an IP
 ! _nodesAtIP         : map IP index to two node indices in a specific type of element
 ! _ipNeighborhood    : 6 or less neighboring IPs as [element_num, IP_index]
 ! _NsubNodes        : # subnodes required to fully define all IP volumes
@@ -60,18 +61,19 @@
  real(pReal),   dimension(:,:,:,:), allocatable :: mesh_ipAreaNormal      ! area normal of interface to neighboring IP
  real(pReal),                       allocatable :: mesh_node (:,:)
  
- integer(pInt), dimension(:,:,:,:), allocatable :: FE_nodesAtIP
+ integer(pInt), dimension(:,:,:),   allocatable :: FE_nodesAtIP
  integer(pInt), dimension(:,:,:),   allocatable :: FE_ipNeighbor
  integer(pInt), dimension(:,:,:),   allocatable :: FE_subNodeParent
  integer(pInt), dimension(:,:,:,:), allocatable :: FE_subNodeOnIPFace
 
  integer(pInt) :: hypoelasticTableStyle
  integer(pInt) :: initialcondTableStyle
- integer(pInt), parameter :: FE_Nelemtypes = 7
+ integer(pInt), parameter :: FE_Nelemtypes = 8
  integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNsubNodes = 56
  integer(pInt), parameter :: FE_maxNips = 27
  integer(pInt), parameter :: FE_maxNipNeighbors = 6
+ integer(pInt), parameter :: FE_maxmaxNnodesAtIP = 8
  integer(pInt), parameter :: FE_NipFaceNodes = 4
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nnodes = &
  (/8, & ! element 7
@@ -80,16 +82,18 @@
    4, & ! element 27
    4, & ! element 157
    6, & ! element 136
-   8  & ! element 21
+   8, & ! element 21
+   8  & ! element 117
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NoriginalNodes = &
  (/8, & ! element 7
    4, & ! element 134
    4, & ! element 11
-   4, & ! element 27
+   8, & ! element 27
    4, & ! element 157
    6, & ! element 136
-   20 & ! element 21
+   20,& ! element 21
+   8  & ! element 117
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nips = &
  (/8, & ! element 7
@@ -98,7 +102,8 @@
    9, & ! element 27
    4, & ! element 157
    6, & ! element 136
-   27 & ! element 21
+   27,& ! element 21
+   1  & ! element 117
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipNeighbors = &
  (/6, & ! element 7
@@ -107,7 +112,8 @@
    4, & ! element 27
    6, & ! element 157
    6, & ! element 136
-   6  & ! element 21
+   6, & ! element 21
+   6  & ! element 117
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NsubNodes = &
  (/19,& ! element 7
@@ -116,7 +122,8 @@
    12,& ! element 27
    0, & ! element 157
    15,& ! element 136
-   56 & ! element 21   
+   56,& ! element 21
+   0  & ! element 117   
   /)
  integer(pInt), dimension(FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
@@ -126,8 +133,19 @@
   2,2,2,2,0,0, & ! element 27
   3,3,3,3,0,0, & ! element 157
   3,4,4,4,3,0, & ! element 136
-  4,4,4,4,4,4  & ! element 21
+  4,4,4,4,4,4, & ! element 21
+  4,4,4,4,4,4  & ! element 117
    /),(/FE_maxNipNeighbors,FE_Nelemtypes/))
+ integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_maxNnodesAtIP = &
+ (/1, & ! element 7
+   4, & ! element 134
+   1, & ! element 11
+   2, & ! element 27
+   1, & ! element 157
+   1, & ! element 136
+   4, & ! element 21
+   8  & ! element 117
+  /)
  integer(pInt), dimension(FE_NipFaceNodes,FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
   1,2,3,4 , & ! element 7
@@ -167,6 +185,12 @@
   4,6,5,0 , &
   0,0,0,0 , &
   1,2,3,4 , & ! element 21
+  2,1,5,6 , &
+  3,2,6,7 , &
+  4,3,7,8 , &
+  4,1,5,8 , &
+  8,7,6,5 , &
+  1,2,3,4 , & ! element 117
   2,1,5,6 , &
   3,2,6,7 , &
   4,3,7,8 , &
@@ -277,20 +301,30 @@
  integer(pInt) FE_mapElemtype
   
  select case (what)
-    case (  '7', 'C3D8')
+    case (  '7', &
+            'C3D8')
       FE_mapElemtype = 1            ! Three-dimensional Arbitrarily Distorted Brick
-    case ('134', 'C3D4')
+    case ('134', &
+          'C3D4')
       FE_mapElemtype = 2            ! Three-dimensional Four-node Tetrahedron
-    case ( '11', 'CPE4')
+    case ( '11', &
+           'CPE4')
       FE_mapElemtype = 3            ! Arbitrary Quadrilateral Plane-strain
-    case ( '27', 'CPE8')
+    case ( '27', &
+           'CPE8')
       FE_mapElemtype = 4            ! Plane Strain, Eight-node Distorted Quadrilateral
     case ('157')
       FE_mapElemtype = 5            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
-    case ('136', 'C3D6')
+    case ('136', &
+          'C3D6')
       FE_mapElemtype = 6            ! Three-dimensional Arbitrarily Distorted Pentahedral
-    case ( '21', 'C3D20')
-      FE_mapElemtype = 7            ! Three-dimensional Arbitrarily Distorted Quadratic Hexahedral
+    case ( '21', &
+           'C3D20')
+      FE_mapElemtype = 7            ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
+    case ( '117', &
+           '123', &
+           'C3D8R')
+      FE_mapElemtype = 8            ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
     case default 
       FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
  endselect
@@ -357,43 +391,50 @@
 !***********************************************************
 ! find face-matching element of same type
 !***********************************************************
- function mesh_faceMatch(face,elem)
+ function mesh_faceMatch(elem,face)
 
  use prec, only: pInt
  implicit none
 
  integer(pInt) face,elem
- integer(pInt) mesh_faceMatch
- integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: nodeMap
- integer(pInt) minN,NsharedElems,lonelyNode,faceNode,i,n,t
+ integer(pInt), dimension(2) :: mesh_faceMatch                                     ! matching element's ID and corresponding face ID 
+ integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: myFaceNodes ! global node ids on my face
+ integer(pInt) minN,NsharedElems, &
+               t, lonelyNode, &
+               candidateType,candidateElem, &
+               i,f,n
  
  minN = mesh_maxNsharedElems+1         ! init to worst case
  mesh_faceMatch = 0_pInt               ! intialize to "no match found"
  t = mesh_element(2,elem)              ! figure elemType
 
- do faceNode=1,FE_NfaceNodes(face,t)   ! loop over nodes on face
-   nodeMap(faceNode) = mesh_FEasCP('node',mesh_element(4+FE_nodeOnFace(faceNode,face,t),elem)) ! CP id of face node
-   NsharedElems = mesh_sharedElem(1,nodeMap(faceNode)) ! figure # shared elements for this node
+ do n = 1,FE_NfaceNodes(face,t)        ! loop over nodes on face
+   myFaceNodes(n) = mesh_FEasCP('node',mesh_element(4+FE_nodeOnFace(n,face,t),elem)) ! CP id of face node
+   NsharedElems = mesh_sharedElem(1,myFaceNodes(n)) ! figure # shared elements for this node
    if (NsharedElems < minN) then
      minN = NsharedElems               ! remember min # shared elems
-     lonelyNode = faceNode             ! remember most lonely node
+     lonelyNode = n                    ! remember most lonely node
    endif
  enddo
-candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
-   mesh_faceMatch = mesh_sharedElem(1+i,nodeMap(lonelyNode)) ! present candidate elem
-   if (mesh_faceMatch == elem) then    ! my own element ?
-     mesh_faceMatch = 0_pInt           ! disregard
-     cycle candidate
-   endif
-   do faceNode=1,FE_NfaceNodes(face,t) ! check remaining face nodes to match
-     if (faceNode == lonelyNode) cycle ! disregard lonely node (matches anyway)
-     n = nodeMap(faceNode)
-     if (all(mesh_sharedElem(2:1+mesh_sharedElem(1,n),n) /= mesh_faceMatch)) then  ! no ref to candidate elem?
-       mesh_faceMatch = 0_pInt         ! set to "no match" (so far)
-       cycle candidate                 ! next candidate elem
-     endif
-   enddo
-   exit                                ! surviving candidate
+
+candidate: do i = 1,minN               ! iterate over lonelyNode's shared elements
+   candidateElem = mesh_sharedElem(1+i,myFaceNodes(lonelyNode)) ! present candidate elem
+   if (candidateElem == elem) cycle candidate         ! my own element ?
+   candidateType = mesh_element(2,candidateElem)      ! figure elemType of candidate
+
+candidateFace: do f = 1,FE_maxNipNeighbors            ! check each face of candidate
+        if (FE_NfaceNodes(f,candidateType) /= FE_NfaceNodes(face,t)) &
+          cycle candidateFace                         ! incompatible face
+        do n = 1,FE_NfaceNodes(f,candidateType)       ! loop through nodes on face
+          if (all(myFaceNodes /= &
+              mesh_FEasCP('node', &
+                mesh_element(4+FE_nodeOnFace(n,f,candidateType),candidateElem)))) &
+            cycle candidateFace  ! other face node not one of my face nodes
+        enddo
+        mesh_faceMatch(1) = f
+        mesh_faceMatch(2) = candidateElem
+        exit candidate                                ! found my matching candidate
+      enddo candidateFace
  enddo candidate
   
  return
@@ -412,63 +453,63 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
  use prec, only: pInt
  implicit none
  
- allocate(FE_nodesAtIP(2,2,FE_maxNips,FE_Nelemtypes)) ; FE_nodesAtIP = 0_pInt
+ allocate(FE_nodesAtIP(FE_maxmaxNnodesAtIP,FE_maxNips,FE_Nelemtypes)) ; FE_nodesAtIP = 0_pInt
  allocate(FE_ipNeighbor(FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes)) ; FE_ipNeighbor = 0_pInt
  allocate(FE_subNodeParent(FE_maxNips,FE_maxNsubNodes,FE_Nelemtypes)) ; FE_subNodeParent = 0_pInt
  allocate(FE_subNodeOnIPFace(FE_NipFaceNodes,FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes)) ; FE_subNodeOnIPFace = 0_pInt
  
  ! fill FE_nodesAtIP with data
- FE_nodesAtIP(:,:,:FE_Nips(1),1) = &  ! element 7
+ FE_nodesAtIP(:,:FE_Nips(1),1) = &  ! element 7
     reshape((/&
-    1,0, 0,0,  &
-    2,0, 0,0,  &
-    4,0, 0,0,  &
-    3,0, 0,0,  &
-    5,0, 0,0,  &
-    6,0, 0,0,  &
-    8,0, 0,0,  &
-    7,0, 0,0   &
-    /),(/2,2,FE_Nips(1)/))
- FE_nodesAtIP(:,:,:FE_Nips(2),2) = &  ! element 134
+    1,  &
+    2,  &
+    4,  &
+    3,  &
+    5,  &
+    6,  &
+    8,  &
+    7   &
+    /),(/FE_maxNnodesAtIP(1),FE_Nips(1)/))
+ FE_nodesAtIP(:,:FE_Nips(2),2) = &  ! element 134
     reshape((/&
-    1,0, 0,0   &
-    /),(/2,2,FE_Nips(2)/))
- FE_nodesAtIP(:,:,:FE_Nips(3),3) = &  ! element 11
+    1,2,3,4   &
+    /),(/FE_maxNnodesAtIP(2),FE_Nips(2)/))
+ FE_nodesAtIP(:,:FE_Nips(3),3) = &  ! element 11
     reshape((/&
-    1,0, 0,0,  &
-    2,0, 0,0,  &
-    4,0, 0,0,  &
-    3,0, 0,0   &
-    /),(/2,2,FE_Nips(3)/))
- FE_nodesAtIP(:,:,:FE_Nips(4),4) = &  ! element 27
+    1,  &
+    2,  &
+    4,  &
+    3   &
+    /),(/FE_maxNnodesAtIP(3),FE_Nips(3)/))
+ FE_nodesAtIP(:,:FE_Nips(4),4) = &  ! element 27
     reshape((/&
-    1,0, 0,0,  &
-    1,2, 0,0,  &
-    2,0, 0,0,  &
-    1,4, 0,0,  &
-    1,3, 2,4,  &
-    2,3, 0,0,  &
-    4,0, 0,0,  &
-    3,4, 0,0,  &
-    3,0, 0,0   &
-    /),(/2,2,FE_Nips(4)/))
- FE_nodesAtIP(:,:,:FE_Nips(5),5) = &  ! element 157
+    1,0,  &
+    1,2,  &
+    2,0,  &
+    1,4,  &
+    0,0,  &
+    2,3,  &
+    4,0,  &
+    3,4,  &
+    3,0   &
+    /),(/FE_maxNnodesAtIP(4),FE_Nips(4)/))
+ FE_nodesAtIP(:,:FE_Nips(5),5) = &  ! element 157
     reshape((/&
-    1,0, 0,0,  &
-    2,0, 0,0,  &
-    3,0, 0,0,  &
-    4,0, 0,0   &
-    /),(/2,2,FE_Nips(5)/))
- FE_nodesAtIP(:,:,:FE_Nips(6),6) = &  ! element 136
+    1,  &
+    2,  &
+    3,  &
+    4   &
+    /),(/FE_maxNnodesAtIP(5),FE_Nips(5)/))
+ FE_nodesAtIP(:,:FE_Nips(6),6) = &  ! element 136
     reshape((/&
-    1,0, 0,0,  &
-    2,0, 0,0,  &
-    3,0, 0,0,  &
-    4,0, 0,0,  &
-    5,0, 0,0,  &
-    6,0, 0,0   &
-    /),(/2,2,FE_Nips(6)/))
-  FE_nodesAtIP(:,:,:FE_Nips(7),7) = &  ! element 21
+    1,  &
+    2,  &
+    3,  &
+    4,  &
+    5,  &
+    6   &
+    /),(/FE_maxNnodesAtIP(6),FE_Nips(6)/))
+  FE_nodesAtIP(:,:FE_Nips(7),7) = &  ! element 21
     reshape((/&
     1,0, 0,0,  &
     1,2, 0,0,  &
@@ -497,7 +538,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
     8,0, 0,0,  &
     7,8, 0,0,  &
     7,0, 0,0   &
-    /),(/2,2,FE_Nips(7)/))
+    /),(/FE_maxNnodesAtIP(7),FE_Nips(7)/))
  
  ! fill FE_ipNeighbor with data
  FE_ipNeighbor(:FE_NipNeighbors(1),:FE_Nips(1),1) = &  ! element 7
@@ -580,6 +621,10 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
     27,25,-4,23,-6,17,  &
     -3,26,-4,24,-6,18   &
     /),(/FE_NipNeighbors(7),FE_Nips(7)/))
+FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
+    reshape((/&
+    -3,-5,-4,-2,-6,-1   &
+    /),(/FE_NipNeighbors(8),FE_Nips(8)/))
  
  ! fill FE_subNodeParent with data
  FE_subNodeParent(:FE_Nips(1),:FE_NsubNodes(1),1) = &  ! element 7
@@ -604,10 +649,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
     5, 6, 7, 8, 0, 0, 0, 0,  &
     1, 2, 3, 4, 5, 6, 7, 8   & 
     /),(/FE_Nips(1),FE_NsubNodes(1)/))
- !FE_subNodeParent(:FE_Nips(2),:FE_NsubNodes(2),2) = &  ! element 134
- !   reshape((/&
- !   *still to be defined*
- !   /),(/FE_Nips(2),FE_NsubNodes(2)/))
+!FE_subNodeParent(:FE_Nips(2),:FE_NsubNodes(2),2)      ! element 134 has no subnodes
  FE_subNodeParent(:FE_Nips(3),:FE_NsubNodes(3),3) = &  ! element 11
     reshape((/&
     1, 2, 0, 0,  & 
@@ -712,6 +754,7 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
     7, 7, 7, 7, 7, 7, 7, 7, 3, 3, 3, 3, 6, 6, 6, 6, 8, 8, 8, 8, 2, 2, 4, 4, 5, 5, 1, &
     8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 4, 4, 5, 5, 5, 5, 7, 7, 7, 7, 1, 1, 3, 3, 6, 6, 2  & 
     /),(/FE_Nips(7),FE_NsubNodes(7)/))
+!FE_subNodeParent(:FE_Nips(8),:FE_NsubNodes(8),8)      ! element 117 has no subnodes
  
  ! fill FE_subNodeOnIPFace with data
  FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(1),:FE_Nips(1),1) = &  ! element 7
@@ -1038,6 +1081,15 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
     55,28, 7,29, &
     63,49,23,48  &
     /),(/FE_NipFaceNodes,FE_NipNeighbors(7),FE_Nips(7)/))
+ FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
+    reshape((/&
+     2, 3, 7, 6, & ! 1
+     1, 5, 8, 4, &
+     3, 4, 8, 7, &
+     1, 2, 6, 5, &
+     5, 6, 7, 8, &
+     1, 4, 3, 2  &
+    /),(/FE_NipFaceNodes,FE_NipNeighbors(8),FE_Nips(8)/))
  
  return
  
@@ -1111,18 +1163,18 @@ candidate: do i=1,minN  ! iterate over lonelyNode's shared elements
    pos = IO_stringPos(line,maxNchunks)
 
    if ( IO_lc(IO_StringValue(line,pos,1)) == 'resolution') then
-		 do i = 2,6,2
-			 select case (IO_lc(IO_stringValue(line,pos,i)))
-				 case('a')
-						 a = IO_intValue(line,pos,i+1)
-				 case('b')
-						 b = IO_intValue(line,pos,i+1)
-				 case('c')
-						 c = IO_intValue(line,pos,i+1)
+     do i = 2,6,2
+       select case (IO_lc(IO_stringValue(line,pos,i)))
+         case('a')
+             a = IO_intValue(line,pos,i+1)
+         case('b')
+             b = IO_intValue(line,pos,i+1)
+         case('c')
+             c = IO_intValue(line,pos,i+1)
        end select
      enddo
-		 mesh_Nelems = 2**(a+b+c)
-		 mesh_Nnodes = (1+2**a)*(1+2**b)*(1+2**c)
+     mesh_Nelems = 2**(a+b+c)
+     mesh_Nnodes = (1+2**a)*(1+2**b)*(1+2**c)
      exit
    endif
  enddo
@@ -2055,31 +2107,31 @@ subroutine mesh_marc_count_cpSizes (unit)
    select case ( IO_lc(IO_StringValue(line,pos,1)) )
      case ('resolution')
          gotResolution = .true.
-				 do i = 2,6,2
-					 tag = IO_lc(IO_stringValue(line,pos,i))
-					 select case (tag)
-						 case('a')
-								 a = 1+2**IO_intValue(line,pos,i+1)
-						 case('b')
-								 b = 1+2**IO_intValue(line,pos,i+1)
-						 case('c')
-								 c = 1+2**IO_intValue(line,pos,i+1)
-					 end select
-				 enddo
+         do i = 2,6,2
+           tag = IO_lc(IO_stringValue(line,pos,i))
+           select case (tag)
+             case('a')
+                 a = 1+2**IO_intValue(line,pos,i+1)
+             case('b')
+                 b = 1+2**IO_intValue(line,pos,i+1)
+             case('c')
+                 c = 1+2**IO_intValue(line,pos,i+1)
+           end select
+         enddo
      case ('dimension')
          gotDimension = .true.
-				 do i = 2,6,2
-					 tag = IO_lc(IO_stringValue(line,pos,i))
-					 select case (tag)
-						 case('x')
-								 x = IO_floatValue(line,pos,i+1)
-						 case('y')
-								 y = IO_floatValue(line,pos,i+1)
-						 case('z')
-								 z = IO_floatValue(line,pos,i+1)
-					 end select
-				 enddo
-	 end select
+         do i = 2,6,2
+           tag = IO_lc(IO_stringValue(line,pos,i))
+           select case (tag)
+             case('x')
+                 x = IO_floatValue(line,pos,i+1)
+             case('y')
+                 y = IO_floatValue(line,pos,i+1)
+             case('z')
+                 z = IO_floatValue(line,pos,i+1)
+           end select
+         enddo
+   end select
    if (gotDimension .and. gotResolution) exit
  enddo
 
@@ -2240,21 +2292,21 @@ subroutine mesh_marc_count_cpSizes (unit)
 
      case ('homogenization')
          gotHomogenization = .true.
-				 homog = IO_intValue(line,pos,2)
+         homog = IO_intValue(line,pos,2)
 
      case ('resolution')
          gotResolution = .true.
-				 do i = 2,6,2
-					 select case (IO_lc(IO_stringValue(line,pos,i)))
-						 case('a')
-								 a = 2**IO_intValue(line,pos,i+1)
-						 case('b')
-								 b = 2**IO_intValue(line,pos,i+1)
-						 case('c')
-								 c = 2**IO_intValue(line,pos,i+1)
-					 end select
-				 enddo
-	 end select
+         do i = 2,6,2
+           select case (IO_lc(IO_stringValue(line,pos,i)))
+             case('a')
+                 a = 2**IO_intValue(line,pos,i+1)
+             case('b')
+                 b = 2**IO_intValue(line,pos,i+1)
+             case('c')
+                 c = 2**IO_intValue(line,pos,i+1)
+           end select
+         enddo
+   end select
    if (gotDimension .and. gotHomogenization .and. gotResolution) exit
  enddo
 
@@ -2267,18 +2319,18 @@ subroutine mesh_marc_count_cpSizes (unit)
    pos = IO_stringPos(line,1)
   
    e = e+1                                                 ! valid element entry
-	 mesh_element ( 1,e) = e                                 ! FE id
-	 mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
-	 mesh_element ( 3,e) = homog                             ! homogenization
-	 mesh_element ( 4,e) = IO_IntValue(line,pos,1)           ! microstructure
-	 mesh_element ( 5,e) = (e-1) + (e-1)/a + (e-1)/a/b*(a+1) ! base node
-	 mesh_element ( 6,e) = mesh_element ( 5,e) + 1
-	 mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
-	 mesh_element ( 8,e) = mesh_element ( 5,e) + (a+1)
-	 mesh_element ( 9,e) = mesh_element ( 5,e) + (a+1)*(b+1) ! second floor base node
-	 mesh_element (10,e) = mesh_element ( 9,e) + 1
-	 mesh_element (11,e) = mesh_element ( 9,e) + (a+1) + 1
-	 mesh_element (12,e) = mesh_element ( 9,e) + (a+1)
+   mesh_element ( 1,e) = e                                 ! FE id
+   mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
+   mesh_element ( 3,e) = homog                             ! homogenization
+   mesh_element ( 4,e) = IO_IntValue(line,pos,1)           ! microstructure
+   mesh_element ( 5,e) = (e-1) + (e-1)/a + (e-1)/a/b*(a+1) ! base node
+   mesh_element ( 6,e) = mesh_element ( 5,e) + 1
+   mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
+   mesh_element ( 8,e) = mesh_element ( 5,e) + (a+1)
+   mesh_element ( 9,e) = mesh_element ( 5,e) + (a+1)*(b+1) ! second floor base node
+   mesh_element (10,e) = mesh_element ( 9,e) + 1
+   mesh_element (11,e) = mesh_element ( 9,e) + (a+1) + 1
+   mesh_element (12,e) = mesh_element ( 9,e) + (a+1)
  enddo
  
 110 return
@@ -2545,9 +2597,13 @@ subroutine mesh_marc_count_cpSizes (unit)
  use prec, only: pInt
  implicit none
  
- integer(pInt) e,t,i,j,k,n
- integer(pInt) neighbor,neighboringElem,neighboringIP,matchingElem
- integer(pInt), dimension(2) :: linkedNode = 0_pInt
+ integer(pInt) e,t,i,j,k,l,m,n,a,anchor, neighborType
+ integer(pInt) neighbor,neighboringElem,neighboringIP
+ integer(pInt), dimension(2) :: matchingElem                              ! face and id of matching elem
+ integer(pInt), dimension(FE_maxmaxNnodesAtIP) :: linkedNodes, &
+                                                  matchingNodes
+ 
+ linkedNodes = 0_pInt
 
  allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipNeighborhood = 0_pInt
  
@@ -2562,42 +2618,39 @@ subroutine mesh_marc_count_cpSizes (unit)
        else                                                               ! neighboring element's IP
          neighboringElem = 0_pInt
          neighboringIP = 0_pInt
-         matchingElem = mesh_faceMatch(-neighbor,e)                       ! get CP elem id of face match
-         if (matchingElem > 0 .and. mesh_element(2,matchingElem) == t) then  ! found match of same type?
-           if (FE_nodesAtIP(2,1,i,t) == 0) then                           ! single linked node
- matchNode1: do j = 1,FE_Nnodes(t)                                        ! check against all neighbor's nodes
-               if (mesh_element(4+FE_nodesAtIP(1,1,i,t),e)==mesh_element(4+j,matchingElem)) then
-                 linkedNode(1) = j                                        ! which neighboring node matches my first nodeAtIP (indexed globally)
-                 linkedNode(2) = 0_pInt
-                 exit matchNode1
+         matchingElem = mesh_faceMatch(e,-neighbor)                       ! get face and CP elem id of face match
+         if (matchingElem(2) > 0_pInt) then                               ! found match?
+           neighborType = mesh_element(2,matchingElem(2))
+           l = 0_pInt
+           do a = 1,FE_maxNnodesAtIP(t)                                   ! figure my anchor nodes on connecting face
+             anchor = FE_nodesAtIP(a,i,t)
+             if (any(FE_nodeOnFace(:,-neighbor,t) == anchor)) then        ! ip anchor sits on face?
+               l = l+1_pInt
+               linkedNodes(l) = mesh_element(4+anchor,e)                  ! FE id of anchor node
+             endif
+           enddo
+
+  neighborIP: do j = 1,FE_Nips(neighborType)                              ! loop over neighboring ips
+             m = 0_pInt
+             matchingNodes = 0_pInt
+             do a = 1,FE_maxNnodesAtIP(neighborType)                      ! check each anchor node of that ip
+               anchor = FE_nodesAtIP(a,j,neighborType)
+               if (    anchor /= 0_pInt .and. &    ! valid anchor node
+                   any(FE_nodeOnFace(:,matchingElem(1),neighborType) == anchor) ) then
+                 m = m+1_pInt
+                 matchingNodes(m) = mesh_element(4+anchor,matchingElem(2)) ! FE id of neighbor's anchor node
                endif
-             enddo matchNode1
- matchFace1: do j = 1,FE_Nips(t)
-               if ( (linkedNode(1) == FE_nodesAtIP(1,1,j,t)) .and. &
-                    (FE_nodesAtIP(2,1,j,t) == 0) ) then
-                 neighboringElem = matchingElem
-                 neighboringIP = j
-                 exit matchFace1
-               endif
-             enddo matchFace1
-           else                                                           ! double linked node
- matchNode2: do j = 1,FE_Nnodes(t)                                        ! check against all neighbor's nodes
-               if (mesh_element(4+FE_nodesAtIP(1,1,i,t),e)==mesh_element(4+j,matchingElem)) linkedNode(1) = j   ! which neighboring node matches my first nodeAtIP (indexed globally)
-               if (mesh_element(4+FE_nodesAtIP(2,1,i,t),e)==mesh_element(4+j,matchingElem)) linkedNode(2) = j   ! which neighboring node matches my second nodeAtIP (indexed globally)
-             enddo matchNode2
- matchFace2: do j = 1,FE_Nips(t)
-               if ((linkedNode(1) == FE_nodesAtIP(1,1,j,t) .and. linkedNode(2) == FE_nodesAtIP(2,1,j,t)) .or. &
-                   (linkedNode(1) == FE_nodesAtIP(2,1,j,t) .and. linkedNode(2) == FE_nodesAtIP(1,1,j,t)) .or. &
-                   (linkedNode(1) == FE_nodesAtIP(1,2,j,t) .and. linkedNode(2) == FE_nodesAtIP(2,2,j,t)) .or. &
-                   (linkedNode(1) == FE_nodesAtIP(2,2,j,t) .and. linkedNode(2) == FE_nodesAtIP(1,2,j,t))) then
-                 neighboringElem = matchingElem
-                 neighboringIP = j
-                 exit matchFace2
-               endif
-             enddo matchFace2
-           endif
-         endif
-       endif
+             enddo
+             if (m /= l) cycle neighborIP                                 ! this ip has wrong count of anchors on face
+             do a = 1,l
+               if (all(matchingNodes /= linkedNodes(a))) cycle neighborIP
+             enddo
+             neighboringElem = matchingElem(2)                            ! survival of the fittest
+             neighboringIP   = j
+             exit neighborIP
+           enddo neighborIP
+         endif                                                            ! end of valid external matching
+       endif                                                              ! end of internal/external matching
        mesh_ipNeighborhood(1,n,i,e) = neighboringElem
        mesh_ipNeighborhood(2,n,i,e) = neighboringIP
      enddo
@@ -2737,17 +2790,17 @@ subroutine mesh_marc_count_cpSizes (unit)
    t = mesh_element(2,e)                                        ! get elemType
    do i = 1,FE_Nips(t)                                          ! loop over IPs of elem
      do f = 1,FE_NipNeighbors(t)                                ! loop over interfaces of IP 
-	     forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+       forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
        forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles)         ! start at each interface node and build valid triangles to cover interface
          normal(:,j,n) = math_vectorproduct(nPos(:,1+mod(n+j-1,FE_NipFaceNodes)) - nPos(:,n), &    ! calc their normal vectors
                                             nPos(:,1+mod(n+j-0,FE_NipFaceNodes)) - nPos(:,n))
          area(j,n) = dsqrt(sum(normal(:,j,n)*normal(:,j,n)))                                       ! and area
        end forall
-	     forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles, area(j,n) > 0.0_pReal) &
-	       normal(:,j,n) = normal(:,j,n) / area(j,n)            ! make unit normal
+       forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles, area(j,n) > 0.0_pReal) &
+         normal(:,j,n) = normal(:,j,n) / area(j,n)            ! make unit normal
        
        mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)                   ! area of parallelograms instead of triangles
-	     mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2) / count(area > 0.0_pReal)  ! average of all valid normals
+       mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2) / count(area > 0.0_pReal)  ! average of all valid normals
      enddo
    enddo
  enddo
@@ -2783,7 +2836,7 @@ subroutine mesh_marc_count_cpSizes (unit)
    mesh_HomogMicro(mesh_element(3,i),mesh_element(4,i)) + 1 ! count combinations of homogenization and microstructure
  enddo
  
-!$OMP CRITICAL (write2out)
+$OMP CRITICAL (write2out)
 
 ! write(6,*)
 ! write(6,*) 'Input Parser: IP COORDINATES'
