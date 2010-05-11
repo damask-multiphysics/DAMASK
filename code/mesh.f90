@@ -211,7 +211,7 @@
 !***********************************************************
  subroutine mesh_init (ip,element)
 
- use cpfem_interface
+ use mpie_interface
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile
  use FEsolving, only: parallelExecution, FEsolving_execElem, FEsolving_execIP, calcMode, lastMode

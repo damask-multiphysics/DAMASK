@@ -47,14 +47,14 @@ endsubroutine
  logical function IO_open_file(unit,relPath)
 
  use prec, only: pInt
- use cpfem_interface
+ use mpie_interface
  implicit none
 
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
  character(len=*) relPath
  integer(pInt) unit
 
- open(unit,status='old',err=100,file=trim(getWorkingDirectoryName())//relPath)
+ open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//relPath)
  IO_open_file = .true.
  return
 100 IO_open_file = .false.
@@ -68,13 +68,14 @@ endsubroutine
 !********************************************************************
  logical function IO_open_inputFile(unit)
 
- use cpfem_interface
  use prec, only: pReal, pInt
+ use mpie_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
 
- open(unit,status='old',err=100,file=getInputFileName())
+ open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                     trim(getSolverJobName())//InputFileExtension)
  IO_open_inputFile = .true.
  return
 100 IO_open_inputFile = .false.
@@ -90,13 +91,14 @@ endsubroutine
  logical function IO_open_jobFile(unit,newExt)
 
  use prec, only: pReal, pInt
- use cpfem_interface
+ use mpie_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
  character(*), intent(in) :: newExt
 
- open(unit,status='replace',err=100,file=trim(getFullJobName())//'.'//newExt)
+ open(unit,status='replace',err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                     trim(getSolverJobName())//'.'//newExt)
  IO_open_jobFile = .true.
  return
 100 IO_open_jobFile = .false.
@@ -765,7 +767,7 @@ endfunction
 !********************************************************************
  function IO_countContinousIntValues (unit)
 
- use cpfem_interface
+ use mpie_interface
  use prec, only: pReal,pInt
  implicit none
 
@@ -823,7 +825,7 @@ endfunction
 !********************************************************************
  function IO_continousIntValues (unit,maxN,lookupName,lookupMap,lookupMaxN)
 
- use cpfem_interface
+ use mpie_interface
  use prec, only: pReal,pInt
  implicit none
 

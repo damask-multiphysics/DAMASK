@@ -17,9 +17,10 @@
 include "prec.f90"             ! uses nothing else
 
 
-MODULE cpfem_interface
+MODULE mpie_interface
 
 character(len=64), parameter :: FEsolver = 'Abaqus'
+character(len=4),  parameter :: InputFileExtension = '.inp'
 
 CONTAINS
 
@@ -31,37 +32,27 @@ subroutine mpie_cpfem_init
  return
 end subroutine
 
-function getWorkingDirectoryName
+function getSolverWorkingDirectoryName
  use prec
  implicit none
- character(1024) getWorkingDirectoryName
+ character(1024) getSolverWorkingDirectoryName
  integer(pInt) LENOUTDIR
 
- getWorkingDirectoryName=''
- CALL GETOUTDIR( getWorkingDirectoryName, LENOUTDIR )
-! write(6,*) 'getWorkingDirectoryName', getWorkingDirectoryName
+ getSolverWorkingDirectoryName=''
+ CALL GETOUTDIR( getSolverWorkingDirectoryName, LENOUTDIR )
+! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
 end function
 
-function getFullJobName
+function getSolverJobName
  use prec
  implicit none
 
- character(1024) getFullJobName, JOBNAME
+ character(1024) getSolverJobName, JOBNAME
  integer(pInt) LENJOBNAME
 
- getFullJobName=''
- CALL GETJOBNAME(JOBNAME , LENJOBNAME )
- getFullJobName=trim(getWorkingDirectoryName())//trim(JOBNAME)
-! write(6,*) 'getFullJobName', getFullJobName
-end function
-
-function getInputFileName
- implicit none
- character(1024) getInputFileName
-
- getInputFileName=''
- getInputFileName=trim(getFullJobName())//'.inp'
-! write(6,*) 'getInputFileName', getInputFileName
+ getSolverJobName=''
+ CALL GETJOBNAME(getSolverJobName , LENJOBNAME )
+! write(6,*) 'getSolverJobName', getSolverJobName
 end function
 
 END MODULE

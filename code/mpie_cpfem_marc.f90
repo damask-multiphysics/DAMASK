@@ -39,9 +39,10 @@
 include "prec.f90"             ! uses nothing else
 
 
-MODULE cpfem_interface
+MODULE mpie_interface
 
 character(len=64), parameter :: FEsolver = 'Marc'
+character(len=4),  parameter :: InputFileExtension = '.dat'
 
 CONTAINS
 
@@ -53,40 +54,32 @@ subroutine mpie_cpfem_init
  return
 end subroutine
 
-function getWorkingDirectoryName
+function getSolverWorkingDirectoryName
  implicit none
- character(1024) getWorkingDirectoryName, outName
+ character(1024) getSolverWorkingDirectoryName, outName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
 
- getWorkingDirectoryName=''
+ getSolverWorkingDirectoryName=''
  outName=''
  inquire(6, name=outName) ! determine outputfile
- getWorkingDirectoryName=outName(1:scan(outName,pathSep,back=.true.))
-! write(6,*) 'getWorkingDirectoryName', getWorkingDirectoryName
+ getSolverWorkingDirectoryName=outName(1:scan(outName,pathSep,back=.true.))
+! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
 end function
 
-function getFullJobName
+function getSolverJobName
  use prec
  implicit none
 
- character(1024) getFullJobName, outName
+ character(1024) getSolverJobName, outName
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
  integer(pInt) extPos
 
- getFullJobName=''
+ getSolverJobName=''
  outName=''
  inquire(6, name=outName) ! determine outputfile
  extPos = len_trim(outName)-4
- getFullJobName=outName(1:extPos)
-! write(6,*) 'getFullJobName', getFullJobName
-end function
-
-function getInputFileName
- implicit none
- character(1024) getInputFileName
-
- getInputFileName=''
- getInputFileName=trim(getFullJobName())//'.dat'
-! write(6,*) 'getInputFileName', getInputFileName
+ getSolverJobName=outName(scan(outName,pathSep,back=.true.)+1:extPos)
+! write(6,*) 'getSolverJobName', getSolverJobName
 end function
 
 END MODULE

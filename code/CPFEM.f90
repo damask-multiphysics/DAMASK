@@ -130,7 +130,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       materialpoint_stressAndItsTangent, &
                                                       materialpoint_postResults
   use IO, only:                                       IO_init
-  use cpfem_interface
+  use mpie_interface
   
   implicit none
   
