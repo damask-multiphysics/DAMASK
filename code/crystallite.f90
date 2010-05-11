@@ -1550,7 +1550,8 @@ use prec, only:                       pInt, &
 use math, only:                       math_pDecomposition, &
                                       math_RtoQuaternion, &
                                       math_QuaternionDisorientation, &
-                                      inDeg
+                                      inDeg, &
+                                      math_qConj
 use FEsolving, only:                  FEsolving_execElem, & 
                                       FEsolving_execIP
 use IO, only:                         IO_warning
@@ -1597,12 +1598,12 @@ logical error
           call IO_warning(650, e, i, g)
           crystallite_orientation(:,g,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! fake orientation
         else
-          crystallite_orientation(:,g,i,e) = math_RtoQuaternion(R)
+          crystallite_orientation(:,g,i,e) = math_RtoQuaternion(transpose(R))
         endif
 
         crystallite_rotation(:,g,i,e) = &
-          math_QuaternionDisorientation( crystallite_orientation(:,g,i,e), &         ! calculate grainrotation
-                                         crystallite_orientation0(:,g,i,e), &
+          math_QuaternionDisorientation( math_qConj(crystallite_orientation(:,g,i,e)), &         ! calculate grainrotation
+                                         math_qConj(crystallite_orientation0(:,g,i,e)), &
                                          0_pInt ) ! we don't want symmetry here  
         
       enddo
