@@ -2836,7 +2836,7 @@ subroutine mesh_marc_count_cpSizes (unit)
    mesh_HomogMicro(mesh_element(3,i),mesh_element(4,i)) + 1 ! count combinations of homogenization and microstructure
  enddo
  
-$OMP CRITICAL (write2out)
+!$OMP CRITICAL (write2out)
 
 ! write(6,*)
 ! write(6,*) 'Input Parser: IP COORDINATES'
