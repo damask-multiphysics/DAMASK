@@ -1696,8 +1696,8 @@ function crystallite_postResults(&
                         1+constitutive_sizePostResults(g,i,e)) :: crystallite_postResults
  
  !*** local variables ***!
- real(pReal), dimension(3,3) ::       U, R
- integer(pInt)                        k,l,o,c,crystID
+ real(pReal), dimension(3,3) ::       Ee
+ integer(pInt)                        k,l,o,c,crystID,mySize
  logical                              error
 
  crystID = microstructure_crystallite(mesh_element(4,e))
