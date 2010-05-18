@@ -1287,7 +1287,10 @@ if (verboseDebugger .and. selectiveDebugger) then
   !$OMPEND CRITICAL (write2out)
 endif
 
-if (.not. (mesh_element(2,el)==1_pInt .or. mesh_element(2,el)==6_pInt .or. mesh_element(2,el)==7_pInt)) &
+if (.not. (      mesh_element(2,el) == 1_pInt &
+            .or. mesh_element(2,el) == 6_pInt &
+            .or. mesh_element(2,el) == 7_pInt &
+            .or. mesh_element(2,el) == 8_pInt )) &
   call IO_error(-1,el,ip,g,'element type not supported for nonlocal constitution')
 
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
