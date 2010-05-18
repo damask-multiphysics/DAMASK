@@ -226,7 +226,7 @@ subroutine crystallite_init(Temperature)
          mySize = 3
        case('grainrotation') ! Deviation from initial grain orientation in axis-angle form (angle in degrees)
          mySize = 4
-       case('defgrad')
+       case('defgrad','f','fe','fp','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
          mySize = 9
        case default
          mySize = 0      
@@ -1671,7 +1671,10 @@ function crystallite_postResults(&
                                       pReal
  use math, only:                      math_QuaternionToEuler, &
                                       math_QuaternionToAxisAngle, &
-                                      inDeg
+                                      math_mul33x33, &
+                                      math_I3, &
+                                      inDeg, &
+                                      math_Mandel6to33
  use mesh, only:                      mesh_element
  use material, only:                  microstructure_crystallite, &
                                       crystallite_Noutput, &
@@ -1724,10 +1727,31 @@ function crystallite_postResults(&
          math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e)) ! grain rotation away from initial orientation as axis-angle 
        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4) ! angle in degree
        c = c + 4_pInt
-     case ('defgrad')
-       forall (k=0:2,l=0:2) crystallite_postResults(c+1+k*3+l) = &
-         crystallite_partionedF(k+1,l+1,g,i,e)
-       c = c+9_pInt
+     case ('defgrad','f')
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_partionedF(:,:,g,i,e),(/mySize/))
+       c = c + mySize
+     case ('fe')
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_Fe(:,:,g,i,e),(/mySize/))
+       c = c + mySize
+     case ('ee')
+       Ee = 0.5_pReal * (math_mul33x33(transpose(crystallite_Fe(:,:,g,i,e)), crystallite_Fe(:,:,g,i,e)) - math_I3)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+1+mySize) = reshape(Ee(:,:),(/mySize/))
+       c = c + mySize
+     case ('fp')
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_Fp(:,:,g,i,e),(/mySize/))
+       c = c + mySize
+     case ('p','firstpiola','1stpiola')
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_P(:,:,g,i,e),(/mySize/))
+       c = c + mySize
+     case ('s','tstar','secondpiola','2ndpiola')
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+1+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(:,g,i,e)),(/mySize/))
+       c = c + mySize
    end select
  enddo
   
