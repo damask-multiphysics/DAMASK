@@ -15,7 +15,8 @@ integer(pInt)                   iJacoStiffness, &                       ! freque
                                 nState, &                               ! state loop limit
                                 nStress, &                              ! stress loop limit
                                 pert_method                             ! method used in perturbation technique for tangent
-real(pReal)                     relevantStrain, &                       ! strain increment considered significant
+real(pReal)                     relevantStrain, &                       ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
+                                defgradTolerance, &                     ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
                                 subStepMinCryst, &                      ! minimum (relative) size of sub-step allowed during cutback in crystallite
                                 subStepMinHomog, &                      ! minimum (relative) size of sub-step allowed during cutback in homogenization
@@ -85,6 +86,7 @@ subroutine numerics_init()
   
   ! initialize all parameters with standard values
   relevantStrain          = 1.0e-7_pReal
+  defgradTolerance        = 1.0e-7_pReal
   iJacoStiffness          = 1_pInt
   iJacoLpresiduum         = 1_pInt
   pert_Fg                 = 1.0e-7_pReal
@@ -139,6 +141,8 @@ subroutine numerics_init()
       select case(tag)
         case ('relevantstrain')
               relevantStrain = IO_floatValue(line,positions,2)
+        case ('defgradtolerance')
+              defgradTolerance = IO_floatValue(line,positions,2)
         case ('ijacostiffness')
               iJacoStiffness = IO_intValue(line,positions,2)
         case ('ijacolpresiduum')
@@ -223,6 +227,7 @@ subroutine numerics_init()
 
   ! writing parameters to output file
   write(6,'(a24,x,e8.1)') 'relevantStrain:         ',relevantStrain
+  write(6,'(a24,x,e8.1)') 'defgradTolerance:       ',defgradTolerance
   write(6,'(a24,x,i8)')   'iJacoStiffness:         ',iJacoStiffness
   write(6,'(a24,x,i8)')   'iJacoLpresiduum:        ',iJacoLpresiduum
   write(6,'(a24,x,e8.1)') 'pert_Fg:                ',pert_Fg
@@ -268,6 +273,7 @@ subroutine numerics_init()
   
   ! sanity check  
   if (relevantStrain <= 0.0_pReal)          call IO_error(260)
+  if (defgradTolerance <= 0.0_pReal)        call IO_error(294)
   if (iJacoStiffness < 1_pInt)              call IO_error(261)
   if (iJacoLpresiduum < 1_pInt)             call IO_error(262)
   if (pert_Fg <= 0.0_pReal)                 call IO_error(263)

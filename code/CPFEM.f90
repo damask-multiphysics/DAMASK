@@ -72,12 +72,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       prec_init
   use numerics, only:                                 numerics_init, & 
                                                       relevantStrain, &
+                                                      defgradTolerance, &
                                                       iJacoStiffness
   use debug, only:                                    debug_init, &
                                                       debug_g, &
                                                       debug_i, &
                                                       debug_e, &
                                                       debugger, &
+                                                      selectiveDebugger, &
                                                       verboseDebugger
   use FEsolving, only:                                FE_init, &
                                                       parallelExecution, &
@@ -208,20 +210,19 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       end do
 		endif
   endif
-
-  cp_en = mesh_FEasCP('elem',element)
   
-  if (cp_en == 1 .and. IP == 1) then
-    if (debugger) then
-      !$OMP CRITICAL (write2out)
-        write(6,*)
-        write(6,*) '#####################################'
-        write(6,'(a10,x,f8.4,x,a10,x,f8.4,x,a10,x,i6,x,a10,x,i3,x,a16,x,i2,x,a16,x,i2)') &
-        'theTime',theTime,'theDelta',theDelta,'theInc',theInc,'cycleCounter',cycleCounter,'computationMode',mode
-        write(6,*) '#####################################'
-        call flush (6)
-      !$OMP END CRITICAL (write2out)
-    endif
+  cp_en = mesh_FEasCP('elem',element)
+  selectiveDebugger = (cp_en == debug_e .and. IP == debug_i)
+  
+  if (debugger .and. selectiveDebugger) then
+    !$OMP CRITICAL (write2out)
+      write(6,*)
+      write(6,*) '#####################################'
+      write(6,'(a10,x,f8.4,x,a10,x,f8.4,x,a10,x,i6,x,a10,x,i3,x,a16,x,i2,x,a16,x,i2)') &
+      'theTime',theTime,'theDelta',theDelta,'theInc',theInc,'cycleCounter',cycleCounter,'computationMode',mode
+      write(6,*) '#####################################'
+      call flush (6)
+    !$OMP END CRITICAL (write2out)
   endif
 
   ! according to our "mode" we decide what to do
@@ -239,9 +240,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-        if (debugger) then
+        if (debugger .and. selectiveDebugger) then
           !$OMP CRITICAL (write2out)
-            write(6,'(a,/,4(3(e20.8,x),/))') 'aged state at 1 1 1', constitutive_state(1,1,1)%p
+            write(6,'(a16,i2,x,i5,/,4(3(e20.8,x),/))') 'aged state at 1 ',IP,cp_en, constitutive_state(1,IP,cp_en)%p
           !$OMP END CRITICAL (write2out)
         endif
         do k = 1,mesh_NcpElems
@@ -259,11 +260,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       endif
 
       ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
-      if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > relevantStrain)) then
+      if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > defgradTolerance)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
           if (debugger) then
             !$OMP CRITICAL (write2out)
-              write(6,'(a11,x,i5,x,i2,x,a10,/,3(3(f10.6,x),/))') 'outdated at',cp_en,IP,'FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
+              write(6,'(a11,x,i2,x,i5,x,a12,/,3(3(f10.6,x),/))') 'outdated at',IP,cp_en,'; FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
             !$OMP END CRITICAL (write2out)
           endif
           outdatedFFN1 = .true.
@@ -355,13 +356,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   ! return the local stress and the jacobian from storage
   cauchyStress(:) = CPFEM_cs(:,IP,cp_en)
   jacobian(:,:)   = CPFEM_dcsdE(:,:,IP,cp_en)
-  if (IP == 1 .and. cp_en == 1) then
-    if (debugger) then
-      !$OMP CRITICAL (write2out)
-        write(6,'(a,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip 1 el 1',jacobian/1e9
-        call flush(6)
-      !$OMP END CRITICAL (write2out)
-    endif
+  if (debugger .and. selectiveDebugger) then
+    !$OMP CRITICAL (write2out)
+      write(6,'(a16,x,i2,x,a2,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6
+      write(6,'(a18,x,i2,x,a2,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, jacobian/1e9
+      call flush(6)
+    !$OMP END CRITICAL (write2out)
   endif
   
   ! return temperature
