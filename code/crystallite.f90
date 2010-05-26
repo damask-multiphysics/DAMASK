@@ -86,8 +86,7 @@ subroutine crystallite_init(Temperature)
  use debug, only:            debug_info, &
                              debug_reset
  use math, only:             math_I3, &
-                             math_EulerToR, &
-                             math_RToEuler
+                             math_EulerToR
  use FEsolving, only:        FEsolving_execElem, &
                              FEsolving_execIP
  use mesh, only:             mesh_element, &
@@ -1044,7 +1043,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               k = kl(1,mod(cycleCounter/iJacoStiffness,9)+1,g,i,e)
               l = kl(2,mod(cycleCounter/iJacoStiffness,9)+1,g,i,e)      
               crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/pert_Fg                             ! ... use tangent dP_ij/dFg_kl
-            elseif (.not. storedConvergenceFlag(g,i,e)) then                                                                        ! if crystallite didnï¿½t converge before...
+            elseif (.not. storedConvergenceFlag(g,i,e)) then                                                                        ! if crystallite didnÕt converge before...
               crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                                             ! ... use (elastic) fallback
             endif
       enddo; enddo; enddo
@@ -1550,8 +1549,6 @@ use prec, only:                       pInt, &
                                       pReal
 use math, only:                       math_pDecomposition, &
                                       math_RtoQuaternion, &
-                                      math_RtoEuler, &
-                                      math_QuaternionToEuler, &
                                       math_QuaternionDisorientation, &
                                       inDeg, &
                                       math_qConj
@@ -1560,7 +1557,6 @@ use FEsolving, only:                  FEsolving_execElem, &
 use IO, only:                         IO_warning
 use material, only:                   material_phase, &
                                       homogenization_Ngrains, &
-                                      material_EulerAngles, &
                                       phase_constitution
 use mesh, only:                       mesh_element, &
                                       mesh_ipNeighborhood, &
@@ -1592,7 +1588,6 @@ logical error
 
 
 !$OMP PARALLEL DO
-  n = 0_pInt
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       do g = 1,homogenization_Ngrains(mesh_element(3,e))

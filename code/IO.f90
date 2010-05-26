@@ -262,7 +262,6 @@ endsubroutine
    IO_hybridIA(1,i) = deltas(1)*(mod(bin/(steps(3)*steps(2)),steps(1))+center)  ! phi1
    IO_hybridIA(2,i) = deltas(2)*(mod(bin/ steps(3)          ,steps(2))+center)  ! Phi
    IO_hybridIA(3,i) = deltas(3)*(mod(bin                    ,steps(3))+center)  ! phi2
-!    write(6,'(i6,x,a3,i5,x,a5,x,3(f8.5,x))') i,'bin',bin,'euler',IO_hybridIA(:,i)
    binSet(j) = binSet(i)
  enddo
  close(999)
