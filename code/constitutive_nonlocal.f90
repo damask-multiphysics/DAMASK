@@ -912,7 +912,8 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
     opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
     opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
     if ( opposite_ip == 0 ) &                                                                                                       ! if both neighbors not present...
-      cycle    neighboring_el = opposite_el                                                                                         ! ... skip this element
+      cycle    
+    neighboring_el = opposite_el                                                                                         ! ... skip this element
     neighboring_ip = opposite_ip
     forall (t = 1:8)  neighboring_rhoSgl(:,t) = max(0.0_pReal, 2.0_pReal * state(g,ip,el)%p((t-1)*ns+1:t*ns) &
                                                                 - state(g,opposite_ip,opposite_el)%p((t-1)*ns+1:t*ns) )             ! ... extrapolate density from opposite neighbor (but assure positive value for density)
