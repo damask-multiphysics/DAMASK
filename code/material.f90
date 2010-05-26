@@ -667,6 +667,9 @@ subroutine material_populateGrains()
            constituentGrain = constituentGrain + myNorientations
 
          endif
+!          do j = 1,myNorientations
+!            write(6,'(i6,x,a5,x,3(f8.5,x))') j,'euler',orientationOfGrain(:,grain+j)
+!          enddo
 ! ----------------------------------------------------------------------------
          symExtension = texture_symmetry(textureID) - 1_pInt
          if (symExtension > 0_pInt) then                                      ! sample symmetry
@@ -687,6 +690,7 @@ subroutine material_populateGrains()
        enddo  ! constituent
 
 ! ----------------------------------------------------------------------------
+
        if (.not. microstructure_elemhomo(micro)) then                           ! unless element homogeneous, reshuffle grains
          do i=1,myNgrains-1                                                     ! walk thru grains
            call random_number(rnd)
@@ -720,6 +724,7 @@ subroutine material_populateGrains()
                material_phase(g,i,e) = phaseOfGrain(grain+(i-1)*dGrains+g)
                material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+(i-1)*dGrains+g)
              end forall
+
              grain = grain + FE_Nips(mesh_element(2,e)) * dGrains               ! wind forward by Nips*NgrainsPerIP
            endif
            ! write (6,*) e

@@ -431,7 +431,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
 !**************************************************************************
 ! matrix multiplication 33x33 = 3x3
-!**************************************************************************´
+!**************************************************************************ï¿½
  pure function math_mul33x33(A,B)  
 
  use prec, only: pReal, pInt
@@ -1256,9 +1256,9 @@ pure function math_transpose3x3(A)
  if(val >  1.0_pReal) val =  1.0_pReal
  if(val < -1.0_pReal) val = -1.0_pReal
      
- math_RtoEuler(2) = acos(val)
+ math_RtoEuler(2) = dacos(val)
 
- if(math_RtoEuler(2) < 1.0e-30_pReal) then
+ if(math_RtoEuler(2) < 1.0e-8_pReal) then
 ! calculate phi2
      math_RtoEuler(3) = 0.0_pReal
 ! calculate phi1
@@ -1266,7 +1266,7 @@ pure function math_transpose3x3(A)
      if(val >  1.0_pReal) val =  1.0_pReal
      if(val < -1.0_pReal) val = -1.0_pReal
      
-     math_RtoEuler(1) = acos(val)
+     math_RtoEuler(1) = dacos(val)
      if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  else
 ! calculate phi2
@@ -1274,14 +1274,14 @@ pure function math_transpose3x3(A)
      if(val >  1.0_pReal) val =  1.0_pReal
      if(val < -1.0_pReal) val = -1.0_pReal
      
-     math_RtoEuler(3) = acos(val)
+     math_RtoEuler(3) = dacos(val)
      if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
 ! calculate phi1
      val=-R(3,2)/sin(math_RtoEuler(2))
      if(val >  1.0_pReal) val =  1.0_pReal
      if(val < -1.0_pReal) val = -1.0_pReal
      
-     math_RtoEuler(1) = acos(val)
+     math_RtoEuler(1) = dacos(val)
      if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  end if
  return
@@ -1297,43 +1297,48 @@ pure function math_transpose3x3(A)
  use prec, only: pReal, pInt
  implicit none
 
- real(pReal), dimension (3,3), parameter :: evenPerm = reshape((/1,2,3,2,3,1,3,1,2/),(/3,3/))
-
  real(pReal), dimension (3,3), intent(in) :: R
- real(pReal), dimension(4) :: math_RtoQuaternion
- real(pReal) largestDiagElem,root
- integer(pInt) i,largest
+ real(pReal), dimension(4)   :: absQ,math_RtoQuaternion
+ integer(pInt), dimension(1) :: largest
  
- ! math adopted from http://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternions_and_other_representations_of_rotations
- ! assuming that above corresponds to active rotation, we negate rotation angle
+ ! math adopted from http://code.google.com/p/mtex/source/browse/trunk/geometry/geometry_tools/mat2quat.m
+
+ math_RtoQuaternion = 0.0_pReal
+
+ absQ(1) = 0.5_pReal * dsqrt(1_pReal+R(1,1)+R(2,2)+R(3,3))
+ absQ(2) = 0.5_pReal * dsqrt(1_pReal+R(1,1)-R(2,2)-R(3,3))
+ absQ(3) = 0.5_pReal * dsqrt(1_pReal-R(1,1)+R(2,2)-R(3,3))
+ absQ(4) = 0.5_pReal * dsqrt(1_pReal-R(1,1)-R(2,2)+R(3,3))
  
- largestDiagElem = 0.0_pReal
- largest = 0_pInt
+ largest = maxloc(absQ)
+ select case(largest(1))
+   case (1)
+
+      math_RtoQuaternion(2) = R(2,3)-R(3,2)
+      math_RtoQuaternion(3) = R(3,1)-R(1,3)
+      math_RtoQuaternion(4) = R(1,2)-R(2,1)
+   
+   case (2)
+      math_RtoQuaternion(1) = R(2,3)-R(3,2)
+
+      math_RtoQuaternion(3) = R(1,2)+R(2,1)
+      math_RtoQuaternion(4) = R(3,1)+R(1,3)
+   
+   case (3)
+      math_RtoQuaternion(1) = R(3,1)-R(1,3)
+      math_RtoQuaternion(2) = R(1,2)+R(2,1)
+
+      math_RtoQuaternion(4) = R(2,3)+R(3,2)
+   
+   case (4)
+      math_RtoQuaternion (1) = R(1,2)-R(2,1)
+      math_RtoQuaternion (2) = R(3,1)+R(1,3)
+      math_RtoQuaternion (3) = R(3,2)+R(2,3)
  
- do i = 1,3
-   if (dabs(R(i,i)) >= largestDiagElem) then
-     largestDiagElem = dabs(R(i,i))
-     largest = i
-   endif
- enddo
- 
- root = dsqrt( max(0.0_pReal, &
-                   1.0_pReal - (R(1,1)+R(2,2)+R(3,3)) + 2.0_pReal*R(largest,largest)) )
- if (root < 1.0e-8_pReal) then
-   math_RtoQuaternion = 0.0_pReal
-   math_RtoQuaternion(1) = 1.0_pReal
- else
-   math_RtoQuaternion(1) = 0.5_pReal / root * &
-                           ( R(evenPerm(2,largest),evenPerm(3,largest)) - &
-                             R(evenPerm(3,largest),evenPerm(2,largest)) )
-   math_RtoQuaternion(1+evenPerm(1,largest)) = 0.5_pReal * root
-   math_RtoQuaternion(1+evenPerm(2,largest)) = 0.5_pReal / root * &
-                                               ( R(evenPerm(1,largest),evenPerm(2,largest)) + &
-                                                 R(evenPerm(2,largest),evenPerm(1,largest)) )
-   math_RtoQuaternion(1+evenPerm(3,largest)) = 0.5_pReal / root * &
-                                               ( R(evenPerm(3,largest),evenPerm(1,largest)) + &
-                                                 R(evenPerm(1,largest),evenPerm(3,largest)) )
- endif
+ end select
+
+ math_RtoQuaternion = math_RtoQuaternion*0.25_pReal/maxval(absQ)
+ math_RtoQuaternion(largest(1)) = maxval(absQ)
 
  return
  
@@ -1515,19 +1520,24 @@ pure function math_transpose3x3(A)
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_QuaternionToEuler
 
+ math_QuaternionToEuler(2) = dacos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
 
- math_QuaternionToEuler(1) = atan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
- if (math_QuaternionToEuler(1) < 0.0_pReal) &
-   math_QuaternionToEuler(1) = math_QuaternionToEuler(1) + 2.0_pReal * pi
+ if (dabs(math_QuaternionToEuler(2)) < 1.0e-3_pReal) then
+   math_QuaternionToEuler(1) = 2.0_pReal*dacos(Q(1))
+   math_QuaternionToEuler(3) = 0.0_pReal
+ else
+   math_QuaternionToEuler(1) = datan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
+   if (math_QuaternionToEuler(1) < 0.0_pReal) &
+     math_QuaternionToEuler(1) = math_QuaternionToEuler(1) + 2.0_pReal * pi
 
- math_QuaternionToEuler(2) = acos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
+   math_QuaternionToEuler(3) = datan2(-Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)+Q(3)*Q(4))
+   if (math_QuaternionToEuler(3) < 0.0_pReal) &
+     math_QuaternionToEuler(3) = math_QuaternionToEuler(3) + 2.0_pReal * pi
+ endif
+
  if (math_QuaternionToEuler(2) < 0.0_pReal) &
    math_QuaternionToEuler(2) = math_QuaternionToEuler(2) + pi
 
- math_QuaternionToEuler(3) = atan2(-Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)+Q(3)*Q(4))
- if (math_QuaternionToEuler(3) < 0.0_pReal) &
-   math_QuaternionToEuler(3) = math_QuaternionToEuler(3) + 2.0_pReal * pi
- 
  return
  
  endfunction
