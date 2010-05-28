@@ -913,10 +913,11 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
     opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
     if ( opposite_ip == 0 ) &                                                                                                       ! if both neighbors not present...
       cycle    
-    neighboring_el = opposite_el                                                                                         ! ... skip this element
+    neighboring_el = opposite_el                                                                                                    ! ... skip this element
     neighboring_ip = opposite_ip
-    forall (t = 1:8)  neighboring_rhoSgl(:,t) = max(0.0_pReal, 2.0_pReal * state(g,ip,el)%p((t-1)*ns+1:t*ns) &
-                                                                - state(g,opposite_ip,opposite_el)%p((t-1)*ns+1:t*ns) )             ! ... extrapolate density from opposite neighbor (but assure positive value for density)
+    forall (t = 1:8, s = 1:ns)  &
+      neighboring_rhoSgl(s,t) = max(0.0_pReal, &
+                                    2.0_pReal * state(g,ip,el)%p((t-1)*ns+s) - state(g,opposite_ip,opposite_el)%p((t-1)*ns+s) )             ! ... extrapolate density from opposite neighbor (but assure positive value for density)
   else
     forall (t = 1:8)  neighboring_rhoSgl(:,t) = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+1:t*ns)
   endif
@@ -926,12 +927,13 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   
   neighboring_Nedge = neighboring_rhoEdgeExcess * mesh_ipVolume(neighboring_ip,neighboring_el) ** (2.0_pReal/3.0_pReal)
   neighboring_Nscrew = neighboring_rhoScrewExcess * mesh_ipVolume(neighboring_ip,neighboring_el) ** (2.0_pReal/3.0_pReal)
-    
+  
   do s = 1,ns
 
-    lattice2slip = reshape( (/lattice_st(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
-                              lattice_sd(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
-                              lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure)/), (/3,3/) )
+    lattice2slip = transpose( reshape( (/ lattice_st(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
+                                          lattice_sd(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
+                                          lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure) /), &
+                                       (/ 3,3 /) ) )
                            
     x = math_mul3x3(lattice2slip(1,:), -connectingVector(:,n))                                                                      ! coordinate transformation of connecting vector from the lattice coordinate system to the slip coordinate system
     y = math_mul3x3(lattice2slip(2,:), -connectingVector(:,n))
