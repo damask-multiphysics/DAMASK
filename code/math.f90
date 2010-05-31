@@ -1305,10 +1305,10 @@ pure function math_transpose3x3(A)
 
  math_RtoQuaternion = 0.0_pReal
 
- absQ(1) = 0.5_pReal * dsqrt(1_pReal+R(1,1)+R(2,2)+R(3,3))
- absQ(2) = 0.5_pReal * dsqrt(1_pReal+R(1,1)-R(2,2)-R(3,3))
- absQ(3) = 0.5_pReal * dsqrt(1_pReal-R(1,1)+R(2,2)-R(3,3))
- absQ(4) = 0.5_pReal * dsqrt(1_pReal-R(1,1)-R(2,2)+R(3,3))
+ absQ(1) = 0.5_pReal * dsqrt(1.0_pReal+R(1,1)+R(2,2)+R(3,3))
+ absQ(2) = 0.5_pReal * dsqrt(1.0_pReal+R(1,1)-R(2,2)-R(3,3))
+ absQ(3) = 0.5_pReal * dsqrt(1.0_pReal-R(1,1)+R(2,2)-R(3,3))
+ absQ(4) = 0.5_pReal * dsqrt(1.0_pReal-R(1,1)-R(2,2)+R(3,3))
  
  largest = maxloc(absQ)
  select case(largest(1))
