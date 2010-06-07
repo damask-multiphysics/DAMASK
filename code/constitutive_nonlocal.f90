@@ -58,7 +58,9 @@ real(pReal), dimension(:), allocatable ::                 constitutive_nonlocal_
                                                           constitutive_nonlocal_atomicVolume, &                 ! atomic volume
                                                           constitutive_nonlocal_D0, &                           ! prefactor for self-diffusion coefficient
                                                           constitutive_nonlocal_Qsd, &                          ! activation enthalpy for diffusion
-                                                          constitutive_nonlocal_relevantRho                     ! dislocation density considered relevant
+                                                          constitutive_nonlocal_relevantRho, &                  ! dislocation density considered relevant
+                                                          constitutive_nonlocal_a, &                            ! a0 * burgers vector gives the spreading of the dislocation core for non-singular solution of dislocation stress in the core
+                                                          constitutive_nonlocal_R                               ! cutoff radius for dislocation stress
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_Cslip_66                        ! elasticity matrix in Mandel notation for each instance
 real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_Cslip_3333                      ! elasticity matrix for each instance
 real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_rhoSglEdgePos0, &               ! initial edge_pos dislocation density per slip system for each family and instance
@@ -213,6 +215,8 @@ allocate(constitutive_nonlocal_Qsd(maxNinstance))
 allocate(constitutive_nonlocal_relevantRho(maxNinstance))
 allocate(constitutive_nonlocal_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_nonlocal_Cslip_3333(3,3,3,3,maxNinstance))
+allocate(constitutive_nonlocal_a(maxNinstance))
+allocate(constitutive_nonlocal_R(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
 constitutive_nonlocal_C12 = 0.0_pReal
@@ -228,6 +232,8 @@ constitutive_nonlocal_relevantRho = 0.0_pReal
 constitutive_nonlocal_nu = 0.0_pReal
 constitutive_nonlocal_Cslip_66 = 0.0_pReal
 constitutive_nonlocal_Cslip_3333 = 0.0_pReal
+constitutive_nonlocal_a = -1.0_pReal
+constitutive_nonlocal_R = 0.0_pReal
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily, maxNinstance))
 allocate(constitutive_nonlocal_rhoSglEdgeNeg0(lattice_maxNslipFamily, maxNinstance))
@@ -241,12 +247,12 @@ allocate(constitutive_nonlocal_Lambda0PerSlipFamily(lattice_maxNslipFamily, maxN
 allocate(constitutive_nonlocal_interactionSlipSlip(lattice_maxNinteraction, maxNinstance))
 allocate(constitutive_nonlocal_dLowerEdgePerSlipFamily(lattice_maxNslipFamily, maxNinstance))
 allocate(constitutive_nonlocal_dLowerScrewPerSlipFamily(lattice_maxNslipFamily, maxNinstance))
-constitutive_nonlocal_rhoSglEdgePos0 = 0.0_pReal
-constitutive_nonlocal_rhoSglEdgeNeg0 = 0.0_pReal
-constitutive_nonlocal_rhoSglScrewPos0 = 0.0_pReal
-constitutive_nonlocal_rhoSglScrewNeg0 = 0.0_pReal
-constitutive_nonlocal_rhoDipEdge0 = 0.0_pReal
-constitutive_nonlocal_rhoDipScrew0 = 0.0_pReal
+constitutive_nonlocal_rhoSglEdgePos0 = -1.0_pReal
+constitutive_nonlocal_rhoSglEdgeNeg0 = -1.0_pReal
+constitutive_nonlocal_rhoSglScrewPos0 = -1.0_pReal
+constitutive_nonlocal_rhoSglScrewNeg0 = -1.0_pReal
+constitutive_nonlocal_rhoDipEdge0 = -1.0_pReal
+constitutive_nonlocal_rhoDipScrew0 = -1.0_pReal
 constitutive_nonlocal_v0PerSlipFamily = 0.0_pReal
 constitutive_nonlocal_burgersPerSlipFamily = 0.0_pReal
 constitutive_nonlocal_lambda0PerSlipFamily = 0.0_pReal
@@ -315,6 +321,10 @@ do                                                                              
         forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_lambda0PerSlipFamily(f,i) = IO_floatValue(line,positions,1+f)
       case ('burgers')
         forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_burgersPerSlipFamily(f,i) = IO_floatValue(line,positions,1+f)
+      case('a')
+        constitutive_nonlocal_a(i) = IO_floatValue(line,positions,2)
+      case('r')
+        constitutive_nonlocal_R(i) = IO_floatValue(line,positions,2)
       case('ddipminedge')
         forall (f = 1:lattice_maxNslipFamily) & 
             constitutive_nonlocal_dLowerEdgePerSlipFamily(f,i) = IO_floatValue(line,positions,1+f)
@@ -369,6 +379,8 @@ enddo
   if (any(constitutive_nonlocal_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 0.0_pReal)) &
                                                                                             call IO_error(229)
   if (constitutive_nonlocal_Q0(i) <= 0.0_pReal)                                             call IO_error(-1)
+  if (constitutive_nonlocal_a(i) < 0.0_pReal)                                               call IO_error(-1)
+  if (constitutive_nonlocal_R(i) <= 0.0_pReal)                                              call IO_error(-1)
   if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)                                   call IO_error(230)
   if (constitutive_nonlocal_D0(i) <= 0.0_pReal)                                             call IO_error(231)
   if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                                            call IO_error(232)
@@ -551,9 +563,12 @@ do i = 1,maxNinstance
   constitutive_nonlocal_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_nonlocal_Cslip_66(:,:,i)))
   constitutive_nonlocal_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_nonlocal_Cslip_66(:,:,i))
 
-  constitutive_nonlocal_Gmod(i) = constitutive_nonlocal_C44(i)
-  constitutive_nonlocal_nu(i) = 0.5_pReal * constitutive_nonlocal_C12(i) &
-                                          / (constitutive_nonlocal_C12(i) + constitutive_nonlocal_C44(i))
+  constitutive_nonlocal_Gmod(i) = 0.2_pReal * ( constitutive_nonlocal_C11(i) - constitutive_nonlocal_C12(i) &
+                                                + 3.0_pReal*constitutive_nonlocal_C44(i) )                                          ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+  constitutive_nonlocal_nu(i) =   ( constitutive_nonlocal_C11(i) + 4.0_pReal*constitutive_nonlocal_C12(i) &
+                                    - 2.0_pReal*constitutive_nonlocal_C44(i) ) &
+                                / ( 4.0_pReal*constitutive_nonlocal_C11(i) + 6.0_pReal*constitutive_nonlocal_C12(i) &
+                                    + 2.0_pReal*constitutive_nonlocal_C44(i) )                                                      ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
   
   
   do s1 = 1,ns
@@ -803,18 +818,26 @@ integer(pInt)                     myInstance, &               ! current instance
                                   opposite_el, &              ! element index of my opposite neighbor
                                   s, &                        ! index of my current slip system
                                   t, &                        ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
-                                  sLattice                    ! index of my current slip system according to lattice order
+                                  sLattice, &                 ! index of my current slip system according to lattice order
+                                  i, &
+                                  j
 real(pReal)                       gb, &                       ! short notation for G*b/2/pi
                                   x, &                        ! coordinate in direction of lvec
                                   y, &                        ! coordinate in direction of bvec
                                   z, &                        ! coordinate in direction of nvec
+                                  a, &                        ! coordinate offset from dislocation core
                                   detFe, &                    ! determinant of elastic deformation gradient
-                                  neighboring_detFe           ! determinant of my neighboring elastic deformation gradient
+                                  neighboring_detFe, &        ! determinant of my neighboring elastic deformation gradient
+                                  L, &                        ! dislocation segment length
+                                  r1_2, &                   
+                                  r2_2
+real(pReal), dimension(2) ::      lambda                      ! distance of (x y z) from the segment end projected onto the dislocation segment
 real(pReal), dimension(3,6) ::    connectingVector            ! vector connecting the centers of gravity of me and my neigbor (for each neighbor)
 real(pReal), dimension(6) ::      Tdislocation_v              ! dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress in Mandel notation
-real(pReal), dimension(3,3) ::    lattice2slip, &             ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system with e1=bxn, e2=b, e3=n
+real(pReal), dimension(3,3,2) ::  sigma                       ! dislocation stress for both ends of a single dislocation segment
+real(pReal), dimension(3,3) ::    lattice2slip, &             ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system with e1=bxn, e2=b, e3=n (passive rotation!!!)
                                   neighboringSlip2myLattice, &! mapping from my neighbors slip coordinate system to my lattice coordinate system
-                                  sigma, &                    ! Tdislocation resulting from the excess dislocation density of a single slip system and a single neighbor calculated in the coordinate system of the slip system
+                                  deltaSigma, &               ! Tdislocation resulting from the excess dislocation density on one slip system of one neighbor calculated in the coordinate system of the slip system
                                   F, &                        ! total deformation gradient
                                   neighboring_F, &            ! total deformation gradient of my neighbor
                                   Favg, &                     ! average total deformation gradient of me and my neighbor
@@ -867,7 +890,7 @@ forall (s = 1:ns) &
                     * constitutive_nonlocal_burgersPerSlipSystem(s, myInstance) &
                     * sqrt( dot_product( ( sum(abs(rhoSgl),2) + sum(abs(rhoDip),2) ), &
                                          constitutive_nonlocal_interactionMatrixSlipSlip(s, 1:ns, myInstance) ) )
-! if (debugger) write(6,'(a26,3(i3,x),/,12(f10.5,x),/)') 'tauSlipThreshold / MPa at ',g,ip,el, tauSlipThreshold/1e6
+! if (debugger) write(6,'(a22,3(i3,x),/,12(f10.5,x),/)') 'tauThreshold / MPa at ',g,ip,el, tauThreshold/1e6
 
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
@@ -901,7 +924,6 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
   
 enddo
 
-
 do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                                                        ! loop through my neighbors
 
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
@@ -911,9 +933,9 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
     opposite_n = n - 1_pInt + 2_pInt*mod(n,2_pInt)
     opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
     opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
-    if ( opposite_ip == 0 ) &                                                                                                       ! if both neighbors not present...
-      cycle    
-    neighboring_el = opposite_el                                                                                                    ! ... skip this element
+    if ( opposite_ip == 0 ) &
+      cycle
+    neighboring_el = opposite_el
     neighboring_ip = opposite_ip
     forall (t = 1:8, s = 1:ns)  &
       neighboring_rhoSgl(s,t) = max(0.0_pReal, &
@@ -925,11 +947,15 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   neighboring_rhoEdgeExcess  = sum(abs(neighboring_rhoSgl(:,(/1,5/))),2) - sum(abs(neighboring_rhoSgl(:,(/2,6/))),2)
   neighboring_rhoScrewExcess = sum(abs(neighboring_rhoSgl(:,(/3,7/))),2) - sum(abs(neighboring_rhoSgl(:,(/4,8/))),2)  
   
-  neighboring_Nedge = neighboring_rhoEdgeExcess * mesh_ipVolume(neighboring_ip,neighboring_el) ** (2.0_pReal/3.0_pReal)
-  neighboring_Nscrew = neighboring_rhoScrewExcess * mesh_ipVolume(neighboring_ip,neighboring_el) ** (2.0_pReal/3.0_pReal)
+  L = mesh_ipVolume(neighboring_ip,neighboring_el) ** (1.0_pReal/3.0_pReal)
+  
+  neighboring_Nedge = neighboring_rhoEdgeExcess * mesh_ipVolume(neighboring_ip,neighboring_el) / L
+  neighboring_Nscrew = neighboring_rhoScrewExcess * mesh_ipVolume(neighboring_ip,neighboring_el) / L
   
   do s = 1,ns
-
+    
+    deltaSigma = 0.0_pReal
+    
     lattice2slip = transpose( reshape( (/ lattice_st(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
                                           lattice_sd(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure), &
                                           lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s,myInstance), myStructure) /), &
@@ -938,31 +964,94 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
     x = math_mul3x3(lattice2slip(1,:), -connectingVector(:,n))                                                                      ! coordinate transformation of connecting vector from the lattice coordinate system to the slip coordinate system
     y = math_mul3x3(lattice2slip(2,:), -connectingVector(:,n))
     z = math_mul3x3(lattice2slip(3,:), -connectingVector(:,n))
-        
-    gb = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) / (2.0_pReal*pi)
+
+    a = constitutive_nonlocal_a(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance)    
+    gb = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
+                                                / ( 4.0_pReal * pi * (1.0_pReal - constitutive_nonlocal_nu(myInstance)) )    
+
+    ! EDGE CONTRIBUTION
     
-    sigma(2,2) = - gb * neighboring_Nedge(s) / (1.0_pReal-constitutive_nonlocal_nu(myInstance)) &
-                      * z * (3.0_pReal*y**2.0_pReal + z**2.0_pReal) / (y**2.0_pReal + z**2.0_pReal)**2.0_pReal
+    lambda = (/ 0.5_pReal * L - x, -0.5_pReal * L - x /)
+    r1_2 = y**2.0_pReal + z**2.0_pReal + a**2.0_pReal
     
-    sigma(3,3) =   gb * neighboring_Nedge(s) / (1.0_pReal-constitutive_nonlocal_nu(myInstance)) &
-                      * z * (y**2.0_pReal - z**2.0_pReal) / (y**2.0_pReal + z**2.0_pReal)**2.0_pReal
+    sigma = 0.0_pReal    
+    do i = 1,2
+      r2_2 = lambda(i)**2.0_pReal + r1_2
+  
+      sigma(1,1,i) = z * lambda(i) / dsqrt(r2_2) * ( - 2.0_pReal * constitutive_nonlocal_nu(myInstance) / r1_2 &
+                                                                 * ( 1.0_pReal + a**2.0_pReal/r1_2 + 0.5_pReal*a**2.0_pReal/r2_2 ) &
+                                                     + 1.0_pReal / r2_2 )
+      
+      sigma(2,2,i) = z * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
+                       * ( 1.0_pReal + 2.0_pReal*(y**2.0_pReal+a**2.0_pReal)/r1_2 + (y**2.0_pReal+a**2.0_pReal)/r2_2 )
+      
+      sigma(3,3,i) = z * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
+                       * ( 1.0_pReal - 2.0_pReal*(z**2.0_pReal+a**2.0_pReal)/r1_2 - (z**2.0_pReal+a**2.0_pReal)/r2_2 )
+      
+      sigma(1,2,i) = y * z / ( r2_2 * dsqrt(r2_2) )
+      
+      sigma(2,3,i) = y * lambda(i) / ( r1_2 * dsqrt(r2_2) ) * ( 1.0_pReal - 2.0_pReal*z**2.0_pReal/r1_2 - z**2.0_pReal/r2_2 )
+      
+      sigma(1,3,i) = 1.0_pReal / dsqrt(r2_2) * ( constitutive_nonlocal_nu(myInstance) - z**2.0_pReal/r2_2 &
+                                                 - 0.5_pReal*(1.0_pReal-constitutive_nonlocal_nu(myInstance))*a**2.0_pReal/r2_2 )
+    enddo
     
-    sigma(1,1) = constitutive_nonlocal_nu(myInstance) * (sigma(2,2) + sigma(3,3))
+    forall (i = 1:3, j = 1:3, i<=j) &
+      deltaSigma(i,j) = ( sigma(i,j,1) - sigma(i,j,2) ) * gb * neighboring_Nedge(s)
+
+
+    ! SCREW CONTRIBUTION
     
-    sigma(1,2) = - gb * neighboring_Nscrew(s) * z / (x**2.0_pReal + z**2.0_pReal)
+    lambda = (/ 0.5_pReal * L - y, -0.5_pReal * L - y /)
+    r1_2 = x**2.0_pReal + z**2.0_pReal + a**2.0_pReal
     
-    sigma(2,3) = gb * (   neighboring_Nedge(s) / (1.0_pReal-constitutive_nonlocal_nu(myInstance)) &
-                             * y * (y**2.0_pReal - z**2.0_pReal) / (y**2.0_pReal + z**2.0_pReal)**2.0_pReal &
-                        + neighboring_Nscrew(s) * x / (x**2.0_pReal + z**2.0_pReal) )
+    sigma = 0.0_pReal
+    do i = 1,2
+      r2_2 = lambda(i)**2.0_pReal + r1_2
+  
+      sigma(1,2,i) = z * (1.0_pReal - constitutive_nonlocal_nu(myInstance)) * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
+                       * ( 1.0_pReal + a**2.0_pReal/r1_2 + 0.5_pReal*a**2.0_pReal/r2_2 )
+      
+      sigma(2,3,i) = - x * (1.0_pReal - constitutive_nonlocal_nu(myInstance)) * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
+                         * ( 1.0_pReal + a**2.0_pReal/r1_2 + 0.5_pReal*a**2.0_pReal/r2_2 )
+    enddo
     
-    sigma(2,1) = sigma(1,2)
-    sigma(3,2) = sigma(2,3)
-    sigma(1,3) = 0.0_pReal
-    sigma(3,1) = 0.0_pReal
+    forall (i = 1:2, j = 2:3, i<j) &
+      deltaSigma(i,j) = deltaSigma(i,j) + ( sigma(i,j,1) - sigma(i,j,2) ) * gb * neighboring_Nscrew(s)
     
+    deltaSigma(2,1) = deltaSigma(1,2)
+    deltaSigma(3,2) = deltaSigma(2,3)
+    deltaSigma(3,1) = deltaSigma(1,3)
+    
+    deltaSigma = deltaSigma * &
+      ( constitutive_nonlocal_R(myInstance) / mesh_ipVolume(neighboring_ip,neighboring_el) ** (1.0_pReal/3.0_pReal) ) ** 2.0_pReal  ! scale stress with (R/meshsize)^2
+
     neighboringSlip2myLattice = math_mul33x33(invFe,math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el),transpose(lattice2slip))) ! coordinate transformation from the slip coordinate system to the lattice coordinate system
     Tdislocation_v = Tdislocation_v + math_Mandel33to6( detFe / math_det3x3(Fe(:,:,g,neighboring_ip,neighboring_el)) &
-                           * math_mul33x33(neighboringSlip2myLattice, math_mul33x33(sigma, transpose(neighboringSlip2myLattice))) )
+                      * math_mul33x33(neighboringSlip2myLattice, math_mul33x33(deltaSigma, transpose(neighboringSlip2myLattice))) )
+    
+    if ( selectiveDebugger .and. verboseDebugger) then
+      write(6,*)
+      write(6,'(a20,i1,x,i2,x,i5))') '::: microstructure',g,ip,el
+      write(6,'(i2)') n 
+      write(6,'(2(a20,x,e12.3,5x))') 'delta_rho_edge:', neighboring_rhoEdgeExcess(s), 'delta_rho_screw:', neighboring_rhoScrewExcess(s)
+      write(6,'(2(a20,x,f12.3,5x))') 'Nedge:', neighboring_Nedge(s), 'Nscrew:', neighboring_Nscrew(s)
+      write(6,*)
+      if (mesh_ipNeighborhood(2,n,ip,el) > 0) then
+        write(6,'(a20,x,3(f10.3,x))') 'delta_g0 / mu:', &
+                                ( mesh_ipCenterOfGravity(:,mesh_ipNeighborhood(2,n,ip,el),mesh_ipNeighborhood(1,n,ip,el)) &
+                                - mesh_ipCenterOfGravity(:,ip,el) ) * 1e6
+      else
+        write(6,'(a20,x,3(f10.3,x))') 'delta_g0 / mu:', 0.0_pReal,0.0_pReal,0.0_pReal
+      endif
+      write(6,'(a20,x,3(f10.3,x))') 'delta_g / mu:', connectingVector(:,n)*1e6
+      write(6,'(a20,x,3(f10.3,x))') '(x,y,z) / mu:', x*1e6, y*1e6, z*1e6
+      write(6,*)
+      write(6,'(a20,/,3(21x,3(f10.4,x)/))') 'sigma / MPa:', transpose(deltaSigma) * 1e-6
+      write(6,'(a20,/,3(21x,3(f10.4,x)/))') '2ndPK / MPa:', transpose( detFe / math_det3x3(Fe(:,:,g,neighboring_ip,neighboring_el)) &
+                * math_mul33x33(neighboringSlip2myLattice, math_mul33x33(deltaSigma, transpose(neighboringSlip2myLattice))) ) * 1e-6
+      write(6,*)
+    endif
   enddo
 enddo
 
