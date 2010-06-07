@@ -605,7 +605,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g) 
             if (crystallite_todo(g,i,e)) then                                                       ! all undone crystallites
               call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                               crystallite_Fp, g, i, e)                             ! update dependent state variables to be consistent with basic states
+                                               crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e) ! update dependent state variables to be consistent with basic states
               constitutive_previousDotState2(g,i,e)%p = 0.0_pReal
               constitutive_previousDotState(g,i,e)%p = 0.0_pReal
               constitutive_dotState(g,i,e)%p = 0.0_pReal                                            ! zero out dotStates
@@ -1143,7 +1143,7 @@ endsubroutine
  ! update the microstructure
  constitutive_state(g,i,e)%p(1:mySize) = constitutive_state(g,i,e)%p(1:mySize) - residuum
  call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                  g, i, e)
+                                  crystallite_disorientation(:,:,g,i,e), g, i, e)
  
  
  ! setting flag to true if state is below relative tolerance, otherwise set it to false

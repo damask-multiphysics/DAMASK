@@ -749,7 +749,7 @@ endfunction
 !*********************************************************************
 !* calculates quantities characterizing the microstructure           *
 !*********************************************************************
-subroutine constitutive_nonlocal_microstructure(state, Temperature, Tstar_v, Fe, Fp, g, ip, el)
+subroutine constitutive_nonlocal_microstructure(state, Temperature, Tstar_v, Fe, Fp, disorientation, g, ip, el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -768,6 +768,7 @@ use debug,    only: debugger, &
                     selectiveDebugger
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
+                    mesh_maxNipNeighbors, &
                     mesh_element, &
                     FE_NipNeighbors, &
                     mesh_ipNeighborhood, &
@@ -797,6 +798,8 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)
                                   Fp                          ! plastic deformation gradient
 real(pReal), dimension(6), intent(in) :: &
                                   Tstar_v                     ! 2nd Piola-Kirchhoff stress in Mandel notation
+real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: &
+                                  disorientation              ! crystal disorientation between me and my neighbor as quaternion
 
 
 !*** input/output variables
@@ -831,6 +834,7 @@ real(pReal)                       gb, &                       ! short notation f
                                   L, &                        ! dislocation segment length
                                   r1_2, &                   
                                   r2_2
+real(pReal), dimension(6) ::      transmissivity              ! transmissivity factor for each interface
 real(pReal), dimension(2) ::      lambda                      ! distance of (x y z) from the segment end projected onto the dislocation segment
 real(pReal), dimension(3,6) ::    connectingVector            ! vector connecting the centers of gravity of me and my neigbor (for each neighbor)
 real(pReal), dimension(6) ::      Tdislocation_v              ! dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress in Mandel notation
@@ -903,9 +907,11 @@ invFe = math_inv3x3(Fe)
 
 do n = 1,FE_NipNeighbors(mesh_element(2,el))
   
+  transmissivity(n) = constitutive_nonlocal_transmissivity(disorientation(:,n))
+  
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
   neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)  
-  if ( neighboring_ip == 0 ) &
+  if ( neighboring_ip == 0 .or. transmissivity(n) < 1.0_pReal ) &                                                                   ! if no neighbor present or at grain boundary, don't calculate anything, since we use mirrored connecting vector of opposite neighbor
     cycle
   
   neighboring_F = math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el), Fp(:,:,g,neighboring_ip,neighboring_el))
@@ -919,8 +925,8 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))
   opposite_n = n - 1_pInt + 2_pInt*mod(n,2_pInt)
   opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
   opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
-  if ( opposite_ip == 0 ) &                                                                                                         ! if no opposite neighbor present...
-    connectingVector(:,opposite_n) = -connectingVector(:,n)                                                                         ! ... assume "ghost" IP at mirrored position of this neighbor 
+  if ( opposite_ip == 0 .or. transmissivity(opposite_n) < 1.0_pReal ) &                                                             ! if no opposite neighbor present or at grain boundary ...
+    connectingVector(:,opposite_n) = -connectingVector(:,n)                                                                         ! ... use mirrored connecting vector of opposite neighbor 
   
 enddo
 
@@ -929,17 +935,17 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
   neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
   
-  if ( neighboring_ip == 0 ) then                                                                                                   ! if no neighbor present...
+  if ( neighboring_ip == 0 .or. transmissivity(n) < 1.0_pReal ) then                                                                ! if no neighbor present or at grain boundary ...
     opposite_n = n - 1_pInt + 2_pInt*mod(n,2_pInt)
     opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
     opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
-    if ( opposite_ip == 0 ) &
+    if ( opposite_ip == 0 .or. transmissivity(opposite_n) < 1.0_pReal ) &                                                           ! (special case if no valid neighbor on both sides)
       cycle
     neighboring_el = opposite_el
     neighboring_ip = opposite_ip
     forall (t = 1:8, s = 1:ns)  &
       neighboring_rhoSgl(s,t) = max(0.0_pReal, &
-                                    2.0_pReal * state(g,ip,el)%p((t-1)*ns+s) - state(g,opposite_ip,opposite_el)%p((t-1)*ns+s) )             ! ... extrapolate density from opposite neighbor (but assure positive value for density)
+                                    2.0_pReal * state(g,ip,el)%p((t-1)*ns+s) - state(g,opposite_ip,opposite_el)%p((t-1)*ns+s) )     ! ... extrapolate density from opposite neighbor (but assure positive value for density)
   else
     forall (t = 1:8)  neighboring_rhoSgl(:,t) = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+1:t*ns)
   endif
@@ -1032,7 +1038,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
     
     if ( selectiveDebugger .and. verboseDebugger) then
       write(6,*)
-      write(6,'(a20,i1,x,i2,x,i5))') '::: microstructure',g,ip,el
+      write(6,'(a20,i1,x,i2,x,i5)') '::: microstructure  ',g,ip,el
       write(6,'(i2)') n 
       write(6,'(2(a20,x,e12.3,5x))') 'delta_rho_edge:', neighboring_rhoEdgeExcess(s), 'delta_rho_screw:', neighboring_rhoScrewExcess(s)
       write(6,'(2(a20,x,f12.3,5x))') 'Nedge:', neighboring_Nedge(s), 'Nscrew:', neighboring_Nscrew(s)
@@ -1331,7 +1337,7 @@ real(pReal), intent(in) ::                  Temperature, &            ! temperat
 real(pReal), dimension(6), intent(in) ::    Tstar_v, &                ! current 2nd Piola-Kirchhoff stress in Mandel notation
                                             previousTstar_v           ! previous 2nd Piola-Kirchhoff stress in Mandel notation
 real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: &
-                                            disorientation            ! crystal disorientation between me and my neighbor (axis, angle pair)
+                                            disorientation            ! crystal disorientation between me and my neighbor as quaternion
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             Fe, &                     ! elastic deformation gradient
                                             Fp                        ! plastic deformation gradient
