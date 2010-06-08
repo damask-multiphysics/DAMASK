@@ -984,21 +984,21 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
     do i = 1,2
       r2_2 = lambda(i)**2.0_pReal + r1_2
   
-      sigma(1,1,i) = z * lambda(i) / dsqrt(r2_2) * ( - 2.0_pReal * constitutive_nonlocal_nu(myInstance) / r1_2 &
+      sigma(1,1,i) = - z * lambda(i) / dsqrt(r2_2) * ( 2.0_pReal * constitutive_nonlocal_nu(myInstance) / r1_2 &
                                                                  * ( 1.0_pReal + a**2.0_pReal/r1_2 + 0.5_pReal*a**2.0_pReal/r2_2 ) &
-                                                     + 1.0_pReal / r2_2 )
+                                                     - 1.0_pReal / r2_2 )
       
-      sigma(2,2,i) = z * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
+      sigma(2,2,i) = - z * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
                        * ( 1.0_pReal + 2.0_pReal*(y**2.0_pReal+a**2.0_pReal)/r1_2 + (y**2.0_pReal+a**2.0_pReal)/r2_2 )
       
-      sigma(3,3,i) = z * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
+      sigma(3,3,i) = + z * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
                        * ( 1.0_pReal - 2.0_pReal*(z**2.0_pReal+a**2.0_pReal)/r1_2 - (z**2.0_pReal+a**2.0_pReal)/r2_2 )
       
-      sigma(1,2,i) = y * z / ( r2_2 * dsqrt(r2_2) )
+      sigma(1,2,i) = + y * z / ( r2_2 * dsqrt(r2_2) )
       
-      sigma(2,3,i) = y * lambda(i) / ( r1_2 * dsqrt(r2_2) ) * ( 1.0_pReal - 2.0_pReal*z**2.0_pReal/r1_2 - z**2.0_pReal/r2_2 )
+      sigma(2,3,i) = + y * lambda(i) / ( r1_2 * dsqrt(r2_2) ) * ( 1.0_pReal - 2.0_pReal*z**2.0_pReal/r1_2 - z**2.0_pReal/r2_2 )
       
-      sigma(1,3,i) = 1.0_pReal / dsqrt(r2_2) * ( constitutive_nonlocal_nu(myInstance) - z**2.0_pReal/r2_2 &
+      sigma(1,3,i) = + 1.0_pReal / dsqrt(r2_2) * ( constitutive_nonlocal_nu(myInstance) - z**2.0_pReal/r2_2 &
                                                  - 0.5_pReal*(1.0_pReal-constitutive_nonlocal_nu(myInstance))*a**2.0_pReal/r2_2 )
     enddo
     
@@ -1015,10 +1015,10 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
     do i = 1,2
       r2_2 = lambda(i)**2.0_pReal + r1_2
   
-      sigma(1,2,i) = z * (1.0_pReal - constitutive_nonlocal_nu(myInstance)) * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
+      sigma(1,2,i) = - z * (1.0_pReal - constitutive_nonlocal_nu(myInstance)) * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
                        * ( 1.0_pReal + a**2.0_pReal/r1_2 + 0.5_pReal*a**2.0_pReal/r2_2 )
       
-      sigma(2,3,i) = - x * (1.0_pReal - constitutive_nonlocal_nu(myInstance)) * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
+      sigma(2,3,i) = + x * (1.0_pReal - constitutive_nonlocal_nu(myInstance)) * lambda(i) / ( r1_2 * dsqrt(r2_2) ) &
                          * ( 1.0_pReal + a**2.0_pReal/r1_2 + 0.5_pReal*a**2.0_pReal/r2_2 )
     enddo
     
