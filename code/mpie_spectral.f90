@@ -1,4 +1,4 @@
-!* $Id: mpie_cpfem_marc.f90 572 2010-05-20 09:14:59Z MPIE\c.kords $
+!* $Id$
 !********************************************************************
 ! Material subroutine for BVP solution using spectral method
 !
@@ -34,8 +34,8 @@ CONTAINS
 
 subroutine mpie_interface_init
  write(6,*)
- write(6,*) '<<<+-  mpie_spectral init new  -+>>>'
- write(6,*) '$Id: mpie_spectral.f90 572 2010-05-20 09:14:59Z MPIE\c.kords $'
+ write(6,*) '<<<+-  mpie_spectral init  -+>>>'
+ write(6,*) '$Id$'
  write(6,*)
  return
 end subroutine
