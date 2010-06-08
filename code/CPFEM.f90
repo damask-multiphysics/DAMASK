@@ -202,7 +202,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
 			call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
 			call homogenization_init(Temperature)
 			call CPFEM_init()
-			call mpie_cpfem_init()
+			call mpie_interface_init()
 			CPFEM_init_done = .true.
 			CPFEM_init_inProgress = .false.
 	  else                                                                ! loser, loser...

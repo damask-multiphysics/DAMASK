@@ -46,7 +46,7 @@ character(len=4),  parameter :: InputFileExtension = '.dat'
 
 CONTAINS
 
-subroutine mpie_cpfem_init
+subroutine mpie_interface_init()
  write(6,*)
  write(6,*) '<<<+-  mpie_cpfem_marc init  -+>>>'
  write(6,*) '$Id$'
@@ -54,7 +54,7 @@ subroutine mpie_cpfem_init
  return
 end subroutine
 
-function getSolverWorkingDirectoryName
+function getSolverWorkingDirectoryName()
  implicit none
  character(1024) getSolverWorkingDirectoryName, outName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
@@ -66,7 +66,7 @@ function getSolverWorkingDirectoryName
 ! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
 end function
 
-function getSolverJobName
+function getSolverJobName()
  use prec
  implicit none
 
