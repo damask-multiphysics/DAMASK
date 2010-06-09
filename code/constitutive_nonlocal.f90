@@ -59,7 +59,7 @@ real(pReal), dimension(:), allocatable ::                 constitutive_nonlocal_
                                                           constitutive_nonlocal_D0, &                           ! prefactor for self-diffusion coefficient
                                                           constitutive_nonlocal_Qsd, &                          ! activation enthalpy for diffusion
                                                           constitutive_nonlocal_relevantRho, &                  ! dislocation density considered relevant
-                                                          constitutive_nonlocal_a, &                            ! a0 * burgers vector gives the spreading of the dislocation core for non-singular solution of dislocation stress in the core
+                                                          constitutive_nonlocal_a, &                            ! a * burgers vector gives the spreading of the dislocation core for non-singular solution of dislocation stress in the core
                                                           constitutive_nonlocal_R                               ! cutoff radius for dislocation stress
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_Cslip_66                        ! elasticity matrix in Mandel notation for each instance
 real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_Cslip_3333                      ! elasticity matrix for each instance
@@ -1410,12 +1410,9 @@ real(pReal), dimension(3) ::                surfaceNormal, &          ! surface 
 real(pReal)                                 area, &                   ! area of the current interface
                                             detFe, &                  ! determinant of elastic defornmation gradient
                                             transmissivity, &         ! transmissivity of interfaces for dislocation flux
-                                            average_fluxdensity, &    ! average flux density at interface
-                                            maximum_fluxdensity, &    ! upper bound for flux density at interface
-                                            weight, &                 ! weight for interpolation of flux density
                                             lineLength, &             ! dislocation line length leaving the current interface
                                             D                         ! self diffusion
-logical                                     highOrderScheme           ! flag indicating whether we use a high order interpolation scheme or not
+logical, dimension(3) ::                    periodicSurfaceFlux       ! flag indicating periodic fluxes at surfaces when surface normal points mainly in x, y and z direction respectively (in reference configuration)
 
 if (verboseDebugger .and. selectiveDebugger) then 
   !$OMP CRITICAL (write2out)
@@ -1540,6 +1537,7 @@ rhoDotMultiplication(:,5:10) = 0.0_pReal      ! used dislocation densities and d
 !*** calculate dislocation fluxes
 
 rhoDotFlux = 0.0_pReal
+periodicSurfaceFlux = (/.false.,.false.,.false./)
 
 m(:,:,1) =  lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
 m(:,:,2) = -lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
@@ -1559,7 +1557,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   
   opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
   opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
-    
+  
   if ( neighboring_el > 0_pInt .and. neighboring_ip > 0_pInt ) then                                                                 ! if neighbor exists, average deformation gradient
     neighboring_F = math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el), Fp(:,:,g,neighboring_ip,neighboring_el))
     Favg = 0.5_pReal * (F + neighboring_F)
@@ -1574,63 +1572,40 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   
   transmissivity = constitutive_nonlocal_transmissivity(disorientation(:,n))
   
-  highOrderScheme = .false.
   if ( neighboring_el > 0 .and. neighboring_ip > 0 ) then                                                                           ! if neighbor exists...
     if ( .not. phase_localConstitution(material_phase(1,neighboring_ip,neighboring_el))) then                                       !   ... and is of nonlocal constitution...
       forall (t = 1:4) &                                                                                                            !     ... then calculate neighboring flux density
         neighboring_fluxdensity(:,t) = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+1:t*ns) &
                                      * constitutive_nonlocal_v(:,t,g,neighboring_ip,neighboring_el)
-      if (transmissivity == 1.0_pReal) then                                                                                         !     ... if additionally interface's transmission is perfect...
-        highOrderScheme = .true.                                                                                                    !       ... then use high order interpolation scheme
-        weight = 0.5_pReal * mesh_ipVolume(ip,el) / area &
-                           / math_norm3(math_mul33x3(Favg,(  mesh_ipCenterOfGravity(:,neighboring_ip,neighboring_el) &
-                                                           - mesh_ipCenterOfGravity(:,ip,el))))
-      endif
     else                                                                                                                            !   ... and is of local constitution...
-      neighboring_fluxdensity = fluxdensity                                                                                         !     ... then copy flux density to neighbor
+      neighboring_fluxdensity = fluxdensity                                                                                         !     ... then copy flux density to neighbor to ensure zero gradient in fluxdensity
     endif
   else                                                                                                                              ! if no neighbor existent...
-    neighboring_fluxdensity = 0.0_pReal                                                                                             !   ... assume zero density
+    if ( all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,n,ip,el))))) ) then                                                      !   ... and we want periodic fluxes at surface...
+      forall (t = 1:4) &                                                                                                            !     ... then mirror fluxes 
+        neighboring_fluxdensity(:,t) = fluxdensity(:,t-1_pInt+2_pInt*mod(t,2_pInt))
+    else                                                                                                                            !   ... and we have a free surface...
+      neighboring_fluxdensity = 0.0_pReal                                                                                           !     ... assume zero density
+    endif
   endif
     
   do s = 1,ns
-    do t = 1,4
-      
+    do t = 1,4      
       if ( fluxdensity(s,t) * math_mul3x3(m(:,s,t), surfaceNormal) > 0.0_pReal ) then                                               ! outgoing flux        
-        if ( highOrderScheme ) then
-          average_fluxdensity = fluxdensity(s,t) + weight * (neighboring_fluxdensity(s,t) - fluxdensity(s,t))
-          maximum_fluxdensity = rhoSgl(s,t) * mesh_ipVolume(ip,el)**(1.0_pReal/3.0_pReal) / timestep
-          average_fluxdensity = min(abs(average_fluxdensity),maximum_fluxdensity) * sign(1.0_pReal,average_fluxdensity)
-        else
-          average_fluxdensity = fluxdensity(s,t)
-        endif
-
-        lineLength = average_fluxdensity * math_mul3x3(m(:,s,t), surfaceNormal) * area                                              !   line length that wants to leave this interface
+        lineLength = fluxdensity(s,t) * math_mul3x3(m(:,s,t), surfaceNormal) * area                                                 !   line length that wants to leave this interface
         rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                       !   subtract positive dislocation flux that leaves the material point
         rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
-                                                                                  * sign(1.0_pReal, average_fluxdensity)            !   dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point        
+                                                                                  * sign(1.0_pReal, fluxdensity(s,t))               !   dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point        
 !        if (selectiveDebugger .and. s==1) & 
-!          write(6,'(a22,i2,a15,i2,a3,4(e20.10,x))') 'outgoing flux of type ',t,'   to neighbor ',n,' : ', &
-!            -lineLength / mesh_ipVolume(ip,el), average_fluxdensity, maximum_fluxdensity, &
-!            average_fluxdensity / maximum_fluxdensity
+!          write(6,'(a22,i2,a15,i2,a3,e20.10)') 'outgoing flux of type ',t,'   to neighbor ',n,' : ', &
+!            -lineLength / mesh_ipVolume(ip,el)
       else                                                                                                                          ! incoming flux
-        if ( highOrderScheme ) then
-          average_fluxdensity = fluxdensity(s,t) + weight * (neighboring_fluxdensity(s,t) - fluxdensity(s,t))
-          maximum_fluxdensity = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+s) &
-                              * mesh_ipVolume(neighboring_ip,neighboring_el)**(1.0_pReal/3.0_pReal) / timestep
-          average_fluxdensity = min(abs(average_fluxdensity),maximum_fluxdensity) * sign(1.0_pReal,average_fluxdensity)
-        else
-          average_fluxdensity = neighboring_fluxdensity(s,t)
-        endif
-
-        lineLength = average_fluxdensity * math_mul3x3(m(:,s,t), surfaceNormal) * area                                              !   line length that wants to leave this interface
+        lineLength = neighboring_fluxdensity(s,t) * math_mul3x3(m(:,s,t), surfaceNormal) * area                                     !   line length that wants to leave this interface
         rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el) * transmissivity                                      !   subtract negative dislocation flux that enters the material point
 !        if (selectiveDebugger .and. s==1) & 
-!          write(6,'(a22,i2,a15,i2,a3,4(e20.10,x))') 'incoming flux of type ',t,' from neighbor ',n,' : ', &
-!            -lineLength / mesh_ipVolume(ip,el) * transmissivity, average_fluxdensity, maximum_fluxdensity, &
-!            average_fluxdensity / maximum_fluxdensity
+!          write(6,'(a22,i2,a15,i2,a3,e20.10)') 'incoming flux of type ',t,' from neighbor ',n,' : ', &
+!            -lineLength / mesh_ipVolume(ip,el) * transmissivity
       endif
-    
     enddo
   enddo
   
