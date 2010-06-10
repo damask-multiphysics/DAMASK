@@ -233,18 +233,23 @@ program mpie_spectral
  use mpie_interface
  use prec, only: pInt, pReal
  use IO
- use math, only: math_transpose3x3
+ use math, only: math_I3,math_transpose3x3
+ use CPFEM, only: CPFEM_general
 
  implicit none
 
- real(pReal), dimension (:,:,:), allocatable :: velocityGrad, &
-                                                stress          ! velocity gradient and stress BC
- real(pReal), dimension(:), allocatable :: timeIncrement        ! length of increment
- integer(pInt), dimension(:), allocatable :: steps              ! number of steps
- logical, dimension(:,:,:,:), allocatable :: mask               ! BC mask
+ real(pReal), dimension (:,:,:), allocatable :: bc_velocityGrad, &
+                                                bc_stress          ! velocity gradient and stress BC
+ real(pReal), dimension(:), allocatable :: bc_timeIncrement        ! length of increment
+ integer(pInt), dimension(:), allocatable :: bc_steps              ! number of steps
+ logical, dimension(:,:,:,:), allocatable :: bc_mask               ! mask
+ 
+ real(pReal) temperature
+ real(pReal), dimension(6) :: stress
+ real(pReal), dimension(6,6) :: dsde
  
  character(len=1024) path,line
- logical, dimension(9) :: maskvector
+ logical, dimension(9) :: bc_maskvector
  integer(pInt), parameter :: maxNchunks = 24                 ! 4 identifiers, 18 values for the matrices and 2 scalars
  integer(pInt), dimension (1+maxNchunks*2) :: pos
  real(pReal), dimension(9) :: valuevector
@@ -252,9 +257,8 @@ program mpie_spectral
 
  if (IargC() < 2) call IO_error(102)
 
- call mpie_interface_init()
  path = getLoadcaseName()
- maskvector = ''
+ bc_maskvector = ''
  unit = 234_pInt
  N_l = 0_pInt
  N_s = 0_pInt
@@ -287,11 +291,11 @@ program mpie_spectral
 
 ! allocate memory depending on lines in input file
 101 N = N_l
- allocate (velocityGrad(3,3,N));       velocityGrad = 0.0_pReal
- allocate (stress(3,3,N));             stress = 0.0_pReal
- allocate (mask(3,3,2,N));             mask = .false.
- allocate (timeIncrement(N));          timeIncrement = 0.0_pReal
- allocate (steps(N));                  steps = 0_pInt
+ allocate (bc_velocityGrad(3,3,N));       bc_velocityGrad = 0.0_pReal
+ allocate (bc_stress(3,3,N));             bc_stress = 0.0_pReal
+ allocate (bc_mask(3,3,2,N));             bc_mask = .false.
+ allocate (bc_timeIncrement(N));          bc_timeIncrement = 0.0_pReal
+ allocate (bc_steps(N));                  bc_steps = 0_pInt
 
  rewind(unit)
  j = 0_pInt
@@ -304,24 +308,24 @@ program mpie_spectral
      select case (IO_lc(IO_stringValue(line,pos,i)))
        case('l','velocitygrad')
          valuevector = 0.0_pReal
-         forall (k = 1:9) maskvector(k) = IO_stringValue(line,pos,i+k) /= '#'
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,pos,i+k) /= '#'
          do k = 1,9
-           if (maskvector(k)) valuevector(k) = IO_floatValue(line,pos,i+k)  ! assign values for the velocity gradient matrix
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,pos,i+k)  ! assign values for the velocity gradient matrix
          enddo
-         mask(:,:,1,j) = reshape(maskvector,(/3,3/))
-         velocityGrad(:,:,j) = reshape(valuevector,(/3,3/))
+         bc_mask(:,:,1,j) = reshape(bc_maskvector,(/3,3/))
+         bc_velocityGrad(:,:,j) = reshape(valuevector,(/3,3/))
        case('s','stress')
          valuevector = 0.0_pReal
-         forall (k = 1:9) maskvector(k) = IO_stringValue(line,pos,i+k) /= '#'
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,pos,i+k) /= '#'
          do k = 1,9
-           if (maskvector(k)) valuevector(k) = IO_floatValue(line,pos,i+k)  ! assign values for the stress matrix
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,pos,i+k)  ! assign values for the bc_stress matrix
          enddo
-         mask(:,:,2,j) = reshape(maskvector,(/3,3/))
-         stress(:,:,j) = reshape(valuevector,(/3,3/))
+         bc_mask(:,:,2,j) = reshape(bc_maskvector,(/3,3/))
+         bc_stress(:,:,j) = reshape(valuevector,(/3,3/))
        case('t','time','delta')                                            ! increment time
-           timeIncrement(j) = IO_floatValue(line,pos,i+1)
-       case('n','incs','increments','steps')                               ! steps
-           steps(j) = IO_intValue(line,pos,i+1)
+           bc_timeIncrement(j) = IO_floatValue(line,pos,i+1)
+       case('n','incs','increments','steps')                               ! bc_steps
+           bc_steps(j) = IO_intValue(line,pos,i+1)
      end select
    enddo
  enddo
@@ -329,18 +333,21 @@ program mpie_spectral
 
  ! consistency checks
  do j = 1,N
-   if (any(mask(:,:,1,j) == mask(:,:,2,j))) &
-     call IO_error(47,j)                                                  ! mask consistency
-   if (any(math_transpose3x3(stress(:,:,j)) + stress(:,:,j) /= 2.0_pReal * stress(:,:,j))) &
-     call IO_error(48,j)                                                  ! stress symmetry
+   if (any(bc_mask(:,:,1,j) == bc_mask(:,:,2,j))) &
+     call IO_error(47,j)                                                  ! bc_mask consistency
+   if (any(math_transpose3x3(bc_stress(:,:,j)) + bc_stress(:,:,j) /= 2.0_pReal * bc_stress(:,:,j))) &
+     call IO_error(48,j)                                                  ! bc_stress symmetry
  
-   print '(a,/,3(3(f12.6,x)/))','L',velocityGrad(:,:,j)
-   print '(a,/,3(3(f12.6,x)/))','stress',stress(:,:,j)
-   print '(a,/,3(3(l,x)/))','mask',mask(:,:,1,j)
-   print *,'time',timeIncrement(j)
-   print *,'incs',steps(j)
+   print '(a,/,3(3(f12.6,x)/))','L',bc_velocityGrad(:,:,j)
+   print '(a,/,3(3(f12.6,x)/))','bc_stress',bc_stress(:,:,j)
+   print '(a,/,3(3(l,x)/))','bc_mask',bc_mask(:,:,1,j)
+   print *,'time',bc_timeIncrement(j)
+   print *,'incs',bc_steps(j)
    print *, ''
  enddo
+
+ temperature = 300.0_pReal
+ call CPFEM_general(2,math_i3,math_i3,temperature,0.0_pReal,1_pInt,1_pInt,stress,dsde)
 
 end program mpie_spectral
 
