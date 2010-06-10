@@ -77,6 +77,66 @@ function getSolverJobName()
 ! write(6,*) 'getSolverJobName', getSolverJobName
 end function
 
+!function removes ../ and ./ in Path
+function rectifyPath(Path)
+implicit none
+character(len=1024) Path, rectifyPath
+integer i,j,k,l
+
+!remove ./ from path
+l = min(1024,len_trim(Path))
+rectifyPath = path
+do i=l,2,-1
+    if ( rectifyPath(i-1:i)=='./' .and. rectifyPath(i-2:i-2) /= '.' ) &
+      rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
+end do
+
+!remove ../ from rectifyPath and change directory
+i=0
+do while (i<=len_trim(rectifyPath))
+    k=0
+    j=0
+    if(rectifyPath(len_trim(rectifyPath)-2-i:len_trim(rectifyPath)-i)=='../') then           !search for ../ (directory down)
+         j=i
+         k=i
+         if(len_trim(rectifyPath)-5-i<=0) print*, 'enter error message here'   !invalid rectifyPath (below root)
+         do while(rectifyPath(len_trim(rectifyPath)-j-5:len_trim(rectifyPath)-j-3)=='../')   !search for more ../ in front of first hit
+              j=j+3
+         end do
+         j=((j-i)/3+1)*2                                                !calculate number of ../
+         do while(j/=0)                                                 !find position to break rectifyPath
+              i=i+1
+              if(rectifyPath(len_trim(rectifyPath)-i:len_trim(rectifyPath)-i)=='/') j=j-1
+         end do
+         if(i>len_trim(rectifyPath)) print*, 'enter error message here'        !invalid path (below root)
+         rectifyPath(len_trim(rectifyPath)-i:len_trim(rectifyPath))=rectifyPath(len_trim(rectifyPath)-k:len_trim(rectifyPath)+i-k)
+         i=k-1
+     end if
+     i=i+1
+end do
+end function rectifyPath
+
+
+
+
+! make out of two absolute Paths (a,b) relative Path from a to b
+function makeRelativePath(a,b)
+ implicit none
+ character (len=1024) :: makeRelativePath,a,b
+ integer i,posLastCommonSlash,remainingSlashes
+
+ posLastCommonSlash = 0
+ remainingSlashes = 0
+ do i = 1,min(len_trim(a),len_trim(b))
+   if (a(i:i) /= b(i:i)) exit
+   if (a(i:i) == '/') posLastCommonSlash = i
+ enddo
+ do i = posLastCommonSlash+1,len_trim(a)
+   if (a(i:i) == '/') remainingSlashes = remainingSlashes + 1
+ enddo
+ makeRelativePath=repeat('../',remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
+end function makeRelativePath
+
 END MODULE
 
  include "IO.f90"               ! uses prec
@@ -106,16 +166,146 @@ program mpie_spectral
  use mpie_interface
  
  implicit none
- character(len=1024) path
+ character(len=1024) path, line
+ integer(pInt), parameter :: maxNchunks = 24                ! 4 identifiers, 18 values for the matrices and 2 scalars
+ integer(pInt), dimension (1+maxNchunks*2) :: pos
+ real(pReal), dimension (:,:), allocatable :: l, s          ! velocity gradient and stress BC
+ real(pReal), dimension(:), allocatable :: t, n             ! length of time and step number
+ character, dimension(:,:), allocatable :: mask             ! BC mask
+ integer(pInt) unit, N_l, N_s, N_t, N_n, i, j, k            ! numbers of identifiers, loop variables
  
  call mpie_interface_init()
  if (IargC() < 2) then
    print *,'buh'
  else
-   path = getSolverWorkingDirectoryName() 
-   print *, path 
+   path = rectifyPath(getSolverWorkingDirectoryName()) 
  endif
-end program mpie_spectral
+ 
+! initialize variables
+unit=2
+N_l=0
+N_s=0
+N_t=0
+N_n=0
+if (IO_open_file(unit,path)) rewind(unit)                  ! open file
+do
+    read(unit,'(a1024)',END=101) line
+    if (IO_isBlank(line)) cycle                            ! skip empty lines
+    pos = IO_stringPos(line,maxNchunks)
+    do i = 1,maxNchunks,1
+         select case (IO_lc(IO_stringValue(line,pos,i)))
+              case('l')
+                   N_l=N_l+1
+              case('s')
+                   N_s=N_s+1
+              case('t')
+                   N_t=N_t+1
+              case('n')
+                   N_n=N_n+1
+          end select
+    enddo                                                  ! count all identifiers to allocate memory and do sanity check
+   if ((N_l /= N_s).or.(N_s /= N_t).or.(N_t /= N_n)) then  ! sanity check
+   print*, 'insert error message code here'                ! error message for incomplete input file
+   end if
+enddo
+
+! allocate memory depending on lines in input file
+101 allocate (l(9,N_l))
+allocate (s(9,N_s))
+allocate (mask(9,N_s))
+allocate (t(N_t))
+allocate (n(N_n))
+
+! initialize variables
+do i=1,9
+    do j=1,N_l
+         mask(i,j)='x'
+    end do
+end do
+do i=1,9
+    do j=1,N_l
+         l(i,j)=0
+    end do
+end do
+do i=1,9
+    do j=1,N_s
+         s(i,j)=0
+    end do
+end do
+i=0
+j=0
+
+rewind(unit)
+do
+    read(unit,'(a1024)',END=100) line
+    if (IO_isBlank(line)) cycle                                            ! build BC mask from input file
+    j=j+1
+    pos = IO_stringPos(line,maxNchunks)
+         do i = 1,maxNchunks,2
+              select case (IO_lc(IO_stringValue(line,pos,i)))
+                   case('l')
+                   do k=1,9
+                        if((IO_lc(IO_stringValue(line,pos,i+k)))/='-') mask(k,j)='l'
+                   end do
+                   if(((mask(2,j)/='x')).and.((mask(4,j)=='x'))&                ! if one non-diagonal element is defined, the
+                       &.or.((mask(4,j)/='x')).and.((mask(2,j)=='x'))&          ! correspondig one should not be empty
+                       &.or.((mask(3,j)/='x')).and.((mask(7,j)=='x'))&
+                       &.or.((mask(7,j)/='x')).and.((mask(3,j)=='x'))&
+                       &.or.((mask(6,j)/='x')).and.((mask(8,j)=='x'))&
+                       &.or.((mask(8,j)/='x')).and.((mask(6,j)=='x'))) print*, 'enter error message here'
+                   case('s')
+                   do k=1,9
+                        if((IO_lc(IO_stringValue(line,pos,i+k)))/='-') then
+                             if(mask(k,j)=='l') then
+                                  print*, 'enter error message here'           ! stress and velocity gradient bc at the same place
+                             else
+                                  mask(k,j)='s'
+                             end if
+                        end if
+                   end do
+              end select
+         enddo
+    enddo
+100 rewind(unit)
+
+do i=1,9
+    do j=1,N_l
+         if(mask(i,j)=='x') print*,'enter error message here' !check if sufficient Nr. of BCs are found
+    end do
+end do
+
+j=0
+i=0
+do
+   read(unit,'(a1024)',END=200) line
+   if (IO_isBlank(line)) cycle                           ! skip empty lines
+   j=j+1
+   pos = IO_stringPos(line,maxNchunks)
+     do i = 1,maxNchunks,2
+       select case (IO_lc(IO_stringValue(line,pos,i)))
+         case('l')
+              do k=1,9
+                   if(mask(k,j)=='l')  L(k,j) = IO_floatValue(line,pos,i+k)  ! assign values for the velocity gradient matrix
+              end do
+         case('s')
+              do k=1,9
+                   if(mask(k,j)=='s') then
+                        s(k,j) = IO_floatValue(line,pos,i+k)  ! assign values for the stress BC
+                        select case(k)
+                             case(4)
+                                  if(s(4,j)/=s(2,j)) print*, 'enter error code here' !non-symmetric stress BC
+                        end select
+                   else
+                   end if
+              end do
+         case('t')                                       ! assign the scalars
+             t(j) = IO_floatValue(line,pos,i+1)
+         case('n')
+             n(j) = IO_floatValue(line,pos,i+1)
+       end select
+     enddo
+   enddo
+200 end program mpie_spectral
 
 subroutine quit(id)
  use prec
