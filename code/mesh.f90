@@ -2137,9 +2137,9 @@ subroutine mesh_marc_count_cpSizes (unit)
 
 ! --- sanity checks ---
 
- if (.not. gotDimension .or. .not. gotResolution) call IO_error(102)
- if (a < 2 .or. b < 2 .or. c < 2) call IO_error(103)
- if (x <= 0.0_pReal .or. y <= 0.0_pReal .or. z <= 0.0_pReal) call IO_error(104)
+ if (.not. gotDimension .or. .not. gotResolution) call IO_error(42)
+ if (a < 2 .or. b < 2 .or. c < 2) call IO_error(43)
+ if (x <= 0.0_pReal .or. y <= 0.0_pReal .or. z <= 0.0_pReal) call IO_error(44)
  
  forall (n = 0:mesh_Nnodes-1)
    mesh_node(1,n+1) = x * dble(mod(n,a)     / (a-1.0_pReal))

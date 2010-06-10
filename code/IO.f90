@@ -926,6 +926,24 @@ endfunction
  character(len=80) msg
 
  select case (ID)
+ case (40)
+   msg = 'path rectification error'
+ case (41)
+   msg = 'path too long'
+ case (42)
+   msg = 'missing descriptive information in spectral mesh'
+ case (43)
+   msg = 'resolution error in spectral mesh'
+ case (44)
+   msg = 'dimension error in spectral mesh'
+ case (45)
+   msg = 'error opening spectral loadcase'
+ case (46)
+   msg = 'missing parameter in spectral loadcase'
+ case (47)
+   msg = 'mask consistency violated in spectral loadcase'
+ case (48)
+   msg = 'stress symmetry violated in spectral loadcase'
  case (50)
    msg = 'Error writing constitutive output description'
  case (100)
@@ -933,11 +951,7 @@ endfunction
  case (101)
    msg = 'Cannot open input file'
  case (102)
-   msg = 'missing descriptive information in spectral config file'
- case (103)
-   msg = 'resolution error in spectral config file'
- case (104)
-   msg = 'dimension error in spectral config file'
+   msg = 'argument count error (mesh and loadcase) for mpie_spectral'
  case (105)
    msg = 'Error reading from ODF file'
  case (110)
