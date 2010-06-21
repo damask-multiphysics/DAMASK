@@ -59,7 +59,6 @@ real(pReal), dimension(:), allocatable ::                 constitutive_nonlocal_
                                                           constitutive_nonlocal_D0, &                           ! prefactor for self-diffusion coefficient
                                                           constitutive_nonlocal_Qsd, &                          ! activation enthalpy for diffusion
                                                           constitutive_nonlocal_relevantRho, &                  ! dislocation density considered relevant
-                                                          constitutive_nonlocal_a, &                            ! a * burgers vector gives the spreading of the dislocation core for non-singular solution of dislocation stress in the core
                                                           constitutive_nonlocal_R                               ! cutoff radius for dislocation stress
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_Cslip_66                        ! elasticity matrix in Mandel notation for each instance
 real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_Cslip_3333                      ! elasticity matrix for each instance
@@ -215,7 +214,6 @@ allocate(constitutive_nonlocal_Qsd(maxNinstance))
 allocate(constitutive_nonlocal_relevantRho(maxNinstance))
 allocate(constitutive_nonlocal_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_nonlocal_Cslip_3333(3,3,3,3,maxNinstance))
-allocate(constitutive_nonlocal_a(maxNinstance))
 allocate(constitutive_nonlocal_R(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
@@ -232,7 +230,6 @@ constitutive_nonlocal_relevantRho = 0.0_pReal
 constitutive_nonlocal_nu = 0.0_pReal
 constitutive_nonlocal_Cslip_66 = 0.0_pReal
 constitutive_nonlocal_Cslip_3333 = 0.0_pReal
-constitutive_nonlocal_a = -1.0_pReal
 constitutive_nonlocal_R = 0.0_pReal
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily, maxNinstance))
@@ -321,8 +318,6 @@ do                                                                              
         forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_lambda0PerSlipFamily(f,i) = IO_floatValue(line,positions,1+f)
       case ('burgers')
         forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_burgersPerSlipFamily(f,i) = IO_floatValue(line,positions,1+f)
-      case('a')
-        constitutive_nonlocal_a(i) = IO_floatValue(line,positions,2)
       case('r')
         constitutive_nonlocal_R(i) = IO_floatValue(line,positions,2)
       case('ddipminedge')
@@ -379,7 +374,6 @@ enddo
   if (any(constitutive_nonlocal_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 0.0_pReal)) &
                                                                                             call IO_error(229)
   if (constitutive_nonlocal_Q0(i) <= 0.0_pReal)                                             call IO_error(-1)
-  if (constitutive_nonlocal_a(i) < 0.0_pReal)                                               call IO_error(-1)
   if (constitutive_nonlocal_R(i) <= 0.0_pReal)                                              call IO_error(-1)
   if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)                                   call IO_error(230)
   if (constitutive_nonlocal_D0(i) <= 0.0_pReal)                                             call IO_error(231)
