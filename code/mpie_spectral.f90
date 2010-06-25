@@ -250,11 +250,19 @@ program mpie_spectral
  
  character(len=1024) path,line
  logical, dimension(9) :: bc_maskvector
- integer(pInt), parameter :: maxNchunks = 24                 ! 4 identifiers, 18 values for the matrices and 2 scalars
- integer(pInt), dimension (1+maxNchunks*2) :: pos
+ logical gotResolution,gotDimension,gotHomogenization
+ 
+ integer(pInt), parameter :: maxNchunksInput = 24                 ! 4 identifiers, 18 values for the matrices and 2 scalars
+ integer(pInt), dimension (1+maxNchunksInput*2) :: posInput
+ integer(pInt), parameter :: maxNchunksMesh = 7                   ! 4 identifiers, 3 values  
+ integer(pInt), dimension (1+2*maxNchunksMesh) :: posMesh
+ 
  real(pReal), dimension(9) :: valuevector
- integer(pInt) unit, N_l, N_s, N_t, N_n, N, i,j,k,l          ! numbers of identifiers, loop variables
-
+ 
+ integer(pInt) unit, N_l, N_s, N_t, N_n, N, i, j, k, l            ! numbers of identifiers, loop variables
+ integer(pInt) a, b, c, e, homog
+ real(pReal) x, y, z
+ 
  if (IargC() < 2) call IO_error(102)
 
  path = getLoadcaseName()
@@ -271,9 +279,9 @@ program mpie_spectral
  do
    read(unit,'(a1024)',END=101) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
-   pos = IO_stringPos(line,maxNchunks)
-   do i = 1,maxNchunks,1
-       select case (IO_lc(IO_stringValue(line,pos,i)))
+   posInput = IO_stringPos(line,maxNchunksInput)
+   do i = 1,maxNchunksInput,1
+       select case (IO_lc(IO_stringValue(line,posInput,i)))
             case('l','velocitygrad')
                  N_l = N_l+1
             case('s','stress')
@@ -303,29 +311,29 @@ program mpie_spectral
    read(unit,'(a1024)',END=200) line
    if (IO_isBlank(line)) cycle                           ! skip empty lines
    j=j+1
-   pos = IO_stringPos(line,maxNchunks)
-   do i = 1,maxNchunks,2
-     select case (IO_lc(IO_stringValue(line,pos,i)))
+   posInput = IO_stringPos(line,maxNchunksInput)
+   do i = 1,maxNchunksInput,2
+     select case (IO_lc(IO_stringValue(line,posInput,i)))
        case('l','velocitygrad')
          valuevector = 0.0_pReal
-         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,pos,i+k) /= '#'
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,i+k) /= '#'
          do k = 1,9
-           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,pos,i+k)  ! assign values for the velocity gradient matrix
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,i+k)  ! assign values for the velocity gradient matrix
          enddo
          bc_mask(:,:,1,j) = reshape(bc_maskvector,(/3,3/))
          bc_velocityGrad(:,:,j) = reshape(valuevector,(/3,3/))
        case('s','stress')
          valuevector = 0.0_pReal
-         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,pos,i+k) /= '#'
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,i+k) /= '#'
          do k = 1,9
-           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,pos,i+k)  ! assign values for the bc_stress matrix
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,i+k)  ! assign values for the bc_stress matrix
          enddo
          bc_mask(:,:,2,j) = reshape(bc_maskvector,(/3,3/))
          bc_stress(:,:,j) = reshape(valuevector,(/3,3/))
        case('t','time','delta')                                            ! increment time
-           bc_timeIncrement(j) = IO_floatValue(line,pos,i+1)
+           bc_timeIncrement(j) = IO_floatValue(line,posInput,i+1)
        case('n','incs','increments','steps')                               ! bc_steps
-           bc_steps(j) = IO_intValue(line,pos,i+1)
+           bc_steps(j) = IO_intValue(line,posInput,i+1)
      end select
    enddo
  enddo
@@ -344,6 +352,58 @@ program mpie_spectral
    print *,'time',bc_timeIncrement(j)
    print *,'incs',bc_steps(j)
    print *, ''
+ enddo
+ 
+!read header of mesh file
+ a = 1_pInt
+ b = 1_pInt
+ c = 1_pInt
+ x = 1_pReal
+ y = 1_pReal
+ z = 1_pReal
+ 
+ gotResolution =      .false.
+ gotDimension =       .false.
+ gotHomogenization =  .false.
+ path = getSolverJobName()
+ if (.not. IO_open_file(unit,path)) call IO_error(101,ext_msg=path)
+
+ rewind(unit)
+ do 
+   read(unit,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   posMesh = IO_stringPos(line,maxNchunksMesh)
+
+   select case ( IO_lc(IO_StringValue(line,posMesh,1)) )
+     case ('dimension')
+         gotDimension = .true.
+         do i = 2,6,2
+           select case (IO_lc(IO_stringValue(line,posMesh,i)))
+             case('x')
+                 x = IO_floatValue(line,posMesh,i+1)
+             case('y')
+                 y = IO_floatValue(line,posMesh,i+1)
+             case('z')
+                 z = IO_floatValue(line,posMesh,i+1)
+           end select
+		 enddo
+     case ('homogenization')
+         gotHomogenization = .true.
+         homog = IO_intValue(line,posMesh,2)
+     case ('resolution')
+         gotResolution = .true.
+         do i = 2,6,2
+           select case (IO_lc(IO_stringValue(line,posMesh,i)))
+             case('a')
+                 a = 2**IO_intValue(line,posMesh,i+1)
+             case('b')
+                 b = 2**IO_intValue(line,posMesh,i+1)
+             case('c')
+                 c = 2**IO_intValue(line,posMesh,i+1)
+           end select
+         enddo
+   end select
+   if (gotDimension .and. gotHomogenization .and. gotResolution) exit
  enddo
 
  temperature = 300.0_pReal
