@@ -228,6 +228,7 @@
 
  call mesh_build_FEdata()                                      ! --- get properties of the different types of elements
 
+
  if (IO_open_inputFile(fileUnit)) then                         ! --- parse info from input file...
 
  select case (FEsolver)
@@ -272,7 +273,7 @@
    call mesh_build_ipVolumes()
    call mesh_build_ipAreas()
    call mesh_tell_statistics()
-
+   
    parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))      ! plus potential killer from non-local constitutive
  else
    call IO_error(101) ! cannot open input file
@@ -283,6 +284,7 @@
  forall (e = 1:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(mesh_element(2,e))
  
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
+ write(6,*) '<<<+-  mesh init done -+>>>'
  calcMode = .false.                                       ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',element)) = .true.        ! first ip,el needs to be already pingponged to "calc"
  lastMode = .true.                                        ! and its mode is already known...
@@ -417,6 +419,7 @@
    endif
  enddo
 
+  
 candidate: do i = 1,minN               ! iterate over lonelyNode's shared elements
    candidateElem = mesh_sharedElem(1+i,myFaceNodes(lonelyNode)) ! present candidate elem
    if (candidateElem == elem) cycle candidate         ! my own element ?
@@ -1679,7 +1682,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    mesh_mapFEtoCPnode(:,i) = i
 
  return
- 
+
  endsubroutine
 
 
@@ -1813,7 +1816,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    mesh_mapFEtoCPelem(:,i) = i
 
  return
- 
+
  endsubroutine
 
 
@@ -1947,7 +1950,7 @@ subroutine mesh_spectral_count_cpSizes ()
  mesh_maxNips =         FE_Nips(t)
  mesh_maxNipNeighbors = FE_NipNeighbors(t)
  mesh_maxNsubNodes =    FE_NsubNodes(t)
- 
+
  endsubroutine
 
 
@@ -2088,6 +2091,8 @@ subroutine mesh_marc_count_cpSizes (unit)
  character(len=64) tag
  character(len=1024) line
 
+ allocate ( mesh_node (3,mesh_Nnodes) ); mesh_node = 0_pInt
+ 
  a = 1_pInt
  b = 1_pInt
  c = 1_pInt
@@ -2323,7 +2328,7 @@ subroutine mesh_marc_count_cpSizes (unit)
    mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
    mesh_element ( 3,e) = homog                             ! homogenization
    mesh_element ( 4,e) = IO_IntValue(line,pos,1)           ! microstructure
-   mesh_element ( 5,e) = (e-1) + (e-1)/a + (e-1)/a/b*(a+1) ! base node
+   mesh_element ( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1) ! base node
    mesh_element ( 6,e) = mesh_element ( 5,e) + 1
    mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
    mesh_element ( 8,e) = mesh_element ( 5,e) + (a+1)
@@ -2331,8 +2336,10 @@ subroutine mesh_marc_count_cpSizes (unit)
    mesh_element (10,e) = mesh_element ( 9,e) + 1
    mesh_element (11,e) = mesh_element ( 9,e) + (a+1) + 1
    mesh_element (12,e) = mesh_element ( 9,e) + (a+1)
+   mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))    !needed for statistics
+   mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
  enddo
- 
+
 110 return
 
  endsubroutine
