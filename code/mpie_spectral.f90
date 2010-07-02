@@ -282,7 +282,7 @@ program mpie_spectral
  real(pReal), dimension(3,3) :: disgradmacro,disgradmacroactual
  real(pReal), dimension(3,3) :: ddisgradmacro,ddisgradmacroacum,ddisgrad,ddisgradim
  real(pReal), dimension(3,3) :: defgrad0,defgrad
- real(pReal), dimension(3,3) :: udot,scauchy,scauav,aux33
+ real(pReal), dimension(3,3) :: udot,scauchy,scauav,aux33,xkdyad
 
  integer(pInt), dimension(3) :: nn
  integer(pInt), dimension(2) :: nn2
@@ -495,6 +495,10 @@ program mpie_spectral
 
  do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
    call CPFEM_general(3,math_i3,math_i3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
+ enddo
+
+ do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
+   call CPFEM_general(2,math_i3,math_i3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
    c066 = c066+dsde   
    c0 = c0+math_Mandel66to3333(dsde)
  enddo
@@ -513,15 +517,8 @@ program mpie_spectral
 
 ! INITIALIZATION BEFORE STARTING WITH LOADINGS
 
- disgradmacro = 0.
-
- do k = 1, c
-   do j = 1, b
-     do i = 1, a
-       defgradold(:,:,i,j,k) = math_i3(:,:)
-     enddo
-   enddo
- enddo
+ disgrad      = 0.0_pReal
+ disgradmacro = 0.0_pReal
 
  do jload = 1,N !Loop over loadcases defined in the loadcase file
    udot(:,:) = bc_velocityGrad(:,:,jload)
@@ -551,41 +548,39 @@ program mpie_spectral
        do j = 1, b
          do i = 1, a
            ielem = ielem+1
-           disgrad(:,:,i,j,k)=disgradmacro(:,:) 
-
-           defgrad0(:,:)=defgradold(:,:,i,j,k)
-           defgrad(:,:)=math_i3(:,:)+disgrad(:,:,i,j,k) ! calculate new defgrad 
-           call CPFEM_general(3,defgrad0,defgrad,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
+           defgradold(:,:,i,j,k) = math_I3(:,:) + disgrad(:,:,i,j,k)  ! wind forward
+           disgrad(:,:,i,j,k)    = disgradmacro(:,:)                  ! no fluctuations as guess
+           call CPFEM_general(3,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
+                              temperature,0.0_pReal,ielem,1_pInt,&
+                              stress,dsde)
 !    sg(:,:,i,j,k)=math_Mandel6to33(stress) ?
          enddo
        enddo
      enddo
-	 
-	 ielem = 0
-	
+
+     ielem = 0
+
      do k = 1, c !loop over FPs
        do j = 1, b
          do i = 1, a
            ielem = ielem+1
-           disgrad(:,:,i,j,k) = disgradmacro(:,:)
-		   
-           defgrad0(:,:) = defgradold(:,:,i,j,k)
-           defgrad(:,:) = math_i3(:,:)+disgrad(:,:,i,j,k)
-           call CPFEM_general(1,defgrad0,defgrad,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
+           call CPFEM_general(1,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
+                              temperature,0.0_pReal,ielem,1_pInt,&
+                              stress,dsde)
            sg(:,:,i,j,k) = math_Mandel6to33(stress)
          enddo
        enddo
      enddo
   
-     ddisgradmacroacum = 0.
+     ddisgradmacroacum = 0.0_pReal
 
-     iter = 0
+     iter = 0_pInt
      erre = 2.*error
      errs = 2.*error
 
-     do while(iter <= itmax.and.(errs.gt.error.or.erre.gt.error))
+     do while(iter <= itmax.and.(errs > error .or. erre > error))
        iter = iter+1
-       write(*,*)'ITER = ',iter
+       write(*,*) 'ITER = ',iter
        write(*,*) 'DIRECT FFT OF STRESS FIELD'
        do ii = 1,3
          do jj = 1,3
@@ -602,7 +597,7 @@ program mpie_spectral
                enddo
              enddo
            enddo
-           if(c.gt.1) then
+           if(c > 1) then
              call fourn(datafft,nn,3,1)
            else
              call fourn(datafft,nn2,2,1)
@@ -641,19 +636,26 @@ program mpie_spectral
              else
                xk(3) = 0.
              endif
-		   
+
+!             if (any(xk /= 0.0_pReal) then
+!               xknorm = 1.0_pReal/(xk(1)**2+xk(2)**2+xk(3)**2)
+!               forall (i=1:3,j=1:3) xkdyad(i,j) = xknorm * xk(i)*xk(j)   ! the dyad is always used anfd could speed up things by using element-wise multiplication plus summation of array
+!             endif
+
              xknorm = sqrt(xk(1)**2+xk(2)**2+xk(3)**2)
 
-             if (xknorm.ne.0.) then
+             if (xknorm /= 0.0_pReal) then
                do i = 1,3
-                 xk2(i) = xk(i)/(xknorm*xknorm*2.*pi)
+                 xk2(i) = xk(i)/(xknorm*xknorm*2.*pi)        ! seems to be not needed...?
                  xk(i) = xk(i)/xknorm
                enddo
              endif
-	 
+
+!             forall(i=1:3,k=1:3) aux33(i,k) = sum(c0(i,:,k,:)*xkdyad(:,:)
+!             this is probably equiv with below quad looping
+             aux33 = 0.0_pReal
              do i = 1,3
                do k = 1,3
-                 aux33(i,k) = 0.
                  do j = 1,3
                    do l = 1,3
                      aux33(i,k) = aux33(i,k)+c0(i,j,k,l)*xk(j)*xk(l)
@@ -662,7 +664,7 @@ program mpie_spectral
                enddo
              enddo
              aux33 = math_inv3x3(aux33)
-	  
+
 !     call minv(aux33,3,det,minv1,minv2)
 !     if(det.eq.0) then
 !      write(*,*) kx,ky,kz,'  --> SINGULAR SYSTEM'
@@ -670,6 +672,8 @@ program mpie_spectral
 !      pause
 !     endif
 
+!             forall (p=1:3,q=1:3,i=1:3,j=1:3) g1(p,q,i,j) = -aux33(p,i)*xk(q)*xk(j)
+!             could substitute below quad loop
              do p = 1,3
                do q = 1,3
                  do i = 1,3
@@ -685,7 +689,7 @@ program mpie_spectral
                  ddisgrad(i,j) = 0.
                  ddisgradim(i,j) = 0.
 !      if(kx.eq.0.and.ky.eq.0.and.kz.eq.0.) goto 4
-                 if(.not.(kx.eq.0.and.ky.eq.0.and.kz.eq.0.)) then
+                 if(.not.(kx == 0. .and. ky == 0. .and. kz == 0.)) then
                    do k = 1,3
                      do l = 1,3
                        ddisgrad(i,j) = ddisgrad(i,j)+g1(i,j,k,l)*workfft(k,l,kxx,kyy,kzz)
@@ -698,7 +702,7 @@ program mpie_spectral
 
              workfft(:,:,kxx,kyy,kzz) = ddisgrad(:,:)
              workfftim(:,:,kxx,kyy,kzz) = ddisgradim(:,:)
-	
+
            enddo
          enddo
        enddo
@@ -713,17 +717,17 @@ program mpie_spectral
            do k = 1,c
              do j = 1,b
                do i = 1,a
-			   
+
                  k1 = k1+1
                  datafft(k1) = workfft(m1,n1,i,j,k)
-				 
+
                  k1 = k1+1
                  datafft(k1) = workfftim(m1,n1,i,j,k)
                enddo
              enddo
            enddo
 
-           if(c.gt.1) then
+           if(c > 1) then
              call fourn(datafft,nn,3,-1)
            else
              call fourn(datafft,nn2,2,-1)
@@ -753,53 +757,41 @@ program mpie_spectral
            do i = 1,a
 
              ielem = ielem+1
+             call CPFEM_general(3,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
+                                temperature,0.0_pReal,ielem,1_pInt,&
+                                stress,dsde)
 
-             defgrad0(:,:) = defgradold(:,:,i,j,k)
-             defgrad(:,:) = math_i3(:,:)+disgrad(:,:,i,j,k)
-
-             call CPFEM_general(3,defgrad0,defgrad,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
-
-             sg(:,:,i,j,k) = math_Mandel6to33(stress)
            enddo
          enddo
        enddo
 
        ielem = 0  
+       scauav = 0.
 
        do k = 1,c
          do j = 1,b
            do i = 1,a
 
              ielem = ielem+1
-
-             defgrad0(:,:) = defgradold(:,:,i,j,k)
-             defgrad(:,:) = math_i3(:,:)+disgrad(:,:,i,j,k)
-			 
-             call CPFEM_general(2,defgrad0,defgrad,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
-
+             call CPFEM_general(2,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
+                                temperature,0.0_pReal,ielem,1_pInt,&
+                                stress,dsde)
               sg(:,:,i,j,k) = math_Mandel6to33(stress)
+              scauav(:,:) = scauav(:,:)+sg(:,:,i,j,k)          ! average stress
            enddo
          enddo
        enddo
 
-!!!    call get_smacro
-!  AVERAGE STRESS
+       scauav = scauav*wgt                                     ! final weighting
 
-       scauav = 0.
-   
-       do k = 1,c
-         do j = 1,b
-           do i = 1,a
-             scauav(:,:) = scauav(:,:)+sg(:,:,i,j,k)*wgt
-           enddo
-         enddo
-       enddo
 !  MIXED BC
 
        do i = 1,3
          do j = 1,3
            ddisgradmacro(i,j) = 0.
-           if(iudot(i,j).eq.0) then
+           if(iudot(i,j) == 0) then
+!             ddisgradmacro(i,j) = ddisgradmacro(i,j)+sum(s0(i,j,:,:)*iscau(:,:)*(scauchy(:,:)-scauav(:,:)))=
+!             could replace the k,l loop
              do k = 1,3
                do l = 1,3
                  ddisgradmacro(i,j) = ddisgradmacro(i,j)+s0(i,j,k,l)*iscau(k,l)*(scauchy(k,l)-scauav(k,l))
@@ -829,13 +821,6 @@ program mpie_spectral
 !!      write(*,*) 'scauav(1,1),scauav(2,2),scauav(3,3)'
 !!      write(*,*) scauav(1,1),scauav(2,2),scauav(3,3)
 
-     do k = 1,c
-       do j = 1,b
-         do i = 1,a
-           defgradold(:,:,i,j,k) = math_i3(:,:)+disgrad(:,:,i,j,k)
-         enddo
-       enddo
-     enddo
    enddo  ! IMICRO ENDDO
  enddo  ! JLOAD ENDDO Ende looping over loadcases
 
