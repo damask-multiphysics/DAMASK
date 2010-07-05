@@ -287,7 +287,7 @@ program mpie_spectral
  integer(pInt), dimension(3) :: nn
  integer(pInt), dimension(2) :: nn2
 
- real(pReal), dimension(3) :: delt,xk,xk2
+ real(pReal), dimension(3) :: delt,xk
  real(pReal), dimension(6) :: aux6
  real(pReal), dimension(3,3,3,3) :: c0,s0,g1
  real(pReal), dimension(6,6) :: c066,s066
@@ -493,11 +493,18 @@ program mpie_spectral
  c0 = 0.  !stiffness of reference material
  c066 = 0. ! other way of notating c0
 
- do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
+!#
+!# do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
+!#
+ do ielem = 1, int(prodnn) !call each element with identity (math_i3) to initialize with high stress
+!#
    call CPFEM_general(3,math_i3,math_i3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
  enddo
-
- do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
+!#
+!# do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
+!#
+ do ielem = 1, int(prodnn) !call each element with identity (math_i3) to initialize with high stress
+!#
    call CPFEM_general(2,math_i3,math_i3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
    c066 = c066+dsde   
    c0 = c0+math_Mandel66to3333(dsde)
@@ -575,10 +582,11 @@ program mpie_spectral
      ddisgradmacroacum = 0.0_pReal
 
      iter = 0_pInt
-     erre = 2.*error
+!#     erre = 2.*error
      errs = 2.*error
 
-     do while(iter <= itmax.and.(errs > error .or. erre > error))
+!#     do while(iter <= itmax.and.(errs > error .or. erre > error))
+     do while(iter <= itmax .and. errs > error)
        iter = iter+1
        write(*,*) 'ITER = ',iter
        write(*,*) 'DIRECT FFT OF STRESS FIELD'
@@ -646,7 +654,7 @@ program mpie_spectral
 
              if (xknorm /= 0.0_pReal) then
                do i = 1,3
-                 xk2(i) = xk(i)/(xknorm*xknorm*2.*pi)        ! seems to be not needed...?
+!!                 xk2(i) = xk(i)/(xknorm*xknorm*2.*pi)
                  xk(i) = xk(i)/xknorm
                enddo
              endif
@@ -767,7 +775,9 @@ program mpie_spectral
 
        ielem = 0  
        scauav = 0.
-
+!#
+   errs=0.
+!#
        do k = 1,c
          do j = 1,b
            do i = 1,a
@@ -776,13 +786,41 @@ program mpie_spectral
              call CPFEM_general(2,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
                                 temperature,0.0_pReal,ielem,1_pInt,&
                                 stress,dsde)
-              sg(:,:,i,j,k) = math_Mandel6to33(stress)
-              scauav(:,:) = scauav(:,:)+sg(:,:,i,j,k)          ! average stress
+!#
+!#              sg(:,:,i,j,k) = math_Mandel6to33(stress)
+!#              scauav(:,:) = scauav(:,:)+sg(:,:,i,j,k)          ! average stress
+!#
+              aux33 = math_Mandel6to33(stress)
+
+              erraux=0.
+              do ii=1,3
+              do jj=1,3
+                erraux=erraux+(sg(ii,jj,i,j,k)-aux33(ii,jj))**2
+              enddo
+              enddo
+              errs=errs+sqrt(erraux)
+
+              sg(:,:,i,j,k)=aux33
+              scauav = scauav+aux33          ! average stress
+!#
            enddo
          enddo
        enddo
 
        scauav = scauav*wgt                                     ! final weighting
+!#
+       errs=errs*wgt
+
+       scaunorm=0.
+       do ii=1,3
+       do jj=1,3
+        scaunorm=scaunorm+scauav(ii,jj)**2
+       enddo
+       enddo
+       scaunorm=sqrt(scaunorm)
+
+       errs=errs/scaunorm
+!#
 
 !  MIXED BC
 
