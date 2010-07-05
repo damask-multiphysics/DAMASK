@@ -239,8 +239,7 @@ program mpie_spectral
  use mpie_interface
  use prec, only: pInt, pReal
  use IO
-! use math, only: math_I3,math_transpose3x3,math_Mandel66to3333
-  use math
+ use math
  use CPFEM, only: CPFEM_general
 
  implicit none
@@ -267,8 +266,10 @@ program mpie_spectral
  real(pReal), dimension(9) :: valuevector
  
  integer(pInt) unit, N_l, N_s, N_t, N_n, N, i, j, k, l            ! numbers of identifiers, loop variables
- integer(pInt) a, b, c, e, homog
+ integer(pInt) e, homog
  real(pReal) x, y, z
+ 
+ integer(pInt), dimension(3) :: resolution
 
 !-------------------------
 !begin RL
@@ -284,17 +285,16 @@ program mpie_spectral
  real(pReal), dimension(3,3) :: defgrad0,defgrad
  real(pReal), dimension(3,3) :: udot,scauchy,scauav,aux33,xkdyad
 
- integer(pInt), dimension(3) :: nn
- integer(pInt), dimension(2) :: nn2
+ !integer(pInt), dimension(2) :: nn2 m.diehl
 
  real(pReal), dimension(3) :: delt,xk
  real(pReal), dimension(6) :: aux6
  real(pReal), dimension(3,3,3,3) :: c0,s0,g1
  real(pReal), dimension(6,6) :: c066,s066
 
- integer(pInt) itmax, jload, ielem, ii, jj, k1, kxx, kyy, kzz, kx, ky, kz, idum, iter, imicro, m1, n1, p, q
+ integer(pInt) prodnn,itmax, jload, ielem, ii, jj, k1, kxx, kyy, kzz, kx, ky, kz, idum, iter, imicro, m1, n1, p, q
 
- real(pReal) prodnn,wgt,error,tdot,erre,errs,evm,svm,det,xknorm
+ real(pReal) wgt,error,tdot,erre,errs,evm,svm,det,xknorm, erraux, scaunorm
 
  logical errmatinv
 
@@ -335,7 +335,7 @@ program mpie_spectral
         end select
    enddo                                                  ! count all identifiers to allocate memory and do sanity check
    if ((N_l /= N_s).or.(N_s /= N_t).or.(N_t /= N_n)) &    ! sanity check
-     call IO_error(46,ext_msg = path)                       ! error message for incomplete input file
+     call IO_error(46,ext_msg = path)                     ! error message for incomplete input file
 
  enddo
 
@@ -397,13 +397,10 @@ program mpie_spectral
  enddo
  
 !read header of mesh file
- a = 1_pInt
- b = 1_pInt
- c = 1_pInt
+ resolution = 1_pInt
  x = 1_pReal
  y = 1_pReal
  z = 1_pReal
- 
  gotResolution =     .false.
  gotDimension =      .false.
  gotHomogenization = .false.
@@ -438,11 +435,11 @@ program mpie_spectral
          do i = 2,6,2
            select case (IO_lc(IO_stringValue(line,posMesh,i)))
              case('a')
-                 a = 2**IO_intValue(line,posMesh,i+1)
+                 resolution(1) = 2**IO_intValue(line,posMesh,i+1)
              case('b')
-                 b = 2**IO_intValue(line,posMesh,i+1)
+                 resolution(2) = 2**IO_intValue(line,posMesh,i+1)
              case('c')
-                 c = 2**IO_intValue(line,posMesh,i+1)
+                 resolution(3) = 2**IO_intValue(line,posMesh,i+1)
            end select
          enddo
    end select
@@ -450,7 +447,7 @@ program mpie_spectral
  enddo
  100 close(unit)
  
- print '(a,/,i3,i3,i3)','resolution a b c',a,b,c
+ print '(a,/,i3,i3,i3)','resolution a b c', resolution
  print '(a,/,f6.2,f6.2,f6.2)','dimension x y z',x, y, z
  print *,'homogenization',homog
  print *, ''
@@ -460,12 +457,12 @@ program mpie_spectral
 !-------------------------
 !begin RL
 !-------------------------
- allocate (datafft(2*a*b*c))
- allocate (workfft(3,3,a,b,c))
- allocate (workfftim(3,3,a,b,c))
- allocate (sg(3,3,a,b,c))
- allocate (disgrad(3,3,a,b,c))
- allocate (defgradold(3,3,a,b,c))
+ allocate (datafft(2*resolution(1)*resolution(2)*resolution(3)))
+ allocate (workfft(3,3,resolution(1),resolution(2),resolution(3)))
+ allocate (workfftim(3,3,resolution(1),resolution(2),resolution(3)))
+ allocate (sg(3,3,resolution(1),resolution(2),resolution(3)))
+ allocate (disgrad(3,3,resolution(1),resolution(2),resolution(3)))
+ allocate (defgradold(3,3,resolution(1),resolution(2),resolution(3)))
 
  error = 0.00001
  itmax = 100
@@ -473,39 +470,22 @@ program mpie_spectral
  delt(1) = 1.
  delt(2) = 1.
  delt(3) = 1.
-
- nn(1) = a
- nn(2) = b
- nn(3) = c
  
- nn2(1) = a
- nn2(2) = b
+ !nn2(1) = resolution(1) m.diehl
+ !nn2(2) = resolution(2) m.diehl
 
- prodnn = nn(1)*nn(2)*nn(3)
+ prodnn = resolution(1)*resolution(2)*resolution(3)
  wgt = 1./prodnn
 
-! C_0 and S_0 CALCULATION
-!!
-!! PHILIP: FE_exec_elem?
-!!
- stress = 0. !should be initialized somewhere
- dsde = 0. !should be initialized somewhere
- c0 = 0.  !stiffness of reference material
- c066 = 0. ! other way of notating c0
+ c0 = .0_pReal      !stiffness of reference material
+ c066 = .0_pReal    !other way of notating c0
+ stress = .0_pReal  !initialization
+ dsde = .0_pReal 
 
+ 
+ do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
 !#
-!# do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
-!#
- do ielem = 1, int(prodnn) !call each element with identity (math_i3) to initialize with high stress
-!#
-   call CPFEM_general(3,math_i3,math_i3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
- enddo
-!#
-!# do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
-!#
- do ielem = 1, int(prodnn) !call each element with identity (math_i3) to initialize with high stress
-!#
-   call CPFEM_general(2,math_i3,math_i3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
+   call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
    c066 = c066+dsde   
    c0 = c0+math_Mandel66to3333(dsde)
  enddo
@@ -551,25 +531,24 @@ program mpie_spectral
      ddisgradmacro = 0.
      ielem=0  
 
-     do k = 1, c  !loop over FPs
-       do j = 1, b
-         do i = 1, a
+     do k = 1, resolution(3)  !loop over FPs
+       do j = 1, resolution(2)
+         do i = 1, resolution(1)
            ielem = ielem+1
            defgradold(:,:,i,j,k) = math_I3(:,:) + disgrad(:,:,i,j,k)  ! wind forward
            disgrad(:,:,i,j,k)    = disgradmacro(:,:)                  ! no fluctuations as guess
-           call CPFEM_general(3,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
+           call CPFEM_general(3,defgradold(:,:,i,j,k),math_I3(:,:)+disgrad(:,:,i,j,k),&
                               temperature,0.0_pReal,ielem,1_pInt,&
                               stress,dsde)
-!    sg(:,:,i,j,k)=math_Mandel6to33(stress) ?
          enddo
        enddo
      enddo
 
      ielem = 0
 
-     do k = 1, c !loop over FPs
-       do j = 1, b
-         do i = 1, a
+     do k = 1, resolution(3) !loop over FPs
+       do j = 1, resolution(2)
+         do i = 1, resolution(1)
            ielem = ielem+1
            call CPFEM_general(1,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
                               temperature,0.0_pReal,ielem,1_pInt,&
@@ -593,11 +572,11 @@ program mpie_spectral
        do ii = 1,3
          do jj = 1,3
            k1 = 0
-           do k = 1,c
+           do k = 1, resolution(3)
 !      write(*,'(1H+,a,i2,2(a,i4))') 
 !     #   'STRESS - COMPONENT',ii,jj,'  -   Z = ',k,'   OUT OF ',npts
-             do j = 1,b
-               do i = 1,a
+             do j = 1, resolution(2)
+               do i = 1, resolution(1)
                  k1 = k1+1
                  datafft(k1) = sg(ii,jj,i,j,k)
                  k1 = k1+1
@@ -605,15 +584,15 @@ program mpie_spectral
                enddo
              enddo
            enddo
-           if(c > 1) then
-             call fourn(datafft,nn,3,1)
+           if(resolution(3) > 1) then
+             call fourn(datafft,resolution,3,1)
            else
-             call fourn(datafft,nn2,2,1)
+             call fourn(datafft,resolution(1:2),2,1) !nn2 replaced by resolution(1:2)
            endif
            k1 = 0
-           do k = 1, c
-             do j = 1, b
-               do i = 1, a
+           do k = 1, resolution(3)
+             do j = 1, resolution(2)
+               do i = 1, resolution(1)
                  k1 = k1+1
                  workfft(ii,jj,i,j,k) = datafft(k1)
                  k1 = k1+1  
@@ -624,23 +603,23 @@ program mpie_spectral
          enddo
        enddo
        write(*,*) 'CALCULATING G^pq,ij : SG^ij ...'
-       do kzz = 1,c
-         do kyy = 1,b
-           do kxx = 1,a
-             if(kxx.le.a/2) kx = kxx-1
-             if(kxx.gt.a/2) kx = kxx-a-1
+       do kzz = 1, resolution(3)
+         do kyy = 1, resolution(2)
+           do kxx = 1, resolution(1)
+             if(kxx <= resolution(1)/2) kx = kxx-1
+             if(kxx >  resolution(1)/2) kx = kxx-resolution(1)-1
  
-             if(kyy.le.b/2) ky = kyy-1
-             if(kyy.gt.b/2) ky = kyy-b-1
+             if(kyy <= resolution(2)/2) ky = kyy-1
+             if(kyy > resolution(2)/2) ky = kyy-resolution(2)-1
  
-             if(kzz.le.c/2) kz = kzz-1
-             if(kzz.gt.c/2) kz = kzz-c-1
+             if(kzz <= resolution(3)/2) kz = kzz-1
+             if(kzz > resolution(3)/2) kz = kzz-resolution(3)-1
 
-             xk(1) = kx/(delt(1)*nn(1))
-             xk(2) = ky/(delt(2)*nn(2))
+             xk(1) = kx/(delt(1)*resolution(1))
+             xk(2) = ky/(delt(2)*resolution(2))
 
-             if(c.gt.1) then
-               xk(3) = kz/(delt(3)*nn(3))
+             if(resolution(3) > 1) then
+               xk(3) = kz/(delt(3)*resolution(3))
              else
                xk(3) = 0.
              endif
@@ -697,7 +676,7 @@ program mpie_spectral
                  ddisgrad(i,j) = 0.
                  ddisgradim(i,j) = 0.
 !      if(kx.eq.0.and.ky.eq.0.and.kz.eq.0.) goto 4
-                 if(.not.(kx == 0. .and. ky == 0. .and. kz == 0.)) then
+                 if(kx /= 0 .or. ky /= 0 .or. kz /= 0) then
                    do k = 1,3
                      do l = 1,3
                        ddisgrad(i,j) = ddisgrad(i,j)+g1(i,j,k,l)*workfft(k,l,kxx,kyy,kzz)
@@ -722,9 +701,9 @@ program mpie_spectral
 
            k1 = 0
 
-           do k = 1,c
-             do j = 1,b
-               do i = 1,a
+           do k = 1, resolution(3)
+             do j = 1, resolution(2)
+               do i = 1, resolution(1)
 
                  k1 = k1+1
                  datafft(k1) = workfft(m1,n1,i,j,k)
@@ -735,17 +714,17 @@ program mpie_spectral
              enddo
            enddo
 
-           if(c > 1) then
-             call fourn(datafft,nn,3,-1)
+           if(resolution(3) > 1) then             ! distinguish 2D and 3D case
+             call fourn(datafft,resolution,3,-1)
            else
-             call fourn(datafft,nn2,2,-1)
+             call fourn(datafft,resolution(1:2),2,-1) !nn2 replaced by resolution(1:2)
            endif
            datafft = datafft*wgt
 
             k1 = 0
-            do k = 1,c
-              do j = 1,b
-                do i = 1,a
+            do k = 1, resolution(3)
+              do j = 1, resolution(2)
+                do i = 1, resolution(1)
 
                   k1 = k1+1
                   disgrad(m1,n1,i,j,k) = disgrad(m1,n1,i,j,k)+ddisgradmacro(m1,n1)+datafft(k1)
@@ -760,9 +739,9 @@ program mpie_spectral
        write(*,*) 'UPDATE STRESS FIELD'
 !!!    call evpal
        ielem = 0  
-       do k = 1,c
-         do j = 1,b
-           do i = 1,a
+       do k = 1, resolution(3)
+         do j = 1, resolution(2)
+           do i = 1, resolution(1)
 
              ielem = ielem+1
              call CPFEM_general(3,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
@@ -778,9 +757,9 @@ program mpie_spectral
 !#
    errs=0.
 !#
-       do k = 1,c
-         do j = 1,b
-           do i = 1,a
+       do k = 1, resolution(3)
+         do j = 1, resolution(2)
+           do i = 1, resolution(1)
 
              ielem = ielem+1
              call CPFEM_general(2,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
@@ -890,19 +869,18 @@ end subroutine
 !********************************************************************
 subroutine fourn(data,nn,ndim,isign)
 
-      INTEGER isign,ndim,nn(ndim)
-      REAL data(*)
-!      INTEGER i1,i2,i2rev,i3,i3rev,ibit,idim,ifp1,ifp2,ip1,ip2,ip3,k1,
-!     *k2,n,nprev,nrem,ntot
- INTEGER i1,i2,i2rev,i3,i3rev,ibit,idim,ifp1,ifp2,ip1,ip2,ip3,k1,k2,n,nprev,nrem,ntot
-      REAL tempi,tempr
-      DOUBLE PRECISION theta,wi,wpi,wpr,wr,wtemp
-      ntot = 1
-!      do 11 idim = 1,ndim
- do idim = 1,ndim  ! 11
+ use prec, only: pInt,pReal
+ implicit none
+
+ integer(pInt) isign,ndim,nn(ndim)
+ real(pReal) data(*)
+ integer(pInt) i1,i2,i2rev,i3,i3rev,ibit,idim,ifp1,ifp2,ip1,ip2,ip3,k1,k2,n,nprev,nrem,ntot
+ real(pReal) tempi,tempr,theta,wi,wpi,wpr,wr,wtemp
+ ntot = 1
+
+ do idim = 1,ndim
         ntot = ntot*nn(idim)
-!11    continue
- enddo ! 11
+ enddo
 !
       nprev = 1
 !      do 18 idim = 1,ndim
