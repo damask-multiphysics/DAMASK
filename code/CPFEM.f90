@@ -63,7 +63,8 @@ endsubroutine
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
 !***********************************************************************
-subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress, jacobian)
+subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress,&
+      & jacobian, pstress, dPdF)
   ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
 
   !*** variables and functions from other modules ***!
@@ -153,13 +154,15 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   !*** output variables ***!
   real(pReal), dimension(6), intent(out) ::           cauchyStress        ! stress vector in Mandel notation
   real(pReal), dimension(6,6), intent(out) ::         jacobian            ! jacobian in Mandel notation
-  
+  real(pReal), dimension (3,3), intent(out) ::        pstress                   ! Piola-Kirchhoff stress in Matrix notation
+  real(pReal), dimension (3,3,3,3), intent(out) ::    dPdF                ! 
+                 
   !*** local variables ***!
   real(pReal)                                         J_inverse, &        ! inverse of Jacobian
                                                       rnd
-  real(pReal), dimension (3,3) ::                     Kirchhoff
-  real(pReal), dimension (3,3,3,3) ::                 H, &
-                                                      H_sym
+  real(pReal), dimension (3,3) ::                     Kirchhoff           ! Piola-Kirchhoff stress in Matrix notation
+  real(pReal), dimension (3,3,3,3) ::                 H_sym, &
+                                                      H
   integer(pInt)                                       cp_en, &            ! crystal plasticity element number
                                                       i, &
                                                       j, &
@@ -356,6 +359,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   ! return the local stress and the jacobian from storage
   cauchyStress(:) = CPFEM_cs(:,IP,cp_en)
   jacobian(:,:)   = CPFEM_dcsdE(:,:,IP,cp_en)
+  
+  ! copy P and dPdF to the output variables 
+  pstress(:,:) = materialpoint_P(:,:,IP,cp_en)
+  dPdF(:,:,:,:)  = materialpoint_dPdF(:,:,:,:,IP,cp_en)
   if (debugger .and. selectiveDebugger) then
     !$OMP CRITICAL (write2out)
       write(6,'(a16,x,i2,x,a2,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6

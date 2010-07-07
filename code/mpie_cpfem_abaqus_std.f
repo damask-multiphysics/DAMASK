@@ -117,6 +117,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
        DFGRD0(3,3),DFGRD1(3,3)
  real(pReal) SSE, SPD, SCD, RPL, DRPLDT, DTIME, TEMP,&
         DTEMP, PNEWDT, CELENT
+ real(pReal), dimension (3,3) :: pstress             ! not used, but needed for call of cpfem_general
+ real(pReal), dimension (3,3,3,3) :: dPdF            ! not used, but needed for call of cpfem_general
 
 ! local variables
  real(pReal), dimension(6) ::   stress_h
@@ -209,7 +211,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    !$OMP END CRITICAL (write2out)
  endif
    
- call CPFEM_general(computationMode,dfgrd0,dfgrd1,temp,dtime,noel,npt,stress_h,ddsdde_h)
+ call CPFEM_general(computationMode,dfgrd0,dfgrd1,temp,dtime,noel,npt,stress_h,ddsdde_h, pstress, dPdF)
 
 !     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     straight:            11, 22, 33, 12, 23, 13
