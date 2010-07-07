@@ -250,8 +250,8 @@ program mpie_spectral
  integer(pInt), dimension(:), allocatable :: bc_steps              ! number of steps
  logical, dimension(:,:,:,:), allocatable :: bc_mask               ! mask
  
- real(pReal) temperature
- real(pReal), dimension(6) :: stress
+ real(pReal) temperature                                           ! not used, but needed
+ real(pReal), dimension(6) :: stress                               !
  real(pReal), dimension(6,6) :: dsde
  
  character(len=1024) path,line
@@ -263,48 +263,45 @@ program mpie_spectral
  integer(pInt), parameter :: maxNchunksMesh = 7                   ! 4 identifiers, 3 values  
  integer(pInt), dimension (1+2*maxNchunksMesh) :: posMesh
  
- real(pReal), dimension(9) :: valuevector
+ real(pReal), dimension(9) :: valuevector                         ! stores information temporarily from loadcase file
  
  integer(pInt) unit, N_l, N_s, N_t, N_n, N, i, j, k, l            ! numbers of identifiers, loop variables
  integer(pInt) e, homog
  real(pReal) x, y, z
  
  integer(pInt), dimension(3) :: resolution
+ 
+ real(pReal), dimension (3,3) ::        pstress                   ! Piola-Kirchhoff stress in Matrix notation
+ real(pReal), dimension (3,3,3,3) ::    dPdF                      ! 
+ real(pReal), dimension(3,3,3,3) ::     c0,s0,g1
+ real(pReal), dimension(6,6) ::         c066,s066
 
-!-------------------------
-!begin RL
-!-------------------------
  
  real(pReal), dimension(:), allocatable :: datafft
  real(pReal), dimension(:,:,:,:,:), allocatable :: workfft,workfftim,sg,disgrad,defgradold
 
  integer(pInt), dimension (3,3) :: iudot,iscau
   
- real(pReal), dimension(3,3) :: disgradmacro,disgradmacroactual
- real(pReal), dimension(3,3) :: ddisgradmacro,ddisgradmacroacum,ddisgrad,ddisgradim
- real(pReal), dimension(3,3) :: defgrad0,defgrad
- real(pReal), dimension(3,3) :: udot,scauchy,scauav,aux33,xkdyad
+ real(pReal), dimension(3,3) :: disgradmacro, disgradmacroactual
+ real(pReal), dimension(3,3) :: ddisgradmacro, ddisgradmacroacum, ddisgrad, ddisgradim
+ real(pReal), dimension(3,3) :: defgrad0, defgrad
+ real(pReal), dimension(3,3) :: udot, scauchy, scauav, aux33, xkdyad
 
  !integer(pInt), dimension(2) :: nn2 m.diehl
 
  real(pReal), dimension(3) :: delt,xk
  real(pReal), dimension(6) :: aux6
- real(pReal), dimension(3,3,3,3) :: c0,s0,g1
- real(pReal), dimension(6,6) :: c066,s066
 
  integer(pInt) prodnn,itmax, jload, ielem, ii, jj, k1, kxx, kyy, kzz, kx, ky, kz, idum, iter, imicro, m1, n1, p, q
-
+                                                                                      
  real(pReal) wgt,error,tdot,erre,errs,evm,svm,det,xknorm, erraux, scaunorm
-
  logical errmatinv
 
-!-------------------------
-!end RL
-!-------------------------
  
- if (IargC() < 2) call IO_error(102)
+ if (IargC() < 2) call IO_error(102)                     ! check for correct Nr. of arguments given
 
- path = getLoadcaseName()
+! Now reading the loadcase file and assigne the variables
+ path = getLoadcaseName()                                
  bc_maskvector = ''
  unit = 234_pInt
  N_l = 0_pInt
@@ -396,7 +393,7 @@ program mpie_spectral
    print *, ''
  enddo
  
-!read header of mesh file
+!read header of mesh file to get the information needed before the complete mesh file is intepretated by mesh.f90
  resolution = 1_pInt
  x = 1_pReal
  y = 1_pReal
@@ -454,9 +451,7 @@ program mpie_spectral
 
  temperature = 300.0_pReal
 
-!-------------------------
-!begin RL
-!-------------------------
+
  allocate (datafft(2*resolution(1)*resolution(2)*resolution(3)))
  allocate (workfft(3,3,resolution(1),resolution(2),resolution(3)))
  allocate (workfftim(3,3,resolution(1),resolution(2),resolution(3)))
@@ -485,7 +480,7 @@ program mpie_spectral
  
  do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
 !#
-   call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde)
+   call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde, pstress, dPdF)
    c066 = c066+dsde   
    c0 = c0+math_Mandel66to3333(dsde)
  enddo
@@ -539,7 +534,7 @@ program mpie_spectral
            disgrad(:,:,i,j,k)    = disgradmacro(:,:)                  ! no fluctuations as guess
            call CPFEM_general(3,defgradold(:,:,i,j,k),math_I3(:,:)+disgrad(:,:,i,j,k),&
                               temperature,0.0_pReal,ielem,1_pInt,&
-                              stress,dsde)
+                              stress,dsde, pstress, dPdF)
          enddo
        enddo
      enddo
@@ -552,7 +547,7 @@ program mpie_spectral
            ielem = ielem+1
            call CPFEM_general(1,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
                               temperature,0.0_pReal,ielem,1_pInt,&
-                              stress,dsde)
+                              stress,dsde, pstress, dPdF)
            sg(:,:,i,j,k) = math_Mandel6to33(stress)
          enddo
        enddo
@@ -624,33 +619,35 @@ program mpie_spectral
                xk(3) = 0.
              endif
 
-!             if (any(xk /= 0.0_pReal) then
-!               xknorm = 1.0_pReal/(xk(1)**2+xk(2)**2+xk(3)**2)
-!               forall (i=1:3,j=1:3) xkdyad(i,j) = xknorm * xk(i)*xk(j)   ! the dyad is always used anfd could speed up things by using element-wise multiplication plus summation of array
-!             endif
-
-             xknorm = sqrt(xk(1)**2+xk(2)**2+xk(3)**2)
-
-             if (xknorm /= 0.0_pReal) then
-               do i = 1,3
-!!                 xk2(i) = xk(i)/(xknorm*xknorm*2.*pi)
-                 xk(i) = xk(i)/xknorm
-               enddo
+             if (any(xk /= 0.0_pReal)) then
+               xknorm = 1.0_pReal/(xk(1)**2+xk(2)**2+xk(3)**2)
+               forall (i=1:3,j=1:3) xkdyad(i,j) = xknorm * xk(i)*xk(j)   ! the dyad is always used and could speed up things by using element-wise multiplication plus summation of array
              endif
-
-!             forall(i=1:3,k=1:3) aux33(i,k) = sum(c0(i,:,k,:)*xkdyad(:,:)
-!             this is probably equiv with below quad looping
-             aux33 = 0.0_pReal
-             do i = 1,3
-               do k = 1,3
-                 do j = 1,3
-                   do l = 1,3
-                     aux33(i,k) = aux33(i,k)+c0(i,j,k,l)*xk(j)*xk(l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-             aux33 = math_inv3x3(aux33)
+             forall(i=1:3,k=1:3) aux33(i,k) = sum(c0(i,:,k,:)*xkdyad(:,:))
+			 
+			 
+!!!!!!!!! replace that by the stuff above, except from small rounding errors get the same results	m.diehl		 
+!           xknorm = sqrt(xk(1)**2+xk(2)**2+xk(3)**2)
+!
+!            if (xknorm /= 0.0_pReal) then
+!              do i = 1,3
+!   !            xk2(i) = xk(i)/(xknorm*xknorm*2.*pi)
+!                xk(i) = xk(i)/xknorm
+!              enddo
+!            endif
+!			 
+!             aux33 = 0.0_pReal
+!             do i = 1,3
+!               do k = 1,3
+!                 do j = 1,3
+!                   do l = 1,3
+!                     aux33(i,k) = aux33(i,k)+c0(i,j,k,l)*xk(j)*xk(l)
+!                   enddo
+!                 enddo
+!               enddo
+!             enddo
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			 aux33 = math_inv3x3(aux33) 
 
 !     call minv(aux33,3,det,minv1,minv2)
 !     if(det.eq.0) then
@@ -746,7 +743,7 @@ program mpie_spectral
              ielem = ielem+1
              call CPFEM_general(3,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
                                 temperature,0.0_pReal,ielem,1_pInt,&
-                                stress,dsde)
+                                stress,dsde, pstress, dPdF)
 
            enddo
          enddo
@@ -764,7 +761,7 @@ program mpie_spectral
              ielem = ielem+1
              call CPFEM_general(2,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
                                 temperature,0.0_pReal,ielem,1_pInt,&
-                                stress,dsde)
+                                stress,dsde, pstress, dPdF)
 !#
 !#              sg(:,:,i,j,k) = math_Mandel6to33(stress)
 !#              scauav(:,:) = scauav(:,:)+sg(:,:,i,j,k)          ! average stress
@@ -841,9 +838,6 @@ program mpie_spectral
    enddo  ! IMICRO ENDDO
  enddo  ! JLOAD ENDDO Ende looping over loadcases
 
-!-------------------------
-!end RL
-!-------------------------
 end program mpie_spectral
 
 
@@ -859,7 +853,6 @@ subroutine quit(id)
 
  stop
 end subroutine
-
 
 
 !********************************************************************
@@ -879,64 +872,48 @@ subroutine fourn(data,nn,ndim,isign)
  ntot = 1
 
  do idim = 1,ndim
-        ntot = ntot*nn(idim)
+   ntot = ntot*nn(idim)
  enddo
-!
-      nprev = 1
-!      do 18 idim = 1,ndim
- do idim = 1,ndim  ! 18
-        n = nn(idim)
-        nrem = ntot/(n*nprev)
-        ip1 = 2*nprev
-        ip2 = ip1*n
-        ip3 = ip2*nrem
-        i2rev = 1
-!        do 14 i2 = 1,ip2,ip1
-   do i2 = 1,ip2,ip1  !  14
-          if(i2.lt.i2rev)then
+ 
+ nprev = 1
 
-!            do 13 i1 = i2,i2+ip1-2,2
-!              do 12 i3 = i1,ip3,ip2
-     do i1 = i2,i2+ip1-2,2  ! 13
-       do i3 = i1,ip3,ip2  ! 12
-                i3rev = i2rev+i3-i2
-                tempr = data(i3)
-                tempi = data(i3+1)
-                data(i3) = data(i3rev)
-                data(i3+1) = data(i3rev+1)
-                data(i3rev) = tempr
-                data(i3rev+1) = tempi
+ do idim = 1,ndim
+   n = nn(idim)
+   nrem = ntot/(n*nprev)
+   ip1 = 2*nprev
+   ip2 = ip1*n
+   ip3 = ip2*nrem
+   i2rev = 1
+ do i2 = 1,ip2,ip1
+   if(i2.lt.i2rev) then
+     do i1 = i2,i2+ip1-2,2
+       do i3 = i1,ip3,ip2
+         i3rev = i2rev+i3-i2
+         tempr = data(i3)
+         tempi = data(i3+1)
+         data(i3) = data(i3rev)
+         data(i3+1) = data(i3rev+1)
+         data(i3rev) = tempr
+         data(i3rev+1) = tempi
+       enddo  
+     enddo
+   endif
+   ibit = ip2/2
+   do while ((ibit.ge.ip1).and.(i2rev.gt.ibit))
+     i2rev = i2rev-ibit
+     ibit = ibit/2
+   enddo
+     i2rev = i2rev+ibit
+ enddo
+ ifp1 = ip1
 
-!13          continue
-     enddo  !  12
-       enddo  !  13
-          endif
-          ibit = ip2/2
-
-!1         if ((ibit.ge.ip1).and.(i2rev.gt.ibit)) then
-     do while ((ibit.ge.ip1).and.(i2rev.gt.ibit))  ! if 1
-            i2rev = i2rev-ibit
-            ibit = ibit/2
-!          goto 1
-!          endif
-     enddo  ! do while (if 1)
-
-          i2rev = i2rev+ibit
-!14      continue
-   enddo  ! 14
-        ifp1 = ip1
-
-!2       if(ifp1.lt.ip2)then
-    do while (ifp1.lt.ip2)  !  if 2
+    do while (ifp1.lt.ip2)
           ifp2 = 2*ifp1
           theta = isign*6.28318530717959d0/(ifp2/ip1)
           wpr = -2.d0*sin(0.5d0*theta)**2
           wpi = sin(theta)
           wr = 1.d0
           wi = 0.d0
-!          do 17 i3 = 1,ifp1,ip1
-!            do 16 i1 = i3,i3+ip1-2,2
-!              do 15 i2 = i1,ip3,ifp2
      do i3 = 1,ifp1,ip1  !  17
        do i1 = i3,i3+ip1-2,2  !  16
          do i2 = i1,ip3,ifp2  !  15
@@ -949,8 +926,6 @@ subroutine fourn(data,nn,ndim,isign)
                 data(k2+1) = data(k1+1)-tempi
                 data(k1) = data(k1)+tempr
                 data(k1+1) = data(k1+1)+tempi
-!15            continue
-!16          continue
          enddo  !  15
        enddo  !  16
             wtemp = wr
