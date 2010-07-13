@@ -65,6 +65,8 @@
  integer(pInt), dimension(:,:,:),   allocatable :: FE_ipNeighbor
  integer(pInt), dimension(:,:,:),   allocatable :: FE_subNodeParent
  integer(pInt), dimension(:,:,:,:), allocatable :: FE_subNodeOnIPFace
+ 
+ logical :: noPart                                                        ! for cases where the ABAQUS input file does not use part/assembly information
 
  integer(pInt) :: hypoelasticTableStyle
  integer(pInt) :: initialcondTableStyle
@@ -213,7 +215,7 @@
 
  use mpie_interface
  use prec, only: pInt
- use IO, only: IO_error,IO_open_InputFile
+ use IO, only: IO_error,IO_open_InputFile,IO_abaqus_hasNoPart
  use FEsolving, only: parallelExecution, FEsolving_execElem, FEsolving_execIP, calcMode, lastMode
  
  implicit none
@@ -227,7 +229,6 @@
  write(6,*)
 
  call mesh_build_FEdata()                                      ! --- get properties of the different types of elements
-
 
  if (IO_open_inputFile(fileUnit)) then                         ! --- parse info from input file...
 
@@ -253,6 +254,7 @@
                          call mesh_marc_count_cpSizes(fileunit)
                          call mesh_marc_build_elements(fileUnit)
      case ('Abaqus')
+                         noPart = IO_abaqus_hasNoPart(fileUnit)
                          call mesh_abaqus_count_nodesAndElements(fileUnit)
                          call mesh_abaqus_count_elementSets(fileUnit)
                          call mesh_abaqus_count_materials(fileUnit)
@@ -273,7 +275,7 @@
    call mesh_build_ipVolumes()
    call mesh_build_ipAreas()
    call mesh_tell_statistics()
-   
+
    parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))      ! plus potential killer from non-local constitutive
  else
    call IO_error(101) ! cannot open input file
@@ -296,36 +298,38 @@
 ! mapping of FE element types to internal representation
 !***********************************************************
  function FE_mapElemtype(what)
+ 
+ use IO, only: IO_lc
 
  implicit none
  
  character(len=*), intent(in) :: what
  integer(pInt) FE_mapElemtype
   
- select case (what)
+ select case (IO_lc(what))
     case (  '7', &
-            'C3D8')
+            'c3d8')
       FE_mapElemtype = 1            ! Three-dimensional Arbitrarily Distorted Brick
     case ('134', &
-          'C3D4')
+          'c3d4')
       FE_mapElemtype = 2            ! Three-dimensional Four-node Tetrahedron
     case ( '11', &
-           'CPE4')
+           'cpe4')
       FE_mapElemtype = 3            ! Arbitrary Quadrilateral Plane-strain
     case ( '27', &
-           'CPE8')
+           'cpe8')
       FE_mapElemtype = 4            ! Plane Strain, Eight-node Distorted Quadrilateral
     case ('157')
       FE_mapElemtype = 5            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
     case ('136', &
-          'C3D6')
+          'c3d6')
       FE_mapElemtype = 6            ! Three-dimensional Arbitrarily Distorted Pentahedral
     case ( '21', &
-           'C3D20')
+           'c3d20')
       FE_mapElemtype = 7            ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
     case ( '117', &
            '123', &
-           'C3D8R')
+           'c3d8r')
       FE_mapElemtype = 8            ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
     case default 
       FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
@@ -1256,7 +1260,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
    
-   if (inPart) then
+   if (inPart .or. noPart) then
      select case ( IO_lc(IO_stringValue(line,pos,1)))
        case('*node')
           if( &
@@ -1277,8 +1281,11 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
      endselect
    endif
  enddo
+ 
+620 if (mesh_Nnodes < 2)  call IO_error(900)
+ if (mesh_Nelems == 0) call IO_error(901)
 
-620 return
+ return
  
  endsubroutine
 
@@ -1355,12 +1362,14 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
    
-   if ( inPart .and. IO_lc(IO_stringValue(line,pos,1)) == '*elset' ) &
+   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,pos,1)) == '*elset' ) &
      mesh_NelemSets = mesh_NelemSets + 1_pInt
  enddo
 
-620 return
- 
+620 continue
+ if (mesh_NelemSets == 0) call IO_error(902)
+
+ return
  endsubroutine
 
 
@@ -1395,14 +1404,15 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
 
-   if ( inPart .and. &
+   if ( (inPart .or. noPart) .and. &
         IO_lc(IO_StringValue(line,pos,1)) == '*solid' .and. &
         IO_lc(IO_StringValue(line,pos,2)) == 'section' ) &
      mesh_Nmaterials = mesh_Nmaterials + 1_pInt
  enddo
 
-620 return
-
+620 if (mesh_Nmaterials == 0) call IO_error(903)
+ 
+ return
  endsubroutine
 
 
@@ -1510,8 +1520,9 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    endselect
  enddo
 
-620 return
- 
+620 if (mesh_NcpElems == 0) call IO_error(906)
+
+ return 
  endsubroutine
 
 
@@ -1572,7 +1583,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
  integer(pInt), dimension (1+2*maxNchunks) :: pos
  character(len=300) line
 
- integer(pInt) unit,elemSet
+ integer(pInt) unit,elemSet,i
  logical inPart
 
  allocate (mesh_nameElemSet(mesh_NelemSets))                     ; mesh_nameElemSet = ''
@@ -1590,15 +1601,20 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
    
-   if ( inPart .and. IO_lc(IO_stringValue(line,pos,1)) == '*elset' ) then
+   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,pos,1)) == '*elset' ) then
      elemSet = elemSet + 1_pInt
      mesh_nameElemSet(elemSet)  = IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'elset')
      mesh_mapElemSet(:,elemSet) = IO_continousIntValues(unit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,elemSet-1)
    endif
  enddo
 
-640 return
+640 do i = 1,elemSet
+!   write(6,*)'elemSetName: ',mesh_nameElemSet(i)
+!   write(6,*)'elems in Elset',mesh_mapElemSet(:,i)
+   if (mesh_mapElemSet(1,i) == 0) call IO_error(ID=904,ext_msg=mesh_nameElemSet(i))
+ enddo
 
+ return
  endsubroutine
 
 
@@ -1636,7 +1652,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
 
-   if ( inPart .and. &
+   if ( (inPart .or. noPart) .and. &
         IO_lc(IO_StringValue(line,pos,1)) == '*solid' .and. &
         IO_lc(IO_StringValue(line,pos,2)) == 'section' ) then
 
@@ -1658,8 +1674,14 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    endif
  enddo
 
-620 return
+620 if (count==0) call IO_error(905)
+ do i=1,count
+!   write(6,*)'name of materials: ',i,mesh_nameMaterial(i)
+!   write(6,*)'name of elemSets:  ',i,mesh_mapMaterial(i)
+   if (mesh_nameMaterial(i)=='' .or. mesh_mapMaterial(i)=='') call IO_error(905)
+ enddo
 
+ return
  endsubroutine
 
 
@@ -1682,7 +1704,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    mesh_mapFEtoCPnode(:,i) = i
 
  return
-
+ 
  endsubroutine
 
 
@@ -1770,7 +1792,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
 
-   if( inPart .and. &
+   if( (inPart .or. noPart) .and. &
        IO_lc(IO_stringValue(line,pos,1)) == '*node' .and. &
        ( IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
          IO_lc(IO_stringValue(line,pos,2)) /= 'print'    .and. &
@@ -1793,6 +1815,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
 
 650 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
 
+ if (size(mesh_mapFEtoCPnode) == 0) call IO_error(908)
  return
 
  endsubroutine
@@ -1927,6 +1950,8 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
 
 660 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))             ! should be mesh_NcpElems
 
+ if (size(mesh_mapFEtoCPelem) < 2) call IO_error(907)
+ 
  return
  endsubroutine
 
@@ -2040,13 +2065,14 @@ subroutine mesh_marc_count_cpSizes (unit)
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
 
-   if( inPart .and. &
+   if( (inPart .or. noPart) .and. &
        IO_lc(IO_stringValue(line,pos,1)) == '*element' .and. &
        ( IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
          IO_lc(IO_stringValue(line,pos,2)) /= 'matrix'   .and. &
          IO_lc(IO_stringValue(line,pos,2)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_stringValue(line,pos,2),'type'))  ! remember elem type
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'type'))  ! remember elem type
+     if (t==0) call IO_error(ID=910,ext_msg='mesh_abaqus_count_cpSizes')
      count = IO_countDataLines(unit)
      do i = 1,count
        backspace(unit)
@@ -2232,7 +2258,7 @@ subroutine mesh_marc_count_cpSizes (unit)
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
 
-   if( inPart .and. &
+   if( (inPart .or. noPart) .and. &
        IO_lc(IO_stringValue(line,pos,1)) == '*node' .and. &
        ( IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
          IO_lc(IO_stringValue(line,pos,2)) /= 'print'    .and. &
@@ -2252,7 +2278,8 @@ subroutine mesh_marc_count_cpSizes (unit)
    endif
  enddo
 
-670 return
+670 if (size(mesh_node,2) /= mesh_Nnodes) call IO_error(909)
+ return
 
  endsubroutine
 
@@ -2328,7 +2355,7 @@ subroutine mesh_marc_count_cpSizes (unit)
    mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
    mesh_element ( 3,e) = homog                             ! homogenization
    mesh_element ( 4,e) = IO_IntValue(line,pos,1)           ! microstructure
-   mesh_element ( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1) ! base node
+   mesh_element ( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1)     ! base node
    mesh_element ( 6,e) = mesh_element ( 5,e) + 1
    mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
    mesh_element ( 8,e) = mesh_element ( 5,e) + (a+1)
@@ -2465,13 +2492,14 @@ subroutine mesh_marc_count_cpSizes (unit)
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
 
-   if( inPart .and. &
+   if( (inPart .or. noPart) .and. &
        IO_lc(IO_stringValue(line,pos,1)) == '*element' .and. &
        ( IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
          IO_lc(IO_stringValue(line,pos,2)) /= 'matrix'   .and. &
          IO_lc(IO_stringValue(line,pos,2)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_stringValue(line,pos,2),'type'))  ! remember elem type
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'type'))  ! remember elem type
+     if (t==0) call IO_error(ID=910,ext_msg='mesh_abaqus_build_elements')
      count = IO_countDataLines(unit)
      do i = 1,count
        backspace(unit)

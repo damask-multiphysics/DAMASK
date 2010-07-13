@@ -5,6 +5,7 @@
 
  CONTAINS
 !---------------------------
+! function IO_abaqus_assembleInputFile
 ! function IO_open_file(unit,relPath)
 ! function IO_open_inputFile(unit)
 ! function IO_hybridIA(Nast,ODFfileName)
@@ -40,6 +41,90 @@ subroutine IO_init ()
  return
 endsubroutine
 
+
+
+!********************************************************************
+! AP: 12.07.10
+!    create a new input file for abaqus simulations
+!    by removing all comment lines and including "include"s
+!********************************************************************
+recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
+ use prec
+ use mpie_interface
+ implicit none
+ 
+ character(len=300) line,fname
+ integer(pInt), intent(in) :: unit1, unit2
+ logical createSuccess,fexist
+ integer(pInt) i
+ 
+ do
+   read(unit2,'(A300)',END=220) line
+   line = IO_lc(trim(line))
+!   call IO_lcInPlace(line)
+   if (line(1:8)=='*include') then
+     fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
+     inquire(file=fname, exist=fexist)
+     if (.not.(fexist)) then
+       write(6,*)'ERROR: file does not exist error in IO_abaqus_assembleInputFile'
+       write(6,*)'filename: ', trim(fname)
+       createSuccess = .false.
+       return
+     endif
+     open(unit2+1,err=200,status='old',file=fname)
+     if (IO_abaqus_assembleInputFile(unit1,unit2+1)) then
+       createSuccess=.true.
+       close(unit2+1)
+     else
+       createSuccess=.false.
+       return
+     endif
+   else if (line(1:2) /= '**') then 
+     write(unit1,'(A)') trim(line)
+   endif
+ enddo
+ 
+220 createSuccess = .true.
+ return
+ 
+200 createSuccess =.false.
+ return
+ 
+end function
+
+!***********************************************************
+! check if the input file for Abaqus contains part info
+!***********************************************************
+ function IO_abaqus_hasNoPart(unit)
+ 
+ use prec, only: pInt
+ implicit none
+ 
+ integer(pInt) unit
+ integer(pInt), parameter :: maxNchunks = 1
+ integer(pInt), dimension(1+2*maxNchunks) :: pos
+ logical IO_abaqus_hasNoPart
+ character(len=300) line
+ 
+ IO_abaqus_hasNoPart = .true.
+ 
+610 FORMAT(A300)
+ rewind(unit)
+ do
+   read(unit,610,END=620) line
+   pos = IO_stringPos(line,maxNchunks)
+   if (IO_lc(IO_stringValue(line,pos,1)) == '*part' ) then
+     IO_abaqus_hasNoPart = .false.
+     exit
+   endif
+ enddo
+ 
+620 return 
+ 
+ endfunction
+
+
+
 !********************************************************************
 ! open existing file to given unit
 ! path to file is relative to working directory
@@ -54,17 +139,21 @@ endsubroutine
  character(len=*) relPath
  integer(pInt) unit
 
+ IO_open_file = .false.
+ 
  open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//relPath)
  IO_open_file = .true.
- return
-100 IO_open_file = .false.
- return
+ 
+100 return
  
  endfunction
 
 
 !********************************************************************
 ! open FEM inputfile to given unit
+! AP: 12.07.10 
+!   : changed the function to open *.inp_assembly, which is basically 
+!     the input file without comment lines and possibly assembled includes
 !********************************************************************
  logical function IO_open_inputFile(unit)
 
@@ -74,12 +163,23 @@ endsubroutine
 
  integer(pInt), intent(in) :: unit
 
- open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                     trim(getSolverJobName())//InputFileExtension)
- IO_open_inputFile = .true.
- return
-100 IO_open_inputFile = .false.
- return
+ IO_open_inputFile = .false.
+ 
+ if (FEsolver == 'Abaqus') then
+   open(unit+1,status='old',err=100,&
+               file=trim(getSolverWorkingDirectoryName())//&
+                    trim(getSolverJobName())//InputFileExtension)
+   open(unit,err=100,file=trim(getSolverWorkingDirectoryName())//&
+                          trim(getSolverJobName())//InputFileExtension//'_assembly')
+   IO_open_inputFile = IO_abaqus_assembleInputFile(unit,unit+1)          ! strip comments and concatenate any "include"s
+   close(unit+1) 
+ else
+   open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                       trim(getSolverJobName())//InputFileExtension)
+   IO_open_inputFile = .true.
+ endif
+
+100 return
 
  endfunction
 
@@ -97,12 +197,13 @@ endsubroutine
  integer(pInt), intent(in) :: unit
  character(*), intent(in) :: newExt
 
+ IO_open_jobFile = .false.
+ 
  open(unit,status='replace',err=100,file=trim(getSolverWorkingDirectoryName())//&
                                      trim(getSolverJobName())//'.'//newExt)
  IO_open_jobFile = .true.
- return
-100 IO_open_jobFile = .false.
- return
+ 
+100 return
 
  endfunction
 
@@ -139,9 +240,11 @@ endsubroutine
  function IO_hybridIA(Nast,ODFfileName)
 
  use prec, only: pReal, pInt
-
  implicit none
  
+ real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
+ real(pReal), parameter :: inRad = pi/180.0_pReal
+
  character(len=*) ODFfileName
  character(len=80) line
  character(len=*), parameter :: fileFormat = '(A80)'
@@ -153,9 +256,6 @@ endsubroutine
  real(pReal), dimension(3) :: limits,deltas
  real(pReal), dimension(:,:,:), allocatable :: dV_V
  real(pReal), dimension(3,Nast) :: IO_hybridIA
-
- real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
- real(pReal), parameter :: inRad = pi/180.0_pReal
 
  if (.not. IO_open_file(999,ODFfileName)) goto 100
  
@@ -732,6 +832,9 @@ endfunction
 
 !********************************************************************
 ! count lines containig data up to next *keyword
+! AP: changed the function to neglect comment lines between keyword definitions.
+!   : is not changed back to the original version since *.inp_assembly does not
+!   : contain any comment lines (12.07.2010)
 !********************************************************************
  function IO_countDataLines (unit)
 
@@ -739,7 +842,7 @@ endfunction
  implicit none
 
  integer(pInt)  IO_countDataLines,unit
- integer(pInt), parameter :: maxNchunks = 64
+ integer(pInt), parameter :: maxNchunks = 1
  integer(pInt), dimension(1+2*maxNchunks) :: pos
  character(len=300) line,tmp
 
@@ -748,10 +851,10 @@ endfunction
    read(unit,'(A300)',end=100) line
    pos = IO_stringPos(line,maxNchunks)
    tmp = IO_lc(IO_stringValue(line,pos,1))
-   if (tmp(1:1) == '*' ) then  ! found keyword
+   if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then  ! found keyword
      exit
    else
-     IO_countDataLines = IO_countDataLines + 1_pInt
+     if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
    endif
  enddo
 100 backspace(unit)
@@ -837,8 +940,10 @@ endfunction
  integer(pInt) :: lookupMaxN
  integer(pInt), dimension(:,:) :: lookupMap
  character(len=300) line
+ logical rangeGeneration
 
  IO_continousIntValues = 0
+ rangeGeneration = .false.
 
  select case (FEsolver)
    case ('Marc')
@@ -880,6 +985,14 @@ endfunction
        backspace(unit)
      enddo
      
+!      check if the element values in the elset are auto generated
+     backspace(unit)
+     read(unit,'(A300)',end=100) line
+     pos = IO_stringPos(line,maxNchunks)
+     do i = 1,pos(1)
+       if (IO_lc(IO_stringValue(line,pos,i)) == 'generate') rangeGeneration = .true.
+     enddo
+     
      do l = 1,count
        read(unit,'(A300)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
@@ -894,10 +1007,16 @@ endfunction
              endif
            enddo
          enddo
-       else                                                              ! assuming range generation
+       else if (rangeGeneration) then                                    ! range generation
          do i = IO_intValue(line,pos,1),IO_intValue(line,pos,2),max(1,IO_intValue(line,pos,3))
            IO_continousIntValues(1) = IO_continousIntValues(1) + 1
            IO_continousIntValues(1+IO_continousIntValues(1)) = i
+         enddo
+       else                                                              ! read individual elem nums
+         do i = 1,pos(1)
+!            write(*,*)'IO_CIV-int',IO_intValue(line,pos,i)
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1
+           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,i)
          enddo
        endif
      enddo
@@ -923,7 +1042,7 @@ endfunction
  integer(pInt), intent(in) :: ID
  integer(pInt), optional, intent(in) :: e,i,g
  character(len=*), optional, intent(in) :: ext_msg
- character(len=80) msg
+ character(len=120) msg
 
  select case (ID)
  case (40)
@@ -1098,6 +1217,32 @@ endfunction
 
  case (700)
    msg = 'Singular matrix in stress iteration'
+
+!    Error messages related to parsing of Abaqus input file
+ case (900)
+   msg = 'PARSE ERROR: Improper definition of nodes in input file (Nnodes < 2)'
+ case (901)
+   msg = 'PARSE ERROR: No Elements defined in input file (Nelems = 0)'
+ case (902)
+   msg = 'PARSE ERROR: No Element sets defined in input file (Atleast one *Elset must exist)'
+ case (903)
+   msg = 'PARSE ERROR: No Materials defined in input file (Look into section assigments)'
+ case (904)
+   msg = 'PARSE ERROR: No elements could be assigned for Elset: '//ext_msg
+ case (905)
+   msg = 'PARSE ERROR: Error in mesh_abaqus_map_materials'
+ case (906)
+   msg = 'PARSE ERROR: Error in mesh_abaqus_count_cpElements'
+ case (907)
+   msg = 'PARSE ERROR: Incorrect size of mesh_mapFEtoCPelem in mesh_abaqus_map_elements; Size cannot be zero'
+ case (908)
+   msg = 'PARSE ERROR: Incorrect size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes; Size cannot be zero'
+ case (909)
+   msg = 'PARSE ERROR: Incorrect size of mesh_node in mesh_abaqus_build_nodes; must be equal to mesh_Nnodes'
+ case(910)
+   msg = 'PARSE ERROR: Incorrect element type mapping in '//ext_msg
+ 
+ 
  case default
    msg = 'Unknown error number...'
  end select
