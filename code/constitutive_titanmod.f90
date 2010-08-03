@@ -13,15 +13,15 @@ implicit none
 character(len=*), parameter :: constitutive_titanmod_label = 'titanmod'
 character(len=18), dimension(2), parameter:: constitutive_titanmod_listBasicSlipStates = (/'rho_edge   ', &
                                                                                             'rho_screw'/)
-character(len=18), dimension(1), parameter:: constitutive_titanmod_listBasicTwinStates = (/'twinFraction'/)                                                                                            
+character(len=18), dimension(1), parameter:: constitutive_titanmod_listBasicTwinStates = (/'twinFraction'/)
 character(len=18), dimension(5), parameter:: constitutive_titanmod_listDependentSlipStates =(/'invLambdaSlipe', &
-																							   'invLambdaSlips', &
-																							   'etauSlipThreshold', &
+                                                                                               'invLambdaSlips', &
+                                                                                               'etauSlipThreshold', &
                                                                                                'stauSlipThreshold', &
                                                                                                'invLambdaSlipTwin'/)
 
 character(len=18), dimension(4), parameter:: constitutive_titanmod_listDependentTwinStates =(/'invLambdaTwin   ', &
-                                                                                               'meanFreePathTwin', &                                                
+                                                                                               'meanFreePathTwin', &
                                                                                                'tauTwinThreshold', &
                                                                                                'twinVolume      '/)
 real(pReal), parameter :: kB = 1.38e-23_pReal ! Boltzmann constant in J/Kelvin
@@ -1500,7 +1500,8 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
              tau = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure)) 
              !* Stress ratios
              StressRatio_p = (abs(tau)/state(g,ip,el)%p(5*ns+3*nt+j))**constitutive_titanmod_pe_PerSlipSystem(j,myInstance)
-             StressRatio_pminus1 = (abs(tau)/state(g,ip,el)%p(5*ns+3*nt+j))**(constitutive_titanmod_pe_PerSlipSystem(j,myInstance)-1.0_pReal)
+             StressRatio_pminus1 = (abs(tau)/state(g,ip,el)%p(5*ns+3*nt+j))**&
+                                      (constitutive_titanmod_pe_PerSlipSystem(j,myInstance)-1.0_pReal)
              !* Boltzmann ratio
              BoltzmannRatio = constitutive_titanmod_f0_PerSlipSystem(j,myInstance)/(kB*Temperature)
              !* Initial shear rates
@@ -1511,15 +1512,15 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
              !* Shear rates due to slip
              constitutive_titanmod_postResults(c+j) = &
                DotGamma0*exp(-BoltzmannRatio*(1-StressRatio_p)**constitutive_titanmod_qe_PerSlipSystem(j,myInstance))* &
-				sign(1.0_pReal,tau)
+               sign(1.0_pReal,tau)
        enddo ; enddo
-	   
+
 !		invLambdaSlipe', &
 !		'invLambdaSlips', &
 !		'etauSlipThreshold', &
 !        'stauSlipThreshold', &
 !        'invLambdaSlipTwin
-	   
+
        c = c + ns
      case ('edgesegment')
        constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((4*ns+2*nt+1):(5*ns+2*nt))

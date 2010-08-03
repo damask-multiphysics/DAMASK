@@ -174,7 +174,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                        ! ping pong (calc <--> collect)
 
    if ( calcMode(npt,cp_en) ) then                                        ! now calc
-     if ( lastMode .ne. calcMode(npt,cp_en) ) then                        ! first after ping pong
+     if ( lastMode .neqv. calcMode(npt,cp_en) ) then                      ! first after ping pong
        call debug_reset()                                                 ! resets debugging
        outdatedFFN1 = .false.
        cycleCounter = cycleCounter + 1
@@ -186,7 +186,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
        computationMode = 2                                                ! plain calc
      endif
    else                                                                   ! now collect
-     if ( lastMode .ne. calcMode(npt,cp_en) ) call debug_info()           ! first after ping pong reports debugging
+     if ( lastMode .neqv. calcMode(npt,cp_en) ) call debug_info()         ! first after ping pong reports debugging
      if ( lastIncConverged ) then
        lastIncConverged = .false.
        computationMode = 4                                                ! collect and backup Jacobian after convergence

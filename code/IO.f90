@@ -135,7 +135,7 @@ end function
  use mpie_interface
  implicit none
 
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
  character(len=*) relPath
  integer(pInt) unit
 

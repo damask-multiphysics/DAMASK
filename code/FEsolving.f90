@@ -43,10 +43,10 @@
    rewind(fileunit)
    do
      read (fileunit,'(a1024)',END=100) line
-     positions = IO_stringPos(line,1)
+     positions(1:1+2*1) = IO_stringPos(line,1)
      if( IO_lc(IO_stringValue(line,positions,1)) == 'solver' ) then
        read (fileunit,'(a1024)',END=100) line  ! Garbage line
-       positions = IO_stringPos(line,2)
+       positions(1:1+2*2) = IO_stringPos(line,2)
        symmetricSolver = (IO_intValue(line,positions,2) /= 1_pInt)
        exit
      endif

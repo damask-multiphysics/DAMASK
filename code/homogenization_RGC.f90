@@ -476,7 +476,9 @@ function homogenization_RGC_updateState(&
    state%p(3*nIntFaceTot+8) = maxval(abs(drelax))/dt
    if (el == 1 .and. ip == 1) then
      write(6,'(x,a30,x,e14.8)')'Constitutive work: ',constitutiveWork
-     write(6,'(x,a30,3(x,e14.8))')'Magnitude mismatch: ',sum(NN(1,:))/dble(nGrain),sum(NN(2,:))/dble(nGrain),sum(NN(3,:))/dble(nGrain)
+     write(6,'(x,a30,3(x,e14.8))')'Magnitude mismatch: ',sum(NN(1,:))/dble(nGrain), &
+                                                         sum(NN(2,:))/dble(nGrain), &
+                                                         sum(NN(3,:))/dble(nGrain)
      write(6,'(x,a30,x,e14.8)')'Penalty energy: ',penaltyEnergy
      write(6,'(x,a30,x,e14.8)')'Volume discrepancy: ',volDiscrep
      write(6,*)''

@@ -583,11 +583,11 @@ do i = 1,maxNinstance
 
       constitutive_nonlocal_forestProjectionEdge(s1, s2, i) &
           = abs(math_mul3x3(lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
-                            lattice_st(:, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                              ! forest projection of edge dislocations is the projection of (t = b x n) onto the slip normal of the respective slip plane
+                            lattice_st(:, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                             ! forest projection of edge dislocations is the projection of (t = b x n) onto the slip normal of the respective slip plane
       
       constitutive_nonlocal_forestProjectionScrew(s1, s2, i) &
           = abs(math_mul3x3(lattice_sn(:, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
-                            lattice_sd(:, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                              ! forest projection of screw dislocations is the projection of b onto the slip normal of the respective splip plane
+                            lattice_sd(:, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                             ! forest projection of screw dislocations is the projection of b onto the slip normal of the respective splip plane
   
 !*** calculation of interaction matrices
 
@@ -1128,7 +1128,7 @@ ns = constitutive_nonlocal_totalNslip(myInstance)
 
 forall (t = 1:8) &
   rhoSgl(:,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
-forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * constitutive_nonlocal_v(s,t-4,g,ip,el) < 0.0_pReal) &                                        ! contribution of used rho for changing sign of v
+forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * constitutive_nonlocal_v(s,t-4,g,ip,el) < 0.0_pReal) &                                      ! contribution of used rho for changing sign of v
   rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
 
 tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
@@ -1473,7 +1473,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
       neighboring_fluxdensity = fluxdensity                                                                                         !     ... then copy flux density to neighbor to ensure zero gradient in fluxdensity
     endif
   else                                                                                                                              ! if no neighbor existent...
-    if ( all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,n,ip,el))))) ) then                                                      !   ... and we want periodic fluxes at surface...
+    if ( all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,n,ip,el))))) ) then                                                 !   ... and we want periodic fluxes at surface...
       forall (t = 1:4) &                                                                                                            !     ... then mirror fluxes 
         neighboring_fluxdensity(:,t) = fluxdensity(:,t-1_pInt+2_pInt*mod(t,2_pInt))
     else                                                                                                                            !   ... and we have a free surface...

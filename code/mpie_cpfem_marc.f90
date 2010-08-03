@@ -57,7 +57,7 @@ end subroutine
 function getSolverWorkingDirectoryName()
  implicit none
  character(1024) getSolverWorkingDirectoryName, outName
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
 
  getSolverWorkingDirectoryName=''
  outName=''
@@ -71,7 +71,7 @@ function getSolverJobName()
  implicit none
 
  character(1024) getSolverJobName, outName
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
  integer(pInt) extPos
 
  getSolverJobName=''
@@ -262,7 +262,7 @@ subroutine hypela2(&
    calcMode(nn,cp_en) = .not. calcMode(nn,cp_en)                          ! ping pong (calc <--> collect)
 
    if ( calcMode(nn,cp_en) ) then                                         ! now calc
-     if ( lastMode .ne. calcMode(nn,cp_en) ) then                         ! first after ping pong
+     if ( lastMode .neqv. calcMode(nn,cp_en) ) then                       ! first after ping pong
        call debug_reset()                                                 ! resets debugging
        outdatedFFN1 = .false.
        cycleCounter = cycleCounter + 1
@@ -274,7 +274,7 @@ subroutine hypela2(&
        computationMode = 2                                                ! plain calc
      endif
    else                                                                   ! now collect
-     if ( lastMode /= calcMode(nn,cp_en) ) call debug_info()              ! first after ping pong reports debugging
+     if ( lastMode .neqv. calcMode(nn,cp_en) ) call debug_info()          ! first after ping pong reports debugging
      if ( lastIncConverged ) then
        lastIncConverged = .false.
        computationMode = 4                                                ! collect and backup Jacobian after convergence

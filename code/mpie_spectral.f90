@@ -55,7 +55,7 @@ function getSolverWorkingDirectoryName()
  implicit none
 
  character(len=1024) cwd,outname,getSolverWorkingDirectoryName
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
 
  call getarg(2,outname)                                ! path to loadFile
  
@@ -83,7 +83,7 @@ function getSolverJobName()
  implicit none
 
  character(1024) getSolverJobName, outName, cwd
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
  integer(pInt) posExt,posSep
 
  getSolverJobName = ''
@@ -119,9 +119,10 @@ function getLoadcaseName()
  implicit none
 
  character(len=1024) getLoadcaseName, outName, cwd
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
  integer(pInt) posExt,posSep
- posExt = 0                                                 !not sure if its needed
+
+ posExt = 0                                                    ! not sure if required
 
  call getarg(2,getLoadcaseName)
  posExt = scan(getLoadcaseName,'.',back=.true.)

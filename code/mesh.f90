@@ -2006,7 +2006,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  rewind(unit)
  do
    read (unit,610,END=630) line
-   pos = IO_stringPos(line,1)
+   pos = IO_stringPos(line,maxNchunks)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
      read (unit,610,END=630) line  ! Garbage line
      do i=1,mesh_Nelems            ! read all elements
@@ -2060,7 +2060,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  rewind(unit)
  do
    read (unit,610,END=620) line
-   pos = IO_stringPos(line,2)
+   pos = IO_stringPos(line,maxNchunks)
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
@@ -2348,7 +2348,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  do while (e < mesh_NcpElems)
    read(unit,'(a1024)',END=110) line
    if (IO_isBlank(line)) cycle                             ! skip empty lines
-   pos = IO_stringPos(line,1)
+   pos(1:1+2*1) = IO_stringPos(line,1)
   
    e = e+1                                                 ! valid element entry
    mesh_element ( 1,e) = e                                 ! FE id
@@ -2399,7 +2399,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  rewind(unit)
  do
    read (unit,610,END=620) line
-   pos = IO_stringPos(line,1)
+   pos(1:1+2*1) = IO_stringPos(line,1)
    if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
      read (unit,610,END=620) line  ! Garbage line
      do i = 1,mesh_Nelems
@@ -2421,16 +2421,16 @@ subroutine mesh_marc_count_cpSizes (unit)
 620 rewind(unit)                                     ! just in case "initial state" apears before "connectivity"
  read (unit,610,END=620) line
  do
-   pos = IO_stringPos(line,2)
+   pos(1:1+2*2) = IO_stringPos(line,2)
    if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial') .and. &
        (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) then
      if (initialcondTableStyle == 2) read (unit,610,END=620) line          ! read extra line for new style     
      read (unit,610,END=630) line                                          ! read line with index of state var
-     pos = IO_stringPos(line,1)
+     pos(1:1+2*1) = IO_stringPos(line,1)
      sv = IO_IntValue(line,pos,1)                                          ! figure state variable index
      if( (sv == 2).or.(sv == 3) ) then                                     ! only state vars 2 and 3 of interest
        read (unit,610,END=620) line                                        ! read line with value of state var
-       pos = IO_stringPos(line,1)
+       pos(1:1+2*1) = IO_stringPos(line,1)
        do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)      ! is noEfloat value?
          val = NINT(IO_fixedNoEFloatValue(line,(/0,20/),1))                ! state var's value
          mesh_maxValStateVar(sv-1) = max(val,mesh_maxValStateVar(sv-1))    ! remember max val of homogenization and microstructure index
@@ -2445,7 +2445,7 @@ subroutine mesh_marc_count_cpSizes (unit)
          enddo
          if (initialcondTableStyle == 0) read (unit,610,END=620) line      ! ignore IP range for old table style
          read (unit,610,END=630) line
-         pos = IO_stringPos(line,1)
+         pos(1:1+2*1) = IO_stringPos(line,1)
        enddo
      endif
    else   
@@ -2487,7 +2487,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  rewind(unit)
  do
    read (unit,610,END=620) line
-   pos = IO_stringPos(line,2)
+   pos(1:1+2*2) = IO_stringPos(line,2)
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
    if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
         IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
@@ -2539,7 +2539,7 @@ subroutine mesh_marc_count_cpSizes (unit)
          if (i <= mesh_Nmaterials) then                                     ! found one?
            elemSetName = mesh_mapMaterial(i)                                ! take corresponding elemSet
            read (unit,610,END=630) line                                     ! read homogenization and microstructure
-           pos = IO_stringPos(line,2)
+           pos(1:1+2*2) = IO_stringPos(line,2)
            homog = NINT(IO_floatValue(line,pos,1))
            micro = NINT(IO_floatValue(line,pos,2))
            do i = 1,mesh_NelemSets                                          ! look thru all elemSet definitions

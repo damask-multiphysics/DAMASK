@@ -712,7 +712,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             if (crystallite_todo(g,i,e)) then                                                     ! all undone crystallites
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                 crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                                crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)                
+                                                crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)
               delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
               delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
               dot_prod12 = dot_product(delta_dotState1, delta_dotState2)
@@ -941,10 +941,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   do g = 1,myNgrains
                     selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
                     if (crystallite_todo(g,i,e)) then
-                      crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)                                                      ! stress integration
+                      crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)                                                  ! stress integration
                       if (      .not. crystallite_localConstitution(g,i,e) & 
-                          .and. .not. crystallite_todo(g,i,e)) &                                                                        ! if broken non-local... 
-                        crystallite_todo = crystallite_todo .and. crystallite_localConstitution                                         ! ...all non-locals skipped
+                          .and. .not. crystallite_todo(g,i,e)) &                                                                    ! if broken non-local... 
+                        crystallite_todo = crystallite_todo .and. crystallite_localConstitution                                     ! ...all non-locals skipped
                     endif
               enddo; enddo; enddo
             !$OMPEND PARALLEL DO
@@ -954,7 +954,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
                 do g = 1,myNgrains
                   if (crystallite_todo(g,i,e)) &
-                    constitutive_dotState(g,i,e)%p = 0.0_pReal                                                                          ! zero out dotState
+                    constitutive_dotState(g,i,e)%p = 0.0_pReal                                                                      ! zero out dotState
             enddo; enddo; enddo
       
             crystallite_statedamper = 1.0_pReal
@@ -991,21 +991,21 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   do g = 1,myNgrains
                     selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
                     if (crystallite_todo(g,i,e)) then
-                      crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)                                                ! update state
-                      crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)                                    ! update temperature
+                      crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)                                            ! update state
+                      crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)                                ! update temperature
                       crystallite_converged(g,i,e) =      crystallite_stateConverged(g,i,e) &
                                                     .and. crystallite_temperatureConverged(g,i,e)
                       if (      .not. crystallite_localConstitution(g,i,e) &
-                          .and. .not. crystallite_todo(g,i,e)) &                                                                        ! if updateState signals broken non-local... 
-                        crystallite_todo = crystallite_todo .and. crystallite_localConstitution                                         ! ...all non-locals skipped
+                          .and. .not. crystallite_todo(g,i,e)) &                                                                    ! if updateState signals broken non-local... 
+                        crystallite_todo = crystallite_todo .and. crystallite_localConstitution                                     ! ...all non-locals skipped
                     endif
               enddo; enddo; enddo
             !$OMPEND PARALLEL DO
       
-            if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) &                                           ! any non-local not yet converged?
-                crystallite_converged = crystallite_converged .and. crystallite_localConstitution                                       ! all non-local not converged
+            if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) &                                       ! any non-local not yet converged?
+                crystallite_converged = crystallite_converged .and. crystallite_localConstitution                                   ! all non-local not converged
                
-            crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                                       ! skip all converged
+            crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                                   ! skip all converged
                             
           enddo
           
@@ -1013,10 +1013,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             myNgrains = homogenization_Ngrains(mesh_element(3,e))
             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
               do g = 1,myNgrains
-                if (crystallite_converged(g,i,e)) then                                                                                  ! if stiffness calculation converged...
-                  crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/pert_Fg                             ! ... use tangent dP_ij/dFg_kl
-                elseif (.not. storedConvergenceFlag(g,i,e)) then                                                                        ! if crystallite didn’t converge before...
-                  crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                                             ! ... use (elastic) fallback
+                if (crystallite_converged(g,i,e)) then                                                                              ! if stiffness calculation converged...
+                  crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/pert_Fg                         ! ... use tangent dP_ij/dFg_kl
+                elseif (.not. storedConvergenceFlag(g,i,e)) then                                                                    ! if crystallite didn’t converge before...
+                  crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                                         ! ... use (elastic) fallback
                 endif
           enddo; enddo; enddo
         
@@ -1436,7 +1436,8 @@ LpLoop: do
        if (error) then
          if (verboseDebugger .and. selectiveDebugger) then
            !$OMP CRITICAL (write2out)
-             write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on dR/dLp inversion at ',g,i,e,' ; iteration ', NiterationStress
+             write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on dR/dLp inversion at ',g,i,e, &
+                                                  ' ; iteration ', NiterationStress
              write(6,*)
              write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp
              write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
@@ -1469,7 +1470,8 @@ LpLoop: do
  if (error) then
    if (verboseDebugger .and. selectiveDebugger) then
      !$OMP CRITICAL (write2out)
-       write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on invFp_new inversion at ',g,i,e,' ; iteration ', NiterationStress
+       write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on invFp_new inversion at ',g,i,e, &
+                                            ' ; iteration ', NiterationStress
        write(6,*)
        write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
      !$OMPEND CRITICAL (write2out)
