@@ -1,0 +1,757 @@
+#!/usr/bin/env python
+
+releases = ['2010r1','2008r1','2007r1','2005r3']
+
+
+import sys,os,pwd,math,re
+#import Image,ImageDraw
+from optparse import OptionParser
+
+for release in releases:
+	libPath = '/msc/mentat%s/shlib/'%release
+	if os.path.exists(libPath):
+		sys.path.append(libPath)
+		break
+from py_mentat import *
+
+
+def outMentat(cmd,locals):
+	if cmd[0:3] == '(!)':
+		exec(cmd[3:])
+	elif cmd[0:3] == '(?)':
+		cmd = eval(cmd[3:])
+		py_send(cmd)
+	else:
+		py_send(cmd)
+	return
+
+def outStdout(cmd,locals):
+	if cmd[0:3] == '(!)':
+		exec(cmd[3:])
+	elif cmd[0:3] == '(?)':
+		cmd = eval(cmd[3:])
+		print cmd
+	else:
+		print cmd
+	return
+
+
+def output(cmds,locals,dest):
+	for cmd in cmds:
+		if isinstance(cmd,list):
+			output(cmd,locals,dest)
+		else:
+			{\
+			'Mentat': outMentat,\
+			'Stdout': outStdout,\
+			}[dest](cmd,locals)
+	return
+
+
+def rcbOrientationParser(content):
+
+	grains = []
+	myOrientation = [0.0,0.0,0.0]
+	for line in content:
+		if line[0] != '#':											# skip comments
+			for grain in range(2):
+				myID = int(line.split()[12+grain])					# get grain id
+				myOrientation = map(float,line.split())[3*grain:3+3*grain]	# get orientation
+				if len(grains) < myID:
+					for i in range(myID-len(grains)):				# extend list to necessary length
+						grains.append([0.0,0.0,0.0])
+				grains[myID-1] = myOrientation						# store Euler angles
+	
+	return grains
+
+def rcbParser(content,size,tolerance,imagename,imagesize,border):	# parser for TSL-OIM reconstructed boundary files
+
+# find bounding box
+
+	boxX = [1.*sys.maxint,-1.*sys.maxint]
+	boxY = [1.*sys.maxint,-1.*sys.maxint]
+	x = [0.,0.]
+	y = [0.,0.]
+	for line in content:
+		if line[0] != '#':											# skip comments
+			(x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]	# get start and end coordinates of each segment
+			boxX[0] = min(boxX[0],x[0],x[1])
+			boxX[1] = max(boxX[1],x[0],x[1])
+			boxY[0] = min(boxY[0],y[0],y[1])
+			boxY[1] = max(boxY[1],y[0],y[1])
+	dX = boxX[1]-boxX[0]
+	dY = boxY[1]-boxY[0]
+  
+	scaleImg = imagesize/max(dX,dY)
+	scalePatch = size/dY
+
+	if scaleImg > 0:												# create image
+		img = Image.new("RGB",map(lambda x:int(round(x))+border*2,(scaleImg*dX,scaleImg*dY)),(255,255,255))
+		draw = ImageDraw.Draw(img)
+
+# read segments and draw them
+	segment = 0
+	connectivityXY = {"0": {"0":[],"%g"%dY:[],},\
+					"%g"%dX: {"0":[],"%g"%dY:[],},}
+	connectivityYX = {"0": {"0":[],"%g"%dX:[],},\
+					"%g"%dY: {"0":[],"%g"%dX:[],},}
+	grainNeighbors = []
+	
+	for line in content:
+		if line[0] != '#':											# skip comments
+			(x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]   # get start and end coordinates of each segment
+                                                              # make relative to origin of bounding box
+			x[0] -= boxX[0]
+			x[1] -= boxX[0]
+			y[0]=boxY[1]-y[0]
+			y[1]=boxY[1]-y[1]
+			grainNeighbors.append(map(int,line.split()[12:14]))     # remember right and left grain per segment
+			for i in range(2):                                      # store segment to both points
+				match = False                                         # check whether point is already known (within a small range)
+				for posX in connectivityXY.keys():
+					if (abs(float(posX)-x[i])<dX*tolerance):
+						for posY in connectivityXY[posX].keys():
+							if (abs(float(posY)-y[i])<dY*tolerance):
+								keyX = posX
+								keyY = posY
+								match = True
+								break
+						break
+				if (not match):
+				# force to boundary if inside tolerance to it
+					if (abs(x[i])<dX*tolerance):
+						x[i] = 0
+					if (abs(dX-x[i])<dX*tolerance):
+						x[i] = dX
+					if (abs(y[i])<dY*tolerance):
+						y[i] = 0
+					if (abs(dY-y[i])<dY*tolerance):
+						y[i] = dY
+					keyX = "%g"%x[i]
+					keyY = "%g"%y[i]
+					if keyX not in connectivityXY: # create new hash entry for so far unknown point
+						connectivityXY[keyX] = {}
+					if keyY not in connectivityXY[keyX]: # create new hash entry for so far unknown point
+						connectivityXY[keyX][keyY] = []
+					if keyY not in connectivityYX: # create new hash entry for so far unknown point
+						connectivityYX[keyY] = {}
+					if keyX not in connectivityYX[keyY]: # create new hash entry for so far unknown point
+						connectivityYX[keyY][keyX] = []
+				connectivityXY[keyX][keyY].append(segment)
+				connectivityYX[keyY][keyX].append(segment)
+			if scaleImg > 0:
+				draw.line(map(lambda x:int(scaleImg*x)+border,[x[0],y[0],x[1],y[1]]),fill=(128,128,128))
+				draw.text(map(lambda x:int(scaleImg*x)+border,[(x[1]+x[0])/2.0,(y[1]+y[0])/2.0]),"%i"%segment,fill=(0,0,128))
+			segment += 1
+			
+
+# top border
+	keyId = "0"
+	boundary = connectivityYX[keyId].keys()
+	boundary.sort(key=float)
+	for indexBdy in range(len(boundary)-1):
+		connectivityXY[boundary[indexBdy]][keyId].append(segment)
+		connectivityXY[boundary[indexBdy+1]][keyId].append(segment)
+		connectivityYX[keyId][boundary[indexBdy]].append(segment)
+		connectivityYX[keyId][boundary[indexBdy+1]].append(segment)
+		if scaleImg > 0:
+			draw.line(map(lambda x:int(scaleImg*x)+border,[float(boundary[indexBdy]),float(keyId),float(boundary[indexBdy+1]),float(keyId)]),width=3,fill=(128,128*(segment%2),0))
+			draw.text(map(lambda x:int(scaleImg*x)+border,[(float(boundary[indexBdy])+float(boundary[indexBdy+1]))/2.0,float(keyId)]),"%i"%segment,fill=(0,0,128))
+		segment += 1
+
+# right border
+	keyId = "%g"%(boxX[1]-boxX[0])
+	boundary = connectivityXY[keyId].keys()
+	boundary.sort(key=float)
+	for indexBdy in range(len(boundary)-1):
+		connectivityYX[boundary[indexBdy]][keyId].append(segment)
+		connectivityYX[boundary[indexBdy+1]][keyId].append(segment)
+		connectivityXY[keyId][boundary[indexBdy]].append(segment)
+		connectivityXY[keyId][boundary[indexBdy+1]].append(segment)
+		if scaleImg > 0:
+			draw.line(map(lambda x:int(scaleImg*x)+border,[float(keyId),float(boundary[indexBdy]),float(keyId),float(boundary[indexBdy+1])]),width=3,fill=(128,128*(segment%2),0))
+			draw.text(map(lambda x:int(scaleImg*x)+border,[float(keyId),(float(boundary[indexBdy])+float(boundary[indexBdy+1]))/2.0]),"%i"%segment,fill=(0,0,128))
+		segment += 1
+
+# bottom border
+	keyId = "%g"%(boxY[1]-boxY[0])
+	boundary = connectivityYX[keyId].keys()
+	boundary.sort(key=float,reverse=True)
+	for indexBdy in range(len(boundary)-1):
+		connectivityXY[boundary[indexBdy]][keyId].append(segment)
+		connectivityXY[boundary[indexBdy+1]][keyId].append(segment)
+		connectivityYX[keyId][boundary[indexBdy]].append(segment)
+		connectivityYX[keyId][boundary[indexBdy+1]].append(segment)
+		if scaleImg > 0:
+			draw.line(map(lambda x:int(scaleImg*x)+border,[float(boundary[indexBdy]),float(keyId),float(boundary[indexBdy+1]),float(keyId)]),width=3,fill=(128,128*(segment%2),0))
+			draw.text(map(lambda x:int(scaleImg*x)+border,[(float(boundary[indexBdy])+float(boundary[indexBdy+1]))/2.0,float(keyId)]),"%i"%segment,fill=(0,0,128))
+		segment += 1
+
+# left border
+	keyId = "0"
+	boundary = connectivityXY[keyId].keys()
+	boundary.sort(key=float,reverse=True)
+	for indexBdy in range(len(boundary)-1):
+		connectivityYX[boundary[indexBdy]][keyId].append(segment)
+		connectivityYX[boundary[indexBdy+1]][keyId].append(segment)
+		connectivityXY[keyId][boundary[indexBdy]].append(segment)
+		connectivityXY[keyId][boundary[indexBdy+1]].append(segment)
+		if scaleImg > 0:
+			draw.line(map(lambda x:int(scaleImg*x)+border,[float(keyId),float(boundary[indexBdy]),float(keyId),float(boundary[indexBdy+1])]),width=3,fill=(128,128*(segment%2),0))
+			draw.text(map(lambda x:int(scaleImg*x)+border,[float(keyId),(float(boundary[indexBdy])+float(boundary[indexBdy+1]))/2.0]),"%i"%segment,fill=(0,0,128))
+		segment += 1
+
+
+	allkeysX = connectivityXY.keys()
+	allkeysX.sort()
+	points = []
+	segments = [[] for i in range(segment)]
+	pointId = 0
+	for keyX in allkeysX:
+		allkeysY = connectivityXY[keyX].keys()
+		allkeysY.sort()
+		for keyY in allkeysY:
+			points.append({'coords': [float(keyX)*scalePatch,float(keyY)*scalePatch], 'segments': connectivityXY[keyX][keyY]})
+			for segment in connectivityXY[keyX][keyY]:
+				if (segments[segment] == None):
+					segments[segment] = pointId
+				else:
+					segments[segment].append(pointId)
+			if scaleImg > 0:
+				draw.text(map(lambda x:int(scaleImg*x)+border,[float(keyX),float(keyY)]),"%i"%pointId,fill=(0,0,0))
+			pointId += 1
+
+	if scaleImg > 0:
+		img.save(imagename+'.png',"PNG")
+
+
+	grains = {'draw': [], 'legs': []}
+	pointId = 0
+	for point in points:
+		while point['segments']:
+			myStart = pointId
+			grainDraw = [points[myStart]['coords']]
+			innerAngleSum = 0.0
+			myWalk = point['segments'].pop()
+			grainLegs = [myWalk]
+			if segments[myWalk][0] == myStart:
+				myEnd = segments[myWalk][1]
+			else:
+				myEnd = segments[myWalk][0]
+
+			while (myEnd != pointId):
+				myV = [points[myEnd]['coords'][0]-points[myStart]['coords'][0],\
+					points[myEnd]['coords'][1]-points[myStart]['coords'][1]]
+				myLen = math.sqrt(myV[0]**2+myV[1]**2)
+				best = {'product': -2.0, 'peek': -1, 'len': -1, 'point': -1}
+				for peek in points[myEnd]['segments']:
+					if peek == myWalk:
+						continue
+					if segments[peek][0] == myEnd:
+						peekEnd = segments[peek][1]
+					else:
+						peekEnd = segments[peek][0]
+					peekV = [points[myEnd]['coords'][0]-points[peekEnd]['coords'][0],\
+							points[myEnd]['coords'][1]-points[peekEnd]['coords'][1]]
+					peekLen = math.sqrt(peekV[0]**2+peekV[1]**2)
+					crossproduct = (myV[0]*peekV[1]-myV[1]*peekV[0])/myLen/peekLen
+					dotproduct = (myV[0]*peekV[0]+myV[1]*peekV[1])/myLen/peekLen
+					if crossproduct*(dotproduct+1.0) >= best['product']:
+						best['product'] = crossproduct*(dotproduct+1.0)
+						best['peek'] = peek
+						best['point'] = peekEnd
+				innerAngleSum += best['product']
+				myWalk = best['peek']
+				myStart = myEnd
+				myEnd = best['point']
+				points[myStart]['segments'].remove(myWalk)
+				grainDraw.append(points[myStart]['coords'])
+				grainLegs.append(myWalk)
+			if innerAngleSum > 0.0:
+				grains['draw'].append(grainDraw)
+				grains['legs'].append(grainLegs)
+			else:
+				grains['box'] = grainLegs
+		pointId += 1
+
+
+# build overall data structure
+
+	rcData = {'dimension':[dX,dY], 'point': [],'segment': [], 'grain': [], 'grainMapping': []}
+
+	for point in points:
+		rcData['point'].append(point['coords'])
+	print "found %i points"%(len(rcData['point']))
+
+	for segment in segments:	
+		rcData['segment'].append(segment)
+	print "built %i segments"%(len(rcData['segment']))
+
+	for grain in grains['legs']:	
+		rcData['grain'].append(grain)
+		myNeighbors = {}
+		for leg in grain:
+			if leg < len(grainNeighbors):
+				for side in range(2):
+					if grainNeighbors[leg][side] in myNeighbors:
+						myNeighbors[grainNeighbors[leg][side]] += 1
+					else:
+						myNeighbors[grainNeighbors[leg][side]] = 1
+		if myNeighbors:		# do I have any neighbors
+			rcData['grainMapping'].append(sorted(myNeighbors.iteritems(), key=lambda (k,v): (v,k), reverse=True)[0][0])		# most frequent grain is me
+	print "found %i grains"%(len(rcData['grain']))
+
+	rcData['box'] = grains['box']
+
+
+	if scaleImg > 0:
+		grainID = 0
+		for grain in grains['draw']:
+			coords = [0,0]
+			for point in grain:
+				coords[0] += int(scaleImg/scalePatch*point[0])
+				coords[1] += int(scaleImg/scalePatch*point[1])
+			coords[0] /= len(grain)
+			coords[1] /= len(grain)
+			draw.text(map(lambda x:x+border,coords),'%i -> %i'%(grainID,rcData['grainMapping'][grainID]),fill=(128,32,32))
+			grainID += 1
+			
+		img.save(os.path.splitext(args[0])[0]+'.png',"PNG")
+	
+	return rcData
+
+
+def init():
+    return ["*new_model yes",
+			"*select_clear",
+			"*reset",
+			"*set_nodes off",
+			"*elements_solid",
+			"*show_view 4",
+			"*reset_view",
+			"*view_perspective",
+			"*redraw",
+			]
+
+
+def sample(a,n,size):
+
+	cmds = [\
+# gauge
+		"*add_points %f %f %f"%(-size*a,size*a,0),
+		"*add_points %f %f %f"%( size*a,size*a,0),
+		"*add_points %f %f %f"%( size*a,-size*a,0),
+		"*add_points %f %f %f"%(-size*a,-size*a,0),
+		"*set_curve_type line",
+		"*add_curves %i %i"%(1,2),
+		"*add_curves %i %i"%(3,4),
+		"*set_curve_div_type_fix_ndiv",
+		"*set_curve_div_num %i"%n,
+		"*apply_curve_divisions",
+		"1 2 #",
+		"*add_curves %i %i"%(2,3),	# right side
+		"*add_curves %i %i"%(4,1),	# left side
+		"*set_curve_div_type_fix_ndiv",
+		"*set_curve_div_num %i"%n,
+		"*apply_curve_divisions",
+		"3 4 #",
+		]
+
+	return cmds
+	
+
+def patch(a,n,mesh,rcData):
+	cmds = []
+	for l in range(len(rcData['point'])):						# generate all points
+		cmds.append("*add_points %f %f %f"%(rcData['point'][l][0]-a*rcData['dimension'][0]/rcData['dimension'][1]/2.0,rcData['point'][l][1]-a/2.0,0))
+
+	cmds.append(["*set_curve_type line",
+				 "*set_curve_div_type_fix_ndiv",
+				])
+	for m in range(len(rcData['segment'])):						# generate all curves and subdivide them for overall balanced piece length
+		start = rcData['segment'][m][0]
+		end   = rcData['segment'][m][1]
+		cmds.append([\
+			"*add_curves %i %i" %(start+rcData['offsetPoints'],
+								  end  +rcData['offsetPoints']),
+			"*set_curve_div_num %i"%(max(1,round(math.sqrt((rcData['point'][start][0]-rcData['point'][end][0])**2+\
+														   (rcData['point'][start][1]-rcData['point'][end][1])**2)/a*n))),
+			"*apply_curve_divisions",
+			"%i #"%(m+rcData['offsetSegments']),
+			])
+
+	grain = 0
+	cmds.append('(!)locals["last"] = py_get_int("nelements()")')
+	for g in rcData['grain']:
+		cmds.append([\
+			'(!)locals["first"] = locals["last"]+1',
+			"*%s "%mesh+" ".join([str(rcData['offsetSegments']+x) for x in g])+" #",
+			'(!)locals["last"] = py_get_int("nelements()")',
+			"*select_elements",
+			'(?)"%i to %i #"%(locals["first"],locals["last"])',
+			"*store_elements grain_%i"%rcData['grainMapping'][grain],
+			"all_selected",
+			"*select_clear",
+			])
+		grain += 1
+
+	return cmds
+
+
+def gage(mesh,rcData):
+
+	return([\
+		"*%s "%mesh + 
+		" ".join([str(x) for x in range(1,rcData['offsetSegments'])]) +
+		" " +
+		" ".join([str(rcData['offsetSegments']+x)for x in rcData['box']]) +
+		" #",
+		"*select_reset",
+		"*select_clear",
+		"*select_elements",
+		"all_existing",
+		"*select_mode_except",
+		['grain_%i'%(i+1) for i in range(len(rcData['grain']))],
+		"#",
+		"*store_elements matrix",
+		"all_selected",
+		"*select_mode_invert",
+		"*select_elements",
+		"all_existing",
+		"*store_elements grains",
+		"all_selected",
+		"*select_clear",
+		"*select_reset",
+		])
+
+
+def expand3D(thickness,steps):
+	return([\
+		"*set_expand_translation z %f"%(thickness/steps),
+		"*set_expand_repetitions %i"%steps,
+		"*expand_elements",
+		"all_existing",
+		])
+
+
+def initial_conditions(grainNumber,grainMapping):
+	cmds = [\
+		"*new_icond",
+		"*icond_name temperature",
+		"*icond_type state_variable",
+		"*icond_param_value state_var_id 1",
+		"*icond_dof_value var 300",
+		"*add_icond_elements",
+		"all_existing",
+		"*new_icond",
+		"*icond_name homogenization",
+		"*icond_type state_variable",
+		"*icond_param_value state_var_id 2",
+		"*icond_dof_value var 1",
+		"*add_icond_elements",
+		"all_existing",
+		]
+	
+	for grain in range(grainNumber):
+		cmds.append([\
+		"*new_icond",
+		"*icond_name grain_%i"%grainMapping[grain],
+		"*icond_type state_variable",
+		"*icond_param_value state_var_id 3",
+		"*icond_dof_value var %i"%(grain+1),
+		"*add_icond_elements",
+		"grain_%i"%grainMapping[grain],
+		"",
+					])
+	cmds.append([\
+		"*new_icond",
+		"*icond_name rim",
+		"*icond_type state_variable",
+		"*icond_param_value state_var_id 3",
+		"*icond_dof_value var %i"%(grainNumber+1),
+		"*add_icond_elements",
+		"matrix",
+		])
+	return cmds
+
+
+def boundary_conditions(rate,thickness, a,size):
+	inner = size*(1 - 1.0e-4) * a
+	outer = size*(1 + 1.0e-4) * a
+	upper = size*(1 + 1.0e-4) * a
+	lower = size*(1 - 1.0e-4) * a
+	
+	return [\
+	"*new_md_table 1 1",
+	"*table_name linear",
+	"*set_md_table_type 1 time",
+	"*table_add",
+	"0 0",
+	"1 1",
+	"*select_method_box",
+	"*new_apply",
+	"*apply_name pull_bottom",
+	"*apply_type fixed_displacement",
+	"*apply_dof y",
+	"*apply_dof_value y %f"%(-rate*(inner+outer)/2.0),
+	"*apply_dof_table y linear",
+	"*select_clear_nodes",
+	"*select_nodes",
+	"%f %f"%(-outer,outer),
+	"%f %f"%(-upper,-lower),
+	"%f %f"%(-.0001*a,(thickness+1.0e-4)*a),
+	"*add_apply_nodes",
+	"all_selected",
+	"*new_apply",
+	"*apply_name pull_top",
+	"*apply_type fixed_displacement",
+	"*apply_dof y",
+	"*apply_dof_value y %f"%(rate*(inner+outer)/2.0),
+	"*apply_dof_table y linear",
+	"*select_clear_nodes",
+	"*select_nodes",
+	"%f %f"%(-outer,outer),
+	"%f %f"%(lower,upper),
+	"%f %f"%(-.0001*a,(thickness+1.0e-4)*a),
+	"*add_apply_nodes",
+	"all_selected",
+	"*new_apply",
+	"*apply_name fix_x",
+	"*apply_type fixed_displacement",
+	"*apply_dof x",
+	"*apply_dof_value x 0",
+	"*select_clear_nodes",
+	"*select_nodes",
+	"%f %f"%(-outer,-inner),
+	"%f %f"%(lower,upper),
+	"%f %f"%(-.0001*a,.0001*a),
+	"%f %f"%(-outer,-inner),
+	"%f %f"%(lower,upper),
+	"%f %f"%((thickness-1.0e-4)*a,(thickness+1.0e-4)*a),
+	"%f %f"%(-outer,-inner),
+	"%f %f"%(-upper,-lower),
+	"%f %f"%(-.0001*a,.0001*a),
+	"%f %f"%(-outer,-inner),
+	"%f %f"%(-upper,-lower),
+	"%f %f"%((thickness-1.0e-4)*a,(thickness+1.0e-4)*a),
+	"*add_apply_nodes",
+	"all_selected",
+	"*new_apply",
+	"*apply_name fix_z",
+	"*apply_type fixed_displacement",
+	"*apply_dof z",
+	"*apply_dof_value z 0",
+	"*select_clear_nodes",
+	"*select_nodes",
+	"%f %f"%(-outer,-inner),
+	"%f %f"%(lower,upper),
+	"%f %f"%(-.0001*a,.0001*a),
+	"%f %f"%(-outer,-inner),
+	"%f %f"%(-upper,-lower),
+	"%f %f"%(-.0001*a,.0001*a),
+	"%f %f"%(inner,outer),
+	"%f %f"%(lower,upper),
+	"%f %f"%(-.0001*a,.0001*a),
+	"%f %f"%(inner,outer),
+	"%f %f"%(-upper,-lower),
+	"%f %f"%(-.0001*a,.0001*a),
+	"*add_apply_nodes",
+	"all_selected",
+	"*select_clear",
+	"*select_reset",
+	]
+
+def materials():
+	return [\
+	"*new_material",
+	"*material_name patch",
+	"*material_type mechanical:hypoelastic",
+	"*material_option hypoelastic:method:hypela2",
+	"*material_option hypoelastic:pass:def_rot",
+	"*add_material_elements",
+	"all_existing",
+	]
+	
+
+def loadcase(time,incs,Ftol):	
+	return [\
+	"*new_loadcase",
+	"*loadcase_name puller",
+	"*loadcase_type static",
+	"*loadcase_value time",
+	"%g"%time,
+	"*loadcase_value nsteps",
+	"%i"%incs,
+	"*loadcase_value maxrec",
+	"20",
+	"*loadcase_value ntime_cuts",
+	"30",
+	"*loadcase_value force",
+	"%g"%Ftol,
+	]
+
+
+def job(grainNumber,grainMapping):	
+	return [\
+	"*new_job",
+	"*job_name pull",
+	"*job_class mechanical",
+	"*add_job_loadcases puller",
+	"*add_job_iconds homogenization",
+	["*add_job_iconds grain_%i"%i for i in grainMapping[:grainNumber]],
+	"*add_job_iconds rim",
+	"*job_option dimen:three                  | 3D analysis",
+	"*job_option strain:large                 | finite strains",
+	"*job_option large_strn_proc:upd_lagrange | updated Lagrange framework",
+	"*job_option plas_proc:multiplicative     | multiplicative decomp of F",
+	"*job_option solver_nonsym:on             | nonsymmetrical solution",
+	"*job_option solver:mfront_sparse         | multi-frontal sparse",
+	"*job_param stef_boltz 5.670400e-8",
+	"*job_param univ_gas_const 8.314472",
+	"*job_param planck_radiation_2 1.4387752e-2",
+	"*job_param speed_light_vacuum 299792458",
+	"*job_usersub_file /san/%s/FEM/subroutine_svn/mpie_cpfem_marc2007r1.f90  | subroutine definition"%(pwd.getpwuid(os.geteuid())[0].rpartition("\\")[2]),
+	"*job_option user_source:compile_save",
+	]
+
+
+def postprocess():
+	return [\
+	"*add_post_tensor stress",
+	"*add_post_tensor strain",
+	"*add_post_var von_mises",
+	"",
+	]
+
+
+
+def cleanUp(a):
+	return [\
+	"*remove_curves",
+	"all_existing",
+	"*remove_points",
+	"all_existing",
+	"*set_sweep_tolerance %f"%(1e-3*a),
+	"*sweep_all",
+	"*renumber_all",
+	]
+	
+
+# ----------------------- MAIN -------------------------------
+	
+parser = OptionParser()
+parser.add_option("-p", "--port", type="int",\
+			  dest="port",\
+			  help="Mentat connection port")
+parser.add_option("-a", "--patchsize", type="float",\
+			  dest="size",\
+			  help="height of patch [%default]")
+parser.add_option("-f", "--frame", type="float",\
+			  dest="frame",\
+			  help="frame thickness in units of patch height [%default]")
+parser.add_option("-n", "--resolution", type="int",\
+			  dest="resolution",\
+			  help="number of elements along patch perimeter [%default]")
+parser.add_option("-e", "--strain", type="float",\
+			  dest="strain",\
+			  help="final strain to reach in simulation [%default]")
+parser.add_option("-r", "--rate", type="float",\
+			  dest="strainrate",\
+			  help="(engineering) strain rate to simulate")
+parser.add_option("-i", "--increments", type="int",\
+			  dest="increments",\
+			  help="number of increments to take")
+parser.add_option("-s", "--imagesize", type="int",\
+			  dest="imgsize",\
+			  help="size of image")
+parser.add_option("-b", "--border", type="int",\
+			  dest="border",\
+			  help="border of image")
+parser.add_option("-t", "--tolerance", type="float",\
+			  dest="tolerance",\
+			  help="relative tolerance of pixel positions to be swept")
+parser.add_option("-m", "--mesh", choices=['dt_planar_trimesh','af_planar_trimesh','af_planar_quadmesh'],\
+			  dest="mesh",\
+			  help="algorithm and element type for automeshing [%default]")
+
+parser.set_defaults(size = 1.0)
+parser.set_defaults(frame = 0.5)
+parser.set_defaults(resolution = 30)
+parser.set_defaults(strain = 0.2)
+parser.set_defaults(strainrate = 1.0e-3)
+parser.set_defaults(increments = 200)
+parser.set_defaults(imgsize = 0)
+parser.set_defaults(border = 20)
+parser.set_defaults(tolerance = 1.0e-3)
+parser.set_defaults(mesh = 'dt_planar_trimesh')
+
+(options, args) = parser.parse_args()
+if not len(args):
+	parser.error('no boundary file specified')
+
+try:
+	boundaryFile = open(args[0])
+	boundarySegments = boundaryFile.readlines()
+	boundaryFile.close()
+except:
+	print 'unable to read boundary file "%s"'%args[0]
+	sys.exit(-1)
+
+myName = os.path.splitext(args[0])[0]
+print "\n",myName
+orientationData = rcbOrientationParser(boundarySegments)
+rcData = rcbParser(boundarySegments,options.size,options.tolerance,myName,options.imgsize,options.border)
+
+# ----- write texture data to file -----
+configFile = open(os.path.splitext(args[0])[0]+'.config','w')
+configFile.write('\n\n<microstructure>\n\n')
+for i,grain in enumerate(rcData['grainMapping']):
+	configFile.write('\n[grain %i]\n'%grain)
+	configFile.write('(constituent)\tphase %i\ttexture %i\tfraction 1.0\n'%(i+1,i+1))
+
+configFile.write('\n\n<phase>\n\n')
+for grain in rcData['grainMapping']:
+	configFile.write('\n[grain %i]\n'%grain)
+
+configFile.write('\n\n<texture>\n\n')
+for grain in rcData['grainMapping']:
+	configFile.write('\n[grain %i]\n'%grain)
+	configFile.write('(gauss)\tphi1\t%f\tphi\t%f\tphi2\t%f\tscatter\t0.0\tfraction\t1.0\n'\
+					  %(math.degrees(orientationData[grain-1][0]),math.degrees(orientationData[grain-1][1]),math.degrees(orientationData[grain-1][2])))
+configFile.close()
+
+rcData['offsetPoints']   = 1+4								# gage definition generates 4 points
+rcData['offsetSegments'] = 1+4								# gage definition generates 4 segments
+
+cmds = [\
+	init(),
+	sample(options.size,12,options.frame+0.5),
+	patch(options.size,options.resolution,options.mesh,rcData),
+	gage(options.mesh,rcData),
+	expand3D(options.size/6,4),
+	cleanUp(options.size),
+	materials(),
+	initial_conditions(len(rcData['grain']),rcData['grainMapping']),
+	boundary_conditions(options.strainrate,options.size/6,options.size,options.frame+0.5),
+	loadcase(options.strain/options.strainrate,options.increments,0.03),
+	job(len(rcData['grain']),rcData['grainMapping']),
+	postprocess(),
+	["*identify_sets","*regen","*fill_view","*save_as_model %s yes"%(myName)],
+]
+
+outputLocals = {}
+if (options.port != None):
+	py_connect('',options.port)
+	output(cmds,outputLocals,'Mentat')
+	py_disconnect()
+else:
+	output(cmds,outputLocals,'Stdout')
+
+print outputLocals
+
+#	"*job_option large:on                  | large displacement",
+#	"*job_option plasticity:l_strn_mn_add  | large strain additive",
+#	"*job_option cdilatation:on            | constant dilatation",
+#	"*job_option update:on                 | updated lagrange procedure",
+#	"*job_option finite:on                 | large strains",
+#	"*job_option restart_mode:write        | enable restarting",

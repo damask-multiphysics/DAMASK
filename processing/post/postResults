@@ -1,0 +1,725 @@
+#!/usr/bin/env python 
+
+releases = ['2010b3','2008r1','2007r1','2005r3']
+
+
+import os, sys, math, re, threading, time
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+for release in releases:
+    libPath = '/msc/mentat%s/shlib/'%release
+    if os.path.exists(libPath):
+        sys.path.append(libPath)
+        break
+from py_post import *
+
+
+# -----------------------------
+class MyOption(Option):
+# -----------------------------
+# used for definition of new option parser action 'extend', which enables to take multiple option arguments
+# taken from online tutorial http://docs.python.org/library/optparse.html
+    
+    ACTIONS = Option.ACTIONS + ("extend",)
+    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+    def take_action(self, action, dest, opt, value, values, parser):
+        if action == "extend":
+            lvalue = value.split(",")
+            values.ensure_value(dest, []).extend(lvalue)
+        else:
+            Option.take_action(self, action, dest, opt, value, values, parser)
+
+            
+# -----------------------------
+class backgroundMessage(threading.Thread):
+# -----------------------------
+    
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.message = ''
+        self.new_message = ''
+        self.counter = 0
+        self.symbols = ['- ', '\ ', '| ', '/ ']
+        self.waittime = 0.5
+    
+    def __quit__(self):
+        length = len(self.message) + len(self.symbols[self.counter])
+        sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
+        sys.stderr.write('')
+    
+    def run(self):
+        while not threading.enumerate()[0]._Thread__stopped:
+            time.sleep(self.waittime)
+            self.update_message()
+        self.__quit__()
+
+    def set_message(self, new_message):
+        self.new_message = new_message
+        self.print_message()
+    
+    def print_message(self):
+        length = len(self.message) + len(self.symbols[self.counter])
+        sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)                                # delete former message
+        sys.stderr.write(self.symbols[self.counter] + self.new_message)                             # print new message
+        self.message = self.new_message
+        
+    def update_message(self):
+        self.counter = (self.counter + 1)%len(self.symbols)
+        self.print_message()
+
+
+# -----------------------------
+def ipCoords(elemType, nodalCoordinates):
+# 
+# returns IP coordinates for a given element
+# -----------------------------
+
+  nodeWeightsPerNode =  { 
+                          7:    [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0], 
+                                  [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0], 
+                                  [ 3.0,  9.0, 27.0,  9.0,  1.0,  3.0,  9.0,  3.0], 
+                                  [ 9.0,  3.0,  9.0, 27.0,  3.0,  1.0,  3.0,  9.0], 
+                                  [ 9.0,  3.0,  1.0,  3.0, 27.0,  9.0,  3.0,  9.0], 
+                                  [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0], 
+                                  [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0], 
+                                  [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ], 
+                          117:  [ [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0] ], 
+                          136:  [ [42.0, 15.0, 15.0, 14.0,  5.0,  5.0], 
+                                  [15.0, 42.0, 15.0,  5.0, 14.0,  5.0], 
+                                  [15.0, 15.0, 42.0,  5.0,  5.0, 14.0], 
+                                  [14.0,  5.0,  5.0, 42.0, 15.0, 15.0], 
+                                  [ 5.0, 14.0,  5.0, 15.0, 42.0, 15.0], 
+                                  [ 5.0,  5.0, 14.0, 15.0, 15.0, 42.0] ], 
+                        }
+  
+  ipCoordinates = [[0.0,0.0,0.0] for i in range(len(nodalCoordinates))]
+  for ip in range(len(nodeWeightsPerNode[elemType])):
+    for node in range(len(nodeWeightsPerNode[elemType][ip])):
+      for i in range(3):
+        ipCoordinates[ip][i] += nodeWeightsPerNode[elemType][ip][node] * nodalCoordinates[node][i]
+    for i in range(3):
+      ipCoordinates[ip][i] /= sum(nodeWeightsPerNode[elemType][ip])
+  
+  return ipCoordinates
+
+
+# -----------------------------
+def sortBySeparation(dataArray, criteria, offset):
+# 
+# sorting of groupValue array according to list of criteria
+# -----------------------------
+  where = {
+            'elem':  1,
+            'node':  2,
+            'grain': 3,
+            'x': 4,
+            'y': 5,
+            'z': 6,
+          }
+
+  theKeys = []
+  for criterium in criteria:
+    if criterium in where:
+      theKeys.append('x[%i]'%(offset+where[criterium]))
+  exec('sortedArray = sorted(dataArray,key=lambda x:(%s))'%(','.join(theKeys)))
+  return sortedArray
+
+
+# -----------------------------
+def substituteLocation(string, mesh, coords):
+# 
+# do variable interpolation in group and filter strings
+# -----------------------------
+  substitute = string
+  substitute = substitute.replace('elem', str(mesh[0]))
+  substitute = substitute.replace('node', str(mesh[1]))
+  substitute = substitute.replace('grain', str(mesh[2]))
+  substitute = substitute.replace('x', '%.6g'%coords[0])
+  substitute = substitute.replace('y', '%.6g'%coords[1])
+  substitute = substitute.replace('z', '%.6g'%coords[2])
+  return substitute
+
+
+# -----------------------------
+def average(theList):
+# 
+# calcs the average of a list of numbers
+# -----------------------------
+    
+    return sum(map(float,theList))/len(theList)
+
+
+# -----------------------------
+def mapFunc(label, chunks, func):
+# 
+# applies the function defined by "func"
+# (can be either 'min','max','avg', 'sum', or user specified)
+# to a list of lists of data
+# -----------------------------
+
+  illegal = {
+              'eulerangles': ['min','max','avg','sum'],
+              'defgrad':     ['min','max','avg','sum'],
+              'orientation': ['min','max','sum'],
+            }
+  
+  if label.lower() in illegal and func in illegal[label.lower()]:                                   # for illegal mappings:...
+    return ['n/a' for i in range(len(chunks[0]))]                                                   # ...return 'n/a'
+
+  else:
+    if func in ['min','max','avg']:
+      mapped = [{ 'min': lambda x: min(x),
+                  'max': lambda x: max(x),
+                  'avg': lambda x: average(x),
+                  'sum': lambda x: sum(x),
+                }[func](column) for column in zip(*chunks)]                                         # map one of the standard functions to colums in chunks
+      if label.lower() == 'orientation':                                                            # orientation is special case:...
+        orientationNorm = math.sqrt(sum([q*q for q in mapped]))                                     # ...calc norm of average quaternion
+        mapped = map(lambda x: x/orientationNorm, mapped)                                           # ...renormalize quaternion
+    else:
+        try:
+          mapped = eval('map(%s,zip(*chunks))'%func)                                                 # map user defined function to colums in chunks
+        except:
+          mapped = ['n/a' for i in range(len(chunks[0]))]
+    
+  return mapped
+
+
+# -----------------------------
+def OpenPostfile(name):
+# 
+# open postfile with extrapolation mode "translate"
+# -----------------------------
+
+    p = post_open(name)
+    p.extrapolation('translate')
+    p.moveto(1)
+    
+    return p
+
+
+# -----------------------------
+def ParseOutputFormat(filename,what,me):
+#
+# parse .output* files in order to get a list of outputs 
+# -----------------------------
+
+    format = {'outputs':{},'specials':{'brothers':[]}}
+    for prefix in ['']+map(str,range(1,17)):
+        if os.path.exists(prefix+filename+'.output'+what):
+            break
+    try:
+        file = open(prefix+filename+'.output'+what)
+        content = file.readlines()
+        file.close()
+    except:
+        return format
+
+    tag = ''
+    tagID = 0
+    for line in content:
+        if re.match("\s*$",line) or re.match("#",line):                                             # skip blank lines and comments
+            continue
+        m = re.match("\[(.+)\]",line)                                                               # look for block indicator
+        if m:                                                                                       # next section
+            tag = m.group(1)
+            tagID += 1
+            format['specials']['brothers'].append(tag)
+            if tag == me or (me.isdigit() and tagID == int(me)):
+                format['specials']['_id'] = tagID
+                format['outputs'] = []
+                tag = me
+        else:                                                                                       # data from section
+            if tag == me:
+                (output,length) = line.split()
+                output.lower()
+                if length.isdigit():
+                    length = int(length)
+                if re.match("\((.+)\)",output):                                                     # special data, e.g. (Ngrains)
+                    format['specials'][output] = length
+                elif length > 0:
+                    format['outputs'].append([output,length])
+    return format
+
+
+# -----------------------------
+def ParsePostfile(p,filename, outputFormat):
+#
+# parse postfile in order to get position and labels of outputs
+# needs "outputFormat" for mapping of output names to postfile output indices
+# -----------------------------
+
+    # --- build statistics
+
+    stat = { \
+    'IndexOfLabel': {}, \
+    'Title': p.title(), \
+    'Extrapolation': p.extrapolate, \
+    'NumberOfIncrements': p.increments(), \
+    'NumberOfNodes': p.nodes(), \
+    'NumberOfNodalScalars': p.node_scalars(), \
+    'LabelOfNodalScalar': [None]*p.node_scalars() , \
+    'NumberOfElements': p.elements(), \
+    'NumberOfElementalScalars': p.element_scalars(), \
+    'LabelOfElementalScalar': [None]*p.element_scalars() , \
+    'NumberOfElementalTensors': p.element_tensors(), \
+    'LabelOfElementalTensor': [None]*p.element_tensors(), \
+    }
+
+    # --- find labels 
+
+    for labelIndex in range(stat['NumberOfNodalScalars']):
+        label =  p.node_scalar_label(labelIndex)
+        stat['IndexOfLabel'][label] = labelIndex
+        stat['LabelOfNodalScalar'][labelIndex] = label
+
+    for labelIndex in range(stat['NumberOfElementalScalars']):
+        label =  p.element_scalar_label(labelIndex)
+        stat['IndexOfLabel'][label] = labelIndex
+        stat['LabelOfElementalScalar'][labelIndex] = label
+
+    for labelIndex in range(stat['NumberOfElementalTensors']):
+        label =  p.element_tensor_label(labelIndex)
+        stat['IndexOfLabel'][label] = labelIndex
+        stat['LabelOfElementalTensor'][labelIndex] = label
+    
+    if 'User Defined Variable 1' in stat['IndexOfLabel']:
+        stat['IndexOfLabel']['GrainCount'] = stat['IndexOfLabel']['User Defined Variable 1']
+    
+    if 'GrainCount' in stat['IndexOfLabel']:                                      # does the result file contain relevant user defined output at all?
+        startIndex = stat['IndexOfLabel']['GrainCount'] - 1
+        
+        # We now have to find a mapping for each output label as defined in the .output* files to the output position in the post file
+        # Since we know where the user defined outputs start ("startIndex"), we can simply assign increasing indices to the labels
+        # given in the .output* file    
+        
+        offset = 0
+        stat['LabelOfElementalScalar'][startIndex + 2 + offset] = 'HomogenizationCount'
+        for var in outputFormat['Homogenization']['outputs']:
+            if var[1] > 1:
+                for i in range(var[1]):
+                    stat['IndexOfLabel']['%i_%s'%(i+1,var[0])] = startIndex + 2 + offset + (i+1)
+            else:
+                stat['IndexOfLabel']['%s'%(var[0])] = startIndex + 2 + offset + 1 
+            offset += var[1]
+            
+        for grain in range(outputFormat['Homogenization']['specials']['(ngrains)']):
+            stat['IndexOfLabel']['%i_CrystalliteCount'%(grain+1)] = startIndex + 3 + offset
+            for var in outputFormat['Crystallite']['outputs']:
+                if var[1] > 1:
+                    for i in range(var[1]):
+                        stat['IndexOfLabel']['%i_%i_%s'%(grain+1,i+1,var[0])] = startIndex + 3 + offset + (i+1)
+                else:
+                    stat['IndexOfLabel']['%i_%s'%(grain+1,var[0])] = startIndex + 3 + offset + 1
+                offset += var[1]
+
+            stat['IndexOfLabel']['%i_ConstitutiveCount'%(grain+1)] = startIndex + 4 + offset
+            for var in outputFormat['Constitutive']['outputs']:
+                if var[1] > 1:
+                    for i in range(var[1]):
+                        stat['IndexOfLabel']['%i_%i_%s'%(grain+1,i+1,var[0])] = startIndex + 4 + offset + (i+1)
+                else:
+                    stat['IndexOfLabel']['%i_%s'%(grain+1,var[0])] = startIndex + 4 + offset + 1
+                offset += var[1]
+    
+    return stat
+
+
+# -----------------------------
+def SummarizePostfile(stat,where=sys.stdout):
+# -----------------------------
+
+    where.write('title:\t%s'%stat['Title'] + '\n\n')
+    where.write('extraplation:\t%s'%stat['Extrapolation'] + '\n\n')
+    where.write('increments:\t%i+1'%(stat['NumberOfIncrements']-1) + '\n\n')
+    where.write('nodes:\t%i'%stat['NumberOfNodes'] + '\n\n')
+    where.write('elements:\t%i'%stat['NumberOfElements'] + '\n\n')
+    where.write('nodal scalars:\t%i'%stat['NumberOfNodalScalars'] + '\n\n    ' + '\n    '.join(stat['LabelOfNodalScalar']) + '\n\n')
+    where.write('elemental scalars:\t%i'%stat['NumberOfElementalScalars'] + '\n\n    ' + '\n    '.join(stat['LabelOfElementalScalar']) + '\n\n')
+    where.write('elemental tensors:\t%i'%stat['NumberOfElementalTensors'] + '\n\n    ' + '\n    '.join(stat['LabelOfElementalTensor']) + '\n\n')
+    
+    return True
+
+
+# -----------------------------
+# MAIN FUNCTION STARTS HERE
+# -----------------------------
+
+# --- input parsing
+
+parser = OptionParser(option_class=MyOption, usage='%prog [options] resultfile', description = """
+Extract data from a .t16 MSC.Marc results file. 
+
+List of output variables is given by options '--ns','--es','--et','--ho','--cr','--co'. 
+
+Filter and separations use 'elem','node','grain', and 'x','y','z' as key words.
+Example:
+1) get averaged results in slices perpendicular to x for all positive y coordinates
+--filter 'y >= 0.0' --separation x --map 'avg'
+2) global sum of squared data falling into first quadrant arc between R1 and R2
+--filter 'x*x + y*y >= R1*R1 and x*x + y*y <= R2*R2' --map 'lambda list: sum([item*item for item in list])'
+
+$Id: postResults 205 2010-06-08 15:23:31Z MPIE\p.eisenlohr $
+""")
+
+parser.add_option('-i','--info', action='store_true', dest='info', \
+                  help='list contents of resultfile [%default]')
+parser.add_option('-d','--dir', dest='directory', \
+                  help='name of subdirectory to hold output [%default]')
+parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
+                  help='range of increments to output (start, end, step) [all]')
+parser.add_option('-m','--map', dest='func', type='string', \
+                  help='data reduction mapping ["%default"] out of min, max, avg, sum or user-lambda')
+
+group_material = OptionGroup(parser,'Material identifier')
+group_special  = OptionGroup(parser,'Special outputs')
+group_general  = OptionGroup(parser,'General outputs')
+
+group_material.add_option('--homogenization', dest='homog', type='string', \
+                  help='homogenization identifier (as string or integer [%default])')
+group_material.add_option('--crystallite', dest='cryst', type='string', \
+                  help='crystallite identifier (as string or integer [%default])')
+group_material.add_option('--phase', dest='phase', type='string', \
+                  help='phase identifier (as string or integer [%default])')
+
+group_special.add_option('-t','--time', action='store_true', dest='time', \
+                  help='output time of increment [%default]')
+group_special.add_option('-f','--filter', dest='filter', type='string', \
+                  help='condition(s) to filter results [%default]')
+group_special.add_option('--separation', action='extend', dest='separation', type='string', \
+                  help='properties to separate results [%default]')
+parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
+                  help='split output per increment [%default]')
+
+group_general.add_option('--ns', action='extend', dest='nodalScalar', type='string', \
+                  help='list of nodal scalars to extract')
+group_general.add_option('--es', action='extend', dest='elementalScalar', type='string', \
+                  help='list of elemental scalars to extract')
+group_general.add_option('--et', action='extend', dest='elementalTensor', type='string', \
+                  help='list of elemental tensors to extract')
+group_general.add_option('--ho', action='extend', dest='homogenizationResult', type='string', \
+                  help='list of homogenization results to extract')
+group_general.add_option('--cr', action='extend', dest='crystalliteResult', type='string', \
+                  help='list of crystallite results to extract')
+group_general.add_option('--co', action='extend', dest='constitutiveResult', type='string', \
+                  help='list of constitutive results to extract')
+
+parser.add_option_group(group_material)
+parser.add_option_group(group_general)
+parser.add_option_group(group_special)
+
+parser.set_defaults(info = False)
+parser.set_defaults(directory = 'postProc')
+parser.set_defaults(func = 'avg')
+parser.set_defaults(homog = '1')
+parser.set_defaults(cryst = '1')
+parser.set_defaults(phase = '1')
+parser.set_defaults(filter = '')
+parser.set_defaults(separation = [])
+parser.set_defaults(inc = False)
+parser.set_defaults(time = False)
+parser.set_defaults(separateFiles = False)
+
+(options, file) = parser.parse_args()
+
+bg = backgroundMessage()
+bg.start()
+
+
+# --- sanity checks
+
+if not file:
+    parser.print_help()
+    parser.error('no file specified...')
+
+if options.constitutiveResult and not options.phase:
+    parser.print_help()
+    parser.error('constitutive results require phase...')
+
+if options.nodalScalar and (   options.elementalScalar or options.elementalTensor 
+                            or options.homogenizationResult or options.crystalliteResult or options.constitutiveResult ):
+    parser.print_help()
+    parser.error('not allowed to mix nodal with elemental results...')
+
+
+# --- parse .output and .t16 files
+
+bg.set_message('parsing .output and .t16 files...')
+
+filename = os.path.splitext(file[0])[0]
+dirname = os.path.abspath(os.path.dirname(filename))+os.sep+options.directory
+if not os.path.isdir(dirname):
+    os.mkdir(dirname,0755)
+
+outputFormat = {}
+me = {  
+        'Homogenization': options.homog,
+        'Crystallite':    options.cryst,
+        'Constitutive':   options.phase,
+     }
+for what in me:
+    outputFormat[what] = ParseOutputFormat(filename, what, me[what])
+    if not '_id' in outputFormat[what]['specials']:
+        print "'%s' not found in <%s>"%(me[what], what)
+        print '\n'.join(map(lambda x:'  '+x, outputFormat[what]['specials']['brothers']))
+        sys.exit(1)
+
+p = OpenPostfile(filename+'.t16')
+stat = ParsePostfile(p, filename, outputFormat)
+
+
+# --- sanity check for output variables
+# for mentat variables (nodalScalar,elementalScalar,elementalTensor) we simply have to check whether the label is found in the stat[indexOfLabel] dictionary
+# for user defined variables (homogenizationResult,crystalliteResult,constitutiveResult) we have to check the corresponding outputFormat, since the namescheme in stat['IndexOfLabel'] is different
+
+for opt in ['nodalScalar','elementalScalar','elementalTensor','homogenizationResult','crystalliteResult','constitutiveResult']:
+    if eval('options.%s'%opt):
+        for label in eval('options.%s'%opt):
+            if (opt in ['nodalScalar','elementalScalar','elementalTensor'] and not label in stat['IndexOfLabel']) \
+               or (opt in ['homogenizationResult','crystalliteResult','constitutiveResult'] \
+                   and (not outputFormat[opt[:-6].capitalize()]['outputs'] or not label in zip(*outputFormat[opt[:-6].capitalize()]['outputs'])[0])):
+                parser.error('%s "%s" unknown...'%(opt,label))
+
+
+# --- output info
+
+if options.info:
+    print '\nMentat release %s\n'%release
+    SummarizePostfile(stat,sys.stderr)
+    
+    print '\nUser Defined Outputs'
+    for what in me:
+        print '\n ',what,':'
+        for output in outputFormat[what]['outputs']:
+            print '  ',output
+    
+    sys.exit(0)
+
+
+# --- get output data from .t16 file
+
+  
+if options.range:
+    increments = range( max(0,options.range[0]),
+                        min(stat['NumberOfIncrements'],options.range[1]+1),
+                        options.range[2])
+else:
+    increments = range(stat['NumberOfIncrements']-1)
+
+fileOpen = False
+assembleHeader = True
+header = []
+
+for increment in increments:
+    p.moveto(increment+1)
+    bg.set_message('read data from increment %i...'%increment)
+    data = {}
+    
+    if options.nodalScalar:
+        for n in range(stat['NumberOfNodes']):
+            nodeID = p.node_id(n)
+            nodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
+            elemID = 0
+            grainID = 0
+            
+            # --- filter valid locations
+            
+            filter = substituteLocation(options.filter, [elemID,nodeID,grainID], nodeCoordinates)                   # generates an expression that is only true for the locations specified by options.filter
+            if filter != '' and not eval(filter):                                                                   # for all filter expressions that are not true:...
+                continue                                                                                            # ... ignore this data point and continue with next
+            
+            # --- group data locations
+            
+            group = substituteLocation('#'.join(options.separation), [elemID,nodeID,grainID], nodeCoordinates)      # generates a unique key for a group of separated data based on the separation criterium for the location
+            if group not in data:                                                                                   # create a new group if not yet present
+                data[group] = []
+            data[group].append([])                                                                                  # append a new list for each group member; each list will contain dictionaries with keys 'label, and 'content' for the associated data
+            data[group][-1].append({
+                                    'label': 'location',
+                                    'content': [elemID,nodeID,grainID] + nodeCoordinates, 
+                                   })                                                                               # first entry in this list always contains the location data
+            
+            # --- get data from t16 file
+            
+            for label in options.nodalScalar:
+                if assembleHeader: 
+                    header.append(label.replace(' ',''))
+                data[group][-1].append({
+                                        'label': label,
+                                        'content': [ p.node_scalar(n,stat['IndexOfLabel'][label]) ], 
+                                       })
+            
+            assembleHeader = False
+        
+    else:
+        for e in range(stat['NumberOfElements']):
+            nodeCoordinates = map(lambda node: [node.x, node.y, node.z], map(p.node, map(p.node_sequence,p.element(e).items)))
+            ipCoordinates = ipCoords(p.element(e).type, nodeCoordinates)
+            elemID = p.element_id(e)
+            for n in range(p.element(e).len):
+                nodeID = p.element(e).items[n]
+                for g in range(('GrainCount' in stat['IndexOfLabel'] and int(p.element_scalar(e, stat['IndexOfLabel']['GrainCount'])[0].value))
+                                                                      or 1):
+                    grainID = g + 1
+                    
+                    # --- filter valid locations
+                    
+                    filter = substituteLocation(options.filter, [elemID,nodeID,grainID], ipCoordinates[n])                  # generates an expression that is only true for the locations specified by options.filter
+                    if filter != '' and not eval(filter):                                                                   # for all filter expressions that are not true:...
+                        continue                                                                                            # ... ignore this data point and continue with next
+                    
+                    # --- group data locations
+                    
+                    group = substituteLocation('#'.join(options.separation), [elemID,nodeID,grainID], ipCoordinates[n])     # generates a unique key for a group of separated data based on the separation criterium for the location
+                    if group not in data:                                                                                   # create a new group if not yet present
+                        data[group] = []
+                    data[group].append([])                                                                                  # append a new list for each group member; each list will contain dictionaries with keys 'label, and 'content' for the associated data
+                    data[group][-1].append({
+                                            'label': 'location',
+                                            'content': [elemID,nodeID,grainID] + ipCoordinates[n], 
+                                           })                                                                               # first entry in this list always contains the location data
+                    
+                    # --- get data from t16 file
+                    
+                    if options.elementalScalar:
+                        for label in options.elementalScalar:
+                            if assembleHeader: 
+                                header.append(label.replace(' ',''))
+                            data[group][-1].append({
+                                                    'label': label,
+                                                    'content': [ p.element_scalar(e,stat['IndexOfLabel'][label])[n].value ], 
+                                                   })
+                    
+                    if options.elementalTensor:
+                        for label in options.elementalTensor:
+                            if assembleHeader: 
+                                header += ['%s.%s'%(label.replace(' ',''),component) for component in ['intensity','t11','t22','t33','t12','t23','t13']]
+                            data[group][-1].append({
+                                                    'label': label,
+                                                    'content': [ eval("p.element_tensor(e,stat['IndexOfLabel'][label])[n].%s"%component)     
+                                                                 for component in ['intensity','t11','t22','t33','t12','t23','t13'] ], 
+                                                   })
+        
+                    if options.homogenizationResult:
+                        for label in options.homogenizationResult:
+                            outputIndex = list(zip(*outputFormat['Homogenization']['outputs'])[0]).index(label)             # find the position of this output in the outputFormat
+                            length = int(outputFormat['Homogenization']['outputs'][outputIndex][1])
+                            if length > 1:
+                                if assembleHeader: 
+                                    header += ['%i_%s'%(component+1,label) for component in range(length)]
+                                data[group][-1].append({
+                                                        'label': label,
+                                                        'content': [ p.element_scalar(e,stat['IndexOfLabel']['%i_%s'%(component+1,label)])[n].value 
+                                                                     for component in range(length) ], 
+                                                       })
+                            else:
+                                if assembleHeader: 
+                                    header.append(label)
+                                data[group][-1].append({
+                                                        'label': label,
+                                                        'content': [ p.element_scalar(e,stat['IndexOfLabel']['%s'%label])[n].value ], 
+                                                       })
+        
+                    if options.crystalliteResult:
+                        for label in options.crystalliteResult:
+                            outputIndex = list(zip(*outputFormat['Crystallite']['outputs'])[0]).index(label)                # find the position of this output in the outputFormat
+                            length = int(outputFormat['Crystallite']['outputs'][outputIndex][1])
+                            if length > 1:
+                                if assembleHeader: 
+                                    header += ['%i_%i_%s'%(g+1,component+1,label) for component in range(length)]
+                                data[group][-1].append({
+                                                        'label': label,
+                                                        'content': [ p.element_scalar(e,stat['IndexOfLabel']['%i_%i_%s'%(g+1,component+1,label)])[n].value 
+                                                                     for component in range(length) ], 
+                                                       })
+                            else:
+                                if assembleHeader: 
+                                    header.append('%i_%s'%(g+1,label))
+                                data[group][-1].append({
+                                                        'label':label,
+                                                        'content': [ p.element_scalar(e,stat['IndexOfLabel']['%i_%s'%(g+1,label)])[n].value ], 
+                                                       })
+        
+                    if options.constitutiveResult:
+                        for label in options.constitutiveResult:
+                            outputIndex = list(zip(*outputFormat['Constitutive']['outputs'])[0]).index(label)               # find the position of this output in the outputFormat
+                            length = int(outputFormat['Constitutive']['outputs'][outputIndex][1])
+                            if length > 1:
+                                if assembleHeader: 
+                                    header += ['%i_%i_%s'%(g+1,component+1,label) for component in range(length)]
+                                data[group][-1].append({
+                                                        'label':label,
+                                                        'content': [ p.element_scalar(e,stat['IndexOfLabel']['%i_%i_%s'%(g+1,component+1,label)])[n].value 
+                                                                     for component in range(length) ],
+                                                       })
+                            else:
+                                if assembleHeader: 
+                                    header.append('%i_%s'%(g+1,label))
+                                data[group][-1].append({
+                                                        'label':label,
+                                                        'content': [ p.element_scalar(e,stat['IndexOfLabel']['%i_%s'%(g+1,label)])[n].value ], 
+                                                       })
+                    
+                    assembleHeader = False
+    
+    if options.separateFiles:
+        if fileOpen:
+            file.close()
+            fileOpen = False
+        outFilename = eval('"'+eval("'%%s_inc%%0%ii.txt'%(math.log10(max(increments))+1)")+'"%(dirname + os.sep + os.path.split(filename)[1],increment)')
+    else:
+        outFilename = '%s.txt'%(dirname + os.sep + os.path.split(filename)[1])
+    
+    # --- write header to file
+    
+    if not fileOpen:
+        file = open(outFilename,'w')
+        fileOpen = True
+        file.write('2\theader\n')
+        file.write('$Id: postResults 205 2010-06-08 15:23:31Z MPIE\p.eisenlohr $\n')
+        if options.time:
+            basic = ['inc','time']
+        else:
+            basic = ['inc']
+        if options.nodalScalar: 
+            file.write('\t'.join(basic + ['elem','node','grain','node.x','node.y','node.z'] + header) + '\n')
+        else:
+            file.write('\t'.join(basic + ['elem','node','grain','ip.x','ip.y','ip.z'] + header) + '\n')
+        
+    # --- write data to file
+    
+    output = []
+    for group in data:
+        if options.time:
+            output.append([increment, p.time])
+        else:
+            output.append([increment])
+        for chunk in range(len(data[group][0])):
+            label = data[group][0][chunk]['label']                                                                      # name of chunk (e.g. 'orientation', or 'flow stress')
+            groupContent = [data[group][member][chunk]['content'] for member in range(len(data[group]))]                # list of each member's chunk
+            if label == 'location':
+                condensedGroupContent = mapFunc(label, groupContent, 'avg')                                             # always average location
+                if len(groupContent) > 1:                                                                               # e,n,g nonsense if averaged over more than one entry...
+                    condensedGroupContent[:3] = ['n/a']*3                                                               # ...so return 'n/a'
+            else:
+                condensedGroupContent = mapFunc(label, groupContent, options.func)                                      # map function to groupContent to get condensed data of this group's chunk
+            output[-1] += condensedGroupContent
+    
+    for groupvalues in sortBySeparation(output, options.separation, int(options.time)):                                 # sort output according to separation criteria
+        file.write('\t'.join(map(str,groupvalues)) + '\n')
+
+if fileOpen:
+    file.close()
+
+
+# ---------------------------       DONE     --------------------------------
+
