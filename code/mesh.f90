@@ -70,7 +70,7 @@
 
  integer(pInt) :: hypoelasticTableStyle
  integer(pInt) :: initialcondTableStyle
- integer(pInt), parameter :: FE_Nelemtypes = 8
+ integer(pInt), parameter :: FE_Nelemtypes = 9
  integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNsubNodes = 56
  integer(pInt), parameter :: FE_maxNips = 27
@@ -85,7 +85,8 @@
    4, & ! element 157
    6, & ! element 136
    8, & ! element 21
-   8  & ! element 117
+   8, & ! element 117
+   8  & ! element 57 (c3d20r == c3d8 --> copy of 7)
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NoriginalNodes = &
  (/8, & ! element 7
@@ -95,7 +96,8 @@
    4, & ! element 157
    6, & ! element 136
    20,& ! element 21
-   8  & ! element 117
+   8, & ! element 117
+   20 & ! element 57 (c3d20r == c3d8 --> copy of 7)
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nips = &
  (/8, & ! element 7
@@ -105,7 +107,8 @@
    4, & ! element 157
    6, & ! element 136
    27,& ! element 21
-   1  & ! element 117
+   1, & ! element 117
+   8  & ! element 57 (c3d20r == c3d8 --> copy of 7)
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipNeighbors = &
  (/6, & ! element 7
@@ -115,7 +118,8 @@
    6, & ! element 157
    6, & ! element 136
    6, & ! element 21
-   6  & ! element 117
+   6, & ! element 117
+   6  & ! element 57 (c3d20r == c3d8 --> copy of 7)
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NsubNodes = &
  (/19,& ! element 7
@@ -125,7 +129,8 @@
    0, & ! element 157
    15,& ! element 136
    56,& ! element 21
-   0  & ! element 117   
+   0, & ! element 117
+   19 & ! element 57 (c3d20r == c3d8 --> copy of 7)
   /)
  integer(pInt), dimension(FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
@@ -136,7 +141,8 @@
   3,3,3,3,0,0, & ! element 157
   3,4,4,4,3,0, & ! element 136
   4,4,4,4,4,4, & ! element 21
-  4,4,4,4,4,4  & ! element 117
+  4,4,4,4,4,4, & ! element 117
+  4,4,4,4,4,4  & ! element 57 (c3d20r == c3d8 --> copy of 7)
    /),(/FE_maxNipNeighbors,FE_Nelemtypes/))
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_maxNnodesAtIP = &
  (/1, & ! element 7
@@ -146,7 +152,8 @@
    1, & ! element 157
    1, & ! element 136
    4, & ! element 21
-   8  & ! element 117
+   8, & ! element 117
+   1  & ! element 57 (c3d20r == c3d8 --> copy of 7)
   /)
  integer(pInt), dimension(FE_NipFaceNodes,FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
@@ -193,6 +200,12 @@
   4,1,5,8 , &
   8,7,6,5 , &
   1,2,3,4 , & ! element 117
+  2,1,5,6 , &
+  3,2,6,7 , &
+  4,3,7,8 , &
+  4,1,5,8 , &
+  8,7,6,5 , &
+  1,2,3,4 , & ! element 57 (c3d20r == c3d8 --> copy of 7)
   2,1,5,6 , &
   3,2,6,7 , &
   4,3,7,8 , &
@@ -331,6 +344,9 @@
            '123', &
            'c3d8r')
       FE_mapElemtype = 8            ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
+    case ( '57', &
+           'c3d20r')
+      FE_mapElemtype = 9            ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
     case default 
       FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
  endselect
@@ -516,7 +532,7 @@ candidateFace: do f = 1,FE_maxNipNeighbors            ! check each face of candi
     5,  &
     6   &
     /),(/FE_maxNnodesAtIP(6),FE_Nips(6)/))
-  FE_nodesAtIP(:,:FE_Nips(7),7) = &  ! element 21
+ FE_nodesAtIP(:,:FE_Nips(7),7) = &  ! element 21
     reshape((/&
     1,0, 0,0,  &
     1,2, 0,0,  &
@@ -546,6 +562,21 @@ candidateFace: do f = 1,FE_maxNipNeighbors            ! check each face of candi
     7,8, 0,0,  &
     7,0, 0,0   &
     /),(/FE_maxNnodesAtIP(7),FE_Nips(7)/))
+!! FE_nodesAtIP(:,:FE_Nips(8),8) = &  ! element 117 WHY IS THIS NOT DEFINED (AS FOR 134)??
+!!    reshape((/&
+!!    1,2,3,4,5,6,7,8   &
+!!    /),(/FE_maxNnodesAtIP(8),FE_Nips(8)/))
+ FE_nodesAtIP(:,:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
+    reshape((/&
+    1,  &
+    2,  &
+    4,  &
+    3,  &
+    5,  &
+    6,  &
+    8,  &
+    7   &
+    /),(/FE_maxNnodesAtIP(9),FE_Nips(9)/))
  
  ! fill FE_ipNeighbor with data
  FE_ipNeighbor(:FE_NipNeighbors(1),:FE_Nips(1),1) = &  ! element 7
@@ -632,6 +663,17 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     reshape((/&
     -3,-5,-4,-2,-6,-1   &
     /),(/FE_NipNeighbors(8),FE_Nips(8)/))
+ FE_ipNeighbor(:FE_NipNeighbors(9),:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
+    reshape((/&
+     2,-5, 3,-2, 5,-1,  &
+    -3, 1, 4,-2, 6,-1,  &
+     4,-5,-4, 1, 7,-1,  &
+    -3, 3,-4, 2, 8,-1,  &
+     6,-5, 7,-2,-6, 1,  &
+    -3, 5, 8,-2,-6, 2,  &
+     8,-5,-4, 5,-6, 3,  &
+    -3, 7,-4, 6,-6, 4   &
+    /),(/FE_NipNeighbors(9),FE_Nips(9)/))
  
  ! fill FE_subNodeParent with data
  FE_subNodeParent(:FE_Nips(1),:FE_NsubNodes(1),1) = &  ! element 7
@@ -762,6 +804,28 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 4, 4, 5, 5, 5, 5, 7, 7, 7, 7, 1, 1, 3, 3, 6, 6, 2  & 
     /),(/FE_Nips(7),FE_NsubNodes(7)/))
 !FE_subNodeParent(:FE_Nips(8),:FE_NsubNodes(8),8)      ! element 117 has no subnodes
+ FE_subNodeParent(:FE_Nips(9),:FE_NsubNodes(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
+    reshape((/&
+    1, 2, 0, 0, 0, 0, 0, 0,  &
+    2, 3, 0, 0, 0, 0, 0, 0,  &
+    3, 4, 0, 0, 0, 0, 0, 0,  &
+    4, 1, 0, 0, 0, 0, 0, 0,  &
+    1, 5, 0, 0, 0, 0, 0, 0,  &
+    2, 6, 0, 0, 0, 0, 0, 0,  &
+    3, 7, 0, 0, 0, 0, 0, 0,  &
+    4, 8, 0, 0, 0, 0, 0, 0,  &
+    5, 6, 0, 0, 0, 0, 0, 0,  &
+    6, 7, 0, 0, 0, 0, 0, 0,  &
+    7, 8, 0, 0, 0, 0, 0, 0,  &
+    8, 5, 0, 0, 0, 0, 0, 0,  &
+    1, 2, 3, 4, 0, 0, 0, 0,  &
+    1, 2, 6, 5, 0, 0, 0, 0,  &
+    2, 3, 7, 6, 0, 0, 0, 0,  &
+    3, 4, 8, 7, 0, 0, 0, 0,  &
+    1, 4, 8, 5, 0, 0, 0, 0,  &
+    5, 6, 7, 8, 0, 0, 0, 0,  &
+    1, 2, 3, 4, 5, 6, 7, 8   & 
+    /),(/FE_Nips(9),FE_NsubNodes(9)/))
  
  ! fill FE_subNodeOnIPFace with data
  FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(1),:FE_Nips(1),1) = &  ! element 7
@@ -1097,6 +1161,57 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
      5, 6, 7, 8, &
      1, 4, 3, 2  &
     /),(/FE_NipFaceNodes,FE_NipNeighbors(8),FE_Nips(8)/))
+ FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(9),:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
+    reshape((/&
+     9,21,27,22, & ! 1
+     1,13,25,12, &
+    12,25,27,21, &
+     1, 9,22,13, &
+    13,22,27,25, &
+     1,12,21, 9, &
+     2,10,23,14, & ! 2
+     9,22,27,21, &
+    10,21,27,23, &
+     2,14,22, 9, &
+    14,23,27,22, &
+     2, 9,21,10, &
+    11,24,27,21, & ! 3
+     4,12,25,16, &
+     4,16,24,11, &
+    12,21,27,25, &
+    16,25,27,24, &
+     4,11,21,12, &
+     3,15,23,10, & ! 4
+    11,21,27,24, &
+     3,11,24,15, &
+    10,23,27,21, &
+    15,24,27,23, &
+     3,10,21,11, &
+    17,22,27,26, & ! 5
+     5,20,25,13, &
+    20,26,27,25, &
+     5,13,22,17, &
+     5,17,26,20, &
+    13,25,27,22, &
+     6,14,23,18, & ! 6
+    17,26,27,22, &
+    18,23,27,26, &
+     6,17,22,14, &
+     6,18,26,17, &
+    14,22,27,23, &
+    19,26,27,24, & ! 7
+     8,16,25,20, &
+     8,19,24,16, &
+    20,25,27,26, &
+     8,20,26,19, &
+    16,24,27,25, &
+     7,18,23,15, & ! 8
+    19,24,27,26, &
+     7,15,24,19, &
+    18,26,27,23, &
+     7,19,26,18, &
+    15,23,27,24  &
+    /),(/FE_NipFaceNodes,FE_NipNeighbors(9),FE_Nips(9)/))
  
  return
  
