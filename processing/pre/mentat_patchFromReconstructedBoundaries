@@ -1,17 +1,29 @@
 #!/usr/bin/env python
 
-releases = ['2010r1','2008r1','2007r1','2005r3']
-
-
 import sys,os,pwd,math,re
 #import Image,ImageDraw
 from optparse import OptionParser
 
-for release in releases:
-	libPath = '/msc/mentat%s/shlib/'%release
-	if os.path.exists(libPath):
-		sys.path.append(libPath)
-		break
+releases = {'2010':['linux64',''],
+            '2008r1':[''],
+            '2007r1':[''],
+            '2005r3':[''],
+           }
+
+file = open('%s/../MSCpath'%os.path.dirname(sys.argv[0]))
+MSCpath = os.path.normpath(file.readline().strip())
+file.close()
+
+for release,subdirs in sorted(releases.items(),reverse=True):
+  for subdir in subdirs:
+    libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
+    if os.path.exists(libPath):
+      sys.path.append(libPath)
+      break
+    else:
+      continue
+  break
+
 from py_mentat import *
 
 

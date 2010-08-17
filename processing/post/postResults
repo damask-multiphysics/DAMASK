@@ -1,15 +1,28 @@
 #!/usr/bin/env python 
 
-releases = ['2010b3','2008r1','2007r1','2005r3']
-
-
 import os, sys, math, re, threading, time
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
-for release in releases:
-    libPath = '/msc/mentat%s/shlib/'%release
+
+releases = {'2010':['linux64',''],
+            '2008r1':[''],
+            '2007r1':[''],
+            '2005r3':[''],
+           }
+
+file = open('%s/../MSCpath'%os.path.dirname(sys.argv[0]))
+MSCpath = os.path.normpath(file.readline().strip())
+file.close()
+
+for release,subdirs in sorted(releases.items(),reverse=True):
+  for subdir in subdirs:
+    libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
     if os.path.exists(libPath):
-        sys.path.append(libPath)
-        break
+      sys.path.append(libPath)
+      break
+    else:
+      continue
+  break
+
 from py_post import *
 
 
@@ -368,7 +381,7 @@ Example:
 2) global sum of squared data falling into first quadrant arc between R1 and R2
 --filter 'x*x + y*y >= R1*R1 and x*x + y*y <= R2*R2' --map 'lambda list: sum([item*item for item in list])'
 
-$Id: postResults 205 2010-06-08 15:23:31Z MPIE\p.eisenlohr $
+$Id$
 """)
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
@@ -685,7 +698,7 @@ for increment in increments:
         file = open(outFilename,'w')
         fileOpen = True
         file.write('2\theader\n')
-        file.write('$Id: postResults 205 2010-06-08 15:23:31Z MPIE\p.eisenlohr $\n')
+        file.write('$Id$\n')
         if options.time:
             basic = ['inc','time']
         else:
