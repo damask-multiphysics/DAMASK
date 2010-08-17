@@ -4,12 +4,14 @@ WORKINGDIR=`dirname $0`
 INSTALLDIR="/msc"
 echo "Input path of MARC/MENTAT installation: [$INSTALLDIR]"
 read INSTALLDIR
+INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
 if [ -z $INSTALLDIR ]; then
    INSTALLDIR="/msc"
 fi
 
 # tools
 echo 'copying Marc tools...'
+theDIR=$INSTALLDIR/marc2010/tools
 for filename in 'comp_user' \
                 'comp_user_h' \
                 'comp_user_mp' \
@@ -17,24 +19,29 @@ for filename in 'comp_user' \
                 'run_h_marc' \
                 'run_mp_marc' \
                 'include_linux_64'; do
-  cp $WORKINGDIR/Marc_tools/$filename $INSTALLDIR/marc2010/tools
+  cp $WORKINGDIR/Marc_tools/$filename $theDIR
+  echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $filename
 done
 
 # Mentat scripts
 echo 'copying Mentat scripts...'
+theDIR=$INSTALLDIR/mentat2010/bin
 for filename in 'edit_window' \
                 'submit1' \
                 'submit2' \
                 'submit3'; do
-  cp $WORKINGDIR/Mentat_bin/$filename $INSTALLDIR/mentat2010/bin
+  cp $WORKINGDIR/Mentat_bin/$filename $theDIR
+  echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $filename
 done
 
 # Mentat scripts
 echo 'copying Mentat menus...'
+theDIR=$INSTALLDIR/mentat2010/menus
 for filename in 'job_run.ms'; do
-  cp $WORKINGDIR/Mentat_menus/$filename $INSTALLDIR/mentat2010/menus
+  cp $WORKINGDIR/Mentat_menus/$filename $theDIR
+  echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $filename
 done
 
