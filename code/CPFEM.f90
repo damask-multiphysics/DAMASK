@@ -191,27 +191,27 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     enddo                                                               ! ...to break potential race in multithreading
     n = n+1_pInt
     if (.not. CPFEM_init_inProgress) then                               ! yes my thread won!
-			CPFEM_init_inProgress = .true.
-			call prec_init()
-			call IO_init()
-			call numerics_init()
-			call debug_init()
-			call math_init()
-			call FE_init()
-			call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
-			call lattice_init()
-			call material_init()
-			call constitutive_init()
-			call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
-			call homogenization_init(Temperature)
-			call CPFEM_init()
-			call mpie_interface_init()
-			CPFEM_init_done = .true.
-			CPFEM_init_inProgress = .false.
-	  else                                                                ! loser, loser...
+      CPFEM_init_inProgress = .true.
+      call prec_init()
+      call IO_init()
+      call numerics_init()
+      call debug_init()
+      call math_init()
+      call FE_init()
+      call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
+      call lattice_init()
+      call material_init()
+      call constitutive_init()
+      call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
+      call homogenization_init(Temperature)
+      call CPFEM_init()
+      call mpie_interface_init()
+      CPFEM_init_done = .true.
+      CPFEM_init_inProgress = .false.
+    else                                                                ! loser, loser...
       do while (CPFEM_init_inProgress)
-      end do
-		endif
+      enddo
+    endif
   endif
   
   cp_en = mesh_FEasCP('elem',element)
@@ -318,7 +318,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
 
         !  translate from dP/dF to dCS/dE
           H = 0.0_pReal
-          forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
+          do i=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3; do n=1,3
+!          forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
             H(i,j,k,l) = H(i,j,k,l) + &
                           materialpoint_F(j,m,IP,cp_en) * &
                           materialpoint_F(l,n,IP,cp_en) * &
@@ -326,9 +327,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                           math_I3(j,l)*materialpoint_F(i,m,IP,cp_en)*materialpoint_P(k,m,IP,cp_en) + &
                           0.5_pReal*(math_I3(i,k)*Kirchhoff(j,l) + math_I3(j,l)*Kirchhoff(i,k) + &
                                      math_I3(i,l)*Kirchhoff(j,k) + math_I3(j,k)*Kirchhoff(i,l))
-          forall(i=1:3,j=1:3,k=1:3,l=1:3) &
-            H_sym(i,j,k,l)= 0.25_pReal*(H(i,j,k,l)+H(j,i,k,l)+H(i,j,l,k)+H(j,i,l,k))  ! where to use the symmetric version??
-          CPFEM_dcsde(:,:,IP,cp_en) = math_Mandel3333to66(J_inverse*H)
+          enddo; enddo; enddo; enddo; enddo; enddo
+!          forall(i=1:3,j=1:3,k=1:3,l=1:3) &
+!            H_sym(i,j,k,l) = 0.25_pReal*(H(i,j,k,l)+H(j,i,k,l)+H(i,j,l,k)+H(j,i,l,k))  ! where to use this symmetric version ??
+          CPFEM_dcsde(:,:,IP,cp_en) = math_Mandel3333to66(J_inverse*H)                 ! should this use the symmetrized H ??
         endif
       endif
     
@@ -339,8 +341,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       else if (mode == 5) then
         CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
       end if
-	  call random_number(rnd)
-	  if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
+      call random_number(rnd)
+      if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
       materialpoint_Temperature(IP,cp_en)   = Temperature
       materialpoint_F0(:,:,IP,cp_en)        = ffn
       materialpoint_F(:,:,IP,cp_en)         = ffn1
@@ -378,4 +380,3 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
 end subroutine
 
 END MODULE CPFEM
- 

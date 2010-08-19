@@ -1427,8 +1427,10 @@ LpLoop: do
      ! calculate Jacobian for correction term 
      if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
        dTdLp = 0.0_pReal
-       forall (h=1:3,j=1:3,k=1:3,l=1:3,m=1:3) &
+       do h=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3
+!       forall (h=1:3,j=1:3,k=1:3,l=1:3,m=1:3) &
          dTdLp(3*(h-1)+j,3*(k-1)+l) = dTdLp(3*(h-1)+j,3*(k-1)+l) + C(h,j,l,m)*AB(k,m)+C(h,j,m,l)*BTA(m,k)
+       enddo; enddo; enddo; enddo; enddo
        dTdLp = -0.5_pReal*crystallite_subdt(g,i,e)*dTdLp
        dRdLp = math_identity2nd(9) - math_mul99x99(dLpdT_constitutive,dTdLp)
        invdRdLp = 0.0_pReal
@@ -1459,8 +1461,10 @@ LpLoop: do
    endif
 
    ! leapfrog to updated Lp
-   forall (k=1:3,l=1:3,m=1:3,n=1:3) & 
+   do k=1,3; do l=1,3; do m=1,3; do n=1,3
+!   forall (k=1:3,l=1:3,m=1:3,n=1:3) & 
      Lpguess(k,l) = Lpguess(k,l) - leapfrog*invdRdLp(3*(k-1)+l,3*(m-1)+n)*residuum(m,n)
+   enddo; enddo; enddo; enddo
  enddo LpLoop
 
  ! calculate new plastic and elastic deformation gradient
