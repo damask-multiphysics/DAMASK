@@ -458,8 +458,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         converged                     ! flag indicating if iteration converged
   real(pReal), dimension(9,9) ::                        dPdF99
   real(pReal), dimension(3,3,3,3,2) ::                  dPdF_perturbation
-  real(pReal), dimension(constitutive_maxSizeDotState) :: delta_dotState1, &          ! difference between current and previous dotstate
-                                                        delta_dotState2               ! difference between previousDotState and previousDotState2
   real(pReal)                                           dot_prod12, &
                                                         dot_prod22, &
                                                         formerSubStep
@@ -715,10 +713,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                                 crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
                                                 crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)
-              delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
-              delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
-              dot_prod12 = dot_product(delta_dotState1, delta_dotState2)
-              dot_prod22 = dot_product(delta_dotState2, delta_dotState2)
+              dot_prod12 = dot_product( constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p, &
+                                        constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
+              dot_prod22 = dot_product( constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p, &
+                                        constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
               if (      dot_prod22 > 0.0_pReal &
                   .and. (     dot_prod12 < 0.0_pReal &
                          .or. dot_product(constitutive_dotState(g,i,e)%p, constitutive_previousDotState(g,i,e)%p) < 0.0_pReal) ) &
@@ -972,10 +970,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
                                                         crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
                                                         g,i,e)                                        ! collect dot state
-                      delta_dotState1 = constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p
-                      delta_dotState2 = constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p
-                      dot_prod12 = dot_product(delta_dotState1, delta_dotState2)
-                      dot_prod22 = dot_product(delta_dotState2, delta_dotState2)
+                      dot_prod12 = dot_product( constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p, &
+                                                constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
+                      dot_prod22 = dot_product( constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p, &
+                                                constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
                       if (      dot_prod22 > 0.0_pReal &
                           .and. (     dot_prod12 < 0.0_pReal &
                                  .or. dot_product(constitutive_dotState(g,i,e)%p, &
