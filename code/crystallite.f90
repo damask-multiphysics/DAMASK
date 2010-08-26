@@ -129,6 +129,12 @@ subroutine crystallite_init(Temperature)
  integer(pInt)               myStructure, &                ! lattice structure 
                              myPhase
  
+ write(6,*)
+ write(6,*) '<<<+-  crystallite init  -+>>>'
+ write(6,*) '$Id$'
+ write(6,*)
+ 
+ 
  gMax = homogenization_maxNgrains
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
@@ -307,10 +313,6 @@ subroutine crystallite_init(Temperature)
  
   !    *** Output to MARC output file ***
   !$OMP CRITICAL (write2out)
-    write(6,*)
-    write(6,*) '<<<+-  crystallite init  -+>>>'
-    write(6,*) '$Id$'
-    write(6,*)
     write(6,'(a35,x,7(i5,x))') 'crystallite_Temperature:           ', shape(crystallite_Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
     write(6,'(a35,x,7(i5,x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
