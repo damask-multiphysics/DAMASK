@@ -21,219 +21,6 @@
 !             - make sure the file "material.config" exists in the working
 !               directory
 !********************************************************************
-!
-include "prec.f90"             ! uses nothing else
-
-
-MODULE mpie_interface
- use prec, only: pInt, pReal
- character(len=64), parameter :: FEsolver = 'Spectral'
- character(len=5),  parameter :: InputFileExtension = '.mesh'
-
-CONTAINS
-
-!********************************************************************
-! initialize interface module
-!
-!********************************************************************
-subroutine mpie_interface_init()
-
- write(6,*)
- write(6,*) '<<<+-  mpie_spectral init  -+>>>'
- write(6,*) '$Id$'
- write(6,*)
-
- return
-endsubroutine
-
-!********************************************************************
-! extract working directory from loadcase file
-! possibly based on current working dir
-!********************************************************************
-function getSolverWorkingDirectoryName()
-
- implicit none
-
- character(len=1024) cwd,outname,getSolverWorkingDirectoryName
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
-
- call getarg(2,outname)                                ! path to loadFile
- 
- if (scan(outname,pathSep) == 1) then                  ! absolute path given as command line argument
-   getSolverWorkingDirectoryName = outname(1:scan(outname,pathSep,back=.true.))
- else
-   call getcwd(cwd)
-   getSolverWorkingDirectoryName = trim(cwd)//'/'//outname(1:scan(outname,pathSep,back=.true.))
- endif
- 
- getSolverWorkingDirectoryName = rectifyPath(getSolverWorkingDirectoryName)
- 
- return
- 
-endfunction
-
-!********************************************************************
-! basename of meshfile from command line arguments
-!
-!********************************************************************
-function getSolverJobName()
-
- use prec, only: pInt
-
- implicit none
-
- character(1024) getSolverJobName, outName, cwd
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
- integer(pInt) posExt,posSep
-
- getSolverJobName = ''
-
- call getarg(1,outName)
- posExt = scan(outName,'.',back=.true.)
- posSep = scan(outName,pathSep,back=.true.)
- 
- if (posExt <= posSep) posExt = len_trim(outName)+1       ! no extension present
- getSolverJobName = outName(1:posExt-1)                   ! path to mesh file (excl. extension)
- 
- if (scan(getSolverJobName,pathSep) /= 1) then            ! relative path given as command line argument
-   call getcwd(cwd)
-   getSolverJobName = rectifyPath(trim(cwd)//'/'//getSolverJobName)
- else
-   getSolverJobName = rectifyPath(getSolverJobName)
- endif
- 
- getSolverJobName = makeRelativePath(getSolverWorkingDirectoryName(),&
-                                    getSolverJobName)
- return
-endfunction
-
-
-!********************************************************************
-! relative path of loadcase from command line arguments
-!
-!********************************************************************
-function getLoadcaseName()
-
- use prec, only: pInt
-
- implicit none
-
- character(len=1024) getLoadcaseName, outName, cwd
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
- integer(pInt) posExt,posSep
-
- posExt = 0                                                    ! not sure if required
-
- call getarg(2,getLoadcaseName)
- posExt = scan(getLoadcaseName,'.',back=.true.)
- posSep = scan(getLoadcaseName,pathSep,back=.true.)
- 
- if (posExt <= posSep) getLoadcaseName = trim(getLoadcaseName)//('.load')   ! no extension present
- if (scan(getLoadcaseName,pathSep) /= 1) then          ! relative path given as command line argument
-   call getcwd(cwd)
-   getLoadcaseName = rectifyPath(trim(cwd)//'/'//getLoadcaseName)
- else
-   getLoadcaseName = rectifyPath(getLoadcaseName)
- endif
- 
- getLoadcaseName = makeRelativePath(getSolverWorkingDirectoryName(),&
-                                    getLoadcaseName)
- return
-endfunction
-
-
-!********************************************************************
-! remove ../ and ./ from path
-!
-!********************************************************************
-function rectifyPath(path)
-
- use prec, only: pInt
-
- implicit none
- 
- character(len=*) path
- character(len=len_trim(path)) rectifyPath
- integer(pInt) i,j,k,l
-
- !remove ./ from path
- l = len_trim(path)
- rectifyPath = path
- do i = l,2,-1
-    if ( rectifyPath(i-1:i) == './' .and. rectifyPath(i-2:i-2) /= '.' ) &
-      rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
- enddo
-
- !remove ../ and corresponding directory from rectifyPath
- l = len_trim(rectifyPath)
- 
- i = index(rectifyPath(i:l),'../')
- j = 0_pInt
-
- do while (i > j)
-    j = scan(rectifyPath(:i-2),'/',back=.true.)
-    rectifyPath(j+1:l) = rectifyPath(i+3:l)//repeat(' ',2+i-j)
-    i = j+index(rectifyPath(j+1:l),'../')
- enddo
- if(len_trim(rectifyPath) == 0) rectifyPath = '/'
- return
- 
- endfunction rectifyPath
-
-
-!********************************************************************
-! relative path from absolute a to absolute b
-!
-!********************************************************************
-function makeRelativePath(a,b)
-
- use prec, only: pInt
-
- implicit none
- 
- character (len=*) :: a,b
- character (len=1024) :: makeRelativePath
- integer(pInt) i,posLastCommonSlash,remainingSlashes
-
- posLastCommonSlash = 0
- remainingSlashes = 0
- do i = 1,min(1024,len_trim(a),len_trim(b))
-   if (a(i:i) /= b(i:i)) exit
-   if (a(i:i) == '/') posLastCommonSlash = i
- enddo
- do i = posLastCommonSlash+1,len_trim(a)
-   if (a(i:i) == '/') remainingSlashes = remainingSlashes + 1
- enddo
- makeRelativePath = repeat('../',remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
- return
-endfunction makeRelativePath
-
-END MODULE
-
-
-
-include "IO.f90"               ! uses prec
-include "numerics.f90"         ! uses prec, IO
-include "math.f90"             ! uses prec, numerics
-include "debug.f90"            ! uses prec, numerics
-include "FEsolving.f90"        ! uses prec, IO
-include "mesh.f90"             ! uses prec, math, IO, FEsolving
-include "material.f90"         ! uses prec, math, IO, mesh
-include "lattice.f90"          ! uses prec, math, IO, material
-include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, lattice, material, debug
-include "constitutive_j2.f90"            ! uses prec, math, IO, lattice, material, debug
-include "constitutive_dislotwin.f90"    ! uses prec, math, IO, lattice, material, debug
-include "constitutive_nonlocal.f90"      ! uses prec, math, IO, lattice, material, debug
-include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
-include "crystallite.f90"      ! uses prec, math, IO, numerics 
-include "homogenization_isostrain.f90"   ! uses prec, math, IO, 
-include "homogenization_RGC.f90"         ! uses prec, math, IO, numerics, mesh: added <<<updated 31.07.2009>>>
-include "homogenization.f90"   ! uses prec, math, IO, numerics
-include "CPFEM.f90"            ! uses prec, math, IO, numerics, debug, FEsolving, mesh, lattice, constitutive, crystallite
-
-
-
-!********************************************************************
 program mpie_spectral
 !********************************************************************
 
@@ -242,76 +29,102 @@ program mpie_spectral
  use IO
  use math
  use CPFEM, only: CPFEM_general
- use FEsolving, only: FEsolving_execElem, FEsolving_execIP
- use debug
- 
+
  implicit none
+ include 'fftw3.f' !header file for fftw3 (declaring variables) library is also needed
 
- real(pReal), dimension (:,:,:), allocatable :: bc_velocityGrad, &
-                                                bc_stress          ! velocity gradient and stress BC
- real(pReal), dimension(:), allocatable :: bc_timeIncrement        ! length of increment
- integer(pInt), dimension(:), allocatable :: bc_steps              ! number of steps
- logical, dimension(:,:,:,:), allocatable :: bc_mask               ! mask
- 
- real(pReal) temperature                                           ! not used, but needed
- real(pReal), dimension(6) :: stress                               !
- real(pReal), dimension(6,6) :: dsde
- 
- character(len=1024) path,line
- logical, dimension(9) :: bc_maskvector
- logical gotResolution,gotDimension,gotHomogenization
- 
- integer(pInt), parameter :: maxNchunksInput = 24                 ! 4 identifiers, 18 values for the matrices and 2 scalars
+ !variables to read in from loadcase and mesh file
+ real(pReal), dimension(9) ::                      valuevector           ! stores information temporarily from loadcase file
+ integer(pInt), parameter ::                       maxNchunksInput = 24  ! 4 identifiers, 18 values for the matrices and 2 scalars
  integer(pInt), dimension (1+maxNchunksInput*2) :: posInput
- integer(pInt), parameter :: maxNchunksMesh = 7                   ! 4 identifiers, 3 values  
- integer(pInt), dimension (1+2*maxNchunksMesh) :: posMesh
- 
- real(pReal), dimension(9) :: valuevector                         ! stores information temporarily from loadcase file
- 
- integer(pInt) unit, N_l, N_s, N_t, N_n, N, i, j, k, l            ! numbers of identifiers, loop variables
- integer(pInt) e, homog
- real(pReal) x, y, z
- 
+ integer(pInt), parameter ::                       maxNchunksMesh = 7    ! 4 identifiers, 3 values
+ integer(pInt), dimension (1+2*maxNchunksMesh) ::  posMesh
+ integer(pInt) unit, N_l, N_s, N_t, N_n                                  ! numbers of identifiers
+ logical gotResolution,gotDimension,gotHomogenization
+ logical, dimension(9) :: bc_maskvector
+ character(len=1024) path, line
+
+! variables storing information from loadcase file
+ integer(pInt)                                  N_Loadcases, steps
+ integer(pInt), dimension(:), allocatable ::    bc_steps              ! number of steps
+ integer(pInt), dimension (3,3) ::              bc_stress_i           ! conversion from bc_mask
+ real(pReal)                                    timeinc
+ real(pReal), dimension (:,:,:), allocatable :: bc_velocityGrad, &
+                                                bc_stress             ! velocity gradient and stress BC
+ real(pReal), dimension(:), allocatable ::      bc_timeIncrement      ! length of increment
+ logical, dimension(:,:,:,:), allocatable ::    bc_mask               ! mask of boundary conditions
+
+! variables storing information from mesh file
+ integer(pInt) homog, prodnn
+ real(pReal) wgt
  integer(pInt), dimension(3) :: resolution
- 
+ real(pReal), dimension(3) ::  meshdimension
+
+! stress etc.
+ real(pReal), dimension(6) ::           cstress                   ! cauchy stress in Mandel notation
  real(pReal), dimension (3,3) ::        pstress                   ! Piola-Kirchhoff stress in Matrix notation
- real(pReal), dimension (3,3,3,3) ::    dPdF                      ! 
- real(pReal), dimension(3,3,3,3) ::     c0,s0,g1
- real(pReal), dimension(6,6) ::         c066,s066
+ real(pReal), dimension (3,3,3,3) ::    dPdF,c0,s0                ! ??, reference stiffnes, (reference stiffness)^-1
+ real(pReal), dimension(6,6) ::         dsde,c066,s066            ! mandel notation
+ real(pReal), dimension(3,3) ::         disgradmacro
+ real(pReal), dimension(3,3) ::         cstress_av, defgrad_av, aux33
+ real(pReal), dimension(:,:,:,:,:), allocatable :: cstress_field, defgrad, defgradold, start
 
- 
- real(pReal), dimension(:), allocatable :: datafft
- real(pReal), dimension(:,:,:,:,:), allocatable :: workfft,workfftim,sg,disgrad,defgradold
+! variables storing information for spectral method
+ complex(pReal), dimension(:,:,:,:,:), allocatable :: workfft
+ complex(pReal), dimension(3,3) :: ddefgrad
+ real(pReal), dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat
+ real(pReal), dimension(3) :: xk
+ real(pReal), dimension(3,3) :: xknormdyad
+ integer(pInt), dimension(3) :: k_s
+ integer*8, dimension(2) :: plan
 
- integer(pInt), dimension (3,3) :: iudot,iscau
-  
- real(pReal), dimension(3,3) :: disgradmacro, disgradmacroactual
- real(pReal), dimension(3,3) :: ddisgradmacro, ddisgradmacroacum, ddisgrad, ddisgradim
- real(pReal), dimension(3,3) :: defgrad0, defgrad
- real(pReal), dimension(3,3) :: udot, scauchy, scauav, aux33, xkdyad, xknormdyad
-
- !integer(pInt), dimension(2) :: nn2 m.diehl
-
- real(pReal), dimension(3) :: delt,xk
- real(pReal), dimension(6) :: aux6
-
- integer(pInt) prodnn,itmax, jload, ielem, ii, jj, k1, kxx, kyy, kzz, kx, ky, kz, idum, iter, imicro, m1, n1, p, q, ione
-                                                                                      
- real(pReal) wgt,error,timestep,erre,errs,evm,svm,det,xknorm, erraux, scaunorm
+! convergency etc.
  logical errmatinv
+ integer(pInt) itmax, ierr
+ real(pReal) error, err_stress_av, err_stress_max, err_strain_av, err_strain_max
+ real(pReal), dimension(3,3) :: strain_err, cstress_err
 
- 
- if (IargC() < 2) call IO_error(102)                     ! check for correct Nr. of arguments given
+! loop variables etc.
+ integer(pInt)  i, j, k, l, m, n, p
+ integer(pInt)  loadcase, ielem, ial, iter, calcmode
 
-! Now reading the loadcase file and assigne the variables
- path = getLoadcaseName()                                
+ real(pReal) temperature                                           ! not used, but needed
+
+!gmsh
+ character(len=1024) :: nriter
+ character(len=1024) :: nrstep
+!gmsh
+
+!Initializing
  bc_maskvector = ''
  unit = 234_pInt
+
  N_l = 0_pInt
  N_s = 0_pInt
  N_t = 0_pInt
  N_n = 0_pInt
+
+ disgradmacro = .0_pReal
+ c0 = .0_pReal; c066 = .0_pReal
+ s0 = .0_pReal; s066 = .0_pReal
+ cstress_err = .0_pReal; strain_err = .0_pReal
  
+ cstress = .0_pReal
+ dsde = .0_pReal
+
+ resolution = 1_pInt; meshdimension = .0_pReal
+
+ error = 0.001_pReal
+ itmax = 50_pInt
+
+ temperature = 300.0_pReal
+
+ gotResolution =.false.; gotDimension =.false.; gotHomogenization = .false.
+
+ if (IargC() < 2) call IO_error(102)                     ! check for correct Nr. of arguments given
+
+! Reading the loadcase file and assingn variables
+ path = getLoadcaseName()
  print*,'Loadcase: ',trim(path)
  print*,'Workingdir: ',trim(getSolverWorkingDirectoryName())
 
@@ -322,7 +135,7 @@ program mpie_spectral
    read(unit,'(a1024)',END = 101) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    posInput = IO_stringPos(line,maxNchunksInput)
-   do i = 1,maxNchunksInput,1
+   do i = 1, maxNchunksInput, 1
        select case (IO_lc(IO_stringValue(line,posInput,i)))
             case('l','velocitygrad')
                  N_l = N_l+1
@@ -340,77 +153,71 @@ program mpie_spectral
  enddo
 
 ! allocate memory depending on lines in input file
-101 N = N_l
- allocate (bc_velocityGrad(3,3,N));       bc_velocityGrad = 0.0_pReal
- allocate (bc_stress(3,3,N));             bc_stress = 0.0_pReal
- allocate (bc_mask(3,3,2,N));             bc_mask = .false.
- allocate (bc_timeIncrement(N));          bc_timeIncrement = 0.0_pReal
- allocate (bc_steps(N));                  bc_steps = 0_pInt
+101 N_Loadcases = N_l
+
+ allocate (bc_velocityGrad(3,3,N_Loadcases));       bc_velocityGrad = 0.0_pReal
+ allocate (bc_stress(3,3,N_Loadcases));             bc_stress = 0.0_pReal
+ allocate (bc_mask(3,3,2,N_Loadcases));             bc_mask = .false.
+ allocate (bc_timeIncrement(N_Loadcases));          bc_timeIncrement = 0.0_pReal
+ allocate (bc_steps(N_Loadcases));                  bc_steps = 0_pInt
 
  rewind(unit)
- j = 0_pInt
+ i = 0_pInt
  do
    read(unit,'(a1024)',END = 200) line
    if (IO_isBlank(line)) cycle                           ! skip empty lines
-   j = j+1
+   i = i + 1
    posInput = IO_stringPos(line,maxNchunksInput)
-   do i = 1,maxNchunksInput,2
-     select case (IO_lc(IO_stringValue(line,posInput,i)))
+   do j = 1,maxNchunksInput,2
+     select case (IO_lc(IO_stringValue(line,posInput,j)))
        case('l','velocitygrad')
          valuevector = 0.0_pReal
-         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,i+k) /= '#'
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '#'
          do k = 1,9
-           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,i+k)  ! assign values for the velocity gradient matrix
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k)  ! assign values for the velocity gradient matrix
          enddo
-         bc_mask(:,:,1,j) = reshape(bc_maskvector,(/3,3/))
-         bc_velocityGrad(:,:,j) = reshape(valuevector,(/3,3/))
+         bc_mask(:,:,1,i) = reshape(bc_maskvector,(/3,3/))
+         bc_velocityGrad(:,:,i) = reshape(valuevector,(/3,3/))
        case('s','stress')
          valuevector = 0.0_pReal
-         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,i+k) /= '#'
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '#'
          do k = 1,9
-           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,i+k)  ! assign values for the bc_stress matrix
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k)  ! assign values for the bc_stress matrix
          enddo
-         bc_mask(:,:,2,j) = reshape(bc_maskvector,(/3,3/))
-         bc_stress(:,:,j) = reshape(valuevector,(/3,3/))
+         bc_mask(:,:,2,i) = reshape(bc_maskvector,(/3,3/))
+         bc_stress(:,:,i) = reshape(valuevector,(/3,3/))
        case('t','time','delta')                                            ! increment time
-           bc_timeIncrement(j) = IO_floatValue(line,posInput,i+1)
+           bc_timeIncrement(i) = IO_floatValue(line,posInput,j+1)
        case('n','incs','increments','steps')                               ! bc_steps
-           bc_steps(j) = IO_intValue(line,posInput,i+1)
+           bc_steps(i) = IO_intValue(line,posInput,j+1)
      end select
-   enddo
- enddo
+ enddo; enddo
+
 200 close(unit)
 
- ! consistency checks
- do j = 1,N
- !  if (any(bc_mask(:,:,1,j) == bc_mask(:,:,2,j))) &                       ! don't enforce consistency to allow values as initial guess
- !    call IO_error(47,j)                                                  ! bc_mask consistency
-   if (any(math_transpose3x3(bc_stress(:,:,j)) + bc_stress(:,:,j) /= 2.0_pReal * bc_stress(:,:,j))) &
-     call IO_error(48,j)                                                  ! bc_stress symmetry
- 
-   print '(a,/,3(3(f12.6,x)/))','L',bc_velocityGrad(:,:,j)
-   print '(a,/,3(3(f12.6,x)/))','bc_stress',bc_stress(:,:,j)
-   print '(a,/,3(3(l,x)/))','bc_mask for velocitygrad',bc_mask(:,:,1,j)
-   print '(a,/,3(3(l,x)/))','bc_mask for stress',bc_mask(:,:,2,j)
-   print *,'time',bc_timeIncrement(j)
-   print *,'incs',bc_steps(j)
+! consistency checks
+ do i = 1, N_Loadcases
+   if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) &
+     call IO_error(47,i)                                                  ! bc_mask consistency
+   if (any(math_transpose3x3(bc_stress(:,:,i)) + bc_stress(:,:,i) /= 2.0_pReal * bc_stress(:,:,i))) &
+     call IO_error(48,i)                                                  ! bc_stress symmetry
+
+   print '(a,/,3(3(f12.6,x)/))','L',bc_velocityGrad(:,:,i)
+   print '(a,/,3(3(f12.6,x)/))','bc_stress',bc_stress(:,:,i)
+   print '(a,/,3(3(l,x)/))','bc_mask for velocitygrad',bc_mask(:,:,1,i)
+   print '(a,/,3(3(l,x)/))','bc_mask for stress',bc_mask(:,:,2,i)
+   print *,'time',bc_timeIncrement(i)
+   print *,'incs',bc_steps(i)
    print *, ''
  enddo
- 
+
 !read header of mesh file to get the information needed before the complete mesh file is intepretated by mesh.f90
- resolution = 1_pInt
- x = 1_pReal
- y = 1_pReal
- z = 1_pReal
- gotResolution =     .false.
- gotDimension =      .false.
- gotHomogenization = .false.
  path = getSolverJobName()
  print*,'JobName: ',trim(path)
  if (.not. IO_open_file(unit,trim(path)//InputFileExtension)) call IO_error(101,ext_msg = path)
 
  rewind(unit)
- do 
+ do
    read(unit,'(a1024)',END = 100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    posMesh = IO_stringPos(line,maxNchunksMesh)
@@ -421,13 +228,13 @@ program mpie_spectral
          do i = 2,6,2
            select case (IO_lc(IO_stringValue(line,posMesh,i)))
              case('x')
-                 x = IO_floatValue(line,posMesh,i+1)
+                 meshdimension(1) = IO_floatValue(line,posMesh,i+1)
              case('y')
-                 y = IO_floatValue(line,posMesh,i+1)
+                 meshdimension(2) = IO_floatValue(line,posMesh,i+1)
              case('z')
-                 z = IO_floatValue(line,posMesh,i+1)
+                 meshdimension(3) = IO_floatValue(line,posMesh,i+1)
            end select
-		 enddo
+         enddo
      case ('homogenization')
          gotHomogenization = .true.
          homog = IO_intValue(line,posMesh,2)
@@ -447,339 +254,289 @@ program mpie_spectral
    if (gotDimension .and. gotHomogenization .and. gotResolution) exit
  enddo
  100 close(unit)
- 
+
  print '(a,/,i3,i3,i3)','resolution a b c', resolution
- print '(a,/,f6.2,f6.2,f6.2)','dimension x y z',x, y, z
+ print '(a,/,f6.2,f6.2,f6.2)','dimension x y z', meshdimension
  print *,'homogenization',homog
  print *, ''
 
- temperature = 300.0_pReal
-
-
- allocate (datafft(2*resolution(1)*resolution(2)*resolution(3)))
- !allocate (datafft(resolution(1)*resolution(2)*resolution(3))) !for real fft m.diehl
+ allocate (workfft(resolution(1),resolution(2),resolution(3),3,3));                 workfft              = .0_pReal
+ allocate (gamma_hat(3,3,3,3,resolution(1),resolution(2),resolution(3)));           gamma_hat            = .0_pReal
+ allocate (cstress_field(resolution(1),resolution(2),resolution(3),3,3));           cstress_field        = .0_pReal
+ allocate (defgrad(3,3,resolution(1),resolution(2),resolution(3)));                 defgrad              = .0_pReal
+ allocate (defgradold(3,3,resolution(1),resolution(2),resolution(3)));              defgradold           = .0_pReal
+ allocate (start(3,3,resolution(1),resolution(2),resolution(3)));                   start                = .0_pReal
  
- allocate (workfft(resolution(1),resolution(2),resolution(3),3,3))
- allocate (workfftim(resolution(1),resolution(2),resolution(3),3,3)) ! probably not needed for real fft m.diehl
- allocate (sg(resolution(1),resolution(2),resolution(3),3,3))
- allocate (disgrad(3,3,resolution(1),resolution(2),resolution(3)))
- allocate (defgradold(3,3,resolution(1),resolution(2),resolution(3)))
-
- open(56,file='str_str.out',status='unknown')
-
- write(56,'(t2,a,t14,a,t26,a,t38,a,t50,a,t62,a,t74,a,t86,a,t98,a,&
-            t110,a,t122,a,t134,a,t146,a,t158,a,t170,a)')&
-           'U1,1','U2,2','U3,3', 'U2,3','U3,1','U1,2','U3,2','U1,3','U2,1',&
-           'S11','S22','S33','S23','S31','S12'
-
- ione=1
-
- error = 0.00001
- itmax = 50
-
- delt(1) = 1.
- delt(2) = 1.
- delt(3) = 1.
+ call dfftw_plan_dft_r2c_3d(plan(1),resolution(1),resolution(2),resolution(3), cstress_field(:,:,:,:,:),workfft(1:resolution(1)/2+1,:,:,:,:), FFTW_PATIENT)
+ call dfftw_plan_dft_3d(plan(2), resolution(1),resolution(2),resolution(3), workfft(:,:,:,:,:),workfft(:,:,:,:,:), FFTW_FORWARD, FFTW_PATIENT)
  
- !nn2(1) = resolution(1) m.diehl
- !nn2(2) = resolution(2) m.diehl
-
  prodnn = resolution(1)*resolution(2)*resolution(3)
- wgt = 1./prodnn
+ wgt = 1._pReal/real(prodnn, pReal)
 
- c0 = .0_pReal      !stiffness of reference material
- c066 = .0_pReal    !other way of notating c0
- stress = .0_pReal  !initialization
- dsde = .0_pReal 
+ ielem = 0_pInt
 
- 
- do ielem = 1, prodnn !call each element with identity (math_i3) to initialize with high stress
-!#
-   call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,stress,dsde, pstress, dPdF)
-   c066 = c066+dsde   
-   c0 = c0+math_Mandel66to3333(dsde)
- enddo
+ do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+   defgradold(:,:,i,j,k) = math_I3                                             !to fit calculation of first step to calculation of following steps
+   defgrad(:,:,i,j,k) = math_I3                                                !to fit calculation of first step to calculation of following steps
+   ielem = ielem +1                                                             !loop over FPs and determine elastic constants of reference material
+   call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,cstress,dsde, pstress, dPdF)
+   c066 = c066+dsde
+ enddo; enddo; enddo
 
- c066 = c066*wgt   
- c0 = c0*wgt
+ c066 = c066*wgt
 
-  
- call math_invert(6,c066,s066,idum,errmatinv)
- if(errmatinv) then
-   write(*,*) 'ERROR IN C0 INVERSION'
-   stop
- endif
+ call math_invert(6,c066,s066,i,errmatinv) !i is just a dummy variable
+ if(errmatinv) call IO_error(45,ext_msg = "problem in c0 inversion")  ! todo: change number and add message to io.f90
 
  s0 = math_Mandel66to3333(s066)
+ c0 = math_Mandel66to3333(c066)
 
-! INITIALIZATION BEFORE STARTING WITH LOADINGS
+ do k = 1, resolution(3)
+   k_s(3) = k-1
+   if(k > resolution(3)/2) k_s(3) = k_s(3)-resolution(3)
+     xk(3) = .0_pReal
+     if(resolution(3) > 1) xk(3) = real(k_s(3), pReal)/meshdimension(3)
+     do j = 1, resolution(2)
+       k_s(2) = j-1
+       if(j > resolution(2)/2) k_s(2) = k_s(2)-resolution(2)
+       xk(2) = real(k_s(2), pReal)/meshdimension(2)
+       do i = 1, resolution(1)
+         k_s(1) = i-1
+         if(i >  resolution(1)/2) k_s(1) = k_s(1) -resolution(1)
+         xk(1) = real(k_s(1), pReal)/meshdimension(1)
 
- disgrad      = 0.0_pReal
- disgradmacro = 0.0_pReal
+         xknormdyad=.0_pReal
 
- do jload = 1,N !Loop over loadcases defined in the loadcase file
-   udot(:,:) = bc_velocityGrad(:,:,jload)
-  ! udot(1,1)=-.35           ! temporary, to solve problem with bc mask
-  ! udot(2,2)=-.35          not needed any more
-   scauchy(:,:) = bc_stress(:,:,jload)
-   iudot = 0
-   iscau = 0
-  
-   do i = 1, 3 !convert information about rb's from bc_mask in corresponding arrays
-     do j = 1, 3
-     !  if(bc_mask(i,j,1,jload)) iudot(i,j) = 1
-     !  if(bc_mask(i,j,2,jload)) iscau(i,j) = 1!  
-	   if(bc_mask(i,j,2,jload)) then
-	     iscau(i,j) = 1
-		 iudot(i,j) = 0
-	   else
-	     iscau(i,j) = 0
-		 iudot(i,j) = 1
-		 endif
+         if (any(xk /= .0_pReal)) then
+           do l = 1,3; do m = 1,3
+             xknormdyad(l,m) = xk(l)*xk(m)/(xk(1)**2+xk(2)**2+xk(3)**2)
+           enddo; enddo
+         endif
+
+!forall loops don't work for the next 2 loop constructs!!!
+         aux33 = .0_pReal
+         do l = 1,3; do m = 1,3; do n = 1,3; do p = 1,3
+           aux33(l,m) = aux33(l,m)+c0(l,n,m,p)*xknormdyad(n,p)
+         enddo; enddo; enddo; enddo
+
+         aux33 = math_inv3x3(aux33)
+
+         do l=1,3; do m=1,3; do n=1,3; do p=1,3
+           gamma_hat(l,m,n,p,i,j,k) = -aux33(l,n)*xknormdyad(m,p)
+         enddo; enddo; enddo; enddo
+
+ enddo; enddo; enddo
+
+! Initialization done
+ open(539,file='stress-strain.out')
+!*************************************************************
+!Loop over loadcases defined in the loadcase file
+ do loadcase = 1, N_Loadcases
+!*************************************************************
+   bc_stress_i = 0_pInt  !convert information about stress BC's from bc_mask in an integer-array
+   do m = 1,3; do n = 1,3
+       if(bc_mask(m,n,2,loadcase)) bc_stress_i(m,n) = 1
    enddo; enddo
-  
-   timestep = bc_timeIncrement(jload)/bc_steps(jload)
 
-   do imicro = 1, bc_steps(jload)  ! loop oper steps defined in input file for current loadcase
+   timeinc = bc_timeIncrement(loadcase)/bc_steps(loadcase)
+
+   do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)    !no fluctuation as guess for new loadcase (last two summands will disappear)
+     start(:,:,i,j,k) = bc_velocityGrad(:,:,loadcase)*timeinc -defgrad(:,:,i,j,k) + defgradold(:,:,i,j,k)
+   enddo; enddo; enddo
+
+!*************************************************************
+! loop oper steps defined in input file for current loadcase
+   do steps = 1, bc_steps(loadcase)
+!*************************************************************
      write(*,*) '***************************************************'
-     write(*,*) 'STEP = ',imicro
-   
-! INITIALIZATION BEFORE NEW TIME STEP
-     disgradmacro = disgradmacro+udot*timestep  !update macroscopic displacementgradient
-     ddisgradmacro = 0._pReal
-     ielem = 0_pInt
+     write(*,*) 'STEP = ',steps
 
-     do k = 1, resolution(3)  !loop over FPs
-       do j = 1, resolution(2)
-         do i = 1, resolution(1)
-           ielem = ielem+1
-           defgradold(:,:,i,j,k) = math_I3(:,:) + disgrad(:,:,i,j,k)  ! wind forward
-           disgrad(:,:,i,j,k)    = disgradmacro(:,:)                  ! no fluctuations as guess
-           call CPFEM_general(3,defgradold(:,:,i,j,k),math_I3(:,:)+disgrad(:,:,i,j,k),&
-                              temperature,timestep,ielem,1_pInt,&
-                              stress,dsde, pstress, dPdF)
+     do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+       aux33 = defgrad(:,:,i,j,k)
+       defgrad(:,:,i,j,k)    = 2 * defgrad(:,:,i,j,k) - defgradold(:,:,i,j,k) + start(:,:,i,j,k)   ! old fluctuations as guess
+       defgradold(:,:,i,j,k) = aux33                                                               ! wind forward
      enddo; enddo; enddo
 
-     ielem = 0
-     call debug_reset()
-
-     do k = 1, resolution(3) !loop over FPs
-       do j = 1, resolution(2)
-         do i = 1, resolution(1)
-           ielem = ielem+1
-           call CPFEM_general(min(2,ielem),&    ! first element gets calcMode 1, others 2 (saves winding forward effort)
-		                      defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
-                              temperature,timestep,ielem,1_pInt,&
-                              stress,dsde, pstress, dPdF)
-           sg(i,j,k,:,:) = math_Mandel6to33(stress)
-     enddo; enddo; enddo
-
-     call debug_info()
-	 
-     ddisgradmacroacum = 0.0_pReal
-
+     disgradmacro = disgradmacro + bc_velocityGrad(:,:,loadcase)*timeinc  !update macroscopic displacementgradient (stores the desired BCs of defgrad)
+     start = .0_pReal
+     calcmode = 1_pInt
      iter = 0_pInt
-!#     erre = 2.*error
-     errs = 2.*error
+     err_stress_av = 2.*error; err_strain_av = 2.*error
 
-!#     do while(iter <= itmax.and.(errs > error .or. erre > error))
-     do while(iter < itmax .and. errs > error)
+!*************************************************************
+! convergency loop
+     do while((iter <= itmax).and.((err_stress_av > error).or.(err_strain_av > error)))
        iter = iter+1
        write(*,*) 'ITER = ',iter
-       write(*,*) 'DIRECT FFT OF STRESS FIELD'
-       do ii = 1,3
-         do jj = 1,3
- 		   datafft = 0._pReal
-		   datafft(1:2*prodnn:2) = reshape(sg(:,:,:,ii,jj),(/prodnn/))
-           if(resolution(3) > 1) then
-             call fourn(datafft,resolution,3,1)
-           else
-             call fourn(datafft,resolution(1:2),2,1)
-           endif
-
-		   workfft(:,:,:,ii,jj)   = reshape(datafft(1:2*prodnn:2),resolution)
-		   workfftim(:,:,:,ii,jj) = reshape(datafft(2:2*prodnn:2),resolution)
-
-       enddo; enddo
-	   
-       write(*,*) 'CALCULATING G^pq,ij : SG^ij ...'
-
-       do kzz = 1, resolution(3)
-	     kz = kzz-1
-         if(kzz > resolution(3)/2) kz = kz-resolution(3)
-         if(resolution(3) > 1) then
-           xk(3) = kz/(delt(3)*resolution(3))
-         else
-           xk(3) = 0.
-         endif
-         do kyy = 1, resolution(2)
-	       ky = kyy-1
-           if(kyy > resolution(2)/2) ky = ky-resolution(2)
-           xk(2) = ky/(delt(2)*resolution(2))
-           do kxx = 1, resolution(1)
-	         kx = kxx-1
-             if(kxx > resolution(1)/2) kx = kx-resolution(1)
-             xk(1) = kx/(delt(1)*resolution(1))
-
-             forall (i=1:3,j=1:3) xkdyad(i,j) = xk(i)*xk(j)   ! the dyad is always used and could speed up things by using element-wise multiplication plus summation of array
-             if (any(xk /= 0.0_pReal)) then
-			   xknormdyad = xkdyad * 1.0_pReal/(xk(1)**2+xk(2)**2+xk(3)**2)
-			 else
-			   xknormdyad = xkdyad
-             endif
-             forall(i=1:3,k=1:3) aux33(i,k) = sum(c0(i,:,k,:)*xknormdyad(:,:))
-			 aux33 = math_inv3x3(aux33) 
-             forall (p=1:3,q=1:3,i=1:3,j=1:3) g1(p,q,i,j) = -aux33(p,i)*xkdyad(q,j)
-
-             ddisgrad = 0._pReal
-             ddisgradim = 0._pReal
-
-             do i = 1,3
-               do j = 1,3
-                 if(kx /= 0 .or. ky /= 0 .or. kz /= 0) then
-				   ddisgrad(i,j) = ddisgrad(i,j) + sum(g1(i,j,:,:)*workfft(kxx,kyy,kzz,:,:))
-				   ddisgradim(i,j) = ddisgradim(i,j) + sum(g1(i,j,:,:)*workfftim(kxx,kyy,kzz,:,:))
-                 endif
-             enddo; enddo
-
-             workfft(kxx,kyy,kzz,:,:) = ddisgrad(:,:)
-             workfftim(kxx,kyy,kzz,:,:) = ddisgradim(:,:)
-
-       enddo; enddo; enddo
-
-       write(*,*) 'INVERSE FFT TO GET DISPLACEMENT GRADIENT FIELD'
-
-       do ii = 1,3
-         do jj = 1,3
-
-		   datafft(1:2*prodnn:2) = reshape(workfft(:,:,:,ii,jj),(/prodnn/))
-		   datafft(2:2*prodnn:2) = reshape(workfftim(:,:,:,ii,jj),(/prodnn/))
-
-           if(resolution(3) > 1) then             ! distinguish 2D and 3D case
-             call fourn(datafft,resolution,3,-1)
-           else
-             call fourn(datafft,resolution(1:2),2,-1)
-           endif
-
-  		   disgrad(ii,jj,:,:,:) = disgrad(ii,jj,:,:,:) + ddisgradmacro(ii,jj)
-		   disgrad(ii,jj,:,:,:) = disgrad(ii,jj,:,:,:) + reshape(datafft(1:2*prodnn:2)*wgt,resolution)
-
-       enddo; enddo
+!*************************************************************
+       err_strain_av = .0_pReal; err_stress_av = .0_pReal
+       err_strain_max = .0_pReal; err_stress_max = .0_pReal
+       cstress_av = .0_pReal; defgrad_av=.0_pReal
 
        write(*,*) 'UPDATE STRESS FIELD'
-
-       ielem = 0_pInt 
-       do k = 1, resolution(3)
-         do j = 1, resolution(2)
-           do i = 1, resolution(1)
-
-             ielem = ielem+1
-             call CPFEM_general(3,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
-                                temperature,timestep,ielem,1_pInt,&
-                                stress,dsde, pstress, dPdF)
-
-       enddo; enddo; enddo
-
        ielem = 0_pInt
-       scauav = 0._pReal
-       errs = 0._pReal
-
-       call debug_reset()
-	   
-       do k = 1, resolution(3)
-         do j = 1, resolution(2)
-           do i = 1, resolution(1)
-
-             ielem = ielem+1
-             call CPFEM_general(2,defgradold(:,:,i,j,k),math_i3(:,:)+disgrad(:,:,i,j,k),&
-                                temperature,timestep,ielem,1_pInt,&
-                                stress,dsde, pstress, dPdF)
-
-             aux33 = math_Mandel6to33(stress)
-
-			 errs = errs + sqrt(sum((sg(i,j,k,:,:)-aux33(:,:))**2))
-
-             sg(i,j,k,:,:) = aux33
-             scauav = scauav + aux33          ! average stress
-
+       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+         ielem = ielem + 1
+         call CPFEM_general(3, defgradold(:,:,i,j,k), defgrad(:,:,i,j,k),&
+                          temperature,timeinc,ielem,1_pInt,&
+                          cstress,dsde, pstress, dPdF)
        enddo; enddo; enddo
 
-	   call debug_info()
+       l = 0_pInt
+       ielem = 0_pInt
+       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+         ielem = ielem + 1
+         call CPFEM_general(calcmode,&    ! first element in first iteration retains calcMode 1, others get 2 (saves winding forward effort)
+                             defgradold(:,:,i,j,k), defgrad(:,:,i,j,k),&
+                             temperature,timeinc,ielem,1_pInt,&
+                             cstress,dsde, pstress, dPdF)
+         calcmode = 2
 
-       errs = errs/sqrt(sum(scauav(:,:)**2))
+         aux33 = math_Mandel6to33(cstress)
 
-       scauav = scauav*wgt                                     ! final weighting
-
-!  MIXED BC
-
-
-       ddisgradmacro = 0._pReal
-       do i = 1,3
-         do j = 1,3
-           if(iudot(i,j) == 0) &
-		     ddisgradmacro(i,j) = sum(s0(i,j,:,:)*iscau(:,:)*(scauchy(:,:)-scauav(:,:)))
+         do m = 1,3; do n = 1,3                                           ! calculate stress error
+           if(abs(aux33(m,n)) > 0.1 * abs(cstress_err(m,n))) then         ! only stress components larger than 10% are taking under consideration
+             err_stress_av  = err_stress_av + abs((cstress_field(i,j,k,m,n)-aux33(m,n))/aux33(m,n)) !any find maxval> leave loop
+             err_stress_max = max(err_stress_max, abs((cstress_field(i,j,k,m,n)-aux33(m,n))/aux33(m,n)))
+             l=l+1
+           endif
+         enddo; enddo
+         cstress_field(i,j,k,:,:) = aux33
+         cstress_av = cstress_av + aux33          ! average stress
+       enddo; enddo; enddo
+   
+       err_stress_av = err_stress_av/l        ! do the weighting of the error
+       cstress_av = cstress_av*wgt            ! do the weighting of average stress
+       cstress_err = cstress_av 
+    
+       write(*,*) 'SPECTRAL METHOD TO GET CHANGE OF DEFORMATION GRADIENT FIELD'
+       do m = 1,3; do n = 1,3
+         call dfftw_execute_dft_r2c(plan(1), cstress_field(:,:,:,m,n),workfft(1:resolution(1)/2+1,:,:,m,n))
+       enddo; enddo 
+       workfft=conjg(workfft)
+       do i = 0, resolution(1)/2-2 !unpack fft data for conj complex symmetric part. can be directly used in calculation of cstress_field
+         m = 1
+         do k = 1, resolution(3)
+           n = 1
+           do j = 1, resolution(2)
+             workfft(resolution(1)-i,j,k,:,:) = conjg(workfft(2+i,n,m,:,:))
+             if(n == 1) n = resolution(2) +1
+             n = n-1
+          enddo
+          if(m == 1) m = resolution(3) +1
+            m = m -1
        enddo; enddo
-       ddisgradmacroacum = ddisgradmacroacum+ddisgradmacro
 
-       write(*,*) 'STRESS FIELD ERROR  = ',errs
-       write(*,*) 'STRAIN FIELD ERROR  = ',erre
-!      write(21,101) iter,erre,errs,svm
-!101   format(i3,4(1x,e10.4),10(1x,F7.4))
+       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+         ddefgrad = .0_pReal
+         do m = 1,3; do n = 1,3
+           ddefgrad(m,n) = ddefgrad(m,n) +sum(gamma_hat(m,n,:,:,i,j,k)*workfft(i,j,k,:,:))
+         enddo; enddo
+         workfft(i,j,k,:,:) = ddefgrad(:,:) 
+       enddo; enddo; enddo
+  
+       do m = 1,3; do n = 1,3
+          call dfftw_execute_dft(plan(2), workfft(:,:,:,m,n), workfft(:,:,:,m,n))
+          defgrad(m,n,:,:,:) = defgrad(m,n,:,:,:) + real(workfft(:,:,:,m,n), pReal)*wgt
+       enddo; enddo
+   
+       l = 0_pInt
+       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+         defgrad_av(:,:) = defgrad_av(:,:) + defgrad(:,:,i,j,k)       ! calculate average strain
+         do m = 1,3; do n = 1,3                                       ! calculate strain error
+         if(abs(defgrad(m,n,i,j,k)) > 0.1 * abs(strain_err(m,n))) then
+             err_strain_av = err_strain_av + abs((real(workfft(i,j,k,m,n), pReal)*wgt)/defgrad(m,n,i,j,k))
+             err_strain_max = max(err_strain_max, abs((real(workfft(i,j,k,m,n), pReal)*wgt)/defgrad(m,n,i,j,k)))
+             l=l+1
+           endif
+         enddo; enddo
+       enddo; enddo; enddo
 
-     enddo    ! convergence iteration
+       err_strain_av = err_strain_av/l                 ! weight by number of non-zero strain components
+       defgrad_av = defgrad_av * wgt                   ! weight by number of points
+       strain_err = defgrad_av
+       
+       do m = 1,3; do n = 1,3
+         if(bc_mask(m,n,1,loadcase)) then !adjust defgrad to achieve displacement BC (disgradmacro)
+           defgrad(m,n,:,:,:) = defgrad(m,n,:,:,:) + (disgradmacro(m,n)+math_I3(m,n)-defgrad_av(m,n))
+         endif
+         if(bc_mask(m,n,2,loadcase)) then !adjust defgrad to achieve convergency in stress
+           defgrad(m,n,:,:,:) = defgrad(m,n,:,:,:) + sum(s0(m,n,:,:)*bc_stress_i(:,:)*(bc_stress(:,:,loadcase)-cstress_av(:,:)))
+         endif
+       enddo; enddo
 
-     disgradmacroactual = disgradmacro+ddisgradmacroacum
+       write(*,*) 'STRESS FIELD ERROR AV  = ',err_strain_av
+       write(*,*) 'STRAIN FIELD ERROR AV  = ',err_stress_av
+       write(*,*) 'STRESS FIELD ERROR MAX = ',err_strain_max
+       write(*,*) 'STRAIN FIELD ERROR MAX = ',err_stress_max
 
-     write(*,*) 'U1,1,U2,2,U3,3'
-     write(*,*) disgradmacroactual(1,1),disgradmacroactual(2,2),disgradmacroactual(3,3)
-     write(*,*) 'U1,1/U3,3'
-     write(*,*) disgradmacroactual(1,1)/disgradmacroactual(3,3)
-     write(*,*) 'S11,S22,S33'
-     write(*,*) scauav(1,1),scauav(2,2),scauav(3,3)
+     enddo    ! end looping when convergency is achieved
+     write(539,'(f12.6,a,f12.6)'),defgrad_av(3,3)-1,'   ',cstress_av(3,3)
+     write(*,*) 'U11 U22 U33'
+     write(*,*) defgrad_av(1,1)-1,defgrad_av(2,2)-1,defgrad_av(3,3)-1
+     write(*,*) 'U11/U33'
+     write(*,*) (defgrad_av(1,1)-1)/(defgrad_av(3,3)-1)
+     write(*,*) 'S11 S22 S33'
+     write(*,*) cstress_av(1,1),cstress_av(2,2),cstress_av(3,3)
 
-     write(56,'(15(e11.4,1x))') disgradmacroactual(1,1),disgradmacroactual(2,2),disgradmacroactual(3,3), &
-                                disgradmacroactual(2,3),disgradmacroactual(3,1),disgradmacroactual(1,2), &
-                                disgradmacroactual(3,2),disgradmacroactual(1,3),disgradmacroactual(2,1), &
-                                scauav(1,1),scauav(2,2),scauav(3,3), &
-                                scauav(2,3),scauav(3,1),scauav(1,2)
+!gsmh output
+     write(nriter, *) iter
+     write(nrstep, *) steps
+     nrstep='defgrad'//trim(adjustl(nrstep))//trim(adjustl(nriter))//'_cpfem.msh'
+     open(589,file=nrstep)
+     write(589, '(A, /, A, /, A, /, A, /, I10)'), '$MeshFormat', '2.1 0 8', '$EndMeshFormat', '$Nodes', prodnn
+     do i = 1, prodnn
+       write(589, '(I10, I10, I10, I10)'), i, mod((i-1), resolution(1)) +1, mod(((i-1)/resolution(1)),&
+                       resolution(2)) +1, mod(((i-1)/(resolution(1)*resolution(2))), resolution(3)) +1
+     enddo
+     write(589, '(A, /, A, /, I10)'), '$EndNodes', '$Elements', prodnn
+     do i = 1, prodnn
+       write(589, '(I10, A, I10)'), i, ' 15 2    1     2', i
+     enddo
+     write(589, '(A)'), '$EndElements'
+     write(589, '(A, /, A, /, A, /, A, /, A, /, A, /, A, /, A, /, I10)'), '$NodeData', '1',&
+                              '"'//trim(adjustl(nrstep))//'"', '1','0.0', '3', '0', '9', prodnn
+     ielem = 0_pInt
+     do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+            ielem = ielem + 1
+            write(589, '(i10,f16.8,tr2,f16.8,tr2,f16.8,tr2,f16.8,tr2,f16.8,tr2,f16.8,&
+                                 tr2,f16.8,tr2,f16.8,tr2,f16.8,tr2)'), ielem, defgrad(:,:,i,j,k)
+     enddo; enddo; enddo
+     write(589, *), '$EndNodeData'
+     close(589)
 
-     IF(IMICRO.EQ.1.OR.IMICRO.EQ.40) THEN
+     write(nriter, *) iter
+     write(nrstep, *) steps
+     nrstep = 'stress'//trim(adjustl(nrstep))//trim(adjustl(nriter))//'_cpfem.msh'
+     open(589,file = nrstep)
+     write(589, '(A, /, A, /, A, /, A, /, I10)'), '$MeshFormat', '2.1 0 8', '$EndMeshFormat', '$Nodes', prodnn
+     do i = 1, prodnn
+       write(589, '(I10, I10, I10, I10)'), i, mod((i-1), resolution(1)) +1, mod(((i-1)/resolution(1)),&
+                       resolution(2)) +1, mod(((i-1)/(resolution(1)*resolution(2))), resolution(3)) +1
+     enddo
+     write(589, '(A, /, A, /, I10)'), '$EndNodes', '$Elements', prodnn
+     do i = 1, prodnn
+       write(589, '(I10, A, I10)'), i, ' 15 2    1     2', i
+     enddo
+     write(589, '(A)'), '$EndElements'
+     write(589, '(A, /, A, /, A, /, A, /, A, /, A, /, A, /, A, /, I10)'), '$NodeData', '1',&
+                             '"'//trim(adjustl(nrstep))//'"', '1','0.0', '3', '0', '9', prodnn
+     ielem = 0_pInt
+     do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+            ielem = ielem + 1
+            write(589, '(i10,f16.8,tr2,f16.8,tr2,f16.8,tr2,f16.8,tr2,f16.8,tr2,f16.8,&
+                                  tr2,f16.8,tr2,f16.8,tr2,f16.8,tr2)'), ielem, cstress_field(i,j,k,:,:)
+     enddo; enddo; enddo
+     write(589, *), '$EndNodeData'
+     close(589)
+!end gmsh
 
-      IF(IMICRO.EQ.1) THEN
-      open(91,file='fields1.out',status='unknown')
-      ELSE IF(IMICRO.EQ.40) THEN
-      open(91,file='fields40.out',status='unknown')
-      ENDIF
-
-      write(91,*) delt
-
-      write(91,*) '   x    y    z  ngr   ph  Ui,j ...   Sij ...'
-
-      do k=1,resolution(3)
-      do j=1,resolution(2)
-      do i=1,resolution(1)
-
-!!      write(91,'(5i5,18(e11.3,1x))') i,j,k,jgrain(i,j,k),jphase(i,j,k),
-      write(91,'(5i5,18(e11.3,1x))') i,j,k,ione,ione, &
-           disgrad(1,1,i,j,k),disgrad(2,2,i,j,k),disgrad(3,3,i,j,k), &
-           disgrad(2,3,i,j,k),disgrad(3,1,i,j,k),disgrad(1,2,i,j,k), &
-           disgrad(3,2,i,j,k),disgrad(1,3,i,j,k),disgrad(2,1,i,j,k), &
-           sg(i,j,k,1,1),sg(i,j,k,2,2),sg(i,j,k,3,3), &
-           sg(i,j,k,2,3),sg(i,j,k,3,1),sg(i,j,k,1,2)
-
-      enddo
-      enddo
-      enddo
-
-      close(91)
-
-     ENDIF
-
-   enddo  ! time stepping through increment
- enddo    ! loadcases
-
+   enddo  ! end loping over steps in current loadcase
+ enddo  ! end looping over loadcases
+close(539)
+call dfftw_destroy_plan(plan(2))
+call dfftw_destroy_plan(plan(1))
 end program mpie_spectral
-
 
 !********************************************************************
 ! quit subroutine to satisfy IO_error
@@ -793,94 +550,3 @@ subroutine quit(id)
 
  stop
 end subroutine
-
-
-!********************************************************************
-! fourn subroutine (fourier transform)
-!     FROM NUMERICAL RECIPES IN F77 (FIXED FORMAT), 
-!     CONVERTED INTO FREE FORMAT (RL @ MPIE, JUNE 2010)
-!********************************************************************
-subroutine fourn(data,nn,ndim,isign)
-
- use prec, only: pInt,pReal
- use math, only: pi
- implicit none
-
- integer(pInt) isign,ndim,nn(ndim)
- real(pReal) data(*)
- integer(pInt) i1,i2,i2rev,i3,i3rev,ibit,idim,ifp1,ifp2,ip1,ip2,ip3,k1,k2,n,nprev,nrem,ntot
- real(pReal) tempi,tempr,theta,wi,wpi,wpr,wr,wtemp
- ntot = 1
-
- do idim = 1,ndim
-   ntot = ntot*nn(idim)
- enddo
- 
- nprev = 1
-
- do idim = 1,ndim
-   n = nn(idim)
-   nrem = ntot/(n*nprev)
-   ip1 = 2*nprev
-   ip2 = ip1*n
-   ip3 = ip2*nrem
-   i2rev = 1
- do i2 = 1,ip2,ip1
-   if(i2.lt.i2rev) then
-     do i1 = i2,i2+ip1-2,2
-       do i3 = i1,ip3,ip2
-         i3rev = i2rev+i3-i2
-         tempr = data(i3)
-         tempi = data(i3+1)
-         data(i3) = data(i3rev)
-         data(i3+1) = data(i3rev+1)
-         data(i3rev) = tempr
-         data(i3rev+1) = tempi
-       enddo  
-     enddo
-   endif
-   ibit = ip2/2
-   do while ((ibit.ge.ip1).and.(i2rev.gt.ibit))
-     i2rev = i2rev-ibit
-     ibit = ibit/2
-   enddo
-     i2rev = i2rev+ibit
- enddo
- ifp1 = ip1
-
-    do while (ifp1.lt.ip2)
-          ifp2 = 2*ifp1
-          theta = isign*2_pReal*pi/(ifp2/ip1)
-          wpr = -2_pReal*sin(0.5_pReal*theta)**2
-          wpi = sin(theta)
-          wr = 1_pReal
-          wi = 0_pReal
-     do i3 = 1,ifp1,ip1  !  17
-       do i1 = i3,i3+ip1-2,2  !  16
-         do i2 = i1,ip3,ifp2  !  15
-                k1 = i2
-                k2 = k1+ifp1
-                tempr = wr*data(k2)-wi*data(k2+1)
-                tempi = wr*data(k2+1)+wi*data(k2)
-                data(k2) = data(k1)-tempr
-
-                data(k2+1) = data(k1+1)-tempi
-                data(k1) = data(k1)+tempr
-                data(k1+1) = data(k1+1)+tempi
-         enddo  !  15
-       enddo  !  16
-            wtemp = wr
-            wr = wr*wpr-wi*wpi+wr
-            wi = wi*wpr+wtemp*wpi+wi
-!17        continue
-     enddo  !  17
-          ifp1 = ifp2
-!        goto 2
-!        endif
-    enddo  !  do while (if 2)
-
-        nprev = n*nprev
-!18    continue
- enddo  ! 18
-      return
-      END subroutine
