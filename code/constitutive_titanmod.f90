@@ -146,10 +146,12 @@ implicit none
 
 !* Lists of states and physical parameters
 character(len=*), parameter :: constitutive_titanmod_label = 'titanmod'
-character(len=18), dimension(2), parameter:: constitutive_titanmod_listBasicSlipStates = (/'rho_edge   ', &
+character(len=18), dimension(2), parameter:: constitutive_titanmod_listBasicSlipStates = (/'rho_edge', &
                                                                                             'rho_screw'/)
-character(len=18), dimension(1), parameter:: constitutive_titanmod_listBasicTwinStates = (/'twinFraction'/)                                                                                            
-character(len=18), dimension(19), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge', &
+character(len=18), dimension(2), parameter:: constitutive_titanmod_listBasicTwinStates = (/'twinrho_edge', &
+                                                                                           'twinrho_screw'/)
+                                                                                            
+character(len=18), dimension(20), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge', &
                                                                                                'segment_screw', &
                                                                                                'rss_slip', &
                                                                                                'gamma_dot', &
@@ -159,6 +161,7 @@ character(len=18), dimension(19), parameter:: constitutive_titanmod_listDependen
                                                                                                'invLambdaSlipTwin',&
                                                                                                'stressratio_edgep', &
                                                                                                'stressratio_screwp', &
+                                                                                               'rlengthprefactor', &
                                                                                                'velocity_edge', &
                                                                                                'velocity_screw', &
                                                                                                'edge_generation',&
@@ -169,10 +172,9 @@ character(len=18), dimension(19), parameter:: constitutive_titanmod_listDependen
                                                                                                'total_annihilation', &
                                                                                                'total_density'/)
 
-character(len=18), dimension(4), parameter:: constitutive_titanmod_listDependentTwinStates =(/'invLambdaTwin   ', &
-                                                                                               'meanFreePathTwin', &                                                
-                                                                                               'tauTwinThreshold', &
-                                                                                               'twinVolume      '/)
+character(len=18), dimension(2), parameter:: constitutive_titanmod_listDependentTwinStates =(/'twin_fraction', &
+                                                                                              'twingamma_dot'/)
+
 real(pReal), parameter :: kB = 1.38e-23_pReal ! Boltzmann constant in J/Kelvin
 
 !* Definition of global variables
@@ -214,20 +216,32 @@ real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_titanmod_
 real(pReal),       dimension(:,:,:,:,:,:), allocatable :: constitutive_titanmod_Ctwin_3333                     ! twin elasticity matrix for each instance
 real(pReal), dimension(:,:), allocatable ::               constitutive_titanmod_rho_edge0, &                   ! initial edge dislocation density per slip system for each family and instance
                                                           constitutive_titanmod_rho_screw0, &                  ! initial screw dislocation density per slip system for each family and instance
+                                                          constitutive_titanmod_twinrho_edge0, &                   ! initial edge dislocation density per twin system for each family and instance
+                                                          constitutive_titanmod_twinrho_screw0, &                  ! initial screw dislocation density per twin system for each family and instance
                                                           constitutive_titanmod_burgersPerSlipFamily, &        ! absolute length of burgers vector [m] for each slip family and instance
                                                           constitutive_titanmod_burgersPerSlipSystem, &        ! absolute length of burgers vector [m] for each slip system and instance
                                                           constitutive_titanmod_burgersPerTwinFamily, &        ! absolute length of burgers vector [m] for each twin family and instance
                                                           constitutive_titanmod_burgersPerTwinSystem, &        ! absolute length of burgers vector [m] for each twin system and instance
                                                           constitutive_titanmod_f0_PerSlipFamily, &            ! activation energy for glide [J] for each slip family and instance
                                                           constitutive_titanmod_f0_PerSlipSystem, &            ! activation energy for glide [J] for each slip system and instance
+                                                          constitutive_titanmod_twinf0_PerTwinFamily, &        ! activation energy for glide [J] for each twin family and instance
+                                                          constitutive_titanmod_twinf0_PerTwinSystem, &        ! activation energy for glide [J] for each twin system and instance
                                                           constitutive_titanmod_tau0e_PerSlipFamily, &         ! Initial yield stress for edge dislocations per slip family
                                                           constitutive_titanmod_tau0e_PerSlipSystem, &         ! Initial yield stress for edge dislocations per slip system
                                                           constitutive_titanmod_tau0s_PerSlipFamily, &         ! Initial yield stress for screw dislocations per slip family
                                                           constitutive_titanmod_tau0s_PerSlipSystem, &         ! Initial yield stress for screw dislocations per slip system
+                                                          constitutive_titanmod_twintau0e_PerTwinFamily, &         ! Initial yield stress for edge dislocations per twin family
+                                                          constitutive_titanmod_twintau0e_PerTwinSystem, &         ! Initial yield stress for edge dislocations per twin system
+                                                          constitutive_titanmod_twintau0s_PerTwinFamily, &         ! Initial yield stress for screw dislocations per twin family
+                                                          constitutive_titanmod_twintau0s_PerTwinSystem, &         ! Initial yield stress for screw dislocations per twin system
                                                           constitutive_titanmod_capre_PerSlipFamily, &         ! Capture radii for edge dislocations per slip family
                                                           constitutive_titanmod_capre_PerSlipSystem, &         ! Capture radii for edge dislocations per slip system
                                                           constitutive_titanmod_caprs_PerSlipFamily, &         ! Capture radii for screw dislocations per slip family
                                                           constitutive_titanmod_caprs_PerSlipSystem, &         ! Capture radii for screw dislocations per slip system
+                                                          constitutive_titanmod_twincapre_PerTwinFamily, &         ! Capture radii for edge dislocations per twin family
+                                                          constitutive_titanmod_twincapre_PerTwinSystem, &         ! Capture radii for edge dislocations per twin system
+                                                          constitutive_titanmod_twincaprs_PerTwinFamily, &         ! Capture radii for screw dislocations per twin family
+                                                          constitutive_titanmod_twincaprs_PerTwinSystem, &         ! Capture radii for screw dislocations per twin system
                                                           constitutive_titanmod_pe_PerSlipFamily, &            ! p-exponent in glide velocity
                                                           constitutive_titanmod_ps_PerSlipFamily, &            ! p-exponent in glide velocity
                                                           constitutive_titanmod_qe_PerSlipFamily, &            ! q-exponent in glide velocity
@@ -236,10 +250,22 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_titanmod_
                                                           constitutive_titanmod_ps_PerSlipSystem, &            ! p-exponent in glide velocity
                                                           constitutive_titanmod_qe_PerSlipSystem, &            ! q-exponent in glide velocity
                                                           constitutive_titanmod_qs_PerSlipSystem, &            ! q-exponent in glide velocity
+                                                          constitutive_titanmod_twinpe_PerTwinFamily, &            ! p-exponent in glide velocity
+                                                          constitutive_titanmod_twinps_PerTwinFamily, &            ! p-exponent in glide velocity
+                                                          constitutive_titanmod_twinqe_PerTwinFamily, &            ! q-exponent in glide velocity
+                                                          constitutive_titanmod_twinqs_PerTwinFamily, &            ! q-exponent in glide velocity
+                                                          constitutive_titanmod_twinpe_PerTwinSystem, &            ! p-exponent in glide velocity
+                                                          constitutive_titanmod_twinps_PerTwinSystem, &            ! p-exponent in glide velocity
+                                                          constitutive_titanmod_twinqe_PerTwinSystem, &            ! q-exponent in glide velocity
+                                                          constitutive_titanmod_twinqs_PerTwinSystem, &            ! q-exponent in glide velocity
                                                           constitutive_titanmod_v0e_PerSlipFamily, &           ! edge dislocation velocity prefactor [m/s] for each family and instance
                                                           constitutive_titanmod_v0e_PerSlipSystem, &           ! screw dislocation velocity prefactor [m/s] for each slip system and instance
                                                           constitutive_titanmod_v0s_PerSlipFamily, &           ! edge dislocation velocity prefactor [m/s] for each family and instance
                                                           constitutive_titanmod_v0s_PerSlipSystem, &           ! screw dislocation velocity prefactor [m/s] for each slip system and instance
+                                                          constitutive_titanmod_twinv0e_PerTwinFamily, &           ! edge dislocation velocity prefactor [m/s] for each family and instance
+                                                          constitutive_titanmod_twinv0e_PerTwinSystem, &           ! screw dislocation velocity prefactor [m/s] for each slip system and instance
+                                                          constitutive_titanmod_twinv0s_PerTwinFamily, &           ! edge dislocation velocity prefactor [m/s] for each family and instance
+                                                          constitutive_titanmod_twinv0s_PerTwinSystem, &           ! screw dislocation velocity prefactor [m/s] for each slip system and instance
                                                           constitutive_titanmod_rlengthscrew_PerSlipFamily, &  ! screw dislocation mobility prefactor for kink-pairs per slip family
                                                           constitutive_titanmod_rlengthscrew_PerSlipSystem, &  ! screw dislocation mobility prefactor for kink-pairs per slip system
                                                           constitutive_titanmod_Ndot0PerTwinFamily, &          ! twin nucleation rate [1/m³s] for each twin family and instance
@@ -250,6 +276,10 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_titanmod_
                                                           constitutive_titanmod_CeLambdaSlipPerSlipSystem, &   ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
                                                           constitutive_titanmod_CsLambdaSlipPerSlipFamily, &   ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
                                                           constitutive_titanmod_CsLambdaSlipPerSlipSystem, &   ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+                                                          constitutive_titanmod_twinCeLambdaSlipPerTwinFamily, &   ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
+                                                          constitutive_titanmod_twinCeLambdaSlipPerTwinSystem, &   ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+                                                          constitutive_titanmod_twinCsLambdaSlipPerTwinFamily, &   ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
+                                                          constitutive_titanmod_twinCsLambdaSlipPerTwinSystem, &   ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
                                                           constitutive_titanmod_interactionSlipSlip, &         ! coefficients for slip-slip interaction for each interaction type and instance
                                                           constitutive_titanmod_interaction_ee, &                    ! coefficients for e-e interaction for each interaction type and instance
                                                           constitutive_titanmod_interaction_ss, &               ! coefficients for s-s interaction for each interaction type and instance
@@ -265,7 +295,9 @@ real(pReal),       dimension(:,:,:),       allocatable :: constitutive_titanmod_
                                                           constitutive_titanmod_interactionMatrixTwinSlip, &   ! interaction matrix of twin systems with slip systems for each instance
                                                           constitutive_titanmod_interactionMatrixTwinTwin, &   ! interaction matrix of the different twin systems for each instance                                                          
                                                           constitutive_titanmod_forestProjectionEdge, &           ! matrix of forest projections of edge dislocations for each instance  
-                                                          constitutive_titanmod_forestProjectionScrew           ! matrix of forest projections of screw dislocations for each instance  
+                                                          constitutive_titanmod_forestProjectionScrew, &           ! matrix of forest projections of screw dislocations for each instance  
+                                                          constitutive_titanmod_TwinforestProjectionEdge, &     ! matrix of forest projections of edge dislocations in twin system for each instance  
+                                                          constitutive_titanmod_TwinforestProjectionScrew       ! matrix of forest projections of screw dislocations in twin system for each instance  
 CONTAINS
 !****************************************
 !* - constitutive_titanmod_init
@@ -398,6 +430,23 @@ allocate(constitutive_titanmod_Ndot0PerTwinFamily(lattice_maxNtwinFamily,maxNins
 allocate(constitutive_titanmod_twinsizePerTwinFamily(lattice_maxNtwinFamily,maxNinstance))
 allocate(constitutive_titanmod_CeLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_titanmod_CsLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance))
+
+allocate(constitutive_titanmod_twinrho_edge0(lattice_maxNtwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinrho_screw0(lattice_maxNtwinFamily,maxNinstance)) 
+allocate(constitutive_titanmod_twinf0_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twintau0e_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twintau0s_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twincapre_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twincaprs_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinpe_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinps_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinqe_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinqs_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinv0e_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinv0s_PerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinCeLambdaSlipPerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+allocate(constitutive_titanmod_twinCsLambdaSlipPerTwinFamily(lattice_maxNTwinFamily,maxNinstance))
+
 constitutive_titanmod_rho_edge0                 = 0.0_pReal
 constitutive_titanmod_rho_screw0              = 0.0_pReal
 constitutive_titanmod_burgersPerSlipFamily     = 0.0_pReal
@@ -418,6 +467,23 @@ constitutive_titanmod_pe_PerSlipFamily = 0.0_pReal
 constitutive_titanmod_ps_PerSlipFamily = 0.0_pReal
 constitutive_titanmod_qe_PerSlipFamily = 0.0_pReal
 constitutive_titanmod_qs_PerSlipFamily = 0.0_pReal
+
+constitutive_titanmod_twinrho_edge0                 = 0.0_pReal
+constitutive_titanmod_twinrho_screw0              = 0.0_pReal
+constitutive_titanmod_twinf0_PerTwinFamily       = 0.0_pReal
+constitutive_titanmod_twintau0e_PerTwinFamily       = 0.0_pReal
+constitutive_titanmod_twintau0s_PerTwinFamily       = 0.0_pReal
+constitutive_titanmod_twincapre_PerTwinFamily       = 0.0_pReal
+constitutive_titanmod_twincaprs_PerTwinFamily       = 0.0_pReal
+constitutive_titanmod_twinv0e_PerTwinFamily          = 0.0_pReal
+constitutive_titanmod_twinv0s_PerTwinFamily          = 0.0_pReal
+constitutive_titanmod_twinCeLambdaSlipPerTwinFamily = 0.0_pReal
+constitutive_titanmod_twinCsLambdaSlipPerTwinFamily = 0.0_pReal
+constitutive_titanmod_twinpe_PerTwinFamily = 0.0_pReal
+constitutive_titanmod_twinps_PerTwinFamily = 0.0_pReal
+constitutive_titanmod_twinqe_PerTwinFamily = 0.0_pReal
+constitutive_titanmod_twinqs_PerTwinFamily = 0.0_pReal
+
 allocate(constitutive_titanmod_interactionSlipSlip(lattice_maxNinteraction,maxNinstance)) 
 allocate(constitutive_titanmod_interaction_ee(lattice_maxNinteraction,maxNinstance)) 
 allocate(constitutive_titanmod_interaction_ss(lattice_maxNinteraction,maxNinstance)) 
@@ -461,7 +527,7 @@ do                                                       ! read thru sections of
          output = output + 1
          constitutive_titanmod_output(output,i) = IO_lc(IO_stringValue(line,positions,2))
                 write(6,*) tag
-                 case ('lattice_structure')
+       case ('lattice_structure')
               constitutive_titanmod_structureName(i) = IO_lc(IO_stringValue(line,positions,2))
                 write(6,*) tag
        case ('covera_ratio')
@@ -502,6 +568,16 @@ do                                                       ! read thru sections of
                 constitutive_titanmod_rho_screw0(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag,constitutive_titanmod_rho_screw0(1,i),constitutive_titanmod_rho_screw0(2,i), &
                         constitutive_titanmod_rho_screw0(3,i), constitutive_titanmod_rho_screw0(4,i)
+       case ('twinrho_edge0')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinrho_edge0(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinrho_edge0(1,i),constitutive_titanmod_twinrho_edge0(2,i), &
+                        constitutive_titanmod_twinrho_edge0(3,i), constitutive_titanmod_twinrho_edge0(4,i)
+       case ('twinrho_screw0')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinrho_screw0(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinrho_screw0(1,i),constitutive_titanmod_twinrho_screw0(2,i), &
+                        constitutive_titanmod_twinrho_screw0(3,i), constitutive_titanmod_twinrho_screw0(4,i)
        case ('slipburgers')
              forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_burgersPerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
@@ -516,36 +592,71 @@ do                                                       ! read thru sections of
                 constitutive_titanmod_f0_PerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag,constitutive_titanmod_f0_PerSlipFamily(1,i),constitutive_titanmod_f0_PerSlipFamily(2,i), &
                         constitutive_titanmod_f0_PerSlipFamily(3,i), constitutive_titanmod_f0_PerSlipFamily(4,i)
+       case ('twinf0')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinf0_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinf0_PerTwinFamily(1,i),constitutive_titanmod_twinf0_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twinf0_PerTwinFamily(3,i), constitutive_titanmod_twinf0_PerTwinFamily(4,i)
        case ('tau0e')
               forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_tau0e_PerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag,constitutive_titanmod_tau0e_PerSlipFamily(1,i),constitutive_titanmod_tau0e_PerSlipFamily(2,i), &
                         constitutive_titanmod_tau0e_PerSlipFamily(3,i), constitutive_titanmod_tau0e_PerSlipFamily(4,i)
+       case ('twintau0e')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twintau0e_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twintau0e_PerTwinFamily(1,i),constitutive_titanmod_twintau0e_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twintau0e_PerTwinFamily(3,i), constitutive_titanmod_twintau0e_PerTwinFamily(4,i)
        case ('tau0s')
               forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_tau0s_PerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag,constitutive_titanmod_tau0s_PerSlipFamily(1,i),constitutive_titanmod_tau0s_PerSlipFamily(2,i), &
                         constitutive_titanmod_tau0s_PerSlipFamily(3,i), constitutive_titanmod_tau0s_PerSlipFamily(4,i)
+       case ('twintau0s')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twintau0s_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twintau0s_PerTwinFamily(1,i),constitutive_titanmod_twintau0s_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twintau0s_PerTwinFamily(3,i), constitutive_titanmod_twintau0s_PerTwinFamily(4,i)
        case ('capre')
               forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_capre_PerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag,constitutive_titanmod_capre_PerSlipFamily(1,i),constitutive_titanmod_capre_PerSlipFamily(2,i), &
                         constitutive_titanmod_capre_PerSlipFamily(3,i), constitutive_titanmod_capre_PerSlipFamily(4,i)
+       case ('twincapre')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twincapre_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twincapre_PerTwinFamily(1,i),constitutive_titanmod_twincapre_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twincapre_PerTwinFamily(3,i), constitutive_titanmod_twincapre_PerTwinFamily(4,i)
        case ('caprs')
               forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_caprs_PerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag,constitutive_titanmod_caprs_PerSlipFamily(1,i),constitutive_titanmod_caprs_PerSlipFamily(2,i), &
                         constitutive_titanmod_caprs_PerSlipFamily(3,i), constitutive_titanmod_caprs_PerSlipFamily(4,i)
+       case ('twincaprs')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twincaprs_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twincaprs_PerTwinFamily(1,i),constitutive_titanmod_twincaprs_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twincaprs_PerTwinFamily(3,i), constitutive_titanmod_twincaprs_PerTwinFamily(4,i)
        case ('v0e')
               forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_v0e_PerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag,constitutive_titanmod_v0e_PerSlipFamily(1,i),constitutive_titanmod_v0e_PerSlipFamily(2,i), &
                         constitutive_titanmod_v0e_PerSlipFamily(3,i), constitutive_titanmod_v0e_PerSlipFamily(4,i)
+       case ('twinv0e')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinv0e_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinv0e_PerTwinFamily(1,i),constitutive_titanmod_twinv0e_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twinv0e_PerTwinFamily(3,i), constitutive_titanmod_twinv0e_PerTwinFamily(4,i)
        case ('v0s')
               forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_v0s_PerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag,constitutive_titanmod_v0s_PerSlipFamily(1,i),constitutive_titanmod_v0s_PerSlipFamily(2,i), &
                         constitutive_titanmod_v0s_PerSlipFamily(3,i), constitutive_titanmod_v0s_PerSlipFamily(4,i)
+       case ('twinv0s')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinv0s_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinv0s_PerTwinFamily(1,i),constitutive_titanmod_twinv0s_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twinv0s_PerTwinFamily(3,i), constitutive_titanmod_twinv0s_PerTwinFamily(4,i)
        case ('rlengthscrew')
        forall (j = 1:lattice_maxNslipFamily) &
        constitutive_titanmod_rlengthscrew_PerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
@@ -564,10 +675,20 @@ do                                                       ! read thru sections of
               forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_CeLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag
+       case ('twincelambdaslip')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twincelambdaslipPerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twincelambdaslipPerTwinFamily(1,i),constitutive_titanmod_twincelambdaslipPerTwinFamily(2,i), &
+                        constitutive_titanmod_twincelambdaslipPerTwinFamily(3,i), constitutive_titanmod_twincelambdaslipPerTwinFamily(4,i)
        case ('cslambdaslip')
               forall (j = 1:lattice_maxNslipFamily) &
                 constitutive_titanmod_CsLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1+j)
                 write(6,*) tag
+       case ('twincslambdaslip')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twincslambdaslipPerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twincslambdaslipPerTwinFamily(1,i),constitutive_titanmod_twincslambdaslipPerTwinFamily(2,i), &
+                        constitutive_titanmod_twincslambdaslipPerTwinFamily(3,i), constitutive_titanmod_twincslambdaslipPerTwinFamily(4,i)
        case ('grainsize')
               constitutive_titanmod_GrainSize(i) = IO_floatValue(line,positions,2)
                 write(6,*) tag
@@ -579,21 +700,41 @@ do                                                       ! read thru sections of
                                 constitutive_titanmod_pe_PerSlipFamily(j,i) = IO_floatValue(line,positions,2)
                 write(6,*) tag,constitutive_titanmod_pe_PerSlipFamily(1,i),constitutive_titanmod_pe_PerSlipFamily(2,i), &
                         constitutive_titanmod_pe_PerSlipFamily(3,i), constitutive_titanmod_pe_PerSlipFamily(4,i),i
+       case ('twinpe')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinpe_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinpe_PerTwinFamily(1,i),constitutive_titanmod_twinpe_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twinpe_PerTwinFamily(3,i), constitutive_titanmod_twinpe_PerTwinFamily(4,i)
        case ('ps')
                           forall (j = 1:lattice_maxNslipFamily) &
                                 constitutive_titanmod_ps_PerSlipFamily(j,i) = IO_floatValue(line,positions,2)
                 write(6,*) tag,constitutive_titanmod_ps_PerSlipFamily(1,i),constitutive_titanmod_ps_PerSlipFamily(2,i), &
                         constitutive_titanmod_ps_PerSlipFamily(3,i), constitutive_titanmod_ps_PerSlipFamily(4,i),i
+       case ('twinps')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinps_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinps_PerTwinFamily(1,i),constitutive_titanmod_twinps_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twinps_PerTwinFamily(3,i), constitutive_titanmod_twinps_PerTwinFamily(4,i)
        case ('qe')
                           forall (j = 1:lattice_maxNslipFamily) &
                                 constitutive_titanmod_qe_PerSlipFamily(j,i) = IO_floatValue(line,positions,2)
                 write(6,*) tag,constitutive_titanmod_qe_PerSlipFamily(1,i),constitutive_titanmod_qe_PerSlipFamily(2,i), &
                         constitutive_titanmod_qe_PerSlipFamily(3,i), constitutive_titanmod_qe_PerSlipFamily(4,i),i
+       case ('twinqe')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinf0_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinqe_PerTwinFamily(1,i),constitutive_titanmod_twinqe_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twinqe_PerTwinFamily(3,i), constitutive_titanmod_twinqe_PerTwinFamily(4,i)
        case ('qs')
                           forall (j = 1:lattice_maxNslipFamily) &
                                 constitutive_titanmod_qs_PerSlipFamily(j,i) = IO_floatValue(line,positions,2)
                 write(6,*) tag,constitutive_titanmod_qs_PerSlipFamily(1,i),constitutive_titanmod_qs_PerSlipFamily(2,i), &
                         constitutive_titanmod_qs_PerSlipFamily(3,i), constitutive_titanmod_qs_PerSlipFamily(4,i),i
+       case ('twinqs')
+              forall (j = 1:lattice_maxNtwinFamily) &
+                constitutive_titanmod_twinqs_PerTwinFamily(j,i) = IO_floatValue(line,positions,1+j)
+                write(6,*) tag,constitutive_titanmod_twinqs_PerTwinFamily(1,i),constitutive_titanmod_twinqs_PerTwinFamily(2,i), &
+                        constitutive_titanmod_twinqs_PerTwinFamily(3,i), constitutive_titanmod_twinqs_PerTwinFamily(4,i)
        case ('rexponent')
               constitutive_titanmod_r(i) = IO_floatValue(line,positions,2)
                 write(6,*) tag
@@ -659,27 +800,36 @@ write(6,*) 'Material Property reading done'
 
    !* Sanity checks
    if (myStructure < 1 .or. myStructure > 3)                                call IO_error(205)
-   if (sum(constitutive_titanmod_Nslip(:,i)) <= 0_pInt)                    call IO_error(225)
-   if (sum(constitutive_titanmod_Ntwin(:,i)) < 0_pInt)                     call IO_error(225) !***
+   if (sum(constitutive_titanmod_Nslip(:,i)) <= 0_pInt)                    call IO_error(207)
+   if (sum(constitutive_titanmod_Ntwin(:,i)) < 0_pInt)                     call IO_error(208) !***
    do f = 1,lattice_maxNslipFamily
      if (constitutive_titanmod_Nslip(f,i) > 0_pInt) then   
-       if (constitutive_titanmod_rho_edge0(f,i) < 0.0_pReal)                 call IO_error(220)
-       if (constitutive_titanmod_rho_screw0(f,i) < 0.0_pReal)              call IO_error(220)
-       if (constitutive_titanmod_burgersPerSlipFamily(f,i) <= 0.0_pReal)    call IO_error(221)
-       if (constitutive_titanmod_f0_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(228)
+       if (constitutive_titanmod_rho_edge0(f,i) < 0.0_pReal)                 call IO_error(209)
+       if (constitutive_titanmod_rho_screw0(f,i) < 0.0_pReal)              call IO_error(210)
+       if (constitutive_titanmod_burgersPerSlipFamily(f,i) <= 0.0_pReal)    call IO_error(211)
+       if (constitutive_titanmod_f0_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(212)
        if (constitutive_titanmod_tau0e_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(229)
        if (constitutive_titanmod_tau0s_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(233)
        if (constitutive_titanmod_capre_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(234)
        if (constitutive_titanmod_caprs_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(235)
        if (constitutive_titanmod_v0e_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(226)
-       if (constitutive_titanmod_v0s_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(227)
+       if (constitutive_titanmod_v0s_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(226)
        if (constitutive_titanmod_rlengthscrew_PerSlipFamily(f,i) <= 0.0_pReal) call IO_error(238)
      endif
    enddo
    do f = 1,lattice_maxNtwinFamily
-     if (constitutive_titanmod_Nslip(f,i) > 0_pInt) then   
+     if (constitutive_titanmod_Ntwin(f,i) > 0_pInt) then   
+       if (constitutive_titanmod_twinrho_edge0(f,i) < 0.0_pReal)                 call IO_error(209)
+       if (constitutive_titanmod_twinrho_screw0(f,i) < 0.0_pReal)              call IO_error(210)
        if (constitutive_titanmod_burgersPerTwinFamily(f,i) <= 0.0_pReal)    call IO_error(221) !***
        if (constitutive_titanmod_Ndot0PerTwinFamily(f,i) < 0.0_pReal)       call IO_error(226) !***
+       if (constitutive_titanmod_twinf0_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(228)
+       if (constitutive_titanmod_twintau0e_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(229)
+       if (constitutive_titanmod_twintau0s_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(233)
+       if (constitutive_titanmod_twincapre_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(234)
+       if (constitutive_titanmod_twincaprs_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(235)
+       if (constitutive_titanmod_twinv0e_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(226)
+       if (constitutive_titanmod_twinv0s_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(226)
      endif
    enddo
 !   if (any(constitutive_titanmod_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 1.0_pReal)) call IO_error(229)
@@ -717,10 +867,26 @@ allocate(constitutive_titanmod_v0e_PerSlipSystem(maxTotalNslip,maxNinstance))
 allocate(constitutive_titanmod_v0s_PerSlipSystem(maxTotalNslip,maxNinstance))
 allocate(constitutive_titanmod_rlengthscrew_PerSlipSystem(maxTotalNslip,maxNinstance))
 
+allocate(constitutive_titanmod_twinf0_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twintau0e_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twintau0s_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twincapre_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twincaprs_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twinpe_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twinps_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twinqe_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twinqs_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twinv0e_PerTwinSystem(maxTotalNTwin,maxNinstance))
+allocate(constitutive_titanmod_twinv0s_PerTwinSystem(maxTotalNTwin,maxNinstance))
+
 allocate(constitutive_titanmod_Ndot0PerTwinSystem(maxTotalNtwin, maxNinstance))
 allocate(constitutive_titanmod_twinsizePerTwinSystem(maxTotalNtwin, maxNinstance))
 allocate(constitutive_titanmod_CeLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance))
 allocate(constitutive_titanmod_CsLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance))
+
+allocate(constitutive_titanmod_twinCeLambdaSlipPerTwinSystem(maxTotalNtwin, maxNinstance))
+allocate(constitutive_titanmod_twinCsLambdaSlipPerTwinSystem(maxTotalNtwin, maxNinstance))
+
 constitutive_titanmod_burgersPerSlipSystem     = 0.0_pReal
 constitutive_titanmod_burgersPerTwinSystem     = 0.0_pReal
 constitutive_titanmod_f0_PerSlipSystem       = 0.0_pReal
@@ -736,10 +902,24 @@ constitutive_titanmod_ps_PerSlipSystem        = 0.0_pReal
 constitutive_titanmod_qe_PerSlipSystem        = 0.0_pReal
 constitutive_titanmod_qs_PerSlipSystem        = 0.0_pReal
 
+constitutive_titanmod_twinf0_PerTwinSystem       = 0.0_pReal
+constitutive_titanmod_twintau0e_PerTwinSystem       = 0.0_pReal
+constitutive_titanmod_twintau0s_PerTwinSystem       = 0.0_pReal
+constitutive_titanmod_twincapre_PerTwinSystem       = 0.0_pReal
+constitutive_titanmod_twincaprs_PerTwinSystem       = 0.0_pReal
+constitutive_titanmod_twinv0e_PerTwinSystem          = 0.0_pReal
+constitutive_titanmod_twinv0s_PerTwinSystem          = 0.0_pReal
+constitutive_titanmod_twinpe_PerTwinSystem        = 0.0_pReal
+constitutive_titanmod_twinps_PerTwinSystem        = 0.0_pReal
+constitutive_titanmod_twinqe_PerTwinSystem        = 0.0_pReal
+constitutive_titanmod_twinqs_PerTwinSystem        = 0.0_pReal
+
 constitutive_titanmod_Ndot0PerTwinSystem       = 0.0_pReal
 constitutive_titanmod_twinsizePerTwinSystem    = 0.0_pReal
 constitutive_titanmod_CeLambdaSlipPerSlipSystem = 0.0_pReal
 constitutive_titanmod_CsLambdaSlipPerSlipSystem = 0.0_pReal
+constitutive_titanmod_twinCeLambdaSlipPerTwinSystem = 0.0_pReal
+constitutive_titanmod_twinCsLambdaSlipPerTwinSystem = 0.0_pReal
 
 allocate(constitutive_titanmod_interactionMatrixSlipSlip(maxTotalNslip,maxTotalNslip,maxNinstance))
 allocate(constitutive_titanmod_interactionMatrix_ee(maxTotalNslip,maxTotalNslip,maxNinstance))
@@ -750,6 +930,8 @@ allocate(constitutive_titanmod_interactionMatrixTwinSlip(maxTotalNtwin,maxTotalN
 allocate(constitutive_titanmod_interactionMatrixTwinTwin(maxTotalNtwin,maxTotalNtwin,maxNinstance))
 allocate(constitutive_titanmod_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance))
 allocate(constitutive_titanmod_forestProjectionScrew(maxTotalNslip,maxTotalNslip,maxNinstance))
+allocate(constitutive_titanmod_TwinforestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance))
+allocate(constitutive_titanmod_TwinforestProjectionScrew(maxTotalNslip,maxTotalNslip,maxNinstance))
 constitutive_titanmod_interactionMatrixSlipSlip = 0.0_pReal
 constitutive_titanmod_interactionMatrix_ee = 0.0_pReal
 constitutive_titanmod_interactionMatrix_ss = 0.0_pReal
@@ -759,11 +941,14 @@ constitutive_titanmod_interactionMatrixTwinSlip = 0.0_pReal
 constitutive_titanmod_interactionMatrixTwinTwin = 0.0_pReal
 constitutive_titanmod_forestProjectionEdge      = 0.0_pReal
 constitutive_titanmod_forestProjectionScrew      = 0.0_pReal
+constitutive_titanmod_TwinforestProjectionEdge      = 0.0_pReal
+constitutive_titanmod_TwinforestProjectionScrew      = 0.0_pReal
 
 allocate(constitutive_titanmod_Ctwin_66(6,6,maxTotalNtwin,maxNinstance))
 allocate(constitutive_titanmod_Ctwin_3333(3,3,3,3,maxTotalNtwin,maxNinstance))
 constitutive_titanmod_Ctwin_66 = 0.0_pReal
 constitutive_titanmod_Ctwin_3333 = 0.0_pReal
+
 write(6,*) 'Allocated slip system variables'
 do i = 1,maxNinstance 
    myStructure = constitutive_titanmod_structure(i)
@@ -801,30 +986,28 @@ do i = 1,maxNinstance
         case('rhoedge', &
              'rhoscrew', &
              'velocity_edge', &
-                         'velocity_screw', &
+             'velocity_screw', &
              'segment_edge', &
              'segment_screw', &
-                         'resistance_edge', &
-                         'resistance_screw', &
+             'resistance_edge', &
+             'resistance_screw', &
              'rss_slip', &
-                         'gamma_dot', &
-                         'dgdotdtau', &
-                       'edge_generation',&
-                         'screw_generation', &
-                         'edge_annihilation', &
-                         'screw_annihilation', &
-                         'total_generation', &
-                         'total_annihilation', &
-                         'total_density', &
-                         'stressratio_edgep', &
-                         'stressratio_screwp' &
+             'gamma_dot', &
+             'dgdotdtau', &
+             'edge_generation',&
+             'screw_generation', &
+             'edge_annihilation', &
+             'screw_annihilation', &
+             'total_generation', &
+             'total_annihilation', &
+             'total_density', &
+             'stressratio_edgep', &
+             'stressratio_screwp', &
+             'rlengthprefactor' &
              )
            mySize = constitutive_titanmod_totalNslip(i)
         case('twin_fraction', &
-             'shear_rate_twin', &
-             'mfp_twin', &
-             'resolved_stress_twin', &
-             'threshold_stress_twin' &
+             'twingamma_dot' &
              )
            mySize = constitutive_titanmod_totalNtwin(i)
         case default
@@ -909,7 +1092,22 @@ write(6,*) 'Determining elasticity matrix'
       constitutive_titanmod_burgersPerTwinSystem(s,i)  = constitutive_titanmod_burgersPerTwinFamily(f,i)
       constitutive_titanmod_Ndot0PerTwinSystem(s,i)    = constitutive_titanmod_Ndot0PerTwinFamily(f,i)
       constitutive_titanmod_twinsizePerTwinSystem(s,i) = constitutive_titanmod_twinsizePerTwinFamily(f,i)
-   enddo   
+
+      constitutive_titanmod_twinf0_PerTwinSystem(s,i)       = constitutive_titanmod_twinf0_PerTwinFamily(f,i)
+      constitutive_titanmod_twintau0e_PerTwinSystem(s,i)       = constitutive_titanmod_twintau0e_PerTwinFamily(f,i)
+      constitutive_titanmod_twintau0s_PerTwinSystem(s,i)       = constitutive_titanmod_twintau0s_PerTwinFamily(f,i)
+      constitutive_titanmod_twincapre_PerTwinSystem(s,i)       = constitutive_titanmod_twincapre_PerTwinFamily(f,i)
+      constitutive_titanmod_twincaprs_PerTwinSystem(s,i)       = constitutive_titanmod_twincaprs_PerTwinFamily(f,i)
+      constitutive_titanmod_twinv0e_PerTwinSystem(s,i)          = constitutive_titanmod_twinv0e_PerTwinFamily(f,i)
+      constitutive_titanmod_twinv0s_PerTwinSystem(s,i)          = constitutive_titanmod_twinv0s_PerTwinFamily(f,i)
+      constitutive_titanmod_twinpe_PerTwinSystem(s,i)          = constitutive_titanmod_twinpe_PerTwinFamily(f,i)
+      constitutive_titanmod_twinps_PerTwinSystem(s,i)          = constitutive_titanmod_twinps_PerTwinFamily(f,i)
+      constitutive_titanmod_twinqe_PerTwinSystem(s,i)          = constitutive_titanmod_twinqe_PerTwinFamily(f,i)
+      constitutive_titanmod_twinqs_PerTwinSystem(s,i)          = constitutive_titanmod_twinqs_PerTwinFamily(f,i)
+      constitutive_titanmod_twinCeLambdaSlipPerTwinSystem(s,i) = constitutive_titanmod_twinCeLambdaSlipPerTwinFamily(f,i)
+      constitutive_titanmod_twinCsLambdaSlipPerTwinSystem(s,i) = constitutive_titanmod_twinCsLambdaSlipPerTwinFamily(f,i)
+
+    enddo   
      
    !* Construction of interaction matrices
    do s1 = 1,constitutive_titanmod_totalNslip(i)
@@ -984,7 +1182,26 @@ write(6,*) 'Determining elasticity matrix'
                          lattice_sd(:,constitutive_titanmod_slipSystemLattice(s2,i),myStructure))) 
    enddo; enddo
   
-enddo
+! Same framework for twins as for slip.
+
+   !* Calculation of forest projections for edge dislocations in twin system
+   do t1 = 1,constitutive_titanmod_totalNtwin(i)
+      do t2 = 1,constitutive_titanmod_totalNtwin(i)      
+         constitutive_titanmod_TwinforestProjectionEdge(t1,t2,i) = &
+         abs(math_mul3x3(lattice_tn(:,constitutive_titanmod_twinSystemLattice(t1,i),myStructure), &
+                         lattice_tt(:,constitutive_titanmod_twinSystemLattice(t2,i),myStructure))) 
+   enddo; enddo
+
+   !* Calculation of forest projections for screw dislocations in twin system
+   do t1 = 1,constitutive_titanmod_totalNtwin(i)
+      do t2 = 1,constitutive_titanmod_totalNtwin(i)      
+         constitutive_titanmod_TwinforestProjectionScrew(t1,t2,i) = &
+         abs(math_mul3x3(lattice_tn(:,constitutive_titanmod_twinSystemLattice(t1,i),myStructure), &
+                         lattice_td(:,constitutive_titanmod_twinSystemLattice(t2,i),myStructure))) 
+   enddo; enddo
+
+   
+  enddo
 write(6,*) 'Init All done'
 return
 end subroutine
@@ -1003,20 +1220,26 @@ implicit none
 integer(pInt) :: myInstance
 real(pReal), dimension(constitutive_titanmod_sizeState(myInstance))  :: constitutive_titanmod_stateInit
 !* Local variables
-integer(pInt) s0,s1,s,t,f,ns,nt
+integer(pInt) s0,s1,s,t,f,ns,nt,ts0,ts1,tf,ts
 real(pReal), dimension(constitutive_titanmod_totalNslip(myInstance)) ::  rho_edge0, &
                                                                          rho_screw0, &
                                                                          segment_edge0, &
                                                                          segment_screw0, &
                                                                          resistance_edge0, &
                                                                          resistance_screw0
-real(pReal), dimension(constitutive_titanmod_totalNtwin(myInstance)) :: MeanFreePathTwin0,TwinVolume0
+real(pReal), dimension(constitutive_titanmod_totalNtwin(myInstance)) ::  twinrho_edge0, &
+                                                                         twinrho_screw0, &
+                                                                         twinsegment_edge0, &
+                                                                         twinsegment_screw0, &
+                                                                         twinresistance_edge0, &
+                                                                         twinresistance_screw0
 
 ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)
 constitutive_titanmod_stateInit = 0.0_pReal
 
 !* Initialize basic slip state variables
+! For slip
 s1 = 0_pInt
 do f = 1,lattice_maxNslipFamily
    s0 = s1 + 1_pInt
@@ -1026,45 +1249,88 @@ do f = 1,lattice_maxNslipFamily
       rho_screw0(s) = constitutive_titanmod_rho_screw0(f,myInstance)
    enddo 
 enddo
+
+!* Initialize basic slip state variables
+! For twin
+ts1 = 0_pInt
+do tf = 1,lattice_maxNtwinFamily
+   ts0 = ts1 + 1_pInt
+   ts1 = ts0 + constitutive_titanmod_Ntwin(tf,myInstance) - 1_pInt 
+   do ts = ts0,ts1
+      twinrho_edge0(ts)    = constitutive_titanmod_twinrho_edge0(tf,myInstance)
+      twinrho_screw0(ts) = constitutive_titanmod_twinrho_screw0(tf,myInstance)
+   enddo 
+enddo
+
 constitutive_titanmod_stateInit(1:ns)      = rho_edge0
 constitutive_titanmod_stateInit(ns+1:2*ns) = rho_screw0
+constitutive_titanmod_stateInit(2*ns+1:2*ns+nt)      = twinrho_edge0
+constitutive_titanmod_stateInit(2*ns+nt+1:2*ns+2*nt) = twinrho_screw0
 
 !* Initialize dependent slip microstructural variables
 forall (s = 1:ns) &
 segment_edge0(s) = constitutive_titanmod_CeLambdaSlipPerSlipSystem(s,myInstance)/ &
         sqrt(dot_product((rho_edge0+rho_screw0),constitutive_titanmod_forestProjectionEdge(1:ns,s,myInstance)))
  
-constitutive_titanmod_stateInit(2*ns+nt+1:3*ns+nt) = segment_edge0
+constitutive_titanmod_stateInit(2*ns+2*nt+1:3*ns+2*nt) = segment_edge0
 
 forall (s = 1:ns) &
 segment_screw0(s) = constitutive_titanmod_CsLambdaSlipPerSlipSystem(s,myInstance)/ &
         sqrt(dot_product((rho_edge0+rho_screw0),constitutive_titanmod_forestProjectionScrew(1:ns,s,myInstance)))
   
-constitutive_titanmod_stateInit(4*ns+2*nt+1:5*ns+2*nt) = segment_screw0
+constitutive_titanmod_stateInit(3*ns+2*nt+1:4*ns+2*nt) = segment_screw0
 
 forall (s = 1:ns) &
 resistance_edge0(s) = &
 constitutive_titanmod_Gmod(myInstance)*constitutive_titanmod_burgersPerSlipSystem(s,myInstance)* &
 sqrt(dot_product((rho_edge0),constitutive_titanmod_interactionMatrix_ee(1:ns,s,myInstance))+dot_product((rho_screw0), &
         constitutive_titanmod_interactionMatrix_es(1:ns,s,myInstance)))
-constitutive_titanmod_stateInit(5*ns+3*nt+1:6*ns+3*nt) = resistance_edge0
+constitutive_titanmod_stateInit(4*ns+2*nt+1:5*ns+2*nt) = resistance_edge0
 
 forall (s = 1:ns) &
 resistance_screw0(s) = &
 constitutive_titanmod_Gmod(myInstance)*constitutive_titanmod_burgersPerSlipSystem(s,myInstance)* &
 sqrt(dot_product((rho_edge0),constitutive_titanmod_interactionMatrix_es(1:ns,s,myInstance))+dot_product((rho_screw0), &
 constitutive_titanmod_interactionMatrix_ss(1:ns,s,myInstance)))
-constitutive_titanmod_stateInit(6*ns+3*nt+1:7*ns+3*nt) = resistance_screw0
+constitutive_titanmod_stateInit(5*ns+2*nt+1:6*ns+2*nt) = resistance_screw0
 
 !* Initialize dependent twin microstructural variables
 forall (t = 1:nt) &
-MeanFreePathTwin0(t) = constitutive_titanmod_GrainSize(myInstance)
-constitutive_titanmod_stateInit(5*ns+2*nt+1:5*ns+3*nt) = MeanFreePathTwin0
+twinsegment_edge0(t) = constitutive_titanmod_twinCeLambdaSlipPertwinSystem(t,myInstance)/ &
+        sqrt(dot_product((twinrho_edge0+twinrho_screw0),constitutive_titanmod_twinforestProjectionEdge(1:nt,t,myInstance)))
+ 
+constitutive_titanmod_stateInit(6*ns+2*nt+1:6*ns+3*nt) = twinsegment_edge0
 
 forall (t = 1:nt) &
-TwinVolume0(t) = & 
-(pi/6.0_pReal)*constitutive_titanmod_twinsizePerTwinSystem(t,myInstance)*MeanFreePathTwin0(t)**(2.0_pReal)
-constitutive_titanmod_stateInit(6*ns+4*nt+1:6*ns+5*nt) = TwinVolume0
+twinsegment_screw0(t) = constitutive_titanmod_twinCsLambdaSlipPertwinSystem(t,myInstance)/ &
+        sqrt(dot_product((twinrho_edge0+twinrho_screw0),constitutive_titanmod_twinforestProjectionScrew(1:nt,t,myInstance)))
+ 
+constitutive_titanmod_stateInit(6*ns+3*nt+1:6*ns+4*nt) = twinsegment_edge0
+
+forall (t = 1:nt) &
+twinresistance_edge0(t) = &
+constitutive_titanmod_Gmod(myInstance)*constitutive_titanmod_burgersPerTwinSystem(t,myInstance)* &
+sqrt(dot_product((twinrho_edge0),constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance))+ &
+        dot_product((twinrho_screw0),constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance)))
+
+constitutive_titanmod_stateInit(6*ns+4*nt+1:6*ns+5*nt) = twinresistance_edge0
+
+forall (t = 1:nt) &
+twinresistance_edge0(t) = &
+constitutive_titanmod_Gmod(myInstance)*constitutive_titanmod_burgersPerTwinSystem(t,myInstance)* &
+sqrt(dot_product((twinrho_edge0),constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance))+ &
+        dot_product((twinrho_screw0),constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance)))
+
+constitutive_titanmod_stateInit(6*ns+5*nt+1:6*ns+6*nt) = twinresistance_edge0
+
+!forall (t = 1:nt) &
+!MeanFreePathTwin0(t) = constitutive_titanmod_GrainSize(myInstance)
+!constitutive_titanmod_stateInit(5*ns+2*nt+1:5*ns+3*nt) = MeanFreePathTwin0
+
+!forall (t = 1:nt) &
+!TwinVolume0(t) = & 
+!(pi/6.0_pReal)*constitutive_titanmod_twinsizePerTwinSystem(t,myInstance)*MeanFreePathTwin0(t)**(2.0_pReal)
+!constitutive_titanmod_stateInit(6*ns+4*nt+1:6*ns+5*nt) = TwinVolume0
 
 !write(6,*) '#STATEINIT#'
 !write(6,*)
@@ -1122,13 +1388,13 @@ ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)
 
 !* Total twin volume fraction
-sumf = sum(state(g,ip,el)%p((2*ns+1):(2*ns+nt))) ! safe for nt == 0
+sumf = sum(state(g,ip,el)%p((6*ns+6*nt+1):(6*ns+7*nt))) ! safe for nt == 0
 
 !* Homogenized elasticity matrix
 constitutive_titanmod_homogenizedC = (1.0_pReal-sumf)*constitutive_titanmod_Cslip_66(:,:,myInstance)
 do i=1,nt
    constitutive_titanmod_homogenizedC = &
-   constitutive_titanmod_homogenizedC + state(g,ip,el)%p(2*ns+i)*constitutive_titanmod_Ctwin_66(:,:,i,myInstance)
+   constitutive_titanmod_homogenizedC + state(g,ip,el)%p(6*ns+6*nt+i)*constitutive_titanmod_Ctwin_66(:,:,i,myInstance)
 enddo 
 
 return
@@ -1166,6 +1432,8 @@ myInstance = phase_constitutionInstance(material_phase(g,ip,el))
 myStructure = constitutive_titanmod_structure(myInstance)
 ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)
+
+! Need to update this list
 !* State: 1           :  ns         rho_edge
 !* State: ns+1        :  2*ns       rho_screw
 !* State: 2*ns+1      :  2*ns+nt    f
@@ -1179,57 +1447,42 @@ nt = constitutive_titanmod_totalNtwin(myInstance)
 !* State: 6*ns+4*nt+1 :  6*ns+5*nt  twin volume
 
 !* Total twin volume fraction
-sumf = sum(state(g,ip,el)%p((2*ns+1):(2*ns+nt))) ! safe for nt == 0
+sumf = sum(state(g,ip,el)%p((6*ns+6*nt+1):(6*ns+7*nt))) ! safe for nt == 0
 
 !* Stacking fault energy
 sfe = 0.0002_pReal*Temperature-0.0396_pReal
 
 !* rescaled twin volume fraction for topology
-forall (t = 1:nt) &
-  fOverStacksize(t) = &
-    state(g,ip,el)%p(2*ns+t)/constitutive_titanmod_twinsizePerTwinSystem(t,myInstance)
+!forall (t = 1:nt) &
+!  fOverStacksize(t) = &
+!    state(g,ip,el)%p(2*ns+t)/constitutive_titanmod_twinsizePerTwinSystem(t,myInstance)
         
-! average segment length for edge dislocations
+! average segment length for edge dislocations in matrix
 forall (s = 1:ns) &
-  state(g,ip,el)%p(2*ns+nt+s) = constitutive_titanmod_CeLambdaSlipPerSlipSystem(s,myInstance)/ &
+  state(g,ip,el)%p(2*ns+2*nt+s) = constitutive_titanmod_CeLambdaSlipPerSlipSystem(s,myInstance)/ &
         sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns:2*ns)), &
         constitutive_titanmod_forestProjectionEdge(1:ns,s,myInstance)))
      
-!* Average segment length for screw dislocations
-do s = 1,ns
-   if (nt > 0_pInt) then
-      state(g,ip,el)%p(4*ns+2*nt+s) = &
-                constitutive_titanmod_CsLambdaSlipPerSlipSystem(s,myInstance) / &
+! average segment length for edge dislocations in matrix
+forall (s = 1:ns) &
+  state(g,ip,el)%p(3*ns+2*nt+s) = constitutive_titanmod_CeLambdaSlipPerSlipSystem(s,myInstance)/ &
         sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns:2*ns)), &
-        constitutive_titanmod_forestProjectionScrew(1:ns,s,myInstance)))
-   else
-      state(g,ip,el)%p(4*ns+s) = &
-                constitutive_titanmod_CsLambdaSlipPerSlipSystem(s,myInstance) / &
-        sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns:2*ns)), &
-        constitutive_titanmod_forestProjectionScrew(1:ns,s,myInstance)))
-   endif
-enddo
+        constitutive_titanmod_forestProjectionEdge(1:ns,s,myInstance)))
 
-!* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
-!$OMP CRITICAL (evilmatmul)
-state(g,ip,el)%p((3*ns+nt+1):(4*ns+nt)) = 0.0_pReal
-if (nt > 0_pInt) &
-  state(g,ip,el)%p((3*ns+nt+1):(4*ns+nt)) = &
-    matmul(constitutive_titanmod_interactionMatrixSlipTwin(1:ns,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
-!$OMP END CRITICAL (evilmatmul)
-
-!* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
-!$OMP CRITICAL (evilmatmul)
-if (nt > 0_pInt) &
-  state(g,ip,el)%p((4*ns+nt+1):(4*ns+2*nt)) = &
-    matmul(constitutive_titanmod_interactionMatrixTwinTwin(1:nt,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
-!$OMP END CRITICAL (evilmatmul)
-
-!* mean free path between 2 obstacles seen by a growing twin
-forall (t = 1:nt) &
-  state(g,ip,el)%p(5*ns+2*nt+t) = &
-    (constitutive_titanmod_Cmfptwin(myInstance)*constitutive_titanmod_GrainSize(myInstance))/&
-    (1.0_pReal+constitutive_titanmod_GrainSize(myInstance)*state(g,ip,el)%p(4*ns+nt+t))     
+!* Average segment length for screw dislocations in matrix
+!do s = 1,ns
+!   if (nt > 0_pInt) then
+!      state(g,ip,el)%p(4*ns+2*nt+s) = &
+!                constitutive_titanmod_CsLambdaSlipPerSlipSystem(s,myInstance) / &
+!        sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns:2*ns)), &
+!        constitutive_titanmod_forestProjectionScrew(1:ns,s,myInstance)))
+!   else
+!      state(g,ip,el)%p(4*ns+s) = &
+!                constitutive_titanmod_CsLambdaSlipPerSlipSystem(s,myInstance) / &
+!        sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns:2*ns)), &
+!        constitutive_titanmod_forestProjectionScrew(1:ns,s,myInstance)))
+!   endif
+!enddo
 
 !* threshold stress or slip resistance for edge dislocation motion
 forall (s = 1:ns) &
@@ -1248,19 +1501,82 @@ forall (s = 1:ns) &
                          constitutive_titanmod_interactionMatrix_es(1:ns,s,myInstance))+ &
                         dot_product((state(g,ip,el)%p(ns+1:2*ns)),&
                          constitutive_titanmod_interactionMatrix_ss(1:ns,s,myInstance)))
-                                         
-!* threshold stress for growing twin
-forall (t = 1:nt) &
-  state(g,ip,el)%p(6*ns+3*nt+t) = &
-    constitutive_titanmod_Cthresholdtwin(myInstance)*&
-    (sfe/(3.0_pReal*constitutive_titanmod_burgersPerTwinSystem(t,myInstance))+&
-    3.0_pReal*constitutive_titanmod_burgersPerTwinSystem(t,myInstance)*constitutive_titanmod_Gmod(myInstance)/&
-    state(g,ip,el)%p(5*ns+2*nt+t))
 
-!* final twin volume after growth
+! average segment length for edge dislocations in twin
+forall (t = 1:nt) &
+  state(g,ip,el)%p(6*ns+2*nt+t) = constitutive_titanmod_twinCeLambdaSlipPerTwinSystem(t,myInstance)/ &
+        sqrt(dot_product((state(g,ip,el)%p(2*ns+1:2*ns+nt)+state(g,ip,el)%p(2*ns+nt+1:2*ns+2*nt)), &
+        constitutive_titanmod_twinforestProjectionEdge(1:nt,t,myInstance)))
+     
+! average segment length for edge dislocations in twin
+forall (t = 1:nt) &
+  state(g,ip,el)%p(6*ns+3*nt+t) = constitutive_titanmod_twinCeLambdaSlipPerTwinSystem(t,myInstance)/ &
+        sqrt(dot_product((state(g,ip,el)%p(2*ns+1:2*ns+nt)+state(g,ip,el)%p(2*ns+nt+1:2*ns+2*nt)), &
+        constitutive_titanmod_twinforestProjectionScrew(1:nt,t,myInstance)))
+
+!* threshold stress or slip resistance for edge dislocation motion in twin
 forall (t = 1:nt) &
   state(g,ip,el)%p(6*ns+4*nt+t) = &
-    (pi/6.0_pReal)*constitutive_titanmod_twinsizePerTwinSystem(t,myInstance)*state(g,ip,el)%p(5*ns+2*nt+t)**(2.0_pReal)
+    constitutive_titanmod_Gmod(myInstance)*constitutive_titanmod_burgersPerTwinSystem(t,myInstance)*&
+    sqrt(dot_product((state(g,ip,el)%p(2*ns+1:2*ns+nt)),&
+                         constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance))+ &
+                      dot_product((state(g,ip,el)%p(2*ns+nt+1:2*ns+2*nt)),&
+                         constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance)))
+
+!* threshold stress or slip resistance for screw dislocation motion in twin
+forall (t = 1:nt) &
+  state(g,ip,el)%p(6*ns+5*nt+t) = &
+    constitutive_titanmod_Gmod(myInstance)*constitutive_titanmod_burgersPerTwinSystem(t,myInstance)*&
+    sqrt(dot_product((state(g,ip,el)%p(2*ns+1:2*ns+nt)),&
+                         constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance))+ &
+                      dot_product((state(g,ip,el)%p(2*ns+nt+1:2*ns+2*nt)),&
+                         constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance)))
+
+!* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
+!$OMP CRITICAL (evilmatmul)
+!state(g,ip,el)%p((3*ns+nt+1):(4*ns+nt)) = 0.0_pReal
+!if (nt > 0_pInt) &
+!  state(g,ip,el)%p((3*ns+nt+1):(4*ns+nt)) = &
+!    matmul(constitutive_titanmod_interactionMatrixSlipTwin(1:ns,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
+!$OMP END CRITICAL (evilmatmul)
+
+!* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
+!$OMP CRITICAL (evilmatmul)
+!if (nt > 0_pInt) &
+!  state(g,ip,el)%p((4*ns+nt+1):(4*ns+2*nt)) = &
+!    matmul(constitutive_titanmod_interactionMatrixTwinTwin(1:nt,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
+!$OMP END CRITICAL (evilmatmul)
+
+!* mean free path between 2 obstacles seen by a growing twin
+!forall (t = 1:nt) &
+!  state(g,ip,el)%p(5*ns+2*nt+t) = &
+!    (constitutive_titanmod_Cmfptwin(myInstance)*constitutive_titanmod_GrainSize(myInstance))/&
+!    (1.0_pReal+constitutive_titanmod_GrainSize(myInstance)*state(g,ip,el)%p(4*ns+nt+t))     
+
+                                         
+!* threshold stress for growing twin
+! Hall-patch stress for a growing twin
+! Need to add it. Need to determine sin alpha
+
+! threshold stress for dislocation activity in twin
+!No difference in edge and screw activity in twin volume. Therefore only one slip resistance is sufficient
+!forall (t = 1:nt) &
+!  state(g,ip,el)%p(6*ns+3*nt+t) = &
+!    constitutive_titanmod_Gmod(myInstance)*constitutive_titanmod_burgersPerTwinSystem(t,myInstance)*&
+!    sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns:2*ns)),&
+!                         constitutive_titanmod_interactionMatrixTwinTwin(1:ns,t,myInstance)))
+
+!forall (t = 1:nt) &
+!  state(g,ip,el)%p(6*ns+3*nt+t) = &
+!    constitutive_titanmod_Cthresholdtwin(myInstance)*&
+!    (sfe/(3.0_pReal*constitutive_titanmod_burgersPerTwinSystem(t,myInstance))+&
+!    3.0_pReal*constitutive_titanmod_burgersPerTwinSystem(t,myInstance)*constitutive_titanmod_Gmod(myInstance)/&
+!    state(g,ip,el)%p(5*ns+2*nt+t))
+
+!* final twin volume after growth
+!forall (t = 1:nt) &
+!  state(g,ip,el)%p(6*ns+4*nt+t) = &
+!    (pi/6.0_pReal)*constitutive_titanmod_twinsizePerTwinSystem(t,myInstance)*state(g,ip,el)%p(5*ns+2*nt+t)**(2.0_pReal)
 
 !if ((ip==1).and.(el==1)) then
 !   write(6,*) '#MICROSTRUCTURE#'
@@ -1307,12 +1623,14 @@ real(pReal), dimension(9,9), intent(out) :: dLp_dTstar
 integer(pInt) myInstance,myStructure,ns,nt,f,i,j,k,l,m,n,index_myFamily
 real(pReal) sumf,StressRatio_edge_p,minusStressRatio_edge_p,StressRatio_edge_pminus1,StressRatio_screw_p, &
         StressRatio_screw_pminus1, StressRatio_r,BoltzmannRatio,DotGamma0, minusStressRatio_screw_p,gdotTotal, &
-        screwvelocity_kink_prefactor
+        screwvelocity_kink_prefactor,twinStressRatio_edge_p,twinminusStressRatio_edge_p,twinStressRatio_edge_pminus1, &
+   twinStressRatio_screw_p, twinStressRatio_screw_pminus1, twinStressRatio_r, twinDotGamma0, &
+   twinminusStressRatio_screw_p
 real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
 real(pReal), dimension(constitutive_titanmod_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
    gdot_slip,dgdot_dtauslip,tau_slip, edge_velocity, screw_velocity
 real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-   gdot_twin,dgdot_dtautwin,tau_twin
+   gdot_twin,dgdot_dtautwin,tau_twin, twinedge_velocity, twinscrew_velocity
 
 !* Shortened notation
 myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
@@ -1321,7 +1639,7 @@ ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)
 
 !* Total twin volume fraction
-sumf = sum(state(g,ip,el)%p((2*ns+1):(2*ns+nt))) ! safe for nt == 0
+sumf = sum(state(g,ip,el)%p((6*ns+6*nt+1):(6*ns+7*nt))) ! safe for nt == 0
 
 Lp = 0.0_pReal
 dLp_dTstar3333 = 0.0_pReal
@@ -1358,34 +1676,36 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
 !        StressRatio_screw_p=0.0_pReal
 !        endif
       if(myStructure==3.and.j>3) then ! only for hex and for all the non-basal slip systems
-      screwvelocity_kink_prefactor=state(g,ip,el)%p(4*ns+2*nt+j)/constitutive_titanmod_rlengthscrew_PerSlipSystem(j,myInstance)
+      screwvelocity_kink_prefactor=state(g,ip,el)%p(3*ns+2*nt+j)/constitutive_titanmod_rlengthscrew_PerSlipSystem(j,myInstance)
         else
         screwvelocity_kink_prefactor=1.0_pReal
         endif
-        
+  
+       state(g,ip,el)%p(14*ns+3*nt+j)=screwvelocity_kink_prefactor
+   
      !* Stress ratio for edge
          StressRatio_edge_p = ((abs(tau_slip(j)))/ &
-         ( constitutive_titanmod_tau0e_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(5*ns+3*nt+j)) &
+         ( constitutive_titanmod_tau0e_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(4*ns+2*nt+j)) &
         )**constitutive_titanmod_pe_PerSlipSystem(j,myInstance)
         
      !* Stress ratio for screw
          StressRatio_screw_p = ((abs(tau_slip(j)))/ &
-         ( constitutive_titanmod_tau0s_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(6*ns+3*nt+j)) &
+         ( constitutive_titanmod_tau0s_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(5*ns+2*nt+j)) &
         )**constitutive_titanmod_ps_PerSlipSystem(j,myInstance)
                 
         state(g,ip,el)%p(10*ns+3*nt+j)=StressRatio_edge_p
         state(g,ip,el)%p(11*ns+3*nt+j)=StressRatio_screw_p
         
-        if((1.0_pReal-StressRatio_edge_p)>0.01_pReal) then
+        if((1.0_pReal-StressRatio_edge_p)>0.001_pReal) then
         minusStressRatio_edge_p=1.0_pReal-StressRatio_edge_p
         else
-        minusStressRatio_edge_p=0.01_pReal
+        minusStressRatio_edge_p=0.001_pReal
         endif
         
-        if((1.0_pReal-StressRatio_screw_p)>0.01_pReal) then
+        if((1.0_pReal-StressRatio_screw_p)>0.001_pReal) then
         minusStressRatio_screw_p=1.0_pReal-StressRatio_screw_p
         else
-        minusStressRatio_screw_p=0.01_pReal
+        minusStressRatio_screw_p=0.001_pReal
         endif
         
 !     !* Stress ratio for edge p minus1
@@ -1417,7 +1737,7 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
 
       !* Initial shear rates
       DotGamma0 = &
-        constitutive_titanmod_burgersPerSlipSystem(j,myInstance)*2.0_pReal*(state(g,ip,el)%p(j)*&
+        constitutive_titanmod_burgersPerSlipSystem(j,myInstance)*(state(g,ip,el)%p(j)*&
         + constitutive_titanmod_v0e_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(ns+j)* &
                 constitutive_titanmod_v0e_PerSlipSystem(j,myInstance))
 
@@ -1430,7 +1750,7 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
         constitutive_titanmod_qs_PerSlipSystem(j,myInstance))
 
                 !* Shear rates due to slip
-       gdot_slip(j) = constitutive_titanmod_burgersPerSlipSystem(j,myInstance)*2.0_pReal*(state(g,ip,el)%p(j)* &
+       gdot_slip(j) = constitutive_titanmod_burgersPerSlipSystem(j,myInstance)*(state(g,ip,el)%p(j)* &
                 edge_velocity(j)+state(g,ip,el)%p(ns+j) * screw_velocity(j))* sign(1.0_pReal,tau_slip(j))
 
 !                forall (s = 1:ns) &
@@ -1440,9 +1760,7 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
                 state(g,ip,el)%p(12*ns+3*nt+j)=gdot_slip(j)
                 
       !* Derivatives of shear rates
-      dgdot_dtauslip(j) = &
-        2.0_pReal* &
-                ( &
+      dgdot_dtauslip(j) = ( &
                 ( &
                 ( &
                 ( &
@@ -1518,16 +1836,110 @@ do f = 1,lattice_maxNtwinFamily                                 ! loop over all 
       !* Resolved shear stress on twin system
       tau_twin(j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,myStructure))        
      
-          !* Stress ratios
-      StressRatio_r = (state(g,ip,el)%p(6*ns+3*nt+j)/tau_twin(j))**constitutive_titanmod_r(myInstance)      
+!**************************************************************************************
+      !* Stress ratios
+!      StressRatio_r = (state(g,ip,el)%p(6*ns+3*nt+j)/tau_twin(j))**constitutive_titanmod_r(myInstance)      
       
           !* Shear rates and their derivatives due to twin
 !      if ( tau_twin(j) > 0.0_pReal ) !then          
-        gdot_twin(j) =  0.0_pReal!&
+!        gdot_twin(j) =  0.0_pReal!&
 !          (constitutive_titanmod_MaxTwinFraction(myInstance)-sumf)*lattice_shearTwin(index_myFamily+i,myStructure)*&
 !          state(g,ip,el)%p(6*ns+4*nt+j)*constitutive_titanmod_Ndot0PerTwinSystem(f,myInstance)*exp(-StressRatio_r) 
 !        dgdot_dtautwin(j) = ((gdot_twin(j)*constitutive_titanmod_r(myInstance))/tau_twin(j))*StressRatio_r
 !      endif
+!**************************************************************************************
+   
+     !* Stress ratio for edge
+         twinStressRatio_edge_p = ((abs(tau_twin(j)))/ &
+         ( constitutive_titanmod_twintau0e_PerTwinSystem(j,myInstance)+state(g,ip,el)%p(6*ns+4*nt+j)) &
+        )**constitutive_titanmod_twinpe_PerTwinSystem(j,myInstance)
+        
+     !* Stress ratio for screw
+         twinStressRatio_screw_p = ((abs(tau_twin(j)))/ &
+         ( constitutive_titanmod_twintau0s_PerTwinSystem(j,myInstance)+state(g,ip,el)%p(6*ns+5*nt+j)) &
+        )**constitutive_titanmod_twinps_PerTwinSystem(j,myInstance)
+                
+!        state(g,ip,el)%p(10*ns+3*nt+j)=twinStressRatio_edge_p
+!        state(g,ip,el)%p(11*ns+3*nt+j)=twinStressRatio_screw_p
+        
+        if((1.0_pReal-twinStressRatio_edge_p)>0.001_pReal) then
+        twinminusStressRatio_edge_p=1.0_pReal-twinStressRatio_edge_p
+        else
+        twinminusStressRatio_edge_p=0.001_pReal
+        endif
+        
+        if((1.0_pReal-twinStressRatio_screw_p)>0.001_pReal) then
+        twinminusStressRatio_screw_p=1.0_pReal-twinStressRatio_screw_p
+        else
+        twinminusStressRatio_screw_p=0.001_pReal
+        endif
+        
+      twinStressRatio_edge_pminus1 = ((abs(tau_twin(j)))/ &
+         ( constitutive_titanmod_twintau0e_PerTwinSystem(j,myInstance)+state(g,ip,el)%p(6*ns+4*nt+j)) &
+        )**(constitutive_titanmod_twinpe_PerTwinSystem(j,myInstance)-1.0_pReal)
+
+      twinStressRatio_screw_pminus1 = ((abs(tau_twin(j)))/ &
+         ( constitutive_titanmod_twintau0s_PerTwinSystem(j,myInstance)+state(g,ip,el)%p(6*ns+5*nt+j)) &
+        )**(constitutive_titanmod_twinps_PerTwinSystem(j,myInstance)-1.0_pReal)
+
+      !* Boltzmann ratio
+      BoltzmannRatio = constitutive_titanmod_twinf0_PerTwinSystem(j,myInstance)/(kB*Temperature)
+
+      !* Initial shear rates
+      TwinDotGamma0 = &
+        constitutive_titanmod_burgersPerTwinSystem(j,myInstance)*(state(g,ip,el)%p(2*ns+j)*&
+         constitutive_titanmod_twinv0e_PerTwinSystem(j,myInstance)+state(g,ip,el)%p(2*ns+nt+j)* &
+                constitutive_titanmod_twinv0s_PerTwinSystem(j,myInstance))
+
+         twinedge_velocity(j) =constitutive_titanmod_twinv0e_PerTwinSystem(j,myInstance)*exp(-BoltzmannRatio* &
+        (twinminusStressRatio_edge_p)** &
+        constitutive_titanmod_twinqe_PerTwinSystem(j,myInstance))
+
+        twinscrew_velocity(j) =constitutive_titanmod_twinv0s_PerTwinSystem(j,myInstance)* &
+                exp(-BoltzmannRatio*(twinminusStressRatio_screw_p)** &
+        constitutive_titanmod_twinqs_PerTwinSystem(j,myInstance))
+
+                !* Shear rates due to twin
+       gdot_twin(j) = constitutive_titanmod_burgersPerTwinSystem(j,myInstance)*(state(g,ip,el)%p(2*ns+j)* &
+                twinedge_velocity(j)+state(g,ip,el)%p(2*ns+nt+j) * twinscrew_velocity(j))* sign(1.0_pReal,tau_twin(j))
+
+!                forall (s = 1:ns) &
+!                  state(g,ip,el)%p(7*ns+3*nt+j)= twinedge_velocity(j)
+!        forall (s = 1:ns) &
+!                state(g,ip,el)%p(8*ns+3*nt+j)= twinscrew_velocity(j)
+!                state(g,ip,el)%p(12*ns+3*nt+j)=gdot_twin(j)
+                
+      !* Derivatives of shear rates in twin
+      dgdot_dtautwin(j) = ( &
+                ( &
+                ( &
+                ( &
+                (abs(gdot_twin(j))) * &
+                BoltzmannRatio*&
+        constitutive_titanmod_twinpe_PerTwinSystem(j,myInstance)* &
+                constitutive_titanmod_twinqe_PerTwinSystem(j,myInstance) &
+                )/ &
+                constitutive_titanmod_twintau0e_PerTwinSystem(j,myInstance) &
+                )*&
+        twinStressRatio_edge_pminus1*(twinminusStressRatio_edge_p)** &
+                (constitutive_titanmod_twinqe_PerTwinSystem(j,myInstance)-1.0_pReal) &
+                ) + &
+                ( &
+                ( &
+                ( &
+                (abs(gdot_twin(j))) * &
+                BoltzmannRatio* &
+        constitutive_titanmod_twinps_PerTwinSystem(j,myInstance)* &
+                constitutive_titanmod_twinqs_PerTwinSystem(j,myInstance) &
+                )/ &
+                constitutive_titanmod_twintau0s_PerTwinSystem(j,myInstance) &
+                )*&
+        twinStressRatio_screw_pminus1*(twinminusStressRatio_screw_p)** &
+               (constitutive_titanmod_twinqs_PerTwinSystem(j,myInstance)-1.0_pReal) &
+                ) &
+                ) !* sign(1.0_pReal,tau_slip(j))
+                
+!                state(g,ip,el)%p(13*ns+3*nt+j)=dgdot_dtautwin(j)
 
       !* Plastic velocity gradient for mechanical twinning                                                      
       Lp = Lp + gdot_twin(j)*lattice_Stwin(:,:,index_myFamily+i,myStructure)
@@ -1587,15 +1999,18 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal), dimension(constitutive_titanmod_sizeDotState(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
 constitutive_titanmod_dotState
 !* Local variables
-integer(pInt) MyInstance,MyStructure,ns,nt,f,i,j,k,index_myFamily,s
+integer(pInt) MyInstance,MyStructure,ns,nt,f,i,j,k,index_myFamily,s,t
 real(pReal) sumf,StressRatio_edge_p,minusStressRatio_edge_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,&
             EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,StressRatio_screw_p,minusStressRatio_screw_p, &
-                        screwvelocity_kink_prefactor
+            screwvelocity_kink_prefactor,twinStressRatio_edge_p,twinminusStressRatio_edge_p,twinStressRatio_pminus1, &
+            twinDotGamma0,twinStressRatio_screw_p, &
+            twinminusStressRatio_screw_p
 real(pReal), dimension(constitutive_titanmod_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
 gdot_slip,tau_slip,DotRhoEdgeGeneration,EdgeDipDistance,DotRhoEdgeAnnihilation,DotRhoScrewAnnihilation,&
 ClimbVelocity,DotRhoScrewGeneration, edge_segment, screw_segment,edge_velocity,screw_velocity
 real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: gdot_twin, &
-tau_twin
+tau_twin,twinedge_segment,twinscrew_segment,twinedge_velocity,twinscrew_velocity,TwinDotRhoEdgeGeneration, &
+TwinDotRhoEdgeAnnihilation,TwinDotRhoScrewGeneration,TwinDotRhoScrewAnnihilation
    
 !* Shortened notation
 myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
@@ -1608,21 +2023,36 @@ sumf = sum(state(g,ip,el)%p((2*ns+1):(2*ns+nt))) ! safe for nt == 0
 
 constitutive_titanmod_dotState = 0.0_pReal
 
-!* average segment length for edge dislocations
+!* average segment length for edge dislocations in matrix
 forall (s = 1:ns) &
   edge_segment(s) = &
   (constitutive_titanmod_CeLambdaSlipPerSlipSystem(s,myInstance))/ &
         sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns+1:2*ns)), &
                 constitutive_titanmod_forestProjectionEdge(1:ns,s,myInstance)))
 
-!* average segment length for screw dislocations
+!* average segment length for screw dislocations in matrix
 forall (s = 1:ns) &
   screw_segment(s) = &
   (constitutive_titanmod_CsLambdaSlipPerSlipSystem(s,myInstance))/ &
         sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns+1:2*ns)), &
                 constitutive_titanmod_forestProjectionScrew(1:ns,s,myInstance)))
     
- j = 0_pInt
+!* average segment length for edge dislocations in twin
+forall (t = 1:nt) &
+  twinedge_segment(t) = &
+  (constitutive_titanmod_twinCeLambdaSlipPerTwinSystem(t,myInstance))/ &
+        sqrt(dot_product((state(g,ip,el)%p(2*ns+1:2*ns+nt)+state(g,ip,el)%p(2*ns+nt+1:2*ns+2*nt)), &
+                constitutive_titanmod_TwinforestProjectionEdge(1:nt,t,myInstance)))
+
+!* average segment length for screw dislocations in twin
+forall (t = 1:nt) &
+  twinscrew_segment(t) = &
+  (constitutive_titanmod_twinCsLambdaSlipPerTwinSystem(t,myInstance))/ &
+        sqrt(dot_product((state(g,ip,el)%p(2*ns+1:2*ns+nt)+state(g,ip,el)%p(2*ns+nt+1:2*ns+2*nt)), &
+                constitutive_titanmod_TwinforestProjectionScrew(1:nt,t,myInstance)))
+
+
+    j = 0_pInt
  do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
    index_myFamily = sum(lattice_NslipSystem(1:f-1,myStructure))                 ! at which index starts my family
    do i = 1,constitutive_titanmod_Nslip(f,myInstance)                        ! process each (active) slip system in family
@@ -1648,31 +2078,31 @@ forall (s = 1:ns) &
 !        endif
 
         if(myStructure==3.and.j>3) then ! only for hex and for all the non-basal slip systems
-        screwvelocity_kink_prefactor=state(g,ip,el)%p(4*ns+2*nt+j)/constitutive_titanmod_rlengthscrew_PerSlipSystem(j,myInstance)
+        screwvelocity_kink_prefactor=state(g,ip,el)%p(3*ns+2*nt+j)/constitutive_titanmod_rlengthscrew_PerSlipSystem(j,myInstance)
         else
         screwvelocity_kink_prefactor=1.0_pReal
         endif
 
      !* Stress ratio for edge
          StressRatio_edge_p = ((abs(tau_slip(j)))/ &
-         ( constitutive_titanmod_tau0e_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(5*ns+3*nt+j)) &
+         ( constitutive_titanmod_tau0e_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(4*ns+2*nt+j)) &
         )**(constitutive_titanmod_pe_PerSlipSystem(j,myInstance))
         
      !* Stress ratio for screw
          StressRatio_screw_p = ((abs(tau_slip(j)))/ &
-         ( constitutive_titanmod_tau0s_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(6*ns+3*nt+j)) &
+         ( constitutive_titanmod_tau0s_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(5*ns+2*nt+j)) &
         )**(constitutive_titanmod_ps_PerSlipSystem(j,myInstance))
 
-        if((1.0_pReal-StressRatio_edge_p)>0.01_pReal) then
+        if((1.0_pReal-StressRatio_edge_p)>0.001_pReal) then
         minusStressRatio_edge_p=1.0_pReal-StressRatio_edge_p
         else
-        minusStressRatio_edge_p=0.01_pReal
+        minusStressRatio_edge_p=0.001_pReal
         endif
         
-        if((1-StressRatio_screw_p)>0.01_pReal) then
+        if((1-StressRatio_screw_p)>0.001_pReal) then
         minusStressRatio_screw_p=1.0_pReal-StressRatio_screw_p
         else
-        minusStressRatio_screw_p=0.01_pReal
+        minusStressRatio_screw_p=0.001_pReal
         endif
 
         !* Boltzmann ratio
@@ -1728,25 +2158,100 @@ forall (s = 1:ns) &
     enddo
   enddo
   
-!* Twin volume fraction evolution
+!* Twin fraction evolution
 j = 0_pInt
 do f = 1,lattice_maxNtwinFamily                                 ! loop over all twin families
    index_myFamily = sum(lattice_NtwinSystem(1:f-1,MyStructure)) ! at which index starts my family
    do i = 1,constitutive_titanmod_Ntwin(f,myInstance)          ! process each (active) twin system in family
       j = j+1_pInt
 
+!*************************************************************************
+!This was in dislotwin - keeping it for safety
+!*************************************************************************
+!      !* Resolved shear stress on twin system
+!      tau_twin(j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,myStructure))
+!      !* Stress ratios
+!      StressRatio_r = (state(g,ip,el)%p(6*ns+3*nt+j)/tau_twin(j))**constitutive_titanmod_r(myInstance)
+!      
+!      !* Shear rates and their derivatives due to twin
+!      if ( tau_twin(j) > 0.0_pReal ) then
+!        constitutive_titanmod_dotState(2*ns+j) = &
+!          (constitutive_titanmod_MaxTwinFraction(myInstance)-sumf)*&
+!          state(g,ip,el)%p(6*ns+4*nt+j)*constitutive_titanmod_Ndot0PerTwinSystem(f,myInstance)*exp(-StressRatio_r) 
+!      endif
+!*************************************************************************
+
       !* Resolved shear stress on twin system
       tau_twin(j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,myStructure))
-      !* Stress ratios
-      StressRatio_r = (state(g,ip,el)%p(6*ns+3*nt+j)/tau_twin(j))**constitutive_titanmod_r(myInstance)
-      
-      !* Shear rates and their derivatives due to twin
-      if ( tau_twin(j) > 0.0_pReal ) then
-        constitutive_titanmod_dotState(2*ns+j) = &
-          (constitutive_titanmod_MaxTwinFraction(myInstance)-sumf)*&
-          state(g,ip,el)%p(6*ns+4*nt+j)*constitutive_titanmod_Ndot0PerTwinSystem(f,myInstance)*exp(-StressRatio_r) 
-      endif
-   enddo
+
+     !* Stress ratio for edge
+         twinStressRatio_edge_p = ((abs(tau_twin(j)))/ &
+         ( constitutive_titanmod_twintau0e_PerTwinSystem(j,myInstance)+state(g,ip,el)%p(6*ns+4*nt+j)) &
+        )**(constitutive_titanmod_twinpe_PerTwinSystem(j,myInstance))
+        
+     !* Stress ratio for screw
+         twinStressRatio_screw_p = ((abs(tau_twin(j)))/ &
+         ( constitutive_titanmod_twintau0s_PerTwinSystem(j,myInstance)+state(g,ip,el)%p(6*ns+5*nt+j)) &
+        )**(constitutive_titanmod_twinps_PerTwinSystem(j,myInstance))
+
+        if((1.0_pReal-twinStressRatio_edge_p)>0.001_pReal) then
+        twinminusStressRatio_edge_p=1.0_pReal-twinStressRatio_edge_p
+        else
+        twinminusStressRatio_edge_p=0.001_pReal
+        endif
+        
+        if((1-twinStressRatio_screw_p)>0.001_pReal) then
+        twinminusStressRatio_screw_p=1.0_pReal-twinStressRatio_screw_p
+        else
+        twinminusStressRatio_screw_p=0.001_pReal
+        endif
+
+        !* Boltzmann ratio
+      BoltzmannRatio = constitutive_titanmod_twinf0_PerTwinSystem(j,myInstance)/(kB*Temperature)
+
+!         if (tau_slip(j) == 0.0_pReal) then
+!             edge_velocity(j) = 0.0_pReal
+!             screw_velocity(j) = 0.0_pReal
+!         else          
+            twinedge_velocity(j) =constitutive_titanmod_twinv0e_PerTwinSystem(j,myInstance)*exp(-BoltzmannRatio* &
+              (twinminusStressRatio_edge_p)** &
+            constitutive_titanmod_twinqe_PerTwinSystem(j,myInstance))
+            twinscrew_velocity(j) =constitutive_titanmod_twinv0s_PerTwinSystem(j,myInstance)* &
+                exp(-BoltzmannRatio*(twinminusStressRatio_screw_p)** &
+            constitutive_titanmod_twinqs_PerTwinSystem(j,myInstance))
+!         endif
+!        write(6,*) 'edge_segment(j) ',edge_segment(j)
+!        write(6,*) 'screw_segment(j) ',screw_segment(j)
+!        write(6,*) 'tau_slip(j) ',tau_slip(j)
+!        write(6,*) 'Temperature ',Temperature
+!        write(6,*) 'kB ',kB 
+!        write(6,*) 'constitutive_titanmod_f0_PerSlipSystem(j,myInstance) ',constitutive_titanmod_f0_PerSlipSystem(j,myInstance)
+!        write(6,*) 'StressRatio_edge_p',StressRatio_edge_p,j
+!        write(6,*) 'StressRatio_screw_p',StressRatio_screw_p,j
+!        write(6,*) 'edge_velocity(j)',edge_velocity(j),j
+!        write(6,*) 'screw_velocity(j)',screw_velocity(j),j
+      !* Multiplication of edge dislocations
+      TwinDotRhoEdgeGeneration(j) = 2.0_pReal*(state(g,ip,el)%p(2*ns+nt+j)*twinscrew_velocity(j)/twinscrew_segment(j))
+      !* Multiplication of screw dislocations
+      TwinDotRhoScrewGeneration(j) = 2.0_pReal*(state(g,ip,el)%p(2*ns+j)*twinedge_velocity(j)/twinedge_segment(j))
+
+      !* Annihilation of edge dislocations
+      TwinDotRhoEdgeAnnihilation(j) = -((state(g,ip,el)%p(2*ns+j))**2)* &
+                constitutive_titanmod_twincapre_PerTwinSystem(j,myInstance)*twinedge_velocity(j)
+
+      !* Annihilation of screw dislocations
+      TwinDotRhoScrewAnnihilation(j) = -((state(g,ip,el)%p(2*ns+nt+j))**2)* &
+                constitutive_titanmod_twincaprs_PerTwinSystem(j,myInstance)*twinscrew_velocity(j)
+       
+      !* Edge dislocation density rate of change
+      constitutive_titanmod_dotState(2*ns+j) = &
+        TwinDotRhoEdgeGeneration(j)+TwinDotRhoEdgeAnnihilation(j)
+
+      !* Screw dislocation density rate of change
+      constitutive_titanmod_dotState(2*ns+nt+j) = &
+        TwinDotRhoScrewGeneration(j)+TwinDotRhoScrewAnnihilation(j)
+
+  enddo
 enddo
 
 !write(6,*) '#DOTSTATE#'
@@ -1952,8 +2457,11 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
      case('total_density')
        constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns+1:2*ns)
        c = c + ns
+     case('rlengthprefactor')
+       constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((14*ns+3*nt+1):(15*ns+3*nt))
+       c = c + ns
      case ('twin_fraction')
-       constitutive_titanmod_postResults(c+1:c+nt) = state(g,ip,el)%p((2*ns+1):(2*ns+nt))
+       constitutive_titanmod_postResults(c+1:c+nt) = state(g,ip,el)%p((6*ns+6*nt+1):(6*ns+7*nt))
        c = c + nt
 
    end select
