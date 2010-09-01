@@ -278,7 +278,7 @@ subroutine materialpoint_stressAndItsTangent(&
  if (debugger) then
    write (6,*)
    write (6,*) 'Material Point start'
-   write (6,'(a,/,(f12.7,x))')      'Temp0  of   1 1'  ,materialpoint_Temperature(1,1)
+   write (6,'(a,/,(f12.7,x))')      'Temp0  of   1 1',materialpoint_Temperature(1,1)
    write (6,'(a,/,3(3(f12.7,x)/))') 'F0     of   1 1',materialpoint_F0(1:3,:,1,1)
    write (6,'(a,/,3(3(f12.7,x)/))') 'F      of   1 1',materialpoint_F(1:3,:,1,1)
    write (6,'(a,/,3(3(f12.7,x)/))') 'Fp0    of 1 1 1',crystallite_Fp0(1:3,:,1,1,1)
@@ -316,23 +316,22 @@ subroutine materialpoint_stressAndItsTangent(&
  
 ! ------ cutback loop ------
 
- do while (any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog))  ! cutback loop for material points
+ do while (.not. terminallyIll .and. &
+           any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog))  ! cutback loop for material points
 
-!    write(6,'(a,/,125(8(f8.5,x),/))') 'mp_subSteps',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2))
 !$OMP PARALLEL DO
-   do e = FEsolving_execElem(1),FEsolving_execElem(2)                                     ! iterate over elements to be processed
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                             ! iterate over IPs of this element to be processed
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
        
        selectiveDebugger = (e == debug_e .and. i == debug_i)
        
-       ! if our materialpoint converged or consists of only one single grain then we are either finished or have to wind forward
-       if ( materialpoint_converged(i,e) .or. (myNgrains == 1_pInt .and. materialpoint_subStep(i,e) <= 1.0_pReal) ) then
+       if ( materialpoint_converged(i,e) ) then
          if (verboseDebugger .and. selectiveDebugger) then
            !$OMP CRITICAL (write2out)
-             write(6,'(a21,f10.8,a34,f10.8,a37,/)') 'winding forward from ', &
-               materialpoint_subFrac(i,e), ' to current materialpoint_subFrac ', &
-               materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),' in materialpoint_stressAndItsTangent'
+             write(6,'(a,x,f10.8,x,a,x,f10.8,x,a,/)') '°°° winding forward from', &
+               materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
+               materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent'
            !$OMPEND CRITICAL (write2out)
          endif
          
@@ -363,26 +362,31 @@ subroutine materialpoint_stressAndItsTangent(&
        
        ! materialpoint didn't converge, so we need a cutback here
        else
-       
-         materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)                       ! crystallite had severe trouble, so do a significant cutback
-                                                                                                          ! <<modified to add more flexibility in cutback>>
-         
-         if (verboseDebugger .and. selectiveDebugger) then
-           !$OMP CRITICAL (write2out)
-             write(6,'(a82,f10.8,/)') 'cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep: ',&
-                                       materialpoint_subStep(i,e)
-           !$OMPEND CRITICAL (write2out)
-         endif
-
-         ! restore...
-         crystallite_Temperature(1:myNgrains,i,e) = crystallite_partionedTemperature0(1:myNgrains,i,e)    ! ...temperatures
-         crystallite_Fp(:,:,1:myNgrains,i,e)    = crystallite_partionedFp0(:,:,1:myNgrains,i,e)           ! ...plastic def grads
-         crystallite_Lp(:,:,1:myNgrains,i,e)    = crystallite_partionedLp0(:,:,1:myNgrains,i,e)           ! ...plastic velocity grads
-         crystallite_Tstar_v(:,1:myNgrains,i,e) = crystallite_partionedTstar0_v(:,1:myNgrains,i,e)        ! ...2nd PK stress
-         forall (g = 1:myNgrains) constitutive_state(g,i,e)%p = constitutive_partionedState0(g,i,e)%p     ! ...microstructures
-         if (homogenization_sizeState(i,e) > 0_pInt) &
-           homogenization_state(i,e)%p = homogenization_subState0(i,e)%p                                  ! ...internal state of homog scheme
-       
+         if ( (myNgrains == 1_pInt .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                         ! single grain already tried internal subStepping in crystallite
+              subStepSizeHomog * materialpoint_subStep(i,e) <=  subStepMinHomog ) then                      ! would require too small subStep
+                                                                                                            ! cutback makes no sense and...
+           terminallyIll = .true.                                                                           ! ...one kills all
+         else                                                                                               ! cutback makes sense
+           materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)                       ! crystallite had severe trouble, so do a significant cutback
+                                                                                                            ! <<modified to add more flexibility in cutback>>
+           
+           if (verboseDebugger .and. selectiveDebugger) then
+             !$OMP CRITICAL (write2out)
+               write(6,'(a,x,f10.8,/)') '°°° cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
+                                         materialpoint_subStep(i,e)
+             !$OMPEND CRITICAL (write2out)
+           endif
+  
+           ! restore...
+           crystallite_Temperature(1:myNgrains,i,e) = crystallite_partionedTemperature0(1:myNgrains,i,e)    ! ...temperatures
+                                                                                                            ! ...initial def grad unchanged
+           crystallite_Fp(:,:,1:myNgrains,i,e)    = crystallite_partionedFp0(:,:,1:myNgrains,i,e)           ! ...plastic def grads
+           crystallite_Lp(:,:,1:myNgrains,i,e)    = crystallite_partionedLp0(:,:,1:myNgrains,i,e)           ! ...plastic velocity grads
+           crystallite_Tstar_v(:,1:myNgrains,i,e) = crystallite_partionedTstar0_v(:,1:myNgrains,i,e)        ! ...2nd PK stress
+           forall (g = 1:myNgrains) constitutive_state(g,i,e)%p = constitutive_partionedState0(g,i,e)%p     ! ...microstructures
+           if (homogenization_sizeState(i,e) > 0_pInt) &
+             homogenization_state(i,e)%p = homogenization_subState0(i,e)%p                                  ! ...internal state of homog scheme
+         endif       
        endif
      
        materialpoint_requested(i,e) = materialpoint_subStep(i,e) > subStepMinHomog
@@ -392,8 +396,8 @@ subroutine materialpoint_stressAndItsTangent(&
          materialpoint_subdt(i,e)    = materialpoint_subStep(i,e) * dt
          materialpoint_doneAndHappy(:,i,e) = (/.false.,.true./)
        endif
-     enddo
-   enddo
+     enddo                                                                                 ! loop IPs
+   enddo                                                                                   ! loop elements
 !$OMP END PARALLEL DO
 
 !* Checks for cutback/substepping loops: added <<<updated 31.07.2009>>>
@@ -406,9 +410,11 @@ subroutine materialpoint_stressAndItsTangent(&
 
    NiterationMPstate = 0_pInt
    
-   do while (any(            materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
+   do while (.not. terminallyIll .and. &
+             any(            materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2)) &
                  .and. .not. materialpoint_doneAndHappy(1,:,FEsolving_execELem(1):FEsolving_execElem(2)) &
-                ) .and. NiterationMPstate < nMPstate)           ! convergence loop for materialpoint
+                ) .and. &
+             NiterationMPstate < nMPstate)                            ! convergence loop for materialpoint
      NiterationMPstate = NiterationMPstate + 1
 
 !      write(6,'(a,/,125(8(l,x),/))') 'material point request and not done', &
@@ -476,32 +482,28 @@ subroutine materialpoint_stressAndItsTangent(&
 
  enddo                                                             ! cutback loop
 
- ! calculate crystal orientations
- call crystallite_orientations()
- 
- ! check for non-performer: any(.not. converged)
- ! replace everybody with odd response ?
 
-!$OMP PARALLEL DO
-elementLoop: do e = FEsolving_execElem(1),FEsolving_execElem(2)       ! iterate over elements to be processed
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                 ! iterate over IPs of this element to be processed
-     if (materialpoint_converged(i,e)) then
+ if (.not. terminallyIll ) then
+           
+   call crystallite_orientations()                                   ! calculate crystal orientations
+  !$OMP PARALLEL DO
+   do e = FEsolving_execElem(1),FEsolving_execElem(2)                ! iterate over elements to be processed
+     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)              ! iterate over IPs of this element to be processed
        call homogenization_averageStressAndItsTangent(i,e)
        call homogenization_averageTemperature(i,e)   
-     else
-       terminallyIll = .true.
-       write(6,'(a48,i4,i4,/)') 'homogenization terminally-ill ',i,e
-       exit elementLoop
-     endif
-   enddo
- enddo elementLoop
-!$OMP END PARALLEL DO
-
- 
- if (debugger) then
+     enddo; enddo
+  !$OMP END PARALLEL DO
+   
+   if (debugger) then
+     write (6,*)
+     write (6,'(a)') '°°° Material Point end'
+     write (6,*)
+   endif
+ else
    write (6,*)
-   write (6,*) 'Material Point end'
+   write (6,'(a)') '°°° Material Point terminally ill'
    write (6,*)
+   
  endif
  return
  

@@ -51,6 +51,8 @@ subroutine mpie_interface_init()
  write(6,*) '<<<+-  mpie_cpfem_marc init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
+ write(6,*)
+ write(6,*)
  return
 end subroutine
 
@@ -247,7 +249,7 @@ subroutine hypela2(&
      terminallyIll = .false.
      cycleCounter = 0
 !$OMP CRITICAL (write2out)
-     write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> lastIncConverged + outdated'; call flush(6)
+     write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> former increment converged..!'; call flush(6)
 !$OMP END CRITICAL (write2out)
 
    else if ( timinc < theDelta ) then                                     ! cutBack
@@ -261,11 +263,12 @@ subroutine hypela2(&
 
    calcMode(nn,cp_en) = .not. calcMode(nn,cp_en)                          ! ping pong (calc <--> collect)
 
-   if ( calcMode(nn,cp_en) ) then                                         ! now calc
+   if ( calcMode(nn,cp_en) ) then                                         ! now --- CALC ---
      if ( lastMode .neqv. calcMode(nn,cp_en) ) then                       ! first after ping pong
        call debug_reset()                                                 ! resets debugging
-       outdatedFFN1 = .false.
-       cycleCounter = cycleCounter + 1
+       outdatedFFN1  = .false.
+       terminallyIll = .false.
+       cycleCounter  = cycleCounter + 1
      endif
      if ( outdatedByNewInc ) then
        outdatedByNewInc = .false.
@@ -273,8 +276,9 @@ subroutine hypela2(&
      else
        computationMode = 2                                                ! plain calc
      endif
-   else                                                                   ! now collect
-     if ( lastMode .neqv. calcMode(nn,cp_en) ) call debug_info()          ! first after ping pong reports debugging
+   else                                                                   ! now --- COLLECT ---
+     if ( lastMode .neqv. calcMode(nn,cp_en) .and. &
+          .not. terminallyIll ) call debug_info()                         ! first after ping pong reports (meaningful) debugging
      if ( lastIncConverged ) then
        lastIncConverged = .false.
        computationMode = 4                                                ! collect and backup Jacobian after convergence

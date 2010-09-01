@@ -217,13 +217,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   cp_en = mesh_FEasCP('elem',element)
   selectiveDebugger = (cp_en == debug_e .and. IP == debug_i)
   
-  if (debugger .and. selectiveDebugger) then
+  if (selectiveDebugger) then
     !$OMP CRITICAL (write2out)
       write(6,*)
-      write(6,*) '#####################################'
-      write(6,'(a10,x,f8.4,x,a10,x,f8.4,x,a10,x,i6,x,a10,x,i3,x,a16,x,i2,x,a16,x,i2)') &
-      'theTime',theTime,'theDelta',theDelta,'theInc',theInc,'cycleCounter',cycleCounter,'computationMode',mode
-      write(6,*) '#####################################'
+      write(6,'(a)') '#######################################################'
+      write(6,'(a32,x,i5,x,i2)') 'reporting for element, ip:',cp_en,IP
+      write(6,'(a32,x,f15.7)') 'theTime',theTime
+      write(6,'(a32,x,f15.7)') 'theDelta',theDelta
+      write(6,'(a32,x,i8)') 'theInc',theInc
+      write(6,'(a32,x,i8)') 'cycleCounter',cycleCounter
+      write(6,'(a32,x,i8)') 'computationMode',mode
+      write(6,'(a)') '#######################################################'
       call flush (6)
     !$OMP END CRITICAL (write2out)
   endif
@@ -243,9 +247,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-        if (debugger .and. selectiveDebugger) then
+        if (selectiveDebugger) then
           !$OMP CRITICAL (write2out)
-            write(6,'(a16,i2,x,i5,/,4(3(e20.8,x),/))') 'aged state at 1 ',IP,cp_en, constitutive_state(1,IP,cp_en)%p
+            write(6,'(a32,x,i8,x,i2,/,4(3(e20.8,x),/))') '°°° AGED state of grain 1, element ip',cp_en,IP, &
+                                                         constitutive_state(1,IP,cp_en)%p
           !$OMP END CRITICAL (write2out)
         endif
         do k = 1,mesh_NcpElems
@@ -265,14 +270,15 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > defgradTolerance)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
-          if (debugger) then
-            !$OMP CRITICAL (write2out)
-              write(6,'(a11,x,i2,x,i5,x,a12,/,3(3(f10.6,x),/))') 'outdated at',IP,cp_en,'; FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
-            !$OMP END CRITICAL (write2out)
-          endif
+          !$OMP CRITICAL (write2out)
+            write(6,'(a32,x,i5,x,i2)') '°°° OUTDATED at element ip',cp_en,IP
+            write(6,'(a32,/,3(3(f10.6,x),/))') '    FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
+          !$OMP END CRITICAL (write2out)
           outdatedFFN1 = .true.
         endif
-        CPFEM_cs(:,IP,cp_en)              = CPFEM_odd_stress
+        call random_number(rnd)
+        if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
+        CPFEM_cs(:,IP,cp_en)              = rnd*CPFEM_odd_stress
         CPFEM_dcsde(:,:,IP,cp_en)         = CPFEM_odd_jacobian*math_identity2nd(6)
       
       ! deformation gradient is not outdated
@@ -307,8 +313,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           CPFEM_calc_done = .true.
         endif
         
-        if (terminallyIll) then
-          CPFEM_cs(:,IP,cp_en)              = CPFEM_odd_stress
+        if ( terminallyIll ) then
+          call random_number(rnd)
+          if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
+          CPFEM_cs(:,IP,cp_en)              = rnd*CPFEM_odd_stress
           CPFEM_dcsde(:,:,IP,cp_en)         = CPFEM_odd_jacobian*math_identity2nd(6)
         else  
         !  translate from P to CS
@@ -334,7 +342,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         endif
       endif
     
-    ! --+>> COLLECTION OF FEM INPUT WITH RETURNING OF ODD STRESS AND JACOBIAN <<+-- 
+    ! --+>> COLLECTION OF FEM INPUT WITH RETURNING OF RANDOMIZED ODD STRESS AND JACOBIAN <<+-- 
     case (3,4,5)
       if (mode == 4) then
         CPFEM_dcsde_knownGood = CPFEM_dcsde  ! --+>> BACKUP JACOBIAN FROM FORMER CONVERGED INC
@@ -353,8 +361,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     ! --+>> RECYCLING OF FORMER RESULTS (MARC SPECIALTY) <<+--
     case (6)
       ! do nothing
+    ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
     case (7)
-      CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
+      CPFEM_dcsde = CPFEM_dcsde_knownGood
     
   end select
 
@@ -363,12 +372,13 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   jacobian(:,:)   = CPFEM_dcsdE(:,:,IP,cp_en)
   
   ! copy P and dPdF to the output variables 
-  pstress(:,:) = materialpoint_P(:,:,IP,cp_en)
+  pstress(:,:)   = materialpoint_P(:,:,IP,cp_en)
   dPdF(:,:,:,:)  = materialpoint_dPdF(:,:,:,:,IP,cp_en)
-  if (debugger .and. selectiveDebugger) then
+  if ((debugger .and. selectiveDebugger) .and. &
+      mode < 6) then
     !$OMP CRITICAL (write2out)
-      write(6,'(a16,x,i2,x,a2,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6
-      write(6,'(a18,x,i2,x,a2,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, jacobian/1e9
+      write(6,'(a,x,i2,x,a,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6
+      write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, jacobian/1e9
       call flush(6)
     !$OMP END CRITICAL (write2out)
   endif
