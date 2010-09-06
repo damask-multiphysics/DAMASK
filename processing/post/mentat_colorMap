@@ -69,24 +69,24 @@ def output(cmds,locals,dest):
 
 
 # -----------------------------
-def lever(val0, val1, x):
+def interpolate(val0, val1, x):
     return val0 + (val1 - val0) * x
 
 
 
 # -----------------------------
-def symlever(comp, val0, val1, x):
+def syminterpolate(comp, val0, val1, x):
     if comp == "hue":
-        return lever(val0, val1, x)
+        return interpolate(val0, val1, x)
 
     if comp == "lightness":
         val_middle = max(0.9, val0, val1)
     elif comp == "saturation":
         val_middle = min(0.1, val0, val1)
     if x < 0.5:
-        return lever(val0, val_middle, 2*x)
+        return interpolate(val0, val_middle, 2*x)
     else:
-        return lever(val_middle, val1, 2*x-1)
+        return interpolate(val_middle, val1, 2*x-1)
         
         
 
@@ -121,44 +121,46 @@ parser.add_option("-p", "--port", type = "int",\
 parser.add_option("-v", "--verbose", action="store_true",\
                   dest = "verbose",\
                   help = "write Mentat command stream also to stdout [%default]")
+parser.set_defaults(port = 40007)
 parser.set_defaults(symmetric = False)
-parser.set_defaults(port=40007)
-parser.set_defaults(verbose=False)
+parser.set_defaults(verbose = False)
 
 
-(options, vars) = parser.parse_args()
+(options, colors) = parser.parse_args()
 
 
 
 ### read hlsColors and check if they are valid hls values
 
-try:
-    hlsColor_bounds = [[],[]]
-    for i in range(2):
-        hlsColor_bounds[i] = map(float, vars[i].split(","))
-        
-        if len(hlsColor_bounds[i]) <> 3: 
-            raise
-        
-        hlsColors_limits = [[0,0,0],[1,1,1]]
-        for j in range(3):
-            if hlsColor_bounds[i][j] < hlsColors_limits[0][j] or hlsColor_bounds[i][j] > hlsColors_limits[1][j]:
-                raise
+hlsColors_limits = [[0.0,0.0,0.0],[1.0,1.0,1.0]]
 
-except:
-    parser.error("give lower and upper hlsColor as comma separated values")
+hlsColor_range = (options.symmetric and [[0,0.2,0.9],[0.333,0.2,0.9]]) or \
+                                        [[0.167,0.9,0.1],[0.167,0.1,0.9]]
+msg = []
+for i in [0,1]:
+    if len(colors) > i and colors[i] != None:
+        hlsColor_range[i] = map(float, colors[i].split(','))
+    
+    if len(hlsColor_range[i]) != 3: 
+        msg.append('please give %s color as three numbers (hue, lightness, saturation)...'%(['lower','upper'][i]))
+    
+    for j in range(min(3,len(hlsColor_range[i]))):
+        if hlsColor_range[i][j] < hlsColors_limits[0][j] or hlsColor_range[i][j] > hlsColors_limits[1][j]:
+            msg.append('%s of %s color exceeds limit'%(['hue','lightness','saturation'][j],['lower','upper'][i]))
 
 
+if msg != []:
+    parser.error('\n'+'\n'.join(msg)+'\n')
 
 ### interpolate hls values
 
 nColors = 32
 if options.symmetric:
-    hlsColors = [ [ symlever(comp, hlsColor_bounds[0][j], hlsColor_bounds[1][j], float(idx)/(nColors-1)) 
+    hlsColors = [ [ syminterpolate(comp, hlsColor_range[0][j], hlsColor_range[1][j], float(idx)/(nColors-1)) 
                     for j,comp in enumerate(["hue","lightness","saturation"]) ]
                   for idx in range(nColors) ]
 else:
-    hlsColors = [ [ lever(hlsColor_bounds[0][j], hlsColor_bounds[1][j], float(idx)/(nColors-1)) 
+    hlsColors = [ [ interpolate(hlsColor_range[0][j], hlsColor_range[1][j], float(idx)/(nColors-1)) 
                     for j,comp in enumerate(["hue","lightness","saturation"]) ]
                   for idx in range(nColors) ]
 
