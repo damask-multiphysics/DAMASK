@@ -5,12 +5,12 @@
  use prec
 
  implicit none
- integer(pInt), dimension(:), allocatable :: debug_StressLoopDistribution
- integer(pInt), dimension(:), allocatable :: debug_CrystalliteStateLoopDistribution
- integer(pInt), dimension(:), allocatable :: debug_StiffnessStateLoopDistribution
- integer(pInt), dimension(:), allocatable :: debug_CrystalliteLoopDistribution
- integer(pInt), dimension(:), allocatable :: debug_MaterialpointStateLoopDistribution
- integer(pInt), dimension(:), allocatable :: debug_MaterialpointLoopDistribution
+ integer(pInt), dimension(:,:), allocatable :: debug_StressLoopDistribution
+ integer(pInt), dimension(:), allocatable ::   debug_CrystalliteStateLoopDistribution
+ integer(pInt), dimension(:), allocatable ::   debug_StiffnessStateLoopDistribution
+ integer(pInt), dimension(:), allocatable ::   debug_CrystalliteLoopDistribution
+ integer(pInt), dimension(:), allocatable ::   debug_MaterialpointStateLoopDistribution
+ integer(pInt), dimension(:), allocatable ::   debug_MaterialpointLoopDistribution
  integer(pLongInt) :: debug_cumLpTicks             = 0_pInt
  integer(pLongInt) :: debug_cumDotStateTicks       = 0_pInt
  integer(pLongInt) :: debug_cumDotTemperatureTicks = 0_pInt
@@ -22,7 +22,7 @@
  integer(pInt) :: debug_g = 1_pInt
  logical :: selectiveDebugger = .false.
  logical :: verboseDebugger   = .false.
- logical :: debugger          = .false.
+ logical :: debugger          = .true.
  logical :: distribution_init = .false.
 
  CONTAINS
@@ -46,7 +46,7 @@ subroutine debug_init()
   write(6,*) '$Id$'
   write(6,*)
  
-  allocate(debug_StressLoopDistribution(nStress)) ;              debug_StressLoopDistribution             = 0_pInt
+  allocate(debug_StressLoopDistribution(nStress,2)) ;            debug_StressLoopDistribution             = 0_pInt
   allocate(debug_CrystalliteStateLoopDistribution(nState)) ;     debug_CrystalliteStateLoopDistribution   = 0_pInt
   allocate(debug_StiffnessStateLoopDistribution(nState)) ;       debug_StiffnessStateLoopDistribution     = 0_pInt
   allocate(debug_CrystalliteLoopDistribution(nCryst+1)) ;        debug_CrystalliteLoopDistribution        = 0_pInt
@@ -125,10 +125,12 @@ endsubroutine
  do i=1,nStress
    if (debug_StressLoopDistribution(i) /= 0) then
      integral = integral + i*debug_StressLoopDistribution(i)
-     write(6,'(i25,x,i10)') i,debug_StressLoopDistribution(i)
+     write(6,'(i25,x,i10,x,i10)') i,debug_StressLoopDistribution(i,1),debug_StressLoopDistribution(i,2)
    endif
  enddo
- write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_StressLoopDistribution)
+ write(6,'(a15,i10,x,i10,x,i10)') '          total',integral,&
+                                                    sum(debug_StressLoopDistribution(:,1)), &
+                                                    sum(debug_StressLoopDistribution(:,2))
  
  integral = 0_pInt
  write(6,*)

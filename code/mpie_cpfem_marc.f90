@@ -267,7 +267,6 @@ subroutine hypela2(&
      if ( lastMode .neqv. calcMode(nn,cp_en) ) then                       ! first after ping pong
        call debug_reset()                                                 ! resets debugging
        outdatedFFN1  = .false.
-       terminallyIll = .false.
        cycleCounter  = cycleCounter + 1
      endif
      if ( outdatedByNewInc ) then
