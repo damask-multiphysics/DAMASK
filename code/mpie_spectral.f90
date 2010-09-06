@@ -31,7 +31,7 @@ program mpie_spectral
  use CPFEM, only: CPFEM_general
 
  implicit none
- include 'fftw3.f' !header file for fftw3 (declaring variables) library file is also needed
+ include 'fftw3.f' !header file for fftw3 (declaring variables). Library file is also needed
 
  !variables to read in from loadcase and mesh file
  real(pReal), dimension(9) ::                      valuevector           ! stores information temporarily from loadcase file
@@ -47,7 +47,6 @@ program mpie_spectral
 ! variables storing information from loadcase file
  integer(pInt)                                  N_Loadcases, steps
  integer(pInt), dimension(:), allocatable ::    bc_steps              ! number of steps
- integer(pInt), dimension (3,3) ::              bc_stress_i           ! conversion from bc_mask
  real(pReal)                                    timeinc
  real(pReal), dimension (:,:,:), allocatable :: bc_velocityGrad, &
                                                 bc_stress             ! velocity gradient and stress BC
@@ -63,9 +62,9 @@ program mpie_spectral
 ! stress etc.
  real(pReal), dimension(6) ::                           cstress                   ! cauchy stress in Mandel notation
  real(pReal), dimension(3,3) ::                         pstress                   ! Piola-Kirchhoff stress in Matrix notation
- real(pReal), dimension(3,3,3,3) ::                     dPdF,c0,s0                ! ??, reference stiffnes, (reference stiffness)^-1
- real(pReal), dimension(6,6) ::                         dsde,c066,s066            ! mandel notation
- real(pReal), dimension(3,3) ::                         disgradmacro
+ real(pReal), dimension(3,3,3,3) ::                     dPdF, c0, s0              ! ??, reference stiffnes, (reference stiffness)^-1
+ real(pReal), dimension(6,6) ::                         dsde, s066            
+ real(pReal), dimension(3,3) ::                         defgradmacro
  real(pReal), dimension(3,3) ::                         cstress_av, defgrad_av, temp33_Real
  real(pReal), dimension(:,:,:,:,:), allocatable ::      cstress_field, defgrad, defgradold, ddefgrad
 
@@ -73,8 +72,8 @@ program mpie_spectral
  complex(pReal), dimension(:,:,:,:,:), allocatable ::   workfft
  complex(pReal), dimension(3,3) ::                      temp33_Complex
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat
+ real(pReal), dimension(:,:,:,:,:), allocatable ::      xknormdyad
  real(pReal), dimension(3) ::                           xk
- real(pReal), dimension(3,3) ::                         xknormdyad
  integer(pInt), dimension(3) ::                         k_s
  integer*8, dimension(2,3,3) ::                         plan_fft
 
@@ -86,15 +85,15 @@ program mpie_spectral
  
 ! loop variables etc.
  integer(pInt)  i, j, k, l, m, n, p
- integer(pInt)  loadcase, ielem, ial, iter, calcmode
- real(pReal), dimension(2) :: guessmode
+ integer(pInt)  loadcase, ielem, iter, calcmode
+ real(pReal) guessmode                                             ! flip-flop to guess defgrad fluctuation field evolution
  
  real(pReal) temperature                                           ! not used, but needed
 
-!gmsh
+!gmsh output
  character(len=1024) :: nriter
  character(len=1024) :: nrstep
-!gmsh
+!gmsh output
 
 !Initializing
  bc_maskvector = ''
@@ -105,9 +104,6 @@ program mpie_spectral
  N_t = 0_pInt
  N_n = 0_pInt
 
- disgradmacro = .0_pReal
- c0 = .0_pReal; c066 = .0_pReal
- s0 = .0_pReal; s066 = .0_pReal
  cstress_err = .0_pReal; strain_err = .0_pReal
  
  cstress = .0_pReal
@@ -122,7 +118,7 @@ program mpie_spectral
 
  gotResolution =.false.; gotDimension =.false.; gotHomogenization = .false.
 
- if (IargC() < 2) call IO_error(102)                     ! check for correct Nr. of arguments given
+ if (IargC() < 2) call IO_error(102)                     ! check for correct number of arguments given
 
 ! Reading the loadcase file and assign variables
  path = getLoadcaseName()
@@ -263,6 +259,7 @@ program mpie_spectral
 
  allocate (workfft(resolution(1)/2+1,resolution(2),resolution(3),3,3));          workfft              = .0_pReal
  allocate (gamma_hat(resolution(1)/2+1,resolution(2),resolution(3),3,3,3,3));    gamma_hat            = .0_pReal
+ allocate (xknormdyad(resolution(1)/2+1,resolution(2),resolution(3),3,3));       xknormdyad           = .0_pReal
  allocate (cstress_field(resolution(1),resolution(2),resolution(3),3,3));        cstress_field        = .0_pReal
  allocate (defgrad(resolution(1),resolution(2),resolution(3),3,3));              defgrad              = .0_pReal
  allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3));           defgradold           = .0_pReal
@@ -281,24 +278,22 @@ program mpie_spectral
  wgt = 1._pReal/real(prodnn, pReal)
 
  ielem = 0_pInt
-
+ c0 = .0_pReal
+ defgradmacro = math_I3
+ 
  do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-   defgradold(i,j,k,:,:) = math_I3                                             !to fit calculation of first step to calculation of following steps
-   defgrad(i,j,k,:,:) = math_I3                                                !to fit calculation of first step to calculation of following steps
-   ielem = ielem +1                                                             !loop over FPs and determine elastic constants of reference material
+   defgradold(i,j,k,:,:) = math_I3                                             !no deformation at the beginning
+   defgrad(i,j,k,:,:) = math_I3 
+   ielem = ielem +1                                                             
    call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
-   c066 = c066 + dsde
+   c0 = c0 + math_Mandel66to3333(dsde)
  enddo; enddo; enddo
 
- c066 = c066*wgt
-
- call math_invert(6,c066,s066,i,errmatinv) !i is just a dummy variable
- if(errmatinv) call IO_error(45,ext_msg = "problem in c0 inversion")  ! todo: change number and add message to io.f90
-
- s0 = math_Mandel66to3333(s066)
- c0 = math_Mandel66to3333(c066)
-
-!calculation of gamma_hat (only approx half of it)
+ call math_invert(6,math_Mandel3333to66(c0),s066,i,errmatinv) !i is just a dummy variable
+ if(errmatinv) call IO_error(45,ext_msg = "problem in c0 inversion")  ! todo: change number and add message to io.f90 
+ s0 = math_Mandel66to3333(s066)*real(prodnn, pReal)
+   
+!calculation of xknormdyad (needed to calculate gamma_hat)
  do k = 1, resolution(3)
    k_s(3) = k-1
    if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
@@ -312,43 +307,23 @@ program mpie_spectral
          k_s(1) = i-1
          xk(1) = real(k_s(1), pReal)/meshdimension(1)
 
-         xknormdyad=.0_pReal
-
          if (any(xk /= .0_pReal)) then
            do l = 1,3; do m = 1,3
-             xknormdyad(l,m) = xk(l)*xk(m)/(xk(1)**2+xk(2)**2+xk(3)**2)
+             xknormdyad(i,j,k, l,m) = xk(l)*xk(m)/(xk(1)**2+xk(2)**2+xk(3)**2)
            enddo; enddo
          endif
-
-!forall loops don't work for the next 2 loop constructs!!!
-         temp33_Real = .0_pReal
-         do l = 1,3; do m = 1,3; do n = 1,3; do p = 1,3
-           temp33_Real(l,m) = temp33_Real(l,m)+c0(l,n,m,p)*xknormdyad(n,p)
-         enddo; enddo; enddo; enddo
-
-         temp33_Real = math_inv3x3(temp33_Real)
-
-         do l=1,3; do m=1,3; do n=1,3; do p=1,3
-           gamma_hat(i,j,k,l,m,n,p) = -temp33_Real(l,n)*xknormdyad(m,p)
-         enddo; enddo; enddo; enddo
-
  enddo; enddo; enddo
-
+ 
 ! Initialization done
  open(539,file='stress-strain.out')
+
 !*************************************************************
 !Loop over loadcases defined in the loadcase file
  do loadcase = 1, N_Loadcases
 !*************************************************************
-   bc_stress_i = 0_pInt  !convert information about stress BC's from bc_mask in an integer-array
-   do m = 1,3; do n = 1,3
-       if(bc_mask(m,n,2,loadcase)) bc_stress_i(m,n) = 1
-   enddo; enddo
 
    timeinc = bc_timeIncrement(loadcase)/bc_steps(loadcase)
-
-   guessmode(1) =.0_pReal
-   guessmode(2) = 1_pReal
+   guessmode = 0.0_pReal                                                            ! change of load case
 
 !*************************************************************
 ! loop oper steps defined in input file for current loadcase
@@ -359,14 +334,13 @@ program mpie_spectral
 
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
        temp33_Real = defgrad(i,j,k,:,:)
-       defgrad(i,j,k,:,:)    = defgrad(i,j,k,:,:) + guessmode(1)*(defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))& ! old fluctuations as guess for new step
-                                                  + guessmode(2)*bc_velocityGrad(:,:,loadcase)*timeinc         ! homogeneous fluctuations for new loadcase  
+       defgrad(i,j,k,:,:)    = defgrad(i,j,k,:,:) + guessmode  * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))& ! old fluctuations as guess for new step
+                                       + (1.0_pReal-guessmode) * bc_velocityGrad(:,:,loadcase)*timeinc         ! homogeneous fluctuations for new loadcase  
        defgradold(i,j,k,:,:) = temp33_Real                                                                     ! wind forward
      enddo; enddo; enddo
 
-     disgradmacro = disgradmacro + bc_velocityGrad(:,:,loadcase)*timeinc  !update macroscopic displacementgradient (stores the desired BCs of defgrad) 
-     guessmode(1)= 1_pReal
-     guessmode(2)=.0_pReal
+     defgradmacro = defgradmacro + bc_velocityGrad(:,:,loadcase)*timeinc  !update macroscopic displacement gradient (stores the desired BCs of defgrad) 
+     guessmode = 1.0_pReal                                                          ! keep guessing along former trajectory
      calcmode = 1_pInt
      iter = 0_pInt
      err_stress_av = 2.*error; err_strain_av = 2.*error
@@ -386,25 +360,27 @@ program mpie_spectral
        do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
          ielem = ielem + 1
          call CPFEM_general(3, defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
-                          temperature,timeinc,ielem,1_pInt,&
-                          cstress,dsde, pstress, dPdF)
+                            temperature,timeinc,ielem,1_pInt,&
+                            cstress,dsde, pstress, dPdF)
        enddo; enddo; enddo
-
+   
+       c0 = .0_pReal
        l = 0_pInt
        ielem = 0_pInt
-       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+       
+      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
          ielem = ielem + 1
          call CPFEM_general(calcmode,&    ! first element in first iteration retains calcMode 1, others get 2 (saves winding forward effort)
-                             defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
-                             temperature,timeinc,ielem,1_pInt,&
-                             cstress,dsde, pstress, dPdF)
+                            defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
+                            temperature,timeinc,ielem,1_pInt,&
+                            cstress,dsde, pstress, dPdF)
          calcmode = 2
-
+         c0 = c0 + math_Mandel66to3333(dsde)
          temp33_Real = math_Mandel6to33(cstress)
 
-         do m = 1,3; do n = 1,3                                           ! calculate stress error
-           if(abs(temp33_Real(m,n)) > 0.1 * abs(cstress_err(m,n))) then         ! only stress components larger than 10% are taking under consideration
-             err_stress_av  = err_stress_av + abs((cstress_field(i,j,k,m,n)-temp33_Real(m,n))/temp33_Real(m,n)) !any find maxval> leave loop
+         do m = 1,3; do n = 1,3                                                       ! calculate stress error
+           if(abs(temp33_Real(m,n)) > 0.1_pReal * abs(cstress_err(m,n))) then         ! only stress components larger than 10% are taking under consideration
+             err_stress_av  = err_stress_av + abs((cstress_field(i,j,k,m,n)-temp33_Real(m,n))/temp33_Real(m,n))
              err_stress_max = max(err_stress_max, abs((cstress_field(i,j,k,m,n)-temp33_Real(m,n))/temp33_Real(m,n)))
              l=l+1
            endif
@@ -412,20 +388,34 @@ program mpie_spectral
          cstress_field(i,j,k,:,:) = temp33_Real
          cstress_av = cstress_av + temp33_Real          ! average stress
        enddo; enddo; enddo
-   
+  
        err_stress_av = err_stress_av/l        ! do the weighting of the error
        cstress_av = cstress_av*wgt            ! do the weighting of average stress
        cstress_err = cstress_av 
-    
+
+       if(iter==1) then                        !update reference stiffness for gamma_hat
+         c0 = c0 *wgt
+         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
+           temp33_Real = .0_pReal
+           do l = 1,3; do m = 1,3; do n = 1,3; do p = 1,3
+             temp33_Real(l,m) = temp33_Real(l,m)+c0(l,n,m,p)*xknormdyad(i,j,k, n,p)
+           enddo; enddo; enddo; enddo
+           temp33_Real = math_inv3x3(temp33_Real)
+           do l=1,3; do m=1,3; do n=1,3; do p=1,3
+             gamma_hat(i,j,k, l,m,n,p) = -temp33_Real(l,n)*xknormdyad(i,j,k, m,p)
+           enddo; enddo; enddo; enddo
+         enddo; enddo; enddo
+       endif  
+
        write(*,*) 'SPECTRAL METHOD TO GET CHANGE OF DEFORMATION GRADIENT FIELD'
        do m = 1,3; do n = 1,3
          call dfftw_execute_dft_r2c(plan_fft(1,m,n), cstress_field(:,:,:,m,n),workfft(:,:,:,m,n))
        enddo; enddo 
        
-       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1 !no better way to do the calculation???
+       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
          temp33_Complex = .0_pReal
          do m = 1,3; do n = 1,3
-           temp33_Complex(m,n) = temp33_Complex(m,n) +sum(gamma_hat(i,j,k,m,n,:,:) * workfft(i,j,k,:,:))
+           temp33_Complex(m,n) = sum(gamma_hat(i,j,k,m,n,:,:) * workfft(i,j,k,:,:))
          enddo; enddo
          workfft(i,j,k,:,:) = temp33_Complex(:,:) 
        enddo; enddo; enddo
@@ -434,15 +424,16 @@ program mpie_spectral
          call dfftw_execute_dft_c2r(plan_fft(2,m,n), workfft(:,:,:,m,n),ddefgrad(:,:,:,m,n))
        enddo; enddo
        
-       defgrad = defgrad + ddefgrad * wgt
-   
+       ddefgrad = ddefgrad * wgt
+       defgrad = defgrad + ddefgrad
+
        l = 0_pInt
        do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
          defgrad_av(:,:) = defgrad_av(:,:) + defgrad(i,j,k,:,:)       ! calculate average strain
          do m = 1,3; do n = 1,3                                       ! calculate strain error
-         if(abs(defgrad(i,j,k,m,n)) > 0.1 * abs(strain_err(m,n))) then
-             err_strain_av = err_strain_av + abs((real(ddefgrad(i,j,k,m,n), pReal)*wgt)/defgrad(i,j,k,m,n))
-             err_strain_max = max(err_strain_max, abs((real(ddefgrad(i,j,k,m,n), pReal)*wgt)/defgrad(i,j,k,m,n)))
+           if(abs(defgrad(i,j,k,m,n)) > 0.1 * abs(strain_err(m,n))) then
+             err_strain_av = err_strain_av + abs(real(ddefgrad(i,j,k,m,n), pReal)/defgrad(i,j,k,m,n))
+             err_strain_max = max(err_strain_max, abs(real(ddefgrad(i,j,k,m,n), pReal)/defgrad(i,j,k,m,n)))
              l=l+1
            endif
          enddo; enddo
@@ -453,11 +444,11 @@ program mpie_spectral
        strain_err = defgrad_av
        
        do m = 1,3; do n = 1,3
-         if(bc_mask(m,n,1,loadcase)) then !adjust defgrad to achieve displacement BC (disgradmacro)
-           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (disgradmacro(m,n)+math_I3(m,n)-defgrad_av(m,n))
-         endif
-         if(bc_mask(m,n,2,loadcase)) then !adjust defgrad to achieve convergency in stress
-           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + sum(s0(m,n,:,:)*bc_stress_i(:,:)*(bc_stress(:,:,loadcase)-cstress_av(:,:)))
+         if(bc_mask(m,n,1,loadcase)) then              ! adjust defgrad to fulfill displacement BC (defgradmacro)
+           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradmacro(m,n)-defgrad_av(m,n))
+         else                                          ! adjust defgrad to fulfill stress BC
+           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + sum( s0(m,n,:,:)*(bc_stress(:,:,loadcase)-cstress_av(:,:)), &
+                                                          mask = bc_mask(:,:,2,loadcase) )
          endif
        enddo; enddo
 
@@ -527,8 +518,8 @@ program mpie_spectral
      close(589)
 !end gmsh
 
-   enddo  ! end loping over steps in current loadcase
- enddo  ! end looping over loadcases
+   enddo  ! end looping over steps in current loadcase
+ enddo    ! end looping over loadcases
 close(539)
 
 do i=1,2; do m = 1,3; do n = 1,3
