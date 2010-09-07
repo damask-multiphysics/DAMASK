@@ -123,8 +123,8 @@ endsubroutine
  write(6,*)
  write(6,*) 'distribution_StressLoop :'
  do i=1,nStress
-   if (debug_StressLoopDistribution(i) /= 0) then
-     integral = integral + i*debug_StressLoopDistribution(i)
+   if (debug_StressLoopDistribution(i,1) /= 0 .or. debug_StressLoopDistribution(i,2) /= 0) then
+     integral = integral + i*debug_StressLoopDistribution(i,1) + i*debug_StressLoopDistribution(i,2)
      write(6,'(i25,x,i10,x,i10)') i,debug_StressLoopDistribution(i,1),debug_StressLoopDistribution(i,2)
    endif
  enddo
