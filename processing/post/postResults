@@ -723,6 +723,8 @@ for increment in increments:
                 condensedGroupContent = mapFunc(label, groupContent, 'avg')                                             # always average location
                 if len(groupContent) > 1:                                                                               # e,n,g nonsense if averaged over more than one entry...
                     condensedGroupContent[:3] = ['n/a']*3                                                               # ...so return 'n/a'
+            elif len(groupContent) == 1:
+                condensedGroupContent = map(str,groupContent[0])
             else:
                 condensedGroupContent = mapFunc(label, groupContent, options.func)                                      # map function to groupContent to get condensed data of this group's chunk
             output[-1] += condensedGroupContent
