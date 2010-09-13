@@ -415,10 +415,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         constitutive_sizeState, &
                                                         constitutive_sizeDotState, &
                                                         constitutive_state, &
+                                                        constitutive_state_backup, &
                                                         constitutive_subState0, &
                                                         constitutive_partionedState0, &
                                                         constitutive_homogenizedC, &
                                                         constitutive_dotState, &
+                                                        constitutive_dotState_backup, &
                                                         constitutive_previousDotState, &
                                                         constitutive_previousDotState2, &
                                                         constitutive_collectDotState, &
@@ -462,22 +464,18 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         dot_prod22, &
                                                         formerSubStep
   real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        storedF, &
-                                                        storedFp, &
-                                                        storedInvFp, &
-                                                        storedFe, &
-                                                        storedLp, &
-                                                        storedP
+                                                        F_backup, &
+                                                        Fp_backup, &
+                                                        InvFp_backup, &
+                                                        Fe_backup, &
+                                                        Lp_backup, &
+                                                        P_backup
   real(pReal), dimension(6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        storedTstar_v
+                                                        Tstar_v_backup
   real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        storedTemperature
-  real(pReal), dimension(constitutive_maxSizeState,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        storedState
-  real(pReal), dimension(constitutive_maxSizeDotState,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        storedDotState
+                                                        Temperature_backup
   logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        storedConvergenceFlag
+                                                        ConvergenceFlag_backup
   logical, dimension(3,3) ::                            mask
   logical                                               forceLocalStiffnessCalculation ! flag indicating that stiffness calculation is always done locally
   forceLocalStiffnessCalculation = .true. 
@@ -802,28 +800,30 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
   ! --+>> stiffness calculation <<+--
   
-  if(updateJaco) then                                                                                   ! Jacobian required
+  if(updateJaco) then                                                                                     ! Jacobian required
     
     crystallite_statedamper = 1.0_pReal
     
-    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
-      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
+      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
         do g = 1,myNgrains
-          mySizeState = constitutive_sizeState(g,i,e)                                                   ! number of state variables for this grain
-          mySizeDotState = constitutive_sizeDotState(g,i,e)                                             ! number of dotStates for this grain
-          storedState(1:mySizeState,g,i,e) = constitutive_state(g,i,e)%p                                ! remember unperturbed, converged state, ...
-          storedDotState(1:mySizeDotState,g,i,e) = constitutive_dotState(g,i,e)%p                       ! ... dotStates, ...
+          mySizeState = constitutive_sizeState(g,i,e)                                                     ! number of state variables for this grain
+          mySizeDotState = constitutive_sizeDotState(g,i,e)                                               ! number of dotStates for this grain
+          constitutive_state_backup(g,i,e)%p(1:mySizeState) = &
+                 constitutive_state(g,i,e)%p(1:mySizeState)                                               ! remember unperturbed, converged state, ...
+          constitutive_dotState_backup(g,i,e)%p(1:mySizeDotState) = &
+                 constitutive_dotState(g,i,e)%p(1:mySizeDotState)                                         ! ... dotStates, ...
     enddo; enddo; enddo
-    storedTemperature = crystallite_Temperature                                                         ! ... Temperature, ...
-    storedF = crystallite_subF                                                                          ! ... and kinematics
-    storedFp = crystallite_Fp
-    storedInvFp = crystallite_invFp
-    storedFe = crystallite_Fe
-    storedLp = crystallite_Lp
-    storedTstar_v = crystallite_Tstar_v
-    storedP = crystallite_P
-    storedConvergenceFlag = crystallite_converged
+    Temperature_backup = crystallite_Temperature                                                          ! ... Temperature, ...
+    F_backup = crystallite_subF                                                                           ! ... and kinematics
+    Fp_backup = crystallite_Fp
+    InvFp_backup = crystallite_invFp
+    Fe_backup = crystallite_Fe
+    Lp_backup = crystallite_Lp
+    Tstar_v_backup = crystallite_Tstar_v
+    P_backup = crystallite_P
+    ConvergenceFlag_backup = crystallite_converged
 
     if (all(crystallite_localConstitution) .or. theInc < 1 .or. forceLocalStiffnessCalculation) then      ! all grains have local constitution, so local convergence of perturbed grain is sufficient
     
@@ -840,9 +840,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                     write (6,*) '#############'
                     write (6,*) 'central solution of cryst_StressAndTangent'
                     write (6,*) '#############'
-                    write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, storedP(1:3,:,g,i,e)/1e6
-                    write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, storedFp(1:3,:,g,i,e)
-                    write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, storedLp(1:3,:,g,i,e)
+                    write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, P_backup(1:3,:,g,i,e)/1e6
+                    write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, Fp_backup(1:3,:,g,i,e)
+                    write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, Lp_backup(1:3,:,g,i,e)
                     !$OMPEND CRITICAL (write2out)
                   endif
                   
@@ -879,32 +879,32 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                             write (6,'(a,x,l,x,l)') 'ontrack + converged:',onTrack,converged
                             write (6,'(a12,3(x,i4),/,3(3(f12.4,x)/))') 'pertP/MPa of', g, i, e, crystallite_P(1:3,:,g,i,e)/1e6
                             write (6,'(a12,3(x,i4),/,3(3(f12.4,x)/))') 'DP/MPa    of', g, i, e, &
-                                                                         (crystallite_P(1:3,:,g,i,e)-storedP(1:3,:,g,i,e))/1e6
+                                                                         (crystallite_P(1:3,:,g,i,e)-P_backup(1:3,:,g,i,e))/1e6
                             !$OMPEND CRITICAL (write2out)
                           endif
                         enddo
-                        if (converged) &                                                                    ! converged state warrants stiffness update
-                          dPdF_perturbation(:,:,k,l,perturbation) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/myPert       ! tangent dP_ij/dFg_kl
+                        if (converged) &                                                                                          ! converged state warrants stiffness update
+                          dPdF_perturbation(:,:,k,l,perturbation) = (crystallite_P(:,:,g,i,e) - P_backup(:,:,g,i,e))/myPert       ! tangent dP_ij/dFg_kl
   
-                        mySizeState = constitutive_sizeState(g,i,e)                                                   ! number of state variables for this grain
-                        mySizeDotState = constitutive_sizeDotState(g,i,e)                                             ! number of dotStates for this grain
-                        constitutive_state(g,i,e)%p = storedState(1:mySizeState,g,i,e)
-                        constitutive_dotState(g,i,e)%p = storedDotState(1:mySizeDotState,g,i,e)
-                        crystallite_Temperature(g,i,e) = storedTemperature(g,i,e)
-                        crystallite_subF(:,:,g,i,e) = storedF(:,:,g,i,e)
-                        crystallite_Fp(:,:,g,i,e) = storedFp(:,:,g,i,e) 
-                        crystallite_invFp(:,:,g,i,e) = storedInvFp(:,:,g,i,e)
-                        crystallite_Fe(:,:,g,i,e) = storedFe(:,:,g,i,e)
-                        crystallite_Lp(:,:,g,i,e) = storedLp(:,:,g,i,e)
-                        crystallite_Tstar_v(:,g,i,e) = storedTstar_v(:,g,i,e)
-                        crystallite_P(:,:,g,i,e) = storedP(:,:,g,i,e)
+                        mySizeState = constitutive_sizeState(g,i,e)                                                               ! number of state variables for this grain
+                        mySizeDotState = constitutive_sizeDotState(g,i,e)                                                         ! number of dotStates for this grain
+                        constitutive_state(g,i,e)%p(1:mySizeState) = constitutive_state_backup(g,i,e)%p(1:mySizeState)
+                        constitutive_dotState(g,i,e)%p(1:mySizeDotState) = constitutive_dotState_backup(g,i,e)%p(1:mySizeDotState)
+                        crystallite_Temperature(g,i,e) = Temperature_backup(g,i,e)
+                        crystallite_subF(:,:,g,i,e) = F_backup(:,:,g,i,e)
+                        crystallite_Fp(:,:,g,i,e) = Fp_backup(:,:,g,i,e) 
+                        crystallite_invFp(:,:,g,i,e) = InvFp_backup(:,:,g,i,e)
+                        crystallite_Fe(:,:,g,i,e) = Fe_backup(:,:,g,i,e)
+                        crystallite_Lp(:,:,g,i,e) = Lp_backup(:,:,g,i,e)
+                        crystallite_Tstar_v(:,g,i,e) = Tstar_v_backup(:,g,i,e)
+                        crystallite_P(:,:,g,i,e) = P_backup(:,:,g,i,e)
                         !$OMP CRITICAL (out)
                           debug_StiffnessStateLoopDistribution(NiterationState) = &
                             debug_StiffnessstateLoopDistribution(NiterationState) + 1
                         !$OMPEND CRITICAL (out)
                       enddo; enddo
                     endif
-                  enddo                                                                                    ! perturbation direction
+                  enddo                                                                                 ! perturbation direction
                   select case(pert_method)
                     case (1)
                       crystallite_dPdF(:,:,:,:,g,i,e) = dPdF_perturbation(:,:,:,:,1)
@@ -1013,12 +1013,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
               do g = 1,myNgrains
                 if (crystallite_converged(g,i,e)) then                                                                              ! if stiffness calculation converged...
-                  crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - storedP(:,:,g,i,e))/pert_Fg                         ! ... use tangent dP_ij/dFg_kl
+                  crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - P_backup(:,:,g,i,e))/pert_Fg                        ! ... use tangent dP_ij/dFg_kl
                   !$OMP CRITICAL (out)
                     debug_StiffnessStateLoopDistribution(NiterationState) = &
                       debug_StiffnessstateLoopDistribution(NiterationState) + 1
                   !$OMPEND CRITICAL (out)
-                elseif (.not. storedConvergenceFlag(g,i,e)) then                                                                    ! if crystallite didnÕt converge before...
+                elseif (.not. ConvergenceFlag_backup(g,i,e)) then                                                                   ! if crystallite didnÕt converge before...
                   crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                                         ! ... use (elastic) fallback
                 endif
           enddo; enddo; enddo
@@ -1029,19 +1029,19 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               do g = 1,myNgrains
                 mySizeState = constitutive_sizeState(g,i,e)
                 mySizeDotState = constitutive_sizeDotState(g,i,e)
-                constitutive_state(g,i,e)%p = storedState(1:mySizeState,g,i,e)
-                constitutive_dotState(g,i,e)%p = storedDotState(1:mySizeDotState,g,i,e)
+                constitutive_state(g,i,e)%p(1:mySizeState) = constitutive_state_backup(g,i,e)%p(1:mySizeState)
+                constitutive_dotState(g,i,e)%p(1:mySizeDotState) = constitutive_dotState_backup(g,i,e)%p(1:mySizeDotState)
           enddo; enddo; enddo
-          crystallite_Temperature = storedTemperature
-          crystallite_subF = storedF
-          crystallite_Fp = storedFp 
-          crystallite_invFp = storedInvFp
-          crystallite_Fe = storedFe
-          crystallite_Lp = storedLp
-          crystallite_Tstar_v = storedTstar_v
-          crystallite_P = storedP
+          crystallite_Temperature = Temperature_backup
+          crystallite_subF = F_backup
+          crystallite_Fp = Fp_backup 
+          crystallite_invFp = InvFp_backup
+          crystallite_Fe = Fe_backup
+          crystallite_Lp = Lp_backup
+          crystallite_Tstar_v = Tstar_v_backup
+          crystallite_P = P_backup
           
-          crystallite_converged = storedConvergenceFlag
+          crystallite_converged = ConvergenceFlag_backup
       
       enddo;enddo                 ! k,l loop
       
