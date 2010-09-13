@@ -91,8 +91,8 @@ def syminterpolate(comp, val0, val1, x):
         
 
 # -----------------------------
-def colorMap(colors):
-    cmds = [ "*color %i %f %f %f"%(idx+32,color[0],color[1],color[2]) 
+def colorMap(colors,baseIdx=32):
+    cmds = [ "*color %i %f %f %f"%(idx+baseIdx,color[0],color[1],color[2]) 
              for idx,color in enumerate(colors) ]    
     return cmds
     
@@ -118,10 +118,14 @@ parser.add_option("-s","--symmetric", action = "store_true",
 parser.add_option("-p", "--port", type = "int",\
                   dest = "port",\
                   help = "Mentat connection port [%default]")
+parser.add_option("-b", "--baseindex", type = "int",\
+                  dest = "baseIdx",\
+                  help = "base index of colormap [%default]")
 parser.add_option("-v", "--verbose", action="store_true",\
                   dest = "verbose",\
                   help = "write Mentat command stream also to stdout [%default]")
 parser.set_defaults(port = 40007)
+parser.set_defaults(baseIdx = 32)
 parser.set_defaults(symmetric = False)
 parser.set_defaults(verbose = False)
 
@@ -180,7 +184,7 @@ print 'waiting to connect...'
 py_connect('',options.port)
 print 'connected...'
 
-cmds = colorMap(rgbColors)
+cmds = colorMap(rgbColors,options.baseIdx)
 output(cmds,outputLocals,'Mentat')
 py_disconnect()
 
