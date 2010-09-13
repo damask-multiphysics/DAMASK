@@ -95,6 +95,7 @@ END MODULE
  include "material.f90"         ! uses prec, math, IO, mesh
  include "lattice.f90"          ! uses prec, math, IO, material
  include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, lattice, material, debug
+ include "constitutive_titanmod.f90" ! uses prec, math, IO, lattice, material, debug
  include "constitutive_j2.f90"            ! uses prec, math, IO, lattice, material, debug
  include "constitutive_dislotwin.f90"    ! uses prec, math, IO, lattice, material, debug
  include "constitutive_nonlocal.f90"      ! uses prec, math, IO, lattice, material, debug

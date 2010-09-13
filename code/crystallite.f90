@@ -98,6 +98,8 @@ subroutine crystallite_init(Temperature)
  use lattice, only:          lattice_symmetryTypes
  use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
                                       constitutive_phenopowerlaw_structure
+ use constitutive_titanmod, only: constitutive_titanmod_label, &
+                                      constitutive_titanmod_structure
  use constitutive_dislotwin, only:     constitutive_dislotwin_label, &
                                       constitutive_dislotwin_structure
  use constitutive_nonlocal, only:      constitutive_nonlocal_label, &
@@ -290,6 +292,8 @@ subroutine crystallite_init(Temperature)
          select case (phase_constitution(myPhase))
                 case (constitutive_phenopowerlaw_label)
                   myStructure = constitutive_phenopowerlaw_structure(phase_constitutionInstance(myPhase))
+                case (constitutive_titanmod_label)
+                  myStructure = constitutive_titanmod_structure(phase_constitutionInstance(myPhase))
                 case (constitutive_dislotwin_label)
                   myStructure = constitutive_dislotwin_structure(phase_constitutionInstance(myPhase))
                 case (constitutive_nonlocal_label)

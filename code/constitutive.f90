@@ -42,7 +42,6 @@ CONTAINS
 !* - constitutive_postResults
 !****************************************
 
-
 subroutine constitutive_init()
 !**************************************
 !*      Module initialization         *
@@ -54,6 +53,7 @@ subroutine constitutive_init()
  use material
  use constitutive_j2
  use constitutive_phenopowerlaw
+ use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
 
@@ -67,6 +67,7 @@ subroutine constitutive_init()
 
  call constitutive_j2_init(fileunit)                     ! parse all phases of this constitution
  call constitutive_phenopowerlaw_init(fileunit)
+ call constitutive_titanmod_init(fileunit)
  call constitutive_dislotwin_init(fileunit)
  call constitutive_nonlocal_init(fileunit)
 
@@ -87,6 +88,9 @@ subroutine constitutive_init()
      case (constitutive_phenopowerlaw_label)
        thisOutput => constitutive_phenopowerlaw_output
        thisSize   => constitutive_phenopowerlaw_sizePostResult
+     case (constitutive_titanmod_label)
+       thisOutput => constitutive_titanmod_output
+       thisSize   => constitutive_titanmod_sizePostResult
      case (constitutive_dislotwin_label)
        thisOutput => constitutive_dislotwin_output
        thisSize   => constitutive_dislotwin_sizePostResult
@@ -167,6 +171,23 @@ subroutine constitutive_init()
            constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(myInstance)
+
+         case (constitutive_titanmod_label)
+           allocate(constitutive_state0(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
+           allocate(constitutive_relevantState(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
+           allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
+           constitutive_state0(g,i,e)%p =           constitutive_titanmod_stateInit(myInstance)
+           constitutive_relevantState(g,i,e)%p =    constitutive_titanmod_relevantState(myInstance)
+           constitutive_sizeState(g,i,e) =          constitutive_titanmod_sizeState(myInstance)
+           constitutive_sizeDotState(g,i,e) =       constitutive_titanmod_sizeDotState(myInstance)
+           constitutive_sizePostResults(g,i,e) =    constitutive_titanmod_sizePostResults(myInstance)
            
          case (constitutive_dislotwin_label)
            allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
@@ -254,6 +275,7 @@ function constitutive_homogenizedC(ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
+ use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
@@ -269,7 +291,11 @@ function constitutive_homogenizedC(ipc,ip,el)
      
    case (constitutive_phenopowerlaw_label)
      constitutive_homogenizedC = constitutive_phenopowerlaw_homogenizedC(constitutive_state,ipc,ip,el)
-     
+
+   case (constitutive_titanmod_label)
+     constitutive_homogenizedC = constitutive_titanmod_homogenizedC(constitutive_state,ipc,ip,el)
+!     write(6,*) 'called homogenized in constitutive'
+ 
    case (constitutive_dislotwin_label)
      constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(constitutive_state,ipc,ip,el)
      
@@ -294,6 +320,7 @@ function constitutive_averageBurgers(ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
+ use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
@@ -309,6 +336,9 @@ function constitutive_averageBurgers(ipc,ip,el)
      
    case (constitutive_phenopowerlaw_label)
      constitutive_averageBurgers = 2.5e-10_pReal !constitutive_phenopowerlaw_averageBurgers(constitutive_state,ipc,ip,el)
+
+   case (constitutive_titanmod_label)
+     constitutive_averageBurgers = 2.5e-10_pReal !constitutive_titanmod_averageBurgers(constitutive_state,ipc,ip,el)
      
    case (constitutive_dislotwin_label)
      constitutive_averageBurgers = 2.5e-10_pReal !constitutive_dislotwin_averageBurgers(constitutive_state,ipc,ip,el)
@@ -341,6 +371,7 @@ subroutine constitutive_microstructure(Temperature,Tstar_v,Fe,Fp,disorientation,
                       mesh_maxNipNeighbors
  use constitutive_j2
  use constitutive_phenopowerlaw
+ use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
@@ -359,6 +390,9 @@ real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: disorientation
      
    case (constitutive_phenopowerlaw_label)
      call constitutive_phenopowerlaw_microstructure(Temperature,constitutive_state,ipc,ip,el)
+
+   case (constitutive_titanmod_label)
+     call constitutive_titanmod_microstructure(Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_dislotwin_label)
      call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
@@ -388,6 +422,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
+ use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
@@ -406,6 +441,9 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
      
    case (constitutive_phenopowerlaw_label)
      call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+
+   case (constitutive_titanmod_label)
+     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_dislotwin_label)
      call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
@@ -443,6 +481,7 @@ use material, only: phase_constitution, &
                     homogenization_maxNgrains
 use constitutive_j2
 use constitutive_phenopowerlaw
+use constitutive_titanmod
 use constitutive_dislotwin
 use constitutive_nonlocal
 
@@ -475,7 +514,10 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
  
   case (constitutive_phenopowerlaw_label)
     constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
- 
+
+  case (constitutive_titanmod_label)
+    constitutive_dotState(ipc,ip,el)%p = constitutive_titanmod_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+  
   case (constitutive_dislotwin_label)
     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
@@ -511,6 +553,7 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
+ use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
@@ -528,6 +571,9 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
      
    case (constitutive_phenopowerlaw_label)
      constitutive_dotTemperature = constitutive_phenopowerlaw_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+
+   case (constitutive_titanmod_label)
+     constitutive_dotTemperature = constitutive_titanmod_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_dislotwin_label)
      constitutive_dotTemperature = constitutive_dislotwin_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
@@ -559,6 +605,7 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, mis
                      homogenization_maxNgrains
  use constitutive_j2
  use constitutive_phenopowerlaw
+ use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
  implicit none
@@ -579,6 +626,9 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, mis
      
    case (constitutive_phenopowerlaw_label)
      constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
+
+   case (constitutive_titanmod_label)
+     constitutive_postResults = constitutive_titanmod_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
      
    case (constitutive_dislotwin_label)
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)

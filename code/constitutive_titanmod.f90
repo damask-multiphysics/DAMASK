@@ -1861,7 +1861,8 @@ do f = 1,lattice_maxNtwinFamily                                 ! loop over all 
 !                state(g,ip,el)%p(13*ns+3*nt+j)=dgdot_dtautwin(j)
 
       !* Plastic velocity gradient for mechanical twinning                                                      
-      Lp = Lp + sumf*gdot_twin(j)*lattice_Stwin(:,:,index_myFamily+i,myStructure)
+!      Lp = Lp + sumf*gdot_twin(j)*lattice_Stwin(:,:,index_myFamily+i,myStructure)
+      Lp = Lp + gdot_twin(j)*lattice_Stwin(:,:,index_myFamily+i,myStructure)
 
       !* Calculation of the tangent of Lp
       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
