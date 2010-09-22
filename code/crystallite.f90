@@ -10,7 +10,7 @@
 !* - _stressAndItsTangent       *
 !* - _postResults                      *
 !***************************************
-
+  
 MODULE crystallite
 
 use prec, only: pReal, pInt
@@ -308,7 +308,7 @@ subroutine crystallite_init(Temperature)
     enddo
   enddo
 !$OMPEND PARALLEL DO         
- 
+  
   call crystallite_orientations()
   crystallite_orientation0=crystallite_orientation  ! Store initial orientations for calculation of grain rotations
 
@@ -590,7 +590,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
         enddo
       enddo
     !$OMPEND PARALLEL DO
-
+  
     ! --+>> preguess for state <<+--
     !
     ! incrementing by crystallite_subdt
@@ -857,13 +857,14 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                         crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + myPert                  ! perturb either forward or backward
                         if (debugger .and. selectiveDebugger) then
                           !$OMP CRITICAL (write2out)
-                          write (6,'(i1,x,i1)') k,l
+                          write (6,'(a,x,i1,x,i1,x,a)') '[[[[[[[ Stiffness perturbation',k,l,']]]]]]]'
                           write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') 'pertF of', g, i, e, crystallite_subF(1:3,:,g,i,e)
                           !$OMPEND CRITICAL (write2out)
                         endif
                         onTrack = .true.
                         converged = .false.
                         NiterationState = 0_pInt
+                        crystallite_statedamper(g,i,e) = 1.0_pReal
                         do while(.not. converged .and. onTrack .and. NiterationState < nState)              ! keep cycling until done (potentially non-converged)
                           NiterationState = NiterationState + 1_pInt
                           onTrack = crystallite_integrateStress(2_pInt,g,i,e)                               ! stress of perturbed situation (overwrites _P,_Tstar_v,_Fp,_Lp,_Fe) with mode:2
@@ -873,6 +874,18 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                               crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), &
                                                               crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), &
                                                               g,i,e)
+                            dot_prod12 = dot_product( &
+                                                      constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p, &
+                                            constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
+                            dot_prod22 = dot_product( &
+                                            constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p, &
+                                            constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
+                            if (      dot_prod22 > 0.0_pReal &
+                                .and. (     dot_prod12 < 0.0_pReal &
+                                       .or. dot_product(constitutive_dotState(g,i,e)%p, constitutive_previousDotState(g,i,e)%p) &
+                                            < 0.0_pReal) ) &
+                              crystallite_statedamper(g,i,e) = 0.75_pReal + &
+                                                               0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
                             stateConverged = crystallite_updateState(g,i,e)                                 ! update state
                             temperatureConverged = crystallite_updateTemperature(g,i,e)                     ! update temperature
                             converged = stateConverged .and. temperatureConverged
@@ -881,8 +894,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                             !$OMP CRITICAL (write2out)
                             write (6,*) '-------------'
                             write (6,'(a,x,l,x,l)') 'ontrack + converged:',onTrack,converged
-                            write (6,'(a12,3(x,i4),/,3(3(f12.4,x)/))') 'pertP/MPa of', g, i, e, crystallite_P(1:3,:,g,i,e)/1e6
-                            write (6,'(a12,3(x,i4),/,3(3(f12.4,x)/))') 'DP/MPa    of', g, i, e, &
+                            write (6,'(a12,3(x,i4),/,3(3(f12.8,x)/))') 'pertP/MPa of', g, i, e, crystallite_P(1:3,:,g,i,e)/1e6
+                            write (6,'(a12,3(x,i4),/,3(3(f12.8,x)/))') 'DP/MPa    of', g, i, e, &
                                                                          (crystallite_P(1:3,:,g,i,e)-P_backup(1:3,:,g,i,e))/1e6
                             !$OMPEND CRITICAL (write2out)
                           endif
@@ -975,7 +988,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         g,i,e)                                        ! collect dot state
                       dot_prod12 = dot_product( constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p, &
                                                 constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
-                      dot_prod22 = dot_product( constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p, &
+                      dot_prod22 = dot_product( constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p,&
                                                 constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
                       if (      dot_prod22 > 0.0_pReal &
                           .and. (     dot_prod12 < 0.0_pReal &
@@ -1101,7 +1114,8 @@ endsubroutine
 
  ! correct my dotState 
  constitutive_dotState(g,i,e)%p(1:mySize) = constitutive_dotState(g,i,e)%p(1:mySize) * crystallite_statedamper(g,i,e) &
-                                     + constitutive_previousDotState(g,i,e)%p(1:mySize) * (1.0_pReal-crystallite_statedamper(g,i,e))
+                                     + constitutive_previousDotState(g,i,e)%p(1:mySize) * &
+                                     (1.0_pReal-crystallite_statedamper(g,i,e))
  ! calculate the residuum
  residuum = constitutive_state(g,i,e)%p(1:mySize) - constitutive_subState0(g,i,e)%p(1:mySize) &
                                                   - constitutive_dotState(g,i,e)%p(1:mySize) * crystallite_subdt(g,i,e)
@@ -1134,13 +1148,14 @@ endsubroutine
        write(6,*) '::: updateState did not converge',g,i,e
      endif
      write(6,*)
-     write(6,'(a,f6.1)') 'crystallite_statedamper',crystallite_statedamper(g,i,e)
+     write(6,'(a,f6.1)') 'updateState: crystallite_statedamper',crystallite_statedamper(g,i,e)
      write(6,*)
-     write(6,'(a,/,12(e12.5,x))') 'dotState',constitutive_dotState(g,i,e)%p(1:mySize)
+     write(6,'(a,/,12(e14.8,x))') 'updateState: dotState',constitutive_dotState(g,i,e)%p(1:mySize)
      write(6,*)
-     write(6,'(a,/,12(e12.5,x))') 'new state',constitutive_state(g,i,e)%p(1:mySize)
+     write(6,'(a,/,12(e14.8,x))') 'updateState: new state',constitutive_state(g,i,e)%p(1:mySize)
      write(6,*)
-     write(6,'(a,/,12(f12.1,x))') 'resid tolerance',abs(residuum/rTol_crystalliteState/constitutive_state(g,i,e)%p(1:mySize))
+     write(6,'(a,/,12(f12.1,x))') 'updateState: resid tolerance',abs(residuum/rTol_crystalliteState/ &
+     constitutive_state(g,i,e)%p(1:mySize))
      write(6,*)
    !$OMPEND CRITICAL (write2out)
  endif
@@ -1420,6 +1435,12 @@ LpLoop: do
               any(residuum/=residuum) &                             ! NaN occured
             ) &
           ) then
+      if (verboseDebugger) then 
+       !$OMP CRITICAL (write2out)
+         write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress encountered high-speed crash at ',g,i,e,' ; iteration ', &
+         NiterationStress
+       !$OMPEND CRITICAL (write2out)
+     endif
      maxleap = 0.5_pReal * leapfrog                                 ! limit next acceleration
      leapfrog = 1.0_pReal                                           ! grinding halt
      jacoCounter = 0_pInt                                           ! reset counter for Jacobian update (we want to do an update next time!)
@@ -1454,6 +1475,16 @@ LpLoop: do
            !$OMPEND CRITICAL (write2out)
          endif
          return
+       else
+         if (.false. .and. verboseDebugger .and. selectiveDebugger) then
+           !$OMP CRITICAL (write2out)
+             write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress did dR/dLp inversion at ',g,i,e, &
+                                                  ' ; iteration ', NiterationStress
+             write(6,*)
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
+           !$OMPEND CRITICAL (write2out)
+         endif
        endif
      endif
      jacoCounter = jacoCounter + 1_pInt                             ! increase counter for jaco update
@@ -1510,7 +1541,8 @@ LpLoop: do
    write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress converged at ',g,i,e,' ; iteration ', NiterationStress
    write(6,*)
    write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',crystallite_P(:,:,g,i,e)/1e6
-   write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',crystallite_Lp(:,:,g,i,e)
+   write(6,'(a,/,3(3(f12.7,x)/))') 'Cauchy / MPa',math_mul33x33(crystallite_P(:,:,g,i,e),transpose(Fg_new))/1e6/math_det3x3(Fg_new)
+   write(6,'(a,/,3(3(f12.7,x)/))') 'Fe Lp Fe^-1',math_mul33x33(Fe_new,math_mul33x33(crystallite_Lp(:,:,g,i,e),math_inv3x3(Fe_new)))
    write(6,'(a,/,3(3(f12.7,x)/))') 'Fp',crystallite_Fp(:,:,g,i,e)
    !$OMP END CRITICAL (write2out)
  endif
@@ -1743,7 +1775,7 @@ function crystallite_postResults(&
   
  crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e); c = c+1_pInt  ! size of constitutive results
  crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = &
-         constitutive_postResults(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+        constitutive_postResults(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
                                   crystallite_Temperature(g,i,e), crystallite_disorientation(:,:,g,i,e), dt, &
                                   crystallite_subdt(g,i,e), g, i, e)
  c = c + constitutive_sizePostResults(g,i,e)

@@ -21,7 +21,7 @@
  integer(pInt) :: debug_i = 1_pInt
  integer(pInt) :: debug_g = 1_pInt
  logical :: selectiveDebugger = .false.
- logical :: verboseDebugger   = .false.
+ logical :: verboseDebugger   = .true.
  logical :: debugger          = .true.
  logical :: distribution_init = .false.
 

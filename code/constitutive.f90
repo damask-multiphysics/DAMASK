@@ -294,7 +294,6 @@ function constitutive_homogenizedC(ipc,ip,el)
 
    case (constitutive_titanmod_label)
      constitutive_homogenizedC = constitutive_titanmod_homogenizedC(constitutive_state,ipc,ip,el)
-!     write(6,*) 'called homogenized in constitutive'
  
    case (constitutive_dislotwin_label)
      constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(constitutive_state,ipc,ip,el)

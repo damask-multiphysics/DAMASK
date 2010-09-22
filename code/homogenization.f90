@@ -278,11 +278,11 @@ subroutine materialpoint_stressAndItsTangent(&
  if (debugger) then
    write (6,*)
    write (6,*) 'Material Point start'
-   write (6,'(a,/,(f12.7,x))')      'Temp0  of   1 1',materialpoint_Temperature(1,1)
-   write (6,'(a,/,3(3(f12.7,x)/))') 'F0     of   1 1',materialpoint_F0(1:3,:,1,1)
-   write (6,'(a,/,3(3(f12.7,x)/))') 'F      of   1 1',materialpoint_F(1:3,:,1,1)
-   write (6,'(a,/,3(3(f12.7,x)/))') 'Fp0    of 1 1 1',crystallite_Fp0(1:3,:,1,1,1)
-   write (6,'(a,/,3(3(f12.7,x)/))') 'Lp0    of 1 1 1',crystallite_Lp0(1:3,:,1,1,1)
+   write (6,'(a,/,(f14.9,x))')      'Temp0  of   1 1',materialpoint_Temperature(1,1)
+   write (6,'(a,/,3(3(f14.9,x)/))') 'F0     of   1 1',materialpoint_F0(1:3,:,1,1)
+   write (6,'(a,/,3(3(f14.9,x)/))') 'F      of   1 1',materialpoint_F(1:3,:,1,1)
+   write (6,'(a,/,3(3(f14.9,x)/))') 'Fp0    of 1 1 1',crystallite_Fp0(1:3,:,1,1,1)
+   write (6,'(a,/,3(3(f14.9,x)/))') 'Lp0    of 1 1 1',crystallite_Lp0(1:3,:,1,1,1)
  endif
 
 
