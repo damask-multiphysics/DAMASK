@@ -108,7 +108,7 @@ program mpie_spectral
  resolution = 1_pInt; meshdimension = 0.0_pReal
  xi = 0.0_pReal
  
- error = 1.0e-7_pReal
+ error = 1.0e-5_pReal
  itmax = 100_pInt
 
  temperature = 300.0_pReal
@@ -337,7 +337,7 @@ program mpie_spectral
 ! convergency loop
      do while((iter <= itmax).and.(err_div > error))
        iter = iter + 1
-       print '(A,I5.5,tr2,A,I5.5)' ' Step = ',steps,'Iteration = ',iter
+       print '(A,I5.5,tr2,A,I5.5)', ' Step = ',steps,'Iteration = ',iter
 !*************************************************************
        err_div = .0_pReal; sigma0 = .0_pReal
        pstress_av = .0_pReal; defgrad_av=.0_pReal
@@ -368,11 +368,9 @@ program mpie_spectral
        pstress_av = pstress_av*wgt            ! do the weighting of average stress
 
        if(iter==1) then                                        !update gamma_hat with new reference stiffness
-       if(steps==1) then                                       !prevent updating of s0
          call math_invert(6,math_mandel3333to66(c0),s066,i,errmatinv) !i is just a dummy variable
          if(errmatinv) call IO_error(45,ext_msg = "problem in c0 inversion")  ! todo: change number and add message to io.f90 (and remove No. 48)
          s0 = math_mandel66to3333(s066)*real(prodnn, pReal)
-       endif
          c0 = c0 *wgt
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
            temp33_Real = .0_pReal
@@ -423,20 +421,20 @@ program mpie_spectral
          endif
        enddo; enddo
    
-       write(*,'(2(a,E9.3))') ' Error = ',err_div,'   Tolerance = ', error
-       write(*,'(A)') '----------------------------------'
+       print '(2(a,E8.2))', ' Error = ',err_div,'  Criteria = ', error
+       print '(A)', '----------------------------------'
                                               
      enddo    ! end looping when convergency is achieved
 
-     write(539,'(E12.6,a,E12.6)',defgrad_av(3,3)-1,'   ',pstress_av(3,3)
-     print '(A,3(E10.4,tr2))' '                         ', defgrad_av(1,:)
-     print '(A,3(E10.4,tr2))' ' Deformation Gradient:   ', defgrad_av(2,:)
-     print '(A,3(E10.4,tr2))' '                         ', defgrad_av(3,:)
+     write(539,'(E12.6,a,E12.6)'),defgrad_av(3,3)-1,'   ',pstress_av(3,3)
+     print '(A,3(E10.4,tr2))', '                         ', defgrad_av(1,:)
+     print '(A,3(E10.4,tr2))', ' Deformation Gradient:   ', defgrad_av(2,:)
+     print '(A,3(E10.4,tr2))', '                         ', defgrad_av(3,:)
      print *, ''
-     print '(A,3(E10.4,tr2))' '                         ', pstress_av(1,:)
-     print '(A,3(E10.4,tr2))' ' Piola-Kirchhoff Stress: ', pstress_av(2,:)
-     print '(A,3(E10.4,tr2))' '                         ', pstress_av(3,:)
-     print '(A)' '************************************************************'
+     print '(A,3(E10.4,tr2))', '                         ', pstress_av(1,:)
+     print '(A,3(E10.4,tr2))', ' Piola-Kirchhoff Stress: ', pstress_av(2,:)
+     print '(A,3(E10.4,tr2))', '                         ', pstress_av(3,:)
+     print '(A)', '************************************************************'
 
 !gsmh output
      temp33_Real(1,:) = 0.0_pReal
@@ -466,7 +464,7 @@ program mpie_spectral
      ielem = 0_pInt
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
        ielem = ielem + 1
-       write(589, '(I10,tr2,E12.6,tr2,E12.6,tr2,E12.6)'), ielem, real(i), real(j), real(k) !displacement(i,j,k,:)
+       write(589, '(I10,tr2,E12.6,tr2,E12.6,tr2,E12.6)'), ielem, displacement(i,j,k,:) !real(i), real(j), real(k) 
      enddo; enddo; enddo
      write(589, '(A, /, A, /, I10)'), '$EndNodes', '$Elements', prodnn
      do i = 1, prodnn
@@ -492,7 +490,7 @@ program mpie_spectral
      ielem = 0_pInt
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
        ielem = ielem + 1
-       write(589, '(I10,tr2,E12.6,tr2,E12.6,tr2,E12.6)'), ielem, real(i), real(j), real(k) !displacement(i,j,k,:)
+       write(589, '(I10,tr2,E12.6,tr2,E12.6,tr2,E12.6)'), ielem, displacement(i,j,k,:) !real(i), real(j), real(k)
      enddo; enddo; enddo
      write(589, '(A, /, A, /, I10)'), '$EndNodes', '$Elements', prodnn
      do i = 1, prodnn
