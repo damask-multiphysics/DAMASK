@@ -342,7 +342,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
 
  forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
- 	0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
+        0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
  return
 
  endfunction
@@ -505,6 +505,24 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3) ::  math_mul33x3
 
  forall (i=1:3) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
+ return
+
+ endfunction 
+ 
+ !**************************************************************************
+! matrix multiplication complex(33) x real(3) = complex(3)
+!**************************************************************************
+ pure function math_mul33x3_complex(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i
+ complex(pReal), dimension(3,3), intent(in) ::  A
+ real(pReal),    dimension(3),   intent(in) ::  B
+ complex(pReal), dimension(3) ::  math_mul33x3_complex
+
+ forall (i=1:3) math_mul33x3_complex(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
  return
 
  endfunction 
@@ -1164,8 +1182,24 @@ pure function math_transpose3x3(A)
  return
 
  endfunction
+ 
+!********************************************************************
+! plain matrix 9x9 into 3x3x3x3 tensor
+!********************************************************************
+ pure function math_Plain99to3333(m99)
 
+ use prec, only: pReal,pInt
+ implicit none
 
+ real(pReal), dimension(9,9), intent(in) :: m99
+ real(pReal), dimension(3,3,3,3) :: math_Plain99to3333
+ integer(pInt) i,j
+ 
+ forall (i=1:9,j=1:9) math_Plain99to3333(mapPlain(1,i),mapPlain(2,i),&
+     mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
+ return
+
+ endfunction
 
 !********************************************************************
 ! convert symmetric 3x3x3x3 tensor into Mandel matrix 6x6
