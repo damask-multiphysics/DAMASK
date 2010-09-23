@@ -1734,16 +1734,16 @@ function crystallite_postResults(&
        c = c + 1_pInt
      case ('orientation')
        crystallite_postResults(c+1:c+4) = &
-         crystallite_orientation(:,g,i,e)     ! grain orientation as quaternion
+         crystallite_orientation(:,g,i,e)                                      ! grain orientation as quaternion
        c = c + 4_pInt
      case ('eulerangles')
        crystallite_postResults(c+1:c+3) = inDeg * & 
-         math_QuaternionToEuler(crystallite_orientation(:,g,i,e)) ! grain orientation as Euler angles in degree
+         math_QuaternionToEuler(crystallite_orientation(:,g,i,e))              ! grain orientation as Euler angles in degree
        c = c + 3_pInt
      case ('grainrotation')
        crystallite_postResults(c+1:c+4) = &
-         math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e)) ! grain rotation away from initial orientation as axis-angle 
-       crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4) ! angle in degree
+         math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e))           ! grain rotation away from initial orientation as axis-angle 
+       crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)     ! angle in degree
        c = c + 4_pInt
      case ('defgrad','f')
        mySize = 9_pInt

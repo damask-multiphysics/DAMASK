@@ -1,4 +1,4 @@
-!* $Id: mpie_spectral_interface.f90 605 2010-07-07 09:10:54Z MPIE\m.diehl $
+!* $Id$
 !********************************************************************
 
 MODULE mpie_interface
@@ -16,7 +16,7 @@ subroutine mpie_interface_init()
 
  write(6,*)
  write(6,*) '<<<+-  mpie_spectral init  -+>>>'
- write(6,*) '$Id: mpie_spectral_interface.f90 605 2010-07-07 09:10:54Z MPIE\m.diehl $'
+ write(6,*) '$Id$'
  write(6,*)
 
  return
