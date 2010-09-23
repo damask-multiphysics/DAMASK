@@ -5,6 +5,8 @@
  use prec
 
  implicit none
+ character(len=64), parameter :: debug_configFile = 'debug.config' ! name of configuration file
+
  integer(pInt), dimension(:,:), allocatable :: debug_StressLoopDistribution
  integer(pInt), dimension(:), allocatable ::   debug_CrystalliteStateLoopDistribution
  integer(pInt), dimension(:), allocatable ::   debug_StiffnessStateLoopDistribution
@@ -45,13 +47,61 @@ subroutine debug_init()
   write(6,*) '<<<+-  debug init  -+>>>'
   write(6,*) '$Id$'
   write(6,*)
- 
+  
   allocate(debug_StressLoopDistribution(nStress,2)) ;            debug_StressLoopDistribution             = 0_pInt
   allocate(debug_CrystalliteStateLoopDistribution(nState)) ;     debug_CrystalliteStateLoopDistribution   = 0_pInt
   allocate(debug_StiffnessStateLoopDistribution(nState)) ;       debug_StiffnessStateLoopDistribution     = 0_pInt
   allocate(debug_CrystalliteLoopDistribution(nCryst+1)) ;        debug_CrystalliteLoopDistribution        = 0_pInt
   allocate(debug_MaterialpointStateLoopDistribution(nMPstate)) ; debug_MaterialpointStateLoopDistribution = 0_pInt
   allocate(debug_MaterialpointLoopDistribution(nHomog+1)) ;      debug_MaterialpointLoopDistribution      = 0_pInt
+  
+  ! try to open the config file
+  if(IO_open_file(fileunit,debug_configFile)) then 
+  
+    write(6,*) '   ... using values from config file'
+    write(6,*)
+    
+    line = ''
+    ! read variables from config file and overwrite parameters
+    do
+      read(fileunit,'(a1024)',END=100) line
+      if (IO_isBlank(line)) cycle                           ! skip empty lines
+      positions = IO_stringPos(line,maxNchunks)
+      tag = IO_lc(IO_stringValue(line,positions,1))         ! extract key
+      select case(tag)
+        case ('element','e','el')
+              debug_e = IO_intValue(line,positions,2)
+        case ('itegrationpoint','i','ip')
+              debug_i = IO_intValue(line,positions,2)
+        case ('grain','g','gr')
+              debug_g = IO_intValue(line,positions,2)
+        case ('selective')
+              selectiveDebugger = IO_intValue(line,positions,2) > 0_pInt
+        case ('verbose')
+              verboseDebugger   = IO_intValue(line,positions,2) > 0_pInt
+        case ('debug')
+              debugger          = IO_intValue(line,positions,2) > 0_pInt
+      endselect
+    enddo
+    100 close(fileunit)
+  
+  ! no config file, so we use standard values
+  else 
+  
+    write(6,*) '   ... using standard values'
+    write(6,*)
+    
+  ! writing parameters to output file
+  write(6,'(a24,x,l)')    'debug:                  ',debugger
+  write(6,'(a24,x,l)')    'verbose:                ',verboseDebugger
+  write(6,'(a24,x,l)')    'selective:              ',selectiveDebugger
+  if (selectiveDebugger) then
+    write(6,'(a24,x,i8)') '  element:              ',debug_e
+    write(6,'(a24,x,i8)') '  ip:                   ',debug_i
+    write(6,'(a24,x,i8)') '  grain:                ',debug_g
+  endif
+
+
 endsubroutine
  
 !********************************************************************
