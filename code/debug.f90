@@ -41,8 +41,27 @@ subroutine debug_init()
                       nCryst, &
                       nMPstate, &
                       nHomog
+  use IO,       only: IO_error, &
+                      IO_open_file, &
+                      IO_isBlank, &
+                      IO_stringPos, &
+                      IO_stringValue, &
+                      IO_lc, &
+                      IO_floatValue, &
+                      IO_intValue
   implicit none
   
+  !*** input variables ***!
+  
+  !*** output variables ***!
+  
+  !*** local variables ***!
+  integer(pInt), parameter ::                 fileunit = 300  
+  integer(pInt), parameter ::                 maxNchunks = 2
+  integer(pInt), dimension(1+2*maxNchunks) :: positions
+  character(len=64)                           tag
+  character(len=1024)                         line
+
   write(6,*)
   write(6,*) '<<<+-  debug init  -+>>>'
   write(6,*) '$Id$'
@@ -87,10 +106,12 @@ subroutine debug_init()
   
   ! no config file, so we use standard values
   else 
-  
+
     write(6,*) '   ... using standard values'
     write(6,*)
-    
+
+  endif  
+
   ! writing parameters to output file
   write(6,'(a24,x,l)')    'debug:                  ',debugger
   write(6,'(a24,x,l)')    'verbose:                ',verboseDebugger
