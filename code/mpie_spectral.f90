@@ -63,7 +63,7 @@ program mpie_spectral
  real(pReal), dimension(3,3) ::                         pstress, defgradmacro, pstress_av, defgrad_av, temp33_Real       
  real(pReal), dimension(3,3,3,3) ::                     dPdF, c0, s0
  real(pReal), dimension(6) ::                           cstress       ! cauchy stress in Mandel notation (not needed) 
- real(pReal), dimension(6,6) ::                         dsde                 
+ real(pReal), dimension(6,6) ::                         dsde                                
  real(pReal), dimension(9,9) ::                         s099
  real(pReal), dimension(:,:,:), allocatable ::          ddefgrad 
  real(pReal), dimension(:,:,:,:,:), allocatable ::      pstress_field, defgrad, defgradold
@@ -87,7 +87,7 @@ program mpie_spectral
  integer(pInt)  i, j, k, l, m, n, p
  integer(pInt)  loadcase, ielem, iter, calcmode
  
- real(pReal) temperature                               ! not used, but needed
+ real(pReal) temperature                               ! not used, but needed for call to CPFEM_general
 
 !gmsh output
  character(len=1024) :: nriter
@@ -106,8 +106,9 @@ program mpie_spectral
 
  resolution = 1_pInt; meshdimension = 0.0_pReal
  xi = 0.0_pReal
- 
- error = 1.0e-5_pReal
+ c0 = 0.0_pReal
+
+ error = 1.0e-4_pReal
  itmax = 100_pInt
 
  temperature = 300.0_pReal
@@ -272,16 +273,21 @@ program mpie_spectral
  wgt = 1_pReal/real(prodnn, pReal)
  defgradmacro = math_I3
 
-! Initialization of CPFEM_general (= constitutive law) and of deformation gradient field
+! Initialization of CPFEM_general (= constitutive law) and of deformation gradient field, calculating compliance
  ielem = 0_pInt
  do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
    defgradold(i,j,k,:,:) = math_I3                    !no deformation at the beginning
    defgrad(i,j,k,:,:) = math_I3 
    ielem = ielem +1                                                             
    call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
+   c0 = c0 + dPdF
  enddo; enddo; enddo
- 
-!calculation of xinormdyad (needed to calculate gamma_hat) and xi (waves, needed for proof of equilibrium)
+
+ call math_invert(9, math_plain3333to99(c0),s099,i, errmatinv)               
+ if(errmatinv) call IO_error(45,ext_msg = "problem in c0 inversion")  ! todo: change number and add message to io.f90 (and remove No. 48)
+ s0 = math_plain99to3333(s099) * real(prodnn, pReal)
+
+!calculation of xinormdyad (to calculate gamma_hat) and xi (waves, for proof of equilibrium)
  do k = 1, resolution(3)
    k_s(3) = k-1
    if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
@@ -313,23 +319,23 @@ program mpie_spectral
 !*************************************************************
 
    timeinc = bc_timeIncrement(loadcase)/bc_steps(loadcase)
-   guessmode = 0.0_pReal                                            ! change of load case, homogeneous guess for the first step
+   guessmode = 0.0_pReal                                   ! change of load case, homogeneous guess for the first step
    
 !*************************************************************
 ! loop oper steps defined in input file for current loadcase
    do steps = 1, bc_steps(loadcase)
 !*************************************************************
-     defgradmacro = defgradmacro&                                   ! update macroscopic displacement gradient (BC of defgrad)
-                  + math_mul33x33(bc_velocityGrad(:,:,loadcase), defgradmacro)*timeinc    
+     defgradmacro = defgradmacro&                          ! update macroscopic displacement gradient (defgrad BC)
+                  + math_mul33x33(bc_velocityGrad(:,:,loadcase), defgradmacro)*timeinc !todo: correct calculation?   
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
        temp33_Real = defgrad(i,j,k,:,:)
-       defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:)&                     ! old fluctuations as guess for new step, no fluctuations for new loadcase
+       defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:)&            ! old fluctuations as guess for new step, no fluctuations for new loadcase
                           + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))&                                           
                           + (1.0_pReal-guessmode) * math_mul33x33(bc_velocityGrad(:,:,loadcase),defgradold(i,j,k,:,:))*timeinc
        defgradold(i,j,k,:,:) = temp33_Real                                                                  
      enddo; enddo; enddo
 
-     guessmode = 1_pReal                                            ! keep guessing along former trajectory during same loadcase
+     guessmode = 1_pReal                                   ! keep guessing along former trajectory during same loadcase
      calcmode = 1_pInt
      iter = 0_pInt
      err_div= 2_pInt * error
@@ -364,45 +370,43 @@ program mpie_spectral
          calcmode = 2
          c0 = c0 + dPdF
          pstress_field(i,j,k,:,:) = pstress 
-         pstress_av = pstress_av + pstress                           ! average stress
+         pstress_av = pstress_av + pstress            ! average stress
        enddo; enddo; enddo
-       pstress_av = pstress_av*wgt            ! do the weighting of average stress
-
-! Update gamma_hat with new reference stiffness and calculate new average compliance (for stress BC)   
-       if(iter==1) then                                                       
-         call math_invert(9, math_plain3333to99(c0),s099,i, errmatinv)        
-         if(errmatinv) call IO_error(45,ext_msg = "problem in c0 inversion")  ! todo: change number and add message to io.f90 (and remove No. 48)
-         s0 = math_plain99to3333(s099) * real(prodnn, pReal)                    
-         c0 = c0 * wgt
+       pstress_av = pstress_av*wgt                    ! do the weighting of average stress
+       c0 = c0 * wgt 
+   
+! Update gamma_hat with new reference stiffness 
+       if((iter==1).and.(any(c0>0.1))) then           ! for perfect plasticity inversion is not possible, criteria is just a first guess
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
            temp33_Real = 0.0_pReal
            do l = 1,3; do m = 1,3; do n = 1,3; do p = 1,3
              temp33_Real(l,m) = temp33_Real(l,m) + c0(l,n,m,p) * xinormdyad(i,j,k, n,p)
            enddo; enddo; enddo; enddo
-           temp33_Real = math_inv3x3(temp33_Real)
+             temp33_Real = math_inv3x3(temp33_Real)
            do l=1,3; do m=1,3; do n=1,3; do p=1,3
              gamma_hat(i,j,k, l,m,n,p) = - temp33_Real(l,n) * xinormdyad(i,j,k, m,p)
            enddo; enddo; enddo; enddo
          enddo; enddo; enddo
+         print *, 'Gamma hat updated'
        endif
 
 ! Using the spectral method to calculate the change of deformation gradient, check divergence of stress field in fourier space
        print *, 'Update Deformation Gradient Field'
        do m = 1,3; do n = 1,3
          call dfftw_execute_dft_r2c(plan_fft(1,m,n), pstress_field(:,:,:,m,n),workfft(:,:,:,m,n))
-         if(n == 3) sigma0 = max(sigma0, sum(abs(real(workfft(1,1,1,m,:))))) ! L infinity Norm of stress tensor 
+         if(n==3) sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:))))                     ! L infinity Norm of stress tensor 
        enddo; enddo
 
        do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
-         err_div = err_div + (maxval(abs(math_mul33x3_complex(workfft(i,j,k,:,:),xi(i,j,k,:)))))  ! L infinity Norm of div(stress)
-         temp33_Complex = .0_pReal
+         err_div = err_div + (maxval(abs(math_mul33x3_complex(workfft(i,j,k,:,:),xi(i,j,k,:))))) ! L infinity Norm of div(stress)
+         temp33_Complex = 0.0_pReal
          do m = 1,3; do n = 1,3
            temp33_Complex(m,n) = sum(gamma_hat(i,j,k,m,n,:,:) * workfft(i,j,k,:,:))
          enddo; enddo
          workfft(i,j,k,:,:) = temp33_Complex(:,:) 
        enddo; enddo; enddo
 
-       err_div = err_div/(real(prodnn/resolution(1)*(resolution(1)/2+1)))/sigma0 !weighting of error
+       err_div = err_div/real((prodnn/resolution(1)*(resolution(1)/2+1)), pReal)/sigma0 !weighting of error
    
        do m = 1,3; do n = 1,3
          call dfftw_execute_dft_c2r(plan_fft(2,m,n), workfft(:,:,:,m,n),ddefgrad(:,:,:))
@@ -411,7 +415,7 @@ program mpie_spectral
        enddo; enddo
    
        do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-         defgrad_av= defgrad_av + defgrad(i,j,k,:,:)   
+         defgrad_av = defgrad_av + defgrad(i,j,k,:,:)   
        enddo; enddo; enddo
        defgrad_av = defgrad_av * wgt                   ! weight by number of FP
 
@@ -424,9 +428,10 @@ program mpie_spectral
          endif
        enddo; enddo
    
-       print '(2(a,E8.2))', ' Error = ',err_div,'  Criteria = ', error
-       print '(A)', '---------------------------------------'
-                                              
+       print '(2(a,E8.2))', ' Error = ',err_div,'  Tol. = ', error
+       print '(A)', '-----------------------------------'
+
+       if(iter==1) err_div=2*error ! at least two iterations to fulfill BC                                       
      enddo    ! end looping when convergency is achieved
 
      write(539,'(E12.6,a,E12.6)'),defgrad_av(3,3)-1,'   ',pstress_av(3,3)
@@ -469,8 +474,8 @@ program mpie_spectral
      ielem = 0_pInt
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
        ielem = ielem + 1
-       write(589, '(I10, 3(tr2, E12.6))'), ielem, displacement(i,j,k,:)
-       write(588, '(I10, 3(tr2, E12.6))'), ielem, displacement(i,j,k,:) 
+       write(589, '(I10, 3(tr2, E14.8))'), ielem, displacement(i,j,k,:)
+       write(588, '(I10, 3(tr2, E14.8))'), ielem, displacement(i,j,k,:) 
      enddo; enddo; enddo
 
      write(589, '(2(A, /), I10)'), '$EndNodes', '$Elements', prodnn
@@ -491,8 +496,8 @@ program mpie_spectral
      ielem = 0_pInt
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
             ielem = ielem + 1
-             write(589, '(i10, 9(tr2, E12.6))'), ielem, pstress_field(i,j,k,:,:)
-             write(588, '(i10, 9(tr2, E12.6))'), ielem, defgrad(i,j,k,:,:) - math_I3
+             write(589, '(i10, 9(tr2, E14.8))'), ielem, pstress_field(i,j,k,:,:)
+             write(588, '(i10, 9(tr2, E14.8))'), ielem, defgrad(i,j,k,:,:) - math_I3
      enddo; enddo; enddo
 
      write(589, *), '$EndNodeData'
