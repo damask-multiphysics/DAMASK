@@ -431,7 +431,7 @@ def gage(mesh,rcData):
     "*select_elements",
     "all_existing",
     "*select_mode_except",
-    ['grain_%i'%(i+1) for i in range(len(rcData['grain']))],
+    ['grain_%i'%rcData['grainMapping'][i] for i in range(len(rcData['grain']))],
     "#",
     "*store_elements matrix",
     "all_selected",
