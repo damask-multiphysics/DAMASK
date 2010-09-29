@@ -12,14 +12,18 @@ character(len=18), dimension(2), parameter:: constitutive_titanmod_listBasicSlip
                                                                                            'rho_screw'/)
 character(len=18), dimension(1), parameter:: constitutive_titanmod_listBasicTwinStates = (/'gdot_twin'/)
                                                                                             
-character(len=18), dimension(8), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge', &
+character(len=18), dimension(12), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge', &
                                                                                               'segment_screw', &
                                                                                               'resistance_edge', &
                                                                                               'resistance_screw', &
                                                                                               'tau_slip', &
                                                                                               'gdot_slip', &
                                                                                               'velocity_edge', &
-                                                                                              'velocity_screw' &
+                                                                                              'velocity_screw', &
+                                                                                              'gdot_slip_edge', &
+                                                                                              'gdot_slip_screw', &
+                                                                                              'stressratio_edge_p', &
+                                                                                              'stressratio_screw_p' &
                                                                                               /)
 
 character(len=18), dimension(2), parameter:: constitutive_titanmod_listDependentTwinStates =(/'twin_fraction', &
@@ -49,7 +53,8 @@ real(pReal), dimension(:), allocatable ::                 constitutive_titanmod_
                                                           constitutive_titanmod_C13, &                         ! C13 element in elasticity matrix
                                                           constitutive_titanmod_C33, &                         ! C33 element in elasticity matrix
                                                           constitutive_titanmod_C44, &                         ! C44 element in elasticity matrix
-                                                          constitutive_titanmod_debyfrequency, &                      !Deby frequency
+                                                          constitutive_titanmod_debyefrequency, &              !Debye frequency
+                                                          constitutive_titanmod_kinkf0, &                      !Debye frequency
                                                           constitutive_titanmod_Gmod, &                        ! shear modulus
                                                           constitutive_titanmod_CAtomicVolume, &               ! atomic volume in Bugers vector unit
                                                           constitutive_titanmod_dc, &                          ! prefactor for self-diffusion coefficient
@@ -213,7 +218,8 @@ allocate(constitutive_titanmod_C12(maxNinstance))
 allocate(constitutive_titanmod_C13(maxNinstance))
 allocate(constitutive_titanmod_C33(maxNinstance))
 allocate(constitutive_titanmod_C44(maxNinstance))
-allocate(constitutive_titanmod_debyfrequency(maxNinstance))
+allocate(constitutive_titanmod_debyefrequency(maxNinstance))
+allocate(constitutive_titanmod_kinkf0(maxNinstance))
 allocate(constitutive_titanmod_Gmod(maxNinstance))
 allocate(constitutive_titanmod_CAtomicVolume(maxNinstance))
 allocate(constitutive_titanmod_dc(maxNinstance))
@@ -233,7 +239,8 @@ constitutive_titanmod_C12                 = 0.0_pReal
 constitutive_titanmod_C13                 = 0.0_pReal
 constitutive_titanmod_C33                 = 0.0_pReal
 constitutive_titanmod_C44                 = 0.0_pReal
-constitutive_titanmod_debyfrequency          = 0.0_pReal
+constitutive_titanmod_debyefrequency      = 0.0_pReal
+constitutive_titanmod_kinkf0              = 0.0_pReal
 constitutive_titanmod_Gmod                = 0.0_pReal
 constitutive_titanmod_CAtomicVolume       = 0.0_pReal
 constitutive_titanmod_dc                  = 0.0_pReal
@@ -367,9 +374,12 @@ do                                                       ! read thru sections of
        case ('c44')
               constitutive_titanmod_C44(i) = IO_floatValue(line,positions,2)
                 write(6,*) tag,constitutive_titanmod_C44(i)
-       case ('debyfrequency')
-              constitutive_titanmod_debyfrequency(i) = IO_floatValue(line,positions,2)
-                write(6,*) tag,constitutive_titanmod_debyfrequency(i)
+       case ('debyefrequency')
+              constitutive_titanmod_debyefrequency(i) = IO_floatValue(line,positions,2)
+                write(6,*) tag,constitutive_titanmod_debyefrequency(i)
+       case ('kinkf0')
+              constitutive_titanmod_kinkf0(i) = IO_floatValue(line,positions,2)
+                write(6,*) tag,constitutive_titanmod_kinkf0(i)
        case ('nslip')
             forall (j = 1:lattice_maxNslipFamily) &
             constitutive_titanmod_Nslip(j,i) = IO_intValue(line,positions,1+j)
@@ -697,7 +707,21 @@ do i = 1,maxNinstance
    constitutive_titanmod_sizeDotState(i)+ &
    size(constitutive_titanmod_listDependentSlipStates)*ns+size(constitutive_titanmod_listDependentTwinStates)*nt
   write(6,*) 'Determined size of state and dot state' 
-   !* Determine size of postResults array   
+   !* Determine size of postResults array  
+
+! 'segment_edge'
+! 'segment_screw'
+! 'resistance_edge'
+! 'resistance_screw'
+! 'tau_slip'
+! 'gdot_slip'
+! 'velocity_edge'
+! 'velocity_screw'
+! 'gdot_slip_edge'
+! 'gdot_slip_screw'
+! 'StressRatio_edge_p'
+! 'StressRatio_screw_p'
+   
    do o = 1,maxval(phase_Noutput)
       select case(constitutive_titanmod_output(o,i))
         case('rhoedge', &
@@ -710,7 +734,10 @@ do i = 1,maxNinstance
              'gdot_slip', &
              'velocity_edge', &
              'velocity_screw', &
-             'total_density' &
+             'gdot_slip_edge', &
+             'gdot_slip_screw', &
+             'stressratio_edge_p', &
+             'stressratio_screw_p' &
              )
            mySize = constitutive_titanmod_totalNslip(i)
         case('twin_fraction', &
@@ -1097,7 +1124,7 @@ nt = constitutive_titanmod_totalNtwin(myInstance)
 ! Need to update this list
 !* State: 1           :  ns         rho_edge
 !* State: ns+1        :  2*ns       rho_screw
-!* State: 2*ns+1      :  2*ns+nt    f
+!* State: 2*ns+1      :  2*ns+nt    gamma_twin
 !* State: 2*ns+nt+1   :  3*ns+nt    1/lambda_slip
 !* State: 3*ns+nt+1   :  4*ns+nt    1/lambda_sliptwin
 !* State: 4*ns+nt+1   :  4*ns+2*nt  1/lambda_twin
@@ -1207,10 +1234,10 @@ integer(pInt) myInstance,myStructure,ns,nt,f,i,j,k,l,m,n,index_myFamily
 real(pReal) sumf,StressRatio_edge_p,minusStressRatio_edge_p,StressRatio_edge_pminus1,StressRatio_screw_p, &
         StressRatio_screw_pminus1, StressRatio_r,BoltzmannRatio,DotGamma0, minusStressRatio_screw_p,gdotTotal, &
         screwvelocity_prefactor,twinStressRatio_p,twinminusStressRatio_p,twinStressRatio_pminus1, &
-   twinStressRatio_r, twinDotGamma0
+   twinStressRatio_r, twinDotGamma0,BoltzmannRatioscrew
 real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
 real(pReal), dimension(constitutive_titanmod_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-   gdot_slip,dgdot_dtauslip,tau_slip, edge_velocity, screw_velocity
+   gdot_slip,dgdot_dtauslip,tau_slip, edge_velocity, screw_velocity,gdot_slip_edge,gdot_slip_screw
 real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
    gdot_twin,dgdot_dtautwin,tau_twin, twinedge_velocity, twinscrew_velocity,volumefraction_pertwinsystem
 
@@ -1235,6 +1262,8 @@ dLp_dTstar = 0.0_pReal
 
 !* Dislocation glide part
 gdot_slip = 0.0_pReal
+gdot_slip_edge = 0.0_pReal
+gdot_slip_screw = 0.0_pReal
 dgdot_dtauslip = 0.0_pReal
 j = 0_pInt
 do f = 1,lattice_maxNslipFamily                                 ! loop over all slip families
@@ -1245,25 +1274,25 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
       !* Calculation of Lp
       !* Resolved shear stress on slip system
       tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure)) 
-        state(g,ip,el)%p(9*ns+3*nt+j)=tau_slip(j)
       !*************************************************
  
-      if(myStructure==3.and.j>3.and.j<25) then ! only for prismatic and pyr <a> systems in hex
-      screwvelocity_prefactor=constitutive_titanmod_debyfrequency(myInstance)* &
+!      if(myStructure==3.and.j>3.and.j<13) then ! only for prismatic and pyr <a> systems in hex
+!      if(myStructure==3) then ! only for prismatic and pyr <a> systems in hex
+      screwvelocity_prefactor=constitutive_titanmod_debyefrequency(myInstance)* &
         state(g,ip,el)%p(3*ns+nt+j)*(constitutive_titanmod_burgersPerSlipSystem(j,myInstance)/ &
         constitutive_titanmod_kinkcriticallength_PerSlipSystem(j,myInstance))**2
-        else
-        screwvelocity_prefactor=constitutive_titanmod_v0s_PerSlipSystem(j,myInstance)
-        endif
+!        else
+!        screwvelocity_prefactor=constitutive_titanmod_v0s_PerSlipSystem(j,myInstance)
+!        endif
 
      !* Stress ratio for edge
          StressRatio_edge_p = ((abs(tau_slip(j)))/ &
          ( constitutive_titanmod_tau0e_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(4*ns+nt+j)) &
         )**constitutive_titanmod_pe_PerSlipSystem(j,myInstance)
         
-     !* Stress ratio for screw
+     !* Stress ratio for screw ! No slip resistance for screw dislocations, only Peierls stress
          StressRatio_screw_p = ((abs(tau_slip(j)))/ &
-         ( constitutive_titanmod_tau0s_PerSlipSystem(j,myInstance)+state(g,ip,el)%p(5*ns+nt+j)) &
+         ( constitutive_titanmod_tau0s_PerSlipSystem(j,myInstance)) &
         )**constitutive_titanmod_ps_PerSlipSystem(j,myInstance)
                         
         if((1.0_pReal-StressRatio_edge_p)>0.001_pReal) then
@@ -1289,21 +1318,35 @@ do f = 1,lattice_maxNslipFamily                                 ! loop over all 
       !* Boltzmann ratio
       BoltzmannRatio = constitutive_titanmod_f0_PerSlipSystem(j,myInstance)/(kB*Temperature)
 
+      !* Boltzmann ratio for screw
+      BoltzmannRatioscrew = constitutive_titanmod_kinkf0(myInstance)/(kB*Temperature)
+      
          edge_velocity(j) =constitutive_titanmod_v0e_PerSlipSystem(j,myInstance)*exp(-BoltzmannRatio* &
         (minusStressRatio_edge_p)** &
         constitutive_titanmod_qe_PerSlipSystem(j,myInstance))
 
         screw_velocity(j) =screwvelocity_prefactor * & ! there is no v0 for screw now because it is included in the prefactor
-                exp(-BoltzmannRatio*(minusStressRatio_screw_p)** &
+                exp(-BoltzmannRatioscrew*(minusStressRatio_screw_p)** &
         constitutive_titanmod_qs_PerSlipSystem(j,myInstance))
 
-                !* Shear rates due to slip
-       gdot_slip(j) = constitutive_titanmod_burgersPerSlipSystem(j,myInstance)*(state(g,ip,el)%p(j)* &
-                edge_velocity(j)+state(g,ip,el)%p(ns+j) * screw_velocity(j))* sign(1.0_pReal,tau_slip(j))
+                !* Shear rates due to edge slip
+       gdot_slip_edge(j) = constitutive_titanmod_burgersPerSlipSystem(j,myInstance)*(state(g,ip,el)%p(j)* &
+                edge_velocity(j))* sign(1.0_pReal,tau_slip(j))
+                !* Shear rates due to screw slip
+       gdot_slip_screw(j) = constitutive_titanmod_burgersPerSlipSystem(j,myInstance)*(state(g,ip,el)%p(ns+j) * &
+                screw_velocity(j))* sign(1.0_pReal,tau_slip(j))
+                !Total shear rate
+            
+       gdot_slip(j) = gdot_slip_edge(j) + gdot_slip_screw(j)
                 
        state(g,ip,el)%p(6*ns+3*nt+j)=gdot_slip(j)
        state(g,ip,el)%p(7*ns+3*nt+j)=edge_velocity(j)
        state(g,ip,el)%p(8*ns+3*nt+j)=screw_velocity(j)
+       state(g,ip,el)%p(9*ns+3*nt+j)=tau_slip(j)
+       state(g,ip,el)%p(10*ns+3*nt+j)=gdot_slip_edge(j)
+       state(g,ip,el)%p(11*ns+3*nt+j)=gdot_slip_screw(j)
+       state(g,ip,el)%p(12*ns+3*nt+j)=StressRatio_edge_p
+       state(g,ip,el)%p(13*ns+3*nt+j)=StressRatio_screw_p
                 
       !* Derivatives of shear rates
       dgdot_dtauslip(j) = constitutive_titanmod_burgersPerSlipSystem(j,myInstance)*(( &
@@ -1405,7 +1448,7 @@ do f = 1,lattice_maxNtwinFamily                                 ! loop over all 
          gdot_twin(j) =sign(1.0_pReal,tau_twin(j))*constitutive_titanmod_twingamma0_PerTwinSystem(j,myInstance)* &
          exp(-BoltzmannRatio*(twinminusStressRatio_p)**constitutive_titanmod_twinq_PerTwinSystem(j,myInstance))
          
-         state(g,ip,el)%p(6*ns+2*nt+j)=nt
+         state(g,ip,el)%p(6*ns+2*nt+j)=gdot_twin(j)
          
                                 
       !* Derivatives of shear rates in twin
@@ -1485,7 +1528,7 @@ constitutive_titanmod_dotState
 integer(pInt) MyInstance,MyStructure,ns,nt,f,i,j,k,index_myFamily,s,t
 real(pReal) sumf,StressRatio_edge_p,minusStressRatio_edge_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,&
             EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,StressRatio_screw_p,minusStressRatio_screw_p, &
-            screwvelocity_prefactor,twinStressRatio_p,twinminusStressRatio_p,twinStressRatio_pminus1, &
+            twinStressRatio_p,twinminusStressRatio_p,twinStressRatio_pminus1, &
             twinDotGamma0
 real(pReal), dimension(constitutive_titanmod_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
 gdot_slip,tau_slip,DotRhoEdgeGeneration,EdgeDipDistance,DotRhoEdgeAnnihilation,DotRhoScrewAnnihilation,&
@@ -1517,17 +1560,17 @@ constitutive_titanmod_dotState = 0.0_pReal
      j = j+1_pInt
 
       !* Multiplication of edge dislocations
-      DotRhoEdgeGeneration(j) = 2.0_pReal*(state(g,ip,el)%p(ns+j)*state(g,ip,el)%p(8*ns+3*nt+j)/state(g,ip,el)%p(3*ns+nt+j))
+      DotRhoEdgeGeneration(j) = (state(g,ip,el)%p(ns+j)*state(g,ip,el)%p(8*ns+3*nt+j)/state(g,ip,el)%p(3*ns+nt+j))
       !* Multiplication of screw dislocations
-      DotRhoScrewGeneration(j) = 2.0_pReal*(state(g,ip,el)%p(j)*state(g,ip,el)%p(7*ns+3*nt+j)/state(g,ip,el)%p(2*ns+nt+j))
+      DotRhoScrewGeneration(j) = (state(g,ip,el)%p(j)*state(g,ip,el)%p(7*ns+3*nt+j)/state(g,ip,el)%p(2*ns+nt+j))
 
       !* Annihilation of edge dislocations
       DotRhoEdgeAnnihilation(j) = -((state(g,ip,el)%p(j))**2)* &
-                constitutive_titanmod_capre_PerSlipSystem(j,myInstance)*state(g,ip,el)%p(7*ns+3*nt+j)
+                constitutive_titanmod_capre_PerSlipSystem(j,myInstance)*state(g,ip,el)%p(7*ns+3*nt+j)/2.0_pReal
 
       !* Annihilation of screw dislocations
       DotRhoScrewAnnihilation(j) = -((state(g,ip,el)%p(ns+j))**2)* &
-                constitutive_titanmod_caprs_PerSlipSystem(j,myInstance)*state(g,ip,el)%p(8*ns+3*nt+j)
+                constitutive_titanmod_caprs_PerSlipSystem(j,myInstance)*state(g,ip,el)%p(8*ns+3*nt+j)/2.0_pReal
        
       !* Edge dislocation density rate of change
       constitutive_titanmod_dotState(j) = &
@@ -1581,15 +1624,10 @@ do f = 1,lattice_maxNtwinFamily                                 ! loop over all 
         
         !* Boltzmann ratio
       BoltzmannRatio = constitutive_titanmod_twinf0_PerTwinSystem(j,myInstance)/(kB*Temperature)
-
-!         if (tau_slip(j) == 0.0_pReal) then
-!             edge_velocity(j) = 0.0_pReal
-!             screw_velocity(j) = 0.0_pReal
-!         else          
+       
             gdot_twin(j) =constitutive_titanmod_twingamma0_PerTwinSystem(j,myInstance)*exp(-BoltzmannRatio* &
               (twinminusStressRatio_p)** &
             constitutive_titanmod_twinq_PerTwinSystem(j,myInstance))*sign(1.0_pReal,tau_twin(j))
-!         endif
              
       constitutive_titanmod_dotState(2*ns+j)=gdot_twin(j)
 
@@ -1598,16 +1636,11 @@ enddo
 
 !write(6,*) '#DOTSTATE#'
 !write(6,*)
-!write(6,'(a,/,4(3(f30.20,x)/))') 'tau slip',tau_slip
-!write(6,'(a,/,4(3(f30.20,x)/))') 'gamma slip',gdot_slip
-!write(6,'(a,/,4(3(f30.20,x)/))') 'rho_edge',state(g,ip,el)%p(1:ns)
-!write(6,'(a,/,4(3(f30.20,x)/))') 'Threshold Slip Edge', state(g,ip,el)%p(5*ns+3*nt+1:6*ns+3*nt)
-!write(6,'(a,/,4(3(f30.20,x)/))') 'Threshold Slip Screw', state(g,ip,el)%p(6*ns+3*nt+1:7*ns+3*nt)
 !write(6,'(a,/,4(3(f30.20,x)/))') 'EdgeGeneration',DotRhoEdgeGeneration
 !write(6,'(a,/,4(3(f30.20,x)/))') 'ScrewGeneration',DotRhoScrewGeneration
 !write(6,'(a,/,4(3(f30.20,x)/))') 'EdgeAnnihilation',DotRhoEdgeAnnihilation
 !write(6,'(a,/,4(3(f30.20,x)/))') 'ScrewAnnihilation',DotRhoScrewAnnihilation
-!write(6,'(a,/,4(3(f30.20,x)/))') 'DipClimb',DotRhoEdgeDipClimb 
+
 
 return
 end function
@@ -1668,8 +1701,7 @@ real(pReal), intent(in) :: dt,Temperature
 real(pReal), dimension(6), intent(in) :: Tstar_v
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
 integer(pInt) myInstance,myStructure,ns,nt,f,o,i,c,j,index_myFamily
-real(pReal) sumf,tau,StressRatio_edge_p,StressRatio_screw_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,StressRatio_r, &
-                gdot_slip,dgdot_dtauslip
+real(pReal) sumf
 real(pReal), dimension(constitutive_titanmod_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
 constitutive_titanmod_postResults
 real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
@@ -1705,18 +1737,6 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
      case ('rhoscrew')
        constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p(ns+1:2*ns)
        c = c + ns
-     case ('gdot_slip')
-       constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((6*ns+3*nt+1):(7*ns+3*nt))
-       c = c + ns
-     case ('gdot_twin')
-       constitutive_titanmod_postResults(c+1:c+nt) = state(g,ip,el)%p((6*ns+2*nt+1):(6*ns+3*nt))
-       c = c + nt
-     case ('velocity_edge')
-       constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((7*ns+3*nt+1):(8*ns+3*nt))
-       c = c + ns
-     case ('velocity_screw')
-       constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((8*ns+3*nt+1):(9*ns+3*nt))
-       c = c + ns
      case ('segment_edge')
        constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((2*ns+nt+1):(3*ns+nt))
        c = c + ns
@@ -1730,11 +1750,49 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
        constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((5*ns+nt+1):(6*ns+nt))
        c = c + ns
      case ('tau_slip')
-             constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((9*ns+3*nt+1):(10*ns+3*nt))
-           c=c + ns
+       constitutive_titanmod_postResults(c+1:c+ns) = abs(state(g,ip,el)%p((9*ns+3*nt+1):(10*ns+3*nt)))
+       c = c + ns
+     case ('gdot_slip')
+       constitutive_titanmod_postResults(c+1:c+ns) = abs(state(g,ip,el)%p((6*ns+3*nt+1):(7*ns+3*nt)))
+       c = c + ns
+     case ('velocity_edge')
+       constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((7*ns+3*nt+1):(8*ns+3*nt))
+       c = c + ns
+     case ('velocity_screw')
+       constitutive_titanmod_postResults(c+1:c+ns) = state(g,ip,el)%p((8*ns+3*nt+1):(9*ns+3*nt))
+       c = c + ns
+     case ('gdot_slip_edge')
+       constitutive_titanmod_postResults(c+1:c+ns) = abs(state(g,ip,el)%p((10*ns+3*nt+1):(11*ns+3*nt)))
+       c = c + ns
+     case ('gdot_slip_screw')
+       constitutive_titanmod_postResults(c+1:c+ns) = abs(state(g,ip,el)%p((11*ns+3*nt+1):(12*ns+3*nt)))
+       c = c + ns
+     case ('stressratio_edge_p')
+       constitutive_titanmod_postResults(c+1:c+ns) = abs(state(g,ip,el)%p((12*ns+3*nt+1):(13*ns+3*nt)))
+       c = c + ns
+     case ('stressratio_screw_p')
+       constitutive_titanmod_postResults(c+1:c+ns) = abs(state(g,ip,el)%p((13*ns+3*nt+1):(14*ns+3*nt)))
+       c = c + ns
+     case ('gdot_twin')
+       constitutive_titanmod_postResults(c+1:c+nt) = abs(state(g,ip,el)%p((6*ns+2*nt+1):(6*ns+3*nt)))
+       c = c + nt
      case ('twin_fraction')
        constitutive_titanmod_postResults(c+1:c+nt) = abs(volumefraction_pertwinsystem(1:nt))
        c = c + nt
+             ! 'rhoedge', &
+             ! 'rhoscrew', &
+             ! 'segment_edge', &
+             ! 'segment_screw', &
+             ! 'resistance_edge', &
+             ! 'resistance_screw', &
+             ! 'tau_slip', &
+             ! 'gdot_slip', &
+             ! 'velocity_edge', &
+             ! 'velocity_screw', &
+             ! 'gdot_slip_edge' &
+             ! 'gdot_slip_screw' &
+             ! 'StressRatio_edge_p' &
+             ! 'StressRatio_screw_p'
 
    end select
 enddo
