@@ -95,7 +95,7 @@ subroutine crystallite_init(Temperature)
                              mesh_maxNipNeighbors
  use IO
  use material
- use lattice, only:          lattice_symmetryTypes
+ use lattice, only:          lattice_symmetryType
  use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
                                       constitutive_phenopowerlaw_structure
  use constitutive_titanmod, only: constitutive_titanmod_label, &
@@ -302,7 +302,7 @@ subroutine crystallite_init(Temperature)
                   myStructure = -1_pInt ! does this happen for j2 material?
               end select
          if (myStructure>0_pInt) then   
-           crystallite_symmetryID(g,i,e)=lattice_symmetryTypes(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2  
+           crystallite_symmetryID(g,i,e) = lattice_symmetryType(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3+(hex)=>2  
          endif
       enddo
     enddo
@@ -1257,7 +1257,8 @@ endsubroutine
                                       verboseDebugger, &
                                       debug_cumLpCalls, &
                                       debug_cumLpTicks, &
-                                      debug_StressLoopDistribution
+                                      debug_StressLoopDistribution, &
+                                      debug_LeapfrogBreakDistribution
  use constitutive, only:              constitutive_homogenizedC, &
                                       constitutive_LpAndItsTangent
  use math, only:                      math_mul33x33, &
@@ -1421,9 +1422,11 @@ LpLoop: do
    
    ! NaN occured at regular speed?
    if (any(residuum/=residuum) .and. leapfrog == 1.0) then
-     if (verboseDebugger) then 
+     if (debugger) then 
        !$OMP CRITICAL (write2out)
-         write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress encountered NaN at ',g,i,e,' ; iteration ', NiterationStress
+         write(6,'(a,i3,x,i2,x,i5,x,a,i3,x,a)') '::: integrateStress encountered NaN at ',g,i,e,&
+                                                '; iteration ', NiterationStress, &
+                                                '>> returning..!'
        !$OMPEND CRITICAL (write2out)
      endif
      return
@@ -1437,8 +1440,8 @@ LpLoop: do
           ) then
       if (verboseDebugger) then 
        !$OMP CRITICAL (write2out)
-         write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress encountered high-speed crash at ',g,i,e,' ; iteration ', &
-         NiterationStress
+         write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress encountered high-speed crash at ',g,i,e,&
+                                            '; iteration ', NiterationStress
        !$OMPEND CRITICAL (write2out)
      endif
      maxleap = 0.5_pReal * leapfrog                                 ! limit next acceleration
@@ -1448,7 +1451,9 @@ LpLoop: do
      ! restore old residuum and Lp
      Lpguess = Lpguess_old                                       
      residuum  = residuum_old
-
+     
+     debug_LeapfrogBreakDistribution(NiterationStress,mode) = debug_LeapfrogBreakDistribution(NiterationStress,mode) + 1
+     
    ! residuum got better
    else
      ! calculate Jacobian for correction term 
@@ -1465,8 +1470,8 @@ LpLoop: do
        if (error) then
          if (verboseDebugger .and. selectiveDebugger) then
            !$OMP CRITICAL (write2out)
-             write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on dR/dLp inversion at ',g,i,e, &
-                                                  ' ; iteration ', NiterationStress
+             write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress failed on dR/dLp inversion at ',g,i,e, &
+                                                '; iteration ', NiterationStress
              write(6,*)
              write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp
              write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
@@ -1476,10 +1481,10 @@ LpLoop: do
          endif
          return
        else
-         if (.false. .and. verboseDebugger .and. selectiveDebugger) then
+         if (verboseDebugger .and. selectiveDebugger) then
            !$OMP CRITICAL (write2out)
-             write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress did dR/dLp inversion at ',g,i,e, &
-                                                  ' ; iteration ', NiterationStress
+             write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress did dR/dLp inversion at ',g,i,e, &
+                                                '; iteration ', NiterationStress
              write(6,*)
              write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp
              write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
@@ -1499,7 +1504,6 @@ LpLoop: do
 
    ! leapfrog to updated Lp
    do k=1,3; do l=1,3; do m=1,3; do n=1,3
-!   forall (k=1:3,l=1:3,m=1:3,n=1:3) & 
      Lpguess(k,l) = Lpguess(k,l) - leapfrog*invdRdLp(3*(k-1)+l,3*(m-1)+n)*residuum(m,n)
    enddo; enddo; enddo; enddo
  enddo LpLoop

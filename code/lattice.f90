@@ -26,9 +26,6 @@ integer(pInt), parameter :: lattice_maxNslip = 48                 ! max # of sli
 integer(pInt), parameter :: lattice_maxNtwin = 24                 ! max # of twin systems over lattice structures
 integer(pInt), parameter :: lattice_maxNinteraction = 20          ! max # of interaction types (in hardening matrix part)
 
-integer(pInt), parameter, dimension(3) :: lattice_symmetryTypes =(/1, 1, 2/) ! maps crystal structures to symmetry tpyes
-
-
 integer(pInt), pointer, dimension(:,:) :: interactionSlipSlip, &
                                           interactionSlipTwin, &
                                           interactionTwinSlip, &
@@ -660,6 +657,30 @@ CONTAINS
 !* - lattice_init
 !* - lattice_initializeStructure
 !****************************************
+
+pure function lattice_symmetryType(structID)
+!**************************************
+!*   maps structure to symmetry type  *
+!*   fcc(1) and bcc(2) are cubic(1)   *
+!*   hex(3+) is hexagonal(2)          *
+!**************************************
+ implicit none
+ 
+ integer(pInt), intent(in) :: structID
+ integer(pInt) lattice_symmetryType
+
+ select case(structID)
+   case (1,2)
+     lattice_symmetryType = 1_pInt
+   case (3:)
+     lattice_symmetryType = 2_pInt
+   case default
+     lattice_symmetryType = 0_pInt
+  end select
+
+ return
+ 
+end function
 
 
 subroutine lattice_init()

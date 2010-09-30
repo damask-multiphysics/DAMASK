@@ -2522,10 +2522,10 @@ subroutine mesh_marc_count_cpSizes (unit)
        pos = IO_stringPos(line,maxNchunks)  ! limit to 64 nodes max (plus ID, type)
        e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
        if (e /= 0) then       ! disregard non CP elems
-         mesh_element (1,e) = IO_IntValue (line,pos,1)                     ! FE id
-         mesh_element (2,e) = FE_mapElemtype(IO_StringValue(line,pos,2))   ! elem type
+         mesh_element(1,e) = IO_IntValue (line,pos,1)                     ! FE id
+         mesh_element(2,e) = FE_mapElemtype(IO_StringValue(line,pos,2))   ! elem type
            forall (j = 1:FE_Nnodes(mesh_element(2,e))) &
-             mesh_element(j+4,e) = IO_IntValue(line,pos,j+2)                 ! copy FE ids of nodes
+             mesh_element(j+4,e) = IO_IntValue(line,pos,j+2)              ! copy FE ids of nodes
            call IO_skipChunks(unit,FE_NoriginalNodes(mesh_element(2,e))-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
        endif
      enddo
@@ -2978,18 +2978,19 @@ subroutine mesh_marc_count_cpSizes (unit)
 
  integer(pInt) i,e,n,f,t
 
- if (mesh_maxValStateVar(1) == 0) call IO_error(110) ! no materials specified
- if (mesh_maxValStateVar(2) == 0) call IO_error(120) ! no textures specified
+ if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(110) ! no homogenization specified
+ if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(120) ! no microstructure specified
    
  allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
- do i=1,mesh_NcpElems
-   mesh_HomogMicro(mesh_element(3,i),mesh_element(4,i)) = &
-   mesh_HomogMicro(mesh_element(3,i),mesh_element(4,i)) + 1 ! count combinations of homogenization and microstructure
+ do e = 1,mesh_NcpElems
+   if (mesh_element(3,e) < 1_pInt) call IO_error(110,e) ! no homogenization specified
+   if (mesh_element(4,e) < 1_pInt) call IO_error(120,e) ! no homogenization specified
+   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
+   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1 ! count combinations of homogenization and microstructure
  enddo
 
  if (verboseDebugger) then
   !$OMP CRITICAL (write2out)
-  
    write(6,*)
    write(6,*) 'Input Parser: IP COORDINATES'
    write(6,'(a5,x,a5,3(x,a12))') 'elem','IP','x','y','z'
@@ -3041,12 +3042,11 @@ subroutine mesh_marc_count_cpSizes (unit)
        enddo
      enddo
    enddo
-!$OMP END CRITICAL (write2out)
-endif
+  !$OMP END CRITICAL (write2out)
+ endif
 
 
  !$OMP CRITICAL (write2out)
-
  write (6,*)
  write (6,*) "Input Parser: STATISTICS"
  write (6,*)
@@ -3072,8 +3072,9 @@ endif
  enddo
  write (6,*)
  call flush(6)
-!$OMP END CRITICAL (write2out)
+ !$OMP END CRITICAL (write2out)
 
+ deallocate(mesh_HomogMicro)
  return
  
  endsubroutine
