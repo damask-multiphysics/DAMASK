@@ -397,7 +397,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  integer(pInt)  i
  real(pReal), dimension(3), intent(in) ::  A,B
- real(pReal), dimension(3) :: C
+ real(pReal), dimension(3) ::              C
  real(pReal) math_mul3x3
 
  forall (i=1:3) C(i) = A(i)*B(i)
@@ -418,7 +418,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  integer(pInt)  i
  real(pReal), dimension(6), intent(in) ::  A,B
- real(pReal), dimension(6) :: C
+ real(pReal), dimension(6) ::              C
  real(pReal) math_mul6x6
 
  forall (i=1:6) C(i) = A(i)*B(i)
@@ -429,6 +429,26 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  endfunction
 
  
+!**************************************************************************
+! matrix multiplication 33x33 = 1 (double contraction --> ij * ij)
+!**************************************************************************
+ pure function math_mul33xx33(A,B)  
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ integer(pInt)  i,j
+ real(pReal), dimension(3,3), intent(in) ::  A,B
+ real(pReal), dimension(3,3) ::              C
+ real(pReal)  math_mul33xx33
+
+ forall (i=1:3,j=1:3) C(i,j) = A(i,j) * B(i,j)
+ math_mul33xx33 = sum(C)
+ return
+
+ endfunction
+
+
 !**************************************************************************
 ! matrix multiplication 33x33 = 3x3
 !**************************************************************************
