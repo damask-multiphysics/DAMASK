@@ -431,7 +431,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
 !**************************************************************************
 ! matrix multiplication 33x33 = 3x3
-!**************************************************************************�
+!**************************************************************************
  pure function math_mul33x33(A,B)  
 
  use prec, only: pReal, pInt
@@ -659,7 +659,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  
 !**************************************************************************
-! quaternion inversion
+! action of a quaternion on a vector (rotate vector v with Q)
 !**************************************************************************
  pure function math_qRot(Q,v)  
 
