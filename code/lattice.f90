@@ -429,37 +429,37 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  integer(pInt), parameter :: lattice_hex_Ntwin = 24                                       ! sum(lattice_hex_NtwinSystem)
  integer(pInt) ::            lattice_hex_Nstructure = 0_pInt
 
- !* sorted by YJ.Ro and Philip
+ !* sorted by A. Alankar & P. Eisenlohr
  real(pReal), dimension(4+4,lattice_hex_Nslip), parameter :: lattice_hex_systemSlip = &
  reshape((/&
 ! Basal systems <1120>{0001} (independent of c/a-ratio, Bravais notation (4 coordinate base))
   2, -1, -1,  0,     0,  0,  0,  1, &
-  1,  1, -2,  0,     0,  0,  0,  1, &
  -1,  2, -1,  0,     0,  0,  0,  1, &
+ -1, -1,  2,  0,     0,  0,  0,  1, &
 ! 1st type prismatic systems <1120>{1010}  (independent of c/a-ratio)
-  2, -1, -1,  0,     0, -1,  1,  0, &
-  1,  1,  2,  0,     1, -1,  0,  0, &
- -1,  2, -1,  0,     1,  0, -1,  0, &
-! 1st type 1st order pyramidal systems <1120>{1011}
-  2, -1, -1,  0,     0, -1,  1,  1, &
-  1,  1, -2,  0,     1, -1,  0,  1, &
- -1,  2, -1,  0,     1,  0, -1,  1, &
- -2,  1,  1,  0,     0,  1, -1,  1, &
- -1, -1,  2,  0,    -1,  1,  0,  1, &
-  1, -2,  1,  0,    -1,  0,  1,  1, &
+  2, -1, -1,  0,     0,  1, -1,  0, &
+ -1,  2, -1,  0,    -1,  0,  1,  0, &
+ -1, -1,  2,  0,     1, -1,  0,  0, &
+! 1st type 1st order pyramidal systems <1120>{1011} -- plane normals depend on the c/a-ratio
+  2, -1, -1,  0,     0,  1, -1,  1, &
+  1,  1, -2,  0,    -1,  1,  0,  1, &
+ -1,  2, -1,  0,    -1,  0,  1,  1, &
+ -2,  1,  1,  0,     0, -1,  1,  1, &
+ -1, -1,  2,  0,     1, -1,  0,  1, &
+  1, -2,  1,  0,     1,  0, -1,  1, &
 ! pyramidal system: c+a slip <2113>{1011} -- plane normals depend on the c/a-ratio
-  2, -1, -1, -3,     1, -1,  0,  1, &
-  1,  1, -2, -3,     1,  0, -1,  1, &
- -1,  2, -1, -3,     1, -1,  0,  1, &
- -2,  1,  1, -3,     1,  0, -1,  1, &
- -1, -1,  2, -3,     0,  1, -1,  1, &
-  1, -2,  1, -3,     0, -1,  1,  1, &
- -2,  1,  1, -3,    -1,  0,  1,  1, &
- -1, -1,  2, -3,     0, -1,  1,  1, &
-  1, -2,  1, -3,     0,  1, -1,  1, &
-  2, -1, -1, -3,    -1,  1,  0,  1, &
-  1,  1, -2, -3,    -1,  0,  1,  1, &
- -1,  2, -1, -3,    -1,  1,  0,  1  &
+ -1,  2, -1,  3,     0,  1, -1,  1, &
+  1,  1, -2,  3,     0,  1, -1,  1, &
+ -2,  1,  1,  3,    -1,  1,  0,  1, &
+ -1,  2, -1,  3,    -1,  1,  0,  1, &
+ -1, -1,  2,  3,    -1,  0,  1,  1, &
+ -2,  1,  1,  3,    -1,  0,  1,  1, &
+  1, -2,  1,  3,     0, -1,  1,  1, &
+ -1, -1,  2,  3,     0, -1,  1,  1, &
+  2, -1, -1,  3,     1, -1,  0,  1, &
+  1, -2,  1,  3,     1, -1,  0,  1, &
+  1,  1, -2,  3,     1,  0, -1,  1, &
+  2, -1, -1,  3,     1,  0, -1,  1, &
    /),(/4+4,lattice_hex_Nslip/))
 
  real(pReal), dimension(4+4,lattice_hex_Ntwin), parameter :: lattice_hex_systemTwin = &
