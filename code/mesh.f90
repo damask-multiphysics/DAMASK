@@ -1295,8 +1295,8 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
              c = IO_intValue(line,pos,i+1)
        end select
      enddo
-     mesh_Nelems = 2**(a+b+c)
-     mesh_Nnodes = (1+2**a)*(1+2**b)*(1+2**c)
+     mesh_Nelems = a * b * c
+     mesh_Nnodes = (1 + a)*(1 + b)*(1 + c)
      exit
    endif
  enddo
@@ -2257,11 +2257,11 @@ subroutine mesh_marc_count_cpSizes (unit)
            tag = IO_lc(IO_stringValue(line,pos,i))
            select case (tag)
              case('a')
-                 a = 1+2**IO_intValue(line,pos,i+1)
+                 a = 1 + IO_intValue(line,pos,i+1)
              case('b')
-                 b = 1+2**IO_intValue(line,pos,i+1)
+                 b = 1 + IO_intValue(line,pos,i+1)
              case('c')
-                 c = 1+2**IO_intValue(line,pos,i+1)
+                 c = 1 + IO_intValue(line,pos,i+1)
            end select
          enddo
      case ('dimension')
@@ -2446,11 +2446,11 @@ subroutine mesh_marc_count_cpSizes (unit)
          do i = 2,6,2
            select case (IO_lc(IO_stringValue(line,pos,i)))
              case('a')
-                 a = 2**IO_intValue(line,pos,i+1)
+                 a = IO_intValue(line,pos,i+1)
              case('b')
-                 b = 2**IO_intValue(line,pos,i+1)
+                 b = IO_intValue(line,pos,i+1)
              case('c')
-                 c = 2**IO_intValue(line,pos,i+1)
+                 c = IO_intValue(line,pos,i+1)
            end select
          enddo
    end select
