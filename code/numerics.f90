@@ -14,7 +14,9 @@ integer(pInt)                   iJacoStiffness, &                       ! freque
                                 nCryst, &                               ! crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
                                 nState, &                               ! state loop limit
                                 nStress, &                              ! stress loop limit
-                                pert_method                             ! method used in perturbation technique for tangent
+                                pert_method, &                          ! method used in perturbation technique for tangent
+                                integrator, &                   ! method used for state integration
+                                integratorStiffness            ! method used for stiffness state integration
 real(pReal)                     relevantStrain, &                       ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
                                 defgradTolerance, &                     ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
@@ -106,7 +108,9 @@ subroutine numerics_init()
   rTol_crystalliteTemperature = 1.0e-6_pReal
   rTol_crystalliteStress  = 1.0e-6_pReal
   aTol_crystalliteStress  = 1.0e-8_pReal            ! residuum is in Lp (hence strain on the order of 1e-8 here)
-
+  integrator      = 1
+  integratorStiffness      = 1
+  
 !* RGC parameters: added <<<updated 17.12.2009>>> with moderate setting
   absTol_RGC              = 1.0e+4
   relTol_RGC              = 1.0e-3
@@ -181,6 +185,10 @@ subroutine numerics_init()
               rTol_crystalliteStress = IO_floatValue(line,positions,2)
         case ('atol_crystallitestress')
               aTol_crystalliteStress = IO_floatValue(line,positions,2)
+        case ('integrator')
+              integrator = IO_intValue(line,positions,2)
+        case ('integratorstiffness')
+              integratorStiffness = IO_intValue(line,positions,2)
 
 !* RGC parameters: added <<<updated 17.12.2009>>>
         case ('atol_rgc')
@@ -242,6 +250,8 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
   write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
+  write(6,'(a24,x,i8)')   'integrator:             ',integrator
+  write(6,'(a24,x,i8)')   'integratorStiffness:    ',integratorStiffness
   write(6,*)
 
   write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
@@ -252,23 +262,23 @@ subroutine numerics_init()
   write(6,*)
 
 !* RGC parameters: added <<<updated 17.12.2009>>>
-  write(6,'(a24,x,e8.1)') 'aTol_RGC:             ',absTol_RGC
-  write(6,'(a24,x,e8.1)') 'rTol_RGC:             ',relTol_RGC
-  write(6,'(a24,x,e8.1)') 'aMax_RGC:             ',absMax_RGC
-  write(6,'(a24,x,e8.1)') 'rMax_RGC:             ',relMax_RGC
-  write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:   ',pPert_RGC
-  write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC: ',xSmoo_RGC
-  write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:    ',viscPower_RGC
-  write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC: ',viscModus_RGC
-  write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:    ',maxdRelax_RGC
-  write(6,'(a24,x,e8.1)') 'maxVolDiscrepancy_RGC:',maxVolDiscr_RGC
-  write(6,'(a24,x,e8.1)') 'volDiscrepancyMod_RGC:',volDiscrMod_RGC
-  write(6,'(a24,x,e8.1)') 'discrepancyPower_RGC: ',volDiscrPow_RGC
+  write(6,'(a24,x,e8.1)') 'aTol_RGC:               ',absTol_RGC
+  write(6,'(a24,x,e8.1)') 'rTol_RGC:               ',relTol_RGC
+  write(6,'(a24,x,e8.1)') 'aMax_RGC:               ',absMax_RGC
+  write(6,'(a24,x,e8.1)') 'rMax_RGC:               ',relMax_RGC
+  write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:     ',pPert_RGC
+  write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC:   ',xSmoo_RGC
+  write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:      ',viscPower_RGC
+  write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC:   ',viscModus_RGC
+  write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:      ',maxdRelax_RGC
+  write(6,'(a24,x,e8.1)') 'maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
+  write(6,'(a24,x,e8.1)') 'volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
+  write(6,'(a24,x,e8.1)') 'discrepancyPower_RGC:   ',volDiscrPow_RGC
 
   write(6,*)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
-  write(6,'(a24,x,i8)')   'fixed_seed:           ',fixedSeed
+  write(6,'(a24,x,i8)')   'fixed_seed:             ',fixedSeed
   write(6,*)
   
   ! sanity check  
@@ -294,6 +304,10 @@ subroutine numerics_init()
   if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(276) !! oops !!
   if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(270)
   if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(271)
+  if (integrator <= 0_pInt .or. integrator >= 6_pInt) &
+                                            call IO_error(298)
+  if (integratorStiffness <= 0_pInt .or. integratorStiffness >= 6_pInt) &
+                                            call IO_error(298)
 
 !* RGC parameters: added <<<updated 17.11.2009>>>
   if (absTol_RGC <= 0.0_pReal)              call IO_error(272)

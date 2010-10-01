@@ -118,6 +118,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       crystallite_Fp, &
                                                       crystallite_Lp0, &
                                                       crystallite_Lp, &
+                                                      crystallite_dPdF0, &
+                                                      crystallite_dPdF, &
                                                       crystallite_Tstar0_v, &
                                                       crystallite_Tstar_v
   use homogenization, only:                           homogenization_init, &
@@ -242,6 +244,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         crystallite_F0  = crystallite_partionedF                          ! crystallite deformation (_subF is perturbed...)
         crystallite_Fp0 = crystallite_Fp                                  ! crystallite plastic deformation
         crystallite_Lp0 = crystallite_Lp                                  ! crystallite plastic velocity
+        crystallite_dPdF0 = crystallite_dPdF                              ! crystallite stiffness
         crystallite_Tstar0_v = crystallite_Tstar_v                        ! crystallite 2nd Piola Kirchhoff stress 
         forall ( i = 1:homogenization_maxNgrains, &
                  j = 1:mesh_maxNips, &

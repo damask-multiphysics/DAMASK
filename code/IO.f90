@@ -1189,6 +1189,8 @@ endfunction
  case (294)
    msg = 'Non-positive tolerance for deformation gradient'
 
+ case (298)
+   msg = 'Chosen integration method does not exist'
  case (299)
    msg = 'Chosen perturbation method does not exist'
 

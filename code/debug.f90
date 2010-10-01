@@ -9,8 +9,7 @@
 
  integer(pInt), dimension(:,:), allocatable :: debug_StressLoopDistribution
  integer(pInt), dimension(:,:), allocatable :: debug_LeapfrogBreakDistribution
- integer(pInt), dimension(:), allocatable ::   debug_CrystalliteStateLoopDistribution
- integer(pInt), dimension(:), allocatable ::   debug_StiffnessStateLoopDistribution
+ integer(pInt), dimension(:,:), allocatable :: debug_StateLoopDistribution
  integer(pInt), dimension(:), allocatable ::   debug_CrystalliteLoopDistribution
  integer(pInt), dimension(:), allocatable ::   debug_MaterialpointStateLoopDistribution
  integer(pInt), dimension(:), allocatable ::   debug_MaterialpointLoopDistribution
@@ -70,8 +69,7 @@ subroutine debug_init()
   
   allocate(debug_StressLoopDistribution(nStress,2)) ;            debug_StressLoopDistribution             = 0_pInt
   allocate(debug_LeapfrogBreakDistribution(nStress,2)) ;         debug_LeapfrogBreakDistribution          = 0_pInt
-  allocate(debug_CrystalliteStateLoopDistribution(nState)) ;     debug_CrystalliteStateLoopDistribution   = 0_pInt
-  allocate(debug_StiffnessStateLoopDistribution(nState)) ;       debug_StiffnessStateLoopDistribution     = 0_pInt
+  allocate(debug_StateLoopDistribution(nState,2)) ;              debug_StateLoopDistribution              = 0_pInt
   allocate(debug_CrystalliteLoopDistribution(nCryst+1)) ;        debug_CrystalliteLoopDistribution        = 0_pInt
   allocate(debug_MaterialpointStateLoopDistribution(nMPstate)) ; debug_MaterialpointStateLoopDistribution = 0_pInt
   allocate(debug_MaterialpointLoopDistribution(nHomog+1)) ;      debug_MaterialpointLoopDistribution      = 0_pInt
@@ -141,8 +139,7 @@ subroutine debug_reset()
 
   debug_StressLoopDistribution              = 0_pInt ! initialize debugging data
   debug_LeapfrogBreakDistribution           = 0_pInt
-  debug_CrystalliteStateLoopDistribution    = 0_pInt
-  debug_StiffnessStateLoopDistribution      = 0_pInt
+  debug_StateLoopDistribution               = 0_pInt
   debug_CrystalliteLoopDistribution         = 0_pInt
   debug_MaterialpointStateLoopDistribution  = 0_pInt
   debug_MaterialpointLoopDistribution       = 0_pInt
@@ -216,12 +213,14 @@ endsubroutine
  write(6,*)
  write(6,*) 'distribution_CrystalliteStateLoop :'
  do i=1,nState
-   if (debug_CrystalliteStateLoopDistribution(i) /= 0) then
-     integral = integral + i*debug_CrystalliteStateLoopDistribution(i)
-     write(6,'(i25,x,i10)') i,debug_CrystalliteStateLoopDistribution(i)
+   if (any(debug_StateLoopDistribution(i,:) /= 0)) then
+     integral = integral + i*debug_StateLoopDistribution(i,1) + i*debug_StateLoopDistribution(i,2)
+     write(6,'(i25,x,i10,12x,i10)') i,debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
    endif
  enddo
- write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_CrystalliteStateLoopDistribution)
+ write(6,'(a15,i10,x,i10,12x,i10)') '          total',integral,&
+                                                    sum(debug_StateLoopDistribution(:,1)), &
+                                                    sum(debug_StateLoopDistribution(:,2))
 
  integral = 0_pInt
  write(6,*)
@@ -237,19 +236,7 @@ endsubroutine
    endif
  enddo
  write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
-
- integral = 0_pInt
- write(6,*)
- write(6,*) 'distribution_StiffnessStateLoop :'
- do i=1,nState
-   if (debug_StiffnessStateLoopDistribution(i) /= 0) then
-     integral = integral + i*debug_StiffnessStateLoopDistribution(i)
-     write(6,'(i25,x,i10)') i,debug_StiffnessStateLoopDistribution(i)
-   endif
- enddo
- write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_StiffnessStateLoopDistribution)
  
-!* Material point loop counter <<<updated 31.07.2009>>>
  integral = 0_pInt
  write(6,*)
  write(6,*)

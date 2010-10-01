@@ -26,6 +26,9 @@ integer(pInt), parameter :: lattice_maxNslip = 48                 ! max # of sli
 integer(pInt), parameter :: lattice_maxNtwin = 24                 ! max # of twin systems over lattice structures
 integer(pInt), parameter :: lattice_maxNinteraction = 20          ! max # of interaction types (in hardening matrix part)
 
+integer(pInt), parameter, dimension(3) :: lattice_symmetryTypes =(/1, 1, 2/) ! maps crystal structures to symmetry tpyes
+
+
 integer(pInt), pointer, dimension(:,:) :: interactionSlipSlip, &
                                           interactionSlipTwin, &
                                           interactionTwinSlip, &
@@ -429,37 +432,37 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  integer(pInt), parameter :: lattice_hex_Ntwin = 24                                       ! sum(lattice_hex_NtwinSystem)
  integer(pInt) ::            lattice_hex_Nstructure = 0_pInt
 
- !* sorted by A. Alankar & P. Eisenlohr
+ !* sorted by YJ.Ro and Philip
  real(pReal), dimension(4+4,lattice_hex_Nslip), parameter :: lattice_hex_systemSlip = &
  reshape((/&
 ! Basal systems <1120>{0001} (independent of c/a-ratio, Bravais notation (4 coordinate base))
-  2, -1, -1,  0,     0,  0,  0,  1, & !A1
- -1,  2, -1,  0,     0,  0,  0,  1, & !A2
- -1, -1,  2,  0,     0,  0,  0,  1, & !A3
+  2, -1, -1,  0,     0,  0,  0,  1, &
+  1,  1, -2,  0,     0,  0,  0,  1, &
+ -1,  2, -1,  0,     0,  0,  0,  1, &
 ! 1st type prismatic systems <1120>{1010}  (independent of c/a-ratio)
-  2, -1, -1,  0,     0,  1, -1,  0, & !B1
- -1,  2, -1,  0,    -1,  0,  1,  0, & !C2
- -1, -1,  2,  0,     1, -1,  0,  0, & !D3
-! 1st type 1st order pyramidal systems <1120>{1011} -- plane normals depend on the c/a-ratio
-  2, -1, -1,  0,     0,  1, -1,  1, & !E1
-  1,  1, -2,  0,    -1,  1,  0,  1, & !F(-3)
- -1,  2, -1,  0,    -1,  0,  1,  1, & !G2
- -2,  1,  1,  0,     0, -1,  1,  1, & !H(-1)
- -1, -1,  2,  0,     1, -1,  0,  1, & !I3
-  1, -2,  1,  0,     1,  0, -1,  1, & !J(-2)
+  2, -1, -1,  0,     0, -1,  1,  0, &
+  1,  1,  2,  0,     1, -1,  0,  0, &
+ -1,  2, -1,  0,     1,  0, -1,  0, &
+! 1st type 1st order pyramidal systems <1120>{1011}
+  2, -1, -1,  0,     0, -1,  1,  1, &
+  1,  1, -2,  0,     1, -1,  0,  1, &
+ -1,  2, -1,  0,     1,  0, -1,  1, &
+ -2,  1,  1,  0,     0,  1, -1,  1, &
+ -1, -1,  2,  0,    -1,  1,  0,  1, &
+  1, -2,  1,  0,    -1,  0,  1,  1, &
 ! pyramidal system: c+a slip <2113>{1011} -- plane normals depend on the c/a-ratio
- -1,  2, -1,  3,     0,  1, -1,  1, & !E4
-  1,  1, -2,  3,     0,  1, -1,  1, & !E5
- -2,  1,  1,  3,    -1,  1,  0,  1, & !F6
- -1,  2, -1,  3,    -1,  1,  0,  1, & !F4
- -1, -1,  2,  3,    -1,  0,  1,  1, & !G7
- -2,  1,  1,  3,    -1,  0,  1,  1, & !G6
-  1, -2,  1,  3,     0, -1,  1,  1, & !H8
- -1, -1,  2,  3,     0, -1,  1,  1, & !H7
-  2, -1, -1,  3,     1, -1,  0,  1, & !I9
-  1, -2,  1,  3,     1, -1,  0,  1, & !I8
-  1,  1, -2,  3,     1,  0, -1,  1, & !J5
-  2, -1, -1,  3,     1,  0, -1,  1 &  !J9
+  2, -1, -1, -3,     1, -1,  0,  1, &
+  1,  1, -2, -3,     1,  0, -1,  1, &
+ -1,  2, -1, -3,     1, -1,  0,  1, &
+ -2,  1,  1, -3,     1,  0, -1,  1, &
+ -1, -1,  2, -3,     0,  1, -1,  1, &
+  1, -2,  1, -3,     0, -1,  1,  1, &
+ -2,  1,  1, -3,    -1,  0,  1,  1, &
+ -1, -1,  2, -3,     0, -1,  1,  1, &
+  1, -2,  1, -3,     0,  1, -1,  1, &
+  2, -1, -1, -3,    -1,  1,  0,  1, &
+  1,  1, -2, -3,    -1,  0,  1,  1, &
+ -1,  2, -1, -3,    -1,  1,  0,  1  &
    /),(/4+4,lattice_hex_Nslip/))
 
  real(pReal), dimension(4+4,lattice_hex_Ntwin), parameter :: lattice_hex_systemTwin = &
@@ -657,30 +660,6 @@ CONTAINS
 !* - lattice_init
 !* - lattice_initializeStructure
 !****************************************
-
-pure function lattice_symmetryType(structID)
-!**************************************
-!*   maps structure to symmetry type  *
-!*   fcc(1) and bcc(2) are cubic(1)   *
-!*   hex(3+) is hexagonal(2)          *
-!**************************************
- implicit none
- 
- integer(pInt), intent(in) :: structID
- integer(pInt) lattice_symmetryType
-
- select case(structID)
-   case (1,2)
-     lattice_symmetryType = 1_pInt
-   case (3:)
-     lattice_symmetryType = 2_pInt
-   case default
-     lattice_symmetryType = 0_pInt
-  end select
-
- return
- 
-end function
 
 
 subroutine lattice_init()

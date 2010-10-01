@@ -257,7 +257,6 @@ constitutive_nonlocal_interactionSlipSlip = 0.0_pReal
 constitutive_nonlocal_dLowerEdgePerSlipFamily = 0.0_pReal
 constitutive_nonlocal_dLowerScrewPerSlipFamily = 0.0_pReal
 
-
 !*** readout data from material.config file
 
 rewind(file)
@@ -973,7 +972,7 @@ endsubroutine
 !*********************************************************************
 !* calculates kinetics                                               *
 !*********************************************************************
-subroutine constitutive_nonlocal_kinetics(Tstar_v, Temperature, state, g, ip, el)
+subroutine constitutive_nonlocal_kinetics(Tstar_v, Temperature, state, g, ip, el, dv_dtau)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1003,6 +1002,8 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal), dimension(6), intent(in) ::    Tstar_v                     ! 2nd Piola-Kirchhoff stress in Mandel notation
 
 !*** output variables
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))), &
+                   intent(out), optional :: dv_dtau                     ! velocity derivative with respect to resolved shear stress
 
 !*** local variables
 integer(pInt)                               myInstance, &               ! current instance of this constitution
@@ -1013,31 +1014,42 @@ integer(pInt)                               myInstance, &               ! curren
 real(pReal), dimension(6) ::                Tdislocation_v              ! dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             tauThreshold, &             ! threshold shear stress
-                                            tau                         ! resolved shear stress
+                                            tau, &                      ! resolved shear stress
+                                            rhoForest                   ! forest dislocation density
+real(pReal)                                 boltzmannProbability
 
 
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
 ns = constitutive_nonlocal_totalNslip(myInstance)
 
+rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
 tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 Tdislocation_v = state(g,ip,el)%p(12*ns+1:12*ns+6)
 
 tau = 0.0_pReal
 constitutive_nonlocal_v(:,:,g,ip,el) = 0.0_pReal
+if (present(dv_dtau)) dv_dtau = 0.0_pReal
 
-do s = 1,ns
-  if ((tauThreshold(s) > 0.0_pReal) .and. (Temperature > 0.0_pReal)) then
+if ( Temperature > 0.0_pReal ) then
+  do s = 1,ns
   
     tau(s) = math_mul6x6( Tstar_v + Tdislocation_v, &
-                        lattice_Sslip_v(:,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure) )
-
-    constitutive_nonlocal_v(s,:,g,ip,el) = constitutive_nonlocal_v0PerSlipSystem(s,myInstance) &
-            * exp( - constitutive_nonlocal_Q0(myInstance) / ( kB * Temperature) * (1.0_pReal - (abs(tau(s))/tauThreshold(s)) ) ) &
-            * sign(1.0_pReal,tau(s))
-  
-  endif
-enddo
+                          lattice_Sslip_v(:,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure) )
+      
+    if ( abs(tau(s)) > 0.0_pReal ) then
+      boltzmannProbability = dexp( -constitutive_nonlocal_Q0(myInstance) * dsqrt(rhoForest(s)) / ( abs(tau(s)) * kB * Temperature) )
+      constitutive_nonlocal_v(s,:,g,ip,el) = constitutive_nonlocal_v0PerSlipSystem(s,myInstance) &
+                                            / ( constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) * dsqrt(rhoForest(s)) ) &
+                                            *  boltzmannProbability * sign(1.0_pReal,tau(s))
+    
+      if (present(dv_dtau)) &
+        dv_dtau(s) = constitutive_nonlocal_Q0(myInstance) * constitutive_nonlocal_v0PerSlipSystem(s,myInstance) &
+                    / ( constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) * tau(s)**2.0_pReal * kB * Temperature ) &
+                    * boltzmannProbability
+    endif
+  enddo
+endif
 
 if (verboseDebugger .and. selectiveDebugger) then 
   !$OMP CRITICAL (write2out)
@@ -1058,7 +1070,7 @@ endsubroutine
 !*********************************************************************
 !* calculates plastic velocity gradient and its tangent              *
 !*********************************************************************
-subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, state, g, ip, el)
+subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, state, relevantState, g, ip, el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1085,7 +1097,8 @@ integer(pInt), intent(in) ::                g, &                        ! curren
                                             el                          ! current element number
 real(pReal), intent(in) ::                  Temperature                 ! temperature
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            state                       ! microstructural state
+                                            state, &                    ! microstructural state
+                                            relevantState               ! relevant microstructural state
 real(pReal), dimension(6), intent(in) ::    Tstar_v                     ! 2nd Piola-Kirchhoff stress in Mandel notation
 
 !*** output variables
@@ -1111,7 +1124,9 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             tauThreshold, &             ! threshold shear stress
                                             gdotTotal, &                ! shear rate
-                                            dgdotTotal_dtau             ! derivative of the shear rate with respect to the shear stress
+                                            dv_dtau, &                  ! velocity derivative with respect to the shear stress
+                                            dgdotTotal_dtau, &          ! derivative of the shear rate with respect to the shear stress
+                                            rhoForest                   ! forest dislocation density
 
 
 !*** initialize local variables
@@ -1131,17 +1146,18 @@ forall (t = 1:8) &
 forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * constitutive_nonlocal_v(s,t-4,g,ip,el) < 0.0_pReal) &                                      ! contribution of used rho for changing sign of v
   rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
 
+rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
 tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 
-call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state, g, ip, el)                                                         ! update dislocation velocity
+call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state, g, ip, el, dv_dtau)                                                ! update dislocation velocity
 
 !*** Calculation of gdot and its tangent
 
-forall (t = 1:4 ) &
-  gdot(:,t) =  rhoSgl(:,t) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * constitutive_nonlocal_v(:,t,g,ip,el)
+forall (s = 1:ns, t = 1:4, rhoSgl(s,t) > relevantState(g,ip,el)%p((t-1)*ns+s)) &                                                    ! no shear rate contribution for densities below relevant state
+  gdot(s,t) =  rhoSgl(s,t) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) * constitutive_nonlocal_v(s,t,g,ip,el)
 gdotTotal = sum(gdot,2)
 
-dgdotTotal_dtau = abs(gdotTotal) * constitutive_nonlocal_Q0(myInstance) / ( kB * Temperature * tauThreshold )
+dgdotTotal_dtau = sum(rhoSgl,2) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * dv_dtau
 
 !*** Calculation of Lp and its tangent
 
@@ -1216,7 +1232,8 @@ use lattice,  only: lattice_Sslip, &
                     lattice_sn, &
                     lattice_st, &
                     lattice_maxNslipFamily, &
-                    lattice_NslipSystem
+                    lattice_NslipSystem 
+use FEsolving, only:theInc
 implicit none
 
 !*** input variables
@@ -1352,16 +1369,16 @@ if (timestep <= 0.0_pReal) then                                                 
   return
 endif
 
-if (any(constitutive_nonlocal_v(:,:,g,ip,el)*timestep > mesh_ipVolume(ip,el)**(1.0_pReal/3.0_pReal))) then                          ! if timestep is too large,...
-  dotState(1,ip,el)%p(1:10*ns) = NaN                                                                                                ! ...assign NaN and enforce a cutback
-  if (verboseDebugger) then 
-    !$OMP CRITICAL (write2out)
-      write(6,*) 'exceeded maximum allowed dislocation velocity at ',g,ip,el
-      write(6,*)
-    !$OMPEND CRITICAL (write2out)
-  endif
-  return
-endif
+!if (any(constitutive_nonlocal_v(:,:,g,ip,el)*timestep > mesh_ipVolume(ip,el)**(1.0_pReal/3.0_pReal))) then                          ! if timestep is too large,...
+!  dotState(1,ip,el)%p(1:10*ns) = NaN                                                                                                ! ...assign NaN and enforce a cutback
+!  if (verboseDebugger) then 
+!    !$OMP CRITICAL (write2out)
+!      write(6,*) 'exceeded maximum allowed dislocation velocity at ',g,ip,el
+!      write(6,*)
+!    !$OMPEND CRITICAL (write2out)
+!  endif
+!  return
+!endif
 
 
 !****************************************************************************
@@ -1603,20 +1620,23 @@ forall (t = 1:10) &
               + rhoDotAthermalAnnihilation(:,t) &
               + rhoDotRemobilization(:,t) &
               + rhoDotMultiplication(:,t) &
-              + rhoDotThermalAnnihilation(:,t)
-!              + rhoDotDipole2SingleStressChange(:,t) &
+              + rhoDotThermalAnnihilation(:,t) 
+!              + rhoDotDipole2SingleStressChange(:,t) 
 !              + rhoDotSingle2DipoleStressChange(:,t)
 
-dotState(g,ip,el)%p(1:10*ns) = dotState(g,ip,el)%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
+dotState(g,ip,el)%p(1:10*ns) = reshape(rhoDot,(/10*ns/))
 
-do i = 1,4*ns
+do i = 1,10*ns
+  if (i > 4*ns .and. i <= 8*ns) &                                                                                                   ! skip immobile densities
+    continue
   if (previousState(g,ip,el)%p(i) + dotState(g,ip,el)%p(i)*timestep < 0.0_pReal) then                                               ! if single mobile densities become negative...
     if (previousState(g,ip,el)%p(i) < relevantState(g,ip,el)%p(i)) then                                                             !   ... and density is already below relevance...
-      dotState(g,ip,el)%p(i) = 0.0_pReal                                                                                            !     ... set dotState to zero
+      dotState(g,ip,el)%p(i) = - previousState(g,ip,el)%p(i) / timestep                                                             !     ... set dotState to zero
     else                                                                                                                            !   ... otherwise...
       if (verboseDebugger) then 
         !$OMP CRITICAL (write2out)
-          write(6,*) 'negative dislocation density at ',g,ip,el
+          write(6,*) 'negative dislocation density: enforced cutback at ',g,ip,el,i
+          write(6,'(a12,x,e15.8)') 'dotState was',dotState(g,ip,el)%p(i)
           write(6,*)
         !$OMPEND CRITICAL (write2out)
       endif
@@ -1671,7 +1691,7 @@ disorientationAxisAngle = math_QuaternionToAxisAngle(disorientation)
 disorientationAxis = disorientationAxisAngle(1:3)
 disorientationAngle = disorientationAxisAngle(4)
  
-if (disorientationAngle < 3.0_pReal) then
+if (disorientationAngle < 5.0_pReal) then
   constitutive_nonlocal_transmissivity = 1.0_pReal
 else
   constitutive_nonlocal_transmissivity = 0.5_pReal
