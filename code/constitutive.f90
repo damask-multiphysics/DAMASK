@@ -403,7 +403,7 @@ return
 endfunction
 
 
-subroutine constitutive_microstructure(Temperature,Tstar_v,Fe,Fp,disorientation,ipc,ip,el)
+subroutine constitutive_microstructure(Temperature,Tstar_v,Fe,Fp,ipc,ip,el)
 !*********************************************************************
 !* This function calculates from state needed variables              *
 !* INPUT:                                                            *
@@ -432,7 +432,6 @@ integer(pInt), intent(in) :: ipc,ip,el
 real(pReal), intent(in) :: Temperature
 real(pReal), dimension(6) :: Tstar_v
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
-real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: disorientation
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
  
@@ -449,7 +448,7 @@ real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: disorientation
      call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Tstar_v, Fe, Fp, disorientation, ipc, ip, el)
+     call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Tstar_v, Fe, Fp, ipc, ip, el)
      
  end select
 
@@ -509,7 +508,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
 endsubroutine
 
 
-subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperature, disorientation, subdt, ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, ipc, ip, el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
@@ -548,8 +547,6 @@ implicit none
 integer(pInt), intent(in) ::    ipc, ip, el
 real(pReal), intent(in) ::      Temperature, &
                                 subdt
-real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: &
-                                disorientation
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                 Fe, &
                                 Fp
@@ -579,7 +576,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
   case (constitutive_nonlocal_label)
-    call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, disorientation, subdt, &
+    call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, &
                                         constitutive_state, constitutive_subState0, constitutive_relevantState, subdt, ipc, ip, el)
  
 end select

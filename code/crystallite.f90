@@ -184,7 +184,7 @@ subroutine crystallite_init(Temperature)
  allocate(crystallite_statedamper(gMax,iMax,eMax));                     crystallite_statedamper = 1.0_pReal
  allocate(crystallite_symmetryID(gMax,iMax,eMax));                       crystallite_symmetryID = 0.0_pReal !NEW
  allocate(crystallite_orientation(4,gMax,iMax,eMax));                   crystallite_orientation = 0.0_pReal
- allocate(crystallite_orientation0(4,gMax,iMax,eMax));                  crystallite_orientation = 0.0_pReal
+ allocate(crystallite_orientation0(4,gMax,iMax,eMax));                 crystallite_orientation0 = 0.0_pReal
  allocate(crystallite_rotation(4,gMax,iMax,eMax));                         crystallite_rotation = 0.0_pReal
  allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax));        crystallite_disorientation = 0.0_pReal
  allocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
@@ -342,7 +342,7 @@ subroutine crystallite_init(Temperature)
     write(6,'(a35,x,7(i5,x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subF:                  ', shape(crystallite_subF)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subTemperature0:       ', shape(crystallite_subTemperature0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_symmetryID:            ', shape(crystallite_symmetryID)             !NEW
+    write(6,'(a35,x,7(i5,x))') 'crystallite_symmetryID:            ', shape(crystallite_symmetryID)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
     write(6,'(a35,x,7(i5,x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
@@ -483,7 +483,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
   logical                                               forceLocalStiffnessCalculation ! flag indicating that stiffness calculation is always done locally
   forceLocalStiffnessCalculation = .true. 
 
-                                                        
   ! --+>> INITIALIZE TO STARTING CONDITION <<+--
   
   crystallite_subStep = 0.0_pReal
@@ -564,7 +563,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               crystallite_Lp(:,:,g,i,e) = crystallite_subLp0(:,:,g,i,e)                                   ! ...plastic velocity grad
               constitutive_state(g,i,e)%p = constitutive_subState0(g,i,e)%p                               ! ...microstructure
               crystallite_Tstar_v(:,g,i,e) = crystallite_subTstar0_v(:,g,i,e)                             ! ...2nd PK stress
-                                                                                                          ! canÕt restore dotState here, since not yet calculated in first cutback after initialization
+                                                                                                          ! canï¿½t restore dotState here, since not yet calculated in first cutback after initialization
               if (debugger .and. selectiveDebugger) then
                 !$OMP CRITICAL (write2out)
                   write(6,'(a78,f10.8)') 'cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
@@ -907,7 +906,7 @@ endif
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                       crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)    ! update dependent state variables to be consistent with basic states
+                                       crystallite_Fp, g, i, e)                                           ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -919,10 +918,9 @@ RK4dotTemperature = 0.0_pReal
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g)
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                        crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                        crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g,i,e)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -968,8 +966,8 @@ do n = 1,4
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                         crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)  ! update dependent state variables to be consistent with basic states
+        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                         crystallite_Fe, crystallite_Fp, g, i, e)                         ! update dependent state variables to be consistent with basic states
       endif
    enddo; enddo; enddo
   !$OMPEND PARALLEL DO
@@ -980,7 +978,7 @@ do n = 1,4
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g)
+        selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
         if (crystallite_integrateStress(mode,g,i,e,timeStepFraction(n))) then                             ! fraction of original times step
           if (n == 4) then                                                                                ! final integration step
             if (mode==1 .and. verboseDebugger .and. e == debug_e .and. i == debug_i .and. g == debug_g) then
@@ -1020,10 +1018,9 @@ do n = 1,4
     !$OMP PARALLEL DO
       do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                      ! iterate over elements, ips and grains
         if (crystallite_todo(g,i,e)) then
-          selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g)
+          selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
           call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                             crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                            crystallite_disorientation(:,:,g,i,e), &
                                             timeStepFraction(n)*crystallite_subdt(g,i,e), g,i,e)          ! fraction of original timestep
           crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                           crystallite_Temperature(g,i,e),g,i,e)
@@ -1201,8 +1198,8 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                       crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)    ! update dependent state variables to be consistent with basic states
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -1213,10 +1210,9 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g)
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                        crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                        crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g,i,e)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -1268,8 +1264,8 @@ do n = 1,5
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                         crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)  ! update dependent state variables to be consistent with basic states
+        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                         crystallite_Fe, crystallite_Fp, g, i, e)                         ! update dependent state variables to be consistent with basic states
       endif
    enddo; enddo; enddo
   !$OMPEND PARALLEL DO
@@ -1279,7 +1275,7 @@ do n = 1,5
   
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
       if (crystallite_todo(g,i,e)) then
         if (.not. crystallite_integrateStress(mode,g,i,e,c(n))) then                                      ! fraction of original time step
           if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
@@ -1299,11 +1295,11 @@ do n = 1,5
   
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
       if (crystallite_todo(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                           crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                          crystallite_disorientation(:,:,g,i,e), c(n)*crystallite_subdt(g,i,e), g,i,e) ! fraction of original timestep
+                                          c(n)*crystallite_subdt(g,i,e), g,i,e)                           ! fraction of original timestep
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
@@ -1402,8 +1398,8 @@ relTemperatureResiduum = 0.0_pReal
     if (crystallite_todo(g,i,e)) then
       sizeDotState = constitutive_sizeDotState(g,i,e)
       if ( all(relStateResiduum(1:sizeDotState,g,i,e) < 1.0_pReal) .and. relTemperatureResiduum(g,i,e) < 1.0_pReal ) then        
-        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                         crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)  ! update dependent state variables to be consistent with basic states
+        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                         crystallite_Fe, crystallite_Fp, g, i, e)                         ! update dependent state variables to be consistent with basic states
       endif
     endif
  enddo; enddo; enddo
@@ -1415,7 +1411,7 @@ relTemperatureResiduum = 0.0_pReal
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
       sizeDotState = constitutive_sizeDotState(g,i,e)
       if ( all(relStateResiduum(1:sizeDotState,g,i,e) < 1.0_pReal) .and. relTemperatureResiduum(g,i,e) < 1.0_pReal ) then        
 
@@ -1544,8 +1540,8 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                       crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)    ! update dependent state variables to be consistent with basic states
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -1556,11 +1552,10 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
   
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                        crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                        crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g,i,e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
   
@@ -1602,8 +1597,8 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                       crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)  ! update dependent state variables to be consistent with basic states
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                         ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -1613,7 +1608,7 @@ endif
 
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-    selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
     if (crystallite_todo(g,i,e)) then
       if (.not. crystallite_integrateStress(mode,g,i,e)) then
         if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
@@ -1633,11 +1628,10 @@ endif
 
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-    selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g)
+    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
     if (crystallite_todo(g,i,e)) then
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                        crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                        crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g,i,e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
@@ -1800,8 +1794,8 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                       crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)    ! update dependent state variables to be consistent with basic states
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -1812,10 +1806,9 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                        crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                        crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g,i,e)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -1865,8 +1858,8 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                       crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)    ! update dependent state variables to be consistent with basic states
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -1876,7 +1869,7 @@ endif
 
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
     if (crystallite_todo(g,i,e)) then
       if (crystallite_integrateStress(mode,g,i,e)) then
         crystallite_converged(g,i,e) = .true.
@@ -1984,8 +1977,8 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                       crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)    ! update dependent state variables to be consistent with basic states
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -1995,13 +1988,12 @@ endif
 
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
     if (crystallite_todo(g,i,e)) then
       constitutive_previousDotState2(g,i,e)%p = 0.0_pReal
       constitutive_previousDotState(g,i,e)%p = 0.0_pReal
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                        crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                        crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g, i, e)
     endif
   enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -2039,7 +2031,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
 
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
       if (crystallite_todo(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_integrateStress(mode,g,i,e)
         if ( .not. crystallite_localConstitution(g,i,e) .and. .not. crystallite_todo(g,i,e)) then         ! if broken non-local... 
@@ -2062,13 +2054,12 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = .false. !(e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
       if (crystallite_todo(g,i,e)) then
         constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p                  ! wind forward dotStates
         constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p
-        call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                          crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                          crystallite_disorientation(:,:,g,i,e), crystallite_subdt(g,i,e), g, i, e)
+        call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
+                                          crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g, i, e)
       endif
   enddo; enddo; enddo
   !$OMPEND PARALLEL DO
@@ -2117,8 +2108,8 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
-                                         crystallite_Fp, crystallite_disorientation(:,:,g,i,e), g, i, e)  ! update dependent state variables to be consistent with basic states
+        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                         crystallite_Fe, crystallite_Fp, g, i, e)                         ! update dependent state variables to be consistent with basic states
       endif
    enddo; enddo; enddo
   !$OMPEND PARALLEL DO
@@ -2656,7 +2647,9 @@ use FEsolving, only:                  FEsolving_execElem, &
 use IO, only:                         IO_warning
 use material, only:                   material_phase, &
                                       homogenization_Ngrains, &
-                                      phase_constitution
+                                      phase_constitution, &
+                                      phase_localConstitution, &
+                                      phase_constitutionInstance
 use mesh, only:                       mesh_element, &
                                       mesh_ipNeighborhood, &
                                       FE_NipNeighbors
@@ -2664,7 +2657,8 @@ use debug, only:                      debugger, &
                                       debug_e, debug_i, debug_g, &
                                       verboseDebugger, &
                                       selectiveDebugger
-use constitutive_nonlocal, only:      constitutive_nonlocal_label
+use constitutive_nonlocal, only:      constitutive_nonlocal_structure, &
+                                      constitutive_nonlocal_updateCompatibility
 
 implicit none
 
@@ -2677,75 +2671,87 @@ integer(pInt)                   e, &                          ! element index
                                 i, &                          ! integration point index
                                 g, &                          ! grain index
                                 n, &                          ! neighbor index 
-                                myPhase, &                    ! phase         
                                 neighboring_e, &              ! element index of my neighbor
                                 neighboring_i, &              ! integration point index of my neighbor
-                                neighboringPhase, &           ! phase of my neighbor
-                                neighboringStructure          ! lattice structure of my neighbor
+                                myPhase, &                    ! phase
+                                neighboringPhase, &
+                                myInstance, &                 ! instance of constitution
+                                neighboringInstance, &
+                                myStructure, &                ! lattice structure
+                                neighboringStructure
 real(pReal), dimension(3,3) ::  U, R
 logical error
 
+! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
 !$OMP PARALLEL DO
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       do g = 1,homogenization_Ngrains(mesh_element(3,e))
-
-        ! calculate orientation in terms of rotation matrix and euler angles
-        call math_pDecomposition(crystallite_Fe(:,:,g,i,e), U, R, error)             ! polar decomposition of Fe
+        
+        call math_pDecomposition(crystallite_Fe(:,:,g,i,e), U, R, error)                                  ! polar decomposition of Fe
         if (error) then
           call IO_warning(650, e, i, g)
-          crystallite_orientation(:,g,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! fake orientation
+          crystallite_orientation(:,g,i,e) = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/)               ! fake orientation
         else
           crystallite_orientation(:,g,i,e) = math_RtoQuaternion(transpose(R))
         endif
-
+        
         crystallite_rotation(:,g,i,e) = &
-          math_QuaternionDisorientation( math_qConj(crystallite_orientation(:,g,i,e)), &         ! calculate grainrotation
+          math_QuaternionDisorientation( math_qConj(crystallite_orientation(:,g,i,e)), &                  ! calculate grainrotation
                                          math_qConj(crystallite_orientation0(:,g,i,e)), &
-                                         0_pInt ) ! we don't want symmetry here  
+                                         0_pInt )                                                         ! we don't want symmetry here  
         
       enddo
     enddo
   enddo
 !$OMPEND PARALLEL DO
 
+
+! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
+! --- we use crystallite_orientation from above, so need a seperate loop
+
 !$OMP PARALLEL DO
-  ! Another loop for nonlocal material which uses the orientations from the first one.
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       selectiveDebugger = (e == debug_e .and. i == debug_i)
-      myPhase = material_phase(1,i,e)                                               ! get my crystal structure
-      if (phase_constitution(myPhase) == constitutive_nonlocal_label) then          ! if nonlocal model
+      myPhase = material_phase(1,i,e)                                                                     ! get my phase
+      if (.not. phase_localConstitution(myPhase)) then                                                    ! if nonlocal model
+        myInstance = phase_constitutionInstance(myPhase)
+        myStructure = constitutive_nonlocal_structure(myInstance)                                         ! get my crystal structure
 
-        do n = 1,FE_NipNeighbors(mesh_element(2,e))                                 ! loop through my neighbors
-          
+        
+        ! --- calculate disorientation between me and my neighbor ---
+        
+        do n = 1,FE_NipNeighbors(mesh_element(2,e))                                                       ! loop through my neighbors          
           neighboring_e = mesh_ipNeighborhood(1,n,i,e)
           neighboring_i = mesh_ipNeighborhood(2,n,i,e)
-
-          if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                     ! if neighbor exists
-
-            neighboringPhase = material_phase(1,neighboring_i,neighboring_e)          ! get my neighbor's crystal structure               
-            if (myPhase == neighboringPhase) then                                     ! if my neighbor has same phase like me
-            
-              crystallite_disorientation(:,n,1,i,e) = &
-                math_QuaternionDisorientation( crystallite_orientation(:,1,i,e), &
-                                               crystallite_orientation(:,1,neighboring_i,neighboring_e), & 
-                                               crystallite_symmetryID(1,i,e))         ! calculate disorientation
-            
-            else                                                                      ! for neighbor with different phase
-              crystallite_disorientation(:,n,1,i,e) = (/0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal/) ! 180 degree rotation about 100 axis
-              
+          if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                                         ! if neighbor exists
+            neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                              ! get my neighbor's phase
+            if (.not. phase_localConstitution(neighboringPhase)) then                                     ! neighbor got also nonlocal constitution
+              neighboringInstance = phase_constitutionInstance(neighboringPhase)        
+              neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)                 ! get my neighbor's crystal structure               
+              if (myStructure == neighboringStructure) then                                               ! if my neighbor has same crystal structure like me
+                crystallite_disorientation(:,n,1,i,e) = &
+                  math_QuaternionDisorientation( crystallite_orientation(:,1,i,e), &
+                                                 crystallite_orientation(:,1,neighboring_i,neighboring_e), & 
+                                                 crystallite_symmetryID(1,i,e))                           ! calculate disorientation            
+              else                                                                                        ! for neighbor with different phase
+                crystallite_disorientation(:,n,1,i,e) = (/0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal/)    ! 180 degree rotation about 100 axis
+              endif
+            else                                                                                          ! for neighbor with local constitution
+              crystallite_disorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/)     ! homomorphic identity
             endif
-          else                                                                        ! no existing neighbor
-            crystallite_disorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/) ! homomorphic identity
-          endif
-          if (verboseDebugger .and. selectiveDebugger) then
-            !$OMP CRITICAL (write2out)
-              write(6,'(a27,i2,a3,4(f12.5,x))') 'disorientation to neighbor ',n,' : ',crystallite_disorientation(:,n,1,i,e)
-            !$OMP END CRITICAL (write2out)
+          else                                                                                            ! no existing neighbor
+            crystallite_disorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/)       ! homomorphic identity
           endif
         enddo
+
+
+        ! --- calculate compatibility and transmissivity between me and my neighbor ---
+
+        call constitutive_nonlocal_updateCompatibility(crystallite_orientation,i,e)
+
       endif
     enddo
   enddo
