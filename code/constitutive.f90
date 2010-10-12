@@ -133,9 +133,9 @@ subroutine constitutive_init()
    allocate(constitutive_previousDotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
    allocate(constitutive_previousDotState2(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  endif
- if (integrator == 3 .or. integratorStiffness == 3) &
-   allocate(constitutive_RK4dotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) 
  if (integrator == 4 .or. integratorStiffness == 4) &
+   allocate(constitutive_RK4dotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) 
+ if (integrator == 5 .or. integratorStiffness == 5) &
    allocate(constitutive_RKCK45dotState(6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  
  do e = 1,mesh_NcpElems                                  ! loop over elements
@@ -159,9 +159,9 @@ subroutine constitutive_init()
              allocate(constitutive_previousDotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
              allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
            endif
-           if (integrator == 3 .or. integratorStiffness == 3) &
+           if (integrator == 4 .or. integratorStiffness == 4) &
              allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance))) 
-           if (integrator == 4 .or. integratorStiffness == 4) then
+           if (integrator == 5 .or. integratorStiffness == 5) then
              do s = 1,6
                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_j2_sizeDotState(myInstance))) 
              enddo
@@ -185,9 +185,9 @@ subroutine constitutive_init()
              allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
              allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
            endif
-           if (integrator == 3 .or. integratorStiffness == 3) &
+           if (integrator == 4 .or. integratorStiffness == 4) &
              allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance))) 
-           if (integrator == 4 .or. integratorStiffness == 4) then
+           if (integrator == 5 .or. integratorStiffness == 5) then
              do s = 1,6
                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance))) 
              enddo
@@ -211,9 +211,9 @@ subroutine constitutive_init()
              allocate(constitutive_previousDotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
              allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
            endif
-           if (integrator == 3 .or. integratorStiffness == 3) &
+           if (integrator == 4 .or. integratorStiffness == 4) &
              allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance))) 
-           if (integrator == 4 .or. integratorStiffness == 4) then
+           if (integrator == 5 .or. integratorStiffness == 5) then
              do s = 1,6
                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance))) 
              enddo
@@ -237,9 +237,9 @@ subroutine constitutive_init()
              allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
              allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
            endif
-           if (integrator == 3 .or. integratorStiffness == 3) &
+           if (integrator == 4 .or. integratorStiffness == 4) &
              allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance))) 
-           if (integrator == 4 .or. integratorStiffness == 4) then
+           if (integrator == 5 .or. integratorStiffness == 5) then
              do s = 1,6
                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance))) 
              enddo
@@ -263,9 +263,9 @@ subroutine constitutive_init()
              allocate(constitutive_previousDotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
              allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
            endif
-           if (integrator == 3 .or. integratorStiffness == 3) &
+           if (integrator == 4 .or. integratorStiffness == 4) &
              allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance))) 
-           if (integrator == 4 .or. integratorStiffness == 4) then
+           if (integrator == 5 .or. integratorStiffness == 5) then
              do s = 1,6
                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance))) 
              enddo
