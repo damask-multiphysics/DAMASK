@@ -1062,7 +1062,7 @@ endfunction
  case (47)
    msg = 'mask consistency violated in spectral loadcase'
  case (48)
-   msg = 'stress symmetry violated in spectral loadcase'
+   msg = 'Non-positive relative tolerance for defGrad correction'
  case (50)
    msg = 'Error writing constitutive output description'
  case (100)

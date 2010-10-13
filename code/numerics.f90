@@ -44,9 +44,11 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 maxdRelax_RGC, &                        ! threshold of maximum relaxation vector increment (if exceed this then cutback)
                                 maxVolDiscr_RGC, &                      ! threshold of maximum volume discrepancy allowed
                                 volDiscrMod_RGC, &                      ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
-                                volDiscrPow_RGC                         ! powerlaw penalty for volume discrepancy
+                                volDiscrPow_RGC, &                      ! powerlaw penalty for volume discrepancy
+!* spectral parameters:
+                                rTol_defgradAvg                         ! relative tolerance for correction to deformation gradient aim
 
-!* Random seeding parameters: added <<<updated 27.08.2009>>>
+                                !* Random seeding parameters: added <<<updated 27.08.2009>>>
 integer(pInt)                   fixedSeed                               ! fixed seeding for pseudo-random number generator
 
 CONTAINS
@@ -125,7 +127,10 @@ subroutine numerics_init()
   maxVolDiscr_RGC         = 1.0e-5  ! tolerance for volume discrepancy allowed
   volDiscrMod_RGC         = 1.0e+12
   volDiscrPow_RGC         = 5.0
-  
+
+!* spectral parameters:  
+  rTol_defgradAvg         = 1.0e-6
+
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
 
@@ -218,6 +223,10 @@ subroutine numerics_init()
         case ('discrepancypower_rgc')
               volDiscrPow_RGC = IO_floatValue(line,positions,2)
 
+!* spectral parameters
+        case ('rTol_defgradAvg')
+              rTol_defgradAvg = IO_floatValue(line,positions,2)
+
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
         case ('fixed_seed')
               fixedSeed = IO_floatValue(line,positions,2)
@@ -261,7 +270,7 @@ subroutine numerics_init()
   write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
   write(6,*)
 
-!* RGC parameters: added <<<updated 17.12.2009>>>
+!* RGC parameters
   write(6,'(a24,x,e8.1)') 'aTol_RGC:               ',absTol_RGC
   write(6,'(a24,x,e8.1)') 'rTol_RGC:               ',relTol_RGC
   write(6,'(a24,x,e8.1)') 'aMax_RGC:               ',absMax_RGC
@@ -274,10 +283,14 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
   write(6,'(a24,x,e8.1)') 'volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
   write(6,'(a24,x,e8.1)') 'discrepancyPower_RGC:   ',volDiscrPow_RGC
+  write(6,*)
+
+!* spectral parameters
+  write(6,'(a24,x,e8.1)') 'rTol_defgradAvg:      ',rTol_defgradAvg
 
   write(6,*)
 
-!* Random seeding parameters: added <<<updated 27.08.2009>>>
+!* Random seeding parameters
   write(6,'(a24,x,i8)')   'fixed_seed:             ',fixedSeed
   write(6,*)
   
@@ -323,7 +336,10 @@ subroutine numerics_init()
   if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(289)
   if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(289)
   if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(289)
- 
+
+!* spectral parameters
+  if (rTol_defgradAvg <= 0.0_pReal)         call IO_error(48)
+  
   if (fixedSeed <= 0_pInt)                  write(6,'(a)') 'Random is random!'
 endsubroutine
 
