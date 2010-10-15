@@ -456,7 +456,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         Fe_guess, &                   ! guess for elastic deformation gradient
                                                         Tstar                         ! 2nd Piola-Kirchhoff stress tensor
   real(pReal), dimension(9,9) ::                        dPdF99
-  real(pReal), dimension(3,3,3,3,2) ::                  dPdF_perturbation
+  real(pReal), dimension(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                                                        dPdF_perturbation1, &
+                                                        dPdF_perturbation2
   real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                         F_backup, &
                                                         Fp_backup, &
@@ -480,8 +482,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                         mySizeDotState
   logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                         convergenceFlag_backup
-  logical                                               forceLocalStiffnessCalculation ! flag indicating that stiffness calculation is always done locally
-  forceLocalStiffnessCalculation = .true. 
 
   ! --+>> INITIALIZE TO STARTING CONDITION <<+--
   
@@ -619,13 +619,23 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
         do g = 1,myNgrains
+          selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
           if (.not. crystallite_converged(g,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
-!            call IO_warning(600,e,i,g)
             invFp = math_inv3x3(crystallite_partionedFp0(:,:,g,i,e))
             Fe_guess = math_mul33x33(crystallite_partionedF(:,:,g,i,e),invFp)
             Tstar = math_Mandel6to33( math_mul66x6( 0.5_pReal*constitutive_homogenizedC(g,i,e), &
                                                     math_Mandel33to6( math_mul33x33(transpose(Fe_guess),Fe_guess) - math_I3 ) ) )
             crystallite_P(:,:,g,i,e) = math_mul33x33(Fe_guess,math_mul33x33(Tstar,transpose(invFp)))
+          endif
+          if (verboseDebugger .and. selectiveDebugger) then
+            !$OMP CRITICAL (write2out)
+              write (6,*) '#############'
+              write (6,*) 'central solution of cryst_StressAndTangent'
+              write (6,*) '#############'
+              write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, P_backup(1:3,:,g,i,e)/1e6
+              write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, Fp_backup(1:3,:,g,i,e)
+              write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, Lp_backup(1:3,:,g,i,e)
+            !$OMPEND CRITICAL (write2out)
           endif
         enddo
       enddo
@@ -661,114 +671,21 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
     convergenceFlag_backup = crystallite_converged
 
     
-    ! --- LOCAL STIFFNESS CALCULATION ---
+    ! --- CALCULATE STATE AND STRESS FOR PERTURBATION ---
     
-    if (all(crystallite_localConstitution) .or. theInc < 1 .or. forceLocalStiffnessCalculation) then      ! all grains have local constitution, so local convergence of perturbed grain is sufficient
-    
-      !$OMP PARALLEL DO
-        do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                ! iterate over elements to be processed
-          myNgrains = homogenization_Ngrains(mesh_element(3,e))
-          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                              ! iterate over IPs of this element to be processed
-            do g = 1,myNgrains
-              selectiveDebugger = .false. ! (e == debug_e .and. i == debug_i .and. g == debug_g)
-              if (crystallite_requested(g,i,e)) then                                                      ! first check whether is requested at all!
-                if (crystallite_converged(g,i,e)) then                                                    ! grain converged in above iteration
-                  
-                  if (verboseDebugger .and. selectiveDebugger) then
-                    !$OMP CRITICAL (write2out)
-                    write (6,*) '#############'
-                    write (6,*) 'central solution of cryst_StressAndTangent'
-                    write (6,*) '#############'
-                    write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, P_backup(1:3,:,g,i,e)/1e6
-                    write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, Fp_backup(1:3,:,g,i,e)
-                    write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, Lp_backup(1:3,:,g,i,e)
-                    !$OMPEND CRITICAL (write2out)
-                  endif
-                  
-                  do perturbation = 1,2                                                                     ! forward and backward perturbation
-                    if (iand(pert_method,perturbation) > 0) then                                            ! mask for desired direction
-                      dPdF_perturbation(:,:,:,:,perturbation) = crystallite_dPdF0(:,:,:,:,g,i,e)            ! initialize stiffness with known good values from last increment
-                      myPert = -pert_Fg * (-1.0_pReal)**perturbation                                        ! set perturbation step
-                      do k = 1,3; do l = 1,3                                                                ! ...alter individual components
-                        crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + myPert                  ! perturb either forward or backward
-
-                        if (verboseDebugger .and. selectiveDebugger) then
-                          !$OMP CRITICAL (write2out)
-                          write (6,'(a,x,i1,x,i1,x,a)') '[[[[[[[ Stiffness perturbation',k,l,']]]]]]]'
-                          write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') 'pertF of', g, i, e, crystallite_subF(1:3,:,g,i,e)
-                          !$OMPEND CRITICAL (write2out)
-                        endif
-                        
-                        ! --- local integration and stiffness calculation ---
-                        
-                        crystallite_converged(g,i,e) = .false.                                                                    ! start out non-converged
-                        crystallite_todo(g,i,e) = .true.
-                        select case(integratorStiffness)
-                          case (1)
-                            call crystallite_integrateStateFPI(2,g,i,e)
-                          case (2)
-                            call crystallite_integrateStateEuler(2,g,i,e)
-                          case (3)
-                            call crystallite_integrateStateAdaptiveEuler(2,g,i,e)
-                          case (4)
-                            call crystallite_integrateStateRK4(2,g,i,e)
-                          case(5)
-                            call crystallite_integrateStateRKCK45(2,g,i,e)
-                        endselect
-                        if (crystallite_converged(g,i,e)) &                                                                       ! converged state warrants stiffness update
-                          dPdF_perturbation(:,:,k,l,perturbation) = (crystallite_P(:,:,g,i,e) - P_backup(:,:,g,i,e))/myPert       ! tangent dP_ij/dFg_kl
-  
-                        ! --- restore ---
-  
-                        mySizeState = constitutive_sizeState(g,i,e)                                                               ! number of state variables for this grain
-                        mySizeDotState = constitutive_sizeDotState(g,i,e)                                                         ! number of dotStates for this grain
-                        constitutive_state(g,i,e)%p(1:mySizeState) = constitutive_state_backup(g,i,e)%p(1:mySizeState)
-                        constitutive_dotState(g,i,e)%p(1:mySizeDotState) = constitutive_dotState_backup(g,i,e)%p(1:mySizeDotState)
-                        crystallite_Temperature(g,i,e) = Temperature_backup(g,i,e)
-                        crystallite_subF(:,:,g,i,e) = F_backup(:,:,g,i,e)
-                        crystallite_Fp(:,:,g,i,e) = Fp_backup(:,:,g,i,e) 
-                        crystallite_invFp(:,:,g,i,e) = InvFp_backup(:,:,g,i,e)
-                        crystallite_Fe(:,:,g,i,e) = Fe_backup(:,:,g,i,e)
-                        crystallite_Lp(:,:,g,i,e) = Lp_backup(:,:,g,i,e)
-                        crystallite_Tstar_v(:,g,i,e) = Tstar_v_backup(:,g,i,e)
-                        crystallite_P(:,:,g,i,e) = P_backup(:,:,g,i,e)
-                        crystallite_converged(g,i,e) = convergenceFlag_backup(g,i,e)
-                        
-                      enddo; enddo
-                    endif
-                  enddo                                                                                 ! perturbation direction
-                  select case(pert_method)
-                    case (1)
-                      crystallite_dPdF(:,:,:,:,g,i,e) = dPdF_perturbation(:,:,:,:,1)
-                    case (2)
-                      crystallite_dPdF(:,:,:,:,g,i,e) = dPdF_perturbation(:,:,:,:,2)
-                    case (3)
-                      crystallite_dPdF(:,:,:,:,g,i,e) = 0.5_pReal*(dPdF_perturbation(:,:,:,:,1)+dPdF_perturbation(:,:,:,:,2))
-                  end select
-                else                                                                                    ! grain did not converge
-                  crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)             ! use (elastic) fallback
-                endif               ! grain convergence
-              endif                 ! grain request
-            enddo                   ! grain   loop
-          enddo                     ! ip      loop
-        enddo                       ! element loop
-      !$OMPEND PARALLEL DO
-      
-
-    ! --- NON-LOCAL STIFFNESS CALCULATION ---
-
-    elseif (any(.not. crystallite_localConstitution)) then                                                                          ! if any nonlocal grain present, we have to do a full loop over all grains after each perturbance
-      
-      crystallite_dPdF = crystallite_dPdF0                                                                                          ! initialize stiffness with known good values from last inc
-
-      do k = 1,3
-        do l = 1,3
-          crystallite_subF(k,l,:,:,:) = crystallite_subF(k,l,:,:,:) + pert_Fg                                                       ! perturb single component
-                
-          ! --- integration ---
+    dPdF_perturbation1 = crystallite_dPdF0                                                                ! initialize stiffness with known good values from last increment
+    dPdF_perturbation2 = crystallite_dPdF0                                                                ! initialize stiffness with known good values from last increment
+    do perturbation = 1,2                                                                                 ! forward and backward perturbation
+      if (iand(pert_method,perturbation) > 0) then                                                        ! mask for desired direction
+        myPert = -pert_Fg * (-1.0_pReal)**perturbation                                                    ! set perturbation step
+        do k = 1,3; do l = 1,3                                                                            ! ...alter individual components
+          if (verboseDebugger .and. selectiveDebugger) &
+            write (6,'(a,x,i1,x,i1,x,a)') '[[[[[[[ Stiffness perturbation',k,l,']]]]]]]'
+          crystallite_subF(k,l,:,:,:) = crystallite_subF(k,l,:,:,:) + myPert                              ! perturb either forward or backward
           
-          crystallite_converged = .false.                                                                                           ! start out non-converged
-          crystallite_todo = .true.
+          crystallite_todo = crystallite_requested .and. crystallite_converged
+          where (crystallite_todo) crystallite_converged = .false.                                        ! start out non-converged
+
           select case(integratorStiffness)
             case (1)
               call crystallite_integrateStateFPI(2)
@@ -780,22 +697,24 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
               call crystallite_integrateStateRK4(2)
             case(5)
               call crystallite_integrateStateRKCK45(2)
-          endselect
-          
-          ! --- stiffness calculation ---
+          end select
           
           do e = FEsolving_execElem(1),FEsolving_execElem(2)
             myNgrains = homogenization_Ngrains(mesh_element(3,e))
             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
               do g = 1,myNgrains
-                if (crystallite_converged(g,i,e)) then                                                                              ! if stiffness calculation converged...
-                  crystallite_dPdF(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - P_backup(:,:,g,i,e))/pert_Fg                        ! ... use tangent dP_ij/dFg_kl
-                elseif (.not. convergenceFlag_backup(g,i,e)) then                                                                   ! if crystallite didnt converge before...
-                  crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                                         ! ... use (elastic) fallback
+                if (crystallite_requested(g,i,e) .and. crystallite_converged(g,i,e)) then                 ! converged state warrants stiffness update
+                  select case(perturbation)
+                    case (1)
+                      dPdF_perturbation1(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - P_backup(:,:,g,i,e)) / myPert ! tangent dP_ij/dFg_kl
+                    case (2)
+                      dPdF_perturbation2(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - P_backup(:,:,g,i,e)) / myPert ! tangent dP_ij/dFg_kl
+                  end select
                 endif
           enddo; enddo; enddo
-          
-          ! --- restore ---
+  
+  
+          ! --- RESTORE ---
           
           do e = FEsolving_execElem(1),FEsolving_execElem(2)
             myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -815,12 +734,33 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
           crystallite_Tstar_v = Tstar_v_backup
           crystallite_P = P_backup
           crystallite_converged = convergenceFlag_backup
-      
-      enddo;enddo                 ! k,l loop
-      
-    endif
 
-  endif                           ! jacobian calculation
+        enddo; enddo                                                                                    ! k,l loop
+      endif
+    enddo                                                                                               ! perturbation direction
+
+
+    ! --- STIFFNESS ACCORDING TO PERTURBATION METHOD AND CONVERGENCE ---
+
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)
+      myNgrains = homogenization_Ngrains(mesh_element(3,e))
+      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+        do g = 1,myNgrains
+          if (crystallite_requested(g,i,e) .and. crystallite_converged(g,i,e)) then                     ! central solution converged
+            select case(pert_method)
+              case (1)
+                crystallite_dPdF(:,:,:,:,g,i,e) = dPdF_perturbation1(:,:,:,:,g,i,e)
+              case (2)
+                crystallite_dPdF(:,:,:,:,g,i,e) = dPdF_perturbation2(:,:,:,:,g,i,e)
+              case (3)
+                crystallite_dPdF(:,:,:,:,g,i,e) = 0.5_pReal* (dPdF_perturbation1(:,:,:,:,g,i,e) + dPdF_perturbation2(:,:,:,:,g,i,e))
+            end select
+          elseif (crystallite_requested(g,i,e) .and. .not. crystallite_converged(g,i,e)) then           ! central solution did not converge
+            crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                   ! use (elastic) fallback
+          endif
+    enddo; enddo; enddo
+    
+  endif                                                                                                 ! jacobian calculation
  
 endsubroutine
 
@@ -1055,9 +995,10 @@ enddo
 ! --- CHECK CONVERGENCE ---
 
 crystallite_todo = .false.                                                                                ! done with integration
-if ( .not. (mode == 2 .and. singleRun) &                                                                  ! except for local stiffness calculation:
-     .and. any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then               ! any non-local not yet converged (or broken)...
-  crystallite_converged = crystallite_converged .and. crystallite_localConstitution                       ! ...restart all non-local as not converged
+if ( mode == 1 .and. .not. singleRun ) then                                                               ! for central solution   
+  if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                    ! any non-local not yet converged (or broken)...
+    crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
+  endif
 endif
 
 endsubroutine
@@ -1137,6 +1078,8 @@ real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: 
                                               temperatureResiduum, &    ! residuum from evolution in temperature
                                               relTemperatureResiduum    ! relative residuum from evolution in temperature
 logical                                       singleRun                 ! flag indicating computation for single (g,i,e) triple
+logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                                              stateConverged            ! flag indicating state convergence
 
 
 ! --- FILL BUTCHER TABLEAU ---
@@ -1371,7 +1314,11 @@ relTemperatureResiduum = 0.0_pReal
       if (crystallite_Temperature(g,i,e) > 0) &
         relTemperatureResiduum(g,i,e) = abs(temperatureResiduum(g,i,e)) / crystallite_Temperature(g,i,e) &
                                                                         / rTol_crystalliteTemperature
-        
+      
+      
+      ! --- state convergence ---
+!      stateConverged(g,i,e) = 
+      
       if (verboseDebugger .and. selectiveDebugger) then
         !$OMP CRITICAL (write2out)
           write(6,*) '::: updateState',g,i,e
@@ -1444,8 +1391,7 @@ relTemperatureResiduum = 0.0_pReal
 ! --- nonlocal convergence check ---
 
 if (verboseDebugger .and. mode==1) write(6,*) 'crystallite_converged',crystallite_converged
-if ( .not. (mode == 2 .and. singleRun) ) then                                                             ! except for local stiffness calculation:
-  
+if ( mode == 1 .and. .not. singleRun ) then                                                               ! for central solution   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
   endif
@@ -1705,8 +1651,8 @@ relTemperatureResiduum = 0.0_pReal
 
       if ( all(relStateResiduum(1:sizeDotState,g,i,e) < 1.0_pReal) .and. relTemperatureResiduum(g,i,e) < 1.0_pReal ) then        
 
-        crystallite_converged(g,i,e) = .true.                                                           ! ... converged per definitionem
-        crystallite_todo(g,i,e) = .false.                                                               ! ... integration done
+        crystallite_converged(g,i,e) = .true.                                                             ! ... converged per definitionem
+        crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
         !$OMP CRITICAL (distributionState)
           debug_StateLoopDistribution(6,mode) = debug_StateLoopDistribution(6,mode) + 1
         !$OMPEND CRITICAL (distributionState)
@@ -1721,7 +1667,7 @@ relTemperatureResiduum = 0.0_pReal
 ! --- NONLOCAL CONVERGENCE CHECK ---
 
 if (verboseDebugger .and. mode==1) write(6,*) 'crystallite_converged',crystallite_converged
-if ( .not. (mode == 2 .and. singleRun) ) then                                                             ! except for local stiffness calculation:  
+if ( mode == 1 .and. .not. singleRun ) then                                                               ! for central solution   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
   endif
@@ -1902,9 +1848,10 @@ endif
 ! --- CHECK NON-LOCAL CONVERGENCE ---
 
 crystallite_todo = .false.                                                                                ! done with integration
-if ( .not. (mode == 2 .and. singleRun) &                                                                  ! except for local stiffness calculation:
-     .and. any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then               ! any non-local not yet converged (or broken)...
-  crystallite_converged = crystallite_converged .and. crystallite_localConstitution                       ! ...restart all non-local as not converged
+if ( mode == 1 .and. .not. singleRun ) then                                                               ! for central solution   
+  if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                    ! any non-local not yet converged (or broken)...
+    crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
+  endif
 endif
 
 endsubroutine
@@ -2137,9 +2084,10 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   
   ! --- CONVERGENCE CHECK ---
 
-  if ( .not. (mode == 2 .and. singleRun) &                                                                ! except for local stiffness calculation:
-       .and. any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then             ! any non-local not yet converged (or broken)...
-    crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
+  if ( mode == 1 .and. .not. singleRun ) then                                                             ! for central solution   
+    if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                  ! any non-local not yet converged (or broken)...
+      crystallite_converged = crystallite_converged .and. crystallite_localConstitution                   ! ...restart all non-local as not converged
+    endif
   endif
   
   crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                   ! skip all converged
