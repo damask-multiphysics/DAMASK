@@ -81,8 +81,7 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_
                                                           constitutive_nonlocal_interactionSlipSlip             ! coefficients for slip-slip interaction for each interaction type and instance
 real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_v, &                            ! dislocation velocity
                                                           constitutive_nonlocal_rhoDotFlux                      ! dislocation convection term
-real(pReal), dimension(:,:,:,:,:,:), allocatable ::       constitutive_nonlocal_compatibility, &                ! slip system compatibility between me and my neighbors
-                                                          constitutive_nonlocal_transmissivity                  ! transmissivity between me and my neighbors
+real(pReal), dimension(:,:,:,:,:,:), allocatable ::       constitutive_nonlocal_compatibility                   ! slip system compatibility between me and my neighbors
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_forestProjectionEdge, &         ! matrix of forest projections of edge dislocations for each instance
                                                           constitutive_nonlocal_forestProjectionScrew, &        ! matrix of forest projections of screw dislocations for each instance
                                                           constitutive_nonlocal_interactionMatrixSlipSlip       ! interaction matrix of the different slip systems for each instance
@@ -425,11 +424,8 @@ constitutive_nonlocal_v = 0.0_pReal
 allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 8, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_rhoDotFlux = 0.0_pReal
 
-allocate(constitutive_nonlocal_compatibility(maxTotalNslip, 2, maxTotalNslip, FE_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_compatibility(2,maxTotalNslip, maxTotalNslip, FE_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_compatibility = 0.0_pReal
-
-allocate(constitutive_nonlocal_transmissivity(maxTotalNslip, 2, maxTotalNslip, FE_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
-constitutive_nonlocal_transmissivity = 0.0_pReal
 
 do i = 1,maxNinstance
   
@@ -1224,7 +1220,7 @@ endsubroutine
 !* rate of change of microstructure                                  *
 !*********************************************************************
 subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, previousTstar_v, Fe, Fp, Temperature, dt_previous, &
-                                          state, previousState, relevantState, timestep, g,ip,el)
+                                          state, previousState, relevantState, timestep, orientation, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1241,6 +1237,8 @@ use math,     only: math_norm3, &
                     math_inv3x3, &
                     math_det3x3, &
                     math_Mandel6to33, &
+                    math_QuaternionDisorientation, &
+                    math_qRot, &
                     pi, &
                     NaN
 use mesh,     only: mesh_NcpElems, &
@@ -1279,6 +1277,8 @@ real(pReal), dimension(6), intent(in) ::    Tstar_v, &                ! current 
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             Fe, &                     ! elastic deformation gradient
                                             Fp                        ! plastic deformation gradient
+real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                            orientation               ! crystal lattice orientation
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             state, &                  ! current microstructural state
                                             previousState, &          ! previous microstructural state
@@ -1340,18 +1340,20 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                             previousDUpper, &         ! previous maximum stable dipole distance for edges and screws
                                             dUpperDot                 ! rate of change of the maximum stable dipole distance for edges and screws
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
-                                            m                         ! direction of dislocation motion
+                                            m, &                      ! direction of dislocation motion
+                                            neighboring_m             ! direction of dislocation motion for my neighbor in central MP's lattice configuration
 real(pReal), dimension(3,3) ::              F, &                      ! total deformation gradient
                                             neighboring_F, &          ! total deformation gradient of my neighbor
                                             Favg                      ! average total deformation gradient of me and my neighbor
 real(pReal), dimension(6) ::                Tdislocation_v, &         ! current dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress
                                             previousTdislocation_v    ! previous dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress
+real(pReal), dimension(4) ::                absoluteMisorientation    ! absolute misorientation (without symmetry) between me and my neighbor
 real(pReal), dimension(3) ::                surfaceNormal, &          ! surface normal in lattice configuration
                                             surfaceNormal_currentconf ! surface normal in current configuration
 real(pReal)                                 area, &                   ! area of the current interface
                                             detFe, &                  ! determinant of elastic defornmation gradient
-                                            transmissivity, &         ! transmissivity of dislocation flux for different slip systems in neighboring material points for a specific charcter of dislocations
-                                            compatibility, &          ! compatibility of different slip systems in neighboring material points for a specific charcter of dislocations
+                                            transmissivity, &         ! transmissivity of dislocation flux for different slip systems in neighboring material points
+                                            compatibility, &          ! compatibility of different slip systems in neighboring material points for a specific character of dislocations
                                             lineLength, &             ! dislocation line length leaving the current interface
                                             D                         ! self diffusion
 logical, dimension(3) ::                    periodicSurfaceFlux       ! flag indicating periodic fluxes at surfaces when surface normal points mainly in x, y and z direction respectively (in reference configuration)
@@ -1482,7 +1484,7 @@ rhoDotMultiplication(:,5:10) = 0.0_pReal      ! used dislocation densities and d
 !*** calculate dislocation fluxes
 
 rhoDotFlux = 0.0_pReal
-periodicSurfaceFlux = (/.false.,.false.,.false./)
+periodicSurfaceFlux = (/.false.,.true.,.false./)
 
 m(:,:,1) =  lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
 m(:,:,2) = -lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
@@ -1493,7 +1495,8 @@ F = math_mul33x33(Fe(:,:,g,ip,el), Fp(:,:,g,ip,el))
 detFe = math_det3x3(Fe(:,:,g,ip,el)) 
 
 fluxdensity = rhoSgl(:,1:4) * constitutive_nonlocal_v(:,:,g,ip,el)
-
+  
+!if (selectiveDebugger) write(6,*) '--> dislocation flux <---'
 do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                                                        ! loop through my neighbors
   opposite_n = n - 1_pInt + 2_pInt*mod(n,2_pInt)
   
@@ -1505,8 +1508,8 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   
   if ( neighboring_el > 0_pInt .and. neighboring_ip > 0_pInt ) then                                                                 ! if neighbor exists ...
     do neighboring_n = 1,FE_NipNeighbors(mesh_element(2,neighboring_el))                                                            ! find neighboring index that points from my neighbor to myself
-      if (      el == mesh_ipNeighborhood(1,opposite_n,ip,neighboring_el) &                                                         ! special case if no neighbor at all...
-          .and. ip == mesh_ipNeighborhood(2,opposite_n,ip,neighboring_el) ) &
+      if (      el == mesh_ipNeighborhood(1,neighboring_n,neighboring_ip,neighboring_el) &                                          ! special case if no neighbor at all...
+          .and. ip == mesh_ipNeighborhood(2,neighboring_n,neighboring_ip,neighboring_el) ) &
         exit                                                                                                                        ! ...exit without any flux calculation
     enddo
   endif
@@ -1528,38 +1531,69 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
       forall (t = 1:4) &                                                                                                            !     ... then calculate neighboring flux density
         neighboring_fluxdensity(:,t) = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+1:t*ns) &
                                      * constitutive_nonlocal_v(:,t,g,neighboring_ip,neighboring_el)
+      absoluteMisorientation = math_QuaternionDisorientation( orientation(:,1,ip,el), &
+                                                              orientation(:,1,neighboring_ip,neighboring_el), 0_pInt)
     else                                                                                                                            !   ... and is of local constitution...
       neighboring_fluxdensity = fluxdensity                                                                                         !     ... then copy flux density to neighbor to ensure zero gradient in fluxdensity
+      absoluteMisorientation = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/)
     endif
   else                                                                                                                              ! if no neighbor existent...
     if ( all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,n,ip,el))))) ) then                                                 !   ... and we want periodic fluxes at surface...
       forall (t = 1:4) &                                                                                                            !     ... then mirror fluxes 
-        neighboring_fluxdensity(:,t) = fluxdensity(:,t-1_pInt+2_pInt*mod(t,2_pInt))
+        neighboring_fluxdensity(:,t) = fluxdensity(:,t-1+2*mod(t,2))
     else                                                                                                                            !   ... and we have a free surface...
       neighboring_fluxdensity = 0.0_pReal                                                                                           !     ... assume zero density
     endif
+    absoluteMisorientation = (/1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/)
   endif
-    
+
+  do t = 1,4
+    do s = 1,ns
+      neighboring_m(:,s,t) = math_qRot(absoluteMisorientation, m(:,s,t))                                                            ! calculate neighboring dislocation movement directions in my lattice frame (we simply assume same crystal structure for both me and my neighbor)
+    enddo
+  enddo
+  
+!  if (selectiveDebugger) then
+!    write(6,'(a,x,i1)') 'neighbor',n
+!    write(6,'(a,x,i2)') 'neighboring_ip',neighboring_ip
+!    write(6,'(a,x,i1)') 'neighboring_n',neighboring_n
+!    write(6,'(a,12(x,f5.3))') 'compatibility of neighbor with me', &
+!      constitutive_nonlocal_compatibility(:,:,:,neighboring_n,neighboring_ip,neighboring_el)
+!  endif
   do s = 1,ns
+!    if (selectiveDebugger) write(6,'(a,x,i2)') '  system',s
     do t = 1,4
-      c = (t + 1) / 2                                                                                                               ! dislocation character
-      if ( fluxdensity(s,t) * math_mul3x3(m(:,s,t), surfaceNormal) > 0.0_pReal ) then                                               ! outgoing flux        
-        transmissivity = sum(constitutive_nonlocal_transmissivity(:,c,s,n,ip,el))                                                   !   overall transmissivity between my system s and all neighboring systems s2 for this dislocation character
-        lineLength = fluxdensity(s,t) * math_mul3x3(m(:,s,t), surfaceNormal) * area                                                 !   line length that wants to leave this interface
-        rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                       !   subtract positive dislocation flux that leaves the material point
+!      if (selectiveDebugger) write(6,'(a,x,i1)') '    type',t
+      if ( fluxdensity(s,t) * math_mul3x3(m(:,s,t),surfaceNormal) > 0.0_pReal ) then                                                ! outgoing flux        
+        transmissivity = sum(abs(constitutive_nonlocal_compatibility(1,:,s,n,ip,el)))                                               ! ..overall transmissivity between my system s and all neighboring systems s2 for this dislocation character
+        lineLength = fluxdensity(s,t) * math_mul3x3(m(:,s,t),surfaceNormal) * area                                                  ! ..line length that wants to leave thrugh this interface
+        rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                       ! ..subtract positive dislocation flux that leaves the material point
         rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
-                                                                                  * sign(1.0_pReal, fluxdensity(s,t))               !   dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point        
-      else                                                                                                                          ! incoming flux
-        do s2 = 1,ns
-          compatibility = constitutive_nonlocal_compatibility(s,c,s2,neighboring_n,neighboring_ip,neighboring_el)                   !   compatibility of system s2 of my neighbor to system s in my material point
-          transmissivity = constitutive_nonlocal_transmissivity(s,c,s2,neighboring_n,neighboring_ip,neighboring_el)
-          lineLength = neighboring_fluxdensity(s2,t) * math_mul3x3(m(:,s,t), surfaceNormal) * area                                  !   line length that wants to leave this interface
-          if (compatibility > 0.0_pReal) then                                                                                       !     compatible with equally signed dislocation density 
-            rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el) * transmissivity * compatibility                  !       subtract negative dislocation flux that enters the material point
-          elseif (compatibility < 0.0_pReal) then                                                                                   !     compatible with inversely signed dislocation density 
-            topp = t + mod(t,2) - mod(t+1,2)
-            rhoDotFlux(s,topp) = rhoDotFlux(s,topp) - lineLength / mesh_ipVolume(ip,el) * transmissivity * abs(compatibility)       !       subtract negative dislocation flux that enters the material point
+                                                                                  * sign(1.0_pReal, fluxdensity(s,t))               ! ..dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point        
+!        if (selectiveDebugger) write(6,'(a,x,e12.5,x,a,x,f10.5)') '      outgoing flux:', lineLength / mesh_ipVolume(ip,el),&
+!                                                      '    transmissivity:',transmissivity
+      else                                                                                                                          ! perhaps we get something from our neighbor?
+        c = (t + 1) / 2
+        topp = t + mod(t,2) - mod(t+1,2)
+!        if (selectiveDebugger) write(6,'(a,12(x,f5.3))') '      compatibility', &
+!          constitutive_nonlocal_compatibility(c,s,:,neighboring_n,neighboring_ip,neighboring_el)
+        do s2 = 1,ns                                                                                                                ! assuming same crystal structure at neighbor
+          compatibility = constitutive_nonlocal_compatibility(c,s,s2,neighboring_n,neighboring_ip,neighboring_el)                   ! ..compatibility of system s2 of my neighbor to system s in my material point
+          transmissivity = abs(constitutive_nonlocal_compatibility(1,s,s2,neighboring_n,neighboring_ip,neighboring_el))
+          if ( compatibility > 0.0_pReal ) then                                                                                     ! ..dislocation signs have same sense on neighboring system
+            if (neighboring_fluxdensity(s2,t) * math_mul3x3(neighboring_m(:,s2,t),surfaceNormal) < 0.0_pReal) then                  ! ....incoming flux
+              lineLength = neighboring_fluxdensity(s2,t) * math_mul3x3(neighboring_m(:,s2,t), surfaceNormal) * area                 ! ......line length that enters through this interface              
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el) * transmissivity * abs(compatibility)           ! ......subtract negative dislocation flux that enters the material point
+            endif
+          elseif ( compatibility < 0.0_pReal ) then                                                                                 ! ..dislocation signs have opposite sense on neighboring system, so consider opposite dislocation type
+            if (neighboring_fluxdensity(s2,topp) * math_mul3x3(neighboring_m(:,s2,topp),surfaceNormal) < 0.0_pReal) then            ! ....incoming flux
+              lineLength = neighboring_fluxdensity(s2,topp) * math_mul3x3(neighboring_m(:,s2,topp), surfaceNormal) * area           ! ......line length that enters through this interface              
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el) * transmissivity * abs(compatibility)           ! ......subtract negative dislocation flux that enters the material point
+            endif
           endif
+!          if (selectiveDebugger) write(6,'(a,x,e12.5,x,a,x,f10.5)') '      incoming flux:', &
+!                              - lineLength / mesh_ipVolume(ip,el) * transmissivity * abs(compatibility), &
+!                              '    compatibility:',compatibility
         enddo
       endif
     enddo
@@ -1680,7 +1714,17 @@ do i = 1,10*ns
       if (verboseDebugger) then 
         !$OMP CRITICAL (write2out)
           write(6,*) 'negative dislocation density: enforced cutback at ',g,ip,el,i
-          write(6,'(a12,x,e15.8)') 'dotState was',dotState(g,ip,el)%p(i)
+          write(6,'(a,/,8(12(e12.5,x),/))') 'dislocation remobilization', rhoDotRemobilization(:,1:8) * timestep
+          write(6,'(a,/,4(12(e12.5,x),/))') 'dislocation multiplication', rhoDotMultiplication(:,1:4) * timestep
+          write(6,'(a,/,8(12(e12.5,x),/))') 'dislocation flux', rhoDotFlux(:,1:8) * timestep
+          write(6,'(a,/,10(12(e12.5,x),/))') 'dipole formation by glide', rhoDotSingle2DipoleGlide * timestep
+          write(6,'(a,/,2(12(e12.5,x),/))') 'athermal dipole annihilation', rhoDotAthermalAnnihilation(:,1:2) * timestep
+          write(6,'(a,/,2(12(e12.5,x),/))') 'thermally activated dipole annihilation', rhoDotThermalAnnihilation(:,9:10) * timestep
+      !    write(6,'(a,/,10(12(e12.5,x),/))') 'dipole dissociation by stress increase', rhoDotDipole2SingleStressChange * timestep
+      !    write(6,'(a,/,10(12(e12.5,x),/))') 'dipole formation by stress decrease', rhoDotSingle2DipoleStressChange * timestep
+          write(6,'(a,/,10(12(e12.5,x),/))') 'total density change', rhoDot * timestep
+          write(6,'(a,/,10(12(f12.7,x),/))') 'relative density change', rhoDot(:,1:8) * timestep / (abs(rhoSgl)+1.0_pReal), &
+                                                                        rhoDot(:,9:10) * timestep / (rhoDip+1.0_pReal)
           write(6,*)
         !$OMPEND CRITICAL (write2out)
       endif
@@ -1700,6 +1744,8 @@ if (verboseDebugger .and. selectiveDebugger) then
 !    write(6,'(a,/,10(12(e12.5,x),/))') 'dipole dissociation by stress increase', rhoDotDipole2SingleStressChange * timestep
 !    write(6,'(a,/,10(12(e12.5,x),/))') 'dipole formation by stress decrease', rhoDotSingle2DipoleStressChange * timestep
     write(6,'(a,/,10(12(e12.5,x),/))') 'total density change', rhoDot * timestep
+    write(6,'(a,/,10(12(f12.7,x),/))') 'relative density change', rhoDot(:,1:8) * timestep / (abs(rhoSgl)+1.0_pReal), &
+                                                                  rhoDot(:,9:10) * timestep / (rhoDip+1.0_pReal)
   !$OMPEND CRITICAL (write2out)
 endif
 
@@ -1708,12 +1754,12 @@ endsubroutine
 
 
 !*********************************************************************
-!* TRANSMISSIVITY AND COMPATIBILITY UPDATE                           *
-!* Transmissivity is defined as absolute minimum of the cosine of    *
-!* the angle between the slip directions and the cosine of the angle *
-!* between the slip plane normals. Compatibility is defined as       *
-!* product of cosine of the angle between the slip plane normals and *
-!* signed cosine of the angle between the slip directions            *
+!* COMPATIBILITY UPDATE                                              *
+!* Compatibility is defined as normalized product of signed cosine   *
+!* of the angle between the slip plane normals and signed cosine of  *
+!* the angle between the slip directions. Only the largest values    *
+!* that sum up to a total of 1 are considered, all others are set to *
+!* zero.                                                             *
 !*********************************************************************
 subroutine constitutive_nonlocal_updateCompatibility(orientation,i,e)
 
@@ -1734,8 +1780,7 @@ use mesh, only:       mesh_element, &
                       mesh_NcpElems
 use lattice, only:    lattice_sn, &
                       lattice_sd, &
-                      lattice_st, &
-                      lattice_maxNslip
+                      lattice_st
 use debug, only:      debugger, &
                       debug_e, debug_i, debug_g, &
                       verboseDebugger, &
@@ -1763,31 +1808,36 @@ integer(pInt)                                   n, &                          ! 
                                                 neighboringStructure, &
                                                 myNSlipSystems, &             ! number of active slip systems
                                                 neighboringNSlipSystems, &
-                                                c, &                          ! dislocation character index (1=edge, 2=screw)
                                                 s1, &                         ! slip system index (me)
                                                 s2                            ! slip system index (my neighbor)
-integer(pInt), dimension(lattice_maxNslip) ::   mySlipSystems, &              ! slip system numbering according to lattice 
+integer(pInt), dimension(maxval(constitutive_nonlocal_totalNslip)) :: &
+                                                mySlipSystems, &              ! slip system numbering according to lattice 
                                                 neighboringSlipSystems
 real(pReal), dimension(4) ::                    absoluteMisorientation        ! absolute misorientation (without symmetry) between me and my neighbor
-real(pReal), dimension(3,lattice_maxNslip) ::   myNormals, &                  ! slip plane normals
-                                                neighboringNormals
-real(pReal), dimension(3,lattice_maxNslip,2) :: mySlipDirections, &           ! slip directions for positive edge and screws
+real(pReal), dimension(3,maxval(constitutive_nonlocal_totalNslip)) :: &  
+                                                myNormals, &                  ! slip plane normals
+                                                neighboringNormals, &
+                                                mySlipDirections, &           ! slip directions
                                                 neighboringSlipDirections
+real(pReal)                                     compatibilitySum, &
+                                                compatibilityMax, &
+                                                compatibilityMaxCount
+logical, dimension(maxval(constitutive_nonlocal_totalNslip)) :: & 
+                                                compatibilityMask
 
 
+selectiveDebugger = (debug_i==i .and. debug_e==e)
 myPhase = material_phase(1,i,e)
 myInstance = phase_constitutionInstance(myPhase)
 myStructure = constitutive_nonlocal_structure(myInstance)
 myNSlipSystems = constitutive_nonlocal_totalNslip(myInstance)
 mySlipSystems(1:myNSlipSystems) = constitutive_nonlocal_slipSystemLattice(1:myNSlipSystems,myInstance)
 myNormals = lattice_sn(:, mySlipSystems, myStructure)
-mySlipDirections(:,:,1) = lattice_sd(:, mySlipSystems, myStructure)                                       ! direction of positive edges
-mySlipDirections(:,:,2) = lattice_st(:, mySlipSystems, myStructure)                                       ! direction of positive screws
+mySlipDirections = lattice_sd(:, mySlipSystems, myStructure)
 
 do n = 1,FE_NipNeighbors(mesh_element(2,e))                                                               ! loop through my neighbors          
   neighboring_e = mesh_ipNeighborhood(1,n,i,e)
   neighboring_i = mesh_ipNeighborhood(2,n,i,e)    
-  
   if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                                                 ! if neighbor exists
     neighboringPhase = material_phase(1,neighboring_i,neighboring_e)
     
@@ -1798,42 +1848,48 @@ do n = 1,FE_NipNeighbors(mesh_element(2,e))                                     
       neighboringSlipSystems(1:neighboringNSlipSystems) = constitutive_nonlocal_slipSystemLattice(1:neighboringNSlipSystems,&
                                                                                                   neighboringInstance)
       neighboringNormals = lattice_sn(:, neighboringSlipSystems, neighboringStructure)
-      neighboringSlipDirections(:,:,1) = lattice_sd(:, neighboringSlipSystems, neighboringStructure)      ! direction of positive edges
-      neighboringSlipDirections(:,:,2) = lattice_st(:, neighboringSlipSystems, neighboringStructure)      ! direction of positive screws
+      neighboringSlipDirections = lattice_sd(:, neighboringSlipSystems, neighboringStructure)
   
       if (myStructure == neighboringStructure) then                                                       ! if my neighbor has same crystal structure like me
         absoluteMisorientation = math_QuaternionDisorientation( orientation(:,1,i,e), &
                                                                 orientation(:,1,neighboring_i,neighboring_e), 0_pInt)
   
         do s1 = 1,myNSlipSystems                                                                          ! loop through my slip systems
-          do c = 1,2                                                                                      ! loop through edge and screw character
-            do s2 = 1,neighboringNSlipSystems                                                             ! loop through my neighbors' slip systems
-              constitutive_nonlocal_transmissivity(s2,c,s1,n,i,e) = &
-                min(abs(math_mul3x3(mySlipDirections(:,s1,c), &
-                                    math_qRot(absoluteMisorientation, neighboringSlipDirections(:,s2,c)))), &
-                    abs(math_mul3x3(myNormals(:,s1), math_qRot(absoluteMisorientation, neighboringNormals(:,s2)))) )
-              constitutive_nonlocal_compatibility(s2,c,s1,n,i,e) = &
-                abs(math_mul3x3(myNormals(:,s1), math_qRot(absoluteMisorientation, neighboringNormals(:,s2)))) &
-                  * math_mul3x3(mySlipDirections(:,s1,c), math_qRot(absoluteMisorientation, neighboringSlipDirections(:,s2,c)))
-            enddo
-            if (any(abs(constitutive_nonlocal_compatibility(:,c,s1,n,i,e)) > 0.0_pReal)) then
-              constitutive_nonlocal_compatibility(:,c,s1,n,i,e) = constitutive_nonlocal_compatibility(:,c,s1,n,i,e) &
-                                                                / sum(abs(constitutive_nonlocal_compatibility(:,c,s1,n,i,e)))  ! normalize to a total of one
-            endif
+          do s2 = 1,neighboringNSlipSystems                                                               ! loop through my neighbors' slip systems
+            constitutive_nonlocal_compatibility(1,s2,s1,n,i,e) = &
+                  math_mul3x3(myNormals(:,s1), math_qRot(absoluteMisorientation, neighboringNormals(:,s2))) &
+                * abs(math_mul3x3(mySlipDirections(:,s1), math_qRot(absoluteMisorientation, neighboringSlipDirections(:,s2))))
+            constitutive_nonlocal_compatibility(2,s2,s1,n,i,e) = &
+                  math_mul3x3(myNormals(:,s1), math_qRot(absoluteMisorientation, neighboringNormals(:,s2))) &
+                * math_mul3x3(mySlipDirections(:,s1), math_qRot(absoluteMisorientation, neighboringSlipDirections(:,s2)))
           enddo
-          
-        enddo
+          compatibilitySum = 0.0_pReal
+          compatibilityMask = .true.
+          do while ( (1.0_pReal - compatibilitySum > 0.0_pReal) .and. any(compatibilityMask) )            ! only those largest values that sum up to 1 are considered (round off of the smallest considered values to ensure sum to be exactly 1)
+            compatibilityMax = maxval(abs(constitutive_nonlocal_compatibility(1,:,s1,n,i,e)), compatibilityMask)
+            compatibilityMaxCount = dble(count(abs(constitutive_nonlocal_compatibility(1,:,s1,n,i,e)) == compatibilityMax))
+            where (abs(constitutive_nonlocal_compatibility(1,:,s1,n,i,e)) >= compatibilityMax) compatibilityMask = .false.
+            if (compatibilitySum + compatibilityMax * compatibilityMaxCount > 1.0_pReal) &
+              where (abs(constitutive_nonlocal_compatibility(:,:,s1,n,i,e)) == compatibilityMax) &
+                constitutive_nonlocal_compatibility(:,:,s1,n,i,e) = sign((1.0_pReal - compatibilitySum) / compatibilityMaxCount, &
+                                                                         constitutive_nonlocal_compatibility(:,:,s1,n,i,e))
+            compatibilitySum = compatibilitySum + compatibilityMaxCount * compatibilityMax
+          enddo
+          where (compatibilityMask) constitutive_nonlocal_compatibility(1,:,s1,n,i,e) = 0.0_pReal
+          where (compatibilityMask) constitutive_nonlocal_compatibility(2,:,s1,n,i,e) = 0.0_pReal
+        enddo          
       else                                                                                                ! neighbor has different crystal structure
-        constitutive_nonlocal_transmissivity(:,:,:,n,i,e) = 0.0_pReal                                     ! no transmissivity...
-        constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 0.0_pReal                                      ! ...and compatibility              
+        constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 0.0_pReal                                      ! no compatibility              
       endif
     else                                                                                                  ! neighbor has local constitution
-      constitutive_nonlocal_transmissivity(:,:,:,n,i,e) = 1.0_pReal                                       ! assume perfectly transmissive...
-      constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 1.0_pReal                                        ! ...and compatible
+      constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 0.0_pReal
+      forall(s1 = 1:maxval(constitutive_nonlocal_totalNslip)) &
+        constitutive_nonlocal_compatibility(:,s1,s1,n,i,e) = 1.0_pReal                                    ! assume perfect compatibility for equal slip system index
     endif
   else                                                                                                    ! no neighbor present
-    constitutive_nonlocal_transmissivity(:,:,:,n,i,e) = 1.0_pReal                                         ! perfectly transmissive...
-    constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 1.0_pReal                                          ! ...and compatible
+    constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 0.0_pReal
+    forall(s1 = 1:maxval(constitutive_nonlocal_totalNslip)) &
+      constitutive_nonlocal_compatibility(:,s1,s1,n,i,e) = 1.0_pReal                                      ! perfect compatibility for equal slip system index
   endif
 
 enddo
@@ -1879,7 +1935,7 @@ endfunction
 !* return array of constitutive results                              *
 !*********************************************************************
 function constitutive_nonlocal_postResults(Tstar_v, previousTstar_v, Fe, Fp, Temperature, disorientation, dt, dt_previous, &
-                                                state, previousState, dotState, g,ip,el)
+                                                state, previousState, relevantState, dotState, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1932,6 +1988,7 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             state, &                  ! current microstructural state
                                             previousState, &          ! previous microstructural state
+                                            relevantState, &
                                             dotState                  ! evolution rate of microstructural state
 
 !*** output variables
@@ -2022,9 +2079,9 @@ do t = 1,4
     endif
   enddo
 enddo
-    
-forall (t = 1:4) &
-  gdot(:,t) = rhoSgl(:,t) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * constitutive_nonlocal_v(:,t,g,ip,el)
+
+forall (s = 1:ns, t = 1:4, rhoSgl(s,t) > relevantState(g,ip,el)%p((t-1)*ns+s)) &                                                    ! no shear rate contribution for densities below relevant state
+  gdot(s,t) =  rhoSgl(s,t) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) * constitutive_nonlocal_v(s,t,g,ip,el)
   
 !* calculate limits for stable dipole height and its rate of change
 

@@ -508,7 +508,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
 endsubroutine
 
 
-subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, orientation, ipc, ip, el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
@@ -550,6 +550,8 @@ real(pReal), intent(in) ::      Temperature, &
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                 Fe, &
                                 Fp
+real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                orientation
 real(pReal), dimension(6), intent(in) :: &
                                 Tstar_v, &
                                 subTstar0_v
@@ -577,7 +579,8 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
  
   case (constitutive_nonlocal_label)
     call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, &
-                                        constitutive_state, constitutive_subState0, constitutive_relevantState, subdt, ipc, ip, el)
+                                        constitutive_state, constitutive_subState0, constitutive_relevantState, subdt, &
+                                        orientation, ipc, ip, el)
  
 end select
 
@@ -709,7 +712,7 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, mis
    case (constitutive_nonlocal_label)
      constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, misorientation, &
                                                                   dt, subdt, constitutive_state, constitutive_subState0, &
-                                                                  constitutive_dotstate, ipc, ip, el)
+                                                                  constitutive_relevantState, constitutive_dotstate, ipc, ip, el)
  end select
  
 return

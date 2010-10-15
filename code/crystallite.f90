@@ -905,6 +905,7 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), crystallite_Fe, &
                                        crystallite_Fp, g, i, e)                                           ! update dependent state variables to be consistent with basic states
     endif
@@ -918,9 +919,10 @@ RK4dotTemperature = 0.0_pReal
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
+                                        crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -966,6 +968,7 @@ do n = 1,4
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
+        selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
                                          crystallite_Fe, crystallite_Fp, g, i, e)                         ! update dependent state variables to be consistent with basic states
       endif
@@ -978,7 +981,7 @@ do n = 1,4
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
+        selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
         if (crystallite_integrateStress(mode,g,i,e,timeStepFraction(n))) then                             ! fraction of original times step
           if (n == 4) then                                                                                ! final integration step
             if (mode==1 .and. verboseDebugger .and. e == debug_e .and. i == debug_i .and. g == debug_g) then
@@ -986,9 +989,9 @@ do n = 1,4
               !$OMP CRITICAL (write2out)
                 write(6,*) '::: updateState',g,i,e
                 write(6,*)
-                write(6,'(a,/,12(e14.8,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
+                write(6,'(a,/,12(e12.5,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
                 write(6,*)
-                write(6,'(a,/,12(e14.8,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+                write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
                 write(6,*)
               !$OMPEND CRITICAL (write2out)
             endif
@@ -1018,10 +1021,11 @@ do n = 1,4
     !$OMP PARALLEL DO
       do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                      ! iterate over elements, ips and grains
         if (crystallite_todo(g,i,e)) then
-          selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
+          selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
           call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                             crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                            timeStepFraction(n)*crystallite_subdt(g,i,e), g,i,e)          ! fraction of original timestep
+                                            timeStepFraction(n)*crystallite_subdt(g,i,e), &               ! fraction of original timestep
+                                            crystallite_orientation, g,i,e)
           crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                           crystallite_Temperature(g,i,e),g,i,e)
           if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                      ! NaN occured in dotState
@@ -1212,7 +1216,8 @@ endif
     if (crystallite_todo(g,i,e)) then
       selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
+                                        crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -1299,7 +1304,8 @@ do n = 1,5
       if (crystallite_todo(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                           crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                          c(n)*crystallite_subdt(g,i,e), g,i,e)                           ! fraction of original timestep
+                                          c(n)*crystallite_subdt(g,i,e), &                                ! fraction of original timestep
+                                          crystallite_orientation, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
@@ -1379,9 +1385,9 @@ relTemperatureResiduum = 0.0_pReal
 !            write(6,'(12(e14.8,x))') constitutive_RKCK45dotState(j,g,i,e)%p(1:sizeDotState)
 !            write(6,*)
 !          enddo
-          write(6,'(a,/,12(e14.8,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:sizeDotState)
+          write(6,'(a,/,12(e12.5,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:sizeDotState)
           write(6,*)
-          write(6,'(a,/,12(e14.8,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:sizeDotState)
+          write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:sizeDotState)
           write(6,*)
         !$OMPEND CRITICAL (write2out)
       endif
@@ -1555,7 +1561,8 @@ endif
       selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
   
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
+                                        crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
   
@@ -1631,7 +1638,8 @@ endif
     selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
+                                        crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
@@ -1684,10 +1692,10 @@ relTemperatureResiduum = 0.0_pReal
           write(6,*)
           write(6,'(a,/,12(f12.1,x))') 'updateState: resid tolerance', relStateResiduum(1:sizeDotState,g,i,e)
           write(6,*)
-          write(6,'(a,/,12(e14.8,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:sizeDotState) &
+          write(6,'(a,/,12(e12.5,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:sizeDotState) &
                                                       - 2.0_pReal * stateResiduum(1:sizeDotState,g,i,e) / crystallite_subdt(g,i,e)  ! calculate former dotstate from higher order solution and state residuum
           write(6,*)
-          write(6,'(a,/,12(e14.8,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:sizeDotState)
+          write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:sizeDotState)
           write(6,*)
         !$OMPEND CRITICAL (write2out)
       endif
@@ -1794,6 +1802,7 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
                                        crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
@@ -1806,9 +1815,10 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g,i,e)
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
+                                        crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -1831,7 +1841,7 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       mySizeDotState = constitutive_sizeDotState(g,i,e)
       constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
                                                     + constitutive_dotState(g,i,e)%p(1:mySizeDotState) * crystallite_subdt(g,i,e)
@@ -1842,9 +1852,9 @@ endif
         !$OMP CRITICAL (write2out)
           write(6,*) '::: updateState',g,i,e
           write(6,*)
-          write(6,'(a,/,12(e14.8,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
+          write(6,'(a,/,12(e12.5,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
           write(6,*)
-          write(6,'(a,/,12(e14.8,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+          write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
           write(6,*)
         !$OMPEND CRITICAL (write2out)
       endif
@@ -1858,6 +1868,7 @@ endif
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
+      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
                                        crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
@@ -1869,7 +1880,7 @@ endif
 
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
+    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
     if (crystallite_todo(g,i,e)) then
       if (crystallite_integrateStress(mode,g,i,e)) then
         crystallite_converged(g,i,e) = .true.
@@ -1993,7 +2004,8 @@ endif
       constitutive_previousDotState2(g,i,e)%p = 0.0_pReal
       constitutive_previousDotState(g,i,e)%p = 0.0_pReal
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g, i, e)
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
+                                        crystallite_orientation, g, i, e)
     endif
   enddo; enddo; enddo
 !$OMPEND PARALLEL DO
@@ -2059,7 +2071,8 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
         constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p                  ! wind forward dotStates
         constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p
         call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                          crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), g, i, e)
+                                          crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
+                                          crystallite_orientation, g, i, e)
       endif
   enddo; enddo; enddo
   !$OMPEND PARALLEL DO
@@ -2216,9 +2229,9 @@ if (verboseDebugger .and. selectiveDebugger) then
     write(6,*)
     write(6,'(a,f6.1)') 'updateState: crystallite_statedamper',crystallite_statedamper(g,i,e)
     write(6,*)
-    write(6,'(a,/,12(e14.8,x))') 'updateState: dotState',constitutive_dotState(g,i,e)%p(1:mySize)
+    write(6,'(a,/,12(e12.5,x))') 'updateState: dotState',constitutive_dotState(g,i,e)%p(1:mySize)
     write(6,*)
-    write(6,'(a,/,12(e14.8,x))') 'updateState: new state',constitutive_state(g,i,e)%p(1:mySize)
+    write(6,'(a,/,12(e12.5,x))') 'updateState: new state',constitutive_state(g,i,e)%p(1:mySize)
     write(6,*)
     write(6,'(a,/,12(f12.1,x))') 'updateState: resid tolerance',abs(residuum / rTol_crystalliteState &
                                                                              / constitutive_state(g,i,e)%p(1:mySize))
