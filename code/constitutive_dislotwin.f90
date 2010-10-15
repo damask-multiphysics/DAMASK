@@ -185,29 +185,29 @@ allocate(constitutive_dislotwin_L0(maxNinstance))
 allocate(constitutive_dislotwin_relevantRho(maxNinstance))
 allocate(constitutive_dislotwin_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_dislotwin_Cslip_3333(3,3,3,3,maxNinstance))
-constitutive_dislotwin_CoverA               = 0.0_pReal
-constitutive_dislotwin_C11                  = 0.0_pReal
-constitutive_dislotwin_C12                  = 0.0_pReal
-constitutive_dislotwin_C13                  = 0.0_pReal
-constitutive_dislotwin_C33                  = 0.0_pReal
-constitutive_dislotwin_C44                  = 0.0_pReal
-constitutive_dislotwin_Gmod                 = 0.0_pReal
-constitutive_dislotwin_CAtomicVolume        = 0.0_pReal
-constitutive_dislotwin_D0                   = 0.0_pReal
-constitutive_dislotwin_Qsd                  = 0.0_pReal
-constitutive_dislotwin_GrainSize            = 0.0_pReal
-constitutive_dislotwin_p                    = 0.0_pReal
-constitutive_dislotwin_q                    = 0.0_pReal
-constitutive_dislotwin_MaxTwinFraction      = 0.0_pReal
-constitutive_dislotwin_r                    = 0.0_pReal
-constitutive_dislotwin_CEdgeDipMinDistance  = 0.0_pReal
-constitutive_dislotwin_Cmfptwin             = 0.0_pReal
-constitutive_dislotwin_Cthresholdtwin       = 0.0_pReal
-constitutive_dislotwin_SolidSolutionStrength= 0.0_pReal
-constitutive_dislotwin_L0                   = 0.0_pReal
-constitutive_dislotwin_relevantRho          = 0.0_pReal
-constitutive_dislotwin_Cslip_66             = 0.0_pReal
-constitutive_dislotwin_Cslip_3333           = 0.0_pReal
+constitutive_dislotwin_CoverA                   = 0.0_pReal
+constitutive_dislotwin_C11                      = 0.0_pReal
+constitutive_dislotwin_C12                      = 0.0_pReal
+constitutive_dislotwin_C13                      = 0.0_pReal
+constitutive_dislotwin_C33                      = 0.0_pReal
+constitutive_dislotwin_C44                      = 0.0_pReal
+constitutive_dislotwin_Gmod                     = 0.0_pReal
+constitutive_dislotwin_CAtomicVolume            = 0.0_pReal
+constitutive_dislotwin_D0                       = 0.0_pReal
+constitutive_dislotwin_Qsd                      = 0.0_pReal
+constitutive_dislotwin_GrainSize                = 0.0_pReal
+constitutive_dislotwin_p                        = 0.0_pReal
+constitutive_dislotwin_q                        = 0.0_pReal
+constitutive_dislotwin_MaxTwinFraction          = 0.0_pReal
+constitutive_dislotwin_r                        = 0.0_pReal
+constitutive_dislotwin_CEdgeDipMinDistance      = 0.0_pReal
+constitutive_dislotwin_Cmfptwin                 = 0.0_pReal
+constitutive_dislotwin_Cthresholdtwin           = 0.0_pReal
+constitutive_dislotwin_SolidSolutionStrength    = 0.0_pReal
+constitutive_dislotwin_L0                       = 0.0_pReal
+constitutive_dislotwin_relevantRho              = 0.0_pReal
+constitutive_dislotwin_Cslip_66                 = 0.0_pReal
+constitutive_dislotwin_Cslip_3333               = 0.0_pReal
 allocate(constitutive_dislotwin_rhoEdge0(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_dislotwin_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_dislotwin_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance))
@@ -230,10 +230,10 @@ allocate(constitutive_dislotwin_interactionSlipSlip(lattice_maxNinteraction,maxN
 allocate(constitutive_dislotwin_interactionSlipTwin(lattice_maxNinteraction,maxNinstance))
 allocate(constitutive_dislotwin_interactionTwinSlip(lattice_maxNinteraction,maxNinstance))
 allocate(constitutive_dislotwin_interactionTwinTwin(lattice_maxNinteraction,maxNinstance))
-constitutive_dislotwin_interactionSlipSlip = 0.0_pReal
-constitutive_dislotwin_interactionSlipTwin = 0.0_pReal
-constitutive_dislotwin_interactionTwinSlip = 0.0_pReal
-constitutive_dislotwin_interactionTwinTwin = 0.0_pReal
+constitutive_dislotwin_interactionSlipSlip      = 0.0_pReal
+constitutive_dislotwin_interactionSlipTwin      = 0.0_pReal
+constitutive_dislotwin_interactionTwinSlip      = 0.0_pReal
+constitutive_dislotwin_interactionTwinTwin      = 0.0_pReal
 
 !* Readout data from material.config file
 rewind(file)
@@ -327,7 +327,7 @@ do                                                       ! read thru sections of
               constitutive_dislotwin_Cmfptwin(i) = IO_floatValue(line,positions,2)
        case ('cthresholdtwin')
               constitutive_dislotwin_Cthresholdtwin(i) = IO_floatValue(line,positions,2)
-       case ('SolidSolutionStrength')
+       case ('solidsolutionstrength')
               constitutive_dislotwin_SolidSolutionStrength(i) = IO_floatValue(line,positions,2)
        case ('L0')
               constitutive_dislotwin_L0(i) = IO_floatValue(line,positions,2)
