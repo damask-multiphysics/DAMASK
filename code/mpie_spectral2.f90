@@ -260,7 +260,7 @@ program mpie_spectral
  allocate (gamma_hat(resolution(1),resolution(2),resolution(3),3,3,3,3));        gamma_hat            = 0.0_pReal
  allocate (xi(resolution(1),resolution(2),resolution(3),3));                     xi                   = 0.0_pReal
  allocate (pstress_field(resolution(1),resolution(2),resolution(3),3,3));        pstress_field        = 0.0_pReal
- allocate (pstress_field(resolution(1),resolution(2),resolution(3),3,3));        pstress_field        = 0.0_pReal
+ allocate (cstress_field(resolution(1),resolution(2),resolution(3),3,3));        cstress_field        = 0.0_pReal
  allocate (tau(resolution(1),resolution(2),resolution(3),3,3));                  tau                  = 0.0_pReal
  allocate (displacement(resolution(1),resolution(2),resolution(3),3));           displacement         = 0.0_pReal
  allocate (defgrad(resolution(1),resolution(2),resolution(3),3,3));              defgrad              = 0.0_pReal
@@ -272,7 +272,7 @@ program mpie_spectral
  call dfftw_plan_with_nthreads(4)
  do m = 1,3; do n = 1,3
    call dfftw_plan_dft_3d(plan_fft(1,m,n),resolution(1),resolution(2),resolution(3),& 
-                    pstress_field(:,:,:,m,n), workfft(:,:,:,m,n), FFTW_PATIENT, FFTW_FORWARD) !only for calculation of div (P)
+                    cstress_field(:,:,:,m,n), workfft(:,:,:,m,n), FFTW_PATIENT, FFTW_FORWARD) !only for calculation of div (P)
    call dfftw_plan_dft_3d(plan_fft(2,m,n),resolution(1),resolution(2),resolution(3),& 
                     tau(:,:,:,m,n), workfft(:,:,:,m,n), FFTW_PATIENT, FFTW_FORWARD)                    
    call dfftw_plan_dft_3d(plan_fft(3,m,n),resolution(1),resolution(2),resolution(3),& 
@@ -408,12 +408,12 @@ program mpie_spectral
            defgrad_av(m,n) = sum(defgrad(:,:,:,m,n)) * wgt
          enddo; enddo
          
-         err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
-         err_stress_tol = maxval(abs(pstress_av))*err_stress_tolrel                               
+         err_stress = maxval(abs(mask_stress * (cstress_av - bc_stress(:,:,loadcase))))
+         err_stress_tol = maxval(abs(cstress_av))*err_stress_tolrel                               
          
          print*, 'Correcting deformation gradient to fullfill BCs'
          defgradAimCorrPrev = defgradAimCorr
-         defgradAimCorr     = -mask_stress * math_mul3333xx33(s0, (mask_stress*(pstress_av - bc_stress(:,:,loadcase))))
+         defgradAimCorr     = -mask_stress * math_mul3333xx33(s0, (mask_stress*(cstress_av - bc_stress(:,:,loadcase))))
 
          do m=1,3; do n =1,3                                        ! calculate damper (correction is far to strong)
            if ( sign(1.0_pReal,defgradAimCorr(m,n))/=sign(1.0_pReal,defgradAimCorrPrev(m,n))) then
@@ -461,13 +461,13 @@ program mpie_spectral
          enddo; enddo; enddo
          
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-           tau(i,j,k,:,:) = pstress_field(i,j,k,:,:) - math_mul3333xx33(c0, defgrad(i,j,k,:,:)-math_I3)  
+           tau(i,j,k,:,:) = cstress_field(i,j,k,:,:) - math_mul3333xx33(c0, defgrad(i,j,k,:,:)-math_I3)  
          enddo; enddo; enddo            
          
          print *, 'Calculating equilibrium using spectral method'
          err_div = 0.0_pReal; sigma0 = 0.0_pReal
          do m = 1,3; do n = 1,3
-           call dfftw_execute_dft(plan_fft(1,m,n), pstress_field(:,:,:,m,n),workfft(:,:,:,m,n))
+           call dfftw_execute_dft(plan_fft(1,m,n), cstress_field(:,:,:,m,n),workfft(:,:,:,m,n))
            if(n==3) sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:))))                     ! L infinity Norm of stress tensor 
          enddo; enddo
 
@@ -498,8 +498,8 @@ program mpie_spectral
             defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim(m,n) - defgrad_av(m,n)) !anticipated target minus current state
          enddo; enddo
          
-         err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
-         err_stress_tol = maxval(abs(pstress_av))*err_stress_tolrel                             !accecpt relativ error specified
+         err_stress = maxval(abs(mask_stress * (cstress_av - bc_stress(:,:,loadcase))))
+         err_stress_tol = maxval(abs(cstress_av))*err_stress_tolrel                             !accecpt relativ error specified
             
          print '(2(a,E8.2))', ' error divergence        ',err_div,'  Tol. = ', err_div_tol
          print '(2(a,E8.2))', ' error stress            ',err_stress,'  Tol. = ', err_stress_tol           
