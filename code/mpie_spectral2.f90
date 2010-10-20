@@ -69,8 +69,8 @@ program mpie_spectral
  real(pReal), dimension(6) ::                           cstress                                ! cauchy stress in Mandel notation
  real(pReal), dimension(6,6) ::                         dsde, c066, s066                         
  real(pReal), dimension(:,:,:,:,:), allocatable ::      defgrad, defgradold, cstress_field
- complex(pReal), dimension(:,:,:,:,:), allocatable ::   pstress_field
- complex(pReal), dimension(:,:,:), allocatable ::          ddefgrad       
+ complex(pReal), dimension(:,:,:,:,:), allocatable ::   pstress_field, tau
+ complex(pReal), dimension(:,:,:), allocatable ::       ddefgrad       
  
 ! variables storing information for spectral method
  complex(pReal), dimension(:,:,:,:,:), allocatable ::   workfft
@@ -79,7 +79,7 @@ program mpie_spectral
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat
  real(pReal), dimension(:,:,:,:), allocatable ::        xi
  integer(pInt), dimension(3) ::                         k_s
- integer*8, dimension(2,3,3) ::                         plan_fft
+ integer*8, dimension(3,3,3) ::                         plan_fft
 
 ! convergence etc.
  real(pReal) err_div, err_stress, err_defgrad
@@ -260,7 +260,8 @@ program mpie_spectral
  allocate (gamma_hat(resolution(1),resolution(2),resolution(3),3,3,3,3));        gamma_hat            = 0.0_pReal
  allocate (xi(resolution(1),resolution(2),resolution(3),3));                     xi                   = 0.0_pReal
  allocate (pstress_field(resolution(1),resolution(2),resolution(3),3,3));        pstress_field        = 0.0_pReal
- allocate (cstress_field(resolution(1),resolution(2),resolution(3),3,3));        cstress_field        = 0.0_pReal
+ allocate (pstress_field(resolution(1),resolution(2),resolution(3),3,3));        pstress_field        = 0.0_pReal
+ allocate (tau(resolution(1),resolution(2),resolution(3),3,3));                  tau                  = 0.0_pReal
  allocate (displacement(resolution(1),resolution(2),resolution(3),3));           displacement         = 0.0_pReal
  allocate (defgrad(resolution(1),resolution(2),resolution(3),3,3));              defgrad              = 0.0_pReal
  allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3));           defgradold           = 0.0_pReal
@@ -271,8 +272,10 @@ program mpie_spectral
  call dfftw_plan_with_nthreads(4)
  do m = 1,3; do n = 1,3
    call dfftw_plan_dft_3d(plan_fft(1,m,n),resolution(1),resolution(2),resolution(3),& 
-                    pstress_field(:,:,:,m,n), workfft(:,:,:,m,n), FFTW_PATIENT, FFTW_FORWARD)
+                    pstress_field(:,:,:,m,n), workfft(:,:,:,m,n), FFTW_PATIENT, FFTW_FORWARD) !only for calculation of div (P)
    call dfftw_plan_dft_3d(plan_fft(2,m,n),resolution(1),resolution(2),resolution(3),& 
+                    tau(:,:,:,m,n), workfft(:,:,:,m,n), FFTW_PATIENT, FFTW_FORWARD)                    
+   call dfftw_plan_dft_3d(plan_fft(3,m,n),resolution(1),resolution(2),resolution(3),& 
                     workfft(:,:,:,m,n), ddefgrad(:,:,:), FFTW_PATIENT, FFTW_BACKWARD)
  enddo; enddo
  
@@ -455,7 +458,11 @@ program mpie_spectral
                               cstress,dsde, pstress, dPdF)
            pstress_field(i,j,k,:,:) = pstress 
            cstress_field(i,j,k,:,:) = math_mandel6to33(cstress)          
-         enddo; enddo; enddo       
+         enddo; enddo; enddo
+         
+         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+           tau(i,j,k,:,:) = pstress_field(i,j,k,:,:) - math_mul3333xx33(c0, defgrad(i,j,k,:,:)-math_I3)  
+         enddo; enddo; enddo            
          
          print *, 'Calculating equilibrium using spectral method'
          err_div = 0.0_pReal; sigma0 = 0.0_pReal
@@ -464,20 +471,27 @@ program mpie_spectral
            if(n==3) sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:))))                     ! L infinity Norm of stress tensor 
          enddo; enddo
 
-         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
+         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            err_div = err_div + (maxval(abs(math_mul33x3_complex(workfft(i,j,k,:,:),xi(i,j,k,:))))) ! L infinity Norm of div(stress)
+         enddo; enddo; enddo
+         err_div = err_div/real(prodnn, pReal)/sigma0       !weighting of error
+         
+         do m = 1,3; do n = 1,3
+           call dfftw_execute_dft(plan_fft(2,m,n), tau(:,:,:,m,n), workfft(:,:,:,m,n))
+         enddo; enddo
+         
+         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            temp33_Complex = 0.0_pReal
            do m = 1,3; do n = 1,3
              temp33_Complex(m,n) = sum(gamma_hat(i,j,k,m,n,:,:) * workfft(i,j,k,:,:))
            enddo; enddo
            workfft(i,j,k,:,:) = temp33_Complex(:,:) 
          enddo; enddo; enddo
-         workfft(1,1,1,:,:) = defgrad_av - math_I3
-         err_div = err_div/real((prodnn/resolution(1)*(resolution(1)/2+1)), pReal)/sigma0       !weighting of error
+         workfft(1,1,1,:,:) = zeroes        
          
          do m = 1,3; do n = 1,3
-            call dfftw_execute_dft_c2r(plan_fft(2,m,n), workfft(:,:,:,m,n),ddefgrad(:,:,:))
-            defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + real(ddefgrad, pReal) * wgt
+            call dfftw_execute_dft_c2r(plan_fft(3,m,n), workfft(:,:,:,m,n),ddefgrad(:,:,:))
+            defgrad(:,:,:,m,n) = defgrad_av(m,n) + real(ddefgrad, pReal) * wgt
             pstress_av(m,n) = sum(pstress_field(:,:,:,m,n))*wgt
             cstress_av(m,n) = sum(cstress_field(:,:,:,m,n))*wgt
             defgrad_av(m,n) = sum(defgrad(:,:,:,m,n))*wgt
