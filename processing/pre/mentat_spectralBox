@@ -1,0 +1,181 @@
+#!/usr/bin/env python
+
+import os, sys, math, re, threading, time
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
+releases = {'2010':['linux64',''],
+            '2008r1':[''],
+            '2007r1':[''],
+            '2005r3':[''],
+           }
+
+file = open('%s/../MSCpath'%os.path.dirname(sys.argv[0]))
+MSCpath = os.path.normpath(file.readline().strip())
+file.close()
+
+for release,subdirs in sorted(releases.items(),reverse=True):
+  for subdir in subdirs:
+    libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
+    if os.path.exists(libPath):
+      sys.path.append(libPath)
+      break
+    else:
+      continue
+  break
+
+from py_mentat import *
+
+
+def outMentat(cmd,locals):
+  if cmd[0:3] == '(!)':
+    exec(cmd[3:])
+  elif cmd[0:3] == '(?)':
+    cmd = eval(cmd[3:])
+    py_send(cmd)
+  else:
+    py_send(cmd)
+  return
+
+def outStdout(cmd,locals):
+  if cmd[0:3] == '(!)':
+    exec(cmd[3:])
+  elif cmd[0:3] == '(?)':
+    cmd = eval(cmd[3:])
+    print cmd
+  else:
+    print cmd
+  return
+
+
+def output(cmds,locals,dest):
+  for cmd in cmds:
+    if isinstance(cmd,list):
+      output(cmd,locals,dest)
+    else:
+      {\
+      'Mentat': outMentat,\
+      'Stdout': outStdout,\
+      }[dest](cmd,locals)
+  return
+
+
+  
+def init():
+    return ["*new_model yes",
+      "*reset",
+      "*select_clear",
+      "*set_element_class hex8",
+      "*set_nodes off",
+      "*elements_solid",
+      "*show_view 4",
+      "*reset_view",
+      "*view_perspective",
+      "*redraw",
+      ]
+
+
+def mesh(N,d):
+    return [
+  "*add_nodes",
+  "%f %f %f"%(0.0,0.0,0.0),
+  "%f %f %f"%(0.0,0.0,d[2]),
+  "%f %f %f"%(0.0,d[1],d[2]),
+  "%f %f %f"%(0.0,d[1],0.0),
+  "%f %f %f"%(-d[0],0.0,0.0),
+  "%f %f %f"%(-d[0],0.0,d[2]),
+  "%f %f %f"%(-d[0],d[1],d[2]),
+  "%f %f %f"%(-d[0],d[1],0.0),
+  "*add_elements",
+  "1 2 3 4 5 6 7 8",
+  "*sub_divisions",
+  "%i %i %i"%(N[2],N[1],N[0]),
+  "*subdivide_elements",
+  "all_existing",
+  "*set_sweep_tolerance",
+  "%f"%(float(min(d))/max(N)/2.0),
+  "*sweep_all",
+  "*renumber_all",
+  "*set_move_scale_factor x -1",
+  "*move_elements",
+  "all_existing",
+  "*flip_elements",
+  "all_existing",
+  "*fill_view",
+    ]
+
+
+
+def initial_conditions(N,data):
+  elements = []
+  element = 0
+  for line in data:
+    element += 1 
+    phi1,phi,phi2,x,y,z,id,phase = line.split()
+    id = int(id)
+    if len(elements) < id:
+      for i in range(id-len(elements)):
+        elements.append([])
+    elements[id-1].append(element)
+
+  cmds = [\
+    "*new_icond",
+    "*icond_name homogenization",
+    "*icond_type state_variable",
+    "*icond_param_value state_var_id 2",
+    "*icond_dof_value var 1",
+    "*add_icond_elements",
+    "all_existing",
+    ]
+
+  for grain,elementList in enumerate(elements):
+    cmds.append([\
+            "*new_icond",
+            "*icond_name microstructure_%i"%(grain+1),
+            "*icond_type state_variable",
+            "*icond_param_value state_var_id 3",
+            "*icond_dof_value var %i"%(grain+1),
+            "*add_icond_elements",
+            map(str,elementList),
+            "#",
+                ])
+  return cmds
+
+
+# ----------------------- MAIN -------------------------------
+  
+parser = OptionParser()
+parser.add_option("-p", "--port", type="int",\
+        dest="port",\
+        help="Mentat connection port")
+parser.add_option("-d", "--dimension", type="int", nargs=3,\
+        dest="d",\
+        help="physical dimension")
+parser.add_option("-N", "--subdivisions", type="int", nargs=3,\
+        dest="N",\
+        help="number of subdivisions")
+
+parser.set_defaults(d = (16,16,16))
+parser.set_defaults(N = (16,16,16))
+
+(options, args) = parser.parse_args()
+
+if not os.path.isfile(args[0]):
+  parser.error("cannot open %s"%args[0])
+
+file = open(args[0])
+content = file.readlines()
+file.close()
+
+cmds = [\
+  init(),
+  mesh(options.N,options.d),
+  initial_conditions(options.N,content),
+]
+
+outputLocals = {}
+if (options.port != None):
+  py_connect('',options.port)
+  output(cmds,outputLocals,'Mentat')
+  py_disconnect()
+else:
+  output(cmds,outputLocals,'Stdout')
