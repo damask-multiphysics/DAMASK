@@ -60,7 +60,7 @@ real(pReal), dimension(:), allocatable ::                 constitutive_dislotwin
                                                           constitutive_dislotwin_Cthresholdtwin, &              !
                                                           constitutive_dislotwin_SolidSolutionStrength, &       ! Strength due to elements in solid solution
                                                           constitutive_dislotwin_L0, &                          ! Length of twin nuclei in Burgers vectors
-                                                          constitutive_dislotwin_relevantRho                    ! dislocation density considered relevant
+                                                          constitutive_dislotwin_aTolRho                        ! absolute tolerance for integration of dislocation density
 real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislotwin_Cslip_66                       ! elasticity matrix in Mandel notation for each instance
 real(pReal),       dimension(:,:,:,:),     allocatable :: constitutive_dislotwin_Ctwin_66                       ! twin elasticity matrix in Mandel notation for each instance
 real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_dislotwin_Cslip_3333                     ! elasticity matrix for each instance
@@ -182,32 +182,32 @@ allocate(constitutive_dislotwin_Cmfptwin(maxNinstance))
 allocate(constitutive_dislotwin_Cthresholdtwin(maxNinstance))
 allocate(constitutive_dislotwin_SolidSolutionStrength(maxNinstance))
 allocate(constitutive_dislotwin_L0(maxNinstance))
-allocate(constitutive_dislotwin_relevantRho(maxNinstance))
+allocate(constitutive_dislotwin_aTolRho(maxNinstance))
 allocate(constitutive_dislotwin_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_dislotwin_Cslip_3333(3,3,3,3,maxNinstance))
-constitutive_dislotwin_CoverA                   = 0.0_pReal
-constitutive_dislotwin_C11                      = 0.0_pReal
-constitutive_dislotwin_C12                      = 0.0_pReal
-constitutive_dislotwin_C13                      = 0.0_pReal
-constitutive_dislotwin_C33                      = 0.0_pReal
-constitutive_dislotwin_C44                      = 0.0_pReal
-constitutive_dislotwin_Gmod                     = 0.0_pReal
-constitutive_dislotwin_CAtomicVolume            = 0.0_pReal
-constitutive_dislotwin_D0                       = 0.0_pReal
-constitutive_dislotwin_Qsd                      = 0.0_pReal
-constitutive_dislotwin_GrainSize                = 0.0_pReal
-constitutive_dislotwin_p                        = 0.0_pReal
-constitutive_dislotwin_q                        = 0.0_pReal
-constitutive_dislotwin_MaxTwinFraction          = 0.0_pReal
-constitutive_dislotwin_r                        = 0.0_pReal
-constitutive_dislotwin_CEdgeDipMinDistance      = 0.0_pReal
-constitutive_dislotwin_Cmfptwin                 = 0.0_pReal
-constitutive_dislotwin_Cthresholdtwin           = 0.0_pReal
-constitutive_dislotwin_SolidSolutionStrength    = 0.0_pReal
-constitutive_dislotwin_L0                       = 0.0_pReal
-constitutive_dislotwin_relevantRho              = 0.0_pReal
-constitutive_dislotwin_Cslip_66                 = 0.0_pReal
-constitutive_dislotwin_Cslip_3333               = 0.0_pReal
+constitutive_dislotwin_CoverA               = 0.0_pReal
+constitutive_dislotwin_C11                  = 0.0_pReal
+constitutive_dislotwin_C12                  = 0.0_pReal
+constitutive_dislotwin_C13                  = 0.0_pReal
+constitutive_dislotwin_C33                  = 0.0_pReal
+constitutive_dislotwin_C44                  = 0.0_pReal
+constitutive_dislotwin_Gmod                 = 0.0_pReal
+constitutive_dislotwin_CAtomicVolume        = 0.0_pReal
+constitutive_dislotwin_D0                   = 0.0_pReal
+constitutive_dislotwin_Qsd                  = 0.0_pReal
+constitutive_dislotwin_GrainSize            = 0.0_pReal
+constitutive_dislotwin_p                    = 0.0_pReal
+constitutive_dislotwin_q                    = 0.0_pReal
+constitutive_dislotwin_MaxTwinFraction      = 0.0_pReal
+constitutive_dislotwin_r                    = 0.0_pReal
+constitutive_dislotwin_CEdgeDipMinDistance  = 0.0_pReal
+constitutive_dislotwin_Cmfptwin             = 0.0_pReal
+constitutive_dislotwin_Cthresholdtwin       = 0.0_pReal
+constitutive_dislotwin_SolidSolutionStrength= 0.0_pReal
+constitutive_dislotwin_L0                   = 0.0_pReal
+constitutive_dislotwin_aTolRho              = 0.0_pReal
+constitutive_dislotwin_Cslip_66             = 0.0_pReal
+constitutive_dislotwin_Cslip_3333           = 0.0_pReal
 allocate(constitutive_dislotwin_rhoEdge0(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_dislotwin_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_dislotwin_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance))
@@ -230,10 +230,10 @@ allocate(constitutive_dislotwin_interactionSlipSlip(lattice_maxNinteraction,maxN
 allocate(constitutive_dislotwin_interactionSlipTwin(lattice_maxNinteraction,maxNinstance))
 allocate(constitutive_dislotwin_interactionTwinSlip(lattice_maxNinteraction,maxNinstance))
 allocate(constitutive_dislotwin_interactionTwinTwin(lattice_maxNinteraction,maxNinstance))
-constitutive_dislotwin_interactionSlipSlip      = 0.0_pReal
-constitutive_dislotwin_interactionSlipTwin      = 0.0_pReal
-constitutive_dislotwin_interactionTwinSlip      = 0.0_pReal
-constitutive_dislotwin_interactionTwinTwin      = 0.0_pReal
+constitutive_dislotwin_interactionSlipSlip = 0.0_pReal
+constitutive_dislotwin_interactionSlipTwin = 0.0_pReal
+constitutive_dislotwin_interactionTwinSlip = 0.0_pReal
+constitutive_dislotwin_interactionTwinTwin = 0.0_pReal
 
 !* Readout data from material.config file
 rewind(file)
@@ -321,15 +321,15 @@ do                                                       ! read thru sections of
               constitutive_dislotwin_D0(i) = IO_floatValue(line,positions,2)
        case ('qsd')
               constitutive_dislotwin_Qsd(i) = IO_floatValue(line,positions,2)
-       case ('relevantrho')
-              constitutive_dislotwin_relevantRho(i) = IO_floatValue(line,positions,2)
+       case ('atol_rho')
+              constitutive_dislotwin_aTolRho(i) = IO_floatValue(line,positions,2)
        case ('cmfptwin')
               constitutive_dislotwin_Cmfptwin(i) = IO_floatValue(line,positions,2)
        case ('cthresholdtwin')
               constitutive_dislotwin_Cthresholdtwin(i) = IO_floatValue(line,positions,2)
        case ('solidsolutionstrength')
               constitutive_dislotwin_SolidSolutionStrength(i) = IO_floatValue(line,positions,2)
-       case ('L0')
+       case ('l0')
               constitutive_dislotwin_L0(i) = IO_floatValue(line,positions,2)
        case ('cedgedipmindistance')
               constitutive_dislotwin_CEdgeDipMinDistance(i) = IO_floatValue(line,positions,2)
@@ -378,7 +378,7 @@ enddo
    if (constitutive_dislotwin_CAtomicVolume(i) <= 0.0_pReal)                 call IO_error(230)
    if (constitutive_dislotwin_D0(i) <= 0.0_pReal)                            call IO_error(231)
    if (constitutive_dislotwin_Qsd(i) <= 0.0_pReal)                           call IO_error(232)
-   if (constitutive_dislotwin_relevantRho(i) <= 0.0_pReal)                   call IO_error(233)
+   if (constitutive_dislotwin_aTolRho(i) <= 0.0_pReal)                       call IO_error(233)
 
    !* Determine total number of active slip or twin systems
    constitutive_dislotwin_Nslip(:,i) = min(lattice_NslipSystem(:,myStructure),constitutive_dislotwin_Nslip(:,i))
@@ -670,18 +670,18 @@ return
 end function
 
 
-pure function constitutive_dislotwin_relevantState(myInstance)
+pure function constitutive_dislotwin_aTolState(myInstance)
 !*********************************************************************
-!* relevant microstructural state                                    *
+!* absolute state tolerance                                          *
 !*********************************************************************
 use prec,     only: pReal, pInt
 implicit none
 
 !* Input-Output variables
 integer(pInt), intent(in) :: myInstance
-real(pReal), dimension(constitutive_dislotwin_sizeState(myInstance)) :: constitutive_dislotwin_relevantState
+real(pReal), dimension(constitutive_dislotwin_sizeState(myInstance)) :: constitutive_dislotwin_aTolState
 
-constitutive_dislotwin_relevantState = constitutive_dislotwin_relevantRho(myInstance)
+constitutive_dislotwin_aTolState = constitutive_dislotwin_aTolRho(myInstance)
 
 return
 endfunction

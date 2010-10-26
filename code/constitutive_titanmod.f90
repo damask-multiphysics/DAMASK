@@ -65,7 +65,7 @@ real(pReal), dimension(:), allocatable ::                 constitutive_titanmod_
                                                           constitutive_titanmod_CEdgeDipMinDistance, &         ! Not being used
                                                           constitutive_titanmod_Cmfptwin, &                    ! Not being used
                                                           constitutive_titanmod_Cthresholdtwin, &              ! Not being used
-                                                          constitutive_titanmod_relevantRho                    ! dislocation density considered relevant                                                                                                  
+                                                          constitutive_titanmod_aTolRho                        ! absolute tolerance for integration of dislocation density
 real(pReal),       dimension(:,:,:),       allocatable :: constitutive_titanmod_Cslip_66                       ! elasticity matrix in Mandel notation for each instance
 real(pReal),       dimension(:,:,:,:),     allocatable :: constitutive_titanmod_Ctwin_66                       ! twin elasticity matrix in Mandel notation for each instance
 real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_titanmod_Cslip_3333                     ! elasticity matrix for each instance
@@ -230,7 +230,7 @@ allocate(constitutive_titanmod_r(maxNinstance))
 allocate(constitutive_titanmod_CEdgeDipMinDistance(maxNinstance))
 allocate(constitutive_titanmod_Cmfptwin(maxNinstance))
 allocate(constitutive_titanmod_Cthresholdtwin(maxNinstance))
-allocate(constitutive_titanmod_relevantRho(maxNinstance))
+allocate(constitutive_titanmod_aTolRho(maxNinstance))
 allocate(constitutive_titanmod_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_titanmod_Cslip_3333(3,3,3,3,maxNinstance))
 constitutive_titanmod_CoverA              = 0.0_pReal 
@@ -251,7 +251,7 @@ constitutive_titanmod_r                   = 0.0_pReal
 constitutive_titanmod_CEdgeDipMinDistance = 0.0_pReal
 constitutive_titanmod_Cmfptwin            = 0.0_pReal
 constitutive_titanmod_Cthresholdtwin      = 0.0_pReal
-constitutive_titanmod_relevantRho         = 0.0_pReal
+constitutive_titanmod_aTolRho             = 0.0_pReal
 constitutive_titanmod_Cslip_66            = 0.0_pReal
 constitutive_titanmod_Cslip_3333          = 0.0_pReal
 allocate(constitutive_titanmod_rho_edge0(lattice_maxNslipFamily,maxNinstance))
@@ -504,8 +504,8 @@ do                                                       ! read thru sections of
        case ('twinhpconstant')
               constitutive_titanmod_twinhpconstant(i) = IO_floatValue(line,positions,2)
                 write(6,*) tag
-       case ('relevantrho')
-              constitutive_titanmod_relevantRho(i) = IO_floatValue(line,positions,2)
+       case ('atol_rho')
+              constitutive_titanmod_aTolRho(i) = IO_floatValue(line,positions,2)
                 write(6,*) tag
        case ('interactionslipslip')
               forall (j = 1:lattice_maxNinteraction) &
@@ -577,7 +577,7 @@ write(6,*) 'Material Property reading done'
 !   if (any(constitutive_titanmod_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 1.0_pReal)) call IO_error(229)
    if (constitutive_titanmod_dc(i) <= 0.0_pReal)                            call IO_error(231)
    if (constitutive_titanmod_twinhpconstant(i) <= 0.0_pReal)                call IO_error(232)
-   if (constitutive_titanmod_relevantRho(i) <= 0.0_pReal)                   call IO_error(233)
+   if (constitutive_titanmod_aTolRho(i) <= 0.0_pReal)                       call IO_error(233)
    
    !* Determine total number of active slip or twin systems
    constitutive_titanmod_Nslip(:,i) = min(lattice_NslipSystem(:,myStructure),constitutive_titanmod_Nslip(:,i))
@@ -1023,18 +1023,18 @@ constitutive_titanmod_stateInit(6*ns+nt+1:6*ns+2*nt)=resistance_twin0
 return
 end function
 
-pure function constitutive_titanmod_relevantState(myInstance)
+pure function constitutive_titanmod_aTolState(myInstance)
 !*********************************************************************
-!* relevant microstructural state                                    *
+!* absolute state tolerance                                          *
 !*********************************************************************
 use prec,     only: pReal, pInt
 implicit none
 
 !* Input-Output variables
 integer(pInt), intent(in) :: myInstance
-real(pReal), dimension(constitutive_titanmod_sizeState(myInstance)) :: constitutive_titanmod_relevantState
+real(pReal), dimension(constitutive_titanmod_sizeState(myInstance)) :: constitutive_titanmod_aTolState
 
-constitutive_titanmod_relevantState = constitutive_titanmod_relevantRho(myInstance)
+constitutive_titanmod_aTolState = constitutive_titanmod_aTolRho(myInstance)
 
 return
 endfunction

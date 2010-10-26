@@ -111,7 +111,7 @@ MODULE constitutive_phenopowerlaw
  
  real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_w0_slip
  
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_relevantResistance
+ real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_aTolResistance
  
 CONTAINS
 !****************************************
@@ -221,8 +221,8 @@ subroutine constitutive_phenopowerlaw_init(file)
  allocate(constitutive_phenopowerlaw_w0_slip(maxNinstance))
  constitutive_phenopowerlaw_w0_slip = 0.0_pReal
  
- allocate(constitutive_phenopowerlaw_relevantResistance(maxNinstance))
- constitutive_phenopowerlaw_relevantResistance = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_aTolResistance(maxNinstance))
+ constitutive_phenopowerlaw_aTolResistance = 0.0_pReal
 
  rewind(file)
  line = ''
@@ -300,8 +300,8 @@ subroutine constitutive_phenopowerlaw_init(file)
               constitutive_phenopowerlaw_h0_twinslip(i) = IO_floatValue(line,positions,2)
        case ('h0_twintwin')
               constitutive_phenopowerlaw_h0_twintwin(i) = IO_floatValue(line,positions,2)
-       case ('relevantresistance')
-              constitutive_phenopowerlaw_relevantResistance(i) = IO_floatValue(line,positions,2)
+       case ('atol_resistance')
+              constitutive_phenopowerlaw_aTolResistance(i) = IO_floatValue(line,positions,2)
        case ('interaction_slipslip')
               forall (j = 1:lattice_maxNinteraction) &
                 constitutive_phenopowerlaw_interaction_slipslip(j,i) = IO_floatValue(line,positions,1+j)
@@ -344,8 +344,8 @@ subroutine constitutive_phenopowerlaw_init(file)
        any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(211,i)
    if (    constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal .and. &
        any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(212,i)
-   if (constitutive_phenopowerlaw_relevantResistance(i) <= 0.0_pReal) &
-     constitutive_phenopowerlaw_relevantResistance(i) = 1.0_pReal              ! default absolute tolerance 1 Pa
+   if (constitutive_phenopowerlaw_aTolResistance(i) <= 0.0_pReal) &
+     constitutive_phenopowerlaw_aTolResistance(i) = 1.0_pReal              ! default absolute tolerance 1 Pa
 
  enddo
 
@@ -522,9 +522,9 @@ endfunction
 
 
 !*********************************************************************
-!* relevant microstructural state                                    *
+!* absolute state tolerance                                          *
 !*********************************************************************
-pure function constitutive_phenopowerlaw_relevantState(myInstance)
+pure function constitutive_phenopowerlaw_aTolState(myInstance)
 
 use prec,     only: pReal, &
                     pInt
@@ -535,11 +535,11 @@ integer(pInt), intent(in) ::  myInstance                      ! number specifyin
 
 !*** output variables
 real(pReal), dimension(constitutive_phenopowerlaw_sizeState(myInstance)) :: &
-                              constitutive_phenopowerlaw_relevantState ! relevant state values for the current instance of this constitution
+                              constitutive_phenopowerlaw_aTolState ! relevant state values for the current instance of this constitution
 
 !*** local variables
 
-constitutive_phenopowerlaw_relevantState = constitutive_phenopowerlaw_relevantResistance(myInstance)
+constitutive_phenopowerlaw_aTolState = constitutive_phenopowerlaw_aTolResistance(myInstance)
 
 endfunction
 
@@ -612,7 +612,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
  use debug, only: debugger
  use math, only: math_Plain3333to99
  use lattice, only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
-					lattice_NslipSystem,lattice_NtwinSystem
+                    lattice_NslipSystem,lattice_NtwinSystem
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
 

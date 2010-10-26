@@ -58,7 +58,7 @@ real(pReal), dimension(:), allocatable ::                 constitutive_nonlocal_
                                                           constitutive_nonlocal_atomicVolume, &                 ! atomic volume
                                                           constitutive_nonlocal_D0, &                           ! prefactor for self-diffusion coefficient
                                                           constitutive_nonlocal_Qsd, &                          ! activation enthalpy for diffusion
-                                                          constitutive_nonlocal_relevantRho, &                  ! dislocation density considered relevant
+                                                          constitutive_nonlocal_aTolRho, &                      ! absolute tolerance for dislocation density in state integration
                                                           constitutive_nonlocal_R                               ! cutoff radius for dislocation stress
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_Cslip_66                        ! elasticity matrix in Mandel notation for each instance
 real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_Cslip_3333                      ! elasticity matrix for each instance
@@ -213,7 +213,7 @@ allocate(constitutive_nonlocal_Q0(maxNinstance))
 allocate(constitutive_nonlocal_atomicVolume(maxNinstance))
 allocate(constitutive_nonlocal_D0(maxNinstance))
 allocate(constitutive_nonlocal_Qsd(maxNinstance))
-allocate(constitutive_nonlocal_relevantRho(maxNinstance))
+allocate(constitutive_nonlocal_aTolRho(maxNinstance))
 allocate(constitutive_nonlocal_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_nonlocal_Cslip_3333(3,3,3,3,maxNinstance))
 allocate(constitutive_nonlocal_R(maxNinstance))
@@ -228,7 +228,7 @@ constitutive_nonlocal_Q0 = 0.0_pReal
 constitutive_nonlocal_atomicVolume = 0.0_pReal
 constitutive_nonlocal_D0 = 0.0_pReal
 constitutive_nonlocal_Qsd = 0.0_pReal
-constitutive_nonlocal_relevantRho = 0.0_pReal
+constitutive_nonlocal_aTolRho = 0.0_pReal
 constitutive_nonlocal_nu = 0.0_pReal
 constitutive_nonlocal_Cslip_66 = 0.0_pReal
 constitutive_nonlocal_Cslip_3333 = 0.0_pReal
@@ -335,8 +335,8 @@ do                                                                              
         constitutive_nonlocal_D0(i) = IO_floatValue(line,positions,2)
       case('qsd')
         constitutive_nonlocal_Qsd(i) = IO_floatValue(line,positions,2)
-      case('relevantrho')
-        constitutive_nonlocal_relevantRho(i) = IO_floatValue(line,positions,2)
+      case('atol_rho')
+        constitutive_nonlocal_aTolRho(i) = IO_floatValue(line,positions,2)
       case ('interaction_slipslip')
         forall (it = 1:lattice_maxNinteraction) constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1+it)
     end select
@@ -379,7 +379,7 @@ enddo
   if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)                                   call IO_error(230)
   if (constitutive_nonlocal_D0(i) <= 0.0_pReal)                                             call IO_error(231)
   if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                                            call IO_error(232)
-  if (constitutive_nonlocal_relevantRho(i) <= 0.0_pReal)                                    call IO_error(233)
+  if (constitutive_nonlocal_aTolRho(i) <= 0.0_pReal)                                        call IO_error(233)
     
   
 !*** determine total number of active slip systems
@@ -686,9 +686,9 @@ endfunction
 
 
 !*********************************************************************
-!* relevant microstructural state                                    *
+!* absolute state tolerance                                          *
 !*********************************************************************
-pure function constitutive_nonlocal_relevantState(myInstance)
+pure function constitutive_nonlocal_aTolState(myInstance)
 
 use prec,     only: pReal, &
                     pInt
@@ -699,11 +699,11 @@ integer(pInt), intent(in) ::  myInstance                      ! number specifyin
 
 !*** output variables
 real(pReal), dimension(constitutive_nonlocal_sizeState(myInstance)) :: &
-                              constitutive_nonlocal_relevantState ! relevant state values for the current instance of this constitution
+                              constitutive_nonlocal_aTolState ! absolute state tolerance for the current instance of this constitution
 
 !*** local variables
 
-constitutive_nonlocal_relevantState = constitutive_nonlocal_relevantRho(myInstance)
+constitutive_nonlocal_aTolState = constitutive_nonlocal_aTolRho(myInstance)
 
 endfunction
 
@@ -1097,7 +1097,7 @@ endsubroutine
 !*********************************************************************
 !* calculates plastic velocity gradient and its tangent              *
 !*********************************************************************
-subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, state, relevantState, g, ip, el)
+subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, state, g, ip, el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1124,8 +1124,7 @@ integer(pInt), intent(in) ::                g, &                        ! curren
                                             el                          ! current element number
 real(pReal), intent(in) ::                  Temperature                 ! temperature
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            state, &                    ! microstructural state
-                                            relevantState               ! relevant microstructural state
+                                            state                       ! microstructural state
 real(pReal), dimension(6), intent(in) ::    Tstar_v                     ! 2nd Piola-Kirchhoff stress in Mandel notation
 
 !*** output variables
@@ -1180,8 +1179,8 @@ call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state, g, ip, el, dv_d
 
 !*** Calculation of gdot and its tangent
 
-forall (s = 1:ns, t = 1:4, rhoSgl(s,t) > relevantState(g,ip,el)%p((t-1)*ns+s)) &                                                    ! no shear rate contribution for densities below relevant state
-  gdot(s,t) =  rhoSgl(s,t) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) * constitutive_nonlocal_v(s,t,g,ip,el)
+forall (t = 1:4) &
+  gdot(:,t) =  rhoSgl(:,t) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * constitutive_nonlocal_v(:,t,g,ip,el)
 gdotTotal = sum(gdot,2)
 
 dgdotTotal_dtau = sum(rhoSgl,2) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * dv_dtau
@@ -1220,7 +1219,7 @@ endsubroutine
 !* rate of change of microstructure                                  *
 !*********************************************************************
 subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, previousTstar_v, Fe, Fp, Temperature, dt_previous, &
-                                          state, previousState, relevantState, timestep, orientation, g,ip,el)
+                                          state, previousState, aTolState, timestep, orientation, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1282,7 +1281,7 @@ real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), 
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             state, &                  ! current microstructural state
                                             previousState, &          ! previous microstructural state
-                                            relevantState             ! relevant microstructural state
+                                            aTolState                 ! absolute state tolerance
 
 !*** input/output variables
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(inout) :: &
@@ -1708,7 +1707,7 @@ do i = 1,10*ns
   if (i > 4*ns .and. i <= 8*ns) &                                                                                                   ! skip immobile densities
     continue
   if (previousState(g,ip,el)%p(i) + dotState(g,ip,el)%p(i)*timestep < 0.0_pReal) then                                               ! if single mobile densities become negative...
-    if (previousState(g,ip,el)%p(i) < relevantState(g,ip,el)%p(i)) then                                                             !   ... and density is already below relevance...
+    if (previousState(g,ip,el)%p(i) < aTolState(g,ip,el)%p(i)) then                                                                 !   ... and density is already below absolute tolerance...
       dotState(g,ip,el)%p(i) = - previousState(g,ip,el)%p(i) / timestep                                                             !     ... set dotState to zero
     else                                                                                                                            !   ... otherwise...
       if (verboseDebugger) then 
@@ -1869,8 +1868,8 @@ do n = 1,FE_NipNeighbors(mesh_element(2,e))                                     
             compatibilityMax = maxval(abs(constitutive_nonlocal_compatibility(1,:,s1,n,i,e)), compatibilityMask)
             compatibilityMaxCount = dble(count(abs(constitutive_nonlocal_compatibility(1,:,s1,n,i,e)) == compatibilityMax))
             where (abs(constitutive_nonlocal_compatibility(1,:,s1,n,i,e)) >= compatibilityMax) compatibilityMask = .false.
-            if (compatibilitySum + compatibilityMax * compatibilityMaxCount > 1.0_pReal) &
-              where (abs(constitutive_nonlocal_compatibility(:,:,s1,n,i,e)) == compatibilityMax) &
+            if (compatibilitySum + compatibilityMax * compatibilityMaxCount > 1.0_pReal) &                ! if compatibility sum exceeds 1...
+              where (abs(constitutive_nonlocal_compatibility(:,:,s1,n,i,e)) == compatibilityMax) &        ! ... equally distribute what is left
                 constitutive_nonlocal_compatibility(:,:,s1,n,i,e) = sign((1.0_pReal - compatibilitySum) / compatibilityMaxCount, &
                                                                          constitutive_nonlocal_compatibility(:,:,s1,n,i,e))
             compatibilitySum = compatibilitySum + compatibilityMaxCount * compatibilityMax
@@ -1935,7 +1934,7 @@ endfunction
 !* return array of constitutive results                              *
 !*********************************************************************
 function constitutive_nonlocal_postResults(Tstar_v, previousTstar_v, Fe, Fp, Temperature, disorientation, dt, dt_previous, &
-                                                state, previousState, relevantState, dotState, g,ip,el)
+                                                state, previousState, dotState, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1988,7 +1987,6 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             state, &                  ! current microstructural state
                                             previousState, &          ! previous microstructural state
-                                            relevantState, &
                                             dotState                  ! evolution rate of microstructural state
 
 !*** output variables
@@ -2080,8 +2078,8 @@ do t = 1,4
   enddo
 enddo
 
-forall (s = 1:ns, t = 1:4, rhoSgl(s,t) > relevantState(g,ip,el)%p((t-1)*ns+s)) &                                                    ! no shear rate contribution for densities below relevant state
-  gdot(s,t) =  rhoSgl(s,t) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) * constitutive_nonlocal_v(s,t,g,ip,el)
+forall (t = 1:4) &
+  gdot(:,t) =  rhoSgl(:,t) * constitutive_nonlocal_burgersPerSlipSystem(:,myInstance) * constitutive_nonlocal_v(:,t,g,ip,el)
   
 !* calculate limits for stable dipole height and its rate of change
 

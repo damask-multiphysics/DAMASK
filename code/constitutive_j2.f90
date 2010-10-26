@@ -1,25 +1,25 @@
 !* $Id$
 !*****************************************************
-!*      Module: CONSTITUTIVE_J2        				 *
+!*      Module: CONSTITUTIVE_J2                      *
 !*****************************************************
 !* contains:                                         *
 !* - constitutive equations                          *
 !* - parameters definition                           *
 !*****************************************************
 
-!	[Alu]
-!	constitution            j2
-!	(output)                flowstress
-!	(output)                strainrate
-!	c11                     110.9e9    # (3 C11 + 2 C12 + 2 C44) / 5  ... with C44 = C11-C12 !!
-!	c12                     58.34e9    # (1 C11 + 4 C12 - 1 C44) / 5
-!	taylorfactor            3
-!	tau0                    31e6
-!	gdot0                   0.001
-!	n                       20
-!	h0                      75e6
-!	tausat                  63e6
-!	w0                      2.25
+! [Alu]
+! constitution            j2
+! (output)                flowstress
+! (output)                strainrate
+! c11                     110.9e9    # (3 C11 + 2 C12 + 2 C44) / 5  ... with C44 = C11-C12 !!
+! c12                     58.34e9    # (1 C11 + 4 C12 - 1 C44) / 5
+! taylorfactor            3
+! tau0                    31e6
+! gdot0                   0.001
+! n                       20
+! h0                      75e6
+! tausat                  63e6
+! w0                      2.25
 
 MODULE constitutive_j2
 
@@ -45,7 +45,7 @@ MODULE constitutive_j2
  real(pReal), dimension(:),     allocatable :: constitutive_j2_h0
  real(pReal), dimension(:),     allocatable :: constitutive_j2_tausat
  real(pReal), dimension(:),     allocatable :: constitutive_j2_w0
- real(pReal), dimension(:),     allocatable :: constitutive_j2_relevantResistance
+ real(pReal), dimension(:),     allocatable :: constitutive_j2_aTolResistance
 
 
 CONTAINS
@@ -101,7 +101,7 @@ subroutine constitutive_j2_init(file)
  allocate(constitutive_j2_h0(maxNinstance)) ;                                   constitutive_j2_h0 = 0.0_pReal
  allocate(constitutive_j2_tausat(maxNinstance)) ;                               constitutive_j2_tausat = 0.0_pReal
  allocate(constitutive_j2_w0(maxNinstance)) ;                                   constitutive_j2_w0 = 0.0_pReal
- allocate(constitutive_j2_relevantResistance(maxNinstance)) ;                   constitutive_j2_relevantResistance = 0.0_pReal
+ allocate(constitutive_j2_aTolResistance(maxNinstance)) ;                       constitutive_j2_aTolResistance = 0.0_pReal
  
  rewind(file)
  line = ''
@@ -145,8 +145,8 @@ subroutine constitutive_j2_init(file)
               constitutive_j2_w0(i) = IO_floatValue(line,positions,2)
        case ('taylorfactor')
               constitutive_j2_fTaylor(i) = IO_floatValue(line,positions,2)
-       case ('relevantresistance')
-              constitutive_j2_relevantResistance(i) = IO_floatValue(line,positions,2)
+       case ('atol_resistance')
+              constitutive_j2_aTolResistance(i) = IO_floatValue(line,positions,2)
      end select
    endif
  enddo
@@ -158,25 +158,25 @@ subroutine constitutive_j2_init(file)
    if (constitutive_j2_tausat(i) <= 0.0_pReal)            call IO_error(213)
    if (constitutive_j2_w0(i) <= 0.0_pReal)                call IO_error(241)
    if (constitutive_j2_fTaylor(i) <= 0.0_pReal)           call IO_error(240)
-   if (constitutive_j2_relevantResistance(i) <= 0.0_pReal) call IO_error(242)
+   if (constitutive_j2_aTolResistance(i) <= 0.0_pReal)    call IO_error(242)
  enddo
 
  do i = 1,maxNinstance
    do j = 1,maxval(phase_Noutput)
-	 select case(constitutive_j2_output(j,i))
-	   case('flowstress')
-		 mySize = 1_pInt
-	   case('strainrate')
-		 mySize = 1_pInt
-	   case default
-		 mySize = 0_pInt
-	 end select
-
-	 if (mySize > 0_pInt) then                               ! any meaningful output found
-	   constitutive_j2_sizePostResult(j,i) = mySize
-	   constitutive_j2_sizePostResults(i) = &
-	   constitutive_j2_sizePostResults(i) + mySize
-	 endif
+     select case(constitutive_j2_output(j,i))
+       case('flowstress')
+       mySize = 1_pInt
+       case('strainrate')
+       mySize = 1_pInt
+       case default
+       mySize = 0_pInt
+     end select
+  
+     if (mySize > 0_pInt) then                               ! any meaningful output found
+       constitutive_j2_sizePostResult(j,i) = mySize
+       constitutive_j2_sizePostResults(i) = &
+       constitutive_j2_sizePostResults(i) + mySize
+     endif
    enddo
 
    constitutive_j2_sizeDotState(i) = 1
@@ -218,7 +218,7 @@ endfunction
 !*********************************************************************
 !* relevant microstructural state                                    *
 !*********************************************************************
-pure function constitutive_j2_relevantState(myInstance)
+pure function constitutive_j2_aTolState(myInstance)
 
 use prec,     only: pReal, &
                     pInt
@@ -229,11 +229,11 @@ integer(pInt), intent(in) ::  myInstance                      ! number specifyin
 
 !*** output variables
 real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
-                              constitutive_j2_relevantState   ! relevant state values for the current instance of this constitution
+                              constitutive_j2_aTolState   ! relevant state values for the current instance of this constitution
 
 !*** local variables
 
-constitutive_j2_relevantState = constitutive_j2_relevantResistance(myInstance)
+constitutive_j2_aTolState = constitutive_j2_aTolResistance(myInstance)
 
 endfunction
 

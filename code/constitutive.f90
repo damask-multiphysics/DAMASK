@@ -23,7 +23,7 @@ MODULE constitutive
                                                  constitutive_previousDotState2,&! pointer array to 2nd previous evolution of current microstructure
                                                  constitutive_dotState_backup, & ! pointer array to backed up evolution of current microstructure
                                                  constitutive_RK4dotState, &     ! pointer array to evolution of microstructure defined by classical Runge-Kutta method
-                                                 constitutive_relevantState      ! relevant state values
+                                                 constitutive_aTolState          ! pointer array to absolute state tolerance
  type(p_vec), dimension(:,:,:,:), allocatable :: constitutive_RKCK45dotState     ! pointer array to evolution of microstructure used by Cash-Karp Runge-Kutta method
  integer(pInt), dimension(:,:,:), allocatable :: constitutive_sizeDotState, &    ! size of dotState array
                                                  constitutive_sizeState, &       ! size of state array per grain
@@ -125,7 +125,7 @@ subroutine constitutive_init()
  allocate(constitutive_state_backup(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_dotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_dotState_backup(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
- allocate(constitutive_relevantState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+ allocate(constitutive_aTolState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
  allocate(constitutive_sizeDotState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;   constitutive_sizeDotState = 0_pInt
  allocate(constitutive_sizeState(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;      constitutive_sizeState = 0_pInt
  allocate(constitutive_sizePostResults(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)); constitutive_sizePostResults = 0_pInt
@@ -152,7 +152,7 @@ subroutine constitutive_init()
            allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_state_backup(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
-           allocate(constitutive_relevantState(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
            allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
            if (integrator == 1 .or. integratorStiffness == 1) then
@@ -167,7 +167,7 @@ subroutine constitutive_init()
              enddo
            endif
            constitutive_state0(g,i,e)%p =           constitutive_j2_stateInit(myInstance)
-           constitutive_relevantState(g,i,e)%p =    constitutive_j2_relevantState(myInstance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_j2_aTolState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(myInstance)
@@ -178,7 +178,7 @@ subroutine constitutive_init()
            allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_state_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
-           allocate(constitutive_relevantState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
            allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
            if (integrator == 1 .or. integratorStiffness == 1) then
@@ -193,7 +193,7 @@ subroutine constitutive_init()
              enddo
            endif
            constitutive_state0(g,i,e)%p =           constitutive_phenopowerlaw_stateInit(myInstance)
-           constitutive_relevantState(g,i,e)%p =    constitutive_phenopowerlaw_relevantState(myInstance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_phenopowerlaw_aTolState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(myInstance)
@@ -204,7 +204,7 @@ subroutine constitutive_init()
            allocate(constitutive_subState0(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
            allocate(constitutive_state_backup(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
-           allocate(constitutive_relevantState(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
            allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
            if (integrator == 1 .or. integratorStiffness == 1) then
@@ -219,7 +219,7 @@ subroutine constitutive_init()
              enddo
            endif
            constitutive_state0(g,i,e)%p =           constitutive_titanmod_stateInit(myInstance)
-           constitutive_relevantState(g,i,e)%p =    constitutive_titanmod_relevantState(myInstance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_titanmod_aTolState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_titanmod_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_titanmod_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_titanmod_sizePostResults(myInstance)
@@ -230,7 +230,7 @@ subroutine constitutive_init()
            allocate(constitutive_subState0(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
            allocate(constitutive_state_backup(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
-           allocate(constitutive_relevantState(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
            allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
            if (integrator == 1 .or. integratorStiffness == 1) then
@@ -245,7 +245,7 @@ subroutine constitutive_init()
              enddo
            endif
            constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(myInstance)
-           constitutive_relevantState(g,i,e)%p =    constitutive_dislotwin_relevantState(myInstance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_dislotwin_aTolState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(myInstance)
@@ -256,7 +256,7 @@ subroutine constitutive_init()
            allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_state(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_state_backup(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
-           allocate(constitutive_relevantState(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
            allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
            if (integrator == 1 .or. integratorStiffness == 1) then
@@ -271,7 +271,7 @@ subroutine constitutive_init()
              enddo
            endif
            constitutive_state0(g,i,e)%p =           constitutive_nonlocal_stateInit(myInstance)
-           constitutive_relevantState(g,i,e)%p =    constitutive_nonlocal_relevantState(myInstance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_nonlocal_aTolState(myInstance)
            constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(myInstance)
            constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(myInstance)
            constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(myInstance)
@@ -298,7 +298,7 @@ subroutine constitutive_init()
  write(6,'(a32,x,7(i5,x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
  write(6,'(a32,x,7(i5,x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
  write(6,'(a32,x,7(i5,x))') 'constitutive_state:           ', shape(constitutive_state)
- write(6,'(a32,x,7(i5,x))') 'constitutive_relevantState:   ', shape(constitutive_relevantState)
+ write(6,'(a32,x,7(i5,x))') 'constitutive_aTolState:       ', shape(constitutive_aTolState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
  write(6,'(a32,x,7(i5,x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
@@ -499,8 +499,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
      call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, constitutive_state, &
-                                                constitutive_relevantState, ipc, ip, el)
+     call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, constitutive_state, ipc, ip, el)
      
  end select
 
@@ -579,7 +578,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
  
   case (constitutive_nonlocal_label)
     call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, &
-                                        constitutive_state, constitutive_subState0, constitutive_relevantState, subdt, &
+                                        constitutive_state, constitutive_subState0, constitutive_aTolState, subdt, &
                                         orientation, ipc, ip, el)
  
 end select
@@ -712,7 +711,7 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, mis
    case (constitutive_nonlocal_label)
      constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, misorientation, &
                                                                   dt, subdt, constitutive_state, constitutive_subState0, &
-                                                                  constitutive_relevantState, constitutive_dotstate, ipc, ip, el)
+                                                                  constitutive_dotstate, ipc, ip, el)
  end select
  
 return
