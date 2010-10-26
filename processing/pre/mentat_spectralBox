@@ -113,6 +113,8 @@ def geometry():
   "*geometry_option red_integ_capacity:on",
   "*add_geometry_elements",
   "all_existing",
+  "*element_type 117",
+  "all_existing",
   ]
   
   return cmds
@@ -131,6 +133,13 @@ def initial_conditions(N,data):
     elements[id-1].append(element)
 
   cmds = [\
+    "*new_icond",
+    "*icond_name temperature",
+    "*icond_type state_variable",
+    "*icond_param_value state_var_id 1",
+    "*icond_dof_value var 300",
+    "*add_icond_elements",
+    "all_existing",
     "*new_icond",
     "*icond_name homogenization",
     "*icond_type state_variable",
@@ -171,7 +180,7 @@ parser.set_defaults(d = (16,16,16))
 parser.set_defaults(N = (16,16,16))
 
 try:
-  file = open('%s/../MSCpath'%os.path.dirname(sys.argv[0]))
+  file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
   MSCpath = os.path.normpath(file.readline().strip())
   file.close()
 except:

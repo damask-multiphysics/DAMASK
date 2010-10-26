@@ -10,9 +10,12 @@ releases = {'2010':['linux64',''],
             '2005r3':[''],
            }
 
-file = open('%s/../MSCpath'%os.path.dirname(sys.argv[0]))
-MSCpath = os.path.normpath(file.readline().strip())
-file.close()
+try:
+  file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
+  MSCpath = os.path.normpath(file.readline().strip())
+  file.close()
+except:
+  MSCpath = '/msc'
 
 for release,subdirs in sorted(releases.items(),reverse=True):
   for subdir in subdirs:
@@ -24,7 +27,12 @@ for release,subdirs in sorted(releases.items(),reverse=True):
       continue
   break
 
-from py_mentat import *
+try:
+  from py_mentat import *
+except:
+  print('error: no valid Mentat release found in %s'%MSCpath)
+  sys.exit(-1)
+
 
 
 
