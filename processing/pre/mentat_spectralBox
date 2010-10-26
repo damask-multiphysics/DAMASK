@@ -93,7 +93,7 @@ def material():
   cmds = [\
   "*new_mater standard",
   "*mater_option general:state:solid",
-  "*mater_option structural:type:hypo_ealst",
+  "*mater_option structural:type:hypo_elast",
   "*mater_name",
   "hypela2",
   "*add_mater_elements",
