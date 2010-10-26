@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+
+# Makes the postprocessing routines acessible from everywhere.
+# you need a ~/bin directory in your home folder
+# add the bin directory to your path by adding the following lines 
+# to your .bashrc file: 
+#  PATH="$PATH:~/bin"
+#  export PATH 
+
+import os,sys
+
+public_bin = { \
+				'pre' : [
+							'marc_addUserOutput',
+							'mentat_pbcOnBoxMesh',
+							'mentat_patchFromReconstructedBoundaries',
+							'mentat_spectralBox',
+							],
+				'post' : [
+							'postResults',
+							'mentat_colorMap',
+							],
+						}
+
+homedir = os.getenv('HOME')
+basedir = os.path.dirname(sys.argv[0])
+for dir in public_bin:
+  for file in public_bin[dir]:
+    src = os.path.abspath(os.path.join(basedir,dir,file))
+    if (file == ''):
+      dst = os.path.abspath(os.path.join(homedir,'bin',dir))
+    else:
+      dst = os.path.abspath(os.path.join(homedir,'bin',file))
+    print src,'-->',dst
+    if os.path.lexists(dst):
+      os.remove(dst)
+    os.symlink(src,dst)
