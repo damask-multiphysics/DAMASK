@@ -1142,7 +1142,7 @@ endif
 
 
 ! --- FIRST RUNGE KUTTA STEP ---
-
+if (verboseDebugger) write(6,'(a,x,i1)') '<<<RUNGE KUTTA STEP',1
 !$OMP PARALLEL DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
@@ -1170,7 +1170,6 @@ endif
 ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
 
 do n = 1,5
-
 
   ! --- state update ---
   
@@ -1229,7 +1228,7 @@ do n = 1,5
   
 
   ! --- dot state and RK dot state---
-  
+  if (verboseDebugger) write(6,'(a,x,i1)') '<<<RUNGE KUTTA STEP',n+1
   !$OMP PARALLEL DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
@@ -1268,6 +1267,8 @@ relTemperatureResiduum = 0.0_pReal
     if (crystallite_todo(g,i,e)) then
       selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       sizeDotState = constitutive_sizeDotState(g,i,e)
+      constitutive_RKCK45dotState(6,g,i,e)%p = constitutive_dotState(g,i,e)%p                             ! store Runge-Kutta dotState
+      RKCK45dotTemperature(6,g,i,e) = crystallite_dotTemperature(g,i,e)                                   ! store Runge-Kutta dotTemperature
       
       
       ! --- absolute residuum in state and temperature ---
