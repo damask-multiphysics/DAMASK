@@ -29,7 +29,8 @@ program mpie_spectral
  use IO
  use math
  use CPFEM, only: CPFEM_general
- use numerics, only: relevantStrain, rTol_crystalliteStress
+ use numerics, only: relevantStrain, rTol_crystalliteStress !ToDo: change to really needed variables
+ use homogenization, only: materialpoint_sizeResults, materialpoint_results
 
  implicit none
  include 'fftw3.f' !header file for fftw3 (declaring variables). Library file is also needed
@@ -82,7 +83,7 @@ program mpie_spectral
 
 ! convergence etc.
  real(pReal) err_div, err_stress, err_defgrad
- real(pReal) err_div_tol, err_stress_tol, err_stress_tolrel, sigma0
+ real(pReal) err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol, sigma0
  integer(pInt) itmax, ierr
  logical errmatinv
 
@@ -96,6 +97,7 @@ program mpie_spectral
 !gmsh output
  character(len=1024) :: nriter
  character(len=1024) :: nrstep
+ character(len=1024) :: nrloadcase
  real(pReal), dimension(:,:,:,:), allocatable ::    displacement
 !gmsh output
 
@@ -103,20 +105,17 @@ program mpie_spectral
  bc_maskvector = ''
  unit = 234_pInt
 
- ones   = 1.0_pReal
- zeroes = 0.0_pReal
+ ones   = 1.0_pReal; zeroes = 0.0_pReal
  
- N_l = 0_pInt
- N_s = 0_pInt
- N_t = 0_pInt
- N_n = 0_pInt
+ N_l = 0_pInt; N_s = 0_pInt
+ N_t = 0_pInt; N_n = 0_pInt
 
  resolution = 1_pInt; meshdimension = 0.0_pReal
  
- err_div_tol = 1.0e-4
+ err_div_tol = 1.0e-6
  itmax = 250_pInt
  err_stress_tolrel=0.01
- 
+ err_defgrad_tol=1.0e-5
  temperature = 300.0_pReal
 
  gotResolution =.false.; gotDimension =.false.; gotHomogenization = .false.
@@ -148,8 +147,7 @@ program mpie_spectral
         end select
    enddo                                                  ! count all identifiers to allocate memory and do sanity check
    if ((N_l /= N_s).or.(N_s /= N_t).or.(N_t /= N_n)) &    ! sanity check
-     call IO_error(46,ext_msg = path)                     !error message for incomplete input file
-
+     call IO_error(46,ext_msg = path)                     ! error message for incomplete input file
  enddo
 
 ! allocate memory depending on lines in input file
@@ -167,7 +165,7 @@ program mpie_spectral
    read(unit,'(a1024)',END = 200) line
    if (IO_isBlank(line)) cycle                           ! skip empty lines
    i = i + 1
-   posInput = IO_stringPos(line,maxNchunksInput)
+   posInput = IO_stringPos(line,maxNchunksInput)         ! ToDo: Add error message for case that information is not complete
    do j = 1,maxNchunksInput,2
      select case (IO_lc(IO_stringValue(line,posInput,j)))
        case('l','velocitygrad')
@@ -215,7 +213,7 @@ program mpie_spectral
  do
    read(unit,'(a1024)',END = 100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
-   posMesh = IO_stringPos(line,maxNchunksMesh)
+   posMesh = IO_stringPos(line,maxNchunksMesh)             
 
    select case ( IO_lc(IO_StringValue(line,posMesh,1)) )
      case ('dimension')
@@ -253,18 +251,16 @@ program mpie_spectral
  print '(a,/,i4,i4,i4)','resolution a b c', resolution
  print '(a,/,f6.1,f6.1,f6.1)','dimension x y z', meshdimension
  print *,'homogenization',homog
- print *, ''
  
  allocate (workfft(resolution(1)/2+1,resolution(2),resolution(3),3,3));          workfft              = 0.0_pReal
  allocate (gamma_hat(resolution(1)/2+1,resolution(2),resolution(3),3,3,3,3));    gamma_hat            = 0.0_pReal
  allocate (xi(resolution(1)/2+1,resolution(2),resolution(3),3));                 xi                   = 0.0_pReal
  allocate (pstress_field(resolution(1),resolution(2),resolution(3),3,3));        pstress_field        = 0.0_pReal
  allocate (cstress_field(resolution(1),resolution(2),resolution(3),3,3));        cstress_field        = 0.0_pReal
- allocate (displacement(resolution(1),resolution(2),resolution(3),3));           displacement         = 0.0_pReal
  allocate (defgrad(resolution(1),resolution(2),resolution(3),3,3));              defgrad              = 0.0_pReal
  allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3));           defgradold           = 0.0_pReal
  allocate (ddefgrad(resolution(1),resolution(2),resolution(3)));                ddefgrad              = 0.0_pReal
- 
+ allocate (displacement(resolution(1),resolution(2),resolution(3),3));           displacement         = 0.0_pReal
 ! Initialization of fftw (see manual on fftw.org for more details) 
  call dfftw_init_threads(ierr)
  call dfftw_plan_with_nthreads(4)
@@ -274,7 +270,7 @@ program mpie_spectral
    call dfftw_plan_dft_c2r_3d(plan_fft(2,m,n),resolution(1),resolution(2),resolution(3),& 
                     workfft(:,:,:,m,n), ddefgrad(:,:,:), FFTW_PATIENT)
  enddo; enddo
- 
+  
  prodnn = resolution(1)*resolution(2)*resolution(3)
  wgt = 1_pReal/real(prodnn, pReal)
  defgradAim = math_I3
@@ -325,6 +321,15 @@ program mpie_spectral
  enddo; enddo; enddo
  
  open(539,file='stress-strain.out')
+ open(538,file='results.out')                           ! write header of output file
+ path = getLoadcaseName()
+ write(538,*), 'Loadcase: ',trim(path)
+ write(538,*), 'Workingdir: ',trim(getSolverWorkingDirectoryName())
+ path = getSolverJobName()
+ write(538,*), 'JobName: ',trim(path)
+ write(538,*), 'resolution a b c', resolution
+ write(538,'(a,f6.1,f6.1,f6.1)'), 'dimension x y z', meshdimension
+ write(538,*), 'materialpoint_sizeResults', materialpoint_sizeResults
 ! Initialization done
 
 !*************************************************************
@@ -368,9 +373,10 @@ program mpie_spectral
 ! convergence loop
      do while( iter <= itmax .and. &     
              (err_div > err_div_tol .or. &
-              err_stress > err_stress_tol))    
+              err_stress > err_stress_tol .or. &
+              err_defgrad > err_defgrad_tol))    
        iter = iter + 1
-       print '(A,I5.5,tr2,A,I5.5)', ' Step = ',steps,'Iteration = ',iter
+       print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',steps,'Iteration = ',iter
 !*************************************************************
        
 ! adjust defgrad to fulfill BCs 
@@ -425,10 +431,10 @@ program mpie_spectral
          enddo; enddo
          err_div = 2 * err_div_tol 
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))         
-         print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',defgrad_av(1:3,:)               
+         print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',defgrad_av(1:3,:)                           
          print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]: ',cstress_av(1:3,:)/1.e6        
-         print '(a,E8.2)', ' error defgrad           ',err_defgrad
-         print '(2(a,E8.2))', ' error stress            ',err_stress,'  Tol. = ', err_stress_tol*0.8   
+         print '(2(a,E8.2))', ' error stress               ',err_stress,'  Tol. = ', err_stress_tol 
+         print '(2(a,E8.2))', ' error deformation gradient ',err_defgrad,'  Tol. = ', err_defgrad_tol*0.8  
          if(err_stress < err_stress_tol*0.8) then 
            calcmode = 1
          endif
@@ -481,24 +487,32 @@ program mpie_spectral
             defgrad_av(m,n) = sum(defgrad(:,:,:,m,n))*wgt
             defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim(m,n) - defgrad_av(m,n)) !anticipated target minus current state
          enddo; enddo
-         
+
          err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
          err_stress_tol = maxval(abs(pstress_av))*err_stress_tolrel                             !accecpt relativ error specified
-            
-         print '(2(a,E8.2))', ' error divergence        ',err_div,'  Tol. = ', err_div_tol
-         print '(2(a,E8.2))', ' error stress            ',err_stress,'  Tol. = ', err_stress_tol           
-         if(err_stress > err_stress_tol .and. err_div < err_div_tol) then         ! change to calculation of BCs, reset damper etc.
+         err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))  
+         
+         print '(2(a,E8.2))', ' error divergence           ',err_div,'  Tol. = ', err_div_tol
+         print '(2(a,E8.2))', ' error stress               ',err_stress,'  Tol. = ', err_stress_tol 
+         print '(2(a,E8.2))', ' error deformation gradient ',err_defgrad,'  Tol. = ', err_defgrad_tol 
+         
+         if(err_stress > err_stress_tol .or. err_defgrad > err_defgrad_tol .and. err_div < err_div_tol) then  ! change to calculation of BCs, reset damper etc.
            calcmode = 0
            defgradAimCorr = 0.0_pReal
            damper = damper * 0.9_pReal
          endif     
        end select 
      enddo    ! end looping when convergency is achieved 
-
-     write(539,'(E12.6,a,E12.6)'),defgrad_av(3,3)-1,'   ',  cstress_av(3,3)
-     print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',defgrad_av(1:3,:)
-     print *, ''
-     print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]: ',cstress_av(1:3,:)/1.e6
+     
+     do i=1, prodnn !write to output file
+       write(538,*)  materialpoint_results(:,1,i)
+     enddo
+     
+     write(539,'(E12.6,a,E12.6)'),log(defgrad_av(3,3)),'   ',  cstress_av(3,3)
+     print '(a,x,f12.7)'         ,' Determinant of Deformation Aim:', math_det3x3(defgradAim)
+     print '(a,/,3(3(f12.7,x)/))', ' Deformation Aim:        ',defgradAim(1:3,:)
+     print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',defgrad_av(1:3,:)  
+     print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]:    ',cstress_av(1:3,:)/1.e6
      print '(A)', '************************************************************'
 
 ! Postprocessing (gsmh output)
@@ -526,9 +540,9 @@ program mpie_spectral
        endif
      enddo; enddo; enddo
 
-     write(nriter, *) iter; write(nrstep, *) steps
-     open(589,file = 'stress' //trim(adjustl(nrstep))//'-'//trim(adjustl(nriter))//'_cpfem.msh')
-     open(588,file = 'disgrad'//trim(adjustl(nrstep))//'-'//trim(adjustl(nriter))//'_cpfem.msh')
+     write(nrloadcase, *) loadcase; write(nriter, *) iter; write(nrstep, *) steps
+     open(589,file = 'stress' //trim(adjustl(nrloadcase))//'-'//trim(adjustl(nrstep))//'-'//trim(adjustl(nriter))//'_cpfem.msh')
+     open(588,file = 'disgrad'//trim(adjustl(nrloadcase))//'-'//trim(adjustl(nrstep))//'-'//trim(adjustl(nriter))//'_cpfem.msh')
      write(589, '(4(A, /), I10)'), '$MeshFormat', '2.1 0 8', '$EndMeshFormat', '$Nodes', prodnn
      write(588, '(4(A, /), I10)'), '$MeshFormat', '2.1 0 8', '$EndMeshFormat', '$Nodes', prodnn
 
@@ -537,7 +551,7 @@ program mpie_spectral
        ielem = ielem + 1
        write(589, '(I10, 3(tr2, E12.6))'), ielem, displacement(i,j,k,:) !for deformed configuration
        write(588, '(I10, 3(tr2, E12.6))'), ielem, displacement(i,j,k,:)        
-  !     write(589, '(4(I10,tr2))'), ielem, i-1,j-1,k-1 !for undeformed configuration
+   !    write(589, '(4(I10,tr2))'), ielem, i-1,j-1,k-1 !for undeformed configuration
    !    write(588, '(4(I10,tr2))'), ielem, i-1,j-1,k-1 
      enddo; enddo; enddo
 
@@ -551,11 +565,10 @@ program mpie_spectral
 
      write(589, '(A)'), '$EndElements'
      write(588, '(A)'), '$EndElements'
-     write(589, '(8(A, /), I10)'), '$NodeData', '1','"'//trim(adjustl('stress'//trim(adjustl(nrstep))//&
-                          '-'//trim(adjustl(nriter))//'_cpfem.msh'))//'"','1','0.0', '3', '0', '9', prodnn
-     write(588, '(8(A, /), I10)'), '$NodeData', '1','"'//trim(adjustl('disgrad'//trim(adjustl(nrstep))//&
-                          '-'//trim(adjustl(nriter))//'_cpfem.msh'))//'"','1','0.0', '3', '0', '9', prodnn
-
+     write(589, '(8(A, /), I10)'), '$NodeData', '1','"'//trim(adjustl('stress'//trim(adjustl(nrloadcase))//'-'//&
+                            trim(adjustl(nrstep))//'-'//trim(adjustl(nriter))//'_cpfem.msh'))//'"','1','0.0', '3', '0', '9', prodnn
+     write(588, '(8(A, /), I10)'), '$NodeData', '1','"'//trim(adjustl('disgrad'//trim(adjustl(nrloadcase))//'-'//&
+                            trim(adjustl(nrstep))//'-'//trim(adjustl(nriter))//'_cpfem.msh'))//'"','1','0.0', '3', '0', '9', prodnn
      ielem = 0_pInt
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
             ielem = ielem + 1
@@ -568,7 +581,7 @@ program mpie_spectral
      close(589); close(588) 
    enddo  ! end looping over steps in current loadcase
  enddo    ! end looping over loadcases
-close(539)
+close(539); close(538)
 
 do i=1,2; do m = 1,3; do n = 1,3
   call dfftw_destroy_plan(plan_fft(i,m,n))
