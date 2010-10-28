@@ -1639,7 +1639,7 @@ relTemperatureResiduum = 0.0_pReal
         crystallite_converged(g,i,e) = .true.                                                             ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
         !$OMP CRITICAL (distributionState)
-          debug_StateLoopDistribution(6,mode) = debug_StateLoopDistribution(6,mode) + 1
+          debug_StateLoopDistribution(2,mode) = debug_StateLoopDistribution(2,mode) + 1
         !$OMPEND CRITICAL (distributionState)
         
       endif
