@@ -540,33 +540,61 @@ fileOpen = False
 assembleHeader = True
 header = []
 
-for increment in increments:
+element_scalar = {}
+element_tensor = {}
+
+# --- store geometry information
+
+p.moveto(0)
+
+nodeID           = [ 0 for n in range(stat['NumberOfNodes'])]
+nodeCoordinates  = [[] for n in range(stat['NumberOfNodes'])]
+
+elemID           = [ 0 for e in range(stat['NumberOfElements'])]
+elemNodeID       = [[] for e in range(stat['NumberOfElements'])]
+ipCoordinates    = [[] for e in range(stat['NumberOfElements'])]
+
+for n in range(stat['NumberOfNodes']):
+  nodeID[n] = p.node_id(n)
+  nodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
+
+for e in range(stat['NumberOfElements']):
+  elemID[e]        = p.element_id(e)
+  elemNodeID[e]    = p.element(e).items
+  ipCoordinates[e] = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z], map(p.node, map(p.node_sequence,p.element(e).items))))
+
+# --- loop over increments
+
+time_start = time.time()
+
+for incCount,increment in enumerate(increments):
     p.moveto(increment+1)
-    bg.set_message('read data from increment %i...'%increment)
+    time_delta = (len(increments)-incCount)*(time.time()-time_start)/(incCount+1)
+    bg.set_message('(%02i:%02i:%02i) read data from increment %i...'%(time_delta//3600,time_delta%3600//60,time_delta%60,increment))
     data = {}
     
     if options.nodalScalar:
         for n in range(stat['NumberOfNodes']):
-            nodeID = p.node_id(n)
-            nodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
-            elemID = 0
-            grainID = 0
+            myNodeID = nodeID[n]
+            myNodeCoordinates = nodeCoordinates[n]
+            myElemID = 0
+            myGrainID = 0
             
             # --- filter valid locations
             
-            filter = substituteLocation(options.filter, [elemID,nodeID,grainID], nodeCoordinates)                   # generates an expression that is only true for the locations specified by options.filter
+            filter = substituteLocation(options.filter, [myElemID,myNodeID,myGrainID], myNodeCoordinates)           # generates an expression that is only true for the locations specified by options.filter
             if filter != '' and not eval(filter):                                                                   # for all filter expressions that are not true:...
                 continue                                                                                            # ... ignore this data point and continue with next
             
             # --- group data locations
             
-            group = substituteLocation('#'.join(options.separation), [elemID,nodeID,grainID], nodeCoordinates)      # generates a unique key for a group of separated data based on the separation criterium for the location
+            group = substituteLocation('#'.join(options.separation), [myElemID,myNodeID,myGrainID], myNodeCoordinates)      # generates a unique key for a group of separated data based on the separation criterium for the location
             if group not in data:                                                                                   # create a new group if not yet present
                 data[group] = []
             data[group].append([])                                                                                  # append a new list for each group member; each list will contain dictionaries with keys 'label, and 'content' for the associated data
             data[group][-1].append({
                                     'label': 'location',
-                                    'content': [elemID,nodeID,grainID] + nodeCoordinates, 
+                                    'content': [myElemID,myNodeID,myGrainID] + myNodeCoordinates, 
                                    })                                                                               # first entry in this list always contains the location data
             
             # --- get data from t16 file
@@ -583,30 +611,28 @@ for increment in increments:
         
     else:
         for e in range(stat['NumberOfElements']):
-            nodeCoordinates = map(lambda node: [node.x, node.y, node.z], map(p.node, map(p.node_sequence,p.element(e).items)))
-            ipCoordinates = ipCoords(p.element(e).type, nodeCoordinates)
-            elemID = p.element_id(e)
-            for n in range(p.element(e).len):
-                nodeID = p.element(e).items[n]
+            myElemID = elemID[e]
+            myIpCoordinates = ipCoordinates[e]
+            for n,myNodeID in enumerate(elemNodeID[e]):
                 for g in range(('GrainCount' in stat['IndexOfLabel'] and int(p.element_scalar(e, stat['IndexOfLabel']['GrainCount'])[0].value))
                                                                       or 1):
-                    grainID = g + 1
+                    myGrainID = g + 1
                     
                     # --- filter valid locations
                     
-                    filter = substituteLocation(options.filter, [elemID,nodeID,grainID], ipCoordinates[n])                  # generates an expression that is only true for the locations specified by options.filter
+                    filter = substituteLocation(options.filter, [myElemID,myNodeID,myGrainID], myIpCoordinates[n])          # generates an expression that is only true for the locations specified by options.filter
                     if filter != '' and not eval(filter):                                                                   # for all filter expressions that are not true:...
                         continue                                                                                            # ... ignore this data point and continue with next
                     
                     # --- group data locations
                     
-                    group = substituteLocation('#'.join(options.separation), [elemID,nodeID,grainID], ipCoordinates[n])     # generates a unique key for a group of separated data based on the separation criterium for the location
+                    group = substituteLocation('#'.join(options.separation), [myElemID,myNodeID,myGrainID], myIpCoordinates[n])     # generates a unique key for a group of separated data based on the separation criterium for the location
                     if group not in data:                                                                                   # create a new group if not yet present
                         data[group] = []
                     data[group].append([])                                                                                  # append a new list for each group member; each list will contain dictionaries with keys 'label, and 'content' for the associated data
                     data[group][-1].append({
                                             'label': 'location',
-                                            'content': [elemID,nodeID,grainID] + ipCoordinates[n], 
+                                            'content': [myElemID,myNodeID,myGrainID] + myIpCoordinates[n], 
                                            })                                                                               # first entry in this list always contains the location data
                     
                     # --- get data from t16 file
@@ -624,10 +650,13 @@ for increment in increments:
                         for label in options.elementalTensor:
                             if assembleHeader: 
                                 header += ['%s.%s'%(label.replace(' ',''),component) for component in ['intensity','t11','t22','t33','t12','t23','t13']]
+                            myTensor = p.element_tensor(e,stat['IndexOfLabel'][label])[n]
                             data[group][-1].append({
                                                     'label': label,
-                                                    'content': [ eval("p.element_tensor(e,stat['IndexOfLabel'][label])[n].%s"%component)     
-                                                                 for component in ['intensity','t11','t22','t33','t12','t23','t13'] ], 
+                                                    'content': [ myTensor.intensity, 
+                                                                 myTensor.t11, myTensor.t22, myTensor.t33,
+                                                                 myTensor.t12, myTensor.t23, myTensor.t13,
+                                                               ], 
                                                    })
         
                     if options.homogenizationResult:
