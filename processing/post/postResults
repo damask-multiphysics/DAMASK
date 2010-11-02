@@ -569,7 +569,7 @@ time_start = time.time()
 
 for incCount,increment in enumerate(increments):
     p.moveto(increment+1)
-    time_delta = (len(increments)-incCount)*(time.time()-time_start)/(incCount+1)
+    time_delta = (len(increments)-incCount)*(time.time()-time_start)/max(1.0,incCount)
     bg.set_message('(%02i:%02i:%02i) read data from increment %i...'%(time_delta//3600,time_delta%3600//60,time_delta%60,increment))
     data = {}
     
