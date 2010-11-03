@@ -83,314 +83,328 @@ CONTAINS
 !********************************************************************
 subroutine crystallite_init(Temperature)
   
- !*** variables and functions from other modules ***!
- use prec, only:             pInt, &
-                             pReal
- use debug, only:            debug_info, &
-                             debug_reset
- use numerics, only:         integrator, &
-                             integratorStiffness, &
-                             subStepSizeCryst, &
-                             stepIncreaseCryst
- use math, only:             math_I3, &
-                             math_EulerToR, &
-                             math_inv3x3, &
-                             math_transpose3x3, &
-                             math_mul33xx33, &
-                             math_mul33x33
- use FEsolving, only:        FEsolving_execElem, &
-                             FEsolving_execIP
- use mesh, only:             mesh_element, &
-                             mesh_NcpElems, &
-                             mesh_maxNips, &
-                             mesh_maxNipNeighbors
- use IO
- use material
- use lattice, only:          lattice_symmetryType, &
-                             lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
-                             lattice_NslipSystem,lattice_NtwinSystem
+!*** variables and functions from other modules ***!
+use prec, only:       pInt, &
+                      pReal
+use debug, only:      debug_info, &
+                      debug_reset
+use numerics, only:   integrator, &
+                      integratorStiffness, &
+                      subStepSizeCryst, &
+                      stepIncreaseCryst
+use math, only:       math_I3, &
+                      math_EulerToR, &
+                      math_inv3x3, &
+                      math_transpose3x3, &
+                      math_mul33xx33, &
+                      math_mul33x33
+use FEsolving, only:  FEsolving_execElem, &
+                      FEsolving_execIP
+use mesh, only:       mesh_element, &
+                      mesh_NcpElems, &
+                      mesh_maxNips, &
+                      mesh_maxNipNeighbors
+use IO
+use material
+use lattice, only:    lattice_symmetryType, &
+                      lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
+                      lattice_NslipSystem,lattice_NtwinSystem
 
- use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
-                                       constitutive_phenopowerlaw_structure, &
-                                       constitutive_phenopowerlaw_Nslip
- use constitutive_titanmod, only:      constitutive_titanmod_label, &
-                                       constitutive_titanmod_structure
- use constitutive_dislotwin, only:     constitutive_dislotwin_label, &
-                                       constitutive_dislotwin_structure
- use constitutive_nonlocal, only:      constitutive_nonlocal_label, &
-                                       constitutive_nonlocal_structure
+use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
+                                      constitutive_phenopowerlaw_structure, &
+                                      constitutive_phenopowerlaw_Nslip
+use constitutive_titanmod, only:      constitutive_titanmod_label, &
+                                      constitutive_titanmod_structure
+use constitutive_dislotwin, only:     constitutive_dislotwin_label, &
+                                      constitutive_dislotwin_structure
+use constitutive_nonlocal, only:      constitutive_nonlocal_label, &
+                                      constitutive_nonlocal_structure
  
- implicit none
- integer(pInt), parameter :: file = 200
+implicit none
+integer(pInt), parameter :: file = 200, &
+                            maxNchunks = 2
  
- !*** input variables ***!
- real(pReal) Temperature
- 
- !*** output variables ***!
+!*** input variables ***!
+real(pReal) Temperature
 
- !*** local variables ***!
- integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension(1+2*maxNchunks) :: positions
- character(len=64) tag
- character(len=1024) line
- integer(pInt)               g, &                          ! grain number
-                             i, &                          ! integration point number
-                             e, &                          ! element number
-                             gMax, &                       ! maximum number of grains
-                             iMax, &                       ! maximum number of integration points
-                             eMax, &                       ! maximum number of elements
-                             nMax, &                       ! maximum number of ip neighbors
-                             myNgrains, &                  ! number of grains in current IP
-                             myCrystallite, &              ! crystallite of current elem
-                             section, f,j,k,p, output, mySize, index_myFamily, &
-                             myStructure, &                ! lattice structure 
-                             myPhase, &
-                             myMat
- 
- write(6,*)
- write(6,*) '<<<+-  crystallite init  -+>>>'
- write(6,*) '$Id$'
- write(6,*)
- 
- 
- gMax = homogenization_maxNgrains
- iMax = mesh_maxNips
- eMax = mesh_NcpElems
- nMax = mesh_maxNipNeighbors
- 
- allocate(crystallite_Temperature(gMax,iMax,eMax));                     crystallite_Temperature = Temperature
- allocate(crystallite_partionedTemperature0(gMax,iMax,eMax)); crystallite_partionedTemperature0 = 0.0_pReal
- allocate(crystallite_subTemperature0(gMax,iMax,eMax));             crystallite_subTemperature0 = 0.0_pReal
- allocate(crystallite_dotTemperature(gMax,iMax,eMax));               crystallite_dotTemperature = 0.0_pReal
- allocate(crystallite_Tstar0_v(6,gMax,iMax,eMax));                         crystallite_Tstar0_v = 0.0_pReal
- allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax));       crystallite_partionedTstar0_v = 0.0_pReal
- allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax));                   crystallite_subTstar0_v = 0.0_pReal
- allocate(crystallite_Tstar_v(6,gMax,iMax,eMax));                           crystallite_Tstar_v = 0.0_pReal
- allocate(crystallite_P(3,3,gMax,iMax,eMax));                                     crystallite_P = 0.0_pReal
- allocate(crystallite_F0(3,3,gMax,iMax,eMax));                                   crystallite_F0 = 0.0_pReal
- allocate(crystallite_partionedF0(3,3,gMax,iMax,eMax));                 crystallite_partionedF0 = 0.0_pReal
- allocate(crystallite_partionedF(3,3,gMax,iMax,eMax));                   crystallite_partionedF = 0.0_pReal
- allocate(crystallite_subF0(3,3,gMax,iMax,eMax));                             crystallite_subF0 = 0.0_pReal
- allocate(crystallite_subF(3,3,gMax,iMax,eMax));                               crystallite_subF = 0.0_pReal
- allocate(crystallite_Fp0(3,3,gMax,iMax,eMax));                                 crystallite_Fp0 = 0.0_pReal
- allocate(crystallite_partionedFp0(3,3,gMax,iMax,eMax));               crystallite_partionedFp0 = 0.0_pReal
- allocate(crystallite_subFp0(3,3,gMax,iMax,eMax));                           crystallite_subFp0 = 0.0_pReal
- allocate(crystallite_Fp(3,3,gMax,iMax,eMax));                                   crystallite_Fp = 0.0_pReal
- allocate(crystallite_invFp(3,3,gMax,iMax,eMax));                             crystallite_invFp = 0.0_pReal
- allocate(crystallite_Fe(3,3,gMax,iMax,eMax));                                   crystallite_Fe = 0.0_pReal
- allocate(crystallite_Lp0(3,3,gMax,iMax,eMax));                                 crystallite_Lp0 = 0.0_pReal
- allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax));               crystallite_partionedLp0 = 0.0_pReal
- allocate(crystallite_subLp0(3,3,gMax,iMax,eMax));                           crystallite_subLp0 = 0.0_pReal
- allocate(crystallite_Lp(3,3,gMax,iMax,eMax));                                   crystallite_Lp = 0.0_pReal
- allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax));                           crystallite_dPdF = 0.0_pReal
- allocate(crystallite_dPdF0(3,3,3,3,gMax,iMax,eMax));                         crystallite_dPdF0 = 0.0_pReal
- allocate(crystallite_partioneddPdF0(3,3,3,3,gMax,iMax,eMax));       crystallite_partioneddPdF0 = 0.0_pReal
- allocate(crystallite_fallbackdPdF(3,3,3,3,gMax,iMax,eMax));           crystallite_fallbackdPdF = 0.0_pReal
- allocate(crystallite_dt(gMax,iMax,eMax));                                       crystallite_dt = 0.0_pReal
- allocate(crystallite_subdt(gMax,iMax,eMax));                                 crystallite_subdt = 0.0_pReal
- allocate(crystallite_subFrac(gMax,iMax,eMax));                             crystallite_subFrac = 0.0_pReal
- allocate(crystallite_subStep(gMax,iMax,eMax));                             crystallite_subStep = 0.0_pReal
- allocate(crystallite_statedamper(gMax,iMax,eMax));                     crystallite_statedamper = 1.0_pReal
- allocate(crystallite_symmetryID(gMax,iMax,eMax));                       crystallite_symmetryID = 0.0_pReal !NEW
- allocate(crystallite_orientation(4,gMax,iMax,eMax));                   crystallite_orientation = 0.0_pReal
- allocate(crystallite_orientation0(4,gMax,iMax,eMax));                 crystallite_orientation0 = 0.0_pReal
- allocate(crystallite_rotation(4,gMax,iMax,eMax));                         crystallite_rotation = 0.0_pReal
- allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax));        crystallite_disorientation = 0.0_pReal
- allocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
- allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
- allocate(crystallite_todo(gMax,iMax,eMax));                                   crystallite_todo = .false.
- allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
- allocate(crystallite_stateConverged(gMax,iMax,eMax));               crystallite_stateConverged = .false.
- allocate(crystallite_temperatureConverged(gMax,iMax,eMax));   crystallite_temperatureConverged = .false.
- 
- allocate(crystallite_output(maxval(crystallite_Noutput), &
-                             material_Ncrystallite)) ;                       crystallite_output = ''
- allocate(crystallite_sizePostResults(material_Ncrystallite)) ;     crystallite_sizePostResults = 0_pInt
- allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
-                             material_Ncrystallite)) ;               crystallite_sizePostResult = 0_pInt
- 
- if(.not. IO_open_file(file,material_configFile)) call IO_error (100) ! corrupt config file
- line = ''
- section = 0
- 
- do while (IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)     ! wind forward to <crystallite>
-   read(file,'(a1024)',END=100) line
- enddo
+!*** output variables ***!
 
- do                                                       ! read thru sections of phase part
-   read(file,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
-   if (IO_getTag(line,'[',']') /= '') then                ! next section
-     section = section + 1
-     output = 0                                           ! reset output counter
-   endif
-   if (section > 0) then
-     positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
-     select case(tag)
-       case ('(output)')
-         output = output + 1
-         crystallite_output(output,section) = IO_lc(IO_stringValue(line,positions,2))
-     end select
-   endif
- enddo
+!*** local variables ***!
+integer(pInt), dimension(1+2*maxNchunks) :: positions
+integer(pInt)               g, &                          ! grain number
+                            i, &                          ! integration point number
+                            e, &                          ! element number
+                            gMax, &                       ! maximum number of grains
+                            iMax, &                       ! maximum number of integration points
+                            eMax, &                       ! maximum number of elements
+                            nMax, &                       ! maximum number of ip neighbors
+                            myNgrains, &                  ! number of grains in current IP
+                            myCrystallite, &              ! crystallite of current elem
+                            section, &
+                            f, &
+                            j, &
+                            k, &
+                            p, &
+                            output, &
+                            mySize, &
+                            myStructure, &                ! lattice structure 
+                            myPhase, &
+                            myMat, &
+                            index_myFamily
+character(len=64)           tag
+character(len=1024)         line
+
+
+write(6,*)
+write(6,*) '<<<+-  crystallite init  -+>>>'
+write(6,*) '$Id$'
+write(6,*)
+
+
+gMax = homogenization_maxNgrains
+iMax = mesh_maxNips
+eMax = mesh_NcpElems
+nMax = mesh_maxNipNeighbors
+
+allocate(crystallite_Temperature(gMax,iMax,eMax));                     crystallite_Temperature = Temperature
+allocate(crystallite_partionedTemperature0(gMax,iMax,eMax)); crystallite_partionedTemperature0 = 0.0_pReal
+allocate(crystallite_subTemperature0(gMax,iMax,eMax));             crystallite_subTemperature0 = 0.0_pReal
+allocate(crystallite_dotTemperature(gMax,iMax,eMax));               crystallite_dotTemperature = 0.0_pReal
+allocate(crystallite_Tstar0_v(6,gMax,iMax,eMax));                         crystallite_Tstar0_v = 0.0_pReal
+allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax));       crystallite_partionedTstar0_v = 0.0_pReal
+allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax));                   crystallite_subTstar0_v = 0.0_pReal
+allocate(crystallite_Tstar_v(6,gMax,iMax,eMax));                           crystallite_Tstar_v = 0.0_pReal
+allocate(crystallite_P(3,3,gMax,iMax,eMax));                                     crystallite_P = 0.0_pReal
+allocate(crystallite_F0(3,3,gMax,iMax,eMax));                                   crystallite_F0 = 0.0_pReal
+allocate(crystallite_partionedF0(3,3,gMax,iMax,eMax));                 crystallite_partionedF0 = 0.0_pReal
+allocate(crystallite_partionedF(3,3,gMax,iMax,eMax));                   crystallite_partionedF = 0.0_pReal
+allocate(crystallite_subF0(3,3,gMax,iMax,eMax));                             crystallite_subF0 = 0.0_pReal
+allocate(crystallite_subF(3,3,gMax,iMax,eMax));                               crystallite_subF = 0.0_pReal
+allocate(crystallite_Fp0(3,3,gMax,iMax,eMax));                                 crystallite_Fp0 = 0.0_pReal
+allocate(crystallite_partionedFp0(3,3,gMax,iMax,eMax));               crystallite_partionedFp0 = 0.0_pReal
+allocate(crystallite_subFp0(3,3,gMax,iMax,eMax));                           crystallite_subFp0 = 0.0_pReal
+allocate(crystallite_Fp(3,3,gMax,iMax,eMax));                                   crystallite_Fp = 0.0_pReal
+allocate(crystallite_invFp(3,3,gMax,iMax,eMax));                             crystallite_invFp = 0.0_pReal
+allocate(crystallite_Fe(3,3,gMax,iMax,eMax));                                   crystallite_Fe = 0.0_pReal
+allocate(crystallite_Lp0(3,3,gMax,iMax,eMax));                                 crystallite_Lp0 = 0.0_pReal
+allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax));               crystallite_partionedLp0 = 0.0_pReal
+allocate(crystallite_subLp0(3,3,gMax,iMax,eMax));                           crystallite_subLp0 = 0.0_pReal
+allocate(crystallite_Lp(3,3,gMax,iMax,eMax));                                   crystallite_Lp = 0.0_pReal
+allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax));                           crystallite_dPdF = 0.0_pReal
+allocate(crystallite_dPdF0(3,3,3,3,gMax,iMax,eMax));                         crystallite_dPdF0 = 0.0_pReal
+allocate(crystallite_partioneddPdF0(3,3,3,3,gMax,iMax,eMax));       crystallite_partioneddPdF0 = 0.0_pReal
+allocate(crystallite_fallbackdPdF(3,3,3,3,gMax,iMax,eMax));           crystallite_fallbackdPdF = 0.0_pReal
+allocate(crystallite_dt(gMax,iMax,eMax));                                       crystallite_dt = 0.0_pReal
+allocate(crystallite_subdt(gMax,iMax,eMax));                                 crystallite_subdt = 0.0_pReal
+allocate(crystallite_subFrac(gMax,iMax,eMax));                             crystallite_subFrac = 0.0_pReal
+allocate(crystallite_subStep(gMax,iMax,eMax));                             crystallite_subStep = 0.0_pReal
+allocate(crystallite_statedamper(gMax,iMax,eMax));                     crystallite_statedamper = 1.0_pReal
+allocate(crystallite_symmetryID(gMax,iMax,eMax));                       crystallite_symmetryID = 0.0_pReal !NEW
+allocate(crystallite_orientation(4,gMax,iMax,eMax));                   crystallite_orientation = 0.0_pReal
+allocate(crystallite_orientation0(4,gMax,iMax,eMax));                 crystallite_orientation0 = 0.0_pReal
+allocate(crystallite_rotation(4,gMax,iMax,eMax));                         crystallite_rotation = 0.0_pReal
+allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax));        crystallite_disorientation = 0.0_pReal
+allocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
+allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
+allocate(crystallite_todo(gMax,iMax,eMax));                                   crystallite_todo = .false.
+allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
+allocate(crystallite_stateConverged(gMax,iMax,eMax));               crystallite_stateConverged = .false.
+allocate(crystallite_temperatureConverged(gMax,iMax,eMax));   crystallite_temperatureConverged = .false.
+
+allocate(crystallite_output(maxval(crystallite_Noutput), &
+                            material_Ncrystallite)) ;                       crystallite_output = ''
+allocate(crystallite_sizePostResults(material_Ncrystallite)) ;     crystallite_sizePostResults = 0_pInt
+allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
+                            material_Ncrystallite)) ;               crystallite_sizePostResult = 0_pInt
+
+
+if(.not. IO_open_file(file,material_configFile)) call IO_error (100) ! corrupt config file
+line = ''
+section = 0
+
+do while (IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)     ! wind forward to <crystallite>
+  read(file,'(a1024)',END=100) line
+enddo
+
+do                                                       ! read thru sections of phase part
+  read(file,'(a1024)',END=100) line
+  if (IO_isBlank(line)) cycle                            ! skip empty lines
+  if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+  if (IO_getTag(line,'[',']') /= '') then                ! next section
+    section = section + 1
+    output = 0                                           ! reset output counter
+  endif
+  if (section > 0) then
+    positions = IO_stringPos(line,maxNchunks)
+    tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+    select case(tag)
+      case ('(output)')
+        output = output + 1
+        crystallite_output(output,section) = IO_lc(IO_stringValue(line,positions,2))
+    end select
+  endif
+enddo
 
 100 close(file)
- do i = 1,material_Ncrystallite                        ! sanity checks
- enddo
 
- do i = 1,material_Ncrystallite
-   do j = 1,crystallite_Noutput(i)
-     select case(crystallite_output(j,i))
-       case('phase')
-         mySize = 1
-       case('volume')
-         mySize = 1
-       case('orientation')   ! orientation as quaternion
-         mySize = 4
-       case('eulerangles')   ! Bunge Euler angles
-         mySize = 3
-       case('grainrotation') ! Deviation from initial grain orientation in axis-angle form (angle in degrees)
-         mySize = 4
-       case('defgrad','f','fe','fp','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
-         mySize = 9
-       case default
-         mySize = 0      
-     end select
+do i = 1,material_Ncrystallite                        ! sanity checks
+enddo
 
-     if (mySize > 0_pInt) then                               ! any meaningful output found
-       crystallite_sizePostResult(j,i) = mySize
-       crystallite_sizePostResults(i) = crystallite_sizePostResults(i) + mySize
-     endif
-   enddo
- enddo
- crystallite_maxSizePostResults = maxval(crystallite_sizePostResults)
+do i = 1,material_Ncrystallite
+  do j = 1,crystallite_Noutput(i)
+    select case(crystallite_output(j,i))
+      case('phase')
+        mySize = 1
+      case('volume')
+        mySize = 1
+      case('orientation')   ! orientation as quaternion
+        mySize = 4
+      case('eulerangles')   ! Bunge Euler angles
+        mySize = 3
+      case('grainrotation') ! Deviation from initial grain orientation in axis-angle form (angle in degrees)
+        mySize = 4
+      case('defgrad','f','fe','fp','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
+        mySize = 9
+      case default
+        mySize = 0      
+    end select
+  
+    if (mySize > 0_pInt) then                               ! any meaningful output found
+      crystallite_sizePostResult(j,i) = mySize
+      crystallite_sizePostResults(i) = crystallite_sizePostResults(i) + mySize
+    endif
+  enddo
+enddo
+crystallite_maxSizePostResults = maxval(crystallite_sizePostResults)
 
 ! write description file for crystallite output
 
- if(.not. IO_open_jobFile(file,'outputCrystallite')) call IO_error (50) ! problems in writing file
+if(.not. IO_open_jobFile(file,'outputCrystallite')) call IO_error (50) ! problems in writing file
  
- do p = 1,material_Ncrystallite
-   write(file,*)
-   write(file,'(a)') '['//trim(crystallite_name(p))//']'
-   write(file,*)
-   do e = 1,crystallite_Noutput(p)
-     write(file,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
-   enddo
- enddo
+do p = 1,material_Ncrystallite
+  write(file,*)
+  write(file,'(a)') '['//trim(crystallite_name(p))//']'
+  write(file,*)
+  do e = 1,crystallite_Noutput(p)
+    write(file,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
+  enddo
+enddo
 
- close(file)
+close(file)
 
+!$OMP PARALLEL PRIVATE(myNgrains,myPhase,myStructure)
 
- !$OMP PARALLEL DO
- do e = FEsolving_execElem(1),FEsolving_execElem(2)                       ! iterate over all cp elements
-   myNgrains = homogenization_Ngrains(mesh_element(3,e))                  ! look up homogenization-->grainCount
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                     ! iterate over IPs of this element
-     do g = 1,myNgrains
-       crystallite_partionedTemperature0(g,i,e) = Temperature                       ! isothermal assumption
-       crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(:,g,i,e))    ! plastic def gradient reflects init orientation
-       crystallite_Fe(:,:,g,i,e)  = math_transpose3x3(crystallite_Fp0(:,:,g,i,e))
-       crystallite_F0(:,:,g,i,e)  = math_I3
-       crystallite_partionedFp0(:,:,g,i,e) = crystallite_Fp0(:,:,g,i,e)
-       crystallite_partionedF0(:,:,g,i,e)  = crystallite_F0(:,:,g,i,e)
-       crystallite_partionedF(:,:,g,i,e)   = crystallite_F0(:,:,g,i,e)
-       crystallite_requested(g,i,e)        = .true.
-       crystallite_localConstitution(g,i,e) = phase_localConstitution(material_phase(g,i,e))
-     enddo
-   enddo
- enddo
- !$OMPEND PARALLEL DO
-
-! Initialize crystallite_symmetryID(g,i,e)
-!$OMP PARALLEL DO 
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-      do g = 1,homogenization_Ngrains(mesh_element(3,e))
-         myPhase = material_phase(g,i,e)
-         myMat   = phase_constitutionInstance(myPhase)
-         select case (phase_constitution(myPhase))
-                case (constitutive_phenopowerlaw_label)
-                  myStructure = constitutive_phenopowerlaw_structure(myMat)
-                case (constitutive_titanmod_label)
-                  myStructure = constitutive_titanmod_structure(myMat)
-                case (constitutive_dislotwin_label)
-                  myStructure = constitutive_dislotwin_structure(myMat)
-                case (constitutive_nonlocal_label)
-                  myStructure = constitutive_nonlocal_structure(myMat)
-                case default
-                  myStructure = -1_pInt ! does this happen for j2 material?
-              end select
-         if (myStructure>0_pInt) then   
-           crystallite_symmetryID(g,i,e) = lattice_symmetryType(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2  
-         endif
+!$OMP DO
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)                       ! iterate over all cp elements
+    myNgrains = homogenization_Ngrains(mesh_element(3,e))                  ! look up homogenization-->grainCount
+    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                     ! iterate over IPs of this element
+      do g = 1,myNgrains
+        crystallite_partionedTemperature0(g,i,e) = Temperature                       ! isothermal assumption
+        crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(:,g,i,e))    ! plastic def gradient reflects init orientation
+        crystallite_Fe(:,:,g,i,e)  = transpose(crystallite_Fp0(:,:,g,i,e))
+        crystallite_F0(:,:,g,i,e)  = math_I3
+        crystallite_partionedFp0(:,:,g,i,e) = crystallite_Fp0(:,:,g,i,e)
+        crystallite_partionedF0(:,:,g,i,e)  = crystallite_F0(:,:,g,i,e)
+        crystallite_partionedF(:,:,g,i,e)   = crystallite_F0(:,:,g,i,e)
+        crystallite_requested(g,i,e)        = .true.
+        crystallite_localConstitution(g,i,e) = phase_localConstitution(material_phase(g,i,e))
       enddo
     enddo
   enddo
-!$OMPEND PARALLEL DO         
+!$OMP ENDDO
+
+
+! Initialize crystallite_symmetryID(g,i,e)
+
+!$OMP DO
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    myNgrains = homogenization_Ngrains(mesh_element(3,e))
+    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+      do g = 1,myNgrains
+        myPhase = material_phase(g,i,e)
+        myMat   = phase_constitutionInstance(myPhase)
+        select case (phase_constitution(myPhase))
+          case (constitutive_phenopowerlaw_label)
+            myStructure = constitutive_phenopowerlaw_structure(myMat)
+          case (constitutive_titanmod_label)
+            myStructure = constitutive_titanmod_structure(myMat)
+          case (constitutive_dislotwin_label)
+            myStructure = constitutive_dislotwin_structure(myMat)
+          case (constitutive_nonlocal_label)
+            myStructure = constitutive_nonlocal_structure(myMat)
+          case default
+            myStructure = -1_pInt ! does this happen for j2 material?
+        end select
+        if (myStructure > 0_pInt) then   
+          crystallite_symmetryID(g,i,e) = lattice_symmetryType(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2  
+        endif
+      enddo
+    enddo
+  enddo
+!$OMP ENDDO   
+
+!$OMP END PARALLEL
  
-  call crystallite_orientations()
-  crystallite_orientation0 = crystallite_orientation  ! Store initial orientations for calculation of grain rotations
+call crystallite_orientations()
+crystallite_orientation0 = crystallite_orientation             ! Store initial orientations for calculation of grain rotations
 
-  call crystallite_stressAndItsTangent(.true.)                 ! request elastic answers
-  crystallite_fallbackdPdF = crystallite_dPdF                  ! use initial elastic stiffness as fallback
+call crystallite_stressAndItsTangent(.true.)                   ! request elastic answers
+crystallite_fallbackdPdF = crystallite_dPdF                    ! use initial elastic stiffness as fallback
  
-  !    *** Output to MARC output file ***
-  !$OMP CRITICAL (write2out)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Temperature:           ', shape(crystallite_Temperature)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_dotTemperature:        ', shape(crystallite_dotTemperature)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Lp:                    ', shape(crystallite_Lp)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_F0:                    ', shape(crystallite_F0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Fp0:                   ', shape(crystallite_Fp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Lp0:                   ', shape(crystallite_Lp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedF:            ', shape(crystallite_partionedF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedTemp0:        ', shape(crystallite_partionedTemperature0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedF0:           ', shape(crystallite_partionedF0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedFp0:          ', shape(crystallite_partionedFp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subF:                  ', shape(crystallite_subF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subTemperature0:       ', shape(crystallite_subTemperature0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_symmetryID:            ', shape(crystallite_symmetryID)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_P:                     ', shape(crystallite_P)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Tstar_v:               ', shape(crystallite_Tstar_v)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Tstar0_v:              ', shape(crystallite_Tstar0_v)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedTstar0_v:     ', shape(crystallite_partionedTstar0_v)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subTstar0_v:           ', shape(crystallite_subTstar0_v)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF0:                 ', shape(crystallite_dPdF0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partioneddPdF0:        ', shape(crystallite_partioneddPdF0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_fallbackdPdF:          ', shape(crystallite_fallbackdPdF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_orientation0:          ', shape(crystallite_orientation0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_rotation:              ', shape(crystallite_rotation)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_disorientation:        ', shape(crystallite_disorientation)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_dt:                    ', shape(crystallite_dt)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subdt:                 ', shape(crystallite_subdt)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subFrac:               ', shape(crystallite_subFrac)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subStep:               ', shape(crystallite_subStep)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_stateDamper:           ', shape(crystallite_stateDamper)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_localConstitution:     ', shape(crystallite_localConstitution)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_requested:             ', shape(crystallite_requested)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_todo:                  ', shape(crystallite_todo)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_converged:             ', shape(crystallite_converged)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_stateConverged:        ', shape(crystallite_stateConverged)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_temperatureConverged:  ', shape(crystallite_temperatureConverged)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_sizePostResults:       ', shape(crystallite_sizePostResults)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_sizePostResult:        ', shape(crystallite_sizePostResult)
-    write(6,*)
-    write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localConstitution)
-    call flush(6)
-  !$OMPEND CRITICAL (write2out)
+!    *** Output to MARC output file ***
+write(6,'(a35,x,7(i5,x))') 'crystallite_Temperature:           ', shape(crystallite_Temperature)
+write(6,'(a35,x,7(i5,x))') 'crystallite_dotTemperature:        ', shape(crystallite_dotTemperature)
+write(6,'(a35,x,7(i5,x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
+write(6,'(a35,x,7(i5,x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
+write(6,'(a35,x,7(i5,x))') 'crystallite_Lp:                    ', shape(crystallite_Lp)
+write(6,'(a35,x,7(i5,x))') 'crystallite_F0:                    ', shape(crystallite_F0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_Fp0:                   ', shape(crystallite_Fp0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_Lp0:                   ', shape(crystallite_Lp0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_partionedF:            ', shape(crystallite_partionedF)
+write(6,'(a35,x,7(i5,x))') 'crystallite_partionedTemp0:        ', shape(crystallite_partionedTemperature0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_partionedF0:           ', shape(crystallite_partionedF0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_partionedFp0:          ', shape(crystallite_partionedFp0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subF:                  ', shape(crystallite_subF)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subTemperature0:       ', shape(crystallite_subTemperature0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_symmetryID:            ', shape(crystallite_symmetryID)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_P:                     ', shape(crystallite_P)
+write(6,'(a35,x,7(i5,x))') 'crystallite_Tstar_v:               ', shape(crystallite_Tstar_v)
+write(6,'(a35,x,7(i5,x))') 'crystallite_Tstar0_v:              ', shape(crystallite_Tstar0_v)
+write(6,'(a35,x,7(i5,x))') 'crystallite_partionedTstar0_v:     ', shape(crystallite_partionedTstar0_v)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subTstar0_v:           ', shape(crystallite_subTstar0_v)
+write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
+write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF0:                 ', shape(crystallite_dPdF0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_partioneddPdF0:        ', shape(crystallite_partioneddPdF0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_fallbackdPdF:          ', shape(crystallite_fallbackdPdF)
+write(6,'(a35,x,7(i5,x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
+write(6,'(a35,x,7(i5,x))') 'crystallite_orientation0:          ', shape(crystallite_orientation0)
+write(6,'(a35,x,7(i5,x))') 'crystallite_rotation:              ', shape(crystallite_rotation)
+write(6,'(a35,x,7(i5,x))') 'crystallite_disorientation:        ', shape(crystallite_disorientation)
+write(6,'(a35,x,7(i5,x))') 'crystallite_dt:                    ', shape(crystallite_dt)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subdt:                 ', shape(crystallite_subdt)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subFrac:               ', shape(crystallite_subFrac)
+write(6,'(a35,x,7(i5,x))') 'crystallite_subStep:               ', shape(crystallite_subStep)
+write(6,'(a35,x,7(i5,x))') 'crystallite_stateDamper:           ', shape(crystallite_stateDamper)
+write(6,'(a35,x,7(i5,x))') 'crystallite_localConstitution:     ', shape(crystallite_localConstitution)
+write(6,'(a35,x,7(i5,x))') 'crystallite_requested:             ', shape(crystallite_requested)
+write(6,'(a35,x,7(i5,x))') 'crystallite_todo:                  ', shape(crystallite_todo)
+write(6,'(a35,x,7(i5,x))') 'crystallite_converged:             ', shape(crystallite_converged)
+write(6,'(a35,x,7(i5,x))') 'crystallite_stateConverged:        ', shape(crystallite_stateConverged)
+write(6,'(a35,x,7(i5,x))') 'crystallite_temperatureConverged:  ', shape(crystallite_temperatureConverged)
+write(6,'(a35,x,7(i5,x))') 'crystallite_sizePostResults:       ', shape(crystallite_sizePostResults)
+write(6,'(a35,x,7(i5,x))') 'crystallite_sizePostResult:        ', shape(crystallite_sizePostResult)
+write(6,*)
+write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localConstitution)
+call flush(6)
 
-  call debug_info()
-  call debug_reset()
+call debug_info()
+call debug_reset()
 
-  return
+return
 
 endsubroutine
 
@@ -401,319 +415,323 @@ endsubroutine
 !********************************************************************
 subroutine crystallite_stressAndItsTangent(updateJaco)
 
-  !*** variables and functions from other modules ***!
-  use prec, only:                                       pInt, &
-                                                        pReal
-  use numerics, only:                                   subStepMinCryst, &
-                                                        subStepSizeCryst, &
-                                                        stepIncreaseCryst, &
-                                                        pert_Fg, &
-                                                        pert_method, &
-                                                        nCryst, &
-                                                        iJacoStiffness, &
-                                                        integratorStiffness, &
-                                                        integrator
-  use debug, only:                                      debugger, &
-                                                        selectiveDebugger, &
-                                                        verboseDebugger, &
-                                                        debug_e, &
-                                                        debug_i, &
-                                                        debug_g, &
-                                                        debug_CrystalliteLoopDistribution
-  use IO, only:                                         IO_warning
-  use math, only:                                       math_inv3x3, &
-                                                        math_mul33x33, &
-                                                        math_mul66x6, &
-                                                        math_Mandel6to33, &
-                                                        math_Mandel33to6, &
-                                                        math_I3
-  use FEsolving, only:                                  FEsolving_execElem, & 
-                                                        FEsolving_execIP, &
-                                                        theInc, &
-                                                        cycleCounter
-  use mesh, only:                                       mesh_element, &
-                                                        mesh_NcpElems, &
-                                                        mesh_maxNips
-  use material, only:                                   homogenization_Ngrains, &
-                                                        homogenization_maxNgrains
-  use constitutive, only:                               constitutive_maxSizeState, &
-                                                        constitutive_maxSizeDotState, &
-                                                        constitutive_sizeState, &
-                                                        constitutive_sizeDotState, &
-                                                        constitutive_state, &
-                                                        constitutive_state_backup, &
-                                                        constitutive_subState0, &
-                                                        constitutive_partionedState0, &
-                                                        constitutive_homogenizedC, &
-                                                        constitutive_dotState, &
-                                                        constitutive_dotState_backup, &
-                                                        constitutive_collectDotState, &
-                                                        constitutive_dotTemperature, &
-                                                        constitutive_microstructure
+!*** variables and functions from other modules ***!
+use prec, only:                                       pInt, &
+                                                      pReal
+use numerics, only:                                   subStepMinCryst, &
+                                                      subStepSizeCryst, &
+                                                      stepIncreaseCryst, &
+                                                      pert_Fg, &
+                                                      pert_method, &
+                                                      nCryst, &
+                                                      iJacoStiffness, &
+                                                      integratorStiffness, &
+                                                      integrator
+use debug, only:                                      debugger, &
+                                                      selectiveDebugger, &
+                                                      verboseDebugger, &
+                                                      debug_e, &
+                                                      debug_i, &
+                                                      debug_g, &
+                                                      debug_CrystalliteLoopDistribution
+use IO, only:                                         IO_warning
+use math, only:                                       math_inv3x3, &
+                                                      math_mul33x33, &
+                                                      math_mul66x6, &
+                                                      math_Mandel6to33, &
+                                                      math_Mandel33to6, &
+                                                      math_I3
+use FEsolving, only:                                  FEsolving_execElem, & 
+                                                      FEsolving_execIP, &
+                                                      theInc, &
+                                                      cycleCounter
+use mesh, only:                                       mesh_element, &
+                                                      mesh_NcpElems, &
+                                                      mesh_maxNips
+use material, only:                                   homogenization_Ngrains, &
+                                                      homogenization_maxNgrains
+use constitutive, only:                               constitutive_maxSizeState, &
+                                                      constitutive_maxSizeDotState, &
+                                                      constitutive_sizeState, &
+                                                      constitutive_sizeDotState, &
+                                                      constitutive_state, &
+                                                      constitutive_state_backup, &
+                                                      constitutive_subState0, &
+                                                      constitutive_partionedState0, &
+                                                      constitutive_homogenizedC, &
+                                                      constitutive_dotState, &
+                                                      constitutive_dotState_backup, &
+                                                      constitutive_collectDotState, &
+                                                      constitutive_dotTemperature, &
+                                                      constitutive_microstructure
 
-  implicit none
+implicit none
 
-  !*** input variables ***!
-  logical, intent(in) ::                                updateJaco                    ! flag indicating wehther we want to update the Jacobian (stiffness) or not
+!*** input variables ***!
+logical, intent(in) ::                                updateJaco                    ! flag indicating wehther we want to update the Jacobian (stiffness) or not
 
-  !*** output variables ***!
+!*** output variables ***!
 
-  !*** local variables ***!
-  real(pReal)                                           myTemperature, &              ! local copy of the temperature
-                                                        myPert, &                     ! perturbation with correct sign
-                                                        formerSubStep
-  real(pReal), dimension(3,3) ::                        invFp, &                      ! inverse of the plastic deformation gradient
-                                                        Fe_guess, &                   ! guess for elastic deformation gradient
-                                                        Tstar                         ! 2nd Piola-Kirchhoff stress tensor
-  real(pReal), dimension(9,9) ::                        dPdF99
-  real(pReal), dimension(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        dPdF_perturbation1, &
-                                                        dPdF_perturbation2
-  real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        F_backup, &
-                                                        Fp_backup, &
-                                                        InvFp_backup, &
-                                                        Fe_backup, &
-                                                        Lp_backup, &
-                                                        P_backup
-  real(pReal), dimension(6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        Tstar_v_backup
-  real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        Temperature_backup
-  integer(pInt)                                         NiterationCrystallite, &      ! number of iterations in crystallite loop
-                                                        e, &                          ! element index
-                                                        i, &                          ! integration point index
-                                                        g, &                          ! grain index
-                                                        k, &
-                                                        l, &
-                                                        perturbation , &              ! loop counter for forward,backward perturbation mode
-                                                        myNgrains, &
-                                                        mySizeState, &
-                                                        mySizeDotState
-  logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                        convergenceFlag_backup
+!*** local variables ***!
+real(pReal)                                           myTemperature, &              ! local copy of the temperature
+                                                      myPert, &                     ! perturbation with correct sign
+                                                      formerSubStep
+real(pReal), dimension(3,3) ::                        invFp, &                      ! inverse of the plastic deformation gradient
+                                                      Fe_guess, &                   ! guess for elastic deformation gradient
+                                                      Tstar                         ! 2nd Piola-Kirchhoff stress tensor
+real(pReal), dimension(9,9) ::                        dPdF99
+real(pReal), dimension(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                                                      dPdF_perturbation1, &
+                                                      dPdF_perturbation2
+real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                                                      F_backup, &
+                                                      Fp_backup, &
+                                                      InvFp_backup, &
+                                                      Fe_backup, &
+                                                      Lp_backup, &
+                                                      P_backup
+real(pReal), dimension(6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                                                      Tstar_v_backup
+real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                                                      Temperature_backup
+integer(pInt)                                         NiterationCrystallite, &      ! number of iterations in crystallite loop
+                                                      e, &                          ! element index
+                                                      i, &                          ! integration point index
+                                                      g, &                          ! grain index
+                                                      k, &
+                                                      l, &
+                                                      perturbation , &              ! loop counter for forward,backward perturbation mode
+                                                      myNgrains, &
+                                                      mySizeState, &
+                                                      mySizeDotState
+logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
+                                                      convergenceFlag_backup
 
-  ! --+>> INITIALIZE TO STARTING CONDITION <<+--
-  
-  crystallite_subStep = 0.0_pReal
+! --+>> INITIALIZE TO STARTING CONDITION <<+--
 
-  !$OMP PARALLEL DO
-    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
+crystallite_subStep = 0.0_pReal
+
+!$OMP PARALLEL DO PRIVATE(myNgrains)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
+    myNgrains = homogenization_Ngrains(mesh_element(3,e))
+    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
+      do g = 1,myNgrains
+        if (crystallite_requested(g,i,e)) then                                                          ! initialize restoration point of ...
+          crystallite_subTemperature0(g,i,e) = crystallite_partionedTemperature0(g,i,e)                 ! ...temperature
+          constitutive_subState0(g,i,e)%p   = constitutive_partionedState0(g,i,e)%p                     ! ...microstructure
+          crystallite_subFp0(:,:,g,i,e)     = crystallite_partionedFp0(:,:,g,i,e)                       ! ...plastic def grad
+          crystallite_subLp0(:,:,g,i,e)     = crystallite_partionedLp0(:,:,g,i,e)                       ! ...plastic velocity grad
+          crystallite_dPdF0(:,:,:,:,g,i,e)  = crystallite_partioneddPdF0(:,:,:,:,g,i,e)                 ! ...stiffness
+          crystallite_subF0(:,:,g,i,e)      = crystallite_partionedF0(:,:,g,i,e)                        ! ...def grad
+          crystallite_subTstar0_v(:,g,i,e)  = crystallite_partionedTstar0_v(:,g,i,e)                    !...2nd PK stress
+
+          crystallite_subFrac(g,i,e) = 0.0_pReal
+          crystallite_subStep(g,i,e) = 1.0_pReal/subStepSizeCryst
+          crystallite_todo(g,i,e) = .true.
+          crystallite_converged(g,i,e) = .false.                                                        ! pretend failed step of twice the required size
+        endif
+      enddo
+    enddo
+  enddo
+!$OMP END PARALLEL DO
+
+
+! --+>> CRYSTALLITE CUTBACK LOOP <<+--
+
+NiterationCrystallite = 0_pInt
+do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinCryst))  ! cutback loop for crystallites
+
+  !$OMP PARALLEL DO PRIVATE(myNgrains,formerSubStep)
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
-      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
+      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
         do g = 1,myNgrains
-          if (crystallite_requested(g,i,e)) then                                                          ! initialize restoration point of ...
-            crystallite_subTemperature0(g,i,e) = crystallite_partionedTemperature0(g,i,e)                 ! ...temperature
-            constitutive_subState0(g,i,e)%p   = constitutive_partionedState0(g,i,e)%p                     ! ...microstructure
-            crystallite_subFp0(:,:,g,i,e)     = crystallite_partionedFp0(:,:,g,i,e)                       ! ...plastic def grad
-            crystallite_subLp0(:,:,g,i,e)     = crystallite_partionedLp0(:,:,g,i,e)                       ! ...plastic velocity grad
-            crystallite_dPdF0(:,:,:,:,g,i,e)  = crystallite_partioneddPdF0(:,:,:,:,g,i,e)                 ! ...stiffness
-            crystallite_subF0(:,:,g,i,e)      = crystallite_partionedF0(:,:,g,i,e)                        ! ...def grad
-            crystallite_subTstar0_v(:,g,i,e)  = crystallite_partionedTstar0_v(:,g,i,e)                    !...2nd PK stress
-
-            crystallite_subFrac(g,i,e) = 0.0_pReal
-            crystallite_subStep(g,i,e) = 1.0_pReal/subStepSizeCryst
-            crystallite_todo(g,i,e) = .true.
-            crystallite_converged(g,i,e) = .false.                                                        ! pretend failed step of twice the required size
+          
+          ! --- wind forward ---
+          
+          if (crystallite_converged(g,i,e)) then
+            if (debugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
+              !$OMP CRITICAL (write2out)
+                write(6,'(a21,f10.8,a32,f10.8,a35)') 'winding forward from ', &
+                  crystallite_subFrac(g,i,e),' to current crystallite_subfrac ', &
+                  crystallite_subFrac(g,i,e)+crystallite_subStep(g,i,e),' in crystallite_stressAndItsTangent'
+                write(6,*)
+              !$OMP END CRITICAL (write2out)
+            endif
+            crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
+            formerSubStep = crystallite_subStep(g,i,e)
+            crystallite_subStep(g,i,e) = min( 1.0_pReal - crystallite_subFrac(g,i,e), &
+                                              stepIncreaseCryst * crystallite_subStep(g,i,e) )
+            if (crystallite_subStep(g,i,e) > subStepMinCryst) then
+              crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)                       ! wind forward...
+              crystallite_subF0(:,:,g,i,e) = crystallite_subF(:,:,g,i,e)                                ! ...def grad
+              crystallite_subFp0(:,:,g,i,e) = crystallite_Fp(:,:,g,i,e)                                 ! ...plastic def grad
+              crystallite_subLp0(:,:,g,i,e) = crystallite_Lp(:,:,g,i,e)                                 ! ...plastic velocity gradient
+              constitutive_subState0(g,i,e)%p = constitutive_state(g,i,e)%p                             ! ...microstructure
+              crystallite_subTstar0_v(:,g,i,e) = crystallite_Tstar_v(:,g,i,e)                           ! ...2nd PK stress
+            elseif (formerSubStep > subStepMinCryst) then                                               ! this crystallite just converged
+              !$OMP CRITICAL (distributionCrystallite)
+                debug_CrystalliteLoopDistribution(min(nCryst+1,NiterationCrystallite)) = &
+                  debug_CrystalliteLoopDistribution(min(nCryst+1,NiterationCrystallite)) + 1
+              !$OMP END CRITICAL (distributionCrystallite)
+            endif
+          
+          ! --- cutback ---
+          
+          else
+            crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                  ! cut step in half and restore...
+            crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e)                         ! ...temperature
+            crystallite_Fp(:,:,g,i,e) = crystallite_subFp0(:,:,g,i,e)                                   ! ...plastic def grad
+            crystallite_invFp(:,:,g,i,e) = math_inv3x3(crystallite_Fp(:,:,g,i,e))
+            crystallite_Lp(:,:,g,i,e) = crystallite_subLp0(:,:,g,i,e)                                   ! ...plastic velocity grad
+            constitutive_state(g,i,e)%p = constitutive_subState0(g,i,e)%p                               ! ...microstructure
+            crystallite_Tstar_v(:,g,i,e) = crystallite_subTstar0_v(:,g,i,e)                             ! ...2nd PK stress
+                                                                                                        ! cant restore dotState here, since not yet calculated in first cutback after initialization
+            if (debugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
+              !$OMP CRITICAL (write2out)
+                write(6,'(a78,f10.8)') 'cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
+                                       crystallite_subStep(g,i,e)
+                write(6,*)
+              !$OMP END CRITICAL (write2out)
+            endif
           endif
+
+          ! --- prepare for integration ---
+          
+          crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                        ! still on track or already done (beyond repair)
+          if (crystallite_todo(g,i,e)) then
+            crystallite_subF(:,:,g,i,e)  = crystallite_subF0(:,:,g,i,e) + &
+                                           crystallite_subStep(g,i,e) * &
+                                           (crystallite_partionedF(:,:,g,i,e) - crystallite_partionedF0(:,:,g,i,e))
+            crystallite_Fe(:,:,g,i,e)    = math_mul33x33(crystallite_subF(:,:,g,i,e),crystallite_invFp(:,:,g,i,e))
+            crystallite_subdt(g,i,e)     = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
+            crystallite_converged(g,i,e) = .false.                                                      ! start out non-converged
+          endif
+          
         enddo
       enddo
     enddo
-  !$OMPEND PARALLEL DO
- 
+  !$OMP END PARALLEL DO
 
-  ! --+>> CRYSTALLITE CUTBACK LOOP <<+--
-
-  NiterationCrystallite = 0_pInt
-  do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinCryst))  ! cutback loop for crystallites
-
-    !$OMP PARALLEL DO
-      do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
-        myNgrains = homogenization_Ngrains(mesh_element(3,e))
-        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
-          do g = 1,myNgrains
-            selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g) 
-            
-            ! --- wind forward ---
-            
-            if (crystallite_converged(g,i,e)) then
-              if (debugger .and. selectiveDebugger) then
-                !$OMP CRITICAL (write2out)
-                  write(6,'(a21,f10.8,a32,f10.8,a35)') 'winding forward from ', &
-                    crystallite_subFrac(g,i,e),' to current crystallite_subfrac ', &
-                    crystallite_subFrac(g,i,e)+crystallite_subStep(g,i,e),' in crystallite_stressAndItsTangent'
-                  write(6,*)
-                !$OMPEND CRITICAL (write2out)
-              endif
-              crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
-              formerSubStep = crystallite_subStep(g,i,e)
-              crystallite_subStep(g,i,e) = min( 1.0_pReal - crystallite_subFrac(g,i,e), &
-                                                stepIncreaseCryst * crystallite_subStep(g,i,e) )
-              if (crystallite_subStep(g,i,e) > subStepMinCryst) then
-                crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)                       ! wind forward...
-                crystallite_subF0(:,:,g,i,e) = crystallite_subF(:,:,g,i,e)                                ! ...def grad
-                crystallite_subFp0(:,:,g,i,e) = crystallite_Fp(:,:,g,i,e)                                 ! ...plastic def grad
-                crystallite_subLp0(:,:,g,i,e) = crystallite_Lp(:,:,g,i,e)                                 ! ...plastic velocity gradient
-                constitutive_subState0(g,i,e)%p = constitutive_state(g,i,e)%p                             ! ...microstructure
-                crystallite_subTstar0_v(:,g,i,e) = crystallite_Tstar_v(:,g,i,e)                           ! ...2nd PK stress
-              elseif (formerSubStep > subStepMinCryst) then                                               ! this crystallite just converged
-               !$OMP CRITICAL (distributionCrystallite)
-                 debug_CrystalliteLoopDistribution(min(nCryst+1,NiterationCrystallite)) = &
-                   debug_CrystalliteLoopDistribution(min(nCryst+1,NiterationCrystallite)) + 1
-               !$OMPEND CRITICAL (distributionCrystallite)
-              endif
-            
-            ! --- cutback ---
-            
-            else
-              crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                  ! cut step in half and restore...
-              crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e)                         ! ...temperature
-              crystallite_Fp(:,:,g,i,e) = crystallite_subFp0(:,:,g,i,e)                                   ! ...plastic def grad
-              crystallite_invFp(:,:,g,i,e) = math_inv3x3(crystallite_Fp(:,:,g,i,e))
-              crystallite_Lp(:,:,g,i,e) = crystallite_subLp0(:,:,g,i,e)                                   ! ...plastic velocity grad
-              constitutive_state(g,i,e)%p = constitutive_subState0(g,i,e)%p                               ! ...microstructure
-              crystallite_Tstar_v(:,g,i,e) = crystallite_subTstar0_v(:,g,i,e)                             ! ...2nd PK stress
-                                                                                                          ! cant restore dotState here, since not yet calculated in first cutback after initialization
-              if (debugger .and. selectiveDebugger) then
-                !$OMP CRITICAL (write2out)
-                  write(6,'(a78,f10.8)') 'cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
-                                         crystallite_subStep(g,i,e)
-                  write(6,*)
-                !$OMPEND CRITICAL (write2out)
-              endif
-            endif
-
-            ! --- prepare for integration ---
-            
-            crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                     ! still on track or already done (beyond repair)
-            if (crystallite_todo(g,i,e)) then
-              crystallite_subF(:,:,g,i,e)  = crystallite_subF0(:,:,g,i,e) + &
-                                             crystallite_subStep(g,i,e) * &
-                                             (crystallite_partionedF(:,:,g,i,e) - crystallite_partionedF0(:,:,g,i,e))
-              crystallite_Fe(:,:,g,i,e)    = math_mul33x33(crystallite_subF(:,:,g,i,e),crystallite_invFp(:,:,g,i,e))
-              crystallite_subdt(g,i,e)     = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
-              crystallite_converged(g,i,e) = .false.                                                      ! start out non-converged
-            endif
-            
-          enddo
-        enddo
-      enddo
-    !$OMPEND PARALLEL DO
-
-    ! --- integrate ---
-    
-    if (any(crystallite_todo)) then
-      select case(integrator)
-        case (1)
-          call crystallite_integrateStateFPI(1)
-        case (2)
-          call crystallite_integrateStateEuler(1)
-        case (3)
-          call crystallite_integrateStateAdaptiveEuler(1)
-        case (4)
-          call crystallite_integrateStateRK4(1)
-        case(5)
-          call crystallite_integrateStateRKCK45(1)
-      endselect
-    endif
-    
-    NiterationCrystallite = NiterationCrystallite + 1
-        
-  enddo                                                                                                   ! cutback loop
+  ! --- integrate ---
   
+  if (any(crystallite_todo)) then
+    select case(integrator)
+      case (1)
+        call crystallite_integrateStateFPI(1)
+      case (2)
+        call crystallite_integrateStateEuler(1)
+      case (3)
+        call crystallite_integrateStateAdaptiveEuler(1)
+      case (4)
+        call crystallite_integrateStateRK4(1)
+      case(5)
+        call crystallite_integrateStateRKCK45(1)
+    endselect
+  endif
   
-  ! --+>> CHECK FOR NON-CONVERGED CRYSTALLITES <<+--
+  NiterationCrystallite = NiterationCrystallite + 1
+      
+enddo                                                                                                   ! cutback loop
 
-  !$OMP PARALLEL DO
-    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
-      myNgrains = homogenization_Ngrains(mesh_element(3,e))
-      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
-        do g = 1,myNgrains
-          selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
-          if (.not. crystallite_converged(g,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
-            invFp = math_inv3x3(crystallite_partionedFp0(:,:,g,i,e))
-            Fe_guess = math_mul33x33(crystallite_partionedF(:,:,g,i,e),invFp)
-            Tstar = math_Mandel6to33( math_mul66x6( 0.5_pReal*constitutive_homogenizedC(g,i,e), &
-                                                    math_Mandel33to6( math_mul33x33(transpose(Fe_guess),Fe_guess) - math_I3 ) ) )
-            crystallite_P(:,:,g,i,e) = math_mul33x33(Fe_guess,math_mul33x33(Tstar,transpose(invFp)))
-          endif
-          if (debugger .and. selectiveDebugger) then
-            !$OMP CRITICAL (write2out)
-              write (6,*) '#############'
-              write (6,*) 'central solution of cryst_StressAndTangent'
-              write (6,*) '#############'
-              write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, crystallite_P(1:3,:,g,i,e)/1e6
-              write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, crystallite_Fp(1:3,:,g,i,e)
-              write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, crystallite_Lp(1:3,:,g,i,e)
-            !$OMPEND CRITICAL (write2out)
-          endif
-        enddo
+
+! --+>> CHECK FOR NON-CONVERGED CRYSTALLITES <<+--
+
+!$OMP PARALLEL DO PRIVATE(myNgrains,invFp,Fe_guess,Tstar)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
+    myNgrains = homogenization_Ngrains(mesh_element(3,e))
+    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
+      do g = 1,myNgrains
+        if (.not. crystallite_converged(g,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
+          invFp = math_inv3x3(crystallite_partionedFp0(:,:,g,i,e))
+          Fe_guess = math_mul33x33(crystallite_partionedF(:,:,g,i,e),invFp)
+          Tstar = math_Mandel6to33( math_mul66x6( 0.5_pReal*constitutive_homogenizedC(g,i,e), &
+                                                  math_Mandel33to6( math_mul33x33(transpose(Fe_guess),Fe_guess) - math_I3 ) ) )
+          crystallite_P(:,:,g,i,e) = math_mul33x33(Fe_guess,math_mul33x33(Tstar,transpose(invFp)))
+        endif
+        if (debugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
+          !$OMP CRITICAL (write2out)
+            write (6,*) '#############'
+            write (6,*) 'central solution of cryst_StressAndTangent'
+            write (6,*) '#############'
+            write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, crystallite_P(1:3,:,g,i,e)/1e6
+            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, crystallite_Fp(1:3,:,g,i,e)
+            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, crystallite_Lp(1:3,:,g,i,e)
+          !$OMP END CRITICAL (write2out)
+        endif
       enddo
     enddo
-  !$OMPEND PARALLEL DO
+  enddo
+!$OMP END PARALLEL DO
 
 
-  ! --+>> STIFFNESS CALCULATION <<+--
+! --+>> STIFFNESS CALCULATION <<+--
+
+if(updateJaco) then                                                                                     ! Jacobian required
   
-  if(updateJaco) then                                                                                     ! Jacobian required
-    
-    ! --- BACKUP ---
-    
-    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
+  ! --- BACKUP ---
+  
+  !$OMP PARALLEL DO PRIVATE(myNgrains,mySizeState,mySizeDotState)
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
-      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
+      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
         do g = 1,myNgrains
-          mySizeState = constitutive_sizeState(g,i,e)                                                     ! number of state variables for this grain
-          mySizeDotState = constitutive_sizeDotState(g,i,e)                                               ! number of dotStates for this grain
+          mySizeState = constitutive_sizeState(g,i,e)                                                   ! number of state variables for this grain
+          mySizeDotState = constitutive_sizeDotState(g,i,e)                                             ! number of dotStates for this grain
           constitutive_state_backup(g,i,e)%p(1:mySizeState) = &
-                 constitutive_state(g,i,e)%p(1:mySizeState)                                               ! remember unperturbed, converged state, ...
+                 constitutive_state(g,i,e)%p(1:mySizeState)                                             ! remember unperturbed, converged state, ...
           constitutive_dotState_backup(g,i,e)%p(1:mySizeDotState) = &
-                 constitutive_dotState(g,i,e)%p(1:mySizeDotState)                                         ! ... dotStates, ...
+                 constitutive_dotState(g,i,e)%p(1:mySizeDotState)                                       ! ... dotStates, ...
     enddo; enddo; enddo
-    Temperature_backup = crystallite_Temperature                                                          ! ... Temperature, ...
-    F_backup = crystallite_subF                                                                           ! ... and kinematics
-    Fp_backup = crystallite_Fp
-    InvFp_backup = crystallite_invFp
-    Fe_backup = crystallite_Fe
-    Lp_backup = crystallite_Lp
-    Tstar_v_backup = crystallite_Tstar_v
-    P_backup = crystallite_P
-    convergenceFlag_backup = crystallite_converged
+  !$OMP END PARALLEL DO
+  Temperature_backup = crystallite_Temperature                                                          ! ... Temperature, ...
+  F_backup = crystallite_subF                                                                           ! ... and kinematics
+  Fp_backup = crystallite_Fp
+  InvFp_backup = crystallite_invFp
+  Fe_backup = crystallite_Fe
+  Lp_backup = crystallite_Lp
+  Tstar_v_backup = crystallite_Tstar_v
+  P_backup = crystallite_P
+  convergenceFlag_backup = crystallite_converged
 
-    
-    ! --- CALCULATE STATE AND STRESS FOR PERTURBATION ---
-    
-    dPdF_perturbation1 = crystallite_dPdF0                                                                ! initialize stiffness with known good values from last increment
-    dPdF_perturbation2 = crystallite_dPdF0                                                                ! initialize stiffness with known good values from last increment
-    do perturbation = 1,2                                                                                 ! forward and backward perturbation
-      if (iand(pert_method,perturbation) > 0) then                                                        ! mask for desired direction
-        myPert = -pert_Fg * (-1.0_pReal)**perturbation                                                    ! set perturbation step
-        do k = 1,3; do l = 1,3                                                                            ! ...alter individual components
-          if (verboseDebugger .and. selectiveDebugger) &
+  
+  ! --- CALCULATE STATE AND STRESS FOR PERTURBATION ---
+  
+  dPdF_perturbation1 = crystallite_dPdF0                                                                ! initialize stiffness with known good values from last increment
+  dPdF_perturbation2 = crystallite_dPdF0                                                                ! initialize stiffness with known good values from last increment
+  do perturbation = 1,2                                                                                 ! forward and backward perturbation
+    if (iand(pert_method,perturbation) > 0) then                                                        ! mask for desired direction
+      myPert = -pert_Fg * (-1.0_pReal)**perturbation                                                    ! set perturbation step
+      do k = 1,3; do l = 1,3                                                                            ! ...alter individual components
+        if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
+          !$OMP CRITICAL (write2out)
             write (6,'(a,x,i1,x,i1,x,a)') '[[[[[[[ Stiffness perturbation',k,l,']]]]]]]'
-          crystallite_subF(k,l,:,:,:) = crystallite_subF(k,l,:,:,:) + myPert                              ! perturb either forward or backward
-          
-          crystallite_todo = crystallite_requested .and. crystallite_converged
-          where (crystallite_todo) crystallite_converged = .false.                                        ! start out non-converged
+          !$OMP END CRITICAL (write2out)
+        endif
+        crystallite_subF(k,l,:,:,:) = crystallite_subF(k,l,:,:,:) + myPert                              ! perturb either forward or backward
+        
+        crystallite_todo = crystallite_requested .and. crystallite_converged
+        where (crystallite_todo) crystallite_converged = .false.                                        ! start out non-converged
 
-          select case(integratorStiffness)
-            case (1)
-              call crystallite_integrateStateFPI(2)
-            case (2)
-              call crystallite_integrateStateEuler(2)
-            case (3)
-              call crystallite_integrateStateAdaptiveEuler(2)
-            case (4)
-              call crystallite_integrateStateRK4(2)
-            case(5)
-              call crystallite_integrateStateRKCK45(2)
-          end select
-          
+        select case(integratorStiffness)
+          case (1)
+            call crystallite_integrateStateFPI(2)
+          case (2)
+            call crystallite_integrateStateEuler(2)
+          case (3)
+            call crystallite_integrateStateAdaptiveEuler(2)
+          case (4)
+            call crystallite_integrateStateRK4(2)
+          case(5)
+            call crystallite_integrateStateRKCK45(2)
+        end select
+        
+        !OMP PARALLEL DO PRIVATE(myNgrains)
           do e = FEsolving_execElem(1),FEsolving_execElem(2)
             myNgrains = homogenization_Ngrains(mesh_element(3,e))
             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
               do g = 1,myNgrains
-                if (crystallite_requested(g,i,e) .and. crystallite_converged(g,i,e)) then                 ! converged state warrants stiffness update
+                if (crystallite_requested(g,i,e) .and. crystallite_converged(g,i,e)) then               ! converged state warrants stiffness update
                   select case(perturbation)
                     case (1)
                       dPdF_perturbation1(:,:,k,l,g,i,e) = (crystallite_P(:,:,g,i,e) - P_backup(:,:,g,i,e)) / myPert ! tangent dP_ij/dFg_kl
@@ -722,10 +740,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   end select
                 endif
           enddo; enddo; enddo
-  
-  
-          ! --- RESTORE ---
-          
+        !OMP END PARALLEL DO
+        
+
+        ! --- RESTORE ---
+        
+        !$OMP PARALLEL DO PRIVATE(myNgrains,mySizeState,mySizeDotState)
           do e = FEsolving_execElem(1),FEsolving_execElem(2)
             myNgrains = homogenization_Ngrains(mesh_element(3,e))
             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -735,23 +755,25 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                 constitutive_state(g,i,e)%p(1:mySizeState) = constitutive_state_backup(g,i,e)%p(1:mySizeState)
                 constitutive_dotState(g,i,e)%p(1:mySizeDotState) = constitutive_dotState_backup(g,i,e)%p(1:mySizeDotState)
           enddo; enddo; enddo
-          crystallite_Temperature = Temperature_backup
-          crystallite_subF = F_backup
-          crystallite_Fp = Fp_backup 
-          crystallite_invFp = InvFp_backup
-          crystallite_Fe = Fe_backup
-          crystallite_Lp = Lp_backup
-          crystallite_Tstar_v = Tstar_v_backup
-          crystallite_P = P_backup
-          crystallite_converged = convergenceFlag_backup
+        !OMP END PARALLEL DO
+        crystallite_Temperature = Temperature_backup
+        crystallite_subF = F_backup
+        crystallite_Fp = Fp_backup 
+        crystallite_invFp = InvFp_backup
+        crystallite_Fe = Fe_backup
+        crystallite_Lp = Lp_backup
+        crystallite_Tstar_v = Tstar_v_backup
+        crystallite_P = P_backup
+        crystallite_converged = convergenceFlag_backup
 
-        enddo; enddo                                                                                    ! k,l loop
-      endif
-    enddo                                                                                               ! perturbation direction
+      enddo; enddo                                                                                      ! k,l loop
+    endif
+  enddo                                                                                                 ! perturbation direction
 
 
-    ! --- STIFFNESS ACCORDING TO PERTURBATION METHOD AND CONVERGENCE ---
+  ! --- STIFFNESS ACCORDING TO PERTURBATION METHOD AND CONVERGENCE ---
 
+  !$OMP PARALLEL DO PRIVATE(myNgrains)
     do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
@@ -769,8 +791,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
             crystallite_dPdF(:,:,:,:,g,i,e) = crystallite_fallbackdPdF(:,:,:,:,g,i,e)                   ! use (elastic) fallback
           endif
     enddo; enddo; enddo
-    
-  endif                                                                                                 ! jacobian calculation
+  !OMP END PARALLEL DO
+  
+endif                                                                                                 ! jacobian calculation
  
 endsubroutine
 
@@ -850,23 +873,28 @@ else
 endif
 
 
-! --- RESET DOTSTATE TO ZERO ---
+! --- RESET DEPENDENT STATES AND DOTSTATE ---
 
-!$OMP PARALLEL DO
+!$OMP PARALLEL PRIVATE(mySizeDotState)
+
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
+    if (crystallite_todo(g,i,e)) then
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
+    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
  enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- FIRST RUNGE KUTTA STEP ---
 
 RK4dotTemperature = 0.0_pReal                                                                             ! initialize Runge-Kutta dotTemperature
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     constitutive_RK4dotState(g,i,e)%p = 0.0_pReal                                                         ! initialize Runge-Kutta dotState
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
                                         crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
                                         crystallite_orientation, g,i,e)
@@ -875,16 +903,16 @@ RK4dotTemperature = 0.0_pReal                                                   
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
         if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
-          !$OMP CRITICAL
+          !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         else                                                                                              ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
         endif
       endif
     endif
- enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+  enddo; enddo; enddo
+!$OMP ENDDO
 
 
 ! --- SECOND TO FOURTH RUNGE KUTTA STEP PLUS FINAL INTEGRATION ---
@@ -893,7 +921,7 @@ do n = 1,4
 
   ! --- state update ---
 
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
         mySizeDotState = constitutive_sizeDotState(g,i,e)
@@ -908,31 +936,29 @@ do n = 1,4
                                 + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e) * timeStepFraction(n)
       endif
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO      
+  !$OMP ENDDO      
 
   
   ! --- update dependent states ---
 
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
                                          crystallite_Fe, crystallite_Fp, g, i, e)                         ! update dependent state variables to be consistent with basic states
       endif
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO
+  !$OMP ENDDO
 
 
   ! --- stress integration ---
 
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
         if (crystallite_integrateStress(mode,g,i,e,timeStepFraction(n))) then                             ! fraction of original times step
           if (n == 4) then                                                                                ! final integration step
-            if (mode==1 .and. verboseDebugger .and. e == debug_e .and. i == debug_i .and. g == debug_g) then
+            if (verboseDebugger .and. selectiveDebugger .and. e == debug_e .and. i == debug_i .and. g == debug_g) then
               mySizeDotState = constitutive_sizeDotState(g,i,e)
               !$OMP CRITICAL (write2out)
                 write(6,*) '::: updateState',g,i,e
@@ -941,19 +967,19 @@ do n = 1,4
                 write(6,*)
                 write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
                 write(6,*)
-              !$OMPEND CRITICAL (write2out)
+              !$OMP END CRITICAL (write2out)
             endif
             crystallite_converged(g,i,e) = .true.                                                         ! ... converged per definition
             crystallite_todo(g,i,e) = .false.                                                             ! ... integration done
             !$OMP CRITICAL (distributionState)
               debug_StateLoopDistribution(n,mode) = debug_StateLoopDistribution(n,mode) + 1
-            !$OMPEND CRITICAL (distributionState)
+            !$OMP END CRITICAL (distributionState)
           endif
         else                                                                                              ! broken stress integration
           if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
-            !$OMP CRITICAL
+            !$OMP CRITICAL (checkTodo)
               crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
-            !$OMPEND CRITICAL
+            !$OMP END CRITICAL (checkTodo)
           else                                                                                            ! if broken local...
             crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
           endif
@@ -961,16 +987,15 @@ do n = 1,4
       endif
       constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO      
+  !$OMP ENDDO      
 
   
   ! --- dot state and RK dot state---
 
   if (n < 4) then
-    !$OMP PARALLEL DO
+    !$OMP DO
       do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                      ! iterate over elements, ips and grains
         if (crystallite_todo(g,i,e)) then
-          selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
           call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                             crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
                                             timeStepFraction(n)*crystallite_subdt(g,i,e), &               ! fraction of original timestep
@@ -980,19 +1005,21 @@ do n = 1,4
           if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                      ! NaN occured in dotState
                .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then           ! NaN occured in dotTemperature
             if (.not. crystallite_localConstitution(g,i,e)) then                                          ! if broken non-local...
-              !$OMP CRITICAL
+              !$OMP CRITICAL (checkTodo)
                 crystallite_todo = crystallite_todo .and. crystallite_localConstitution                   ! ...all non-locals skipped
-              !$OMPEND CRITICAL
+              !$OMP END CRITICAL (checkTodo)
             else                                                                                          ! if broken local...
               crystallite_todo(g,i,e) = .false.                                                           ! ... skip this one next time
             endif
           endif
         endif
       enddo; enddo; enddo
-    !$OMPEND PARALLEL DO
+    !$OMP ENDDO
   endif
   
 enddo
+
+!$OMP END PARALLEL
 
 
 ! --- CHECK CONVERGENCE ---
@@ -1065,7 +1092,7 @@ integer(pInt)                                 e, &                      ! elemen
                                               g, &                      ! grain index in grain loop
                                               j, &
                                               n, &                      ! stage index in integration stage loop
-                                              sizeDotState, &           ! size of dot State
+                                              mySizeDotState, &         ! size of dot State
                                               s                         ! state index
 integer(pInt), dimension(2) ::                eIter                     ! bounds for element iteration
 integer(pInt), dimension(2,mesh_NcpElems) ::  iIter, &                  ! bounds for ip iteration
@@ -1142,21 +1169,26 @@ else
 endif
 
 
-! --- RESET DOTSTATE TO ZERO ---
+! --- RESET DEPENDENT STATES AND DOTSTATE ---
 
-!$OMP PARALLEL DO
+!$OMP PARALLEL PRIVATE(mySizeDotState)
+
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
+    if (crystallite_todo(g,i,e)) then
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
+    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- FIRST RUNGE KUTTA STEP ---
 if (verboseDebugger) write(6,'(a,x,i1)') '<<<RUNGE KUTTA STEP',1
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
                                         crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
                                         crystallite_orientation, g,i,e)
@@ -1165,16 +1197,16 @@ if (verboseDebugger) write(6,'(a,x,i1)') '<<<RUNGE KUTTA STEP',1
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
         if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
-          !$OMP CRITICAL
+          !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         else                                                                                              ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
         endif
       endif
     endif
  enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
@@ -1183,10 +1215,10 @@ do n = 1,5
 
   ! --- state update ---
   
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        sizeDotState = constitutive_sizeDotState(g,i,e)
+        mySizeDotState = constitutive_sizeDotState(g,i,e)
         constitutive_RKCK45dotState(n,g,i,e)%p = constitutive_dotState(g,i,e)%p                           ! store Runge-Kutta dotState
         RKCK45dotTemperature(n,g,i,e) = crystallite_dotTemperature(g,i,e)                                 ! store Runge-Kutta dotTemperature
         constitutive_dotState(g,i,e)%p = 0.0_pReal                                                        ! reset dotState
@@ -1195,18 +1227,18 @@ do n = 1,5
           constitutive_dotState(g,i,e)%p = constitutive_dotState(g,i,e)%p + a(j,n) * constitutive_RKCK45dotState(j,g,i,e)%p
           crystallite_dotTemperature(g,i,e) = crystallite_dotTemperature(g,i,e) + a(j,n) * RKCK45dotTemperature(j,g,i,e)
         enddo
-        constitutive_state(g,i,e)%p(1:sizeDotState) = constitutive_subState0(g,i,e)%p(1:sizeDotState) &
-                                                      + constitutive_dotState(g,i,e)%p(1:sizeDotState) * crystallite_subdt(g,i,e)
+        constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
+                                                      + constitutive_dotState(g,i,e)%p(1:mySizeDotState) * crystallite_subdt(g,i,e)
         crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e) &
                                        + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
       endif
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO      
+  !$OMP ENDDO      
 
   
   ! --- update dependent states ---
 
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
@@ -1214,34 +1246,32 @@ do n = 1,5
       endif
       constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO
+  !$OMP ENDDO
 
 
   ! --- stress integration ---
   
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       if (crystallite_todo(g,i,e)) then
         if (.not. crystallite_integrateStress(mode,g,i,e,c(n))) then                                      ! fraction of original time step
           if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
-            !$OMP CRITICAL
+            !$OMP CRITICAL (checkTodo)
               crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
-            !$OMPEND CRITICAL
+            !$OMP END CRITICAL (checkTodo)
           else                                                                                            ! if broken local...
             crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
           endif
         endif
       endif
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO      
+  !$OMP ENDDO      
   
 
   ! --- dot state and RK dot state---
   if (verboseDebugger) write(6,'(a,x,i1)') '<<<RUNGE KUTTA STEP',n+1
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       if (crystallite_todo(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
                                           crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
@@ -1252,16 +1282,16 @@ do n = 1,5
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
           if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
-            !$OMP CRITICAL
+            !$OMP CRITICAL (checkTodo)
               crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
-            !$OMPEND CRITICAL
+            !$OMP END CRITICAL (checkTodo)
           else                                                                                            ! if broken local...
             crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
           endif
         endif
       endif
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO
+  !$OMP ENDDO
 
 enddo  
 
@@ -1272,11 +1302,10 @@ stateResiduum = 0.0_pReal
 temperatureResiduum = 0.0_pReal
 relStateResiduum = 0.0_pReal
 relTemperatureResiduum = 0.0_pReal
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
-      sizeDotState = constitutive_sizeDotState(g,i,e)
+      mySizeDotState = constitutive_sizeDotState(g,i,e)
       constitutive_RKCK45dotState(6,g,i,e)%p = constitutive_dotState(g,i,e)%p                             ! store Runge-Kutta dotState
       RKCK45dotTemperature(6,g,i,e) = crystallite_dotTemperature(g,i,e)                                   ! store Runge-Kutta dotTemperature
       
@@ -1284,8 +1313,8 @@ relTemperatureResiduum = 0.0_pReal
       ! --- absolute residuum in state and temperature ---
       
       do j = 1,6
-        stateResiduum(1:sizeDotState,g,i,e) = stateResiduum(1:sizeDotState,g,i,e) &
-                                        + db(j) * constitutive_RKCK45dotState(j,g,i,e)%p(1:sizeDotState) * crystallite_subdt(g,i,e)
+        stateResiduum(1:mySizeDotState,g,i,e) = stateResiduum(1:mySizeDotState,g,i,e) &
+                                     + db(j) * constitutive_RKCK45dotState(j,g,i,e)%p(1:mySizeDotState) * crystallite_subdt(g,i,e)
         temperatureResiduum(g,i,e) = temperatureResiduum(g,i,e) + db(j) * RKCK45dotTemperature(j,g,i,e) * crystallite_subdt(g,i,e)
       enddo
       
@@ -1302,11 +1331,11 @@ relTemperatureResiduum = 0.0_pReal
 
       ! --- state and temperature update and relative residui ---      
 
-      constitutive_state(g,i,e)%p(1:sizeDotState) = constitutive_subState0(g,i,e)%p(1:sizeDotState) &
-                                                    + constitutive_dotState(g,i,e)%p(1:sizeDotState) * crystallite_subdt(g,i,e)
+      constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
+                                                    + constitutive_dotState(g,i,e)%p(1:mySizeDotState) * crystallite_subdt(g,i,e)
       crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e) &
                                      + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
-      forall (s = 1:sizeDotState, abs(constitutive_state(g,i,e)%p(s)) > 0.0_pReal) &
+      forall (s = 1:mySizeDotState, abs(constitutive_state(g,i,e)%p(s)) > 0.0_pReal) &
         relStateResiduum(s,g,i,e) = stateResiduum(s,g,i,e) / constitutive_state(g,i,e)%p(s)
       if (crystallite_Temperature(g,i,e) > 0) &
         relTemperatureResiduum(g,i,e) = temperatureResiduum(g,i,e) / crystallite_Temperature(g,i,e)
@@ -1315,71 +1344,71 @@ relTemperatureResiduum = 0.0_pReal
       ! --- state convergence ---
       crystallite_todo(g,i,e) = &
           ( all(      abs(relStateResiduum(:,g,i,e)) < rTol_crystalliteState &
-                 .or. abs(stateResiduum(1:sizeDotState,g,i,e)) < constitutive_aTolState(g,i,e)%p(1:sizeDotState) ) &
+                 .or. abs(stateResiduum(1:mySizeDotState,g,i,e)) < constitutive_aTolState(g,i,e)%p(1:mySizeDotState) ) &
            .and. abs(relTemperatureResiduum(g,i,e)) < rTol_crystalliteTemperature )
 
-      if (verboseDebugger .and. selectiveDebugger) then
+      if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
         !$OMP CRITICAL (write2out)
           write(6,*) '::: updateState',g,i,e
           write(6,*)
-          write(6,'(a,/,12(f12.1,x))') 'updateState: absolute residuum tolerance', stateResiduum(1:sizeDotState,g,i,e) &
-                                                                                  / constitutive_aTolState(g,i,e)%p(1:sizeDotState)
+          write(6,'(a,/,12(f12.1,x))') 'updateState: absolute residuum tolerance', stateResiduum(1:mySizeDotState,g,i,e) &
+                                                                                 / constitutive_aTolState(g,i,e)%p(1:mySizeDotState)
           write(6,*)
-          write(6,'(a,/,12(f12.1,x))') 'updateState: relative residuum tolerance', relStateResiduum(1:sizeDotState,g,i,e) &
+          write(6,'(a,/,12(f12.1,x))') 'updateState: relative residuum tolerance', relStateResiduum(1:mySizeDotState,g,i,e) &
                                                                                   / rTol_crystalliteState
           write(6,*)
 !          write(6,'(a)') 'updateState: RKCK45dotState'
 !          do j = 1,6
-!            write(6,'(12(e14.8,x))') constitutive_RKCK45dotState(j,g,i,e)%p(1:sizeDotState)
+!            write(6,'(12(e14.8,x))') constitutive_RKCK45dotState(j,g,i,e)%p(1:mySizeDotState)
 !            write(6,*)
 !          enddo
-          write(6,'(a,/,12(e12.5,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:sizeDotState)
+          write(6,'(a,/,12(e12.5,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
           write(6,*)
-          write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:sizeDotState)
+          write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
           write(6,*)
-        !$OMPEND CRITICAL (write2out)
+        !$OMP END CRITICAL (write2out)
       endif
     
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
       
 
 ! --- UPDATE DEPENDENT STATES IF RESIDUUM BELOW TOLERANCE ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
                                        crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- FINAL STRESS INTEGRATION STEP IF RESIDUUM BELOW TOLERANCE ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       if (crystallite_integrateStress(mode,g,i,e)) then
         crystallite_converged(g,i,e) = .true.                                                           ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                               ! ... integration done
         !$OMP CRITICAL (distributionState)
           debug_StateLoopDistribution(6,mode) = debug_StateLoopDistribution(6,mode) + 1
-        !$OMPEND CRITICAL (distributionState)
+        !$OMP END CRITICAL (distributionState)
       else
         if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
-          !$OMP CRITICAL
+          !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         endif        
       endif
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
+!$OMP END PARALLEL
 
 ! --- nonlocal convergence check ---
 
@@ -1449,7 +1478,7 @@ integer(pInt)                                 e, &                      ! elemen
                                               g, &                      ! grain index in grain loop
                                               j, &
                                               n, &                      ! stage index in integration stage loop
-                                              sizeDotState, &           ! size of dot State
+                                              mySizeDotState, &         ! size of dot State
                                               s                         ! state index
 integer(pInt), dimension(2) ::                eIter                     ! bounds for element iteration
 integer(pInt), dimension(2,mesh_NcpElems) ::  iIter, &                  ! bounds for ip iteration
@@ -1480,65 +1509,11 @@ else
 endif
 
 
-! --- RESET DOTSTATE TO ZERO ---
+! --- RESET DEPENDENT STATES AND DOTSTATE ---
 
-!$OMP PARALLEL DO
-  do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
- enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP PARALLEL PRIVATE(mySizeDotState)
 
-
-! --- DOT STATE AND TEMPERATURE (EULER INTEGRATION) ---
-
-stateResiduum = 0.0_pReal
-!$OMP PARALLEL DO
-  do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      sizeDotState = constitutive_sizeDotState(g,i,e)
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
-  
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
-                                        crystallite_orientation, g,i,e)
-      crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
-                                                                      crystallite_Temperature(g,i,e),g,i,e)
-  
-      if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
-           .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
-        if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
-          !$OMP CRITICAL
-            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
-          !$OMPEND CRITICAL
-        else                                                                                              ! if broken local...
-          crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
-        endif
-      endif
-    endif
- enddo; enddo; enddo
-!$OMPEND PARALLEL DO
-
-
-! --- STATE UPDATE (EULER INTEGRATION) ---
-
-!$OMP PARALLEL DO
-  do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      sizeDotState = constitutive_sizeDotState(g,i,e)
-      stateResiduum(1:sizeDotState,g,i,e) = - 0.5_pReal * constitutive_dotState(g,i,e)%p * crystallite_subdt(g,i,e)  ! contribution to absolute residuum in state and temperature
-      temperatureResiduum(g,i,e) = - 0.5_pReal * crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
-      constitutive_state(g,i,e)%p(1:sizeDotState) = constitutive_subState0(g,i,e)%p(1:sizeDotState) &
-                                                    + constitutive_dotState(g,i,e)%p(1:sizeDotState) * crystallite_subdt(g,i,e)
-      crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e) &
-                                     + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
-    endif
-  enddo; enddo; enddo
-!$OMPEND PARALLEL DO      
-
-
-! --- UPDATE DEPENDENT STATES (EULER INTEGRATION) ---
-
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
@@ -1546,34 +1521,88 @@ stateResiduum = 0.0_pReal
     endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
  enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
+
+
+! --- DOT STATE AND TEMPERATURE (EULER INTEGRATION) ---
+
+stateResiduum = 0.0_pReal
+!$OMP DO
+  do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
+    if (crystallite_todo(g,i,e)) then  
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
+                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
+                                        crystallite_orientation, g,i,e)
+      crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
+                                                                      crystallite_Temperature(g,i,e),g,i,e)
+      if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
+           .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
+        if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
+          !$OMP CRITICAL (checkTodo)
+            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
+          !$OMP END CRITICAL (checkTodo)
+        else                                                                                              ! if broken local...
+          crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
+        endif
+      endif
+    endif
+ enddo; enddo; enddo
+!$OMP ENDDO
+
+
+! --- STATE UPDATE (EULER INTEGRATION) ---
+
+!$OMP DO
+  do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
+    if (crystallite_todo(g,i,e)) then
+      mySizeDotState = constitutive_sizeDotState(g,i,e)
+      stateResiduum(1:mySizeDotState,g,i,e) = - 0.5_pReal * constitutive_dotState(g,i,e)%p * crystallite_subdt(g,i,e)  ! contribution to absolute residuum in state and temperature
+      temperatureResiduum(g,i,e) = - 0.5_pReal * crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
+      constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
+                                                    + constitutive_dotState(g,i,e)%p(1:mySizeDotState) * crystallite_subdt(g,i,e)
+      crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e) &
+                                     + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
+    endif
+  enddo; enddo; enddo
+!$OMP ENDDO      
+
+
+! --- UPDATE DEPENDENT STATES (EULER INTEGRATION) ---
+
+!$OMP DO
+  do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
+    if (crystallite_todo(g,i,e)) then
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
+    endif
+    constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
+ enddo; enddo; enddo
+!$OMP ENDDO
 
 
 ! --- STRESS INTEGRATION (EULER INTEGRATION) ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
     if (crystallite_todo(g,i,e)) then
       if (.not. crystallite_integrateStress(mode,g,i,e)) then
         if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
-          !$OMP CRITICAL
+          !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         else                                                                                            ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
         endif
       endif
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO      
+!$OMP ENDDO      
 
 
 ! --- DOT STATE AND TEMPERATURE (HEUN METHOD) ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
                                         crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
@@ -1583,32 +1612,31 @@ stateResiduum = 0.0_pReal
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
         if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
-          !$OMP CRITICAL
+          !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         else                                                                                            ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
         endif
       endif      
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- ERROR ESTIMATE FOR STATE AND TEMPERATURE (HEUN METHOD) ---
 
 relStateResiduum = 0.0_pReal
 relTemperatureResiduum = 0.0_pReal
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode==1)
-      sizeDotState = constitutive_sizeDotState(g,i,e)      
+      mySizeDotState = constitutive_sizeDotState(g,i,e)
       
       
       ! --- contribution of heun step to absolute residui ---
       
-      stateResiduum(1:sizeDotState,g,i,e) = stateResiduum(1:sizeDotState,g,i,e) &
+      stateResiduum(1:mySizeDotState,g,i,e) = stateResiduum(1:mySizeDotState,g,i,e) &
                                           + 0.5_pReal * constitutive_dotState(g,i,e)%p * crystallite_subdt(g,i,e) ! contribution to absolute residuum in state and temperature
       temperatureResiduum(g,i,e) = temperatureResiduum(g,i,e) &
                                  + 0.5_pReal * crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
@@ -1616,48 +1644,49 @@ relTemperatureResiduum = 0.0_pReal
 
       ! --- relative residui ---      
 
-      forall (s = 1:sizeDotState, abs(constitutive_state(g,i,e)%p(s)) > 0.0_pReal) &
+      forall (s = 1:mySizeDotState, abs(constitutive_state(g,i,e)%p(s)) > 0.0_pReal) &
         relStateResiduum(s,g,i,e) = stateResiduum(s,g,i,e) / constitutive_state(g,i,e)%p(s)
       if (crystallite_Temperature(g,i,e) > 0) &
         relTemperatureResiduum(g,i,e) = temperatureResiduum(g,i,e) / crystallite_Temperature(g,i,e)
         
-      if (verboseDebugger .and. selectiveDebugger) then
+      if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
         !$OMP CRITICAL (write2out)
           write(6,*) '::: updateState',g,i,e
           write(6,*)
-          write(6,'(a,/,12(f12.1,x))') 'updateState: absolute residuum tolerance', stateResiduum(1:sizeDotState,g,i,e) &
-                                                                                  / constitutive_aTolState(g,i,e)%p(1:sizeDotState)
+          write(6,'(a,/,12(f12.1,x))') 'updateState: absolute residuum tolerance', stateResiduum(1:mySizeDotState,g,i,e) &
+                                                                                 / constitutive_aTolState(g,i,e)%p(1:mySizeDotState)
           write(6,*)
-          write(6,'(a,/,12(f12.1,x))') 'updateState: relative residuum tolerance', relStateResiduum(1:sizeDotState,g,i,e) &
+          write(6,'(a,/,12(f12.1,x))') 'updateState: relative residuum tolerance', relStateResiduum(1:mySizeDotState,g,i,e) &
                                                                                   / rTol_crystalliteState
           write(6,*)
-          write(6,'(a,/,12(e12.5,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:sizeDotState) &
-                                                      - 2.0_pReal * stateResiduum(1:sizeDotState,g,i,e) / crystallite_subdt(g,i,e)  ! calculate former dotstate from higher order solution and state residuum
+          write(6,'(a,/,12(e12.5,x))') 'updateState: dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState) &
+                                                      - 2.0_pReal * stateResiduum(1:mySizeDotState,g,i,e) / crystallite_subdt(g,i,e)  ! calculate former dotstate from higher order solution and state residuum
           write(6,*)
-          write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:sizeDotState)
+          write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
           write(6,*)
-        !$OMPEND CRITICAL (write2out)
+        !$OMP END CRITICAL (write2out)
       endif
             
       
       ! --- converged ? ---
 
       if ( all(     abs(relStateResiduum(:,g,i,e)) < rTol_crystalliteState &
-               .or. abs(stateResiduum(1:sizeDotState,g,i,e)) < constitutive_aTolState(g,i,e)%p(1:sizeDotState)) &
+               .or. abs(stateResiduum(1:mySizeDotState,g,i,e)) < constitutive_aTolState(g,i,e)%p(1:mySizeDotState)) &
           .and. abs(relTemperatureResiduum(g,i,e)) < rTol_crystalliteTemperature ) then        
           
         crystallite_converged(g,i,e) = .true.                                                             ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
         !$OMP CRITICAL (distributionState)
           debug_StateLoopDistribution(2,mode) = debug_StateLoopDistribution(2,mode) + 1
-        !$OMPEND CRITICAL (distributionState)
+        !$OMP END CRITICAL (distributionState)
         
       endif
 
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
+!$OMP END PARALLEL
 
 ! --- NONLOCAL CONVERGENCE CHECK ---
 
@@ -1738,21 +1767,26 @@ else
 endif
 
 
-! --- RESET DOTSTATE TO ZERO ---
+! --- RESET DEPENDENT STATES AND DOTSTATE ---
 
-!$OMP PARALLEL DO
+!$OMP PARALLEL PRIVATE(mySizeDotState)
+
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
+    if (crystallite_todo(g,i,e)) then
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
+    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
  enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- DOT STATE AND TEMPERATURE ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
                                         crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
                                         crystallite_orientation, g,i,e)
@@ -1761,31 +1795,30 @@ endif
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
         if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
-          !$OMP CRITICAL
+          !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         else                                                                                              ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
         endif
       endif
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- UPDATE STATE AND TEMPERATURE ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       mySizeDotState = constitutive_sizeDotState(g,i,e)
       constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
                                                     + constitutive_dotState(g,i,e)%p(1:mySizeDotState) * crystallite_subdt(g,i,e)
       crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e) &
                                         + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
                                         
-      if (verboseDebugger .and. selectiveDebugger) then
+      if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
         !$OMP CRITICAL (write2out)
           write(6,*) '::: updateState',g,i,e
           write(6,*)
@@ -1793,47 +1826,47 @@ endif
           write(6,*)
           write(6,'(a,/,12(e12.5,x))') 'updateState: new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
           write(6,*)
-        !$OMPEND CRITICAL (write2out)
+        !$OMP END CRITICAL (write2out)
       endif
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO      
+!$OMP ENDDO
 
   
 ! --- UPDATE DEPENDENT STATES ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
                                        crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
  enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- STRESS INTEGRATION ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
     if (crystallite_todo(g,i,e)) then
       if (crystallite_integrateStress(mode,g,i,e)) then
         crystallite_converged(g,i,e) = .true.
         !$OMP CRITICAL (distributionState)
           debug_StateLoopDistribution(1,mode) = debug_StateLoopDistribution(1,mode) + 1
-        !$OMPEND CRITICAL (distributionState)
+        !$OMP END CRITICAL (distributionState)
       else                                                                                                ! broken stress integration
         if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
-          !$OMP CRITICAL
+          !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         endif
       endif
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO      
+!$OMP ENDDO      
+
+!$OMP END PARALLEL
 
 
 ! --- CHECK NON-LOCAL CONVERGENCE ---
@@ -1921,56 +1954,59 @@ endif
 
 ! --+>> PREGUESS FOR STATE <<+--
 
-! --- RESET DOTSTATE TO ZERO ---
+! --- RESET DEPENDENT STATES AND DOTSTATE ---
 
-!$OMP PARALLEL DO
+!$OMP PARALLEL
+
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
+    if (crystallite_todo(g,i,e)) then
+      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
+                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
+    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
     constitutive_previousDotState(g,i,e)%p = 0.0_pReal
     constitutive_previousDotState2(g,i,e)%p = 0.0_pReal
  enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- DOT STATES ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
                                         crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
                                         crystallite_orientation, g, i, e)
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- STATE & TEMPERATURE UPDATE ---
 
 crystallite_statedamper = 1.0_pReal
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
-    selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
     if (crystallite_todo(g,i,e)) then
       crystallite_stateConverged(g,i,e) = crystallite_updateState(g,i,e)                                  ! update state
       crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)                      ! update temperature
       if ( .not. crystallite_localConstitution(g,i,e) .and. .not. crystallite_todo(g,i,e) ) then          ! if updateState or updateTemperature signals broken non-local... 
-        !$OMP CRITICAL 
+        !$OMP CRITICAL (checkTodo) 
           crystallite_todo = crystallite_todo .and. crystallite_localConstitution                         ! ...all non-locals skipped
-        !$OMPEND CRITICAL
+        !$OMP END CRITICAL (checkTodo)
       endif
     endif
   enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- UPDATE DEPENDENT STATES ---
 
-!$OMP PARALLEL DO
+!$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
                                        crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
@@ -1978,7 +2014,7 @@ crystallite_statedamper = 1.0_pReal
     constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p
     constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
  enddo; enddo; enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --+>> STATE LOOP <<+--
@@ -1992,47 +2028,42 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
 
   ! --- STRESS INTEGRATION ---
 
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
       if (crystallite_todo(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_integrateStress(mode,g,i,e)
         if ( .not. crystallite_localConstitution(g,i,e) .and. .not. crystallite_todo(g,i,e)) then         ! if broken non-local... 
-          !$OMP CRITICAL 
+          !$OMP CRITICAL (checkTodo) 
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         endif
       endif
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO
+  !$OMP ENDDO
 
   if (verboseDebugger .and. mode == 1) then
-    !$OMP CRITICAL (write2out)
-      write(6,*) count(crystallite_todo(:,:,:)),'grains todo after stress integration'
-    !$OMPEND CRITICAL (write2out)
+    write(6,*) count(crystallite_todo(:,:,:)),'grains todo after stress integration'
   endif
 
 
   ! --- DOT STATES ---
   
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
       if (crystallite_todo(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
                                           crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
                                           crystallite_orientation, g, i, e)
       endif
   enddo; enddo; enddo
-  !$OMPEND PARALLEL DO
+  !$OMP ENDDO
 
 
   ! --- STATE & TEMPERATURE UPDATE ---
 
   crystallite_statedamper = 1.0_pReal
-  !$OMP PARALLEL DO
+  !$OMP DO PRIVATE(dot_prod12,dot_prod22)
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
-      selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g .and. mode == 1)
       if (crystallite_todo(g,i,e)) then
         
         ! --- state damper ---
@@ -2052,22 +2083,22 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
         crystallite_temperatureConverged(g,i,e) = crystallite_updateTemperature(g,i,e)                    ! update temperature
         crystallite_converged(g,i,e) = crystallite_stateConverged(g,i,e) .and. crystallite_temperatureConverged(g,i,e)
         if ( .not. crystallite_localConstitution(g,i,e) .and. .not. crystallite_todo(g,i,e)) then         ! if updateState or updateTemperature signals broken non-local... 
-          !$OMP CRITICAL 
+          !$OMP CRITICAL (checkTodo) 
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
-          !$OMPEND CRITICAL
+          !$OMP END CRITICAL (checkTodo)
         elseif (crystallite_converged(g,i,e)) then
           !$OMP CRITICAL (distributionState)
             debug_StateLoopDistribution(NiterationState,mode) = debug_StateLoopDistribution(NiterationState,mode) + 1
-          !$OMPEND CRITICAL (distributionState)
+          !$OMP END CRITICAL (distributionState)
         endif
       endif
     enddo; enddo; enddo
-  !$OMPEND PARALLEL DO
+  !$OMP ENDDO
 
 
   ! --- UPDATE DEPENDENT STATES ---
 
-  !$OMP PARALLEL DO
+  !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(:,g,i,e), &
@@ -2077,13 +2108,12 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p
       constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
    enddo; enddo; enddo
-  !$OMPEND PARALLEL DO
+  !$OMP ENDDO
+    
   
   if (verboseDebugger .and. mode == 1) then
-    !$OMP CRITICAL (write2out)
-      write(6,*) count(crystallite_converged(:,:,:)),'grains converged after state integration no.', NiterationState
-      write(6,*)
-    !$OMPEND CRITICAL (write2out)
+    write(6,*) count(crystallite_converged(:,:,:)),'grains converged after state integration no.', NiterationState
+    write(6,*)
   endif
 
   
@@ -2098,14 +2128,14 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                   ! skip all converged
   
   if (verboseDebugger .and. mode == 1) then
-    !$OMP CRITICAL (write2out)
-      write(6,*) count(crystallite_converged(:,:,:)),'grains converged after non-local check'
-      write(6,*) count(crystallite_todo(:,:,:)),'grains todo after state integration no.', NiterationState
-      write(6,*)
-    !$OMPEND CRITICAL (write2out)
+    write(6,*) count(crystallite_converged(:,:,:)),'grains converged after non-local check'
+    write(6,*) count(crystallite_todo(:,:,:)),'grains todo after state integration no.', NiterationState
+    write(6,*)
   endif
   
 enddo                                                                                           ! crystallite convergence loop  
+
+!$OMP END PARALLEL
 
 endsubroutine
 
@@ -2130,7 +2160,9 @@ use constitutive, only:   constitutive_dotState, &
                           constitutive_aTolState, &
                           constitutive_microstructure
 use debug, only:          debugger, &
-                          selectiveDebugger, &
+                          debug_g, &
+                          debug_i, &
+                          debug_e, &
                           verboseDebugger
 
 !*** input variables ***!
@@ -2161,7 +2193,7 @@ if (any(residuum/=residuum)) then                                    ! if NaN oc
   if (verboseDebugger) then
     !$OMP CRITICAL (write2out)
       write(6,*) '::: updateState encountered NaN',g,i,e
-    !$OMPEND CRITICAL (write2out)
+    !$OMP END CRITICAL (write2out)
   endif   
   return
 endif
@@ -2172,7 +2204,7 @@ constitutive_state(g,i,e)%p(1:mySize) = constitutive_state(g,i,e)%p(1:mySize) - 
 crystallite_updateState = all( abs(residuum) < constitutive_aTolState(g,i,e)%p(1:mySize) &
                               .or. abs(residuum) < rTol_crystalliteState*abs(constitutive_state(g,i,e)%p(1:mySize)) )
 
-if (verboseDebugger .and. selectiveDebugger) then
+if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
   !$OMP CRITICAL (write2out)
     if (crystallite_updateState) then
       write(6,*) '::: updateState converged',g,i,e
@@ -2189,7 +2221,7 @@ if (verboseDebugger .and. selectiveDebugger) then
     write(6,'(a,/,12(f12.1,x))') 'updateState: relative residuum tolerance', abs(residuum / rTol_crystalliteState &
                                                                                  / constitutive_state(g,i,e)%p(1:mySize))
     write(6,*)
-  !$OMPEND CRITICAL (write2out)
+  !$OMP END CRITICAL (write2out)
 endif
 
 endfunction
@@ -2236,7 +2268,7 @@ endfunction
    crystallite_todo(g,i,e) = .false.                                        ! ...no need to calculate any further
    !$OMP CRITICAL (write2out)
    write(6,*) '::: updateTemperature encountered NaN',g,i,e
-   !$OMPEND CRITICAL (write2out)
+   !$OMP END CRITICAL (write2out)
    return
  endif
  
@@ -2258,7 +2290,7 @@ endfunction
 !***     based on a residuum in Lp and intermediate                  ***
 !***     acceleration of the Newton-Raphson correction               ***
 !***********************************************************************
- function crystallite_integrateStress(&
+function crystallite_integrateStress(&
      mode, &      ! 1: central solution, 2: stiffness (by perturbation)
      g,&          ! grain number
      i,&          ! integration point number
@@ -2277,7 +2309,9 @@ endfunction
                                       iJacoLpresiduum, &
                                       relevantStrain
  use debug, only:                     debugger, &
-                                      selectiveDebugger, &
+                                      debug_g, &
+                                      debug_i, &
+                                      debug_e, &
                                       verboseDebugger, &
                                       debug_cumLpCalls, &
                                       debug_cumLpTicks, &
@@ -2376,12 +2410,12 @@ endfunction
  ! inversion of Fp_current...
  invFp_current = math_inv3x3(Fp_current)                            
  if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
-   if (verboseDebugger .and. selectiveDebugger) then 
+   if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then 
      !$OMP CRITICAL (write2out)
        write(6,*) '::: integrateStress failed on invFp_current inversion',g,i,e
        write(6,*)
        write(6,'(a11,i3,x,i2,x,i5,/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
-     !$OMPEND CRITICAL (write2out)
+     !$OMP END CRITICAL (write2out)
    endif
    return
  endif
@@ -2410,7 +2444,7 @@ LpLoop: do
        !$OMP CRITICAL (write2out)
          write(6,*) '::: integrateStress reached loop limit at ',g,i,e
          write(6,*)
-       !$OMPEND CRITICAL (write2out)
+       !$OMP END CRITICAL (write2out)
      endif
      return
    endif
@@ -2432,13 +2466,13 @@ LpLoop: do
    debug_cumLpCalls = debug_cumLpCalls + 1_pInt
    debug_cumLpTicks  = debug_cumLpTicks + tock-tick
    if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
-   if (verboseDebugger .and. selectiveDebugger) then
+   if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
      !$OMP CRITICAL (write2out)
        write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress at ' ,g,i,e, ' ; iteration ', NiterationStress
        write(6,*)
        write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive', Lp_constitutive
        write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess', Lpguess
-     !$OMPEND CRITICAL (write2out)
+     !$OMP END CRITICAL (write2out)
    endif
 
    ! update current residuum
@@ -2461,7 +2495,7 @@ LpLoop: do
          write(6,'(a,i3,x,i2,x,i5,x,a,i3,x,a)') '::: integrateStress encountered NaN at ',g,i,e,&
                                                 '; iteration ', NiterationStress, &
                                                 '>> returning..!'
-       !$OMPEND CRITICAL (write2out)
+       !$OMP END CRITICAL (write2out)
      endif
      return
 
@@ -2476,7 +2510,7 @@ LpLoop: do
        !$OMP CRITICAL (write2out)
          write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress encountered high-speed crash at ',g,i,e,&
                                             '; iteration ', NiterationStress
-       !$OMPEND CRITICAL (write2out)
+       !$OMP END CRITICAL (write2out)
      endif
      maxleap = 0.5_pReal * leapfrog                                 ! limit next acceleration
      leapfrog = 1.0_pReal                                           ! grinding halt
@@ -2502,7 +2536,7 @@ LpLoop: do
        invdRdLp = 0.0_pReal
        call math_invert(9,dRdLp,invdRdLp,dummy,error)               ! invert dR/dLp --> dLp/dR
        if (error) then
-         if (verboseDebugger .and. selectiveDebugger) then
+         if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
            !$OMP CRITICAL (write2out)
              write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress failed on dR/dLp inversion at ',g,i,e, &
                                                 '; iteration ', NiterationStress
@@ -2511,18 +2545,18 @@ LpLoop: do
              write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
              write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive',Lp_constitutive
              write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess',Lpguess
-           !$OMPEND CRITICAL (write2out)
+           !$OMP END CRITICAL (write2out)
          endif
          return
        else
-         if (verboseDebugger .and. selectiveDebugger) then
+         if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
            !$OMP CRITICAL (write2out)
              write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress did dR/dLp inversion at ',g,i,e, &
                                                 '; iteration ', NiterationStress
              write(6,*)
              write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp
              write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
-           !$OMPEND CRITICAL (write2out)
+           !$OMP END CRITICAL (write2out)
          endif
        endif
      endif
@@ -2547,13 +2581,13 @@ LpLoop: do
  invFp_new = invFp_new/math_det3x3(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
  call math_invert3x3(invFp_new,Fp_new,det,error)
  if (error) then
-   if (verboseDebugger .and. selectiveDebugger) then
+   if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
      !$OMP CRITICAL (write2out)
        write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on invFp_new inversion at ',g,i,e, &
                                             ' ; iteration ', NiterationStress
        write(6,*)
        write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
-     !$OMPEND CRITICAL (write2out)
+     !$OMP END CRITICAL (write2out)
    endif
    return
  endif
@@ -2574,7 +2608,7 @@ LpLoop: do
 
  ! set return flag to true
  crystallite_integrateStress = .true.
- if (verboseDebugger .and. selectiveDebugger) then 
+ if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then 
    !$OMP CRITICAL (write2out)
    write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress converged at ',g,i,e,' ; iteration ', NiterationStress
    write(6,*)
@@ -2586,12 +2620,12 @@ LpLoop: do
  endif
 
  !$OMP CRITICAL (distributionStress)
- debug_StressLoopDistribution(NiterationStress,mode) = debug_StressLoopDistribution(NiterationStress,mode) + 1
- !$OMPEND CRITICAL (distributionStress)
+   debug_StressLoopDistribution(NiterationStress,mode) = debug_StressLoopDistribution(NiterationStress,mode) + 1
+ !$OMP END CRITICAL (distributionStress)
 
  return
 
- endfunction
+endfunction
  
  
  
@@ -2650,7 +2684,9 @@ logical error
 
 ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
-!$OMP PARALLEL DO
+!$OMP PARALLEL
+
+!$OMP DO PRIVATE(error,U,R)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       do g = 1,homogenization_Ngrains(mesh_element(3,e))
@@ -2671,16 +2707,16 @@ logical error
       enddo
     enddo
   enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
 
 
 ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
 ! --- we use crystallite_orientation from above, so need a seperate loop
 
-!$OMP PARALLEL DO
+!$OMP DO PRIVATE(myPhase,myInstance,myStructure,neighboring_e,neighboring_i, & 
+!$OMP &          neighboringPhase,neighboringInstance,neighboringStructure)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-      selectiveDebugger = (e == debug_e .and. i == debug_i)
       myPhase = material_phase(1,i,e)                                                                     ! get my phase
       if (.not. phase_localConstitution(myPhase)) then                                                    ! if nonlocal model
         myInstance = phase_constitutionInstance(myPhase)
@@ -2721,7 +2757,9 @@ logical error
       endif
     enddo
   enddo
-!$OMPEND PARALLEL DO
+!$OMP ENDDO
+
+!$OMP END PARALLEL
 
 endsubroutine
 

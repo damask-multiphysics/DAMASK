@@ -762,8 +762,7 @@ use math,     only: math_Plain3333to99, &
                     math_det3x3, &
                     pi
 use debug,    only: debugger, &
-                    verboseDebugger, &
-                    selectiveDebugger
+                    verboseDebugger
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_maxNipNeighbors, &
@@ -963,26 +962,7 @@ do s = 1,ns
                             * constitutive_nonlocal_R(myInstance)**2.0_pReal
 
   Tdislocation_v = Tdislocation_v + math_Mandel33to6( math_mul33x33(transpose(lattice2slip), math_mul33x33(sigma, lattice2slip) ) )
-  
-!  if (selectiveDebugger .and. s==1) then
-!    write(6,*)
-!    write(6,'(a20,i1,x,i2,x,i5)') '::: microstructure  ',g,ip,el
-!    write(6,*)
-!    write(6,'(a,/,3(3(f10.3,x)/))') 'position difference lattice / mu:', &
-!                                              transpose(neighboring_position((/1,3,5/),:)-neighboring_position((/2,4,6/),:)) * 1e6
-!    write(6,'(a,/,3(3(f10.3,x)/))') 'position difference slip system/ mu:', &
-!                   math_mul33x33(lattice2slip,transpose(neighboring_position((/1,3,5/),:)-neighboring_position((/2,4,6/),:))) * 1e6
-!    write(6,*)
-!    write(6,'(a,/,2(3(e10.3,x)/))') 'excess dislo difference:', rhoExcessDifference
-!    write(6,*)
-!    write(6,'(a,/,2(3(e10.3,x)/))') 'disloGradients:', disloGradients
-!    write(6,*)
-!    write(6,'(a,/,3(21x,3(f10.4,x)/))') 'sigma / MPa:', transpose(sigma) * 1e-6
-!    write(6,'(a,/,3(21x,3(f10.4,x)/))') '2ndPK / MPa:', &
-!                                  transpose( math_mul33x33(transpose(lattice2slip), math_mul33x33(sigma, lattice2slip) ) ) * 1e-6
-!    write(6,*)
-!  endif
-  
+    
 enddo
 
 !**********************************************************************
@@ -1009,8 +989,10 @@ use prec,     only: pReal, &
 use math,     only: math_mul6x6, &
                     math_Mandel6to33
 use debug,    only: debugger, &
-                    selectiveDebugger, &
-                    verboseDebugger
+                    verboseDebugger, &
+                    debug_g, &
+                    debug_i, &
+                    debug_e
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
@@ -1080,7 +1062,7 @@ if ( Temperature > 0.0_pReal ) then
   enddo
 endif
 
-!if (verboseDebugger .and. selectiveDebugger) then 
+!if (verboseDebugger .and. s) then 
 !  !$OMP CRITICAL (write2out)
 !    write(6,*) '::: kinetics',g,ip,el
 !    write(6,*)
@@ -1089,7 +1071,7 @@ endif
 !    write(6,'(a,/,12(f12.5,x),/)') 'tau / MPa', tau/1e6_pReal
 !    write(6,'(a,/,12(e12.5,x),/)') 'rhoForest / 1/m**2', rhoForest
 !    write(6,'(a,/,4(12(f12.5,x),/))') 'v / 1e-3m/s', constitutive_nonlocal_v(:,:,g,ip,el)*1e3
-!  !$OMPEND CRITICAL (write2out)
+!  !$OMP END CRITICAL (write2out)
 !endif
 
 endsubroutine
@@ -1108,8 +1090,10 @@ use math,     only: math_Plain3333to99, &
                     math_mul6x6, &
                     math_Mandel6to33
 use debug,    only: debugger, &
-                    selectiveDebugger, &
-                    verboseDebugger
+                    verboseDebugger, &
+                    debug_g, &
+                    debug_i, &
+                    debug_e
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
@@ -1201,7 +1185,7 @@ enddo
 
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
-!if (verboseDebugger .and. selectiveDebugger) then 
+!if (verboseDebugger .and. (debug_g==g .and. debug_i==i .and. debug_e==e)) then 
 !  !$OMP CRITICAL (write2out)
 !    write(6,*) '::: LpandItsTangent',g,ip,el
 !    write(6,*)
@@ -1210,7 +1194,7 @@ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 !    write(6,'(a,/,12(f12.5,x),/)') 'gdot total / 1e-3',gdotTotal*1e3_pReal
 !    write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',Lp
 !    ! call flush(6)
-!  !$OMPEND CRITICAL (write2out)
+!  !$OMP END CRITICAL (write2out)
 !endif
 
 endsubroutine
@@ -1228,7 +1212,9 @@ use prec,     only: pReal, &
                     p_vec
 use IO,       only: IO_error
 use debug,    only: debugger, &
-                    selectiveDebugger, &
+                    debug_g, &
+                    debug_i, &
+                    debug_e, &
                     verboseDebugger
 use math,     only: math_norm3, &
                     math_mul6x6, &
@@ -1358,11 +1344,11 @@ real(pReal)                                 area, &                   ! area of 
                                             correction
 logical, dimension(3) ::                    periodicSurfaceFlux       ! flag indicating periodic fluxes at surfaces when surface normal points mainly in x, y and z direction respectively (in reference configuration)
 
-if (verboseDebugger .and. selectiveDebugger) then 
+if (verboseDebugger .and. (debug_g==g .and. debug_i==ip .and. debug_e==el)) then 
   !$OMP CRITICAL (write2out)
     write(6,*) '::: constitutive_nonlocal_dotState at ',g,ip,el
     write(6,*)
-  !$OMPEND CRITICAL (write2out)
+  !$OMP END CRITICAL (write2out)
 endif
 
 select case(mesh_element(2,el))
@@ -1416,12 +1402,12 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) 
   gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
                                              * constitutive_nonlocal_v(s,t,g,ip,el)
 
-if (verboseDebugger .and. selectiveDebugger) then 
+if (verboseDebugger .and. (debug_g==g .and. debug_i==ip .and. debug_e==el)) then 
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,10(12(e12.5,x),/))') 'rho / 1/m^2', rhoSgl, rhoDip
     write(6,'(a,/,4(12(e12.5,x),/))') 'v / m/s', constitutive_nonlocal_v(:,:,g,ip,el)
     write(6,'(a,/,4(12(e12.5,x),/))') 'gdot / 1/s',gdot
-  !$OMPEND CRITICAL (write2out)
+  !$OMP END CRITICAL (write2out)
 endif
 
 
@@ -1498,7 +1484,7 @@ detFe = math_det3x3(Fe(:,:,g,ip,el))
 
 fluxdensity = rhoSgl(:,1:4) * constitutive_nonlocal_v(:,:,g,ip,el)
   
-!if (selectiveDebugger) write(6,*) '--> dislocation flux <---'
+!if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,*) '--> dislocation flux <---'
 do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                                                        ! loop through my neighbors
 
   neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
@@ -1521,11 +1507,11 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
   surfaceNormal = surfaceNormal / math_norm3(surfaceNormal)                                                                         ! normalize the surface normal to unit length
     
   neighboring_rhoDotFlux = 0.0_pReal
-!  if (selectiveDebugger) write(6,'(a,x,i2)') 'neighbor',n
+!  if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') 'neighbor',n
   do s = 1,ns
-!    if (selectiveDebugger) write(6,'(a,x,i2)') '  system',s
+!    if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') '  system',s
     do t = 1,4
-!      if (selectiveDebugger) write(6,'(a,x,i2)') '    type',t
+!      if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') '    type',t
       c = (t + 1) / 2
       topp = t + mod(t,2) - mod(t+1,2)
       
@@ -1537,7 +1523,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
         if ( (opposite_el > 0 .and. opposite_ip > 0) &
              .or. .not. all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,opposite_n,ip,el))))) ) then
           rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                     ! subtract dislocation flux from cuurent mobile type
-!          if (selectiveDebugger) write(6,'(a,x,e12.5)') '      outgoing flux:', lineLength / mesh_ipVolume(ip,el)
+!          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      outgoing flux:', lineLength / mesh_ipVolume(ip,el)
         endif
         rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) + lineLength / mesh_ipVolume(ip,el) &
                           * (1.0_pReal - sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el)**2.0_pReal)) &
@@ -1552,7 +1538,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
             neighboring_rhoDotFlux(:,topp) = neighboring_rhoDotFlux(:,topp) &                                                       ! ....transferring to opposite signed dislocation type at neighbor
                                            + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
                                                         * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
-!          if (selectiveDebugger) write(6,'(a,x,e12.5)') '      entering flux at neighbor:', lineLength / mesh_ipVolume(ip,el) &
+!          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      entering flux at neighbor:', lineLength / mesh_ipVolume(ip,el) &
 !                * sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal)
         endif
         
@@ -1567,7 +1553,7 @@ do n = 1,FE_NipNeighbors(mesh_element(2,el))                                    
         constitutive_nonlocal_rhoDotFlux(:,:,g,neighboring_ip,neighboring_el) + neighboring_rhoDotFlux
       dotState(g,neighboring_ip,neighboring_el)%p(1:10*ns) = &
         dotState(g,neighboring_ip,neighboring_el)%p(1:10*ns) + reshape(neighboring_rhoDotFlux,(/10*ns/))
-    !$OMPEND CRITICAL (fluxes)
+    !$OMP END CRITICAL (fluxes)
   else
     neighboring_rhoDotFlux = 0.0_pReal
   endif
@@ -1577,7 +1563,7 @@ enddo ! neighbor loop
 if (any(abs(rhoDotFlux) > 0.0_pReal)) then
   !$OMP CRITICAL (fluxes)
     constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) = constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) + rhoDotFlux
-  !$OMPEND CRITICAL (fluxes)
+  !$OMP END CRITICAL (fluxes)
 endif
 
 
@@ -1679,7 +1665,7 @@ forall (t = 1:10) &
 !              + rhoDotDipole2SingleStressChange(:,t) 
 !              + rhoDotSingle2DipoleStressChange(:,t)
 
-if (verboseDebugger .and. selectiveDebugger) then
+if (verboseDebugger .and. (debug_g==g .and. debug_i==ip .and. debug_e==el)) then
   !$OMP CRITICAL (write2out)
     write(6,'(a,/,8(12(e12.5,x),/))') 'dislocation remobilization', rhoDotRemobilization(:,1:8) * timestep
     write(6,'(a,/,4(12(e12.5,x),/))') 'dislocation multiplication', rhoDotMultiplication(:,1:4) * timestep
@@ -1693,12 +1679,12 @@ if (verboseDebugger .and. selectiveDebugger) then
     write(6,'(a,/,10(12(f12.7,x),/))') 'relative density change', rhoDot(:,1:8) * timestep / (abs(rhoSgl)+1.0e-10), &
                                                                   rhoDot(:,9:10) * timestep / (rhoDip+1.0e-10)
     write(6,*)
-  !$OMPEND CRITICAL (write2out)
+  !$OMP END CRITICAL (write2out)
 endif
 
 !$OMP CRITICAL (copy2dotState)
   dotState(g,ip,el)%p(1:10*ns) = dotState(g,ip,el)%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
-!$OMPEND CRITICAL (copy2dotState)
+!$OMP END CRITICAL (copy2dotState)
 
 endsubroutine
 
@@ -1734,8 +1720,7 @@ use lattice, only:    lattice_sn, &
                       lattice_st
 use debug, only:      debugger, &
                       debug_e, debug_i, debug_g, &
-                      verboseDebugger, &
-                      selectiveDebugger
+                      verboseDebugger
 
 implicit none
 
@@ -1777,7 +1762,6 @@ logical, dimension(maxval(constitutive_nonlocal_totalNslip)) :: &
                                                 compatibilityMask
 
 
-selectiveDebugger = (debug_i==i .and. debug_e==e)
 myPhase = material_phase(1,i,e)
 myInstance = phase_constitutionInstance(myPhase)
 myStructure = constitutive_nonlocal_structure(myInstance)

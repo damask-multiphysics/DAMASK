@@ -261,7 +261,6 @@ subroutine materialpoint_stressAndItsTangent(&
                           crystallite_stressAndItsTangent, &
                           crystallite_orientations
  use debug, only:         debugger, &
-                          selectiveDebugger, &
                           verboseDebugger, &
                           debug_e, &
                           debug_i, &
@@ -290,7 +289,7 @@ subroutine materialpoint_stressAndItsTangent(&
  endif
 
 
-!$OMP PARALLEL DO
+!$OMP PARALLEL DO PRIVATE(myNgrains)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                 ! iterate over elements to be processed
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                               ! iterate over IPs of this element to be processed
@@ -324,20 +323,18 @@ subroutine materialpoint_stressAndItsTangent(&
  do while (.not. terminallyIll .and. &
            any(materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog))  ! cutback loop for material points
 
-!$OMP PARALLEL DO
+   !$OMP PARALLEL DO PRIVATE(myNgrains)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
-       
-       selectiveDebugger = (e == debug_e .and. i == debug_i)
-       
+              
        if ( materialpoint_converged(i,e) ) then
-         if (verboseDebugger .and. selectiveDebugger) then
+         if (verboseDebugger .and. (e == debug_e .and. i == debug_i)) then
            !$OMP CRITICAL (write2out)
              write(6,'(a,x,f10.8,x,a,x,f10.8,x,a,/)') '°°° winding forward from', &
                materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
                materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent'
-           !$OMPEND CRITICAL (write2out)
+           !$OMP END CRITICAL (write2out)
          endif
          
          ! calculate new subStep and new subFrac
@@ -363,7 +360,7 @@ subroutine materialpoint_stressAndItsTangent(&
           !$OMP CRITICAL (distributionHomog)
             debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
               debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
-          !$OMPEND CRITICAL (distributionHomog)
+          !$OMP END CRITICAL (distributionHomog)
          endif
        
        ! materialpoint didn't converge, so we need a cutback here
@@ -371,16 +368,18 @@ subroutine materialpoint_stressAndItsTangent(&
          if ( (myNgrains == 1_pInt .and. materialpoint_subStep(i,e) <= 1.0 ) .or. &                         ! single grain already tried internal subStepping in crystallite
               subStepSizeHomog * materialpoint_subStep(i,e) <=  subStepMinHomog ) then                      ! would require too small subStep
                                                                                                             ! cutback makes no sense and...
-           terminallyIll = .true.                                                                           ! ...one kills all
+           !$OMP CRITICAL (setTerminallyIll)
+             terminallyIll = .true.                                                                         ! ...one kills all
+           !$OMP END CRITICAL (setTerminallyIll)
          else                                                                                               ! cutback makes sense
            materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)                       ! crystallite had severe trouble, so do a significant cutback
                                                                                                             ! <<modified to add more flexibility in cutback>>
            
-           if (verboseDebugger .and. selectiveDebugger) then
+           if (verboseDebugger .and. (e == debug_e .and. i == debug_i)) then
              !$OMP CRITICAL (write2out)
                write(6,'(a,x,f10.8,/)') '°°° cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
                                          materialpoint_subStep(i,e)
-             !$OMPEND CRITICAL (write2out)
+             !$OMP END CRITICAL (write2out)
            endif
   
            ! restore...
@@ -405,7 +404,7 @@ subroutine materialpoint_stressAndItsTangent(&
        endif
      enddo                                                                                 ! loop IPs
    enddo                                                                                   ! loop elements
-!$OMP END PARALLEL DO
+   !$OMP END PARALLEL DO
 
 !* Checks for cutback/substepping loops: added <<<updated 31.07.2009>>>
  ! write (6,'(a,/,8(L,x))') 'MP exceeds substep min',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog
@@ -434,7 +433,7 @@ subroutine materialpoint_stressAndItsTangent(&
 !          homogenization_state
 ! results in crystallite_partionedF
 
-!$OMP PARALLEL DO
+     !$OMP PARALLEL DO PRIVATE(myNgrains)
      do e = FEsolving_execElem(1),FEsolving_execElem(2)               ! iterate over elements to be processed
        myNgrains = homogenization_Ngrains(mesh_element(3,e))
        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
@@ -448,7 +447,7 @@ subroutine materialpoint_stressAndItsTangent(&
          endif
        enddo
      enddo
-!$OMP END PARALLEL DO
+     !$OMP END PARALLEL DO
 !      write(6,'(a,/,125(8(8(l,x),2x),/))') 'crystallite request with updated partitioning', crystallite_requested
  
      
@@ -462,7 +461,7 @@ subroutine materialpoint_stressAndItsTangent(&
      
 ! --+>> state update <<+--
 
-!$OMP PARALLEL DO
+     !$OMP PARALLEL DO
      do e = FEsolving_execElem(1),FEsolving_execElem(2)               ! iterate over elements to be processed
        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)             ! iterate over IPs of this element to be processed
          if (      materialpoint_requested(i,e) .and. &
@@ -473,13 +472,16 @@ subroutine materialpoint_stressAndItsTangent(&
              materialpoint_doneAndHappy(:,i,e) = homogenization_updateState(i,e)
            endif
            materialpoint_converged(i,e) = all(materialpoint_doneAndHappy(:,i,e))  ! converged if done and happy
-           if (materialpoint_converged(i,e)) &                                    ! added <<<updated 31.07.2009>>>
-             debug_MaterialpointStateLoopdistribution(NiterationMPstate) = &
-             debug_MaterialpointStateLoopdistribution(NiterationMPstate) + 1
+           if (materialpoint_converged(i,e)) then
+             !$OMP CRITICAL (distributionMPState)
+               debug_MaterialpointStateLoopdistribution(NiterationMPstate) = &
+                 debug_MaterialpointStateLoopdistribution(NiterationMPstate) + 1
+             !$OMP END CRITICAL (distributionMPState)
+           endif
          endif
        enddo
      enddo
-!$OMP END PARALLEL DO
+     !$OMP END PARALLEL DO
 !      write(6,'(a,/,125(8(l,x),/))') 'material point done', materialpoint_doneAndHappy(1,:,:)
 !      write(6,'(a,/,125(8(l,x),/))') 'material point converged', materialpoint_converged
 
@@ -493,13 +495,13 @@ subroutine materialpoint_stressAndItsTangent(&
  if (.not. terminallyIll ) then
    
    call crystallite_orientations()                                   ! calculate crystal orientations
-  !$OMP PARALLEL DO
+   !$OMP PARALLEL DO
    do e = FEsolving_execElem(1),FEsolving_execElem(2)                ! iterate over elements to be processed
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)              ! iterate over IPs of this element to be processed
        call homogenization_averageStressAndItsTangent(i,e)
        call homogenization_averageTemperature(i,e)   
      enddo; enddo
-  !$OMP END PARALLEL DO
+   !$OMP END PARALLEL DO
    
    if (debugger) then
      write (6,*)
@@ -533,7 +535,7 @@ subroutine materialpoint_postResults(dt)
  real(pReal), intent(in) :: dt
  integer(pInt) g,i,e,c,d,myNgrains,myCrystallite
 
-!$OMP PARALLEL DO
+ !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,c,d)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      myCrystallite = microstructure_crystallite(mesh_element(4,e))
@@ -553,7 +555,7 @@ subroutine materialpoint_postResults(dt)
        enddo
      enddo
    enddo
-!$OMP END PARALLEL DO
+ !$OMP END PARALLEL DO
 
  endsubroutine
  

@@ -142,7 +142,6 @@ subroutine constitutive_init()
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    do i = 1,FE_Nips(mesh_element(2,e))                   ! loop over IPs
      do g = 1,myNgrains                                  ! loop over grains
-       selectiveDebugger = (e == debug_e .and. i == debug_i .and. g == debug_g)
        myInstance = phase_constitutionInstance(material_phase(g,i,e))
        select case(phase_constitution(material_phase(g,i,e)))  
        

@@ -317,9 +317,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   ! CPFEM_odd_jacobian
   
   cp_en = mesh_FEasCP('elem',element)
-  selectiveDebugger = (cp_en == debug_e .and. IP == debug_i)
   
-  if (selectiveDebugger) then
+  if (selectiveDebugger .and. cp_en == debug_e .and. IP == debug_i) then
     !$OMP CRITICAL (write2out)
       write(6,*)
       write(6,'(a)') '#######################################################'
@@ -350,7 +349,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-        if (selectiveDebugger) then
+        if (selectiveDebugger .and. cp_en == debug_e .and. IP == debug_i) then
           !$OMP CRITICAL (write2out)
             write(6,'(a,x,i8,x,i2,/,4(3(e20.8,x),/))') '<< cpfem >> AGED state of grain 1, element ip',&
                                                          cp_en,IP, constitutive_state(1,IP,cp_en)%p
@@ -538,8 +537,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   pstress(:,:)   = materialpoint_P(:,:,IP,cp_en)
   dPdF(:,:,:,:)  = materialpoint_dPdF(:,:,:,:,IP,cp_en)
 
-  selectiveDebugger = (cp_en == debug_e .and. IP == debug_i)
-  if (selectiveDebugger .and. mode < 6) then
+  if (selectiveDebugger .and. cp_en == debug_e .and. IP == debug_i .and. mode < 6) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,x,i2,x,a,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6
       write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, jacobian/1e9
