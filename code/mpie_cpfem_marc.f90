@@ -43,16 +43,19 @@ MODULE mpie_interface
 
 character(len=64), parameter :: FEsolver = 'Marc'
 character(len=4),  parameter :: InputFileExtension = '.dat'
+character(len=4),  parameter :: LogFileExtension = '.log'
 
 CONTAINS
 
 subroutine mpie_interface_init()
+
+
+!$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  mpie_cpfem_marc init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
- write(6,*)
- write(6,*)
+!$OMP END CRITICAL (write2out)
  return
 end subroutine
 
@@ -198,7 +201,7 @@ subroutine hypela2(&
  use debug, only:     debug_info, &
                       debug_reset
  use mesh, only:      mesh_FEasCP
- use CPFEM, only:     CPFEM_general,CPFEM_init_done
+ use CPFEM, only:     CPFEM_initAll,CPFEM_general,CPFEM_init_done
  implicit none
  
 !     ** Start of generated type statements **
@@ -226,46 +229,62 @@ subroutine hypela2(&
 
  integer(pInt) computationMode, i, cp_en
 
- if ( .not. CPFEM_init_done ) then
+ if (.not. CPFEM_init_done) call CPFEM_initAll(t(1),n(1),nn)
 
-   computationMode = 2                                                    ! calc + init
-   theTime  = cptim                                                       ! record current starting time
-   theDelta = timinc                                                      ! record current time increment
-   theInc   = inc                                                         ! record current increment number
-!$OMP CRITICAL (write2out)
-   write (6,'(a,x,i6,x,i2)') '<< hypela2 >> first call special case..!',n(1),nn; call flush(6)
-!$OMP END CRITICAL (write2out)
-
- else if (lovl == 4) then                                                 ! Marc requires stiffness in separate call
+ if (lovl == 4) then                                                      ! Marc requires stiffness in separate call
    if ( timinc < theDelta .and. theInc == inc ) then                      ! first after cutback
-     computationMode = 7                                                  !  --> restore tangent and return
+     computationMode = 7                                                  !  --> restore tangent and return it
    else
-     computationMode = 6                                                  !  --> just return known value
+     computationMode = 6                                                  !  --> just return known tangent
    endif
- else
+ else                                                                     ! stress requested (lovl == 6)
    cp_en = mesh_FEasCP('elem',n(1))
-   if (theTime < cptim .or. theInc /= inc) then                           ! reached convergence
-     lastIncConverged = .true.
-     outdatedByNewInc = .true.
+
+   if (cptim > theTime .or. inc /= theInc) then                           ! reached convergence
+
      terminallyIll = .false.
      cycleCounter = 0
-!$OMP CRITICAL (write2out)
-     write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> former increment converged..!'; call flush(6)
-!$OMP END CRITICAL (write2out)
+     if (inc == 0) then                                                   ! start of analysis
+       lastIncConverged = .false.                                         ! no Jacobian backup
+       outdatedByNewInc = .false.                                         ! no aging of state
+       lastMode = .false.                                                 ! pretend last step was collection
+       calcMode = .false.                                                 ! pretend last step was collection
+       !$OMP CRITICAL (write2out)
+       write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> start of analysis..!'; call flush(6)
+       !$OMP END CRITICAL (write2out)
+     else if (inc - theInc > 1) then                                      ! restart of broken analysis
+       lastIncConverged = .false.                                         ! no Jacobian backup
+       outdatedByNewInc = .false.                                         ! no aging of state
+       lastMode = .true.                                                  ! pretend last step was calculation
+       calcMode = .true.                                                  ! pretend last step was calculation
+       !$OMP CRITICAL (write2out)
+       write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> restart of analysis..!'; call flush(6)
+       !$OMP END CRITICAL (write2out)
+     else                                                                 ! just a new inc
+       lastIncConverged = .true.                                          ! Jacobian backup
+       outdatedByNewInc = .true.                                          ! aging of state
+       lastMode = .true.                                                  ! assure last step was calculation
+       calcMode = .true.                                                  ! assure last step was calculation
+       !$OMP CRITICAL (write2out)
+       write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> former increment converged..!'; call flush(6)
+       !$OMP END CRITICAL (write2out)
+     endif
 
    else if ( timinc < theDelta ) then                                     ! cutBack
-     calcMode = .true.                                                    ! pretend last step was calculation
+
      terminallyIll = .false.
      cycleCounter = 0
-!$OMP CRITICAL (write2out)
+     calcMode = .true.                                                    ! pretend last step was calculation
+     !$OMP CRITICAL (write2out)
      write(6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> cutback detected..!'; call flush(6)
-!$OMP END CRITICAL (write2out)
-   endif
+     !$OMP END CRITICAL (write2out)
+
+   endif                                                                  ! convergence treatment end
 
    calcMode(nn,cp_en) = .not. calcMode(nn,cp_en)                          ! ping pong (calc <--> collect)
 
    if ( calcMode(nn,cp_en) ) then                                         ! now --- CALC ---
-     if ( lastMode .neqv. calcMode(nn,cp_en) ) then                       ! first after ping pong
+     if ( lastMode /= calcMode(nn,cp_en) ) then                           ! first after ping pong
        call debug_reset()                                                 ! resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1
@@ -277,7 +296,7 @@ subroutine hypela2(&
        computationMode = 2                                                ! plain calc
      endif
    else                                                                   ! now --- COLLECT ---
-     if ( lastMode .neqv. calcMode(nn,cp_en) .and. &
+     if ( lastMode /= calcMode(nn,cp_en) .and. &
           .not. terminallyIll ) call debug_info()                         ! first after ping pong reports (meaningful) debugging
      if ( lastIncConverged ) then
        lastIncConverged = .false.

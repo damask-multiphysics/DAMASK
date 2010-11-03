@@ -185,6 +185,28 @@ end function
 
 
 !********************************************************************
+! open FEM logfile to given unit
+!********************************************************************
+ logical function IO_open_logFile(unit)
+
+ use prec, only: pReal, pInt
+ use mpie_interface
+ implicit none
+
+ integer(pInt), intent(in) :: unit
+
+ IO_open_logFile = .false.
+ 
+ open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                     trim(getSolverJobName())//LogFileExtension)
+ IO_open_logFile = .true.
+
+100 return
+
+ endfunction
+
+
+!********************************************************************
 ! open (write) file related to current job
 ! but with different extension to given unit
 !********************************************************************
@@ -202,6 +224,68 @@ end function
  open(unit,status='replace',err=100,file=trim(getSolverWorkingDirectoryName())//&
                                      trim(getSolverJobName())//'.'//newExt)
  IO_open_jobFile = .true.
+ 
+100 return
+
+ endfunction
+
+
+!********************************************************************
+! open (write) binary file related to current job
+! but with different extension to given unit
+!********************************************************************
+ logical function IO_write_jobBinaryFile(unit,newExt,recMultiplier)
+
+ use prec, only: pReal, pInt
+ use mpie_interface
+ implicit none
+
+ integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in), optional :: recMultiplier
+ character(*), intent(in) :: newExt
+
+ IO_write_jobBinaryFile = .false.
+ if (present(recMultiplier)) then
+   open(unit,status='replace',form='unformatted',access='direct',recl=pReal*recMultiplier, &
+             err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                       trim(getSolverJobName())//'.'//newExt)
+  else
+   open(unit,status='replace',form='unformatted',access='direct',recl=pReal, &
+             err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                       trim(getSolverJobName())//'.'//newExt)
+ endif
+ IO_write_jobBinaryFile = .true.
+ 
+100 return
+
+ endfunction
+
+
+!********************************************************************
+! open (read) binary file related to restored job
+! and with different extension to given unit
+!********************************************************************
+ logical function IO_read_jobBinaryFile(unit,newExt,jobName,recMultiplier)
+
+ use prec, only: pReal, pInt
+ use mpie_interface
+ implicit none
+
+ integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in), optional :: recMultiplier
+ character(*), intent(in) :: newExt, jobName
+
+ IO_read_jobBinaryFile = .false.
+ if (present(recMultiplier)) then
+   open(unit,status='old',form='unformatted',access='direct',recl=pReal*recMultiplier, &
+             err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                                  trim(jobName)//'.'//newExt)
+  else
+   open(unit,status='old',form='unformatted',access='direct',recl=pReal, &
+             err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                                  trim(jobName)//'.'//newExt)
+ endif
+ IO_read_jobBinaryFile = .true.
  
 100 return
 

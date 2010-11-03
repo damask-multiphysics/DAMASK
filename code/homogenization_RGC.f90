@@ -5,9 +5,9 @@
 !* contains:                                         *
 !*****************************************************
 
-!	[rgc]
-!	type            rgc
-!	Ngrains         p x q x r (cluster)
+! [rgc]
+!  type            rgc
+!  Ngrains         p x q x r (cluster)
 !   (output)        Ngrains
 
 MODULE homogenization_RGC
@@ -168,18 +168,18 @@ subroutine homogenization_RGC_init(&
          mySize = 1
        case('volumediscrepancy')
          mySize = 1
-       case default
-         mySize = 0
        case('averagerelaxrate')
          mySize = 1
        case('maximumrelaxrate')
          mySize = 1
+       case default
+         mySize = 0
      end select
 
      if (mySize > 0_pInt) then                               ! any meaningful output found
-	     homogenization_RGC_sizePostResult(j,i) = mySize
-	     homogenization_RGC_sizePostResults(i) = &
-	     homogenization_RGC_sizePostResults(i) + mySize
+         homogenization_RGC_sizePostResult(j,i) = mySize
+         homogenization_RGC_sizePostResults(i) = &
+         homogenization_RGC_sizePostResults(i) + mySize
      endif
    enddo
 

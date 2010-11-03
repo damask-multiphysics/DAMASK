@@ -23,23 +23,164 @@ logical ::                                        CPFEM_init_done       = .false
 CONTAINS
 
 !*********************************************************
+!***    call (thread safe) all module initializations  ***
+!*********************************************************
+
+subroutine CPFEM_initAll(Temperature,element,IP)
+
+  use prec, only:                                     pReal, &
+                                                      prec_init
+  use numerics, only:                                 numerics_init
+  use debug, only:                                    debug_init
+  use FEsolving, only:                                FE_init
+  use math, only:                                     math_init
+  use mesh, only:                                     mesh_init
+  use lattice, only:                                  lattice_init
+  use material, only:                                 material_init
+  use constitutive, only:                             constitutive_init
+  use crystallite, only:                              crystallite_init
+  use homogenization, only:                           homogenization_init
+  use IO, only:                                       IO_init
+  use mpie_interface
+  implicit none
+
+  integer(pInt), intent(in) ::                        element, &          ! FE element number
+                                                      IP                  ! FE integration point number
+  real(pReal), intent(in) ::                          Temperature         ! temperature
+  real(pReal)   rnd
+  integer(pInt) i,n
+
+  ! initialization step (three dimensional stress state check missing?)
+
+  if (.not. CPFEM_init_done) then
+    call random_number(rnd)
+    do i=1,int(256.0*rnd)
+      n = n+1_pInt                                                      ! wasting random amount of time...
+    enddo                                                               ! ...to break potential race in multithreading
+    n = n+1_pInt
+    if (.not. CPFEM_init_inProgress) then                               ! yes my thread won!
+      CPFEM_init_inProgress = .true.
+      call prec_init()
+      call IO_init()
+      call numerics_init()
+      call debug_init()
+      call math_init()
+      call FE_init()
+      call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
+      call lattice_init()
+      call material_init()
+      call constitutive_init()
+      call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
+      call homogenization_init(Temperature)
+      call CPFEM_init()
+      call mpie_interface_init()
+      CPFEM_init_done = .true.
+      CPFEM_init_inProgress = .false.
+    else                                                                ! loser, loser...
+      do while (CPFEM_init_inProgress)
+      enddo
+    endif
+  endif
+
+end subroutine
+
+!*********************************************************
 !***    allocate the arrays defined in module CPFEM    ***
 !***    and initialize them                            ***
 !*********************************************************
+
 subroutine CPFEM_init()
 
   use prec, only:                                 pInt
+  use debug, only:                                debugger
+  use IO, only:                                   IO_read_jobBinaryFile
   use FEsolving, only:                            parallelExecution, &
-                                                  symmetricSolver
+                                                  symmetricSolver, &
+                                                  restartRead, &
+                                                  restartJob
   use mesh, only:                                 mesh_NcpElems, &
                                                   mesh_maxNips
+  use material, only:                             homogenization_maxNgrains, &
+                                                  material_phase
+  use constitutive, only:                         constitutive_state0
+  use crystallite, only:                          crystallite_F0, &
+                                                  crystallite_Fp0, &
+                                                  crystallite_Lp0, &
+                                                  crystallite_dPdF0, &
+                                                  crystallite_Tstar0_v
+  use homogenization, only:                       homogenization_sizeState, &
+                                                  homogenization_state0, &
+                                                  materialpoint_F, &
+                                                  materialpoint_F0
+
 
   implicit none
+
+  integer(pInt) i,j,k,l,m
 
   ! initialize stress and jacobian to zero 
   allocate(CPFEM_cs(6,mesh_maxNips,mesh_NcpElems)) ;                CPFEM_cs              = 0.0_pReal
   allocate(CPFEM_dcsdE(6,6,mesh_maxNips,mesh_NcpElems)) ;           CPFEM_dcsdE           = 0.0_pReal
   allocate(CPFEM_dcsdE_knownGood(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_dcsdE_knownGood = 0.0_pReal
+
+  ! *** restore the last converged values of each essential variable from the binary file
+  if (restartRead) then
+    if (debugger) then
+      !$OMP CRITICAL (write2out)
+       write(6,'(a)') '<<< cpfem >>> Restored state variables of last converged step from binary files'
+      !$OMP END CRITICAL (write2out)
+    endif
+    if (IO_read_jobBinaryFile(777,'recordedPhase',restartJob,size(material_phase))) then
+      read (777,rec=1) material_phase
+      close (777)
+    endif
+    if (IO_read_jobBinaryFile(777,'convergedF',restartJob,size(crystallite_F0))) then
+      read (777,rec=1) crystallite_F0
+      close (777)
+    endif
+    if (IO_read_jobBinaryFile(777,'convergedFp',restartJob,size(crystallite_Fp0))) then
+      read (777,rec=1) crystallite_Fp0
+      close (777)
+    endif
+    if (IO_read_jobBinaryFile(777,'convergedLp',restartJob,size(crystallite_Lp0))) then
+      read (777,rec=1) crystallite_Lp0
+      close (777)
+    endif
+    if (IO_read_jobBinaryFile(777,'convergeddPdF',restartJob,size(crystallite_dPdF0))) then
+      read (777,rec=1) crystallite_dPdF0
+      close (777)
+    endif
+    if (IO_read_jobBinaryFile(777,'convergedTstar',restartJob,size(crystallite_Tstar0_v))) then
+      read (777,rec=1) crystallite_Tstar0_v
+      close (777)
+    endif
+    if (IO_read_jobBinaryFile(777,'convergedStateConst',restartJob)) then
+      m = 0_pInt
+      do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
+        do l = 1,size(constitutive_state0(i,j,k)%p)
+          m = m+1_pInt
+          read(777,rec=m) constitutive_state0(i,j,k)%p(l)
+        enddo
+      enddo; enddo; enddo
+      close (777)
+    endif
+    if (IO_read_jobBinaryFile(777,'convergedStateHomog',restartJob)) then
+      m = 0_pInt
+      do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
+        do l = 1,homogenization_sizeState(j,k)
+          m = m+1_pInt
+          read(777,rec=m) homogenization_state0(j,k)%p(l)
+        enddo
+      enddo; enddo
+      close (777)
+    endif
+    if (IO_read_jobBinaryFile(777,'convergeddcsdE',restartJob,size(CPFEM_dcsdE))) then
+      read (777,rec=1) CPFEM_dcsdE
+      close (777)
+    endif
+    restartRead = .false.
+  endif
+  ! *** end of restoring
 
   !$OMP CRITICAL (write2out)
     write(6,*)
@@ -69,21 +210,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
 
   !*** variables and functions from other modules ***!
   use prec, only:                                     pReal, &
-                                                      pInt, &
-                                                      prec_init
-  use numerics, only:                                 numerics_init, & 
-                                                      relevantStrain, &
+                                                      pInt
+  use numerics, only:                                 relevantStrain, &
                                                       defgradTolerance, &
                                                       iJacoStiffness
-  use debug, only:                                    debug_init, &
-                                                      debug_g, &
+  use debug, only:                                    debug_g, &
                                                       debug_i, &
                                                       debug_e, &
                                                       debugger, &
                                                       selectiveDebugger, &
                                                       verboseDebugger
-  use FEsolving, only:                                FE_init, &
-                                                      parallelExecution, &
+  use FEsolving, only:                                parallelExecution, &
                                                       outdatedFFN1, &
                                                       terminallyIll, &
                                                       cycleCounter, &
@@ -91,28 +228,24 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       theTime, &
                                                       theDelta, &
                                                       FEsolving_execElem, &
-                                                      FEsolving_execIP
-  use math, only:                                     math_init, &
-                                                      math_identity2nd, &
+                                                      FEsolving_execIP, &
+                                                      restartWrite
+  use math, only:                                     math_identity2nd, &
                                                       math_mul33x33, &
                                                       math_det3x3, &
                                                       math_I3, &
                                                       math_Mandel3333to66, &
                                                       math_Mandel33to6
-  use mesh, only:                                     mesh_init, &
-                                                      mesh_FEasCP, &
+  use mesh, only:                                     mesh_FEasCP, &
                                                       mesh_NcpElems, &
                                                       mesh_maxNips, &
                                                       mesh_element, &
                                                       FE_Nips
-  use lattice, only:                                  lattice_init
-  use material, only:                                 material_init, &
-                                                      homogenization_maxNgrains, &
-                                                      microstructure_elemhomo
-  use constitutive, only:                             constitutive_init,&
-                                                      constitutive_state0,constitutive_state
-  use crystallite, only:                              crystallite_init, &
-                                                      crystallite_F0, &
+  use material, only:                                 homogenization_maxNgrains, &
+                                                      microstructure_elemhomo, &
+                                                      material_phase
+  use constitutive, only:                             constitutive_state0,constitutive_state
+  use crystallite, only:                              crystallite_F0, &
                                                       crystallite_partionedF, &
                                                       crystallite_Fp0, &
                                                       crystallite_Fp, &
@@ -122,8 +255,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       crystallite_dPdF, &
                                                       crystallite_Tstar0_v, &
                                                       crystallite_Tstar_v
-  use homogenization, only:                           homogenization_init, &
-                                                      homogenization_sizeState, &
+  use homogenization, only:                           homogenization_sizeState, &
                                                       homogenization_state, &
                                                       homogenization_state0, &
                                                       materialpoint_F, &
@@ -134,7 +266,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       materialpoint_Temperature, &
                                                       materialpoint_stressAndItsTangent, &
                                                       materialpoint_postResults
-  use IO, only:                                       IO_init
+  use IO, only:                                       IO_write_jobBinaryFile
   use mpie_interface
   
   implicit none
@@ -184,38 +316,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   ! CPFEM_odd_stress, &
   ! CPFEM_odd_jacobian
   
-
-  ! initialization step (three dimensional stress state check missing?)
-  if (.not. CPFEM_init_done) then
-    call random_number(rnd)
-    do i=1,int(256.0*rnd)
-      n = n+1_pInt                                                      ! wasting random amount of time...
-    enddo                                                               ! ...to break potential race in multithreading
-    n = n+1_pInt
-    if (.not. CPFEM_init_inProgress) then                               ! yes my thread won!
-      CPFEM_init_inProgress = .true.
-      call prec_init()
-      call IO_init()
-      call numerics_init()
-      call debug_init()
-      call math_init()
-      call FE_init()
-      call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
-      call lattice_init()
-      call material_init()
-      call constitutive_init()
-      call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
-      call homogenization_init(Temperature)
-      call CPFEM_init()
-      call mpie_interface_init()
-      CPFEM_init_done = .true.
-      CPFEM_init_inProgress = .false.
-    else                                                                ! loser, loser...
-      do while (CPFEM_init_inProgress)
-      enddo
-    endif
-  endif
-  
   cp_en = mesh_FEasCP('elem',element)
   selectiveDebugger = (cp_en == debug_e .and. IP == debug_i)
   
@@ -262,6 +362,65 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
               homogenization_state0(j,k)%p = homogenization_state(j,k)%p  ! internal state of homogenization scheme
           enddo
         enddo
+
+
+        ! *** dump the last converged values of each essential variable to a binary file
+        if (restartWrite) then 
+          if (debugger) then
+           !$OMP CRITICAL (write2out)
+             write(6,'(a)') '<<< cpfem >>> Writing state variables of last converged step to binary files'
+           !$OMP END CRITICAL (write2out)
+          endif
+          if (IO_write_jobBinaryFile(777,'recordedPhase',size(material_phase))) then
+            write (777,rec=1) material_phase
+            close (777)
+          endif
+          if (IO_write_jobBinaryFile(777,'convergedF',size(crystallite_F0))) then
+            write (777,rec=1) crystallite_F0
+            close (777)
+          endif
+          if (IO_write_jobBinaryFile(777,'convergedFp',size(crystallite_Fp0))) then
+            write (777,rec=1) crystallite_Fp0
+            close (777)
+          endif
+          if (IO_write_jobBinaryFile(777,'convergedLp',size(crystallite_Lp0))) then
+            write (777,rec=1) crystallite_Lp0
+            close (777)
+          endif
+          if (IO_write_jobBinaryFile(777,'convergeddPdF',size(crystallite_dPdF0))) then
+            write (777,rec=1) crystallite_dPdF0
+            close (777)
+          endif
+          if (IO_write_jobBinaryFile(777,'convergedTstar',size(crystallite_Tstar0_v))) then
+            write (777,rec=1) crystallite_Tstar0_v
+            close (777)
+          endif
+          if (IO_write_jobBinaryFile(777,'convergedStateConst')) then
+            m = 0_pInt
+            do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
+              do l = 1,size(constitutive_state0(i,j,k)%p)
+                m = m+1_pInt
+                write(777,rec=m) constitutive_state0(i,j,k)%p(l)
+              enddo
+            enddo; enddo; enddo
+            close (777)
+          endif
+          if (IO_write_jobBinaryFile(777,'convergedStateHomog')) then
+            m = 0_pInt
+            do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
+              do l = 1,homogenization_sizeState(j,k)
+                m = m+1_pInt
+                write(777,rec=m) homogenization_state0(j,k)%p(l)
+              enddo
+            enddo; enddo
+            close (777)
+          endif
+          if (IO_write_jobBinaryFile(777,'convergeddcsdE',size(CPFEM_dcsdE))) then
+            write (777,rec=1) CPFEM_dcsdE
+            close (777)
+          endif
+        endif
+        ! *** end of dumping
       endif
 
       if (mode == 8 .or. mode == 9) then                                  ! Abaqus explicit skips collect
@@ -275,6 +434,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
           !$OMP CRITICAL (write2out)
             write(6,'(a32,x,i5,x,i2)') '°°° OUTDATED at element ip',cp_en,IP
+            write(6,'(a32,/,3(3(f10.6,x),/))') '    FFN  was:',materialpoint_F(:,1,IP,cp_en), &
+                                                               materialpoint_F(:,2,IP,cp_en), &
+                                                               materialpoint_F(:,3,IP,cp_en)
             write(6,'(a32,/,3(3(f10.6,x),/))') '    FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
           !$OMP END CRITICAL (write2out)
           outdatedFFN1 = .true.
