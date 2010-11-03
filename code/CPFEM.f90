@@ -352,8 +352,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
         if (selectiveDebugger) then
           !$OMP CRITICAL (write2out)
-            write(6,'(a32,x,i8,x,i2,/,4(3(e20.8,x),/))') '°°° AGED state of grain 1, element ip',cp_en,IP, &
-                                                         constitutive_state(1,IP,cp_en)%p
+            write(6,'(a,x,i8,x,i2,/,4(3(e20.8,x),/))') '<< cpfem >> AGED state of grain 1, element ip',&
+                                                         cp_en,IP, constitutive_state(1,IP,cp_en)%p
           !$OMP END CRITICAL (write2out)
         endif
         do k = 1,mesh_NcpElems
@@ -433,16 +433,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(:,:,IP,cp_en)) > defgradTolerance)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
           !$OMP CRITICAL (write2out)
-            write(6,'(a32,x,i5,x,i2)') '°°° OUTDATED at element ip',cp_en,IP
-            write(6,'(a32,/,3(3(f10.6,x),/))') '    FFN  was:',materialpoint_F(:,1,IP,cp_en), &
-                                                               materialpoint_F(:,2,IP,cp_en), &
-                                                               materialpoint_F(:,3,IP,cp_en)
-            write(6,'(a32,/,3(3(f10.6,x),/))') '    FFN1 now:',ffn1(:,1),ffn1(:,2),ffn1(:,3)
+            write(6,'(a,x,i5,x,i2)') '<< cpfem >> OUTDATED at element ip',cp_en,IP
+            write(6,'(a,/,3(3(f10.6,x),/))') '    FFN1 old:',materialpoint_F(1:3,:,IP,cp_en)
+            write(6,'(a,/,3(3(f10.6,x),/))') '    FFN1 now:',ffn1(1:3,:)
           !$OMP END CRITICAL (write2out)
           outdatedFFN1 = .true.
         endif
         call random_number(rnd)
-        if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
+        rnd = 2.0_pReal * rnd - 1.0_pReal
         CPFEM_cs(:,IP,cp_en)              = rnd*CPFEM_odd_stress
         CPFEM_dcsde(:,:,IP,cp_en)         = CPFEM_odd_jacobian*math_identity2nd(6)
       
@@ -480,7 +478,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         
         if ( terminallyIll ) then
           call random_number(rnd)
-          if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
+          rnd = 2.0_pReal * rnd - 1.0_pReal
           CPFEM_cs(:,IP,cp_en)              = rnd*CPFEM_odd_stress
           CPFEM_dcsde(:,:,IP,cp_en)         = CPFEM_odd_jacobian*math_identity2nd(6)
         else  
@@ -492,7 +490,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         !  translate from dP/dF to dCS/dE
           H = 0.0_pReal
           do i=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3; do n=1,3
-!          forall(i=1:3,j=1:3,k=1:3,l=1:3,m=1:3,n=1:3) &
             H(i,j,k,l) = H(i,j,k,l) + &
                           materialpoint_F(j,m,IP,cp_en) * &
                           materialpoint_F(l,n,IP,cp_en) * &
@@ -501,9 +498,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                           0.5_pReal*(math_I3(i,k)*Kirchhoff(j,l) + math_I3(j,l)*Kirchhoff(i,k) + &
                                      math_I3(i,l)*Kirchhoff(j,k) + math_I3(j,k)*Kirchhoff(i,l))
           enddo; enddo; enddo; enddo; enddo; enddo
-!          forall(i=1:3,j=1:3,k=1:3,l=1:3) &
-!            H_sym(i,j,k,l) = 0.25_pReal*(H(i,j,k,l)+H(j,i,k,l)+H(i,j,l,k)+H(j,i,l,k))  ! where to use this symmetric version ??
-          CPFEM_dcsde(:,:,IP,cp_en) = math_Mandel3333to66(J_inverse*H)                 ! should this use the symmetrized H ??
+          do i=1,3; do j=1,3; do k=1,3; do l=1,3
+            H_sym(i,j,k,l) = 0.25_pReal*(H(i,j,k,l)+H(j,i,k,l)+H(i,j,l,k)+H(j,i,l,k))
+          enddo; enddo; enddo; enddo
+          CPFEM_dcsde(:,:,IP,cp_en) = math_Mandel3333to66(J_inverse*H_sym)
         endif
       endif
     
@@ -515,7 +513,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         CPFEM_dcsde = CPFEM_dcsde_knownGood  ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
       end if
       call random_number(rnd)
-      if (rnd < 0.5_pReal) rnd = 1.0_pReal - rnd
+      rnd = 2.0_pReal * rnd - 1.0_pReal
       materialpoint_Temperature(IP,cp_en)   = Temperature
       materialpoint_F0(:,:,IP,cp_en)        = ffn
       materialpoint_F(:,:,IP,cp_en)         = ffn1
@@ -539,8 +537,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   ! copy P and dPdF to the output variables 
   pstress(:,:)   = materialpoint_P(:,:,IP,cp_en)
   dPdF(:,:,:,:)  = materialpoint_dPdF(:,:,:,:,IP,cp_en)
-  if ((debugger .and. selectiveDebugger) .and. &
-      mode < 6) then
+
+  selectiveDebugger = (cp_en == debug_e .and. IP == debug_i)
+  if (selectiveDebugger .and. mode < 6) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,x,i2,x,a,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6
       write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, jacobian/1e9

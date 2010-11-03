@@ -15,8 +15,8 @@ integer(pInt)                   iJacoStiffness, &                       ! freque
                                 nState, &                               ! state loop limit
                                 nStress, &                              ! stress loop limit
                                 pert_method, &                          ! method used in perturbation technique for tangent
-                                integrator, &                   ! method used for state integration
-                                integratorStiffness            ! method used for stiffness state integration
+                                integrator, &                           ! method used for state integration
+                                integratorStiffness                     ! method used for stiffness state integration
 real(pReal)                     relevantStrain, &                       ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
                                 defgradTolerance, &                     ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
@@ -110,8 +110,8 @@ subroutine numerics_init()
   rTol_crystalliteTemperature = 1.0e-6_pReal
   rTol_crystalliteStress  = 1.0e-6_pReal
   aTol_crystalliteStress  = 1.0e-8_pReal            ! residuum is in Lp (hence strain on the order of 1e-8 here)
-  integrator      = 1
-  integratorStiffness      = 1
+  integrator              = 1                       ! fix-point iteration
+  integratorStiffness     = 1                       ! fix-point iteration
   
 !* RGC parameters: added <<<updated 17.12.2009>>> with moderate setting
   absTol_RGC              = 1.0e+4

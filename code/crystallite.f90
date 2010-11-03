@@ -93,7 +93,11 @@ subroutine crystallite_init(Temperature)
                              subStepSizeCryst, &
                              stepIncreaseCryst
  use math, only:             math_I3, &
-                             math_EulerToR
+                             math_EulerToR, &
+                             math_inv3x3, &
+                             math_transpose3x3, &
+                             math_mul33xx33, &
+                             math_mul33x33
  use FEsolving, only:        FEsolving_execElem, &
                              FEsolving_execIP
  use mesh, only:             mesh_element, &
@@ -102,15 +106,19 @@ subroutine crystallite_init(Temperature)
                              mesh_maxNipNeighbors
  use IO
  use material
- use lattice, only:          lattice_symmetryTypes
+ use lattice, only:          lattice_symmetryType, &
+                             lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
+                             lattice_NslipSystem,lattice_NtwinSystem
+
  use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
-                                      constitutive_phenopowerlaw_structure
- use constitutive_titanmod, only: constitutive_titanmod_label, &
-                                      constitutive_titanmod_structure
+                                       constitutive_phenopowerlaw_structure, &
+                                       constitutive_phenopowerlaw_Nslip
+ use constitutive_titanmod, only:      constitutive_titanmod_label, &
+                                       constitutive_titanmod_structure
  use constitutive_dislotwin, only:     constitutive_dislotwin_label, &
-                                      constitutive_dislotwin_structure
+                                       constitutive_dislotwin_structure
  use constitutive_nonlocal, only:      constitutive_nonlocal_label, &
-                                      constitutive_nonlocal_structure
+                                       constitutive_nonlocal_structure
  
  implicit none
  integer(pInt), parameter :: file = 200
@@ -123,6 +131,8 @@ subroutine crystallite_init(Temperature)
  !*** local variables ***!
  integer(pInt), parameter :: maxNchunks = 2
  integer(pInt), dimension(1+2*maxNchunks) :: positions
+ character(len=64) tag
+ character(len=1024) line
  integer(pInt)               g, &                          ! grain number
                              i, &                          ! integration point number
                              e, &                          ! element number
@@ -131,12 +141,11 @@ subroutine crystallite_init(Temperature)
                              eMax, &                       ! maximum number of elements
                              nMax, &                       ! maximum number of ip neighbors
                              myNgrains, &                  ! number of grains in current IP
-                             myCrystallite                 ! crystallite of current elem
- integer(pInt) section, j,p, output, mySize
- character(len=64) tag
- character(len=1024) line
- integer(pInt)               myStructure, &                ! lattice structure 
-                             myPhase
+                             myCrystallite, &              ! crystallite of current elem
+                             section, f,j,k,p, output, mySize, index_myFamily, &
+                             myStructure, &                ! lattice structure 
+                             myPhase, &
+                             myMat
  
  write(6,*)
  write(6,*) '<<<+-  crystallite init  -+>>>'
@@ -281,7 +290,7 @@ subroutine crystallite_init(Temperature)
      do g = 1,myNgrains
        crystallite_partionedTemperature0(g,i,e) = Temperature                       ! isothermal assumption
        crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(:,g,i,e))    ! plastic def gradient reflects init orientation
-       crystallite_Fe(:,:,g,i,e)  = transpose(crystallite_Fp0(:,:,g,i,e))
+       crystallite_Fe(:,:,g,i,e)  = math_transpose3x3(crystallite_Fp0(:,:,g,i,e))
        crystallite_F0(:,:,g,i,e)  = math_I3
        crystallite_partionedFp0(:,:,g,i,e) = crystallite_Fp0(:,:,g,i,e)
        crystallite_partionedF0(:,:,g,i,e)  = crystallite_F0(:,:,g,i,e)
@@ -299,20 +308,21 @@ subroutine crystallite_init(Temperature)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       do g = 1,homogenization_Ngrains(mesh_element(3,e))
          myPhase = material_phase(g,i,e)
+         myMat   = phase_constitutionInstance(myPhase)
          select case (phase_constitution(myPhase))
                 case (constitutive_phenopowerlaw_label)
-                  myStructure = constitutive_phenopowerlaw_structure(phase_constitutionInstance(myPhase))
+                  myStructure = constitutive_phenopowerlaw_structure(myMat)
                 case (constitutive_titanmod_label)
-                  myStructure = constitutive_titanmod_structure(phase_constitutionInstance(myPhase))
+                  myStructure = constitutive_titanmod_structure(myMat)
                 case (constitutive_dislotwin_label)
-                  myStructure = constitutive_dislotwin_structure(phase_constitutionInstance(myPhase))
+                  myStructure = constitutive_dislotwin_structure(myMat)
                 case (constitutive_nonlocal_label)
-                  myStructure = constitutive_nonlocal_structure(phase_constitutionInstance(myPhase))
+                  myStructure = constitutive_nonlocal_structure(myMat)
                 case default
                   myStructure = -1_pInt ! does this happen for j2 material?
               end select
          if (myStructure>0_pInt) then   
-           crystallite_symmetryID(g,i,e)=lattice_symmetryTypes(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2  
+           crystallite_symmetryID(g,i,e) = lattice_symmetryType(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2  
          endif
       enddo
     enddo
@@ -2386,7 +2396,7 @@ endfunction
  ! start LpLoop with no acceleration
  NiterationStress = 0_pInt
  leapfrog = 1.0_pReal
- maxleap = 1024.0_pReal
+ maxleap = 16.0_pReal
  jacoCounter = 0_pInt
 
 LpLoop: do
@@ -2523,7 +2533,7 @@ LpLoop: do
      Lpguess_old = Lpguess 
      
      ! accelerate?
-     if (NiterationStress > 1 .and. leapfrog < maxleap) leapfrog = 2.0_pReal * leapfrog
+     if (NiterationStress > 1 .and. leapfrog < maxleap) leapfrog = leapfrog + 1.0_pReal
    endif
 
    ! leapfrog to updated Lp

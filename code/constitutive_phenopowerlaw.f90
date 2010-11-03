@@ -29,12 +29,12 @@
 !c44                     46.7e9
 !
 !gdot0_slip              0.001
-!1_by_m_slip             50
+!n_slip                  50
 !tau0_slip               65e6 22e6 52e6 50e6               # per family
 !tausat_slip             80e6 180e6 140e6 140e6            # per family
 !w0_slip                 1
 !gdot0_twin              0.001
-!1_by_m_twin             50
+!n_twin                  50
 !tau0_twin               52e6 52e6 52e6 52e6              # per family
 !s_pr                    50e6                             # push-up stress for slip saturation due to twinning
 !twin_b                  2
@@ -134,7 +134,8 @@ subroutine constitutive_phenopowerlaw_init(file)
  use IO
  use material
 
- use lattice, only: lattice_initializeStructure, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
+ use lattice, only: lattice_initializeStructure, lattice_symmetryType, &
+                    lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                     lattice_maxNinteraction, lattice_NslipSystem, lattice_NtwinSystem, &
                     lattice_interactionSlipSlip, &
                     lattice_interactionSlipTwin, &
@@ -400,15 +401,17 @@ subroutine constitutive_phenopowerlaw_init(file)
    constitutive_phenopowerlaw_sizeState(i)    = constitutive_phenopowerlaw_totalNslip(i)+ &
                                                 constitutive_phenopowerlaw_totalNtwin(i)+ 2    ! s_slip, s_twin, sum(gamma), sum(f)
 
-   select case (constitutive_phenopowerlaw_structure(i))     ! assign elasticity tensor
-     case(1:2) ! cubic(s)
+   myStructure = constitutive_phenopowerlaw_structure(i)
+
+   select case (lattice_symmetryType(myStructure))                                             ! assign elasticity tensor
+     case(1)                                                                                   ! cubic(s)
        forall(k=1:3)
          forall(j=1:3) &
            constitutive_phenopowerlaw_Cslip_66(k,j,i) =   constitutive_phenopowerlaw_C12(i)
          constitutive_phenopowerlaw_Cslip_66(k,k,i) =     constitutive_phenopowerlaw_C11(i)
          constitutive_phenopowerlaw_Cslip_66(k+3,k+3,i) = constitutive_phenopowerlaw_C44(i)
        end forall
-     case(3:)   ! hex
+     case(2)                                                                                   ! hex
        constitutive_phenopowerlaw_Cslip_66(1,1,i) = constitutive_phenopowerlaw_C11(i)
        constitutive_phenopowerlaw_Cslip_66(2,2,i) = constitutive_phenopowerlaw_C11(i)
        constitutive_phenopowerlaw_Cslip_66(3,3,i) = constitutive_phenopowerlaw_C33(i)
@@ -425,8 +428,6 @@ subroutine constitutive_phenopowerlaw_init(file)
    end select
    constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))
-
-   myStructure = constitutive_phenopowerlaw_structure(i)
 
    do f = 1,lattice_maxNslipFamily                                          ! >>> interaction slip -- X
      index_myFamily = sum(constitutive_phenopowerlaw_Nslip(1:f-1,i))
@@ -478,6 +479,8 @@ subroutine constitutive_phenopowerlaw_init(file)
        enddo; enddo
 
    enddo; enddo
+
+! report to out file...
 
  enddo
 
@@ -592,7 +595,7 @@ subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
 
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
-
+  
 endsubroutine
 
 

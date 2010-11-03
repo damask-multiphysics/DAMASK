@@ -1373,14 +1373,16 @@ endfunction
  character(len=80) msg
 
  select case (ID)
+ case (101)
+   msg = '+    crystallite debugging off...    +'
  case (600)
-   msg = '+  Crystallite responds elastically  +'
+   msg = '+  crystallite responds elastically  +'
  case (650)
-   msg = '+     Polar decomposition failed     +'
+   msg = '+     polar decomposition failed     +'
  case (700)
    msg = '+      unknown crystal symmetry      +'
  case default
-   msg = '+     Unknown warning number...      +'
+   msg = '+     unknown warning number...      +'
  end select
  
  !$OMP CRITICAL (write2out)
