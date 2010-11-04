@@ -224,8 +224,8 @@ subroutine hypela2(&
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
  
- real(pReal), dimension (3,3) :: pstress              ! not used, but needed for call of cpfem_general
- real(pReal), dimension (3,3,3,3) :: dPdF            ! not used, but needed for call of cpfem_general
+ real(pReal), dimension (3,3) :: pstress                                  ! dummy argument for call of cpfem_general (used by mpie_spectral)
+ real(pReal), dimension (3,3,3,3) :: dPdF                                 ! dummy argument for call of cpfem_general (used by mpie_spectral)
 
  integer(pInt) computationMode, i, cp_en
 
@@ -240,11 +240,11 @@ subroutine hypela2(&
  else                                                                     ! stress requested (lovl == 6)
    cp_en = mesh_FEasCP('elem',n(1))
 
-   if (cptim > theTime .or. inc /= theInc) then                           ! reached convergence
+   if (cptim > theTime .or. inc /= theInc) then                           ! reached "convergence"
 
      terminallyIll = .false.
-     cycleCounter = 0
-     if (inc == 0) then                                                   ! start of analysis
+     cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
+     if (inc == 0) then                                                   ! >> start of analysis <<
        lastIncConverged = .false.                                         ! no Jacobian backup
        outdatedByNewInc = .false.                                         ! no aging of state
        lastMode = .false.                                                 ! pretend last step was collection
@@ -252,7 +252,7 @@ subroutine hypela2(&
        !$OMP CRITICAL (write2out)
        write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> start of analysis..!'; call flush(6)
        !$OMP END CRITICAL (write2out)
-     else if (inc - theInc > 1) then                                      ! restart of broken analysis
+     else if (inc - theInc > 1) then                                      ! >> restart of broken analysis <<
        lastIncConverged = .false.                                         ! no Jacobian backup
        outdatedByNewInc = .false.                                         ! no aging of state
        lastMode = .true.                                                  ! pretend last step was calculation
@@ -260,20 +260,20 @@ subroutine hypela2(&
        !$OMP CRITICAL (write2out)
        write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> restart of analysis..!'; call flush(6)
        !$OMP END CRITICAL (write2out)
-     else                                                                 ! just a new inc
-       lastIncConverged = .true.                                          ! Jacobian backup
-       outdatedByNewInc = .true.                                          ! aging of state
+     else                                                                 ! >> just the next inc <<
+       lastIncConverged = .true.                                          ! request Jacobian backup
+       outdatedByNewInc = .true.                                          ! request aging of state
        lastMode = .true.                                                  ! assure last step was calculation
        calcMode = .true.                                                  ! assure last step was calculation
        !$OMP CRITICAL (write2out)
-       write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> former increment converged..!'; call flush(6)
+       write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> new increment..!'; call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
 
-   else if ( timinc < theDelta ) then                                     ! cutBack
+   else if ( timinc < theDelta ) then                                     ! >> cutBack <<
 
      terminallyIll = .false.
-     cycleCounter = 0
+     cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
      calcMode = .true.                                                    ! pretend last step was calculation
      !$OMP CRITICAL (write2out)
      write(6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> cutback detected..!'; call flush(6)
@@ -287,10 +287,10 @@ subroutine hypela2(&
      if ( lastMode /= calcMode(nn,cp_en) ) then                           ! first after ping pong
        call debug_reset()                                                 ! resets debugging
        outdatedFFN1  = .false.
-       cycleCounter  = cycleCounter + 1
+       cycleCounter  = cycleCounter + 1_pInt
      endif
      if ( outdatedByNewInc ) then
-       outdatedByNewInc = .false.
+       outdatedByNewInc = .false.                                         ! reset flag
        computationMode = 1                                                ! calc and age results
      else
        computationMode = 2                                                ! plain calc
@@ -299,7 +299,7 @@ subroutine hypela2(&
      if ( lastMode /= calcMode(nn,cp_en) .and. &
           .not. terminallyIll ) call debug_info()                         ! first after ping pong reports (meaningful) debugging
      if ( lastIncConverged ) then
-       lastIncConverged = .false.
+       lastIncConverged = .false.                                         ! reset flag
        computationMode = 4                                                ! collect and backup Jacobian after convergence
      else
        computationMode = 3                                                ! plain collect
