@@ -266,7 +266,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       materialpoint_Temperature, &
                                                       materialpoint_stressAndItsTangent, &
                                                       materialpoint_postResults
-  use IO, only:                                       IO_write_jobBinaryFile
+  use IO, only:                                       IO_write_jobBinaryFile, &
+                                                      IO_warning
   use mpie_interface
   
   implicit none
@@ -537,6 +538,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   pstress(:,:)   = materialpoint_P(:,:,IP,cp_en)
   dPdF(:,:,:,:)  = materialpoint_dPdF(:,:,:,:,IP,cp_en)
 
+  ! warning for zero stiffness
+  if (all(abs(jacobian) < 1e-10_pReal)) then
+    call IO_warning(601,cp_en,IP)
+  endif
+  
   if (selectiveDebugger .and. cp_en == debug_e .and. IP == debug_i .and. mode < 6) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,x,i2,x,a,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6

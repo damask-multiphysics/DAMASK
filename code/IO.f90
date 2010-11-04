@@ -1377,6 +1377,8 @@ endfunction
    msg = '+    crystallite debugging off...    +'
  case (600)
    msg = '+  crystallite responds elastically  +'
+ case (601)
+   msg = '+      stiffness close to zero       +'
  case (650)
    msg = '+     polar decomposition failed     +'
  case (700)
@@ -1393,10 +1395,14 @@ endfunction
  write(6,'(a38)') msg
  if (present(ext_msg))  write(6,*) '+ ',ext_msg
  if (present(e)) then
-   if (present(i) .and. present(g)) then
-     write(6,'(a12,x,i6,x,a2,x,i2,x,a5,x,i4,a2)') '+ at element',e,'IP',i,'grain',g,' +'
+   if (present(i)) then
+     if (present(g)) then
+       write(6,'(a12,x,i6,x,a2,x,i2,x,a5,x,i4,a2)') '+ at element',e,'IP',i,'grain',g,' +'
+     else
+       write(6,'(a12,x,i6,x,a2,x,i2,a13)') '+ at element',e,'IP',i,'            +'
+     endif
    else
-     write(6,'(a17,i6,a14)') '+              at ',e,'             +'
+     write(6,'(a12,x,i6,a19)') '+ at element',e,'             +'
    endif
  endif
  write(6,'(a38)') '+------------------------------------+'
