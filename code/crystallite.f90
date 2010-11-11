@@ -1181,6 +1181,7 @@ endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
   enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP BARRIER
 
 
 ! --- FIRST RUNGE KUTTA STEP ---
@@ -1212,6 +1213,7 @@ endif
     endif
  enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP BARRIER
 
 
 ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
@@ -1239,6 +1241,7 @@ do n = 1,5
       endif
     enddo; enddo; enddo
   !$OMP ENDDO      
+  !$OMP BARRIER
 
   
   ! --- update dependent states ---
@@ -1252,6 +1255,7 @@ do n = 1,5
       constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
     enddo; enddo; enddo
   !$OMP ENDDO
+  !$OMP BARRIER
 
 
   ! --- stress integration ---
@@ -1271,7 +1275,8 @@ do n = 1,5
       endif
     enddo; enddo; enddo
   !$OMP ENDDO      
-  
+  !$OMP BARRIER
+
 
   ! --- dot state and RK dot state---
   if (verboseDebugger) then
@@ -1303,6 +1308,7 @@ do n = 1,5
       endif
     enddo; enddo; enddo
   !$OMP ENDDO
+  !$OMP BARRIER
 
 enddo  
 
@@ -1383,6 +1389,7 @@ relTemperatureResiduum = 0.0_pReal
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP BARRIER
       
 
 ! --- UPDATE DEPENDENT STATES IF RESIDUUM BELOW TOLERANCE ---
@@ -1395,6 +1402,7 @@ relTemperatureResiduum = 0.0_pReal
     endif
  enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP BARRIER
 
 
 ! --- FINAL STRESS INTEGRATION STEP IF RESIDUUM BELOW TOLERANCE ---
@@ -1980,6 +1988,7 @@ endif
     constitutive_previousDotState2(g,i,e)%p = 0.0_pReal
  enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP BARRIER
 
 
 ! --- DOT STATES ---
@@ -1993,11 +2002,14 @@ endif
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP BARRIER
 
 
 ! --- STATE & TEMPERATURE UPDATE ---
 
-crystallite_statedamper = 1.0_pReal
+!$OMP MASTER
+  crystallite_statedamper = 1.0_pReal
+!$OMP END MASTER
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
@@ -2011,6 +2023,7 @@ crystallite_statedamper = 1.0_pReal
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP BARRIER
 
 
 ! --- UPDATE DEPENDENT STATES ---
@@ -2026,15 +2039,20 @@ crystallite_statedamper = 1.0_pReal
     constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
  enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP BARRIER
 
 
 ! --+>> STATE LOOP <<+--
 
-NiterationState = 0_pInt
+!$OMP MASTER
+  NiterationState = 0_pInt
+!$OMP END MASTER
 
 do while (any(crystallite_todo) .and. NiterationState < nState )                                          ! convergence loop for crystallite
  
-  NiterationState = NiterationState + 1_pInt
+  !$OMP MASTER
+    NiterationState = NiterationState + 1_pInt
+  !$OMP END MASTER
 
 
   ! --- STRESS INTEGRATION ---
@@ -2051,6 +2069,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       endif
     enddo; enddo; enddo
   !$OMP ENDDO
+  !$OMP BARRIER
 
   if (verboseDebugger .and. mode == 1) then
     !$OMP MASTER
@@ -2072,6 +2091,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       endif
   enddo; enddo; enddo
   !$OMP ENDDO
+  !$OMP BARRIER
 
 
   ! --- STATE & TEMPERATURE UPDATE ---
@@ -2109,6 +2129,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       endif
     enddo; enddo; enddo
   !$OMP ENDDO
+  !$OMP BARRIER
 
 
   ! --- UPDATE DEPENDENT STATES ---
@@ -2124,6 +2145,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
    enddo; enddo; enddo
   !$OMP ENDDO
+  !$OMP BARRIER
     
   
   if (verboseDebugger .and. mode == 1) then
@@ -2733,7 +2755,7 @@ logical error
     enddo
   enddo
 !$OMP ENDDO
-
+!$OMP BARRIER
 
 ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
 ! --- we use crystallite_orientation from above, so need a seperate loop
