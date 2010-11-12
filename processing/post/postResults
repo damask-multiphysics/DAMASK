@@ -555,8 +555,8 @@ elemNodeID       = [[] for e in range(stat['NumberOfElements'])]
 ipCoordinates    = [[] for e in range(stat['NumberOfElements'])]
 
 for n in range(stat['NumberOfNodes']):
-  nodeID[n] = p.node_id(n)
-  nodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
+  nodeID[n]          = p.node_id(n)
+  nodeCoordinates[n] = [p.node(n).x, p.node(n).y, p.node(n).z]
 
 for e in range(stat['NumberOfElements']):
   elemID[e]        = p.element_id(e)
