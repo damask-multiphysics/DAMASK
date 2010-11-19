@@ -583,9 +583,11 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
 end select
 
 call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
-debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
-if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
+!$OMP CRITICAL (debugTimingDotState)
+  debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
+  debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
+  if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
+!$OMP END CRITICAL (debugTimingDotState)
 
 return
 endsubroutine
@@ -652,9 +654,11 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
 end select
 
 call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt
-debug_cumDotTemperatureTicks = debug_cumDotTemperatureTicks + tock-tick
-if (tock < tick) debug_cumDotTemperatureTicks  = debug_cumDotTemperatureTicks + maxticks
+!$OMP CRITICAL (debugTimingDotTemperature)
+  debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt
+  debug_cumDotTemperatureTicks = debug_cumDotTemperatureTicks + tock-tick
+  if (tock < tick) debug_cumDotTemperatureTicks  = debug_cumDotTemperatureTicks + maxticks
+!$OMP END CRITICAL (debugTimingDotTemperature)
 
 return
 endfunction
