@@ -1181,16 +1181,15 @@ endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
   enddo; enddo; enddo
 !$OMP ENDDO
-!$OMP BARRIER
 
 
 ! --- FIRST RUNGE KUTTA STEP ---
 if (verboseDebugger) then
-  !$OMP MASTER
+  !$OMP SINGLE
   !$OMP CRITICAL (write2out)
     write(6,'(a,x,i1)') '<<<RUNGE KUTTA STEP',1
   !$OMP END CRITICAL (write2out)
-  !$OMP END MASTER
+  !$OMP END SINGLE
 endif
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
@@ -1213,7 +1212,6 @@ endif
     endif
  enddo; enddo; enddo
 !$OMP ENDDO
-!$OMP BARRIER
 
 
 ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
@@ -1240,8 +1238,7 @@ do n = 1,5
                                        + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
       endif
     enddo; enddo; enddo
-  !$OMP ENDDO      
-  !$OMP BARRIER
+  !$OMP ENDDO
 
   
   ! --- update dependent states ---
@@ -1255,7 +1252,6 @@ do n = 1,5
       constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
     enddo; enddo; enddo
   !$OMP ENDDO
-  !$OMP BARRIER
 
 
   ! --- stress integration ---
@@ -1275,16 +1271,15 @@ do n = 1,5
       endif
     enddo; enddo; enddo
   !$OMP ENDDO      
-  !$OMP BARRIER
 
 
   ! --- dot state and RK dot state---
   if (verboseDebugger) then
-    !$OMP MASTER
+    !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,'(a,x,i1)') '<<<RUNGE KUTTA STEP',n+1
     !$OMP END CRITICAL (write2out)
-    !$OMP END MASTER
+    !$OMP END SINGLE
   endif
   !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
@@ -1308,7 +1303,6 @@ do n = 1,5
       endif
     enddo; enddo; enddo
   !$OMP ENDDO
-  !$OMP BARRIER
 
 enddo  
 
@@ -1389,7 +1383,6 @@ relTemperatureResiduum = 0.0_pReal
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
-!$OMP BARRIER
       
 
 ! --- UPDATE DEPENDENT STATES IF RESIDUUM BELOW TOLERANCE ---
@@ -1402,7 +1395,6 @@ relTemperatureResiduum = 0.0_pReal
     endif
  enddo; enddo; enddo
 !$OMP ENDDO
-!$OMP BARRIER
 
 
 ! --- FINAL STRESS INTEGRATION STEP IF RESIDUUM BELOW TOLERANCE ---
@@ -1988,7 +1980,6 @@ endif
     constitutive_previousDotState2(g,i,e)%p = 0.0_pReal
  enddo; enddo; enddo
 !$OMP ENDDO
-!$OMP BARRIER
 
 
 ! --- DOT STATES ---
@@ -2002,14 +1993,13 @@ endif
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
-!$OMP BARRIER
 
 
 ! --- STATE & TEMPERATURE UPDATE ---
 
-!$OMP MASTER
+!$OMP SINGLE
   crystallite_statedamper = 1.0_pReal
-!$OMP END MASTER
+!$OMP END SINGLE
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
@@ -2023,7 +2013,6 @@ endif
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
-!$OMP BARRIER
 
 
 ! --- UPDATE DEPENDENT STATES ---
@@ -2039,24 +2028,22 @@ endif
     constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
  enddo; enddo; enddo
 !$OMP ENDDO
-!$OMP BARRIER
 
 
 ! --+>> STATE LOOP <<+--
 
-!$OMP MASTER
+!$OMP SINGLE
   NiterationState = 0_pInt
-!$OMP END MASTER
+!$OMP END SINGLE
 
 do while (any(crystallite_todo) .and. NiterationState < nState )                                          ! convergence loop for crystallite
  
-  !$OMP MASTER
+  !$OMP SINGLE
     NiterationState = NiterationState + 1_pInt
-  !$OMP END MASTER
-
+  !$OMP END SINGLE
 
   ! --- STRESS INTEGRATION ---
-
+  
   !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
@@ -2069,14 +2056,13 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       endif
     enddo; enddo; enddo
   !$OMP ENDDO
-  !$OMP BARRIER
 
   if (verboseDebugger .and. mode == 1) then
-    !$OMP MASTER
+    !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,*) count(crystallite_todo(:,:,:)),'grains todo after stress integration'
     !$OMP END CRITICAL (write2out)
-    !$OMP END MASTER
+    !$OMP END SINGLE
   endif
 
 
@@ -2091,16 +2077,17 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       endif
   enddo; enddo; enddo
   !$OMP ENDDO
-  !$OMP BARRIER
 
 
   ! --- STATE & TEMPERATURE UPDATE ---
 
-  crystallite_statedamper = 1.0_pReal
+  !$OMP SINGLE
+    crystallite_statedamper = 1.0_pReal
+  !$OMP END SINGLE
   !$OMP DO PRIVATE(dot_prod12,dot_prod22)
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        
+
         ! --- state damper ---
         
         dot_prod12 = dot_product( constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p, &
@@ -2129,7 +2116,6 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       endif
     enddo; enddo; enddo
   !$OMP ENDDO
-  !$OMP BARRIER
 
 
   ! --- UPDATE DEPENDENT STATES ---
@@ -2145,16 +2131,15 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
    enddo; enddo; enddo
   !$OMP ENDDO
-  !$OMP BARRIER
     
   
   if (verboseDebugger .and. mode == 1) then
-    !$OMP MASTER
+    !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,*) count(crystallite_converged(:,:,:)),'grains converged after state integration no.', NiterationState
       write(6,*)
     !$OMP END CRITICAL (write2out)
-    !$OMP END MASTER
+    !$OMP END SINGLE
   endif
 
   
@@ -2169,13 +2154,13 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                   ! skip all converged
   
   if (verboseDebugger .and. mode == 1) then
-    !$OMP MASTER
+    !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,*) count(crystallite_converged(:,:,:)),'grains converged after non-local check'
       write(6,*) count(crystallite_todo(:,:,:)),'grains todo after state integration no.', NiterationState
       write(6,*)
     !$OMP END CRITICAL (write2out)
-    !$OMP END MASTER
+    !$OMP END SINGLE
   endif
   
 enddo                                                                                           ! crystallite convergence loop  
@@ -2508,9 +2493,12 @@ LpLoop: do
    call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
    call constitutive_LpAndItsTangent(Lp_constitutive, dLpdT_constitutive, Tstar_v, crystallite_Temperature(g,i,e), g, i, e)
    call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-   debug_cumLpCalls = debug_cumLpCalls + 1_pInt
-   debug_cumLpTicks  = debug_cumLpTicks + tock-tick
-   if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
+   !$OMP CRITICAL (debugTimingLpTangent)
+     debug_cumLpCalls = debug_cumLpCalls + 1_pInt
+     debug_cumLpTicks  = debug_cumLpTicks + tock-tick
+     if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
+   !$OMP END CRITICAL (debugTimingLpTangent)
+   
    if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
      !$OMP CRITICAL (write2out)
        write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress at ' ,g,i,e, ' ; iteration ', NiterationStress
@@ -2565,7 +2553,9 @@ LpLoop: do
      Lpguess = Lpguess_old                                       
      residuum  = residuum_old
      
-     debug_LeapfrogBreakDistribution(NiterationStress,mode) = debug_LeapfrogBreakDistribution(NiterationStress,mode) + 1
+     !$OMP CRITICAL (distributionLeapfrogBreak)
+       debug_LeapfrogBreakDistribution(NiterationStress,mode) = debug_LeapfrogBreakDistribution(NiterationStress,mode) + 1
+     !$OMP END CRITICAL (distributionLeapfrogBreak)
      
    ! residuum got better
    else
@@ -2731,9 +2721,7 @@ logical error
 
 ! --- CALCULATE ORIENTATION AND LATTICE ROTATION ---
 
-!$OMP PARALLEL
-
-!$OMP DO PRIVATE(error,U,R)
+!$OMP PARALLEL DO PRIVATE(error,U,R)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       do g = 1,homogenization_Ngrains(mesh_element(3,e))
@@ -2754,14 +2742,14 @@ logical error
       enddo
     enddo
   enddo
-!$OMP ENDDO
-!$OMP BARRIER
+!$OMP END PARALLEL DO
+
 
 ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
 ! --- we use crystallite_orientation from above, so need a seperate loop
 
-!$OMP DO PRIVATE(myPhase,myInstance,myStructure,neighboring_e,neighboring_i, & 
-!$OMP &          neighboringPhase,neighboringInstance,neighboringStructure)
+!$OMP PARALLEL DO PRIVATE(myPhase,myInstance,myStructure,neighboring_e,neighboring_i, & 
+!$OMP &                   neighboringPhase,neighboringInstance,neighboringStructure)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       myPhase = material_phase(1,i,e)                                                                     ! get my phase
@@ -2804,9 +2792,7 @@ logical error
       endif
     enddo
   enddo
-!$OMP ENDDO
-
-!$OMP END PARALLEL
+!$OMP END PARALLEL DO
 
 endsubroutine
 
