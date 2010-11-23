@@ -369,7 +369,7 @@ FORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -zero -mp -WB 
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include -heap-arrays 500000000 $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -zero -mp -WB -w90 -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include -heap-arrays 500000000 $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -zero -mp -WB -w90 -fno-alias -O3 \
+FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp -WB -w90 -fno-alias -O3 \
  -openmp -openmp_report2 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include -heap-arrays 500000000 $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTNA="$FCOMP -c -assume byterecl -safe_cray_ptr -save -zero -mp -WB -w90 -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
