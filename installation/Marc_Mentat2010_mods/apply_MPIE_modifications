@@ -18,7 +18,7 @@ for filename in 'comp_user' \
                 'run_marc' \
                 'run_h_marc' \
                 'run_mp_marc' \
-                'include_linux_64'; do
+                'include_linux64'; do
   cp $WORKINGDIR/Marc_tools/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $filename
