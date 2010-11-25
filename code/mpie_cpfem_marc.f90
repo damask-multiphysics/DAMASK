@@ -232,7 +232,7 @@ subroutine hypela2(&
                defaultNumThreadsInt, &                                    ! default value stored in environment variable OMP_NUM_THREADS
                mpieNumThreadsInt                                          ! value stored in environment variable MPIE_NUM_THREADS
 
- character mpieNumThreadsString
+ character(len=2) mpieNumThreadsString
  
  
  defaultNumThreadsInt = omp_get_num_threads()                             ! remember default number of available threads defined by environment variable OMP_NUM_THREADS
