@@ -171,8 +171,27 @@ program voronoi
 !write visualization files (in case wanted)
   if (choice == 'y' .or. choice == 'Y') then
     print*, 'for more information on gmsh: http://geuz.org/gmsh/'
-	
+
 ! write full mesh out
+    open(20, file = ((trim(name))//'_3Dfull.msh'))
+    write(20, '(A, /, A, /, A, /, A, /, I10)'), '$MeshFormat', '2.1 0 8', '$EndMeshFormat', '$Nodes', abc
+    do i = 1, abc
+      write(20, '(I10, I10, I10, I10)'), i, mod((i-1), a) +1, mod(((i-1)/a), b) +1, mod(((i-1)/(ab)), c) +1
+    end do
+    write(20, '(A, /, A, /, I10)'), '$EndNodes', '$Elements', abc
+    do i = 1, abc
+      write(20, '(I10, A, I10, A, I10)'), i, ' 15 2', grainMap(i), ' 2', i
+    end do
+    write(20, '(A)'), '$EndElements'
+    write(20, '(A, /, A, /, A, /, A, /, A, /, A, /, A, /, A, /, I10)'), '$NodeData', '1', '"Grain No."', '1', &
+                                                                 &'0.0', '3', '0', '1', abc
+    do i = 1, abc
+      write(20, '(I10, tr2, I10)'), i, grainMap(i)
+    end do
+    write(20, *), '$EndNodeData'
+    close(20)
+	
+! write 3d skin out
     open(20, file = ((trim(name))//'_3D.msh'))
     write(20, '(A, /, A, /, A, /, A, /, I10)'), '$MeshFormat', '2.1 0 8', '$EndMeshFormat', '$Nodes', abc_Red
     do j = 1, abc_Red
