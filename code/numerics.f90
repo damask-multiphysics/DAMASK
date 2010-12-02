@@ -50,6 +50,9 @@ real(pReal)                     relevantStrain, &                       ! strain
 
                                 !* Random seeding parameters: added <<<updated 27.08.2009>>>
 integer(pInt)                   fixedSeed                               ! fixed seeding for pseudo-random number generator
+! OpenMP variable
+!$ integer(pInt)                mpieNumThreadsInt                       ! value stored in environment variable MPIE_NUM_THREADS
+
 
 CONTAINS
  
@@ -69,6 +72,7 @@ subroutine numerics_init()
                                               IO_lc, &
                                               IO_floatValue, &
                                               IO_intValue
+!$ use OMP_LIB                                                                ! the openMP function library
   
   implicit none
 
@@ -83,6 +87,9 @@ subroutine numerics_init()
   character(len=64)                           tag
   character(len=1024)                         line
   
+! OpenMP variable
+!$ character(len=2) mpieNumThreadsString                               !enironment variable MPIE_NUMTHREADS
+
   write(6,*)
   write(6,*) '<<<+-  numerics init  -+>>>'
   write(6,*) '$Id$'
@@ -133,6 +140,13 @@ subroutine numerics_init()
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
+
+
+!* determin number of threads from environment variable MPIE_NUM_THREADS
+!$ call GetEnv('MPIE_NUM_THREADS',mpieNumThreadsString)                     ! get environment variable MPIE_NUM_THREADS...
+!$ read(mpieNumThreadsString,'(i2)') mpieNumThreadsInt                      ! ...convert it to integer...
+!$ if (mpieNumThreadsInt < 1) mpieNumThreadsInt = 1                         ! ...ensure that its at least one...
+!$ call omp_set_num_threads(mpieNumThreadsInt)                              ! ...and use it as number of threads for parallel execution
 
   ! try to open the config file
   if(IO_open_file(fileunit,numerics_configFile)) then 
@@ -286,13 +300,17 @@ subroutine numerics_init()
   write(6,*)
 
 !* spectral parameters
-  write(6,'(a24,x,e8.1)') 'rTol_defgradAvg:      ',rTol_defgradAvg
+  write(6,'(a24,x,e8.1)') 'rTol_defgradAvg:        ',rTol_defgradAvg
 
   write(6,*)
 
 !* Random seeding parameters
   write(6,'(a24,x,i8)')   'fixed_seed:             ',fixedSeed
   write(6,*)
+
+!* openMP parameter
+!$  write(6,'(a24,x,i8)')   'number of threads:      ',OMP_get_max_threads()
+!$  write(6,*)
   
   ! sanity check  
   if (relevantStrain <= 0.0_pReal)          call IO_error(260)

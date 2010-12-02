@@ -202,7 +202,8 @@ subroutine hypela2(&
                       debug_reset
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_initAll,CPFEM_general,CPFEM_init_done
- use OMP_LIB
+!$ use OMP_LIB                                                                ! the openMP function library
+!$ use numerics, only: mpieNumThreadsInt                                      ! number of threads set by MPIE_NUMTHREADS
  implicit none
  
 !     ** Start of generated type statements **
@@ -228,21 +229,16 @@ subroutine hypela2(&
  real(pReal), dimension (3,3) :: pstress                                  ! dummy argument for call of cpfem_general (used by mpie_spectral)
  real(pReal), dimension (3,3,3,3) :: dPdF                                 ! dummy argument for call of cpfem_general (used by mpie_spectral)
 
- integer(pInt) computationMode, i, cp_en, &
-               defaultNumThreadsInt, &                                    ! default value stored in environment variable OMP_NUM_THREADS
-               mpieNumThreadsInt                                          ! value stored in environment variable MPIE_NUM_THREADS
+ integer(pInt) computationMode, i, cp_en
+! OpenMP variable
+!$ integer(pInt) defaultNumThreadsInt                                       ! default value set by Marc
+ 
+ 
+!$ defaultNumThreadsInt = omp_get_num_threads()                             ! remember number of threads set by Marc
 
- character(len=2) mpieNumThreadsString
- 
- 
- defaultNumThreadsInt = omp_get_num_threads()                             ! remember default number of available threads defined by environment variable OMP_NUM_THREADS
- call GetEnv('MPIE_NUM_THREADS',mpieNumThreadsString)                     ! get environment variable MPIE_NUM_THREADS...
- read(mpieNumThreadsString,'(i2)') mpieNumThreadsInt                      ! ...convert it to integer...
- if (mpieNumThreadsInt < 1) mpieNumThreadsInt = 1                         ! ...ensure that its at least one...
- call omp_set_num_threads(mpieNumThreadsInt)                              ! ...and use it as number of threads for parallel execution
- 
- 
  if (.not. CPFEM_init_done) call CPFEM_initAll(t(1),n(1),nn)
+
+!$ call omp_set_num_threads(mpieNumThreadsInt)                              ! set number of threads for parallel execution set by MPIE_NUM_THREADS
 
  if (lovl == 4) then                                                      ! Marc requires stiffness in separate call
    if ( timinc < theDelta .and. theInc == inc ) then                      ! first after cutback
@@ -335,7 +331,7 @@ subroutine hypela2(&
  s(1:ngens) = stress(1:ngens)*invnrmMandel(1:ngens)
  if(symmetricSolver) d(1:ngens,1:ngens) = 0.5_pReal*(d(1:ngens,1:ngens)+transpose(d(1:ngens,1:ngens)))
 
- call omp_set_num_threads(defaultNumThreadsInt)                               ! reset number of threads to stored default value
+!$ call omp_set_num_threads(defaultNumThreadsInt)                               ! reset number of threads to stored default value
 
  return
  
