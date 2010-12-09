@@ -1,100 +1,112 @@
 import array
 import struct
+#import numpy
 print('post processing for mpie_spectral')
 
 filename ='results.out'
 results = open(filename, 'rb')
 print('filename:', filename)
+position=0
 
-#find load case name
-searchstring = b'Loadcase '
+#this funtion finds a string value in the given file for a given keyword
+def searchNameForKeyword(searchstring, file, maxpos):
+    results.seek(0,0)
+    begin = file.read(2048).find(searchstring) + len(searchstring) # function will return -1 if string isnt found
+    file.seek(begin -len(searchstring) -4)  #position of header
+    header = file.read(4) #store header
+    file.seek(begin,0)
+    length = file.read(2048).find(header)
+    file.seek(begin,0)
+    name = file.read(length)
+    return name, max(maxpos,results.tell())
 
-begin = results.read(2048).find(searchstring) + 9 # function will return -1 if string isnt found
-results.seek(begin -13)  #position of header
-header = results.read(4) #store header
-results.seek(begin,0)
-length = results.read(2048).find(header)
-results.seek(begin,0)
+#this funtion finds an integer value in the given file for a given keyword
+def searchValueForKeyword(searchstring, file, maxpos):
+    results.seek(0,0)
+    begin = file.read(2048).find(searchstring) + len(searchstring) # function will return -1 if string isnt found
+    file.seek(begin,0)
+    value = array.array('i',[0])
+    value = struct.unpack('i',results.read(4))[0]
+    return value, max(maxpos,results.tell())
 
-loadcase = results.read(length)
-print('loadcase:', loadcase)
+#finds the value for the three integers followed the given keyword
+def searchArrayForKeyword(searchstring, file, maxpos):
+    values = array.array('i',[0,0,0])
+    results.seek(0,0)
+    begin = results.read(2048).find(searchstring) + len(searchstring) #end position of string "resolution"
+    pos = results.read(60).find(b'a')
+    results.seek(begin+pos+2,0)  #why two, not 1??
+    values[0]=struct.unpack('i',results.read(4))[0]
+    maxpos=max(maxpos,results.tell())
+    results.seek(begin,0)
+    pos = results.read(60).find(b'b')
+    results.seek(begin+pos+1,0)
+    values[1]=struct.unpack('i',results.read(4))[0]
+    maxpos=max(maxpos,results.tell())
+    results.seek(begin,0)
+    pos = results.read(60).find(b'c')
+    results.seek(begin+pos+1,0)
+    values[2]=struct.unpack('i',results.read(4))[0]
+    maxpos=max(maxpos,results.tell())
+    return values, maxpos
+
+#finds the value for the three doubles followed the given keyword
+def searchFarrayForKeyword(searchstring, file, maxpos):
+    values = array.array('d',[0,0,0])
+    results.seek(0,0)
+    begin = results.read(2048).find(searchstring) + len(searchstring) #end position of string "resolution"
+    pos = results.read(60).find(b'x')
+    results.seek(begin+pos+2,0)  #why two, not 1??
+    values[0]=struct.unpack('d',results.read(8))[0]
+    maxpos=max(maxpos,results.tell())
+    results.seek(begin,0)
+    pos = results.read(60).find(b'y')
+    results.seek(begin+pos+1,0)
+    values[1]=struct.unpack('d',results.read(8))[0]
+    maxpos=max(maxpos,results.tell())
+    results.seek(begin,0)
+    pos = results.read(60).find(b'z')
+    results.seek(begin+pos+1,0)
+    values[2]=struct.unpack('d',results.read(8))[0]
+    maxpos=max(maxpos,results.tell())
+    return values, maxpos
+
+loadcase, position = searchNameForKeyword(b'Loadcase ', results, position)
+workingdir, position = searchNameForKeyword(b'Workingdir ', results, position)
+jobname, position = searchNameForKeyword(b'JobName ', results, position)
+totalincs, position =  searchValueForKeyword(b'totalincs ', results, position)
+materialpoint_sizeResults, position =  searchValueForKeyword(b'materialpoint_sizeResults ', results, position)
+resolution, position = searchArrayForKeyword(b'resolution ', results, position)
+geomdimension, position = searchFarrayForKeyword(b'geomdimension ', results, position)
+position=position+4 +13*8
+results.seek(position,0)
+tnsr = array.array('d',[0,0,0,0,0,0,0,0,0])
+tnsr[0]=struct.unpack('d',results.read(8))[0]
+tnsr[1]=struct.unpack('d',results.read(8))[0]
+tnsr[2]=struct.unpack('d',results.read(8))[0]
+tnsr[3]=struct.unpack('d',results.read(8))[0]
+tnsr[4]=struct.unpack('d',results.read(8))[0]
+print(tnsr)
 
 
-#find workingdir name
-results.seek(0,0)
-searchstring = b'Workingdir '
+# ended reading of header. now starting to read information concerning output
+#filename = jobname[0:len(jobname)-5]+b'.outputCrystallite'
+#outputCrystallite = open(filename, 'r')
 
-begin = results.read(2048).find(searchstring) + 11 
-results.seek(begin -15)  #position of header
-header = results.read(4) #store header
-results.seek(begin,0)
-length = results.read(2048).find(header)
-results.seek(begin,0)
+def InCharCount(location, character):
+    subj = file(location, "r")
+    body = subj.read()
+    subj.close()
+    return body.count(character)
 
-workingdir = results.read(length)
-print('workingdir:', workingdir)
 
-#find job name
-results.seek(0,0)
-searchstring = b'JobName '
+def InCharCount(location, character):
+    subj = file(location, "r")
 
-begin = results.read(2048).find(searchstring) + 8 
-results.seek(begin -12)  #position of header
-header = results.read(4) #store header
-results.seek(begin,0)
-length = results.read(2048).find(header)
-results.seek(begin,0)
+    nbr_of_char = 0
+    for line in subj:
+        nbr_of_char = nbr_of_char + line.count(character)
 
-jobname = results.read(length)
-print('jobname:', jobname)
+    return nbr_of_char
 
-#find size of materialpoint results
-results.seek(0,0)
-searchstring = b'materialpoint_sizeResults'
-
-begin = results.read(2048).find(searchstring) + 24 
-results.seek(begin,0)
-materialpoint_sizeResults = array.array('i',[0])
-materialpoint_sizeResults[0] = struct.unpack('i',results.read(4))[0]
-print('materialpoint_sizeResults:', materialpoint_sizeResults)
-
-#read in resolution (FPs) of geometry
-resolution = array.array('i',[0,0,0])
-results.seek(0,0)
-searchstring = b'resolution'
-begin = results.read(2048).find(searchstring) + 10 #end position of string "resolution"
-results.seek(begin,0)
-pos = results.read(60).find(b'a')
-results.seek(begin+pos+1,0)
-resolution[0]=struct.unpack('i',results.read(4))[0]
-results.seek(begin,0)
-pos = results.read(60).find(b'b')
-results.seek(begin+pos+1,0)
-resolution[1]=struct.unpack('i',results.read(4))[0]
-results.seek(begin,0)
-pos = results.read(60).find(b'c')
-results.seek(begin+pos+1,0)
-resolution[2]=struct.unpack('i',results.read(4))[0]
-
-print('resolution:',resolution)
-
-#read in dimension of geometry
-geomdimension = array.array('d',[0,0,0])
-results.seek(0,0)
-searchstring = b'geomdimension'
-begin = results.read(2048).find(searchstring) + 13
-results.seek(begin,0)
-pos = results.read(60).find(b'x')
-results.seek(begin+pos+1,0)
-geomdimension[0]=struct.unpack('d',results.read(8))[0]
-results.seek(begin,0)
-pos = results.read(60).find(b'y')
-results.seek(begin+pos+1,0)
-geomdimension[1]=struct.unpack('d',results.read(8))[0]
-results.seek(begin,0)
-pos = results.read(60).find(b'z')
-results.seek(begin+pos+1,0)
-geomdimension[2]=struct.unpack('d',results.read(8))[0]
-
-print('geomdimension:',geomdimension)
 
