@@ -4,7 +4,8 @@
 MODULE mpie_interface
  use prec, only: pInt, pReal
  character(len=64), parameter :: FEsolver = 'Spectral'
- character(len=5),  parameter :: InputFileExtension = '.mesh'
+ character(len=5),  parameter :: InputFileExtension = '.geom'
+ character(len=4),  parameter :: LogFileExtension = '.log'    !until now, we don't have a log file. But IO.f90 requires it
 
 CONTAINS
 
@@ -49,7 +50,7 @@ function getSolverWorkingDirectoryName()
 endfunction
 
 !********************************************************************
-! basename of meshfile from command line arguments
+! basename of geometry file from command line arguments
 !
 !********************************************************************
 function getSolverJobName()
@@ -69,7 +70,7 @@ function getSolverJobName()
  posSep = scan(outName,pathSep,back=.true.)
 
  if (posExt <= posSep) posExt = len_trim(outName)+1       ! no extension present
- getSolverJobName = outName(1:posExt-1)                   ! path to mesh file (excl. extension)
+ getSolverJobName = outName(1:posExt-1)                   ! path to geometry file (excl. extension)
 
  if (scan(getSolverJobName,pathSep) /= 1) then            ! relative path given as command line argument
    call getcwd(cwd)
