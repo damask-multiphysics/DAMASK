@@ -1469,101 +1469,105 @@ where (rhoSgl(:,1:2) > 0.0_pReal) &
 
 
 !****************************************************************************
-!*** calculate dislocation fluxes
+!*** calculate dislocation fluxes (only for nonlocal constitution)
 
 rhoDotFlux = 0.0_pReal
-periodicSurfaceFlux = (/.false.,.true.,.false./)
+periodicSurfaceFlux = (/.false.,.false.,.false./)
 
-m(:,:,1) =  lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
-m(:,:,2) = -lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
-m(:,:,3) =  lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
-m(:,:,4) = -lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+if (.not. phase_localConstitution(material_phase(g,ip,el))) then                                                                    ! only for nonlocal constitution
 
-F = math_mul33x33(Fe(:,:,g,ip,el), Fp(:,:,g,ip,el))
-detFe = math_det3x3(Fe(:,:,g,ip,el)) 
-
-fluxdensity = rhoSgl(:,1:4) * constitutive_nonlocal_v(:,:,g,ip,el)
+  m(:,:,1) =  lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+  m(:,:,2) = -lattice_sd(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+  m(:,:,3) =  lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
+  m(:,:,4) = -lattice_st(:, constitutive_nonlocal_slipSystemLattice(:,myInstance), myStructure)
   
-!if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,*) '--> dislocation flux <---'
-do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                                                        ! loop through my neighbors
-
-  neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
-  neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
+  F = math_mul33x33(Fe(:,:,g,ip,el), Fp(:,:,g,ip,el))
+  detFe = math_det3x3(Fe(:,:,g,ip,el)) 
   
-  opposite_n = n + mod(n,2) - mod(n+1,2)
-  opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
-  opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
-
-  if ( neighboring_el > 0_pInt .and. neighboring_ip > 0_pInt ) then                                                                 ! if neighbor exists, average deformation gradient
-    neighboring_F = math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el), Fp(:,:,g,neighboring_ip,neighboring_el))
-    Favg = 0.5_pReal * (F + neighboring_F)
-  else                                                                                                                              ! if no neighbor, take my value as average
-    Favg = F
-  endif
-  
-  surfaceNormal_currentconf = math_det3x3(Favg) * math_mul33x3(math_inv3x3(transpose(Favg)), mesh_ipAreaNormal(:,n,ip,el))          ! calculate the normal of the interface in current ...
-  surfaceNormal = math_mul33x3(transpose(Fe(:,:,g,ip,el)), surfaceNormal_currentconf) / detFe                                       ! ... and lattice configuration
-  area = mesh_ipArea(n,ip,el) * math_norm3(surfaceNormal)
-  surfaceNormal = surfaceNormal / math_norm3(surfaceNormal)                                                                         ! normalize the surface normal to unit length
+  fluxdensity = rhoSgl(:,1:4) * constitutive_nonlocal_v(:,:,g,ip,el)
     
-  neighboring_rhoDotFlux = 0.0_pReal
-!  if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') 'neighbor',n
-  do s = 1,ns
-!    if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') '  system',s
-    do t = 1,4
-!      if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') '    type',t
-      c = (t + 1) / 2
-      topp = t + mod(t,2) - mod(t+1,2)
+  !if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,*) '--> dislocation flux <---'
+  do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                                                      ! loop through my neighbors
+  
+    neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
+    neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
+    
+    opposite_n = n + mod(n,2) - mod(n+1,2)
+    opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
+    opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
+  
+    if ( neighboring_el > 0_pInt .and. neighboring_ip > 0_pInt ) then                                                               ! if neighbor exists, average deformation gradient
+      neighboring_F = math_mul33x33(Fe(:,:,g,neighboring_ip,neighboring_el), Fp(:,:,g,neighboring_ip,neighboring_el))
+      Favg = 0.5_pReal * (F + neighboring_F)
+    else                                                                                                                            ! if no neighbor, take my value as average
+      Favg = F
+    endif
+    
+    surfaceNormal_currentconf = math_det3x3(Favg) * math_mul33x3(math_inv3x3(transpose(Favg)), mesh_ipAreaNormal(:,n,ip,el))        ! calculate the normal of the interface in current ...
+    surfaceNormal = math_mul33x3(transpose(Fe(:,:,g,ip,el)), surfaceNormal_currentconf) / detFe                                     ! ... and lattice configuration
+    area = mesh_ipArea(n,ip,el) * math_norm3(surfaceNormal)
+    surfaceNormal = surfaceNormal / math_norm3(surfaceNormal)                                                                       ! normalize the surface normal to unit length
       
-      if ( abs(math_mul3x3(m(:,s,t),surfaceNormal)) > 0.01_pReal &
-          .and. fluxdensity(s,t) * math_mul3x3(m(:,s,t),surfaceNormal) > 0.0_pReal ) then                                           ! outgoing flux        
-        
-        lineLength = fluxdensity(s,t) * math_mul3x3(m(:,s,t),surfaceNormal) * area                                                  ! line length that wants to leave thrugh this interface
-        
-        if ( (opposite_el > 0 .and. opposite_ip > 0) &
-             .or. .not. all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,opposite_n,ip,el))))) ) then
-          rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                     ! subtract dislocation flux from cuurent mobile type
-!          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      outgoing flux:', lineLength / mesh_ipVolume(ip,el)
-        endif
-        rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) + lineLength / mesh_ipVolume(ip,el) &
-                          * (1.0_pReal - sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el)**2.0_pReal)) &
-                          * sign(1.0_pReal, fluxdensity(s,t))                                                                       ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point        
-        
-        if (neighboring_el > 0 .and. neighboring_ip > 0) then                                                                       ! neighbor present
-          where (constitutive_nonlocal_compatibility(c,:,s,n,ip,el) > 0.0_pReal) &                                                  ! ..positive compatibility
-            neighboring_rhoDotFlux(:,t) = neighboring_rhoDotFlux(:,t) &                                                             ! ....transferring to equally signed dislocation type at neighbor
-                                        + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
-                                                     * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
-          where (constitutive_nonlocal_compatibility(c,:,s,n,ip,el) < 0.0_pReal) &                                                  ! ..negative compatibility
-            neighboring_rhoDotFlux(:,topp) = neighboring_rhoDotFlux(:,topp) &                                                       ! ....transferring to opposite signed dislocation type at neighbor
-                                           + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
-                                                        * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
-!          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      entering flux at neighbor:', lineLength / mesh_ipVolume(ip,el) &
-!                * sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal)
-        endif
-        
-      endif
-
-    enddo ! dislocation type loop
-  enddo ! slip system loop
-
-  if (any(abs(neighboring_rhoDotFlux) > 10.0_pReal)) then                                                                            ! only significant density change in neighbr is considered
-    !$OMP CRITICAL (fluxes)
-      constitutive_nonlocal_rhoDotFlux(:,:,g,neighboring_ip,neighboring_el) = &
-        constitutive_nonlocal_rhoDotFlux(:,:,g,neighboring_ip,neighboring_el) + neighboring_rhoDotFlux
-      dotState(g,neighboring_ip,neighboring_el)%p(1:10*ns) = &
-        dotState(g,neighboring_ip,neighboring_el)%p(1:10*ns) + reshape(neighboring_rhoDotFlux,(/10*ns/))
-    !$OMP END CRITICAL (fluxes)
-  else
     neighboring_rhoDotFlux = 0.0_pReal
+  !  if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') 'neighbor',n
+    do s = 1,ns
+  !    if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') '  system',s
+      do t = 1,4
+  !      if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') '    type',t
+        c = (t + 1) / 2
+        topp = t + mod(t,2) - mod(t+1,2)
+        
+        if ( abs(math_mul3x3(m(:,s,t),surfaceNormal)) > 0.01_pReal &
+            .and. fluxdensity(s,t) * math_mul3x3(m(:,s,t),surfaceNormal) > 0.0_pReal ) then                                         ! outgoing flux        
+          
+          lineLength = fluxdensity(s,t) * math_mul3x3(m(:,s,t),surfaceNormal) * area                                                ! line length that wants to leave thrugh this interface
+          
+          if ( (opposite_el > 0 .and. opposite_ip > 0) &
+               .or. .not. all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,opposite_n,ip,el))))) ) then
+            rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                   ! subtract dislocation flux from cuurent mobile type
+  !          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      outgoing flux:', lineLength / mesh_ipVolume(ip,el)
+          endif
+          rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) + lineLength / mesh_ipVolume(ip,el) &
+                            * (1.0_pReal - sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el)**2.0_pReal)) &
+                            * sign(1.0_pReal, fluxdensity(s,t))                                                                     ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point        
+          
+          if (neighboring_el > 0 .and. neighboring_ip > 0) then                                                                     ! neighbor present
+            where (constitutive_nonlocal_compatibility(c,:,s,n,ip,el) > 0.0_pReal) &                                                ! ..positive compatibility
+              neighboring_rhoDotFlux(:,t) = neighboring_rhoDotFlux(:,t) &                                                           ! ....transferring to equally signed dislocation type at neighbor
+                                          + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
+                                                       * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
+            where (constitutive_nonlocal_compatibility(c,:,s,n,ip,el) < 0.0_pReal) &                                                ! ..negative compatibility
+              neighboring_rhoDotFlux(:,topp) = neighboring_rhoDotFlux(:,topp) &                                                     ! ....transferring to opposite signed dislocation type at neighbor
+                                             + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
+                                                          * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
+  !          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      entering flux at neighbor:', lineLength / mesh_ipVolume(ip,el) &
+  !                * sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal)
+          endif
+          
+        endif
+  
+      enddo ! dislocation type loop
+    enddo ! slip system loop
+  
+    if (any(abs(neighboring_rhoDotFlux) > 10.0_pReal)) then                                                                         ! only significant density change in neighbr is considered
+      !$OMP CRITICAL (fluxes)
+        constitutive_nonlocal_rhoDotFlux(:,:,g,neighboring_ip,neighboring_el) = &
+          constitutive_nonlocal_rhoDotFlux(:,:,g,neighboring_ip,neighboring_el) + neighboring_rhoDotFlux
+        dotState(g,neighboring_ip,neighboring_el)%p(1:10*ns) = &
+          dotState(g,neighboring_ip,neighboring_el)%p(1:10*ns) + reshape(neighboring_rhoDotFlux,(/10*ns/))
+      !$OMP END CRITICAL (fluxes)
+    else
+      neighboring_rhoDotFlux = 0.0_pReal
+    endif
+  
+  enddo ! neighbor loop
+  
+  if (any(abs(rhoDotFlux) > 0.0_pReal)) then
+    !$OMP CRITICAL (fluxes)
+      constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) = constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) + rhoDotFlux
+    !$OMP END CRITICAL (fluxes)
   endif
-
-enddo ! neighbor loop
-
-if (any(abs(rhoDotFlux) > 0.0_pReal)) then
-  !$OMP CRITICAL (fluxes)
-    constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) = constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) + rhoDotFlux
-  !$OMP END CRITICAL (fluxes)
+  
 endif
 
 
