@@ -1507,7 +1507,7 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     surfaceNormal = math_mul33x3(transpose(Fe(:,:,g,ip,el)), surfaceNormal_currentconf) / detFe                                     ! ... and lattice configuration
     area = mesh_ipArea(n,ip,el) * math_norm3(surfaceNormal)
     surfaceNormal = surfaceNormal / math_norm3(surfaceNormal)                                                                       ! normalize the surface normal to unit length
-      
+    
     neighboring_rhoDotFlux = 0.0_pReal
   !  if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,i2)') 'neighbor',n
     do s = 1,ns
@@ -1522,26 +1522,34 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
           
           lineLength = fluxdensity(s,t) * math_mul3x3(m(:,s,t),surfaceNormal) * area                                                ! line length that wants to leave thrugh this interface
           
-          if ( (opposite_el > 0 .and. opposite_ip > 0) &
-               .or. .not. all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,opposite_n,ip,el))))) ) then
-            rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                   ! subtract dislocation flux from cuurent mobile type
-  !          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      outgoing flux:', lineLength / mesh_ipVolume(ip,el)
+          if (opposite_el > 0 .and. opposite_ip > 0) then                                                                           ! opposite neighbor is present...
+            if (.not. phase_localConstitution(material_phase(1,opposite_ip,opposite_el))) then                                      ! and is of nonlocal constitution (if it's not, then we assume, that the neighbor sends an equal amount of dislocations)...
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                 ! subtract dislocation flux from current mobile type
+    !          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      outgoing flux:', lineLength / mesh_ipVolume(ip,el)
+            endif
+          else                                                                                                                      ! if free surface on opposite surface...
+            if (.not. all(periodicSurfaceFlux(maxloc(abs(mesh_ipAreaNormal(:,opposite_n,ip,el))))) ) then                           ! has no enforced symmetry...
+              rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                 ! subtract dislocation flux from current mobile type
+    !          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      outgoing flux:', lineLength / mesh_ipVolume(ip,el)            
+            endif
           endif
           rhoDotFlux(s,t+4) = rhoDotFlux(s,t+4) + lineLength / mesh_ipVolume(ip,el) &
                             * (1.0_pReal - sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el)**2.0_pReal)) &
                             * sign(1.0_pReal, fluxdensity(s,t))                                                                     ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point        
           
-          if (neighboring_el > 0 .and. neighboring_ip > 0) then                                                                     ! neighbor present
-            where (constitutive_nonlocal_compatibility(c,:,s,n,ip,el) > 0.0_pReal) &                                                ! ..positive compatibility
-              neighboring_rhoDotFlux(:,t) = neighboring_rhoDotFlux(:,t) &                                                           ! ....transferring to equally signed dislocation type at neighbor
-                                          + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
-                                                       * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
-            where (constitutive_nonlocal_compatibility(c,:,s,n,ip,el) < 0.0_pReal) &                                                ! ..negative compatibility
-              neighboring_rhoDotFlux(:,topp) = neighboring_rhoDotFlux(:,topp) &                                                     ! ....transferring to opposite signed dislocation type at neighbor
-                                             + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
-                                                          * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
-  !          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      entering flux at neighbor:', lineLength / mesh_ipVolume(ip,el) &
-  !                * sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal)
+          if (neighboring_el > 0 .and. neighboring_ip > 0) then                                                                     ! neighbor present...
+            if ( .not. phase_localConstitution(material_phase(1,neighboring_ip,neighboring_el))) then                               ! and is of nonlocal constitution
+              where (constitutive_nonlocal_compatibility(c,:,s,n,ip,el) > 0.0_pReal) &                                              ! ..positive compatibility
+                neighboring_rhoDotFlux(:,t) = neighboring_rhoDotFlux(:,t) &                                                         ! ....transferring to equally signed dislocation type at neighbor
+                                            + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
+                                                         * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
+              where (constitutive_nonlocal_compatibility(c,:,s,n,ip,el) < 0.0_pReal) &                                              ! ..negative compatibility
+                neighboring_rhoDotFlux(:,topp) = neighboring_rhoDotFlux(:,topp) &                                                   ! ....transferring to opposite signed dislocation type at neighbor
+                                               + lineLength / mesh_ipVolume(neighboring_ip,neighboring_el) &
+                                                            * constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal
+    !          if ((debug_g==g .and. debug_i==ip .and. debug_e==el)) write(6,'(a,x,e12.5)') '      entering flux at neighbor:', lineLength / mesh_ipVolume(ip,el) &
+    !                * sum(constitutive_nonlocal_compatibility(c,:,s,n,ip,el) ** 2.0_pReal)
+            endif
           endif
           
         endif
