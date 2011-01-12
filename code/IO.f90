@@ -1219,6 +1219,10 @@ endfunction
    msg = 'Non-positive activation energy for dislocation climb'   
  case (233)
    msg = 'Non-positive relevant dislocation density'   
+ case (234)
+   msg = 'Negative cutoff radius'   
+ case (235)
+   msg = 'Non-positive activation energy for dislocation glide'   
  case (240)
    msg = 'Non-positive Taylor factor'
  case (241)

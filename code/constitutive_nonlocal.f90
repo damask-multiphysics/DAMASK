@@ -374,8 +374,8 @@ enddo
   enddo
   if (any(constitutive_nonlocal_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 0.0_pReal)) &
                                                                                             call IO_error(229)
-  if (constitutive_nonlocal_Q0(i) <= 0.0_pReal)                                             call IO_error(-1)
-  if (constitutive_nonlocal_R(i) <= 0.0_pReal)                                              call IO_error(-1)
+  if (constitutive_nonlocal_Q0(i) <= 0.0_pReal)                                             call IO_error(235)
+  if (constitutive_nonlocal_R(i) < 0.0_pReal)                                               call IO_error(234)
   if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)                                   call IO_error(230)
   if (constitutive_nonlocal_D0(i) <= 0.0_pReal)                                             call IO_error(231)
   if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                                            call IO_error(232)
