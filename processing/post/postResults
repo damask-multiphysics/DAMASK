@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 
-import os, sys, math, re, threading, time
+import os, sys, math, re, threading, time, struct
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 releases = {'2010':['linux64',''],
@@ -31,6 +31,186 @@ try:
 except:
   print('error: no valid Mentat release found in %s'%MSCpath)
   sys.exit(-1)
+
+
+# -----------------------------
+class vector:     # mimic py_post node object
+# -----------------------------
+	x,y,z = [None,None,None]
+	
+	def __init__(self,coords):
+		self.x = coords[0]
+		self.y = coords[1]
+		self.z = coords[2]
+
+# -----------------------------
+class element:     # mimic py_post element object
+# -----------------------------
+	items = []
+	type = None
+
+	def __init__(self,nodes,type):
+		self.items = nodes
+		self.type = type
+
+# -----------------------------
+class elemental_scalar:     # mimic py_post element_scalar object
+# -----------------------------
+	id = None
+	value = None
+
+	def __init__(self,node,value):
+		self.id = node
+		self.value = value
+
+
+# -----------------------------
+class MPIEspectral_result:      # mimic py_post result object
+# -----------------------------
+
+	file = None
+	dataOffset = 0
+	N_elemental_scalars = 0
+	resolution = [0,0,0]
+	dimension = [0.0,0.0,0.0]
+	theTitle = ''
+	wd = ''
+	extrapolate = ''
+	N_increments = 0
+	increment = 0
+	N_nodes = 0
+	N_node_scalars = 0
+	N_elements = 0
+	N_element_scalars = 0
+	N_element_tensors = 0
+	theNodes = []
+	theElements = []
+
+	def __init__(self,filename):
+
+		self.file = open(filename, 'rb')
+
+		self.theTitle = self._keyedString('load')
+		self.wd = self._keyedString('workingdir')
+		self.geometry = self._keyedString('geometry')
+		self.N_increments =  self._keyedInt('increments')
+		self.N_element_scalars = self._keyedInt('materialpoint_sizeResults')
+		self.resolution = self._keyedPackedArray('resolution',3,'i')
+		self.N_nodes = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
+		self.N_elements = self.resolution[0]*self.resolution[1]*self.resolution[2]
+		
+		self.dimension = self._keyedPackedArray('dimension',3,'d')
+		a = self.resolution[0]+1
+		b = self.resolution[1]+1
+		c = self.resolution[2]+1
+		for n in range(self.N_nodes):
+			self.theNodes.append(vector([self.dimension[0] *       (n%a) / self.resolution[0],
+										 self.dimension[1] *   ((n/a)%b) / self.resolution[1],
+										 self.dimension[2] * ((n/a/b)%c) / self.resolution[2],
+										]))
+
+		for e in range(self.N_elements):
+			basenode = e+e/self.resolution[0] + e/self.resolution[0]/self.resolution[1]*a
+			basenode2 = basenode+a*b
+			self.theElements.append(element([basenode ,basenode+1 ,basenode+a+1 ,basenode+a,
+											 basenode2,basenode2+1,basenode2+a+1,basenode2+a,
+											],117))
+
+		self.file.seek(0)
+		self.dataOffset = self.file.read(2048).find('eoh')+7
+
+	def __str__(self):
+		return '\n'.join([
+			'title: %s'%self.theTitle,
+			'workdir: %s'%self.wd,
+			'extrapolation: %s'%self.extrapolate,
+			'increments: %i'%self.N_increments,
+			'increment: %i'%self.increment,
+			'nodes: %i'%self.N_nodes,
+			'resolution: %s'%(','.join(map(str,self.resolution))),
+			'dimension: %s'%(','.join(map(str,self.dimension))),
+			'elements: %i'%self.N_elements,
+			'nodal_scalars: %i'%self.N_node_scalars,
+			'elemental scalars: %i'%self.N_element_scalars,
+			'elemental tensors: %i'%self.N_element_tensors,
+			]
+		)
+
+	def _keyedPackedArray(self,identifier,length = 3,type = 'd'):
+		match = {'d': 8,'i': 4}
+		self.file.seek(0)
+		m = re.search('%s%s'%(identifier,'(.{%i})'%(match[type])*length),self.file.read(2048))
+		values = []
+		if m:
+			for i in m.groups():
+				values.append(struct.unpack(type,i)[0])
+		return values
+
+	def _keyedInt(self,identifier):
+		value = None
+		self.file.seek(0)
+		m = re.search('%s%s'%(identifier,'(.{4})'),self.file.read(2048))
+		if m:
+			value = struct.unpack('i',m.group(1))[0]
+		return value
+
+	def _keyedString(self,identifier):
+		value = None
+		self.file.seek(0)
+		m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(2048))
+		if m:
+			value = m.group(2)
+		return value
+
+	def title(self):
+		return self.theTitle
+
+	def moveto(self,inc):
+		self.increment = inc
+
+	def extrapolation(self,value):
+		self.extrapolate = value
+
+	def node_sequence(self,node):
+		return node
+
+	def node_id(self,node):
+		return node+1
+
+	def node(self,node):
+		return self.theNodes[node]
+
+	def element_id(self,elem):
+		return elem+1
+
+	def element(self,elem):
+		return self.theElements[elem]
+
+	def increments(self):
+		return self.N_increments
+
+	def nodes(self):
+		return self.N_nodes
+
+	def node_scalars(self):
+		return self.N_node_scalars
+
+	def elements(self):
+		return self.N_elements
+
+	def element_scalars(self):
+		return self.N_element_scalars
+
+	def element_scalar(self,elem,idx):
+		self.file.seek(self.dataOffset+(self.increment*(4+self.N_elements*self.N_element_scalars*8+4) + 4+(elem*self.N_element_scalars + idx)*8))
+		value = struct.unpack('d',self.file.read(8))[0]
+		return [elemental_scalar(node,value) for node in self.theElements[elem].items]
+
+	def element_scalar_label(elem,idx):
+		return 'User Defined Variable %i'%(idx+1)
+
+	def element_tensors(self):
+		return self.N_element_tensors
 
 
 
@@ -216,12 +396,21 @@ def mapFunc(label, chunks, func):
 
 
 # -----------------------------
-def OpenPostfile(name):
+def OpenPostfile(name,type):
 # 
 # open postfile with extrapolation mode "translate"
 # -----------------------------
 
-    p = post_open(name)
+    p = {\
+           'marc':     post_open,\
+           'spectral': MPIEspectral_result,\
+        }[type.lower()]\
+                        (name+
+                              {\
+                               'marc':     '.t16',\
+                               'spectral': '.spectralOut',\
+                              }[type.lower()]
+                        )
     p.extrapolation('translate')
     p.moveto(1)
     
@@ -396,11 +585,14 @@ parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')
 parser.add_option('-d','--dir', dest='directory', \
                   help='name of subdirectory to hold output [%default]')
+parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
+                  help='split output per increment [%default]')
 parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
                   help='range of increments to output (start, end, step) [all]')
 parser.add_option('-m','--map', dest='func', type='string', \
                   help='data reduction mapping ["%default"] out of min, max, avg, sum or user-lambda')
-
+parser.add_option('-p','--type', dest='filetype', type='string', \
+                  help = 'type of result file [%default]')
 group_material = OptionGroup(parser,'Material identifier')
 group_special  = OptionGroup(parser,'Special outputs')
 group_general  = OptionGroup(parser,'General outputs')
@@ -418,8 +610,6 @@ group_special.add_option('-f','--filter', dest='filter', type='string', \
                   help='condition(s) to filter results [%default]')
 group_special.add_option('--separation', action='extend', dest='separation', type='string', \
                   help='properties to separate results [%default]')
-parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
-                  help='split output per increment [%default]')
 
 group_general.add_option('--ns', action='extend', dest='nodalScalar', type='string', \
                   help='list of nodal scalars to extract')
@@ -440,6 +630,7 @@ parser.add_option_group(group_special)
 
 parser.set_defaults(info = False)
 parser.set_defaults(directory = 'postProc')
+parser.set_defaults(filetype = 'marc')
 parser.set_defaults(func = 'avg')
 parser.set_defaults(homog = '1')
 parser.set_defaults(cryst = '1')
@@ -462,6 +653,10 @@ if not file:
     parser.print_help()
     parser.error('no file specified...')
 
+if options.filetype.lower() not in ['marc','spectral']:
+    parser.print_help()
+    parser.error('file type "%s" not supported...'%options.filetype)
+
 if options.constitutiveResult and not options.phase:
     parser.print_help()
     parser.error('constitutive results require phase...')
@@ -474,7 +669,7 @@ if options.nodalScalar and (   options.elementalScalar or options.elementalTenso
 
 # --- parse .output and .t16 files
 
-bg.set_message('parsing .output and .t16 files...')
+bg.set_message('parsing .output and result files...')
 
 filename = os.path.splitext(file[0])[0]
 dirname = os.path.abspath(os.path.dirname(filename))+os.sep+options.directory
@@ -494,7 +689,7 @@ for what in me:
         print '\n'.join(map(lambda x:'  '+x, outputFormat[what]['specials']['brothers']))
         sys.exit(1)
 
-p = OpenPostfile(filename+'.t16')
+p = OpenPostfile(filename,options.filetype)
 stat = ParsePostfile(p, filename, outputFormat)
 
 
@@ -725,7 +920,7 @@ for incCount,increment in enumerate(increments):
         if fileOpen:
             file.close()
             fileOpen = False
-        outFilename = eval('"'+eval("'%%s_inc%%0%ii.txt'%(math.log10(max(increments))+1)")+'"%(dirname + os.sep + os.path.split(filename)[1],increment)')
+        outFilename = eval('"'+eval("'%%s_inc%%0%ii.txt'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + os.path.split(filename)[1],increment)')
     else:
         outFilename = '%s.txt'%(dirname + os.sep + os.path.split(filename)[1])
     
