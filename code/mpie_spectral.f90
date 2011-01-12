@@ -95,8 +95,9 @@ program mpie_spectral
  integer(pInt)  loadcase, ielem, iter, calcmode, CPFEM_mode
  
  real(pReal) temperature                               ! not used, but needed for call to CPFEM_general
-!$ call omp_set_num_threads(4)                              ! set number of threads for parallel execution set by MPIE_NUM_THREADS
 !Initializing
+!$ call omp_set_num_threads(mpieNumThreadsInt)         ! set number of threads for parallel execution set by MPIE_NUM_THREADS
+
  bc_maskvector = ''
  unit = 234_pInt
 
@@ -321,15 +322,17 @@ program mpie_spectral
  enddo; enddo; enddo
  
 ! write header of output file
- open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.out',form='UNFORMATTED')       
- write(538), 'Loadcase',trim(getLoadcaseName())
- write(538), 'Workingdir',trim(getSolverWorkingDirectoryName())
- write(538), 'JobName',trim(getSolverJobName())//InputFileExtension
- write(538), 'resolution','a', resolution(1),'b', resolution(2),'c', resolution(3)
- write(538), 'geomdimension','x', geomdimension(1),'y', geomdimension(2),'z', geomdimension(3)
+ open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',form='UNFORMATTED')       
+ write(538), 'load',trim(getLoadcaseName())
+ write(538), 'workingdir',trim(getSolverWorkingDirectoryName())
+ write(538), 'geometry',trim(getSolverJobName())//InputFileExtension
+ write(538), 'resolution',resolution
+ write(538), 'dimension',geomdimension
  write(538), 'materialpoint_sizeResults', materialpoint_sizeResults
- write(538), 'totalincs', sum(bc_steps)
+ write(538), 'increments', sum(bc_steps)
+ write(538), 'eoh'
  write(538)  materialpoint_results(:,1,:) 
+ write(538)  materialpoint_results(:,1,:) !to be conform with t16 Marc format
 ! Initialization done
 
 !*************************************************************
