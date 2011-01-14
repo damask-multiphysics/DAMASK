@@ -512,33 +512,35 @@ def ParsePostfile(p,filename, outputFormat):
         # Since we know where the user defined outputs start ("startIndex"), we can simply assign increasing indices to the labels
         # given in the .output* file    
         
-        offset = 0
-        stat['LabelOfElementalScalar'][startIndex + 2 + offset] = 'HomogenizationCount'
+        offset = 2
+        stat['LabelOfElementalScalar'][startIndex + offset] = 'HomogenizationCount'
         for var in outputFormat['Homogenization']['outputs']:
             if var[1] > 1:
                 for i in range(var[1]):
-                    stat['IndexOfLabel']['%i_%s'%(i+1,var[0])] = startIndex + 2 + offset + (i+1)
+                    stat['IndexOfLabel']['%i_%s'%(i+1,var[0])] = startIndex + offset + (i+1)
             else:
-                stat['IndexOfLabel']['%s'%(var[0])] = startIndex + 2 + offset + 1 
+                stat['IndexOfLabel']['%s'%(var[0])] = startIndex + offset + 1 
             offset += var[1]
             
         for grain in range(outputFormat['Homogenization']['specials']['(ngrains)']):
-            stat['IndexOfLabel']['%i_CrystalliteCount'%(grain+1)] = startIndex + 3 + offset
+            stat['IndexOfLabel']['%i_CrystalliteCount'%(grain+1)] = startIndex + offset + 1
+            offset += 1
             for var in outputFormat['Crystallite']['outputs']:
                 if var[1] > 1:
                     for i in range(var[1]):
-                        stat['IndexOfLabel']['%i_%i_%s'%(grain+1,i+1,var[0])] = startIndex + 3 + offset + (i+1)
+                        stat['IndexOfLabel']['%i_%i_%s'%(grain+1,i+1,var[0])] = startIndex + offset + (i+1)
                 else:
-                    stat['IndexOfLabel']['%i_%s'%(grain+1,var[0])] = startIndex + 3 + offset + 1
+                    stat['IndexOfLabel']['%i_%s'%(grain+1,var[0])] = startIndex + offset + 1
                 offset += var[1]
 
-            stat['IndexOfLabel']['%i_ConstitutiveCount'%(grain+1)] = startIndex + 4 + offset
+            stat['IndexOfLabel']['%i_ConstitutiveCount'%(grain+1)] = startIndex + offset + 1
+            offset += 1
             for var in outputFormat['Constitutive']['outputs']:
                 if var[1] > 1:
                     for i in range(var[1]):
-                        stat['IndexOfLabel']['%i_%i_%s'%(grain+1,i+1,var[0])] = startIndex + 4 + offset + (i+1)
+                        stat['IndexOfLabel']['%i_%i_%s'%(grain+1,i+1,var[0])] = startIndex + offset + (i+1)
                 else:
-                    stat['IndexOfLabel']['%i_%s'%(grain+1,var[0])] = startIndex + 4 + offset + 1
+                    stat['IndexOfLabel']['%i_%s'%(grain+1,var[0])] = startIndex + offset + 1
                 offset += var[1]
     
     return stat
