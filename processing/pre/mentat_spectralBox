@@ -165,7 +165,11 @@ def initial_conditions(N,data):
 
 # ----------------------- MAIN -------------------------------
 
-parser = OptionParser()
+parser = OptionParser(usage='%prog [options] spectral.datafile', description = """
+Generate FE hexahedral mesh from spectral description file of format: phi1,Phi,phi2,x,y,z,id,phase.
+
+$Id$
+""")
 parser.add_option("-p", "--port", type="int",\
         dest="port",\
         help="Mentat connection port")
