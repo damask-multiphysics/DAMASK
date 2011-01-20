@@ -18,18 +18,23 @@ program voronoi
 
  logical, dimension(:), allocatable :: seedmap
  character(len=1024) filename
- integer(pInt) a, b, c, N_Seeds, seedpoint, i
+ integer(pInt), dimension(3) :: seedcoord
+ integer(pInt), dimension(:), allocatable :: rndInit
+ integer(pInt) a, b, c, N_Seeds, seedpoint, i, randomSeed, rndSize
  real(pReal), dimension(:,:), allocatable :: grainEuler, seeds
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
- real(pReal) randomSeed
 
  print*, '******************************************************************************'
  print*, '                    Voronoi description file'
  print*, '******************************************************************************'
  print*, ''
  print*, 'generates:'
- print*, '    * description file "_GIVEN_NAME_.seeds":'
+ print*, '    * description file "_OUTPUT_.seeds":'
  print*, ''
+ write(*, '(A)', advance = 'NO') 'Please enter name of output seed file: '
+ read(*, *), filename
+ write(*, '(A)', advance = 'NO') 'Please enter value random seed: '
+ read(*, *), randomSeed; randomSeed = max(0_pInt,randomSeed)
  write(*, '(A)', advance = 'NO') 'Please enter value for first resolution: '
  read(*, *), a
  write(*, '(A)', advance = 'NO') 'Please enter value for second resolution: '
@@ -38,43 +43,50 @@ program voronoi
  read(*, *), c
  write(*, '(A)', advance = 'NO') 'Please enter No. of Grains: '
  read(*, *), N_Seeds
- write(*, '(A)', advance = 'NO') 'Please enter name of geometry file: '
- read(*, *), filename
 
  allocate (seedmap(a*b*c)); seedmap = .false.  ! logical to store information which position is occupied by a voronoi seed
  allocate (seeds(N_Seeds,3))
  allocate (grainEuler(N_Seeds,3))
+
+ call random_seed(size=rndSize)
+ allocate(rndInit(rndSize))
+ rndInit = randomSeed
+ call random_seed(put=rndInit)
+ call random_seed(get=rndInit)
   
  do i=1, N_Seeds
    call random_number(grainEuler(i,1))
    call random_number(grainEuler(i,2))
    call random_number(grainEuler(i,3))
-   grainEuler(i,1) = (grainEuler(i,1))*360                     
-   grainEuler(i,2) = acos(2.0_pReal*(grainEuler(i,2))-1.0_pReal)*180/pi
-   grainEuler(i,3) = grainEuler(i,3)*360
+   grainEuler(i,1) = (grainEuler(i,1))*360.0                     
+   grainEuler(i,2) = acos(2.0_pReal*(grainEuler(i,2))-1.0_pReal)*180.0/pi
+   grainEuler(i,3) = grainEuler(i,3)*360.0
  enddo
 
 !generate random position of seeds for voronoi tessellation
- i = 0
- do while (i /= N_Seeds)
-   call random_number(randomSeed)
-   seedpoint = int(randomSeed*(a*b*c))
-   if (.not.seedmap(seedpoint+1)) then
+ i = 1
+ do while (i <= N_Seeds)
+   call random_number(seeds(i,1)); seedcoord(1) = min(a,int(seeds(i,1)*a)+1_pInt)-1_pInt
+   call random_number(seeds(i,2)); seedcoord(2) = min(b,int(seeds(i,2)*b)+1_pInt)-1_pInt
+   call random_number(seeds(i,3)); seedcoord(3) = min(c,int(seeds(i,3)*c)+1_pInt)-1_pInt
+   seedpoint = seedcoord(1) + seedcoord(2)*a + seedcoord(3)*a*b
+   if (.not. seedmap(seedpoint+1)) then
      seedmap(seedpoint+1) = .true. 
      i = i + 1
-     seeds(i,1) = real(mod((seedpoint), a)+1)/real(a, pReal)
-     seeds(i,2) = real(mod(((seedpoint)/a), b)+1)/real(b,pReal)
-     seeds(i,3) = real(mod(((seedpoint)/(a*b)), c)+1)/real(c,pReal)
    end if
  end do
   
 ! write description file with orientation and position of each seed
  open(21, file = trim(filename)//('.seeds'))
- write(21, '(A, I2, A, I2, A, I2)'), 'resolution  a ', a, '  b ', b, '  c ', c
- write(21,*), 'grains', N_Seeds
+ write(21, '(i1,a1,a6)') 4,achar(9),'header'
+ write(21, '(A, I2, A, I2, A, I2)') 'resolution  a ', a, '  b ', b, '  c ', c
+ write(21,*) 'grains', N_Seeds
+ write(21,*) 'random seed ',rndInit(1)
+ write(21,'(6(a,a1))') 'x',achar(9),'y',achar(9),'z',achar(9),'phi1',achar(9),'Phi',achar(9),'phi2',achar(9)
  do i = 1, n_Seeds
-   write(21, '(6(F10.6,tr2))'),seeds(i,1), seeds(i,2), seeds(i,3),&
-                          grainEuler(i,1), grainEuler(i,2), grainEuler(i,3)              
+   write(21, '(6(F10.6,a1))'),seeds(i,1),     achar(9), seeds(i,2),     achar(9), seeds(i,3),     achar(9), &
+                              grainEuler(i,1),achar(9), grainEuler(i,2),achar(9), grainEuler(i,3),achar(9)              
  end do
  close(21)
+ deallocate (rndInit)
 end program voronoi

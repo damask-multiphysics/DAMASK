@@ -170,28 +170,28 @@ program voronoi
  implicit none
 
  logical gotN_Seeds, gotResolution
- character(len=1024) input_name, output_name, format1, format2, N_Digits, line
- integer(pInt) a, b, c, N_Seeds, seedPoint, minDistance, myDistance, i, j, k, l, m
- integer(pInt), dimension(:), allocatable :: grainMap
- integer(pInt) coordinates(3)
- integer(pInt), dimension (15) ::  posGeom
+ logical, dimension(:), allocatable :: grainCheck
+ character(len=1024) input_name, output_name, format1, format2, N_Digits, line, key
+ integer(pInt) a, b, c, N_Seeds, seedPoint, theGrain, minDistance, myDistance, i, j, k, l, m
+ integer(pInt), dimension(3) :: coordinates
+ integer(pInt), dimension (1+2*7) ::  posGeom
  real(pReal), dimension(:,:), allocatable :: grainEuler, seeds
+ real(pReal), dimension(3) :: dim
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
- real(pReal) scaling
 
  print*, '******************************************************************************'
  print*, '                    Spectral Method Problem Set-up'
  print*, '******************************************************************************'
  print*, ''
  print*, 'generates:'
- print*, '    * geom file "_GIVEN_NAME_.geom": Geometrical information for solver'
+ print*, '    * geom file "_OUTPUT_.geom": Geometrical information for solver'
  print*, '    * material file "material.config": Orientation information for solver'
- print*, '    * "_GIVEN_NAME_.spectral": combined information for solver'
+ print*, '    * "_OUTPUT_.spectral": combined information for solver'
  print*, ''
- write(*, '(A)', advance = 'NO') 'Enter filename of input file (extension .seeds): '
- read(*, *), input_name
- write(*, '(A)', advance = 'NO') 'Enter filename of output file: '
+ write(*, '(A)', advance = 'NO') 'Enter output filename: '
  read(*, *), output_name
+ write(*, '(A)', advance = 'NO') 'Enter seed input file (extension .seeds): '
+ read(*, *), input_name
   
  open(20, file = trim(input_name)//('.seeds'), status='old', action='read')
  rewind(20)
@@ -221,19 +221,37 @@ program voronoi
 
  100 allocate(grainEuler(N_Seeds,3))
  allocate(Seeds(N_Seeds,3))
+ allocate(grainCheck(N_Seeds))
+ grainCheck = .false.
  
  print*, 'resolution: ' ,a,b,c
- write(*, '(A)', advance = 'NO') 'Enter scaling factor: '
- read(*, *), scaling
+ write(*, '(A)', advance = 'NO') 'New first resolution: '
+ read(*, *), a
+ write(*, '(A)', advance = 'NO') 'New second resolution: '
+ read(*, *), b
+ write(*, '(A)', advance = 'NO') 'New third resolution: '
+ read(*, *), c
  
- a = int(a*scaling)
- b = int(b*scaling)
- c = int(c*scaling)
-
+ write(*, '(A)', advance = 'NO') 'First dimension: '
+ read(*, *), dim(1)
+ write(*, '(A)', advance = 'NO') 'Second dimension: '
+ read(*, *), dim(2)
+ write(*, '(A)', advance = 'NO') 'Third dimension: '
+ read(*, *), dim(3)
+ 
+ rewind(20)
+ read(20,'(a1024)') line
+ posGeom = IO_stringPos(line,2)
+ key = IO_stringValue(line,posGeom,2)
+ if (IO_lc(key(1:4)) == 'head') then
+   do i=1,IO_intValue(line,posGeom,1); read(20,'(a1024)') line; enddo
+ else
+   rewind(20)
+ endif
  do i=1, N_seeds
   read(20,'(a1024)') line
   if (IO_isBlank(line)) cycle                            ! skip empty lines
-  posGeom = IO_stringPos(line,12)             
+  posGeom = IO_stringPos(line,6)             
   Seeds(i,1)=IO_floatValue(line,posGeom,1)
   Seeds(i,2)=IO_floatValue(line,posGeom,2)
   Seeds(i,3)=IO_floatValue(line,posGeom,3)
@@ -247,7 +265,6 @@ program voronoi
  seeds(:,2) = seeds(:,2)*real(b, pReal)
  seeds(:,3) = seeds(:,3)*real(c, pReal)
  
- allocate (grainMap(a*b*c))
 ! calculate No. of digits needed for name of the grains
   i = 1 + int( log10(real( N_Seeds )))
   write(N_Digits, *) i
@@ -274,49 +291,51 @@ program voronoi
     end do
   close(20)
   print*, ''
-  print*, 'material config file is written out'
+  print*, 'material.config done.'
 
 !write header of geom file
   open(20, file = ((trim(output_name))//'.geom'))
-  write(20, '(A, I2, A, I2, A, I2)'), 'resolution  a ', a, '  b ', b, '  c ', c
-  write(20, '(A, I4, A, I4, A, I4)'), 'dimension   x ', a, '  y ', b, '  z ', c
+  open(21, file = ((trim(output_name))//'.spectral'))
+  write(20, '(A)'), '3 header'
+  write(20, '(A, I8, A, I8, A, I8)'), 'resolution  a ', a, '  b ', b, '  c ', c
+  write(20, '(A, g15.10, A, g15.10, A, g15.10)'), 'dimension   x ', dim(1), '  y ', dim(2), '  z ', dim(3)
   write(20, '(A)'), 'homogenization  1'
 
-!initialize varibles, change values of some numbers for faster execution
-  format1 = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//')'
+  format1 = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//')'                    ! geom format
+  format2 = '(3(tr2, f6.2), 3(I10), I10, a)'                                  ! spectral (Lebensohn) format
 
 
-! perform voronoi tessellation and write result to file and to grainMap
-  do i = 1, a*b*c
+! perform voronoi tessellation and write result to files
+  do i = 0, a*b*c-1
     minDistance = a*a+b*b+c*c
     do j = 1, N_Seeds
-      do k = -1, 1
-        do l = -1, 1
-          do m = -1, 1
-            myDistance = ((mod((i-1), a) +1-seeds(j,1)+m*a)**2+&
-                     (mod(((i-1)/a), b) +1-seeds(j,2)+l*b)**2+&
-                     (mod(((i-1)/(a*b)), c) +1-seeds(j,3)+k*c)**2)
+      do k = -1, 1                                                                                            ! left, me, right image
+        do l = -1, 1                                                                                          ! front, me, back image
+          do m = -1, 1                                                                                        ! lower, me, upper image
+            myDistance = ((         mod(i, a)+1 -seeds(j,1)-m*a)**2 + &
+                               (mod((i/a), b)+1 -seeds(j,2)-l*b)**2 + &
+                           (mod((i/(a*b)), c)+1 -seeds(j,3)-k*c)**2)
             if (myDistance < minDistance) then
               minDistance = myDistance
-              grainMap(i) = j
+              theGrain = j
             end if
           end do
         end do
       end do
     end do
-    write(20, format1), grainMap(i)
+    grainCheck(theGrain) = .true.
+    write(20, trim(format1)), theGrain
+    write(21, trim(format2)), grainEuler(theGrain,1), grainEuler(theGrain,2), grainEuler(theGrain,3), &
+                              mod(i, a)+1, mod((i/a), b)+1, mod((i/(a*b)), c)+1, &
+                              theGrain, '   1'
   end do
   close(20)
-  print*, 'voronoi tesselation finished'
-
-  open(20, file = ((trim(output_name))//'.spectral'))
-  format1 = '(3(tr2, f6.2), 3(I10), I10, a)'
-  do i = 1, a*b*c
-    j = grainMap(i)
-    write(20, trim(format1)), grainEuler(j,1), grainEuler(j,2), grainEuler(j,3), &
-                           &mod((i-1), a)+1, mod(((i-1)/a), b)+1, mod(((i-1)/(a*b)), c)+1, &
-                           &j, '   1'
-  end do
-  print*, 'geometry files are written out'
+  close(21)
+  print*, 'voronoi tesselation done.'
+  if (all(grainCheck)) then
+    print*, 'all grains mapped!'
+  else
+    print*, 'only',count(grainCheck),'grains mapped!'
+  endif
  
 end program voronoi
