@@ -126,8 +126,9 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3,3) :: R,R2
  real(pReal), dimension(3) ::   Eulers
  real(pReal), dimension(4) ::   q,q2,axisangle
- integer (pInt), dimension(1) :: randInit
- integer (pInt) seed
+ real(pReal), dimension(2) ::   rnd
+ integer(pInt), dimension(1) :: randInit
+ 
  
  write(6,*)
  write(6,*) '<<<+-  math init  -+>>>'
@@ -141,10 +142,11 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    call random_seed()
  endif
 
- call get_seed(seed)
- if (fixedSeed > 0_pInt) seed = int(dble(fixedSeed)/2.0) + 1_pInt
+ call random_seed(get=randInit)
+ write(6,*) 'random seed: ',randInit(1)
+ write(6,*)
  
- call halton_seed_set(seed)
+ call halton_seed_set(randInit(1))
  call halton_ndim_set(3)
 
  ! --- check rotation dictionary ---

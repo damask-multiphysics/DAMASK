@@ -653,9 +653,9 @@ enddo                                                                           
             write (6,*) '#############'
             write (6,*) 'central solution of cryst_StressAndTangent'
             write (6,*) '#############'
-            write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, crystallite_P(1:3,1:3,g,i,e)/1e6
-            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, crystallite_Fp(1:3,1:3,g,i,e)
-            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, crystallite_Lp(1:3,1:3,g,i,e)
+            write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, crystallite_P(1:3,:,g,i,e)/1e6
+            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, crystallite_Fp(1:3,:,g,i,e)
+            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, crystallite_Lp(1:3,:,g,i,e)
           !$OMP END CRITICAL (write2out)
         endif
       enddo
@@ -2352,6 +2352,7 @@ function crystallite_integrateStress(&
  use math, only:                      math_mul33x33, &
                                       math_mul66x6, &
                                       math_mul99x99, &
+                                      math_transpose3x3, &
                                       math_inv3x3, &
                                       math_invert3x3, &
                                       math_invert, &
@@ -2444,7 +2445,7 @@ function crystallite_integrateStress(&
      !$OMP CRITICAL (write2out)
        write(6,*) '::: integrateStress failed on invFp_current inversion',g,i,e
        write(6,*)
-       write(6,'(a11,i3,x,i2,x,i5,/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
+       write(6,'(a11,i3,x,i2,x,i5,/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new(1:3,:)
      !$OMP END CRITICAL (write2out)
    endif
    return
@@ -2503,8 +2504,8 @@ LpLoop: do
      !$OMP CRITICAL (write2out)
        write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress at ' ,g,i,e, ' ; iteration ', NiterationStress
        write(6,*)
-       write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive', Lp_constitutive
-       write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess', Lpguess
+       write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive', Lp_constitutive(1:3,:)
+       write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess', Lpguess(1:3,:)
      !$OMP END CRITICAL (write2out)
    endif
 
@@ -2576,10 +2577,10 @@ LpLoop: do
              write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress failed on dR/dLp inversion at ',g,i,e, &
                                                 '; iteration ', NiterationStress
              write(6,*)
-             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp
-             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
-             write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive',Lp_constitutive
-             write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess',Lpguess
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp(1:9,:)
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive(1:9,:)
+             write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive',Lp_constitutive(1:3,:)
+             write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess',Lpguess(1:3,:)
            !$OMP END CRITICAL (write2out)
          endif
          return
@@ -2589,8 +2590,8 @@ LpLoop: do
              write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress did dR/dLp inversion at ',g,i,e, &
                                                 '; iteration ', NiterationStress
              write(6,*)
-             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp
-             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp(1:9,:)
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive(1:9,:)
            !$OMP END CRITICAL (write2out)
          endif
        endif
@@ -2621,7 +2622,7 @@ LpLoop: do
        write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on invFp_new inversion at ',g,i,e, &
                                             ' ; iteration ', NiterationStress
        write(6,*)
-       write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new
+       write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new(1:3,:)
      !$OMP END CRITICAL (write2out)
    endif
    return
@@ -2647,12 +2648,13 @@ LpLoop: do
    !$OMP CRITICAL (write2out)
    write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress converged at ',g,i,e,' ; iteration ', NiterationStress
    write(6,*)
-   write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',crystallite_P(1:3,1:3,g,i,e)/1e6
+   write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',crystallite_P(1:3,:,g,i,e)/1e6
    write(6,'(a,/,3(3(f12.7,x)/))') 'Cauchy / MPa', math_mul33x33(crystallite_P(1:3,1:3,g,i,e),transpose(Fg_new)) & 
                                                               / 1e6 / math_det3x3(Fg_new)
-   write(6,'(a,/,3(3(f12.7,x)/))') 'Fe Lp Fe^-1',math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), &
-                                                                                     math_inv3x3(Fe_new)))
-   write(6,'(a,/,3(3(f12.7,x)/))') 'Fp',crystallite_Fp(1:3,1:3,g,i,e)
+   write(6,'(a,/,3(3(f12.7,x)/))') 'Fe Lp Fe^-1',math_transpose3x3( &
+                                                     math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), &
+                                                                                         math_inv3x3(Fe_new))))                     ! transpose to get correct print out order
+   write(6,'(a,/,3(3(f12.7,x)/))') 'Fp',crystallite_Fp(1:3,:,g,i,e)
    !$OMP END CRITICAL (write2out)
  endif
 
@@ -2871,24 +2873,24 @@ function crystallite_postResults(&
        c = c + 4_pInt
      case ('defgrad','f')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_partionedF(:,:,g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_partionedF(1:3,:,g,i,e),(/mySize/))
        c = c + mySize
      case ('fe')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_Fe(:,:,g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_Fe(1:3,:,g,i,e),(/mySize/))
        c = c + mySize
      case ('ee')
        Ee = 0.5_pReal * (math_mul33x33(transpose(crystallite_Fe(:,:,g,i,e)), crystallite_Fe(:,:,g,i,e)) - math_I3)
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(Ee(:,:),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(Ee(1:3,:),(/mySize/))
        c = c + mySize
      case ('fp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_Fp(:,:,g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_Fp(1:3,:,g,i,e),(/mySize/))
        c = c + mySize
      case ('p','firstpiola','1stpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_P(:,:,g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_P(1:3,:,g,i,e),(/mySize/))
        c = c + mySize
      case ('s','tstar','secondpiola','2ndpiola')
        mySize = 9_pInt

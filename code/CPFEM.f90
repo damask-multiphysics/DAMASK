@@ -546,7 +546,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   if (selectiveDebugger .and. cp_en == debug_e .and. IP == debug_i .and. mode < 6) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,x,i2,x,a,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6
-      write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, jacobian/1e9
+      write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, jacobian(1:6,:)/1e9
       call flush(6)
     !$OMP END CRITICAL (write2out)
   endif
