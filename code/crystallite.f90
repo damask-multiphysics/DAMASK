@@ -7,7 +7,7 @@
 !* - materialpoint_stressAndItsTangent *
 !* - _partitionDeformation             *
 !* - _updateState                      *
-!* - _stressAndItsTangent       *
+!* - _stressAndItsTangent              *
 !* - _postResults                      *
 !***************************************
 
@@ -95,6 +95,7 @@ use numerics, only:   integrator, &
 use math, only:       math_I3, &
                       math_EulerToR, &
                       math_inv3x3, &
+                      math_transpose3x3, &
                       math_mul33xx33, &
                       math_mul33x33
 use FEsolving, only:  FEsolving_execElem, &
@@ -300,7 +301,7 @@ close(file)
       do g = 1,myNgrains
         crystallite_partionedTemperature0(g,i,e) = Temperature                                            ! isothermal assumption
         crystallite_Fp0(:,:,g,i,e) = math_EulerToR(material_EulerAngles(1:3,g,i,e))                       ! plastic def gradient reflects init orientation
-        crystallite_Fe(:,:,g,i,e)  = transpose(crystallite_Fp0(1:3,1:3,g,i,e))
+        crystallite_Fe(:,:,g,i,e)  = math_transpose3x3(crystallite_Fp0(1:3,1:3,g,i,e))
         crystallite_F0(:,:,g,i,e)  = math_I3
         crystallite_partionedFp0(:,:,g,i,e) = crystallite_Fp0(:,:,g,i,e)
         crystallite_partionedF0(:,:,g,i,e)  = crystallite_F0(:,:,g,i,e)
@@ -435,6 +436,7 @@ use debug, only:                                      debugger, &
                                                       debug_CrystalliteLoopDistribution
 use IO, only:                                         IO_warning
 use math, only:                                       math_inv3x3, &
+                                                      math_transpose3x3, &
                                                       math_mul33x33, &
                                                       math_mul66x6, &
                                                       math_Mandel6to33, &
@@ -580,11 +582,11 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
           else
             crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                  ! cut step in half and restore...
             crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e)                         ! ...temperature
-            crystallite_Fp(:,:,g,i,e) = crystallite_subFp0(:,:,g,i,e)                                   ! ...plastic def grad
-            crystallite_invFp(:,:,g,i,e) = math_inv3x3(crystallite_Fp(1:3,1:3,g,i,e))
-            crystallite_Lp(:,:,g,i,e) = crystallite_subLp0(:,:,g,i,e)                                   ! ...plastic velocity grad
-            constitutive_state(g,i,e)%p = constitutive_subState0(g,i,e)%p                               ! ...microstructure
-            crystallite_Tstar_v(:,g,i,e) = crystallite_subTstar0_v(:,g,i,e)                             ! ...2nd PK stress
+            crystallite_Fp(:,:,g,i,e)      = crystallite_subFp0(:,:,g,i,e)                              ! ...plastic def grad
+            crystallite_invFp(:,:,g,i,e)   = math_inv3x3(crystallite_Fp(1:3,1:3,g,i,e))
+            crystallite_Lp(:,:,g,i,e)      = crystallite_subLp0(:,:,g,i,e)                              ! ...plastic velocity grad
+            constitutive_state(g,i,e)%p    = constitutive_subState0(g,i,e)%p                            ! ...microstructure
+            crystallite_Tstar_v(:,g,i,e)   = crystallite_subTstar0_v(:,g,i,e)                           ! ...2nd PK stress
                                                                                                         ! cant restore dotState here, since not yet calculated in first cutback after initialization
             if (debugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
               !$OMP CRITICAL (write2out)
@@ -653,9 +655,9 @@ enddo                                                                           
             write (6,*) '#############'
             write (6,*) 'central solution of cryst_StressAndTangent'
             write (6,*) '#############'
-            write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, crystallite_P(1:3,:,g,i,e)/1e6
-            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, crystallite_Fp(1:3,:,g,i,e)
-            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, crystallite_Lp(1:3,:,g,i,e)
+            write (6,'(a8,3(x,i4),/,3(3(f12.4,x)/))') '    P of', g, i, e, math_transpose3x3(crystallite_P(:,:,g,i,e))/1e6
+            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Fp of', g, i, e, math_transpose3x3(crystallite_Fp(:,:,g,i,e))
+            write (6,'(a8,3(x,i4),/,3(3(f14.9,x)/))') '   Lp of', g, i, e, math_transpose3x3(crystallite_Lp(:,:,g,i,e))
           !$OMP END CRITICAL (write2out)
         endif
       enddo
@@ -2445,7 +2447,7 @@ function crystallite_integrateStress(&
      !$OMP CRITICAL (write2out)
        write(6,*) '::: integrateStress failed on invFp_current inversion',g,i,e
        write(6,*)
-       write(6,'(a11,i3,x,i2,x,i5,/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new(1:3,:)
+       write(6,'(a11,i3,x,i2,x,i5,/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,math_transpose3x3(invFp_new(:,:))
      !$OMP END CRITICAL (write2out)
    endif
    return
@@ -2455,7 +2457,7 @@ function crystallite_integrateStress(&
  
  ! get elasticity tensor
  C_66 = constitutive_homogenizedC(g,i,e)
-! if (debugger) write(6,'(a,/,6(6(f10.4,x)/))') 'elasticity',C_66(1:6,:)/1e9
+! if (debugger) write(6,'(a,/,6(6(f10.4,x)/))') 'elasticity',transpose(C_66(1:6,:))/1e9
  C = math_Mandel66to3333(C_66)
  
  ! start LpLoop with no acceleration
@@ -2481,7 +2483,7 @@ LpLoop: do
    endif
    
    B = math_I3 - dt*Lpguess
-   BT = transpose(B)
+   BT = math_transpose3x3(B)
    AB = math_mul33x33(A,B)
    BTA = math_mul33x33(BT,A)
    
@@ -2504,8 +2506,8 @@ LpLoop: do
      !$OMP CRITICAL (write2out)
        write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress at ' ,g,i,e, ' ; iteration ', NiterationStress
        write(6,*)
-       write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive', Lp_constitutive(1:3,:)
-       write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess', Lpguess(1:3,:)
+       write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive', math_transpose3x3(Lp_constitutive(:,:))
+       write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess', math_transpose3x3(Lpguess(:,:))
      !$OMP END CRITICAL (write2out)
    endif
 
@@ -2577,10 +2579,10 @@ LpLoop: do
              write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress failed on dR/dLp inversion at ',g,i,e, &
                                                 '; iteration ', NiterationStress
              write(6,*)
-             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp(1:9,:)
-             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive(1:9,:)
-             write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive',Lp_constitutive(1:3,:)
-             write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess',Lpguess(1:3,:)
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',transpose(dRdLp(:,:))
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',transpose(dLpdT_constitutive(:,:))
+             write(6,'(a,/,3(3(e20.7,x)/))') 'Lp_constitutive',math_transpose3x3(Lp_constitutive(:,:))
+             write(6,'(a,/,3(3(e20.7,x)/))') 'Lpguess',math_transpose3x3(Lpguess(:,:))
            !$OMP END CRITICAL (write2out)
          endif
          return
@@ -2603,7 +2605,7 @@ LpLoop: do
      Lpguess_old = Lpguess 
      
      ! accelerate?
-     if (NiterationStress > 1 .and. leapfrog < maxleap) leapfrog = leapfrog + 1.0_pReal
+     if (NiterationStress > 1 .and. leapfrog+1.0_pReal <= maxleap) leapfrog = leapfrog + 1.0_pReal
    endif
 
    ! leapfrog to updated Lp

@@ -233,6 +233,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   use math, only:                                     math_identity2nd, &
                                                       math_mul33x33, &
                                                       math_det3x3, &
+                                                      math_transpose3x3, &
                                                       math_I3, &
                                                       math_Mandel3333to66, &
                                                       math_Mandel33to6
@@ -434,8 +435,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
           !$OMP CRITICAL (write2out)
             write(6,'(a,x,i5,x,i2)') '<< cpfem >> OUTDATED at element ip',cp_en,IP
-            write(6,'(a,/,3(3(f10.6,x),/))') '    FFN1 old:',materialpoint_F(1:3,:,IP,cp_en)
-            write(6,'(a,/,3(3(f10.6,x),/))') '    FFN1 now:',ffn1(1:3,:)
+            write(6,'(a,/,3(3(f10.6,x),/))') '    FFN1 old:',math_transpose3x3(materialpoint_F(:,:,IP,cp_en))
+            write(6,'(a,/,3(3(f10.6,x),/))') '    FFN1 now:',math_transpose3x3(ffn1(:,:))
           !$OMP END CRITICAL (write2out)
           outdatedFFN1 = .true.
         endif
@@ -546,7 +547,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   if (selectiveDebugger .and. cp_en == debug_e .and. IP == debug_i .and. mode < 6) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,x,i2,x,a,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6
-      write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, jacobian(1:6,:)/1e9
+      write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, transpose(jacobian(:,:))/1e9
       call flush(6)
     !$OMP END CRITICAL (write2out)
   endif
