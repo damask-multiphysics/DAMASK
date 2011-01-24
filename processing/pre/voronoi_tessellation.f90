@@ -172,16 +172,17 @@ program voronoi
  logical gotN_Seeds, gotResolution
  logical, dimension(:), allocatable :: grainCheck
  character(len=1024) input_name, output_name, format1, format2, N_Digits, line, key
- integer(pInt) a, b, c, N_Seeds, seedPoint, theGrain, minDistance, myDistance, i, j, k, l, m
- integer(pInt), dimension(3) :: coordinates
+ integer(pInt) a, b, c, N_Seeds, theGrain, i, j, k, l, m
  integer(pInt), dimension (1+2*7) ::  posGeom
  real(pReal), dimension(:,:), allocatable :: grainEuler, seeds
- real(pReal), dimension(3) :: dim
+ real(pReal), dimension(3) :: step,dim,delta
+ real(pReal) minDist, theDist
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
 
  print*, '******************************************************************************'
  print*, '                    Spectral Method Problem Set-up'
  print*, '******************************************************************************'
+ print*, '$Id$'
  print*, ''
  print*, 'generates:'
  print*, '    * geom file "_OUTPUT_.geom": Geometrical information for solver'
@@ -220,23 +221,27 @@ program voronoi
  enddo
 
  100 allocate(grainEuler(N_Seeds,3))
- allocate(Seeds(N_Seeds,3))
+ allocate(seeds(N_Seeds,3))
  allocate(grainCheck(N_Seeds))
  grainCheck = .false.
  
  print*, 'resolution: ' ,a,b,c
- write(*, '(A)', advance = 'NO') 'New first resolution: '
+ write(*, '(A)', advance = 'NO') 'New first  resolution: '
  read(*, *), a
  write(*, '(A)', advance = 'NO') 'New second resolution: '
  read(*, *), b
- write(*, '(A)', advance = 'NO') 'New third resolution: '
+ write(*, '(A)', advance = 'NO') 'New third  resolution: '
  read(*, *), c
  
- write(*, '(A)', advance = 'NO') 'First dimension: '
+ step(1) = 1.0_pReal/real(a,pReal)
+ step(2) = 1.0_pReal/real(b,pReal)
+ step(3) = 1.0_pReal/real(c,pReal)
+ 
+ write(*, '(A)', advance = 'NO') 'First  dimension: '
  read(*, *), dim(1)
  write(*, '(A)', advance = 'NO') 'Second dimension: '
  read(*, *), dim(2)
- write(*, '(A)', advance = 'NO') 'Third dimension: '
+ write(*, '(A)', advance = 'NO') 'Third  dimension: '
  read(*, *), dim(3)
  
  rewind(20)
@@ -251,19 +256,14 @@ program voronoi
  do i=1, N_seeds
   read(20,'(a1024)') line
   if (IO_isBlank(line)) cycle                            ! skip empty lines
-  posGeom = IO_stringPos(line,6)             
-  Seeds(i,1)=IO_floatValue(line,posGeom,1)
-  Seeds(i,2)=IO_floatValue(line,posGeom,2)
-  Seeds(i,3)=IO_floatValue(line,posGeom,3)
-  grainEuler(i,1)=IO_floatValue(line,posGeom,4)
-  grainEuler(i,2)=IO_floatValue(line,posGeom,5)
-  grainEuler(i,3)=IO_floatValue(line,posGeom,6)
+  posGeom = IO_stringPos(line,6)                         ! split line
+  do j=1,3
+    seeds(i,j) =      IO_floatValue(line,posGeom,j)
+    grainEuler(i,j) = IO_floatValue(line,posGeom,j+3)
+  enddo
  enddo
  close(20) 
  
- seeds(:,1) = seeds(:,1)*real(a, pReal)
- seeds(:,2) = seeds(:,2)*real(b, pReal)
- seeds(:,3) = seeds(:,3)*real(c, pReal)
  
 ! calculate No. of digits needed for name of the grains
   i = 1 + int( log10(real( N_Seeds )))
@@ -302,33 +302,38 @@ program voronoi
   write(20, '(A)'), 'homogenization  1'
 
   format1 = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//')'                    ! geom format
-  format2 = '(3(tr2, f6.2), 3(I10), I10, a)'                                  ! spectral (Lebensohn) format
+  format2 = '(3(tr2, f6.2), 3(tr2,g10.5), I10, a)'                                ! spectral (Lebensohn) format
 
 
 ! perform voronoi tessellation and write result to files
   do i = 0, a*b*c-1
-    minDistance = a*a+b*b+c*c
+    minDist = dim(1)*dim(1)+dim(2)*dim(2)+dim(3)*dim(3)                   ! diagonal of rve
     do j = 1, N_Seeds
+      delta(1) = step(1)*(mod(i    , a)+0.5_pReal) - seeds(j,1)
+      delta(2) = step(2)*(mod(i/a  , b)+0.5_pReal) - seeds(j,2)
+      delta(3) = step(3)*(mod(i/a/b, c)+0.5_pReal) - seeds(j,3)
       do k = -1, 1                                                                                            ! left, me, right image
         do l = -1, 1                                                                                          ! front, me, back image
           do m = -1, 1                                                                                        ! lower, me, upper image
-            myDistance = ((         mod(i, a)+1 -seeds(j,1)-m*a)**2 + &
-                               (mod((i/a), b)+1 -seeds(j,2)-l*b)**2 + &
-                           (mod((i/(a*b)), c)+1 -seeds(j,3)-k*c)**2)
-            if (myDistance < minDistance) then
-              minDistance = myDistance
+            theDist = ( dim(1) * ( delta(1)-real(k,pReal) ) )**2 + &
+                      ( dim(2) * ( delta(2)-real(l,pReal) ) )**2 + &
+                      ( dim(3) * ( delta(3)-real(m,pReal) ) )**2
+            if (theDist < minDist) then
+              minDist = theDist
               theGrain = j
-            end if
-          end do
-        end do
-      end do
-    end do
+            endif
+          enddo
+        enddo
+      enddo
+    enddo
     grainCheck(theGrain) = .true.
     write(20, trim(format1)), theGrain
     write(21, trim(format2)), grainEuler(theGrain,1), grainEuler(theGrain,2), grainEuler(theGrain,3), &
-                              mod(i, a)+1, mod((i/a), b)+1, mod((i/(a*b)), c)+1, &
+                              dim(1)*step(1)*(mod(i    , a)+0.5_pReal), &
+                              dim(2)*step(2)*(mod(i/a  , b)+0.5_pReal), &
+                              dim(3)*step(3)*(mod(i/a/b, c)+0.5_pReal), &
                               theGrain, '   1'
-  end do
+  enddo
   close(20)
   close(21)
   print*, 'voronoi tesselation done.'

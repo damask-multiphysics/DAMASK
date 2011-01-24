@@ -27,6 +27,7 @@ program voronoi
  print*, '******************************************************************************'
  print*, '                    Voronoi description file'
  print*, '******************************************************************************'
+ print*, '$Id$'
  print*, ''
  print*, 'generates:'
  print*, '    * description file "_OUTPUT_.seeds":'
@@ -35,11 +36,11 @@ program voronoi
  read(*, *), filename
  write(*, '(A)', advance = 'NO') 'Please enter value random seed: '
  read(*, *), randomSeed; randomSeed = max(0_pInt,randomSeed)
- write(*, '(A)', advance = 'NO') 'Please enter value for first resolution: '
+ write(*, '(A)', advance = 'NO') 'Please enter value for first  resolution: '
  read(*, *), a
  write(*, '(A)', advance = 'NO') 'Please enter value for second resolution: '
  read(*, *), b
- write(*, '(A)', advance = 'NO') 'Please enter value for third resolution: '
+ write(*, '(A)', advance = 'NO') 'Please enter value for third  resolution: '
  read(*, *), c
  write(*, '(A)', advance = 'NO') 'Please enter No. of Grains: '
  read(*, *), N_Seeds

@@ -45,7 +45,9 @@ def output(cmds,locals,dest):
 
 
   
+#--------------------
 def init():
+#--------------------
     return ["*new_model yes",
       "*reset",
       "*select_clear",
@@ -59,7 +61,9 @@ def init():
       ]
 
 
-def mesh(N,d):
+#--------------------
+def mesh(r,d):
+#--------------------
     return [
   "*add_nodes",
   "%f %f %f"%(0.0,0.0,0.0),
@@ -73,11 +77,11 @@ def mesh(N,d):
   "*add_elements",
   range(1,9),
   "*sub_divisions",
-  "%i %i %i"%(N[2],N[1],N[0]),
+  "%i %i %i"%(r[2],r[1],r[0]),
   "*subdivide_elements",
   "all_existing",
   "*set_sweep_tolerance",
-  "%f"%(float(min(d))/max(N)/2.0),
+  "%f"%(float(min(d))/max(r)/2.0),
   "*sweep_all",
   "*renumber_all",
   "*set_move_scale_factor x -1",
@@ -89,7 +93,9 @@ def mesh(N,d):
     ]
 
 
+#--------------------
 def material():
+#--------------------
   cmds = [\
   "*new_mater standard",
   "*mater_option general:state:solid",
@@ -107,7 +113,9 @@ def material():
   return cmds
   
 
+#--------------------
 def geometry():
+#--------------------
   cmds = [\
   "*geometry_type mech_three_solid",
   "*geometry_option red_integ_capacity:on",
@@ -120,13 +128,13 @@ def geometry():
   return cmds
   
 
-def initial_conditions(N,data):
+#--------------------
+def initial_conditions(homogenization,grains):
+#--------------------
   elements = []
   element = 0
-  for line in data:
+  for id in grains:
     element += 1 
-    phi1,phi,phi2,x,y,z,id,phase = line.split()
-    id = int(id)
     if len(elements) < id:
       for i in range(id-len(elements)):
         elements.append([])
@@ -134,17 +142,17 @@ def initial_conditions(N,data):
 
   cmds = [\
     "*new_icond",
-    "*icond_name temperature",
+    "*icond_name _temperature",
     "*icond_type state_variable",
     "*icond_param_value state_var_id 1",
     "*icond_dof_value var 300",
     "*add_icond_elements",
     "all_existing",
     "*new_icond",
-    "*icond_name homogenization",
+    "*icond_name _homogenization",
     "*icond_type state_variable",
     "*icond_param_value state_var_id 2",
-    "*icond_dof_value var 1",
+    "*icond_dof_value var %i"%homogenization,
     "*add_icond_elements",
     "all_existing",
     ]
@@ -163,10 +171,67 @@ def initial_conditions(N,data):
   return cmds
 
 
+#--------------------
+def parse_geomFile(content,homog):
+#--------------------
+  (skip,key) = content[0].split()[:2]
+  if key[:4].lower() == 'head':
+    skip = int(skip)+1
+  else:
+    skip = 0
+  
+  res = [0,0,0]
+  dim = [0.0,0.0,0.0]
+  homog = 0
+  
+  for line in content[:skip]:
+    data = line.split()
+    if data[0].lower() == 'resolution':
+      res = map(int,data[2:8:2])
+    if data[0].lower() == 'dimension':
+      dim = map(float,data[2:8:2])
+    if data[0].lower() == 'homogenization':
+      homog = int(data[1])
+
+  grains = []
+  for line in content[skip:]:
+    grains.append(int(line.split()[0]))
+
+  return (res,dim,homog,grains)
+
+#--------------------
+def parse_spectralFile(content,homog):
+#--------------------
+
+  coords = [{},{},{}]
+  maxBox = [-1.0e20,-1.0e20,-1.0e20]
+  minBox = [ 1.0e20, 1.0e20, 1.0e20]
+  dim = [0.0,0.0,0.0]
+  res = [0,0,0]
+  grains = []
+  
+  for line in content:
+    data = line.split()[3:7]
+    grains.append(int(data[3]))
+    for i in range(3):
+      maxBox[i] = max(maxBox[i],float(data[i]))
+      minBox[i] = min(minBox[i],float(data[i]))
+      coords[i][data[i]] = True
+      
+  for i in range(3):
+    res[i] = len(coords[i])
+    dim[i] = (maxBox[i]-minBox[i])*res[i]/(res[i]-1.0)
+
+  return (res,dim,homog,grains)
+
 # ----------------------- MAIN -------------------------------
 
 parser = OptionParser(usage='%prog [options] spectral.datafile', description = """
-Generate FE hexahedral mesh from spectral description file of format: phi1,Phi,phi2,x,y,z,id,phase.
+Generate FE hexahedral mesh from spectral description file.
+
+Acceptable formats are
+geom: header plus list of grain numbers or
+spectral: phi1,Phi,phi2,x,y,z,id,phase.
 
 $Id$
 """)
@@ -176,12 +241,20 @@ parser.add_option("-p", "--port", type="int",\
 parser.add_option("-d", "--dimension", type="int", nargs=3,\
         dest="d",\
         help="physical dimension")
-parser.add_option("-N", "--subdivisions", type="int", nargs=3,\
-        dest="N",\
-        help="number of subdivisions")
+parser.add_option("--homogenization", type="int",\
+        dest="homogenization",\
+        help="index of homogenization to be chosen from material.config file")
+parser.add_option("-s", "--spectral", action="store_const", const="spectral",\
+        dest="filetype",\
+        help="file has 'spectral' format")
+parser.add_option("-g", "--geom", action="store_const", const="geom",\
+        dest="filetype",\
+        help="file has 'geom' format")
 
-parser.set_defaults(d = (16,16,16))
-parser.set_defaults(N = (16,16,16))
+parser.set_defaults(homogenization = 1)
+
+(options, args) = parser.parse_args()
+
 
 try:
   file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
@@ -203,10 +276,8 @@ for release,subdirs in sorted(releases.items(),reverse=True):
 try:
   from py_mentat import *
 except:
-  print('error: no valid Mentat release found in %s'%MSCpath)
-  sys.exit(-1)
-
-(options, args) = parser.parse_args()
+  print('no valid Mentat release found in %s'%MSCpath)
+  if options.port != None: sys.exit(-1)
 
 if not os.path.isfile(args[0]):
   parser.error("cannot open %s"%args[0])
@@ -215,12 +286,28 @@ file = open(args[0])
 content = file.readlines()
 file.close()
 
+if options.filetype not in ['spectral','geom']:
+  options.filetype = os.path.splitext(args[0])[1][1:]
+
+print '\nparsing %s...'%options.filetype,
+sys.stdout.flush()
+
+(res,dim,homog,grains) = {\
+  'geom':     parse_geomFile,
+  'spectral': parse_spectralFile,
+  }[options.filetype](content,options.homogenization)
+
+print '%i grains in %s with resolution %s and homogenization %i\n'%(len(list(set(grains))),str(dim),str(res),homog)
+
+
 cmds = [\
   init(),
-  mesh(options.N,options.d),
+  mesh(res,dim),
   material(),
   geometry(),
-  initial_conditions(options.N,content),
+  initial_conditions(homog,grains),
+  '*identify_sets',
+  '*redraw',
 ]
 
 outputLocals = {}
