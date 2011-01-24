@@ -2818,6 +2818,7 @@ function crystallite_postResults(&
  use math, only:                      math_QuaternionToEuler, &
                                       math_QuaternionToAxisAngle, &
                                       math_mul33x33, &
+                                      math_transpose3x3, &
                                       math_I3, &
                                       inDeg, &
                                       math_Mandel6to33
@@ -2875,24 +2876,24 @@ function crystallite_postResults(&
        c = c + 4_pInt
      case ('defgrad','f')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_partionedF(1:3,:,g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_partionedF(:,:,g,i,e)),(/mySize/))
        c = c + mySize
      case ('fe')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_Fe(1:3,:,g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_Fe(:,:,g,i,e)),(/mySize/))
        c = c + mySize
      case ('ee')
-       Ee = 0.5_pReal * (math_mul33x33(transpose(crystallite_Fe(:,:,g,i,e)), crystallite_Fe(:,:,g,i,e)) - math_I3)
+       Ee = 0.5_pReal * (math_mul33x33(math_transpose3x3(crystallite_Fe(:,:,g,i,e)), crystallite_Fe(:,:,g,i,e)) - math_I3)
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(Ee(1:3,:),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(Ee(:,:),(/mySize/))
        c = c + mySize
      case ('fp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_Fp(1:3,:,g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_Fp(:,:,g,i,e)),(/mySize/))
        c = c + mySize
      case ('p','firstpiola','1stpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(crystallite_P(1:3,:,g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_P(:,:,g,i,e)),(/mySize/))
        c = c + mySize
      case ('s','tstar','secondpiola','2ndpiola')
        mySize = 9_pInt
