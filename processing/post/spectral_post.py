@@ -6,124 +6,436 @@
 # computed using the FEM solvers. Until now, its capable to handle elements with one IP in a regular order
 # written by M. Diehl, m.diehl@mpie.de
 
-import array
-import struct
-import numpy
-import reconstruct
+import os,sys,re,array,struct,numpy, time
 
-#this funtion finds a string value in the given file for a given keyword, also returns the position
-def searchNameForKeyword(searchstring, file):
-    file.seek(0,0)
-    begin = file.read(2048).find(searchstring) + len(searchstring) # function will return -1 if string is not found
-    file.seek(begin -len(searchstring) -4)                         # position of header (Fortran specific, 4 bit long on msuws4
-    header = file.read(4)                                          # store header. header will be repeated, thus it allows us to determine the length of the searchstring
-    file.seek(begin,0)                                             # go back to starting postion
-    length = file.read(2048).find(header)                          # find header(footer) a second time
-    file.seek(begin,0) 
-    return file.read(length), results.tell()                       # return searchstring and maximum position in file
+class vector:
+  x,y,z = [None,None,None]
+  
+  def __init__(self,coords):
+    self.x = coords[0]
+    self.y = coords[1]
+    self.z = coords[2]
 
-#this funtion finds an integer value in the given file for a given keyword, works similar as "searchNameForKeyword"
-def searchValueForKeyword(searchstring, file):
-    results.seek(0,0)
-    begin = file.read(2048).find(searchstring) + len(searchstring) 
-    file.seek(begin,0)                                                                     
-    value = struct.unpack('i',results.read(4))[0]
-    return value, results.tell()
+class element:
+  items = []
+  type = None
 
-#finds the value for the three integers (a,b,c) following the given keyword
-def searchIntegerArrayForKeyword(searchstring, file):
-	values = array.array('i',[0,0,0])
-	file.seek(0,0)
-	begin = file.read(2048).find(searchstring) + len(searchstring) #end position of string "searchstring"
-	pos = file.read(60).find('a')
-	file.seek(begin+pos+2,0)                                       #why 2, not 1??
-	values[0]=struct.unpack('i',file.read(4))[0]
-	maxpos=file.tell()
-	file.seek(begin,0)
-	pos = file.read(60).find('b')
-	file.seek(begin+pos+1,0)
-	values[1]=struct.unpack('i',file.read(4))[0]
-	maxpos = max(maxpos,file.tell())
-	file.seek(begin,0)
-	pos = file.read(60).find('c')
-	file.seek(begin+pos+1,0)
-	values[2]=struct.unpack('i',file.read(4))[0]
-	maxpos=max(maxpos,file.tell())
-	return values, maxpos
+  def __init__(self,nodes,type):
+    self.items = nodes
+    self.type = type
 
-#finds the value for the three doubles (x,y,z) following the given keyword
-def searchDoubleArrayForKeyword(searchstring, file):
-	values = array.array('d',[0,0,0])
-	file.seek(0,0)
-	begin = file.read(2048).find(searchstring) + len(searchstring) 
-	pos = file.read(60).find('x')
-	file.seek(begin+pos+2,0) 
-	values[0]=struct.unpack('d',file.read(8))[0]
-	maxpos=file.tell()
-	file.seek(begin,0)
-	pos = file.read(60).find('y')
-	file.seek(begin+pos+1,0)
-	values[1] = struct.unpack('d',file.read(8))[0]
-	maxpos = max(maxpos,file.tell())
-	file.seek(begin,0)
-	pos = file.read(60).find('z')
-	file.seek(begin+pos+1,0)
-	values[2] = struct.unpack('d',file.read(8))[0]
-	maxpos = max(maxpos,file.tell())
-	return values, maxpos
-print '*********************************************************************************'	
+class element_scalar:
+  id = None
+  value = None
+
+  def __init__(self,node,value):
+    self.id = node
+    self.value = value
+
+
+class MPIEspectral_result:
+
+  file = None
+  dataOffset = 0
+  N_elemental_scalars = 0
+  resolution = [0,0,0]
+  dimension = [0.0,0.0,0.0]
+  theTitle = ''
+  wd = ''
+  extrapolate = ''
+  N_increments = 0
+  increment = 0
+  N_nodes = 0
+  N_node_scalars = 0
+  N_elements = 0
+  N_element_scalars = 0
+  N_element_tensors = 0
+  theNodes = []
+  theElements = []
+
+  def __init__(self,filename):
+
+    self.file = open(filename, 'rb')
+
+    self.title = self._keyedString('load')
+    self.wd = self._keyedString('workingdir')
+    self.geometry = self._keyedString('geometry')
+    self.N_increments =  self._keyedInt('increments')
+    self.N_element_scalars = self._keyedInt('materialpoint_sizeResults')
+    self.resolution = self._keyedPackedArray('resolution',3,'i')
+    self.N_nodes = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
+    self.N_elements = self.resolution[0]*self.resolution[1]*self.resolution[2]
+    self.dimension = self._keyedPackedArray('dimension',3,'d')
+    a = self.resolution[0]+1
+    b = self.resolution[1]+1
+    c = self.resolution[2]+1
+    self.file.seek(0)
+    self.dataOffset = self.file.read(2048).find('eoh')+7
+
+
+  def __str__(self):
+    return '\n'.join([
+      'title: %s'%self.title,
+      'workdir: %s'%self.wd,
+      'extrapolation: %s'%self.extrapolate,
+      'increments: %i'%self.N_increments,
+      'increment: %i'%self.increment,
+      'nodes: %i'%self.N_nodes,
+      'resolution: %s'%(','.join(map(str,self.resolution))),
+      'dimension: %s'%(','.join(map(str,self.dimension))),
+      'elements: %i'%self.N_elements,
+      'nodal_scalars: %i'%self.N_node_scalars,
+      'elemental scalars: %i'%self.N_element_scalars,
+      'end of header: %i'%self.dataOffset,
+      ]
+    )
+
+  def _keyedPackedArray(self,identifier,length = 3,type = 'd'):
+    match = {'d': 8,'i': 4}
+    self.file.seek(0)
+    m = re.search('%s%s'%(identifier,'(.{%i})'%(match[type])*length),self.file.read(2048))
+    values = []
+    if m:
+      for i in m.groups():
+        values.append(struct.unpack(type,i)[0])
+    return values
+
+  def _keyedInt(self,identifier):
+    value = None
+    self.file.seek(0)
+    m = re.search('%s%s'%(identifier,'(.{4})'),self.file.read(2048))
+    if m:
+      value = struct.unpack('i',m.group(1))[0]
+    return value
+
+  def _keyedString(self,identifier):
+    value = None
+    self.file.seek(0)
+    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(2048))
+    if m:
+      value = m.group(2)
+    return value
+
+  def extrapolation(self,value):
+    self.extrapolate = value
+
+  def element_scalar(self,elem,idx):
+    self.file.seek(self.dataOffset+(self.increment*(4+self.N_elements*self.N_element_scalars*8+4) + 4+(elem*self.N_element_scalars + idx)*8))
+    value = struct.unpack('d',self.file.read(8))[0]
+    return [elemental_scalar(node,value) for node in self.theElements[elem].items]
+
+def readScalar(resolution,file,distance,startingPosition,offset):
+  currentPosition = startingPosition+offset*8+4 - distance*8 # we add distance later on
+  field = numpy.zeros([resolution[0],resolution[1],resolution[2]], 'd')
+  for x in range(0,resolution[0]):
+    for y in range(0,resolution[1]):
+      for z in range(0,resolution[2]):
+        currentPosition = currentPosition + distance*8
+        p.file.seek(currentPosition)
+        field[x][y][z]=struct.unpack('d',p.file.read(8))[0]
+  return field
+
+def readTensor(resolution,file,distance,startingPosition,offset):
+  currentPosition = startingPosition+offset*8+4 - distance*8 # we add distance later on
+  field = numpy.zeros([resolution[0],resolution[1],resolution[2],3,3], 'd')
+  for x in range(0,resolution[0]):
+    for y in range(0,resolution[1]):
+      for z in range(0,resolution[2]):
+        currentPosition = currentPosition + distance*8
+        p.file.seek(currentPosition)
+        for i in range(0,3):
+          for j in range(0,3):
+            field[x][y][z][i][j]=struct.unpack('d',p.file.read(8))[0]
+  return field
+  
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+def mesh(res,geomdim,defgrad_av,centroids):
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+
+ neighbor = numpy.array([[0, 0, 0],
+                         [1, 0, 0],
+                         [1, 1, 0],
+                         [0, 1, 0],
+                         [0, 0, 1],
+                         [1, 0, 1],
+                         [1, 1, 1],
+                         [0, 1, 1]])
+
+ wrappedCentroids = numpy.zeros([res[0]+2,res[1]+2,res[2]+2,3],'d')
+ nodes = numpy.zeros([res[0]+1,res[1]+1,res[2]+1,3],'d')
+ wrappedCentroids[1:-1,1:-1,1:-1] = centroids
+ diag = numpy.ones(3,'i')
+ shift = numpy.zeros(3,'i')
+ lookup = numpy.zeros(3,'i')
+
+ for k in range(res[2]+2):
+  for j in range(res[1]+2):
+    for i in range(res[0]+2):
+       if (k==0 or k==res[2]+1 or \
+           j==0 or j==res[1]+1 or \
+           i==0 or i==res[0]+1      ):
+         me = numpy.array([i,j,k],'i')
+         shift = numpy.sign(res+diag-2*me)*(numpy.abs(res+diag-2*me)/(res+diag))
+         lookup = me-diag+shift*res
+         wrappedCentroids[i,j,k] = centroids[lookup[0],lookup[1],lookup[2]]- \
+                                       numpy.dot(defgrad_av, shift*geomdim)
+ for k in range(res[2]+1):
+   for j in range(res[1]+1):
+     for i in range(res[0]+1):
+       for n in range(8):
+         nodes[i,j,k] += wrappedCentroids[i+neighbor[n,0],j+neighbor[n,1],k+neighbor[n,2]]
+ nodes[:,:,:] /=8.0
+  
+ return nodes
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+def centroids(res,geomdimension,defgrad):
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  corner = numpy.array([[0, 0, 0],
+                        [1, 0, 0],
+                        [1, 1, 0],
+                        [0, 1, 0],
+                        [1, 1, 1],
+                        [0, 1, 1],
+                        [0, 0, 1],
+                        [1, 0, 1]])
+  step = numpy.array([[ 1, 1, 1],
+                      [-1, 1, 1],
+                      [-1,-1, 1],
+                      [ 1,-1, 1],
+                      [-1,-1,-1],
+                      [ 1,-1,-1],
+                      [ 1, 1,-1],
+                      [-1, 1,-1]])  
+ 
+  order = numpy.array([[0, 1, 2],
+                      [0, 2, 1],
+                      [1, 0, 2],
+                      [1, 2, 0],
+                      [2, 0, 1],
+                      [2, 1, 0]])
+   
+  cornerCoords = numpy.zeros([8,res[0],res[1],res[2],3], 'd')
+  coord = numpy.zeros([8,6,res[0],res[1],res[2],3], 'd')
+  centroids = numpy.zeros([res[0],res[1],res[2],3], 'd')
+  myStep = numpy.zeros(3,'d')
+  rear = numpy.zeros(3, 'i')
+  init = numpy.zeros(3, 'i')
+  oppo = numpy.zeros(3, 'i')
+  me = numpy.zeros(3, 'i')
+  ones = numpy.ones(3, 'i')
+  fones = numpy.ones(3, 'd')
+  defgrad_av=numpy.average(numpy.average(numpy.average(defgrad,0),0),0)
+  
+  for s in range(8):# corners
+    init = corner[s]*(res-ones)
+    oppo = corner[(s+4)%8]*(res-ones)
+    for o in range(6):  # orders
+      for k in range(init[order[o,2]],oppo[order[o,2]]+step[s,order[o,2]],step[s,order[o,2]]):
+        rear[order[o,1]] = init[order[o,1]]
+        for j in range(init[order[o,1]],oppo[order[o,1]]+step[s,order[o,1]],step[s,order[o,1]]):
+          rear[order[o,0]] = init[order[o,0]]
+          for i in range(init[order[o,0]],oppo[order[o,0]]+step[s,order[o,0]],step[s,order[o,0]]):
+            me[order[o,0]] = i
+            me[order[o,1]] = j
+            me[order[o,2]] = k
+            if (numpy.all(me == init)):
+              coord[s,o,me[0],me[1],me[2]] = geomdimension * (numpy.dot(defgrad_av,corner[s]) + \
+                                                                  numpy.dot(defgrad[me[0],me[1],me[2]],0.5*step[s]/res))
+            else:
+              myStep = (me-rear)*geomdimension/res
+              coord[s,o,me[0],me[1],me[2]] = coord[s,o,rear[0],rear[1],rear[2]]+ \
+                                                      0.5*numpy.dot(defgrad[me[0],me[1],me[2]] + \
+                                                                    defgrad[rear[0],rear[1],rear[2]],myStep)
+
+            rear[:] = me[:]
+    cornerCoords[s] = numpy.average(coord[s],0)
+  for k in range(res[2]):
+    for j in range(res[1]):
+      for i in range(res[0]):
+        parameter_coords=(2.0*numpy.array([i,j,k])-res+fones)/(res-fones)
+        pos = (fones + parameter_coords)
+        neg = (fones - parameter_coords)
+        if(k<3 and j<3 and i<3):
+          print i,j,k,':',pos, neg,'(',parameter_coords,')'
+        centroids[i,j,k] =  ( cornerCoords[0,i,j,k] *neg[0]*neg[1]*neg[2]\
+                            + cornerCoords[1,i,j,k] *pos[0]*neg[1]*neg[2]\
+                            + cornerCoords[2,i,j,k] *pos[0]*pos[1]*neg[2]\
+                            + cornerCoords[3,i,j,k] *neg[0]*pos[1]*neg[2]\
+                            + cornerCoords[4,i,j,k] *pos[0]*pos[1]*pos[2]\
+                            + cornerCoords[5,i,j,k] *neg[0]*pos[1]*pos[2]\
+                            + cornerCoords[6,i,j,k] *neg[0]*neg[1]*pos[2]\
+                            + cornerCoords[7,i,j,k] *pos[0]*neg[1]*pos[2])*0.125
+  return centroids, defgrad_av
+
+# function writes scalar values to a mesh (geometry)
+def writeVtkAscii(filename,geometry,scalar,resolution):
+  prodnn=(p.resolution[0]+1)*(p.resolution[1]+1)*(p.resolution[2]+1)
+  vtk = open(filename, 'w')
+  vtk.write('# vtk DataFile Version 3.1\n') # header
+  vtk.write('just a test\n') # header
+  vtk.write('ASCII\n') # header
+  vtk.write('DATASET UNSTRUCTURED_GRID\n') # header
+  vtk.write('POINTS ') # header
+  vtk.write(str(prodnn)) # header
+  vtk.write(' FLOAT\n') # header
+
+# nodes
+  for k in range (resolution[2]+1):
+    for j in range (resolution[1]+1):
+      for i in range (resolution[0]+1):
+        vtk.write('\t'.join(map(str,geometry[i,j,k]))+'\n')
+  vtk.write('\n')
+  vtk.write('CELLS ')
+  vtk.write(str(resolution[0]*resolution[1]*resolution[2]))
+  vtk.write('\t')
+  vtk.write(str(resolution[0]*resolution[1]*resolution[2]*9))
+  vtk.write('\n')
+
+# elements
+  for i in range (resolution[2]):
+    for j in range (resolution[1]):
+      for k in range (resolution[0]):
+        vtk.write('8')
+        vtk.write('\t')
+        base = i*(resolution[1]+1)*(resolution[2]+1)+j*(resolution[1]+1)+k
+        vtk.write(str(base))
+        vtk.write('\t')
+        vtk.write(str(base+1))
+        vtk.write('\t')
+        vtk.write(str(base+resolution[1]+2))
+        vtk.write('\t')
+        vtk.write(str(base+resolution[1]+1))
+        vtk.write('\t')
+        base = base + (resolution[1]+1)*(resolution[2]+1)
+        vtk.write(str(base))
+        vtk.write('\t')
+        vtk.write(str(base+1))
+        vtk.write('\t')
+        vtk.write(str(base+resolution[1]+2))
+        vtk.write('\t')
+        vtk.write(str(base+resolution[1]+1))
+        vtk.write('\n')
+  vtk.write('\n')
+  vtk.write('CELL_TYPES ')
+  vtk.write('\t')
+  vtk.write(str(resolution[0]*resolution[1]*resolution[2]))
+  vtk.write('\n')
+  for i in range (resolution[0]*resolution[1]*resolution[2]):
+    vtk.write('12\n')
+  vtk.write('\nCELL_DATA ') # header
+  vtk.write(str(resolution[0]*resolution[1]*resolution[2])) # header
+  vtk.write('\n') # header
+  vtk.write('SCALARS HorizontalSpeed float\n') # header
+  vtk.write('LOOKUP_TABLE default\n') # header
+  for k in range (resolution[2]):
+    for j in range (resolution[1]):
+      for i in range (resolution[0]):
+        vtk.write(str(scalar[i,j,k]))
+        vtk.write('\n')
+  return
+ 
+# function writes scalar values to a point field
+def writeVtkAsciiDots(filename,coordinates,scalar,resolution):
+  prodnn=(p.resolution[0])*(p.resolution[1])*(p.resolution[2])
+  vtk = open(filename, 'w')
+  vtk.write('# vtk DataFile Version 3.1\n') # header
+  vtk.write('just a test\n') # header
+  vtk.write('ASCII\n') # header
+  vtk.write('DATASET UNSTRUCTURED_GRID\n') # header
+  vtk.write('POINTS ') # header
+  vtk.write(str(prodnn)) # header
+  vtk.write(' FLOAT\n') # header
+# points
+  for k in range (resolution[2]):
+    for j in range (resolution[1]):
+      for i in range (resolution[0]):
+        vtk.write('\t'.join(map(str,coordinates[i,j,k]))+'\n')
+  vtk.write('\n')
+  vtk.write('CELLS ')
+  vtk.write(str(prodnn))
+  vtk.write('\t')
+  vtk.write(str(prodnn*2))
+  vtk.write('\n')
+  for i in range(prodnn):
+    vtk.write('1\t' + str(i) + '\n')
+  vtk.write('CELL_TYPES ')
+  vtk.write('\t')
+  vtk.write(str(prodnn))
+  vtk.write('\n')
+  for i in range (prodnn):
+    vtk.write('1\n') 
+  vtk.write('\nPOINT_DATA ') # header
+  vtk.write(str(prodnn)) # header
+  vtk.write('\n') # header
+  vtk.write('SCALARS HorizontalSpeed float\n') # header
+  vtk.write('LOOKUP_TABLE default\n') # header
+  for k in range (resolution[2]):
+    for j in range (resolution[1]):
+      for i in range (resolution[0]):
+        vtk.write(str(scalar[i,j,k]))
+        vtk.write('\n')
+  return
+  
+# functiongives the corner box for the average defgrad
+def writeVtkAsciidefgrad_av(filename,diag,defgrad):
+  
+  points = numpy.array([\
+   [0.0,0.0,0.0,],\
+   [diag[0],0.0,0.0,],\
+   [diag[0],diag[1],0.0,],\
+   [0.0,diag[1],0.0,],\
+   [0.0,0.0,diag[2],],\
+   [diag[0],0.0,diag[2],],\
+   [diag[0],diag[1],diag[2],],\
+   [0.0,diag[1],diag[2],]]\
+  )
+  vtk = open(filename, 'w')
+  vtk.write('# vtk DataFile Version 3.1\n') # header
+  vtk.write('just a test\n') # header
+  vtk.write('ASCII\n') # header
+  vtk.write('DATASET UNSTRUCTURED_GRID\n') # header
+  vtk.write('POINTS 8') # header
+  vtk.write(' FLOAT\n') # header
+
+ # points
+  for p in range (8):
+    vtk.write('\t'.join(map(str,numpy.dot(defgrad_av,points[p])))+'\n')
+  vtk.write('\n')
+  vtk.write('CELLS 8 16\n')
+  vtk.write('\n'.join(['1\t%i'%i for i in range(8)])+'\n')
+  vtk.write('CELL_TYPES 8\n')
+  vtk.write('\n'.join(['1']*8)+'\n')
+  
+  return
+
+print '*********************************************************************************'
 print 'Post Processing for Material subroutine for BVP solution using spectral method'
 print '*********************************************************************************\n'
 
 #reading in the header of the results file
-filename ='32x32x32x100.out'
-print 'Results Filename:', filename 
-results = open(filename, 'rb')
-
-loadcase, position = searchNameForKeyword('Loadcase', results)
-workingdir, temp = searchNameForKeyword('Workingdir', results)
-position = max(temp, position)
-jobname, temp = searchNameForKeyword('JobName', results)
-position = max(temp, position)
-totalincs, temp =  searchValueForKeyword('totalincs', results)
-position = max(temp, position)
-materialpoint_sizeResults, temp =  searchValueForKeyword('materialpoint_sizeResults', results)
-position = max(temp, position)
-resolution, temp = searchIntegerArrayForKeyword('resolution', results)
-position = max(temp, position)
-geomdimension, temp = searchDoubleArrayForKeyword('geomdimension', results)
-
-print 'Load case:', loadcase
-print 'Workingdir:', workingdir
-print 'Job Name:', jobname
-print 'Total No. of Increments:', totalincs 
-print 'Materialpoint_sizeResults:', materialpoint_sizeResults
-print 'Resolution:', resolution
-print 'Geomdimension', geomdimension 
-print 'Position in File:', position
+p = MPIEspectral_result('32x32x32x100.spectralOut')
+p.extrapolation('')
+print p
 
 # Ended reading of header
-# Now starting to read information concerning output of materialpoint_results(:,1,:)
 
-filename = jobname[0:len(jobname)-5]+'.outputCrystallite'
-outputCrystallite = open(filename, 'r')
-
-
-# some funtions that might be useful
-def InCharCount(location, character):
-    subj = file(location, "r")
-    body = subj.read()
-    subj.close()
-    return body.count(character)
+res_x=p.resolution[0]
+res_y=p.resolution[1]
+res_z=p.resolution[2]
 
 
-def InCharCount(location, character):
-    subj = file(location, "r")
 
-    nbr_of_char = 0
-    for line in subj:
-        nbr_of_char = nbr_of_char + line.count(character)
-
-    return nbr_of_char
+for i in range(120,121):
+  c_pos = p.dataOffset + i*(p.N_element_scalars*8*p.N_elements + 8) #8 accounts for header&footer
+  defgrad = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,16)         
+  grain = readScalar(p.resolution,p.file,p.N_element_scalars,c_pos,7)
+  centroids, defgrad_av = centroids(p.resolution,p.dimension,defgrad)
+  print centroids.shape, defgrad_av.shape
+  ms = mesh(p.resolution,p.dimension,defgrad_av,centroids)
+  writeVtkAscii('mesh-%i.vtk'%i,ms,grain,p.resolution)
+  writeVtkAsciidefgrad_av('box-%i.vtk'%i,p.dimension,defgrad_av)
+  writeVtkAsciiDots('points-%i.vtk'%i,centroids,grain,p.resolution)
+  sys.stdout.flush()
 
 

@@ -1,193 +1,306 @@
 ! -*- f90 -*-
-subroutine simple(defgrad,res_x,res_y,res_z,geomdimension,current_configuration)
+function coordinates2(res_x,res_y,res_z,geomdimension,defgrad)
  implicit none
  integer, parameter :: pDouble = selected_real_kind(15,50)
- integer i,j,k
- integer res_x, res_y, res_z
+ integer i,j,k, l,m, s,o, loop, res_x, res_y, res_z
+ integer, dimension(3) :: res, init, oppo, me, rear
+ real*8, dimension(3,3) :: defgrad_av
  integer, dimension(3) :: resolution
- real*8, dimension(3) :: geomdimension
+ real*8, dimension(3) :: geomdimension, myStep
  real*8, dimension(3,3) :: temp33_Real
- real*8 current_configuration(res_x, res_y, res_z,3)
- real*8 defgrad(res_x, res_y, res_z,3,3)
- !f2py intent(in) res_x, res_y, res_z
+ real*8, dimension(3,res_x, res_y, res_z) :: coordinates2
+ real*8, dimension(3,3,res_x, res_y, res_z) :: defgrad
+ real*8, dimension(3,res_x,res_y,res_z,8) :: cornerCoords
+ real*8, dimension(3,2+res_x,2+res_y,2+res_z,6,8) :: coord
+ !f2py intent(in) res_x
+ !f2py intent(in) res_y
+ !f2py intent(in) res_z
  !f2py intent(in) geomdimension
- !f2py intent(out) current_configuration
  !f2py intent(in) defgrad
- !f2py depend(res_x, res_y, res_z) current_configuration
+ !f2py intent(out) coordinates2
+ !f2py depend(res_x, res_y, res_z) coordinates2
  !f2py depend(res_x, res_y, res_z) defgrad
  
- resolution(1) = res_x; resolution(2) = res_y; resolution(3) = res_z
+ ! integer, dimension(3,8) :: corner = reshape((/ &
+                                     ! 0, 0, 0,&
+                                     ! 1, 0, 0,&
+                                     ! 1, 1, 0,&
+                                     ! 0, 1, 0,&
+                                     ! 1, 1, 1,&
+                                     ! 0, 1, 1,&
+                                     ! 0, 0, 1,&
+                                     ! 1, 0, 1 &
+                                    ! /), &
+                                    ! (/3,8/))
+ 
+ ! integer, dimension(3,8) :: step = reshape((/ &
+                                     ! 1, 1, 1,&
+                                    ! -1, 1, 1,&
+                                    ! -1,-1, 1,&
+                                     ! 1,-1, 1,&
+                                    ! -1,-1,-1,&
+                                     ! 1,-1,-1,&
+                                     ! 1, 1,-1,&
+                                    ! -1, 1,-1 &
+                                    ! /), &
+                                    ! (/3,8/))
+ 
+ ! integer, dimension(3,6) :: order = reshape((/ &
+                                     ! 1, 2, 3,&
+                                     ! 1, 3, 2,&
+                                     ! 2, 1, 3,&
+                                     ! 2, 3, 1,&
+                                     ! 3, 1, 2,&
+                                     ! 3, 2, 1 &
+                                    ! /), &
+                                    ! (/3,6/))
+ 
+ resolution = (/res_x,res_y,res_z/)
+ 
+ write(6,*) 'defgrad', defgrad
+ 
+ do i=1, 3; do j=1,3
+   defgrad_av(i,j) = sum(defgrad(i,j,:,:,:)) /real(res_x*res_y*res_z)
+ enddo; enddo
  
  do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
    if((k==1).and.(j==1).and.(i==1)) then
-     temp33_Real =0.0_pDouble
+     temp33_Real = real(0.0)
    else         
      if((j==1).and.(i==1)) then
-       temp33_Real(1,:) = temp33_Real(1,:) + matmul(defgrad(i,j,k,:,:),&
-                  (/0.0_pDouble,0.0_pDouble,geomdimension(3)/(real(resolution(3)))/))
+       temp33_Real(1,:) = temp33_Real(1,:) + matmul(defgrad(:,:,i,j,k),&
+                  (/real(0.0),real(0.0),real(geomdimension(3))/(real(resolution(3)))/))
        temp33_Real(2,:) = temp33_Real(1,:)
        temp33_Real(3,:) = temp33_Real(1,:)
-       current_configuration(i,j,k,:) = temp33_Real(1,:)
+       coordinates2(:,i,j,k) = temp33_Real(1,:)
      else 
        if(i==1) then
-         temp33_Real(2,:) = temp33_Real(2,:) + matmul(defgrad(i,j,k,:,:),&
-                   (/0.0_pDouble,geomdimension(2)/(real(resolution(2))),0.0_pDouble/))
+         temp33_Real(2,:) = temp33_Real(2,:) + matmul(defgrad(:,:,i,j,k),&
+                   (/real(0.0),real(geomdimension(2))/(real(resolution(2))),real(0.0)/))
          temp33_Real(3,:) = temp33_Real(2,:)
-         current_configuration(i,j,k,:) = temp33_Real(2,:)
+         coordinates2(:,i,j,k) = temp33_Real(2,:)
        else   
-         temp33_Real(3,:) = temp33_Real(3,:) + matmul(defgrad(i,j,k,:,:),&
-                  (/geomdimension(1)/(real(resolution(1))),0.0_pDouble,0.0_pDouble/))
-         current_configuration(i,j,k,:) = temp33_Real(3,:)   
+         temp33_Real(3,:) = temp33_Real(3,:) + matmul(defgrad(:,:,i,j,k),&
+                  (/real(geomdimension(1))/(real(resolution(1))),real(0.0),real(0.0)/))
+         coordinates2(:,i,j,k) = temp33_Real(3,:)   
        endif
     endif
   endif
-  !print*, current_configuration
  enddo; enddo; enddo
-end subroutine simple
+  do i=1, res_x; do j = 1, res_y; do k = 1, res_z  
+   coordinates2(:,i,j,k) = coordinates2(:,i,j,k)+ matmul(defgrad_av,(/geomdimension(1)/real(res_x),geomdimension(2)/real(res_y),geomdimension(3)/real(res_z)/))
+ enddo; enddo; enddo
+ 
+ res = (/res_x,res_y,res_z/)
+ do i=1,3; do j=1,3
+   defgrad_av(i,j) = sum(defgrad(i,j,:,:,:)) /real(res(1)*res(2)*res(3))
+ enddo; enddo
 
-subroutine advanced(defgrad,res_x,res_y,res_z,geomdimension,current_configuration)
+ ! do s = 1,8
+   ! init = corner(:,s)*(res-(/1,1,1/))
+   ! oppo = corner(:,1+mod(s-1+4,8))*(res-(/1,1,1/))
+     ! do o = 1,6
+       ! do k = init(order(3,o)),oppo(order(3,o)),step(order(3,o),s)
+         ! rear(order(2,o)) = init(order(2,o))
+          ! do j = init(order(2,o)),oppo(order(2,o)),step(order(2,o),s)
+          ! rear(order(1,o)) = init(order(1,o))
+           ! do i = init(order(1,o)),oppo(order(1,o)),step(order(1,o),s)
+ ! !            print*, order(:,o)
+             ! me(order(1,o)) = i
+             ! me(order(2,o)) = j
+             ! me(order(3,o)) = k
+               ! ! print*, me
+! !             if (all(me == init)) then
+! !               coord(:,1+me(1),1+me(2),1+me(3),o,s) = 0.0 !&
+                 ! ! geomdimension*(matmul(defgrad_av,real(corner(:,s),pDouble)) + &
+                                ! ! matmul(defGrad(:,:,1+me(1),1+me(2),1+me(3)),step(:,s)/res/2.0_pDouble))
+             ! ! else
+             ! ! myStep = (me-rear)*geomdimension/res
+             ! ! coord(:,1+me(1),1+me(2),1+me(3),o,s) = coord(:,1+rear(1),1+rear(2),1+rear(3),o,s) + &
+                                                    ! ! 0.5_pDouble*matmul(defGrad(:,:,1+me(1),1+me(2),1+me(3)) + &
+                                                                       ! ! defGrad(:,:,1+rear(1),1+rear(2),1+rear(3)),&
+                                                                       ! ! myStep)
+             ! ! endif
+           ! ! rear = me
+           ! enddo
+          ! enddo         
+       ! enddo         
+     ! enddo                                             ! orders
+   ! ! cornerCoords(:,:,:,:,s) = sum(coord(:,:,:,:,:,s),5)/6.0_pDouble
+ ! enddo                                               ! corners
+ 
+ ! coordinates = sum(cornerCoords(:,:,:,:,:),5)/8.0_pDouble ! plain average no shape functions...
+end function
+
+
+ 
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+subroutine coordinates5(res_x,res_y,res_z,geomdimension,defgrad)
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  implicit none
  integer, parameter :: pDouble = selected_real_kind(15,50)
- integer i,j,k,l
- integer a,b,c
- integer res_x, res_y, res_z
- integer, dimension(3) :: resolution
+ integer i,j,k, l,m, s,o, loop, res_x, res_y, res_z
+ integer, dimension(3) :: res, init, oppo, me, rear
  real*8, dimension(3) :: geomdimension
- real*8, dimension(3,3) :: temp33_Real, defgrad_av !matrix, stores 3 times a 3dim position vector
- real*8 current_configuration(res_x, res_y, res_z,3)
- real*8 defgrad(res_x, res_y, res_z,3,3)
-! some declarations for the wrapping to python 
+ real*8, dimension(3) :: myStep
+ real*8, dimension(3,3) :: defGrad_av
+ integer, dimension(3,8) :: corner = reshape((/ &
+                                     0, 0, 0,&
+                                     1, 0, 0,&
+                                     1, 1, 0,&
+                                     0, 1, 0,&
+                                     1, 1, 1,&
+                                     0, 1, 1,&
+                                     0, 0, 1,&
+                                     1, 0, 1 &
+                                    /), &
+                                    (/3,8/))
+ 
+ integer, dimension(3,8) :: step = reshape((/ &
+                                     1, 1, 1,&
+                                    -1, 1, 1,&
+                                    -1,-1, 1,&
+                                     1,-1, 1,&
+                                    -1,-1,-1,&
+                                     1,-1,-1,&
+                                     1, 1,-1,&
+                                    -1, 1,-1 &
+                                    /), &
+                                    (/3,8/))
+ 
+ integer, dimension(3,6) :: order = reshape((/ &
+                                     1, 2, 3,&
+                                     1, 3, 2,&
+                                     2, 1, 3,&
+                                     2, 3, 1,&
+                                     3, 1, 2,&
+                                     3, 2, 1 &
+                                    /), &
+                                    (/3,6/))
+                                    
+ real*8 defGrad(3,3,res_x,res_y,res_z)
+ real*8 coordinates(3,res_x,res_y,res_z) 
+ real*8, dimension(3,res_x,res_y,res_z,8) :: cornerCoords
+ real*8, dimension(3,2+res_x,2+res_y,2+res_z,6,8) :: coord
  !f2py intent(in) res_x, res_y, res_z
  !f2py intent(in) geomdimension
- !f2py intent(out) current_configuration
+ !f2py intent(out) coordinates
  !f2py intent(in) defgrad
- !f2py depend(res_x, res_y, res_z) current_configuration
- !f2py depend(res_x, res_y, res_z) defgrad
- do i=1, 3; do j=1,3 !
-   defgrad_av(i,j) = sum(defgrad(:,:,:,i,j)) /real(res_x*res_y*res_z)
- enddo; enddo
- 
- current_configuration(i,j,k,:) = 0.0_pDouble
- do l=1,6 ! do 6 different paths, by using 3 'master edges'
-   select case(l)
-     case (1)
-       a = 1; b = 2; c = 3
-     case (2)
-       a = 1; b = 3; c = 2
-     case (3)
-       a = 2; b = 1; c = 3
-     case (4) 
-       a = 2; b = 3; c = 1
-     case (5)
-       a = 3; b = 1; c = 2
-     case (6)
-       a = 3; b = 2; c = 1
-   end select
-   
-   resolution(a) = res_x; resolution(b) = res_y; resolution(c) = res_z
- 
-   do k = 1, resolution(c); do j = 1, resolution(b); do i = 1, resolution(a)
-     if((k==1).and.(j==1).and.(i==1)) then ! first FP
-       temp33_Real = 0.0_pDouble    ! all positions set to zero
-     else         
-       if((j==1).and.(i==1)) then   ! all FPs on the 'master edge'
-         temp33_Real(1,:) = temp33_Real(1,:) + matmul((defgrad(i,j,k-1,:,:)+defgrad(i,j,k-1,:,:))/2.0_pDouble,& !using the average defgrad of the current step
-                    (/0.0_pDouble,0.0_pDouble,geomdimension(c)/(real(resolution(c)))/))
-         temp33_Real(2,:) = temp33_Real(1,:)
-         temp33_Real(3,:) = temp33_Real(1,:)
-         current_configuration(i,j,k,:) = current_configuration(i,j,k,:) + temp33_Real(1,:)
-       else 
-         if(i==1) then
-           temp33_Real(2,:) = temp33_Real(2,:) + matmul((defgrad(i,j-1,k,:,:)+defgrad(i,j,k,:,:))/2.0_pDouble,&
-                     (/0.0_pDouble,geomdimension(b)/(real(resolution(b))),0.0_pDouble/))
-           temp33_Real(3,:) = temp33_Real(2,:)
-           current_configuration(i,j,k,:) = current_configuration(i,j,k,:) + temp33_Real(2,:)
-         else   
-           temp33_Real(3,:) = temp33_Real(3,:) + matmul((defgrad(i-1,j,k,:,:)+defgrad(i,j,k,:,:))/2.0_pDouble,&
-                    (/geomdimension(a)/(real(resolution(a))),0.0_pDouble,0.0_pDouble/))
-           current_configuration(i,j,k,:) = current_configuration(i,j,k,:) + temp33_Real(3,:)   
-         endif
-      endif
-    endif
- enddo; enddo; enddo ! end of one reconstruction
-enddo ! end of 6 reconstructions with different pathes
-current_configuration = current_configuration/6.0_pDouble
-end subroutine advanced
+ !f2py depend(res_x, res_y, res_z) coordinates
+ !f2py depend(res_x, res_y, res_z) defgrad 
+ !f2py depend(res_x, res_y, res_z) cornerCoords
+ !f2py depend(res_x, res_y, res_z) coord
 
-subroutine mesh(inter,res_x,res_y,res_z,gdim,meshgeom)
+ res = (/res_x,res_y,res_z/)
+ do i=1,3; do j=1,3
+   defgrad_av(i,j) = sum(defgrad(i,j,:,:,:)) /real(res(1)*res(2)*res(3))
+ enddo; enddo
+ print*, 'defgra', defgrad
+ do s = 1,8
+   init = corner(:,s)*(res-(/1,1,1/))
+   oppo = corner(:,1+mod(s-1+4,8))*(res-(/1,1,1/))
+   do o = 1,6
+     do k = init(order(3,o)),oppo(order(3,o)),step(order(3,o),s)
+       rear(order(2,o)) = init(order(2,o))
+       do j = init(order(2,o)),oppo(order(2,o)),step(order(2,o),s)
+         rear(order(1,o)) = init(order(1,o))
+         do i = init(order(1,o)),oppo(order(1,o)),step(order(1,o),s)
+           me(order(1,o)) = i
+           me(order(2,o)) = j
+           me(order(3,o)) = k
+           if (all(me == init)) then
+             coord(:,1+me(1),1+me(2),1+me(3),o,s) = &
+               geomdimension*(matmul(defgrad_av,real(corner(:,s),pDouble)) + &
+                              matmul(defGrad(:,:,1+me(1),1+me(2),1+me(3)),step(:,s)/res/2.0_pDouble))
+           else
+             myStep = (me-rear)*geomdimension/res
+             coord(:,1+me(1),1+me(2),1+me(3),o,s) = coord(:,1+rear(1),1+rear(2),1+rear(3),o,s) + &
+                                                    0.5_pDouble*matmul(defGrad(:,:,1+me(1),1+me(2),1+me(3)) + &
+                                                                       defGrad(:,:,1+rear(1),1+rear(2),1+rear(3)),&
+                                                                       myStep)
+           endif
+           rear = me
+         enddo
+       enddo         
+     enddo         
+   enddo                                             ! orders
+   cornerCoords(:,:,:,:,s) = sum(coord(:,:,:,:,:,s),5)/6.0_pDouble
+ enddo                                               ! corners
+ 
+ coordinates = sum(cornerCoords(:,:,:,:,:),5)/8.0_pDouble ! plain average no shape functions...
+
+end subroutine
+
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine mesh(res_x,res_y,res_z,geomdim,defgrad_av,centroids,nodes)
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
  implicit none
  integer, parameter :: pDouble = selected_real_kind(15,50)
- integer i,j,k
+ integer i,j,k, n
  integer res_x, res_y, res_z
- integer, dimension(3) :: resolution
- real*8, dimension(3) :: gdim
- real*8 inter(res_x, res_y, res_z,3)
- real*8 configuration(res_x+2, res_y+2, res_z+2,3)
- real*8 meshgeom(res_x+1, res_y+1, res_z+1,3)
+ integer, dimension(3) :: res, shift, lookup, me
+ real*8, dimension(3) :: geomdim, diag = (/1,1,1/)
+ real*8, dimension(3,3) :: defgrad_av
+ real*8, dimension(3,res_x, res_y, res_z) :: centroids
+ real*8, dimension(3,res_x+2, res_y+2, res_z+2) :: wrappedCentroids
+ real*8, dimension(3,res_x+1, res_y+1, res_z+1) :: nodes
+ integer, dimension(3,8) :: neighbor = reshape((/ &
+                                     0, 0, 0,&
+                                     1, 0, 0,&
+                                     1, 1, 0,&
+                                     0, 1, 0,&
+                                     0, 0, 1,&
+                                     1, 0, 1,&
+                                     1, 1, 1,&
+                                     0, 1, 1 &
+                                    /), &
+                                    (/3,8/))
  !f2py intent(in) res_x, res_y, res_z
- !f2py intent(in) inter
- !f2py intent(out) meshgeom
- !f2py intent(in) gdim
- !f2py depend(res_x, res_y, res_z) inter
- !f2py depend(res_x, res_y, res_z) meshgeom
- meshgeom = 0.0_pDouble
- configuration = 0.0_pDouble
- 
- resolution(1) = res_x; resolution(2) = res_y; resolution(3) = res_z
- 
- 
- do k = 1, resolution(3)+1; do j = 1, resolution(2)+1; do i = 1, resolution(1)+1
-   if((i==1).and.(j==1).and.(k==1)) then
-  configuration(i,j,k,:)=inter(res_x,res_y,res_z,:)-gdim
-  configuration(res_x+2,j,k,:)=inter(i,res_y,res_z,:)+(/1.0,-1.0,-1.0/)*gdim
-  configuration(i,res_y+2,k,:)=inter(res_x,j,res_z,:)+(/-1.0,1.0,-1.0/)*gdim
-  configuration(i,j,res_z+2,:)=inter(res_x,res_y,k,:)+(/-1.0,-1.0,1.0/)*gdim
-  configuration(res_x+2,res_y+2,k,:)=inter(i,j,res_z,:)+(/1.0,1.0,-1.0/)*gdim
-  configuration(i,res_y+2,res_z+2,:)=inter(res_x,j,k,:)+(/-1.0,1.0,1.0/)*gdim
-  configuration(res_x+2,j,res_z+2,:)=inter(i,res_y,k,:)+(/1.0,-1.0,1.0/)*gdim
-  configuration(res_x+2,res_y+2,res_z+2,:)=inter(i,j,k,:)+gdim
-   endif       
-   if((i==1).and.(j==1).and.(k/=1)) then
-  configuration(1,1,k,:)=inter(res_x,res_y,k-1,:)+(/-1.0,-1.0,0.0/)*gdim
-  configuration(res_x+2,1,k,:)=inter(1,res_y,k-1,:)+(/1.0,-1.0,0.0/)*gdim
-  configuration(1,res_y+2,k,:)=inter(res_x,1,k-1,:)+(/-1.0,1.0,0.0/)*gdim 
-  configuration(res_x+2,res_y+2,k,:)=inter(1,1,k-1,:)+(/1.0,1.0,0.0/)*gdim
-   endif
-   if((i==1).and.(j/=1).and.(k==1)) then
-  configuration(1,j,1,:)=inter(res_x,j-1,res_z,:)+(/-1.0,0.0,-1.0/)*gdim
-  configuration(res_x+2,j,1,:)=inter(1,j-1,res_z,:)+(/1.0,0.0,-1.0/)*gdim
-  configuration(1,j,res_z+2,:)=inter(res_x,j-1,1,:)+(/-1.0,0.0,1.0/)*gdim
-  configuration(res_x+2,j,res_z+2,:)=inter(1,j-1,1,:)+(/1.0,0.0,1.0/)*gdim
-   endif
-   if((i/=1).and.(j==1).and.(k==1)) then
-     configuration(i,1,1,:)=inter(i-1,res_y,res_z,:)+(/0.0,-1.0,-1.0/)*gdim
-     configuration(i,1,res_z+2,:)=inter(i-1,res_y,1,:)+(/0.0,-1.0,1.0/)*gdim
-     configuration(i,res_y+2,1,:)=inter(i-1,1,res_z,:)+(/0.0,1.0,-1.0/)*gdim
-     configuration(i,res_y+2,res_z+2,:)=inter(i-1,1,1,:)+(/0.0,1.0,1.0/)*gdim
-   endif 
-   if((i/=1).and.(j/=1).and.(k==1)) then
-     configuration(i,j,1,:)=inter(i-1,j-1,res_z,:)+(/0.0,0.0,-1.0/)*gdim
-     configuration(i,j,res_z+2,:)=inter(i-1,j-1,1,:)+(/0.0,0.0,1.0/)*gdim
-   endif
-   if((i==1).and.(j/=1).and.(k/=1)) then
-     configuration(1,j,k,:)=inter(res_x,j-1,k-1,:)+(/-1.0,0.0,0.0/)*gdim
-     configuration(res_x+2,j,k,:)=inter(i,j-1,k-1,:)+(/1.0,0.0,0.0/)*gdim
-   endif
-   if((i/=1).and.(j==1).and.(k/=1)) then
-     configuration(i,1,k,:)=inter(i-1,res_y,k-1,:)+(/0.0,-1.0,0.0/)*gdim
-     configuration(i,res_y+2,k,:)=inter(i-1,1,k-1,:)+(/0.0,1.0,0.0/)*gdim
-   endif
-   if((i/=1).and.(j/=1).and.(k/=1)) then
-     configuration(i,j,k,:)=inter(i-1,j-1,k-1,:)
-   endif
- enddo; enddo; enddo
+ !f2py intent(in) centroids
+ !f2py intent(in) defgrad_av
+ !f2py intent(in) geomdim
+ !f2py intent(out) nodes
+ !f2py depend(res_x, res_y, res_z) centroids
+ !f2py depend(res_x, res_y, res_z) nodes
 
- do k = 1, resolution(3)+1; do j = 1, resolution(2)+1; do i = 1, resolution(1)+1
-    meshgeom(i,j,k,:)=((configuration(i,j,k,:)     +configuration(i+1,j,k,:))&
-                      +(configuration(i,j+1,k,:)   +configuration(i,j,k+1,:))&
-                      +(configuration(i+1,j+1,k,:) +configuration(i,j+1,k+1,:))&
-                      +(configuration(i+1,j,k+1,:) +configuration(i+1,j+1,k+1,:)))/8.0_pDouble
- enddo; enddo; enddo
+ res = (/res_x,res_y,res_z/)
+ wrappedCentroids(:,2:res(1)+1,2:res(2)+1,2:res(3)+1) = centroids
+ 
+ do k = 0,res(3)+1
+   do j = 0,res(2)+1
+     do i = 0,res(1)+1
+       if (&
+         k==0 .or. k==res(3)+1 .or. &
+         j==0 .or. j==res(2)+1 .or. &
+         i==0 .or. i==res(1)+1      &
+         ) then
+         me = (/i,j,k/)
+         shift = (res+diag-2*me)/(res+diag)
+         lookup = me+shift*res
+         wrappedCentroids(:,1+i,1+j,1+k) = centroids(:,lookup(1),lookup(2),lookup(3)) - &
+                                           matmul(defgrad_av,shift * geomdim)
+       endif
+     enddo
+   enddo
+ enddo
+ 
+ nodes = 0.0_pDouble
+ 
+ do k = 0,res(3)
+   do j = 0,res(2)
+     do i = 0,res(1)
+       
+       do n = 1,8
+         nodes(:,1+i,1+j,1+k) = nodes(:,1+i,1+j,1+k) + wrappedCentroids(:,1+i+neighbor(1,n),&
+                                                                          1+j+neighbor(2,n),&
+                                                                          1+k+neighbor(3,n))
+       enddo
+       nodes(:,1+i,1+j,1+k) = nodes(:,1+i,1+j,1+k) / 8.0_pDouble
+
+     enddo 
+   enddo 
+ enddo 
+
 end subroutine mesh
 
 
@@ -277,3 +390,32 @@ end subroutine mesh
    ! enddo  ! end looping over steps in current loadcase
  ! enddo    ! end looping over loadcases
 ! close(539); close(538)
+
+
+
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+function coordinates3(res_x,res_y,res_z,geomdimension,defgrad)
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ implicit none
+ integer i,j,k, l,m, s,o, loop, res_x, res_y, res_z
+ real*8 defgrad_av(3,3)
+ real*8 geomdimension(3)
+ integer res(3)
+ real*8 defgrad(3,3,res_x,res_y,res_z)
+ real*8 coordinates3(3,res_x,res_y,res_z) 
+
+ !f2py intent(in) res_x, res_y, res_z
+ !f2py depend(res_x, res_y, res_z) coordinates3
+ !f2py depend(res_x, res_y, res_z) defgrad 
+
+ !f2py intent(in) geomdimension
+ !f2py intent(out) coordinates3
+ !f2py intent(in) defgrad
+ 
+ res = (/res_x,res_y,res_z/)
+ do i=1,3; do j=1,3
+   defgrad_av(i,j) = sum(defgrad(i,j,:,:,:)) /real(res(1)*res(2)*res(3))
+ enddo; enddo
+ print*, 'defgra', defgrad
+ coordinates3 = 0.0
+end function
