@@ -1222,7 +1222,11 @@ endfunction
  case (234)
    msg = 'Negative cutoff radius'   
  case (235)
-   msg = 'Non-positive activation energy for dislocation glide'   
+   msg = 'Non-positive attack frequency'
+ case (236)
+   msg = 'Non-positive wall depth'
+ case (237)
+   msg = 'Non-positive obstacle strength'
  case (240)
    msg = 'Non-positive Taylor factor'
  case (241)
