@@ -7,9 +7,9 @@
 #  PATH="$PATH:~/bin"
 #  export PATH 
 
-import os,sys
+import os,sys,glob
 
-public_bin = { \
+bin_link = { \
 				'pre' : [
 							'marc_addUserOutput',
 							'mentat_pbcOnBoxMesh',
@@ -24,10 +24,19 @@ public_bin = { \
 							],
 						}
 
+compile = { \
+				'pre' : [
+							'voronoi_randomSeeding.f90',
+							'voronoi_tessellation.f90',
+							],
+				'post' : [
+							],
+						}
+
 homedir = os.getenv('HOME')
 basedir = os.path.dirname(sys.argv[0])
-for dir in public_bin:
-  for file in public_bin[dir]:
+for dir in bin_link:
+  for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(basedir,dir,file))
     if (file == ''):
       dst = os.path.abspath(os.path.join(homedir,'bin',dir))
@@ -37,3 +46,15 @@ for dir in public_bin:
     if os.path.lexists(dst):
       os.remove(dst)
     os.symlink(src,dst)
+
+for dir in compile:
+  for file in compile[dir]:
+    src = os.path.abspath(os.path.join(basedir,dir,file))
+    if os.path.isfile(src):
+      print file
+      os.system('ifort -O3 -parallel -o%s %s'%(os.path.splitext(src)[0],src))
+
+modules = glob.glob(os.path.abspath(os.path.join(basedir,'*.mod')))
+for module in modules:
+  print module
+  os.remove(module)
