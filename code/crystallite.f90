@@ -2592,8 +2592,8 @@ LpLoop: do
              write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress did dR/dLp inversion at ',g,i,e, &
                                                 '; iteration ', NiterationStress
              write(6,*)
-             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',dRdLp(1:9,:)
-             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',dLpdT_constitutive(1:9,:)
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dRdLp',transpose(dRdLp(:,:))
+             write(6,'(a,/,9(9(e15.3,x)/))') 'dLpdT_constitutive',transpose(dLpdT_constitutive(:,:))
            !$OMP END CRITICAL (write2out)
          endif
        endif
@@ -2624,7 +2624,7 @@ LpLoop: do
        write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress failed on invFp_new inversion at ',g,i,e, &
                                             ' ; iteration ', NiterationStress
        write(6,*)
-       write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,invFp_new(1:3,:)
+       write(6,'(a11,3(i3,x),/,3(3(f12.7,x)/))') 'invFp_new at ',g,i,e,math_transpose3x3(invFp_new(:,:))
      !$OMP END CRITICAL (write2out)
    endif
    return
@@ -2650,13 +2650,13 @@ LpLoop: do
    !$OMP CRITICAL (write2out)
    write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress converged at ',g,i,e,' ; iteration ', NiterationStress
    write(6,*)
-   write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',crystallite_P(1:3,:,g,i,e)/1e6
+   write(6,'(a,/,3(3(f12.7,x)/))') 'P / MPa',math_transpose3x3(crystallite_P(1:3,:,g,i,e))/1e6
    write(6,'(a,/,3(3(f12.7,x)/))') 'Cauchy / MPa', math_mul33x33(crystallite_P(1:3,1:3,g,i,e),transpose(Fg_new)) & 
                                                               / 1e6 / math_det3x3(Fg_new)
    write(6,'(a,/,3(3(f12.7,x)/))') 'Fe Lp Fe^-1',math_transpose3x3( &
                                                      math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), &
                                                                                          math_inv3x3(Fe_new))))                     ! transpose to get correct print out order
-   write(6,'(a,/,3(3(f12.7,x)/))') 'Fp',crystallite_Fp(1:3,:,g,i,e)
+   write(6,'(a,/,3(3(f12.7,x)/))') 'Fp',math_transpose3x3(crystallite_Fp(:,:,g,i,e))
    !$OMP END CRITICAL (write2out)
  endif
 
