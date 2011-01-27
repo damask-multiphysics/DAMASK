@@ -105,7 +105,7 @@ def material():
   "*add_mater_elements",
   "all_existing",
   "*geometry_type mech_three_solid",
-  "*geometry_option red_integ_capacity:on",
+#  "*geometry_option red_integ_capacity:on",         # see below: reduced integration with one IP gave trouble being always OUTDATED...
   "*add_geometry_elements",
   "all_existing",
   ]
@@ -118,10 +118,10 @@ def geometry():
 #--------------------
   cmds = [\
   "*geometry_type mech_three_solid",
-  "*geometry_option red_integ_capacity:on",
+#  "*geometry_option red_integ_capacity:on",
   "*add_geometry_elements",
   "all_existing",
-  "*element_type 117",
+  "*element_type 7",         # we are NOT using reduced integration (type 117) but opt for /elementhomogeneous/ in the respective phase description (material.config)
   "all_existing",
   ]
   
