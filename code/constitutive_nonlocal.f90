@@ -2375,39 +2375,39 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
     
     case ('fluxdensity_edge_neg_x')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,2) * constitutive_nonlocal_v(:,2,g,ip,el) * m_currentconf(1,:,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(:,2) * constitutive_nonlocal_v(:,2,g,ip,el) * m_currentconf(1,:,1)
       cs = cs + ns
     
     case ('fluxdensity_edge_neg_y')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,2) * constitutive_nonlocal_v(:,2,g,ip,el) * m_currentconf(2,:,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(:,2) * constitutive_nonlocal_v(:,2,g,ip,el) * m_currentconf(2,:,1)
       cs = cs + ns
     
     case ('fluxdensity_edge_neg_z')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,2) * constitutive_nonlocal_v(:,2,g,ip,el) * m_currentconf(3,:,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(:,2) * constitutive_nonlocal_v(:,2,g,ip,el) * m_currentconf(3,:,1)
       cs = cs + ns
     
     case ('fluxdensity_screw_pos_x')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,3) * constitutive_nonlocal_v(:,3,g,ip,el) * m_currentconf(1,:,3)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,3) * constitutive_nonlocal_v(:,3,g,ip,el) * m_currentconf(1,:,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_pos_y')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,3) * constitutive_nonlocal_v(:,3,g,ip,el) * m_currentconf(2,:,3)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,3) * constitutive_nonlocal_v(:,3,g,ip,el) * m_currentconf(2,:,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_pos_z')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,3) * constitutive_nonlocal_v(:,3,g,ip,el) * m_currentconf(3,:,3)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,3) * constitutive_nonlocal_v(:,3,g,ip,el) * m_currentconf(3,:,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_neg_x')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,4) * constitutive_nonlocal_v(:,4,g,ip,el) * m_currentconf(1,:,4)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(:,4) * constitutive_nonlocal_v(:,4,g,ip,el) * m_currentconf(1,:,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_neg_y')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,4) * constitutive_nonlocal_v(:,4,g,ip,el) * m_currentconf(2,:,4)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(:,4) * constitutive_nonlocal_v(:,4,g,ip,el) * m_currentconf(2,:,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_neg_z')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(:,4) * constitutive_nonlocal_v(:,4,g,ip,el) * m_currentconf(3,:,4)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(:,4) * constitutive_nonlocal_v(:,4,g,ip,el) * m_currentconf(3,:,2)
       cs = cs + ns
     
     case ('d_upper_edge')
