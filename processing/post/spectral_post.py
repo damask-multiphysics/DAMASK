@@ -63,6 +63,8 @@ class MPIEspectral_result:
     self.N_increments =  self._keyedInt('increments')
     self.N_element_scalars = self._keyedInt('materialpoint_sizeResults')
     self.resolution = self._keyedPackedArray('resolution',3,'i')
+    #print self.resolution
+    #self.resolution = numpy.array([10,10,10],'i')
     self.N_nodes = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
     self.N_elements = self.resolution[0]*self.resolution[1]*self.resolution[2]
     self.dimension = self._keyedPackedArray('dimension',3,'d')
@@ -127,9 +129,9 @@ class MPIEspectral_result:
 def readScalar(resolution,file,distance,startingPosition,offset):
   currentPosition = startingPosition+offset*8+4 - distance*8 # we add distance later on
   field = numpy.zeros([resolution[0],resolution[1],resolution[2]], 'd')
-  for x in range(0,resolution[0]):
+  for z in range(0,resolution[2]):
     for y in range(0,resolution[1]):
-      for z in range(0,resolution[2]):
+      for x in range(0,resolution[0]):
         currentPosition = currentPosition + distance*8
         p.file.seek(currentPosition)
         field[x][y][z]=struct.unpack('d',p.file.read(8))[0]
@@ -138,15 +140,48 @@ def readScalar(resolution,file,distance,startingPosition,offset):
 def readTensor(resolution,file,distance,startingPosition,offset):
   currentPosition = startingPosition+offset*8+4 - distance*8 # we add distance later on
   field = numpy.zeros([resolution[0],resolution[1],resolution[2],3,3], 'd')
-  for x in range(0,resolution[0]):
+  for z in range(0,resolution[2]):
     for y in range(0,resolution[1]):
-      for z in range(0,resolution[2]):
+      for x in range(0,resolution[0]):
         currentPosition = currentPosition + distance*8
         p.file.seek(currentPosition)
         for i in range(0,3):
           for j in range(0,3):
             field[x][y][z][i][j]=struct.unpack('d',p.file.read(8))[0]
   return field
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++   
+def calculateCauchyStress(p_stress,defgrad,res):
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+  c_stress = numpy.zeros([res[0],res[1],res[2],3,3],'d')
+  for z in range(res[2]):
+    for y in range(res[1]):
+      for x in range(res[0]):
+        jacobi =  numpy.linalg.det(defgrad[x,y,z])
+        c_stress[x,y,z] = numpy.dot(p_stress[x,y,z],numpy.transpose(defgrad[x,y,z]))/jacobi
+  return c_stress
+  
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++   
+def calculateVonMises(tensor,res):
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+  vonMises = numpy.zeros([res[0],res[1],res[2]],'d')
+  deviator = numpy.zeros([3,3],'d')
+  delta = numpy.zeros([3,3],'d')
+  delta[0,0] = 1.0
+  delta[1,1] = 1.0
+  delta[2,2] = 1.0
+  for z in range(res[2]):
+    for y in range(res[1]):
+      for x in range(res[0]): 
+       deviator = tensor[x,y,z] - 1.0/3.0*tensor[x,y,z,0,0]*tensor[x,y,z,1,1]*tensor[x,y,z,2,2]*delta
+       J_2 = deviator[0,0]*deviator[1,1]\
+           + deviator[1,1]*deviator[2,2]\
+           + deviator[0,0]*deviator[2,2]\
+           - (deviator[0,1])**2\
+           - (deviator[1,2])**2\
+           - (deviator[0,2])**2
+       vonMises[x,y,z] = numpy.sqrt(3*J_2)
+  return vonMises
   
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 def mesh(res,geomdim,defgrad_av,centroids):
@@ -256,8 +291,6 @@ def centroids(res,geomdimension,defgrad):
         parameter_coords=(2.0*numpy.array([i,j,k])-res+fones)/(res-fones)
         pos = (fones + parameter_coords)
         neg = (fones - parameter_coords)
-        if(k<3 and j<3 and i<3):
-          print i,j,k,':',pos, neg,'(',parameter_coords,')'
         centroids[i,j,k] =  ( cornerCoords[0,i,j,k] *neg[0]*neg[1]*neg[2]\
                             + cornerCoords[1,i,j,k] *pos[0]*neg[1]*neg[2]\
                             + cornerCoords[2,i,j,k] *pos[0]*pos[1]*neg[2]\
@@ -414,7 +447,8 @@ print 'Post Processing for Material subroutine for BVP solution using spectral m
 print '*********************************************************************************\n'
 
 #reading in the header of the results file
-p = MPIEspectral_result('32x32x32x100.spectralOut')
+name = 'dipl32'
+p = MPIEspectral_result(name+'.spectralOut')
 p.extrapolation('')
 print p
 
@@ -424,18 +458,33 @@ res_x=p.resolution[0]
 res_y=p.resolution[1]
 res_z=p.resolution[2]
 
+# for i in range(1,3):
+  # print('new step')
+  # c_pos = p.dataOffset + i*(p.N_element_scalars*8*p.N_elements + 8) #8 accounts for header&footer
+  # for j in range(p.N_element_scalars):
+  # #def readScalar(resolution,file,distance,startingPosition,offset):
+  # #currentPosition = startingPosition+offset*8+4 - distance*8 # we add distance later on
+  # #field = numpy.zeros([resolution[0],resolution[1],resolution[2]], 'd')
+  # #for z in range(0,resolution[2]):
+    # #for y in range(0,resolution[1]):
+      # #for x in range(0,resolution[0]):
+    # currentPosition = c_pos + j*8 +4
+    # p.file.seek(currentPosition)
+    # print(struct.unpack('d',p.file.read(8)))
 
+    
 
-for i in range(120,121):
+for i in range(40,46):
   c_pos = p.dataOffset + i*(p.N_element_scalars*8*p.N_elements + 8) #8 accounts for header&footer
   defgrad = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,16)         
-  grain = readScalar(p.resolution,p.file,p.N_element_scalars,c_pos,7)
-  centroids, defgrad_av = centroids(p.resolution,p.dimension,defgrad)
-  print centroids.shape, defgrad_av.shape
-  ms = mesh(p.resolution,p.dimension,defgrad_av,centroids)
-  writeVtkAscii('mesh-%i.vtk'%i,ms,grain,p.resolution)
-  writeVtkAsciidefgrad_av('box-%i.vtk'%i,p.dimension,defgrad_av)
-  writeVtkAsciiDots('points-%i.vtk'%i,centroids,grain,p.resolution)
+  p_stress = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,52)         
+  #c_stress = calculateCauchyStress(p_stress,defgrad,p.resolution)
+  #grain = calculateVonMises(c_stress,p.resolution)
+  centroids_coord, defgrad_av = centroids(p.resolution,p.dimension,defgrad)
+  ms = mesh(p.resolution,p.dimension,defgrad_av,centroids_coord)
+  writeVtkAscii(name+'-mesh-%i.vtk'%i,ms,p_stress[:,:,:,1,2],p.resolution)
+  writeVtkAsciidefgrad_av(name+'-box-%i.vtk'%i,p.dimension,defgrad_av)
+  #writeVtkAsciiDots(name+'-points-%i.vtk'%i,centroids_coord,grain,p.resolution)
   sys.stdout.flush()
 
 

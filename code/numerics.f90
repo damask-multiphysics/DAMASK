@@ -46,11 +46,15 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 volDiscrMod_RGC, &                      ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
                                 volDiscrPow_RGC, &                      ! powerlaw penalty for volume discrepancy
 !* spectral parameters:
-                                rTol_defgradAvg                         ! relative tolerance for correction to deformation gradient aim
+                                err_div_tol, &                          ! error of divergence in fourier space
+                                err_stress_tol, &                       ! absolut stress error, will be computed from err_stress_tolrel (dont prescribe a value)
+                                err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
+                                err_defgrad_tol                         ! tolerance for error of defgrad compared to prescribed defgrad
+integer(pInt)                   itmax , &                               ! maximum number of iterations
 
-                                !* Random seeding parameters: added <<<updated 27.08.2009>>>
-integer(pInt)                   fixedSeed                               ! fixed seeding for pseudo-random number generator
-! OpenMP variable
+!* Random seeding parameters
+                                fixedSeed                               ! fixed seeding for pseudo-random number generator
+!* OpenMP variable
 !$ integer(pInt)                mpieNumThreadsInt                       ! value stored in environment variable MPIE_NUM_THREADS
 
 
@@ -136,7 +140,10 @@ subroutine numerics_init()
   volDiscrPow_RGC         = 5.0
 
 !* spectral parameters:  
-  rTol_defgradAvg         = 1.0e-6
+  err_div_tol             = 1.0e-4  
+  err_defgrad_tol         = 1.0e-3
+  err_stress_tolrel       = 0.01
+  itmax                   = 20_pInt
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
@@ -209,7 +216,7 @@ subroutine numerics_init()
         case ('integratorstiffness')
               integratorStiffness = IO_intValue(line,positions,2)
 
-!* RGC parameters: added <<<updated 17.12.2009>>>
+!* RGC parameters: 
         case ('atol_rgc')
               absTol_RGC = IO_floatValue(line,positions,2)
         case ('rtol_rgc')
@@ -238,10 +245,16 @@ subroutine numerics_init()
               volDiscrPow_RGC = IO_floatValue(line,positions,2)
 
 !* spectral parameters
-        case ('rTol_defgradAvg')
-              rTol_defgradAvg = IO_floatValue(line,positions,2)
+        case ('err_div_tol')
+              err_div_tol = IO_floatValue(line,positions,2)
+        case ('err_defgrad_tol')
+              err_defgrad_tol = IO_floatValue(line,positions,2)
+        case ('err_stress_tolrel')
+              err_stress_tolrel = IO_floatValue(line,positions,2)
+        case ('itmax')
+              itmax = IO_intValue(line,positions,2)
 
-!* Random seeding parameters: added <<<updated 27.08.2009>>>
+!* Random seeding parameters
         case ('fixed_seed')
               fixedSeed = IO_floatValue(line,positions,2)
       endselect
@@ -300,8 +313,10 @@ subroutine numerics_init()
   write(6,*)
 
 !* spectral parameters
-  write(6,'(a24,x,e8.1)') 'rTol_defgradAvg:        ',rTol_defgradAvg
-
+  write(6,'(a24,x,e8.1)') 'err_div_tol:             ',err_div_tol
+  write(6,'(a24,x,e8.1)') 'err_defgrad_tol:         ',err_defgrad_tol
+  write(6,'(a24,x,e8.1)') 'err_stress_tolrel:       ',err_stress_tolrel
+  write(6,'(a24,x,i8)')   'itmax:                   ',itmax
   write(6,*)
 
 !* Random seeding parameters
@@ -356,7 +371,10 @@ subroutine numerics_init()
   if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(289)
 
 !* spectral parameters
-  if (rTol_defgradAvg <= 0.0_pReal)         call IO_error(48)
+  if (err_div_tol <= 0.0_pReal)             call IO_error(48)
+  if (err_defgrad_tol <= 0.0_pReal)         call IO_error(48)
+  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(48)
+  if (itmax <= 1.0_pInt)                    call IO_error(48)
   
   if (fixedSeed <= 0_pInt)                  write(6,'(a)') 'Random is random!'
 endsubroutine

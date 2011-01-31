@@ -29,7 +29,7 @@ program mpie_spectral
  use IO
  use math
  use CPFEM, only: CPFEM_general, CPFEM_initAll 
- use numerics, only: relevantStrain, rTol_crystalliteStress, mpieNumThreadsInt        !ToDo: change to really needed variables
+ use numerics, only: mpieNumThreadsInt, err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol, itmax       
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 !$ use OMP_LIB                                                          ! the openMP function library
 
@@ -72,7 +72,7 @@ program mpie_spectral
  real(pReal), dimension(6) ::                           cstress                                ! cauchy stress in Mandel notation
  real(pReal), dimension(6,6) ::                         dsde, c066, s066                         
  real(pReal), dimension(:,:,:), allocatable ::          ddefgrad                  
- real(pReal), dimension(:,:,:,:,:), allocatable ::      pstress_field, defgrad, defgradold, cstress_field
+ real(pReal), dimension(:,:,:,:,:), allocatable ::      pstress_field, defgrad, defgradold
  
 ! variables storing information for spectral method
  complex(pReal), dimension(:,:,:,:,:), allocatable ::   workfft
@@ -84,9 +84,8 @@ program mpie_spectral
  integer*8, dimension(2,3,3) ::                         plan_fft
 
 ! convergence etc.
- real(pReal) err_div, err_stress, err_defgrad, err_div_temp
- real(pReal) err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol, sigma0
- integer(pInt) itmax, ierr
+ real(pReal) err_div, err_stress, err_defgrad, sigma0
+ integer(pInt) ierr
  logical errmatinv
 
 ! loop variables etc.
@@ -105,17 +104,10 @@ program mpie_spectral
  
  N_l = 0_pInt; N_s = 0_pInt
  N_t = 0_pInt; N_n = 0_pInt
-
+ gotResolution =.false.; gotDimension =.false.; gotHomogenization = .false.
  resolution = 1_pInt; geomdimension = 0.0_pReal
  
- err_div_tol = 1.0e-4
- itmax = 250_pInt
- err_stress_tolrel=0.01
- err_defgrad_tol=1.0e-5
- err_defgrad_tol=1.0e-3 ! for test
  temperature = 300.0_pReal
-
- gotResolution =.false.; gotDimension =.false.; gotHomogenization = .false.
 
  if (IargC() /= 2) call IO_error(102)                     ! check for correct number of given arguments
 
@@ -171,16 +163,16 @@ program mpie_spectral
          do k = 1,9
            if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k) ! assign values for the velocity gradient matrix
          enddo
-         bc_mask(:,:,1,i) = reshape(bc_maskvector,(/3,3/))
-         bc_velocityGrad(:,:,i) = reshape(valuevector,(/3,3/))
+         bc_mask(:,:,1,i) = transpose(reshape(bc_maskvector,(/3,3/)))
+         bc_velocityGrad(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
        case('s','stress')
          valuevector = 0.0_pReal
          forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '#'
          do k = 1,9
            if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k)  ! assign values for the bc_stress matrix
          enddo
-         bc_mask(:,:,2,i) = reshape(bc_maskvector,(/3,3/))
-         bc_stress(:,:,i) = reshape(valuevector,(/3,3/))
+         bc_mask(:,:,2,i) = transpose(reshape(bc_maskvector,(/3,3/)))
+         bc_stress(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
        case('t','time','delta')                                            ! increment time
            bc_timeIncrement(i) = IO_floatValue(line,posInput,j+1)
        case('n','incs','increments','steps')                               ! bc_steps
@@ -192,10 +184,10 @@ program mpie_spectral
 
  do i = 1, N_Loadcases
    if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(47,i)     ! bc_mask consistency
-   print '(a,/,3(3(f12.6,x)/))','L',bc_velocityGrad(:,:,i)
-   print '(a,/,3(3(f12.6,x)/))','bc_stress',bc_stress(:,:,i)
-   print '(a,/,3(3(l,x)/))','bc_mask for velocitygrad',bc_mask(:,:,1,i)
-   print '(a,/,3(3(l,x)/))','bc_mask for stress',bc_mask(:,:,2,i)
+   print '(a,/,3(3(f12.6,x)/))','L',math_transpose3x3(bc_velocityGrad(:,:,i))
+   print '(a,/,3(3(f12.6,x)/))','bc_stress',math_transpose3x3(bc_stress(:,:,i))
+   print '(a,/,3(3(l,x)/))','bc_mask for velocitygrad',transpose(bc_mask(:,:,1,i))
+   print '(a,/,3(3(l,x)/))','bc_mask for stress',transpose(bc_mask(:,:,2,i))
    print *,'time',bc_timeIncrement(i)
    print *,'incs',bc_steps(i)
    print *, ''
@@ -253,7 +245,6 @@ program mpie_spectral
  allocate (gamma_hat(resolution(1)/2+1,resolution(2),resolution(3),3,3,3,3));    gamma_hat            = 0.0_pReal
  allocate (xi(resolution(1)/2+1,resolution(2),resolution(3),3));                 xi                   = 0.0_pReal
  allocate (pstress_field(resolution(1),resolution(2),resolution(3),3,3));        pstress_field        = 0.0_pReal
- allocate (cstress_field(resolution(1),resolution(2),resolution(3),3,3));        cstress_field        = 0.0_pReal
  allocate (defgrad(resolution(1),resolution(2),resolution(3),3,3));              defgrad              = 0.0_pReal
  allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3));           defgradold           = 0.0_pReal
  allocate (ddefgrad(resolution(1),resolution(2),resolution(3)));                ddefgrad              = 0.0_pReal
@@ -364,26 +355,31 @@ program mpie_spectral
        defgradold(i,j,k,:,:) = temp33_Real                                                                  
      enddo; enddo; enddo
 
-     guessmode = 1.0_pReal                             ! keep guessing along former trajectory during same loadcase
-     calcmode = 0_pInt                                 ! start calculation of BC fulfillment
-     CPFEM_mode = 1_pInt                               ! winding forward
+     guessmode = 1.0_pReal                              ! keep guessing along former trajectory during same loadcase
+     if(all(bc_mask(:,:,1,loadcase))) then
+       calcmode = 1_pInt                                ! if no stress BC is given (calmode 0 is not needed)
+     else
+       calcmode = 0_pInt                                ! start calculation of BC fulfillment
+     endif
+     CPFEM_mode = 1_pInt                                ! winding forward
      iter = 0_pInt
-     err_div= 2_pReal * err_div_tol                    ! go into loop 
-     defgradAimCorr = 0.0_pReal                        ! reset damping calculation
+     err_div= 2_pReal * err_div_tol                     ! go into loop 
+     defgradAimCorr = 0.0_pReal                         ! reset damping calculation
      damper = damper * 0.9_pReal
     
 !*************************************************************
 ! convergence loop
-     do while( iter <= itmax .and. &     
+     do while(iter < itmax .and. &     
              (err_div > err_div_tol .or. &
               err_stress > err_stress_tol .or. &
               err_defgrad > err_defgrad_tol))    
        iter = iter + 1
        print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',steps,'Iteration = ',iter
+       cstress_av = 0.0_pReal
 !*************************************************************
        
 ! adjust defgrad to fulfill BCs 
-       select case (calcmode)         
+       select case (calcmode)       
        case (0)                                                                      
          print *, 'Update Stress Field (constitutive evaluation P(F))'  
          ielem = 0_pInt
@@ -403,15 +399,12 @@ program mpie_spectral
                               cstress,dsde, pstress, dPdF)
            CPFEM_mode = 2_pInt
            pstress_field(i,j,k,:,:) = pstress
-           cstress_field(i,j,k,:,:) = math_mandel6to33(cstress)          
+           cstress_av = cstress_av + math_mandel6to33(cstress)          
          enddo; enddo; enddo
-   c066 = c066 * wgt
-   c0 = math_mandel66to3333(c066)
-
          
+         cstress_av = cstress_av * wgt
          do m = 1,3; do n = 1,3
-           pstress_av(m,n) = sum(pstress_field(:,:,:,m,n)) * wgt
-           cstress_av(m,n) = sum(cstress_field(:,:,:,m,n)) * wgt
+           pstress_av(m,n) = sum(pstress_field(:,:,:,m,n)) * wgt   
            defgrad_av(m,n) = sum(defgrad(:,:,:,m,n)) * wgt
          enddo; enddo
          
@@ -437,12 +430,12 @@ program mpie_spectral
          enddo; enddo
          err_div = 2 * err_div_tol 
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))         
-         print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',defgrad_av(1:3,:)                           
-         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]: ',cstress_av(1:3,:)/1.e6        
+         print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',math_transpose3x3(defgrad_av)                           
+         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]: ',math_transpose3x3(cstress_av)/1.e6        
          print '(2(a,E8.2))', ' error stress               ',err_stress,'  Tol. = ', err_stress_tol 
          print '(2(a,E8.2))', ' error deformation gradient ',err_defgrad,'  Tol. = ', err_defgrad_tol*0.8  
          if(err_stress < err_stress_tol*0.8) then 
-           calcmode = 1
+           calcmode = 1_pInt
          endif
              
 ! Using the spectral method to calculate the change of deformation gradient, check divergence of stress field in fourier space        
@@ -464,7 +457,7 @@ program mpie_spectral
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
            pstress_field(i,j,k,:,:) = pstress 
-           cstress_field(i,j,k,:,:) = math_mandel6to33(cstress)          
+           cstress_av = cstress_av + math_mandel6to33(cstress)          
          enddo; enddo; enddo       
          
          print *, 'Calculating equilibrium using spectral method'
@@ -485,14 +478,13 @@ program mpie_spectral
          enddo; enddo; enddo
          workfft(1,1,1,:,:) = defgrad_av - math_I3
          
-        ! err_div = err_div/real((prodnn/resolution(1)*(resolution(1)/2+1)), pReal)/sigma0       !weighting of error
          err_div = err_div/sigma0       !weighting of error
          
+         cstress_av = cstress_av * wgt
          do m = 1,3; do n = 1,3
             call dfftw_execute_dft_c2r(plan_fft(2,m,n), workfft(:,:,:,m,n),ddefgrad(:,:,:))
             defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + ddefgrad * wgt
             pstress_av(m,n) = sum(pstress_field(:,:,:,m,n))*wgt
-            cstress_av(m,n) = sum(cstress_field(:,:,:,m,n))*wgt
             defgrad_av(m,n) = sum(defgrad(:,:,:,m,n))*wgt
             defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim(m,n) - defgrad_av(m,n)) !anticipated target minus current state
          enddo; enddo
