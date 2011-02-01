@@ -100,6 +100,12 @@ def output(cmds,locals,dest):
   return
 
 
+def transliterateToFloat(x):
+  try:
+    return float(x)
+  except:
+    return 0.0
+
   
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 def mesh(res,geomdim,defgrad_av,centroids):
@@ -265,7 +271,6 @@ def vtk_writeASCII_mesh(mesh,data,res):
   
   for type in data:
     for item in data[type]:
-      print type,item
       cmds += [\
                '%s %s float'%(type.upper(),item),
                'LOOKUP_TABLE default',
@@ -419,7 +424,8 @@ for filename in args:
         maxcol = max(maxcol,col+1)
         break
 
-  values = numpy.array([map(float,line.split()[:maxcol]) for line in content[headrow+1:]],'d')
+  
+  values = numpy.array([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],'d')
   N = len(values)
   grid = [{},{},{}]
   for i in range(N):
@@ -450,13 +456,10 @@ for filename in args:
            }
   for me in options.tensor:
     fields['tensors'][me] = numpy.reshape(values[:,column['tensor'][me]:column['tensor'][me]+9],(res[0],res[1],res[2],3,3))
-    print me,fields['tensors'][me].shape
   for me in options.vector:
     fields['vectors'][me] = numpy.reshape(values[:,column['vector'][me]:column['vector'][me]+3],(res[0],res[1],res[2],3))
-    print me,fields['vectors'][me].shape
   for me in options.scalar:
     fields['scalars'][me] = numpy.reshape(values[:,column['scalar'][me]],(res[0],res[1],res[2]))
-    print me,fields['scalars'][me].shape
 
   out = {}
   out['mesh']   = vtk_writeASCII_mesh(ms,fields,res)
