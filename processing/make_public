@@ -20,6 +20,7 @@ bin_link = { \
 							],
 				'post' : [
 							'postResults',
+							'3Dvisualize',
 							'mentat_colorMap',
 							],
 						}
