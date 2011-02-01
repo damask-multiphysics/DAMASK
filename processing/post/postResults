@@ -356,7 +356,7 @@ def average(theList):
 # calcs the average of a list of numbers
 # -----------------------------
     
-    return sum(map(float,theList))/len(theList)
+  return sum(map(float,theList))/len(theList)
 
 
 # -----------------------------
@@ -569,7 +569,7 @@ def SummarizePostfile(stat,where=sys.stdout):
 # --- input parsing
 
 parser = OptionParser(option_class=MyOption, usage='%prog [options] resultfile', description = """
-Extract data from a .t16 MSC.Marc results file. 
+Extract data from a .t16 (MSC.Marc) or .spectralOut results file. 
 
 List of output variables is given by options '--ns','--es','--et','--ho','--cr','--co'. 
 
