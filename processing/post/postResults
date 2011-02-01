@@ -36,181 +36,181 @@ except:
 # -----------------------------
 class vector:     # mimic py_post node object
 # -----------------------------
-	x,y,z = [None,None,None]
-	
-	def __init__(self,coords):
-		self.x = coords[0]
-		self.y = coords[1]
-		self.z = coords[2]
+  x,y,z = [None,None,None]
+  
+  def __init__(self,coords):
+    self.x = coords[0]
+    self.y = coords[1]
+    self.z = coords[2]
 
 # -----------------------------
 class element:     # mimic py_post element object
 # -----------------------------
-	items = []
-	type = None
+  items = []
+  type = None
 
-	def __init__(self,nodes,type):
-		self.items = nodes
-		self.type = type
+  def __init__(self,nodes,type):
+    self.items = nodes
+    self.type = type
 
 # -----------------------------
 class elemental_scalar:     # mimic py_post element_scalar object
 # -----------------------------
-	id = None
-	value = None
+  id = None
+  value = None
 
-	def __init__(self,node,value):
-		self.id = node
-		self.value = value
+  def __init__(self,node,value):
+    self.id = node
+    self.value = value
 
 
 # -----------------------------
 class MPIEspectral_result:      # mimic py_post result object
 # -----------------------------
 
-	file = None
-	dataOffset = 0
-	N_elemental_scalars = 0
-	resolution = [0,0,0]
-	dimension = [0.0,0.0,0.0]
-	theTitle = ''
-	wd = ''
-	extrapolate = ''
-	N_increments = 0
-	increment = 0
-	N_nodes = 0
-	N_node_scalars = 0
-	N_elements = 0
-	N_element_scalars = 0
-	N_element_tensors = 0
-	theNodes = []
-	theElements = []
+  file = None
+  dataOffset = 0
+  N_elemental_scalars = 0
+  resolution = [0,0,0]
+  dimension = [0.0,0.0,0.0]
+  theTitle = ''
+  wd = ''
+  extrapolate = ''
+  N_increments = 0
+  increment = 0
+  N_nodes = 0
+  N_node_scalars = 0
+  N_elements = 0
+  N_element_scalars = 0
+  N_element_tensors = 0
+  theNodes = []
+  theElements = []
 
-	def __init__(self,filename):
+  def __init__(self,filename):
 
-		self.file = open(filename, 'rb')
+    self.file = open(filename, 'rb')
 
-		self.theTitle = self._keyedString('load')
-		self.wd = self._keyedString('workingdir')
-		self.geometry = self._keyedString('geometry')
-		self.N_increments =  self._keyedInt('increments')
-		self.N_element_scalars = self._keyedInt('materialpoint_sizeResults')
-		self.resolution = self._keyedPackedArray('resolution',3,'i')
-		self.N_nodes = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
-		self.N_elements = self.resolution[0]*self.resolution[1]*self.resolution[2]
-		
-		self.dimension = self._keyedPackedArray('dimension',3,'d')
-		a = self.resolution[0]+1
-		b = self.resolution[1]+1
-		c = self.resolution[2]+1
-		for n in range(self.N_nodes):
-			self.theNodes.append(vector([self.dimension[0] *       (n%a) / self.resolution[0],
-										 self.dimension[1] *   ((n/a)%b) / self.resolution[1],
-										 self.dimension[2] * ((n/a/b)%c) / self.resolution[2],
-										]))
+    self.theTitle = self._keyedString('load')
+    self.wd = self._keyedString('workingdir')
+    self.geometry = self._keyedString('geometry')
+    self.N_increments =  self._keyedInt('increments')
+    self.N_element_scalars = self._keyedInt('materialpoint_sizeResults')
+    self.resolution = self._keyedPackedArray('resolution',3,'i')
+    self.N_nodes = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
+    self.N_elements = self.resolution[0]*self.resolution[1]*self.resolution[2]
+    
+    self.dimension = self._keyedPackedArray('dimension',3,'d')
+    a = self.resolution[0]+1
+    b = self.resolution[1]+1
+    c = self.resolution[2]+1
+    for n in range(self.N_nodes):
+      self.theNodes.append(vector([self.dimension[0] *       (n%a) / self.resolution[0],
+                     self.dimension[1] *   ((n/a)%b) / self.resolution[1],
+                     self.dimension[2] * ((n/a/b)%c) / self.resolution[2],
+                    ]))
 
-		for e in range(self.N_elements):
-			basenode = e+e/self.resolution[0] + e/self.resolution[0]/self.resolution[1]*a
-			basenode2 = basenode+a*b
-			self.theElements.append(element([basenode ,basenode+1 ,basenode+a+1 ,basenode+a,
-											 basenode2,basenode2+1,basenode2+a+1,basenode2+a,
-											],117))
+    for e in range(self.N_elements):
+      basenode = e+e/self.resolution[0] + e/self.resolution[0]/self.resolution[1]*a
+      basenode2 = basenode+a*b
+      self.theElements.append(element([basenode ,basenode+1 ,basenode+a+1 ,basenode+a,
+                       basenode2,basenode2+1,basenode2+a+1,basenode2+a,
+                      ],117))
 
-		self.file.seek(0)
-		self.dataOffset = self.file.read(2048).find('eoh')+7
+    self.file.seek(0)
+    self.dataOffset = self.file.read(2048).find('eoh')+7
 
-	def __str__(self):
-		return '\n'.join([
-			'title: %s'%self.theTitle,
-			'workdir: %s'%self.wd,
-			'extrapolation: %s'%self.extrapolate,
-			'increments: %i'%self.N_increments,
-			'increment: %i'%self.increment,
-			'nodes: %i'%self.N_nodes,
-			'resolution: %s'%(','.join(map(str,self.resolution))),
-			'dimension: %s'%(','.join(map(str,self.dimension))),
-			'elements: %i'%self.N_elements,
-			'nodal_scalars: %i'%self.N_node_scalars,
-			'elemental scalars: %i'%self.N_element_scalars,
-			'elemental tensors: %i'%self.N_element_tensors,
-			]
-		)
+  def __str__(self):
+    return '\n'.join([
+      'title: %s'%self.theTitle,
+      'workdir: %s'%self.wd,
+      'extrapolation: %s'%self.extrapolate,
+      'increments: %i'%self.N_increments,
+      'increment: %i'%self.increment,
+      'nodes: %i'%self.N_nodes,
+      'resolution: %s'%(','.join(map(str,self.resolution))),
+      'dimension: %s'%(','.join(map(str,self.dimension))),
+      'elements: %i'%self.N_elements,
+      'nodal_scalars: %i'%self.N_node_scalars,
+      'elemental scalars: %i'%self.N_element_scalars,
+      'elemental tensors: %i'%self.N_element_tensors,
+      ]
+    )
 
-	def _keyedPackedArray(self,identifier,length = 3,type = 'd'):
-		match = {'d': 8,'i': 4}
-		self.file.seek(0)
-		m = re.search('%s%s'%(identifier,'(.{%i})'%(match[type])*length),self.file.read(2048))
-		values = []
-		if m:
-			for i in m.groups():
-				values.append(struct.unpack(type,i)[0])
-		return values
+  def _keyedPackedArray(self,identifier,length = 3,type = 'd'):
+    match = {'d': 8,'i': 4}
+    self.file.seek(0)
+    m = re.search('%s%s'%(identifier,'(.{%i})'%(match[type])*length),self.file.read(2048),re.DOTALL)
+    values = []
+    if m:
+      for i in m.groups():
+        values.append(struct.unpack(type,i)[0])
+    return values
 
-	def _keyedInt(self,identifier):
-		value = None
-		self.file.seek(0)
-		m = re.search('%s%s'%(identifier,'(.{4})'),self.file.read(2048))
-		if m:
-			value = struct.unpack('i',m.group(1))[0]
-		return value
+  def _keyedInt(self,identifier):
+    value = None
+    self.file.seek(0)
+    m = re.search('%s%s'%(identifier,'(.{4})'),self.file.read(2048),re.DOTALL)
+    if m:
+      value = struct.unpack('i',m.group(1))[0]
+    return value
 
-	def _keyedString(self,identifier):
-		value = None
-		self.file.seek(0)
-		m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(2048))
-		if m:
-			value = m.group(2)
-		return value
+  def _keyedString(self,identifier):
+    value = None
+    self.file.seek(0)
+    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(2048),re.DOTALL)
+    if m:
+      value = m.group(2)
+    return value
 
-	def title(self):
-		return self.theTitle
+  def title(self):
+    return self.theTitle
 
-	def moveto(self,inc):
-		self.increment = inc
+  def moveto(self,inc):
+    self.increment = inc
 
-	def extrapolation(self,value):
-		self.extrapolate = value
+  def extrapolation(self,value):
+    self.extrapolate = value
 
-	def node_sequence(self,node):
-		return node
+  def node_sequence(self,node):
+    return node
 
-	def node_id(self,node):
-		return node+1
+  def node_id(self,node):
+    return node+1
 
-	def node(self,node):
-		return self.theNodes[node]
+  def node(self,node):
+    return self.theNodes[node]
 
-	def element_id(self,elem):
-		return elem+1
+  def element_id(self,elem):
+    return elem+1
 
-	def element(self,elem):
-		return self.theElements[elem]
+  def element(self,elem):
+    return self.theElements[elem]
 
-	def increments(self):
-		return self.N_increments
+  def increments(self):
+    return self.N_increments
 
-	def nodes(self):
-		return self.N_nodes
+  def nodes(self):
+    return self.N_nodes
 
-	def node_scalars(self):
-		return self.N_node_scalars
+  def node_scalars(self):
+    return self.N_node_scalars
 
-	def elements(self):
-		return self.N_elements
+  def elements(self):
+    return self.N_elements
 
-	def element_scalars(self):
-		return self.N_element_scalars
+  def element_scalars(self):
+    return self.N_element_scalars
 
-	def element_scalar(self,elem,idx):
-		self.file.seek(self.dataOffset+(self.increment*(4+self.N_elements*self.N_element_scalars*8+4) + 4+(elem*self.N_element_scalars + idx)*8))
-		value = struct.unpack('d',self.file.read(8))[0]
-		return [elemental_scalar(node,value) for node in self.theElements[elem].items]
+  def element_scalar(self,elem,idx):
+    self.file.seek(self.dataOffset+(self.increment*(4+self.N_elements*self.N_element_scalars*8+4) + 4+(elem*self.N_element_scalars + idx)*8))
+    value = struct.unpack('d',self.file.read(8))[0]
+    return [elemental_scalar(node,value) for node in self.theElements[elem].items]
 
-	def element_scalar_label(elem,idx):
-		return 'User Defined Variable %i'%(idx+1)
+  def element_scalar_label(elem,idx):
+    return 'User Defined Variable %i'%(idx+1)
 
-	def element_tensors(self):
-		return self.N_element_tensors
+  def element_tensors(self):
+    return self.N_element_tensors
 
 
 
