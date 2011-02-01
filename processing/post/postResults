@@ -962,20 +962,24 @@ for incCount,increment in enumerate(increments):
             groupContent = [data[group][member][chunk]['content'] for member in range(len(data[group]))]                # list of each member's chunk
             if label == 'location':
                 condensedGroupContent = mapFunc(label, groupContent, 'avg')                                             # always average location
-                if len(groupContent) > 1:                                                                               # e,n,g nonsense if averaged over more than one entry...
-                    condensedGroupContent[:3] = ['n/a']*3                                                               # ...so return 'n/a'
+                if 'elem' not in options.separation:
+                  condensedGroupContent[0] = 'n/a'
+                if 'node' not in options.separation:
+                  condensedGroupContent[1] = 'n/a'
+                if 'grain' not in options.separation:
+                  condensedGroupContent[2] = 'n/a'
             elif len(groupContent) == 1:
                 condensedGroupContent = map(str,groupContent[0])
             else:
                 condensedGroupContent = mapFunc(label, groupContent, options.func)                                      # map function to groupContent to get condensed data of this group's chunk
             output[-1] += condensedGroupContent
-    
-    sortProperties = options.separation
-    for item in options.sort:
-      if item not in sortProperties:
-        sortProperties.append(item)
         
-    for groupvalues in sortBySeparation(output, sortProperties, int(options.time)):                                    # sort output according to separation criteria
+    sortProperties = []
+    for item in options.sort:
+      if item not in options.separation:
+        sortProperties.append(item)
+    
+    for groupvalues in sortBySeparation(output, options.separation+sortProperties, int(options.time)):                                    # sort output according to separation criteria
         file.write('\t'.join(map(str,groupvalues)) + '\n')
 
 if fileOpen:
