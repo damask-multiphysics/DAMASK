@@ -612,6 +612,8 @@ group_special.add_option('-f','--filter', dest='filter', type='string', \
                   help='condition(s) to filter results [%default]')
 group_special.add_option('--separation', action='extend', dest='separation', type='string', \
                   help='properties to separate results [%default]')
+group_special.add_option('--sort', action='extend', dest='sort', type='string', \
+                  help='properties to sort results [%default]')
 
 group_general.add_option('--ns', action='extend', dest='nodalScalar', type='string', \
                   help='list of nodal scalars to extract')
@@ -639,6 +641,7 @@ parser.set_defaults(cryst = '1')
 parser.set_defaults(phase = '1')
 parser.set_defaults(filter = '')
 parser.set_defaults(separation = [])
+parser.set_defaults(sort = [])
 parser.set_defaults(inc = False)
 parser.set_defaults(time = False)
 parser.set_defaults(separateFiles = False)
@@ -651,9 +654,13 @@ bg.start()
 
 # --- sanity checks
 
-if not file:
+if not file[0]:
     parser.print_help()
     parser.error('no file specified...')
+
+if not os.path.exists(file[0]):
+    parser.print_help()
+    parser.error('invalid file "%s" specified...'%file[0])
 
 if options.filetype.lower() not in ['marc','spectral']:
     parser.print_help()
@@ -963,7 +970,12 @@ for incCount,increment in enumerate(increments):
                 condensedGroupContent = mapFunc(label, groupContent, options.func)                                      # map function to groupContent to get condensed data of this group's chunk
             output[-1] += condensedGroupContent
     
-    for groupvalues in sortBySeparation(output, options.separation, int(options.time)):                                 # sort output according to separation criteria
+    sortProperties = options.separation
+    for item in options.sort:
+      if item not in sortProperties:
+        sortProperties.append(item)
+        
+    for groupvalues in sortBySeparation(output, sortProperties, int(options.time)):                                    # sort output according to separation criteria
         file.write('\t'.join(map(str,groupvalues)) + '\n')
 
 if fileOpen:
