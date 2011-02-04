@@ -1957,6 +1957,51 @@ endif
 
 
 
+!********************************************************************
+!   draw a random sample from Gauss variable
+!********************************************************************
+function math_sampleGaussVar(meanvalue, stddev, width)
+
+use prec, only: pReal, pInt
+implicit none
+
+!*** input variables
+real(pReal), intent(in) ::            meanvalue, &      ! meanvalue of gauss distribution
+                                      stddev            ! standard deviation of gauss distribution
+real(pReal), intent(in), optional ::  width             ! width of considered values as multiples of standard deviation
+
+!*** output variables
+real(pReal)                           math_sampleGaussVar
+
+!*** local variables
+real(pReal), dimension(2) ::          rnd               ! random numbers
+real(pReal)                           scatter, &        ! normalized scatter around meanvalue
+                                      myWidth
+
+if (stddev == 0.0) then
+    math_sampleGaussVar = meanvalue
+    return
+endif
+
+if (present(width)) then
+  myWidth = width
+else
+  myWidth = 3.0_pReal                                         ! use +-3*sigma as default value for scatter
+endif
+
+do
+  call halton(2, rnd)
+  scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
+  if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) &     ! test if scattered value is drawn
+    exit
+enddo
+
+math_sampleGaussVar = scatter * stddev
+
+endfunction
+ 
+
+
 !****************************************************************
  pure subroutine math_pDecomposition(FE,U,R,error)
 !-----FE = R.U 

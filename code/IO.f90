@@ -1227,6 +1227,8 @@ endfunction
    msg = 'Non-positive wall depth'
  case (237)
    msg = 'Non-positive obstacle strength'
+ case (238)
+   msg = 'Negative scatter for dislocation density'
  case (240)
    msg = 'Non-positive Taylor factor'
  case (241)
