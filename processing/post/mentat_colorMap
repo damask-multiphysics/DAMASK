@@ -34,6 +34,24 @@ except:
   sys.exit(-1)
 
 
+# -----------------------------
+def readConfig(configFile,ownPath):
+  config = {}
+  configDir = os.path.split(os.path.realpath(ownPath))[0]
+  filename = os.path.join(configDir,configFile)
+  if os.path.isfile(filename):
+    file = open(filename)
+    content = file.readlines()
+    file.close()
+    for line in content:
+      item = line.split()
+      config[item[0]] = {}
+      config[item[0]]['lower'] = map(float,item[1].split(','))
+      config[item[0]]['upper'] = map(float,item[2].split(','))
+      config[item[0]]['symmetric'] = len(item) > 3
+  
+  return config
+
 
 
 # -----------------------------
@@ -109,7 +127,7 @@ def colorMap(colors,baseIdx=32):
 # MAIN FUNCTION STARTS HERE
 # -----------------------------
 
-parser = OptionParser(usage="%prog [options] lower_hls upper_hls", description = """
+parser = OptionParser(usage="%prog [options] configured scheme | (lower_h,l,s upper_h,l,s)", description = """
 Changes the color map in mentat. 
 
 Interpolates colors between "lower_hls" and "upper_hls". 
@@ -123,44 +141,58 @@ Example colors:
 parser.add_option("-s","--symmetric", action = "store_true", 
                   dest = "symmetric", \
                   help = "symmetric legend [%default]")
+parser.add_option("-i","--inverse", action = "store_true", 
+                  dest = "inverse", \
+                  help = "invert legend [%default]")
 parser.add_option("-p", "--port", type = "int",\
                   dest = "port",\
                   help = "Mentat connection port [%default]")
 parser.add_option("-b", "--baseindex", type = "int",\
                   dest = "baseIdx",\
                   help = "base index of colormap [%default]")
+parser.add_option("-c", "--config", type='string', \
+                  dest = "config",\
+                  help = "configuration file [%default]")
 parser.add_option("-v", "--verbose", action="store_true",\
                   dest = "verbose",\
                   help = "write Mentat command stream also to stdout [%default]")
+
 parser.set_defaults(port = 40007)
 parser.set_defaults(baseIdx = 32)
+parser.set_defaults(config = 'colorMap.config')
 parser.set_defaults(symmetric = False)
-parser.set_defaults(verbose = False)
+parser.set_defaults(inverse   = False)
+parser.set_defaults(verbose   = False)
 
+msg = []
 
 (options, colors) = parser.parse_args()
 
+config = readConfig(options.config,sys.argv[0])
 
+if colors[0] in config:
+  options.symmetric = config[colors[0]]['symmetric']
+  hlsColor_range = [config[colors[0]]['lower'],\
+  									config[colors[0]]['upper']]
+elif len(colors) == 0:
+  hlsColor_range = (options.symmetric and [[0,0.2,0.9],[0.333,0.2,0.9]]) or \
+                                          [[0.167,0.9,0.1],[0.167,0.1,0.9]]
+elif len(colors) == 2:
+	hlsColor_range = [map(float, colors[i].split(',')) for i in range(2)]
+else:
+  msg.append('two color tuples required')
 
-### read hlsColors and check if they are valid hls values
+if msg == []:  
+	hlsColors_limits = [[0.0,0.0,0.0],[1.0,1.0,1.0]]
 
-hlsColors_limits = [[0.0,0.0,0.0],[1.0,1.0,1.0]]
+	if options.inverse:
+	  hlsColor_range = [hlsColor_range[1],hlsColor_range[0],]
 
-hlsColor_range = (options.symmetric and [[0,0.2,0.9],[0.333,0.2,0.9]]) or \
-                                        [[0.167,0.9,0.1],[0.167,0.1,0.9]]
-msg = []
-for i in [0,1]:
-    if len(colors) > i and colors[i] != None:
-        hlsColor_range[i] = map(float, colors[i].split(','))
-    
-    if len(hlsColor_range[i]) != 3: 
-        msg.append('please give %s color as three numbers (hue, lightness, saturation)...'%(['lower','upper'][i]))
-    
-    for j in range(min(3,len(hlsColor_range[i]))):
-        if hlsColor_range[i][j] < hlsColors_limits[0][j] or hlsColor_range[i][j] > hlsColors_limits[1][j]:
-            msg.append('%s of %s color exceeds limit'%(['hue','lightness','saturation'][j],['lower','upper'][i]))
-
-
+	for i in range(2):			
+		for j in range(min(3,len(hlsColor_range[i]))):
+			if hlsColor_range[i][j] < hlsColors_limits[0][j] or hlsColor_range[i][j] > hlsColors_limits[1][j]:
+				msg.append('%s of %s color exceeds limit'%(['hue','lightness','saturation'][j],limit))
+		
 if msg != []:
     parser.error('\n'+'\n'.join(msg)+'\n')
 
