@@ -50,7 +50,9 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 err_stress_tol, &                       ! absolut stress error, will be computed from err_stress_tolrel (dont prescribe a value)
                                 err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
                                 err_defgrad_tol                         ! tolerance for error of defgrad compared to prescribed defgrad
+logical                         fast_execution                          ! for fast execution (pre calculation of gamma_hat)
 integer(pInt)                   itmax , &                               ! maximum number of iterations
+
 
 !* Random seeding parameters
                                 fixedSeed                               ! fixed seeding for pseudo-random number generator
@@ -144,6 +146,7 @@ subroutine numerics_init()
   err_defgrad_tol         = 1.0e-3
   err_stress_tolrel       = 0.01
   itmax                   = 20_pInt
+  fast_execution          = .false.
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
@@ -253,6 +256,8 @@ subroutine numerics_init()
               err_stress_tolrel = IO_floatValue(line,positions,2)
         case ('itmax')
               itmax = IO_intValue(line,positions,2)
+        case ('fast_execution')
+              fast_execution = IO_intValue(line,positions,2)  > 0_pInt
 
 !* Random seeding parameters
         case ('fixed_seed')
@@ -317,6 +322,7 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'err_defgrad_tol:         ',err_defgrad_tol
   write(6,'(a24,x,e8.1)') 'err_stress_tolrel:       ',err_stress_tolrel
   write(6,'(a24,x,i8)')   'itmax:                   ',itmax
+  write(6,'(a24,x,L8)')   'fast_execution:          ',fast_execution
   write(6,*)
 
 !* Random seeding parameters

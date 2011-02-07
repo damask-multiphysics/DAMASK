@@ -282,6 +282,68 @@ def vtk_writeASCII_mesh(mesh,data,res):
 #   vtk.close()
 
   return cmds
+  
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++
+def gmsh_writeASCII_mesh(mesh,data,res):
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++
+  """ function writes data array defined on a hexahedral mesh (geometry) """
+  N1 = (res[0]+1)*(res[1]+1)*(res[2]+1)
+  N  = res[0]*res[1]*res[2]
+  
+  cmds = [\
+          '$MeshFormat',
+          '2.1 0 8',
+          '$EndMeshFormat',
+          '$Nodes',
+          '%i float'%N1,
+          [[['\t'.join(map(str,l,mesh[i,j,k])) for l in range(1,N1+1) for i in range(res[0]+1)] for j in range(res[1]+1)] for k in range(res[2]+1)],
+          '$EndNodes',
+          '$Elements',
+          '%i'%N,
+          ]
+
+  n_elem = 0
+  for i in range (res[2]):
+    for j in range (res[1]):
+      for k in range (res[0]):
+        base = i*(res[1]+1)*(res[2]+1)+j*(res[1]+1)+k
+        n_elem +=1
+        cmds.append('\t'.join(map(str,[ \
+                                            n_elem,
+                                            '5',
+                                            base,
+                                            base+1,
+                                            base+res[1]+2,
+                                            base+res[1]+1,
+                                            base+(res[1]+1)*(res[2]+1),
+                                            base+(res[1]+1)*(res[2]+1)+1,
+                                            base+(res[1]+1)*(res[2]+1)+res[1]+2,
+                                            base+(res[1]+1)*(res[2]+1)+res[1]+1,
+                                          ])))
+  cmds += [\
+           'ElementData',
+           '1',
+           '%s'%item,     # name of the view
+           '0.0',         # thats the time value
+           '3', 
+           '0',           # time step
+           '1',
+           '%i'%N
+          ]
+  
+  for type in data:
+    for item in data[type]:
+      cmds += [\
+               '%s %s float'%(type.upper(),item),
+               'LOOKUP_TABLE default',
+               [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
+              ]
+
+#   vtk = open(filename, 'w')
+#   output(cmd,{'filepointer':vtk},'File')
+#   vtk.close()
+
+  return cmds
  
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
 def vtk_writeASCII_points(coordinates,data,res):

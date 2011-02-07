@@ -6,7 +6,7 @@
 # computed using the FEM solvers. Until now, its capable to handle elements with one IP in a regular order
 # written by M. Diehl, m.diehl@mpie.de
 
-import os,sys,re,array,struct,numpy, time
+import os,sys,re,array,struct,numpy, time, reconstruct
 
 class vector:
   x,y,z = [None,None,None]
@@ -63,8 +63,6 @@ class MPIEspectral_result:
     self.N_increments =  self._keyedInt('increments')
     self.N_element_scalars = self._keyedInt('materialpoint_sizeResults')
     self.resolution = self._keyedPackedArray('resolution',3,'i')
-    #print self.resolution
-    #self.resolution = numpy.array([10,10,10],'i')
     self.N_nodes = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
     self.N_elements = self.resolution[0]*self.resolution[1]*self.resolution[2]
     self.dimension = self._keyedPackedArray('dimension',3,'d')
@@ -95,7 +93,7 @@ class MPIEspectral_result:
   def _keyedPackedArray(self,identifier,length = 3,type = 'd'):
     match = {'d': 8,'i': 4}
     self.file.seek(0)
-    m = re.search('%s%s'%(identifier,'(.{%i})'%(match[type])*length),self.file.read(2048))
+    m = re.search('%s%s'%(identifier,'(.{%i})'%(match[type])*length),self.file.read(2048),re.DOTALL)
     values = []
     if m:
       for i in m.groups():
@@ -105,7 +103,7 @@ class MPIEspectral_result:
   def _keyedInt(self,identifier):
     value = None
     self.file.seek(0)
-    m = re.search('%s%s'%(identifier,'(.{4})'),self.file.read(2048))
+    m = re.search('%s%s'%(identifier,'(.{4})'),self.file.read(2048),re.DOTALL)
     if m:
       value = struct.unpack('i',m.group(1))[0]
     return value
@@ -113,7 +111,7 @@ class MPIEspectral_result:
   def _keyedString(self,identifier):
     value = None
     self.file.seek(0)
-    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(2048))
+    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(2048),re.DOTALL)
     if m:
       value = m.group(2)
     return value
@@ -219,7 +217,7 @@ def mesh(res,geomdim,defgrad_av,centroids):
      for i in range(res[0]+1):
        for n in range(8):
          nodes[i,j,k] += wrappedCentroids[i+neighbor[n,0],j+neighbor[n,1],k+neighbor[n,2]]
- nodes[:,:,:] /=8.0
+ nodes[:,:,:] /= 8.0
   
  return nodes
 
@@ -261,7 +259,7 @@ def centroids(res,geomdimension,defgrad):
   ones = numpy.ones(3, 'i')
   fones = numpy.ones(3, 'd')
   defgrad_av=numpy.average(numpy.average(numpy.average(defgrad,0),0),0)
-  
+  print defgrad_av
   for s in range(8):# corners
     init = corner[s]*(res-ones)
     oppo = corner[(s+4)%8]*(res-ones)
@@ -473,17 +471,18 @@ res_z=p.resolution[2]
     # print(struct.unpack('d',p.file.read(8)))
 
     
-
-for i in range(40,46):
+ms=numpy.zeros([res_x,res_y,res_z,3], 'd')
+for i in range(249,250):
   c_pos = p.dataOffset + i*(p.N_element_scalars*8*p.N_elements + 8) #8 accounts for header&footer
   defgrad = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,16)         
-  p_stress = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,52)         
+  p_stress = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,58)         
   #c_stress = calculateCauchyStress(p_stress,defgrad,p.resolution)
   #grain = calculateVonMises(c_stress,p.resolution)
-  centroids_coord, defgrad_av = centroids(p.resolution,p.dimension,defgrad)
-  ms = mesh(p.resolution,p.dimension,defgrad_av,centroids_coord)
-  writeVtkAscii(name+'-mesh-%i.vtk'%i,ms,p_stress[:,:,:,1,2],p.resolution)
-  writeVtkAsciidefgrad_av(name+'-box-%i.vtk'%i,p.dimension,defgrad_av)
+  defgrad_av=numpy.average(numpy.average(numpy.average(defgrad,0),0),0)
+  centroids_coord = reconstruct.deformed(res_x,res_y,res_z,p.dimension,defgrad,defgrad_av)
+  ms = reconstruct.mesh(p.resolution[0],p.resolution[1],p.resolution[2],p.dimension,defgrad_av,centroids_coord)
+  writeVtkAscii(name+'-mesh-fortran-%s.vtk'%i,ms,p_stress[:,:,:,1,2],p.resolution)
+  #writeVtkAsciidefgrad_av(name+'-box-%i.vtk'%i,p.dimension,defgrad_av)
   #writeVtkAsciiDots(name+'-points-%i.vtk'%i,centroids_coord,grain,p.resolution)
   sys.stdout.flush()
 

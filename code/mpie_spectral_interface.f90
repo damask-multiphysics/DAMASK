@@ -34,7 +34,7 @@ function getSolverWorkingDirectoryName()
  character(len=1024) cwd,outname,getSolverWorkingDirectoryName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
 
- call getarg(2,outname)                                ! path to loadFile
+ call getarg(1,outname)                                ! path to loadFile
 
  if (scan(outname,pathSep) == 1) then                  ! absolute path given as command line argument
    getSolverWorkingDirectoryName = outname(1:scan(outname,pathSep,back=.true.))
@@ -81,6 +81,33 @@ function getSolverJobName()
 
  getSolverJobName = makeRelativePath(getSolverWorkingDirectoryName(),&
                                     getSolverJobName)
+ return
+endfunction
+
+!********************************************************************
+! name of load case file exluding extension
+!
+!********************************************************************
+function getLoadCase()
+
+ use prec, only: pInt
+
+ implicit none
+
+ character(1024) getLoadCase, outName
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ integer(pInt) posExt,posSep
+
+ getLoadCase = ''
+
+ posSep=1
+ call getarg(2,outName)
+ posExt = scan(outName,'.',back=.true.)
+ posSep = scan(outName,pathSep,back=.true.)
+
+ if (posExt <= posSep) posExt = len_trim(outName)+1       ! no extension present
+ getLoadCase = outName(posSep+1:posExt-1)              ! name of load case file exluding extension
+
  return
 endfunction
 

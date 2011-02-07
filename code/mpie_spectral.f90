@@ -5,10 +5,10 @@
 ! written by P. Eisenlohr,
 !            F. Roters,
 !            L. Hantcherli,
-!            W.A. Counts
-!            D.D. Tjahjanto
-!            C. Kords
-!            M. Diehl
+!            W.A. Counts,
+!            D.D. Tjahjanto,
+!            C. Kords,
+!            M. Diehl,
 !            R. Lebensohn
 !
 ! MPI fuer Eisenforschung, Duesseldorf
@@ -17,9 +17,9 @@
 !     Usage:
 !             - start program with mpie_spectral PathToGeomFile/NameOfGeom.geom
 !               PathToLoadFile/NameOfLoadFile.load
-!             - PathToLoadFile will be the working directory
+!             - PathToGeomFile will be the working directory
 !             - make sure the file "material.config" exists in the working
-!               directory
+!               directory. For further configuration use "numerics.config"
 !********************************************************************
 program mpie_spectral
 !********************************************************************
@@ -29,7 +29,8 @@ program mpie_spectral
  use IO
  use math
  use CPFEM, only: CPFEM_general, CPFEM_initAll 
- use numerics, only: mpieNumThreadsInt, err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol, itmax       
+ use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol,&
+                     itmax, fast_execution, mpieNumThreadsInt       
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 !$ use OMP_LIB                                                          ! the openMP function library
 
@@ -70,7 +71,7 @@ program mpie_spectral
  real(pReal), dimension(3,3,3) ::                       temp333_Real                                 
  real(pReal), dimension(3,3,3,3) ::                     dPdF, c0, s0
  real(pReal), dimension(6) ::                           cstress                                ! cauchy stress in Mandel notation
- real(pReal), dimension(6,6) ::                         dsde, c066, s066                         
+ real(pReal), dimension(6,6) ::                         dsde, c066, s066                       ! Mandel notation of 4th order tensors
  real(pReal), dimension(:,:,:), allocatable ::          ddefgrad                  
  real(pReal), dimension(:,:,:,:,:), allocatable ::      pstress_field, defgrad, defgradold
  
@@ -79,27 +80,23 @@ program mpie_spectral
  complex(pReal), dimension(3,3) ::                      temp33_Complex
  real(pReal), dimension(3,3) ::                         xinormdyad
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat
- real(pReal), dimension(:,:,:,:), allocatable ::        xi
  integer(pInt), dimension(3) ::                         k_s
+ real(pReal), dimension(3) ::                           xi, xi_middle
  integer*8, dimension(2,3,3) ::                         plan_fft
 
-! convergence etc.
- real(pReal) err_div, err_stress, err_defgrad, sigma0
- integer(pInt) ierr
- logical errmatinv
-
-! loop variables etc.
- real(pReal) guessmode                                 ! flip-flop to guess defgrad fluctuation field evolution
+! loop variables, convergence etc.
+ real(pReal) guessmode, err_div, err_stress, err_defgrad, sigma0        
  integer(pInt)  i, j, k, l, m, n, p
- integer(pInt)  loadcase, ielem, iter, calcmode, CPFEM_mode
+ integer(pInt)  loadcase, ielem, iter, calcmode, CPFEM_mode, ierr
+ logical errmatinv
  
  real(pReal) temperature                               ! not used, but needed for call to CPFEM_general
+
 !Initializing
 !$ call omp_set_num_threads(mpieNumThreadsInt)         ! set number of threads for parallel execution set by MPIE_NUM_THREADS
 
  bc_maskvector = ''
  unit = 234_pInt
-
  ones   = 1.0_pReal; zeroes = 0.0_pReal
  
  N_l = 0_pInt; N_s = 0_pInt
@@ -184,10 +181,10 @@ program mpie_spectral
 
  do i = 1, N_Loadcases
    if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(47,i)     ! bc_mask consistency
-   print '(a,/,3(3(f12.6,x)/))','L',math_transpose3x3(bc_velocityGrad(:,:,i))
+   print '(a,/,3(3(f12.6,x)/))','L'        ,math_transpose3x3(bc_velocityGrad(:,:,i))
    print '(a,/,3(3(f12.6,x)/))','bc_stress',math_transpose3x3(bc_stress(:,:,i))
-   print '(a,/,3(3(l,x)/))','bc_mask for velocitygrad',transpose(bc_mask(:,:,1,i))
-   print '(a,/,3(3(l,x)/))','bc_mask for stress',transpose(bc_mask(:,:,2,i))
+   print '(a,/,3(3(l,x)/))',    'bc_mask for velocitygrad',transpose(bc_mask(:,:,1,i))
+   print '(a,/,3(3(l,x)/))',    'bc_mask for stress'      ,transpose(bc_mask(:,:,2,i))
    print *,'time',bc_timeIncrement(i)
    print *,'incs',bc_steps(i)
    print *, ''
@@ -241,33 +238,15 @@ program mpie_spectral
  print '(a,/,f6.1,f6.1,f6.1)','dimension x y z', geomdimension
  print *,'homogenization',homog
  
- allocate (workfft(resolution(1)/2+1,resolution(2),resolution(3),3,3));          workfft              = 0.0_pReal
- allocate (gamma_hat(resolution(1)/2+1,resolution(2),resolution(3),3,3,3,3));    gamma_hat            = 0.0_pReal
- allocate (xi(resolution(1)/2+1,resolution(2),resolution(3),3));                 xi                   = 0.0_pReal
- allocate (pstress_field(resolution(1),resolution(2),resolution(3),3,3));        pstress_field        = 0.0_pReal
- allocate (defgrad(resolution(1),resolution(2),resolution(3),3,3));              defgrad              = 0.0_pReal
- allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3));           defgradold           = 0.0_pReal
- allocate (ddefgrad(resolution(1),resolution(2),resolution(3)));                ddefgrad              = 0.0_pReal
-
- ! Initialization of fftw (see manual on fftw.org for more details) 
- call dfftw_init_threads(ierr) !toDo: add error code
- call dfftw_plan_with_nthreads(mpieNumThreadsInt)
- do m = 1,3; do n = 1,3
-   call dfftw_plan_dft_r2c_3d(plan_fft(1,m,n),resolution(1),resolution(2),resolution(3),& 
-                    pstress_field(:,:,:,m,n), workfft(:,:,:,m,n), FFTW_PATIENT)
-   call dfftw_plan_dft_c2r_3d(plan_fft(2,m,n),resolution(1),resolution(2),resolution(3),& 
-                    workfft(:,:,:,m,n), ddefgrad(:,:,:), FFTW_PATIENT)
- enddo; enddo
-
- !try to make just one call instead of 9 for the r2c transform. Not working yet
- ! call dfftw_plan_many_dft_r2c_(plan_fft(1,1,1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
- !pstress_field(:,:,:,:,:),NULL,(/resolution(1),resolution(2),resolution(3)/),1, workfft(:,:,:,m,n),NULL, FFTW_PATIENT)   
- !
+ allocate (defgrad(resolution(1),resolution(2),resolution(3),3,3));    defgrad    = 0.0_pReal
+ allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3)); defgradold = 0.0_pReal
+ 
  prodnn = resolution(1)*resolution(2)*resolution(3)
- wgt = 1_pReal/real(prodnn, pReal)
+ wgt = 1.0_pReal/real(prodnn, pReal)
  defgradAim = math_I3
  defgradAimOld = math_I3
  defgrad_av = math_I3
+ 
 ! Initialization of CPFEM_general (= constitutive law) and of deformation gradient field
  call CPFEM_initAll(temperature,1_pInt,1_pInt)
  ielem = 0_pInt
@@ -279,41 +258,69 @@ program mpie_spectral
    call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
    c066 = c066 + dsde
  enddo; enddo; enddo
-   c066 = c066 * wgt
-   c0 = math_mandel66to3333(c066)
-   call math_invert(6, c066, s066,i, errmatinv)
-   s0 = math_mandel66to3333(s066)
+ c066 = c066 * wgt
+ c0 = math_mandel66to3333(c066)
+ call math_invert(6, c066, s066,i, errmatinv)
+ s0 = math_mandel66to3333(s066)
  
-!calculation of xinormdyad (to calculate gamma_hat) and xi (waves, for proof of equilibrium)
- do k = 1, resolution(3)
-   k_s(3) = k-1
-   if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
-   do j = 1, resolution(2)
-     k_s(2) = j-1
-     if(j > resolution(2)/2+1) k_s(2) = k_s(2)-resolution(2)     
-     do i = 1, resolution(1)/2+1
-       k_s(1) = i-1
-       xi(i,j,k,3) = 0.0_pReal     
-       if(resolution(3) > 1) xi(i,j,k,3) = real(k_s(3), pReal)/geomdimension(3)
-                             xi(i,j,k,2) = real(k_s(2), pReal)/geomdimension(2)
-                             xi(i,j,k,1) = real(k_s(1), pReal)/geomdimension(1)
-       if (any(xi(i,j,k,:) /= 0.0_pReal)) then     
-         do l = 1,3; do m = 1,3
-            xinormdyad(l,m) = xi(i,j,k, l)*xi(i,j,k, m)/sum(xi(i,j,k,:)**2)
-         enddo; enddo
-       else
-         xinormdyad = 0.0_pReal
-       endif 
-       temp33_Real = math_mul3333xx33(c0, xinormdyad)            
-       temp33_Real = math_inv3x3(temp33_Real) 
-       do l=1,3; do m=1,3; do n=1,3; do p=1,3
-        gamma_hat(i,j,k, l,m,n,p) = - (0.5*temp33_Real(l,n)+0.5*temp33_Real(n,l)) *&
-                                      (0.5*xinormdyad(m,p)+0.5*xinormdyad(p,m))
-       enddo; enddo; enddo; enddo         
- enddo; enddo; enddo
+!calculation of calculate gamma_hat field in the case of fast execution (needs a lot of memory) 
+ if(fast_execution) then
+   allocate (gamma_hat(resolution(1)/2+1,resolution(2),resolution(3),3,3,3,3)); gamma_hat = 0.0_pReal
+   do k = 1, resolution(3)
+     k_s(3) = k-1
+     if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
+     do j = 1, resolution(2)
+       k_s(2) = j-1
+       if(j > resolution(2)/2+1) k_s(2) = k_s(2)-resolution(2)     
+       do i = 1, resolution(1)/2+1
+         k_s(1) = i-1
+         xi(3) = 0.0_pReal     !for the 2D case
+         if(resolution(3) > 1) xi(3) = real(k_s(3), pReal)/geomdimension(3) !3D case
+                               xi(2) = real(k_s(2), pReal)/geomdimension(2)
+                               xi(1) = real(k_s(1), pReal)/geomdimension(1)
+         if (any(xi /= 0.0_pReal)) then     
+           do l = 1,3; do m = 1,3
+              xinormdyad(l,m) = xi(l)*xi(m)/sum(xi**2)
+           enddo; enddo
+         else
+           xinormdyad = 0.0_pReal
+         endif 
+         temp33_Real = math_mul3333xx33(c0, xinormdyad)            
+         temp33_Real = math_inv3x3(temp33_Real) 
+         do l=1,3; do m=1,3; do n=1,3; do p=1,3
+           gamma_hat(i,j,k, l,m,n,p) = - (0.5*temp33_Real(l,n)+0.5*temp33_Real(n,l)) *&
+                                         (0.5*xinormdyad(m,p)+0.5*xinormdyad(p,m))
+         enddo; enddo; enddo; enddo         
+   enddo; enddo; enddo
+ else ! or allocate just one fourth order tensor
+   allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
+ endif
  
+! calculate xi for the calculation of divergence in Fourier space (middle frequency)
+ xi_middle(3) = 0.0_pReal
+ if(resolution(3) > 1) xi_middle(3) = real(resolution(3)/2, pReal)/geomdimension(3) !3D case
+                       xi_middle(2) = real(resolution(2)/2, pReal)/geomdimension(2)
+                       xi_middle(1) = real(resolution(1)/2, pReal)/geomdimension(1)
+ 
+! Initialization of fftw (see manual on fftw.org for more details) 
+ allocate (workfft(resolution(1)/2+1,resolution(2),resolution(3),3,3));   workfft       = 0.0_pReal
+ allocate (ddefgrad(resolution(1),resolution(2),resolution(3)));          ddefgrad      = 0.0_pReal
+ allocate (pstress_field(resolution(1),resolution(2),resolution(3),3,3)); pstress_field = 0.0_pReal
+ call dfftw_init_threads(ierr) !toDo: add error code
+ call dfftw_plan_with_nthreads(mpieNumThreadsInt)
+! Do r2c Transform r2c in one step 
+ call dfftw_plan_many_dft_r2c(plan_fft(1,1,1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
+   pstress_field(:,:,:,:,:),(/resolution(1),resolution(2),resolution(3)/),1,prodnn,workfft(:,:,:,:,:),&
+   (/resolution(1)/2+1,resolution(2),resolution(3)/),1,(resolution(1)/2+1)*resolution(2)*resolution(3),FFTW_PATIENT)  
+ do m = 1,3; do n = 1,3 ! do the back transform for each single component (saves memory)
+   call dfftw_plan_dft_c2r(plan_fft(2,m,n),3,(/resolution(1),resolution(2),resolution(3)/),& 
+                    workfft(:,:,:,m,n), ddefgrad(:,:,:), FFTW_PATIENT)
+ enddo; enddo
+
 ! write header of output file
- open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',form='UNFORMATTED')       
+ open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
+                                               //'_'//trim(getLoadcase())&
+                                                    //'.spectralOut',form='UNFORMATTED')       
  write(538), 'load',trim(getLoadcaseName())
  write(538), 'workingdir',trim(getSolverWorkingDirectoryName())
  write(538), 'geometry',trim(getSolverJobName())//InputFileExtension
@@ -373,7 +380,8 @@ program mpie_spectral
              (err_div > err_div_tol .or. &
               err_stress > err_stress_tol .or. &
               err_defgrad > err_defgrad_tol))    
-       iter = iter + 1
+       iter = iter + 1_pInt
+       print*, ' '
        print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',steps,'Iteration = ',iter
        cstress_av = 0.0_pReal
 !*************************************************************
@@ -407,7 +415,7 @@ program mpie_spectral
            pstress_av(m,n) = sum(pstress_field(:,:,:,m,n)) * wgt   
            defgrad_av(m,n) = sum(defgrad(:,:,:,m,n)) * wgt
          enddo; enddo
-         
+
          err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
          err_stress_tol = maxval(abs(pstress_av))*err_stress_tolrel                               
          
@@ -431,19 +439,19 @@ program mpie_spectral
          err_div = 2 * err_div_tol 
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))         
          print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',math_transpose3x3(defgrad_av)                           
-         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]: ',math_transpose3x3(cstress_av)/1.e6        
-         print '(2(a,E8.2))', ' error stress               ',err_stress,'  Tol. = ', err_stress_tol 
+         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]: '   ,math_transpose3x3(cstress_av)/1.e6        
+         print '(2(a,E8.2))', ' error stress               ',err_stress, '  Tol. = ', err_stress_tol 
          print '(2(a,E8.2))', ' error deformation gradient ',err_defgrad,'  Tol. = ', err_defgrad_tol*0.8  
          if(err_stress < err_stress_tol*0.8) then 
            calcmode = 1_pInt
          endif
              
 ! Using the spectral method to calculate the change of deformation gradient, check divergence of stress field in fourier space        
-       case (1)   
+       case (1)
          print *, 'Update Stress Field (constitutive evaluation P(F))'
          ielem = 0_pInt
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-           ielem = ielem + 1
+           ielem = ielem + 1_pInt
            call CPFEM_general(3, defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
@@ -451,7 +459,7 @@ program mpie_spectral
 
          ielem = 0_pInt                 
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-           ielem = ielem + 1
+           ielem = ielem + 1_pInt
            call CPFEM_general(2,&    
                               defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
                               temperature,timeinc,ielem,1_pInt,&
@@ -459,46 +467,83 @@ program mpie_spectral
            pstress_field(i,j,k,:,:) = pstress 
            cstress_av = cstress_av + math_mandel6to33(cstress)          
          enddo; enddo; enddo       
+         cstress_av = cstress_av * wgt
+         do m = 1,3; do n = 1,3
+           pstress_av(m,n) = sum(pstress_field(:,:,:,m,n))*wgt
+         enddo; enddo
          
          print *, 'Calculating equilibrium using spectral method'
          err_div = 0.0_pReal; sigma0 = 0.0_pReal
-         do m = 1,3; do n = 1,3
-           call dfftw_execute_dft_r2c(plan_fft(1,m,n), pstress_field(:,:,:,m,n),workfft(:,:,:,m,n))
-           if(n==3) sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:))))                     ! L infinity Norm of stress tensor 
-         enddo; enddo
-         err_div = (maxval(abs(math_mul33x3_complex(workfft(resolution(1)/2+1,resolution(2)/2+1,resolution(3)/2+1,:,:),&
-         xi(resolution(1)/2+1,resolution(2)/2+1,resolution(3)/2+1,:))))) ! L infinity Norm of div(stress)
-
+         call dfftw_execute_dft_r2c(plan_fft(1,1,1), pstress_field,workfft)       ! FFT of pstress
+         
+         do m = 1,3
+           sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:))))                     ! L infinity Norm of stress tensor 
+         enddo
+         err_div = (maxval(abs(math_mul33x3_complex(workfft(resolution(1)/2+1,resolution(2)/2+1,resolution(3)/2+1,:,:),xi_middle))))  ! L infinity Norm of div(stress)
+         err_div = err_div/sigma0       !weighting of error
+         
+         if(fast_execution) then        ! fast execution with stored gamma_hat
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
            temp33_Complex = 0.0_pReal
            do m = 1,3; do n = 1,3
              temp33_Complex(m,n) = sum(gamma_hat(i,j,k,m,n,:,:) * workfft(i,j,k,:,:))
            enddo; enddo
            workfft(i,j,k,:,:) = temp33_Complex(:,:) 
-         enddo; enddo; enddo
-         workfft(1,1,1,:,:) = defgrad_av - math_I3
+          enddo; enddo; enddo
+          
+         else ! memory saving version, in-time calculation of gamma_hat
+         do k = 1, resolution(3)
+           k_s(3) = k-1
+           if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
+           do j = 1, resolution(2)
+             k_s(2) = j-1
+             if(j > resolution(2)/2+1) k_s(2) = k_s(2)-resolution(2)
+             do i = 1, resolution(1)/2+1
+               k_s(1) = i-1
+               xi(3) = 0.0_pReal     !for the 2D case
+               if(resolution(3) > 1) xi(3) = real(k_s(3), pReal)/geomdimension(3) !3D case
+                                     xi(2) = real(k_s(2), pReal)/geomdimension(2)
+                                     xi(1) = real(k_s(1), pReal)/geomdimension(1)
+               if (any(xi(:) /= 0.0_pReal)) then     
+                 do l = 1,3; do m = 1,3
+                    xinormdyad(l,m) = xi(l)*xi( m)/sum(xi**2)
+                 enddo; enddo
+               else
+                 xinormdyad = 0.0_pReal
+               endif 
+               temp33_Real = math_mul3333xx33(c0, xinormdyad)            
+               temp33_Real = math_inv3x3(temp33_Real) 
+               do l=1,3; do m=1,3; do n=1,3; do p=1,3
+                gamma_hat(1,1,1, l,m,n,p) = - (0.5*temp33_Real(l,n)+0.5*temp33_Real(n,l)) *&
+                                              (0.5*xinormdyad(m,p)+0.5*xinormdyad(p,m))
+               enddo; enddo; enddo; enddo   
+               temp33_Complex = 0.0_pReal
+               do m = 1,3; do n = 1,3
+                 temp33_Complex(m,n) = sum(gamma_hat(1,1,1, m,n,:,:) * workfft(i,j,k,:,:))
+               enddo; enddo
+               workfft(i,j,k,:,:) = temp33_Complex(:,:) 
+               enddo
+             enddo
+           enddo
+         endif
          
-         err_div = err_div/sigma0       !weighting of error
-         
-         cstress_av = cstress_av * wgt
+         workfft(1,1,1,:,:) = defgrad_av - math_I3 !zero frequency
          do m = 1,3; do n = 1,3
-            call dfftw_execute_dft_c2r(plan_fft(2,m,n), workfft(:,:,:,m,n),ddefgrad(:,:,:))
-            defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + ddefgrad * wgt
-            pstress_av(m,n) = sum(pstress_field(:,:,:,m,n))*wgt
-            defgrad_av(m,n) = sum(defgrad(:,:,:,m,n))*wgt
-            defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim(m,n) - defgrad_av(m,n)) !anticipated target minus current state
+           call dfftw_execute_dft_c2r(plan_fft(2,m,n), workfft(:,:,:,m,n),ddefgrad(:,:,:))
+           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + ddefgrad * wgt
+           defgrad_av(m,n) = sum(defgrad(:,:,:,m,n))*wgt
+           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim(m,n) - defgrad_av(m,n)) !anticipated target minus current state
          enddo; enddo
-
          err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
          err_stress_tol = maxval(abs(pstress_av))*err_stress_tolrel                             !accecpt relativ error specified
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))  
-         
-         print '(2(a,E8.2))', ' error divergence           ',err_div,'  Tol. = ', err_div_tol
-         print '(2(a,E8.2))', ' error stress               ',err_stress,'  Tol. = ', err_stress_tol 
+       
+         print '(2(a,E8.2))', ' error divergence           ',err_div,    '  Tol. = ', err_div_tol
+         print '(2(a,E8.2))', ' error stress               ',err_stress, '  Tol. = ', err_stress_tol 
          print '(2(a,E8.2))', ' error deformation gradient ',err_defgrad,'  Tol. = ', err_defgrad_tol 
 
          if((err_stress > err_stress_tol .or. err_defgrad > err_defgrad_tol) .and. err_div < err_div_tol) then  ! change to calculation of BCs, reset damper etc.
-           calcmode = 0
+           calcmode = 0_pInt
            defgradAimCorr = 0.0_pReal
            damper = damper * 0.9_pReal
          endif     
@@ -508,9 +553,9 @@ program mpie_spectral
      write(538)  materialpoint_results(:,1,:) !write to output file
      
      print '(a,x,f12.7)'         , ' Determinant of Deformation Aim:', math_det3x3(defgradAim)
-     print '(a,/,3(3(f12.7,x)/))', ' Deformation Aim:        ',defgradAim(1:3,:)
-     print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',defgrad_av(1:3,:)  
-     print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]:    ',cstress_av(1:3,:)/1.e6
+     print '(a,/,3(3(f12.7,x)/))', ' Deformation Aim:        ',math_transpose3x3(defgradAim)
+     print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',math_transpose3x3(defgrad_av) 
+     print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]:    ',math_transpose3x3(cstress_av)/1.e6
      print '(A)', '************************************************************'
    enddo  ! end looping over steps in current loadcase
  enddo    ! end looping over loadcases
