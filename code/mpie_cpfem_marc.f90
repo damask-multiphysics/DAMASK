@@ -318,7 +318,7 @@ subroutine hypela2(&
           .not. terminallyIll ) then
        call debug_info()                                                  ! first after ping pong reports (meaningful) debugging
        write(6,*)
-       write(6,*) 'REPORT EXTREME VALUES OF RETURNED VARIABLES'
+       write(6,*) 'EXTREME VALUES OF RETURNED VARIABLES (from previous cycle)'
        write(6,*)
        write(6,'(a39)') '                      value     el   ip'
        write(6,'(a14,x,e12.3,x,i6,x,i4)') 'stress   min :', s_min, s_min_e, s_min_i
