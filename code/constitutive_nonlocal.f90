@@ -1088,8 +1088,16 @@ if (Temperature > 0.0_pReal) then
     tau(s) = math_mul6x6(Tstar_v + Tdislocation_v, &
                          lattice_Sslip_v(:,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
 
-    !*** only if the resolved shear stress exceeds the threshold stress, dislocations are able to cut the dislocation forest
-    !*** the forest can't be overcome by thermal activation
+    !*** Only if the resolved shear stress exceeds the threshold stress, dislocations are able to cut the dislocation forest.
+    !*** In contrast to small atomic obstacles the forest can't be overcome by thermal activation.
+    !*** 
+    !***                                                     mean travel distance
+    !*** The mean dislocation velocity is calculated as:  --------------------------
+    !***                                                   dwell time + travel time
+    !***
+    !*** with :   mean travel distance = inverse of the root of forest density
+    !***          dwell time = inverse of attack frequency times probability of success
+    !***          travel time = mean travel distance over velocity of sound
     
     tauRel = (abs(tau(s)) - tauThreshold(s)) / constitutive_nonlocal_tauObs(myInstance)
     if (tauRel > 0.0_pReal .and. tauRel < 1.0_pReal) then
@@ -1107,8 +1115,8 @@ if (Temperature > 0.0_pReal) then
                    / ((1.0_pReal - tauRel) * (abs(tau(s)) - tauThreshold(s)))
       endif
     
-    !*** if resolved stress exceeds even threshold plus obstacle stress, then allow for maximum travel velocity
-    !*** the tangent is zero, since no dependency of tau 
+    !*** If resolved stress exceeds threshold plus obstacle stress, the probability for thermal activation is 1.
+    !*** The tangent is zero, since no dependency of tau.
     
     elseif (tauRel >= 1.0_pReal) then
       constitutive_nonlocal_v(s,:,g,ip,el) = sign(constitutive_nonlocal_vs(myInstance), tau(s)) &
