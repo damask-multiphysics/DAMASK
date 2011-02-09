@@ -439,7 +439,7 @@ constitutive_nonlocal_interactionMatrixSlipSlip = 0.0_pReal
 allocate(constitutive_nonlocal_v(maxTotalNslip, 4, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_v = 0.0_pReal
 
-allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 8, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 10, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_rhoDotFlux = 0.0_pReal
 
 allocate(constitutive_nonlocal_compatibility(2,maxTotalNslip, maxTotalNslip, FE_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
@@ -2081,6 +2081,8 @@ forall (c = 1:2) rhoDotDip(:,c) = dotState(g,ip,el)%p((7+c)*ns+1:(8+c)*ns)
 
 
 !* Calculate shear rate
+
+call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip, el)                                  ! need to calculate dislocation velocity again, because it was overwritten during stiffness calculation
 
 do t = 1,4
   do s = 1,ns
