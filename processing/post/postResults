@@ -654,7 +654,7 @@ bg.start()
 
 # --- sanity checks
 
-if not file[0]:
+if file == []:
     parser.print_help()
     parser.error('no file specified...')
 
