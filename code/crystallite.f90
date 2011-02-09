@@ -1026,7 +1026,7 @@ enddo
 ! --- CHECK CONVERGENCE ---
 
 crystallite_todo = .false.                                                                                ! done with integration
-if ( mode == 1 .and. .not. singleRun ) then                                                               ! for central solution   
+if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                    ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
   endif
@@ -1426,7 +1426,7 @@ relTemperatureResiduum = 0.0_pReal
 ! --- nonlocal convergence check ---
 
 if (verboseDebugger .and. mode==1) write(6,*) 'crystallite_converged',crystallite_converged
-if ( mode == 1 .and. .not. singleRun ) then                                                               ! for central solution   
+if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
   endif
@@ -1704,7 +1704,7 @@ relTemperatureResiduum = 0.0_pReal
 ! --- NONLOCAL CONVERGENCE CHECK ---
 
 if (verboseDebugger .and. mode==1) write(6,*) 'crystallite_converged',crystallite_converged
-if ( mode == 1 .and. .not. singleRun ) then                                                               ! for central solution   
+if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
   endif
@@ -1885,7 +1885,7 @@ endif
 ! --- CHECK NON-LOCAL CONVERGENCE ---
 
 crystallite_todo = .false.                                                                                ! done with integration
-if ( mode == 1 .and. .not. singleRun ) then                                                               ! for central solution   
+if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                    ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
   endif
@@ -2147,7 +2147,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   
   ! --- CONVERGENCE CHECK ---
 
-  if ( mode == 1 .and. .not. singleRun ) then                                                             ! for central solution   
+  if (.not. singleRun) then                                                                               ! if not requesting Integration of just a single IP   
     if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                  ! any non-local not yet converged (or broken)...
       crystallite_converged = crystallite_converged .and. crystallite_localConstitution                   ! ...restart all non-local as not converged
     endif
