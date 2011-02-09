@@ -1,0 +1,105 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module postprocessingMath ! in 
+    interface  ! in :postprocessingMath
+        module math ! in :postprocessingMath:postprocessingMath.f90
+            real*8 parameter,optional,dimension(3,3) :: math_i3=reshape((/1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0/),(/3,3/))
+            real*8 parameter,optional :: pi=3.14159265359
+            function math_mul33x33(a,b) ! in :postprocessingMath:postprocessingMath.f90:math
+                real*8 dimension(3,3),intent(in) :: a
+                real*8 dimension(3,3),intent(in) :: b
+                real*8 dimension(3,3) :: math_mul33x33
+            end function math_mul33x33
+            subroutine math_invert3x3(a,inva,deta,error) ! in :postprocessingMath:postprocessingMath.f90:math
+                real*8 dimension(3,3),intent(in) :: a
+                real*8 dimension(3,3),intent(out) :: inva
+                real*8 intent(out) :: deta
+                logical intent(out) :: error
+            end subroutine math_invert3x3
+            function math_det3x3(m) ! in :postprocessingMath:postprocessingMath.f90:math
+                real*8 dimension(3,3),intent(in) :: m
+                real*8 :: math_det3x3
+            end function math_det3x3
+            subroutine math_pdecomposition(fe,u,r,error) ! in :postprocessingMath:postprocessingMath.f90:math
+                real*8 dimension(3,3),intent(in) :: fe
+                real*8 dimension(3,3),intent(out) :: u
+                real*8 dimension(3,3),intent(out) :: r
+                logical intent(out) :: error
+            end subroutine math_pdecomposition
+            function math_inv3x3(a) ! in :postprocessingMath:postprocessingMath.f90:math
+                real*8 dimension(3,3),intent(in) :: a
+                real*8 dimension(3,3) :: math_inv3x3
+            end function math_inv3x3
+            subroutine math_hi(m,hi1m,hi2m,hi3m) ! in :postprocessingMath:postprocessingMath.f90:math
+                real*8 dimension(3,3),intent(in) :: m
+                real*8 intent(out) :: hi1m
+                real*8 intent(out) :: hi2m
+                real*8 intent(out) :: hi3m
+            end subroutine math_hi
+            subroutine math_spectral1(m,ew1,ew2,ew3,eb1,eb2,eb3) ! in :postprocessingMath:postprocessingMath.f90:math
+                real*8 dimension(3,3),intent(in) :: m
+                real*8 intent(out) :: ew1
+                real*8 intent(out) :: ew2
+                real*8 intent(out) :: ew3
+                real*8 dimension(3,3),intent(out) :: eb1
+                real*8 dimension(3,3),intent(out) :: eb2
+                real*8 dimension(3,3),intent(out) :: eb3
+            end subroutine math_spectral1
+        end module math
+        subroutine mesh(res_x,res_y,res_z,geomdim,defgrad_av,centroids,nodes) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            real*8 dimension(3),intent(in) :: geomdim
+            real*8 dimension(3,3),intent(in) :: defgrad_av
+            real*8 dimension(res_x,res_y,res_z,3),intent(in),depend(res_x,res_y,res_z) :: centroids
+            real*8 dimension(res_x + 2,res_y + 2,res_z +2 ,3),depend(res_x,res_y,res_z) :: centroids
+            real*8 dimension(res_x + 1,res_y + 1,res_z + 1,3),intent(out),depend(res_x,res_y,res_z) :: nodes
+        end subroutine mesh
+        subroutine deformed(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,coord_avgCorner) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            real*8 dimension(3),intent(in) :: geomdim
+            real*8 dimension(3,3),intent(in) :: defgrad_av
+            real*8 dimension(res_x,res_y,res_z,3),intent(out),depend(res_x,res_y,res_z) :: coord_avgCorner
+            real*8 dimension(8,6,res_x,res_y,res_z,3),depend(res_x,res_y,res_z) :: coord
+            real*8 dimension(8,res_x,res_y,res_z,3),depend(res_x,res_y,res_z) :: coord_avgOrder
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: defgrad
+        end subroutine deformed
+        subroutine logstrain_mat(res_x,res_y,res_z,defgrad,logstrain_field) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: defgrad
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(out),depend(res_x,res_y,res_z) :: logstrain_field            
+        end subroutine logstrain_mat
+        subroutine logstrain_spat(res_x,res_y,res_z,defgrad,logstrain_field) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: defgrad
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(out),depend(res_x,res_y,res_z) :: logstrain_field            
+        end subroutine logstrain_spat
+        subroutine calculate_cauchy(res_x,res_y,res_z,defgrad,p_stress,c_stress) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y 
+            integer intent(in) :: res_z 
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: defgrad
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: p_stress
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(out),depend(res_x,res_y,res_z) :: c_stress  
+        end subroutine calculate_cauchy
+        subroutine calculate_mises(res_x,res_y,res_z,tensor,vm) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: tensor
+            real*8 dimension(res_x,res_y,res_z,1),intent(out),depend(res_x,res_y,res_z) :: vm
+        end subroutine calculate_mises
+    end interface 
+end python module postprocessingMath
+
+! This file was auto-generated with f2py (version:2_5972).
+! See http://cens.ioc.ee/projects/f2py2e/
+! modified by m.diehl

@@ -6,7 +6,7 @@
 # computed using the FEM solvers. Until now, its capable to handle elements with one IP in a regular order
 # written by M. Diehl, m.diehl@mpie.de
 
-import os,sys,re,array,struct,numpy, time, reconstruct
+import os,sys,re,array,struct,numpy, time, postprocessingMath
 
 class vector:
   x,y,z = [None,None,None]
@@ -159,145 +159,6 @@ def calculateCauchyStress(p_stress,defgrad,res):
         c_stress[x,y,z] = numpy.dot(p_stress[x,y,z],numpy.transpose(defgrad[x,y,z]))/jacobi
   return c_stress
   
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++   
-def calculateVonMises(tensor,res):
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-  vonMises = numpy.zeros([res[0],res[1],res[2]],'d')
-  deviator = numpy.zeros([3,3],'d')
-  delta = numpy.zeros([3,3],'d')
-  delta[0,0] = 1.0
-  delta[1,1] = 1.0
-  delta[2,2] = 1.0
-  for z in range(res[2]):
-    for y in range(res[1]):
-      for x in range(res[0]): 
-       deviator = tensor[x,y,z] - 1.0/3.0*tensor[x,y,z,0,0]*tensor[x,y,z,1,1]*tensor[x,y,z,2,2]*delta
-       J_2 = deviator[0,0]*deviator[1,1]\
-           + deviator[1,1]*deviator[2,2]\
-           + deviator[0,0]*deviator[2,2]\
-           - (deviator[0,1])**2\
-           - (deviator[1,2])**2\
-           - (deviator[0,2])**2
-       vonMises[x,y,z] = numpy.sqrt(3*J_2)
-  return vonMises
-  
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-def mesh(res,geomdim,defgrad_av,centroids):
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-
- neighbor = numpy.array([[0, 0, 0],
-                         [1, 0, 0],
-                         [1, 1, 0],
-                         [0, 1, 0],
-                         [0, 0, 1],
-                         [1, 0, 1],
-                         [1, 1, 1],
-                         [0, 1, 1]])
-
- wrappedCentroids = numpy.zeros([res[0]+2,res[1]+2,res[2]+2,3],'d')
- nodes = numpy.zeros([res[0]+1,res[1]+1,res[2]+1,3],'d')
- wrappedCentroids[1:-1,1:-1,1:-1] = centroids
- diag = numpy.ones(3,'i')
- shift = numpy.zeros(3,'i')
- lookup = numpy.zeros(3,'i')
-
- for k in range(res[2]+2):
-  for j in range(res[1]+2):
-    for i in range(res[0]+2):
-       if (k==0 or k==res[2]+1 or \
-           j==0 or j==res[1]+1 or \
-           i==0 or i==res[0]+1      ):
-         me = numpy.array([i,j,k],'i')
-         shift = numpy.sign(res+diag-2*me)*(numpy.abs(res+diag-2*me)/(res+diag))
-         lookup = me-diag+shift*res
-         wrappedCentroids[i,j,k] = centroids[lookup[0],lookup[1],lookup[2]]- \
-                                       numpy.dot(defgrad_av, shift*geomdim)
- for k in range(res[2]+1):
-   for j in range(res[1]+1):
-     for i in range(res[0]+1):
-       for n in range(8):
-         nodes[i,j,k] += wrappedCentroids[i+neighbor[n,0],j+neighbor[n,1],k+neighbor[n,2]]
- nodes[:,:,:] /= 8.0
-  
- return nodes
-
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-def centroids(res,geomdimension,defgrad):
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  corner = numpy.array([[0, 0, 0],
-                        [1, 0, 0],
-                        [1, 1, 0],
-                        [0, 1, 0],
-                        [1, 1, 1],
-                        [0, 1, 1],
-                        [0, 0, 1],
-                        [1, 0, 1]])
-  step = numpy.array([[ 1, 1, 1],
-                      [-1, 1, 1],
-                      [-1,-1, 1],
-                      [ 1,-1, 1],
-                      [-1,-1,-1],
-                      [ 1,-1,-1],
-                      [ 1, 1,-1],
-                      [-1, 1,-1]])  
- 
-  order = numpy.array([[0, 1, 2],
-                      [0, 2, 1],
-                      [1, 0, 2],
-                      [1, 2, 0],
-                      [2, 0, 1],
-                      [2, 1, 0]])
-   
-  cornerCoords = numpy.zeros([8,res[0],res[1],res[2],3], 'd')
-  coord = numpy.zeros([8,6,res[0],res[1],res[2],3], 'd')
-  centroids = numpy.zeros([res[0],res[1],res[2],3], 'd')
-  myStep = numpy.zeros(3,'d')
-  rear = numpy.zeros(3, 'i')
-  init = numpy.zeros(3, 'i')
-  oppo = numpy.zeros(3, 'i')
-  me = numpy.zeros(3, 'i')
-  ones = numpy.ones(3, 'i')
-  fones = numpy.ones(3, 'd')
-  defgrad_av=numpy.average(numpy.average(numpy.average(defgrad,0),0),0)
-  print defgrad_av
-  for s in range(8):# corners
-    init = corner[s]*(res-ones)
-    oppo = corner[(s+4)%8]*(res-ones)
-    for o in range(6):  # orders
-      for k in range(init[order[o,2]],oppo[order[o,2]]+step[s,order[o,2]],step[s,order[o,2]]):
-        rear[order[o,1]] = init[order[o,1]]
-        for j in range(init[order[o,1]],oppo[order[o,1]]+step[s,order[o,1]],step[s,order[o,1]]):
-          rear[order[o,0]] = init[order[o,0]]
-          for i in range(init[order[o,0]],oppo[order[o,0]]+step[s,order[o,0]],step[s,order[o,0]]):
-            me[order[o,0]] = i
-            me[order[o,1]] = j
-            me[order[o,2]] = k
-            if (numpy.all(me == init)):
-              coord[s,o,me[0],me[1],me[2]] = geomdimension * (numpy.dot(defgrad_av,corner[s]) + \
-                                                                  numpy.dot(defgrad[me[0],me[1],me[2]],0.5*step[s]/res))
-            else:
-              myStep = (me-rear)*geomdimension/res
-              coord[s,o,me[0],me[1],me[2]] = coord[s,o,rear[0],rear[1],rear[2]]+ \
-                                                      0.5*numpy.dot(defgrad[me[0],me[1],me[2]] + \
-                                                                    defgrad[rear[0],rear[1],rear[2]],myStep)
-
-            rear[:] = me[:]
-    cornerCoords[s] = numpy.average(coord[s],0)
-  for k in range(res[2]):
-    for j in range(res[1]):
-      for i in range(res[0]):
-        parameter_coords=(2.0*numpy.array([i,j,k])-res+fones)/(res-fones)
-        pos = (fones + parameter_coords)
-        neg = (fones - parameter_coords)
-        centroids[i,j,k] =  ( cornerCoords[0,i,j,k] *neg[0]*neg[1]*neg[2]\
-                            + cornerCoords[1,i,j,k] *pos[0]*neg[1]*neg[2]\
-                            + cornerCoords[2,i,j,k] *pos[0]*pos[1]*neg[2]\
-                            + cornerCoords[3,i,j,k] *neg[0]*pos[1]*neg[2]\
-                            + cornerCoords[4,i,j,k] *pos[0]*pos[1]*pos[2]\
-                            + cornerCoords[5,i,j,k] *neg[0]*pos[1]*pos[2]\
-                            + cornerCoords[6,i,j,k] *neg[0]*neg[1]*pos[2]\
-                            + cornerCoords[7,i,j,k] *pos[0]*neg[1]*pos[2])*0.125
-  return centroids, defgrad_av
 
 # function writes scalar values to a mesh (geometry)
 def writeVtkAscii(filename,geometry,scalar,resolution):
@@ -445,7 +306,7 @@ print 'Post Processing for Material subroutine for BVP solution using spectral m
 print '*********************************************************************************\n'
 
 #reading in the header of the results file
-name = 'dipl32'
+name = 'dipl10'
 p = MPIEspectral_result(name+'.spectralOut')
 p.extrapolation('')
 print p
@@ -474,14 +335,17 @@ res_z=p.resolution[2]
 ms=numpy.zeros([res_x,res_y,res_z,3], 'd')
 for i in range(249,250):
   c_pos = p.dataOffset + i*(p.N_element_scalars*8*p.N_elements + 8) #8 accounts for header&footer
-  defgrad = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,16)         
+  defgrad = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,16)
+  logstrain = postprocessingMath.logstrain_mat(res_x,res_y,res_z,defgrad)  
+  logstrain2 = postprocessingMath.logstrain_spat(res_x,res_y,res_z,defgrad)
   p_stress = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,58)         
-  #c_stress = calculateCauchyStress(p_stress,defgrad,p.resolution)
-  #grain = calculateVonMises(c_stress,p.resolution)
+  c_stress = postprocessingMath.calculate_cauchy(res_x,res_y,res_z,defgrad,p_stress)
+  vm = postprocessingMath.calculate_mises(res_x,res_y,res_z,c_stress)
   defgrad_av=numpy.average(numpy.average(numpy.average(defgrad,0),0),0)
-  centroids_coord = reconstruct.deformed(res_x,res_y,res_z,p.dimension,defgrad,defgrad_av)
-  ms = reconstruct.mesh(p.resolution[0],p.resolution[1],p.resolution[2],p.dimension,defgrad_av,centroids_coord)
-  writeVtkAscii(name+'-mesh-fortran-%s.vtk'%i,ms,p_stress[:,:,:,1,2],p.resolution)
+  centroids_coord = postprocessingMath.deformed(res_x,res_y,res_z,p.dimension,defgrad,defgrad_av)
+  ms = postprocessingMath.mesh(p.resolution[0],p.resolution[1],p.resolution[2],p.dimension,defgrad_av,centroids_coord)
+  writeVtkAscii(name+'-mesh-1-%s.vtk'%i,ms,logstrain[:,:,:,1,2],p.resolution)
+  writeVtkAscii(name+'-mesh-2-%s.vtk'%i,ms,logstrain2[:,:,:,1,2],p.resolution)
   #writeVtkAsciidefgrad_av(name+'-box-%i.vtk'%i,p.dimension,defgrad_av)
   #writeVtkAsciiDots(name+'-points-%i.vtk'%i,centroids_coord,grain,p.resolution)
   sys.stdout.flush()

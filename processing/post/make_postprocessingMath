@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# This script is used to compile the python module used for geometry reconstruction.
+# It uses the fortran wrapper f2py that is included in the numpy package to construct the
+# module postprocessingMath.so out of the fortran code postprocessingMath.f90
+# written by M. Diehl, m.diehl@mpie.de
+
+#for the generation of the pyf file. 
+#f2py -m postprocessingMath -h postprocessingMath.pyf --overwrite-signature postprocessingMath.f90
+
+# --f90flags="-heap-arrays 500000000" prevents segmentation fault for large arrays
+f2py -c --f90flags="-heap-arrays 500000000" \
+postprocessingMath.pyf postprocessingMath.f90
+
