@@ -2285,7 +2285,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('shearrate')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(abs(gdot),2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(gdot,2)
       cs = cs + ns
       
     case ('resolvedstress')
