@@ -179,12 +179,19 @@ parser.set_defaults(verbose=False)
 outputLocals = {}
 print 'waiting to connect...'
 py_connect('',options.port)
-output(['*remove_all_servos',
+output([\
+        '*remove_all_servos',
         '*sweep_all',
-        '*renumber_nodes'],outputLocals,'Mentat')     # script depends on consecutive numbering of nodes
+        '*renumber_nodes',
+        '*set_links off',
+        ],outputLocals,'Mentat')     # script depends on consecutive numbering of nodes
 cmds = servoLink()
 print 'connected...'
 output(cmds,outputLocals,'Mentat')
+output([\
+        '*set_links on',
+        '*draw',
+        ],outputLocals,'Mentat')     # script depends on consecutive numbering of nodes
 py_disconnect()
 
 if options.verbose:
