@@ -1817,7 +1817,10 @@ fi
 #
 # user subroutine used
 #
+# add BLAS options for linking (taken from ACML, AMD CORE MATH LIBRARY)
+  AMD_BLAS=" -L /opt/acml4.4.0/ifort64_mp/lib -lacml_mp"
 
+  
   if test "$user"
   then
     program=$usernoext.marc
@@ -2768,6 +2771,7 @@ then
     $TKLIBS  \
     $MRCLIBS     \
     $METISLIBS \
+    $AMD_BLAS   \
     $SYSLIBS          || \
     {
     echo "$0: link failed for ${user:+$userobj }$objs"
@@ -3058,6 +3062,7 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
+  $AMD_BLAS   \
   $SYSLIBS          || \
   {
     echo "$0: link failed for ${user:+$userobj }$objs"
@@ -3347,6 +3352,7 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
+  $AMD_BLAS   \
   $SYSLIBS          || \
   {
     echo "$0: link failed for ${user:+$userobj }$objs"
