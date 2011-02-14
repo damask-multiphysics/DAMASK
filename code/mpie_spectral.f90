@@ -36,7 +36,7 @@ program mpie_spectral
 
  implicit none
  include 'fftw3.f' !header file for fftw3 (declaring variables). Library files are also needed
-
+! compile FFTW 3.2.2 with ./configure --enable-threads
 ! variables to read from loadcase and geom file
  real(pReal), dimension(9) ::                      valuevector           ! stores information temporarily from loadcase file
  integer(pInt), parameter ::                       maxNchunksInput = 24  ! 4 identifiers, 18 values for the matrices and 2 scalars
@@ -232,7 +232,9 @@ program mpie_spectral
    if (gotDimension .and. gotHomogenization .and. gotResolution) exit
  enddo
  100 close(unit)
-
+ 
+ if(mod(resolution(1),2)/=0 .or. mod(resolution(2),2)/=0 .or. mod(resolution(3),2)/=0)  call IO_error(102)  !!ToDo: add correct error to IO
+ 
  print '(a,/,i4,i4,i4)','resolution a b c', resolution
  print '(a,/,f6.1,f6.1,f6.1)','dimension x y z', geomdimension
  print *,'homogenization',homog
@@ -305,7 +307,6 @@ program mpie_spectral
 ! Initialization of fftw (see manual on fftw.org for more details) 
  call dfftw_init_threads(ierr) !toDo: add error code
  call dfftw_plan_with_nthreads(mpieNumThreadsInt) 
-! Do r2c/c2r Transform in one step 
  call dfftw_plan_many_dft_r2c(plan_fft(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
    workfft,(/resolution(1)  +2,resolution(2),resolution(3)/),1,(resolution(1)  +2)*resolution(2)*resolution(3),&
    workfft,(/resolution(1)/2+1,resolution(2),resolution(3)/),1,(resolution(1)/2+1)*resolution(2)*resolution(3),FFTW_PATIENT)   

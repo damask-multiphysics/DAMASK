@@ -268,6 +268,8 @@ end function math_mul33x33
  END SUBROUTINE math_spectral1
 
  end module math
+ 
+!subroutines below are for postprocessing with python
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine mesh(res_x,res_y,res_z,geomdim,defgrad_av,centroids,nodes)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
@@ -426,6 +428,133 @@ subroutine deformed(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,coord_avgCorner
  enddo; enddo; enddo
 end subroutine deformed
 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine deformed_fft(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,scaling,coords)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ implicit none
+ integer res_x, res_y, res_z
+ real*8 geomdim(3)
+ real*8         defgrad(res_x,res_y,res_z,3,3)
+ complex*16 defgrad_fft(res_x,res_y,res_z,3,3)
+ real*8 defgrad_av(3,3)
+ real*8 scaling
+ real*8         coords(res_x,    res_y,res_z,3)
+ complex*16 coords_fft(res_x/2+1,res_y,res_z,3)
+ real*8          waves(res_x/2+1,res_y,res_z,3)
+ include 'fftw3.f' !header file for fftw3 (declaring variables). Library files are also needed
+ integer*8 ::  plan_fft(2)
+ real*8, parameter :: pi = 3.14159265358979323846264338327950288419716939937510
+ 
+ real*8 zero
+ real*8 temp33_Real(3,3)
+ integer  i, j, k, ierr
+ integer  k_s(3)
+ real*8 step(3)
+ complex*16 img
+ 
+ img = cmplx(0.0,1.0)
+ 
+ do k = 1, res_z
+   k_s(3) = k-1
+   if(k > res_z/2+1) k_s(3) = k_s(3)-res_z
+   do j = 1, res_y
+     k_s(2) = j-1
+     if(j > res_y/2+1) k_s(2) = k_s(2)-res_y
+     do i = 1, res_x/2+1
+       k_s(1) = i-1
+       waves(i,j,k,:) = real(k_s)/geomdim
+ enddo; enddo; enddo
+
+ 
+ call dfftw_plan_many_dft(plan_fft(1),3,(/res_x,res_y,res_z/),9,&
+   defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,&
+   defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,FFTW_FORWARD,FFTW_PATIENT)  
+    
+ call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res_x,res_y,res_z/),3,&
+   coords_fft,(/res_x/2+1,res_y,res_z/),1,(res_x/2+1)*res_y*res_z,&
+   coords,    (/res_x,    res_y,res_z/),1, res_x*     res_y*res_z,FFTW_PATIENT) 
+   
+ coords_fft=0.0
+ defgrad_fft = defgrad
+
+ call dfftw_execute_dft(plan_fft(1), defgrad_fft, defgrad_fft)
+ 
+ do k = 1, res_z; do j = 1, res_y; do i = 1, res_x/2+1
+     if(i/=1) then
+       coords_fft(i,j,k,1) = defgrad_fft(i,j,k,1,1)/(waves(i,j,k,1)*img)    
+       coords_fft(i,j,k,2) = defgrad_fft(i,j,k,2,1)/(waves(i,j,k,1)*img)                             
+       coords_fft(i,j,k,3) = defgrad_fft(i,j,k,3,1)/(waves(i,j,k,1)*img)  
+     endif
+     if(j/=1) then
+       coords_fft(i,j,k,1) = coords_fft(i,j,k,1) + defgrad_fft(i,j,k,1,2)/(waves(i,j,k,2)*img)      
+       coords_fft(i,j,k,2) = coords_fft(i,j,k,2) + defgrad_fft(i,j,k,2,2)/(waves(i,j,k,2)*img)      
+       coords_fft(i,j,k,3) = coords_fft(i,j,k,3) + defgrad_fft(i,j,k,3,2)/(waves(i,j,k,2)*img)      
+     endif                 
+     if(k/=1) then
+       coords_fft(i,j,k,1) = coords_fft(i,j,k,1) + defgrad_fft(i,j,k,1,3)/(waves(i,j,k,3)*img)      
+       coords_fft(i,j,k,2) = coords_fft(i,j,k,2) + defgrad_fft(i,j,k,2,3)/(waves(i,j,k,3)*img)      
+       coords_fft(i,j,k,3) = coords_fft(i,j,k,3) + defgrad_fft(i,j,k,3,3)/(waves(i,j,k,3)*img)      
+     endif      
+ enddo; enddo; enddo
+
+ call dfftw_execute_dft_c2r(plan_fft(2), coords_fft, coords)
+
+ coords = coords/real(res_x*res_y*res_z)
+
+ do k = 1, res_z; do j = 1, res_y; do i = 1, res_x
+     coords(i,j,k,:) = coords(i,j,k,:)/(geomdim*2.0*pi)
+ enddo; enddo; enddo
+  
+ step(1) = geomdim(1)/real(res_x)
+ step(2) = geomdim(2)/real(res_y)
+ step(3) = geomdim(3)/real(res_z)
+ 
+
+ temp33_Real(1,:) = matmul(defgrad_av,step/2.0) &
+                  - matmul(defgrad_av,(/zero,zero,step(3)/)) ! start below origin
+
+ do k = 1, res_z; do j = 1, res_y; do i = 1, res_x
+   if((j==1).and.(i==1)) then
+     temp33_Real(1,:) = temp33_Real(1,:) + matmul(defgrad_av,&
+                      (/zero,zero,step(3)/))
+     temp33_Real(2,:) = temp33_Real(1,:)
+     temp33_Real(3,:) = temp33_Real(1,:)
+     coords(i,j,k,:) =  coords(i,j,k,:) + temp33_Real(1,:)
+   else 
+     if(i==1) then
+       temp33_Real(2,:) = temp33_Real(2,:) + matmul(defgrad_av,&
+                        (/zero,step(2),zero/))
+       temp33_Real(3,:) = temp33_Real(2,:)
+       coords(i,j,k,:) =  coords(i,j,k,:) + temp33_Real(2,:)
+     else   
+       temp33_Real(3,:) = temp33_Real(3,:) + matmul(defgrad_av,&
+                        (/step(1),zero,zero/))
+       coords(i,j,k,:) =  coords(i,j,k,:) + temp33_Real(3,:)   
+     endif
+   endif
+ enddo; enddo; enddo
+
+end subroutine deformed_fft
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine tensor_avg(res_x,res_y,res_z,tensor,avg)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ implicit none
+ integer res_x, res_y, res_z
+ real*8 tensor(res_x,res_y,res_z,3,3)
+ real*8 avg(3,3)
+ real*8 wgt
+ integer m,n
+ 
+ wgt = 1/real(res_x*res_y*res_z)
+
+ do m = 1,3; do n = 1,3
+    avg(m,n) = sum(tensor(:,:,:,m,n)) * wgt   
+ enddo; enddo
+end subroutine tensor_avg
+ 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine logstrain_spat(res_x,res_y,res_z,defgrad,logstrain_field)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

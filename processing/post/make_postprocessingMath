@@ -5,10 +5,11 @@
 # module postprocessingMath.so out of the fortran code postprocessingMath.f90
 # written by M. Diehl, m.diehl@mpie.de
 
-#for the generation of the pyf file. 
+#for the generation of the pyf file.
 #f2py -m postprocessingMath -h postprocessingMath.pyf --overwrite-signature postprocessingMath.f90
 
 # --f90flags="-heap-arrays 500000000" prevents segmentation fault for large arrays
+# use ./configure --enable-portable-binary --enable-shared for the compilation of fftw3.2.2
 f2py -c --f90flags="-heap-arrays 500000000" \
-postprocessingMath.pyf postprocessingMath.f90
+postprocessingMath.pyf postprocessingMath.f90 -L ./libfftw3.a
 
