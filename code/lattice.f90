@@ -459,7 +459,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
   2, -1, -1,  3,     1, -1,  0,  1, &
   1, -2,  1,  3,     1, -1,  0,  1, &
   1,  1, -2,  3,     1,  0, -1,  1, &
-  2, -1, -1,  3,     1,  0, -1,  1, &
+  2, -1, -1,  3,     1,  0, -1,  1 &
    /),(/4+4,lattice_hex_Nslip/))
 
  real(pReal), dimension(4+4,lattice_hex_Ntwin), parameter :: lattice_hex_systemTwin = &
