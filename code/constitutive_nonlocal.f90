@@ -1824,6 +1824,7 @@ use material, only:   material_phase, &
 use mesh, only:       mesh_element, &
                       mesh_ipNeighborhood, &
                       FE_NipNeighbors, &
+                      FE_maxNipNeighbors, &
                       mesh_maxNips, &
                       mesh_NcpElems
 use lattice, only:    lattice_sn, &
@@ -1844,104 +1845,121 @@ real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), 
 !* output variables
 
 !* local variables
-integer(pInt)                                   n, &                          ! neighbor index 
+integer(pInt)                                   Nneighbors, &                 ! number of neighbors
+                                                n, &                          ! neighbor index 
                                                 neighboring_e, &              ! element index of my neighbor
                                                 neighboring_i, &              ! integration point index of my neighbor
-                                                myPhase, &                    ! phase 
-                                                neighboringPhase, &
-                                                myInstance, &                 ! instance of constitution
-                                                neighboringInstance, &
-                                                myStructure, &                ! lattice structure
-                                                neighboringStructure, &
-                                                myNSlipSystems, &             ! number of active slip systems
-                                                neighboringNSlipSystems, &
+                                                my_phase, &
+                                                neighboring_phase, &
+                                                my_structure, &               ! lattice structure
+                                                my_instance, &                ! instance of constitution
+                                                ns, &                         ! number of active slip systems
                                                 s1, &                         ! slip system index (me)
                                                 s2                            ! slip system index (my neighbor)
-integer(pInt), dimension(maxval(constitutive_nonlocal_totalNslip)) :: &
-                                                mySlipSystems, &              ! slip system numbering according to lattice 
-                                                neighboringSlipSystems
 real(pReal), dimension(4) ::                    absoluteMisorientation        ! absolute misorientation (without symmetry) between me and my neighbor
-real(pReal), dimension(3,maxval(constitutive_nonlocal_totalNslip)) :: &  
-                                                myNormals, &                  ! slip plane normals
-                                                neighboringNormals, &
-                                                mySlipDirections, &           ! slip directions
-                                                neighboringSlipDirections
+real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e)))) :: &  
+                                                compatibility                 ! compatibility of one specific slip system to all neighbors slip systems's for edges and screws
+real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e)))) :: &  
+                                                slipNormal, &
+                                                slipDirection
 real(pReal)                                     compatibilitySum, &
-                                                compatibilityMax, &
-                                                compatibilityMaxCount
-logical, dimension(maxval(constitutive_nonlocal_totalNslip)) :: & 
-                                                compatibilityMask
+                                                thresholdValue, &
+                                                nThresholdValues
+logical, dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e)))) :: & 
+                                                belowThreshold
 
 
-myPhase = material_phase(1,i,e)
-myInstance = phase_constitutionInstance(myPhase)
-myStructure = constitutive_nonlocal_structure(myInstance)
-myNSlipSystems = constitutive_nonlocal_totalNslip(myInstance)
-mySlipSystems(1:myNSlipSystems) = constitutive_nonlocal_slipSystemLattice(1:myNSlipSystems,myInstance)
-myNormals = lattice_sn(1:3,mySlipSystems,myStructure)
-mySlipDirections = lattice_sd(1:3,mySlipSystems,myStructure)
+Nneighbors = FE_NipNeighbors(mesh_element(2,e))
+my_phase = material_phase(1,i,e)
+my_instance = phase_constitutionInstance(my_phase)
+my_structure = constitutive_nonlocal_structure(my_instance)
+ns = constitutive_nonlocal_totalNslip(my_instance)  
+slipNormal(1:3,1:ns) =    lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,my_instance), my_structure)
+slipDirection(1:3,1:ns) = lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,my_instance), my_structure)
 
-do n = 1,FE_NipNeighbors(mesh_element(2,e))                                                                                         ! loop through my neighbors          
+
+!*** start out fully compatible
+
+constitutive_nonlocal_compatibility(:,:,:,:,i,e) = 0.0_pReal
+forall(s1 = 1:maxval(constitutive_nonlocal_totalNslip)) &
+  constitutive_nonlocal_compatibility(1:2,s1,s1,1:Nneighbors,i,e) = 1.0_pReal
+
+
+!*** Loop thrugh neighbors and check whether there is any compatibility.
+!*** This is only the case for
+
+do n = 1,Nneighbors
   neighboring_e = mesh_ipNeighborhood(1,n,i,e)
-  neighboring_i = mesh_ipNeighborhood(2,n,i,e)    
-  if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                                                                           ! if neighbor exists
-    neighboringPhase = material_phase(1,neighboring_i,neighboring_e)
-    
-    if (.not. phase_localConstitution(neighboringPhase)) then                                                                       ! neighbor got also nonlocal constitution
-      neighboringInstance = phase_constitutionInstance(neighboringPhase)        
-      neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)
-      neighboringNSlipSystems = constitutive_nonlocal_totalNslip(neighboringInstance)
-      neighboringSlipSystems(1:neighboringNSlipSystems) = constitutive_nonlocal_slipSystemLattice(1:neighboringNSlipSystems, &
-                                                                                                  neighboringInstance)
-      neighboringNormals = lattice_sn(1:3,neighboringSlipSystems,neighboringStructure)
-      neighboringSlipDirections = lattice_sd(1:3,neighboringSlipSystems,neighboringStructure)
+  neighboring_i = mesh_ipNeighborhood(2,n,i,e)
   
-      if (myStructure == neighboringStructure) then                                                                                 ! if my neighbor has same crystal structure like me
-        absoluteMisorientation = math_QuaternionDisorientation( orientation(1:4,1,i,e), &
-                                                                orientation(1:4,1,neighboring_i,neighboring_e), 0_pInt)
   
-        do s1 = 1,myNSlipSystems                                                                                                    ! loop through my slip systems
-          do s2 = 1,neighboringNSlipSystems                                                                                         ! loop through my neighbors' slip systems
-            constitutive_nonlocal_compatibility(1,s2,s1,n,i,e) = &
-                  math_mul3x3(myNormals(1:3,s1), math_qRot(absoluteMisorientation, neighboringNormals(1:3,s2))) &
-                * abs(math_mul3x3(mySlipDirections(1:3,s1), math_qRot(absoluteMisorientation, neighboringSlipDirections(1:3,s2))))
-            constitutive_nonlocal_compatibility(2,s2,s1,n,i,e) = &
-                  abs(math_mul3x3(myNormals(1:3,s1), math_qRot(absoluteMisorientation, neighboringNormals(1:3,s2)))) &
-                * abs(math_mul3x3(mySlipDirections(1:3,s1), math_qRot(absoluteMisorientation, neighboringSlipDirections(1:3,s2))))
-          enddo
-          compatibilitySum = 0.0_pReal
-          compatibilityMask = .true.
-          do while ( (1.0_pReal - compatibilitySum > 0.0_pReal) .and. any(compatibilityMask) )                                      ! only those largest values that sum up to 1 are considered (round off of the smallest considered values to ensure sum to be exactly 1)
-            compatibilityMax = maxval(constitutive_nonlocal_compatibility(2,1:neighboringNSlipSystems,s1,n,i,e), compatibilityMask) ! screws always positive
-            compatibilityMaxCount = &
-              dble(count(constitutive_nonlocal_compatibility(2,1:neighboringNSlipSystems,s1,n,i,e) == compatibilityMax))
-            where (constitutive_nonlocal_compatibility(2,1:neighboringNSlipSystems,s1,n,i,e) >= compatibilityMax) &
-              compatibilityMask = .false.
-            if (compatibilitySum + compatibilityMax * compatibilityMaxCount > 1.0_pReal) &                                          ! if compatibility sum exceeds 1...
-              where (abs(constitutive_nonlocal_compatibility(1:2,1:neighboringNSlipSystems,s1,n,i,e)) == compatibilityMax) &        ! ... equally distribute what is left
-                constitutive_nonlocal_compatibility(1:2,1:neighboringNSlipSystems,s1,n,i,e) = &
-                  sign((1.0_pReal - compatibilitySum) / compatibilityMaxCount, &
-                       constitutive_nonlocal_compatibility(1:2,1:neighboringNSlipSystems,s1,n,i,e))
-            compatibilitySum = compatibilitySum + compatibilityMaxCount * compatibilityMax
-          enddo
-          where (compatibilityMask) constitutive_nonlocal_compatibility(1,1:neighboringNSlipSystems,s1,n,i,e) = 0.0_pReal
-          where (compatibilityMask) constitutive_nonlocal_compatibility(2,1:neighboringNSlipSystems,s1,n,i,e) = 0.0_pReal
-        enddo          
-      else                                                                                                                          ! neighbor has different crystal structure
-        constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 0.0_pReal                                                                ! no compatibility              
-      endif
-    else                                                                                                                            ! neighbor has local constitution
+  !* FREE SURFACE
+  !* Set surface transmissivity to the value specified in the material.config
+  
+  if (neighboring_e <= 0 .or. neighboring_i <= 0) then
+    forall(s1 = 1:ns) &
+      constitutive_nonlocal_compatibility(1:2,s1,s1,n,i,e) = sqrt(constitutive_nonlocal_surfaceTransmissivity(my_instance))
+    cycle
+  endif
+  
+  
+  !* PHASE BOUNDARY
+  !* If we encounter a different nonlocal "cpfem" phase at the neighbor, 
+  !* we consider this to be a real "physical" phase boundary, so fully incompatible.
+  !* If the neighboring "cpfem" phase has a local constitution, 
+  !* we do not consider this to be a phase boundary, so fully compatible.
+  
+  neighboring_phase = material_phase(1,neighboring_i,neighboring_e)
+  if (neighboring_phase /= my_phase) then
+    if (.not. phase_localConstitution(neighboring_phase)) then
       constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 0.0_pReal
-      forall(s1 = 1:maxval(constitutive_nonlocal_totalNslip)) &
-        constitutive_nonlocal_compatibility(1:2,s1,s1,n,i,e) = 1.0_pReal                                                            ! assume perfect compatibility for equal slip system index
     endif
-  else                                                                                                                              ! no neighbor present
-    constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 0.0_pReal
-    forall(s1 = 1:maxval(constitutive_nonlocal_totalNslip)) &
-      constitutive_nonlocal_compatibility(1:2,s1,s1,n,i,e) = 1.0_pReal                                                              ! perfect compatibility for equal slip system index
+    cycle
   endif
 
-enddo
+    
+  !* GRAIN BOUNDARY ?
+  !* The compatibility value is defined as the product of the slip normal projection and the slip direction projection.
+  !* Its sign is always positive for screws, for edges it has the same sign as the slip normal projection. 
+  !* Since the sum for each slip system can easily exceed one (which would result in a transmissivity larger than one), 
+  !* only values above or equal to a certain threshold value are considered. This threshold value is chosen, such that
+  !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one. 
+  !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one. 
+  !* All values below the threshold are set to zero.
+  
+  absoluteMisorientation = math_QuaternionDisorientation(orientation(1:4,1,i,e), &
+                                                         orientation(1:4,1,neighboring_i,neighboring_e), &
+                                                         0_pInt)      ! no symmetry
+                                                         
+  do s1 = 1,ns    ! my slip systems
+
+    do s2 = 1,ns  ! my neighbor's slip systems
+      compatibility(1,s2) =     math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
+                          * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
+      compatibility(2,s2) = abs(math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2)))) &
+                          * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
+    enddo
+    
+    compatibilitySum = 0.0_pReal
+    belowThreshold = .true.
+    do while (compatibilitySum < 1.0_pReal .and. any(belowThreshold(1:ns)))
+      thresholdValue = maxval(compatibility(2,1:ns), belowThreshold(1:ns))              ! screws always positive
+      nThresholdValues = dble(count(compatibility(2,1:ns) == thresholdValue))
+      where (compatibility(2,1:ns) >= thresholdValue) &
+        belowThreshold(1:ns) = .false.
+      if (compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
+        where (abs(compatibility(1:2,1:ns)) == thresholdValue) &
+          compatibility(1:2,1:ns) = sign((1.0_pReal - compatibilitySum) / nThresholdValues, compatibility(1:2,1:ns))
+      compatibilitySum = compatibilitySum + nThresholdValues * thresholdValue
+    enddo
+    where (belowThreshold(1:ns)) compatibility(1,1:ns) = 0.0_pReal
+    where (belowThreshold(1:ns)) compatibility(2,1:ns) = 0.0_pReal
+    
+    constitutive_nonlocal_compatibility(1:2,1:ns,s1,n,i,e) = compatibility(1:2,1:ns)
+
+  enddo ! my slip systems cycle
+
+enddo   ! neighbor cycle
   
 endsubroutine 
 
