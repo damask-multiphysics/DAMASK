@@ -42,24 +42,26 @@
 
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
 ! ---------------------------
- integer(pInt) mesh_Nelems,mesh_NcpElems,mesh_NelemSets,mesh_maxNelemInSet
+ integer(pInt) mesh_Nelems, mesh_NcpElems, mesh_NelemSets, mesh_maxNelemInSet
  integer(pInt) mesh_Nmaterials
- integer(pInt) mesh_Nnodes,mesh_maxNnodes,mesh_maxNips,mesh_maxNipNeighbors,mesh_maxNsharedElems,mesh_maxNsubNodes
+ integer(pInt) mesh_Nnodes, mesh_maxNnodes, mesh_maxNips, mesh_maxNipNeighbors, mesh_maxNsharedElems, mesh_maxNsubNodes
  integer(pInt), dimension(2) :: mesh_maxValStateVar = 0_pInt
  character(len=64), dimension(:),   allocatable :: mesh_nameElemSet, &    ! names of elementSet
                                                    mesh_nameMaterial, &   ! names of material in solid section
                                                    mesh_mapMaterial       ! name of elementSet for material
  integer(pInt), dimension(:,:),     allocatable :: mesh_mapElemSet        ! list of elements in elementSet
  integer(pInt), dimension(:,:),     allocatable, target :: mesh_mapFEtoCPelem, mesh_mapFEtoCPnode
- integer(pInt), dimension(:,:),     allocatable :: mesh_element, mesh_sharedElem
+ integer(pInt), dimension(:,:),     allocatable :: mesh_element, &
+                                                   mesh_sharedElem, &
+                                                   mesh_nodeTwins         ! node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
  integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
 
  real(pReal),   dimension(:,:,:),   allocatable :: mesh_subNodeCoord      ! coordinates of subnodes per element
- real(pReal),   dimension(:,:),     allocatable :: mesh_ipVolume          ! volume associated with IP
+ real(pReal),   dimension(:,:),     allocatable :: mesh_node, & 
+                                                   mesh_ipVolume          ! volume associated with IP
  real(pReal),   dimension(:,:,:),   allocatable :: mesh_ipArea, &         ! area of interface to neighboring IP
                                                    mesh_ipCenterOfGravity ! center of gravity of IP
  real(pReal),   dimension(:,:,:,:), allocatable :: mesh_ipAreaNormal      ! area normal of interface to neighboring IP
- real(pReal),                       allocatable :: mesh_node (:,:)
  
  integer(pInt), dimension(:,:,:),   allocatable :: FE_nodesAtIP
  integer(pInt), dimension(:,:,:),   allocatable :: FE_ipNeighbor
@@ -67,6 +69,7 @@
  integer(pInt), dimension(:,:,:,:), allocatable :: FE_subNodeOnIPFace
  
  logical :: noPart                                                        ! for cases where the ABAQUS input file does not use part/assembly information
+ logical, dimension(3) :: mesh_periodicSurface                            ! flag indicating periodic outer surfaces (used for fluxes)
 
  integer(pInt) :: hypoelasticTableStyle
  integer(pInt) :: initialcondTableStyle
@@ -266,6 +269,7 @@
                          call mesh_marc_build_nodes(fileUnit)
                          call mesh_marc_count_cpSizes(fileunit)
                          call mesh_marc_build_elements(fileUnit)
+                         call mesh_marc_get_mpieOptions(fileUnit)
      case ('Abaqus')
                          noPart = IO_abaqus_hasNoPart(fileUnit)
                          call mesh_abaqus_count_nodesAndElements(fileUnit)
@@ -282,11 +286,12 @@
    end select
    close (fileUnit)
    
-   call mesh_build_sharedElems()
-   call mesh_build_ipNeighborhood()
    call mesh_build_subNodeCoords()
    call mesh_build_ipVolumes()
    call mesh_build_ipAreas()
+   call mesh_build_nodeTwins()
+   call mesh_build_sharedElems()
+   call mesh_build_ipNeighborhood()
    call mesh_tell_statistics()
 
    parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))      ! plus potential killer from non-local constitutive
@@ -413,56 +418,97 @@
 !***********************************************************
 ! find face-matching element of same type
 !***********************************************************
- function mesh_faceMatch(elem,face)
+subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
 
- use prec, only: pInt
- implicit none
+use prec, only: pInt
+implicit none
 
- integer(pInt) face,elem
- integer(pInt), dimension(2) :: mesh_faceMatch                                     ! matching element's ID and corresponding face ID 
- integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: myFaceNodes ! global node ids on my face
- integer(pInt) minN,NsharedElems, &
-               t, lonelyNode, &
-               candidateType,candidateElem, &
-               i,f,n
- 
- minN = mesh_maxNsharedElems+1         ! init to worst case
- mesh_faceMatch = 0_pInt               ! intialize to "no match found"
- t = mesh_element(2,elem)              ! figure elemType
+!*** output variables
+integer(pInt), intent(out) ::     matchingElem, &       ! matching CP element ID
+                                  matchingFace          ! matching FE face ID 
 
- do n = 1,FE_NfaceNodes(face,t)        ! loop over nodes on face
-   myFaceNodes(n) = mesh_FEasCP('node',mesh_element(4+FE_nodeOnFace(n,face,t),elem)) ! CP id of face node
-   NsharedElems = mesh_sharedElem(1,myFaceNodes(n)) ! figure # shared elements for this node
-   if (NsharedElems < minN) then
-     minN = NsharedElems               ! remember min # shared elems
-     lonelyNode = n                    ! remember most lonely node
-   endif
- enddo
+!*** input variables
+integer(pInt), intent(in) ::      face, &               ! FE face ID
+                                  elem                  ! FE elem ID
 
-  
-candidate: do i = 1,minN               ! iterate over lonelyNode's shared elements
-   candidateElem = mesh_sharedElem(1+i,myFaceNodes(lonelyNode)) ! present candidate elem
-   if (candidateElem == elem) cycle candidate         ! my own element ?
-   candidateType = mesh_element(2,candidateElem)      ! figure elemType of candidate
+!*** local variables
+integer(pInt), dimension(FE_NfaceNodes(face,mesh_element(2,elem))) :: &
+                                  myFaceNodes           ! global node ids on my face
+integer(pInt)                     myType, &
+                                  candidateType, &
+                                  candidateElem, &
+                                  candidateFace, &
+                                  candidateFaceNode, &
+                                  minNsharedElems, &
+                                  NsharedElems, &
+                                  lonelyNode, &
+                                  i, &
+                                  n, &
+                                  dir                   ! periodicity direction
+integer(pInt), dimension(:), allocatable :: element_seen
+logical checkTwins
 
-candidateFace: do f = 1,FE_maxNipNeighbors            ! check each face of candidate
-        if (FE_NfaceNodes(f,candidateType) /= FE_NfaceNodes(face,t)) &
-          cycle candidateFace                         ! incompatible face
-        do n = 1,FE_NfaceNodes(f,candidateType)       ! loop through nodes on face
-          if (all(myFaceNodes /= &
-              mesh_FEasCP('node', &
-                mesh_element(4+FE_nodeOnFace(n,f,candidateType),candidateElem)))) &
-            cycle candidateFace  ! other face node not one of my face nodes
-        enddo
-        mesh_faceMatch(1) = f
-        mesh_faceMatch(2) = candidateElem
-        exit candidate                                ! found my matching candidate
-      enddo candidateFace
- enddo candidate
-  
- return
- 
- endfunction
+
+minNsharedElems = mesh_maxNsharedElems + 1_pInt                   ! init to worst case
+matchingFace = 0_pInt
+matchingElem = 0_pInt                                             ! intialize to "no match found"
+myType = mesh_element(2,elem)                                     ! figure elemType
+
+do n = 1,FE_NfaceNodes(face,myType)                               ! loop over nodes on face
+  myFaceNodes(n) = mesh_FEasCP('node',mesh_element(4+FE_nodeOnFace(n,face,myType),elem)) ! CP id of face node
+  NsharedElems = mesh_sharedElem(1,myFaceNodes(n))                ! figure # shared elements for this node
+  if (NsharedElems < minNsharedElems) then
+    minNsharedElems = NsharedElems                                ! remember min # shared elems
+    lonelyNode = n                                                ! remember most lonely node
+  endif
+enddo
+
+allocate(element_seen(minNsharedElems))
+element_seen = 0_pInt
+
+checkCandidate: do i = 1,minNsharedElems                            ! iterate over lonelyNode's shared elements
+  candidateElem = mesh_sharedElem(1+i,myFaceNodes(lonelyNode))      ! present candidate elem
+  if (all(element_seen /= candidateElem)) then                      ! element seen for the first time?
+    element_seen(i) = candidateElem
+    candidateType = mesh_element(2,candidateElem)                   ! figure elemType of candidate
+checkCandidateFace: do candidateFace = 1,FE_maxNipNeighbors         ! check each face of candidate
+      if (FE_NfaceNodes(candidateFace,candidateType) /= FE_NfaceNodes(face,myType) & ! incompatible face
+          .or. (candidateElem == elem .and. candidateFace == face)) then  ! this is my face
+        cycle checkCandidateFace
+      endif
+      checkTwins = .false.
+      do n = 1,FE_NfaceNodes(candidateFace,candidateType)           ! loop through nodes on face
+        candidateFaceNode = mesh_FEasCP('node', mesh_element(4+FE_nodeOnFace(n,candidateFace,candidateType),candidateElem))
+        if (all(myFaceNodes /= candidateFaceNode)) then             ! candidate node does not match any of my face nodes
+          checkTwins = .true.                                       ! perhaps the twin nodes do match
+          exit
+        endif
+      enddo
+      if(checkTwins) then
+checkCandidateFaceTwins: do dir = 1,3
+          do n = 1,FE_NfaceNodes(candidateFace,candidateType)       ! loop through nodes on face
+            candidateFaceNode = mesh_FEasCP('node', mesh_element(4+FE_nodeOnFace(n,candidateFace,candidateType),candidateElem))
+            if (all(myFaceNodes /= mesh_nodeTwins(dir,candidateFaceNode))) then ! node twin does not match either
+              if (dir == 3) then
+                cycle checkCandidateFace
+              else
+                cycle checkCandidateFaceTwins                       ! try twins in next dimension
+              endif
+            endif
+          enddo
+          exit checkCandidateFaceTwins
+        enddo checkCandidateFaceTwins
+      endif
+      matchingFace = candidateFace
+      matchingElem = candidateElem
+      exit checkCandidate                                           ! found my matching candidate
+    enddo checkCandidateFace
+  endif
+enddo checkCandidate
+
+deallocate(element_seen)
+
+endsubroutine
 
  
 !********************************************************************
@@ -562,10 +608,10 @@ candidateFace: do f = 1,FE_maxNipNeighbors            ! check each face of candi
     7,8, 0,0,  &
     7,0, 0,0   &
     /),(/FE_maxNnodesAtIP(7),FE_Nips(7)/))
-!! FE_nodesAtIP(:,:FE_Nips(8),8) = &  ! element 117 WHY IS THIS NOT DEFINED (AS FOR 134)??
-!!    reshape((/&
-!!    1,2,3,4,5,6,7,8   &
-!!    /),(/FE_maxNnodesAtIP(8),FE_Nips(8)/))
+! FE_nodesAtIP(:,:FE_Nips(8),8) = &  ! element 117 (c3d8r --> single IP per element, so no need for this mapping)
+!    reshape((/&
+!    1,2,3,4,5,6,7,8   &
+!    /),(/FE_maxNnodesAtIP(8),FE_Nips(8)/))
  FE_nodesAtIP(:,:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
     reshape((/&
     1,  &
@@ -1255,6 +1301,55 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
 620 return
  
  endsubroutine
+
+
+!********************************************************************
+! get any additional mpie options from input file (Marc only)
+!
+! mesh_periodicSurface
+!********************************************************************
+subroutine mesh_marc_get_mpieOptions(unit)
+
+use prec, only: pInt
+use IO
+implicit none
+
+integer(pInt), intent(in) :: unit
+
+integer(pInt), parameter :: maxNchunks = 5
+integer(pInt), dimension (1+2*maxNchunks) :: pos
+integer(pInt) chunk
+character(len=300) line
+
+mesh_periodicSurface = (/.false., .false., .false./)
+
+610 FORMAT(A300)
+
+rewind(unit)
+do 
+  read (unit,610,END=620) line
+  pos = IO_stringPos(line,maxNchunks)
+
+  if (IO_lc(IO_stringValue(line,pos,1)) == '$mpie') then              ! found keyword for user defined input
+    if (IO_lc(IO_stringValue(line,pos,2)) == 'periodic' &             ! found keyword 'periodic'
+        .and. pos(1) > 3) then                                        ! and there is at least one more chunk to read
+      do chunk = 2,pos(1)                                             ! loop through chunks (skipping the keyword)
+        select case(IO_stringValue(line,pos,chunk))                   ! chunk matches keyvalues x,y or z?
+          case('x')
+            mesh_periodicSurface(1) = .true.
+          case('y')
+            mesh_periodicSurface(2) = .true.
+          case('z')
+            mesh_periodicSurface(3) = .true.
+        end select
+      enddo
+    endif
+  endif
+enddo
+
+620 return
+
+endsubroutine
 
  
 !********************************************************************
@@ -2686,55 +2781,72 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! _maxNsharedElems
 ! _sharedElem
 !********************************************************************
- subroutine mesh_build_sharedElems ()
+subroutine mesh_build_sharedElems()
 
- use prec, only: pInt
- use IO
- implicit none
+use prec, only: pInt
+implicit none
 
- integer(pint) e,t,n,j
- integer(pInt), dimension (mesh_Nnodes) :: node_count
- integer(pInt), dimension (:), allocatable :: node_seen
+integer(pint)   e, &      ! element index
+                t, &      ! element type
+                node, &   ! CP node index
+                j, &      ! node index per element 
+                dim, &    ! dimension index 
+                nodeTwin  ! node twin in the specified dimension
+integer(pInt), dimension (mesh_Nnodes) :: node_count
+integer(pInt), dimension (:), allocatable :: node_seen
 
- allocate(node_seen(maxval(FE_Nnodes)))
- node_count = 0_pInt
+allocate(node_seen(maxval(FE_Nnodes)))
 
- do e = 1,mesh_NcpElems
+node_count = 0_pInt
 
-   t = mesh_element(2,e)                                                  ! my type
-   node_seen = 0_pInt                                                     ! reset node duplicates
-   do j = 1,FE_Nnodes(t)                                                  ! check each node of element
-     n = mesh_FEasCP('node',mesh_element(4+j,e))
-     if (all(node_seen /= n)) node_count(n) = node_count(n) + 1_pInt      ! if FE node not yet encountered -> count it
-     node_seen(j) = n                                                     ! remember this node to be counted already
-   enddo
+do e = 1,mesh_NcpElems
+  t = mesh_element(2,e)
 
- enddo
+  node_seen = 0_pInt                                                      ! reset node duplicates
+  do j = 1,FE_Nnodes(t)                                                   ! check each node of element
+    node = mesh_FEasCP('node',mesh_element(4+j,e))
+    if (all(node_seen /= node)) then
+      node_count(node) = node_count(node) + 1_pInt                        ! if FE node not yet encountered -> count it
+      do dim = 1,3                                                        ! check in each dimension...
+        nodeTwin = mesh_nodeTwins(dim,node)
+        if (nodeTwin > 0) &                                               ! if i am a twin of some node...
+          node_count(nodeTwin) = node_count(nodeTwin) + 1_pInt            ! -> count me again for the twin node
+      enddo
+    endif
+    node_seen(j) = node                                                   ! remember this node to be counted already
+  enddo
+enddo
 
- mesh_maxNsharedElems = maxval(node_count)                                ! most shared node
- 
- allocate ( mesh_sharedElem( 1+mesh_maxNsharedElems,mesh_Nnodes) )
- mesh_sharedElem = 0_pInt
+mesh_maxNsharedElems = maxval(node_count)                                 ! most shared node
 
- do e = 1,mesh_NcpElems
-   node_seen = 0_pInt
-   do j = 1,FE_Nnodes(mesh_element(2,e))
-     n = mesh_FEasCP('node',mesh_element(4+j,e))
-     if (all(node_seen /= n)) then
-       mesh_sharedElem(1,n) = mesh_sharedElem(1,n) + 1                    ! count for each node the connected elements
-       mesh_sharedElem(1+mesh_sharedElem(1,n),n) = e                      ! store the respective element id
-     endif
-     node_seen(j) = n
-   enddo
- enddo
+allocate(mesh_sharedElem(1+mesh_maxNsharedElems,mesh_Nnodes))
+mesh_sharedElem = 0_pInt
 
- deallocate (node_seen)
+do e = 1,mesh_NcpElems
+  t = mesh_element(2,e)
+  node_seen = 0_pInt
+  do j = 1,FE_Nnodes(t)
+    node = mesh_FEasCP('node',mesh_element(4+j,e))
+    if (all(node_seen /= node)) then
+      mesh_sharedElem(1,node) = mesh_sharedElem(1,node) + 1_pInt          ! count for each node the connected elements
+      mesh_sharedElem(mesh_sharedElem(1,node)+1,node) = e                 ! store the respective element id
+      do dim = 1,3                                                        ! check in each dimension...
+        nodeTwin = mesh_nodeTwins(dim,node)
+        if (nodeTwin > 0) then                                            ! if i am a twin of some node...
+          mesh_sharedElem(1,nodeTwin) = mesh_sharedElem(1,nodeTwin) + 1_pInt ! ...count me again for the twin
+          mesh_sharedElem(mesh_sharedElem(1,nodeTwin)+1,nodeTwin) = e     ! store the respective element id
+        endif
+      enddo
+    endif
+    node_seen(j) = node
+  enddo
+enddo
 
- return
+deallocate(node_seen)
 
- endsubroutine
- 
- 
+endsubroutine
+
+
 
 !***********************************************************
 ! build up of IP neighborhood
@@ -2742,74 +2854,152 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! allocate globals
 ! _ipNeighborhood
 !***********************************************************
- subroutine mesh_build_ipNeighborhood()
- 
- use prec, only: pInt
- implicit none
- 
- integer(pInt) e,t,i,j,k,l,m,n,a,anchor, neighborType
- integer(pInt) neighbor,neighboringElem,neighboringIP
- integer(pInt), dimension(2) :: matchingElem                              ! face and id of matching elem
- integer(pInt), dimension(FE_maxmaxNnodesAtIP) :: linkedNodes, &
-                                                  matchingNodes
- 
- linkedNodes = 0_pInt
+subroutine mesh_build_ipNeighborhood()
 
- allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipNeighborhood = 0_pInt
- 
- do e = 1,mesh_NcpElems                                                   ! loop over cpElems
-   t = mesh_element(2,e)                                                  ! get elemType
-   do i = 1,FE_Nips(t)                                                    ! loop over IPs of elem
-     do n = 1,FE_NipNeighbors(t)                                          ! loop over neighbors of IP
-       neighbor = FE_ipNeighbor(n,i,t)
-       if (neighbor > 0) then                                             ! intra-element IP
-         neighboringElem = e
-         neighboringIP   = neighbor
-       else                                                               ! neighboring element's IP
-         neighboringElem = 0_pInt
-         neighboringIP = 0_pInt
-         matchingElem = mesh_faceMatch(e,-neighbor)                       ! get face and CP elem id of face match
-         if (matchingElem(2) > 0_pInt) then                               ! found match?
-           neighborType = mesh_element(2,matchingElem(2))
-           l = 0_pInt
-           do a = 1,FE_maxNnodesAtIP(t)                                   ! figure my anchor nodes on connecting face
-             anchor = FE_nodesAtIP(a,i,t)
-             if (any(FE_nodeOnFace(:,-neighbor,t) == anchor)) then        ! ip anchor sits on face?
-               l = l+1_pInt
-               linkedNodes(l) = mesh_element(4+anchor,e)                  ! FE id of anchor node
-             endif
-           enddo
+use prec, only: pInt
+implicit none
 
-  neighborIP: do j = 1,FE_Nips(neighborType)                              ! loop over neighboring ips
-             m = 0_pInt
-             matchingNodes = 0_pInt
-             do a = 1,FE_maxNnodesAtIP(neighborType)                      ! check each anchor node of that ip
-               anchor = FE_nodesAtIP(a,j,neighborType)
-               if (    anchor /= 0_pInt .and. &    ! valid anchor node
-                   any(FE_nodeOnFace(:,matchingElem(1),neighborType) == anchor) ) then
-                 m = m+1_pInt
-                 matchingNodes(m) = mesh_element(4+anchor,matchingElem(2)) ! FE id of neighbor's anchor node
-               endif
-             enddo
-             if (m /= l) cycle neighborIP                                 ! this ip has wrong count of anchors on face
-             do a = 1,l
-               if (all(matchingNodes /= linkedNodes(a))) cycle neighborIP
-             enddo
-             neighboringElem = matchingElem(2)                            ! survival of the fittest
-             neighboringIP   = j
-             exit neighborIP
-           enddo neighborIP
-         endif                                                            ! end of valid external matching
-       endif                                                              ! end of internal/external matching
-       mesh_ipNeighborhood(1,n,i,e) = neighboringElem
-       mesh_ipNeighborhood(2,n,i,e) = neighboringIP
-     enddo
-   enddo
- enddo
- 
- return
+integer(pInt)                   myElem, &               ! my CP element index
+                                myIP, &
+                                myType, &               ! my element type
+                                myFace, &
+                                neighbor, &             ! neighor index
+                                neighboringIPkey, &     ! positive integer indicating the neighboring IP (for intra-element) and negative integer indicating the face towards neighbor (for neighboring element) 
+                                candidateIP, &
+                                neighboringType, &      ! element type of neighbor
+                                NlinkedNodes, &         ! number of linked nodes
+                                twin_of_linkedNode, &   ! node twin of a specific linkedNode
+                                NmatchingNodes, &       ! number of matching nodes
+                                dir, &                  ! direction of periodicity
+                                matchingElem, &         ! CP elem number of matching element
+                                matchingFace, &         ! face ID of matching element
+                                k, a, anchor
+integer(pInt), dimension(FE_maxmaxNnodesAtIP) :: &
+                                linkedNodes, &
+                                matchingNodes
+logical checkTwins
 
- endsubroutine
+allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
+mesh_ipNeighborhood = 0_pInt
+
+linkedNodes = 0_pInt
+
+do myElem = 1,mesh_NcpElems                                                         ! loop over cpElems
+  myType = mesh_element(2,myElem)                                                   ! get elemType
+  do myIP = 1,FE_Nips(myType)                                                       ! loop over IPs of elem
+    do neighbor = 1,FE_NipNeighbors(myType)                                         ! loop over neighbors of IP
+      neighboringIPkey = FE_ipNeighbor(neighbor,myIP,myType)
+      
+      !*** if the key is positive, the neighbor is inside the element
+      !*** that means, we have already found our neighboring IP
+      
+      if (neighboringIPkey > 0) then
+        mesh_ipNeighborhood(1,neighbor,myIP,myElem) = myElem
+        mesh_ipNeighborhood(2,neighbor,myIP,myElem) = neighboringIPkey
+
+
+      !*** if the key is negative, the neighbor resides in a neighboring element
+      !*** that means, we have to look through the face indicated by the key and see which element is behind that face
+      
+      elseif (neighboringIPkey < 0) then                                            ! neighboring element's IP
+        myFace = -neighboringIPkey
+        call mesh_faceMatch(myElem, myFace, matchingElem, matchingFace)             ! get face and CP elem id of face match
+        if (matchingElem > 0_pInt) then                                             ! found match?
+          neighboringType = mesh_element(2,matchingElem)
+
+          !*** trivial solution if neighbor has only one IP
+          
+          if (FE_Nips(neighboringType) == 1_pInt) then            
+            mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
+            mesh_ipNeighborhood(2,neighbor,myIP,myElem) = 1_pInt
+            cycle
+          endif
+
+          !*** find those nodes which build the link to the neighbor
+          
+          NlinkedNodes = 0_pInt
+          linkedNodes = 0_pInt
+          do a = 1,FE_maxNnodesAtIP(myType)                                         ! figure my anchor nodes on connecting face
+            anchor = FE_nodesAtIP(a,myIP,myType)
+            if (anchor /= 0_pInt) then                                              ! valid anchor node
+              if (any(FE_nodeOnFace(:,myFace,myType) == anchor)) then               ! ip anchor sits on face?
+                NlinkedNodes = NlinkedNodes + 1_pInt
+                linkedNodes(NlinkedNodes) = mesh_element(4+anchor,myElem)           ! FE id of anchor node
+              else                                                                  ! something went wrong with the linkage, since not all anchors sit on my face
+                NlinkedNodes = 0_pInt
+                linkedNodes = 0_pInt
+                exit
+              endif
+            endif
+          enddo
+
+          !*** loop through the ips of my neighbor
+          !*** and try to find an ip with matching nodes
+          !*** also try to match with node twins
+          
+checkCandidateIP: do candidateIP = 1,FE_Nips(neighboringType)
+            NmatchingNodes = 0_pInt
+            matchingNodes = 0_pInt
+            do a = 1,FE_maxNnodesAtIP(neighboringType)                              ! check each anchor node of that ip
+              anchor = FE_nodesAtIP(a,candidateIP,neighboringType)
+              if (anchor /= 0_pInt) then                                            ! valid anchor node
+                if (any(FE_nodeOnFace(:,matchingFace,neighboringType) == anchor)) then  ! sits on matching face?
+                  NmatchingNodes = NmatchingNodes + 1_pInt
+                  matchingNodes(NmatchingNodes) = mesh_element(4+anchor,matchingElem)   ! FE id of neighbor's anchor node
+                else                                                                ! no matching, because not all nodes sit on the matching face
+                  NmatchingNodes = 0_pInt
+                  matchingNodes = 0_pInt
+                  exit
+                endif
+              endif
+            enddo
+
+            if (NmatchingNodes /= NlinkedNodes) &                                   ! this ip has wrong count of anchors on face
+              cycle checkCandidateIP
+            
+            !*** check "normal" nodes whether they match or not
+            
+            checkTwins = .false.
+            do a = 1,NlinkedNodes
+              if (all(matchingNodes /= linkedNodes(a))) then                        ! this linkedNode does not match any matchingNode
+                checkTwins = .true.
+                exit                                                                ! no need to search further
+              endif
+            enddo
+            
+            !*** if no match found, then also check node twins
+            
+            if(checkTwins) then
+periodicityDirection: do dir = 1,3
+                do a = 1,NlinkedNodes
+                  twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
+                  if (twin_of_linkedNode == 0_pInt &                                ! twin of linkedNode does not exist...
+                      .or. all(matchingNodes /= twin_of_linkedNode)) then           ! ... or it does not match any matchingNode
+                    if (dir < 3) then                                               ! no match in this direction...
+                      cycle periodicityDirection                                    ! ... so try in different direction
+                    else                                                            ! no matching in any direction...
+                      cycle checkCandidateIP                                        ! ... so check next candidateIP
+                    endif
+                  endif
+                enddo
+                exit periodicityDirection
+              enddo periodicityDirection
+            endif
+
+            !*** we found a match !!!
+            
+            mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
+            mesh_ipNeighborhood(2,neighbor,myIP,myElem) = candidateIP
+            exit checkCandidateIP
+            
+          enddo checkCandidateIP
+        endif                                                                     ! end of valid external matching
+      endif                                                                       ! end of internal/external matching
+    enddo
+  enddo
+enddo
+
+endsubroutine
 
 
 
@@ -2960,58 +3150,139 @@ subroutine mesh_marc_count_cpSizes (unit)
 
 
 !***********************************************************
+! assignment of twin nodes for each cp node
+!
+! allocate globals
+! _nodeTwins
+!***********************************************************
+subroutine mesh_build_nodeTwins()
+
+use prec, only: pInt, pReal
+implicit none
+
+integer(pInt) dir, &      ! direction of periodicity
+              node, &
+              minimumNode, &
+              maximumNode, &
+              n1, &
+              n2
+integer(pInt), dimension(mesh_Nnodes+1) :: minimumNodes, maximumNodes ! list of surface nodes (minimum and maximum coordinate value) with first entry giving the number of nodes
+real(pReal)   minCoord, maxCoord, &     ! extreme positions in one dimension
+              tolerance                 ! tolerance below which positions are assumed identical
+real(pReal), dimension(3) ::  distance  ! distance between two nodes in all three coordinates
+logical, dimension(mesh_Nnodes) ::  node_seen
+
+allocate(mesh_nodeTwins(3,mesh_Nnodes))
+mesh_nodeTwins = 0_pInt
+
+tolerance = 0.001_pReal * minval(mesh_ipVolume) ** 0.333_pReal
+
+do dir = 1,3                                    ! check periodicity in directions of x,y,z
+  if (mesh_periodicSurface(dir)) then           ! only if periodicity is requested
+
+    
+    !*** find out which nodes sit on the surface 
+    !*** and have a minimum or maximum position in this dimension
+    
+    minimumNodes = 0_pInt
+    maximumNodes = 0_pInt
+    minCoord = minval(mesh_node(dir,:))
+    maxCoord = maxval(mesh_node(dir,:))
+    do node = 1,mesh_Nnodes                     ! loop through all nodes and find surface nodes
+      if (abs(mesh_node(dir,node) - minCoord) <= tolerance) then
+        minimumNodes(1) = minimumNodes(1) + 1_pInt
+        minimumNodes(minimumNodes(1)+1) = node
+      elseif (abs(mesh_node(dir,node) - maxCoord) <= tolerance) then
+        maximumNodes(1) = maximumNodes(1) + 1_pInt
+        maximumNodes(maximumNodes(1)+1) = node
+      endif
+    enddo
+    
+    
+    !*** find the corresponding node on the other side with the same position in this dimension
+    
+    node_seen = .false.
+    do n1 = 1,minimumNodes(1)
+      minimumNode = minimumNodes(n1+1)
+      if (node_seen(minimumNode)) &
+        cycle
+      do n2 = 1,maximumNodes(1)
+        maximumNode = maximumNodes(n2+1)
+        distance = abs(mesh_node(:,minimumNode) - mesh_node(:,maximumNode))
+        if (sum(distance) - distance(dir) <= tolerance) then        ! minimum possible distance (within tolerance)
+          mesh_nodeTwins(dir,minimumNode) = maximumNode
+          mesh_nodeTwins(dir,maximumNode) = minimumNode
+          node_seen(maximumNode) = .true.                           ! remember this node, we don't have to look for his partner again
+          exit
+        endif
+      enddo
+    enddo
+
+  endif
+enddo
+
+endsubroutine
+
+
+
+!***********************************************************
 ! write statistics regarding input file parsing
 ! to the output file
 ! 
 !***********************************************************
- subroutine mesh_tell_statistics()
+subroutine mesh_tell_statistics()
 
- use prec, only: pInt
- use math, only: math_range
- use IO, only: IO_error
- use debug, only: verboseDebugger
+use prec, only: pInt
+use math, only: math_range
+use IO, only: IO_error
+use debug, only: verboseDebugger
 
- implicit none
+implicit none
 
- integer(pInt), dimension (:,:), allocatable :: mesh_HomogMicro
- character(len=64) fmt
+integer(pInt), dimension (:,:), allocatable :: mesh_HomogMicro
+character(len=64) fmt
 
- integer(pInt) i,e,n,f,t
+integer(pInt) i,e,n,f,t
 
- if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(110) ! no homogenization specified
- if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(120) ! no microstructure specified
-   
- allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
- do e = 1,mesh_NcpElems
-   if (mesh_element(3,e) < 1_pInt) call IO_error(110,e) ! no homogenization specified
-   if (mesh_element(4,e) < 1_pInt) call IO_error(120,e) ! no homogenization specified
-   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
-   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1 ! count combinations of homogenization and microstructure
- enddo
+if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(110) ! no homogenization specified
+if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(120) ! no microstructure specified
+ 
+allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
+do e = 1,mesh_NcpElems
+  if (mesh_element(3,e) < 1_pInt) call IO_error(110,e) ! no homogenization specified
+  if (mesh_element(4,e) < 1_pInt) call IO_error(120,e) ! no homogenization specified
+  mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
+  mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1 ! count combinations of homogenization and microstructure
+enddo
 
- if (verboseDebugger) then
+if (verboseDebugger) then
   !$OMP CRITICAL (write2out)
-   write(6,*)
-   write(6,*) 'Input Parser: IP COORDINATES'
-   write(6,'(a5,x,a5,3(x,a12))') 'elem','IP','x','y','z'
-   do e = 1,mesh_NcpElems
-     do i = 1,FE_Nips(mesh_element(2,e))
-       write (6,'(i5,x,i5,3(x,f12.8))') e, i, mesh_ipCenterOfGravity(:,i,e)
-     enddo
-   enddo 
-   write(6,*)
-   write(6,*) "Input Parser: IP NEIGHBORHOOD"
-   write(6,*)
-   write(6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
-   do e = 1,mesh_NcpElems                  ! loop over cpElems
-     t = mesh_element(2,e)                 ! get elemType
-     do i = 1,FE_Nips(t)                   ! loop over IPs of elem
-       do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
-         write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
-       enddo
-     enddo
-   enddo
-   write (6,*)
+    write (6,*)
+    write (6,*) "Input Parser: SUBNODE COORDINATES"
+    write (6,*)
+    write(6,'(a5,x,a5,x,a15,x,a15,x,a20,3(x,a12))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
+    do e = 1,mesh_NcpElems                  ! loop over cpElems
+      t = mesh_element(2,e)                 ! get elemType
+      do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+        do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP
+          do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
+            write(6,'(i5,x,i5,x,i15,x,i15,x,i20,3(x,f12.8))') e,i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
+                                                              mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
+                                                              mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
+                                                              mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
+          enddo
+        enddo
+      enddo
+    enddo
+    write(6,*)
+    write(6,*) 'Input Parser: IP COORDINATES'
+    write(6,'(a5,x,a5,3(x,a12))') 'elem','IP','x','y','z'
+    do e = 1,mesh_NcpElems
+      do i = 1,FE_Nips(mesh_element(2,e))
+        write (6,'(i5,x,i5,3(x,f12.8))') e, i, mesh_ipCenterOfGravity(:,i,e)
+      enddo
+    enddo 
+    write (6,*)
     write (6,*) "Input Parser: ELEMENT VOLUME"
     write (6,*)
     write (6,"(a13,x,e15.8)") "total volume", sum(mesh_ipVolume)
@@ -3026,59 +3297,64 @@ subroutine mesh_marc_count_cpSizes (unit)
       enddo
     enddo
     write (6,*)
-   write (6,*) "Input Parser: SUBNODE COORDINATES"
-   write (6,*)
-   write(6,'(a5,x,a5,x,a15,x,a15,x,a20,3(x,a12))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
-   do e = 1,mesh_NcpElems                  ! loop over cpElems
-     t = mesh_element(2,e)                 ! get elemType
-     do i = 1,FE_Nips(t)                   ! loop over IPs of elem
-       do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP
-         do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
-           write(6,'(i5,x,i5,x,i15,x,i15,x,i20,3(x,f12.8))') e,i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
-                                                              mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
-                                                              mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
-                                                              mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
-         enddo
-       enddo
-     enddo
-   enddo
+    write (6,*) "Input Parser: NODE TWINS"
+    write (6,*)
+    write(6,'(a6,3(3(x),a6))') '  node','twin_x','twin_y','twin_z'
+    do n = 1,mesh_Nnodes                    ! loop over cpNodes
+      write(6,'(i6,3(3(x),i6))') n, mesh_nodeTwins(1:3,n)
+    enddo
+    write(6,*)
+    write(6,*) "Input Parser: IP NEIGHBORHOOD"
+    write(6,*)
+    write(6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
+    do e = 1,mesh_NcpElems                  ! loop over cpElems
+      t = mesh_element(2,e)                 ! get elemType
+      do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+        do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
+          write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
+        enddo
+      enddo
+    enddo
   !$OMP END CRITICAL (write2out)
- endif
+endif
 
 
- !$OMP CRITICAL (write2out)
- write (6,*)
- write (6,*) "Input Parser: STATISTICS"
- write (6,*)
- write (6,*) mesh_Nelems,           " : total number of elements in mesh"
- write (6,*) mesh_NcpElems,         " : total number of CP elements in mesh"
- write (6,*) mesh_Nnodes,           " : total number of nodes in mesh"
- write (6,*) mesh_maxNnodes,        " : max number of nodes in any CP element"
- write (6,*) mesh_maxNips,          " : max number of IPs in any CP element"
- write (6,*) mesh_maxNipNeighbors,  " : max number of IP neighbors in any CP element"
- write (6,*) mesh_maxNsubNodes,     " : max number of (additional) subnodes in any CP element"
- write (6,*) mesh_maxNsharedElems,  " : max number of CP elements sharing a node"
- write (6,*)
- write (6,*) "Input Parser: HOMOGENIZATION/MICROSTRUCTURE"
- write (6,*)
- write (6,*) mesh_maxValStateVar(1), " : maximum homogenization index"
- write (6,*) mesh_maxValStateVar(2), " : maximum microstructure index"
- write (6,*)
- write (fmt,"(a,i5,a)") "(9(x),a2,x,",mesh_maxValStateVar(2),"(i8))"
- write (6,fmt) "+-",math_range(mesh_maxValStateVar(2))
- write (fmt,"(a,i5,a)") "(i8,x,a2,x,",mesh_maxValStateVar(2),"(i8))"
- do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
-   write (6,fmt) i,"| ",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
- enddo
- write (6,*)
- call flush(6)
- !$OMP END CRITICAL (write2out)
+!$OMP CRITICAL (write2out)
+  write (6,*)
+  write (6,*) "Input Parser: STATISTICS"
+  write (6,*)
+  write (6,*) mesh_Nelems,           " : total number of elements in mesh"
+  write (6,*) mesh_NcpElems,         " : total number of CP elements in mesh"
+  write (6,*) mesh_Nnodes,           " : total number of nodes in mesh"
+  write (6,*) mesh_maxNnodes,        " : max number of nodes in any CP element"
+  write (6,*) mesh_maxNips,          " : max number of IPs in any CP element"
+  write (6,*) mesh_maxNipNeighbors,  " : max number of IP neighbors in any CP element"
+  write (6,*) mesh_maxNsubNodes,     " : max number of (additional) subnodes in any CP element"
+  write (6,*) mesh_maxNsharedElems,  " : max number of CP elements sharing a node"
+  write (6,*)
+  write (6,*) "Input Parser: HOMOGENIZATION/MICROSTRUCTURE"
+  write (6,*)
+  write (6,*) mesh_maxValStateVar(1), " : maximum homogenization index"
+  write (6,*) mesh_maxValStateVar(2), " : maximum microstructure index"
+  write (6,*)
+  write (fmt,"(a,i5,a)") "(9(x),a2,x,",mesh_maxValStateVar(2),"(i8))"
+  write (6,fmt) "+-",math_range(mesh_maxValStateVar(2))
+  write (fmt,"(a,i5,a)") "(i8,x,a2,x,",mesh_maxValStateVar(2),"(i8))"
+  do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
+    write (6,fmt) i,"| ",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
+  enddo
+  write(6,*)
+  write(6,*) "Input Parser: ADDITIONAL MPIE OPTIONS"
+  write(6,*)
+  write(6,*) "periodic surface : ", mesh_periodicSurface
+  write(6,*)
+  call flush(6)
+!$OMP END CRITICAL (write2out)
 
- deallocate(mesh_HomogMicro)
- return
+deallocate(mesh_HomogMicro)
  
- endsubroutine
+endsubroutine
 
  
- END MODULE mesh
+END MODULE mesh
  
