@@ -170,15 +170,15 @@ msg = []
 
 config = readConfig(options.config,sys.argv[0])
 
-if colors[0] in config:
-  options.symmetric = config[colors[0]]['symmetric']
-  hlsColor_range = [config[colors[0]]['lower'],\
-  									config[colors[0]]['upper']]
-elif len(colors) == 0:
+if len(colors) == 0:
   hlsColor_range = (options.symmetric and [[0,0.2,0.9],[0.333,0.2,0.9]]) or \
                                           [[0.167,0.9,0.1],[0.167,0.1,0.9]]
 elif len(colors) == 2:
 	hlsColor_range = [map(float, colors[i].split(',')) for i in range(2)]
+elif colors[0] in config:
+  options.symmetric = config[colors[0]]['symmetric']
+  hlsColor_range = [config[colors[0]]['lower'],\
+  									config[colors[0]]['upper']]
 else:
   msg.append('two color tuples required')
 
