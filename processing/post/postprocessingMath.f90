@@ -435,25 +435,36 @@ subroutine deformed_fft(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,scaling,coo
  implicit none
  integer res_x, res_y, res_z
  real*8 geomdim(3)
- real*8         defgrad(res_x,res_y,res_z,3,3)
- complex*16 defgrad_fft(res_x,res_y,res_z,3,3)
+ real*8 defgrad(res_x,res_y,res_z,3,3)
  real*8 defgrad_av(3,3)
  real*8 scaling
- real*8         coords(res_x,    res_y,res_z,3)
+ real*8 coords(res_x,res_y,res_z,3)
  complex*16 coords_fft(res_x/2+1,res_y,res_z,3)
- real*8          waves(res_x/2+1,res_y,res_z,3)
- include 'fftw3.f' !header file for fftw3 (declaring variables). Library files are also needed
- integer*8 ::  plan_fft(2)
- real*8, parameter :: pi = 3.14159265358979323846264338327950288419716939937510
- 
- real*8 zero
- real*8 temp33_Real(3,3)
- integer  i, j, k, ierr
- integer  k_s(3)
+ complex*16 defgrad_fft(res_x,res_y,res_z,3,3)
+ integer i, j, k
+ integer k_s(3)
  real*8 step(3)
- complex*16 img
- 
- img = cmplx(0.0,1.0)
+ real*8 offset_coords(3)
+ real*8, parameter :: pi = 3.14159265358979323846264338327950288419716939937510
+ integer*8 ::  plan_fft(2)
+ include 'fftw3.f' !header file for fftw3 (declaring variables). Library files are also needed
+
+ call dfftw_plan_many_dft(plan_fft(1),3,(/res_x,res_y,res_z/),9,&
+   defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,&
+   defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,FFTW_FORWARD,FFTW_PATIENT)  
+    
+ call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res_x,res_y,res_z/),3,&
+   coords_fft,(/res_x/2+1,res_y,res_z/),1,(res_x/2+1)*res_y*res_z,&
+   coords,    (/res_x,    res_y,res_z/),1, res_x*     res_y*res_z,FFTW_PATIENT) 
+   
+ coords_fft = 0.0
+ defgrad_fft = defgrad
+
+ step(1) = geomdim(1)/real(res_x)
+ step(2) = geomdim(2)/real(res_y)
+ step(3) = geomdim(3)/real(res_z)
+
+ call dfftw_execute_dft(plan_fft(1), defgrad_fft, defgrad_fft)
  
  do k = 1, res_z
    k_s(3) = k-1
@@ -463,79 +474,124 @@ subroutine deformed_fft(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,scaling,coo
      if(j > res_y/2+1) k_s(2) = k_s(2)-res_y
      do i = 1, res_x/2+1
        k_s(1) = i-1
-       waves(i,j,k,:) = real(k_s)/geomdim
+       if(i/=1) coords_fft(i,j,k,:) = coords_fft(i,j,k,:)&
+                                    + defgrad_fft(i,j,k,:,1)*geomdim(1)/(real(k_s(1))*cmplx(0.0,1.0)*pi*2.0)
+       if(j/=1) coords_fft(i,j,k,:) = coords_fft(i,j,k,:)&
+                                    + defgrad_fft(i,j,k,:,2)*geomdim(2)/(real(k_s(2))*cmplx(0.0,1.0)*pi*2.0)
+       if(k/=1) coords_fft(i,j,k,:) = coords_fft(i,j,k,:)&
+                                    + defgrad_fft(i,j,k,:,3)*geomdim(3)/(real(k_s(3))*cmplx(0.0,1.0)*pi*2.0)
  enddo; enddo; enddo
-
  
- call dfftw_plan_many_dft(plan_fft(1),3,(/res_x,res_y,res_z/),9,&
-   defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,&
-   defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,FFTW_FORWARD,FFTW_PATIENT)  
-    
- call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res_x,res_y,res_z/),3,&
-   coords_fft,(/res_x/2+1,res_y,res_z/),1,(res_x/2+1)*res_y*res_z,&
-   coords,    (/res_x,    res_y,res_z/),1, res_x*     res_y*res_z,FFTW_PATIENT) 
-   
- coords_fft=0.0
- defgrad_fft = defgrad
-
- call dfftw_execute_dft(plan_fft(1), defgrad_fft, defgrad_fft)
- 
- do k = 1, res_z; do j = 1, res_y; do i = 1, res_x/2+1
-     if(i/=1) then
-       coords_fft(i,j,k,1) = defgrad_fft(i,j,k,1,1)/(waves(i,j,k,1)*img)    
-       coords_fft(i,j,k,2) = defgrad_fft(i,j,k,2,1)/(waves(i,j,k,1)*img)                             
-       coords_fft(i,j,k,3) = defgrad_fft(i,j,k,3,1)/(waves(i,j,k,1)*img)  
-     endif
-     if(j/=1) then
-       coords_fft(i,j,k,1) = coords_fft(i,j,k,1) + defgrad_fft(i,j,k,1,2)/(waves(i,j,k,2)*img)      
-       coords_fft(i,j,k,2) = coords_fft(i,j,k,2) + defgrad_fft(i,j,k,2,2)/(waves(i,j,k,2)*img)      
-       coords_fft(i,j,k,3) = coords_fft(i,j,k,3) + defgrad_fft(i,j,k,3,2)/(waves(i,j,k,2)*img)      
-     endif                 
-     if(k/=1) then
-       coords_fft(i,j,k,1) = coords_fft(i,j,k,1) + defgrad_fft(i,j,k,1,3)/(waves(i,j,k,3)*img)      
-       coords_fft(i,j,k,2) = coords_fft(i,j,k,2) + defgrad_fft(i,j,k,2,3)/(waves(i,j,k,3)*img)      
-       coords_fft(i,j,k,3) = coords_fft(i,j,k,3) + defgrad_fft(i,j,k,3,3)/(waves(i,j,k,3)*img)      
-     endif      
- enddo; enddo; enddo
-
  call dfftw_execute_dft_c2r(plan_fft(2), coords_fft, coords)
-
  coords = coords/real(res_x*res_y*res_z)
 
+ offset_coords = matmul(defgrad(1,1,1,:,:),step/2.0) - scaling*coords(1,1,1,:)
  do k = 1, res_z; do j = 1, res_y; do i = 1, res_x
-     coords(i,j,k,:) = coords(i,j,k,:)/(geomdim*2.0*pi)
+     coords(i,j,k,:) =  scaling*coords(i,j,k,:) + offset_coords + matmul(defgrad_av,&
+                                                  (/step(1)*real(i-1),&
+                                                    step(2)*real(j-1),&
+                                                    step(3)*real(k-1)/))
+
  enddo; enddo; enddo
-  
- step(1) = geomdim(1)/real(res_x)
- step(2) = geomdim(2)/real(res_y)
- step(3) = geomdim(3)/real(res_z)
- 
-
- temp33_Real(1,:) = matmul(defgrad_av,step/2.0) &
-                  - matmul(defgrad_av,(/zero,zero,step(3)/)) ! start below origin
-
- do k = 1, res_z; do j = 1, res_y; do i = 1, res_x
-   if((j==1).and.(i==1)) then
-     temp33_Real(1,:) = temp33_Real(1,:) + matmul(defgrad_av,&
-                      (/zero,zero,step(3)/))
-     temp33_Real(2,:) = temp33_Real(1,:)
-     temp33_Real(3,:) = temp33_Real(1,:)
-     coords(i,j,k,:) =  coords(i,j,k,:) + temp33_Real(1,:)
-   else 
-     if(i==1) then
-       temp33_Real(2,:) = temp33_Real(2,:) + matmul(defgrad_av,&
-                        (/zero,step(2),zero/))
-       temp33_Real(3,:) = temp33_Real(2,:)
-       coords(i,j,k,:) =  coords(i,j,k,:) + temp33_Real(2,:)
-     else   
-       temp33_Real(3,:) = temp33_Real(3,:) + matmul(defgrad_av,&
-                        (/step(1),zero,zero/))
-       coords(i,j,k,:) =  coords(i,j,k,:) + temp33_Real(3,:)   
-     endif
-   endif
- enddo; enddo; enddo
-
 end subroutine deformed_fft
+
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine inverse_reconstruction(res_x,res_y,res_z,reference_configuration,current_configuration,defgrad)
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ use math
+ implicit none
+ integer res_x, res_y, res_z
+ real*8 reference_configuration(res_x+1,res_y+1,res_z+1,3)
+ real*8 current_configuration(res_x+1,res_y+1,res_z+1,3)
+ real*8 defgrad(res_x,res_y,res_z,3,3)
+ real*8 delta, tolerance, res, res_center
+ real*8 reference(8,3)
+ real*8 current(8,3)
+ real*8 defgrad_temp(3,3)
+ real*8 dres_dF(3,3)
+ real*8 identity(3,3)
+ real*8 ref_bar(3)
+ real*8 current_bar(3)
+ real*8 r(8)
+ real*8 differentiate(9,3,3)
+ integer i, j, k, m, l, x, y, o 
+ 
+ identity = 0.0
+ identity(1,1) = 1.0
+ identity(2,2) = 1.0
+ identity(3,3) = 1.0
+ 
+ differentiate = 0.0
+ 
+ tolerance = 1e-10
+ delta = 1e-9
+ 
+ k = 0
+ do j = 1, 3; do i = 1, 3
+   k = k+1
+   differentiate(k,i,j) = 1.0
+ enddo; enddo
+ 
+ do k = 1, res_z
+   do j = 1, res_y
+     do i = 1, res_x
+       reference(1,:) = reference_configuration(i  ,j  ,k  ,:)
+       reference(2,:) = reference_configuration(i+1,j  ,k  ,:)
+       reference(3,:) = reference_configuration(i+1,j+1,k  ,:)
+       reference(4,:) = reference_configuration(i  ,j+1,k  ,:)
+       reference(5,:) = reference_configuration(i  ,j  ,k+1,:)
+       reference(6,:) = reference_configuration(i+1,j  ,k+1,:)
+       reference(7,:) = reference_configuration(i+1,j+1,k+1,:)
+       reference(8,:) = reference_configuration(i  ,j+1,k+1,:)
+       current(1,:) = current_configuration(i  ,j  ,k  ,:)
+       current(2,:) = current_configuration(i+1,j  ,k  ,:)
+       current(3,:) = current_configuration(i+1,j+1,k  ,:)
+       current(4,:) = current_configuration(i  ,j+1,k  ,:)
+       current(5,:) = current_configuration(i  ,j  ,k+1,:)
+       current(6,:) = current_configuration(i+1,j  ,k+1,:)
+       current(7,:) = current_configuration(i+1,j+1,k+1,:)
+       current(8,:) = current_configuration(i  ,j+1,k+1,:)
+       
+       do o=1,3
+         ref_bar(o) = sum(reference(:,o))/8.0
+         current_bar(o) = sum(current(:,o))/8.0
+       enddo
+       
+       do o=1,8
+         reference(o,:) = reference(o,:) -ref_bar
+         current(o,:) = current(o,:) -current_bar
+       enddo
+       
+       defgrad_temp = identity
+       res_center = 2.0*tolerance
+       o=0
+       do while(res_center >= tolerance)
+         o = o + 1
+         do l = 1,8                                                             ! loop over corners
+           r(l) = sqrt(sum((current(l,:)-matmul(defgrad_temp,reference(l,:)))**2))    ! corner distance
+         enddo
+         res_center = sum(r*r)                                                 ! current residuum
+         print*, 'res_center', res_center
+         m=0
+         do y=1,3; do x=1,3                                                     ! numerical differentiation
+           m = m+1
+           do l = 1,8
+             r(l) = sqrt(sum((current(l,:)-matmul((defgrad_temp+differentiate(m,:,:)*delta),reference(l,:)))**2))  ! corner distance
+           enddo
+           res = sum(r*r)
+           print*,'res step', m, res
+           dres_dF(x,y)  = (res-res_center)/delta
+         enddo; enddo
+         print*, 'dres_dF', dres_dF
+         print*, 'deltadef', math_inv3x3(dres_dF)*res_center
+         defgrad_temp = defgrad_temp - math_inv3x3(dres_dF)*res_center          ! Newton--Raphson
+         print*, o, res_center
+         pause
+       enddo
+       defgrad(i,j,k,:,:) = defgrad_temp       
+ enddo; enddo; enddo
+
+end subroutine inverse_reconstruction
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine tensor_avg(res_x,res_y,res_z,tensor,avg)

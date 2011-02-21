@@ -75,6 +75,7 @@ class MPIEspectral_result:      # mimic py_post result object
   dimension = [0.0,0.0,0.0]
   theTitle = ''
   wd = ''
+  geometry = ''
   extrapolate = ''
   N_increments = 0
   increment = 0
@@ -123,6 +124,7 @@ class MPIEspectral_result:      # mimic py_post result object
     return '\n'.join([
       'title: %s'%self.theTitle,
       'workdir: %s'%self.wd,
+      'geometry: %s'%self.geometry,
       'extrapolation: %s'%self.extrapolate,
       'increments: %i'%self.N_increments,
       'increment: %i'%self.increment,

@@ -6,7 +6,7 @@
 # computed using the FEM solvers. Until now, its capable to handle elements with one IP in a regular order
 # written by M. Diehl, m.diehl@mpie.de
 
-import os,sys,re,array,struct,numpy, time, postprocessingMath
+import os,sys,re,array,struct,numpy, time, postprocessingMath, math
 
 class vector:
   x,y,z = [None,None,None]
@@ -306,7 +306,7 @@ print 'Post Processing for Material subroutine for BVP solution using spectral m
 print '*********************************************************************************\n'
 
 #reading in the header of the results file
-name = 'dipl10'
+name = 'dipl32_shear'
 p = MPIEspectral_result(name+'.spectralOut')
 p.extrapolation('')
 print p
@@ -317,37 +317,50 @@ res_x=p.resolution[0]
 res_y=p.resolution[1]
 res_z=p.resolution[2]
 
-# for i in range(1,3):
-  # print('new step')
-  # c_pos = p.dataOffset + i*(p.N_element_scalars*8*p.N_elements + 8) #8 accounts for header&footer
-  # for j in range(p.N_element_scalars):
-  # #def readScalar(resolution,file,distance,startingPosition,offset):
-  # #currentPosition = startingPosition+offset*8+4 - distance*8 # we add distance later on
-  # #field = numpy.zeros([resolution[0],resolution[1],resolution[2]], 'd')
-  # #for z in range(0,resolution[2]):
-    # #for y in range(0,resolution[1]):
-      # #for x in range(0,resolution[0]):
-    # currentPosition = c_pos + j*8 +4
-    # p.file.seek(currentPosition)
-    # print(struct.unpack('d',p.file.read(8)))
-
     
 ms=numpy.zeros([res_x,res_y,res_z,3], 'd')
-for i in range(249,250):
+print 'data structure'
+for i in range(p.N_element_scalars):
+  c_pos = p.dataOffset + i*8.0 + 4.0
+  p.file.seek(c_pos)
+  print(i, struct.unpack('d',p.file.read(8)))
+for i in range(1,2):
   c_pos = p.dataOffset + i*(p.N_element_scalars*8*p.N_elements + 8) #8 accounts for header&footer
-  defgrad = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,16)
-  logstrain = postprocessingMath.logstrain_mat(res_x,res_y,res_z,defgrad)  
-  logstrain2 = postprocessingMath.logstrain_spat(res_x,res_y,res_z,defgrad)
-  p_stress = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,58)         
-  c_stress = postprocessingMath.calculate_cauchy(res_x,res_y,res_z,defgrad,p_stress)
-  vm = postprocessingMath.calculate_mises(res_x,res_y,res_z,c_stress)
+  defgrad = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,7)
+  defgrad_av = postprocessingMath.tensor_avg(res_x,res_y,res_z,defgrad)
+  centroids_coord = postprocessingMath.deformed(res_x,res_y,res_z,p.dimension,defgrad,defgrad_av)
+  undeformed = postprocessingMath.mesh(p.resolution[0],p.resolution[1],p.resolution[2],p.dimension,defgrad_av,centroids_coord)
+  #writeVtkAscii(name+'-mesh-undeformed.vtk',undeformed,defgrad[:,:,:,1,2],p.resolution)
+
+for i in range(240,241):
+  c_pos = p.dataOffset + i*(p.N_element_scalars*8*p.N_elements + 8) #8 accounts for header&footer
+  defgrad = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,7)
+  defgrad_av = postprocessingMath.tensor_avg(res_x,res_y,res_z,defgrad)
+  #defgrad = numpy.zeros([p.resolution[0],p.resolution[1],p.resolution[2],3,3], 'd')
+  #for z in range(p.resolution[2]):
+  #   defgrad[:,:,z,1,2] = (2.0*z)/(p.resolution[2]-1.0)+ 3.8*math.sin(z*20.0/(p.resolution[2]-1.0)*2*math.pi)
+  #   defgrad[:,:,z,0,2] = (2.0*z)/(p.resolution[2]-1.0)+ 5.0*math.cos(z/(p.resolution[2]-1.0)*2*math.pi)
+  #defgrad[:,:,:,0,0] = 1.0
+  #defgrad[:,:,:,1,1] = 1.0
+  #defgrad[:,:,:,2,2] = 1.0
+  #logstrain = postprocessingMath.logstrain_mat(res_x,res_y,res_z,defgrad)  
+  #logstrain2 = postprocessingMath.logstrain_spat(res_x,res_y,res_z,defgrad)
+  #p_stress = readTensor(p.resolution,p.file,p.N_element_scalars,c_pos,52)         
+  #c_stress = postprocessingMath.calculate_cauchy(res_x,res_y,res_z,defgrad,p_stress)
+  #vm = postprocessingMath.calculate_mises(res_x,res_y,res_z,c_stress)
+  #defgrad_av = postprocessingMath.tensor_avg(res_x,res_y,res_z,defgrad)
+  #subroutine inverse_reconstruction(res_x,res_y,res_z,reference_configuration,current_configuration,defgrad)
+  centroids_coord = postprocessingMath.deformed(res_x,res_y,res_z,p.dimension,defgrad,defgrad_av)
+  deformed = postprocessingMath.mesh(p.resolution[0],p.resolution[1],p.resolution[2],p.dimension,defgrad_av,centroids_coord)
+  #writeVtkAscii(name+'-mesh-deformed.vtk',deformed,defgrad[:,:,:,1,2],p.resolution)
+  defgrad = postprocessingMath.inverse_reconstruction(res_x,res_y,res_z,undeformed,deformed)
   defgrad_av = postprocessingMath.tensor_avg(res_x,res_y,res_z,defgrad)
   centroids_coord = postprocessingMath.deformed(res_x,res_y,res_z,p.dimension,defgrad,defgrad_av)
   centroids_coord2 = postprocessingMath.deformed_fft(res_x,res_y,res_z,p.dimension,defgrad,defgrad_av,1.0)
   ms = postprocessingMath.mesh(p.resolution[0],p.resolution[1],p.resolution[2],p.dimension,defgrad_av,centroids_coord)
   ms2 = postprocessingMath.mesh(p.resolution[0],p.resolution[1],p.resolution[2],p.dimension,defgrad_av,centroids_coord2)
-  writeVtkAscii(name+'-mesh-usual-%s.vtk'%i,ms,logstrain[:,:,:,1,2],p.resolution)
-  writeVtkAscii(name+'-mesh-fft-%s.vtk'%i,ms2,logstrain[:,:,:,1,2],p.resolution)
+  writeVtkAscii(name+'-mesh-usual-%s.vtk'%i,ms,defgrad[:,:,:,1,2],p.resolution)
+  writeVtkAscii(name+'-mesh-fft-%s.vtk'%i,ms2,defgrad[:,:,:,1,2],p.resolution)
   #writeVtkAsciidefgrad_av(name+'-box-%i.vtk'%i,p.dimension,defgrad_av)
   #writeVtkAsciiDots(name+'-points-%i.vtk'%i,centroids_coord,grain,p.resolution)
   sys.stdout.flush()
