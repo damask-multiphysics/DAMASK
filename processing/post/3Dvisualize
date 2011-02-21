@@ -6,7 +6,7 @@
 # computed using the FEM solvers. Until now, its capable to handle elements with one IP in a regular order
 # written by M. Diehl, m.diehl@mpie.de
 
-import os,sys,threading,re,numpy,time
+import os,sys,threading,re,numpy,time, postprocessingMath
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 # -----------------------------
@@ -146,90 +146,6 @@ def mesh(res,geomdim,defgrad_av,centroids):
  nodes[:,:,:] /= 8.0
   
  return nodes
-
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-def deformed(res,geomdimension,defgrad):
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  corner = numpy.array([[0, 0, 0],
-                        [1, 0, 0],
-                        [1, 1, 0],
-                        [0, 1, 0],
-                        [1, 1, 1],
-                        [0, 1, 1],
-                        [0, 0, 1],
-                        [1, 0, 1]])
-  step   = numpy.array([[ 1, 1, 1],
-                        [-1, 1, 1],
-                        [-1,-1, 1],
-                        [ 1,-1, 1],
-                        [-1,-1,-1],
-                        [ 1,-1,-1],
-                        [ 1, 1,-1],
-                        [-1, 1,-1]])  
-   
-  order  = numpy.array([[0, 1, 2],
-                        [0, 2, 1],
-                        [1, 0, 2],
-                        [1, 2, 0],
-                        [2, 0, 1],
-                        [2, 1, 0]])
-   
-  coord           = numpy.zeros([8,6,res[0],res[1],res[2],3], 'd')
-  coord_avgOrder  = numpy.zeros([8,res[0],res[1],res[2],3], 'd')
-  coord_avgCorner = numpy.zeros([res[0],res[1],res[2],3], 'd')
-  myStep = numpy.zeros(3,'d')
-  rear   = numpy.zeros(3,'i')
-  init   = numpy.zeros(3,'i')
-  oppo   = numpy.zeros(3,'i')
-  me     = numpy.zeros(3,'i')
-  ones   = numpy.ones( 3,'i')
-  fones  = numpy.ones( 3,'d')
-
-  defgrad_av=numpy.average(numpy.average(numpy.average(defgrad,0),0),0)
-  
-  for s in range(8):                                            # corners
-    init = corner[s]*(res-ones)
-    oppo = corner[(s+4)%8]*(res-ones)
-    sys.stdout.write('.'*(8-s)+' '*s+'\r')
-    sys.stdout.flush()
-    for o in range(6):  # orders
-      for k in range(init[order[o,2]],oppo[order[o,2]]+step[s,order[o,2]],step[s,order[o,2]]):
-        rear[order[o,1]] = init[order[o,1]]
-        for j in range(init[order[o,1]],oppo[order[o,1]]+step[s,order[o,1]],step[s,order[o,1]]):
-          rear[order[o,0]] = init[order[o,0]]
-          for i in range(init[order[o,0]],oppo[order[o,0]]+step[s,order[o,0]],step[s,order[o,0]]):
-            me[order[o,0]] = i
-            me[order[o,1]] = j
-            me[order[o,2]] = k
-            if (numpy.all(me == init)):
-              coord[s,o,me[0],me[1],me[2]] = geomdimension * (numpy.dot(defgrad_av,corner[s]) + \
-                                                              numpy.dot(defgrad[me[0],me[1],me[2]],0.5*step[s]/res))
-            else:
-              myStep = (me-rear)*geomdimension/res
-              coord[s,o,me[0],me[1],me[2]] = coord[s,o,rear[0],rear[1],rear[2]] + \
-                                             0.5*numpy.dot(defgrad[me[0],me[1],me[2]] + \
-                                                           defgrad[rear[0],rear[1],rear[2]],myStep)
-
-            rear[:] = me[:]
-    coord_avgOrder[s] = numpy.average(coord[s],0)
-
-  for k in range(res[2]):
-    for j in range(res[1]):
-      for i in range(res[0]):
-        parameter_coords = (2.0*numpy.array([i,j,k])-res+fones)/(res-fones)
-        pos = fones + parameter_coords
-        neg = fones - parameter_coords
-
-        coord_avgCorner[i,j,k] =  ( coord_avgOrder[0,i,j,k] *neg[0]*neg[1]*neg[2]\
-                                  + coord_avgOrder[1,i,j,k] *pos[0]*neg[1]*neg[2]\
-                                  + coord_avgOrder[2,i,j,k] *pos[0]*pos[1]*neg[2]\
-                                  + coord_avgOrder[3,i,j,k] *neg[0]*pos[1]*neg[2]\
-                                  + coord_avgOrder[4,i,j,k] *pos[0]*pos[1]*pos[2]\
-                                  + coord_avgOrder[5,i,j,k] *neg[0]*pos[1]*pos[2]\
-                                  + coord_avgOrder[6,i,j,k] *neg[0]*neg[1]*pos[2]\
-                                  + coord_avgOrder[7,i,j,k] *pos[0]*neg[1]*pos[2])*0.125
-  print ' '
-  return coord_avgCorner, defgrad_av
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
 def vtk_writeASCII_mesh(mesh,data,res):
@@ -504,11 +420,15 @@ for filename in args:
 
   print 'resolution',res
   print 'dimension',dim
-
-  (centroids, defgrad_av) = deformed(res,dim,
+  defgrad_av = postprocessingMath.tensor_avg(res[0],res[1],res[2],\
+                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
+                              column['tensor'][options.defgrad]+9],
+                                                   (res[0],res[1],res[2],3,3)))
+  print defgrad_av
+  centroids = postprocessingMath.deformed_fft(res[0],res[1],res[2],dim,\
                                      numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                             column['tensor'][options.defgrad]+9],
-                                                   (res[0],res[1],res[2],3,3)))
+                                                   (res[0],res[1],res[2],3,3)),defgrad_av,1.0)
   ms = mesh(res,dim,defgrad_av,centroids)
 
   fields = {\
