@@ -50,7 +50,7 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 err_stress_tol, &                       ! absolut stress error, will be computed from err_stress_tolrel (dont prescribe a value)
                                 err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
                                 err_defgrad_tol                         ! tolerance for error of defgrad compared to prescribed defgrad
-logical                         fast_execution                          ! for fast execution (pre calculation of gamma_hat)
+logical                         memory_efficient                          ! for fast execution (pre calculation of gamma_hat)
 integer(pInt)                   itmax , &                               ! maximum number of iterations
 
 
@@ -94,7 +94,7 @@ subroutine numerics_init()
   character(len=1024)                         line
   
 ! OpenMP variable
-!$ character(len=2) mpieNumThreadsString                               !enironment variable MPIE_NUMTHREADS
+!$ character(len=4) mpieNumThreadsString                               !environment variable MPIE_NUMTHREADS
 
   write(6,*)
   write(6,*) '<<<+-  numerics init  -+>>>'
@@ -142,11 +142,11 @@ subroutine numerics_init()
   volDiscrPow_RGC         = 5.0
 
 !* spectral parameters:  
-  err_div_tol             = 1.0e-4  
-  err_defgrad_tol         = 1.0e-3
-  err_stress_tolrel       = 0.01
-  itmax                   = 20_pInt
-  fast_execution          = .false.
+  err_div_tol             = 1.0e-4   ! proposed by Suquet, less strict criteria are usefull, e.g. 5e-3
+  err_defgrad_tol         = 1.0e-3   ! relative tolerance for fullfillment of average deformation gradient (is usually passively fullfilled)
+  err_stress_tolrel       = 0.01     ! relative tolerance for fullfillment of stress BC
+  itmax                   = 20_pInt  ! Maximum iteration number
+  memory_efficient        = .true.   ! Precalculate Gamma-operator (81 double per point)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
@@ -154,7 +154,7 @@ subroutine numerics_init()
 
 !* determin number of threads from environment variable MPIE_NUM_THREADS
 !$ call GetEnv('MPIE_NUM_THREADS',mpieNumThreadsString)                     ! get environment variable MPIE_NUM_THREADS...
-!$ read(mpieNumThreadsString,'(i2)') mpieNumThreadsInt                      ! ...convert it to integer...
+!$ read(mpieNumThreadsString,'(i4)') mpieNumThreadsInt                      ! ...convert it to integer...
 !$ if (mpieNumThreadsInt < 1) mpieNumThreadsInt = 1                         ! ...ensure that its at least one...
 !$ call omp_set_num_threads(mpieNumThreadsInt)                              ! ...and use it as number of threads for parallel execution
 
@@ -256,8 +256,8 @@ subroutine numerics_init()
               err_stress_tolrel = IO_floatValue(line,positions,2)
         case ('itmax')
               itmax = IO_intValue(line,positions,2)
-        case ('fast_execution')
-              fast_execution = IO_intValue(line,positions,2)  > 0_pInt
+        case ('memory_efficient')
+              memory_efficient = IO_intValue(line,positions,2)  > 0_pInt
 
 !* Random seeding parameters
         case ('fixed_seed')
@@ -322,7 +322,7 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'err_defgrad_tol:         ',err_defgrad_tol
   write(6,'(a24,x,e8.1)') 'err_stress_tolrel:       ',err_stress_tolrel
   write(6,'(a24,x,i8)')   'itmax:                   ',itmax
-  write(6,'(a24,x,L8)')   'fast_execution:          ',fast_execution
+  write(6,'(a24,x,L8)')   'memory_efficient:          ',memory_efficient
   write(6,*)
 
 !* Random seeding parameters
@@ -377,10 +377,10 @@ subroutine numerics_init()
   if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(289)
 
 !* spectral parameters
-  if (err_div_tol <= 0.0_pReal)             call IO_error(48)
-  if (err_defgrad_tol <= 0.0_pReal)         call IO_error(48)
-  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(48)
-  if (itmax <= 1.0_pInt)                    call IO_error(48)
+  if (err_div_tol <= 0.0_pReal)             call IO_error(49)
+  if (err_defgrad_tol <= 0.0_pReal)         call IO_error(49)
+  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(49)
+  if (itmax <= 1.0_pInt)                    call IO_error(49)
   
   if (fixedSeed <= 0_pInt)                  write(6,'(a)') 'Random is random!'
 endsubroutine

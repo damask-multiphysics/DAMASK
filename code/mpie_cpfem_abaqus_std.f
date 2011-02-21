@@ -24,7 +24,9 @@ character(len=4),  parameter :: InputFileExtension = '.inp'
 
 CONTAINS
 
+!--------------------
 subroutine mpie_interface_init()
+!--------------------
   write(6,*)
   write(6,*) '<<<+-  mpie_cpfem_abaqus init  -+>>>'
   write(6,*) '$Id$'
@@ -32,7 +34,9 @@ subroutine mpie_interface_init()
  return
 end subroutine
 
+!--------------------
 function getSolverWorkingDirectoryName()
+!--------------------
  use prec
  implicit none
  character(1024) getSolverWorkingDirectoryName
@@ -43,7 +47,19 @@ function getSolverWorkingDirectoryName()
 ! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
 end function
 
+
+!--------------------
+function getModelName()
+!--------------------
+ character(1024) getModelName
+ 
+ getModelName = getSolverJobName()
+end function
+
+
+!--------------------
 function getSolverJobName()
+!--------------------
  use prec
  implicit none
 

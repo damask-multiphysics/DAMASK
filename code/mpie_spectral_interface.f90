@@ -59,28 +59,43 @@ function getSolverJobName()
 
  implicit none
 
- character(1024) getSolverJobName, outName, cwd
+ character(1024) getSolverJobName
+ getSolverJobName = trim(getModelName())//'_'//trim(getLoadCase())
+ 
+endfunction
+
+!********************************************************************
+! basename of geometry file from command line arguments
+!
+!********************************************************************
+function getModelName()
+
+ use prec, only: pInt
+
+ implicit none
+
+ character(1024) getModelName, outName, cwd
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
  integer(pInt) posExt,posSep
 
- getSolverJobName = ''
+ getModelName = ''
 
  call getarg(1,outName)
  posExt = scan(outName,'.',back=.true.)
  posSep = scan(outName,pathSep,back=.true.)
 
  if (posExt <= posSep) posExt = len_trim(outName)+1       ! no extension present
- getSolverJobName = outName(1:posExt-1)                   ! path to geometry file (excl. extension)
+ getModelName = outName(1:posExt-1)                       ! path to geometry file (excl. extension)
 
- if (scan(getSolverJobName,pathSep) /= 1) then            ! relative path given as command line argument
+ if (scan(getModelName,pathSep) /= 1) then                ! relative path given as command line argument
    call getcwd(cwd)
-   getSolverJobName = rectifyPath(trim(cwd)//'/'//getSolverJobName)
+   getModelName = rectifyPath(trim(cwd)//'/'//getModelName)
  else
-   getSolverJobName = rectifyPath(getSolverJobName)
+   getModelName = rectifyPath(getModelName)
  endif
 
- getSolverJobName = makeRelativePath(getSolverWorkingDirectoryName(),&
-                                    getSolverJobName)
+ getModelName = makeRelativePath(getSolverWorkingDirectoryName(),&
+                                 getModelName)
  return
 endfunction
 

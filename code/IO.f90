@@ -168,14 +168,14 @@ end function
  if (FEsolver == 'Abaqus') then
    open(unit+1,status='old',err=100,&
                file=trim(getSolverWorkingDirectoryName())//&
-                    trim(getSolverJobName())//InputFileExtension)
+                    trim(getModelName())//InputFileExtension)
    open(unit,err=100,file=trim(getSolverWorkingDirectoryName())//&
-                          trim(getSolverJobName())//InputFileExtension//'_assembly')
+                          trim(getModelName())//InputFileExtension//'_assembly')
    IO_open_inputFile = IO_abaqus_assembleInputFile(unit,unit+1)          ! strip comments and concatenate any "include"s
    close(unit+1) 
  else
    open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                       trim(getSolverJobName())//InputFileExtension)
+                                       trim(getModelName())//InputFileExtension)
    IO_open_inputFile = .true.
  endif
 
@@ -1142,10 +1142,12 @@ endfunction
  case (45)
    msg = 'error opening spectral loadcase'
  case (46)
-   msg = 'missing parameter in spectral loadcase'
- case (47)
    msg = 'mask consistency violated in spectral loadcase'
+ case (47)
+   msg = 'negative time increment in spectral loadcase'
  case (48)
+   msg = 'Non-positive increment in spectral loadcase'
+ case (49)
    msg = 'Non-positive relative parameter for spectral method'
  case (50)
    msg = 'Error writing constitutive output description'
@@ -1155,6 +1157,10 @@ endfunction
    msg = 'Cannot open input file'
  case (102)
    msg = 'argument count error (mesh and loadcase) for mpie_spectral'
+ case (103)
+   msg = 'Resolution contains odd number'
+ case (104)
+   msg = 'FFTW init error'
  case (105)
    msg = 'Error reading from ODF file'
  case (110)
@@ -1307,6 +1313,9 @@ endfunction
 
  case (700)
    msg = 'Singular matrix in stress iteration'
+
+ case (800)
+   msg = 'Matrix inversion error'
 
 !    Error messages related to parsing of Abaqus input file
  case (900)

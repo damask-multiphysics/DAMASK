@@ -30,7 +30,7 @@ program mpie_spectral
  use math
  use CPFEM, only: CPFEM_general, CPFEM_initAll 
  use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol,&
-                     itmax, fast_execution, mpieNumThreadsInt       
+                     itmax, memory_efficient, mpieNumThreadsInt       
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 !$ use OMP_LIB                                                          ! the openMP function library
 
@@ -78,7 +78,7 @@ program mpie_spectral
  complex(pReal), dimension(3,3) ::                      temp33_Complex
  real(pReal), dimension(3,3) ::                         xinormdyad
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat
- real(pReal), dimension(3) ::                           xi, xi_middle
+ real(pReal), dimension(3) ::                           xi, xi_central
  integer(pInt), dimension(3) ::                         k_s
  integer*8, dimension(2) ::                             plan_fft
  
@@ -109,8 +109,9 @@ program mpie_spectral
 
 ! Reading the loadcase file and assign variables
  path = getLoadcaseName()
- print*,'Loadcase: ',trim(path)
- print*,'Workingdir: ',trim(getSolverWorkingDirectoryName())
+ print '(a,/,a)', 'Loadcase:      ',trim(path)
+ print '(a,/,a)', 'Workingdir:    ',trim(getSolverWorkingDirectoryName())
+ print '(a,/,a)', 'SolverJobName: ',trim(getSolverJobName())
 
  if (.not. IO_open_file(unit,path)) call IO_error(45,ext_msg = path)
  
@@ -131,8 +132,6 @@ program mpie_spectral
                  N_n = N_n+1
         end select
    enddo                                                  ! count all identifiers to allocate memory and do sanity check
-   if ((N_l /= N_s).or.(N_s /= N_t).or.(N_t /= N_n)) &    ! sanity check
-     call IO_error(46,ext_msg = path)                     ! error message for incomplete input file
  enddo
 
 101 N_Loadcases = N_l
@@ -150,7 +149,7 @@ program mpie_spectral
    read(unit,'(a1024)',END = 200) line
    if (IO_isBlank(line)) cycle                           ! skip empty lines
    i = i + 1
-   posInput = IO_stringPos(line,maxNchunksInput)         ! ToDo: Add error message for case that information is not complete
+   posInput = IO_stringPos(line,maxNchunksInput)
    do j = 1,maxNchunksInput,2
      select case (IO_lc(IO_stringValue(line,posInput,j)))
        case('l','velocitygrad')
@@ -179,20 +178,22 @@ program mpie_spectral
 200 close(unit)
 
  do i = 1, N_Loadcases
-   if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(47,i)     ! bc_mask consistency
-   print '(a,/,3(3(f12.6,x)/))','L'        ,math_transpose3x3(bc_velocityGrad(:,:,i))
-   print '(a,/,3(3(f12.6,x)/))','bc_stress',math_transpose3x3(bc_stress(:,:,i))
-   print '(a,/,3(3(l,x)/))',    'bc_mask for velocitygrad',transpose(bc_mask(:,:,1,i))
-   print '(a,/,3(3(l,x)/))',    'bc_mask for stress'      ,transpose(bc_mask(:,:,2,i))
-   print *,'time',bc_timeIncrement(i)
-   print *,'incs',bc_steps(i)
+   if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(46,i)     ! bc_mask consistency
+   if (bc_timeIncrement(i) < 0.0_pReal) call IO_error(47,i)                 ! negative time increment forbidden
+   if (bc_steps(i) < 1_pInt) call IO_error(48,i)                            ! non-positive increments requested
+   print '(a,/,3(3(f12.6,x)/))','L:'        ,math_transpose3x3(bc_velocityGrad(:,:,i))
+   print '(a,/,3(3(f12.6,x)/))','bc_stress:',math_transpose3x3(bc_stress(:,:,i))
+   print '(a,/,3(3(l,x)/))',    'bc_mask for velocitygrad:',transpose(bc_mask(:,:,1,i))
+   print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'      ,transpose(bc_mask(:,:,2,i))
+   print '(a,f12.6)','time: ',bc_timeIncrement(i)
+   print '(a,i5)','incs: ',bc_steps(i)
    print *, ''
  enddo
 
 !read header of geom file to get the information needed before the complete geom file is intepretated by mesh.f90
- path = getSolverJobName()
- print*,'JobName: ',trim(path)
- if (.not. IO_open_file(unit,trim(path)//InputFileExtension)) call IO_error(101,ext_msg = path)
+ path = getModelName()
+ print '(a,a)', 'GeomName: ',trim(path)
+ if (.not. IO_open_file(unit,trim(path)//InputFileExtension)) call IO_error(101,ext_msg = trim(path)//InputFileExtension)
 
  rewind(unit)
  do
@@ -233,11 +234,11 @@ program mpie_spectral
  enddo
  100 close(unit)
  
- if(mod(resolution(1),2)/=0 .or. mod(resolution(2),2)/=0 .or. mod(resolution(3),2)/=0)  call IO_error(102)  !!ToDo: add correct error to IO
+ if(mod(resolution(1),2)/=0 .or. mod(resolution(2),2)/=0 .or. mod(resolution(3),2)/=0)  call IO_error(103)
  
- print '(a,/,i4,i4,i4)','resolution a b c', resolution
- print '(a,/,f6.1,f6.1,f6.1)','dimension x y z', geomdimension
- print *,'homogenization',homog
+ print '(a,/,i4,i4,i4)','resolution a b c:', resolution
+ print '(a,/,f6.1,f6.1,f6.1)','dimension x y z:', geomdimension
+ print '(a,i4)','homogenization: ',homog
  
  allocate (defgrad   (resolution(1),resolution(2),resolution(3),3,3)); defgrad    = 0.0_pReal
  allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3)); defgradold = 0.0_pReal
@@ -261,10 +262,12 @@ program mpie_spectral
  c066 = c066 * wgt
  c0 = math_mandel66to3333(c066)
  call math_invert(6, c066, s066,i, errmatinv)
+ if(errmatinv) call IO_error(800)                     !Matrix inversion error
  s0 = math_mandel66to3333(s066)
  
-!calculation of calculate gamma_hat field in the case of fast execution (needs a lot of memory) 
- if(fast_execution) then
+ if(memory_efficient) then ! allocate just single fourth order tensor
+   allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
+ else                      ! precalculation of gamma_hat field
    allocate (gamma_hat(resolution(1)/2+1,resolution(2),resolution(3),3,3,3,3)); gamma_hat = 0.0_pReal
    do k = 1, resolution(3)
      k_s(3) = k-1
@@ -280,32 +283,31 @@ program mpie_spectral
                                xi(1) = real(k_s(1), pReal)/geomdimension(1)
          if (any(xi /= 0.0_pReal)) then     
            do l = 1,3; do m = 1,3
-              xinormdyad(l,m) = xi(l)*xi(m)/sum(xi**2)
+             xinormdyad(l,m) = xi(l)*xi(m)/sum(xi**2)
            enddo; enddo
+           temp33_Real = math_inv3x3(math_mul3333xx33(c0, xinormdyad)) 
          else
-           xinormdyad = 0.0_pReal
+           xinormdyad  = 0.0_pReal
+           temp33_Real = 0.0_pReal
          endif 
-         temp33_Real = math_mul3333xx33(c0, xinormdyad)            
-         temp33_Real = math_inv3x3(temp33_Real) 
          do l=1,3; do m=1,3; do n=1,3; do p=1,3
-           gamma_hat(i,j,k, l,m,n,p) = - (0.5*temp33_Real(l,n)+0.5*temp33_Real(n,l)) *&
-                                         (0.5*xinormdyad(m,p)+0.5*xinormdyad(p,m))
+           gamma_hat(i,j,k, l,m,n,p) = - 0.25*(temp33_Real(l,n)+temp33_Real(n,l)) *&
+                                              (xinormdyad(m,p)+xinormdyad(p,m))
          enddo; enddo; enddo; enddo         
    enddo; enddo; enddo
- else ! or allocate just one fourth order tensor
-   allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
  endif
  
-! calculate xi for the calculation of divergence in Fourier space (middle frequency)
- xi_middle(3) = 0.0_pReal !2D case
- if(resolution(3) > 1) xi_middle(3) = real(resolution(3)/2, pReal)/geomdimension(3) !3D case
-                       xi_middle(2) = real(resolution(2)/2, pReal)/geomdimension(2)
-                       xi_middle(1) = real(resolution(1)/2, pReal)/geomdimension(1)
+! calculate xi for the calculation of divergence in Fourier space (central frequency)
+ xi_central(3) = 0.0_pReal !2D case
+ if(resolution(3) > 1) xi_central(3) = real(resolution(3)/2, pReal)/geomdimension(3) !3D case
+                       xi_central(2) = real(resolution(2)/2, pReal)/geomdimension(2)
+                       xi_central(1) = real(resolution(1)/2, pReal)/geomdimension(1)
  
  allocate (workfft(resolution(1)+2,resolution(2),resolution(3),3,3)); workfft = 0.0_pReal
 
 ! Initialization of fftw (see manual on fftw.org for more details) 
- call dfftw_init_threads(ierr) !toDo: add error code
+ call dfftw_init_threads(ierr)
+ if(ierr == 0) call IO_error(104,ierr)
  call dfftw_plan_with_nthreads(mpieNumThreadsInt) 
  call dfftw_plan_many_dft_r2c(plan_fft(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
    workfft,(/resolution(1)  +2,resolution(2),resolution(3)/),1,(resolution(1)  +2)*resolution(2)*resolution(3),&
@@ -316,7 +318,6 @@ program mpie_spectral
 
 ! write header of output file
  open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
-                                               //'_'//trim(getLoadcase())&
                                                     //'.spectralOut',form='UNFORMATTED')       
  write(538), 'load',trim(getLoadcaseName())
  write(538), 'workingdir',trim(getSolverWorkingDirectoryName())
@@ -436,10 +437,10 @@ program mpie_spectral
          enddo; enddo
          err_div = 2 * err_div_tol 
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))         
-         print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',math_transpose3x3(defgrad_av)                           
-         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]: '   ,math_transpose3x3(cstress_av)/1.e6        
-         print '(2(a,E8.2))', ' error stress               ',err_stress, '  Tol. = ', err_stress_tol 
-         print '(2(a,E8.2))', ' error deformation gradient ',err_defgrad,'  Tol. = ', err_defgrad_tol*0.8  
+         print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:',math_transpose3x3(defgrad_av)                           
+         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress / MPa: '   ,math_transpose3x3(cstress_av)/1.e6        
+         print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol 
+         print '(2(a,E8.2))', ' error deformation gradient: ',err_defgrad,'  Tol. = ', err_defgrad_tol*0.8  
          if(err_stress < err_stress_tol*0.8) then 
            calcmode = 1_pInt
          endif
@@ -457,10 +458,11 @@ program mpie_spectral
          ielem = 0_pInt                 
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
-           call CPFEM_general(2,&    
+           call CPFEM_general(CPFEM_mode,&                                  ! first element in first iteration retains CPFEM_mode 1,
                               defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
+           CPFEM_mode = 2_pInt
            workfft(i,j,k,:,:) = pstress 
            cstress_av = cstress_av + math_mandel6to33(cstress)          
          enddo; enddo; enddo       
@@ -476,20 +478,10 @@ program mpie_spectral
            sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:) + (workfft(2,1,1,m,:))*img)))     
          enddo
          err_div = (maxval(abs(math_mul33x3_complex(workfft(resolution(1)+1,resolution(2)/2+1,resolution(3)/2+1,:,:)+& ! L infinity Norm of div(stress)
-                                                    workfft(resolution(1)+2,resolution(2)/2+1,resolution(3)/2+1,:,:)*img,xi_middle))))
+                                                    workfft(resolution(1)+2,resolution(2)/2+1,resolution(3)/2+1,:,:)*img,xi_central))))
          err_div = err_div/sigma0     !weighting of error
 
-         if(fast_execution) then     ! fast execution with stored gamma_hat
-         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
-           do m = 1,3; do n = 1,3
-             temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n,:,:) *(workfft(i*2-1,j,k,:,:)&                 
-                                                                 + workfft(i*2  ,j,k,:,:)*img))
-           enddo; enddo
-           workfft(i*2-1,j,k,:,:) = real (temp33_Complex) 
-           workfft(i*2  ,j,k,:,:) = aimag(temp33_Complex) 
-          enddo; enddo; enddo
-          
-         else ! memory saving version, in-time calculation of gamma_hat
+         if(memory_efficient) then     ! memory saving version, in-time calculation of gamma_hat
          do k = 1, resolution(3)
            k_s(3) = k-1
            if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
@@ -501,19 +493,19 @@ program mpie_spectral
                xi(3) = 0.0_pReal     !for the 2D case
                if(resolution(3) > 1) xi(3) = real(k_s(3), pReal)/geomdimension(3) !3D case
                                      xi(2) = real(k_s(2), pReal)/geomdimension(2)
-                                     xi(1) = real(k_s(1), pReal)/geomdimension(1)
+                                     xi(1) = real(k_s(1), pReal)/geomdimension(1)                                 
                if (any(xi(:) /= 0.0_pReal)) then     
                  do l = 1,3; do m = 1,3
-                    xinormdyad(l,m) = xi(l)*xi( m)/sum(xi**2)
+                    xinormdyad(l,m) = xi(l)*xi(m)/sum(xi**2)
                  enddo; enddo
+                 temp33_Real = math_inv3x3(math_mul3333xx33(c0, xinormdyad)) 
                else
                  xinormdyad = 0.0_pReal
+                 temp33_Real = 0.0_pReal
                endif 
-               temp33_Real = math_mul3333xx33(c0, xinormdyad)            
-               temp33_Real = math_inv3x3(temp33_Real) 
                do l=1,3; do m=1,3; do n=1,3; do p=1,3
-                gamma_hat(1,1,1, l,m,n,p) = - (0.5*temp33_Real(l,n)+0.5*temp33_Real(n,l))*&
-                                              (0.5*xinormdyad(m,p) +0.5*xinormdyad(p,m))
+                gamma_hat(1,1,1, l,m,n,p) = - 0.25_pReal*(temp33_Real(l,n)+temp33_Real(n,l))*&
+                                                         (xinormdyad(m,p) +xinormdyad(p,m))
                enddo; enddo; enddo; enddo   
                do m = 1,3; do n = 1,3
                  temp33_Complex(m,n) = sum(gamma_hat(1,1,1,m,n,:,:) *(workfft(i*2-1,j,k,:,:)&                 
@@ -522,6 +514,15 @@ program mpie_spectral
                workfft(i*2-1,j,k,:,:) = real (temp33_Complex) 
                workfft(i*2  ,j,k,:,:) = aimag(temp33_Complex)
            enddo; enddo; enddo
+         else                         !use precalculated gamma-operator
+         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
+           do m = 1,3; do n = 1,3
+             temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n,:,:) *(workfft(i*2-1,j,k,:,:)&                 
+                                                                 + workfft(i*2  ,j,k,:,:)*img))
+           enddo; enddo
+           workfft(i*2-1,j,k,:,:) = real (temp33_Complex) 
+           workfft(i*2  ,j,k,:,:) = aimag(temp33_Complex) 
+          enddo; enddo; enddo
          endif
          
          workfft(1,1,1,:,:) = defgrad_av - math_I3 !zero frequency (real part)
@@ -538,9 +539,9 @@ program mpie_spectral
          err_stress_tol = maxval(abs(pstress_av))*err_stress_tolrel                             !accecpt relativ error specified
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))  
          
-         print '(2(a,E8.2))', ' error divergence           ',err_div,    '  Tol. = ', err_div_tol
-         print '(2(a,E8.2))', ' error stress               ',err_stress, '  Tol. = ', err_stress_tol 
-         print '(2(a,E8.2))', ' error deformation gradient ',err_defgrad,'  Tol. = ', err_defgrad_tol 
+         print '(2(a,E8.2))', ' error divergence:           ',err_div,    '  Tol. = ', err_div_tol
+         print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol 
+         print '(2(a,E8.2))', ' error deformation gradient: ',err_defgrad,'  Tol. = ', err_defgrad_tol 
 
          if((err_stress > err_stress_tol .or. err_defgrad > err_defgrad_tol) .and. err_div < err_div_tol) then  ! change to calculation of BCs, reset damper etc.
            calcmode = 0_pInt
@@ -552,10 +553,10 @@ program mpie_spectral
      
      write(538)  materialpoint_results(:,1,:) !write to output file
      
-     print '(a,x,f12.7)'         , ' Determinant of Deformation Aim:', math_det3x3(defgradAim)
-     print '(a,/,3(3(f12.7,x)/))', ' Deformation Aim:        ',math_transpose3x3(defgradAim)
-     print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:   ',math_transpose3x3(defgrad_av) 
-     print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress [MPa]:    ',math_transpose3x3(cstress_av)/1.e6
+     print '(a,x,f12.7)'         , ' Determinant of Deformation Aim: ', math_det3x3(defgradAim)
+     print '(a,/,3(3(f12.7,x)/))', ' Deformation Aim:     ',math_transpose3x3(defgradAim)
+     print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:',math_transpose3x3(defgrad_av) 
+     print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress / MPa: ',math_transpose3x3(cstress_av)/1.e6
      print '(A)', '************************************************************'
    enddo  ! end looping over steps in current loadcase
  enddo    ! end looping over loadcases

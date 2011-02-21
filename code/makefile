@@ -6,11 +6,13 @@
 # Install fftw3 (v3.2.2 is tested) with "./configure --enable-threads"  and "make", "make install" is not needed
 # as long as the two library files are copied to the source code directory.
 
-cpspectral.out: mpie_spectral.o CPFEM.a
-	ifort -openmp -o cpspectral.out mpie_spectral.o CPFEM.a libfftw3_threads.a libfftw3.a constitutive.a advanced.a basics.a -lpthread
+cpspectral.exe: mpie_spectral.o CPFEM.a
+	ifort -openmp -o cpspectral.exe mpie_spectral.o CPFEM.a libfftw3_threads.a libfftw3.a constitutive.a advanced.a basics.a -lpthread
+	rm *.mod
+
 mpie_spectral.o: mpie_spectral.f90 CPFEM.o 
 	ifort -openmp -c -O3 -heap-arrays 500000000 mpie_spectral.f90 
-	
+
 CPFEM.a: CPFEM.o
 	ar rc CPFEM.a homogenization.o homogenization_RGC.o homogenization_isostrain.o crystallite.o CPFEM.o constitutive.o
 

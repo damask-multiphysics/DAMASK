@@ -71,6 +71,17 @@ function getSolverWorkingDirectoryName()
 ! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
 end function
 
+
+function getModelName()
+ use prec
+ implicit none
+
+ character(1024) getModelName
+ 
+ getModelName = getSolverJobName()
+end function
+
+
 function getSolverJobName()
  use prec
  implicit none
