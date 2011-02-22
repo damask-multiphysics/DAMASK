@@ -629,9 +629,9 @@ parser.set_defaults(separateFiles = False)
 
 
 try:
-  file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
-  MSCpath = os.path.normpath(file.readline().strip())
-  file.close()
+  default = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
+  MSCpath = os.path.normpath(default.readline().strip())
+  default.close()
 except:
   MSCpath = '/msc'
 
