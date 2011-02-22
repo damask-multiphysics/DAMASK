@@ -648,10 +648,12 @@ for release,subdirs in sorted(releases.items(),reverse=True):
 try:
   from py_mentat import *
 except:
-  if options.filetype == 'marc':
+  if options.filetype.lower() == 'marc':
     print('no valid Mentat release found in %s'%MSCpath)
     sys.exit(-1)
-
+  else:
+    def post_open():
+      return True
 
 bg = backgroundMessage()
 bg.start()
@@ -702,7 +704,7 @@ for what in me:
         print "'%s' not found in <%s>"%(me[what], what)
         print '\n'.join(map(lambda x:'  '+x, outputFormat[what]['specials']['brothers']))
         sys.exit(1)
-
+        
 p = OpenPostfile(filename,options.filetype)
 stat = ParsePostfile(p, filename, outputFormat)
 
