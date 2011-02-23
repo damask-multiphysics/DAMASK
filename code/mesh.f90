@@ -1332,7 +1332,7 @@ do
 
   if (IO_lc(IO_stringValue(line,pos,1)) == '$mpie') then              ! found keyword for user defined input
     if (IO_lc(IO_stringValue(line,pos,2)) == 'periodic' &             ! found keyword 'periodic'
-        .and. pos(1) > 3) then                                        ! and there is at least one more chunk to read
+        .and. pos(1) > 2) then                                        ! and there is at least one more chunk to read
       do chunk = 2,pos(1)                                             ! loop through chunks (skipping the keyword)
         select case(IO_stringValue(line,pos,chunk))                   ! chunk matches keyvalues x,y or z?
           case('x')
