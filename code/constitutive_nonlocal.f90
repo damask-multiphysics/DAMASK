@@ -1664,7 +1664,7 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
                                                       * constitutive_nonlocal_compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
             where (constitutive_nonlocal_compatibility(c,1:ns,s,n,ip,el) < 0.0_pReal) &                                             ! ..negative compatibility...
               rhoDotFlux(1:ns,topp) = rhoDotFlux(1:ns,topp) + lineLength / mesh_ipVolume(ip,el) &                                   ! ... transferring to opposite signed dislocation type
-                                                      * constitutive_nonlocal_compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal            
+                                                      * constitutive_nonlocal_compatibility(c,1:ns,s,n,ip,el) ** 2.0_pReal
           endif
         enddo
       enddo

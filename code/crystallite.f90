@@ -88,9 +88,7 @@ use prec, only:       pInt, &
                       pReal
 use debug, only:      debug_info, &
                       debug_reset
-use numerics, only:   integrator, &
-                      integratorStiffness, &
-                      subStepSizeCryst, &
+use numerics, only:   subStepSizeCryst, &
                       stepIncreaseCryst
 use math, only:       math_I3, &
                       math_EulerToR, &
@@ -425,8 +423,8 @@ use numerics, only:                                   subStepMinCryst, &
                                                       pert_method, &
                                                       nCryst, &
                                                       iJacoStiffness, &
-                                                      integratorStiffness, &
-                                                      integrator
+                                                      numerics_integrator, &
+                                                      numerics_integrationMode
 use debug, only:                                      debugger, &
                                                       selectiveDebugger, &
                                                       verboseDebugger, &
@@ -540,6 +538,7 @@ crystallite_subStep = 0.0_pReal
 ! --+>> CRYSTALLITE CUTBACK LOOP <<+--
 
 NiterationCrystallite = 0_pInt
+numerics_integrationMode = 1_pInt
 do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinCryst))  ! cutback loop for crystallites
 
   !$OMP PARALLEL DO PRIVATE(myNgrains,formerSubStep)
@@ -617,17 +616,17 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
   ! --- integrate ---
   
   if (any(crystallite_todo)) then
-    select case(integrator)
+    select case(numerics_integrator(numerics_integrationMode))
       case(1)
-        call crystallite_integrateStateFPI(1)
+        call crystallite_integrateStateFPI()
       case(2)
-        call crystallite_integrateStateEuler(1)
+        call crystallite_integrateStateEuler()
       case(3)
-        call crystallite_integrateStateAdaptiveEuler(1)
+        call crystallite_integrateStateAdaptiveEuler()
       case(4)
-        call crystallite_integrateStateRK4(1)
+        call crystallite_integrateStateRK4()
       case(5)
-        call crystallite_integrateStateRKCK45(1)
+        call crystallite_integrateStateRKCK45()
     endselect
   endif
   
@@ -669,6 +668,7 @@ enddo                                                                           
 ! --+>> STIFFNESS CALCULATION <<+--
 
 if(updateJaco) then                                                                                     ! Jacobian required
+  numerics_integrationMode = 2_pInt
   
   ! --- BACKUP ---
   
@@ -714,17 +714,17 @@ if(updateJaco) then                                                             
         crystallite_todo = crystallite_requested .and. crystallite_converged
         where (crystallite_todo) crystallite_converged = .false.                                        ! start out non-converged
 
-        select case(integratorStiffness)
+        select case(numerics_integrator(numerics_integrationMode))
           case(1)
-            call crystallite_integrateStateFPI(2)
+            call crystallite_integrateStateFPI()
           case(2)
-            call crystallite_integrateStateEuler(2)
+            call crystallite_integrateStateEuler()
           case(3)
-            call crystallite_integrateStateAdaptiveEuler(2)
+            call crystallite_integrateStateAdaptiveEuler()
           case(4)
-            call crystallite_integrateStateRK4(2)
+            call crystallite_integrateStateRK4()
           case(5)
-            call crystallite_integrateStateRKCK45(2)
+            call crystallite_integrateStateRKCK45()
         end select
         
         !OMP PARALLEL DO PRIVATE(myNgrains)
@@ -804,11 +804,12 @@ endsubroutine
 ! integrate stress, state and Temperature with 
 ! 4h order explicit Runge Kutta method 
 !********************************************************************
-subroutine crystallite_integrateStateRK4(mode,gg,ii,ee)
+subroutine crystallite_integrateStateRK4(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
 use prec, only:         pInt, &
                         pReal
+use numerics, only:     numerics_integrationMode
 use debug, only:        debugger, &
                         selectiveDebugger, &
                         verboseDebugger, &
@@ -838,7 +839,6 @@ real(pReal), dimension(4), parameter ::       timeStepFraction = (/0.5_pReal, 0.
 real(pReal), dimension(4), parameter ::       weight = (/1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal/)           ! factor giving the fraction of the original timestep used for Runge Kutta Integration
 
 !*** input variables ***!
-integer(pInt), intent(in) ::                  mode                      ! mode of calculation; 1: central solution, 2: stiffness (by perturbation)
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
                                               ii, &                     ! integration point index
                                               gg                        ! grain index
@@ -957,7 +957,7 @@ do n = 1,4
   !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        if (crystallite_integrateStress(mode,g,i,e,timeStepFraction(n))) then                             ! fraction of original times step
+        if (crystallite_integrateStress(g,i,e,timeStepFraction(n))) then                                  ! fraction of original times step
           if (n == 4) then                                                                                ! final integration step
             if (verboseDebugger .and. selectiveDebugger .and. e == debug_e .and. i == debug_i .and. g == debug_g) then
               mySizeDotState = constitutive_sizeDotState(g,i,e)
@@ -973,7 +973,7 @@ do n = 1,4
             crystallite_converged(g,i,e) = .true.                                                         ! ... converged per definition
             crystallite_todo(g,i,e) = .false.                                                             ! ... integration done
             !$OMP CRITICAL (distributionState)
-              debug_StateLoopDistribution(n,mode) = debug_StateLoopDistribution(n,mode) + 1
+              debug_StateLoopDistribution(n,numerics_integrationMode) = debug_StateLoopDistribution(n,numerics_integrationMode) + 1
             !$OMP END CRITICAL (distributionState)
           endif
         else                                                                                              ! broken stress integration
@@ -1041,7 +1041,7 @@ endsubroutine
 ! 5th order Runge-Kutta Cash-Karp method with adaptive step size
 ! (use 5th order solution to advance = "local extrapolation")
 !********************************************************************
-subroutine crystallite_integrateStateRKCK45(mode,gg,ii,ee)
+subroutine crystallite_integrateStateRKCK45(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
 use prec, only:         pInt, &
@@ -1056,7 +1056,8 @@ use debug, only:        debugger, &
 use numerics, only:     rTol_crystalliteState, &
                         rTol_crystalliteTemperature, &
                         subStepSizeCryst, &
-                        stepIncreaseCryst
+                        stepIncreaseCryst, &
+                        numerics_integrationMode
 use FEsolving, only:    FEsolving_execElem, & 
                         FEsolving_execIP, &
                         theInc
@@ -1080,7 +1081,6 @@ implicit none
 
 
 !*** input variables ***!
-integer(pInt), intent(in) ::                  mode                      ! mode of calculation; 1: central solution, 2: stiffness (by perturbation)
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
                                               ii, &                     ! integration point index
                                               gg                        ! grain index
@@ -1261,7 +1261,7 @@ do n = 1,5
   !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        if (.not. crystallite_integrateStress(mode,g,i,e,c(n))) then                                      ! fraction of original time step
+        if (.not. crystallite_integrateStress(g,i,e,c(n))) then                                           ! fraction of original time step
           if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
               crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
@@ -1404,11 +1404,11 @@ relTemperatureResiduum = 0.0_pReal
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      if (crystallite_integrateStress(mode,g,i,e)) then
+      if (crystallite_integrateStress(g,i,e)) then
         crystallite_converged(g,i,e) = .true.                                                           ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                               ! ... integration done
         !$OMP CRITICAL (distributionState)
-          debug_StateLoopDistribution(6,mode) = debug_StateLoopDistribution(6,mode) + 1
+          debug_StateLoopDistribution(6,numerics_integrationMode) = debug_StateLoopDistribution(6,numerics_integrationMode) + 1
         !$OMP END CRITICAL (distributionState)
       else
         if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
@@ -1425,7 +1425,7 @@ relTemperatureResiduum = 0.0_pReal
 
 ! --- nonlocal convergence check ---
 
-if (verboseDebugger .and. mode==1) write(6,*) 'crystallite_converged',crystallite_converged
+if (verboseDebugger .and. numerics_integrationMode == 1) write(6,*) 'crystallite_converged',crystallite_converged
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
@@ -1441,7 +1441,7 @@ endsubroutine
 ! integrate stress, state and Temperature with 
 ! 1nd order Euler method with adaptive step size
 !********************************************************************
-subroutine crystallite_integrateStateAdaptiveEuler(mode,gg,ii,ee)
+subroutine crystallite_integrateStateAdaptiveEuler(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
 use prec, only:         pInt, &
@@ -1456,7 +1456,8 @@ use debug, only:        debugger, &
 use numerics, only:     rTol_crystalliteState, &
                         rTol_crystalliteTemperature, &
                         subStepSizeCryst, &
-                        stepIncreaseCryst
+                        stepIncreaseCryst, &
+                        numerics_integrationMode
 use FEsolving, only:    FEsolving_execElem, & 
                         FEsolving_execIP
 use mesh, only:         mesh_element, &
@@ -1478,7 +1479,6 @@ implicit none
 
 
 !*** input variables ***!
-integer(pInt), intent(in) ::                  mode                      ! mode of calculation; 1: central solution, 2: stiffness (by perturbation)
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
                                               ii, &                     ! integration point index
                                               gg                        ! grain index
@@ -1598,7 +1598,7 @@ stateResiduum = 0.0_pReal
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      if (.not. crystallite_integrateStress(mode,g,i,e)) then
+      if (.not. crystallite_integrateStress(g,i,e)) then
         if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
           !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
@@ -1690,7 +1690,7 @@ relTemperatureResiduum = 0.0_pReal
         crystallite_converged(g,i,e) = .true.                                                             ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
         !$OMP CRITICAL (distributionState)
-          debug_StateLoopDistribution(2,mode) = debug_StateLoopDistribution(2,mode) + 1
+          debug_StateLoopDistribution(2,numerics_integrationMode) = debug_StateLoopDistribution(2,numerics_integrationMode) + 1
         !$OMP END CRITICAL (distributionState)
         
       endif
@@ -1703,7 +1703,7 @@ relTemperatureResiduum = 0.0_pReal
 
 ! --- NONLOCAL CONVERGENCE CHECK ---
 
-if (verboseDebugger .and. mode==1) write(6,*) 'crystallite_converged',crystallite_converged
+if (verboseDebugger .and. numerics_integrationMode==1_pInt) write(6,*) 'crystallite_converged',crystallite_converged
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
@@ -1718,11 +1718,12 @@ endsubroutine
 ! integrate stress, state and Temperature with 
 ! 1st order explicit Euler method 
 !********************************************************************
-subroutine crystallite_integrateStateEuler(mode,gg,ii,ee)
+subroutine crystallite_integrateStateEuler(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
 use prec, only:         pInt, &
                         pReal
+use numerics, only:     numerics_integrationMode
 use debug, only:        debugger, &
                         selectiveDebugger, &
                         verboseDebugger, &
@@ -1746,7 +1747,6 @@ use constitutive, only: constitutive_sizeDotState, &
 implicit none
 
 !*** input variables ***!
-integer(pInt), intent(in) ::                  mode                      ! mode of calculation; 1: central solution, 2: stiffness (by perturbation)
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
                                               ii, &                     ! integration point index
                                               gg                        ! grain index
@@ -1863,10 +1863,10 @@ endif
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      if (crystallite_integrateStress(mode,g,i,e)) then
+      if (crystallite_integrateStress(g,i,e)) then
         crystallite_converged(g,i,e) = .true.
         !$OMP CRITICAL (distributionState)
-          debug_StateLoopDistribution(1,mode) = debug_StateLoopDistribution(1,mode) + 1
+          debug_StateLoopDistribution(1,numerics_integrationMode) = debug_StateLoopDistribution(1,numerics_integrationMode) + 1
         !$OMP END CRITICAL (distributionState)
       else                                                                                                ! broken stress integration
         if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
@@ -1900,7 +1900,7 @@ endsubroutine
 ! adaptive 1st order explicit Euler method 
 ! using Fixed Point Iteration to adapt the stepsize  
 !********************************************************************
-subroutine crystallite_integrateStateFPI(mode,gg,ii,ee)
+subroutine crystallite_integrateStateFPI(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
 use prec, only:         pInt, &
@@ -1912,7 +1912,8 @@ use debug, only:        debugger, &
                         debug_i, &
                         debug_g, &
                         debug_StateLoopDistribution
-use numerics, only:     nState
+use numerics, only:     nState, &
+                        numerics_integrationMode
 use FEsolving, only:    FEsolving_execElem, & 
                         FEsolving_execIP
 use mesh, only:         mesh_element, &
@@ -1930,7 +1931,6 @@ use constitutive, only: constitutive_sizeDotState, &
 implicit none
 
 !*** input variables ***!
-integer(pInt), intent(in) ::                  mode                      ! mode of calculation; 1: central solution, 2: stiffness (by perturbation)
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
                                               ii, &                     ! integration point index
                                               gg                        ! grain index
@@ -2049,7 +2049,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        crystallite_todo(g,i,e) = crystallite_integrateStress(mode,g,i,e)
+        crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
         if ( .not. crystallite_localConstitution(g,i,e) .and. .not. crystallite_todo(g,i,e)) then         ! if broken non-local... 
           !$OMP CRITICAL (checkTodo) 
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
@@ -2059,7 +2059,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
     enddo; enddo; enddo
   !$OMP ENDDO
 
-  if (verboseDebugger .and. mode == 1) then
+  if (verboseDebugger .and. numerics_integrationMode == 1) then
     !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,*) count(crystallite_todo(:,:,:)),'grains todo after stress integration'
@@ -2112,7 +2112,8 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
           !$OMP END CRITICAL (checkTodo)
         elseif (crystallite_converged(g,i,e)) then
           !$OMP CRITICAL (distributionState)
-            debug_StateLoopDistribution(NiterationState,mode) = debug_StateLoopDistribution(NiterationState,mode) + 1
+            debug_StateLoopDistribution(NiterationState,numerics_integrationMode) = &
+              debug_StateLoopDistribution(NiterationState,numerics_integrationMode) + 1
           !$OMP END CRITICAL (distributionState)
         endif
       endif
@@ -2135,7 +2136,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   !$OMP ENDDO
     
   
-  if (verboseDebugger .and. mode == 1) then
+  if (verboseDebugger .and. numerics_integrationMode == 1) then
     !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,*) count(crystallite_converged(:,:,:)),'grains converged after state integration no.', NiterationState
@@ -2155,7 +2156,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   
   crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                   ! skip all converged
   
-  if (verboseDebugger .and. mode == 1) then
+  if (verboseDebugger .and. numerics_integrationMode == 1) then
     !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,*) count(crystallite_converged(:,:,:)),'grains converged after non-local check'
@@ -2183,7 +2184,8 @@ function crystallite_updateState(g,i,e)
 use prec, only:           pReal, &
                           pInt, &
                           pLongInt
-use numerics, only:       rTol_crystalliteState
+use numerics, only:       rTol_crystalliteState, &
+                          numerics_integrationMode
 use constitutive, only:   constitutive_dotState, &
                           constitutive_previousDotState, &
                           constitutive_sizeDotState, &
@@ -2236,7 +2238,7 @@ constitutive_state(g,i,e)%p(1:mySize) = constitutive_state(g,i,e)%p(1:mySize) - 
 crystallite_updateState = all( abs(residuum) < constitutive_aTolState(g,i,e)%p(1:mySize) &
                               .or. abs(residuum) < rTol_crystalliteState*abs(constitutive_state(g,i,e)%p(1:mySize)) )
 
-if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
+if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g) .and. numerics_integrationMode == 1_pInt) then
   !$OMP CRITICAL (write2out)
     if (crystallite_updateState) then
       write(6,*) '::: updateState converged',g,i,e
@@ -2323,7 +2325,6 @@ endfunction
 !***     acceleration of the Newton-Raphson correction               ***
 !***********************************************************************
 function crystallite_integrateStress(&
-     mode, &      ! 1: central solution, 2: stiffness (by perturbation)
      g,&          ! grain number
      i,&          ! integration point number
      e,&          ! element number
@@ -2339,7 +2340,8 @@ function crystallite_integrateStress(&
                                       aTol_crystalliteStress, &
                                       rTol_crystalliteStress, &
                                       iJacoLpresiduum, &
-                                      relevantStrain
+                                      relevantStrain, &
+                                      numerics_integrationMode
  use debug, only:                     debugger, &
                                       debug_g, &
                                       debug_i, &
@@ -2368,8 +2370,7 @@ function crystallite_integrateStress(&
  implicit none
 
  !*** input variables ***!
- integer(pInt), intent(in)::          mode, &                       ! 1 or 2
-                                      e, &                          ! element index
+ integer(pInt), intent(in)::          e, &                          ! element index
                                       i, &                          ! integration point index
                                       g                             ! grain index
  real(pReal), optional, intent(in) :: fraction                      ! fraction of timestep
@@ -2502,7 +2503,7 @@ LpLoop: do
      if (tock < tick) debug_cumLpTicks = debug_cumLpTicks + maxticks
    !$OMP END CRITICAL (debugTimingLpTangent)
    
-   if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
+   if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g) .and. numerics_integrationMode == 1_pInt) then
      !$OMP CRITICAL (write2out)
        write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress at ' ,g,i,e, ' ; iteration ', NiterationStress
        write(6,*)
@@ -2557,7 +2558,8 @@ LpLoop: do
      residuum  = residuum_old
      
      !$OMP CRITICAL (distributionLeapfrogBreak)
-       debug_LeapfrogBreakDistribution(NiterationStress,mode) = debug_LeapfrogBreakDistribution(NiterationStress,mode) + 1
+       debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) = &
+         debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) + 1
      !$OMP END CRITICAL (distributionLeapfrogBreak)
      
    ! residuum got better
@@ -2587,7 +2589,7 @@ LpLoop: do
          endif
          return
        else
-         if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then
+         if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g) .and. numerics_integrationMode==1_pInt) then
            !$OMP CRITICAL (write2out)
              write(6,'(a,i3,x,i2,x,i5,x,a,i3)') '::: integrateStress did dR/dLp inversion at ',g,i,e, &
                                                 '; iteration ', NiterationStress
@@ -2646,7 +2648,7 @@ LpLoop: do
 
  ! set return flag to true
  crystallite_integrateStress = .true.
- if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g)) then 
+ if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g) .and. numerics_integrationMode == 1_pInt) then 
    !$OMP CRITICAL (write2out)
    write(6,'(a,i3,x,i2,x,i5,x,a,x,i3)') '::: integrateStress converged at ',g,i,e,' ; iteration ', NiterationStress
    write(6,*)
@@ -2661,7 +2663,8 @@ LpLoop: do
  endif
 
  !$OMP CRITICAL (distributionStress)
-   debug_StressLoopDistribution(NiterationStress,mode) = debug_StressLoopDistribution(NiterationStress,mode) + 1
+   debug_StressLoopDistribution(NiterationStress,numerics_integrationMode) = &
+     debug_StressLoopDistribution(NiterationStress,numerics_integrationMode) + 1
  !$OMP END CRITICAL (distributionStress)
 
  return
