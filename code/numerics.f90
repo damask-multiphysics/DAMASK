@@ -15,8 +15,8 @@ integer(pInt)                   iJacoStiffness, &                       ! freque
                                 nState, &                               ! state loop limit
                                 nStress, &                              ! stress loop limit
                                 pert_method, &                          ! method used in perturbation technique for tangent
-                                integrator, &                           ! method used for state integration
-                                integratorStiffness                     ! method used for stiffness state integration
+                                numerics_integrationMode                ! integration mode 1 = central solution ; integration mode 2 = perturbation
+integer(pInt), dimension(2) ::  numerics_integrator                     ! method used for state integration (central & perturbed state)
 real(pReal)                     relevantStrain, &                       ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
                                 defgradTolerance, &                     ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
@@ -123,8 +123,8 @@ subroutine numerics_init()
   rTol_crystalliteTemperature = 1.0e-6_pReal
   rTol_crystalliteStress  = 1.0e-6_pReal
   aTol_crystalliteStress  = 1.0e-8_pReal            ! residuum is in Lp (hence strain on the order of 1e-8 here)
-  integrator              = 1                       ! fix-point iteration
-  integratorStiffness     = 1                       ! fix-point iteration
+  numerics_integrator(1)  = 1                       ! fix-point iteration
+  numerics_integrator(2)  = 1                       ! fix-point iteration
   
 !* RGC parameters: added <<<updated 17.12.2009>>> with moderate setting
   absTol_RGC              = 1.0e+4
@@ -215,9 +215,9 @@ subroutine numerics_init()
         case ('atol_crystallitestress')
               aTol_crystalliteStress = IO_floatValue(line,positions,2)
         case ('integrator')
-              integrator = IO_intValue(line,positions,2)
+              numerics_integrator(1) = IO_intValue(line,positions,2)
         case ('integratorstiffness')
-              integratorStiffness = IO_intValue(line,positions,2)
+              numerics_integrator(2) = IO_intValue(line,positions,2)
 
 !* RGC parameters: 
         case ('atol_rgc')
@@ -291,8 +291,7 @@ subroutine numerics_init()
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
   write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
   write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
-  write(6,'(a24,x,i8)')   'integrator:             ',integrator
-  write(6,'(a24,x,i8)')   'integratorStiffness:    ',integratorStiffness
+  write(6,'(a24,2(x,i8))')'integrator:             ',numerics_integrator
   write(6,*)
 
   write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
@@ -356,9 +355,7 @@ subroutine numerics_init()
   if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(276) !! oops !!
   if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(270)
   if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(271)
-  if (integrator <= 0_pInt .or. integrator >= 6_pInt) &
-                                            call IO_error(298)
-  if (integratorStiffness <= 0_pInt .or. integratorStiffness >= 6_pInt) &
+  if (any(numerics_integrator <= 0_pInt) .or. any(numerics_integrator >= 6_pInt)) &
                                             call IO_error(298)
 
 !* RGC parameters: added <<<updated 17.11.2009>>>
