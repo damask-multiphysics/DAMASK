@@ -381,8 +381,8 @@ def OpenPostfile(name,type):
 # -----------------------------
 
     p = {\
-           'marc':     post_open,\
            'spectral': MPIEspectral_result,\
+           'marc':     post_open,\
         }[type.lower()]\
                         (name+
                               {\

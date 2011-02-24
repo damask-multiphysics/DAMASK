@@ -94,7 +94,7 @@ It is defined as:
 \end{equation}
 with \vctr y\ are the coordinates in current configuration and \vctr x\ are the coordinates in reference configuration.
 
-The three-dimensional field of second order tensors is transformed to the Fourier space, giving three-dimensional field of second order tensors that depend on the three dimensional wave vector and not on the vector of spatial coordinates:
+The three-dimensional field of second order tensors is transformed to the Fourier space, giving three-dimensional field of second order tensors that depend on the three dimensional wave vector instead on the vector of spatial coordinates:
 \begin{equation}
 \mathcal F \left( \F(\vctr x) \right)=  \hat{\F}(\vctr k)
 \end{equation}
@@ -110,15 +110,21 @@ The locally fluctuating part is integrated in Fourier space, while the integrati
 
 The fluctuation field of the position vector in deformed configuration in Fourier space reads as:
 \begin{equation}
-\hat{\tilde{y}}_{\rm j}(\vctr k) = \hat{F_{\rm ji}}(\vctr k) \left(k_{\rm i} i 2 \pi \right)^{-1} \forall k_i \neq 0
+\hat{\tilde{y}}_{\rm j}(\vctr k) = \hat{F_{\rm ji}}(\vctr k) \left(k_{\rm i}(\vctr k) i 2 \pi \right)^{-1} \forall k_i \neq 0
 \end{equation}
-The average part is set to zero in Fourier space.
+The average part ($k_i=0$) is set to zero in Fourier space:
+
+\begin{equation}
+\hat{\tilde{y}}_{\rm j}(\vctr k) = \hat{F_{\rm ji}}(\vctr k) \left(k_{\rm i}(\vctr k) 0 \right) \forall k_i = 0
+\end{equation}
 
 The inverse Fourier transform gives the locally fluctuating part of each position in current configuration:
 \begin{equation}
 \mathcal{F}^{-1}\left(\hat{\tilde{\vctr y}}(\vctr k) \right) = \tilde{\vctr y}(\vctr x)
 \end{equation}
-and the position vector in undeformed configuration is given as:
+As the average part is set to zero, the same integration scheme works if $\tilde{\tnsr F}$ is used instead of ${\tnsr F}$.
+
+The position vector in undeformed configuration is given as:
 \begin{equation}
 \vctr y(\vctr x) = \overline{\F}: \vctr x + \tilde{\vctr y}(\vctr x)
 \end{equation}
