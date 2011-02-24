@@ -2970,28 +2970,21 @@ checkCandidateIP: do candidateIP = 1,FE_Nips(neighboringType)
             !*** if no match found, then also check node twins
             
             if(checkTwins) then
-periodicityDirection: do dir = 1,3
-                do a = 1,NlinkedNodes
-                  twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
-                  if (twin_of_linkedNode == 0_pInt &                                ! twin of linkedNode does not exist...
-                      .or. all(matchingNodes /= twin_of_linkedNode)) then           ! ... or it does not match any matchingNode
-                    if (dir < 3) then                                               ! no match in this direction...
-                      cycle periodicityDirection                                    ! ... so try in different direction
-                    else                                                            ! no matching in any direction...
-                      cycle checkCandidateIP                                        ! ... so check next candidateIP
-                    endif
-                  endif
-                enddo
-                exit periodicityDirection
-              enddo periodicityDirection
+              dir = maxloc(abs(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem)),1)      ! check for twins only in direction of the surface normal
+              do a = 1,NlinkedNodes
+                twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
+                if (twin_of_linkedNode == 0_pInt &                                  ! twin of linkedNode does not exist...
+                    .or. all(matchingNodes /= twin_of_linkedNode)) then             ! ... or it does not match any matchingNode
+                  cycle checkCandidateIP                                            ! ... so check next candidateIP
+                endif
+              enddo
             endif
 
             !*** we found a match !!!
             
             mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
             mesh_ipNeighborhood(2,neighbor,myIP,myElem) = candidateIP
-            exit checkCandidateIP
-            
+            exit checkCandidateIP            
           enddo checkCandidateIP
         endif                                                                     ! end of valid external matching
       endif                                                                       ! end of internal/external matching
