@@ -1287,6 +1287,7 @@ subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, previousTstar_v, Fe
 use prec,     only: pReal, &
                     pInt, &
                     p_vec
+use numerics, only: numerics_integrationMode
 use IO,       only: IO_error
 use debug,    only: debugger, &
                     debug_g, &
@@ -1555,7 +1556,6 @@ where (rhoSgl(1:ns,1:2) > 0.0_pReal) &
 !****************************************************************************
 !*** calculate dislocation fluxes (only for nonlocal constitution)
 
-constitutive_nonlocal_rhoDotFlux(:,:,g,ip,el) = 0.0_pReal
 rhoDotFlux = 0.0_pReal
 
 if (.not. phase_localConstitution(material_phase(g,ip,el))) then                                                                    ! only for nonlocal constitution
@@ -1574,14 +1574,17 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
   fluxdensity = rhoSgl(1:ns,1:4) * constitutive_nonlocal_v(1:ns,1:4,g,ip,el)
     
   do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                                                      ! loop through my neighbors
-  
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
     neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
     if (neighboring_el > 0_pInt .and. neighboring_ip > 0_pInt) then                                                                 ! if neighbor exists ...
       do neighboring_n = 1,FE_NipNeighbors(mesh_element(2,neighboring_el))                                                          ! find neighboring index that points from my neighbor to myself
         if (      el == mesh_ipNeighborhood(1,neighboring_n,neighboring_ip,neighboring_el) &
-            .and. ip == mesh_ipNeighborhood(2,neighboring_n,neighboring_ip,neighboring_el) ) &
-          exit
+            .and. ip == mesh_ipNeighborhood(2,neighboring_n,neighboring_ip,neighboring_el)) then                                    ! possible candidate
+          if (math_mul3x3(mesh_ipAreaNormal(1:3,n,ip,el),&
+                          mesh_ipAreaNormal(1:3,neighboring_n,neighboring_ip,neighboring_el)) < 0.0_pReal) then                     ! area normals have opposite orientation (we have to check that because of special case for single element with two ips and periodicity. In this case the neighbor is identical in two different directions.)
+            exit
+          endif
+        endif
       enddo
     endif
   
@@ -1670,12 +1673,12 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
       enddo
     endif
     
-  enddo ! neighbor loop
-  
-  constitutive_nonlocal_rhoDotFlux(1:ns,1:10,g,ip,el) = constitutive_nonlocal_rhoDotFlux(1:ns,1:10,g,ip,el) + rhoDotFlux
-  
+  enddo ! neighbor loop  
 endif
 
+if (numerics_integrationMode == 1_pInt) &
+  constitutive_nonlocal_rhoDotFlux(1:ns,1:10,g,ip,el) = rhoDotFlux(1:ns,1:10)                                                       ! save flux calculation for output (if in central integration mode)
+  
 
 !****************************************************************************
 !*** calculate dipole formation and annihilation
