@@ -1,4 +1,4 @@
-!* $Id$
+!* $Id: mesh.f90 765 2011-02-16 16:23:08Z MPIE\c.kords $
 !##############################################################
  MODULE mesh     
 !##############################################################
@@ -241,7 +241,7 @@
  
  write(6,*)
  write(6,*) '<<<+-  mesh init  -+>>>'
- write(6,*) '$Id$'
+ write(6,*) '$Id: mesh.f90 765 2011-02-16 16:23:08Z MPIE\c.kords $'
  write(6,*)
 
  call mesh_build_FEdata()                                      ! --- get properties of the different types of elements
@@ -1332,7 +1332,7 @@ do
 
   if (IO_lc(IO_stringValue(line,pos,1)) == '$mpie') then              ! found keyword for user defined input
     if (IO_lc(IO_stringValue(line,pos,2)) == 'periodic' &             ! found keyword 'periodic'
-        .and. pos(1) > 2) then                                        ! and there is at least one more chunk to read
+        .and. pos(1) > 3) then                                        ! and there is at least one more chunk to read
       do chunk = 2,pos(1)                                             ! loop through chunks (skipping the keyword)
         select case(IO_stringValue(line,pos,chunk))                   ! chunk matches keyvalues x,y or z?
           case('x')
@@ -2970,21 +2970,28 @@ checkCandidateIP: do candidateIP = 1,FE_Nips(neighboringType)
             !*** if no match found, then also check node twins
             
             if(checkTwins) then
-              dir = maxloc(abs(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem)),1)      ! check for twins only in direction of the surface normal
-              do a = 1,NlinkedNodes
-                twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
-                if (twin_of_linkedNode == 0_pInt &                                  ! twin of linkedNode does not exist...
-                    .or. all(matchingNodes /= twin_of_linkedNode)) then             ! ... or it does not match any matchingNode
-                  cycle checkCandidateIP                                            ! ... so check next candidateIP
-                endif
-              enddo
+periodicityDirection: do dir = 1,3
+                do a = 1,NlinkedNodes
+                  twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
+                  if (twin_of_linkedNode == 0_pInt &                                ! twin of linkedNode does not exist...
+                      .or. all(matchingNodes /= twin_of_linkedNode)) then           ! ... or it does not match any matchingNode
+                    if (dir < 3) then                                               ! no match in this direction...
+                      cycle periodicityDirection                                    ! ... so try in different direction
+                    else                                                            ! no matching in any direction...
+                      cycle checkCandidateIP                                        ! ... so check next candidateIP
+                    endif
+                  endif
+                enddo
+                exit periodicityDirection
+              enddo periodicityDirection
             endif
 
             !*** we found a match !!!
             
             mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
             mesh_ipNeighborhood(2,neighbor,myIP,myElem) = candidateIP
-            exit checkCandidateIP            
+            exit checkCandidateIP
+            
           enddo checkCandidateIP
         endif                                                                     ! end of valid external matching
       endif                                                                       ! end of internal/external matching
@@ -3070,7 +3077,7 @@ endsubroutine
      do j = 1,mesh_maxNnodes+mesh_maxNsubNodes-1           ! walk through entire flagList except last
        if (gravityNode(j)) then                            ! valid node index
          do k = j+1,mesh_maxNnodes+mesh_maxNsubNodes       ! walk through remainder of list
-           if (gravityNode(k) .and. all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < 1.0e-100_pReal)) then   ! found duplicate
+           if (gravityNode(k) .and. all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < 1.0e-36_pReal)) then   ! found duplicate
              gravityNode(j) = .false.                      ! delete first instance
              gravityNodePos(:,j) = 0.0_pReal
              exit                                          ! continue with next suspect

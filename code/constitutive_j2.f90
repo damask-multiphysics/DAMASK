@@ -341,7 +341,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
   ! convert Tstar to matrix and calculate euclidean norm
   Tstar_dev_33 = math_Mandel6to33(Tstar_dev_v)
   squarenorm_Tstar_dev = math_mul6x6(Tstar_dev_v,Tstar_dev_v)
-  norm_Tstar_dev = dsqrt(squarenorm_Tstar_dev) 
+  norm_Tstar_dev = sqrt(squarenorm_Tstar_dev) 
 
   ! Initialization of Lp and dLp_dTstar
   Lp = 0.0_pReal
@@ -351,7 +351,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
   if (norm_Tstar_dev > 0) then
    
     ! Calculation of gamma_dot
-    gamma_dot = constitutive_j2_gdot0(matID) * (            dsqrt(1.5_pReal) * norm_Tstar_dev & 
+    gamma_dot = constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
                                                / &!---------------------------------------------------
                                                  (constitutive_j2_fTaylor(matID) * state(g,ip,el)%p(1)) ) **constitutive_j2_n(matID)
 
@@ -414,10 +414,10 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
   Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
   Tstar_dev_v(4:6) = Tstar_v(4:6)
   
-  norm_Tstar_dev = dsqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
+  norm_Tstar_dev = sqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
   
   ! gamma_dot
-  gamma_dot = constitutive_j2_gdot0(matID) * (            dsqrt(1.5_pReal) * norm_Tstar_dev & 
+  gamma_dot = constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
                                              / &!---------------------------------------------------
                                                (constitutive_j2_fTaylor(matID) * state(g,ip,el)%p(1)) ) ** constitutive_j2_n(matID)
   
@@ -514,7 +514,7 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
   ! calculate deviatoric part of 2nd Piola-Kirchhoff stress and its norm
   Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
   Tstar_dev_v(4:6) = Tstar_v(4:6)
-  norm_Tstar_dev = dsqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
+  norm_Tstar_dev = sqrt(math_mul6x6(Tstar_dev_v,Tstar_dev_v))
   
   c = 0_pInt
   constitutive_j2_postResults = 0.0_pReal
@@ -526,7 +526,7 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
         c = c + 1
       case ('strainrate')
         constitutive_j2_postResults(c+1) = &
-              constitutive_j2_gdot0(matID) * (            dsqrt(1.5_pReal) * norm_Tstar_dev & 
+              constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
                                              / &!---------------------------------------------------
                                                (constitutive_j2_fTaylor(matID) * state(g,ip,el)%p(1)) ) ** constitutive_j2_n(matID)
         c = c + 1

@@ -604,10 +604,10 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3) :: rnd
  
  call halton(3,rnd)
- math_qRnd(1) = dcos(2.0_pReal*pi*rnd(1))*dsqrt(rnd(3))
- math_qRnd(2) = dsin(2.0_pReal*pi*rnd(2))*dsqrt(1.0_pReal-rnd(3))
- math_qRnd(3) = dcos(2.0_pReal*pi*rnd(2))*dsqrt(1.0_pReal-rnd(3))
- math_qRnd(4) = dsin(2.0_pReal*pi*rnd(1))*dsqrt(rnd(3))
+ math_qRnd(1) = cos(2.0_pReal*pi*rnd(1))*sqrt(rnd(3))
+ math_qRnd(2) = sin(2.0_pReal*pi*rnd(2))*sqrt(1.0_pReal-rnd(3))
+ math_qRnd(3) = cos(2.0_pReal*pi*rnd(2))*sqrt(1.0_pReal-rnd(3))
+ math_qRnd(4) = sin(2.0_pReal*pi*rnd(1))*sqrt(rnd(3))
 
  endfunction
 
@@ -675,7 +675,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(4), intent(in) ::  Q
  real(pReal)  math_qNorm
  
- math_qNorm = dsqrt(max(0.0_pReal, Q(1)*Q(1) + Q(2)*Q(2) + Q(3)*Q(3) + Q(4)*Q(4)))
+ math_qNorm = sqrt(max(0.0_pReal, Q(1)*Q(1) + Q(2)*Q(2) + Q(3)*Q(3) + Q(4)*Q(4)))
 
  endfunction
 
@@ -1127,7 +1127,7 @@ pure function math_transpose3x3(A)
  real(pReal), dimension(3), intent(in) :: v
  real(pReal) math_norm3
 
- math_norm3 = dsqrt(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
+ math_norm3 = sqrt(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
  return
  
  endfunction
@@ -1333,7 +1333,7 @@ pure function math_transpose3x3(A)
  if(val >  1.0_pReal) val =  1.0_pReal
  if(val < -1.0_pReal) val = -1.0_pReal
      
- math_RtoEuler(2) = dacos(val)
+ math_RtoEuler(2) = acos(val)
 
  if(math_RtoEuler(2) < 1.0e-8_pReal) then
 ! calculate phi2
@@ -1343,7 +1343,7 @@ pure function math_transpose3x3(A)
      if(val >  1.0_pReal) val =  1.0_pReal
      if(val < -1.0_pReal) val = -1.0_pReal
      
-     math_RtoEuler(1) = dacos(val)
+     math_RtoEuler(1) = acos(val)
      if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  else
 ! calculate phi2
@@ -1351,14 +1351,14 @@ pure function math_transpose3x3(A)
      if(val >  1.0_pReal) val =  1.0_pReal
      if(val < -1.0_pReal) val = -1.0_pReal
      
-     math_RtoEuler(3) = dacos(val)
+     math_RtoEuler(3) = acos(val)
      if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
 ! calculate phi1
      val=-R(3,2)/sin(math_RtoEuler(2))
      if(val >  1.0_pReal) val =  1.0_pReal
      if(val < -1.0_pReal) val = -1.0_pReal
      
-     math_RtoEuler(1) = dacos(val)
+     math_RtoEuler(1) = acos(val)
      if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  end if
  return
@@ -1382,10 +1382,10 @@ pure function math_transpose3x3(A)
 
  math_RtoQuaternion = 0.0_pReal
 
- absQ(1) = 0.5_pReal * dsqrt(1.0_pReal+R(1,1)+R(2,2)+R(3,3))
- absQ(2) = 0.5_pReal * dsqrt(1.0_pReal+R(1,1)-R(2,2)-R(3,3))
- absQ(3) = 0.5_pReal * dsqrt(1.0_pReal-R(1,1)+R(2,2)-R(3,3))
- absQ(4) = 0.5_pReal * dsqrt(1.0_pReal-R(1,1)-R(2,2)+R(3,3))
+ absQ(1) = 0.5_pReal * sqrt(1.0_pReal+R(1,1)+R(2,2)+R(3,3))
+ absQ(2) = 0.5_pReal * sqrt(1.0_pReal+R(1,1)-R(2,2)-R(3,3))
+ absQ(3) = 0.5_pReal * sqrt(1.0_pReal-R(1,1)+R(2,2)-R(3,3))
+ absQ(4) = 0.5_pReal * sqrt(1.0_pReal-R(1,1)-R(2,2)+R(3,3))
  
  largest = maxloc(absQ)
  select case(largest(1))
@@ -1434,12 +1434,12 @@ pure function math_transpose3x3(A)
  real(pReal), dimension(3,3) :: math_EulerToR
  real(pReal) c1, c, c2, s1, s, s2
 
- C1 = dcos(Euler(1))
- C = dcos(Euler(2))
- C2 = dcos(Euler(3))
- S1 = dsin(Euler(1))
- S = dsin(Euler(2))
- S2 = dsin(Euler(3))
+ C1 = cos(Euler(1))
+ C = cos(Euler(2))
+ C2 = cos(Euler(3))
+ S1 = sin(Euler(1))
+ S = sin(Euler(2))
+ S2 = sin(Euler(3))
  math_EulerToR(1,1)=C1*C2-S1*S2*C
  math_EulerToR(1,2)=S1*C2+C1*S2*C
  math_EulerToR(1,3)=S2*S
@@ -1469,13 +1469,13 @@ pure function math_transpose3x3(A)
  
  halfangles = 0.5_pReal * eulerangles
  
- c = dcos(halfangles(2))
- s = dsin(halfangles(2))
+ c = cos(halfangles(2))
+ s = sin(halfangles(2))
  
- math_EulerToQuaternion(1) = dcos(halfangles(1)+halfangles(3)) * c
- math_EulerToQuaternion(2) = dcos(halfangles(1)-halfangles(3)) * s
- math_EulerToQuaternion(3) = dsin(halfangles(1)-halfangles(3)) * s
- math_EulerToQuaternion(4) = dsin(halfangles(1)+halfangles(3)) * c
+ math_EulerToQuaternion(1) = cos(halfangles(1)+halfangles(3)) * c
+ math_EulerToQuaternion(2) = cos(halfangles(1)-halfangles(3)) * s
+ math_EulerToQuaternion(3) = sin(halfangles(1)-halfangles(3)) * s
+ math_EulerToQuaternion(4) = sin(halfangles(1)+halfangles(3)) * c
   
  endfunction
 
@@ -1495,12 +1495,12 @@ pure function math_transpose3x3(A)
  real(pReal) norm,s,c,c1
  integer(pInt) i
 
- norm = dsqrt(math_mul3x3(axis,axis))
+ norm = sqrt(math_mul3x3(axis,axis))
  if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
    forall (i=1:3) axisNrm(i) = axis(i)/norm          ! normalize axis to be sure
 
-   s = dsin(omega)
-   c = dcos(omega)
+   s = sin(omega)
+   c = cos(omega)
    c1 = 1.0_pReal - c
   
    ! formula for active rotation taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
@@ -1541,12 +1541,12 @@ pure function math_transpose3x3(A)
  real(pReal) s,c,norm
  integer(pInt) i
 
- norm = dsqrt(math_mul3x3(axis,axis))
+ norm = sqrt(math_mul3x3(axis,axis))
  if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
    forall (i=1:3) axisNrm(i) = axis(i)/norm          ! normalize axis to be sure
    ! formula taken from http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
-   s = dsin(omega/2.0_pReal)
-   c = dcos(omega/2.0_pReal)
+   s = sin(omega/2.0_pReal)
+   c = cos(omega/2.0_pReal)
    math_AxisAngleToQuaternion(1) =   c
    math_AxisAngleToQuaternion(2:4) = s * axisNrm(1:3)
  else
@@ -1597,17 +1597,17 @@ pure function math_transpose3x3(A)
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_QuaternionToEuler
 
- math_QuaternionToEuler(2) = dacos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
+ math_QuaternionToEuler(2) = acos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
 
- if (dabs(math_QuaternionToEuler(2)) < 1.0e-3_pReal) then
-   math_QuaternionToEuler(1) = 2.0_pReal*dacos(Q(1))
+ if (abs(math_QuaternionToEuler(2)) < 1.0e-3_pReal) then
+   math_QuaternionToEuler(1) = 2.0_pReal*acos(Q(1))
    math_QuaternionToEuler(3) = 0.0_pReal
  else
-   math_QuaternionToEuler(1) = datan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
+   math_QuaternionToEuler(1) = atan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
    if (math_QuaternionToEuler(1) < 0.0_pReal) &
      math_QuaternionToEuler(1) = math_QuaternionToEuler(1) + 2.0_pReal * pi
 
-   math_QuaternionToEuler(3) = datan2(-Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)+Q(3)*Q(4))
+   math_QuaternionToEuler(3) = atan2(-Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)+Q(3)*Q(4))
    if (math_QuaternionToEuler(3) < 0.0_pReal) &
      math_QuaternionToEuler(3) = math_QuaternionToEuler(3) + 2.0_pReal * pi
  endif
@@ -1632,8 +1632,8 @@ pure function math_transpose3x3(A)
  real(pReal) halfAngle, sinHalfAngle
  real(pReal), dimension(4) :: math_QuaternionToAxisAngle  
 
- halfAngle = dacos(max(-1.0_pReal, min(1.0_pReal, Q(1))))            ! limit to [-1,1] --> 0 to 180 deg
- sinHalfAngle = dsin(halfAngle)
+ halfAngle = acos(max(-1.0_pReal, min(1.0_pReal, Q(1))))            ! limit to [-1,1] --> 0 to 180 deg
+ sinHalfAngle = sin(halfAngle)
  
  if (sinHalfAngle <= 1.0e-4_pReal) then                              ! very small rotation angle?
    math_QuaternionToAxisAngle = 0.0_pReal
@@ -1715,7 +1715,7 @@ pure function math_QuaternionInSST(Q, symmetryType)
                              Rodrig(2) > Rodrig(3) .and. &
                              Rodrig(3) > 0.0_pReal
     case (2)
-      math_QuaternionInSST = Rodrig(1) > dsqrt(3.0_pReal)*Rodrig(2) .and. &
+      math_QuaternionInSST = Rodrig(1) > sqrt(3.0_pReal)*Rodrig(2) .and. &
                              Rodrig(2) > 0.0_pReal .and. &
                              Rodrig(3) > 0.0_pReal
     case default
@@ -1868,7 +1868,7 @@ endif
  fiberInS(3)=cos(beta(1))
 
 ! ---# rotation matrix from sample to crystal system #---
- angle = -dacos(dot_product(fiberInC,fiberInS))
+ angle = -acos(dot_product(fiberInC,fiberInS))
  if(angle /= 0.0_pReal) then
 !   rotation axis between sample and crystal system (cross product)
    forall(i=1:3) axis(i) = fiberInC(rotMap(1,i))*fiberInS(rotMap(2,i))-fiberInC(rotMap(2,i))*fiberInS(rotMap(1,i))
@@ -2018,7 +2018,7 @@ endfunction
  ce = math_mul33x33(transpose(FE),FE)
 
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
- U=DSQRT(EW1)*EB1+DSQRT(EW2)*EB2+DSQRT(EW3)*EB3
+ U=sqrt(EW1)*EB1+sqrt(EW2)*EB2+sqrt(EW3)*EB3
  call math_invert3x3(U,UI,det,error)
  if (.not. error) R = math_mul33x33(FE,UI)
 
@@ -2059,14 +2059,14 @@ endfunction
    EB2(2,2)=1.0_pReal
    EB3(3,3)=1.0_pReal
  ELSE
-   RHO=DSQRT(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+   RHO=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
    arg=-Q/RHO/2.0_pReal
    if(arg.GT.1) arg=1
    if(arg.LT.-1) arg=-1
-   PHI=DACOS(arg)
-   Y1=2*RHO**(1.0_pReal/3.0_pReal)*DCOS(PHI/3.0_pReal)
-   Y2=2*RHO**(1.0_pReal/3.0_pReal)*DCOS(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
-   Y3=2*RHO**(1.0_pReal/3.0_pReal)*DCOS(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
+   PHI=acos(arg)
+   Y1=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
+   Y2=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
+   Y3=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
    EW1=Y1-R/3.0_pReal
    EW2=Y2-R/3.0_pReal
    EW3=Y3-R/3.0_pReal

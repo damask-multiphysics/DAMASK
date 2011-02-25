@@ -561,7 +561,7 @@ program mpie_spectral
    enddo  ! end looping over steps in current loadcase
  enddo    ! end looping over loadcases
  close(538)
- call dfftw_destroy_plan(plan_fft(1)); call dfftw_destroy_plan(plan_fft(2))
+ call sfftw_destroy_plan(plan_fft(1)); call sfftw_destroy_plan(plan_fft(2))
     
 end program mpie_spectral
 

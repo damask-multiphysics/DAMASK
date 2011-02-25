@@ -776,13 +776,13 @@ function lattice_initializeStructure(struct,CoverA)
      if (lattice_fcc_Nstructure == 1_pInt) then    ! me is first fcc structure
        processMe = .true.
        do i = 1,myNslip                            ! calculate slip system vectors
-         sd(:,i) = lattice_fcc_systemSlip(1:3,i)/dsqrt(math_mul3x3(lattice_fcc_systemSlip(1:3,i),lattice_fcc_systemSlip(1:3,i)))
-         sn(:,i) = lattice_fcc_systemSlip(4:6,i)/dsqrt(math_mul3x3(lattice_fcc_systemSlip(4:6,i),lattice_fcc_systemSlip(4:6,i)))
+         sd(:,i) = lattice_fcc_systemSlip(1:3,i)/sqrt(math_mul3x3(lattice_fcc_systemSlip(1:3,i),lattice_fcc_systemSlip(1:3,i)))
+         sn(:,i) = lattice_fcc_systemSlip(4:6,i)/sqrt(math_mul3x3(lattice_fcc_systemSlip(4:6,i),lattice_fcc_systemSlip(4:6,i)))
          st(:,i) = math_vectorproduct(sd(:,i),sn(:,i))
        enddo
        do i = 1,myNtwin                            ! calculate twin system vectors and (assign) shears
-         td(:,i) = lattice_fcc_systemTwin(1:3,i)/dsqrt(math_mul3x3(lattice_fcc_systemTwin(1:3,i),lattice_fcc_systemTwin(1:3,i)))
-         tn(:,i) = lattice_fcc_systemTwin(4:6,i)/dsqrt(math_mul3x3(lattice_fcc_systemTwin(4:6,i),lattice_fcc_systemTwin(4:6,i)))
+         td(:,i) = lattice_fcc_systemTwin(1:3,i)/sqrt(math_mul3x3(lattice_fcc_systemTwin(1:3,i),lattice_fcc_systemTwin(1:3,i)))
+         tn(:,i) = lattice_fcc_systemTwin(4:6,i)/sqrt(math_mul3x3(lattice_fcc_systemTwin(4:6,i),lattice_fcc_systemTwin(4:6,i)))
          tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
          ts(i)   = lattice_fcc_shearTwin(i)
        enddo
@@ -802,13 +802,13 @@ function lattice_initializeStructure(struct,CoverA)
      if (lattice_bcc_Nstructure == 1_pInt) then    ! me is first bcc structure
        processMe = .true.
        do i = 1,myNslip                            ! calculate slip system vectors
-         sd(:,i) = lattice_bcc_systemSlip(1:3,i)/dsqrt(math_mul3x3(lattice_bcc_systemSlip(1:3,i),lattice_bcc_systemSlip(1:3,i)))
-         sn(:,i) = lattice_bcc_systemSlip(4:6,i)/dsqrt(math_mul3x3(lattice_bcc_systemSlip(4:6,i),lattice_bcc_systemSlip(4:6,i)))
+         sd(:,i) = lattice_bcc_systemSlip(1:3,i)/sqrt(math_mul3x3(lattice_bcc_systemSlip(1:3,i),lattice_bcc_systemSlip(1:3,i)))
+         sn(:,i) = lattice_bcc_systemSlip(4:6,i)/sqrt(math_mul3x3(lattice_bcc_systemSlip(4:6,i),lattice_bcc_systemSlip(4:6,i)))
          st(:,i) = math_vectorproduct(sd(:,i),sn(:,i))
        enddo
        do i = 1,myNtwin                            ! calculate twin system vectors and (assign) shears
-         td(:,i) = lattice_bcc_systemTwin(1:3,i)/dsqrt(math_mul3x3(lattice_bcc_systemTwin(1:3,i),lattice_bcc_systemTwin(1:3,i)))
-         tn(:,i) = lattice_bcc_systemTwin(4:6,i)/dsqrt(math_mul3x3(lattice_bcc_systemTwin(4:6,i),lattice_bcc_systemTwin(4:6,i)))
+         td(:,i) = lattice_bcc_systemTwin(1:3,i)/sqrt(math_mul3x3(lattice_bcc_systemTwin(1:3,i),lattice_bcc_systemTwin(1:3,i)))
+         tn(:,i) = lattice_bcc_systemTwin(4:6,i)/sqrt(math_mul3x3(lattice_bcc_systemTwin(4:6,i),lattice_bcc_systemTwin(4:6,i)))
          tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
          ts(i)   = lattice_bcc_shearTwin(i)
        enddo
@@ -830,37 +830,37 @@ function lattice_initializeStructure(struct,CoverA)
 ! converting from 4 axes coordinate system (a1=a2=a3=c) to ortho-hexgonal system (a, b, c)
        do i = 1,myNslip
          hex_d(1) =  lattice_hex_systemSlip(1,i)*1.5_pReal ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
-         hex_d(2) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*(0.5_pReal*dsqrt(3.0_pReal))
+         hex_d(2) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*(0.5_pReal*sqrt(3.0_pReal))
          hex_d(3) =  lattice_hex_systemSlip(4,i)*CoverA
          hex_n(1) =  lattice_hex_systemSlip(5,i)           ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
-         hex_n(2) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/dsqrt(3.0_pReal)
+         hex_n(2) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/sqrt(3.0_pReal)
          hex_n(3) =  lattice_hex_systemSlip(8,i)/CoverA
 
-         sd(:,i) = hex_d/dsqrt(math_mul3x3(hex_d,hex_d))
-         sn(:,i) = hex_n/dsqrt(math_mul3x3(hex_n,hex_n))
+         sd(:,i) = hex_d/sqrt(math_mul3x3(hex_d,hex_d))
+         sn(:,i) = hex_n/sqrt(math_mul3x3(hex_n,hex_n))
          st(:,i) = math_vectorproduct(sd(:,i),sn(:,i))
        enddo
        do i = 1,myNtwin
          hex_d(1) =  lattice_hex_systemTwin(1,i)*1.5_pReal
-         hex_d(2) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*(0.5_pReal*dsqrt(3.0_pReal))
+         hex_d(2) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*(0.5_pReal*sqrt(3.0_pReal))
          hex_d(3) =  lattice_hex_systemTwin(4,i)*CoverA
          hex_n(1) =  lattice_hex_systemTwin(5,i)
-         hex_n(2) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/dsqrt(3.0_pReal)
+         hex_n(2) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/sqrt(3.0_pReal)
          hex_n(3) =  lattice_hex_systemTwin(8,i)/CoverA
 
-         td(:,i) = hex_d/dsqrt(math_mul3x3(hex_d,hex_d))
-         tn(:,i) = hex_n/dsqrt(math_mul3x3(hex_n,hex_n))
+         td(:,i) = hex_d/sqrt(math_mul3x3(hex_d,hex_d))
+         tn(:,i) = hex_n/sqrt(math_mul3x3(hex_n,hex_n))
          tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
 
          select case(lattice_hex_shearTwin(i))                                     ! from Christian & Mahajan 1995 p.29
            case (1)                                                                ! {10.2}<-10.1>
-                    ts(i) = (3.0_pReal-CoverA*CoverA)/dsqrt(3.0_pReal)/CoverA
+                    ts(i) = (3.0_pReal-CoverA*CoverA)/sqrt(3.0_pReal)/CoverA
            case (2)                                                                ! {11.2}<11.-3>
                     ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
            case (3)                                                                ! {11.1}<-1-1.6>
                     ts(i) = 1.0_pReal/CoverA
            case (4)                                                                ! {10.1}<10.-2>
-                    ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/dsqrt(3.0_pReal)/CoverA
+                    ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/sqrt(3.0_pReal)/CoverA
          end select
 
        enddo

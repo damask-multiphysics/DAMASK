@@ -636,7 +636,7 @@ do i = 1,maxNinstance
 !*** calculation of prefactor for activation enthalpy for dislocation glide
 
   constitutive_nonlocal_Qeff0(1:ns,i) = constitutive_nonlocal_burgersPerSlipSystem(1:ns,i) ** 3.0_pReal &
-                                   * dsqrt(0.5_pReal * constitutive_nonlocal_d0(i) ** 3.0_pReal &
+                                   * sqrt(0.5_pReal * constitutive_nonlocal_d0(i) ** 3.0_pReal &
                                                      * constitutive_nonlocal_Gmod(i) * constitutive_nonlocal_tauObs(i))
 
 enddo
@@ -1122,10 +1122,10 @@ if (Temperature > 0.0_pReal) then
     
     tauRel = (abs(tau(s)) - tauThreshold(s)) / constitutive_nonlocal_tauObs(myInstance)
     if (tauRel > 0.0_pReal .and. tauRel < 1.0_pReal) then
-      wallFunc = 4.0_pReal * dsqrt(2.0_pReal) / 3.0_pReal * dsqrt(1.0_pReal - tauRel) / tauRel
-      boltzmannProbability = dexp(- constitutive_nonlocal_Qeff0(s,myInstance) * wallFunc / (kB * Temperature))
+      wallFunc = 4.0_pReal * sqrt(2.0_pReal) / 3.0_pReal * sqrt(1.0_pReal - tauRel) / tauRel
+      boltzmannProbability = exp(- constitutive_nonlocal_Qeff0(s,myInstance) * wallFunc / (kB * Temperature))
       timeRatio = boltzmannProbability * constitutive_nonlocal_fattack(myInstance) &
-                / (constitutive_nonlocal_vs(myInstance) * dsqrt(rhoForest(s)))
+                / (constitutive_nonlocal_vs(myInstance) * sqrt(rhoForest(s)))
         
       constitutive_nonlocal_v(s,:,g,ip,el) = sign(constitutive_nonlocal_vs(myInstance),tau(s)) * timeRatio / (1.0_pReal + timeRatio)
       
@@ -1142,7 +1142,7 @@ if (Temperature > 0.0_pReal) then
     elseif (tauRel >= 1.0_pReal) then
       constitutive_nonlocal_v(s,1:4,g,ip,el) = sign(constitutive_nonlocal_vs(myInstance), tau(s)) &
                                              * constitutive_nonlocal_fattack(myInstance) &
-                                             / (constitutive_nonlocal_vs(myInstance) * dsqrt(rhoForest(s)) &
+                                             / (constitutive_nonlocal_vs(myInstance) * sqrt(rhoForest(s)) &
                                                 + constitutive_nonlocal_fattack(myInstance))
     endif
   enddo

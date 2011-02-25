@@ -763,7 +763,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 
 !-- add system-dependent part and calculate dot gammas
 
- ssat_offset = constitutive_phenopowerlaw_spr(matID)*dsqrt(state(ipc,ip,el)%p(index_F))
+ ssat_offset = constitutive_phenopowerlaw_spr(matID)*sqrt(state(ipc,ip,el)%p(index_F))
  j = 0_pInt
  do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
    index_myFamily = sum(lattice_NslipSystem(1:f-1,structID))                 ! at which index starts my family
