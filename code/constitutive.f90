@@ -506,7 +506,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
 endsubroutine
 
 
-subroutine constitutive_collectDotState(Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, orientation, ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, orientation, ipc, ip, el)
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
@@ -551,8 +551,7 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)
 real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                 orientation
 real(pReal), dimension(6), intent(in) :: &
-                                Tstar_v, &
-                                subTstar0_v
+                                Tstar_v
 
 !*** local variables
 integer(pLongInt)               tick, tock, & 
@@ -576,9 +575,8 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
   case (constitutive_nonlocal_label)
-    call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, subTstar0_v, Fe, Fp, Temperature, subdt, &
-                                        constitutive_state, constitutive_subState0, constitutive_aTolState, subdt, &
-                                        orientation, ipc, ip, el)
+    call constitutive_nonlocal_dotState(constitutive_dotState, Tstar_v, Fe, Fp, Temperature, constitutive_state, &
+                                        constitutive_aTolState, subdt, orientation, ipc, ip, el)
  
 end select
 
@@ -664,7 +662,7 @@ return
 endfunction
 
 
-function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, misorientation, dt, subdt, ipc, ip, el)
+function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
 !*********************************************************************
 !* return array of constitutive results                              *
 !* INPUT:                                                            *
@@ -690,10 +688,9 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, mis
 
 !* Definition of variables
  integer(pInt), intent(in) :: ipc,ip,el
- real(pReal), intent(in) :: dt, Temperature, subdt
- real(pReal), dimension(6), intent(in) :: Tstar_v, subTstar0_v
- real(pReal), dimension(4,mesh_maxNipNeighbors), intent(in) :: misorientation
- real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
+ real(pReal), intent(in) :: dt, Temperature
+ real(pReal), dimension(6), intent(in) :: Tstar_v
+ real(pReal), dimension(3,3), intent(in) :: Fe
  real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: constitutive_postResults
 
  constitutive_postResults = 0.0_pReal
@@ -712,8 +709,7 @@ function constitutive_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, mis
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
      
    case (constitutive_nonlocal_label)
-     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, subTstar0_v, Fe, Fp, Temperature, misorientation, &
-                                                                  dt, subdt, constitutive_state, constitutive_subState0, &
+     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, Fe, Temperature, dt, constitutive_state, &
                                                                   constitutive_dotstate, ipc, ip, el)
  end select
  

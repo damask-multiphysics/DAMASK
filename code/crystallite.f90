@@ -896,9 +896,8 @@ RK4dotTemperature = 0.0_pReal                                                   
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     constitutive_RK4dotState(g,i,e)%p = 0.0_pReal                                                         ! initialize Runge-Kutta dotState
     if (crystallite_todo(g,i,e)) then
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
-                                        crystallite_orientation, g,i,e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -997,9 +996,8 @@ do n = 1,4
     !$OMP DO
       do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                      ! iterate over elements, ips and grains
         if (crystallite_todo(g,i,e)) then
-          call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                            crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                            timeStepFraction(n)*crystallite_subdt(g,i,e), &               ! fraction of original timestep
+          call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                            crystallite_Temperature(g,i,e), timeStepFraction(n)*crystallite_subdt(g,i,e), & ! fraction of original timestep
                                             crystallite_orientation, g,i,e)
           crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                           crystallite_Temperature(g,i,e),g,i,e)
@@ -1196,9 +1194,8 @@ endif
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
-                                        crystallite_orientation, g,i,e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -1286,9 +1283,8 @@ do n = 1,5
   !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), &
-                                          crystallite_Fe, crystallite_Fp, crystallite_Temperature(g,i,e), & 
-                                          c(n)*crystallite_subdt(g,i,e), &                                ! fraction of original timestep
+        call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                          crystallite_Temperature(g,i,e), c(n)*crystallite_subdt(g,i,e), & ! fraction of original timestep
                                           crystallite_orientation, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
@@ -1543,9 +1539,8 @@ stateResiduum = 0.0_pReal
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then  
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
-                                        crystallite_orientation, g,i,e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -1617,9 +1612,8 @@ stateResiduum = 0.0_pReal
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
-                                        crystallite_orientation, g,i,e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
@@ -1800,9 +1794,8 @@ endif
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
-                                        crystallite_orientation, g,i,e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(:,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
@@ -1989,9 +1982,8 @@ endif
 !$OMP DO
   do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                          ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_subTstar0_v(1:6,g,i,e), crystallite_Fe, &
-                                        crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
-                                        crystallite_orientation, g, i, e)
+      call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
@@ -2073,9 +2065,8 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   !$OMP DO
     do e=eIter(1),eIter(2); do i=iIter(1,e),iIter(2,e); do g=gIter(1,e),gIter(2,e)                        ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_subTstar0_v(1:6,g,i,e), crystallite_Fe, &
-                                          crystallite_Fp, crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), &
-                                          crystallite_orientation, g, i, e)
+        call constitutive_collectDotState(crystallite_Tstar_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
       endif
   enddo; enddo; enddo
   !$OMP ENDDO
@@ -2911,9 +2902,7 @@ function crystallite_postResults(&
   
  crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e); c = c+1_pInt  ! size of constitutive results
  crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = &
-         constitutive_postResults(crystallite_Tstar_v(:,g,i,e), crystallite_subTstar0_v(:,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                  crystallite_Temperature(g,i,e), crystallite_disorientation(:,:,g,i,e), dt, &
-                                  crystallite_subdt(g,i,e), g, i, e)
+   constitutive_postResults(crystallite_Tstar_v(:,g,i,e), crystallite_Fe(:,:,g,i,e), crystallite_Temperature(g,i,e), dt, g, i, e)
  c = c + constitutive_sizePostResults(g,i,e)
  
  return 
