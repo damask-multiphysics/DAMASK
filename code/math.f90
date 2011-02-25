@@ -118,7 +118,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  SUBROUTINE math_init ()
 
- use prec,     only: pReal,pInt
+ use prec,     only: pReal,pInt,tol_math_check
  use numerics, only: fixedSeed
  use IO,       only: IO_error
  implicit none
@@ -155,28 +155,28 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  q = math_qRnd();
  axisangle = math_QuaternionToAxisAngle(q);
  q2 = math_AxisAngleToQuaternion(axisangle(1:3),axisangle(4))
- if ( any(abs( q-q2) > 1.0e-8 ) .and. &
-      any(abs(-q-q2) > 1.0e-8 ) ) &
+ if ( any(abs( q-q2) > tol_math_check ) .and. &
+      any(abs(-q-q2) > tol_math_check ) ) &
    call IO_error(670)
  
  ! +++ q -> R -> q  +++
  R = math_QuaternionToR(q);
  q2 = math_RToQuaternion(R)
- if ( any(abs( q-q2) > 1.0e-8 ) .and. &
-      any(abs(-q-q2) > 1.0e-8 ) ) &
+ if ( any(abs( q-q2) > tol_math_check ) .and. &
+      any(abs(-q-q2) > tol_math_check ) ) &
    call IO_error(671)
  
  ! +++ q -> euler -> q  +++
  Eulers = math_QuaternionToEuler(q);
  q2 = math_EulerToQuaternion(Eulers)
- if ( any(abs( q-q2) > 1.0e-8 ) .and. &
-      any(abs(-q-q2) > 1.0e-8 ) ) &
+ if ( any(abs( q-q2) > tol_math_check ) .and. &
+      any(abs(-q-q2) > tol_math_check ) ) &
    call IO_error(672)
  
  ! +++ R -> euler -> R  +++
  Eulers = math_RToEuler(R);
  R2 = math_EulerToR(Eulers)
- if ( any(abs( R-R2) > 1.0e-8 ) ) &
+ if ( any(abs( R-R2) > tol_math_check ) ) &
    call IO_error(673)
  
  

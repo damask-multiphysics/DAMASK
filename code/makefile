@@ -14,16 +14,12 @@ precision :=double
 ifeq ($(precision),single)
 cpspectral_single.exe: mpie_spectral_single.o CPFEM.a
 	ifort -openmp -o cpspectral_single.exe mpie_spectral_single.o CPFEM.a libfftw3f_threads.a libfftw3f.a constitutive.a advanced.a basics.a -lpthread
-	rm *.mod
-
 mpie_spectral_single.o: mpie_spectral_single.f90 CPFEM.o 
 	ifort -openmp -c -O3 -heap-arrays 500000000 mpie_spectral_single.f90 
 
 else
 cpspectral_double.exe: mpie_spectral.o CPFEM.a
 	ifort -openmp -o cpspectral_double.exe mpie_spectral.o CPFEM.a libfftw3_threads.a libfftw3.a constitutive.a advanced.a basics.a -lpthread
-	rm *.mod
-
 mpie_spectral.o: mpie_spectral.f90 CPFEM.o 
 	ifort -openmp -c -O3 -heap-arrays 500000000 mpie_spectral.f90 
 endif
@@ -66,30 +62,19 @@ constitutive_phenopowerlaw.o: constitutive_phenopowerlaw.f90 basics.a advanced.a
 	ifort -openmp -c -O3 -heap-arrays 500000000 constitutive_phenopowerlaw.f90
 
 
-ifeq ($(precision),single)
-advanced.a: lattice.o
-	ar rc advanced.a FEsolving.o mesh_single.o material.o lattice.o
-else
+
 advanced.a: lattice.o
 	ar rc advanced.a FEsolving.o mesh.o material.o lattice.o
-endif
+
 
 lattice.o: lattice.f90 material.o
 	ifort -openmp -c -O3 -heap-arrays 500000000 lattice.f90
-ifeq ($(precision),single)
-material.o: material.f90 mesh_single.o
-	ifort -openmp -c -O3 -heap-arrays 500000000 material.f90
-mesh_single.o: mesh_single.f90 FEsolving.o
-	ifort -openmp -c -O3 -heap-arrays 500000000 mesh_single.f90
-else
 material.o: material.f90 mesh.o
 	ifort -openmp -c -O3 -heap-arrays 500000000 material.f90
 mesh.o: mesh.f90 FEsolving.o
 	ifort -openmp -c -O3 -heap-arrays 500000000 mesh.f90
-endif
 FEsolving.o: FEsolving.f90 basics.a
 	ifort -openmp -c -O3 -heap-arrays 500000000 FEsolving.f90
-
 
 ifeq ($(precision),single)
 basics.a: debug.o math.o
@@ -101,7 +86,6 @@ endif
 
 debug.o: debug.f90 numerics.o
 	ifort -openmp -c -O3 debug.f90
-
 math.o: math.f90 numerics.o
 	ifort -openmp -c -O3 math.f90
 
@@ -109,6 +93,7 @@ numerics.o: numerics.f90 IO.o
 	ifort -openmp -c -O3 numerics.f90
 IO.o: IO.f90 mpie_spectral_interface.o
 	ifort -openmp -c -O3 IO.f90
+
 ifeq ($(precision),single)
 mpie_spectral_interface.o: mpie_spectral_interface.f90 prec_single.o
 	ifort -openmp -c -O3 mpie_spectral_interface.f90
@@ -124,6 +109,7 @@ endif
 
 clean: 
 	rm -rf *.o 
+	rm -rf *.mod
 	rm -rf *.exe 
 	rm -rf basics.a
 	rm -rf advanced.a
