@@ -815,7 +815,8 @@ use mesh,     only: mesh_NcpElems, &
                     FE_NipNeighbors, &
                     mesh_ipNeighborhood, &
                     mesh_ipVolume, &
-                    mesh_ipCenterOfGravity
+                    mesh_ipCenterOfGravity, &
+                    mesh_ipAreaNormal
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_localConstitution, &
@@ -856,14 +857,18 @@ integer(pInt)                     myInstance, &               ! current instance
                                   ns, &                       ! short notation for the total number of active slip systems
                                   neighboring_el, &           ! element number of my neighbor
                                   neighboring_ip, &           ! integration point of my neighbor
+                                  opposite_el, &              ! element number of my opposite neighbor
+                                  opposite_ip, &              ! integration point of my opposite neighbor
                                   c, &                        ! index of dilsocation character (edge, screw)
                                   n, &                        ! index of my current neighbor
+                                  opposite_n, &               ! index of my opposite neighbor
                                   s, &                        ! index of my current slip system
                                   t, &                        ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
                                   sLattice, &                 ! index of my current slip system according to lattice order
                                   i, &
                                   j
 real(pReal)                       nu                          ! poisson's ratio
+real(pReal), dimension(3) ::      deltaCoG                    ! difference of two centers of gravities (distance vector to my neighbor in reference configuration)
 real(pReal), dimension(3,2) ::    rhoExcessDifference, &      ! finite differences of excess density (in 3 directions for edge and screw)
                                   disloGradients              ! spatial gradient in excess dislocation density (in 3 directions for edge and screw)
 real(pReal), dimension(3,3) ::    sigma, &                    ! dislocation stress for one slip system in its slip system frame
@@ -967,9 +972,14 @@ if (.not. phase_localConstitution(myPhase)) then                                
         neighboring_rhoExcess(n,1:2,1:ns) = rhoExcess
       else 
         neighboring_F = math_mul33x33(Fe(1:3,1:3,g,neighboring_ip,neighboring_el), Fp(1:3,1:3,g,neighboring_ip,neighboring_el))
-        neighboring_position(1:3,n) = &
-            0.5_pReal * math_mul33x3(math_mul33x33(invFe,neighboring_F) + Fp(1:3,1:3,g,ip,el), &
-                                     mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) - mesh_ipCenterOfGravity(1:3,ip,el))
+        deltaCoG = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) - mesh_ipCenterOfGravity(1:3,ip,el)
+        if (math_mul3x3(deltaCoG, mesh_ipAreaNormal(1:3,n,neighboring_ip,neighboring_el)) < 0.0_pReal) then ! periodic surface, so this is a twin
+          opposite_n = n + mod(n,2) - mod(n+1,2)
+          opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
+          opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
+          deltaCoG = mesh_ipCenterOfGravity(1:3,ip,el) - mesh_ipCenterOfGravity(1:3,opposite_ip,opposite_el) ! assume that the twin neighbor has the same size as the opposite neighbor
+        endif
+        neighboring_position(1:3,n) = 0.5_pReal * math_mul33x3(math_mul33x33(invFe,neighboring_F) + Fp(1:3,1:3,g,ip,el), deltaCoG)
         forall (s = 1:ns, c = 1:2) &
           neighboring_rhoExcess(n,c,s) =      state(g,neighboring_ip,neighboring_el)%p((2*c-2)*ns+s) &
                                         + abs(state(g,neighboring_ip,neighboring_el)%p((2*c+2)*ns+s)) &
