@@ -283,7 +283,7 @@ program mpie_spectral
                                xi(1) = real(k_s(1), pReal)/geomdimension(1)
          if (any(xi /= 0.0_pReal)) then     
            do l = 1,3; do m = 1,3
-             xinormdyad(l,m) = xi(l)*xi(m)/sum(xi**2)
+             xinormdyad(l,m) = xi(l)*xi(m)/sum(xi**2) ! Unit sphere, unit vectors in Fourier space
            enddo; enddo
            temp33_Real = math_inv3x3(math_mul3333xx33(c0, xinormdyad)) 
          else
@@ -511,7 +511,7 @@ program mpie_spectral
                  temp33_Complex(m,n) = sum(gamma_hat(1,1,1,m,n,:,:) *(workfft(i*2-1,j,k,:,:)&                 
                                                                      +workfft(i*2  ,j,k,:,:)*img))
                enddo; enddo
-               workfft(i*2-1,j,k,:,:) = real (temp33_Complex) 
+               workfft(i*2-1,j,k,:,:) = real (temp33_Complex) ! change of strain
                workfft(i*2  ,j,k,:,:) = aimag(temp33_Complex)
            enddo; enddo; enddo
          else                         !use precalculated gamma-operator
@@ -520,7 +520,7 @@ program mpie_spectral
              temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n,:,:) *(workfft(i*2-1,j,k,:,:)&                 
                                                                  + workfft(i*2  ,j,k,:,:)*img))
            enddo; enddo
-           workfft(i*2-1,j,k,:,:) = real (temp33_Complex) 
+           workfft(i*2-1,j,k,:,:) = real (temp33_Complex) ! change of strain
            workfft(i*2  ,j,k,:,:) = aimag(temp33_Complex) 
           enddo; enddo; enddo
          endif
