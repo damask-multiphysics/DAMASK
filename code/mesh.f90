@@ -3040,7 +3040,7 @@ endsubroutine
 !***********************************************************
  subroutine mesh_build_ipVolumes()
  
- use prec, only: pInt
+ use prec, only: pInt, tol_gravityNodePos
  use math, only: math_volTetrahedron
  implicit none
  
@@ -3070,7 +3070,7 @@ endsubroutine
      do j = 1,mesh_maxNnodes+mesh_maxNsubNodes-1           ! walk through entire flagList except last
        if (gravityNode(j)) then                            ! valid node index
          do k = j+1,mesh_maxNnodes+mesh_maxNsubNodes       ! walk through remainder of list
-           if (gravityNode(k) .and. all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < 1.0e-100_pReal)) then   ! found duplicate
+           if (gravityNode(k) .and. all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < tol_gravityNodePos)) then   ! found duplicate
              gravityNode(j) = .false.                      ! delete first instance
              gravityNodePos(:,j) = 0.0_pReal
              exit                                          ! continue with next suspect
