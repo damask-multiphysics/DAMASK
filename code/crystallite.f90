@@ -261,7 +261,7 @@ do i = 1,material_Ncrystallite
         mySize = 3
       case('grainrotation') ! Deviation from initial grain orientation in axis-angle form (angle in degrees)
         mySize = 4
-      case('defgrad','f','fe','fp','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
+      case('defgrad','f','fe','fp','lp','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
         mySize = 9
       case default
         mySize = 0      
@@ -2893,6 +2893,10 @@ function crystallite_postResults(&
      case ('fp')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_Fp(:,:,g,i,e)),(/mySize/))
+       c = c + mySize
+     case ('lp')
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_Lp(:,:,g,i,e)),(/mySize/))
        c = c + mySize
      case ('p','firstpiola','1stpiola')
        mySize = 9_pInt
