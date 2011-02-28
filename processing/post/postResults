@@ -646,7 +646,7 @@ for release,subdirs in sorted(releases.items(),reverse=True):
   break
 
 try:
-  from py_mentat import *
+  from py_post import *
 except:
   if options.filetype.lower() == 'marc':
     print('no valid Mentat release found in %s'%MSCpath)
