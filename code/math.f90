@@ -1376,18 +1376,22 @@ pure function math_transpose3x3(A)
 
  real(pReal), dimension (3,3), intent(in) :: R
  real(pReal), dimension(4)   :: absQ,math_RtoQuaternion
+ real(pReal) max_absQ
  integer(pInt), dimension(1) :: largest
  
  ! math adopted from http://code.google.com/p/mtex/source/browse/trunk/geometry/geometry_tools/mat2quat.m
 
  math_RtoQuaternion = 0.0_pReal
 
- absQ(1) = 0.5_pReal * sqrt(1.0_pReal+R(1,1)+R(2,2)+R(3,3))
- absQ(2) = 0.5_pReal * sqrt(1.0_pReal+R(1,1)-R(2,2)-R(3,3))
- absQ(3) = 0.5_pReal * sqrt(1.0_pReal-R(1,1)+R(2,2)-R(3,3))
- absQ(4) = 0.5_pReal * sqrt(1.0_pReal-R(1,1)-R(2,2)+R(3,3))
- 
+ absQ(1) = 1.0_pReal+R(1,1)+R(2,2)+R(3,3)
+ absQ(2) = 1.0_pReal+R(1,1)-R(2,2)-R(3,3)
+ absQ(3) = 1.0_pReal-R(1,1)+R(2,2)-R(3,3)
+ absQ(4) = 1.0_pReal-R(1,1)-R(2,2)+R(3,3)
+
  largest = maxloc(absQ)
+
+ max_absQ=0.5_pReal * sqrt(absQ(largest(1))) 
+
  select case(largest(1))
    case (1)
 
@@ -1414,8 +1418,8 @@ pure function math_transpose3x3(A)
  
  end select
 
- math_RtoQuaternion = math_RtoQuaternion*0.25_pReal/maxval(absQ)
- math_RtoQuaternion(largest(1)) = maxval(absQ)
+ math_RtoQuaternion = math_RtoQuaternion*0.25_pReal/max_absQ
+ math_RtoQuaternion(largest(1)) = max_absQ
 
  return
  
