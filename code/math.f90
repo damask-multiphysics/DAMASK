@@ -1604,7 +1604,10 @@ pure function math_transpose3x3(A)
  math_QuaternionToEuler(2) = acos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
 
  if (abs(math_QuaternionToEuler(2)) < 1.0e-3_pReal) then
-   math_QuaternionToEuler(1) = 2.0_pReal*acos(Q(1))
+   acos_arg=Q(1)
+   if(acos_arg > 1.0_pReal)acos_arg = 1.0_pReal 
+   if(acos_arg < -1.0_pReal)acos_arg = -1.0_pReal 
+   math_QuaternionToEuler(1) = 2.0_pReal*acos(acos_arg)
    math_QuaternionToEuler(3) = 0.0_pReal
  else
    math_QuaternionToEuler(1) = atan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
