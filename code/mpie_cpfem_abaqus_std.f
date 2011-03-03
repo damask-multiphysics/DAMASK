@@ -44,6 +44,7 @@ function getSolverWorkingDirectoryName()
 
  getSolverWorkingDirectoryName=''
  CALL GETOUTDIR( getSolverWorkingDirectoryName, LENOUTDIR )
+ getSolverWorkingDirectoryName=trim(getSolverWorkingDirectoryName)//'/'
 ! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
 end function
 
