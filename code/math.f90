@@ -1600,6 +1600,7 @@ pure function math_transpose3x3(A)
 
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_QuaternionToEuler
+ real(pReal) acos_arg
 
  math_QuaternionToEuler(2) = acos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
 
