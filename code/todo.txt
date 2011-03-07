@@ -1,7 +1,7 @@
 $Id$
 Things to be implemented into the code
 
-# make OpenMP parallelization work again
+# make Abaqus restart aware
 
 # define set of test problems with known solution
 

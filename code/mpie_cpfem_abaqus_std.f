@@ -21,6 +21,7 @@ MODULE mpie_interface
 
 character(len=64), parameter :: FEsolver = 'Abaqus'
 character(len=4),  parameter :: InputFileExtension = '.inp'
+character(len=4),  parameter :: LogFileExtension = '.log'
 
 CONTAINS
 
@@ -83,6 +84,7 @@ END MODULE
  include "material.f90"         ! uses prec, math, IO, mesh
  include "lattice.f90"          ! uses prec, math, IO, material
  include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, latt ice, material, debug
+ include "constitutive_titanmod.f90"      ! uses prec, math, IO, lattice, material, debug
  include "constitutive_j2.f90"            ! uses prec, math, IO, latt ice, material, debug
  include "constitutive_dislotwin.f90"    ! uses prec, math, IO, latt ice, material, debug
  include "constitutive_nonlocal.f90"      ! uses prec, math, IO, latt ice, material, debug
@@ -118,7 +120,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
                       debug_reset, &
                       verboseDebugger
  use mesh, only:      mesh_FEasCP
- use CPFEM, only:     CPFEM_general,CPFEM_init_done
+ use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 
 
@@ -151,76 +153,84 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    !$OMP END CRITICAL (write2out)
  endif
 
- if ( .not. CPFEM_init_done ) then
+ if (.not. CPFEM_init_done) call CPFEM_initAll(temp,noel,npt)
 
-   computationMode = 2                                                    ! calc + init
-   if ( verboseDebugger ) then
-     !$OMP CRITICAL (write2out)
-       write(6,'(i6,x,i2,x,a)') noel,npt,'first call special case..!'; call flush(6)
-     !$OMP END CRITICAL (write2out)
-   endif
+ cp_en = mesh_FEasCP('elem',noel)
+ if (time(2) > theTime .or. kinc /= theInc) then                         ! reached convergence
+    terminallyIll = .false.
+    cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
+    if (kinc == 0) then                                                  ! >> start of analysis <<
+        lastIncConverged = .false.                                       ! no Jacobian backup
+        outdatedByNewInc = .false.                                       ! no aging of state
+        lastMode = .false.                                               ! pretend last step was collection
+        calcMode = .false.                                               ! pretend last step was collection
+        !$OMP CRITICAL (write2out)
+        write (6,'(i6,x,i2,x,a)') noel,npt,'<< UMAT >> start of analysis..!'; call flush(6)
+        !$OMP END CRITICAL (write2out)
+    else if (kinc - theInc > 1) then                                     ! >> restart of broken analysis <<
+        lastIncConverged = .false.                                       ! no Jacobian backup
+        outdatedByNewInc = .false.                                       ! no aging of state
+        lastMode = .true.                                                ! pretend last step was calculation
+        calcMode = .true.                                                ! pretend last step was calculation
+        !$OMP CRITICAL (write2out)
+        write (6,'(i6,x,i2,x,a)') noel,npt,'<< UMAT >> restart of analysis..!'; call flush(6)
+        !$OMP END CRITICAL (write2out)
+    else                                                                 ! >> just the next inc <<
+        lastIncConverged = .true.                                        ! request Jacobian backup
+        outdatedByNewInc = .true.                                        ! request aging of state
+        lastMode = .true.                                                ! assure last step was calculation
+        calcMode = .true.                                                ! assure last step was calculation
+        !$OMP CRITICAL (write2out)
+        write (6,'(i6,x,i2,x,a)') noel,npt,'<< UMAT >> new increment..!'; call flush(6)
+        !$OMP END CRITICAL (write2out)
+    endif
+    
+ else if ( dtime < theDelta ) then                                     ! >> cutBack <<
 
- else
-   cp_en = mesh_FEasCP('elem',noel)
-   if (theTime < time(2) .or. theInc /= kinc) then                        ! reached convergence
-     lastIncConverged = .true.
-     outdatedByNewInc = .true.
-     terminallyIll = .false.
-     cycleCounter = 0
+    cutBack = .true.                                                    
+    terminallyIll = .false.
+    cycleCounter = -1                                                   ! first calc step increments this to cycle = 0
+    calcMode = .true.                                                   ! pretend last step was calculation
+    !$OMP CRITICAL (write2out)
+    write(6,'(i6,x,i2,x,a)') noel,npt,'<< UMAT >> cutback detected..!'; call flush(6)
+    !$OMP END CRITICAL (write2out)
 
-     if ( verboseDebugger ) then
-       !$OMP CRITICAL (write2out)
-         write (6,'(i6,x,i2,x,a)') noel,npt,'lastIncConverged + outdated'; call flush(6)
-       !$OMP END CRITICAL (write2out)
-     endif
+ endif                                                                  ! convergence treatment end
 
-   else if ( dtime < theDelta ) then                                      ! or check for cutBack
-     calcMode = .true.                                                    ! pretend last step was calculation
-     cutBack = .true.
-     terminallyIll = .false.
-     cycleCounter = 0
+ calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                        ! ping pong (calc <--> collect)
 
-     if ( verboseDebugger ) then
-       !$OMP CRITICAL (write2out)
-         write(6,'(i6,x,i2,x,a)') noel,npt,'cutback detected..!'; call flush(6)
-       !$OMP END CRITICAL (write2out)
-     endif
-
-   endif
-
-   calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                        ! ping pong (calc <--> collect)
-
-   if ( calcMode(npt,cp_en) ) then                                        ! now calc
-     if ( lastMode .neqv. calcMode(npt,cp_en) ) then                      ! first after ping pong
-       call debug_reset()                                                 ! resets debugging
-       outdatedFFN1 = .false.
-       cycleCounter = cycleCounter + 1
-     endif
-     if ( outdatedByNewInc ) then
-       outdatedByNewInc = .false.
-       computationMode = 1                                                ! calc and age results
-     else
-       computationMode = 2                                                ! plain calc
-     endif
-   else                                                                   ! now collect
-     if ( lastMode .neqv. calcMode(npt,cp_en) ) call debug_info()         ! first after ping pong reports debugging
-     if ( lastIncConverged ) then
-       lastIncConverged = .false.
-       computationMode = 4                                                ! collect and backup Jacobian after convergence
-     elseif ( cutBack ) then
-       cutBack = .false.
-       computationMode = 5                                                ! collect and restore Jacobian after cutback
-     else
-       computationMode = 3                                                ! plain collect
-     endif
-   endif
-
+ if ( calcMode(npt,cp_en) ) then                                        ! now calc
+    if ( lastMode /= calcMode(npt,cp_en) ) then                         ! first after ping pong
+        call debug_reset()                                              ! resets debugging
+        outdatedFFN1 = .false.
+        cycleCounter = cycleCounter + 1
+    endif
+    if ( outdatedByNewInc ) then
+        outdatedByNewInc = .false.
+        computationMode = 1                                                ! calc and age results
+    else
+        computationMode = 2                                                ! plain calc
+    endif
+ else                                                                  ! now collect
+    if ( lastMode /= calcMode(npt,cp_en) .and. &
+         .not. terminallyIll) then
+        call debug_info()                                              ! first after ping pong reports debugging
+    endif
+    if ( lastIncConverged ) then
+        lastIncConverged = .false.
+        computationMode = 4                                            ! collect and backup Jacobian after convergence
+    elseif ( cutBack ) then
+        cutBack = .false.
+        computationMode = 5                                            ! collect and restore Jacobian after cutback
+    else
+        computationMode = 3                                            ! plain collect
+    endif
  endif
- 
- theTime  = time(2)                                                       ! record current starting time
- theDelta = dtime                                                         ! record current time increment
- theInc   = kinc                                                          ! record current increment number
- if (CPFEM_init_done) lastMode = calcMode(npt,cp_en)                      ! record calculationMode
+
+ theTime  = time(2)                                                    ! record current starting time
+ theDelta = dtime                                                      ! record current time increment
+ theInc   = kinc                                                       ! record current increment number
+ lastMode = calcMode(npt,cp_en)                                        ! record calculationMode
 
  if ( verboseDebugger ) then
    !$OMP CRITICAL (write2out)
@@ -253,7 +263,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
 
- if ( terminallyIll ) pnewdt = 0.5_pReal                                  ! force cutback directly ?
+ if ( terminallyIll ) pnewdt = 0.5_pReal                               ! force cutback directly ?
 
  return
  end subroutine

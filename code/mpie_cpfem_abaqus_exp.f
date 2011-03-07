@@ -21,6 +21,7 @@ MODULE mpie_interface
 
 character(len=64), parameter :: FEsolver = 'Abaqus'
 character(len=4),  parameter :: InputFileExtension = '.inp'
+character(len=4),  parameter :: LogFileExtension = '.log'
 
 CONTAINS
 
@@ -81,6 +82,7 @@ END MODULE
  include "material.f90"         ! uses prec, math, IO, mesh
  include "lattice.f90"          ! uses prec, math, IO, material
  include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, latt ice, material, debug
+ include "constitutive_titanmod.f90"      ! uses prec, math, IO, lattice, material, debug
  include "constitutive_j2.f90"            ! uses prec, math, IO, latt ice, material, debug
  include "constitutive_dislotwin.f90"    ! uses prec, math, IO, latt ice, material, debug
  include "constitutive_nonlocal.f90"      ! uses prec, math, IO, latt ice, material, debug
@@ -154,7 +156,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
                       debug_reset, &
                       verboseDebugger
  use mesh, only:      mesh_FEasCP
- use CPFEM, only:     CPFEM_general,CPFEM_init_done
+ use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 
  include 'vaba_param.inc'      ! Abaqus exp initializes a first step in single prec. for this a two-step compilation is used.
@@ -185,7 +187,9 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
  do n = 1,nblock                                                       ! loop over vector of IPs
 
+   temp    = tempOld(n)
    if ( .not. CPFEM_init_done ) then
+     call CPFEM_initAll(temp,nElement(n),nMatPoint(n))
      outdatedByNewInc = .false.
 
      if ( verboseDebugger ) then
@@ -227,7 +231,6 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
   
    defgrd0 = 0.0_pReal
    defgrd1 = 0.0_pReal
-   temp    = tempOld(n)
    timeInc = dt
 
   !     ABAQUS explicit:     deformation gradient as vector 11, 22, 33, 12, 23, 31, 21, 32, 13
