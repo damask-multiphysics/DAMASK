@@ -9,8 +9,8 @@
 ! MPI fuer Eisenforschung, Duesseldorf
 ! PSI, Switzerland
 !
-! REMARK: change compile command to include the switch
-!         "-free" in "abaqus_v6.env"
+! REMARK: change compile command to include
+!         "-free -heap-arrays 500000000" in "abaqus_v6.env"
 !
 !********************************************************************
 
