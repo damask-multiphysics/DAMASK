@@ -383,12 +383,12 @@ def OpenPostfile(name,type):
     p = {\
            'spectral': MPIEspectral_result,\
            'marc':     post_open,\
-        }[type.lower()]\
+        }[type]\
                         (name+
                               {\
                                'marc':     '.t16',\
                                'spectral': '.spectralOut',\
-                              }[type.lower()]
+                              }[type]
                         )
     p.extrapolation('translate')
     p.moveto(1)
@@ -627,33 +627,36 @@ parser.set_defaults(separateFiles = False)
 
 (options, file) = parser.parse_args()
 
+options.filetype = options.filetype.lower()
 
-try:
-  default = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
-  MSCpath = os.path.normpath(default.readline().strip())
-  default.close()
-except:
-  MSCpath = '/msc'
+if options.filetype == 'marc':
+	try:
+	  file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
+	  MSCpath = os.path.normpath(file.readline().strip())
+	  file.close()
+	except:
+	  MSCpath = '/msc'
+	
+	for release,subdirs in sorted(releases.items(),reverse=True):
+	  for subdir in subdirs:
+	    libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
+	    if os.path.exists(libPath):
+	      sys.path.append(libPath)
+	      break
+	    else:
+	      continue
+	  break
+	
+	try:
+	  from py_post import *
+	except:
+	  print('error: no valid Mentat release found in %s'%MSCpath)
+	  sys.exit(-1)
+else:
+  def post_open():
+    return
 
-for release,subdirs in sorted(releases.items(),reverse=True):
-  for subdir in subdirs:
-    libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
-    if os.path.exists(libPath):
-      sys.path.append(libPath)
-      break
-    else:
-      continue
-  break
 
-try:
-  from py_post import *
-except:
-  if options.filetype.lower() == 'marc':
-    print('no valid Mentat release found in %s'%MSCpath)
-    sys.exit(-1)
-  else:
-    def post_open():
-      return True
 
 bg = backgroundMessage()
 bg.start()
@@ -669,7 +672,7 @@ if not os.path.exists(file[0]):
     parser.print_help()
     parser.error('invalid file "%s" specified...'%file[0])
 
-if options.filetype.lower() not in ['marc','spectral']:
+if options.filetype not in ['marc','spectral']:
     parser.print_help()
     parser.error('file type "%s" not supported...'%options.filetype)
 
@@ -725,7 +728,9 @@ for opt in ['nodalScalar','elementalScalar','elementalTensor','homogenizationRes
 # --- output info
 
 if options.info:
-    print '\nMentat release %s\n'%release
+    if options.filetype == 'marc':
+      print '\nMentat release %s\n'%release
+
     SummarizePostfile(stat,sys.stderr)
     
     print '\nUser Defined Outputs'
