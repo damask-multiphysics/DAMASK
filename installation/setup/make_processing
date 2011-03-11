@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# Makes the postprocessing routines acessible from everywhere.
+# renders the postprocessing routines acessible from everywhere.
 # you need a ~/bin directory in your home folder
-# add the bin directory to your path by adding the following lines 
-# to your .bashrc file: 
+# if necessary, add the bin directory to your path by
+# adding the following lines to your .bashrc file: 
 #  PATH="$PATH:~/bin"
 #  export PATH 
 
@@ -34,8 +34,16 @@ compile = { \
 							],
 						}
 
+execute = { \
+				'pre' : [
+							],
+				'post' : [
+							'make_postprocessingMath',
+							],
+						}
+
 homedir = os.getenv('HOME')
-basedir = os.path.dirname(sys.argv[0])
+basedir = os.path.join(os.path.dirname(sys.argv[0]),'../../processing')
 for dir in bin_link:
   for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(basedir,dir,file))
@@ -59,3 +67,10 @@ modules = glob.glob(os.path.abspath(os.path.join(basedir,'*.mod')))
 for module in modules:
   print module
   os.remove(module)
+
+for dir in execute:
+  for file in execute[dir]:
+    cmd = os.path.abspath(os.path.join(basedir,dir,file))
+    if os.access(cmd,os.X_OK):
+      print cmd
+      os.system('%s %s'%(cmd,os.path.join(basedir,dir)))

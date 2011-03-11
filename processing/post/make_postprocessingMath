@@ -10,6 +10,14 @@
 
 # --f90flags="-heap-arrays 500000000" prevents segmentation fault for large arrays
 # use ./configure --enable-portable-binary --enable-shared for the compilation of fftw3.2.2
+if [[ $# -eq 0 ]]; then
+  wd='.'
+else
+  wd=$1
+fi
+
 f2py -c --f90flags="-heap-arrays 500000000" \
-postprocessingMath.pyf postprocessingMath.f90 -L ./libfftw3.a
+$wd/postprocessingMath.pyf \
+$wd/postprocessingMath.f90 \
+-L $wd/libfftw3.a
 

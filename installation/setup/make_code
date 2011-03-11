@@ -10,7 +10,8 @@ architectures = {
                          }, 
                 }
 
-wd = os.path.dirname(sys.argv[0])
+wd = os.path.join(os.path.dirname(sys.argv[0]),'../../code')
+
 for arch in architectures:
 	me = architectures[arch]
 	try:
