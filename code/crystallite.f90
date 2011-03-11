@@ -2243,9 +2243,9 @@ if (verboseDebugger .and. (e == debug_e .and. i == debug_i .and. g == debug_g) .
     write(6,*)
     write(6,'(a,/,12(e12.5,x))') 'updateState: new state',constitutive_state(g,i,e)%p(1:mySize)
     write(6,*)
-    write(6,'(a,/,12(f12.1,x))') 'updateState: relative residuum tolerance', abs(residuum / rTol_crystalliteState &
-                                                                                 / constitutive_state(g,i,e)%p(1:mySize))
-    write(6,*)
+!    write(6,'(a,/,12(f12.1,x))') 'updateState: relative residuum tolerance', abs(residuum / rTol_crystalliteState &
+!                                                                                 / constitutive_state(g,i,e)%p(1:mySize))
+!    write(6,*)
   !$OMP END CRITICAL (write2out)
 endif
 
