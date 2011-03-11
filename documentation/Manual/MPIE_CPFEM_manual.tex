@@ -19,7 +19,7 @@ breaklinks=true,%
 
  \hypersetup{
 pdfauthor   = {Claudio Zambaldi, Philip Eisenlohr},
-pdftitle    = {Manual to the Crystal Plasticity Finite Element Subroutine developed at the Max-Planck-Institut f\"ur Eisenforschung},
+pdftitle    = {Manual to the Material Point Model developed at the Max-Planck-Institut f\"ur Eisenforschung},
 pdfsubject  = {},
 pdfkeywords = {},
 pdfcreator  = {},
@@ -31,7 +31,8 @@ pdfproducer = {pdftex}%,
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{bm}
 \usepackage{miller}
-\usepackage[alsoload={accepted,named,prefix}]{siunitx}
+%\usepackage[alsoload={accepted,named,prefix}]{siunitx}
+\usepackage{siunitx}
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage[indent,bf,tableposition=top]{caption}    % Einstellen des caption-Stils, war caption2
@@ -40,12 +41,18 @@ pdfproducer = {pdftex}%,
 \usepackage[bookman]{quotchap}
 \usepackage{csquotes} % consistent quoting by \enquote{...}
 \usepackage{listings}
-\lstloadlanguages{fortran}
+%\lstloadlanguages{bash,fortran}
 \lstset{language={},
-  frame=none,
-  xleftmargin=10mm,
-  xrightmargin=10mm,
-	numbers=left,
+	lineskip=4pt,
+	frame=none,
+	framesep=0mm,
+	framexleftmargin=5mm,
+	framexrightmargin=5mm,
+	framextopmargin=5mm,
+	framexbottommargin=5mm,
+	xleftmargin=10mm,
+	xrightmargin=10mm,
+%	numbers=left,
 	stepnumber=1,
 	numbersep=5pt,
 	numberstyle=\tiny,
@@ -88,11 +95,11 @@ pdfproducer = {pdftex}%,
 \newcommand{\tnsr}[1]{\ensuremath{\bm{#1}}}
 \newcommand{\vctr}[1]{\ensuremath{\bm{#1}}}
 
-\newcommand{\drv}{\ensuremath{\mathrm d}}
+\newcommand{\inc}{\ensuremath{\mathrm d}}
 
-\newcommand{\transpose}[1]{\ensuremath{{#1}^{\mathrm T}}}
+\newcommand{\transpose}[1]{\ensuremath{{#1}^{\text T}}}
 \newcommand{\inverse}[1]{\ensuremath{{#1}^{-1}}}
-\newcommand{\invtranspose}[1]{\ensuremath{{#1}^{\mathrm{-T}}}}
+\newcommand{\invtranspose}[1]{\ensuremath{{#1}^{\text{-T}}}}
 
 \newcommand{\eyetwo}{\ensuremath{\tnsr{I}}}
 \newcommand{\eyefour}{\ensuremath{\mathbb{I}}}
@@ -176,11 +183,9 @@ Cited%
 %\else
 %times%
 %\fi
-~on %
-\ifnum#1=1 %
-page%
-\else
-pages%
+~on page%
+\ifnum#1>1 %
+s%
 \fi
 ~#2%
 .%
@@ -189,7 +194,7 @@ pages%
 
 
 \begin{document}
-\title{Manual\\[1cm]\LARGE to the \\[3mm] Crystal Plasticity Finite Element Subroutine \\[3mm] developed at the \\[3mm] Max-Planck-Institut f\"ur Eisenforschung}
+\title{Manual\\[1cm]Material Point Model \\[3mm] \normalsize developed at the \\[3mm] Max-Planck-Institut f\"ur Eisenforschung}
 \author{Claudio Zambaldi \and Philip Eisenlohr}
 \maketitle
 
@@ -206,7 +211,10 @@ pages%
 \renewcommand{\chaptermark}[1]{\markboth{{\thechapter\ \ #1}}{}}
 
 \input{include/Preliminaries}
+\part{Praxis}
+%\input{include/Installation}
 \input{include/CodeOrganization}
+\part{Theory}
 \input{include/Homogenization}
 \input{include/ConstitutiveLaws}
 \input{include/ApplicationNotes}
