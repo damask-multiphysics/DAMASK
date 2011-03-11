@@ -9,7 +9,7 @@
 ! MPI fuer Eisenforschung, Duesseldorf
 ! PSI, Switzerland
 !
-! REMARK: change compile command to include
+! REMARK: change compile command ("compile_fortran") to include
 !         "-free -heap-arrays 500000000" in "abaqus_v6.env"
 !
 !********************************************************************
