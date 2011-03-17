@@ -96,10 +96,12 @@ subroutine numerics_init()
 ! OpenMP variable
 !$ character(len=4) mpieNumThreadsString                               !environment variable MPIE_NUMTHREADS
 
-  write(6,*)
-  write(6,*) '<<<+-  numerics init  -+>>>'
-  write(6,*) '$Id$'
-  write(6,*)
+  !$OMP CRITICAL (write2out)
+    write(6,*)
+    write(6,*) '<<<+-  numerics init  -+>>>'
+    write(6,*) '$Id$'
+    write(6,*)
+  !$OMP END CRITICAL (write2out)
   
   ! initialize all parameters with standard values
   relevantStrain          = 1.0e-7_pReal
@@ -161,8 +163,10 @@ subroutine numerics_init()
   ! try to open the config file
   if(IO_open_file(fileunit,numerics_configFile)) then 
   
-    write(6,*) '   ... using values from config file'
-    write(6,*)
+    !$OMP CRITICAL (write2out)
+      write(6,*) '   ... using values from config file'
+      write(6,*)
+    !$OMP END CRITICAL (write2out)
     
     line = ''
     ! read variables from config file and overwrite parameters
@@ -269,64 +273,68 @@ subroutine numerics_init()
   ! no config file, so we use standard values
   else 
   
-    write(6,*) '   ... using standard values'
-    write(6,*)
+    !$OMP CRITICAL (write2out)
+      write(6,*) '   ... using standard values'
+      write(6,*)
+    !$OMP END CRITICAL (write2out)
     
   endif
 
   ! writing parameters to output file
-  write(6,'(a24,x,e8.1)') 'relevantStrain:         ',relevantStrain
-  write(6,'(a24,x,e8.1)') 'defgradTolerance:       ',defgradTolerance
-  write(6,'(a24,x,i8)')   'iJacoStiffness:         ',iJacoStiffness
-  write(6,'(a24,x,i8)')   'iJacoLpresiduum:        ',iJacoLpresiduum
-  write(6,'(a24,x,e8.1)') 'pert_Fg:                ',pert_Fg
-  write(6,'(a24,x,i8)')   'pert_method:            ',pert_method
-  write(6,'(a24,x,i8)')   'nCryst:                 ',nCryst
-  write(6,'(a24,x,e8.1)') 'subStepMinCryst:        ',subStepMinCryst
-  write(6,'(a24,x,e8.1)') 'subStepSizeCryst:       ',subStepSizeCryst
-  write(6,'(a24,x,e8.1)') 'stepIncreaseCryst:      ',stepIncreaseCryst
-  write(6,'(a24,x,i8)')   'nState:                 ',nState
-  write(6,'(a24,x,i8)')   'nStress:                ',nStress
-  write(6,'(a24,x,e8.1)') 'rTol_crystalliteState:  ',rTol_crystalliteState
-  write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
-  write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
-  write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
-  write(6,'(a24,2(x,i8))')'integrator:             ',numerics_integrator
-  write(6,*)
-
-  write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
-  write(6,'(a24,x,e8.1)') 'subStepMinHomog:        ',subStepMinHomog
-  write(6,'(a24,x,e8.1)') 'subStepSizeHomog:       ',subStepSizeHomog
-  write(6,'(a24,x,e8.1)') 'stepIncreaseHomog:      ',stepIncreaseHomog
-  write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
-  write(6,*)
+  !$OMP CRITICAL (write2out)
+    write(6,'(a24,x,e8.1)') 'relevantStrain:         ',relevantStrain
+    write(6,'(a24,x,e8.1)') 'defgradTolerance:       ',defgradTolerance
+    write(6,'(a24,x,i8)')   'iJacoStiffness:         ',iJacoStiffness
+    write(6,'(a24,x,i8)')   'iJacoLpresiduum:        ',iJacoLpresiduum
+    write(6,'(a24,x,e8.1)') 'pert_Fg:                ',pert_Fg
+    write(6,'(a24,x,i8)')   'pert_method:            ',pert_method
+    write(6,'(a24,x,i8)')   'nCryst:                 ',nCryst
+    write(6,'(a24,x,e8.1)') 'subStepMinCryst:        ',subStepMinCryst
+    write(6,'(a24,x,e8.1)') 'subStepSizeCryst:       ',subStepSizeCryst
+    write(6,'(a24,x,e8.1)') 'stepIncreaseCryst:      ',stepIncreaseCryst
+    write(6,'(a24,x,i8)')   'nState:                 ',nState
+    write(6,'(a24,x,i8)')   'nStress:                ',nStress
+    write(6,'(a24,x,e8.1)') 'rTol_crystalliteState:  ',rTol_crystalliteState
+    write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
+    write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
+    write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
+    write(6,'(a24,2(x,i8))')'integrator:             ',numerics_integrator
+    write(6,*)
+  
+    write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
+    write(6,'(a24,x,e8.1)') 'subStepMinHomog:        ',subStepMinHomog
+    write(6,'(a24,x,e8.1)') 'subStepSizeHomog:       ',subStepSizeHomog
+    write(6,'(a24,x,e8.1)') 'stepIncreaseHomog:      ',stepIncreaseHomog
+    write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
+    write(6,*)
 
 !* RGC parameters
-  write(6,'(a24,x,e8.1)') 'aTol_RGC:               ',absTol_RGC
-  write(6,'(a24,x,e8.1)') 'rTol_RGC:               ',relTol_RGC
-  write(6,'(a24,x,e8.1)') 'aMax_RGC:               ',absMax_RGC
-  write(6,'(a24,x,e8.1)') 'rMax_RGC:               ',relMax_RGC
-  write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:     ',pPert_RGC
-  write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC:   ',xSmoo_RGC
-  write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:      ',viscPower_RGC
-  write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC:   ',viscModus_RGC
-  write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:      ',maxdRelax_RGC
-  write(6,'(a24,x,e8.1)') 'maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
-  write(6,'(a24,x,e8.1)') 'volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
-  write(6,'(a24,x,e8.1)') 'discrepancyPower_RGC:   ',volDiscrPow_RGC
-  write(6,*)
+    write(6,'(a24,x,e8.1)') 'aTol_RGC:               ',absTol_RGC
+    write(6,'(a24,x,e8.1)') 'rTol_RGC:               ',relTol_RGC
+    write(6,'(a24,x,e8.1)') 'aMax_RGC:               ',absMax_RGC
+    write(6,'(a24,x,e8.1)') 'rMax_RGC:               ',relMax_RGC
+    write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:     ',pPert_RGC
+    write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC:   ',xSmoo_RGC
+    write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:      ',viscPower_RGC
+    write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC:   ',viscModus_RGC
+    write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:      ',maxdRelax_RGC
+    write(6,'(a24,x,e8.1)') 'maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
+    write(6,'(a24,x,e8.1)') 'volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
+    write(6,'(a24,x,e8.1)') 'discrepancyPower_RGC:   ',volDiscrPow_RGC
+    write(6,*)
 
 !* spectral parameters
-  write(6,'(a24,x,e8.1)') 'err_div_tol:             ',err_div_tol
-  write(6,'(a24,x,e8.1)') 'err_defgrad_tol:         ',err_defgrad_tol
-  write(6,'(a24,x,e8.1)') 'err_stress_tolrel:       ',err_stress_tolrel
-  write(6,'(a24,x,i8)')   'itmax:                   ',itmax
-  write(6,'(a24,x,L8)')   'memory_efficient:          ',memory_efficient
-  write(6,*)
+    write(6,'(a24,x,e8.1)') 'err_div_tol:             ',err_div_tol
+    write(6,'(a24,x,e8.1)') 'err_defgrad_tol:         ',err_defgrad_tol
+    write(6,'(a24,x,e8.1)') 'err_stress_tolrel:       ',err_stress_tolrel
+    write(6,'(a24,x,i8)')   'itmax:                   ',itmax
+    write(6,'(a24,x,L8)')   'memory_efficient:          ',memory_efficient
+    write(6,*)
 
 !* Random seeding parameters
-  write(6,'(a24,x,i8)')   'fixed_seed:             ',fixedSeed
-  write(6,*)
+    write(6,'(a24,x,i8)')   'fixed_seed:             ',fixedSeed
+    write(6,*)
+  !$OMP END CRITICAL (write2out)
 
 !* openMP parameter
 !$  write(6,'(a24,x,i8)')   'number of threads:      ',OMP_get_max_threads()
@@ -379,7 +387,11 @@ subroutine numerics_init()
   if (err_stress_tolrel <= 0.0_pReal)       call IO_error(49)
   if (itmax <= 1.0_pInt)                    call IO_error(49)
   
-  if (fixedSeed <= 0_pInt)                  write(6,'(a)') 'Random is random!'
+  if (fixedSeed <= 0_pInt) then
+    !$OMP CRITICAL (write2out)
+      write(6,'(a)') 'Random is random!'
+    !$OMP END CRITICAL (write2out)
+  endif
 endsubroutine
 
 END MODULE numerics

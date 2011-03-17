@@ -93,11 +93,13 @@ subroutine material_init()
  integer(pInt), parameter :: fileunit = 200
  integer(pInt) i,j
  
+ !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  material init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
-  
+ !$OMP END CRITICAL (write2out)
+ 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error(100) ! cannot open config file
  call material_parseHomogenization(fileunit,material_partHomogenization)
  call material_parseMicrostructure(fileunit,material_partMicrostructure)
@@ -106,6 +108,7 @@ subroutine material_init()
  call material_parsePhase(fileunit,material_partPhase)
  close(fileunit)
 
+ !$OMP CRITICAL (write2out)
  do i = 1,material_Nmicrostructure
    if (microstructure_crystallite(i) < 1 .or. &
        microstructure_crystallite(i) > material_Ncrystallite) call IO_error(150,i)
@@ -141,7 +144,8 @@ subroutine material_init()
      write (6,*)
    endif
  enddo
-
+ !$OMP END CRITICAL (write2out)
+ 
  call material_populateGrains()
 
 endsubroutine
@@ -577,17 +581,21 @@ subroutine material_populateGrains()
  allocate(phaseOfGrain(maxval(Ngrains)))            ! reserve memory for maximum case
  allocate(orientationOfGrain(3,maxval(Ngrains)))    ! reserve memory for maximum case
  
+ !$OMP CRITICAL (write2out)
  write (6,*)
  write (6,*) 'MATERIAL grain population'
  write (6,*)
  write (6,'(a32,x,a32,x,a6)') 'homogenization_name','microstructure_name','grain#'
+ !$OMP END CRITICAL (write2out)
  do homog = 1,material_Nhomogenization              ! loop over homogenizations
    dGrains = homogenization_Ngrains(homog)          ! grain number per material point
    do micro = 1,material_Nmicrostructure            ! all pairs of homog and micro
      if (Ngrains(homog,micro) > 0) then             ! an active pair of homog and micro
        myNgrains = Ngrains(homog,micro)             ! assign short name for total number of grains to populate
+       !$OMP CRITICAL (write2out)
        write (6,*)
        write (6,'(a32,x,a32,x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
+       !$OMP END CRITICAL (write2out)
      
 ! ----------------------------------------------------------------------------  calculate volume of each grain
        volumeOfGrain = 0.0_pReal
@@ -729,7 +737,6 @@ subroutine material_populateGrains()
      endif   ! active homog,micro pair
    enddo
  enddo
-
  
  deallocate(volumeOfGrain)
  deallocate(phaseOfGrain)

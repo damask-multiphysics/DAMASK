@@ -402,123 +402,135 @@ return
 endfunction
 
 
-subroutine constitutive_microstructure(Temperature,Tstar_v,Fe,Fp,ipc,ip,el)
+
 !*********************************************************************
 !* This function calculates from state needed variables              *
-!* INPUT:                                                            *
-!*  - state           : state variables                              *
-!*  - Tp              : temperature                                  *
-!*  - ipc             : component-ID of current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
 !*********************************************************************
- use prec,      only: pReal,pInt
- use material,  only: phase_constitution, &
+subroutine constitutive_microstructure(Temperature,Tstar_v,Fe,Fp,ipc,ip,el)
+
+use prec,       only: pReal,pInt
+use material,   only: phase_constitution, &
                       material_phase, &
                       homogenization_maxNgrains
- use mesh,      only: mesh_NcpElems, &
+use mesh,       only: mesh_NcpElems, &
                       mesh_maxNips, &
                       mesh_maxNipNeighbors
- use constitutive_j2
- use constitutive_phenopowerlaw
- use constitutive_titanmod
- use constitutive_dislotwin
- use constitutive_nonlocal
- implicit none
+use constitutive_j2,            only: constitutive_j2_label, &
+                                      constitutive_j2_microstructure
+use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
+                                      constitutive_phenopowerlaw_microstructure
+use constitutive_titanmod,      only: constitutive_titanmod_label, &
+                                      constitutive_titanmod_microstructure
+use constitutive_dislotwin,     only: constitutive_dislotwin_label, &
+                                      constitutive_dislotwin_microstructure
+use constitutive_nonlocal,      only: constitutive_nonlocal_label, &
+                                      constitutive_nonlocal_microstructure
+implicit none
 
-!* Definition of variables
-integer(pInt), intent(in) :: ipc,ip,el
-real(pReal), intent(in) :: Temperature
-real(pReal), dimension(6) :: Tstar_v
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: Fe, Fp
+!*** input variables ***!
+integer(pInt), intent(in)::               ipc, &        ! component-ID of current integration point
+                                          ip, &         ! current integration point
+                                          el            ! current element
+real(pReal), intent(in) ::                Temperature
+real(pReal), intent(in), dimension(6) ::  Tstar_v       ! 2nd Piola-Kirchhoff stress
+real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                          Fe, &         ! elastic deformation gradient
+                                          Fp            ! plastic deformation gradient
 
- select case (phase_constitution(material_phase(ipc,ip,el)))
+!*** output variables ***!
+
+!*** local variables ***!
+
+
+select case (phase_constitution(material_phase(ipc,ip,el)))
  
-   case (constitutive_j2_label)
-     call constitutive_j2_microstructure(Temperature,constitutive_state,ipc,ip,el)
+  case (constitutive_j2_label)
+    call constitutive_j2_microstructure(Temperature,constitutive_state,ipc,ip,el)
      
-   case (constitutive_phenopowerlaw_label)
-     call constitutive_phenopowerlaw_microstructure(Temperature,constitutive_state,ipc,ip,el)
-
-   case (constitutive_titanmod_label)
-     call constitutive_titanmod_microstructure(Temperature,constitutive_state,ipc,ip,el)
+  case (constitutive_phenopowerlaw_label)
+    call constitutive_phenopowerlaw_microstructure(Temperature,constitutive_state,ipc,ip,el)
+  
+  case (constitutive_titanmod_label)
+    call constitutive_titanmod_microstructure(Temperature,constitutive_state,ipc,ip,el)
+   
+  case (constitutive_dislotwin_label)
+    call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
+   
+  case (constitutive_nonlocal_label)
+    call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Tstar_v, Fe, Fp, ipc, ip, el)
      
-   case (constitutive_dislotwin_label)
-     call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_nonlocal_label)
-     call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Tstar_v, Fe, Fp, ipc, ip, el)
-     
- end select
+end select
 
 endsubroutine
 
 
-subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ipc, ip, el)
+
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the velocity gradient                                 *
-!* INPUT:                                                            *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
-!*  - ipc             : component-ID of current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!* OUTPUT:                                                           *
-!*  - Lp              : plastic velocity gradient                    *
-!*  - dLp_dTstar      : derivative of Lp (4th-order tensor)          *
 !*********************************************************************
- use prec, only: pReal,pInt
- use material, only: phase_constitution,material_phase
- use constitutive_j2
- use constitutive_phenopowerlaw
- use constitutive_titanmod
- use constitutive_dislotwin
- use constitutive_nonlocal
- implicit none
+subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ipc, ip, el)
 
-!* Definition of variables
- integer(pInt) ipc,ip,el
- real(pReal) Temperature
- real(pReal), dimension(6) :: Tstar_v
- real(pReal), dimension(3,3) :: Lp
- real(pReal), dimension(9,9) :: dLp_dTstar
+use prec, only: pReal,pInt
+use material, only: phase_constitution, &
+                    material_phase
+use constitutive_j2,            only: constitutive_j2_label, &
+                                      constitutive_j2_LpAndItsTangent
+use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
+                                      constitutive_phenopowerlaw_LpAndItsTangent
+use constitutive_titanmod,      only: constitutive_titanmod_label, &
+                                      constitutive_titanmod_LpAndItsTangent
+use constitutive_dislotwin,     only: constitutive_dislotwin_label, &
+                                      constitutive_dislotwin_LpAndItsTangent
+use constitutive_nonlocal,      only: constitutive_nonlocal_label, &
+                                      constitutive_nonlocal_LpAndItsTangent
+implicit none
 
- select case (phase_constitution(material_phase(ipc,ip,el)))
- 
-   case (constitutive_j2_label)
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_phenopowerlaw_label)
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
 
-   case (constitutive_titanmod_label)
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_dislotwin_label)
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_nonlocal_label)
-     call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, constitutive_state, ipc, ip, el)
-     
- end select
+!*** input variables ***!
+integer(pInt), intent(in)::                 ipc, &        ! component-ID of current integration point
+                                            ip, &         ! current integration point
+                                            el            ! current element
+real(pReal), intent(in) ::                  Temperature
+real(pReal), dimension(6), intent(in) ::    Tstar_v       ! 2nd Piola-Kirchhoff stress
 
- return
+!*** output variables ***!
+real(pReal), dimension(3,3), intent(out) :: Lp            ! plastic velocity gradient
+real(pReal), dimension(9,9), intent(out) :: dLp_dTstar    ! derivative of Lp with respect to Tstar (4th-order tensor)
+
+
+!*** local variables ***!
+
+
+select case (phase_constitution(material_phase(ipc,ip,el)))
+
+  case (constitutive_j2_label)
+    call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   
+  case (constitutive_phenopowerlaw_label)
+    call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+  
+  case (constitutive_titanmod_label)
+    call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   
+  case (constitutive_dislotwin_label)
+    call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   
+  case (constitutive_nonlocal_label)
+    call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, constitutive_state, ipc, ip, el)
+   
+end select
+
 endsubroutine
 
 
-subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, orientation, ipc, ip, el)
+
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
-!* INPUT:                                                            *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
-!*  - state           : current microstructure                       *
-!*  - ipc             : component-ID of current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!* OUTPUT:                                                           *
-!*  - constitutive_dotState : evolution of state variable            *
 !*********************************************************************
+subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, orientation, ipc, ip, el)
+
 use prec, only:     pReal, pInt
 use debug, only:    debug_cumDotStateCalls, &
                     debug_cumDotStateTicks
@@ -542,16 +554,20 @@ use constitutive_nonlocal, only:      constitutive_nonlocal_dotState, &
 implicit none
 
 !*** input  variables
-integer(pInt), intent(in) ::    ipc, ip, el
+integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integration point
+                                ip, &         ! current integration point
+                                el            ! current element
 real(pReal), intent(in) ::      Temperature, &
-                                subdt
+                                subdt         ! timestep
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                Fe, &
-                                Fp
+                                Fe, &         ! elastic deformation gradient
+                                Fp            ! plastic deformation gradient
 real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                orientation
+                                orientation   ! crystal orientation (quaternion)
 real(pReal), dimension(6), intent(in) :: &
-                                Tstar_v
+                                Tstar_v       ! 2nd Piola Kirchhoff stress tensor (Mandel)
+
+!*** output variables ***!
 
 !*** local variables
 integer(pLongInt)               tick, tock, & 
@@ -587,27 +603,21 @@ call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
 !$OMP END CRITICAL (debugTimingDotState)
 
-return
 endsubroutine
 
 
-function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
+
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
-!* INPUT:                                                            *
-!*  - Tstar_v         : 2nd Piola Kirchhoff stress tensor (Mandel)   *
-!*  - state           : current microstructure                       *
-!*  - ipc             : component-ID of current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!* OUTPUT:                                                           *
-!*  - constitutive_dotTemperature : evolution of temperature         *
 !*********************************************************************
+function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
+
 use prec, only:     pReal,pInt
 use debug, only:    debug_cumDotTemperatureCalls, &
                     debug_cumDotTemperatureTicks
-use material, only: phase_constitution,material_phase
+use material, only: phase_constitution, &
+                    material_phase
 use constitutive_j2, only:            constitutive_j2_dotTemperature, &
                                       constitutive_j2_label
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_dotTemperature, &
@@ -620,15 +630,22 @@ use constitutive_nonlocal, only:      constitutive_nonlocal_dotTemperature, &
                                       constitutive_nonlocal_label
 implicit none
 
-!* Definition of variables
-integer(pInt)                 ipc, ip, el
-real(pReal)                   Temperature
-real(pReal)                   constitutive_dotTemperature
-real(pReal), dimension(6) ::  Tstar_v
-integer(pLongInt)             tick, &
-                              tock, &
-                              tickrate, &
-                              maxticks
+!*** input  variables
+integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integration point
+                                ip, &         ! current integration point
+                                el            ! current element
+real(pReal), intent(in) ::      Temperature
+real(pReal), dimension(6), intent(in) :: &
+                                Tstar_v       ! 2nd Piola Kirchhoff stress tensor (Mandel)
+
+!*** output variables ***!
+real(pReal)                     constitutive_dotTemperature   ! evolution of temperature
+
+!*** local variables
+integer(pLongInt)               tick, tock, & 
+                                tickrate, &
+                                maxticks
+
 
 call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 
@@ -658,8 +675,8 @@ call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   if (tock < tick) debug_cumDotTemperatureTicks  = debug_cumDotTemperatureTicks + maxticks
 !$OMP END CRITICAL (debugTimingDotTemperature)
 
-return
 endfunction
+
 
 
 function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
@@ -672,49 +689,62 @@ function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec, only:     pReal,pInt
- use mesh, only:     mesh_NcpElems, &
-                     mesh_maxNips, &
-                     mesh_maxNipNeighbors
- use material, only: phase_constitution, &
-                     material_phase, &
-                     homogenization_maxNgrains
- use constitutive_j2
- use constitutive_phenopowerlaw
- use constitutive_titanmod
- use constitutive_dislotwin
- use constitutive_nonlocal
- implicit none
+use prec, only:     pReal,pInt
+use mesh, only:     mesh_NcpElems, &
+                    mesh_maxNips, &
+                    mesh_maxNipNeighbors
+use material, only: phase_constitution, &
+                    material_phase, &
+                    homogenization_maxNgrains
+use constitutive_j2, only:            constitutive_j2_postResults, &
+                                      constitutive_j2_label
+use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_postResults, &
+                                      constitutive_phenopowerlaw_label
+use constitutive_titanmod, only:      constitutive_titanmod_postResults, &
+                                      constitutive_titanmod_label
+use constitutive_dislotwin, only:     constitutive_dislotwin_postResults, &
+                                      constitutive_dislotwin_label
+use constitutive_nonlocal, only:      constitutive_nonlocal_postResults, &
+                                      constitutive_nonlocal_label
+implicit none
 
-!* Definition of variables
- integer(pInt), intent(in) :: ipc,ip,el
- real(pReal), intent(in) :: dt, Temperature
- real(pReal), dimension(6), intent(in) :: Tstar_v
- real(pReal), dimension(3,3), intent(in) :: Fe
- real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: constitutive_postResults
+!*** input  variables
+integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integration point
+                                ip, &         ! current integration point
+                                el            ! current element
+real(pReal), intent(in) ::      Temperature, &
+                                dt            ! timestep
+real(pReal), dimension(3,3), intent(in) :: &
+                                Fe            ! elastic deformation gradient
+real(pReal), dimension(6), intent(in) :: &
+                                Tstar_v       ! 2nd Piola Kirchhoff stress tensor (Mandel)
 
- constitutive_postResults = 0.0_pReal
- select case (phase_constitution(material_phase(ipc,ip,el)))
+!*** output variables ***!
+real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: constitutive_postResults
+
+!*** local variables
+
+
+constitutive_postResults = 0.0_pReal
+select case (phase_constitution(material_phase(ipc,ip,el)))
+
+  case (constitutive_j2_label)
+    constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
+   
+  case (constitutive_phenopowerlaw_label)
+    constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
+  
+  case (constitutive_titanmod_label)
+    constitutive_postResults = constitutive_titanmod_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
+   
+  case (constitutive_dislotwin_label)
+    constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
+   
+  case (constitutive_nonlocal_label)
+    constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, Fe, Temperature, dt, constitutive_state, &
+                                                                 constitutive_dotstate, ipc, ip, el)
+end select
  
-   case (constitutive_j2_label)
-     constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_phenopowerlaw_label)
-     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
-
-   case (constitutive_titanmod_label)
-     constitutive_postResults = constitutive_titanmod_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_dislotwin_label)
-     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
-     
-   case (constitutive_nonlocal_label)
-     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, Fe, Temperature, dt, constitutive_state, &
-                                                                  constitutive_dotstate, ipc, ip, el)
- end select
- 
-return
-
 endfunction
 
 END MODULE

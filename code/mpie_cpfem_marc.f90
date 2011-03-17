@@ -247,14 +247,15 @@ subroutine hypela2(&
               d_max, d_min
 
 ! OpenMP variable
-!$ integer(pInt) defaultNumThreadsInt                                       ! default value set by Marc
+!$ integer(pInt) defaultNumThreadsInt                                     ! default value set by Marc
  
  
-!$ defaultNumThreadsInt = omp_get_num_threads()                             ! remember number of threads set by Marc
+!$ defaultNumThreadsInt = omp_get_num_threads()                           ! remember number of threads set by Marc
 
  if (.not. CPFEM_init_done) call CPFEM_initAll(t(1),n(1),nn)
+ cp_en = mesh_FEasCP('elem',n(1))
 
-!$ call omp_set_num_threads(mpieNumThreadsInt)                              ! set number of threads for parallel execution set by MPIE_NUM_THREADS
+!$ call omp_set_num_threads(mpieNumThreadsInt)                            ! set number of threads for parallel execution set by MPIE_NUM_THREADS
 
  if (lovl == 4) then                                                      ! Marc requires stiffness in separate call
    if ( timinc < theDelta .and. theInc == inc ) then                      ! first after cutback
@@ -263,10 +264,7 @@ subroutine hypela2(&
      computationMode = 6                                                  !  --> just return known tangent
    endif
  else                                                                     ! stress requested (lovl == 6)
-   cp_en = mesh_FEasCP('elem',n(1))
-
    if (cptim > theTime .or. inc /= theInc) then                           ! reached "convergence"
-
      terminallyIll = .false.
      cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
      if (inc == 0) then                                                   ! >> start of analysis <<
@@ -294,16 +292,13 @@ subroutine hypela2(&
        write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> new increment..!'; call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
-
    else if ( timinc < theDelta ) then                                     ! >> cutBack <<
-
      terminallyIll = .false.
      cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
      calcMode = .true.                                                    ! pretend last step was calculation
      !$OMP CRITICAL (write2out)
      write(6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> cutback detected..!'; call flush(6)
      !$OMP END CRITICAL (write2out)
-
    endif                                                                  ! convergence treatment end
 
    calcMode(nn,cp_en) = .not. calcMode(nn,cp_en)                          ! ping pong (calc <--> collect)
@@ -328,6 +323,7 @@ subroutine hypela2(&
      if ( lastMode /= calcMode(nn,cp_en) .and. &
           .not. terminallyIll ) then
        call debug_info()                                                  ! first after ping pong reports (meaningful) debugging
+       !$OMP CRITICAL (write2out)
        write(6,*)
        write(6,*) 'EXTREME VALUES OF RETURNED VARIABLES (from previous cycle)'
        write(6,*)
@@ -337,6 +333,7 @@ subroutine hypela2(&
        write(6,'(a14,x,e12.3,x,i6,x,i4)') 'jacobian min :', d_min, d_min_e, d_min_i
        write(6,'(a14,x,e12.3,x,i6,x,i4)') '         max :', d_max, d_max_e, d_max_i
        write(6,*)
+       !$OMP END CRITICAL (write2out)
      endif
      if ( lastIncConverged ) then
        lastIncConverged = .false.                                         ! reset flag

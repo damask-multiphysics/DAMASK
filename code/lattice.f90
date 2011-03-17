@@ -694,10 +694,12 @@ subroutine lattice_init()
  integer(pInt), parameter :: fileunit = 200
  integer(pInt) i,Nsections
 
+ !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  lattice init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
+ !$OMP END CRITICAL (write2out)
 
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error(100) ! cannot open config file
  Nsections = IO_countSections(fileunit,material_partPhase)
@@ -705,9 +707,11 @@ subroutine lattice_init()
 ! lattice_Nstructure = Nsections + 2_pInt                                                ! most conservative assumption
  close(fileunit)
 
+ !$OMP CRITICAL (write2out)
  write(6,'(a16,x,i5)') '# phases:',Nsections
  write(6,'(a16,x,i5)') '# structures:',lattice_Nstructure
  write(6,*)
+ !$OMP END CRITICAL (write2out)
 
  allocate(lattice_Sslip(3,3,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip   = 0.0_pReal
  allocate(lattice_Sslip_v(6,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip_v = 0.0_pReal

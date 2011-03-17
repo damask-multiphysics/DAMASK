@@ -62,10 +62,12 @@ subroutine debug_init()
   character(len=64)                           tag
   character(len=1024)                         line
 
-  write(6,*)
-  write(6,*) '<<<+-  debug init  -+>>>'
-  write(6,*) '$Id$'
-  write(6,*)
+  !$OMP CRITICAL (write2out)
+    write(6,*)
+    write(6,*) '<<<+-  debug init  -+>>>'
+    write(6,*) '$Id$'
+    write(6,*)
+  !$OMP END CRITICAL (write2out)
   
   allocate(debug_StressLoopDistribution(nStress,2)) ;            debug_StressLoopDistribution             = 0_pInt
   allocate(debug_LeapfrogBreakDistribution(nStress,2)) ;         debug_LeapfrogBreakDistribution          = 0_pInt
@@ -77,8 +79,10 @@ subroutine debug_init()
   ! try to open the config file
   if(IO_open_file(fileunit,debug_configFile)) then 
   
-    write(6,*) '   ... using values from config file'
-    write(6,*)
+    !$OMP CRITICAL (write2out)
+      write(6,*) '   ... using values from config file'
+      write(6,*)
+    !$OMP END CRITICAL (write2out)
     
     line = ''
     ! read variables from config file and overwrite parameters
@@ -107,19 +111,25 @@ subroutine debug_init()
   ! no config file, so we use standard values
   else 
 
-    write(6,*) '   ... using standard values'
-    write(6,*)
+    !$OMP CRITICAL (write2out)
+      write(6,*) '   ... using standard values'
+      write(6,*)
+    !$OMP END CRITICAL (write2out)
 
   endif  
 
   ! writing parameters to output file
-  write(6,'(a24,x,l)')    'debug:                  ',debugger
-  write(6,'(a24,x,l)')    'verbose:                ',verboseDebugger
-  write(6,'(a24,x,l)')    'selective:              ',selectiveDebugger
+  !$OMP CRITICAL (write2out)
+    write(6,'(a24,x,l)')    'debug:                  ',debugger
+    write(6,'(a24,x,l)')    'verbose:                ',verboseDebugger
+    write(6,'(a24,x,l)')    'selective:              ',selectiveDebugger
+  !$OMP END CRITICAL (write2out)
   if (selectiveDebugger) then
-    write(6,'(a24,x,i8)') '  element:              ',debug_e
-    write(6,'(a24,x,i8)') '  ip:                   ',debug_i
-    write(6,'(a24,x,i8)') '  grain:                ',debug_g
+    !$OMP CRITICAL (write2out)
+      write(6,'(a24,x,i8)') '  element:              ',debug_e
+      write(6,'(a24,x,i8)') '  ip:                   ',debug_i
+      write(6,'(a24,x,i8)') '  grain:                ',debug_g
+    !$OMP END CRITICAL (write2out)
   else
     debug_e = 0_pInt                                                            ! switch off selective debugging
     debug_i = 0_pInt
@@ -170,6 +180,7 @@ endsubroutine
  
  call system_clock(count_rate=tickrate)
 
+!$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) 'DEBUG Info'
  write(6,*)
@@ -265,6 +276,7 @@ endsubroutine
  write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)
 
  write(6,*)
+!$OMP END CRITICAL (write2out)
 
  endsubroutine
  

@@ -1,13 +1,13 @@
 !* $Id$
 !*****************************************************
-!*      Module: HOMOGENIZATION_ISOSTRAIN			 *
+!*      Module: HOMOGENIZATION_ISOSTRAIN             *
 !*****************************************************
 !* contains:                                         *
 !*****************************************************
 
-!	[isostrain]
-!	type            isostrain
-!	Ngrains         6
+! [isostrain]
+! type            isostrain
+! Ngrains         6
 !   (output)        Ngrains
 
 MODULE homogenization_isostrain
@@ -115,9 +115,9 @@ subroutine homogenization_isostrain_init(&
      end select
 
      if (mySize > 0_pInt) then                               ! any meaningful output found
-	     homogenization_isostrain_sizePostResult(j,i) = mySize
-	     homogenization_isostrain_sizePostResults(i) = &
-	     homogenization_isostrain_sizePostResults(i) + mySize
+       homogenization_isostrain_sizePostResult(j,i) = mySize
+       homogenization_isostrain_sizePostResults(i) = &
+       homogenization_isostrain_sizePostResults(i) + mySize
      endif
    enddo
  enddo
@@ -137,7 +137,7 @@ function homogenization_isostrain_stateInit(myInstance)
 !* Definition of variables
  integer(pInt), intent(in) :: myInstance
  real(pReal), dimension(homogenization_isostrain_sizeState(myInstance)) :: &
-              homogenization_isostrain_stateInit  ! modified <<<updated 31.07.2009>>>
+              homogenization_isostrain_stateInit
 
  homogenization_isostrain_stateInit = 0.0_pReal
 
@@ -173,7 +173,7 @@ subroutine homogenization_isostrain_partitionDeformation(&
  
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  forall (i = 1:homogenization_Ngrains(mesh_element(3,el))) &
-   F(:,:,i)  = avgF
+   F(1:3,1:3,i)  = avgF
 
  return
 

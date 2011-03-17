@@ -130,10 +130,12 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  integer(pInt), dimension(1) :: randInit
  
  
+ !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  math init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
+ !$OMP END CRITICAL (write2out)
   
  if (fixedSeed > 0_pInt) then
    randInit = fixedSeed
@@ -143,8 +145,10 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  endif
 
  call random_seed(get=randInit)
+ !$OMP CRITICAL (write2out)
  write(6,*) 'random seed: ',randInit(1)
  write(6,*)
+ !$OMP END CRITICAL (write2out)
  
  call halton_seed_set(randInit(1))
  call halton_ndim_set(3)
@@ -2576,7 +2580,7 @@ endfunction
  r(1:ndim) = 0.0_pReal
 
  if ( any ( base(1:ndim) <= 1 ) ) then
-!$OMP CRITICAL (write2out)
+   !$OMP CRITICAL (write2out)
    write ( *, '(a)' ) ' '
    write ( *, '(a)' ) 'I_TO_HALTON - Fatal error!'
    write ( *, '(a)' ) ' An input base BASE is <= 1!'
@@ -2584,7 +2588,7 @@ endfunction
      write ( *, '(i6,i6)' ) i, base(i)
    enddo
    call flush(6)
-!$OMP END CRITICAL (write2out)
+   !$OMP END CRITICAL (write2out)
    stop
  end if
 
@@ -2855,7 +2859,6 @@ endfunction
  else
    prime = 0
 !$OMP CRITICAL (write2out)
-
    write ( 6, '(a)' ) ' '
    write ( 6, '(a)' ) 'PRIME - Fatal error!'
    write ( 6, '(a,i6)' ) '  Illegal prime index N = ', n

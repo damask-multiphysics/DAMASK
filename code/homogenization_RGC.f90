@@ -59,10 +59,12 @@ subroutine homogenization_RGC_init(&
  character(len=64) tag
  character(len=1024) line
 
+!$OMP CRITICAL (write2out)
     write(6,*)
     write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_RGC_label,' init  -+>>>'
     write(6,*) '$Id$'
     write(6,*)
+!$OMP END CRITICAL (write2out)
 
  maxNinstance = count(homogenization_type == homogenization_RGC_label)
  if (maxNinstance == 0) return
@@ -148,6 +150,7 @@ subroutine homogenization_RGC_init(&
  enddo
 
 100 do i = 1,maxNinstance                                            ! sanity checks
+  !$OMP CRITICAL (write2out)
   write(6,'(a15,x,i4)')  'instance:  ', i
   write(6,*)
   write(6,'(a25,3(x,i8))')    'cluster size:         ',(homogenization_RGC_Ngrains(j,i),j=1,3)
@@ -155,6 +158,7 @@ subroutine homogenization_RGC_init(&
   write(6,'(a25,x,e10.3)')    'over-proportionality: ', homogenization_RGC_ciAlpha(i)
   write(6,'(a25,3(x,e10.3))') 'grain size:           ',(homogenization_RGC_dAlpha(j,i),j=1,3)
   write(6,'(a25,3(x,e10.3))') 'cluster orientation:  ',(homogenization_RGC_angles(j,i),j=1,3)
+  !$OMP END CRITICAL (write2out)
  enddo
 
  do i = 1,maxNinstance
@@ -256,6 +260,7 @@ subroutine homogenization_RGC_partitionDeformation(&
 
 !* Debugging the overall deformation gradient
  if (RGCdebug) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a,i3,a,i3,a)')'========== Increment: ',theInc,' Cycle: ',cycleCounter,' =========='
    write(6,'(x,a32)')'Overall deformation gradient: '
    do i = 1,3
@@ -263,6 +268,7 @@ subroutine homogenization_RGC_partitionDeformation(&
    enddo
    write(6,*)' '
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
 
 !* Compute the deformation gradient of individual grains due to relaxations
@@ -281,12 +287,14 @@ subroutine homogenization_RGC_partitionDeformation(&
 
 !* Debugging the grain deformation gradients
    if (RGCdebug) then
+     !$OMP CRITICAL (write2out)
      write(6,'(x,a32,x,i3)')'Deformation gradient of grain: ',iGrain
      do i = 1,3
        write(6,'(x,3(e14.8,x))')(F(i,j,iGrain), j = 1,3)
      enddo
      write(6,*)' '
      call flush(6)
+     !$OMP END CRITICAL (write2out)
    endif
 
  enddo
@@ -371,11 +379,13 @@ function homogenization_RGC_updateState(&
 
 !* Debugging the obtained state
  if (RGCdebug) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a30)')'Obtained state: '
    do i = 1,3*nIntFaceTot
      write(6,'(x,2(e14.8,x))')state%p(i)
    enddo
    write(6,*)' '
+   !$OMP END CRITICAL (write2out)
  endif
 
 !* Computing interface mismatch and stress penalty tensor for all interfaces of all grains
@@ -386,6 +396,7 @@ function homogenization_RGC_updateState(&
 
 !* Debugging the mismatch, stress and penalties of grains
  if (RGCdebug) then
+   !$OMP CRITICAL (write2out)
    do iGrain = 1,nGrain
      write(6,'(x,a30,x,i3,x,a4,3(x,e14.8))')'Mismatch magnitude of grain(',iGrain,') :',NN(1,iGrain),NN(2,iGrain),NN(3,iGrain)
      write(6,*)' '
@@ -397,6 +408,7 @@ function homogenization_RGC_updateState(&
      enddo
      write(6,*)' '
    enddo
+   !$OMP END CRITICAL (write2out)
  endif
 !* End of initialization
 
@@ -433,9 +445,11 @@ function homogenization_RGC_updateState(&
    
 !* Debugging the residual stress
    if (RGCdebug) then
+     !$OMP CRITICAL (write2out)
      write(6,'(x,a30,x,i3)')'Traction at interface: ',iNum
      write(6,'(x,3(e14.8,x))')(tract(iNum,j), j = 1,3)
      write(6,*)' '
+     !$OMP END CRITICAL (write2out)
    endif
  enddo
 !* End of residual stress calculation
@@ -449,6 +463,7 @@ function homogenization_RGC_updateState(&
 
  !* Debugging the convergent criteria
  if (RGCcheck) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a)')' '
    write(6,'(x,a,x,i2,x,i4)')'RGC residual check ...',ip,el
    write(6,'(x,a15,x,e14.8,x,a7,i3,x,a12,i2,i2)')'Max stress: ',stresMax, &
@@ -456,6 +471,7 @@ function homogenization_RGC_updateState(&
    write(6,'(x,a15,x,e14.8,x,a7,i3,x,a12,i2)')'Max residual: ',residMax, &
               '@ iface',residLoc(1),'in direction',residLoc(2)
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
  
  homogenization_RGC_updateState = .false.
@@ -464,9 +480,11 @@ function homogenization_RGC_updateState(&
    homogenization_RGC_updateState = .true.
    
    if (RGCcheck) then 
+     !$OMP CRITICAL (write2out)
      write(6,'(x,a55)')'... done and happy'
      write(6,*)' '
      call flush(6)
+     !$OMP END CRITICAL (write2out)
    endif
 !    write(6,'(x,a,x,i3,x,a6,x,i3,x,a12)')'RGC_updateState: ip',ip,'| el',el,'converged :)'
 
@@ -492,6 +510,7 @@ function homogenization_RGC_updateState(&
    state%p(3*nIntFaceTot+8) = maxval(abs(drelax))/dt                    ! the maximum rate of relaxation vectors
 
    if (RGCcheck) then
+     !$OMP CRITICAL (write2out)
      write(6,'(x,a30,x,e14.8)')'Constitutive work: ',constitutiveWork
      write(6,'(x,a30,3(x,e14.8))')'Magnitude mismatch: ',sum(NN(1,:))/dble(nGrain), &
                                                          sum(NN(2,:))/dble(nGrain), &
@@ -503,6 +522,7 @@ function homogenization_RGC_updateState(&
      write(6,'(x,a30,x,e14.8)')'Average relaxation rate: ',sum(abs(drelax))/dt/dble(3*nIntFaceTot)
      write(6,*)''
      call flush(6)
+     !$OMP END CRITICAL (write2out)
    endif
    
    deallocate(tract,resid,relax,drelax)
@@ -514,9 +534,11 @@ function homogenization_RGC_updateState(&
    homogenization_RGC_updateState = (/.true.,.false./)                  ! with direct cut-back
 
    if (RGCcheck) then
+     !$OMP CRITICAL (write2out)
      write(6,'(x,a55)')'... broken'
      write(6,*)' '
      call flush(6)
+     !$OMP END CRITICAL (write2out)
    endif
    
    deallocate(tract,resid,relax,drelax)
@@ -526,9 +548,11 @@ function homogenization_RGC_updateState(&
  else
 
  if (RGCcheck) then
+     !$OMP CRITICAL (write2out)
      write(6,'(x,a55)')'... not yet done'
      write(6,*)' '
      call flush(6)
+     !$OMP END CRITICAL (write2out)
    endif
    
  endif
@@ -578,12 +602,14 @@ function homogenization_RGC_updateState(&
  
 !* Debugging the global Jacobian matrix of stress tangent
  if (RGCdebugJacobi) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a30)')'Jacobian matrix of stress'
    do i = 1,3*nIntFaceTot
      write(6,'(x,100(e10.4,x))')(smatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
 
 !* ... of the stress penalty tangent (mismatch penalty and volume penalty, 
@@ -632,12 +658,14 @@ function homogenization_RGC_updateState(&
  
 !* Debugging the global Jacobian matrix of penalty tangent
  if (RGCdebugJacobi) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a30)')'Jacobian matrix of penalty'
    do i = 1,3*nIntFaceTot
      write(6,'(x,100(e10.4,x))')(pmatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
  
 !* ... of the numerical viscosity traction "rmatrix"
@@ -650,24 +678,28 @@ function homogenization_RGC_updateState(&
 
 !* Debugging the global Jacobian matrix of numerical viscosity tangent
  if (RGCdebugJacobi) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a30)')'Jacobian matrix of penalty'
    do i = 1,3*nIntFaceTot
      write(6,'(x,100(e10.4,x))')(rmatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
 
 !* The overall Jacobian matrix summarizing contributions of smatrix, pmatrix, rmatrix
  allocate(jmatrix(3*nIntFaceTot,3*nIntFaceTot)); jmatrix = smatrix + pmatrix + rmatrix
  
  if (RGCdebugJacobi) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a30)')'Jacobian matrix (total)'
    do i = 1,3*nIntFaceTot
      write(6,'(x,100(e10.4,x))')(jmatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
  
 !*** End of construction and assembly of Jacobian matrix
@@ -679,12 +711,14 @@ function homogenization_RGC_updateState(&
  
 !* Debugging the inverse Jacobian matrix
  if (RGCdebugJacobi) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a30)')'Jacobian inverse'
    do i = 1,3*nIntFaceTot
      write(6,'(x,100(e10.4,x))')(jnverse(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
 
 !* Calculate the state update (global relaxation vectors) for the next Newton-Raphson iteration
@@ -698,19 +732,23 @@ function homogenization_RGC_updateState(&
  state%p(1:3*nIntFaceTot) = relax
  if (any(abs(drelax(:)) > maxdRelax_RGC)) then                         ! Forcing cutback when the incremental change of relaxation vector becomes too large
    homogenization_RGC_updateState = (/.true.,.false./)
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a,x,i3,x,a,x,i3,x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
    write(6,'(x,a,x,e14.8)')'due to large relaxation change =',maxval(abs(drelax))
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
 
  !* Debugging the return state
  if (RGCdebugJacobi) then
+   !$OMP CRITICAL (write2out)
    write(6,'(x,a30)')'Returned state: '
    do i = 1,3*nIntFaceTot
      write(6,'(x,2(e14.8,x))')state%p(i)
    enddo
    write(6,*)' '
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
 
  deallocate(tract,resid,jmatrix,jnverse,relax,drelax,pmatrix,smatrix,p_relax,p_resid)
@@ -757,6 +795,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
  
 !* Debugging the grain tangent
  if (RGCdebug) then
+   !$OMP CRITICAL (write2out)
    do iGrain = 1,Ngrains
      dPdF99 = math_Plain3333to99(dPdF(:,:,:,:,iGrain))
      write(6,'(x,a30,x,i3)')'Stress tangent of grain: ',iGrain
@@ -766,6 +805,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
      write(6,*)' '
    enddo
    call flush(6)
+   !$OMP END CRITICAL (write2out)
  endif
  
 !* Computing the average first Piola-Kirchhoff stress P and the average tangent dPdF

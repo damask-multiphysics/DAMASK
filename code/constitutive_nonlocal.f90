@@ -170,10 +170,12 @@ character(len=64)                           tag
 character(len=1024)                         line
 
 
-write(6,*)
-write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_nonlocal_label,' init  -+>>>'
-write(6,*) '$Id$'
-write(6,*)
+!$OMP CRITICAL (write2out)
+  write(6,*)
+  write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_nonlocal_label,' init  -+>>>'
+  write(6,*) '$Id$'
+  write(6,*)
+!$OMP END CRITICAL (write2out)
 
 maxNinstance = count(phase_constitution == constitutive_nonlocal_label)
 if (maxNinstance == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
@@ -1081,6 +1083,8 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                             tauThreshold, &             ! threshold shear stress
                                             tau, &                      ! resolved shear stress
                                             rhoForest                   ! forest dislocation density
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
+                                            v                           ! velocity for the current element and ip
 real(pReal)                                 boltzmannProbability, &
                                             tauRel, &                   ! relative thermally active resolved shear stress
                                             wallFunc, &                 ! functions reflecting the shape of the obstacle wall (see PhD thesis Mohles p.53)
@@ -1096,7 +1100,7 @@ tauThreshold = state%p(11*ns+1:12*ns)
 Tdislocation_v = state%p(12*ns+1:12*ns+6)
 
 tau = 0.0_pReal
-constitutive_nonlocal_v(1:ns,1:4,g,ip,el) = 0.0_pReal
+v = 0.0_pReal
 if (present(dv_dtau)) dv_dtau = 0.0_pReal
 
 
@@ -1124,26 +1128,25 @@ if (Temperature > 0.0_pReal) then
       timeRatio = boltzmannProbability * constitutive_nonlocal_fattack(myInstance) &
                 / (constitutive_nonlocal_vs(myInstance) * sqrt(rhoForest(s)))
         
-      constitutive_nonlocal_v(s,:,g,ip,el) = sign(constitutive_nonlocal_vs(myInstance),tau(s)) * timeRatio / (1.0_pReal + timeRatio)
+      v(s,1:4) = sign(constitutive_nonlocal_vs(myInstance),tau(s)) * timeRatio / (1.0_pReal + timeRatio)
       
       if (present(dv_dtau)) then
-        dv_dtau(s) = abs(constitutive_nonlocal_v(s,1,g,ip,el)) * constitutive_nonlocal_Qeff0(s,myInstance) &
-                   / (kB * Temperature * (1.0_pReal + timeRatio)) &
-                   * 0.5_pReal * wallFunc * (2.0_pReal - tauRel) &
-                   / ((1.0_pReal - tauRel) * (abs(tau(s)) - tauThreshold(s)))
+        dv_dtau(s) = abs(v(s,1)) * constitutive_nonlocal_Qeff0(s,myInstance) / (kB * Temperature * (1.0_pReal + timeRatio)) &
+                   * 0.5_pReal * wallFunc * (2.0_pReal - tauRel) / ((1.0_pReal - tauRel) * (abs(tau(s)) - tauThreshold(s)))
       endif
     
     !*** If resolved stress exceeds threshold plus obstacle stress, the probability for thermal activation is 1.
     !*** The tangent is zero, since no dependency of tau.
     
     elseif (tauRel >= 1.0_pReal) then
-      constitutive_nonlocal_v(s,1:4,g,ip,el) = sign(constitutive_nonlocal_vs(myInstance), tau(s)) &
-                                             * constitutive_nonlocal_fattack(myInstance) &
-                                             / (constitutive_nonlocal_vs(myInstance) * sqrt(rhoForest(s)) &
-                                                + constitutive_nonlocal_fattack(myInstance))
+      v(s,1:4) = sign(constitutive_nonlocal_vs(myInstance), tau(s)) * constitutive_nonlocal_fattack(myInstance) &
+               / (constitutive_nonlocal_vs(myInstance) * sqrt(rhoForest(s)) + constitutive_nonlocal_fattack(myInstance))
     endif
   enddo
 endif
+
+constitutive_nonlocal_v(1:ns,1:4,g,ip,el) = v
+!$OMP FLUSH(constitutive_nonlocal_v)
 
 !if (verboseDebugger .and. s) then 
 !  !$OMP CRITICAL (write2out)
@@ -1234,17 +1237,21 @@ myInstance = phase_constitutionInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
 ns = constitutive_nonlocal_totalNslip(myInstance)
 
+
+!*** update dislocation velocity
+
+call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip, el, dv_dtau)
+
+
 !*** shortcut to state variables 
 
 forall (t = 1:8) &
   rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
 forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * constitutive_nonlocal_v(s,t-4,g,ip,el) < 0.0_pReal) &                                      ! contribution of used rho for changing sign of v
   rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
-
 rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
 tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 
-call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip, el, dv_dtau)                                       ! update dislocation velocity
 
 !*** Calculation of gdot and its tangent
 
@@ -1252,22 +1259,20 @@ forall (t = 1:4) &
   gdot(1:ns,t) =  rhoSgl(1:ns,t) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) &
                                  * constitutive_nonlocal_v(1:ns,t,g,ip,el)
 gdotTotal = sum(gdot,2)
-
 dgdotTotal_dtau = sum(rhoSgl,2) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) * dv_dtau
+
 
 !*** Calculation of Lp and its tangent
 
 do s = 1,ns
-  sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
-  
+  sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)  
   Lp = Lp + gdotTotal(s) * lattice_Sslip(1:3,1:3,sLattice,myStructure)
-  
   forall (i=1:3,j=1:3,k=1:3,l=1:3) &
     dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) + dgdotTotal_dtau(s) * lattice_Sslip(i,j, sLattice,myStructure) &
                                                                            * lattice_Sslip(k,l, sLattice,myStructure) 
 enddo
-
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
+
 
 !if (verboseDebugger .and. (debug_g==g .and. debug_i==i .and. debug_e==e)) then 
 !  !$OMP CRITICAL (write2out)
@@ -1448,6 +1453,7 @@ gdot = 0.0_pReal
 dLower = 0.0_pReal
 dUpper = 0.0_pReal
 
+
 !*** shortcut to state variables 
 
 forall (t = 1:8) rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
@@ -1456,12 +1462,14 @@ rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
 tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 Tdislocation_v = state(g,ip,el)%p(12*ns+1:12*ns+6)
 
+
 !*** sanity check for timestep
 
 if (timestep <= 0.0_pReal) then                                                                                                     ! if illegal timestep...
   dotState(g,ip,el)%p = 0.0_pReal                                                                                                   ! ...return without doing anything (-> zero dotState)
   return
 endif
+
 
 
 !****************************************************************************
@@ -1483,6 +1491,7 @@ if (verboseDebugger .and. (debug_g==g .and. debug_i==ip .and. debug_e==el)) then
     write(6,'(a,/,4(12(e12.5,x),/))') 'gdot / 1/s',gdot
   !$OMP END CRITICAL (write2out)
 endif
+
 
 
 !****************************************************************************
@@ -1519,6 +1528,7 @@ if (timestep > 0.0_pReal) then
 endif
 
 
+
 !****************************************************************************
 !*** calculate dislocation multiplication
 
@@ -1531,6 +1541,7 @@ where (rhoSgl(1:ns,1:2) > 0.0_pReal) &
   rhoDotMultiplication(1:ns,3:4) = spread(0.5_pReal * sum(abs(gdot(1:ns,1:2)),2) * sqrt(rhoForest)  &
                                                     / constitutive_nonlocal_lambda0PerSlipSystem(1:ns,myInstance) &
                                                     / constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance), 2, 2)
+
 
 
 !****************************************************************************
@@ -1656,9 +1667,11 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
   enddo ! neighbor loop  
 endif
 
-if (numerics_integrationMode == 1_pInt) &
+if (numerics_integrationMode == 1_pInt) then
   constitutive_nonlocal_rhoDotFlux(1:ns,1:10,g,ip,el) = rhoDotFlux(1:ns,1:10)                                                       ! save flux calculation for output (if in central integration mode)
-  
+endif
+
+
 
 !****************************************************************************
 !*** calculate dipole formation and annihilation
@@ -1740,9 +1753,7 @@ if (verboseDebugger .and. (debug_g==g .and. debug_i==ip .and. debug_e==el)) then
   !$OMP END CRITICAL (write2out)
 endif
 
-!$OMP CRITICAL (copy2dotState)
-  dotState(g,ip,el)%p(1:10*ns) = dotState(g,ip,el)%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
-!$OMP END CRITICAL (copy2dotState)
+dotState(g,ip,el)%p(1:10*ns) = dotState(g,ip,el)%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
 
 endsubroutine
 
@@ -1804,8 +1815,10 @@ integer(pInt)                                   Nneighbors, &                 ! 
                                                 s1, &                         ! slip system index (me)
                                                 s2                            ! slip system index (my neighbor)
 real(pReal), dimension(4) ::                    absoluteMisorientation        ! absolute misorientation (without symmetry) between me and my neighbor
-real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e)))) :: &  
-                                                compatibility                 ! compatibility of one specific slip system to all neighbors slip systems's for edges and screws
+real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e))),&
+                         constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e))),&
+                         FE_NipNeighbors(mesh_element(2,e))) :: &  
+                                                compatibility                 ! compatibility for current element and ip
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e)))) :: &  
                                                 slipNormal, &
                                                 slipDirection
@@ -1820,20 +1833,19 @@ Nneighbors = FE_NipNeighbors(mesh_element(2,e))
 my_phase = material_phase(1,i,e)
 my_instance = phase_constitutionInstance(my_phase)
 my_structure = constitutive_nonlocal_structure(my_instance)
-ns = constitutive_nonlocal_totalNslip(my_instance)  
+ns = constitutive_nonlocal_totalNslip(my_instance)
 slipNormal(1:3,1:ns) =    lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,my_instance), my_structure)
 slipDirection(1:3,1:ns) = lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,my_instance), my_structure)
 
 
 !*** start out fully compatible
 
-constitutive_nonlocal_compatibility(:,:,:,:,i,e) = 0.0_pReal
-forall(s1 = 1:maxval(constitutive_nonlocal_totalNslip)) &
-  constitutive_nonlocal_compatibility(1:2,s1,s1,1:Nneighbors,i,e) = 1.0_pReal
+compatibility = 0.0_pReal
+forall(s1 = 1:ns) &
+  compatibility(1:2,s1,s1,1:Nneighbors) = 1.0_pReal
 
 
 !*** Loop thrugh neighbors and check whether there is any compatibility.
-!*** This is only the case for
 
 do n = 1,Nneighbors
   neighboring_e = mesh_ipNeighborhood(1,n,i,e)
@@ -1845,21 +1857,21 @@ do n = 1,Nneighbors
   
   if (neighboring_e <= 0 .or. neighboring_i <= 0) then
     forall(s1 = 1:ns) &
-      constitutive_nonlocal_compatibility(1:2,s1,s1,n,i,e) = sqrt(constitutive_nonlocal_surfaceTransmissivity(my_instance))
+      compatibility(1:2,s1,s1,n) = sqrt(constitutive_nonlocal_surfaceTransmissivity(my_instance))
     cycle
   endif
   
   
   !* PHASE BOUNDARY
   !* If we encounter a different nonlocal "cpfem" phase at the neighbor, 
-  !* we consider this to be a real "physical" phase boundary, so fully incompatible.
+  !* we consider this to be a real "physical" phase boundary, so completely incompatible.
   !* If the neighboring "cpfem" phase has a local constitution, 
-  !* we do not consider this to be a phase boundary, so fully compatible.
+  !* we do not consider this to be a phase boundary, so completely compatible.
   
   neighboring_phase = material_phase(1,neighboring_i,neighboring_e)
   if (neighboring_phase /= my_phase) then
     if (.not. phase_localConstitution(neighboring_phase)) then
-      constitutive_nonlocal_compatibility(:,:,:,n,i,e) = 0.0_pReal
+      compatibility(1:2,1:ns,1:ns,n) = 0.0_pReal
     endif
     cycle
   endif
@@ -1879,35 +1891,32 @@ do n = 1,Nneighbors
                                                          0_pInt)      ! no symmetry
                                                          
   do s1 = 1,ns    ! my slip systems
-
     do s2 = 1,ns  ! my neighbor's slip systems
-      compatibility(1,s2) =     math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
-                          * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
-      compatibility(2,s2) = abs(math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2)))) &
-                          * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
+      compatibility(1,s2,s1,n) =     math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
+                               * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
+      compatibility(2,s2,s1,n) = abs(math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2)))) &
+                               * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
     enddo
     
     compatibilitySum = 0.0_pReal
     belowThreshold = .true.
     do while (compatibilitySum < 1.0_pReal .and. any(belowThreshold(1:ns)))
-      thresholdValue = maxval(compatibility(2,1:ns), belowThreshold(1:ns))              ! screws always positive
-      nThresholdValues = dble(count(compatibility(2,1:ns) == thresholdValue))
-      where (compatibility(2,1:ns) >= thresholdValue) &
+      thresholdValue = maxval(compatibility(2,1:ns,s1,n), belowThreshold(1:ns))              ! screws always positive
+      nThresholdValues = dble(count(compatibility(2,1:ns,s1,n) == thresholdValue))
+      where (compatibility(2,1:ns,s1,n) >= thresholdValue) &
         belowThreshold(1:ns) = .false.
       if (compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
-        where (abs(compatibility(1:2,1:ns)) == thresholdValue) &
-          compatibility(1:2,1:ns) = sign((1.0_pReal - compatibilitySum) / nThresholdValues, compatibility(1:2,1:ns))
+        where (abs(compatibility(1:2,1:ns,s1,n)) == thresholdValue) &
+          compatibility(1:2,1:ns,s1,n) = sign((1.0_pReal - compatibilitySum) / nThresholdValues, compatibility(1:2,1:ns,s1,n))
       compatibilitySum = compatibilitySum + nThresholdValues * thresholdValue
     enddo
-    where (belowThreshold(1:ns)) compatibility(1,1:ns) = 0.0_pReal
-    where (belowThreshold(1:ns)) compatibility(2,1:ns) = 0.0_pReal
-    
-    constitutive_nonlocal_compatibility(1:2,1:ns,s1,n,i,e) = compatibility(1:2,1:ns)
-
+    where (belowThreshold(1:ns)) compatibility(1,1:ns,s1,n) = 0.0_pReal
+    where (belowThreshold(1:ns)) compatibility(2,1:ns,s1,n) = 0.0_pReal
   enddo ! my slip systems cycle
-
 enddo   ! neighbor cycle
-  
+
+constitutive_nonlocal_compatibility(1:2,1:ns,1:ns,1:Nneighbors,i,e) = compatibility
+
 endsubroutine 
 
 
@@ -2412,4 +2421,5 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
 enddo
 
 endfunction
+
 END MODULE

@@ -239,10 +239,12 @@
  integer(pInt), parameter :: fileUnit = 222
  integer(pInt) e,element,ip
  
+ !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  mesh init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
+ !$OMP END CRITICAL (write2out)
 
  call mesh_build_FEdata()                                      ! --- get properties of the different types of elements
 
@@ -304,7 +306,9 @@
  forall (e = 1:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(mesh_element(2,e))
  
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
+ !$OMP CRITICAL (write2out)
  write(6,*) '<<<+-  mesh init done -+>>>'
+ !$OMP END CRITICAL (write2out)
  calcMode = .false.                                       ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',element)) = .true.        ! first ip,el needs to be already pingponged to "calc"
  lastMode = .true.                                        ! and its mode is already known...

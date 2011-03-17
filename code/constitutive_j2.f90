@@ -75,16 +75,20 @@ subroutine constitutive_j2_init(file)
  character(len=64) tag
  character(len=1024) line
 
+ !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_j2_label,' init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
+ !$OMP END CRITICAL (write2out)
  
  maxNinstance = count(phase_constitution == constitutive_j2_label)
  if (maxNinstance == 0) return
 
+ !$OMP CRITICAL (write2out)
  write(6,'(a16,x,i5)') '# instances:',maxNinstance
  write(6,*)
+ !$OMP END CRITICAL (write2out)
  
  allocate(constitutive_j2_sizeDotState(maxNinstance)) ;                         constitutive_j2_sizeDotState = 0_pInt
  allocate(constitutive_j2_sizeState(maxNinstance)) ;                            constitutive_j2_sizeState = 0_pInt
@@ -188,8 +192,8 @@ subroutine constitutive_j2_init(file)
      constitutive_j2_Cslip_66(k,k,i) =     constitutive_j2_C11(i)
      constitutive_j2_Cslip_66(k+3,k+3,i) = 0.5_pReal*(constitutive_j2_C11(i)-constitutive_j2_C12(i))
    end forall
-   constitutive_j2_Cslip_66(:,:,i) = &
-     math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(:,:,i)))
+   constitutive_j2_Cslip_66(1:6,1:6,i) = &
+     math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(1:6,1:6,i)))
 
  enddo
 
@@ -258,7 +262,7 @@ function constitutive_j2_homogenizedC(state,ipc,ip,el)
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
- constitutive_j2_homogenizedC = constitutive_j2_Cslip_66(:,:,matID)
+ constitutive_j2_homogenizedC = constitutive_j2_Cslip_66(1:6,1:6,matID)
 
  return
 

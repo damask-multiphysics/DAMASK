@@ -66,8 +66,10 @@ recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess
      fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
      inquire(file=fname, exist=fexist)
      if (.not.(fexist)) then
-       write(6,*)'ERROR: file does not exist error in IO_abaqus_assembleInputFile'
-       write(6,*)'filename: ', trim(fname)
+       !$OMP CRITICAL (write2out)
+         write(6,*)'ERROR: file does not exist error in IO_abaqus_assembleInputFile'
+         write(6,*)'filename: ', trim(fname)
+       !$OMP END CRITICAL (write2out)
        createSuccess = .false.
        return
      endif
@@ -1361,7 +1363,6 @@ endfunction
    endif
  endif
  write(6,'(a38)') '+------------------------------------+'
- 
  call flush(6)
  call quit(9000+ID)
  !$OMP END CRITICAL (write2out)
