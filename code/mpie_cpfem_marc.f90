@@ -240,11 +240,7 @@ subroutine hypela2(&
  real(pReal), dimension (3,3) :: pstress                                  ! dummy argument for call of cpfem_general (used by mpie_spectral)
  real(pReal), dimension (3,3,3,3) :: dPdF                                 ! dummy argument for call of cpfem_general (used by mpie_spectral)
 
- integer(pInt)  computationMode, i, cp_en, &
-                s_max_e, s_max_i, s_min_e, s_min_i, &
-                d_max_e, d_max_i, d_min_e, d_min_i
- real(pReal)  s_max, s_min, &
-              d_max, d_min
+ integer(pInt)  computationMode, i, cp_en
 
 ! OpenMP variable
 !$ integer(pInt) defaultNumThreadsInt                                     ! default value set by Marc
@@ -253,7 +249,6 @@ subroutine hypela2(&
 !$ defaultNumThreadsInt = omp_get_num_threads()                           ! remember number of threads set by Marc
 
  if (.not. CPFEM_init_done) call CPFEM_initAll(t(1),n(1),nn)
- cp_en = mesh_FEasCP('elem',n(1))
 
 !$ call omp_set_num_threads(mpieNumThreadsInt)                            ! set number of threads for parallel execution set by MPIE_NUM_THREADS
 
@@ -264,6 +259,7 @@ subroutine hypela2(&
      computationMode = 6                                                  !  --> just return known tangent
    endif
  else                                                                     ! stress requested (lovl == 6)
+   cp_en = mesh_FEasCP('elem',n(1))
    if (cptim > theTime .or. inc /= theInc) then                           ! reached "convergence"
      terminallyIll = .false.
      cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
@@ -308,10 +304,6 @@ subroutine hypela2(&
        call debug_reset()                                                 ! resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1_pInt
-       s_max = - 1.0_pReal / 0.0_pReal                                    ! reset stored max/min values
-       s_min = + 1.0_pReal / 0.0_pReal
-       d_max = - 1.0_pReal / 0.0_pReal
-       d_min = + 1.0_pReal / 0.0_pReal
      endif
      if ( outdatedByNewInc ) then
        outdatedByNewInc = .false.                                         ! reset flag
@@ -323,17 +315,6 @@ subroutine hypela2(&
      if ( lastMode /= calcMode(nn,cp_en) .and. &
           .not. terminallyIll ) then
        call debug_info()                                                  ! first after ping pong reports (meaningful) debugging
-       !$OMP CRITICAL (write2out)
-       write(6,*)
-       write(6,*) 'EXTREME VALUES OF RETURNED VARIABLES (from previous cycle)'
-       write(6,*)
-       write(6,'(a39)') '                      value     el   ip'
-       write(6,'(a14,x,e12.3,x,i6,x,i4)') 'stress   min :', s_min, s_min_e, s_min_i
-       write(6,'(a14,x,e12.3,x,i6,x,i4)') '         max :', s_max, s_max_e, s_max_i
-       write(6,'(a14,x,e12.3,x,i6,x,i4)') 'jacobian min :', d_min, d_min_e, d_min_i
-       write(6,'(a14,x,e12.3,x,i6,x,i4)') '         max :', d_max, d_max_e, d_max_i
-       write(6,*)
-       !$OMP END CRITICAL (write2out)
      endif
      if ( lastIncConverged ) then
        lastIncConverged = .false.                                         ! reset flag
@@ -359,33 +340,8 @@ subroutine hypela2(&
  s(1:ngens) = stress(1:ngens)*invnrmMandel(1:ngens)
  if(symmetricSolver) d(1:ngens,1:ngens) = 0.5_pReal*(d(1:ngens,1:ngens)+transpose(d(1:ngens,1:ngens)))
  
- if (calcMode(nn,cp_en)) then 
-   if (maxval(s(1:ngens)) > s_max) then                                   ! remember extreme values of stress and jacobian
-     s_max_e = cp_en
-     s_max_i = nn
-     s_max = maxval(s(1:ngens))
-   endif
-   if (minval(s(1:ngens)) < s_min) then
-     s_min_e = cp_en
-     s_min_i = nn
-     s_min = minval(s(1:ngens))
-   endif
-   if (maxval(d(1:ngens,1:ngens)) > d_max) then
-     d_max_e = cp_en
-     d_max_i = nn
-     d_max = maxval(d(1:ngens,1:ngens))
-   endif
-   if (minval(d(1:ngens,1:ngens)) < d_min) then
-     d_min_e = cp_en
-     d_min_i = nn
-     d_min = minval(d(1:ngens,1:ngens))
-   endif
- endif
-
 !$ call omp_set_num_threads(defaultNumThreadsInt)                               ! reset number of threads to stored default value
 
- return
- 
 end subroutine
 
 

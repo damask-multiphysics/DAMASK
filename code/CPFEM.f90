@@ -218,8 +218,15 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       debug_i, &
                                                       debug_e, &
                                                       debugger, &
-                                                      selectiveDebugger, &
-                                                      verboseDebugger
+                                                      verboseDebugger, &
+                                                      debug_stressMaxLocation, &
+                                                      debug_stressMinLocation, &
+                                                      debug_jacobianMaxLocation, &
+                                                      debug_jacobianMinLocation, &
+                                                      debug_stressMax, &
+                                                      debug_stressMin, &
+                                                      debug_jacobianMax, &
+                                                      debug_jacobianMin
   use FEsolving, only:                                parallelExecution, &
                                                       outdatedFFN1, &
                                                       terminallyIll, &
@@ -236,7 +243,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       math_transpose3x3, &
                                                       math_I3, &
                                                       math_Mandel3333to66, &
-                                                      math_Mandel33to6
+                                                      math_Mandel66to3333, &
+                                                      math_Mandel33to6, &
+                                                      math_Mandel6to33
   use mesh, only:                                     mesh_FEasCP, &
                                                       mesh_NcpElems, &
                                                       mesh_maxNips, &
@@ -291,15 +300,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   !*** output variables ***!
   real(pReal), dimension(6), intent(out) ::           cauchyStress        ! stress vector in Mandel notation
   real(pReal), dimension(6,6), intent(out) ::         jacobian            ! jacobian in Mandel notation
-  real(pReal), dimension (3,3), intent(out) ::        pstress                   ! Piola-Kirchhoff stress in Matrix notation
+  real(pReal), dimension (3,3), intent(out) ::        pstress             ! Piola-Kirchhoff stress in Matrix notation
   real(pReal), dimension (3,3,3,3), intent(out) ::    dPdF                ! 
                  
   !*** local variables ***!
   real(pReal)                                         J_inverse, &        ! inverse of Jacobian
                                                       rnd
-  real(pReal), dimension (3,3) ::                     Kirchhoff           ! Piola-Kirchhoff stress in Matrix notation
+  real(pReal), dimension (3,3) ::                     Kirchhoff, &        ! Piola-Kirchhoff stress in Matrix notation
+                                                      cauchyStress33      ! stress vector in Matrix notation
   real(pReal), dimension (3,3,3,3) ::                 H_sym, &
-                                                      H
+                                                      H, &
+                                                      jacobian3333        ! jacobian in Matrix notation
   integer(pInt)                                       cp_en, &            ! crystal plasticity element number
                                                       i, &
                                                       j, &
@@ -551,6 +562,28 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, transpose(jacobian)/1e9
       call flush(6)
     !$OMP END CRITICAL (write2out)
+  endif
+  
+  ! remember extreme values of stress and jacobian
+  if (mode < 3) then
+    cauchyStress33 = math_Mandel6to33(cauchyStress)
+    if (maxval(cauchyStress33) > debug_stressMax) then                        
+      debug_stressMaxLocation = (/cp_en, IP/)
+      debug_stressMax = maxval(cauchyStress33)
+    endif
+    if (minval(cauchyStress33) < debug_stressMin) then
+      debug_stressMinLocation = (/cp_en, IP/)
+      debug_stressMin = minval(cauchyStress33)
+    endif
+    jacobian3333 = math_Mandel66to3333(jacobian)
+    if (maxval(jacobian3333) > debug_jacobianMax) then
+      debug_jacobianMaxLocation = (/cp_en, IP/)
+      debug_jacobianMax = maxval(jacobian3333)
+    endif
+    if (minval(jacobian3333) < debug_jacobianMin) then
+      debug_jacobianMinLocation = (/cp_en, IP/)
+      debug_jacobianMin = minval(jacobian3333)
+    endif
   endif
   
   ! return temperature
