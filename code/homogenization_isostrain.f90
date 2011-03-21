@@ -54,10 +54,12 @@ subroutine homogenization_isostrain_init(&
  character(len=64) tag
  character(len=1024) line
  
-    write(6,*)
-    write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_isostrain_label,' init  -+>>>'
-    write(6,*) '$Id$'
-    write(6,*)
+ !$OMP CRITICAL (write2out)
+   write(6,*)
+   write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_isostrain_label,' init  -+>>>'
+   write(6,*) '$Id$'
+   write(6,*)
+ !$OMP END CRITICAL (write2out)
 
  maxNinstance = count(homogenization_type == homogenization_isostrain_label)
  if (maxNinstance == 0) return

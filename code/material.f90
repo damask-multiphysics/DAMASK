@@ -87,6 +87,7 @@ subroutine material_init()
 !**************************************
  use prec, only: pReal,pInt
  use IO, only: IO_error, IO_open_file
+ use debug, only: debug_verbosity
  implicit none
 
 !* Definition of variables
@@ -94,10 +95,10 @@ subroutine material_init()
  integer(pInt) i,j
  
  !$OMP CRITICAL (write2out)
- write(6,*)
- write(6,*) '<<<+-  material init  -+>>>'
- write(6,*) '$Id$'
- write(6,*)
+   write(6,*)
+   write(6,*) '<<<+-  material init  -+>>>'
+   write(6,*) '$Id$'
+   write(6,*)
  !$OMP END CRITICAL (write2out)
  
  if(.not. IO_open_file(fileunit,material_configFile)) call IO_error(100) ! cannot open config file
@@ -108,7 +109,6 @@ subroutine material_init()
  call material_parsePhase(fileunit,material_partPhase)
  close(fileunit)
 
- !$OMP CRITICAL (write2out)
  do i = 1,material_Nmicrostructure
    if (microstructure_crystallite(i) < 1 .or. &
        microstructure_crystallite(i) > material_Ncrystallite) call IO_error(150,i)
@@ -117,34 +117,41 @@ subroutine material_init()
    if (minval(microstructure_texture(1:microstructure_Nconstituents(i),i)) < 1 .or. &
        maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Ntexture) call IO_error(160,i)
    if (abs(sum(microstructure_fraction(:,i)) - 1.0_pReal) >= 1.0e-10_pReal) then
-     write(6,*)'sum of microstructure fraction = ',sum(microstructure_fraction(:,i))
+     if (debug_verbosity > 0) then
+       !$OMP CRITICAL (write2out)
+         write(6,*)'sum of microstructure fraction = ',sum(microstructure_fraction(:,i))
+       !$OMP END CRITICAL (write2out)
+     endif
      call IO_error(170,i)
    endif
  enddo
- write (6,*)
- write (6,*) 'MATERIAL configuration'
- write (6,*)
- write (6,'(a32,x,a16,x,a6)') 'homogenization                  ','type            ','grains'
- do i = 1,material_Nhomogenization
-   write (6,'(x,a32,x,a16,x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
- enddo
- write (6,*)
- write (6,'(a32,x,a11,x,a12,x,a13)') 'microstructure                  ','crystallite','constituents','homogeneous'
- do i = 1,material_Nmicrostructure
-   write (6,'(a32,4x,i4,8x,i4,8x,l)') microstructure_name(i), &
-                                microstructure_crystallite(i), &
-                                microstructure_Nconstituents(i), &
-                                microstructure_elemhomo(i)
-   if (microstructure_Nconstituents(i) > 0_pInt) then
-     do j = 1,microstructure_Nconstituents(i)
-       write (6,'(a1,x,a32,x,a32,x,f6.4)') '>',phase_name(microstructure_phase(j,i)),&
-                                               texture_name(microstructure_texture(j,i)),&
-                                               microstructure_fraction(j,i)
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+     write (6,*)
+     write (6,*) 'MATERIAL configuration'
+     write (6,*)
+     write (6,'(a32,x,a16,x,a6)') 'homogenization                  ','type            ','grains'
+     do i = 1,material_Nhomogenization
+       write (6,'(x,a32,x,a16,x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
      enddo
      write (6,*)
-   endif
- enddo
- !$OMP END CRITICAL (write2out)
+     write (6,'(a32,x,a11,x,a12,x,a13)') 'microstructure                  ','crystallite','constituents','homogeneous'
+     do i = 1,material_Nmicrostructure
+       write (6,'(a32,4x,i4,8x,i4,8x,l)') microstructure_name(i), &
+                                    microstructure_crystallite(i), &
+                                    microstructure_Nconstituents(i), &
+                                    microstructure_elemhomo(i)
+       if (microstructure_Nconstituents(i) > 0_pInt) then
+         do j = 1,microstructure_Nconstituents(i)
+           write (6,'(a1,x,a32,x,a32,x,f6.4)') '>',phase_name(microstructure_phase(j,i)),&
+                                                   texture_name(microstructure_texture(j,i)),&
+                                                   microstructure_fraction(j,i)
+         enddo
+         write (6,*)
+       endif
+     enddo
+   !$OMP END CRITICAL (write2out)
+ endif
  
  call material_populateGrains()
 
@@ -540,6 +547,7 @@ subroutine material_populateGrains()
  use mesh, only: mesh_element, mesh_maxNips, mesh_NcpElems, mesh_ipVolume, FE_Nips
  use IO,   only: IO_error, IO_hybridIA
  use FEsolving, only: FEsolving_execIP
+ use debug, only: debug_verbosity
  implicit none
 
  integer(pInt), dimension (:,:), allocatable :: Ngrains
@@ -581,21 +589,25 @@ subroutine material_populateGrains()
  allocate(phaseOfGrain(maxval(Ngrains)))            ! reserve memory for maximum case
  allocate(orientationOfGrain(3,maxval(Ngrains)))    ! reserve memory for maximum case
  
- !$OMP CRITICAL (write2out)
- write (6,*)
- write (6,*) 'MATERIAL grain population'
- write (6,*)
- write (6,'(a32,x,a32,x,a6)') 'homogenization_name','microstructure_name','grain#'
- !$OMP END CRITICAL (write2out)
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+     write (6,*)
+     write (6,*) 'MATERIAL grain population'
+     write (6,*)
+     write (6,'(a32,x,a32,x,a6)') 'homogenization_name','microstructure_name','grain#'
+   !$OMP END CRITICAL (write2out)
+ endif
  do homog = 1,material_Nhomogenization              ! loop over homogenizations
    dGrains = homogenization_Ngrains(homog)          ! grain number per material point
    do micro = 1,material_Nmicrostructure            ! all pairs of homog and micro
      if (Ngrains(homog,micro) > 0) then             ! an active pair of homog and micro
        myNgrains = Ngrains(homog,micro)             ! assign short name for total number of grains to populate
-       !$OMP CRITICAL (write2out)
-       write (6,*)
-       write (6,'(a32,x,a32,x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
-       !$OMP END CRITICAL (write2out)
+       if (debug_verbosity > 0) then
+         !$OMP CRITICAL (write2out)
+           write (6,*)
+           write (6,'(a32,x,a32,x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
+         !$OMP END CRITICAL (write2out)
+       endif
      
 ! ----------------------------------------------------------------------------  calculate volume of each grain
        volumeOfGrain = 0.0_pReal
@@ -728,9 +740,6 @@ subroutine material_populateGrains()
              end forall
              grain = grain + FE_Nips(mesh_element(2,e)) * dGrains               ! wind forward by Nips*NgrainsPerIP
            endif
-           ! write (6,*) e
-           ! write (6,*) material_phase(:,:,e)
-           ! write (6,*) material_EulerAngles(:,:,:,e)
          endif
        enddo
 

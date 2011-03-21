@@ -28,6 +28,7 @@
  subroutine FE_init()
  
  use prec, only: pInt
+ use debug, only: debug_verbosity
  use IO
  implicit none
  
@@ -83,14 +84,13 @@
  write(6,*) '<<<+-  FEsolving init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
- write(6,*) 'restart writing:    ', restartWrite
- write(6,*) 'restart reading:    ', restartRead
- if (restartRead) write(6,*) 'restart Job:        ', trim(restartJob)
- write(6,*)
+ if (debug_verbosity > 0) then
+   write(6,*) 'restart writing:    ', restartWrite
+   write(6,*) 'restart reading:    ', restartRead
+   if (restartRead) write(6,*) 'restart Job:        ', trim(restartJob)
+   write(6,*)
+ endif
 !$OMP END CRITICAL (write2out)
- 
-
- return
 
  end subroutine
 

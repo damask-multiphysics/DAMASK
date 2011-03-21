@@ -133,6 +133,7 @@ subroutine constitutive_phenopowerlaw_init(file)
  use math, only: math_Mandel3333to66, math_Voigt66to3333
  use IO
  use material
+ use debug, only: debug_verbosity
 
  use lattice, only: lattice_initializeStructure, lattice_symmetryType, &
                     lattice_maxNslipFamily, lattice_maxNtwinFamily, &
@@ -151,19 +152,21 @@ subroutine constitutive_phenopowerlaw_init(file)
  character(len=1024) line
 
  !$OMP CRITICAL (write2out)
- write(6,*)
- write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_phenopowerlaw_label,' init  -+>>>'
- write(6,*) '$Id$'
- write(6,*)
+   write(6,*)
+   write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_phenopowerlaw_label,' init  -+>>>'
+   write(6,*) '$Id$'
+   write(6,*)
  !$OMP END CRITICAL (write2out)
  
  maxNinstance = count(phase_constitution == constitutive_phenopowerlaw_label)
  if (maxNinstance == 0) return
 
- !$OMP CRITICAL (write2out)
- write(6,'(a16,x,i5)') '# instances:',maxNinstance
- write(6,*)
- !$OMP END CRITICAL (write2out)
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+     write(6,'(a16,x,i5)') '# instances:',maxNinstance
+     write(6,*)
+   !$OMP END CRITICAL (write2out)
+ endif
 
  allocate(constitutive_phenopowerlaw_sizeDotState(maxNinstance)) ;   constitutive_phenopowerlaw_sizeDotState = 0_pInt
  allocate(constitutive_phenopowerlaw_sizeState(maxNinstance)) ;      constitutive_phenopowerlaw_sizeState = 0_pInt

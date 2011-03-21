@@ -120,6 +120,7 @@ use IO,       only: IO_lc, &
                     IO_floatValue, &
                     IO_intValue, &
                     IO_error
+use debug,    only: debug_verbosity
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     FE_maxNipNeighbors
@@ -179,6 +180,12 @@ character(len=1024)                         line
 
 maxNinstance = count(phase_constitution == constitutive_nonlocal_label)
 if (maxNinstance == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
+
+if (debug_verbosity > 0) then
+  !$OMP CRITICAL (write2out)
+    write(6,'(a16,x,i5)') '# instances:',maxNinstance
+  !$OMP END CRITICAL (write2out)
+endif
 
 
 !*** space allocation for global variables
@@ -805,8 +812,11 @@ use math,     only: math_Plain3333to99, &
                     math_det3x3, &
                     math_transpose3x3, &
                     pi
-use debug,    only: debugger, &
-                    verboseDebugger
+use debug,    only: debug_verbosity, &
+                    debug_selectiveDebugger, &
+                    debug_g, &
+                    debug_i, &
+                    debug_e
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_maxNipNeighbors, &
@@ -918,7 +928,6 @@ forall (s = 1:ns) &
                                constitutive_nonlocal_forestProjectionEdge(s, 1:ns, myInstance) ) & 
                 + dot_product( ( sum(abs(rhoSgl(1:ns,(/3,4,7,8/))),2) + rhoDip(1:ns,2) ), &
                                constitutive_nonlocal_forestProjectionScrew(s, 1:ns, myInstance) )         ! calculation of forest dislocation density as projection of screw and edge dislocations
-! if (debugger) write(6,'(a30,3(i3,x),/,12(e10.3,x),/)') 'forest dislocation density at ',g,ip,el, rhoForest
 
 
 !*** calculate the threshold shear stress for dislocation slip 
@@ -928,7 +937,6 @@ forall (s = 1:ns) &
                     * constitutive_nonlocal_burgersPerSlipSystem(s, myInstance) &
                     * sqrt( dot_product( ( sum(abs(rhoSgl),2) + sum(abs(rhoDip),2) ), &
                                          constitutive_nonlocal_interactionMatrixSlipSlip(s, 1:ns, myInstance) ) )
-! if (debugger) write(6,'(a22,3(i3,x),/,12(f10.5,x),/)') 'tauThreshold / MPa at ',g,ip,el, tauThreshold/1e6
 
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
@@ -1021,6 +1029,16 @@ if (.not. phase_localConstitution(myPhase)) then                                
   
 endif
 
+if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  !$OMP CRITICAL (write2out)
+    write(6,*)
+    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,g
+    write(6,*)
+    write(6,'(a,/,12(x),12(e10.3,x))') '<< CONST >> rhoForest', rhoForest
+    write(6,'(a,/,12(x),12(f10.5,x))') '<< CONST >> tauThreshold / MPa', tauThreshold/1e6
+    write(6,'(a,/,3(12(x),3(f10.5,x),/))') '<< CONST >> Tdislocation / MPa', math_Mandel6to33(Tdislocation_v)/1e6
+  !$OMP END CRITICAL (write2out)
+endif
 
 !**********************************************************************
 !*** set states
@@ -1045,8 +1063,8 @@ use prec,     only: pReal, &
                     p_vec
 use math,     only: math_mul6x6, &
                     math_Mandel6to33
-use debug,    only: debugger, &
-                    verboseDebugger, &
+use debug,    only: debug_verbosity, &
+                    debug_selectiveDebugger, &
                     debug_g, &
                     debug_i, &
                     debug_e
@@ -1148,17 +1166,15 @@ endif
 constitutive_nonlocal_v(1:ns,1:4,g,ip,el) = v
 !$OMP FLUSH(constitutive_nonlocal_v)
 
-!if (verboseDebugger .and. s) then 
-!  !$OMP CRITICAL (write2out)
-!    write(6,*) '::: kinetics',g,ip,el
-!    write(6,*)
-!    write(6,'(a,/,3(3(f12.3,x)/))') 'Tdislocation / MPa', math_Mandel6to33(Tdislocation_v/1e6)
-!    write(6,'(a,/,3(3(f12.3,x)/))') 'Tstar / MPa', math_Mandel6to33(Tstar_v/1e6)
-!    write(6,'(a,/,12(f12.5,x),/)') 'tau / MPa', tau/1e6_pReal
-!    write(6,'(a,/,12(e12.5,x),/)') 'rhoForest / 1/m**2', rhoForest
-!    write(6,'(a,/,4(12(f12.5,x),/))') 'v / 1e-3m/s', constitutive_nonlocal_v(:,:,g,ip,el)*1e3
-!  !$OMP END CRITICAL (write2out)
-!endif
+if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  !$OMP CRITICAL (write2out)
+    write(6,*)
+    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
+    write(6,*)
+    write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> tau / MPa', tau/1e6_pReal
+    write(6,'(a,/,4(12(x),12(f12.5,x),/))') '<< CONST >> v / 1e-3m/s', constitutive_nonlocal_v(:,:,g,ip,el)*1e3
+  !$OMP END CRITICAL (write2out)
+endif
 
 endsubroutine
 
@@ -1175,8 +1191,8 @@ use prec,     only: pReal, &
 use math,     only: math_Plain3333to99, &
                     math_mul6x6, &
                     math_Mandel6to33
-use debug,    only: debugger, &
-                    verboseDebugger, &
+use debug,    only: debug_verbosity, &
+                    debug_selectiveDebugger, &
                     debug_g, &
                     debug_i, &
                     debug_e
@@ -1273,18 +1289,16 @@ do s = 1,ns
 enddo
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
-
-!if (verboseDebugger .and. (debug_g==g .and. debug_i==i .and. debug_e==e)) then 
-!  !$OMP CRITICAL (write2out)
-!    write(6,*) '::: LpandItsTangent',g,ip,el
-!    write(6,*)
-!    write(6,'(a,/,12(f12.5,x),/)') 'v / 1e-3m/s', constitutive_nonlocal_v(:,:,g,ip,el)*1e3
-!    write(6,'(a,/,12(f12.5,x),/)') 'gdot / 1e-3',gdot*1e3_pReal
-!    write(6,'(a,/,12(f12.5,x),/)') 'gdot total / 1e-3',gdotTotal*1e3_pReal
-!    write(6,'(a,/,3(3(f12.7,x)/))') 'Lp',Lp
-!    ! call flush(6)
-!  !$OMP END CRITICAL (write2out)
-!endif
+if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  !$OMP CRITICAL (write2out)
+    write(6,*)
+    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_LpandItsTangent at el ip g ',el,ip,g
+    write(6,*)
+    write(6,'(a,/,4(12(x),12(f12.5,x)),/)') '<< CONST >> gdot / 1e-3',gdot*1e3_pReal
+    write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> gdot total / 1e-3',gdotTotal*1e3_pReal
+    write(6,'(a,/,3(12(x),3(f12.7,x),/))') '<< CONST >> Lp',Lp
+  !$OMP END CRITICAL (write2out)
+endif
 
 endsubroutine
 
@@ -1300,11 +1314,11 @@ use prec,     only: pReal, &
                     p_vec
 use numerics, only: numerics_integrationMode
 use IO,       only: IO_error
-use debug,    only: debugger, &
+use debug,    only: debug_verbosity, &
+                    debug_selectiveDebugger, &
                     debug_g, &
                     debug_i, &
-                    debug_e, &
-                    verboseDebugger
+                    debug_e
 use math,     only: math_norm3, &
                     math_mul6x6, &
                     math_mul3x3, &
@@ -1428,9 +1442,10 @@ real(pReal)                                 area, &                       ! area
 logical                                     considerEnteringFlux, &
                                             considerLeavingFlux
 
-if (verboseDebugger .and. (debug_g==g .and. debug_i==ip .and. debug_e==el)) then 
+if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
   !$OMP CRITICAL (write2out)
-    write(6,*) '::: constitutive_nonlocal_dotState at ',g,ip,el
+    write(6,*)
+    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
     write(6,*)
   !$OMP END CRITICAL (write2out)
 endif
@@ -1484,11 +1499,10 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) 
   gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
                                              * constitutive_nonlocal_v(s,t,g,ip,el)
 
-if (verboseDebugger .and. (debug_g==g .and. debug_i==ip .and. debug_e==el)) then 
+if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
   !$OMP CRITICAL (write2out)
-    write(6,'(a,/,10(12(e12.5,x),/))') 'rho / 1/m^2', rhoSgl, rhoDip
-    write(6,'(a,/,4(12(e12.5,x),/))') 'v / m/s', constitutive_nonlocal_v(:,:,g,ip,el)
-    write(6,'(a,/,4(12(e12.5,x),/))') 'gdot / 1/s',gdot
+    write(6,'(a,/,10(12(x),12(e12.5,x),/))') '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
+    write(6,'(a,/,4(12(x),12(e12.5,x),/))') '<< CONST >> gdot / 1/s',gdot
   !$OMP END CRITICAL (write2out)
 endif
 
@@ -1738,18 +1752,20 @@ forall (t = 1:10) &
               + rhoDotAthermalAnnihilation(1:ns,t) &
               + rhoDotThermalAnnihilation(1:ns,t) 
 
-if (verboseDebugger .and. (debug_g==g .and. debug_i==ip .and. debug_e==el)) then
+if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
   !$OMP CRITICAL (write2out)
-    write(6,'(a,/,8(12(e12.5,x),/))') 'dislocation remobilization', rhoDotRemobilization(1:ns,1:8) * timestep
-    write(6,'(a,/,4(12(e12.5,x),/))') 'dislocation multiplication', rhoDotMultiplication(1:ns,1:4) * timestep
-    write(6,'(a,/,8(12(e12.5,x),/))') 'dislocation flux', rhoDotFlux(1:ns,1:8) * timestep
-    write(6,'(a,/,10(12(e12.5,x),/))') 'dipole formation by glide', rhoDotSingle2DipoleGlide * timestep
-    write(6,'(a,/,2(12(e12.5,x),/))') 'athermal dipole annihilation', rhoDotAthermalAnnihilation(1:ns,1:2) * timestep
-    write(6,'(a,/,2(12(e12.5,x),/))') 'thermally activated dipole annihilation', rhoDotThermalAnnihilation(1:ns,9:10) * timestep
-    write(6,'(a,/,10(12(e12.5,x),/))') 'total density change', rhoDot * timestep
-    write(6,'(a,/,10(12(f12.7,x),/))') 'relative density change', rhoDot(1:ns,1:8) * timestep / (abs(rhoSgl)+1.0e-10), &
-                                                                  rhoDot(1:ns,9:10) * timestep / (rhoDip+1.0e-10)
-    write(6,*)
+    write(6,'(a,/,8(12(x),12(e12.5,x),/))') '<< CONST >> dislocation remobilization', rhoDotRemobilization(1:ns,1:8) * timestep
+    write(6,'(a,/,4(12(x),12(e12.5,x),/))') '<< CONST >> dislocation multiplication', rhoDotMultiplication(1:ns,1:4) * timestep
+    write(6,'(a,/,8(12(x),12(e12.5,x),/))') '<< CONST >> dislocation flux', rhoDotFlux(1:ns,1:8) * timestep
+    write(6,'(a,/,10(12(x),12(e12.5,x),/))') '<< CONST >> dipole formation by glide', rhoDotSingle2DipoleGlide * timestep
+    write(6,'(a,/,2(12(x),12(e12.5,x),/))') '<< CONST >> athermal dipole annihilation', &
+                                            rhoDotAthermalAnnihilation(1:ns,1:2) * timestep
+    write(6,'(a,/,2(12(x),12(e12.5,x),/))') '<< CONST >> thermally activated dipole annihilation', &
+                                            rhoDotThermalAnnihilation(1:ns,9:10) * timestep
+    write(6,'(a,/,10(12(x),12(e12.5,x),/))') '<< CONST >> total density change', rhoDot * timestep
+    write(6,'(a,/,10(12(x),12(f12.7,x),/))') '<< CONST >> relative density change', &
+                                            rhoDot(1:ns,1:8) * timestep / (abs(rhoSgl)+1.0e-10), &
+                                            rhoDot(1:ns,9:10) * timestep / (rhoDip+1.0e-10)
   !$OMP END CRITICAL (write2out)
 endif
 

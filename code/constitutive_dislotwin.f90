@@ -122,10 +122,12 @@ integer(pInt) section,maxNinstance,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t1,t2,ns,nt,out
 character(len=64) tag
 character(len=1024) line
 
-!write(6,*)
-!write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_dislotwin_label,' init  -+>>>'
-!write(6,*) '$Id$'
-!write(6,*)
+!$OMP CRITICAL (write2out)
+  write(6,*)
+  write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_dislotwin_label,' init  -+>>>'
+  write(6,*) '$Id$'
+  write(6,*)
+!$OMP END CRITICAL (write2out)
 
 maxNinstance = count(phase_constitution == constitutive_dislotwin_label)
 if (maxNinstance == 0) return

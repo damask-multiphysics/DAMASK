@@ -60,10 +60,10 @@ subroutine homogenization_RGC_init(&
  character(len=1024) line
 
 !$OMP CRITICAL (write2out)
-    write(6,*)
-    write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_RGC_label,' init  -+>>>'
-    write(6,*) '$Id$'
-    write(6,*)
+   write(6,*)
+   write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_RGC_label,' init  -+>>>'
+   write(6,*) '$Id$'
+   write(6,*)
 !$OMP END CRITICAL (write2out)
 
  maxNinstance = count(homogenization_type == homogenization_RGC_label)

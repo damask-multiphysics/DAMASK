@@ -100,25 +100,25 @@ end function
 
 END MODULE
 
- include "IO.f90"               ! uses prec
- include "numerics.f90"         ! uses prec, IO
- include "math.f90"             ! uses prec, numerics
- include "debug.f90"            ! uses prec, numerics
- include "FEsolving.f90"        ! uses prec, IO
- include "mesh.f90"             ! uses prec, math, IO, FEsolving
- include "material.f90"         ! uses prec, math, IO, mesh
- include "lattice.f90"          ! uses prec, math, IO, material
- include "constitutive_j2.f90"            ! uses prec, math, IO, lattice, material, debug
- include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, lattice, material, debug
- include "constitutive_titanmod.f90"      ! uses prec, math, IO, lattice, material, debug
- include "constitutive_dislotwin.f90"     ! uses prec, math, IO, lattice, material, debug
- include "constitutive_nonlocal.f90"      ! uses prec, math, IO, lattice, material, debug
- include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
- include "crystallite.f90"      ! uses prec, math, IO, numerics, Fesolving, material, mesh, constitutive
- include "homogenization_isostrain.f90"   ! uses prec, math, IO
- include "homogenization_RGC.f90"         ! uses prec, math, IO, numerics, mesh: added <<<updated 31.07.2009>>>
- include "homogenization.f90"   ! uses prec, math, IO, numerics
- include "CPFEM.f90"            ! uses prec, math, IO, numerics, debug, FEsolving, mesh, lattice, constitutive, crystallite
+include "IO.f90"               ! uses prec
+include "numerics.f90"         ! uses prec, IO
+include "debug.f90"            ! uses prec, numerics
+include "math.f90"             ! uses prec, numerics, debug
+include "FEsolving.f90"        ! uses prec, IO, debug
+include "mesh.f90"             ! uses prec, math, IO, FEsolving, debug
+include "material.f90"         ! uses prec, math, IO, mesh, debug
+include "lattice.f90"          ! uses prec, math, IO, material, debug
+include "constitutive_j2.f90"            ! uses prec, math, IO, lattice, material, debug
+include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, lattice, material, debug
+include "constitutive_titanmod.f90"      ! uses prec, math, IO, lattice, material, debug
+include "constitutive_dislotwin.f90"     ! uses prec, math, IO, lattice, material, debug
+include "constitutive_nonlocal.f90"      ! uses prec, math, IO, lattice, material, debug
+include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
+include "crystallite.f90"      ! uses prec, math, IO, numerics, Fesolving, material, mesh, constitutive, debug
+include "homogenization_isostrain.f90"   ! uses prec, math, IO, debug
+include "homogenization_RGC.f90"         ! uses prec, math, IO, numerics, mesh, debug
+include "homogenization.f90"   ! uses prec, math, IO, numerics, debug
+include "CPFEM.f90"            ! uses prec, math, IO, numerics, debug, FEsolving, mesh, lattice, constitutive, crystallite, debug
 
 
 !********************************************************************
@@ -269,7 +269,8 @@ subroutine hypela2(&
        lastMode = .false.                                                 ! pretend last step was collection
        calcMode = .false.                                                 ! pretend last step was collection
        !$OMP CRITICAL (write2out)
-       write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> start of analysis..!'; call flush(6)
+         write (6,'(a,i6,x,i2)') '<< HYPELA2 >> start of analysis..! ',n(1),nn
+         call flush(6)
        !$OMP END CRITICAL (write2out)
      else if (inc - theInc > 1) then                                      ! >> restart of broken analysis <<
        lastIncConverged = .false.                                         ! no Jacobian backup
@@ -277,7 +278,8 @@ subroutine hypela2(&
        lastMode = .true.                                                  ! pretend last step was calculation
        calcMode = .true.                                                  ! pretend last step was calculation
        !$OMP CRITICAL (write2out)
-       write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> restart of analysis..!'; call flush(6)
+         write (6,'(a,i6,x,i2)') '<< HYPELA2 >> restart of analysis..! ',n(1),nn
+         call flush(6)
        !$OMP END CRITICAL (write2out)
      else                                                                 ! >> just the next inc <<
        lastIncConverged = .true.                                          ! request Jacobian backup
@@ -285,7 +287,8 @@ subroutine hypela2(&
        lastMode = .true.                                                  ! assure last step was calculation
        calcMode = .true.                                                  ! assure last step was calculation
        !$OMP CRITICAL (write2out)
-       write (6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> new increment..!'; call flush(6)
+         write (6,'(a,i6,x,i2)') '<< HYPELA2 >> new increment..! ',n(1),nn
+         call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
    else if ( timinc < theDelta ) then                                     ! >> cutBack <<
@@ -293,7 +296,8 @@ subroutine hypela2(&
      cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
      calcMode = .true.                                                    ! pretend last step was calculation
      !$OMP CRITICAL (write2out)
-     write(6,'(i6,x,i2,x,a)') n(1),nn,'<< hypela2 >> cutback detected..!'; call flush(6)
+       write(6,'(a,i6,x,i2)') '<< HYPELA2 >> cutback detected..! ',n(1),nn
+       call flush(6)
      !$OMP END CRITICAL (write2out)
    endif                                                                  ! convergence treatment end
 

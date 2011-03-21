@@ -33,7 +33,8 @@ real(pReal) :: debug_jacobianMin
 logical :: selectiveDebugger = .true.
 logical :: verboseDebugger   = .false.
 logical :: debugger          = .true.
-logical :: distribution_init = .false.
+logical :: debug_selectiveDebugger = .true.
+integer(pInt) :: debug_verbosity = 1_pInt
 
 CONTAINS
 
@@ -69,7 +70,7 @@ subroutine debug_init()
   integer(pInt), dimension(1+2*maxNchunks) :: positions
   character(len=64)                           tag
   character(len=1024)                         line
-
+  
   !$OMP CRITICAL (write2out)
     write(6,*)
     write(6,*) '<<<+-  debug init  -+>>>'
@@ -87,11 +88,6 @@ subroutine debug_init()
   ! try to open the config file
   if(IO_open_file(fileunit,debug_configFile)) then 
   
-    !$OMP CRITICAL (write2out)
-      write(6,*) '   ... using values from config file'
-      write(6,*)
-    !$OMP END CRITICAL (write2out)
-    
     line = ''
     ! read variables from config file and overwrite parameters
     do
@@ -107,37 +103,47 @@ subroutine debug_init()
         case ('grain','g','gr')
               debug_g = IO_intValue(line,positions,2)
         case ('selective')
-              selectiveDebugger = IO_intValue(line,positions,2) > 0_pInt
-        case ('verbose')
-              verboseDebugger   = IO_intValue(line,positions,2) > 0_pInt
-        case ('debug')
-              debugger          = IO_intValue(line,positions,2) > 0_pInt
+              debug_selectiveDebugger = IO_intValue(line,positions,2) > 0_pInt
+        case ('verbosity')
+              debug_verbosity = IO_intValue(line,positions,2)
       endselect
     enddo
     100 close(fileunit)
-  
+    
+    if (debug_verbosity > 0) then
+      !$OMP CRITICAL (write2out)
+        write(6,*) '   ... using values from config file'
+        write(6,*)
+      !$OMP END CRITICAL (write2out)
+    endif
+    
   ! no config file, so we use standard values
   else 
 
-    !$OMP CRITICAL (write2out)
-      write(6,*) '   ... using standard values'
-      write(6,*)
-    !$OMP END CRITICAL (write2out)
-
+    if (debug_verbosity > 0) then
+      !$OMP CRITICAL (write2out)
+        write(6,*) '   ... using standard values'
+        write(6,*)
+      !$OMP END CRITICAL (write2out)
+    endif
+    
   endif  
 
-  ! writing parameters to output file
-  !$OMP CRITICAL (write2out)
-    write(6,'(a24,x,l)')    'debug:                  ',debugger
-    write(6,'(a24,x,l)')    'verbose:                ',verboseDebugger
-    write(6,'(a24,x,l)')    'selective:              ',selectiveDebugger
-  !$OMP END CRITICAL (write2out)
-  if (selectiveDebugger) then
+  if (debug_verbosity > 0) then
     !$OMP CRITICAL (write2out)
-      write(6,'(a24,x,i8)') '  element:              ',debug_e
-      write(6,'(a24,x,i8)') '  ip:                   ',debug_i
-      write(6,'(a24,x,i8)') '  grain:                ',debug_g
+      write(6,'(a24,x,l)')    'debug:                  ',debugger
+      write(6,'(a24,x,l)')    'verbose:                ',verboseDebugger
+      write(6,'(a24,x,l)')    'selective:              ',selectiveDebugger
     !$OMP END CRITICAL (write2out)
+  endif
+  if (debug_selectiveDebugger) then
+    if (debug_verbosity > 0) then
+      !$OMP CRITICAL (write2out)
+        write(6,'(a24,x,i8)') 'element:              ',debug_e
+        write(6,'(a24,x,i8)') 'ip:                   ',debug_i
+        write(6,'(a24,x,i8)') 'grain:                ',debug_g
+      !$OMP END CRITICAL (write2out)
+    endif
   else
     debug_e = 0_pInt                                                            ! switch off selective debugging
     debug_i = 0_pInt
@@ -197,115 +203,116 @@ subroutine debug_info()
  
   call system_clock(count_rate=tickrate)
 
-  !$OMP CRITICAL (write2out)
+  if (debug_verbosity > 0) then
+    !$OMP CRITICAL (write2out)
   
-    write(6,*)
-    write(6,*) 'DEBUG Info (from previous cycle)'
-    write(6,*)
-    write(6,'(a33,x,i12)')      'total calls to LpAndItsTangent  :',debug_cumLpCalls
-    if (debug_cumLpCalls > 0_pInt) then
-      write(6,'(a33,x,f12.3)')  'total CPU time/s                :',dble(debug_cumLpTicks)/tickrate
-      write(6,'(a33,x,f12.6)')  'avg CPU time/microsecs per call :',&
-        dble(debug_cumLpTicks)*1.0e6_pReal/tickrate/debug_cumLpCalls
-    endif
-    write(6,*)
-    write(6,'(a33,x,i12)')      'total calls to collectDotState  :',debug_cumDotStateCalls
-    if (debug_cumdotStateCalls > 0_pInt) then
-      write(6,'(a33,x,f12.3)')  'total CPU time/s                :',dble(debug_cumDotStateTicks)/tickrate
-      write(6,'(a33,x,f12.6)')  'avg CPU time/microsecs per call :',&
-        dble(debug_cumDotStateTicks)*1.0e6_pReal/tickrate/debug_cumDotStateCalls
-    endif
-    write(6,*)
-    write(6,'(a33,x,i12)')      'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
-    if (debug_cumdotTemperatureCalls > 0_pInt) then
-      write(6,'(a33,x,f12.3)')  'total CPU time/s                :', dble(debug_cumDotTemperatureTicks)/tickrate
-      write(6,'(a33,x,f12.6)')  'avg CPU time/microsecs per call :',&
-        dble(debug_cumDotTemperatureTicks)*1.0e6_pReal/tickrate/debug_cumDotTemperatureCalls
-    endif
-  
-    integral = 0_pInt
-    write(6,*)
-    write(6,*)
-    write(6,*) 'distribution_StressLoop :    stress  frogbreak  stiffness  frogbreak'
-    do i=1,nStress
-      if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt ) .or. &
-          any(debug_LeapfrogBreakDistribution(i,:)  /= 0_pInt ) ) then
-        integral = integral + i*debug_StressLoopDistribution(i,1) + i*debug_StressLoopDistribution(i,2)
-        write(6,'(i25,x,i10,x,i10,x,i10,x,i10)')   i,debug_StressLoopDistribution(i,1),debug_LeapfrogBreakDistribution(i,1), &
-                                               debug_StressLoopDistribution(i,2),debug_LeapfrogBreakDistribution(i,2)
+      write(6,*)
+      write(6,*) 'DEBUG Info (from previous cycle)'
+      write(6,*)
+      write(6,'(a33,x,i12)')      'total calls to LpAndItsTangent  :',debug_cumLpCalls
+      if (debug_cumLpCalls > 0_pInt) then
+        write(6,'(a33,x,f12.3)')  'total CPU time/s                :',dble(debug_cumLpTicks)/tickrate
+        write(6,'(a33,x,f12.6)')  'avg CPU time/microsecs per call :',&
+          dble(debug_cumLpTicks)*1.0e6_pReal/tickrate/debug_cumLpCalls
       endif
-    enddo
-    write(6,'(a15,i10,x,i10,12x,i10)') '          total',integral,&
-                                                         sum(debug_StressLoopDistribution(:,1)), &
-                                                         sum(debug_StressLoopDistribution(:,2))
+      write(6,*)
+      write(6,'(a33,x,i12)')      'total calls to collectDotState  :',debug_cumDotStateCalls
+      if (debug_cumdotStateCalls > 0_pInt) then
+        write(6,'(a33,x,f12.3)')  'total CPU time/s                :',dble(debug_cumDotStateTicks)/tickrate
+        write(6,'(a33,x,f12.6)')  'avg CPU time/microsecs per call :',&
+          dble(debug_cumDotStateTicks)*1.0e6_pReal/tickrate/debug_cumDotStateCalls
+      endif
+      write(6,*)
+      write(6,'(a33,x,i12)')      'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
+      if (debug_cumdotTemperatureCalls > 0_pInt) then
+        write(6,'(a33,x,f12.3)')  'total CPU time/s                :', dble(debug_cumDotTemperatureTicks)/tickrate
+        write(6,'(a33,x,f12.6)')  'avg CPU time/microsecs per call :',&
+          dble(debug_cumDotTemperatureTicks)*1.0e6_pReal/tickrate/debug_cumDotTemperatureCalls
+      endif
     
-    integral = 0_pInt
-    write(6,*)
-    write(6,*) 'distribution_CrystalliteStateLoop :'
-    do i=1,nState
-      if (any(debug_StateLoopDistribution(i,:) /= 0)) then
-        integral = integral + i*debug_StateLoopDistribution(i,1) + i*debug_StateLoopDistribution(i,2)
-        write(6,'(i25,x,i10,12x,i10)') i,debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
-      endif
-    enddo
-    write(6,'(a15,i10,x,i10,12x,i10)') '          total',integral,&
-                                                       sum(debug_StateLoopDistribution(:,1)), &
-                                                       sum(debug_StateLoopDistribution(:,2))
-   
-    integral = 0_pInt
-    write(6,*)
-    write(6,*) 'distribution_CrystalliteCutbackLoop :'
-    do i=1,nCryst+1
-      if (debug_CrystalliteLoopDistribution(i) /= 0) then
-        integral = integral + i*debug_CrystalliteLoopDistribution(i)
-        if (i <= nCryst) then
-          write(6,'(i25,x,i10)') i,debug_CrystalliteLoopDistribution(i)
-        else
-          write(6,'(i25,a1,i10)') i-1,'+',debug_CrystalliteLoopDistribution(i)
+      integral = 0_pInt
+      write(6,*)
+      write(6,*)
+      write(6,*) 'distribution_StressLoop :    stress  frogbreak  stiffness  frogbreak'
+      do i=1,nStress
+        if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt ) .or. &
+            any(debug_LeapfrogBreakDistribution(i,:)  /= 0_pInt ) ) then
+          integral = integral + i*debug_StressLoopDistribution(i,1) + i*debug_StressLoopDistribution(i,2)
+          write(6,'(i25,x,i10,x,i10,x,i10,x,i10)')   i,debug_StressLoopDistribution(i,1),debug_LeapfrogBreakDistribution(i,1), &
+                                                 debug_StressLoopDistribution(i,2),debug_LeapfrogBreakDistribution(i,2)
         endif
-      endif
-    enddo
-    write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
-    
-    integral = 0_pInt
-    write(6,*)
-    write(6,*) 'distribution_MaterialpointStateLoop :'
-    do i=1,nMPstate
-      if (debug_MaterialpointStateLoopDistribution(i) /= 0) then
-        integral = integral + i*debug_MaterialpointStateLoopDistribution(i)
-        write(6,'(i25,x,i10)') i,debug_MaterialpointStateLoopDistribution(i)
-      endif
-    enddo
-    write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution) 
-   
-    integral = 0_pInt
-    write(6,*)
-    write(6,*) 'distribution_MaterialpointCutbackLoop :'
-    do i=1,nHomog+1
-      if (debug_MaterialpointLoopDistribution(i) /= 0) then
-        integral = integral + i*debug_MaterialpointLoopDistribution(i)
-        if (i <= nHomog) then
-          write(6,'(i25,x,i10)') i,debug_MaterialpointLoopDistribution(i)
-        else
-          write(6,'(i25,a1,i10)') i-1,'+',debug_MaterialpointLoopDistribution(i)
+      enddo
+      write(6,'(a15,i10,x,i10,12x,i10)') '          total',integral,&
+                                                           sum(debug_StressLoopDistribution(:,1)), &
+                                                           sum(debug_StressLoopDistribution(:,2))
+      
+      integral = 0_pInt
+      write(6,*)
+      write(6,*) 'distribution_CrystalliteStateLoop :'
+      do i=1,nState
+        if (any(debug_StateLoopDistribution(i,:) /= 0)) then
+          integral = integral + i*debug_StateLoopDistribution(i,1) + i*debug_StateLoopDistribution(i,2)
+          write(6,'(i25,x,i10,12x,i10)') i,debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
         endif
-      endif
-    enddo
-    write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
-    
-    write(6,*)
-    write(6,*)
-    write(6,*) 'Extreme values of returned stress and jacobian'
-    write(6,*)
-    write(6,'(a39)') '                      value     el   ip'
-    write(6,'(a14,x,e12.3,x,i6,x,i4)') 'stress   min :', debug_stressMin, debug_stressMinLocation
-    write(6,'(a14,x,e12.3,x,i6,x,i4)') '         max :', debug_stressMax, debug_stressMaxLocation
-    write(6,'(a14,x,e12.3,x,i6,x,i4)') 'jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
-    write(6,'(a14,x,e12.3,x,i6,x,i4)') '         max :', debug_jacobianMax, debug_jacobianMaxLocation
+      enddo
+      write(6,'(a15,i10,x,i10,12x,i10)') '          total',integral,&
+                                                         sum(debug_StateLoopDistribution(:,1)), &
+                                                         sum(debug_StateLoopDistribution(:,2))
+     
+      integral = 0_pInt
+      write(6,*)
+      write(6,*) 'distribution_CrystalliteCutbackLoop :'
+      do i=1,nCryst+1
+        if (debug_CrystalliteLoopDistribution(i) /= 0) then
+          integral = integral + i*debug_CrystalliteLoopDistribution(i)
+          if (i <= nCryst) then
+            write(6,'(i25,x,i10)') i,debug_CrystalliteLoopDistribution(i)
+          else
+            write(6,'(i25,a1,i10)') i-1,'+',debug_CrystalliteLoopDistribution(i)
+          endif
+        endif
+      enddo
+      write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
+      
+      integral = 0_pInt
+      write(6,*)
+      write(6,*) 'distribution_MaterialpointStateLoop :'
+      do i=1,nMPstate
+        if (debug_MaterialpointStateLoopDistribution(i) /= 0) then
+          integral = integral + i*debug_MaterialpointStateLoopDistribution(i)
+          write(6,'(i25,x,i10)') i,debug_MaterialpointStateLoopDistribution(i)
+        endif
+      enddo
+      write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution) 
+     
+      integral = 0_pInt
+      write(6,*)
+      write(6,*) 'distribution_MaterialpointCutbackLoop :'
+      do i=1,nHomog+1
+        if (debug_MaterialpointLoopDistribution(i) /= 0) then
+          integral = integral + i*debug_MaterialpointLoopDistribution(i)
+          if (i <= nHomog) then
+            write(6,'(i25,x,i10)') i,debug_MaterialpointLoopDistribution(i)
+          else
+            write(6,'(i25,a1,i10)') i-1,'+',debug_MaterialpointLoopDistribution(i)
+          endif
+        endif
+      enddo
+      write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
+      
+      write(6,*)
+      write(6,*)
+      write(6,*) 'Extreme values of returned stress and jacobian'
+      write(6,*)
+      write(6,'(a39)') '                      value     el   ip'
+      write(6,'(a14,x,e12.3,x,i6,x,i4)') 'stress   min :', debug_stressMin, debug_stressMinLocation
+      write(6,'(a14,x,e12.3,x,i6,x,i4)') '         max :', debug_stressMax, debug_stressMaxLocation
+      write(6,'(a14,x,e12.3,x,i6,x,i4)') 'jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
+      write(6,'(a14,x,e12.3,x,i6,x,i4)') '         max :', debug_jacobianMax, debug_jacobianMaxLocation  
+      write(6,*)
 
-    write(6,*)
-
-  !$OMP END CRITICAL (write2out)
+    !$OMP END CRITICAL (write2out)
+  endif
 
 endsubroutine
  

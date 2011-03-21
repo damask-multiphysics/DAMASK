@@ -121,6 +121,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  use prec,     only: pReal,pInt,tol_math_check
  use numerics, only: fixedSeed
  use IO,       only: IO_error
+ use debug,    only: debug_verbosity
  implicit none
 
  real(pReal), dimension(3,3) :: R,R2
@@ -145,11 +146,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  endif
 
  call random_seed(get=randInit)
- !$OMP CRITICAL (write2out)
- write(6,*) 'random seed: ',randInit(1)
- write(6,*)
- !$OMP END CRITICAL (write2out)
- 
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+     write(6,*) 'random seed: ',randInit(1)
+     write(6,*)
+   !$OMP END CRITICAL (write2out)
+ endif
+  
  call halton_seed_set(randInit(1))
  call halton_ndim_set(3)
 

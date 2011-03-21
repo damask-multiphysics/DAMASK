@@ -240,10 +240,10 @@
  integer(pInt) e,element,ip
  
  !$OMP CRITICAL (write2out)
- write(6,*)
- write(6,*) '<<<+-  mesh init  -+>>>'
- write(6,*) '$Id$'
- write(6,*)
+   write(6,*)
+   write(6,*) '<<<+-  mesh init  -+>>>'
+   write(6,*) '$Id$'
+   write(6,*)
  !$OMP END CRITICAL (write2out)
 
  call mesh_build_FEdata()                                      ! --- get properties of the different types of elements
@@ -306,9 +306,6 @@
  forall (e = 1:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(mesh_element(2,e))
  
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
- !$OMP CRITICAL (write2out)
- write(6,*) '<<<+-  mesh init done -+>>>'
- !$OMP END CRITICAL (write2out)
  calcMode = .false.                                       ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',element)) = .true.        ! first ip,el needs to be already pingponged to "calc"
  lastMode = .true.                                        ! and its mode is already known...
@@ -3232,7 +3229,10 @@ subroutine mesh_tell_statistics()
 use prec, only: pInt
 use math, only: math_range
 use IO, only: IO_error
-use debug, only: verboseDebugger
+use debug, only: debug_verbosity, &
+                 debug_e, &
+                 debug_i, &
+                 debug_selectiveDebugger
 
 implicit none
 
@@ -3252,15 +3252,51 @@ do e = 1,mesh_NcpElems
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1 ! count combinations of homogenization and microstructure
 enddo
 
-if (verboseDebugger) then
+if (debug_verbosity > 0) then
+  !$OMP CRITICAL (write2out)
+    write (6,*)
+    write (6,*) "Input Parser: STATISTICS"
+    write (6,*)
+    write (6,*) mesh_Nelems,           " : total number of elements in mesh"
+    write (6,*) mesh_NcpElems,         " : total number of CP elements in mesh"
+    write (6,*) mesh_Nnodes,           " : total number of nodes in mesh"
+    write (6,*) mesh_maxNnodes,        " : max number of nodes in any CP element"
+    write (6,*) mesh_maxNips,          " : max number of IPs in any CP element"
+    write (6,*) mesh_maxNipNeighbors,  " : max number of IP neighbors in any CP element"
+    write (6,*) mesh_maxNsubNodes,     " : max number of (additional) subnodes in any CP element"
+    write (6,*) mesh_maxNsharedElems,  " : max number of CP elements sharing a node"
+    write (6,*)
+    write (6,*) "Input Parser: HOMOGENIZATION/MICROSTRUCTURE"
+    write (6,*)
+    write (6,*) mesh_maxValStateVar(1), " : maximum homogenization index"
+    write (6,*) mesh_maxValStateVar(2), " : maximum microstructure index"
+    write (6,*)
+    write (fmt,"(a,i5,a)") "(9(x),a2,x,",mesh_maxValStateVar(2),"(i8))"
+    write (6,fmt) "+-",math_range(mesh_maxValStateVar(2))
+    write (fmt,"(a,i5,a)") "(i8,x,a2,x,",mesh_maxValStateVar(2),"(i8))"
+    do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
+      write (6,fmt) i,"| ",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
+    enddo
+    write(6,*)
+    write(6,*) "Input Parser: ADDITIONAL MPIE OPTIONS"
+    write(6,*)
+    write(6,*) "periodic surface : ", mesh_periodicSurface
+    write(6,*)
+    call flush(6)
+  !$OMP END CRITICAL (write2out)
+endif
+
+if (debug_verbosity > 1) then
   !$OMP CRITICAL (write2out)
     write (6,*)
     write (6,*) "Input Parser: SUBNODE COORDINATES"
     write (6,*)
     write(6,'(a5,x,a5,x,a15,x,a15,x,a20,3(x,a12))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
     do e = 1,mesh_NcpElems                  ! loop over cpElems
+      if (debug_selectiveDebugger .and. debug_e /= e) cycle
       t = mesh_element(2,e)                 ! get elemType
       do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+        if (debug_selectiveDebugger .and. debug_i /= i) cycle
         do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP
           do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
             write(6,'(i5,x,i5,x,i15,x,i15,x,i20,3(x,f12.8))') e,i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
@@ -3275,7 +3311,9 @@ if (verboseDebugger) then
     write(6,*) 'Input Parser: IP COORDINATES'
     write(6,'(a5,x,a5,3(x,a12))') 'elem','IP','x','y','z'
     do e = 1,mesh_NcpElems
+      if (debug_selectiveDebugger .and. debug_e /= e) cycle
       do i = 1,FE_Nips(mesh_element(2,e))
+        if (debug_selectiveDebugger .and. debug_i /= i) cycle
         write (6,'(i5,x,i5,3(x,f12.8))') e, i, mesh_ipCenterOfGravity(:,i,e)
       enddo
     enddo 
@@ -3286,7 +3324,9 @@ if (verboseDebugger) then
     write (6,*)
     write (6,"(a5,x,a5,x,a15,x,a5,x,a15,x,a16)") "elem","IP","volume","face","area","-- normal --"
     do e = 1,mesh_NcpElems
+      if (debug_selectiveDebugger .and. debug_e /= e) cycle
       do i = 1,FE_Nips(mesh_element(2,e))
+        if (debug_selectiveDebugger .and. debug_i /= i) cycle
         write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
         do f = 1,FE_NipNeighbors(mesh_element(2,e))
           write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
@@ -3298,15 +3338,21 @@ if (verboseDebugger) then
     write (6,*)
     write(6,'(a6,3(3(x),a6))') '  node','twin_x','twin_y','twin_z'
     do n = 1,mesh_Nnodes                    ! loop over cpNodes
-      write(6,'(i6,3(3(x),i6))') n, mesh_nodeTwins(1:3,n)
+      if (debug_e <= mesh_NcpElems) then
+        if (any(mesh_element(5:,debug_e) == n)) then
+          write(6,'(i6,3(3(x),i6))') n, mesh_nodeTwins(1:3,n)
+        endif
+      endif
     enddo
     write(6,*)
     write(6,*) "Input Parser: IP NEIGHBORHOOD"
     write(6,*)
     write(6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
     do e = 1,mesh_NcpElems                  ! loop over cpElems
+      if (debug_selectiveDebugger .and. debug_e /= e) cycle
       t = mesh_element(2,e)                 ! get elemType
       do i = 1,FE_Nips(t)                   ! loop over IPs of elem
+        if (debug_selectiveDebugger .and. debug_i /= i) cycle
         do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
           write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
         enddo
@@ -3314,39 +3360,6 @@ if (verboseDebugger) then
     enddo
   !$OMP END CRITICAL (write2out)
 endif
-
-
-!$OMP CRITICAL (write2out)
-  write (6,*)
-  write (6,*) "Input Parser: STATISTICS"
-  write (6,*)
-  write (6,*) mesh_Nelems,           " : total number of elements in mesh"
-  write (6,*) mesh_NcpElems,         " : total number of CP elements in mesh"
-  write (6,*) mesh_Nnodes,           " : total number of nodes in mesh"
-  write (6,*) mesh_maxNnodes,        " : max number of nodes in any CP element"
-  write (6,*) mesh_maxNips,          " : max number of IPs in any CP element"
-  write (6,*) mesh_maxNipNeighbors,  " : max number of IP neighbors in any CP element"
-  write (6,*) mesh_maxNsubNodes,     " : max number of (additional) subnodes in any CP element"
-  write (6,*) mesh_maxNsharedElems,  " : max number of CP elements sharing a node"
-  write (6,*)
-  write (6,*) "Input Parser: HOMOGENIZATION/MICROSTRUCTURE"
-  write (6,*)
-  write (6,*) mesh_maxValStateVar(1), " : maximum homogenization index"
-  write (6,*) mesh_maxValStateVar(2), " : maximum microstructure index"
-  write (6,*)
-  write (fmt,"(a,i5,a)") "(9(x),a2,x,",mesh_maxValStateVar(2),"(i8))"
-  write (6,fmt) "+-",math_range(mesh_maxValStateVar(2))
-  write (fmt,"(a,i5,a)") "(i8,x,a2,x,",mesh_maxValStateVar(2),"(i8))"
-  do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
-    write (6,fmt) i,"| ",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
-  enddo
-  write(6,*)
-  write(6,*) "Input Parser: ADDITIONAL MPIE OPTIONS"
-  write(6,*)
-  write(6,*) "periodic surface : ", mesh_periodicSurface
-  write(6,*)
-  call flush(6)
-!$OMP END CRITICAL (write2out)
 
 deallocate(mesh_HomogMicro)
  

@@ -49,7 +49,7 @@ subroutine constitutive_init()
 !*      Module initialization         *
 !**************************************
  use prec, only: pReal,pInt
- use debug, only: debugger, selectiveDebugger, debug_e, debug_i, debug_g
+ use debug, only: debug_verbosity, debug_selectiveDebugger, debug_e, debug_i, debug_g
  use numerics, only: numerics_integrator
  use IO, only: IO_error, IO_open_file, IO_open_jobFile
  use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
@@ -289,24 +289,26 @@ subroutine constitutive_init()
  constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
 
  !$OMP CRITICAL (write2out)
- write(6,*)
- write(6,*) '<<<+-  constitutive init  -+>>>'
- write(6,*) '$Id$'
- write(6,*)
- write(6,'(a32,x,7(i5,x))') 'constitutive_state0:          ', shape(constitutive_state0)
- write(6,'(a32,x,7(i5,x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
- write(6,'(a32,x,7(i5,x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
- write(6,'(a32,x,7(i5,x))') 'constitutive_state:           ', shape(constitutive_state)
- write(6,'(a32,x,7(i5,x))') 'constitutive_aTolState:       ', shape(constitutive_aTolState)
- write(6,'(a32,x,7(i5,x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
- write(6,'(a32,x,7(i5,x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
- write(6,'(a32,x,7(i5,x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
- write(6,'(a32,x,7(i5,x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
- write(6,*)
- write(6,'(a32,x,7(i5,x))') 'maxSizeState:       ', constitutive_maxSizeState
- write(6,'(a32,x,7(i5,x))') 'maxSizeDotState:    ', constitutive_maxSizeDotState
- write(6,'(a32,x,7(i5,x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
- call flush(6)
+   write(6,*)
+   write(6,*) '<<<+-  constitutive init  -+>>>'
+   write(6,*) '$Id$'
+   write(6,*)
+   if (debug_verbosity > 0) then
+     write(6,'(a32,x,7(i5,x))') 'constitutive_state0:          ', shape(constitutive_state0)
+     write(6,'(a32,x,7(i5,x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
+     write(6,'(a32,x,7(i5,x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
+     write(6,'(a32,x,7(i5,x))') 'constitutive_state:           ', shape(constitutive_state)
+     write(6,'(a32,x,7(i5,x))') 'constitutive_aTolState:       ', shape(constitutive_aTolState)
+     write(6,'(a32,x,7(i5,x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
+     write(6,'(a32,x,7(i5,x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
+     write(6,'(a32,x,7(i5,x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
+     write(6,'(a32,x,7(i5,x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
+     write(6,*)
+     write(6,'(a32,x,7(i5,x))') 'maxSizeState:       ', constitutive_maxSizeState
+     write(6,'(a32,x,7(i5,x))') 'maxSizeDotState:    ', constitutive_maxSizeDotState
+     write(6,'(a32,x,7(i5,x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
+   endif
+   call flush(6)
  !$OMP END CRITICAL (write2out)
  return
 
@@ -533,7 +535,8 @@ subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, ori
 
 use prec, only:     pReal, pInt
 use debug, only:    debug_cumDotStateCalls, &
-                    debug_cumDotStateTicks
+                    debug_cumDotStateTicks, &
+                    debug_verbosity
 use mesh, only:     mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_maxNipNeighbors
@@ -574,7 +577,9 @@ integer(pLongInt)               tick, tock, &
                                 tickrate, &
                                 maxticks
 
-call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
+if (debug_verbosity > 0) then
+  call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
+endif
 
 select case (phase_constitution(material_phase(ipc,ip,el)))
 
@@ -596,12 +601,15 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
  
 end select
 
-call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-!$OMP CRITICAL (debugTimingDotState)
-  debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
-  debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
-  if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
-!$OMP END CRITICAL (debugTimingDotState)
+if (debug_verbosity > 0) then
+  call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
+  !$OMP CRITICAL (debugTimingDotState)
+    debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
+    debug_cumDotStateTicks = debug_cumDotStateTicks + tock-tick
+    !$OMP FLUSH (debug_cumDotStateTicks)
+    if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
+  !$OMP END CRITICAL (debugTimingDotState)
+endif
 
 endsubroutine
 
@@ -615,7 +623,8 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
 
 use prec, only:     pReal,pInt
 use debug, only:    debug_cumDotTemperatureCalls, &
-                    debug_cumDotTemperatureTicks
+                    debug_cumDotTemperatureTicks, &
+                    debug_verbosity
 use material, only: phase_constitution, &
                     material_phase
 use constitutive_j2, only:            constitutive_j2_dotTemperature, &
@@ -647,7 +656,9 @@ integer(pLongInt)               tick, tock, &
                                 maxticks
 
 
-call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
+if (debug_verbosity > 0) then
+  call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
+endif
 
 select case (phase_constitution(material_phase(ipc,ip,el)))
 
@@ -668,12 +679,15 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
    
 end select
 
-call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-!$OMP CRITICAL (debugTimingDotTemperature)
-  debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt
-  debug_cumDotTemperatureTicks = debug_cumDotTemperatureTicks + tock-tick
-  if (tock < tick) debug_cumDotTemperatureTicks  = debug_cumDotTemperatureTicks + maxticks
-!$OMP END CRITICAL (debugTimingDotTemperature)
+if (debug_verbosity > 0) then
+  call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
+  !$OMP CRITICAL (debugTimingDotTemperature)
+    debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt
+    debug_cumDotTemperatureTicks = debug_cumDotTemperatureTicks + tock-tick
+    !$OMP FLUSH (debug_cumDotTemperatureTicks)
+    if (tock < tick) debug_cumDotTemperatureTicks  = debug_cumDotTemperatureTicks + maxticks
+  !$OMP END CRITICAL (debugTimingDotTemperature)
+endif
 
 endfunction
 

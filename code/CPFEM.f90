@@ -92,7 +92,7 @@ end subroutine
 subroutine CPFEM_init()
 
   use prec, only:                                 pInt
-  use debug, only:                                debugger
+  use debug, only:                                debug_verbosity
   use IO, only:                                   IO_read_jobBinaryFile
   use FEsolving, only:                            parallelExecution, &
                                                   symmetricSolver, &
@@ -125,9 +125,9 @@ subroutine CPFEM_init()
 
   ! *** restore the last converged values of each essential variable from the binary file
   if (restartRead) then
-    if (debugger) then
+    if (debug_verbosity > 0) then
       !$OMP CRITICAL (write2out)
-       write(6,'(a)') '<<< cpfem >>> Restored state variables of last converged step from binary files'
+       write(6,'(a)') '<< CPFEM >> Restored state variables of last converged step from binary files'
       !$OMP END CRITICAL (write2out)
     endif
     if (IO_read_jobBinaryFile(777,'recordedPhase',restartJob,size(material_phase))) then
@@ -187,15 +187,16 @@ subroutine CPFEM_init()
     write(6,*) '<<<+-  cpfem init  -+>>>'
     write(6,*) '$Id$'
     write(6,*)
-    write(6,'(a32,x,6(i5,x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
-    write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
-    write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
-    write(6,*)
-    write(6,*) 'parallelExecution:    ', parallelExecution
-    write(6,*) 'symmetricSolver:      ', symmetricSolver
+    if (debug_verbosity > 0) then
+      write(6,'(a32,x,6(i5,x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
+      write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
+      write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
+      write(6,*)
+      write(6,*) 'parallelExecution:    ', parallelExecution
+      write(6,*) 'symmetricSolver:      ', symmetricSolver
+    endif
     call flush(6)
   !$OMP END CRITICAL (write2out)
-  return
 
 endsubroutine
 
@@ -214,11 +215,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   use numerics, only:                                 relevantStrain, &
                                                       defgradTolerance, &
                                                       iJacoStiffness
-  use debug, only:                                    debug_g, &
+  use debug, only:                                    debug_e, &
                                                       debug_i, &
-                                                      debug_e, &
-                                                      debugger, &
-                                                      verboseDebugger, &
+                                                      debug_g, &
+                                                      debug_selectiveDebugger, &
+                                                      debug_verbosity, &
                                                       debug_stressMaxLocation, &
                                                       debug_stressMinLocation, &
                                                       debug_jacobianMaxLocation, &
@@ -332,17 +333,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   
   cp_en = mesh_FEasCP('elem',element)
   
-  if (cp_en == debug_e .and. IP == debug_i) then
+  if (debug_verbosity > 0 .and. cp_en == 1 .and. IP == 1) then
     !$OMP CRITICAL (write2out)
       write(6,*)
-      write(6,'(a)') '#######################################################'
-      write(6,'(a32,x,i5,x,i2)') 'reporting for element, ip:',cp_en,IP
-      write(6,'(a32,x,f15.7)') 'theTime',theTime
-      write(6,'(a32,x,f15.7)') 'theDelta',theDelta
-      write(6,'(a32,x,i8)') 'theInc',theInc
-      write(6,'(a32,x,i8)') 'cycleCounter',cycleCounter
-      write(6,'(a32,x,i8)') 'computationMode',mode
-      write(6,'(a)') '#######################################################'
+      write(6,'(a)') '#############################################'
+      write(6,'(a1,a22,x,f15.7,a6)') '#','theTime',theTime,'#'
+      write(6,'(a1,a22,x,f15.7,a6)') '#','theDelta',theDelta,'#'
+      write(6,'(a1,a22,x,i8,a13)') '#','theInc',theInc,'#'
+      write(6,'(a1,a22,x,i8,a13)') '#','cycleCounter',cycleCounter,'#'
+      write(6,'(a1,a22,x,i8,a13)') '#','computationMode',mode,'#'
+      write(6,'(a)') '#############################################'
+      write(6,*)
       call flush (6)
     !$OMP END CRITICAL (write2out)
   endif
@@ -363,10 +364,13 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-        if (cp_en == debug_e .and. IP == debug_i) then
+        if (debug_verbosity > 0) then
           !$OMP CRITICAL (write2out)
-            write(6,'(a,x,i8,x,i2,/,4(3(e20.8,x),/))') '<< cpfem >> AGED state of grain 1, element ip',&
-                                                         cp_en,IP, constitutive_state(1,IP,cp_en)%p
+            write(6,'(a)') '<< CPFEM >> Aging states'
+            if (debug_e == cp_en .and. debug_i == IP) then
+              write(6,'(a,x,i5,x,i2,x,i3,/,(12(x),6(e20.8,x),/))') '<< CPFEM >> AGED state of element ip grain',&
+                                                              cp_en, IP, 1, constitutive_state(1,IP,cp_en)%p
+            endif
           !$OMP END CRITICAL (write2out)
         endif
         do k = 1,mesh_NcpElems
@@ -379,9 +383,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
 
         ! *** dump the last converged values of each essential variable to a binary file
         if (restartWrite) then 
-          if (debugger) then
+          if (debug_verbosity > 0) then
            !$OMP CRITICAL (write2out)
-             write(6,'(a)') '<<< cpfem >>> Writing state variables of last converged step to binary files'
+             write(6,'(a)') '<< CPFEM >> Writing state variables of last converged step to binary files'
            !$OMP END CRITICAL (write2out)
           endif
           if (IO_write_jobBinaryFile(777,'recordedPhase',size(material_phase))) then
@@ -445,11 +449,13 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(1:3,1:3,IP,cp_en)) > defgradTolerance)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
-          !$OMP CRITICAL (write2out)
-            write(6,'(a,x,i5,x,i2)') '<< cpfem >> OUTDATED at element ip',cp_en,IP
-            write(6,'(a,/,3(3(f10.6,x),/))') '    FFN1 old:',math_transpose3x3(materialpoint_F(1:3,1:3,IP,cp_en))
-            write(6,'(a,/,3(3(f10.6,x),/))') '    FFN1 now:',math_transpose3x3(ffn1)
-          !$OMP END CRITICAL (write2out)
+          if (debug_verbosity > 0) then
+            !$OMP CRITICAL (write2out)
+              write(6,'(a,x,i5,x,i2)') '<< CPFEM >> OUTDATED at element ip',cp_en,IP
+              write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 old:',math_transpose3x3(materialpoint_F(1:3,1:3,IP,cp_en))
+              write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 now:',math_transpose3x3(ffn1)
+            !$OMP END CRITICAL (write2out)
+          endif
           outdatedFFN1 = .true.
         endif
         call random_number(rnd)
@@ -469,11 +475,21 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           FEsolving_execElem(2)     = cp_en
           FEsolving_execIP(1,cp_en) = IP
           FEsolving_execIP(2,cp_en) = IP
+          if (debug_verbosity > 0) then
+            !$OMP CRITICAL (write2out)
+              write(6,'(a,i5,x,i2)') '<< CPFEM >> Calculation for element ip ',cp_en,IP
+            !$OMP END CRITICAL (write2out)
+          endif
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent
           call materialpoint_postResults(dt)                              ! post results
           
         ! parallel computation and calulation not yet done
         elseif (.not. CPFEM_calc_done) then
+          if (debug_verbosity > 0) then
+            !$OMP CRITICAL (write2out)
+              write(6,'(a,i5,a,i5)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
+            !$OMP END CRITICAL (write2out)
+          endif
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent (parallel execution inside)
           call materialpoint_postResults(dt)                              ! post results
           do e = FEsolving_execElem(1),FEsolving_execElem(2)              ! loop over all parallely processed elements
@@ -556,10 +572,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     call IO_warning(601,cp_en,IP)
   endif
   
-  if (cp_en == debug_e .and. IP == debug_i .and. mode < 6) then
+  if (mode < 6 .and. debug_verbosity > 0 .and. ((debug_e == cp_en .and. debug_i == IP) .or. .not. debug_selectiveDebugger)) then
     !$OMP CRITICAL (write2out)
-      write(6,'(a,x,i2,x,a,x,i4,/,6(f10.3,x)/)') 'stress/MPa at ip', IP, 'el', cp_en, cauchyStress/1e6
-      write(6,'(a,x,i2,x,a,x,i4,/,6(6(f10.3,x)/))') 'jacobian/GPa at ip', IP, 'el', cp_en, transpose(jacobian)/1e9
+      write(6,'(a,i5,x,i2,/,12(x),6(f10.3,x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1e6
+      write(6,'(a,i5,x,i2,/,6(12(x),6(f10.3,x)/))') '<< CPFEM >> jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1e9
       call flush(6)
     !$OMP END CRITICAL (write2out)
   endif

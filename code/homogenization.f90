@@ -55,6 +55,7 @@ CONTAINS
 subroutine homogenization_init(Temperature)
  use prec, only: pReal,pInt
  use math, only: math_I3
+ use debug, only: debug_verbosity
  use IO, only: IO_error, IO_open_file, IO_open_jobFile
  use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
  use material
@@ -180,30 +181,32 @@ subroutine homogenization_init(Temperature)
  write(6,*) '<<<+-  homogenization init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
- write(6,'(a32,x,7(i5,x))') 'homogenization_state0:          ', shape(homogenization_state0)
- write(6,'(a32,x,7(i5,x))') 'homogenization_subState0:       ', shape(homogenization_subState0)
- write(6,'(a32,x,7(i5,x))') 'homogenization_state:           ', shape(homogenization_state)
- write(6,'(a32,x,7(i5,x))') 'homogenization_sizeState:       ', shape(homogenization_sizeState)
- write(6,'(a32,x,7(i5,x))') 'homogenization_sizePostResults: ', shape(homogenization_sizePostResults)
- write(6,*)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_F0:               ', shape(materialpoint_F0)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_F:                ', shape(materialpoint_F)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_subF0:            ', shape(materialpoint_subF0)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_subF:             ', shape(materialpoint_subF)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_P:                ', shape(materialpoint_P)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_Temperature:      ', shape(materialpoint_Temperature)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_subFrac:          ', shape(materialpoint_subFrac)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_subStep:          ', shape(materialpoint_subStep)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_subdt:            ', shape(materialpoint_subdt)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_requested:        ', shape(materialpoint_requested)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_converged:        ', shape(materialpoint_converged)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
- write(6,*)
- write(6,'(a32,x,7(i5,x))') 'materialpoint_results:          ', shape(materialpoint_results)
- write(6,*)
- write(6,'(a32,x,7(i5,x))') 'maxSizeState:       ', homogenization_maxSizeState
- write(6,'(a32,x,7(i5,x))') 'maxSizePostResults: ', homogenization_maxSizePostResults
+ if (debug_verbosity > 0) then
+   write(6,'(a32,x,7(i5,x))') 'homogenization_state0:          ', shape(homogenization_state0)
+   write(6,'(a32,x,7(i5,x))') 'homogenization_subState0:       ', shape(homogenization_subState0)
+   write(6,'(a32,x,7(i5,x))') 'homogenization_state:           ', shape(homogenization_state)
+   write(6,'(a32,x,7(i5,x))') 'homogenization_sizeState:       ', shape(homogenization_sizeState)
+   write(6,'(a32,x,7(i5,x))') 'homogenization_sizePostResults: ', shape(homogenization_sizePostResults)
+   write(6,*)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_F0:               ', shape(materialpoint_F0)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_F:                ', shape(materialpoint_F)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_subF0:            ', shape(materialpoint_subF0)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_subF:             ', shape(materialpoint_subF)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_P:                ', shape(materialpoint_P)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_Temperature:      ', shape(materialpoint_Temperature)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_subFrac:          ', shape(materialpoint_subFrac)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_subStep:          ', shape(materialpoint_subStep)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_subdt:            ', shape(materialpoint_subdt)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_requested:        ', shape(materialpoint_requested)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_converged:        ', shape(materialpoint_converged)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
+   write(6,*)
+   write(6,'(a32,x,7(i5,x))') 'materialpoint_results:          ', shape(materialpoint_results)
+   write(6,*)
+   write(6,'(a32,x,7(i5,x))') 'maxSizeState:       ', homogenization_maxSizeState
+   write(6,'(a32,x,7(i5,x))') 'maxSizePostResults: ', homogenization_maxSizePostResults
+ endif
  call flush(6)
 !$OMP END CRITICAL (write2out)
 
@@ -234,7 +237,9 @@ subroutine materialpoint_stressAndItsTangent(&
  use FEsolving, only:     FEsolving_execElem, &
                           FEsolving_execIP, &
                           terminallyIll
- use mesh, only:          mesh_element
+ use mesh, only:          mesh_element, &
+                          mesh_NcpElems, &
+                          mesh_maxNips
  use material, only:      homogenization_Ngrains
  use constitutive, only:  constitutive_state0, &
                           constitutive_partionedState0, &
@@ -261,8 +266,8 @@ subroutine materialpoint_stressAndItsTangent(&
                           crystallite_converged, &
                           crystallite_stressAndItsTangent, &
                           crystallite_orientations
- use debug, only:         debugger, &
-                          verboseDebugger, &
+ use debug, only:         debug_verbosity, &
+                          debug_selectiveDebugger, &
                           debug_e, &
                           debug_i, &
                           debug_MaterialpointLoopDistribution, &
@@ -279,14 +284,14 @@ subroutine materialpoint_stressAndItsTangent(&
 
 ! ------ initialize to starting condition ------
 
- if (debugger) then
-   write (6,*)
-   write (6,*) 'Material Point start'
-   write (6,'(a,/,(f14.9,x))')      'Temp0  of   1 1',materialpoint_Temperature(1,1)
-   write (6,'(a,/,3(3(f14.9,x)/))') 'F0     of   1 1',math_transpose3x3(materialpoint_F0(1:3,1:3,1,1))
-   write (6,'(a,/,3(3(f14.9,x)/))') 'F      of   1 1',math_transpose3x3(materialpoint_F(1:3,1:3,1,1))
-   write (6,'(a,/,3(3(f14.9,x)/))') 'Fp0    of 1 1 1',math_transpose3x3(crystallite_Fp0(1:3,1:3,1,1,1))
-   write (6,'(a,/,3(3(f14.9,x)/))') 'Lp0    of 1 1 1',math_transpose3x3(crystallite_Lp0(1:3,1:3,1,1,1))
+ if (debug_verbosity > 2 .and. debug_e > 0 .and. debug_e <= mesh_NcpElems .and. debug_i > 0 .and. debug_i <= mesh_maxNips) then
+   !$OMP CRITICAL (write2out)
+     write (6,*)
+     write (6,'(a,i5,x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
+     write (6,'(a,/,12(x),f14.9)') '<< HOMOG >> Temp0', materialpoint_Temperature(debug_i,debug_e)
+     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< HOMOG >> F0', math_transpose3x3(materialpoint_F0(1:3,1:3,debug_i,debug_e))
+     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< HOMOG >> F', math_transpose3x3(materialpoint_F(1:3,1:3,debug_i,debug_e))
+   !$OMP END CRITICAL (write2out)
  endif
 
 
@@ -330,9 +335,9 @@ subroutine materialpoint_stressAndItsTangent(&
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
               
        if ( materialpoint_converged(i,e) ) then
-         if (verboseDebugger .and. (e == debug_e .and. i == debug_i)) then
+         if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
            !$OMP CRITICAL (write2out)
-             write(6,'(a,x,f10.8,x,a,x,f10.8,x,a,/)') '°°° winding forward from', &
+             write(6,'(a,x,f10.8,x,a,x,f10.8,x,a,/)') '<< HOMOG >> winding forward from', &
                materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
                materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent'
            !$OMP END CRITICAL (write2out)
@@ -361,10 +366,12 @@ subroutine materialpoint_stressAndItsTangent(&
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                             ! ...def grad
            !$OMP FLUSH(materialpoint_subF0)
          elseif (materialpoint_requested(i,e)) then                                                       ! this materialpoint just converged    ! already at final time (??)
-          !$OMP CRITICAL (distributionHomog)
-            debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
-              debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
-          !$OMP END CRITICAL (distributionHomog)
+           if (debug_verbosity > 0) then
+             !$OMP CRITICAL (distributionHomog)
+               debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
+                 debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
+             !$OMP END CRITICAL (distributionHomog)
+           endif
          endif
        
        ! materialpoint didn't converge, so we need a cutback here
@@ -379,9 +386,9 @@ subroutine materialpoint_stressAndItsTangent(&
            materialpoint_subStep(i,e) = subStepSizeHomog * materialpoint_subStep(i,e)                       ! crystallite had severe trouble, so do a significant cutback
            !$OMP FLUSH(materialpoint_subStep)
            
-           if (verboseDebugger .and. (e == debug_e .and. i == debug_i)) then
+           if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
              !$OMP CRITICAL (write2out)
-               write(6,'(a,x,f10.8,/)') '°°° cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
+               write(6,'(a,x,f10.8,/)') '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
                                          materialpoint_subStep(i,e)
              !$OMP END CRITICAL (write2out)
            endif
@@ -410,11 +417,6 @@ subroutine materialpoint_stressAndItsTangent(&
    enddo                                                                                   ! loop elements
    !$OMP END PARALLEL DO
 
-!* Checks for cutback/substepping loops
- ! write (6,'(a,/,8(L,x))') 'MP exceeds substep min',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinHomog
- ! write (6,'(a,/,8(L,x))') 'MP requested',materialpoint_requested(:,FEsolving_execELem(1):FEsolving_execElem(2))
- ! write (6,'(a,/,8(f6.4,x))') 'MP subFrac',materialpoint_subFrac(:,FEsolving_execELem(1):FEsolving_execElem(2))
- ! write (6,'(a,/,8(f6.4,x))') 'MP subStep',materialpoint_subStep(:,FEsolving_execELem(1):FEsolving_execElem(2))
 
 ! ------ convergence loop material point homogenization ------
 
@@ -426,9 +428,6 @@ subroutine materialpoint_stressAndItsTangent(&
                 ) .and. &
              NiterationMPstate < nMPstate)                            ! convergence loop for materialpoint
      NiterationMPstate = NiterationMPstate + 1
-
-!      write(6,'(a,/,125(8(l,x),/))') 'material point request and not done', &
-!                                     materialpoint_requested .and. .not. materialpoint_doneAndHappy(1,:,:)
 
 ! --+>> deformation partitioning <<+--
 !
@@ -452,7 +451,6 @@ subroutine materialpoint_stressAndItsTangent(&
        enddo
      enddo
      !$OMP END PARALLEL DO
-!      write(6,'(a,/,125(8(8(l,x),2x),/))') 'crystallite request with updated partitioning', crystallite_requested
  
      
 ! --+>> crystallite integration <<+--
@@ -461,7 +459,6 @@ subroutine materialpoint_stressAndItsTangent(&
 ! incrementing by crystallite_dt
      call crystallite_stressAndItsTangent(updateJaco)                 ! request stress and tangent calculation for constituent grains
 
-!      write(6,'(a,/,125(8(8(l,x),2x),/))') 'crystallite converged', crystallite_converged
      
 ! --+>> state update <<+--
 
@@ -479,17 +476,17 @@ subroutine materialpoint_stressAndItsTangent(&
            endif
            !$OMP FLUSH(materialpoint_converged)
            if (materialpoint_converged(i,e)) then
-             !$OMP CRITICAL (distributionMPState)
-               debug_MaterialpointStateLoopdistribution(NiterationMPstate) = &
-                 debug_MaterialpointStateLoopdistribution(NiterationMPstate) + 1
-             !$OMP END CRITICAL (distributionMPState)
+             if (debug_verbosity > 0) then
+               !$OMP CRITICAL (distributionMPState)
+                 debug_MaterialpointStateLoopdistribution(NiterationMPstate) = &
+                   debug_MaterialpointStateLoopdistribution(NiterationMPstate) + 1
+               !$OMP END CRITICAL (distributionMPState)
+             endif
            endif
          endif
        enddo
      enddo
      !$OMP END PARALLEL DO
-!      write(6,'(a,/,125(8(l,x),/))') 'material point done', materialpoint_doneAndHappy(1,:,:)
-!      write(6,'(a,/,125(8(l,x),/))') 'material point converged', materialpoint_converged
 
    enddo                                                           ! homogenization convergence loop  
 
@@ -509,15 +506,19 @@ subroutine materialpoint_stressAndItsTangent(&
      enddo; enddo
    !$OMP END PARALLEL DO
    
-   if (debugger) then
-     write (6,*)
-     write (6,'(a)') '°°° Material Point end'
-     write (6,*)
+   if (debug_verbosity > 2) then
+     !$OMP CRITICAL (write2out)
+       write (6,*)
+       write (6,'(a)') '<< HOMOG >> Material Point end'
+       write (6,*)
+     !$OMP END CRITICAL (write2out)
    endif
  else
-   write (6,*)
-   write (6,'(a)') '°°° Material Point terminally ill'
-   write (6,*)
+   !$OMP CRITICAL (write2out)
+     write (6,*)
+     write (6,'(a)') '<< HOMOG >> Material Point terminally ill'
+     write (6,*)
+   !$OMP END CRITICAL (write2out)
    
  endif
  return

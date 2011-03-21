@@ -75,25 +75,25 @@ end function
 
 END MODULE
 
- include "IO.f90"               ! uses prec
- include "numerics.f90"         ! uses prec, IO
- include "math.f90"             ! uses prec, numerics
- include "debug.f90"            ! uses prec, numerics
- include "FEsolving.f90"        ! uses prec, IO
- include "mesh.f90"             ! uses prec, math, IO, FEsolving
- include "material.f90"         ! uses prec, math, IO, mesh
- include "lattice.f90"          ! uses prec, math, IO, material
- include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, latt ice, material, debug
- include "constitutive_titanmod.f90"      ! uses prec, math, IO, lattice, material, debug
- include "constitutive_j2.f90"            ! uses prec, math, IO, latt ice, material, debug
- include "constitutive_dislotwin.f90"    ! uses prec, math, IO, latt ice, material, debug
- include "constitutive_nonlocal.f90"      ! uses prec, math, IO, latt ice, material, debug
- include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
- include "crystallite.f90"      ! uses prec, math, IO, numerics
- include "homogenization_isostrain.f90"   ! uses prec, math, IO, 
- include "homogenization_RGC.f90"         ! uses prec, math, IO, numerics, mesh: added <<<updated 31.07.2009>>>
- include "homogenization.f90"   ! uses prec, math, IO, numerics
- include "CPFEM.f90"            ! uses prec, math, IO, numerics, debug, FEsolving, mesh, lattice, constitutive, crystallite
+include "IO.f90"               ! uses prec
+include "numerics.f90"         ! uses prec, IO
+include "debug.f90"            ! uses prec, numerics
+include "math.f90"             ! uses prec, numerics, debug
+include "FEsolving.f90"        ! uses prec, IO, debug
+include "mesh.f90"             ! uses prec, math, IO, FEsolving, debug
+include "material.f90"         ! uses prec, math, IO, mesh, debug
+include "lattice.f90"          ! uses prec, math, IO, material, debug
+include "constitutive_j2.f90"            ! uses prec, math, IO, lattice, material, debug
+include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, lattice, material, debug
+include "constitutive_titanmod.f90"      ! uses prec, math, IO, lattice, material, debug
+include "constitutive_dislotwin.f90"     ! uses prec, math, IO, lattice, material, debug
+include "constitutive_nonlocal.f90"      ! uses prec, math, IO, lattice, material, debug
+include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
+include "crystallite.f90"      ! uses prec, math, IO, numerics, Fesolving, material, mesh, constitutive, debug
+include "homogenization_isostrain.f90"   ! uses prec, math, IO, debug
+include "homogenization_RGC.f90"         ! uses prec, math, IO, numerics, mesh, debug
+include "homogenization.f90"   ! uses prec, math, IO, numerics, debug
+include "CPFEM.f90"            ! uses prec, math, IO, numerics, debug, FEsolving, mesh, lattice, constitutive, crystallite, debug
  
 subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
        RPL,DDSDDT,DRPLDE,DRPLDT,STRAN,DSTRAN,&
@@ -118,7 +118,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  use math, only:      invnrmMandel
  use debug, only:     debug_info, &
                       debug_reset, &
-                      verboseDebugger
+                      debug_verbosity
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
@@ -144,7 +144,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) computationMode, i, cp_en
 
- if (verboseDebugger .and. noel == 1 .and. npt == 1) then
+ if (debug_verbosity > 1 .and. noel == 1 .and. npt == 1) then
    !$OMP CRITICAL (write2out)
      write(6,*) 'el',noel,'ip',npt
      write(6,*) 'got kinc as',kinc
@@ -232,7 +232,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  theInc   = kinc                                                       ! record current increment number
  lastMode = calcMode(npt,cp_en)                                        ! record calculationMode
 
- if ( verboseDebugger ) then
+ if ( debug_verbosity > 1 ) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,x,i2,x,a,i5,a,i5,x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
    !$OMP END CRITICAL (write2out)
