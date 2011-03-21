@@ -347,6 +347,18 @@ crystallite_requested = .true.
 call crystallite_orientations()
 crystallite_orientation0 = crystallite_orientation             ! Store initial orientations for calculation of grain rotations
 
+!$OMP PARALLEL DO PRIVATE(myNgrains)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+    myNgrains = homogenization_Ngrains(mesh_element(3,e))
+    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+      do g = 1,myNgrains
+        call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar0_v(1:6,g,i,e), &
+                                         crystallite_Fe, crystallite_Fp0, g, i, e)  ! update dependent state variables to be consistent with basic states    
+      enddo
+    enddo
+  enddo
+!$OMP END PARALLEL DO
+
 call crystallite_stressAndItsTangent(.true.)                   ! request elastic answers
 crystallite_fallbackdPdF = crystallite_dPdF                    ! use initial elastic stiffness as fallback
  
@@ -904,16 +916,12 @@ else
 endif
 
 
-! --- RESET DEPENDENT STATES AND DOTSTATE ---
+! --- RESET DOTSTATE ---
 
 !$OMP PARALLEL PRIVATE(mySizeDotState)
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(1:6,g,i,e), &
-                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
-    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
  enddo; enddo; enddo
 !$OMP ENDDO
@@ -1222,16 +1230,12 @@ else
 endif
 
 
-! --- RESET DEPENDENT STATES AND DOTSTATE ---
+! --- RESET DOTSTATE ---
 
 !$OMP PARALLEL PRIVATE(mySizeDotState)
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(1:6,g,i,e), &
-                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
-    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
   enddo; enddo; enddo
 !$OMP ENDDO
@@ -1665,16 +1669,12 @@ else
 endif
 
 
-! --- RESET DEPENDENT STATES AND DOTSTATE ---
+! --- RESET DOTSTATE ---
 
 !$OMP PARALLEL PRIVATE(mySizeDotState)
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(1:6,g,i,e), &
-                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
-    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
  enddo; enddo; enddo
 !$OMP ENDDO
@@ -1938,16 +1938,12 @@ else
 endif
 
 
-! --- RESET DEPENDENT STATES AND DOTSTATE ---
+! --- RESET DOTSTATE ---
 
 !$OMP PARALLEL PRIVATE(mySizeDotState)
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(1:6,g,i,e), &
-                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
-    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
  enddo; enddo; enddo
 !$OMP ENDDO
@@ -2132,16 +2128,12 @@ endif
 
 ! --+>> PREGUESS FOR STATE <<+--
 
-! --- RESET DEPENDENT STATES AND DOTSTATE ---
+! --- RESET DOTSTATE ---
 
 !$OMP PARALLEL PRIVATE(stateConverged,temperatureConverged)
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(1:6,g,i,e), &
-                                       crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
-    endif
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
     constitutive_previousDotState(g,i,e)%p = 0.0_pReal
     constitutive_previousDotState2(g,i,e)%p = 0.0_pReal
