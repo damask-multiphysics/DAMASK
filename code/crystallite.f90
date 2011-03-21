@@ -2189,18 +2189,15 @@ endif
   enddo; enddo; enddo
 !$OMP ENDDO
 
+!$OMP END PARALLEL
 
 ! --+>> STATE LOOP <<+--
 
-!$OMP SINGLE
-  NiterationState = 0_pInt
-!$OMP END SINGLE
-
+NiterationState = 0_pInt
 do while (any(crystallite_todo) .and. NiterationState < nState )                                          ! convergence loop for crystallite
- 
-  !$OMP SINGLE
-    NiterationState = NiterationState + 1_pInt
-  !$OMP END SINGLE
+  NiterationState = NiterationState + 1_pInt
+  
+  !$OMP PARALLEL PRIVATE(stateConverged,temperatureConverged)
 
   ! --- STRESS INTEGRATION ---
   
@@ -2300,47 +2297,37 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
    enddo; enddo; enddo
   !$OMP ENDDO
-    
+  
+  !$OMP END PARALLEL
   
   if (debug_verbosity > 5) then
-    !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), &
                                 ' grains converged after state integration no. ', NiterationState
       write(6,*)
     !$OMP END CRITICAL (write2out)
-    !$OMP END SINGLE
   endif
 
   
   ! --- CONVERGENCE CHECK ---
 
   if (.not. singleRun) then                                                                               ! if not requesting Integration of just a single IP   
-    !$OMP SINGLE
-      if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                ! any non-local not yet converged (or broken)...
-        crystallite_converged = crystallite_converged .and. crystallite_localConstitution                 ! ...restart all non-local as not converged
-      endif
-    !$OMP END SINGLE
+    if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                  ! any non-local not yet converged (or broken)...
+      crystallite_converged = crystallite_converged .and. crystallite_localConstitution                   ! ...restart all non-local as not converged
+    endif
   endif
-  
-  !$OMP SINGLE
-    crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                 ! skip all converged
-  !$OMP END SINGLE
+  crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                   ! skip all converged
   
   if (debug_verbosity > 5) then
-    !$OMP SINGLE
     !$OMP CRITICAL (write2out)
       write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_converged(:,:,:)),' grains converged after non-local check'
       write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo after state integration no. ',&
                                   NiterationState
       write(6,*)
     !$OMP END CRITICAL (write2out)
-    !$OMP END SINGLE
   endif
   
 enddo                                                                                           ! crystallite convergence loop  
-
-!$OMP END PARALLEL
 
 endsubroutine
 
