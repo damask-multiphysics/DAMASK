@@ -2183,10 +2183,10 @@ endif
       call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(1:6,g,i,e), &
                                        crystallite_Fe, crystallite_Fp, g, i, e)                           ! update dependent state variables to be consistent with basic states
     endif
+    constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p                      ! age previous dotState
+    constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p                               ! age previous dotState
     constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
-    constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p
-    constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
- enddo; enddo; enddo
+  enddo; enddo; enddo
 !$OMP ENDDO
 
 
@@ -2295,9 +2295,9 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Tstar_v(1:6,g,i,e), &
                                          crystallite_Fe, crystallite_Fp, g, i, e)                         ! update dependent state variables to be consistent with basic states
       endif
+      constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p                    ! age previous dotState
+      constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p                             ! age previous dotState
       constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
-      constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p
-      constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p
    enddo; enddo; enddo
   !$OMP ENDDO
     
