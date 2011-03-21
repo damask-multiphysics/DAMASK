@@ -1375,8 +1375,7 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
                                             aTolState                 ! absolute state tolerance
 
 !*** input/output variables
-type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(inout) :: &
-                                            dotState                  ! evolution of state variables / microstructure
+type(p_vec), intent(inout) ::               dotState                  ! evolution of state variables / microstructure
  
 !*** output variables
  
@@ -1481,7 +1480,7 @@ Tdislocation_v = state(g,ip,el)%p(12*ns+1:12*ns+6)
 !*** sanity check for timestep
 
 if (timestep <= 0.0_pReal) then                                                                                                     ! if illegal timestep...
-  dotState(g,ip,el)%p = 0.0_pReal                                                                                                   ! ...return without doing anything (-> zero dotState)
+  dotState%p = 0.0_pReal                                                                                                            ! ...return without doing anything (-> zero dotState)
   return
 endif
 
@@ -1769,7 +1768,7 @@ if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g 
   !$OMP END CRITICAL (write2out)
 endif
 
-dotState(g,ip,el)%p(1:10*ns) = dotState(g,ip,el)%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
+dotState%p(1:10*ns) = dotState%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
 
 endsubroutine
 
