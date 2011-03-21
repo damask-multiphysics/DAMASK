@@ -1959,7 +1959,7 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
                                           state             ! microstructural state
 
 !* output variables
-real(pReal) constitutive_nonlocal_dotTemperature        ! evolution of Temperature
+real(pReal) constitutive_nonlocal_dotTemperature            ! evolution of Temperature
 
 !* local variables
    
