@@ -70,7 +70,8 @@ real(pReal),       dimension(:,:),     allocatable :: &
 real(pReal),       dimension(:,:,:),   allocatable :: &
     material_volume                  ! volume of each grain,IP,element
 integer(pInt),     dimension(:,:,:),   allocatable :: &
-    material_phase                   ! phase of each grain,IP,element
+    material_phase, &                ! phase   (index) of each grain,IP,element
+    material_texture                 ! texture (index) of each grain,IP,element
 real(pReal),       dimension(:,:,:,:), allocatable :: &
     material_EulerAngles             ! initial orientation of each grain,IP,element
 real(pReal),       dimension(:,:,:),   allocatable :: &
@@ -556,15 +557,16 @@ subroutine material_populateGrains()
  real(pReal), dimension (:,:),   allocatable :: orientationOfGrain
  real(pReal), dimension (3) :: orientation
  real(pReal), dimension (3,3) :: symOrientation
- integer(pInt), dimension (:),   allocatable :: phaseOfGrain
+ integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
  integer(pInt) t,e,i,g,j,m,homog,micro,sgn
  integer(pInt) phaseID,textureID,dGrains,myNgrains,myNorientations, &
                grain,constituentGrain,symExtension
  real(pReal) extreme,rnd
 
 
- allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; material_volume = 0.0_pReal
- allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; material_phase = 0_pInt
+ allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;        material_volume      = 0.0_pReal
+ allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;         material_phase       = 0_pInt
+ allocate(material_texture(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;       material_texture     = 0_pInt
  allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; material_EulerAngles = 0.0_pReal
  
  allocate(Ngrains(material_Nhomogenization,material_Nmicrostructure)); Ngrains = 0_pInt
@@ -587,6 +589,7 @@ subroutine material_populateGrains()
 
  allocate(volumeOfGrain(maxval(Ngrains)))           ! reserve memory for maximum case
  allocate(phaseOfGrain(maxval(Ngrains)))            ! reserve memory for maximum case
+ allocate(textureOfGrain(maxval(Ngrains)))          ! reserve memory for maximum case
  allocate(orientationOfGrain(3,maxval(Ngrains)))    ! reserve memory for maximum case
  
  if (debug_verbosity > 0) then
@@ -643,6 +646,7 @@ subroutine material_populateGrains()
        enddo
 ! ----------------------------------------------------------------------------
        phaseOfGrain = 0_pInt
+       textureOfGrain = 0_pInt
        orientationOfGrain = 0.0_pReal
        grain = 0_pInt                                                         ! reset microstructure grain index
 
@@ -650,6 +654,7 @@ subroutine material_populateGrains()
          phaseID   = microstructure_phase(i,micro)
          textureID = microstructure_texture(i,micro)
          phaseOfGrain(grain+1:grain+NgrainsOfConstituent(i)) = phaseID        ! assign resp. phase
+         textureOfGrain(grain+1:grain+NgrainsOfConstituent(i)) = textureID    ! assign resp. texture
 
          myNorientations = ceiling(float(NgrainsOfConstituent(i))/texture_symmetry(textureID))   ! max number of unique orientations (excl. symmetry)
 
@@ -707,16 +712,21 @@ subroutine material_populateGrains()
        enddo  ! constituent
 
 ! ----------------------------------------------------------------------------
-       do i=1,myNgrains-1                                                     ! walk thru grains
-         call random_number(rnd)
-         t = nint(rnd*(myNgrains-i)+i+0.5_pReal,pInt)                         ! select a grain in remaining list
-         m                       = phaseOfGrain(t)                            ! exchange current with random
-         phaseOfGrain(t)         = phaseOfGrain(i)
-         phaseOfGrain(i)         = m
-         orientation             = orientationOfGrain(:,t)
-         orientationOfGrain(:,t) = orientationOfGrain(:,i)
-         orientationOfGrain(:,i) = orientation
-       enddo
+       if (.not. microstructure_elemhomo(micro)) then                           ! unless element homogeneous, reshuffle grains
+         do i=1,myNgrains-1                                                     ! walk thru grains
+           call random_number(rnd)
+           t = nint(rnd*(myNgrains-i)+i+0.5_pReal,pInt)                         ! select a grain in remaining list
+           m                       = phaseOfGrain(t)                            ! exchange current with random
+           phaseOfGrain(t)         = phaseOfGrain(i)
+           phaseOfGrain(i)         = m
+           m                       = textureOfGrain(t)                          ! exchange current with random
+           textureOfGrain(t)       = textureOfGrain(i)
+           textureOfGrain(i)       = m
+           orientation             = orientationOfGrain(:,t)
+           orientationOfGrain(:,t) = orientationOfGrain(:,i)
+           orientationOfGrain(:,i) = orientation
+         enddo
+       endif
        !calc fraction after weighing with volumePerGrain
        !exchange in MC steps to improve result...
 
@@ -726,16 +736,18 @@ subroutine material_populateGrains()
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
            if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
              forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)           ! loop over IPs and grains
-               material_volume(g,i,e) = volumeOfGrain(grain+g)
-               material_phase(g,i,e) = phaseOfGrain(grain+g)
+               material_volume(g,i,e)        = volumeOfGrain(grain+g)
+               material_phase(g,i,e)         = phaseOfGrain(grain+g)
+               material_texture(g,i,e)       = textureOfGrain(grain+g)
                material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+g)
              end forall
              FEsolving_execIP(2,e) = 1_pInt                                     ! restrict calculation to first IP only, since all other results are to be copied from this
              grain = grain + dGrains                                            ! wind forward by NgrainsPerIP
            else
              forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)           ! loop over IPs and grains
-               material_volume(g,i,e) = volumeOfGrain(grain+(i-1)*dGrains+g)
-               material_phase(g,i,e) = phaseOfGrain(grain+(i-1)*dGrains+g)
+               material_volume(g,i,e)        = volumeOfGrain(grain+(i-1)*dGrains+g)
+               material_phase(g,i,e)         = phaseOfGrain(grain+(i-1)*dGrains+g)
+               material_texture(g,i,e)       = textureOfGrain(grain+(i-1)*dGrains+g)
                material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+(i-1)*dGrains+g)
              end forall
              grain = grain + FE_Nips(mesh_element(2,e)) * dGrains               ! wind forward by Nips*NgrainsPerIP
@@ -749,6 +761,7 @@ subroutine material_populateGrains()
  
  deallocate(volumeOfGrain)
  deallocate(phaseOfGrain)
+ deallocate(textureOfGrain)
  deallocate(orientationOfGrain)
  
  return

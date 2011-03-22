@@ -251,16 +251,12 @@ enddo
 do i = 1,material_Ncrystallite
   do j = 1,crystallite_Noutput(i)
     select case(crystallite_output(j,i))
-      case('phase')
+      case('phase','texture','volume')
         mySize = 1
-      case('volume')
-        mySize = 1
-      case('orientation')   ! orientation as quaternion
+      case('orientation','grainrotation')   ! orientation as quaternion, or deviation from initial grain orientation in axis-angle form (angle in degrees)
         mySize = 4
-      case('eulerangles')   ! Bunge Euler angles
+      case('eulerangles')   ! Bunge (3-1-3) Euler angles
         mySize = 3
-      case('grainrotation') ! Deviation from initial grain orientation in axis-angle form (angle in degrees)
-        mySize = 4
       case('defgrad','f','fe','fp','lp','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
         mySize = 9
       case default
@@ -3037,6 +3033,7 @@ function crystallite_postResults(&
  use material, only:                  microstructure_crystallite, &
                                       crystallite_Noutput, &
                                       material_phase, &
+                                      material_texture, &
                                       material_volume
  use constitutive, only:              constitutive_sizePostResults, &
                                       constitutive_postResults
@@ -3069,6 +3066,9 @@ function crystallite_postResults(&
    select case(crystallite_output(o,crystID))
      case ('phase')
        crystallite_postResults(c+1) = material_phase(g,i,e)                     ! phaseID of grain
+       c = c + 1_pInt
+     case ('texture')
+       crystallite_postResults(c+1) = material_texture(g,i,e)                   ! textureID of grain
        c = c + 1_pInt
      case ('volume')
        crystallite_postResults(c+1) = material_volume(g,i,e)                    ! grain volume (not fraction but absolute, right?)
