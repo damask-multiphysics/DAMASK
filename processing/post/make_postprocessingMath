@@ -16,8 +16,9 @@ else
   wd=$1
 fi
 
-f2py -c --f90flags="-heap-arrays 500000000" \
-$wd/postprocessingMath.pyf \
-$wd/postprocessingMath.f90 \
--L $wd/libfftw3.a
+cd $wd
 
+f2py -c --f90flags="-heap-arrays 500000000" \
+postprocessingMath.pyf \
+postprocessingMath.f90 \
+-L libfftw3.a

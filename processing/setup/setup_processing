@@ -43,7 +43,7 @@ execute = { \
 						}
 
 homedir = os.getenv('HOME')
-basedir = os.path.join(os.path.dirname(sys.argv[0]),'../../processing')
+basedir = os.path.join(os.path.dirname(sys.argv[0]),'..')
 for dir in bin_link:
   for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(basedir,dir,file))
@@ -62,8 +62,8 @@ for dir in compile:
     if os.path.isfile(src):
       print file
       os.system('ifort -O3 -parallel -o%s %s'%(os.path.splitext(src)[0],src))
-
-modules = glob.glob(os.path.abspath(os.path.join(basedir,'*.mod')))
+ 
+modules = glob.glob('*.mod')
 for module in modules:
   print module
   os.remove(module)
