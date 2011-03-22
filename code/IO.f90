@@ -1231,6 +1231,8 @@ endfunction
    msg = 'Material parameter in nonlocal constitutive phase out of bounds:'
  case (236)
    msg = 'Unknown material parameter in nonlocal constitutive phase:'
+ case (237)
+   msg = 'Singularity in internal stress calculation'
  case (240)
    msg = 'Non-positive Taylor factor'
  case (241)
