@@ -159,7 +159,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  if (time(2) > theTime .or. kinc /= theInc) then                         ! reached convergence
     terminallyIll = .false.
     cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
-    if (kinc == 0) then                                                  ! >> start of analysis <<
+    if (kinc == 1) then                                                  ! >> start of analysis <<
         lastIncConverged = .false.                                       ! no Jacobian backup
         outdatedByNewInc = .false.                                       ! no aging of state
         lastMode = .false.                                               ! pretend last step was collection

@@ -1698,7 +1698,7 @@ endsubroutine
  integer(pInt), dimension (1+2*maxNchunks) :: pos
  character(len=300) line
 
- integer(pInt) unit,i
+ integer(pInt) unit,i,k
  logical materialFound
  character (len=64) materialName,elemSetName
  
@@ -1712,25 +1712,24 @@ endsubroutine
    pos = IO_stringPos(line,maxNchunks)
    select case ( IO_lc(IO_stringValue(line,pos,1)) )
      case('*material')
-       materialName = IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'name')    ! extract name=value
-       materialFound = materialName /= ''                                   ! valid name?
+       materialName = IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'name')     ! extract name=value
+       materialFound = materialName /= ''                                           ! valid name?
      case('*user')
        if (IO_lc(IO_StringValue(line,pos,2)) == 'material' .and. materialFound) then
-         do i = 1,mesh_Nmaterials                                           ! look thru material names
-           if (materialName == mesh_nameMaterial(i)) exit                   ! found one
+         do i = 1,mesh_Nmaterials                                                   ! look thru material names
+           if (materialName == mesh_nameMaterial(i)) then                           ! found one
+             elemSetName = mesh_mapMaterial(i)                                      ! take corresponding elemSet
+             do k = 1,mesh_NelemSets                                                ! look thru all elemSet definitions
+               if (elemSetName == mesh_nameElemSet(k)) &                            ! matched?
+                 mesh_NcpElems = mesh_NcpElems + mesh_mapElemSet(1,k)               ! add those elem count
+             enddo
+           endif
          enddo
-         if (i <= mesh_Nmaterials) then                                     ! found one?
-           elemSetName = mesh_mapMaterial(i)                                ! take corresponding elemSet
-           do i = 1,mesh_NelemSets                                          ! look thru all elemSet definitions
-             if (elemSetName == mesh_nameElemSet(i)) &                      ! matched?
-               mesh_NcpElems = mesh_NcpElems + mesh_mapElemSet(1,i)         ! add those elem count
-           enddo
-         endif
          materialFound = .false.
        endif
    endselect
  enddo
-
+ 
 620 if (mesh_NcpElems == 0) call IO_error(906)
 
  return 
@@ -2120,7 +2119,7 @@ endsubroutine
  integer(pInt), dimension (1+2*maxNchunks) :: pos
  character(len=300) line
 
- integer(pInt) unit,i,j,cpElem
+ integer(pInt) unit,i,j,k,cpElem
  logical materialFound
  character (len=64) materialName,elemSetName
 
@@ -2135,25 +2134,24 @@ endsubroutine
    pos = IO_stringPos(line,maxNchunks)
    select case ( IO_lc(IO_stringValue(line,pos,1)) )
      case('*material')
-       materialName = IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'name')    ! extract name=value
-       materialFound = materialName /= ''                                   ! valid name?
+       materialName = IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'name')     ! extract name=value
+       materialFound = materialName /= ''                                           ! valid name?
      case('*user')
        if (IO_lc(IO_stringValue(line,pos,2)) == 'material' .and. materialFound) then
-         do i = 1,mesh_Nmaterials                                           ! look thru material names
-           if (materialName == mesh_nameMaterial(i)) exit                   ! found one
+         do i = 1,mesh_Nmaterials                                                   ! look thru material names
+           if (materialName == mesh_nameMaterial(i)) then                           ! found one
+             elemSetName = mesh_mapMaterial(i)                                      ! take corresponding elemSet
+             do k = 1,mesh_NelemSets                                                ! look thru all elemSet definitions
+               if (elemSetName == mesh_nameElemSet(k)) then                         ! matched?
+                 do j = 1,mesh_mapElemSet(1,k)
+                   cpElem = cpElem + 1_pInt
+                   mesh_mapFEtoCPelem(1,cpElem) = mesh_mapElemSet(1+j,k)            ! store FE id
+                   mesh_mapFEtoCPelem(2,cpElem) = cpElem                            ! store our id
+                 enddo
+               endif
+             enddo
+           endif
          enddo
-         if (i <= mesh_Nmaterials) then                                     ! found one?
-           elemSetName = mesh_mapMaterial(i)                                ! take corresponding elemSet
-           do i = 1,mesh_NelemSets                                          ! look thru all elemSet definitions
-             if (elemSetName == mesh_nameElemSet(i)) then                   ! matched?
-               do j = 1,mesh_mapElemSet(1,i)
-                 cpElem = cpElem + 1_pInt
-                 mesh_mapFEtoCPelem(1,cpElem) = mesh_mapElemSet(1+j,i)      ! store FE id
-                 mesh_mapFEtoCPelem(2,cpElem) = cpElem                      ! store our id
-               enddo
-             endif
-           enddo
-         endif
          materialFound = .false.
        endif
    endselect
@@ -2685,7 +2683,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  integer(pInt), parameter :: maxNchunks = 65
  integer(pInt), dimension (1+2*maxNchunks) :: pos
 
- integer(pInt) unit,i,j,count,e,t,homog,micro
+ integer(pInt) unit,i,j,k,count,e,t,homog,micro
  logical inPart,materialFound
  character (len=64) materialName,elemSetName
  character(len=300) line
@@ -2740,31 +2738,30 @@ subroutine mesh_marc_count_cpSizes (unit)
    select case ( IO_lc(IO_StringValue(line,pos,1)))
      case('*material')
        materialName = IO_extractValue(IO_lc(IO_StringValue(line,pos,2)),'name')    ! extract name=value
-       materialFound = materialName /= ''                                   ! valid name?
+       materialFound = materialName /= ''                                          ! valid name?
      case('*user')
        if ( IO_lc(IO_StringValue(line,pos,2)) == 'material' .and. &
             materialFound ) then
-         do i = 1,mesh_Nmaterials                                           ! look thru material names
-           if (materialName == mesh_nameMaterial(i)) exit                   ! found one
+         read (unit,610,END=630) line                                              ! read homogenization and microstructure
+         pos(1:1+2*2) = IO_stringPos(line,2)
+         homog = NINT(IO_floatValue(line,pos,1))
+         micro = NINT(IO_floatValue(line,pos,2))
+         do i = 1,mesh_Nmaterials                                                  ! look thru material names
+           if (materialName == mesh_nameMaterial(i)) then                          ! found one
+             elemSetName = mesh_mapMaterial(i)                                     ! take corresponding elemSet
+             do k = 1,mesh_NelemSets                                               ! look thru all elemSet definitions
+               if (elemSetName == mesh_nameElemSet(k)) then                        ! matched?
+                 do j = 1,mesh_mapElemSet(1,k)
+                   e = mesh_FEasCP('elem',mesh_mapElemSet(1+j,k))
+                   mesh_element(3,e) = homog                                       ! store homogenization
+                   mesh_element(4,e) = micro                                       ! store microstructure
+                   mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),homog)
+                   mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),micro)
+                 enddo
+               endif
+             enddo
+           endif
          enddo
-         if (i <= mesh_Nmaterials) then                                     ! found one?
-           elemSetName = mesh_mapMaterial(i)                                ! take corresponding elemSet
-           read (unit,610,END=630) line                                     ! read homogenization and microstructure
-           pos(1:1+2*2) = IO_stringPos(line,2)
-           homog = NINT(IO_floatValue(line,pos,1))
-           micro = NINT(IO_floatValue(line,pos,2))
-           do i = 1,mesh_NelemSets                                          ! look thru all elemSet definitions
-             if (elemSetName == mesh_nameElemSet(i)) then                   ! matched?
-               do j = 1,mesh_mapElemSet(1,i)
-                 e = mesh_FEasCP('elem',mesh_mapElemSet(1+j,i))
-                 mesh_element(3,e) = homog                                  ! store homogenization
-                 mesh_element(4,e) = micro                                  ! store microstructure
-                 mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),homog)
-                 mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),micro)
-               enddo
-             endif
-           enddo
-         endif
          materialFound = .false.
        endif
    endselect
@@ -2797,6 +2794,7 @@ integer(pInt), dimension (mesh_Nnodes) :: node_count
 integer(pInt), dimension (:), allocatable :: node_seen
 
 allocate(node_seen(maxval(FE_Nnodes)))
+
 
 node_count = 0_pInt
 
@@ -2846,7 +2844,6 @@ enddo
 deallocate(node_seen)
 
 endsubroutine
-
 
 
 !***********************************************************
