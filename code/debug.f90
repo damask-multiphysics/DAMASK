@@ -177,10 +177,10 @@ subroutine debug_reset()
   debug_stressMinLocation = 0_pInt
   debug_jacobianMaxLocation = 0_pInt
   debug_jacobianMinLocation = 0_pInt
-  debug_stressMax = - 1.0_pReal / 0.0_pReal
-  debug_stressMin = + 1.0_pReal / 0.0_pReal
-  debug_jacobianMax = - 1.0_pReal / 0.0_pReal
-  debug_jacobianMin = + 1.0_pReal / 0.0_pReal
+  debug_stressMax = -huge(1.0_pReal)
+  debug_stressMin = huge(1.0_pReal)
+  debug_jacobianMax = -huge(1.0_pReal)
+  debug_jacobianMin = huge(1.0_pReal)
 
 
 endsubroutine
