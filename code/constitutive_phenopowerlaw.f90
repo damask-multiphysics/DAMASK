@@ -330,10 +330,12 @@ subroutine constitutive_phenopowerlaw_init(file)
 
    constitutive_phenopowerlaw_structure(i) = lattice_initializeStructure(constitutive_phenopowerlaw_structureName(i), &    ! get structure
                                                                          constitutive_phenopowerlaw_CoverA(i))
-   constitutive_phenopowerlaw_Nslip(:,i) = min(lattice_NslipSystem(:,constitutive_phenopowerlaw_structure(i)),&   ! limit active slip systems per family to min of available and requested
-                                               constitutive_phenopowerlaw_Nslip(:,i))
-   constitutive_phenopowerlaw_Ntwin(:,i) = min(lattice_NtwinSystem(:,constitutive_phenopowerlaw_structure(i)),&   ! limit active twin systems per family to min of available and requested
-                                               constitutive_phenopowerlaw_Ntwin(:,i))
+   constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,i) = &
+            min(lattice_NslipSystem(1:lattice_maxNslipFamily,constitutive_phenopowerlaw_structure(i)),&       ! limit active slip systems per family to min of available and requested
+                constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,i))
+   constitutive_phenopowerlaw_Ntwin(1:lattice_maxNtwinFamily,i) = &
+            min(lattice_NtwinSystem(1:lattice_maxNtwinFamily,constitutive_phenopowerlaw_structure(i)),&       ! limit active twin systems per family to min of available and requested
+                constitutive_phenopowerlaw_Ntwin(:,i))
    constitutive_phenopowerlaw_totalNslip(i) = sum(constitutive_phenopowerlaw_Nslip(:,i))      ! how many slip systems altogether
    constitutive_phenopowerlaw_totalNtwin(i) = sum(constitutive_phenopowerlaw_Ntwin(:,i))      ! how many twin systems altogether
 
@@ -357,16 +359,16 @@ subroutine constitutive_phenopowerlaw_init(file)
 
  enddo
 
- allocate(constitutive_phenopowerlaw_hardeningMatrix_slipslip(maxval(constitutive_phenopowerlaw_totalNslip),&
+ allocate(constitutive_phenopowerlaw_hardeningMatrix_slipslip(maxval(constitutive_phenopowerlaw_totalNslip),&   ! slip resistance from slip activity
                                                               maxval(constitutive_phenopowerlaw_totalNslip),&
                                                               maxNinstance))
- allocate(constitutive_phenopowerlaw_hardeningMatrix_sliptwin(maxval(constitutive_phenopowerlaw_totalNslip),&
+ allocate(constitutive_phenopowerlaw_hardeningMatrix_sliptwin(maxval(constitutive_phenopowerlaw_totalNtwin),&   ! slip resistance from twin activity
+                                                              maxval(constitutive_phenopowerlaw_totalNslip),&
+                                                              maxNinstance))
+ allocate(constitutive_phenopowerlaw_hardeningMatrix_twinslip(maxval(constitutive_phenopowerlaw_totalNslip),&   ! twin resistance from slip activity
                                                               maxval(constitutive_phenopowerlaw_totalNtwin),&
                                                               maxNinstance))
- allocate(constitutive_phenopowerlaw_hardeningMatrix_twinslip(maxval(constitutive_phenopowerlaw_totalNtwin),&
-                                                              maxval(constitutive_phenopowerlaw_totalNslip),&
-                                                              maxNinstance))
- allocate(constitutive_phenopowerlaw_hardeningMatrix_twintwin(maxval(constitutive_phenopowerlaw_totalNtwin),&
+ allocate(constitutive_phenopowerlaw_hardeningMatrix_twintwin(maxval(constitutive_phenopowerlaw_totalNtwin),&   ! twin resistance from twin activity
                                                               maxval(constitutive_phenopowerlaw_totalNtwin),&
                                                               maxNinstance))
  constitutive_phenopowerlaw_hardeningMatrix_slipslip = 0.0_pReal
