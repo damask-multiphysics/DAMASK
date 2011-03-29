@@ -280,6 +280,7 @@ constitutive_nonlocal_interactionSlipSlip = 0.0_pReal
 constitutive_nonlocal_dLowerEdgePerSlipFamily = 0.0_pReal
 constitutive_nonlocal_dLowerScrewPerSlipFamily = 0.0_pReal
 
+
 !*** readout data from material.config file
 
 rewind(file)
@@ -384,7 +385,8 @@ enddo
     lattice_initializeStructure(constitutive_nonlocal_structureName(i), constitutive_nonlocal_CoverA(i))                            ! our lattice structure is defined in the material.config file by the structureName (and the c/a ratio)
   myStructure = constitutive_nonlocal_structure(i)
   
-!*** sanity checks
+  
+  !*** sanity checks
   
   if (myStructure < 1 .or. myStructure > 3)                                       call IO_error(205)
   if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0_pInt)                            call IO_error(235,ext_msg='Nslip')
@@ -421,7 +423,7 @@ enddo
       .or. constitutive_nonlocal_surfaceTransmissivity(i) > 1.0_pReal)            call IO_error(235,ext_msg='surfaceTransmissivity')
   
   
-!*** determine total number of active slip systems
+  !*** determine total number of active slip systems
   
   constitutive_nonlocal_Nslip(1:lattice_maxNslipFamily,i) = min( lattice_NslipSystem(1:lattice_maxNslipFamily, myStructure), &
                                                                 constitutive_nonlocal_Nslip(1:lattice_maxNslipFamily,i) )           ! we can't use more slip systems per family than specified in lattice 
@@ -471,7 +473,8 @@ do i = 1,maxNinstance
   
   myStructure = constitutive_nonlocal_structure(i)                                                                                  ! lattice structure of this instance
     
-!*** Inverse lookup of my slip system family and the slip system in lattice
+
+  !*** Inverse lookup of my slip system family and the slip system in lattice
   
   l = 0_pInt
   do f = 1,lattice_maxNslipFamily
@@ -482,7 +485,7 @@ do i = 1,maxNinstance
   enddo; enddo
   
   
-!*** determine size of state array
+  !*** determine size of state array
   
   ns = constitutive_nonlocal_totalNslip(i)
   constitutive_nonlocal_sizeState(i) = size(constitutive_nonlocal_listBasicStates) * ns & 
@@ -490,7 +493,7 @@ do i = 1,maxNinstance
   constitutive_nonlocal_sizeDotState(i) = size(constitutive_nonlocal_listBasicStates) * ns
   
   
-!*** determine size of postResults array
+  !*** determine size of postResults array
   
   do o = 1,maxval(phase_Noutput)
     select case(constitutive_nonlocal_output(o,i))
@@ -572,7 +575,7 @@ do i = 1,maxNinstance
   enddo
   
   
-!*** elasticity matrix and shear modulus according to material.config
+  !*** elasticity matrix and shear modulus according to material.config
   
   select case (myStructure)
     case(1:2)                                                                                                                       ! cubic(s)
@@ -605,12 +608,10 @@ do i = 1,maxNinstance
                                 / ( 4.0_pReal*constitutive_nonlocal_C11(i) + 6.0_pReal*constitutive_nonlocal_C12(i) &
                                     + 2.0_pReal*constitutive_nonlocal_C44(i) )                                                      ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
   
-  
-  do s1 = 1,ns
-    
+  do s1 = 1,ns      
     f = constitutive_nonlocal_slipFamily(s1,i)
     
-!*** burgers vector, mean free path prefactor and minimum dipole distance for each slip system
+    !*** burgers vector, mean free path prefactor and minimum dipole distance for each slip system
   
     constitutive_nonlocal_burgersPerSlipSystem(s1,i) = constitutive_nonlocal_burgersPerSlipFamily(f,i)
     constitutive_nonlocal_lambda0PerSlipSystem(s1,i) = constitutive_nonlocal_lambda0PerSlipFamily(f,i)
@@ -619,31 +620,33 @@ do i = 1,maxNinstance
 
     do s2 = 1,ns
       
-!*** calculation of forest projections for edge and screw dislocations. s2 acts as forest to s1
+      !*** calculation of forest projections for edge and screw dislocations. s2 acts as forest for s1
 
-      constitutive_nonlocal_forestProjectionEdge(s1, s2, i) &
-          = abs(math_mul3x3(lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
-                            lattice_st(1:3, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                           ! forest projection of edge dislocations is the projection of (t = b x n) onto the slip normal of the respective slip plane
+      constitutive_nonlocal_forestProjectionEdge(s1,s2,i) &
+          = abs(math_mul3x3(lattice_sn(1:3,constitutive_nonlocal_slipSystemLattice(s1,i),myStructure), &
+                            lattice_st(1:3,constitutive_nonlocal_slipSystemLattice(s2,i),myStructure)))                             ! forest projection of edge dislocations is the projection of (t = b x n) onto the slip normal of the respective slip plane
       
-      constitutive_nonlocal_forestProjectionScrew(s1, s2, i) &
-          = abs(math_mul3x3(lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
-                            lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(s2,i), myStructure)))                           ! forest projection of screw dislocations is the projection of b onto the slip normal of the respective splip plane
+      constitutive_nonlocal_forestProjectionScrew(s1,s2,i) &
+          = abs(math_mul3x3(lattice_sn(1:3,constitutive_nonlocal_slipSystemLattice(s1,i),myStructure), &
+                            lattice_sd(1:3,constitutive_nonlocal_slipSystemLattice(s2,i),myStructure)))                             ! forest projection of screw dislocations is the projection of b onto the slip normal of the respective splip plane
   
-!*** calculation of interaction matrices
+      !*** calculation of interaction matrices
 
-      constitutive_nonlocal_interactionMatrixSlipSlip(s1, s2, i) &
-          = constitutive_nonlocal_interactionSlipSlip( lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s1,i), &
-                                                                                   constitutive_nonlocal_slipSystemLattice(s2,i), &
-                                                                                   myStructure), &
-                                                       i )
+      constitutive_nonlocal_interactionMatrixSlipSlip(s1,s2,i) &
+          = constitutive_nonlocal_interactionSlipSlip(lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s1,i), &
+                                                                                  constitutive_nonlocal_slipSystemLattice(s2,i), &
+                                                                                  myStructure), &
+                                                      i)
   
-  enddo; enddo
+    enddo
+  enddo
   
-!*** calculation of prefactor for activation enthalpy for dislocation glide
+  
+  !*** calculation of prefactor for activation enthalpy for dislocation glide
 
   constitutive_nonlocal_Qeff0(1:ns,i) = constitutive_nonlocal_burgersPerSlipSystem(1:ns,i) ** 3.0_pReal &
-                                   * sqrt(0.5_pReal * constitutive_nonlocal_d0(i) ** 3.0_pReal &
-                                                     * constitutive_nonlocal_Gmod(i) * constitutive_nonlocal_tauObs(i))
+                                      * sqrt(0.5_pReal * constitutive_nonlocal_d0(i) ** 3.0_pReal &
+                                                       * constitutive_nonlocal_Gmod(i) * constitutive_nonlocal_tauObs(i))
 
 enddo
 
@@ -1029,16 +1032,6 @@ if (.not. phase_localConstitution(myPhase)) then                                
   
 endif
 
-if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
-  !$OMP CRITICAL (write2out)
-    write(6,*)
-    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,g
-    write(6,*)
-    write(6,'(a,/,12(x),12(e10.3,x))') '<< CONST >> rhoForest', rhoForest
-    write(6,'(a,/,12(x),12(f10.5,x))') '<< CONST >> tauThreshold / MPa', tauThreshold/1e6
-    write(6,'(a,/,3(12(x),3(f10.5,x),/))') '<< CONST >> Tdislocation / MPa', math_Mandel6to33(Tdislocation_v)/1e6
-  !$OMP END CRITICAL (write2out)
-endif
 
 !**********************************************************************
 !*** set states
@@ -1048,6 +1041,18 @@ state(g,ip,el)%p(8*ns+1:10*ns) = reshape(rhoDip,(/2*ns/))                       
 state(g,ip,el)%p(10*ns+1:11*ns) = rhoForest
 state(g,ip,el)%p(11*ns+1:12*ns) = tauThreshold
 state(g,ip,el)%p(12*ns+1:12*ns+6) = Tdislocation_v
+
+
+#ifndef _OPENMP
+  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+    write(6,*)
+    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,g
+    write(6,*)
+    write(6,'(a,/,12(x),12(e10.3,x))') '<< CONST >> rhoForest', rhoForest
+    write(6,'(a,/,12(x),12(f10.5,x))') '<< CONST >> tauThreshold / MPa', tauThreshold/1e6
+    write(6,'(a,/,3(12(x),3(f10.5,x),/))') '<< CONST >> Tdislocation / MPa', math_Mandel6to33(Tdislocation_v)/1e6
+  endif
+#endif
 
 endsubroutine
 
@@ -1166,15 +1171,15 @@ endif
 constitutive_nonlocal_v(1:ns,1:4,g,ip,el) = v
 !$OMP FLUSH(constitutive_nonlocal_v)
 
-if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
-  !$OMP CRITICAL (write2out)
+#ifndef _OPENMP
+  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
     write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
     write(6,*)
     write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> tau / MPa', tau/1e6_pReal
     write(6,'(a,/,4(12(x),12(f12.5,x),/))') '<< CONST >> v / 1e-3m/s', constitutive_nonlocal_v(:,:,g,ip,el)*1e3
-  !$OMP END CRITICAL (write2out)
-endif
+  endif
+#endif
 
 endsubroutine
 
@@ -1289,16 +1294,16 @@ do s = 1,ns
 enddo
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
-if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
-  !$OMP CRITICAL (write2out)
+#ifndef _OPENMP
+  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
     write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_LpandItsTangent at el ip g ',el,ip,g
     write(6,*)
     write(6,'(a,/,4(12(x),12(f12.5,x)),/)') '<< CONST >> gdot / 1e-3',gdot*1e3_pReal
     write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> gdot total / 1e-3',gdotTotal*1e3_pReal
     write(6,'(a,/,3(12(x),3(f12.7,x),/))') '<< CONST >> Lp',Lp
-  !$OMP END CRITICAL (write2out)
-endif
+  endif
+#endif
 
 endsubroutine
 
@@ -1441,21 +1446,19 @@ real(pReal)                                 area, &                       ! area
 logical                                     considerEnteringFlux, &
                                             considerLeavingFlux
 
-if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
-  !$OMP CRITICAL (write2out)
+#ifndef _OPENMP
+  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
     write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
     write(6,*)
-  !$OMP END CRITICAL (write2out)
-endif
+  endif
+#endif
 
 select case(mesh_element(2,el))
   case (1,6,7,8,9)
     ! all fine
   case default
     call IO_error(-1,el,ip,g,'element type not supported for nonlocal constitution')
-  
-
 end select
 
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
@@ -1489,7 +1492,7 @@ endif
 !****************************************************************************
 !*** Calculate shear rate
 
-call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip, el)                                                ! get velocities
+call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip, el)                                                ! velocities
 
 forall (t = 1:4) &
   gdot(1:ns,t) = rhoSgl(1:ns,t) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) &
@@ -1498,12 +1501,12 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) 
   gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
                                              * constitutive_nonlocal_v(s,t,g,ip,el)
 
-if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
-  !$OMP CRITICAL (write2out)
+#ifndef _OPENMP
+  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,'(a,/,10(12(x),12(e12.5,x),/))') '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
     write(6,'(a,/,4(12(x),12(e12.5,x),/))') '<< CONST >> gdot / 1/s',gdot
-  !$OMP END CRITICAL (write2out)
-endif
+  endif
+#endif
 
 
 
@@ -1751,8 +1754,10 @@ forall (t = 1:10) &
               + rhoDotAthermalAnnihilation(1:ns,t) &
               + rhoDotThermalAnnihilation(1:ns,t) 
 
-if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
-  !$OMP CRITICAL (write2out)
+dotState%p(1:10*ns) = dotState%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
+
+#ifndef _OPENMP
+  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,'(a,/,8(12(x),12(e12.5,x),/))') '<< CONST >> dislocation remobilization', rhoDotRemobilization(1:ns,1:8) * timestep
     write(6,'(a,/,4(12(x),12(e12.5,x),/))') '<< CONST >> dislocation multiplication', rhoDotMultiplication(1:ns,1:4) * timestep
     write(6,'(a,/,8(12(x),12(e12.5,x),/))') '<< CONST >> dislocation flux', rhoDotFlux(1:ns,1:8) * timestep
@@ -1765,10 +1770,8 @@ if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g 
     write(6,'(a,/,10(12(x),12(f12.7,x),/))') '<< CONST >> relative density change', &
                                             rhoDot(1:ns,1:8) * timestep / (abs(rhoSgl)+1.0e-10), &
                                             rhoDot(1:ns,9:10) * timestep / (rhoDip+1.0e-10)
-  !$OMP END CRITICAL (write2out)
-endif
-
-dotState%p(1:10*ns) = dotState%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
+  endif
+#endif
 
 endsubroutine
 
@@ -2089,7 +2092,7 @@ forall (t = 1:4) &
 
 do s = 1,ns
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
-  tau(s) = math_mul6x6( Tstar_v + Tdislocation_v, lattice_Sslip_v(1:6,sLattice,myStructure) )
+  tau(s) = math_mul6x6(Tstar_v + Tdislocation_v, lattice_Sslip_v(1:6,sLattice,myStructure))
 enddo
 
 dLower(1:ns,1) = constitutive_nonlocal_dLowerEdgePerSlipSystem(1:ns,myInstance)

@@ -373,12 +373,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
             endif
           !$OMP END CRITICAL (write2out)
         endif
-        do k = 1,mesh_NcpElems
-          do j = 1,mesh_maxNips
-            if (homogenization_sizeState(j,k) > 0_pInt) &
-              homogenization_state0(j,k)%p = homogenization_state(j,k)%p  ! internal state of homogenization scheme
+        !$OMP PARALLEL DO
+          do k = 1,mesh_NcpElems
+            do j = 1,mesh_maxNips
+              if (homogenization_sizeState(j,k) > 0_pInt) &
+                homogenization_state0(j,k)%p = homogenization_state(j,k)%p  ! internal state of homogenization scheme
+            enddo
           enddo
-        enddo
+        !$OMP END PARALLEL DO
 
 
         ! *** dump the last converged values of each essential variable to a binary file
@@ -492,16 +494,18 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           endif
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent (parallel execution inside)
           call materialpoint_postResults(dt)                              ! post results
-          do e = FEsolving_execElem(1),FEsolving_execElem(2)              ! loop over all parallely processed elements
-            if (microstructure_elemhomo(mesh_element(4,e))) then          ! dealing with homogeneous element?
-              forall (i = 2:FE_Nips(mesh_element(2,e)))                   ! copy results of first IP to all others
-                materialpoint_P(1:3,1:3,i,e) = materialpoint_P(1:3,1:3,1,e) 
-                materialpoint_F(1:3,1:3,i,e) = materialpoint_F(1:3,1:3,1,e) 
-                materialpoint_dPdF(1:3,1:3,1:3,1:3,i,e) = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e)
-                materialpoint_results(1:materialpoint_sizeResults,i,e) = materialpoint_results(1:materialpoint_sizeResults,1,e)
-              end forall
-            endif
-          enddo
+          !$OMP PARALLEL DO
+            do e = FEsolving_execElem(1),FEsolving_execElem(2)            ! loop over all parallely processed elements
+              if (microstructure_elemhomo(mesh_element(4,e))) then        ! dealing with homogeneous element?
+                forall (i = 2:FE_Nips(mesh_element(2,e)))                 ! copy results of first IP to all others
+                  materialpoint_P(1:3,1:3,i,e) = materialpoint_P(1:3,1:3,1,e) 
+                  materialpoint_F(1:3,1:3,i,e) = materialpoint_F(1:3,1:3,1,e) 
+                  materialpoint_dPdF(1:3,1:3,1:3,1:3,i,e) = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e)
+                  materialpoint_results(1:materialpoint_sizeResults,i,e) = materialpoint_results(1:materialpoint_sizeResults,1,e)
+                end forall
+              endif
+            enddo
+          !$OMP END PARALLEL DO
           CPFEM_calc_done = .true.
         endif
         
@@ -511,7 +515,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           CPFEM_cs(1:6,IP,cp_en) = rnd * CPFEM_odd_stress
           CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
         else  
-        !  translate from P to CS
+          ! translate from P to CS
           Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,IP, cp_en), math_transpose3x3(materialpoint_F(1:3,1:3,IP,cp_en)))
           J_inverse  = 1.0_pReal / math_det3x3(materialpoint_F(1:3,1:3,IP,cp_en))
           CPFEM_cs(1:6,IP,cp_en) = math_Mandel33to6(J_inverse * Kirchhoff)

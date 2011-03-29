@@ -36,7 +36,7 @@
 !             - creeps: timinc
 !********************************************************************
 !
-include "prec.f90"             ! uses nothing else
+#include "prec.f90"
 
 
 MODULE mpie_interface
@@ -100,25 +100,25 @@ end function
 
 END MODULE
 
-include "IO.f90"               ! uses prec
-include "numerics.f90"         ! uses prec, IO
-include "debug.f90"            ! uses prec, numerics
-include "math.f90"             ! uses prec, numerics, debug
-include "FEsolving.f90"        ! uses prec, IO, debug
-include "mesh.f90"             ! uses prec, math, IO, FEsolving, debug
-include "material.f90"         ! uses prec, math, IO, mesh, debug
-include "lattice.f90"          ! uses prec, math, IO, material, debug
-include "constitutive_j2.f90"            ! uses prec, math, IO, lattice, material, debug
-include "constitutive_phenopowerlaw.f90" ! uses prec, math, IO, lattice, material, debug
-include "constitutive_titanmod.f90"      ! uses prec, math, IO, lattice, material, debug
-include "constitutive_dislotwin.f90"     ! uses prec, math, IO, lattice, material, debug
-include "constitutive_nonlocal.f90"      ! uses prec, math, IO, lattice, material, debug
-include "constitutive.f90"     ! uses prec, IO, math, lattice, mesh, debug
-include "crystallite.f90"      ! uses prec, math, IO, numerics, Fesolving, material, mesh, constitutive, debug
-include "homogenization_isostrain.f90"   ! uses prec, math, IO, debug
-include "homogenization_RGC.f90"         ! uses prec, math, IO, numerics, mesh, debug
-include "homogenization.f90"   ! uses prec, math, IO, numerics, debug
-include "CPFEM.f90"            ! uses prec, math, IO, numerics, debug, FEsolving, mesh, lattice, constitutive, crystallite, debug
+#include "IO.f90"
+#include "numerics.f90"
+#include "debug.f90"
+#include "math.f90"
+#include "FEsolving.f90"
+#include "mesh.f90"
+#include "material.f90"
+#include "lattice.f90"
+#include "constitutive_j2.f90"
+#include "constitutive_phenopowerlaw.f90"
+#include "constitutive_titanmod.f90"
+#include "constitutive_dislotwin.f90"
+#include "constitutive_nonlocal.f90"
+#include "constitutive.f90"
+#include "crystallite.f90"
+#include "homogenization_isostrain.f90"
+#include "homogenization_RGC.f90"
+#include "homogenization.f90"
+#include "CPFEM.f90"
 
 
 !********************************************************************
