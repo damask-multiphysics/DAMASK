@@ -434,15 +434,14 @@ endfunction
 !*********************************************************************
 !* This function calculates from state needed variables              *
 !*********************************************************************
-subroutine constitutive_microstructure(Temperature,Tstar_v,Fe,Fp,ipc,ip,el)
-
-use prec,       only: pReal,pInt
-use material,   only: phase_constitution, &
-                      material_phase, &
-                      homogenization_maxNgrains
-use mesh,       only: mesh_NcpElems, &
-                      mesh_maxNips, &
-                      mesh_maxNipNeighbors
+subroutine constitutive_microstructure(Temperature, Fe, ipc, ip, el)
+use prec,      only: pReal,pInt
+use material,  only: phase_constitution, &
+                     material_phase, &
+                     homogenization_maxNgrains
+use mesh,      only: mesh_NcpElems, &
+                     mesh_maxNips, &
+                     mesh_maxNipNeighbors
 use constitutive_j2,            only: constitutive_j2_label, &
                                       constitutive_j2_microstructure
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
@@ -460,10 +459,8 @@ integer(pInt), intent(in)::               ipc, &        ! component-ID of curren
                                           ip, &         ! current integration point
                                           el            ! current element
 real(pReal), intent(in) ::                Temperature
-real(pReal), intent(in), dimension(6) ::  Tstar_v       ! 2nd Piola-Kirchhoff stress
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                          Fe, &         ! elastic deformation gradient
-                                          Fp            ! plastic deformation gradient
+                                          Fe            ! elastic deformation gradient
 
 !*** output variables ***!
 
@@ -485,7 +482,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
     call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
    
   case (constitutive_nonlocal_label)
-    call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Tstar_v, Fe, Fp, ipc, ip, el)
+    call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Fe, ipc, ip, el)
      
 end select
 
