@@ -9,8 +9,10 @@
 ! MPI fuer Eisenforschung, Duesseldorf
 ! PSI, Switzerland
 !
-! REMARK: change compile command ("compile_fortran") to include
-!         "-free -heap-arrays 500000000" in "abaqus_v6.env"
+! REMARK: put the included file abaqus_v6.env in either your home
+!         or model directory, it is a minimum Abaqus environment file
+!         containing all changes necessary to use the MPIE subroutine
+!        (see Abaqus documentation for more information on the use of abaqus_v6.env)
 !
 !********************************************************************
 
