@@ -4,10 +4,12 @@
 !
 ! written by P. Eisenlohr,
 !            F. Roters,
-!            K. Janssens
+!            K. Janssens 2,
+!            A. Prakash 3
 !
-! MPI fuer Eisenforschung, Duesseldorf
-! PSI, Switzerland
+!   MPI fuer Eisenforschung, Duesseldorf
+! 2 PSI, Switzerland
+! 3 Fraunhofer IWM, Freiburg
 !
 ! REMARK: put the included file abaqus_v6.env in either your home
 !         or model directory, it is a minimum Abaqus environment file
