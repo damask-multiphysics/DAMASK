@@ -32,18 +32,18 @@ program voronoi
  print*, 'generates:'
  print*, '    * description file "_OUTPUT_.seeds":'
  print*, ''
- write(*, '(A)', advance = 'NO') 'Please enter name of output seed file: '
+ write(*, '(A)', advance = 'NO') 'output seed filename: '
  read(*, *), filename
- write(*, '(A)', advance = 'NO') 'Please enter value random seed: '
+ write(*, '(A)', advance = 'NO') 'seed of random number generator: '
  read(*, *), randomSeed; randomSeed = max(0_pInt,randomSeed)
- write(*, '(A)', advance = 'NO') 'Please enter value for first  resolution: '
- read(*, *), a
- write(*, '(A)', advance = 'NO') 'Please enter value for second resolution: '
- read(*, *), b
- write(*, '(A)', advance = 'NO') 'Please enter value for third  resolution: '
- read(*, *), c
- write(*, '(A)', advance = 'NO') 'Please enter No. of Grains: '
+ write(*, '(A)', advance = 'NO') 'number of grains: '
  read(*, *), N_Seeds
+ write(*, '(A)', advance = 'NO') 'min. Fourier points in x: '
+ read(*, *), a
+ write(*, '(A)', advance = 'NO') 'min. Fourier points in y: '
+ read(*, *), b
+ write(*, '(A)', advance = 'NO') 'min. Fourier points in z: '
+ read(*, *), c
 
  allocate (seedmap(a*b*c)); seedmap = .false.  ! logical to store information which position is occupied by a voronoi seed
  allocate (seeds(N_Seeds,3))

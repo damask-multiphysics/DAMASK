@@ -189,9 +189,9 @@ program voronoi
  print*, '    * material file "material.config": Orientation information for solver'
  print*, '    * "_OUTPUT_.spectral": combined information for solver'
  print*, ''
- write(*, '(A)', advance = 'NO') 'Enter output filename: '
+ write(*, '(A)', advance = 'NO') 'output filename: '
  read(*, *), output_name
- write(*, '(A)', advance = 'NO') 'Enter seed input file (extension .seeds): '
+ write(*, '(A)', advance = 'NO') 'seed input filename (w/o extension .seeds): '
  read(*, *), input_name
   
  open(20, file = trim(input_name)//('.seeds'), status='old', action='read')
@@ -226,22 +226,22 @@ program voronoi
  grainCheck = .false.
  
  print*, 'resolution: ' ,a,b,c
- write(*, '(A)', advance = 'NO') 'New first  resolution: '
+ write(*, '(A)', advance = 'NO') 'resolution in x: '
  read(*, *), a
- write(*, '(A)', advance = 'NO') 'New second resolution: '
+ write(*, '(A)', advance = 'NO') 'resolution in y: '
  read(*, *), b
- write(*, '(A)', advance = 'NO') 'New third  resolution: '
+ write(*, '(A)', advance = 'NO') 'resolution in z: '
  read(*, *), c
  
  step(1) = 1.0_pReal/real(a,pReal)
  step(2) = 1.0_pReal/real(b,pReal)
  step(3) = 1.0_pReal/real(c,pReal)
  
- write(*, '(A)', advance = 'NO') 'First  dimension: '
+ write(*, '(A)', advance = 'NO') 'size in x: '
  read(*, *), dim(1)
- write(*, '(A)', advance = 'NO') 'Second dimension: '
+ write(*, '(A)', advance = 'NO') 'size in y: '
  read(*, *), dim(2)
- write(*, '(A)', advance = 'NO') 'Third  dimension: '
+ write(*, '(A)', advance = 'NO') 'size in z: '
  read(*, *), dim(3)
  
  rewind(20)
