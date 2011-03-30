@@ -984,9 +984,8 @@ if (.not. phase_localConstitution(phase)) then
                 .and. deltaX == 0 .and. deltaY == 0 .and. deltaZ == 0) then
               cycle                                                                                 ! this is myself
             endif
-            neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) + dble(deltaX) * meshSize(1) &
-                                                                                             + dble(deltaY) * meshSize(2) &
-                                                                                             + dble(deltaZ) * meshSize(3)
+            neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) &
+                                 + (/dble(deltaX), dble(deltaY), dble(deltaZ)/) * meshSize
             connection = neighboring_ipCoords - ipCoords
             distance = sqrt(sum(connection ** 2.0_pReal))
             if (.not. phase_localConstitution(neighboring_phase) &
