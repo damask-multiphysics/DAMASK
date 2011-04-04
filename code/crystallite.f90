@@ -1548,10 +1548,11 @@ relTemperatureResiduum = 0.0_pReal
 
 ! --- nonlocal convergence check ---
 
-#ifndef _OPENMP
-if (debug_verbosity > 5) then
-  write(6,'(a,L)') '<< CRYST >> crystallite_converged',crystallite_converged
-endif
+#ifndef _OPENMP  
+  if (debug_verbosity > 5) then
+    write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
+    write(6,*)
+  endif
 #endif
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
@@ -1835,10 +1836,11 @@ relTemperatureResiduum = 0.0_pReal
 
 ! --- NONLOCAL CONVERGENCE CHECK ---
 
-#ifndef _OPENMP
-if (debug_verbosity > 5) then
-  write(6,'(a,L)') '<< CRYST >> crystallite_converged',crystallite_converged
-endif
+#ifndef _OPENMP  
+  if (debug_verbosity > 5) then
+    write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
+    write(6,*)
+  endif
 #endif
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
@@ -2883,8 +2885,7 @@ use mesh, only:                       mesh_element, &
                                       FE_NipNeighbors
 use debug, only:                      debug_verbosity, &
                                       debug_selectiveDebugger, &
-                                      debug_e, debug_i, debug_g, &
-                                      verboseDebugger
+                                      debug_e, debug_i, debug_g
 use constitutive_nonlocal, only:      constitutive_nonlocal_structure, &
                                       constitutive_nonlocal_updateCompatibility
 

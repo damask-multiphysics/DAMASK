@@ -503,7 +503,6 @@ function constitutive_phenopowerlaw_stateInit(myInstance)
 !* initial microstructural state                                     *
 !*********************************************************************
  use prec,    only: pReal,pInt
- use debug,   only: debugger
  use lattice, only: lattice_maxNslipFamily, lattice_maxNtwinFamily
  implicit none
 
@@ -621,7 +620,6 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
 !*  - dLp_dTstar      : derivative of Lp (4th-rank tensor)           *
 !*********************************************************************
  use prec, only: pReal,pInt,p_vec
- use debug, only: debugger
  use math, only: math_Plain3333to99
  use lattice, only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem
@@ -728,7 +726,6 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 !*  - constitutive_dotState : evolution of state variable            *
 !*********************************************************************
  use prec,     only: pReal,pInt,p_vec
- use debug,    only: debugger
  use lattice,  only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                      lattice_NslipSystem,lattice_NtwinSystem,lattice_shearTwin   
  use mesh,     only: mesh_NcpElems,mesh_maxNips

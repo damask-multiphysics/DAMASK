@@ -368,8 +368,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           !$OMP CRITICAL (write2out)
             write(6,'(a)') '<< CPFEM >> Aging states'
             if (debug_e == cp_en .and. debug_i == IP) then
-              write(6,'(a,x,i5,x,i2,x,i3,/,(12(x),6(e20.8,x),/))') '<< CPFEM >> AGED state of element ip grain',&
+              write(6,'(a,x,i5,x,i2,x,i3,/,(12(x),6(e20.8,x)))') '<< CPFEM >> AGED state of element ip grain',&
                                                               cp_en, IP, 1, constitutive_state(1,IP,cp_en)%p
+              write(6,*)
             endif
           !$OMP END CRITICAL (write2out)
         endif

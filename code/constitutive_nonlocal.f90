@@ -985,7 +985,7 @@ if (.not. phase_localConstitution(phase)) then
               cycle                                                                                 ! this is myself
             endif
             neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) &
-                                 + (/dble(deltaX), dble(deltaY), dble(deltaZ)/) * meshSize
+                                 + (/real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)/) * meshSize
             connection = neighboring_ipCoords - ipCoords
             distance = sqrt(sum(connection ** 2.0_pReal))
             if (.not. phase_localConstitution(neighboring_phase) &
@@ -1036,7 +1036,7 @@ if (.not. phase_localConstitution(phase)) then
                 neighboring_Nexcess = neighboring_rhoExcess(1,s) * mesh_ipVolume(neighboring_ip,neighboring_el) / segmentLength
                 flipSign = sign(1.0_pReal, -y)
                 do side = 1,-1,-2
-                  lambda = dble(side) * 0.5_pReal * segmentLength - y
+                  lambda = real(side,pReal) * 0.5_pReal * segmentLength - y
                   R = sqrt(xsquare + zsquare + lambda**2.0_pReal)
                   Rsquare = R ** 2.0_pReal
                   Rcube = R**3.0_pReal
@@ -1045,19 +1045,19 @@ if (.not. phase_localConstitution(phase)) then
                     call IO_error(237,el,ip,g)
                   endif
                     
-                  sigma(1,1) = sigma(1,1) - dble(side) * flipSign * z / denominator &
-                                                       * (1.0_pReal + xsquare / Rsquare + xsquare / denominator) &
-                                                       * neighboring_Nexcess
-                  sigma(2,2) = sigma(2,2) - dble(side) * (flipSign * 2.0_pReal * nu * z / denominator + z * lambda / Rcube) &
-                                                       * neighboring_Nexcess
-                  sigma(3,3) = sigma(3,3) + dble(side) * flipSign * z / denominator &
-                                                       * (1.0_pReal - zsquare / Rsquare - zsquare / denominator) &
-                                                       * neighboring_Nexcess
-                  sigma(1,2) = sigma(1,2) + dble(side) * x * z / Rcube * neighboring_Nexcess
-                  sigma(1,3) = sigma(1,3) + dble(side) * flipSign * x / denominator &
-                                                       * (1.0_pReal - zsquare / Rsquare - zsquare / denominator) &
-                                                       * neighboring_Nexcess
-                  sigma(2,3) = sigma(2,3) - dble(side) * (nu / R - zsquare / Rcube) * neighboring_Nexcess
+                  sigma(1,1) = sigma(1,1) - real(side,pReal) * flipSign * z / denominator &
+                                                             * (1.0_pReal + xsquare / Rsquare + xsquare / denominator) &
+                                                             * neighboring_Nexcess
+                  sigma(2,2) = sigma(2,2) - real(side,pReal) * (flipSign * 2.0_pReal * nu * z / denominator + z * lambda / Rcube) &
+                                                             * neighboring_Nexcess
+                  sigma(3,3) = sigma(3,3) + real(side,pReal) * flipSign * z / denominator &
+                                                             * (1.0_pReal - zsquare / Rsquare - zsquare / denominator) &
+                                                             * neighboring_Nexcess
+                  sigma(1,2) = sigma(1,2) + real(side,pReal) * x * z / Rcube * neighboring_Nexcess
+                  sigma(1,3) = sigma(1,3) + real(side,pReal) * flipSign * x / denominator &
+                                                             * (1.0_pReal - zsquare / Rsquare - zsquare / denominator) &
+                                                             * neighboring_Nexcess
+                  sigma(2,3) = sigma(2,3) - real(side,pReal) * (nu / R - zsquare / Rcube) * neighboring_Nexcess
                 enddo
                 
                 
@@ -1066,7 +1066,7 @@ if (.not. phase_localConstitution(phase)) then
                 neighboring_Nexcess = neighboring_rhoExcess(2,s) * mesh_ipVolume(neighboring_ip,neighboring_el) / segmentLength
                 flipSign = sign(1.0_pReal, x)
                 do side = 1,-1,-2
-                  lambda = x + dble(side) * 0.5_pReal * segmentLength
+                  lambda = x + real(side,pReal) * 0.5_pReal * segmentLength
                   R = sqrt(ysquare + zsquare + lambda**2.0_pReal)
                   Rsquare = R ** 2.0_pReal
                   Rcube = R**3.0_pReal
@@ -1075,8 +1075,8 @@ if (.not. phase_localConstitution(phase)) then
                     call IO_error(237,el,ip,g)
                   endif
                   
-                  sigma(1,2) = sigma(1,2) - dble(side) * flipSign * z * (1.0_pReal - nu) / denominator * neighboring_Nexcess
-                  sigma(1,3) = sigma(1,3) + dble(side) * flipSign * y * (1.0_pReal - nu) / denominator * neighboring_Nexcess
+                  sigma(1,2) = sigma(1,2) - real(side,pReal) * flipSign * z * (1.0_pReal - nu) / denominator * neighboring_Nexcess
+                  sigma(1,3) = sigma(1,3) + real(side,pReal) * flipSign * y * (1.0_pReal - nu) / denominator * neighboring_Nexcess
                 enddo
                 
 
@@ -1888,9 +1888,6 @@ use mesh, only:       mesh_element, &
 use lattice, only:    lattice_sn, &
                       lattice_sd, &
                       lattice_st
-use debug, only:      debugger, &
-                      debug_e, debug_i, debug_g, &
-                      verboseDebugger
 
 implicit none
 
@@ -2002,7 +1999,7 @@ do n = 1,Nneighbors
     belowThreshold = .true.
     do while (compatibilitySum < 1.0_pReal .and. any(belowThreshold(1:ns)))
       thresholdValue = maxval(compatibility(2,1:ns,s1,n), belowThreshold(1:ns))              ! screws always positive
-      nThresholdValues = dble(count(compatibility(2,1:ns,s1,n) == thresholdValue))
+      nThresholdValues = real(count(compatibility(2,1:ns,s1,n) == thresholdValue),pReal)
       where (compatibility(2,1:ns,s1,n) >= thresholdValue) &
         belowThreshold(1:ns) = .false.
       if (compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &

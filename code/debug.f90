@@ -30,9 +30,6 @@ real(pReal) :: debug_stressMax
 real(pReal) :: debug_stressMin
 real(pReal) :: debug_jacobianMax
 real(pReal) :: debug_jacobianMin
-logical :: selectiveDebugger = .true.
-logical :: verboseDebugger   = .false.
-logical :: debugger          = .true.
 logical :: debug_selectiveDebugger = .true.
 integer(pInt) :: debug_verbosity = 1_pInt
 
@@ -131,9 +128,8 @@ subroutine debug_init()
 
   if (debug_verbosity > 0) then
     !$OMP CRITICAL (write2out)
-      write(6,'(a24,x,l)')    'debug:                  ',debugger
-      write(6,'(a24,x,l)')    'verbose:                ',verboseDebugger
-      write(6,'(a24,x,l)')    'selective:              ',selectiveDebugger
+      write(6,'(a24,x,l)')    'verbose:                ',debug_verbosity
+      write(6,'(a24,x,l)')    'selective:              ',debug_selectiveDebugger
     !$OMP END CRITICAL (write2out)
   endif
   if (debug_selectiveDebugger) then
