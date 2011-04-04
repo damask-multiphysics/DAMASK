@@ -619,7 +619,7 @@ def loadcase(time,incs,Ftol):
   ]
 
 
-def job(grainNumber,grainMapping):  
+def job(grainNumber,grainMapping,twoD):  
   return [\
   "*new_job",
   "*job_name pull",
@@ -628,7 +628,7 @@ def job(grainNumber,grainMapping):
   "*add_job_iconds homogenization",
   ["*add_job_iconds grain_%i"%i for i in grainMapping[:grainNumber]],
   "*add_job_iconds rim",
-  "*job_option dimen:three                  | 3D analysis",
+  "*job_option dimen:%s                  | analysis dimension"%({True:'two',False:'three'}[twoD]),
   "*job_option strain:large                 | finite strains",
   "*job_option large_strn_proc:upd_lagrange | updated Lagrange framework",
   "*job_option plas_proc:multiplicative     | multiplicative decomp of F",
@@ -774,7 +774,7 @@ cmds += [\
   initial_conditions(len(rcData['grain']),rcData['grainMapping']),
   boundary_conditions(options.strainrate,options.size/6,options.size,options.frame+0.5),
   loadcase(options.strain/options.strainrate,options.increments,0.03),
-  job(len(rcData['grain']),rcData['grainMapping']),
+  job(len(rcData['grain']),rcData['grainMapping'],options.twoD),
   postprocess(),
   ["*identify_sets","*regen","*fill_view","*save_as_model %s yes"%(myName)],
 ]
