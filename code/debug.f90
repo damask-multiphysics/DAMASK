@@ -128,7 +128,7 @@ subroutine debug_init()
 
   if (debug_verbosity > 0) then
     !$OMP CRITICAL (write2out)
-      write(6,'(a24,x,l)')    'verbose:                ',debug_verbosity
+      write(6,'(a24,x,i1)')   'verbose:                ',debug_verbosity
       write(6,'(a24,x,l)')    'selective:              ',debug_selectiveDebugger
     !$OMP END CRITICAL (write2out)
   endif
