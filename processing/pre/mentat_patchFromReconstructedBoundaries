@@ -671,6 +671,9 @@ parser = OptionParser()
 parser.add_option("-p", "--port", type="int",\
         dest="port",\
         help="Mentat connection port")
+parser.add_option("-2", "--twodimensional", action="store_true",\
+        dest="twoD",\
+        help="twodimensional model [%default]")
 parser.add_option("-a", "--patchsize", type="float",\
         dest="size",\
         help="height of patch [%default]")
@@ -712,6 +715,7 @@ parser.set_defaults(imgsize = 0)
 parser.set_defaults(border = 20)
 parser.set_defaults(tolerance = 1.0e-3)
 parser.set_defaults(mesh = 'dt_planar_trimesh')
+parser.set_defaults(twoD = False)
 
 (options, args) = parser.parse_args()
 if not len(args):
@@ -759,7 +763,12 @@ cmds = [\
   sample(options.size,12,options.frame+0.5),
   patch(options.size,options.resolution,options.mesh,rcData),
   gage(options.mesh,rcData),
-  expand3D(options.size/6,4),
+  ]
+
+if (not options.twoD):
+  cmds += [expand3D(options.size/6,4),]
+
+cmds += [\
   cleanUp(options.size),
   materials(),
   initial_conditions(len(rcData['grain']),rcData['grainMapping']),
