@@ -753,9 +753,6 @@ else:
   offset_inc = 0
 if options.range:
   options.range = list(options.range)
-  if options.filetype == 'spectral':
-    options.range[0] -= 1
-    options.range[1] -= 1
   increments = range( max(0,options.range[0]),
                       min(stat['NumberOfIncrements'],options.range[1]+1),
                       options.range[2])
@@ -843,6 +840,7 @@ for incCount,increment in enumerate(increments):
                                             'label': 'location',
                                             'content': [myElemID,myNodeID,myGrainID] + myIpCoordinates[n], 
                                            })                                                                               # first entry in this list always contains the location data
+#                    print group,sys.getsizeof(data)  # better way of tracing leaks: http://www.lshift.net/blog/2008/11/14/tracing-python-memory-leaks
                     
                     # --- get data from t16 file
                     
