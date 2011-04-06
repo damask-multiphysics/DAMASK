@@ -92,7 +92,7 @@
 
  integer(pInt) :: hypoelasticTableStyle
  integer(pInt) :: initialcondTableStyle
- integer(pInt), parameter :: FE_Nelemtypes = 9
+ integer(pInt), parameter :: FE_Nelemtypes = 10
  integer(pInt), parameter :: FE_maxNnodes = 8
  integer(pInt), parameter :: FE_maxNsubNodes = 56
  integer(pInt), parameter :: FE_maxNips = 27
@@ -108,7 +108,8 @@
    6, & ! element 136
    8, & ! element 21
    8, & ! element 117
-   8  & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   8, & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   3  & ! element 155, 125, 128
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NoriginalNodes = &
  (/8, & ! element 7
@@ -119,7 +120,8 @@
    6, & ! element 136
    20,& ! element 21
    8, & ! element 117
-   20 & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   20,& ! element 57 (c3d20r == c3d8 --> copy of 7)
+   6  & ! element 155, 125, 128
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_Nips = &
  (/8, & ! element 7
@@ -130,7 +132,8 @@
    6, & ! element 136
    27,& ! element 21
    1, & ! element 117
-   8  & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   8, & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   3  & ! element 155, 125, 128
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NipNeighbors = &
  (/6, & ! element 7
@@ -141,7 +144,8 @@
    6, & ! element 136
    6, & ! element 21
    6, & ! element 117
-   6  & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   6, & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   4  & ! element 155, 125, 128
   /)
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_NsubNodes = &
  (/19,& ! element 7
@@ -152,7 +156,8 @@
    15,& ! element 136
    56,& ! element 21
    0, & ! element 117
-   19 & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   19,& ! element 57 (c3d20r == c3d8 --> copy of 7)
+   4  & ! element 155, 125, 128
   /)
  integer(pInt), dimension(FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_NfaceNodes = &
  reshape((/&
@@ -164,7 +169,8 @@
   3,4,4,4,3,0, & ! element 136
   4,4,4,4,4,4, & ! element 21
   4,4,4,4,4,4, & ! element 117
-  4,4,4,4,4,4  & ! element 57 (c3d20r == c3d8 --> copy of 7)
+  4,4,4,4,4,4, & ! element 57 (c3d20r == c3d8 --> copy of 7)
+  2,2,2,0,0,0  & ! element 155, 125, 128
    /),(/FE_maxNipNeighbors,FE_Nelemtypes/))
  integer(pInt), dimension(FE_Nelemtypes), parameter :: FE_maxNnodesAtIP = &
  (/1, & ! element 7
@@ -175,7 +181,8 @@
    1, & ! element 136
    4, & ! element 21
    8, & ! element 117
-   1  & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   1, & ! element 57 (c3d20r == c3d8 --> copy of 7)
+   1  & ! element 155, 125, 128
   /)
  integer(pInt), dimension(FE_NipFaceNodes,FE_maxNipNeighbors,FE_Nelemtypes), parameter :: FE_nodeOnFace = &
  reshape((/&
@@ -232,7 +239,13 @@
   3,2,6,7 , &
   4,3,7,8 , &
   4,1,5,8 , &
-  8,7,6,5   &
+  8,7,6,5 , &
+  1,2,0,0 , & ! element 155,125,128
+  2,3,0,0 , &
+  3,1,0,0 , &
+  0,0,0,0 , &
+  0,0,0,0 , &
+  0,0,0,0   &
    /),(/FE_NipFaceNodes,FE_maxNipNeighbors,FE_Nelemtypes/))
 
  CONTAINS
@@ -372,6 +385,10 @@
     case ( '57', &
            'c3d20r')
       FE_mapElemtype = 9            ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
+    case ( '155', &
+           '125', &
+           '128')
+      FE_mapElemtype = 10           ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
     case default 
       FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
  endselect
@@ -643,8 +660,19 @@ endsubroutine
     8,  &
     7   &
     /),(/FE_maxNnodesAtIP(9),FE_Nips(9)/))
+ FE_nodesAtIP(:,:FE_Nips(10),10) = &  ! element 155, 125, 128
+    reshape((/&
+    1,  &
+    2,  &
+    3   &
+    /),(/FE_maxNnodesAtIP(10),FE_Nips(10)/))
  
- ! fill FE_ipNeighbor with data
+ ! *** FE_ipNeighbor ***
+ ! is a list of the neighborhood of each IP.
+ ! It is sorted in (local) +x,-x, +y,-y, +z,-z direction.
+ ! Positive integers denote an intra-FE IP identifier.
+ ! Negative integers denote the interface behind which the neighboring (extra-FE) IP will be located.
+
  FE_ipNeighbor(:FE_NipNeighbors(1),:FE_Nips(1),1) = &  ! element 7
     reshape((/&
      2,-5, 3,-2, 5,-1,  &
@@ -740,8 +768,20 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
      8,-5,-4, 5,-6, 3,  &
     -3, 7,-4, 6,-6, 4   &
     /),(/FE_NipNeighbors(9),FE_Nips(9)/))
+ FE_ipNeighbor(:FE_NipNeighbors(10),:FE_Nips(10),10) = &  ! element 155, 125, 128
+    reshape((/&
+     2,-3, 3,-1,  &
+    -2, 1, 3,-1,  &
+     2,-3,-2, 1   &
+    /),(/FE_NipNeighbors(10),FE_Nips(10)/))
  
- ! fill FE_subNodeParent with data
+ ! *** FE_subNodeParent ***
+ ! lists the group of IPs for which the center of gravity
+ ! corresponds to the location of a each subnode.
+ ! example: face-centered subnode with faceNodes 1,2,3,4 to be used in,
+ !          e.g., a 8 IP grid, would be encoded:
+ !          1, 2, 3, 4, 0, 0, 0, 0
+
  FE_subNodeParent(:FE_Nips(1),:FE_NsubNodes(1),1) = &  ! element 7
     reshape((/&
     1, 2, 0, 0, 0, 0, 0, 0,  &
@@ -892,8 +932,25 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     5, 6, 7, 8, 0, 0, 0, 0,  &
     1, 2, 3, 4, 5, 6, 7, 8   & 
     /),(/FE_Nips(9),FE_NsubNodes(9)/))
+ FE_subNodeParent(:FE_Nips(10),:FE_NsubNodes(10),10) = &  ! element 155, 125, 128
+    reshape((/&
+    1, 2, 0,  & 
+    2, 3, 0,  & 
+    3, 1, 0,  &
+    1, 2, 3   &
+    /),(/FE_Nips(10),FE_NsubNodes(10)/))
  
- ! fill FE_subNodeOnIPFace with data
+ ! *** FE_subNodeOnIPFace ***
+ ! indicates which subnodes make up the interfaces enclosing the IP volume.
+ ! The sorting convention is such that the outward pointing normal
+ ! follows from a right-handed traversal of the face node list.
+ ! For two-dimensional elements, which only have lines as "interface"
+ ! one nevertheless has to specify each interface by a closed path,
+ ! e.g., 1,2, 2,1, assuming the line connects nodes 1 and 2.
+ ! This will result in zero ipVolume and interfaceArea, but is not
+ ! detrimental at the moment since non-local constitutive laws are
+ ! currently not foreseen in 2D cases.
+ 
  FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(1),:FE_Nips(1),1) = &  ! element 7
     reshape((/&
      9,21,27,22, & ! 1
@@ -954,61 +1011,61 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     /),(/FE_NipFaceNodes,FE_NipNeighbors(2),FE_Nips(2)/))
  FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(3),:FE_Nips(3),3) = &  ! element 11
     reshape((/&
-     5, 9, 0, 0, & ! 1
-     1, 8, 0, 0, &
-     8, 9, 0, 0, &
-     1, 5, 0, 0, &
-     2, 6, 0, 0, & ! 2
-     5, 9, 0, 0, &
-     6, 9, 0, 0, &
-     2, 5, 0, 0, &
-     3, 6, 0, 0, & ! 3
-     7, 9, 0, 0, &
-     3, 7, 0, 0, &
-     6, 9, 0, 0, &
-     7, 9, 0, 0, & ! 4
-     4, 8, 0, 0, &
-     4, 7, 0, 0, &
-     8, 9, 0, 0  &
+     5, 9, 9, 5 , & ! 1
+     1, 8, 8, 1 , &
+     8, 9, 9, 8 , &
+     1, 5, 5, 1 , &
+     2, 6, 6, 2 , & ! 2
+     5, 9, 9, 5 , &
+     6, 9, 9, 6 , &
+     2, 5, 5, 2 , &
+     3, 6, 6, 3 , & ! 3
+     7, 9, 9, 7 , &
+     3, 7, 7, 3 , &
+     6, 9, 9, 6 , &
+     7, 9, 9, 7 , & ! 4
+     4, 8, 8, 4 , &
+     4, 7, 7, 4 , &
+     8, 9, 9, 8   &
     /),(/FE_NipFaceNodes,FE_NipNeighbors(3),FE_Nips(3)/))
  FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(4),:FE_Nips(4),4) = &  ! element 27
     reshape((/&
-     9,17, 0, 0, & ! 1
-     1,16, 0, 0, &
-    16,17, 0, 0, &
-     1, 9, 0, 0, &
-    10,18, 0, 0, & ! 2
-     9,17, 0, 0, &
-    17,18, 0, 0, &
-     9,10, 0, 0, &
-     2,11, 0, 0, & ! 3
-    10,18, 0, 0, &
-    11,18, 0, 0, &
-     2,10, 0, 0, &
-    17,20, 0, 0, & ! 4
-    15,16, 0, 0, &
-    15,20, 0, 0, &
-    16,17, 0, 0, &
-    18,19, 0, 0, & ! 5
-    17,20, 0, 0, &
-    19,20, 0, 0, &
-    17,18, 0, 0, &
-    11,12, 0, 0, & ! 6
-    18,19, 0, 0, &
-    12,19, 0, 0, &
-    11,18, 0, 0, &
-    14,20, 0, 0, & ! 7
-     4,15, 0, 0, &
-     4,14, 0, 0, &
-    15,20, 0, 0, &
-    13,19, 0, 0, & ! 8
-    14,20, 0, 0, &
-    13,14, 0, 0, &
-    19,20, 0, 0, &
-     3,12, 0, 0, & ! 9
-    13,19, 0, 0, &
-     3,13, 0, 0, &
-    12,19, 0, 0  &
+     9,17,17, 9 , & ! 1
+     1,16,16, 1 , &
+    16,17,17,16 , &
+     1, 9, 9, 1 , &
+    10,18,18,10 , & ! 2
+     9,17,17, 9 , &
+    17,18,18,17 , &
+     9,10,10, 9 , &
+     2,11,11, 2 , & ! 3
+    10,18,18,10 , &
+    11,18,18,11 , &
+     2,10,10, 2 , &
+    17,20,20,17 , & ! 4
+    15,16,16,15 , &
+    15,20,20,15 , &
+    16,17,17,16 , &
+    18,19,19,18 , & ! 5
+    17,20,20,17 , &
+    19,20,20,19 , &
+    17,18,18,17 , &
+    11,12,12,11 , & ! 6
+    18,19,19,18 , &
+    12,19,19,12 , &
+    11,18,18,11 , &
+    14,20,20,14 , & ! 7
+     4,15,15, 4 , &
+     4,14,14, 4 , &
+    15,20,20,15 , &
+    13,19,19,13 , & ! 8
+    14,20,20,14 , &
+    13,14,14,13 , &
+    19,20,20,19 , &
+     3,12,12, 3 , & ! 9
+    13,19,19,13 , &
+     3,13,13, 3 , &
+    12,19,19,12   &
     /),(/FE_NipFaceNodes,FE_NipNeighbors(4),FE_Nips(4)/))
  !FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(5),:FE_Nips(5),5) = &  ! element 157
  !   reshape((/&
@@ -1278,6 +1335,21 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
      7,19,26,18, &
     15,23,27,24  &
     /),(/FE_NipFaceNodes,FE_NipNeighbors(9),FE_Nips(9)/))
+ FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(10),:FE_Nips(10),10) = &  ! element 155, 125, 128
+    reshape((/&
+     4, 7, 7, 4 , & ! 1
+     1, 6, 6, 1 , &
+     6, 7, 7, 6 , &
+     1, 4, 4, 1 , &
+     2, 5, 5, 2 , & ! 2
+     4, 7, 7, 4 , &
+     5, 7, 7, 5 , &
+     2, 4, 4, 2 , &
+     5, 7, 7, 5 , & ! 3
+     3, 6, 6, 3 , &
+     3, 5, 5, 3 , &
+     6, 7, 7, 6   &
+    /),(/FE_NipFaceNodes,FE_NipNeighbors(10),FE_Nips(10)/))
  
  return
  
@@ -3101,8 +3173,8 @@ endsubroutine
        forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
        forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles) &  ! start at each interface node and build valid triangles to cover interface
          volume(j,n) = math_volTetrahedron(nPos(:,n), &    ! calc volume of respective tetrahedron to CoG
-                                           nPos(:,1+mod(n+j-1,FE_NipFaceNodes)), &
-                                           nPos(:,1+mod(n+j-0,FE_NipFaceNodes)), &
+                                           nPos(:,1+mod(n-1 +j  ,FE_NipFaceNodes)), & ! start at offset j
+                                           nPos(:,1+mod(n-1 +j+1,FE_NipFaceNodes)), & ! and take j's neighbor
                                            centerOfGravity)
        mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
      enddo
