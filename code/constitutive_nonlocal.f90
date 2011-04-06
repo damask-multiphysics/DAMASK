@@ -1612,6 +1612,17 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) 
 
 
 !****************************************************************************
+!*** check CFL condition for flux
+
+if (any(minval(mesh_ipVolume(ip,el) / max(tiny(1.0_pReal),mesh_ipArea(:,ip,el))) &
+        < constitutive_nonlocal_v(1:ns,1:4,g,ip,el) * timestep)) then
+  dotState%p = NaN
+  return
+endif
+
+
+
+!****************************************************************************
 !*** calculate limits for stable dipole height
 
 do s = 1,ns   ! loop over slip systems
@@ -1625,6 +1636,7 @@ dUpper(1:ns,2) = min( 1.0_pReal / sqrt( sum(abs(rhoSgl),2)+sum(rhoDip,2) ), &
                       constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) &
                                                              / ( 8.0_pReal * pi * abs(tau) ) )
 dUpper(1:ns,1) = dUpper(1:ns,2) / ( 1.0_pReal - constitutive_nonlocal_nu(myInstance) )
+
 
 
 !****************************************************************************
