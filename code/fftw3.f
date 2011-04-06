@@ -1,3 +1,4 @@
+! original file taken from the FFTW package ver. 3.2.2 see http://fftw.org
       INTEGER FFTW_R2HC
       PARAMETER (FFTW_R2HC=0)
       INTEGER FFTW_HC2R
