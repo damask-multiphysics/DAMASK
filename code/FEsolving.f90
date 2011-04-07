@@ -1,7 +1,7 @@
-! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
+! Copyright 2011 Max-Planck-Institut fÃ¼r Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the DÃ¼sseldorf Advanced MAterial Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by

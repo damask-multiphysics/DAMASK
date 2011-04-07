@@ -1,7 +1,7 @@
-! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
+! Copyright 2011 Max-Planck-Institut fÃ¼r Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the DÃ¼sseldorf Advanced MAterial Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ implicit none
 !    *** Precision of real and integer variables ***
 integer, parameter :: pReal = selected_real_kind(6,37)       ! 6 significant digits, up to 1e+-37
 integer, parameter :: pInt  = selected_int_kind(9)           ! up to +- 1e9
-integer, parameter :: pLongInt  = 8                          ! should be 64bit
+integer, parameter :: pLongInt  = 4                          ! should be 64bit
 real(pReal), parameter :: tol_math_check = 1.0e-5_pReal
 real(pReal), parameter :: tol_gravityNodePos = 1.0e-36_pReal
  
