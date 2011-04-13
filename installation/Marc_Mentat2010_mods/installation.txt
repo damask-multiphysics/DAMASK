@@ -1,6 +1,8 @@
 Install MPIE modifications to use MPIE CPFEM routine
 
-This is for the Linux64 version of Marc/Mentat2010
+This is for the Linux64 version of Marc/Mentat2010.
+The AMD Core Math Library needs to be installed in standard path /opt/acml4.4.0,
+otherwise the scripts run_marc run_h_marc and run_mp_marc need to be adopted!
 
 Usually you will need to be root for this to work!
 
@@ -29,5 +31,5 @@ The structure of this directory should be:
 ./Mentat_menus/job_run.ms.org			original file from installation
 ./Mentat_menus/job_run.ms				modified version
 
-1) Install Marc, Mantat and Documentation as ususal
+1) Install Marc, Mentat and Documentation as ususal
 2) Run the apply_MPIE_modifications script from this directory.
