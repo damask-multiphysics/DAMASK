@@ -134,7 +134,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.extrapolate = value
 
   def node_sequence(self,n):
-    return n
+    return n-1
 
   def node_id(self,n):
     return n+1
@@ -148,6 +148,9 @@ class MPIEspectral_result:    # mimic py_post result object
                    self.dimension[2] * ((n/a/b)%c) / self.resolution[2],
             ])
 
+  def element_sequence(self,e):
+    return e-1
+ 
   def element_id(self,e):
     return e+1
  
@@ -155,7 +158,7 @@ class MPIEspectral_result:    # mimic py_post result object
      a = self.resolution[0]+1
      b = self.resolution[1]+1
      c = self.resolution[2]+1
-     basenode = e+e/self.resolution[0] + e/self.resolution[0]/self.resolution[1]*a
+     basenode = 1 + e+e/self.resolution[0] + e/self.resolution[0]/self.resolution[1]*a
      basenode2 = basenode+a*b
      return (element([basenode ,basenode +1,basenode +a+1,basenode +a,
                       basenode2,basenode2+1,basenode2+a+1,basenode2+a,
@@ -324,21 +327,6 @@ def heading(glue,parts):
 
 
 # -----------------------------
-def illegalMap(map, label):
-# 
-# answers whether map is illegal to be applied to data what
-# -----------------------------
-
-  illegal = {
-              'eulerangles': ['min','max','avg','sum'],
-              'defgrad':     ['min','max','avg','sum'],
-              'orientation': ['min','max',      'sum'],
-            }
-  
-  return label.lower() in illegal and map in illegal[label.lower()]
-
-
-# -----------------------------
 def mapIncremental(label, mapping, N, base, new):
 # 
 # applies the function defined by "mapping"
@@ -346,26 +334,23 @@ def mapIncremental(label, mapping, N, base, new):
 # to a list of data
 # -----------------------------
 
-  if illegalMap(mapping,label):                                                   # for illegal mappings:...
-    return ['n/a'*len(base)]                                                      # ...return 'n/a'
-
+  theMap =  { 'min': lambda n,b,a: min(b,a),
+              'max': lambda n,b,a: max(b,a),
+              'avg': lambda n,b,a: (n*b+a)/(n+1),
+              'sum': lambda n,b,a: b+a,
+              'unique': lambda n,b,a: {True:a,False:'n/a'}[n==0 or b==a]
+            }
+  if mapping in theMap:
+    mapped = map(theMap[mapping],[N]*len(base),base,new)                        # map one of the standard functions to data
+    if label.lower() == 'orientation':                                          # orientation is special case:...
+      orientationNorm = math.sqrt(sum([q*q for q in mapped]))                   # ...calc norm of average quaternion
+      mapped = map(lambda x: x/orientationNorm, mapped)                         # ...renormalize quaternion
   else:
-    if mapping in ['min','max','avg','sum']:
-      mapped = map(
-                { 'min': lambda n,b,a: min(b,a),
-                  'max': lambda n,b,a: max(b,a),
-                  'avg': lambda n,b,a: (n*b+a)/(n+1),
-                  'sum': lambda n,b,a: b+a,
-                }[mapping],[N]*len(base),base,new)                                    # map one of the standard functions to data
-      if label.lower() == 'orientation':                                          # orientation is special case:...
-        orientationNorm = math.sqrt(sum([q*q for q in mapped]))                   # ...calc norm of average quaternion
-        mapped = map(lambda x: x/orientationNorm, mapped)                         # ...renormalize quaternion
-    else:
-      try:
-        mapped = eval('map(%s,N*len(base),base,new)'%map)                         # map user defined function to colums in chunks
-      except:
-        mapped = ['n/a'*len(base)]
-  
+    try:
+      mapped = eval('map(%s,N*len(base),base,new)'%map)                         # map user defined function to colums in chunks
+    except:
+      mapped = ['n/a']*len(base)
+
   return mapped
 
 
@@ -685,6 +670,9 @@ if not options.homogenizationResult: options.homogenizationResult = []
 if not options.crystalliteResult:    options.crystalliteResult    = []
 if not options.constitutiveResult:   options.constitutiveResult   = []
 
+options.sort.reverse()
+options.separation.reverse()
+
 # --- start background messaging
 
 bg = backgroundMessage()
@@ -797,11 +785,15 @@ if options.nodalScalar:
       groups[groupCount] = [[0,0,0,0.0,0.0,0.0]]                                                       # initialize with avg location
       groupCount += 1
 
-    groups[index[grp]][0] = mapIncremental('','avg',
-                                           len(groups[index[grp]])-1,
-                                           groups[index[grp]][0],
-                                           [myElemID,myNodeID,myGrainID] + myNodeCoordinates)          # incrementally update average location
-    groups[index[grp]].append([myElemID,myNodeID,myGrainID])                                           # append a new list defining each group member
+    groups[index[grp]][0][:3] = mapIncremental('','unique',
+                                               len(groups[index[grp]])-1,
+                                               groups[index[grp]][0][:3],
+                                               [myElemID,myNodeID,myGrainID])                              # keep only if unique average location
+    groups[index[grp]][0][3:] = mapIncremental('','avg',
+                                               len(groups[index[grp]])-1,
+                                               groups[index[grp]][0][3:],
+                                               myNodeCoordinates)                                          # incrementally update average location
+    groups[index[grp]].append([myElemID,myNodeID,myGrainID,0])                                     # append a new list defining each group member
     memberCount += 1
     
 else:
@@ -830,19 +822,17 @@ else:
           groups.append([[0,0,0,0.0,0.0,0.0]])                                                              # initialize with avg location
           groupCount += 1
   
-        groups[index[grp]][0] = mapIncremental('','avg',
-                                               len(groups[index[grp]])-1,
-                                               groups[index[grp]][0],
-                                               [myElemID,myNodeID,myGrainID] + myIpCoordinates[n])           # incrementally update average location
+        groups[index[grp]][0][:3] = mapIncremental('','unique',
+                                                   len(groups[index[grp]])-1,
+                                                   groups[index[grp]][0][:3],
+                                                   [myElemID,myNodeID,myGrainID])                           # keep only if unique average location
+        groups[index[grp]][0][3:] = mapIncremental('','avg',
+                                                   len(groups[index[grp]])-1,
+                                                   groups[index[grp]][0][3:],
+                                                   myIpCoordinates[n])                                       # incrementally update average location
         groups[index[grp]].append([myElemID,myNodeID,myGrainID,n])                                           # append a new list defining each group member
         memberCount += 1
 
-# ---------------------------   prevent avg of e,n,g   --------------------------------
-
-for grp in xrange(len(groups)):
-  if len(groups[grp]) > 2:                                                                                   # more than one member in group? (avgLoc + 2+ entries?)
-    groups[grp][0][:3] = ['n/a','n/a','n/a']                                                                 # no avg value for elem, ip, or grain meaningful
-  
 # ---------------------------   sort groups   --------------------------------
 
 where = {
@@ -855,12 +845,12 @@ where = {
     }
 
 sortProperties = []
-for item in options.sort:
-  if item not in options.separation:
+for item in options.separation:
+  if item not in options.sort:
     sortProperties.append(item)
 
 theKeys = []
-for criterium in options.separation+sortProperties:
+for criterium in options.sort+sortProperties:
   if criterium in where:
     theKeys.append('x[0][%i]'%where[criterium])
 
@@ -916,20 +906,22 @@ for incCount,increment in enumerate(increments):
       if member%1000 == 0:
         time_delta = ((len(increments)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
         bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i...'%(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increment))
+
       newby = []                                                                   # current member's data
+
       if options.elementalScalar:
         for label in options.elementalScalar:
           if assembleHeader: 
             header += [label.replace(' ','')]
           newby.append({'label':label,
                         'len':1,
-                        'content':[ p.element_scalar(e,stat['IndexOfLabel'][label])[n_local].value ]})
+                        'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local].value ]})
 
       if options.elementalTensor:
         for label in options.elementalTensor:
           if assembleHeader: 
             header += heading('.',[[label.replace(' ',''),component] for component in ['intensity','t11','t22','t33','t12','t23','t13']])
-          myTensor = p.element_tensor(e,stat['IndexOfLabel'][label])[n_local]
+          myTensor = p.element_tensor(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local]
           newby.append({'label':label,
                         'len':length,
                         'content':[ myTensor.intensity, 
@@ -956,12 +948,13 @@ for incCount,increment in enumerate(increments):
           if assembleHeader: header += thisHead
           newby.append({'label':label,
                         'len':length,
-                        'content':[ p.element_scalar(e,stat['IndexOfLabel'][head])[n_local].value 
+                        'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][head])[n_local].value 
                                     for head in thisHead ]})
 
       assembleHeader = False
 
-      if N == 0: mappedResult = [0.0]*len(header)
+      if N == 0:
+        mappedResult = [float(x) for x in xrange(len(header))]
 
       pos = 0
       for chunk in newby:
