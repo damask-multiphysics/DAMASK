@@ -1168,7 +1168,7 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 integer(pInt) myInstance,myStructure,ns,nt,s,t,i
 real(pReal) sumf,sfe
 real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-            fOverStacksize, volumefraction_pertwinsystem
+             volumefraction_pertwinsystem
  
 !* Shortened notation
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
@@ -1292,14 +1292,14 @@ real(pReal), dimension(9,9), intent(out) :: dLp_dTstar
 !* Local variables
 integer(pInt) myInstance,myStructure,ns,nt,f,i,j,k,l,m,n,index_myFamily
 real(pReal) sumf,StressRatio_edge_p,minusStressRatio_edge_p,StressRatio_edge_pminus1,StressRatio_screw_p, &
-        StressRatio_screw_pminus1, StressRatio_r,BoltzmannRatioedge,DotGamma0, minusStressRatio_screw_p,gdotTotal, &
+        StressRatio_screw_pminus1, BoltzmannRatioedge, minusStressRatio_screw_p, &
         screwvelocity_prefactor,twinStressRatio_p,twinminusStressRatio_p,twinStressRatio_pminus1, &
-   twinStressRatio_r, twinDotGamma0,BoltzmannRatioscrew,BoltzmannRatiotwin,bottomstress_edge,bottomstress_screw
+        twinDotGamma0,BoltzmannRatioscrew,BoltzmannRatiotwin,bottomstress_edge,bottomstress_screw
 real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
 real(pReal), dimension(constitutive_titanmod_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
    gdot_slip,dgdot_dtauslip,tau_slip, edge_velocity, screw_velocity,gdot_slip_edge,gdot_slip_screw
 real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-   gdot_twin,dgdot_dtautwin,tau_twin, twinedge_velocity, twinscrew_velocity,volumefraction_pertwinsystem
+   gdot_twin,dgdot_dtautwin,tau_twin, volumefraction_pertwinsystem
 
 !* Shortened notation
 myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
@@ -1597,17 +1597,15 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal), dimension(constitutive_titanmod_sizeDotState(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
 constitutive_titanmod_dotState
 !* Local variables
-integer(pInt) MyInstance,MyStructure,ns,nt,f,i,j,k,index_myFamily,s,t
-real(pReal) sumf,StressRatio_edge_p,minusStressRatio_edge_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,&
-            EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,StressRatio_screw_p,minusStressRatio_screw_p, &
-            twinStressRatio_p,twinminusStressRatio_p,twinStressRatio_pminus1, &
-            twinDotGamma0
+integer(pInt) MyInstance,MyStructure,ns,nt,f,i,j,index_myFamily
+real(pReal) sumf,BoltzmannRatio,&
+            twinStressRatio_p,twinminusStressRatio_p
 real(pReal), dimension(constitutive_titanmod_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-gdot_slip,tau_slip,DotRhoEdgeGeneration,EdgeDipDistance,DotRhoEdgeAnnihilation,DotRhoScrewAnnihilation,&
-ClimbVelocity,DotRhoScrewGeneration, edge_velocity,screw_velocity
+DotRhoEdgeGeneration,DotRhoEdgeAnnihilation,DotRhoScrewAnnihilation,&
+DotRhoScrewGeneration
 real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: gdot_twin, &
-tau_twin,twinedge_segment,twinscrew_segment,twinedge_velocity,twinscrew_velocity,TwinDotRhoEdgeGeneration, &
-TwinDotRhoEdgeAnnihilation,TwinDotRhoScrewGeneration,TwinDotRhoScrewAnnihilation,volumefraction_pertwinsystem
+tau_twin, &
+volumefraction_pertwinsystem
    
 !* Shortened notation
 myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
@@ -1773,7 +1771,7 @@ integer(pInt), intent(in) :: g,ip,el
 real(pReal), intent(in) :: dt,Temperature
 real(pReal), dimension(6), intent(in) :: Tstar_v
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
-integer(pInt) myInstance,myStructure,ns,nt,f,o,i,c,j,index_myFamily
+integer(pInt) myInstance,myStructure,ns,nt,o,i,c
 real(pReal) sumf
 real(pReal), dimension(constitutive_titanmod_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
 constitutive_titanmod_postResults

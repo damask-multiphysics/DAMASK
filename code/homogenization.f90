@@ -87,7 +87,7 @@ implicit none
 
 real(pReal) Temperature
 integer(pInt), parameter :: fileunit = 200
-integer(pInt) e,i,g,p,myInstance,j
+integer(pInt) e,i,p,myInstance
 integer(pInt), dimension(:,:), pointer :: thisSize
 character(len=64), dimension(:,:), pointer :: thisOutput
 logical knownHomogenization
@@ -303,7 +303,6 @@ subroutine materialpoint_stressAndItsTangent(&
  logical,     intent(in) :: updateJaco
  integer(pInt) NiterationHomog,NiterationMPstate
  integer(pInt) g,i,e,myNgrains
- logical error
 
 ! ------ initialize to starting condition ------
 

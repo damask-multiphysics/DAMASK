@@ -146,7 +146,6 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3,3) :: R,R2
  real(pReal), dimension(3) ::   Eulers
  real(pReal), dimension(4) ::   q,q2,axisangle
- real(pReal), dimension(2) ::   rnd
  integer(pInt), dimension(1) :: randInit
  
  
@@ -487,7 +486,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  integer(pInt)  i,j
  real(pReal), dimension(3,3,3,3), intent(in) ::  A
  real(pReal), dimension(3,3), intent(in) ::  B
- real(pReal), dimension(3,3) :: C,math_mul3333xx33
+ real(pReal), dimension(3,3) :: math_mul3333xx33
 
  do i = 1,3
    do j = 1,3
@@ -1598,7 +1597,6 @@ pure function math_transpose3x3(A)
 
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3,3) :: math_QuaternionToR, T,S
- real(pReal) w2
  integer(pInt) i, j
  
  forall (i = 1:3, j = 1:3) &

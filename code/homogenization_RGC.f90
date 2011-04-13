@@ -74,7 +74,7 @@ subroutine homogenization_RGC_init(&
  integer(pInt), intent(in) :: file
  integer(pInt), parameter  :: maxNchunks = 4
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k,l,e, output, mySize, myInstance
+ integer(pInt) section, maxNinstance, i,j,e, output, mySize, myInstance
  character(len=64) tag
  character(len=1024) line
 
@@ -364,11 +364,11 @@ function homogenization_RGC_updateState(&
  integer(pInt), dimension (4) :: intFaceN,intFaceP,faceID
  integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P,stresLoc
  integer(pInt), dimension (2) :: residLoc
- integer(pInt) homID,i1,i2,i3,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ival,ipert,iGrain,nGrain
+ integer(pInt) homID,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ival,ipert,iGrain,nGrain
  real(pReal), dimension (3,3,homogenization_maxNgrains) :: R,pF,pR,D,pD
  real(pReal), dimension (3,homogenization_maxNgrains)   :: NN,pNN
  real(pReal), dimension (3)   :: normP,normN,mornP,mornN
- real(pReal) residMax,stresMax,constitutiveWork,penaltyEnergy,volDiscrep,penDiscrep
+ real(pReal) residMax,stresMax,constitutiveWork,penaltyEnergy,volDiscrep
  logical error,RGCdebug,RGCdebugJacobi,RGCcheck
 !
  integer(pInt), parameter :: nFace = 6
@@ -804,7 +804,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
  real(pReal), dimension (9,9) :: dPdF99
  integer(pInt), intent(in) :: ip,el
 !
- logical homogenization_RGC_stateUpdate,RGCdebug
+ logical RGCdebug
  integer(pInt) homID, i, j, Ngrains, iGrain
 
  RGCdebug = .false. !(ip == 1 .and. el == 1)
@@ -853,7 +853,7 @@ function homogenization_RGC_averageTemperature(&
  real(pReal), dimension (homogenization_maxNgrains), intent(in) :: Temperature
  integer(pInt), intent(in) :: ip,el
  real(pReal) homogenization_RGC_averageTemperature
- integer(pInt) homID, i, Ngrains
+ integer(pInt) homID, Ngrains
 
 !* Computing the average temperature
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
@@ -950,11 +950,11 @@ subroutine homogenization_RGC_stressPenalty(&
  integer(pInt), intent(in)    :: ip,el
  integer(pInt), dimension (4) :: intFace
  integer(pInt), dimension (3) :: iGrain3,iGNghb3,nGDim
- real(pReal), dimension (3,3) :: gDef,nDef,avgC
+ real(pReal), dimension (3,3) :: gDef,nDef
  real(pReal), dimension (3)   :: nVect,surfCorr
  real(pReal), dimension (2)   :: Gmoduli
- integer(pInt) homID,iGrain,iGNghb,iFace,i,j,k,l,m
- real(pReal) muGrain,muGNghb,nDefNorm,xiAlpha,ciAlpha,bgGrain,bgGNghb,detF
+ integer(pInt) homID,iGrain,iGNghb,iFace,i,j,k,l
+ real(pReal) muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
 ! 
  integer(pInt), parameter :: nFace = 6
  real(pReal), parameter   :: nDefToler = 1.0e-10
@@ -1084,7 +1084,7 @@ subroutine homogenization_RGC_volumePenalty(&
  real(pReal), dimension (3,3), intent(in)  :: fAvg
  integer(pInt), intent(in)                 :: ip,el
  real(pReal), dimension (homogenization_maxNgrains) :: gVol
- integer(pInt) homID,iGrain,nGrain,i,j
+ integer(pInt) homID,iGrain,nGrain
 ! 
  nGrain = homogenization_Ngrains(mesh_element(3,el))
 
@@ -1251,7 +1251,7 @@ function homogenization_RGC_interfaceNormal(&
  real(pReal), dimension (3)               :: homogenization_RGC_interfaceNormal
  integer(pInt), dimension (4), intent(in) :: intFace
  integer(pInt), intent(in)                :: ip,el
- integer(pInt) nPos,i
+ integer(pInt) nPos
 
 !* Get the normal of the interface, identified from the value of intFace(1)
  homogenization_RGC_interfaceNormal = 0.0_pReal
@@ -1371,7 +1371,7 @@ function homogenization_RGC_interface4to1(&
  integer(pInt), dimension (4), intent(in) :: iFace4D
  integer(pInt)                :: homogenization_RGC_interface4to1
  integer(pInt), dimension (3) :: nGDim,nIntFace
- integer(pInt) homID,dir
+ integer(pInt) homID
 
  nGDim = homogenization_RGC_Ngrains(:,homID)
 !* Compute the total number of interfaces, which ...

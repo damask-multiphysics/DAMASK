@@ -69,7 +69,7 @@ subroutine homogenization_isostrain_init(&
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 2
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k,l, output, mySize
+ integer(pInt) section, maxNinstance, i,j, output, mySize
  character(len=64) tag
  character(len=1024) line
  
@@ -190,7 +190,7 @@ subroutine homogenization_isostrain_partitionDeformation(&
  real(pReal), dimension (3,3), intent(in) :: avgF
  type(p_vec), intent(in) :: state
  integer(pInt), intent(in) :: ip,el
- integer(pInt) homID, i
+ integer(pInt) i
  
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  forall (i = 1:homogenization_Ngrains(mesh_element(3,el))) &
@@ -259,8 +259,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(&
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in) :: P
  real(pReal), dimension (3,3,3,3,homogenization_maxNgrains), intent(in) :: dPdF
  integer(pInt), intent(in) :: ip,el
- logical homogenization_isostrain_stateUpdate
- integer(pInt) homID, i, Ngrains
+ integer(pInt) Ngrains
 
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
@@ -290,7 +289,7 @@ function homogenization_isostrain_averageTemperature(&
  real(pReal), dimension (homogenization_maxNgrains), intent(in) :: Temperature
  integer(pInt), intent(in) :: ip,el
  real(pReal) homogenization_isostrain_averageTemperature
- integer(pInt) homID, i, Ngrains
+ integer(pInt) Ngrains
 
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  Ngrains = homogenization_Ngrains(mesh_element(3,el))

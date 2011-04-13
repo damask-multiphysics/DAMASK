@@ -712,7 +712,7 @@ subroutine lattice_init()
  implicit none
  
  integer(pInt), parameter :: fileunit = 200
- integer(pInt) i,Nsections
+ integer(pInt) Nsections
 
  !$OMP CRITICAL (write2out)
    write(6,*)

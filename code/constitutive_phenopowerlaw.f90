@@ -165,9 +165,9 @@ subroutine constitutive_phenopowerlaw_init(file)
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 21
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k,l,m, f,o, output, &
+ integer(pInt) section, maxNinstance, i,j,k, f,o, output, &
                mySize, myStructure, index_myFamily, index_otherFamily
- character(len=64) tag,formatting
+ character(len=64) tag
  character(len=1024) line
 
  !$OMP CRITICAL (write2out)
@@ -753,7 +753,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 
 !* Definition of variables
  integer(pInt) ipc,ip,el
- integer(pInt) matID,nSlip,nTwin,f,i,j,k, structID,index_Gamma,index_F,index_myFamily 
+ integer(pInt) matID,nSlip,nTwin,f,i,j, structID,index_Gamma,index_F,index_myFamily 
  real(pReal) Temperature,c_slipslip,c_sliptwin,c_twinslip,c_twintwin, ssat_offset
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  real(pReal), dimension(6) :: Tstar_v

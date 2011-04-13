@@ -91,7 +91,7 @@ subroutine constitutive_j2_init(file)
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 7
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k,l, output, mySize
+ integer(pInt) section, maxNinstance, i,j,k, output, mySize
  character(len=64) tag
  character(len=1024) line
 

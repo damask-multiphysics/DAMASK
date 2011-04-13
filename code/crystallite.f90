@@ -157,18 +157,14 @@ integer(pInt)               g, &                          ! grain number
                             eMax, &                       ! maximum number of elements
                             nMax, &                       ! maximum number of ip neighbors
                             myNgrains, &                  ! number of grains in current IP
-                            myCrystallite, &              ! crystallite of current elem
                             section, &
-                            f, &
                             j, &
-                            k, &
                             p, &
                             output, &
                             mySize, &
                             myStructure, &                ! lattice structure 
                             myPhase, &
-                            myMat, &
-                            index_myFamily
+                            myMat
 character(len=64)           tag
 character(len=1024)         line
 
@@ -492,13 +488,11 @@ logical, intent(in) ::                                updateJaco                
 !*** output variables ***!
 
 !*** local variables ***!
-real(pReal)                                           myTemperature, &              ! local copy of the temperature
-                                                      myPert, &                     ! perturbation with correct sign
+real(pReal)                                           myPert, &                     ! perturbation with correct sign
                                                       formerSubStep
 real(pReal), dimension(3,3) ::                        invFp, &                      ! inverse of the plastic deformation gradient
                                                       Fe_guess, &                   ! guess for elastic deformation gradient
                                                       Tstar                         ! 2nd Piola-Kirchhoff stress tensor
-real(pReal), dimension(9,9) ::                        dPdF99
 real(pReal), dimension(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                       dPdF_perturbation1, &
                                                       dPdF_perturbation2
@@ -1156,7 +1150,6 @@ integer(pInt), optional, intent(in)::         ee, &                     ! elemen
 integer(pInt)                                 e, &                      ! element index in element loop
                                               i, &                      ! integration point index in ip loop
                                               g, &                      ! grain index in grain loop
-                                              j, &
                                               n, &                      ! stage index in integration stage loop
                                               mySizeDotState, &         ! size of dot State
                                               s                         ! state index
@@ -1635,8 +1628,6 @@ integer(pInt), optional, intent(in)::         ee, &                     ! elemen
 integer(pInt)                                 e, &                      ! element index in element loop
                                               i, &                      ! integration point index in ip loop
                                               g, &                      ! grain index in grain loop
-                                              j, &
-                                              n, &                      ! stage index in integration stage loop
                                               mySizeDotState, &         ! size of dot State
                                               s                         ! state index
 integer(pInt), dimension(2) ::                eIter                     ! bounds for element iteration
@@ -1913,7 +1904,6 @@ integer(pInt), optional, intent(in)::         ee, &                     ! elemen
 integer(pInt)                                 e, &                      ! element index in element loop
                                               i, &                      ! integration point index in ip loop
                                               g, &                      ! grain index in grain loop
-                                              n, &
                                               mySizeDotState
 integer(pInt), dimension(2) ::                eIter                     ! bounds for element iteration
 integer(pInt), dimension(2,mesh_NcpElems) ::  iIter, &                  ! bounds for ip iteration
@@ -3051,8 +3041,7 @@ function crystallite_postResults(&
  
  !*** local variables ***!
  real(pReal), dimension(3,3) ::       Ee
- integer(pInt)                        k,l,o,c,crystID,mySize
- logical                              error
+ integer(pInt)                        o,c,crystID,mySize
 
  crystID = microstructure_crystallite(mesh_element(4,e))
 

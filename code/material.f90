@@ -341,7 +341,6 @@ subroutine material_parseCrystallite(file,myPart)
  character(len=*), intent(in) :: myPart
  integer(pInt), intent(in) :: file
  integer(pInt) Nsections, section
- character(len=64) tag
  character(len=1024) line
  
  Nsections = IO_countSections(file,myPart)

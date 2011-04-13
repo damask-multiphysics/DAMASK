@@ -703,9 +703,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(myInstance)) :: &
                               rhoSglScrewPosUsed, &           ! used positive screw dislocation density
                               rhoSglScrewNegUsed, &           ! used negative screw dislocation density
                               rhoDipEdge, &                   ! edge dipole dislocation density
-                              rhoDipScrew, &                  ! screw dipole dislocation density
-                              rhoForest, &                    ! forest dislocation density
-                              tauSlipThreshold                ! threshold shear stress for slip
+                              rhoDipScrew                     ! screw dipole dislocation density
 integer(pInt)                 ns, &                           ! short notation for total number of active slip systems 
                               f, &                            ! index of lattice family
                               from, &
@@ -918,8 +916,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                 rhoDip                        ! dipole dislocation density (edge, screw)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                 rhoForest, &                  ! forest dislocation density
-                                tauThreshold, &               ! threshold shear stress
-                                tau                           ! resolved shear stress
+                                tauThreshold                  ! threshold shear stress
 
 phase = material_phase(g,ip,el)
 instance = phase_constitutionInstance(phase)
@@ -1200,7 +1197,6 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
 integer(pInt)                               myInstance, &               ! current instance of this constitution
                                             myStructure, &              ! current lattice structure
                                             ns, &                       ! short notation for the total number of active slip systems
-                                            t, &                        ! dislocation type
                                             s                           ! index of my current slip system
 real(pReal), dimension(6) ::                Tdislocation_v              ! dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
@@ -1500,14 +1496,12 @@ integer(pInt)                               myInstance, &             ! current 
                                             t, &                      ! type of dislocation
                                             topp, &                   ! type of dislocation with opposite sign to t
                                             s, &                      ! index of my current slip system
-                                            sLattice, &               ! index of my current slip system according to lattice order
-                                            i
+                                            sLattice                  ! index of my current slip system according to lattice order
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),10) :: &
                                             rhoDot, &                     ! density evolution
                                             rhoDotRemobilization, &       ! density evolution by remobilization
                                             rhoDotMultiplication, &       ! density evolution by multiplication
                                             rhoDotFlux, &                 ! density evolution by flux
-                                            neighboring_rhoDotFlux, &     ! density evolution by flux at neighbor
                                             rhoDotSingle2DipoleGlide, &   ! density evolution by dipole formation (by glide)
                                             rhoDotAthermalAnnihilation, & ! density evolution by athermal annihilation
                                             rhoDotThermalAnnihilation     ! density evolution by thermal annihilation
@@ -1521,7 +1515,6 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                             rhoForest, &                  ! forest dislocation density
                                             tauThreshold, &               ! threshold shear stress
                                             tau, &                        ! current resolved shear stress
-                                            invLambda, &                  ! inverse of mean free path for dislocations
                                             vClimb                        ! climb velocity of edge dipoles
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),2) :: &
                                             rhoDip, &                     ! current dipole dislocation densities (screw and edge dipoles)
@@ -1542,8 +1535,7 @@ real(pReal), dimension(3) ::                normal_neighbor2me, &         ! inte
 real(pReal)                                 area, &                       ! area of the current interface
                                             transmissivity, &             ! overall transmissivity of dislocation flux to neighboring material point
                                             lineLength, &                 ! dislocation line length leaving the current interface
-                                            D, &                          ! self diffusion
-                                            correction
+                                            D                             ! self diffusion
 logical                                     considerEnteringFlux, &
                                             considerLeavingFlux
 

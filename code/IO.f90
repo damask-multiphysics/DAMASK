@@ -75,7 +75,6 @@ recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess
  character(len=300) line,fname
  integer(pInt), intent(in) :: unit1, unit2
  logical createSuccess,fexist
- integer(pInt) i
  
  do
    read(unit2,'(A300)',END=220) line

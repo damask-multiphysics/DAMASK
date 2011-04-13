@@ -1935,7 +1935,7 @@ endsubroutine
  character(len=300) line
 
  integer(pInt) unit,i,count
- logical inPart,materialFound
+ logical inPart
  character(len=64) elemSetName,materialName
  
  allocate (mesh_nameMaterial(mesh_Nmaterials)) ; mesh_nameMaterial = ''
@@ -2962,7 +2962,7 @@ integer(pInt)                   myElem, &               ! my CP element index
                                 dir, &                  ! direction of periodicity
                                 matchingElem, &         ! CP elem number of matching element
                                 matchingFace, &         ! face ID of matching element
-                                k, a, anchor
+                                a, anchor
 integer(pInt), dimension(FE_maxmaxNnodesAtIP) :: &
                                 linkedNodes, &
                                 matchingNodes
