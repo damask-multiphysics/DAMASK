@@ -2936,7 +2936,7 @@ logical error
           orientation = math_RtoQuaternion(transpose(R))
         endif
         crystallite_rotation(1:4,g,i,e) = math_QuaternionDisorientation(math_qConj(orientation), &
-                                                                        math_qConj(orientation), &
+                                                                        math_qConj(crystallite_orientation0(1:4,g,i,e)), &
                                                                         0_pInt )                          ! we don't want symmetry here  
         crystallite_orientation(1:4,g,i,e) = orientation
       enddo
