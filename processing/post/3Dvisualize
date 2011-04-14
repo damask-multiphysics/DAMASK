@@ -115,7 +115,7 @@ def vtk_writeASCII_mesh(mesh,data,res):
   
   cmds = [\
           '# vtk DataFile Version 3.1',
-          'powered by 3Dvisualize',
+          'powered by $Id$',
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
           'POINTS %i float'%N1,
@@ -124,19 +124,19 @@ def vtk_writeASCII_mesh(mesh,data,res):
           ]
 
 # cells
-  for i in range (res[2]):
-    for j in range (res[1]):
-      for k in range (res[0]):
-        base = i*(res[1]+1)*(res[2]+1)+j*(res[1]+1)+k
+  for z in range (res[2]):
+    for y in range (res[1]):
+      for x in range (res[0]):
+        base = z*(res[1]+1)*(res[0]+1)+y*(res[0]+1)+x
         cmds.append('8 '+'\t'.join(map(str,[ \
                                             base,
                                             base+1,
-                                            base+res[1]+2,
-                                            base+res[1]+1,
-                                            base+(res[1]+1)*(res[2]+1),
-                                            base+(res[1]+1)*(res[2]+1)+1,
-                                            base+(res[1]+1)*(res[2]+1)+res[1]+2,
-                                            base+(res[1]+1)*(res[2]+1)+res[1]+1,
+                                            base+res[0]+2,
+                                            base+res[0]+1,
+                                            base+(res[1]+1)*(res[0]+1),
+                                            base+(res[1]+1)*(res[0]+1)+1,
+                                            base+(res[1]+1)*(res[0]+1)+res[0]+2,
+                                            base+(res[1]+1)*(res[0]+1)+res[0]+1,
                                           ])))
   cmds += [\
            'CELL_TYPES %i'%N,
@@ -177,24 +177,26 @@ def gmsh_writeASCII_mesh(mesh,data,res):
           '%i'%N,
           ]
 
+# cells
   n_elem = 0
-  for i in range (res[2]):
-    for j in range (res[1]):
-      for k in range (res[0]):
-        base = i*(res[1]+1)*(res[2]+1)+j*(res[1]+1)+k
+  for z in range (res[2]):
+    for y in range (res[1]):
+      for x in range (res[0]):
+        base = z*(res[1]+1)*(res[0]+1)+y*(res[0]+1)+x
         n_elem +=1
         cmds.append('\t'.join(map(str,[ \
                                             n_elem,
                                             '5',
                                             base,
                                             base+1,
-                                            base+res[1]+2,
-                                            base+res[1]+1,
-                                            base+(res[1]+1)*(res[2]+1),
-                                            base+(res[1]+1)*(res[2]+1)+1,
-                                            base+(res[1]+1)*(res[2]+1)+res[1]+2,
-                                            base+(res[1]+1)*(res[2]+1)+res[1]+1,
+                                            base+res[0]+2,
+                                            base+res[0]+1,
+                                            base+(res[1]+1)*(res[0]+1),
+                                            base+(res[1]+1)*(res[0]+1)+1,
+                                            base+(res[1]+1)*(res[0]+1)+res[0]+2,
+                                            base+(res[1]+1)*(res[0]+1)+res[0]+1,
                                           ])))
+
   cmds += [\
            'ElementData',
            '1',
@@ -228,7 +230,7 @@ def vtk_writeASCII_points(coordinates,data,res):
   
   cmds = [\
           '# vtk DataFile Version 3.1',
-          'powered by 3Dvisualize',
+          'powered by $Id$',
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
           'POINTS %i float'%N,
@@ -267,7 +269,7 @@ def vtk_writeASCII_box(diag,defgrad):
 
   cmds = [\
     '# vtk DataFile Version 3.1',
-    'powered by 3Dvisualize',
+    'powered by $Id$',
     'ASCII',
     'DATASET UNSTRUCTURED_GRID',
     'POINTS 8 float',
@@ -285,7 +287,7 @@ def vtk_writeASCII_box(diag,defgrad):
 # ----------------------- MAIN -------------------------------
 
 parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile', description = """
-Produce VTK file from data field.
+Produce VTK file from data field. Coordinates are taken from (consecutive) ip.x, ip.y, and ip.z columns.
 
 $Id$
 """)
@@ -361,33 +363,37 @@ for filename in args:
         maxcol = max(maxcol,col+1)
         break
 
-  
-  values = numpy.array([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],'d')
+  values = numpy.array(sorted([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],
+                              key=lambda x:(x[ipcol+0],x[ipcol+1],x[ipcol+2])),             # sort with z as fastest and x as slowest index
+                       'd')       
+
   N = len(values)
   grid = [{},{},{}]
-  for i in range(N):
-    grid[0][str(values[i,ipcol+0])] = True
-    grid[1][str(values[i,ipcol+1])] = True
-    grid[2][str(values[i,ipcol+2])] = True
+  for j in range(3):
+    for i in range(N):
+     grid[j][str(values[i,ipcol+j])] = True
 
   res = numpy.array([len(grid[0]),\
                      len(grid[1]),\
                      len(grid[2]),],'i')
   dim = numpy.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
                      max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
-                     max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),]*res/(res-numpy.ones(3)), 'd')
+                     max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),]*res/(res-numpy.ones(3)), 'd')
 
   print 'resolution',res
   print 'dimension',dim
   defgrad_av = postprocessingMath.tensor_avg(res[0],res[1],res[2],\
-                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
-                              column['tensor'][options.defgrad]+9],
-                                                   (res[0],res[1],res[2],3,3)))
+                                             numpy.reshape(values[:,column['tensor'][options.defgrad]:
+                                                                    column['tensor'][options.defgrad]+9],
+                                             (res[0],res[1],res[2],3,3)))
+  print 'avg F\n',defgrad_av
   centroids = postprocessingMath.deformed_fft(res[0],res[1],res[2],dim,\
-                                     numpy.reshape(values[:,column['tensor'][options.defgrad]:
-                                                            column['tensor'][options.defgrad]+9],
-                                                   (res[0],res[1],res[2],3,3)),defgrad_av,1.0)
+                                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
+                                                                     column['tensor'][options.defgrad]+9],
+                                                            (res[0],res[1],res[2],3,3)),defgrad_av,1.0)
+  print 'centroids\n',centroids
   ms = postprocessingMath.mesh(res[0],res[1],res[2],dim,defgrad_av,centroids)
+  print 'mesh\n',ms
 
   fields = {\
              'tensors': {},\

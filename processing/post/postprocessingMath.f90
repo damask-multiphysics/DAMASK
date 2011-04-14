@@ -274,6 +274,7 @@ end function math_mul33x33
 subroutine mesh(res_x,res_y,res_z,geomdim,defgrad_av,centroids,nodes)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
  implicit none
+ 
  real*8 geomdim(3)
  integer res_x, res_y, res_z
  real*8 wrappedCentroids(res_x+2,res_y+2,res_z+2,3)
@@ -281,14 +282,14 @@ subroutine mesh(res_x,res_y,res_z,geomdim,defgrad_av,centroids,nodes)
  real*8        centroids(res_x  ,res_y  ,res_z  ,3)
 
  integer, dimension(3,8) :: neighbor = reshape((/ &
-                                     0, 0, 0,&
-                                     1, 0, 0,&
-                                     1, 1, 0,&
-                                     0, 1, 0,&
-                                     0, 0, 1,&
-                                     1, 0, 1,&
-                                     1, 1, 1,&
-                                     0, 1, 1 &
+                                     0, 0, 0, &
+                                     1, 0, 0, &
+                                     1, 1, 0, &
+                                     0, 1, 0, &
+                                     0, 0, 1, &
+                                     1, 0, 1, &
+                                     1, 1, 1, &
+                                     0, 1, 1  &
                                     /), &
                                     (/3,8/))
  
@@ -296,33 +297,36 @@ subroutine mesh(res_x,res_y,res_z,geomdim,defgrad_av,centroids,nodes)
  real*8, dimension(3,3) :: defgrad_av
  integer, dimension(3) :: diag, shift, lookup, me, res
  
+ nodes = 0.0
  diag = 1
  shift = 0
  lookup = 0
  
  res = (/res_x,res_y,res_z/)
  
- wrappedCentroids=0.0
+ wrappedCentroids = 0.0
  wrappedCentroids(2:res_x+1,2:res_y+1,2:res_z+1,:) = centroids
 
- do k=0, res_z+1
-   do j=0, res_y+1
-    do i=0, res_x+1
-       if (k==0 .or. k==res_z+1 .or. &
-           j==0 .or. j==res_y+1 .or. &
-           i==0 .or. i==res_x+1      ) then
-         me = (/i,j,k/)
+ do k = 0,res_z+1
+   do j = 0,res_y+1
+     do i = 0,res_x+1
+       if (k==0 .or. k==res_z+1 .or. &                               ! z skin
+           j==0 .or. j==res_y+1 .or. &                               ! y skin
+           i==0 .or. i==res_x+1      ) then                          ! x skin
+         me = (/i,j,k/)                                              ! me on skin
          shift = sign(abs(res+diag-2*me)/(res+diag),res+diag-2*me)
          lookup = me-diag+shift*res
-         wrappedCentroids(i+1,j+1,k+1,:) = centroids(lookup(1)+1,lookup(2)+1,lookup(3)+1,:)- &
-                                       matmul(defgrad_av, shift*geomdim)
+         wrappedCentroids(i+1,j+1,k+1,:) = centroids(lookup(1)+1,lookup(2)+1,lookup(3)+1,:) - &
+                                           matmul(defgrad_av, shift*geomdim)
        endif
  enddo; enddo; enddo
- do k=0, res_z
-   do j=0, res_y
-    do i=0, res_x
-       do n=1,8
-         nodes(i+1,j+1,k+1,:) = nodes(i+1,j+1,k+1,:) + wrappedCentroids(i+1+neighbor(n,1),j+1+neighbor(n,2),k+1+neighbor(n,3),:)
+ do k = 0,res_z
+   do j = 0,res_y
+     do i = 0,res_x
+       do n = 1,8
+         nodes(i+1,j+1,k+1,:) = nodes(i+1,j+1,k+1,:) + wrappedCentroids(i+1+neighbor(1,n), &
+                                                                        j+1+neighbor(2,n), &
+                                                                        k+1+neighbor(3,n), :)
  enddo; enddo; enddo; enddo
  nodes = nodes/8.0
   
