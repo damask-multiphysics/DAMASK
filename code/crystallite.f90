@@ -1977,19 +1977,20 @@ endif
                                                     + constitutive_dotState(g,i,e)%p(1:mySizeDotState) * crystallite_subdt(g,i,e)
       crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e) &
                                         + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
+#ifndef _OPENMP
+      if (debug_verbosity > 5 &
+          .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+        write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
+        write(6,*)
+        write(6,'(a,/,(12(x),12(e12.5,x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
+        write(6,*)
+        write(6,'(a,/,(12(x),12(e12.5,x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+        write(6,*)
+      endif
+#endif
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
-#ifndef _OPENMP
-if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-  write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
-  write(6,*)
-  write(6,'(a,/,(12(x),12(e12.5,x)))') '<< CRYST >> dotState', constitutive_dotState(debug_g,debug_i,debug_e)%p(1:mySizeDotState)
-  write(6,*)
-  write(6,'(a,/,(12(x),12(e12.5,x)))') '<< CRYST >> new state', constitutive_state(debug_g,debug_i,debug_e)%p(1:mySizeDotState)
-  write(6,*)
-endif
-#endif
 
   
 ! --- UPDATE DEPENDENT STATES ---
