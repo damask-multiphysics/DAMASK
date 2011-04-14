@@ -386,14 +386,11 @@ for filename in args:
                                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                     column['tensor'][options.defgrad]+9],
                                              (res[0],res[1],res[2],3,3)))
-  print 'avg F\n',defgrad_av
   centroids = postprocessingMath.deformed_fft(res[0],res[1],res[2],dim,\
                                               numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                      column['tensor'][options.defgrad]+9],
                                                             (res[0],res[1],res[2],3,3)),defgrad_av,1.0)
-  print 'centroids\n',centroids
   ms = postprocessingMath.mesh(res[0],res[1],res[2],dim,defgrad_av,centroids)
-  print 'mesh\n',ms
 
   fields = {\
              'tensors': {},\
