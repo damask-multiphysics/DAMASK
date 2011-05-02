@@ -552,6 +552,8 @@ parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
           help='split output per increment [%default]')
 parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
           help='range of increments to output (start, end, step) [all]')
+parser.add_option('--sloppy', action='store_true', dest='sloppy', \
+          help='do not pre-check validity of increment range')
 parser.add_option('-m','--map', dest='func', type='string', \
           help='data reduction mapping ["%default"] out of min, max, avg, sum or user-lambda')
 parser.add_option('-p','--type', dest='filetype', type='string', \
@@ -594,6 +596,7 @@ parser.add_option_group(group_general)
 parser.add_option_group(group_special)
 
 parser.set_defaults(info = False)
+parser.set_defaults(sloppy = False)
 parser.set_defaults(directory = 'postProc')
 parser.set_defaults(filetype = 'marc')
 parser.set_defaults(func = 'avg')
@@ -748,9 +751,12 @@ else:
   offset_inc = 0
 if options.range:
   options.range = list(options.range)
-  increments = range( max(0,options.range[0]),
-                      min(stat['NumberOfIncrements'],options.range[1]+1),
-                      options.range[2])
+  if options.sloppy:
+    increments = range(options.range[0],options.range[1]+1,options.range[2])
+  else:
+    increments = range( max(0,options.range[0]),
+                        min(stat['NumberOfIncrements'],options.range[1]+1),
+                        options.range[2])
 
 
 # ---------------------------   build group membership   --------------------------------
