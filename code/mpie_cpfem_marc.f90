@@ -392,12 +392,15 @@ subroutine plotv(&
     )
  use prec,  only: pReal,pInt
  use mesh,  only: mesh_FEasCP
- use homogenization, only: materialpoint_results
+ use IO,    only: IO_error
+ use homogenization, only: materialpoint_results,materialpoint_sizeResults
  implicit none
 
  real(pReal) s(*),etot(*),eplas(*),ecreep(*),sp(*)
  real(pReal) v, t(*)
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
+
+ if (jpltcd > materialpoint_sizeResults) IO_error(667,jpltcd)                  ! complain about out of bounds error
 
  v = materialpoint_results(jpltcd,nn,mesh_FEasCP('elem', m))
  return

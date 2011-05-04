@@ -1323,6 +1323,8 @@ endfunction
 
  case (666)
    msg = 'Memory leak detected'
+ case (667)
+   msg = 'Invalid materialpoint result requested'
 
  case (670)
    msg = 'math_check: quat -> axisAngle -> quat failed'
