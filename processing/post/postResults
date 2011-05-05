@@ -256,35 +256,44 @@ def ipCoords(elemType, nodalCoordinates):
 # -----------------------------
 
   nodeWeightsPerNode =  { 
-              7:  [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0], 
-                  [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0], 
-                  [ 3.0,  9.0, 27.0,  9.0,  1.0,  3.0,  9.0,  3.0], 
-                  [ 9.0,  3.0,  9.0, 27.0,  3.0,  1.0,  3.0,  9.0], 
-                  [ 9.0,  3.0,  1.0,  3.0, 27.0,  9.0,  3.0,  9.0], 
-                  [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0], 
-                  [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0], 
-                  [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ], 
+              7:    [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0], 
+                      [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0], 
+                      [ 3.0,  9.0, 27.0,  9.0,  1.0,  3.0,  9.0,  3.0], 
+                      [ 9.0,  3.0,  9.0, 27.0,  3.0,  1.0,  3.0,  9.0], 
+                      [ 9.0,  3.0,  1.0,  3.0, 27.0,  9.0,  3.0,  9.0], 
+                      [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0], 
+                      [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0], 
+                      [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ], 
+              57:   [ [27.0,  9.0,  3.0,  9.0,  9.0,  3.0,  1.0,  3.0], 
+                      [ 9.0, 27.0,  9.0,  3.0,  3.0,  9.0,  3.0,  1.0], 
+                      [ 3.0,  9.0, 27.0,  9.0,  1.0,  3.0,  9.0,  3.0], 
+                      [ 9.0,  3.0,  9.0, 27.0,  3.0,  1.0,  3.0,  9.0], 
+                      [ 9.0,  3.0,  1.0,  3.0, 27.0,  9.0,  3.0,  9.0], 
+                      [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0], 
+                      [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0], 
+                      [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ], 
               117:  [ [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                  [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0] ], 
+                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
+                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0] ], 
               125:  [ [ 3.0,  0.0,  0.0,  4.0,  1.0,  4.0],
-                  [ 0.0,  3.0,  0.0,  4.0,  4.0,  1.0],
-                  [ 0.0,  0.0,  3.0,  1.0,  4.0,  4.0],], 
+                      [ 0.0,  3.0,  0.0,  4.0,  4.0,  1.0],
+                      [ 0.0,  0.0,  3.0,  1.0,  4.0,  4.0],], 
               136:  [ [42.0, 15.0, 15.0, 14.0,  5.0,  5.0], 
-                  [15.0, 42.0, 15.0,  5.0, 14.0,  5.0], 
-                  [15.0, 15.0, 42.0,  5.0,  5.0, 14.0], 
-                  [14.0,  5.0,  5.0, 42.0, 15.0, 15.0], 
-                  [ 5.0, 14.0,  5.0, 15.0, 42.0, 15.0], 
-                  [ 5.0,  5.0, 14.0, 15.0, 15.0, 42.0] ], 
+                      [15.0, 42.0, 15.0,  5.0, 14.0,  5.0], 
+                      [15.0, 15.0, 42.0,  5.0,  5.0, 14.0], 
+                      [14.0,  5.0,  5.0, 42.0, 15.0, 15.0], 
+                      [ 5.0, 14.0,  5.0, 15.0, 42.0, 15.0], 
+                      [ 5.0,  5.0, 14.0, 15.0, 15.0, 42.0] ], 
             }
   
-  ipCoordinates = [[0.0,0.0,0.0] for i in range(len(nodalCoordinates))]
-  for ip in range(len(nodeWeightsPerNode[elemType])):
+  Nips = len(nodeWeightsPerNode[elemType])
+  ipCoordinates = [[0.0,0.0,0.0] for i in range(Nips)]
+  for ip in range(Nips):
     for node in range(len(nodeWeightsPerNode[elemType][ip])):
       for i in range(3):
         ipCoordinates[ip][i] += nodeWeightsPerNode[elemType][ip][node] * nodalCoordinates[node][i]
@@ -804,11 +813,15 @@ if options.nodalScalar:
     
 else:
   for e in xrange(stat['NumberOfElements']):
+    if p.element(e).type == 57:
+      myNodeIDs = p.element(e).items[:8]
+    else:
+      myNodeIDs = p.element(e).items
     if e%1000 == 0:
       bg.set_message('scan elem %i...'%e)
     myElemID = p.element_id(e)
-    myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z], map(p.node, map(p.node_sequence,p.element(e).items))))
-    for n,myNodeID in enumerate(p.element(e).items):
+    myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z], map(p.node, map(p.node_sequence,myNodeIDs))))
+    for n,myNodeID in enumerate(myNodeIDs):
       for g in range(('GrainCount' in stat['IndexOfLabel'] and int(p.element_scalar(e, stat['IndexOfLabel']['GrainCount'])[0].value))
                                   or 1):
         myGrainID = g + 1
@@ -929,7 +942,7 @@ for incCount,increment in enumerate(increments):
             header += heading('.',[[label.replace(' ',''),component] for component in ['intensity','t11','t22','t33','t12','t23','t13']])
           myTensor = p.element_tensor(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local]
           newby.append({'label':label,
-                        'len':length,
+                        'len':7,
                         'content':[ myTensor.intensity, 
                                     myTensor.t11, myTensor.t22, myTensor.t33,
                                     myTensor.t12, myTensor.t23, myTensor.t13,
