@@ -272,14 +272,7 @@ def ipCoords(elemType, nodalCoordinates):
                       [ 3.0,  9.0,  3.0,  1.0,  9.0, 27.0,  9.0,  3.0], 
                       [ 1.0,  3.0,  9.0,  3.0,  3.0,  9.0, 27.0,  9.0], 
                       [ 3.0,  1.0,  3.0,  9.0,  9.0,  3.0,  9.0, 27.0] ], 
-              117:  [ [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0],
-                      [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0] ], 
+              117:  [ [ 1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0] ], 
               125:  [ [ 3.0,  0.0,  0.0,  4.0,  1.0,  4.0],
                       [ 0.0,  3.0,  0.0,  4.0,  4.0,  1.0],
                       [ 0.0,  0.0,  3.0,  1.0,  4.0,  4.0],], 
@@ -305,6 +298,24 @@ def ipCoords(elemType, nodalCoordinates):
 
 
 # -----------------------------
+def ipIDs(elemType):
+# 
+# returns IP numbers for given element type
+# -----------------------------
+
+  ipPerNode =  { 
+              7:    [ 1, 2, 4, 3, 5, 6, 8, 7 ], 
+              57:   [ 1, 2, 4, 3, 5, 6, 8, 7 ], 
+              117:  [ 1 ],
+              125:  [ 1, 2, 3 ], 
+              136:  [ 1, 2, 3, 4, 5, 6 ], 
+            }
+  
+  return ipPerNode[elemType]
+
+
+
+# -----------------------------
 def substituteLocation(string, mesh, coords):
 # 
 # do variable interpolation in group and filter strings
@@ -312,7 +323,8 @@ def substituteLocation(string, mesh, coords):
   substitute = string
   substitute = substitute.replace('elem', str(mesh[0]))
   substitute = substitute.replace('node', str(mesh[1]))
-  substitute = substitute.replace('grain', str(mesh[2]))
+  substitute = substitute.replace('ip',   str(mesh[2]))
+  substitute = substitute.replace('grain', str(mesh[3]))
   substitute = substitute.replace('x', '%.6g'%coords[0])
   substitute = substitute.replace('y', '%.6g'%coords[1])
   substitute = substitute.replace('z', '%.6g'%coords[2])
@@ -543,7 +555,7 @@ Extract data from a .t16 (MSC.Marc) or .spectralOut results file.
 
 List of output variables is given by options '--ns','--es','--et','--ho','--cr','--co'. 
 
-Filter and separations use 'elem','node','grain', and 'x','y','z' as key words.
+Filter and separations use 'elem','node','ip','grain', and 'x','y','z' as key words.
 Example:
 1) get averaged results in slices perpendicular to x for all positive y coordinates
 --filter 'y >= 0.0' --separation x --map 'avg'
@@ -783,84 +795,88 @@ if options.nodalScalar:
     myNodeID = p.node_id(n)
     myNodeCoordinates = [p.node(n).x, p.node(n).y, p.node(n).z]
     myElemID = 0
+    myIpID = 0
     myGrainID = 0
     
     # --- filter valid locations
     
-    filter = substituteLocation(options.filter, [myElemID,myNodeID,myGrainID], myNodeCoordinates)      # generates an expression that is only true for the locations specified by options.filter
+    filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)    # generates an expression that is only true for the locations specified by options.filter
     if filter != '' and not eval(filter):                                                              # for all filter expressions that are not true:...
       continue                                                                                         # ... ignore this data point and continue with next
     
     # --- group data locations
     
-    grp = substituteLocation('#'.join(options.separation), [myElemID,myNodeID,myGrainID], myNodeCoordinates)    # generates a unique key for a group of separated data based on the separation criterium for the location
+    grp = substituteLocation('#'.join(options.separation), [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)    # generates a unique key for a group of separated data based on the separation criterium for the location
 
     if grp not in index:                                                                               # create a new group if not yet present
       index[grp] = groupCount
-      groups[groupCount] = [[0,0,0,0.0,0.0,0.0]]                                                       # initialize with avg location
+      groups[groupCount] = [[0,0,0,0,0.0,0.0,0.0]]                                                     # initialize with avg location
       groupCount += 1
 
-    groups[index[grp]][0][:3] = mapIncremental('','unique',
+    groups[index[grp]][0][:4] = mapIncremental('','unique',
                                                len(groups[index[grp]])-1,
-                                               groups[index[grp]][0][:3],
-                                               [myElemID,myNodeID,myGrainID])                              # keep only if unique average location
-    groups[index[grp]][0][3:] = mapIncremental('','avg',
+                                               groups[index[grp]][0][:4],
+                                               [myElemID,myNodeID,myIpID,myGrainID])                   # keep only if unique average location
+    groups[index[grp]][0][4:] = mapIncremental('','avg',
                                                len(groups[index[grp]])-1,
-                                               groups[index[grp]][0][3:],
-                                               myNodeCoordinates)                                          # incrementally update average location
-    groups[index[grp]].append([myElemID,myNodeID,myGrainID,0])                                     # append a new list defining each group member
+                                               groups[index[grp]][0][4:],
+                                               myNodeCoordinates)                                      # incrementally update average location
+    groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,0])                                  # append a new list defining each group member
     memberCount += 1
     
 else:
   for e in xrange(stat['NumberOfElements']):
-    if p.element(e).type == 57:
-      myNodeIDs = p.element(e).items[:8]
-    else:
-      myNodeIDs = p.element(e).items
     if e%1000 == 0:
       bg.set_message('scan elem %i...'%e)
     myElemID = p.element_id(e)
-    myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z], map(p.node, map(p.node_sequence,myNodeIDs))))
-    for n,myNodeID in enumerate(myNodeIDs):
+    myIpCoordinates = ipCoords(p.element(e).type, map(lambda node: [node.x, node.y, node.z], map(p.node, map(p.node_sequence, p.element(e).items))))
+    myIpIDs = ipIDs(p.element(e).type)
+    Nips = len(myIpIDs)
+    myNodeIDs = p.element(e).items[:Nips]
+    for n in range(Nips):
+      myIpID = myIpIDs[n]
+      myNodeID = myNodeIDs[n]
       for g in range(('GrainCount' in stat['IndexOfLabel'] and int(p.element_scalar(e, stat['IndexOfLabel']['GrainCount'])[0].value))
                                   or 1):
         myGrainID = g + 1
         
         # --- filter valid locations
         
-        filter = substituteLocation(options.filter, [myElemID,myNodeID,myGrainID], myIpCoordinates[n])      # generates an expression that is only true for the locations specified by options.filter
+        filter = substituteLocation(options.filter, [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) # generates an expression that is only true for the locations specified by options.filter
         if filter != '' and not eval(filter):                                                               # for all filter expressions that are not true:...
           continue                                                                                          # ... ignore this data point and continue with next
         
         # --- group data locations
         
-        grp = substituteLocation('#'.join(options.separation), [myElemID,myNodeID,myGrainID], myIpCoordinates[n])    # generates a unique key for a group of separated data based on the separation criterium for the location
+        grp = substituteLocation('#'.join(options.separation), [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) # generates a unique key for a group of separated data based on the separation criterium for the location
   
         if grp not in index:                                                                                # create a new group if not yet present
           index[grp] = groupCount
-          groups.append([[0,0,0,0.0,0.0,0.0]])                                                              # initialize with avg location
+          groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                            # initialize with avg location
           groupCount += 1
   
-        groups[index[grp]][0][:3] = mapIncremental('','unique',
+        groups[index[grp]][0][:4] = mapIncremental('','unique',
                                                    len(groups[index[grp]])-1,
-                                                   groups[index[grp]][0][:3],
-                                                   [myElemID,myNodeID,myGrainID])                           # keep only if unique average location
-        groups[index[grp]][0][3:] = mapIncremental('','avg',
+                                                   groups[index[grp]][0][:4],
+                                                   [myElemID,myNodeID,myIpID,myGrainID])                    # keep only if unique average location
+        groups[index[grp]][0][4:] = mapIncremental('','avg',
                                                    len(groups[index[grp]])-1,
-                                                   groups[index[grp]][0][3:],
-                                                   myIpCoordinates[n])                                       # incrementally update average location
-        groups[index[grp]].append([myElemID,myNodeID,myGrainID,n])                                           # append a new list defining each group member
+                                                   groups[index[grp]][0][4:],
+                                                   myIpCoordinates[n])                                      # incrementally update average location
+        groups[index[grp]].append([myElemID,myNodeID,myIpID,myGrainID,n])                                   # append a new list defining each group member
         memberCount += 1
+
 
 # ---------------------------   sort groups   --------------------------------
 
 where = {
-    'elem':  0,
-    'node':  1,
-    'grain': 2,
-    'x': 3,
-    'y': 4,
-    'z': 5,
+    'elem': 0,
+    'node': 1,
+    'ip': 2,
+    'grain': 3,
+    'x': 4,
+    'y': 5,
+    'z': 6,
     }
 
 sortProperties = []
@@ -884,7 +900,7 @@ header = []
 standard = ['inc'] + \
            {True: ['time'],
             False:[]}[options.time] + \
-           ['elem','node','grain'] + \
+           ['elem','node','ip','grain'] + \
            {True: ['node.x','node.y','node.z'],
             False:['ip.x','ip.y','ip.z']}[options.nodalScalar != []]
 
@@ -917,10 +933,10 @@ for incCount,increment in enumerate(increments):
 # ---------------------------   read and map data per group   --------------------------------
 
   member = 0
-  for i,group in enumerate(groups):
+  for group in groups:
 
     N = 0                                                                          # group member counter
-    for (e,n,g,n_local) in group[1:]:                                              # loop over group members
+    for (e,n,i,g,n_local) in group[1:]:                                            # loop over group members
       member += 1
       if member%1000 == 0:
         time_delta = ((len(increments)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
