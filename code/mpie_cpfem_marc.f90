@@ -1,7 +1,7 @@
-! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
+! Copyright 2011 Max-Planck-Institut f√ºr Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the D√ºsseldorf Advanced MAterial Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -400,7 +400,7 @@ subroutine plotv(&
  real(pReal) v, t(*)
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
 
- if (jpltcd > materialpoint_sizeResults) IO_error(667,jpltcd)                  ! complain about out of bounds error
+ if (jpltcd > materialpoint_sizeResults) call IO_error(667,jpltcd)                  ! complain about out of bounds error
 
  v = materialpoint_results(jpltcd,nn,mesh_FEasCP('elem', m))
  return
