@@ -40,10 +40,10 @@
 !             - make sure the file "material.config" exists in the working
 !               directory. For further configuration use "numerics.config"
 !********************************************************************
-program mpie_spectral
+program DAMASK_spectral
 !********************************************************************
 
- use mpie_interface
+ use DAMASK_interface
  use prec, only: pInt, pReal
  use IO
  use math
@@ -582,7 +582,7 @@ program mpie_spectral
  close(538)
  call sfftw_destroy_plan(plan_fft(1)); call sfftw_destroy_plan(plan_fft(2))
     
-end program mpie_spectral
+end program DAMASK_spectral
 
 !********************************************************************
 ! quit subroutine to satisfy IO_error

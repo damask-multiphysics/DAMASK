@@ -40,7 +40,7 @@
 #include "prec.f90"
 
 
-MODULE mpie_interface
+MODULE DAMASK_interface
 
 character(len=64), parameter :: FEsolver = 'Abaqus'
 character(len=4),  parameter :: InputFileExtension = '.inp'
@@ -49,7 +49,7 @@ character(len=4),  parameter :: LogFileExtension = '.log'
 CONTAINS
 
 !--------------------
-subroutine mpie_interface_init()
+subroutine DAMASK_interface_init()
 !--------------------
   write(6,*)
   write(6,*) '<<<+-  DAMASK_abaqus init  -+>>>'

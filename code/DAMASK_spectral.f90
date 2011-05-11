@@ -43,7 +43,7 @@
 program DAMASK_spectral
 !********************************************************************
 
- use spectral_interface
+ use DAMASK_interface
  use prec, only: pInt, pReal
  use IO
  use math

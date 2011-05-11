@@ -20,7 +20,7 @@
 !* $Id$
 !********************************************************************
 
-MODULE spectral_interface
+MODULE DAMASK_interface
  use prec, only: pInt, pReal
  character(len=64), parameter :: FEsolver = 'Spectral'
  character(len=5),  parameter :: InputFileExtension = '.geom'
@@ -32,10 +32,10 @@ CONTAINS
 ! initialize interface module
 !
 !********************************************************************
-subroutine spectral_interface_init()
+subroutine DAMASK_interface_init()
 
  write(6,*)
- write(6,*) '<<<+-  spectral_interface init  -+>>>'
+ write(6,*) '<<<+-  DAMASK_spectral init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
 

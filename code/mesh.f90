@@ -261,7 +261,7 @@
 !***********************************************************
  subroutine mesh_init (ip,element)
 
- use mpie_interface
+ use DAMASK_interface
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile,IO_abaqus_hasNoPart
  use FEsolving, only: parallelExecution, FEsolving_execElem, FEsolving_execIP, calcMode, lastMode

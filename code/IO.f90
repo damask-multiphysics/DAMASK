@@ -69,7 +69,7 @@ endsubroutine
 !********************************************************************
 recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
  use prec
- use mpie_interface
+ use DAMASK_interface
  implicit none
  
  character(len=300) line,fname
@@ -152,7 +152,7 @@ end function
  logical function IO_open_file(unit,relPath)
 
  use prec, only: pInt
- use mpie_interface
+ use DAMASK_interface
  implicit none
 
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
@@ -178,7 +178,7 @@ end function
  logical function IO_open_inputFile(unit)
 
  use prec, only: pReal, pInt
- use mpie_interface
+ use DAMASK_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
@@ -210,7 +210,7 @@ end function
  logical function IO_open_logFile(unit)
 
  use prec, only: pReal, pInt
- use mpie_interface
+ use DAMASK_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
@@ -233,7 +233,7 @@ end function
  logical function IO_open_jobFile(unit,newExt)
 
  use prec, only: pReal, pInt
- use mpie_interface
+ use DAMASK_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
@@ -257,7 +257,7 @@ end function
  logical function IO_write_jobBinaryFile(unit,newExt,recMultiplier)
 
  use prec, only: pReal, pInt
- use mpie_interface
+ use DAMASK_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
@@ -288,7 +288,7 @@ end function
  logical function IO_read_jobBinaryFile(unit,newExt,jobName,recMultiplier)
 
  use prec, only: pReal, pInt
- use mpie_interface
+ use DAMASK_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
@@ -974,7 +974,7 @@ endfunction
 !********************************************************************
  function IO_countContinousIntValues (unit)
 
- use mpie_interface
+ use DAMASK_interface
  use prec, only: pReal,pInt
  implicit none
 
@@ -1032,7 +1032,7 @@ endfunction
 !********************************************************************
  function IO_continousIntValues (unit,maxN,lookupName,lookupMap,lookupMaxN)
 
- use mpie_interface
+ use DAMASK_interface
  use prec, only: pReal,pInt
  implicit none
 

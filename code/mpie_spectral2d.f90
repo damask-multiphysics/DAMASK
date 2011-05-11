@@ -43,10 +43,10 @@
 !             - make sure the file "material.config" exists in the working
 !               directory
 !********************************************************************
-program mpie_spectral
+program DAMASK_spectral
 !********************************************************************
 
- use mpie_interface
+ use DAMASK_interface
  use prec, only: pInt, pReal
  use IO
  use math
@@ -54,7 +54,7 @@ program mpie_spectral
  use numerics, only: relevantStrain, rTol_crystalliteStress
 
  implicit none
- include 'fftw3.f' !header file for fftw3 (declaring variables). Library file is also needed
+ include 'include/fftw3.f' !header file for fftw3 (declaring variables). Library file is also needed
 
 ! variables to read from loadcase and mesh file
  real(pReal), dimension(9) ::                      valuevector           ! stores information temporarily from loadcase file
@@ -610,7 +610,7 @@ do i=1,3; do m = 1,3; do n = 1,3
   call dfftw_destroy_plan(plan_fft(i,m,n))
 enddo; enddo; enddo
 
-end program mpie_spectral
+end program DAMASK_spectral
 
 !********************************************************************
 ! quit subroutine to satisfy IO_error

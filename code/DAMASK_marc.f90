@@ -58,7 +58,7 @@
 #include "prec.f90"
 
 
-MODULE mpie_interface
+MODULE DAMASK_interface
 
 character(len=64), parameter :: FEsolver = 'Marc'
 character(len=4),  parameter :: InputFileExtension = '.dat'
@@ -66,12 +66,12 @@ character(len=4),  parameter :: LogFileExtension = '.log'
 
 CONTAINS
 
-subroutine mpie_interface_init()
+subroutine DAMASK_interface_init()
 
 
 !$OMP CRITICAL (write2out)
  write(6,*)
- write(6,*) '<<<+-  mpie_cpfem_marc init  -+>>>'
+ write(6,*) '<<<+-  DAMASK_marc init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
 !$OMP END CRITICAL (write2out)
