@@ -250,8 +250,8 @@ subroutine hypela2(&
 ! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
 ! Beware of changes in newer Marc versions
 
- include "concom%%MARCVERSION%%"     ! concom is needed for inc, subinc, ncycle, lovl
- include "creeps%%MARCVERSION%%"     ! creeps is needed for timinc (time increment)
+ include "include/concom%%MARCVERSION%%"     ! concom is needed for inc, subinc, ncycle, lovl
+ include "include/creeps%%MARCVERSION%%"     ! creeps is needed for timinc (time increment)
 
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
