@@ -28,3 +28,6 @@ for arch in architectures:
 		for line in parentContent:
 			childFile.write(line.replace(me['versions'][0],version))
 		childFile.close()
+
+os.system('make --directory %s'%wd)
+os.system('make --directory %s clean'%wd)
