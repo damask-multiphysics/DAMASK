@@ -52,7 +52,7 @@ CONTAINS
 subroutine mpie_interface_init()
 !--------------------
   write(6,*)
-  write(6,*) '<<<+-  mpie_cpfem_abaqus init  -+>>>'
+  write(6,*) '<<<+-  DAMASK_abaqus init  -+>>>'
   write(6,*) '$Id$'
   write(6,*)
  return
@@ -188,7 +188,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         lastMode = .false.                                               ! pretend last step was collection
         calcMode = .false.                                               ! pretend last step was collection
         !$OMP CRITICAL (write2out)
-        write (6,'(i6,x,i2,x,a)') noel,npt,'<< UMAT >> start of analysis..!'; call flush(6)
+        write (6,'(i8,x,i2,x,a)') noel,npt,'<< UMAT >> start of analysis..!'; call flush(6)
         !$OMP END CRITICAL (write2out)
     else if (kinc - theInc > 1) then                                     ! >> restart of broken analysis <<
         lastIncConverged = .false.                                       ! no Jacobian backup
@@ -196,7 +196,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         lastMode = .true.                                                ! pretend last step was calculation
         calcMode = .true.                                                ! pretend last step was calculation
         !$OMP CRITICAL (write2out)
-        write (6,'(i6,x,i2,x,a)') noel,npt,'<< UMAT >> restart of analysis..!'; call flush(6)
+        write (6,'(i8,x,i2,x,a)') noel,npt,'<< UMAT >> restart of analysis..!'; call flush(6)
         !$OMP END CRITICAL (write2out)
     else                                                                 ! >> just the next inc <<
         lastIncConverged = .true.                                        ! request Jacobian backup
@@ -204,7 +204,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         lastMode = .true.                                                ! assure last step was calculation
         calcMode = .true.                                                ! assure last step was calculation
         !$OMP CRITICAL (write2out)
-        write (6,'(i6,x,i2,x,a)') noel,npt,'<< UMAT >> new increment..!'; call flush(6)
+        write (6,'(i8,x,i2,x,a)') noel,npt,'<< UMAT >> new increment..!'; call flush(6)
         !$OMP END CRITICAL (write2out)
     endif
     
@@ -215,7 +215,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
     cycleCounter = -1                                                   ! first calc step increments this to cycle = 0
     calcMode = .true.                                                   ! pretend last step was calculation
     !$OMP CRITICAL (write2out)
-    write(6,'(i6,x,i2,x,a)') noel,npt,'<< UMAT >> cutback detected..!'; call flush(6)
+    write(6,'(i8,x,i2,x,a)') noel,npt,'<< UMAT >> cutback detected..!'; call flush(6)
     !$OMP END CRITICAL (write2out)
 
  endif                                                                  ! convergence treatment end
@@ -257,7 +257,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  if ( debug_verbosity > 1 ) then
    !$OMP CRITICAL (write2out)
-     write(6,'(a16,x,i2,x,a,i5,a,i5,x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
+     write(6,'(a16,x,i2,x,a,i8,a,i8,x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
    !$OMP END CRITICAL (write2out)
  endif
    

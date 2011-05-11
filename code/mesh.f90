@@ -3379,7 +3379,7 @@ if (debug_verbosity > 1) then
     write (6,*)
     write (6,*) "Input Parser: SUBNODE COORDINATES"
     write (6,*)
-    write(6,'(a5,x,a5,x,a15,x,a15,x,a20,3(x,a12))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
+    write(6,'(a8,x,a5,x,a15,x,a15,x,a20,3(x,a12))') 'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
     do e = 1,mesh_NcpElems                  ! loop over cpElems
       if (debug_selectiveDebugger .and. debug_e /= e) cycle
       t = mesh_element(2,e)                 ! get elemType
@@ -3387,7 +3387,7 @@ if (debug_verbosity > 1) then
         if (debug_selectiveDebugger .and. debug_i /= i) cycle
         do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP
           do n = 1,FE_NipFaceNodes          ! loop over nodes on interface
-            write(6,'(i5,x,i5,x,i15,x,i15,x,i20,3(x,f12.8))') e,i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
+            write(6,'(i8,x,i5,x,i15,x,i15,x,i20,3(x,f12.8))') e,i,f,n,FE_subNodeOnIPFace(n,f,i,t),&
                                                               mesh_subNodeCoord(1,FE_subNodeOnIPFace(n,f,i,t),e),&
                                                               mesh_subNodeCoord(2,FE_subNodeOnIPFace(n,f,i,t),e),&
                                                               mesh_subNodeCoord(3,FE_subNodeOnIPFace(n,f,i,t),e)
@@ -3397,12 +3397,12 @@ if (debug_verbosity > 1) then
     enddo
     write(6,*)
     write(6,*) 'Input Parser: IP COORDINATES'
-    write(6,'(a5,x,a5,3(x,a12))') 'elem','IP','x','y','z'
+    write(6,'(a8,x,a5,3(x,a12))') 'elem','IP','x','y','z'
     do e = 1,mesh_NcpElems
       if (debug_selectiveDebugger .and. debug_e /= e) cycle
       do i = 1,FE_Nips(mesh_element(2,e))
         if (debug_selectiveDebugger .and. debug_i /= i) cycle
-        write (6,'(i5,x,i5,3(x,f12.8))') e, i, mesh_ipCenterOfGravity(:,i,e)
+        write (6,'(i8,x,i5,3(x,f12.8))') e, i, mesh_ipCenterOfGravity(:,i,e)
       enddo
     enddo 
     write (6,*)
@@ -3410,12 +3410,12 @@ if (debug_verbosity > 1) then
     write (6,*)
     write (6,"(a13,x,e15.8)") "total volume", sum(mesh_ipVolume)
     write (6,*)
-    write (6,"(a5,x,a5,x,a15,x,a5,x,a15,x,a16)") "elem","IP","volume","face","area","-- normal --"
+    write (6,"(a8,x,a5,x,a15,x,a5,x,a15,x,a16)") "elem","IP","volume","face","area","-- normal --"
     do e = 1,mesh_NcpElems
       if (debug_selectiveDebugger .and. debug_e /= e) cycle
       do i = 1,FE_Nips(mesh_element(2,e))
         if (debug_selectiveDebugger .and. debug_i /= i) cycle
-        write (6,"(i5,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
+        write (6,"(i8,x,i5,x,e15.8)") e,i,mesh_IPvolume(i,e)
         do f = 1,FE_NipNeighbors(mesh_element(2,e))
           write (6,"(i33,x,e15.8,x,3(f6.3,x))") f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
         enddo
@@ -3435,14 +3435,14 @@ if (debug_verbosity > 1) then
     write(6,*)
     write(6,*) "Input Parser: IP NEIGHBORHOOD"
     write(6,*)
-    write(6,"(a10,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
+    write(6,"(a8,x,a10,x,a10,x,a3,x,a13,x,a13)") "elem","IP","neighbor","","elemNeighbor","ipNeighbor"
     do e = 1,mesh_NcpElems                  ! loop over cpElems
       if (debug_selectiveDebugger .and. debug_e /= e) cycle
       t = mesh_element(2,e)                 ! get elemType
       do i = 1,FE_Nips(t)                   ! loop over IPs of elem
         if (debug_selectiveDebugger .and. debug_i /= i) cycle
         do n = 1,FE_NipNeighbors(t)         ! loop over neighbors of IP
-          write (6,"(i10,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
+          write (6,"(i8,x,i10,x,i10,x,a3,x,i13,x,i13)") e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
         enddo
       enddo
     enddo

@@ -52,7 +52,7 @@ CONTAINS
 subroutine mpie_interface_init()
 !--------------------
   write(6,*)
-  write(6,*) '<<<+-  mpie_cpfem_abaqus init  -+>>>'
+  write(6,*) '<<<+-  DAMASK_abaqus init  -+>>>'
   write(6,*) '$Id$'
   write(6,*)
  return
@@ -217,7 +217,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
      if ( debug_verbosity > 1 ) then
        !$OMP CRITICAL (write2out)
-         write(6,'(i6,x,i2,x,a)') nElement(n),nMatPoint(n),'first call special case..!'; call flush(6)
+         write(6,'(i8,x,i2,x,a)') nElement(n),nMatPoint(n),'first call special case..!'; call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
 
@@ -226,7 +226,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
      if ( debug_verbosity > 1 ) then
        !$OMP CRITICAL (write2out)
-         write (6,'(i6,x,i2,x,a)') nElement(n),nMatPoint(n),'lastIncConverged + outdated'; call flush(6)
+         write (6,'(i8,x,i2,x,a)') nElement(n),nMatPoint(n),'lastIncConverged + outdated'; call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
 
@@ -248,7 +248,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
    if ( debug_verbosity > 1 ) then
      !$OMP CRITICAL (write2out)
-       write(6,'(a16,x,i2,x,a,i5,x,i5,a)') 'computationMode',computationMode,'(',nElement(n),nMatPoint(n),')'; call flush(6)
+       write(6,'(a16,x,i2,x,a,i8,x,i5,a)') 'computationMode',computationMode,'(',nElement(n),nMatPoint(n),')'; call flush(6)
      !$OMP END CRITICAL (write2out)
    endif
   

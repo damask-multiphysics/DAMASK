@@ -16,16 +16,16 @@ COMPILE_SINGLE = -openmp -c -O3 -fpp
 
 precision :=double
 ifeq ($(precision),single)
-cpspectral_single.exe: mpie_spectral_single.o CPFEM.a
-	ifort -openmp -o cpspectral_single.exe mpie_spectral_single.o CPFEM.a libfftw3f_threads.a libfftw3f.a constitutive.a advanced.a basics.a -lpthread
-mpie_spectral_single.o: mpie_spectral_single.f90 CPFEM.o 
-	ifort $(COMPILE_DOUBLE) mpie_spectral_single.f90 
+DAMASK_spectral_single.exe: DAMASK_spectral_single.o CPFEM.a
+	ifort -openmp -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a include/libfftw3f_threads.a include/libfftw3f.a constitutive.a advanced.a basics.a -lpthread
+DAMASK_spectral_single.o: DAMASK_spectral_single.f90 CPFEM.o 
+	ifort $(COMPILE_DOUBLE) DAMASK_spectral_single.f90 
 
 else
-cpspectral_double.exe: mpie_spectral.o CPFEM.a
-	ifort -openmp -o cpspectral_double.exe mpie_spectral.o CPFEM.a libfftw3_threads.a libfftw3.a constitutive.a advanced.a basics.a -lpthread
-mpie_spectral.o: mpie_spectral.f90 CPFEM.o 
-	ifort $(COMPILE_DOUBLE) mpie_spectral.f90 
+DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
+	ifort -openmp -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a include/libfftw3_threads.a include/libfftw3.a constitutive.a advanced.a basics.a -lpthread
+DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o 
+	ifort $(COMPILE_DOUBLE) DAMASK_spectral.f90 
 endif
 
 CPFEM.a: CPFEM.o
@@ -82,10 +82,10 @@ FEsolving.o: FEsolving.f90 basics.a
 
 ifeq ($(precision),single)
 basics.a: debug.o math.o
-	ar rc basics.a debug.o math.o numerics.o IO.o mpie_spectral_interface.o prec_single.o
+	ar rc basics.a debug.o math.o numerics.o IO.o DAMASK_spectral_interface.o prec_single.o
 else
 basics.a: debug.o math.o
-	ar rc basics.a debug.o math.o numerics.o IO.o mpie_spectral_interface.o prec.o
+	ar rc basics.a debug.o math.o numerics.o IO.o DAMASK_spectral_interface.o prec.o
 endif
 
 debug.o: debug.f90 numerics.o
@@ -95,17 +95,17 @@ math.o: math.f90 numerics.o
 
 numerics.o: numerics.f90 IO.o
 	ifort $(COMPILE_SINGLE) numerics.f90
-IO.o: IO.f90 mpie_spectral_interface.o
+IO.o: IO.f90 DAMASK_spectral_interface.o
 	ifort $(COMPILE_SINGLE) IO.f90
 
 ifeq ($(precision),single)
-mpie_spectral_interface.o: mpie_spectral_interface.f90 prec_single.o
-	ifort $(COMPILE_SINGLE) mpie_spectral_interface.f90
+DAMASK_spectral_interface.o: DAMASK_spectral_interface.f90 prec_single.o
+	ifort $(COMPILE_SINGLE) DAMASK_spectral_interface.f90
 prec_single.o: prec_single.f90
 	ifort $(COMPILE_SINGLE) prec_single.f90
 else
-mpie_spectral_interface.o: mpie_spectral_interface.f90 prec.o
-	ifort $(COMPILE_SINGLE) mpie_spectral_interface.f90
+DAMASK_spectral_interface.o: DAMASK_spectral_interface.f90 prec.o
+	ifort $(COMPILE_SINGLE) DAMASK_spectral_interface.f90
 prec.o: prec.f90
 	ifort $(COMPILE_SINGLE) prec.f90
 endif
@@ -114,7 +114,6 @@ endif
 clean: 
 	rm -rf *.o 
 	rm -rf *.mod
-	rm -rf *.exe 
 	rm -rf basics.a
 	rm -rf advanced.a
 	rm -rf constitutive.a

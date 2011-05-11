@@ -207,9 +207,9 @@ subroutine CPFEM_init()
     write(6,*) '$Id$'
     write(6,*)
     if (debug_verbosity > 0) then
-      write(6,'(a32,x,6(i5,x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
-      write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
-      write(6,'(a32,x,6(i5,x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
+      write(6,'(a32,x,6(i8,x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
+      write(6,'(a32,x,6(i8,x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
+      write(6,'(a32,x,6(i8,x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
       write(6,*)
       write(6,*) 'parallelExecution:    ', parallelExecution
       write(6,*) 'symmetricSolver:      ', symmetricSolver
@@ -387,7 +387,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           !$OMP CRITICAL (write2out)
             write(6,'(a)') '<< CPFEM >> Aging states'
             if (debug_e == cp_en .and. debug_i == IP) then
-              write(6,'(a,x,i5,x,i2,x,i3,/,(12(x),6(e20.8,x)))') '<< CPFEM >> AGED state of element ip grain',&
+              write(6,'(a,x,i8,x,i2,x,i3,/,(12(x),6(e20.8,x)))') '<< CPFEM >> AGED state of element ip grain',&
                                                               cp_en, IP, 1, constitutive_state(1,IP,cp_en)%p
               write(6,*)
             endif
@@ -473,7 +473,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
-              write(6,'(a,x,i5,x,i2)') '<< CPFEM >> OUTDATED at element ip',cp_en,IP
+              write(6,'(a,x,i8,x,i2)') '<< CPFEM >> OUTDATED at element ip',cp_en,IP
               write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 old:',math_transpose3x3(materialpoint_F(1:3,1:3,IP,cp_en))
               write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 now:',math_transpose3x3(ffn1)
             !$OMP END CRITICAL (write2out)
@@ -499,7 +499,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           FEsolving_execIP(2,cp_en) = IP
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
-              write(6,'(a,i5,x,i2)') '<< CPFEM >> Calculation for element ip ',cp_en,IP
+              write(6,'(a,i8,x,i2)') '<< CPFEM >> Calculation for element ip ',cp_en,IP
             !$OMP END CRITICAL (write2out)
           endif
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent
@@ -509,7 +509,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         elseif (.not. CPFEM_calc_done) then
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
-              write(6,'(a,i5,a,i5)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
+              write(6,'(a,i8,a,i8)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
           endif
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent (parallel execution inside)
@@ -598,8 +598,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   
   if (mode < 6 .and. debug_verbosity > 0 .and. ((debug_e == cp_en .and. debug_i == IP) .or. .not. debug_selectiveDebugger)) then
     !$OMP CRITICAL (write2out)
-      write(6,'(a,i5,x,i2,/,12(x),6(f10.3,x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1e6
-      write(6,'(a,i5,x,i2,/,6(12(x),6(f10.3,x)/))') '<< CPFEM >> jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1e9
+      write(6,'(a,i8,x,i2,/,12(x),6(f10.3,x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1e6
+      write(6,'(a,i8,x,i2,/,6(12(x),6(f10.3,x)/))') '<< CPFEM >> jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1e9
       call flush(6)
     !$OMP END CRITICAL (write2out)
   endif

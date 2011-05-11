@@ -1144,7 +1144,7 @@ state(g,ip,el)%p(12*ns+1:12*ns+6) = math_Mandel33to6(Tdislo)
 #ifndef _OPENMP
   if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
-    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,g
+    write(6,'(a,i8,x,i2,x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,g
     write(6,*)
     write(6,'(a,/,12(x),12(e10.3,x))') '<< CONST >> rhoForest', rhoForest
     write(6,'(a,/,12(x),12(f10.5,x))') '<< CONST >> tauThreshold / MPa', tauThreshold/1e6
@@ -1271,7 +1271,7 @@ constitutive_nonlocal_v(1:ns,1:4,g,ip,el) = v
 #ifndef _OPENMP
   if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
-    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
+    write(6,'(a,i8,x,i2,x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
     write(6,*)
     write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> tau / MPa', tau/1e6_pReal
     write(6,'(a,/,4(12(x),12(f12.5,x),/))') '<< CONST >> v / 1e-3m/s', constitutive_nonlocal_v(:,:,g,ip,el)*1e3
@@ -1394,7 +1394,7 @@ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 #ifndef _OPENMP
   if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
-    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_LpandItsTangent at el ip g ',el,ip,g
+    write(6,'(a,i8,x,i2,x,i1)') '<< CONST >> nonlocal_LpandItsTangent at el ip g ',el,ip,g
     write(6,*)
     write(6,'(a,/,4(12(x),12(f12.5,x)),/)') '<< CONST >> gdot / 1e-3',gdot*1e3_pReal
     write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> gdot total / 1e-3',gdotTotal*1e3_pReal
@@ -1542,7 +1542,7 @@ logical                                     considerEnteringFlux, &
 #ifndef _OPENMP
   if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
-    write(6,'(a,i5,x,i2,x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
+    write(6,'(a,i8,x,i2,x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
     write(6,*)
   endif
 #endif

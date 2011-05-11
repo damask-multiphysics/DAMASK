@@ -20,7 +20,7 @@
 !* $Id$
 !********************************************************************
 
-MODULE mpie_interface
+MODULE spectral_interface
  use prec, only: pInt, pReal
  character(len=64), parameter :: FEsolver = 'Spectral'
  character(len=5),  parameter :: InputFileExtension = '.geom'
@@ -32,10 +32,10 @@ CONTAINS
 ! initialize interface module
 !
 !********************************************************************
-subroutine mpie_interface_init()
+subroutine spectral_interface_init()
 
  write(6,*)
- write(6,*) '<<<+-  mpie_spectral init  -+>>>'
+ write(6,*) '<<<+-  spectral_interface init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
 

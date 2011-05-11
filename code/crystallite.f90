@@ -375,49 +375,49 @@ crystallite_fallbackdPdF = crystallite_dPdF                    ! use initial ela
 !    *** Output to MARC output file ***
 if (debug_verbosity > 0) then
   !$OMP CRITICAL (write2out)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Temperature:           ', shape(crystallite_Temperature)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_dotTemperature:        ', shape(crystallite_dotTemperature)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Lp:                    ', shape(crystallite_Lp)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_F0:                    ', shape(crystallite_F0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Fp0:                   ', shape(crystallite_Fp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Lp0:                   ', shape(crystallite_Lp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedF:            ', shape(crystallite_partionedF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedTemp0:        ', shape(crystallite_partionedTemperature0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedF0:           ', shape(crystallite_partionedF0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedFp0:          ', shape(crystallite_partionedFp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subF:                  ', shape(crystallite_subF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subTemperature0:       ', shape(crystallite_subTemperature0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_symmetryID:            ', shape(crystallite_symmetryID)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_P:                     ', shape(crystallite_P)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Tstar_v:               ', shape(crystallite_Tstar_v)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_Tstar0_v:              ', shape(crystallite_Tstar0_v)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partionedTstar0_v:     ', shape(crystallite_partionedTstar0_v)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subTstar0_v:           ', shape(crystallite_subTstar0_v)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_dPdF0:                 ', shape(crystallite_dPdF0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_partioneddPdF0:        ', shape(crystallite_partioneddPdF0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_fallbackdPdF:          ', shape(crystallite_fallbackdPdF)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_orientation0:          ', shape(crystallite_orientation0)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_rotation:              ', shape(crystallite_rotation)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_disorientation:        ', shape(crystallite_disorientation)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_dt:                    ', shape(crystallite_dt)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subdt:                 ', shape(crystallite_subdt)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subFrac:               ', shape(crystallite_subFrac)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_subStep:               ', shape(crystallite_subStep)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_stateDamper:           ', shape(crystallite_stateDamper)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_localConstitution:     ', shape(crystallite_localConstitution)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_requested:             ', shape(crystallite_requested)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_todo:                  ', shape(crystallite_todo)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_converged:             ', shape(crystallite_converged)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_sizePostResults:       ', shape(crystallite_sizePostResults)
-    write(6,'(a35,x,7(i5,x))') 'crystallite_sizePostResult:        ', shape(crystallite_sizePostResult)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_Temperature:           ', shape(crystallite_Temperature)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_dotTemperature:        ', shape(crystallite_dotTemperature)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_Lp:                    ', shape(crystallite_Lp)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_F0:                    ', shape(crystallite_F0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_Fp0:                   ', shape(crystallite_Fp0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_Lp0:                   ', shape(crystallite_Lp0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_partionedF:            ', shape(crystallite_partionedF)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_partionedTemp0:        ', shape(crystallite_partionedTemperature0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_partionedF0:           ', shape(crystallite_partionedF0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_partionedFp0:          ', shape(crystallite_partionedFp0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subF:                  ', shape(crystallite_subF)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subTemperature0:       ', shape(crystallite_subTemperature0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_symmetryID:            ', shape(crystallite_symmetryID)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_P:                     ', shape(crystallite_P)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_Tstar_v:               ', shape(crystallite_Tstar_v)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_Tstar0_v:              ', shape(crystallite_Tstar0_v)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_partionedTstar0_v:     ', shape(crystallite_partionedTstar0_v)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subTstar0_v:           ', shape(crystallite_subTstar0_v)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_dPdF:                  ', shape(crystallite_dPdF)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_dPdF0:                 ', shape(crystallite_dPdF0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_partioneddPdF0:        ', shape(crystallite_partioneddPdF0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_fallbackdPdF:          ', shape(crystallite_fallbackdPdF)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_orientation:           ', shape(crystallite_orientation)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_orientation0:          ', shape(crystallite_orientation0)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_rotation:              ', shape(crystallite_rotation)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_disorientation:        ', shape(crystallite_disorientation)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_dt:                    ', shape(crystallite_dt)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subdt:                 ', shape(crystallite_subdt)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subFrac:               ', shape(crystallite_subFrac)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_subStep:               ', shape(crystallite_subStep)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_stateDamper:           ', shape(crystallite_stateDamper)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_localConstitution:     ', shape(crystallite_localConstitution)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_requested:             ', shape(crystallite_requested)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_todo:                  ', shape(crystallite_todo)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_converged:             ', shape(crystallite_converged)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_sizePostResults:       ', shape(crystallite_sizePostResults)
+    write(6,'(a35,x,7(i8,x))') 'crystallite_sizePostResult:        ', shape(crystallite_sizePostResult)
     write(6,*)
     write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localConstitution)
     call flush(6)
@@ -527,7 +527,7 @@ if (debug_verbosity > 4 .and. debug_e > 0 .and. debug_e <= mesh_NcpElems &
                         .and. debug_g > 0 .and. debug_g <= homogenization_maxNgrains) then
   !$OMP CRITICAL (write2out)
     write (6,*)
-    write (6,'(a,i5,x,i2,x,i3)') '<< CRYST >> crystallite start at el ip g ', debug_e, debug_i, debug_g
+    write (6,'(a,i8,x,i2,x,i3)') '<< CRYST >> crystallite start at el ip g ', debug_e, debug_i, debug_g
     write (6,'(a,/,12(x),f14.9)') '<< CRYST >> Temp0', crystallite_partionedTemperature0(debug_g,debug_i,debug_e)
     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> F0 ', &
                                           math_transpose3x3(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
@@ -692,7 +692,7 @@ enddo                                                                           
 #ifndef _OPENMP
         if (debug_verbosity > 4 &
             .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-          write (6,'(a,i5,x,i2,x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip g ',e,i,g
+          write (6,'(a,i8,x,i2,x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip g ',e,i,g
           write (6,*) 
           write (6,'(a,/,3(12(x),3(f12.4,x)/))') '<< CRYST >> P / MPa', math_transpose3x3(crystallite_P(1:3,1:3,g,i,e)) / 1e6
           write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> Fp', math_transpose3x3(crystallite_Fp(1:3,1:3,g,i,e))
@@ -1014,7 +1014,7 @@ do n = 1,4
             if (debug_verbosity > 5 &
                 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
               mySizeDotState = constitutive_sizeDotState(g,i,e)
-              write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
+              write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
               write(6,*)
               write(6,'(a,/,(12(x),12(e12.5,x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
               write(6,*)
@@ -1502,7 +1502,7 @@ relTemperatureResiduum = 0.0_pReal
 #ifndef _OPENMP
       if (debug_verbosity > 5 &
           .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-        write(6,'(a,i5,x,i3,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
+        write(6,'(a,i8,x,i3,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
         write(6,*)
         write(6,'(a,/,(12(x),12(f12.1,x)))') '<< CRYST >> absolute residuum tolerance', &
                                         stateResiduum(1:mySizeDotState,g,i,e) / constitutive_aTolState(g,i,e)%p(1:mySizeDotState)
@@ -1808,7 +1808,7 @@ relTemperatureResiduum = 0.0_pReal
 #ifndef _OPENMP        
       if (debug_verbosity > 5 &
           .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-        write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
+        write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
         write(6,*)
         write(6,'(a,/,(12(x),12(f12.1,x)))') '<< CRYST >> absolute residuum tolerance', &
                                         stateResiduum(1:mySizeDotState,g,i,e) / constitutive_aTolState(g,i,e)%p(1:mySizeDotState)
@@ -1980,7 +1980,7 @@ endif
 #ifndef _OPENMP
       if (debug_verbosity > 5 &
           .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-        write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
+        write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
         write(6,*)
         write(6,'(a,/,(12(x),12(e12.5,x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
         write(6,*)
@@ -2381,7 +2381,7 @@ residuum = constitutive_state(g,i,e)%p(1:mySize) - constitutive_subState0(g,i,e)
 if (any(residuum /= residuum)) then                                   ! if NaN occured then return without changing the state
 #ifndef _OPENMP
   if (debug_verbosity > 4) then
-    write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateState encountered NaN at el ip g ',e,i,g
+    write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> updateState encountered NaN at el ip g ',e,i,g
   endif
 #endif
   return
@@ -2398,9 +2398,9 @@ converged = all(     abs(residuum) < constitutive_aTolState(g,i,e)%p(1:mySize) &
 #ifndef _OPENMP
 if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
   if (converged) then
-    write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateState converged at el ip g ',e,i,g
+    write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> updateState converged at el ip g ',e,i,g
   else
-    write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateState did not converge at el ip g ',e,i,g
+    write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> updateState did not converge at el ip g ',e,i,g
   endif
   write(6,*)
   write(6,'(a,f6.1)') '<< CRYST >> crystallite_statedamper ',crystallite_statedamper(g,i,e)
@@ -2464,7 +2464,7 @@ residuum = crystallite_Temperature(g,i,e) - crystallite_subTemperature0(g,i,e) &
 if (residuum /= residuum) then
 #ifndef _OPENMP
   if (debug_verbosity > 4) then
-    write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> updateTemperature encountered NaN at el ip g ',e,i,g
+    write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> updateTemperature encountered NaN at el ip g ',e,i,g
   endif
 #endif
   return
@@ -2591,7 +2591,7 @@ integer(pLongInt)                   tick, &
 crystallite_integrateStress = .false.
 #ifndef _OPENMP
 if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-  write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> integrateStress at el ip g ',e,i,g
+  write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> integrateStress at el ip g ',e,i,g
 endif
 #endif
 
@@ -2621,7 +2621,7 @@ invFp_current = math_inv3x3(Fp_current)
 if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
 #ifndef _OPENMP
   if (debug_verbosity > 4) then
-    write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> integrateStress failed on invFp_current inversion at el ip g ',e,i,g
+    write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> integrateStress failed on invFp_current inversion at el ip g ',e,i,g
     if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
       write(6,*)
       write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> invFp_new',math_transpose3x3(invFp_new(1:3,1:3))
@@ -2655,7 +2655,7 @@ LpLoop: do
   if (NiterationStress > nStress) then
 #ifndef _OPENMP
     if (debug_verbosity > 4) then 
-      write(6,'(a,i5,x,i2,x,i3)') '<< CRYST >> integrateStress reached loop limit at el ip g ',e,i,g
+      write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> integrateStress reached loop limit at el ip g ',e,i,g
       write(6,*)
     endif
 #endif
@@ -2721,7 +2721,7 @@ LpLoop: do
   if (any(residuum/=residuum) .and. leapfrog == 1.0) then
 #ifndef _OPENMP
     if (debug_verbosity > 4) then 
-      write(6,'(a,i5,x,i2,x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el ip g ',e,i,g,&
+      write(6,'(a,i8,x,i2,x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el ip g ',e,i,g,&
                                     ' ; iteration ', NiterationStress,&
                                     ' >> returning..!'
     endif
@@ -2739,7 +2739,7 @@ LpLoop: do
          ) then
 #ifndef _OPENMP
     if (debug_verbosity > 5) then 
-      write(6,'(a,i5,x,i2,x,i3,x,a,i3)') '<< CRYST >> integrateStress encountered high-speed crash at el ip g ',e,i,g,&
+      write(6,'(a,i8,x,i2,x,i3,x,a,i3)') '<< CRYST >> integrateStress encountered high-speed crash at el ip g ',e,i,g,&
                                          '; iteration ', NiterationStress
     endif
 #endif
@@ -2771,7 +2771,7 @@ LpLoop: do
       if (error) then
 #ifndef _OPENMP
         if (debug_verbosity > 4) then
-          write(6,'(a,i5,x,i2,x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ',e,i,g,&
+          write(6,'(a,i8,x,i2,x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ',e,i,g,&
                                       ' ; iteration ', NiterationStress
           if (debug_verbosity > 5 &
               .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
@@ -2815,7 +2815,7 @@ call math_invert3x3(invFp_new,Fp_new,det,error)
 if (error) then
 #ifndef _OPENMP
   if (debug_verbosity > 4) then
-    write(6,'(a,i5,x,i2,x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',e,i,g, &
+    write(6,'(a,i8,x,i2,x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',e,i,g, &
                                          ' ; iteration ', NiterationStress
     if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
       write(6,*)
@@ -3072,6 +3072,10 @@ function crystallite_postResults(&
        crystallite_postResults(c+1:c+4) = math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e)) ! grain rotation away from initial orientation as axis-angle 
        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)      ! angle in degree
        c = c + 4_pInt
+
+! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
+! thus row index i is slow, while column index j is fast. reminder: "row is slow"
+  
      case ('defgrad','f')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_partionedF(1:3,1:3,g,i,e)),(/mySize/))
@@ -3103,7 +3107,7 @@ function crystallite_postResults(&
        c = c + mySize
    end select
  enddo
-  
+
  crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e)             ! size of constitutive results
  c = c + 1_pInt
  crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = constitutive_postResults(crystallite_Tstar_v(1:6,g,i,e), &

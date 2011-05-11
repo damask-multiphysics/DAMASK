@@ -34,16 +34,16 @@
 !
 !********************************************************************
 !     Usage:
-!             - start program with mpie_spectral PathToGeomFile/NameOfGeom.geom
+!             - start program with DAMASK_spectral PathToGeomFile/NameOfGeom.geom
 !               PathToLoadFile/NameOfLoadFile.load
 !             - PathToGeomFile will be the working directory
 !             - make sure the file "material.config" exists in the working
 !               directory. For further configuration use "numerics.config"
 !********************************************************************
-program mpie_spectral
+program DAMASK_spectral
 !********************************************************************
 
- use mpie_interface
+ use spectral_interface
  use prec, only: pInt, pReal
  use IO
  use math
@@ -54,7 +54,7 @@ program mpie_spectral
 !$ use OMP_LIB                                                          ! the openMP function library
 
  implicit none
- include 'fftw3.f' ! header file for fftw3 (declaring variables). Library files are also needed
+ include 'include/fftw3.f' ! header file for fftw3 (declaring variables). Library files are also needed
                    ! compile FFTW 3.2.2 with ./configure --enable-threads
 ! variables to read from loadcase and geom file
  real(pReal), dimension(9) ::                      valuevector           ! stores information temporarily from loadcase file
@@ -205,7 +205,7 @@ program mpie_spectral
    print '(a,/,3(3(l,x)/))',    'bc_mask for velocitygrad:',transpose(bc_mask(:,:,1,i))
    print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'      ,transpose(bc_mask(:,:,2,i))
    print '(a,f12.6)','time: ',bc_timeIncrement(i)
-   print '(a,i5)','incs: ',bc_steps(i)
+   print '(a,i6)','incs: ',bc_steps(i)
    print *, ''
  enddo
 
@@ -256,7 +256,7 @@ program mpie_spectral
  if(mod(resolution(1),2)/=0 .or. mod(resolution(2),2)/=0 .or. mod(resolution(3),2)/=0)  call IO_error(103)
  
  print '(a,/,i4,i4,i4)','resolution a b c:', resolution
- print '(a,/,f6.1,f6.1,f6.1)','dimension x y z:', geomdimension
+ print '(a,/,f8.4,f8.5,f8.5)','dimension x y z:', geomdimension
  print '(a,i4)','homogenization: ',homog
  
  allocate (defgrad   (resolution(1),resolution(2),resolution(3),3,3)); defgrad    = 0.0_pReal
@@ -581,7 +581,7 @@ program mpie_spectral
  close(538)
  call dfftw_destroy_plan(plan_fft(1)); call dfftw_destroy_plan(plan_fft(2))
     
-end program mpie_spectral
+end program DAMASK_spectral
 
 !********************************************************************
 ! quit subroutine to satisfy IO_error
