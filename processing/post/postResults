@@ -926,7 +926,7 @@ for incCount,increment in enumerate(increments):
     fileOpen = True
     file.write('3\theader\n')
     file.write('$Id$\n')
-    file.write('%s\n'%sys.argv[0])
+    file.write('%s\n'%(' '.join(sys.argv[1:])))
     headerWritten = False
 
   file.flush()
