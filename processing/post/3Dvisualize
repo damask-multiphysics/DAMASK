@@ -315,8 +315,9 @@ for filename in args:
   m = re.search('(\d+)\shead',content[0],re.I)
   if m == None:
     continue
-  print filename
-
+  print filename,
+  sys.stdout.flush()
+  
   headrow = int(m.group(1))
   headings = content[headrow].split()
   column = {}
@@ -342,7 +343,7 @@ for filename in args:
         break
       
   if column['tensor'][options.defgrad] < 0:
-    print 'missing deformation gradient..!'
+    print 'missing deformation gradient "%s"..!'%options.defgrad
     continue
 
   column['vector'] = {}
@@ -376,12 +377,15 @@ for filename in args:
   res = numpy.array([len(grid[0]),\
                      len(grid[1]),\
                      len(grid[2]),],'i')
-  dim = numpy.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
-                     max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
-                     max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),]*res/(res-numpy.ones(3)), 'd')
+  
+  dim = numpy.ones(3)
 
-  print 'resolution',res
-  print 'dimension',dim
+  for i,r in enumerate(res):
+    if r > 1:
+      dim[i] = (max(map(float,grid[i].keys()))-min(map(float,grid[i].keys())))*r/(r-1.0)
+
+  print res,dim
+
   defgrad_av = postprocessingMath.tensor_avg(res[0],res[1],res[2],\
                                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                     column['tensor'][options.defgrad]+9],
@@ -410,6 +414,6 @@ for filename in args:
   out['box']    = vtk_writeASCII_box(dim,defgrad_av)
   
   for what in out.keys():
-    vtk = open(os.path.splitext(filename)[0]+'_%s.vtk'%what, 'w')
+    vtk = open('%s_'%what+os.path.splitext(filename)[0]+'.vtk', 'w')
     output(out[what],{'filepointer':vtk},'File')
     vtk.close()
