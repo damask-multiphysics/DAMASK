@@ -1374,14 +1374,15 @@ endfunction
  write(6,*)
  write(6,'(a38)') '+------------------------------------+'
  write(6,'(a38)') '+               error                +'
+ write(6,'(a17,i3,a18)') '+               ',ID,'                 +'
  write(6,'(a38)') '+                                    +'
  write(6,'(a2,a)')       '+ ',msg
  if (present(ext_msg))  write(6,*) '+ ',ext_msg
  if (present(e)) then
    if (present(i) .and. present(g)) then
-     write(6,'(a12,x,i6,x,a2,x,i2,x,a5,x,i4,a2)') '+ at element',e,'IP',i,'grain',g,' +'
+     write(6,'(a13,i6,a4,i2,a7,i4,a2)') '+ at element ',e,' IP ',i,' grain ',g,' +'
    else
-     write(6,'(a17,i6,a14)') '+              at ',e,'             +'
+     write(6,'(a18,i6,a14)') '+              at ',e,'             +'
    endif
  endif
  write(6,'(a38)') '+------------------------------------+'
