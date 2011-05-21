@@ -396,17 +396,30 @@ for filename in args:
                                                             (res[0],res[1],res[2],3,3)),defgrad_av,1.0)
   ms = postprocessingMath.mesh(res[0],res[1],res[2],dim,defgrad_av,centroids)
 
-  fields = {\
-             'tensors': {},\
-             'vectors': {},\
-             'scalars': {},\
-           }
-  for me in options.tensor:
-    fields['tensors'][me] = numpy.reshape(values[:,column['tensor'][me]:column['tensor'][me]+9],(res[0],res[1],res[2],3,3))
-  for me in options.vector:
-    fields['vectors'][me] = numpy.reshape(values[:,column['vector'][me]:column['vector'][me]+3],(res[0],res[1],res[2],3))
-  for me in options.scalar:
-    fields['scalars'][me] = numpy.reshape(values[:,column['scalar'][me]],(res[0],res[1],res[2]))
+  fields =  {\
+             'tensor': {},\
+             'vector': {},\
+             'scalar': {},\
+            }
+  reshape = {\
+             'tensor': (3,3),\
+             'vector': (3),\
+             'scalar': (),\
+            }
+  length =  {\
+             'tensor': 9,\
+             'vector': 3,\
+             'scalar': 1,\
+            }
+
+  for datatype in fields.keys():
+    print '\n%s:'%datatype,
+    for what in eval('options.%s'%datatype):
+      col = column[datatype][what]
+      if col != -1:
+        print what,
+        fields[datatype][what] = numpy.reshape(values[:,col:col+length[datatype]],(res[0],res[1],res[2])+reshape[datatype])
+  print '\n\n'
 
   out = {}
   out['mesh']   = vtk_writeASCII_mesh(ms,fields,res)
@@ -414,6 +427,7 @@ for filename in args:
   out['box']    = vtk_writeASCII_box(dim,defgrad_av)
   
   for what in out.keys():
+    print what
     vtk = open('%s_'%what+os.path.splitext(filename)[0]+'.vtk', 'w')
     output(out[what],{'filepointer':vtk},'File')
     vtk.close()
