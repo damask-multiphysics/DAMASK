@@ -145,9 +145,10 @@ def vtk_writeASCII_mesh(mesh,data,res):
           ]
   
   for type in data:
+    plural = {True:'',False:'S'}[type.lower().endswith('s')]
     for item in data[type]:
       cmds += [\
-               '%s %s float'%(type.upper(),item),
+               '%s %s float'%(type.upper()+plural,item),
                'LOOKUP_TABLE default',
                [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
@@ -209,9 +210,10 @@ def gmsh_writeASCII_mesh(mesh,data,res):
           ]
   
   for type in data:
+    plural = {True:'',False:'S'}[type.lower().endswith('s')]
     for item in data[type]:
       cmds += [\
-               '%s %s float'%(type.upper(),item),
+               '%s %s float'%(type.upper()+plural,item),
                'LOOKUP_TABLE default',
                [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
@@ -243,9 +245,10 @@ def vtk_writeASCII_points(coordinates,data,res):
          ]
   
   for type in data:
+    plural = {True:'',False:'S'}[type.lower().endswith('s')]
     for item in data[type]:
       cmds += [\
-               '%s %s float'%(type.upper(),item),
+               '%s %s float'%(type.upper()+plural,item),
                'LOOKUP_TABLE default',
                [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])]
               ]
