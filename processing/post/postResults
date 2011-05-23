@@ -924,9 +924,9 @@ for incCount,increment in enumerate(increments):
   if not fileOpen:
     file = open(outFilename,'w')
     fileOpen = True
-    file.write('3\theader\n')
-    file.write('$Id$\n')
-    file.write('%s\n'%(' '.join(sys.argv[1:])))
+    file.write('2\theader\n')
+    file.write('$Id$ '+\
+               ' '.join(sys.argv[1:])) + '\n'
     headerWritten = False
 
   file.flush()
