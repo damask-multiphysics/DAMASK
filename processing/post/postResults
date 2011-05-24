@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 
-import pdb, os, sys, gc, math, re, threading, time, struct
+import pdb, os, sys, gc, math, re, threading, time, struct, string
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 releases = {'2010':['linux64',''],
@@ -925,8 +925,8 @@ for incCount,increment in enumerate(increments):
     file = open(outFilename,'w')
     fileOpen = True
     file.write('2\theader\n')
-    file.write('$Id$\t'+\
-               ' '.join(sys.argv[1:]) + '\n')
+    file.write(string.replace('$Id$','\n','\\n')+
+               '\t' + ' '.join(sys.argv[1:]) + '\n')
     headerWritten = False
 
   file.flush()
@@ -977,11 +977,10 @@ for incCount,increment in enumerate(increments):
                                 ):
           outputIndex = list(zip(*outputFormat[resultType]['outputs'])[0]).index(label)       # find the position of this output in the outputFormat
           length = int(outputFormat[resultType]['outputs'][outputIndex][1])
-          if resultType == 'Homogenization':
-            thisHead = heading('_',[[component,label] for component in range(int(length>1),length+int(length>1))])
-          else:
-            thisHead = heading('_',[[g,component,label] for component in range(int(length>1),length+int(length>1))])
+          thisHead = heading('_',[[component,label] for component in range(int(length>1),length+int(length>1))])
           if assembleHeader: header += thisHead
+          if resultType != 'Homogenization':
+            thisHead = heading('_',[[g,component,label] for component in range(int(length>1),length+int(length>1))])
           newby.append({'label':label,
                         'len':length,
                         'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][head])[n_local].value 
@@ -990,7 +989,7 @@ for incCount,increment in enumerate(increments):
       assembleHeader = False
 
       if N == 0:
-        mappedResult = [float(x) for x in xrange(len(header))]
+        mappedResult = [float(x) for x in xrange(len(header))]                               # initialize with debug data (should get deleted by *N at N=0)
 
       pos = 0
       for chunk in newby:
