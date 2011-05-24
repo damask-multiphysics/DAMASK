@@ -224,7 +224,7 @@ endsubroutine
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
 !***********************************************************************
-subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress,&
+subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, cauchyStress,&
       & jacobian, pstress, dPdF)
   ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
 
@@ -270,7 +270,13 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       mesh_NcpElems, &
                                                       mesh_maxNips, &
                                                       mesh_element, &
-                                                      FE_Nips
+                                                      mesh_node0, &
+                                                      mesh_node, &
+                                                      mesh_ipCenterOfGravity, &
+                                                      mesh_build_subNodeCoords, &
+                                                      mesh_build_ipVolumes, &
+                                                      FE_Nips, &
+                                                      FE_Nnodes
   use material, only:                                 homogenization_maxNgrains, &
                                                       microstructure_elemhomo, &
                                                       material_phase
@@ -284,7 +290,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       crystallite_dPdF0, &
                                                       crystallite_dPdF, &
                                                       crystallite_Tstar0_v, &
-                                                      crystallite_Tstar_v
+                                                      crystallite_Tstar_v, &
+                                                      crystallite_localConstitution
   use homogenization, only:                           homogenization_sizeState, &
                                                       homogenization_state, &
                                                       homogenization_state0, &
@@ -303,11 +310,16 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   
   implicit none
   
+  
   !*** input variables ***!
+  
   integer(pInt), intent(in) ::                        element, &          ! FE element number
                                                       IP                  ! FE integration point number
   real(pReal), intent(inout) ::                       Temperature         ! temperature
   real(pReal), intent(in) ::                          dt                  ! time increment
+  real(pReal), dimension (3,*), intent(in) ::         coords              ! MARC: displacements for each node of the current element
+                                                                          ! ABAQUS: coordinates of the current material point (IP)
+                                                                          ! SPECTRAL: coordinates of the current material point (IP)
   real(pReal), dimension (3,3), intent(in) ::         ffn, &              ! deformation gradient for t=t0
                                                       ffn1                ! deformation gradient for t=t1
   integer(pInt), intent(in) ::                        mode                ! computation mode  1: regular computation plus aging of results
@@ -317,13 +329,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                                           !                   5: restore tangent from former converged inc
                                                                           !                   6: recycling of former results (MARC speciality)
   
+  
   !*** output variables ***!
+  
   real(pReal), dimension(6), intent(out) ::           cauchyStress        ! stress vector in Mandel notation
   real(pReal), dimension(6,6), intent(out) ::         jacobian            ! jacobian in Mandel notation
   real(pReal), dimension (3,3), intent(out) ::        pstress             ! Piola-Kirchhoff stress in Matrix notation
   real(pReal), dimension (3,3,3,3), intent(out) ::    dPdF                ! 
-                 
+  
+  
   !*** local variables ***!
+  
   real(pReal)                                         J_inverse, &        ! inverse of Jacobian
                                                       rnd
   real(pReal), dimension (3,3) ::                     Kirchhoff, &        ! Piola-Kirchhoff stress in Matrix notation
@@ -338,17 +354,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                       l, &
                                                       m, &
                                                       n, &
-                                                      e
+                                                      e, &
+                                                      node, &
+                                                      FEnodeID
   logical                                             updateJaco          ! flag indicating if JAcobian has to be updated
   
-  !*** global variables ***!
-  ! CPFEM_cs, &
-  ! CPFEM_dcsdE, &
-  ! CPFEM_dcsdE_knownGood, &
-  ! CPFEM_init_done, &
-  ! CPFEM_calc_done, &
-  ! CPFEM_odd_stress, &
-  ! CPFEM_odd_jacobian
   
   cp_en = mesh_FEasCP('elem',element)
   
@@ -367,12 +377,18 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     !$OMP END CRITICAL (write2out)
   endif
 
-  ! according to our "mode" we decide what to do
+  
+  !*** according to our "mode" we decide what to do
+  
   select case (mode)
     
+
     ! --+>> REGULAR COMPUTATION (WITH AGING OF RESULTS IF MODE == 1) <<+-- 
+
     case (1,2,8,9)
-      ! age results if mode == 1
+    
+      !*** age results
+    
       if (mode == 1 .or. mode == 8) then
         crystallite_F0  = crystallite_partionedF                          ! crystallite deformation (_subF is perturbed...)
         crystallite_Fp0 = crystallite_Fp                                  ! crystallite plastic deformation
@@ -402,8 +418,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           enddo
         !$OMP END PARALLEL DO
 
-
-        ! *** dump the last converged values of each essential variable to a binary file
+        ! * dump the last converged values of each essential variable to a binary file
+        
         if (restartWrite) then 
           if (debug_verbosity > 0) then
            !$OMP CRITICAL (write2out)
@@ -459,7 +475,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
             close (777)
           endif
         endif
-        ! *** end of dumping
+        ! * end of dumping
       endif
 
       if (mode == 8 .or. mode == 9) then                                  ! Abaqus explicit skips collect
@@ -468,7 +484,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         materialpoint_F(1:3,1:3,IP,cp_en) = ffn1
       endif
 
-      ! deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
+
+      !*** deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
+      
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(1:3,1:3,IP,cp_en)) > defgradTolerance)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
           if (debug_verbosity > 0) then
@@ -485,14 +503,15 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         CPFEM_cs(1:6,IP,cp_en) = rnd*CPFEM_odd_stress
         CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian*math_identity2nd(6)
       
-      ! deformation gradient is not outdated
+      
+      !*** deformation gradient is not outdated
+      
       else
-        ! set flag for Jacobian update
         updateJaco = mod(cycleCounter,iJacoStiffness) == 0
         
-        ! no parallel computation
+        !* no parallel computation, so we use just one single element and IP for computation
+        
         if (.not. parallelExecution) then
-          ! we just take one single element and IP
           FEsolving_execElem(1)     = cp_en
           FEsolving_execElem(2)     = cp_en
           FEsolving_execIP(1,cp_en) = IP
@@ -505,13 +524,21 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent
           call materialpoint_postResults(dt)                              ! post results
           
-        ! parallel computation and calulation not yet done
+        !* parallel computation and calulation not yet done
+        
         elseif (.not. CPFEM_calc_done) then
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
           endif
+          if (any(.not. crystallite_localConstitution) .and. FEsolver == 'Marc') then
+            call mesh_build_subNodeCoords()                               ! update subnodal coordinates
+            call mesh_build_ipVolumes()                                   ! update ip center of gravity
+          endif
+            !$OMP CRITICAL (write2out)
+              write(6,'(a,i5,a,i5)') '<< CPFEM >> Start stress and tangent ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
+            !$OMP END CRITICAL (write2out)
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent (parallel execution inside)
           call materialpoint_postResults(dt)                              ! post results
           !$OMP PARALLEL DO
@@ -528,6 +555,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           !$OMP END PARALLEL DO
           CPFEM_calc_done = .true.
         endif
+        
+        
+        !*** map stress and stiffness (or return odd values if terminally ill)
         
         if ( terminallyIll ) then
           call random_number(rnd)
@@ -558,7 +588,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         endif
       endif
     
+
     ! --+>> COLLECTION OF FEM INPUT WITH RETURNING OF RANDOMIZED ODD STRESS AND JACOBIAN <<+-- 
+
     case (3,4,5)
       if (mode == 4) then
         CPFEM_dcsde_knownGood = CPFEM_dcsde  ! --+>> BACKUP JACOBIAN FROM FORMER CONVERGED INC
@@ -573,29 +605,41 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
       CPFEM_cs(1:6,IP,cp_en) = rnd * CPFEM_odd_stress
       CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
       CPFEM_calc_done = .false.
+      select case (FEsolver)
+        case ('Abaqus','Spectral')
+          mesh_ipCenterOfGravity(1:3,IP,cp_en) = coords(1:3,1)
+        case ('Marc')
+          do node = 1,FE_Nnodes(mesh_element(2,cp_en))
+            FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
+            mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + coords(1:3,node)
+          enddo
+      end select
     
+
     ! --+>> RECYCLING OF FORMER RESULTS (MARC SPECIALTY) <<+--
+
     case (6)
       ! do nothing
+
+
     ! --+>> RESTORE CONSISTENT JACOBIAN FROM FORMER CONVERGED INC
+
     case (7)
       CPFEM_dcsde = CPFEM_dcsde_knownGood
     
   end select
 
-  ! return the local stress and the jacobian from storage
+
+  !*** fill output variables with computed values
+  
   cauchyStress = CPFEM_cs(1:6,IP,cp_en)
   jacobian = CPFEM_dcsdE(1:6,1:6,IP,cp_en)
-  
-  ! copy P and dPdF to the output variables 
   pstress = materialpoint_P(1:3,1:3,IP,cp_en)
   dPdF = materialpoint_dPdF(1:3,1:3,1:3,1:3,IP,cp_en)
-
-  ! warning for zero stiffness
-  if (all(abs(jacobian) < 1e-10_pReal)) then
-    call IO_warning(601,cp_en,IP)
+  if (theTime > 0.0_pReal) then
+    Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
   endif
-  
+
   if (mode < 6 .and. debug_verbosity > 0 .and. ((debug_e == cp_en .and. debug_i == IP) .or. .not. debug_selectiveDebugger)) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,i8,x,i2,/,12(x),6(f10.3,x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1e6
@@ -604,7 +648,16 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     !$OMP END CRITICAL (write2out)
   endif
   
-  ! remember extreme values of stress and jacobian
+  
+  !*** warn if stiffness close to zero
+  
+  if (all(abs(jacobian) < 1e-10_pReal)) then
+    call IO_warning(601,cp_en,IP)
+  endif
+  
+  
+  !*** remember extreme values of stress and jacobian
+  
   if (mode < 3) then
     cauchyStress33 = math_Mandel6to33(cauchyStress)
     if (maxval(cauchyStress33) > debug_stressMax) then                        
@@ -626,9 +679,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     endif
   endif
   
-  ! return temperature
-  if (theTime > 0.0_pReal) Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
-
 end subroutine
 
 END MODULE CPFEM

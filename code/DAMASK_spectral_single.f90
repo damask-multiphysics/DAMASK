@@ -91,6 +91,7 @@ program DAMASK_spectral
  real(pReal), dimension(6) ::                           cstress                                ! cauchy stress in Mandel notation
  real(pReal), dimension(6,6) ::                         dsde, c066, s066                       ! Mandel notation of 4th order tensors
  real(pReal), dimension(:,:,:,:,:), allocatable ::      workfft, defgrad, defgradold
+ real(pReal), dimension(:,:,:,:), allocatable ::        coordinates
  
 ! variables storing information for spectral method
  complex(pReal) ::                                      img
@@ -261,6 +262,7 @@ program DAMASK_spectral
  
  allocate (defgrad   (resolution(1),resolution(2),resolution(3),3,3)); defgrad    = 0.0_pReal
  allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3)); defgradold = 0.0_pReal
+ allocate (coordinates(3,resolution(1),resolution(2),resolution(3))); coordinates = 0.0_pReal
  
  wgt = 1.0_pReal/real(resolution(1)*resolution(2)*resolution(3), pReal)
  defgradAim = math_I3
@@ -275,7 +277,8 @@ program DAMASK_spectral
    defgradold(i,j,k,:,:) = math_I3                    !no deformation at the beginning
    defgrad(i,j,k,:,:) = math_I3 
    ielem = ielem +1 
-   call CPFEM_general(2,math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
+   coordinates(1:3,i,j,k) = mesh_ipCenterOfGravity(1:3,1,ielem)  ! set to initial coordinates (SHOULD BE UPDATED TO CURRENT POSITION IN FUTURE REVISIONS!!!)
+   call CPFEM_general(2,coordinates(1:3,i,j,k),math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
    c066 = c066 + dsde
  enddo; enddo; enddo
  c066 = c066 * wgt
@@ -411,7 +414,7 @@ program DAMASK_spectral
          ielem = 0_pInt
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1
-           call CPFEM_general(3, defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
+           call CPFEM_general(3, coordinates(1:3,i,j,k),defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
@@ -420,6 +423,7 @@ program DAMASK_spectral
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&                                  ! first element in first iteration retains CPFEM_mode 1, 
+                              coordinates(1:3,i,j,k),
                               defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&   ! others get 2 (saves winding forward effort)
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
@@ -470,7 +474,7 @@ program DAMASK_spectral
          ielem = 0_pInt
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
-           call CPFEM_general(3, defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
+           call CPFEM_general(3, coordinates(1:3,i,j,k),defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
@@ -478,6 +482,7 @@ program DAMASK_spectral
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&                                  ! first element in first iteration retains CPFEM_mode 1,
+                              coordinates(1:3,i,j,k),
                               defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)

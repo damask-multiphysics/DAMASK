@@ -837,7 +837,7 @@ use debug,    only: debug_verbosity, &
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_element, &
-                    mesh_node, &
+                    mesh_node0, &
                     FE_Nips, &
                     mesh_ipCenterOfGravity, &
                     mesh_ipVolume, &
@@ -968,8 +968,8 @@ if (.not. phase_localConstitution(phase)) then
   !* in case of periodic surfaces we have to find out how many periodic images in each direction we need
   
   do dir = 1,3
-    maxCoord(dir) = maxval(mesh_node(dir,:))
-    minCoord(dir) = minval(mesh_node(dir,:))
+    maxCoord(dir) = maxval(mesh_node0(dir,:))
+    minCoord(dir) = minval(mesh_node0(dir,:))
   enddo
   meshSize = maxCoord - minCoord
   ipCoords = mesh_ipCenterOfGravity(1:3,ip,el)

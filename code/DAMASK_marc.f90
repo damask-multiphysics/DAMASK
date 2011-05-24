@@ -353,7 +353,7 @@ subroutine hypela2(&
    lastMode = calcMode(nn,cp_en)                                          ! record calculationMode
  endif
 
- call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,stress,ddsdde, pstress, dPdF)
+ call CPFEM_general(computationMode,dispt,ffn,ffn1,t(1),timinc,n(1),nn,stress,ddsdde, pstress, dPdF)
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13

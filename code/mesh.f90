@@ -35,7 +35,8 @@
 ! _maxNsharedElems : max number of CP elements sharing a node
 !
 ! _element    : FEid, type(internal representation), material, texture, node indices
-! _node       : x,y,z coordinates (initially!)
+! _node0      : x,y,z coordinates (initially!)
+! _node       : x,y,z coordinates (after deformation!)
 ! _sharedElem : entryCount and list of elements containing node
 !
 ! _mapFEtoCPelem : [sorted FEid, corresponding CPid]
@@ -56,7 +57,6 @@
 ! _nodeOnFace        : list of node indices on each face of a specific type of element
 ! _maxNnodesAtIP     : max number of (equivalent) nodes attached to an IP
 ! _nodesAtIP         : map IP index to two node indices in a specific type of element
-! _ipNeighborhood    : 6 or less neighboring IPs as [element_num, IP_index]
 ! _NsubNodes        : # subnodes required to fully define all IP volumes
 
 !     order is +x,-x,+y,-y,+z,-z but meaning strongly depends on Elemtype
@@ -70,19 +70,20 @@
                                                    mesh_mapMaterial       ! name of elementSet for material
  integer(pInt), dimension(:,:),     allocatable :: mesh_mapElemSet        ! list of elements in elementSet
  integer(pInt), dimension(:,:),     allocatable, target :: mesh_mapFEtoCPelem, mesh_mapFEtoCPnode
- integer(pInt), dimension(:,:),     allocatable :: mesh_element, &
-                                                   mesh_sharedElem, &
+ integer(pInt), dimension(:,:),     allocatable :: mesh_element, &        ! FEid, type(internal representation), material, texture, node indices
+                                                   mesh_sharedElem, &     ! entryCount and list of elements containing node
                                                    mesh_nodeTwins         ! node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
- integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood
+ integer(pInt), dimension(:,:,:,:), allocatable :: mesh_ipNeighborhood    ! 6 or less neighboring IPs as [element_num, IP_index]
 
  real(pReal),   dimension(:,:,:),   allocatable :: mesh_subNodeCoord      ! coordinates of subnodes per element
- real(pReal),   dimension(:,:),     allocatable :: mesh_node, & 
-                                                   mesh_ipVolume          ! volume associated with IP
- real(pReal),   dimension(:,:,:),   allocatable :: mesh_ipArea, &         ! area of interface to neighboring IP
-                                                   mesh_ipCenterOfGravity ! center of gravity of IP
- real(pReal),   dimension(:,:,:,:), allocatable :: mesh_ipAreaNormal      ! area normal of interface to neighboring IP
+ real(pReal),   dimension(:,:),     allocatable :: mesh_node0, &          ! node coordinates (initially!)
+                                                   mesh_node, &           ! node coordinates (after deformation! ONLY FOR MARC!!!)
+                                                   mesh_ipVolume          ! volume associated with IP (initially!)
+ real(pReal),   dimension(:,:,:),   allocatable :: mesh_ipArea, &         ! area of interface to neighboring IP (initially!)
+                                                   mesh_ipCenterOfGravity ! center of gravity of IP (after deformation!)
+ real(pReal),   dimension(:,:,:,:), allocatable :: mesh_ipAreaNormal      ! area normal of interface to neighboring IP (initially!)
  
- integer(pInt), dimension(:,:,:),   allocatable :: FE_nodesAtIP
+ integer(pInt), dimension(:,:,:),   allocatable :: FE_nodesAtIP           ! map IP index to two node indices in a specific type of element
  integer(pInt), dimension(:,:,:),   allocatable :: FE_ipNeighbor
  integer(pInt), dimension(:,:,:),   allocatable :: FE_subNodeParent
  integer(pInt), dimension(:,:,:,:), allocatable :: FE_subNodeOnIPFace
@@ -776,7 +777,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     /),(/FE_NipNeighbors(10),FE_Nips(10)/))
  
  ! *** FE_subNodeParent ***
- ! lists the group of IPs for which the center of gravity
+ ! lists the group of nodes for which the center of gravity
  ! corresponds to the location of a each subnode.
  ! example: face-centered subnode with faceNodes 1,2,3,4 to be used in,
  !          e.g., a 8 IP grid, would be encoded:
@@ -2417,6 +2418,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  character(len=64) tag
  character(len=1024) line
 
+ allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0_pInt
  allocate ( mesh_node (3,mesh_Nnodes) ); mesh_node = 0_pInt
  
  a = 1_pInt
@@ -2473,10 +2475,12 @@ subroutine mesh_marc_count_cpSizes (unit)
  if (x <= 0.0_pReal .or. y <= 0.0_pReal .or. z <= 0.0_pReal) call IO_error(44)
  
  forall (n = 0:mesh_Nnodes-1)
-   mesh_node(1,n+1) = x * dble(mod(n,a)     / (a-1.0_pReal))
-   mesh_node(2,n+1) = y * dble(mod(n/a,b)   / (b-1.0_pReal))
-   mesh_node(3,n+1) = z * dble(mod(n/a/b,c) / (c-1.0_pReal))
+   mesh_node0(1,n+1) = x * dble(mod(n,a)     / (a-1.0_pReal))
+   mesh_node0(2,n+1) = y * dble(mod(n/a,b)   / (b-1.0_pReal))
+   mesh_node0(3,n+1) = z * dble(mod(n/a/b,c) / (c-1.0_pReal))
  end forall
+ 
+ mesh_node = mesh_node0
 
 100 return
 
@@ -2502,6 +2506,7 @@ subroutine mesh_marc_count_cpSizes (unit)
 
  integer(pInt) unit,i,j,m
 
+ allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0_pInt
  allocate ( mesh_node (3,mesh_Nnodes) ); mesh_node = 0_pInt
 
 610 FORMAT(A300)
@@ -2515,13 +2520,14 @@ subroutine mesh_marc_count_cpSizes (unit)
      do i=1,mesh_Nnodes
        read (unit,610,END=670) line
        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1))
-       forall (j = 1:3) mesh_node(j,m) = IO_fixedNoEFloatValue (line,node_ends,j+1)
+       forall (j = 1:3) mesh_node0(j,m) = IO_fixedNoEFloatValue(line,node_ends,j+1)
      enddo
      exit
    endif
  enddo
 
-670 return
+670 mesh_node = mesh_node0
+return
 
  endsubroutine
 
@@ -2545,6 +2551,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  integer(pInt) unit,i,j,m,count
  logical inPart
  
+ allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0_pInt
  allocate ( mesh_node (3,mesh_Nnodes) ); mesh_node = 0_pInt
 
 610 FORMAT(A300)
@@ -2573,12 +2580,13 @@ subroutine mesh_marc_count_cpSizes (unit)
        read (unit,610,END=670) line
        pos = IO_stringPos(line,maxNchunks)
        m = mesh_FEasCP('node',IO_intValue(line,pos,1))
-       forall (j=1:3) mesh_node(j,m) = IO_floatValue(line,pos,j+1)
+       forall (j=1:3) mesh_node0(j,m) = IO_floatValue(line,pos,j+1)
      enddo
    endif
  enddo
 
-670 if (size(mesh_node,2) /= mesh_Nnodes) call IO_error(909)
+670 if (size(mesh_node0,2) /= mesh_Nnodes) call IO_error(909)
+ mesh_node = mesh_node0
  return
 
  endsubroutine
@@ -3098,25 +3106,26 @@ endsubroutine
 
  integer(pInt) e,t,n,p
  
- allocate(mesh_subNodeCoord(3,mesh_maxNnodes+mesh_maxNsubNodes,mesh_NcpElems)) ; mesh_subNodeCoord = 0.0_pReal
+ if (.not. allocated(mesh_subNodeCoord)) then
+   allocate(mesh_subNodeCoord(3,mesh_maxNnodes+mesh_maxNsubNodes,mesh_NcpElems))
+ endif
+ mesh_subNodeCoord = 0.0_pReal
  
  do e = 1,mesh_NcpElems                   ! loop over cpElems
    t = mesh_element(2,e)                  ! get elemType
    do n = 1,FE_Nnodes(t)
-     mesh_subNodeCoord(:,n,e) = mesh_node(:,mesh_FEasCP('node',mesh_element(4+n,e))) ! loop over nodes of this element type
+     mesh_subNodeCoord(1:3,n,e) = mesh_node(1:3,mesh_FEasCP('node',mesh_element(4+n,e))) ! loop over nodes of this element type
    enddo
    do n = 1,FE_NsubNodes(t)               ! now for the true subnodes
      do p = 1,FE_Nips(t)                  ! loop through possible parent nodes
        if (FE_subNodeParent(p,n,t) > 0) & ! valid parent node
-         mesh_subNodeCoord(:,n+FE_Nnodes(t),e) = &
-         mesh_subNodeCoord(:,n+FE_Nnodes(t),e) + &
-         mesh_node(:,mesh_FEasCP('node',mesh_element(4+FE_subNodeParent(p,n,t),e))) ! add up parents
+         mesh_subNodeCoord(1:3,FE_Nnodes(t)+n,e) = mesh_subNodeCoord(1:3,FE_Nnodes(t)+n,e) &
+                                                 + mesh_node(1:3,mesh_FEasCP('node',mesh_element(4+FE_subNodeParent(p,n,t),e))) ! add up parents
      enddo
-     mesh_subNodeCoord(:,n+FE_Nnodes(t),e) = mesh_subNodeCoord(:,n+FE_Nnodes(t),e) / count(FE_subNodeParent(:,n,t) > 0)
+     mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e) = mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e) &
+                                             / count(FE_subNodeParent(:,n,t) > 0)
    enddo
  enddo 
-
- return
  
  endsubroutine
 
@@ -3140,9 +3149,15 @@ endsubroutine
  real(pReal), dimension(3,FE_NipFaceNodes) :: nPos                              ! coordinates of nodes on IP face
  real(pReal), dimension(Ntriangles,FE_NipFaceNodes) :: volume                   ! volumes of possible tetrahedra
  real(pReal), dimension(3) :: centerOfGravity
+ logical :: calcIPvolume = .false.
 
- allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems)) ;                      mesh_ipVolume = 0.0_pReal
- allocate(mesh_ipCenterOfGravity(3,mesh_maxNips,mesh_NcpElems)) ;  mesh_ipCenterOfGravity = 0.0_pReal
+ if (.not. allocated(mesh_ipVolume)) then
+   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
+   allocate(mesh_ipCenterOfGravity(3,mesh_maxNips,mesh_NcpElems))
+   mesh_ipVolume = 0.0_pReal
+   mesh_ipCenterOfGravity = 0.0_pReal
+   calcIPvolume = .true.
+ endif
  
  do e = 1,mesh_NcpElems                                    ! loop over cpElems
    t = mesh_element(2,e)                                   ! get elemType
@@ -3168,21 +3183,23 @@ endsubroutine
        endif
      enddo
      centerOfGravity = sum(gravityNodePos,2)/count(gravityNode)
-     
-     do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
-       forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
-       forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles) &  ! start at each interface node and build valid triangles to cover interface
-         volume(j,n) = math_volTetrahedron(nPos(:,n), &    ! calc volume of respective tetrahedron to CoG
-                                           nPos(:,1+mod(n-1 +j  ,FE_NipFaceNodes)), & ! start at offset j
-                                           nPos(:,1+mod(n-1 +j+1,FE_NipFaceNodes)), & ! and take j's neighbor
-                                           centerOfGravity)
-       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
-     enddo
-     mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes  ! renormalize with interfaceNodeNum due to loop over them
      mesh_ipCenterOfGravity(:,i,e) = centerOfGravity
+     
+     if (calcIPvolume) then
+       do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
+         forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+         forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles) &  ! start at each interface node and build valid triangles to cover interface
+           volume(j,n) = math_volTetrahedron(nPos(:,n), &    ! calc volume of respective tetrahedron to CoG
+                                             nPos(:,1+mod(n-1 +j  ,FE_NipFaceNodes)), & ! start at offset j
+                                             nPos(:,1+mod(n-1 +j+1,FE_NipFaceNodes)), & ! and take j's neighbor
+                                             centerOfGravity)
+         mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
+       enddo
+       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes  ! renormalize with interfaceNodeNum due to loop over them
+     endif
+
    enddo
  enddo
- return
  
  endsubroutine
 
@@ -3268,13 +3285,13 @@ do dir = 1,3                                    ! check periodicity in direction
     
     minimumNodes = 0_pInt
     maximumNodes = 0_pInt
-    minCoord = minval(mesh_node(dir,:))
-    maxCoord = maxval(mesh_node(dir,:))
+    minCoord = minval(mesh_node0(dir,:))
+    maxCoord = maxval(mesh_node0(dir,:))
     do node = 1,mesh_Nnodes                     ! loop through all nodes and find surface nodes
-      if (abs(mesh_node(dir,node) - minCoord) <= tolerance) then
+      if (abs(mesh_node0(dir,node) - minCoord) <= tolerance) then
         minimumNodes(1) = minimumNodes(1) + 1_pInt
         minimumNodes(minimumNodes(1)+1) = node
-      elseif (abs(mesh_node(dir,node) - maxCoord) <= tolerance) then
+      elseif (abs(mesh_node0(dir,node) - maxCoord) <= tolerance) then
         maximumNodes(1) = maximumNodes(1) + 1_pInt
         maximumNodes(maximumNodes(1)+1) = node
       endif
@@ -3290,7 +3307,7 @@ do dir = 1,3                                    ! check periodicity in direction
         cycle
       do n2 = 1,maximumNodes(1)
         maximumNode = maximumNodes(n2+1)
-        distance = abs(mesh_node(:,minimumNode) - mesh_node(:,maximumNode))
+        distance = abs(mesh_node0(:,minimumNode) - mesh_node0(:,maximumNode))
         if (sum(distance) - distance(dir) <= tolerance) then        ! minimum possible distance (within tolerance)
           mesh_nodeTwins(dir,minimumNode) = maximumNode
           mesh_nodeTwins(dir,maximumNode) = minimumNode

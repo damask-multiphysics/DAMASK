@@ -193,7 +193,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
            stateOld(nblock,nstatev), enerInternOld(nblock), &
            enerInelasOld(nblock), tempNew(nblock), tempOld(nblock), &
            stretchNew(nblock,ndir+nshr), defgradNew(nblock,ndir+nshr+nshr), &
-           stressNew(nblock,ndir+nshr) 
+           stressNew(nblock,ndir+nshr), coordMp(nblock,3) 
 
  dimension enerInelasNew(nblock),stateNew(nblock,nstatev),enerInternNew(nblock)
  dimension nElement(nblock),nMatPoint(nblock)
@@ -283,7 +283,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
      defgrd1(3,2) = defgradNew(n,8)
    endif
 
-   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,nElement(n),nMatPoint(n),stress,ddsdde, pstress, dPdF)
+   call CPFEM_general(computationMode,coordMp(n,1:3),defgrd0,defgrd1,temp,timeInc,nElement(n),nMatPoint(n),stress,ddsdde, pstress, dPdF)
   
   !     Mandel:     11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
   !     straight:   11, 22, 33, 12, 23, 13
