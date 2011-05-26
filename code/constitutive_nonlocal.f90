@@ -904,6 +904,7 @@ real(pReal), dimension(3) ::    connection, &                 ! connection vecto
                                 neighboring_ipCoords
 real(pReal), dimension(3,3) ::  sigma, &                      ! dislocation stress for one slip system in neighboring material point's slip system frame
                                 neighboringLattice2neighboringSlip, & ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation  !  !  !)
+                                lattice2slip ,              & ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation  !  !  !)
                                 Tdislo_neighboringLattice, &  ! dislocation stress as 2nd Piola-Kirchhoff stress at neighboring material point
                                 Tdislo, &                     ! dislocation stress as 2nd Piola-Kirchhoff stress at my material point
                                 invFe, &                      ! inverse of my elastic deformation gradient
@@ -988,6 +989,9 @@ if (.not. phase_localConstitution(phase)) then
   do neighboring_el = 1,mesh_NcpElems
     do neighboring_ip = 1,FE_Nips(mesh_element(2,neighboring_el))
       neighboring_phase = material_phase(g,neighboring_ip,neighboring_el)
+      if (phase_localConstitution(neighboring_phase)) then
+        cycle
+      endif
       neighboring_instance = phase_constitutionInstance(neighboring_phase)
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
@@ -996,17 +1000,53 @@ if (.not. phase_localConstitution(phase)) then
       do deltaX = periodicImages(1,1),periodicImages(2,1)
         do deltaY = periodicImages(1,2),periodicImages(2,2)
           do deltaZ = periodicImages(1,3),periodicImages(2,3)
+            
+            
+            !* special case of dead dislocations in the central ip volume
+            !* we assume that they all sit at a distance equal to half the third root of V
+            !* the direction is determined by the character of dislocation
+            
             if (neighboring_el == el .and. neighboring_ip == ip &
                 .and. deltaX == 0 .and. deltaY == 0 .and. deltaZ == 0) then
-              cycle                                                                                 ! this is myself
-            endif
-            neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) &
-                                 + (/real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)/) * meshSize
-            connection = neighboring_ipCoords - ipCoords
-            distance = sqrt(sum(connection ** 2.0_pReal))
-            if (.not. phase_localConstitution(neighboring_phase) &
-                .and. distance <= constitutive_nonlocal_R(instance)) then                   
               
+              forall (s = 1:ns, c = 1:2) &
+                neighboring_rhoExcess(c,s) = state(g,ip,el)%p((2*c+2)*ns+s) &  ! positive deads (here we use symmetry: if this has negative sign it is treated as negative density at positive position instead of positive density at negative position)
+                                           - state(g,ip,el)%p((2*c+3)*ns+s)    ! negative deads (here we use symmetry: if this has negative sign it is treated as positive density at positive position instead of negative density at negative position)
+              segmentLength = mesh_ipVolume(ip,el)**(1.0_pReal/3.0_pReal)
+              distance = 0.5_pReal * mesh_ipVolume(ip,el)**(1.0_pReal/3.0_pReal)
+              do s = 1,ns
+                if (all(abs(neighboring_rhoExcess(:,s)) < 1.0_pReal)) then
+                  cycle                                                                             ! not significant
+                endif
+                sigma = 0.0_pReal                                                                   ! all components except for sigma13 are zero
+                sigma(1,3) = (neighboring_rhoExcess(1,s) + neighboring_rhoExcess(2,s) * (1.0_pReal - nu)) * mesh_ipVolume(ip,el) &
+                           / (distance * sqrt(distance**2.0_pReal + 0.25_pReal * segmentLength**2.0_pReal)) &
+                           * constitutive_nonlocal_Gmod(instance) * constitutive_nonlocal_burgersPerSlipSystem(s,instance) &
+                           / (4.0_pReal * pi * (1.0_pReal - nu))
+                sigma(3,1) = sigma(1,3)
+                
+                s2 = constitutive_nonlocal_slipSystemLattice(s,instance)
+                lattice2slip = math_transpose3x3( reshape((/ lattice_sd(1:3, s2, latticeStruct), &
+                                                            -lattice_st(1:3, s2, latticeStruct), &
+                                                             lattice_sn(1:3, s2, latticeStruct)/), (/3,3/)))
+                Tdislo_neighboringLattice = Tdislo_neighboringLattice &
+                                          + math_mul33x33(math_transpose3x3(lattice2slip), math_mul33x33(sigma, lattice2slip))
+                                            
+              enddo ! slip system loop
+            
+
+            !* regular case
+            
+            else
+            
+              neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) &
+                                   + (/real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)/) * meshSize
+              connection = neighboring_ipCoords - ipCoords
+              distance = sqrt(sum(connection ** 2.0_pReal))
+              if (distance > constitutive_nonlocal_R(instance)) then
+                cycle
+              endif
+                
 
               !* determine the effective number of dislocations
               !* the segment length is the minimum of the third root of the control volume and the ip distance
@@ -1014,10 +1054,10 @@ if (.not. phase_localConstitution(phase)) then
               
               connection_neighboringLattice = math_mul33x3(math_inv3x3(Fe(1:3,1:3,1,neighboring_ip,neighboring_el)), connection)
               forall (s = 1:neighboring_ns, c = 1:2) &
-                neighboring_rhoExcess(c,s) =      state(g,neighboring_ip,neighboring_el)%p((2*c-2)*neighboring_ns+s) &
-                                            + abs(state(g,neighboring_ip,neighboring_el)%p((2*c+2)*neighboring_ns+s)) &
-                                            -     state(g,neighboring_ip,neighboring_el)%p((2*c-1)*neighboring_ns+s) &
-                                            - abs(state(g,neighboring_ip,neighboring_el)%p((2*c+3)*neighboring_ns+s))
+                neighboring_rhoExcess(c,s) =      state(g,neighboring_ip,neighboring_el)%p((2*c-2)*neighboring_ns+s) &  ! positive mobiles
+                                            + abs(state(g,neighboring_ip,neighboring_el)%p((2*c+2)*neighboring_ns+s)) & ! positive deads
+                                            -     state(g,neighboring_ip,neighboring_el)%p((2*c-1)*neighboring_ns+s) &  ! negative mobiles
+                                            - abs(state(g,neighboring_ip,neighboring_el)%p((2*c+3)*neighboring_ns+s))   ! negative deads
               segmentLength = min(mesh_ipVolume(neighboring_ip,neighboring_el)**(1.0_pReal/3.0_pReal), distance)
       
 
@@ -1114,6 +1154,8 @@ if (.not. phase_localConstitution(phase)) then
                                             
               enddo ! slip system loop
             endif
+
+
           enddo ! deltaZ loop
         enddo ! deltaY loop
       enddo ! deltaX loop
