@@ -6,7 +6,7 @@
 # computed using the FEM solvers. Until now, its capable to handle elements with one IP in a regular order
 # written by M. Diehl, m.diehl@mpie.de
 
-import os,sys,threading,re,numpy,time, postprocessingMath
+import os,sys,threading,re,numpy,time,string,postprocessingMath
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 # -----------------------------
@@ -115,7 +115,7 @@ def vtk_writeASCII_mesh(mesh,data,res):
   
   cmds = [\
           '# vtk DataFile Version 3.1',
-          'powered by $Id$',
+          string.replace('powered by $Id$','\n','\\n'),
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
           'POINTS %i float'%N1,
@@ -152,10 +152,6 @@ def vtk_writeASCII_mesh(mesh,data,res):
                'LOOKUP_TABLE default',
                [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
-
-#   vtk = open(filename, 'w')
-#   output(cmd,{'filepointer':vtk},'File')
-#   vtk.close()
 
   return cmds
   
@@ -217,10 +213,6 @@ def gmsh_writeASCII_mesh(mesh,data,res):
                'LOOKUP_TABLE default',
                [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
-
-#   vtk = open(filename, 'w')
-#   output(cmd,{'filepointer':vtk},'File')
-#   vtk.close()
 
   return cmds
  
@@ -289,7 +281,7 @@ def vtk_writeASCII_box(diag,defgrad):
 
 # ----------------------- MAIN -------------------------------
 
-parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile', description = """
+parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
 Produce VTK file from data field. Coordinates are taken from (consecutive) ip.x, ip.y, and ip.z columns.
 
 $Id$
@@ -298,11 +290,8 @@ parser.add_option('-s', '--scalar', action='extend', dest='scalar', type='string
                   help='list of scalars to visualize')
 parser.add_option('-d', '--deformation', dest='defgrad', type='string', \
                   help='heading of deformation gradient columns [%default]')
-parser.add_option('-g', '--grain', dest='grain', type='int', \
-                  help='grain of interest [%default]')
 
 parser.set_defaults(defgrad = 'f')
-parser.set_defaults(grain = 1)
 parser.set_defaults(scalar = [])
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
@@ -340,7 +329,7 @@ for filename in args:
   for label in [options.defgrad] + options.tensor:
     column['tensor'][label] = -1
     for col,head in enumerate(headings):
-      if head == label or head == '%i_1_%s'%(options.grain,label):
+      if head == label or head == '1_%s'%label:
         column['tensor'][label] = col
         maxcol = max(maxcol,col+9)
         break
@@ -353,7 +342,7 @@ for filename in args:
   for label in options.vector:
     column['vector'][label] = -1
     for col,head in enumerate(headings):
-      if head == label or head == '%i_1_%s'%(options.grain,label):
+      if head == label or head == '1_%s'%label:
         column['vector'][label] = col
         maxcol = max(maxcol,col+3)
         break
@@ -362,7 +351,7 @@ for filename in args:
   for label in options.scalar:
     column['scalar'][label] = -1
     for col,head in enumerate(headings):
-      if head == label or head == '%i_%s'%(options.grain,label):
+      if head == label:
         column['scalar'][label] = col
         maxcol = max(maxcol,col+1)
         break
@@ -422,7 +411,7 @@ for filename in args:
       if col != -1:
         print what,
         fields[datatype][what] = numpy.reshape(values[:,col:col+length[datatype]],(res[0],res[1],res[2])+reshape[datatype])
-  print '\n\n'
+  print '\n'
 
   out = {}
   out['mesh']   = vtk_writeASCII_mesh(ms,fields,res)
@@ -431,6 +420,9 @@ for filename in args:
   
   for what in out.keys():
     print what
-    vtk = open('%s_'%what+os.path.splitext(filename)[0]+'.vtk', 'w')
+    (head,tail) = os.path.split(filename)
+    vtk = open(os.path.join(head,'%s_'%what+os.path.splitext(tail)[0]+'.vtk'), 'w')
     output(out[what],{'filepointer':vtk},'File')
     vtk.close()
+  print
+  
