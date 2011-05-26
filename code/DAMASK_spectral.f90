@@ -47,6 +47,7 @@ program DAMASK_spectral
  use prec, only: pInt, pReal
  use IO
  use math
+ use mesh, only: mesh_ipCenterOfGravity
  use CPFEM, only: CPFEM_general, CPFEM_initAll 
  use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol,&
                      itmax, memory_efficient, mpieNumThreadsInt       
@@ -422,7 +423,7 @@ program DAMASK_spectral
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&                                  ! first element in first iteration retains CPFEM_mode 1, 
-                              coordinates(1:3,i,j,k),
+                              coordinates(1:3,i,j,k),&
                               defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&   ! others get 2 (saves winding forward effort)
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
@@ -481,7 +482,7 @@ program DAMASK_spectral
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&                                 ! first element in first iteration retains CPFEM_mode 1,
-                              coordinates(1:3,i,j,k),
+                              coordinates(1:3,i,j,k),&
                               defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
