@@ -368,7 +368,7 @@ def mapIncremental(label, mapping, N, base, new):
       mapped = map(lambda x: x/orientationNorm, mapped)                         # ...renormalize quaternion
   else:
     try:
-      mapped = eval('map(%s,N*len(base),base,new)'%map)                         # map user defined function to colums in chunks
+      mapped = eval('map(%s,[N]*len(base),base,new)'%map)                         # map user defined function to colums in chunks
     except:
       mapped = ['n/a']*len(base)
 
@@ -555,12 +555,17 @@ Extract data from a .t16 (MSC.Marc) or .spectralOut results file.
 
 List of output variables is given by options '--ns','--es','--et','--ho','--cr','--co'. 
 
-Filter and separations use 'elem','node','ip','grain', and 'x','y','z' as key words.
+Filters and separations use 'elem','node','ip','grain', and 'x','y','z' as key words.
 Example:
-1) get averaged results in slices perpendicular to x for all positive y coordinates
---filter 'y >= 0.0' --separation x --map 'avg'
+1) get averaged results in slices perpendicular to x for all negative y coordinates
+--filter 'y < 0.0' --separation x --map 'avg'
 2) global sum of squared data falling into first quadrant arc between R1 and R2
---filter 'x*x + y*y >= R1*R1 and x*x + y*y <= R2*R2' --map 'lambda list: sum([item*item for item in list])'
+--filter 'x >= 0.0 and y >= 0.0 and x*x + y*y >= R1*R1 and x*x + y*y <= R2*R2'
+--map 'lambda n,b,a: n*b+a*a'
+
+User mappings need to be formulated in an incremental fashion for each new data point, a(dd),
+and may use the current (incremental) result, b(ase), as well as the number, n(umber),
+of already processed data points for evaluation.
 
 $Id$
 """)
