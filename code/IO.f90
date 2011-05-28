@@ -26,7 +26,8 @@
 !---------------------------
 ! function IO_abaqus_assembleInputFile
 ! function IO_open_file(unit,relPath)
-! function IO_open_inputFile(unit)
+! function IO_open_inputFile(unit, model)
+! function IO_open_logFile(unit)
 ! function IO_hybridIA(Nast,ODFfileName)
 ! private function hybridIA_reps(dV_V,steps,C)
 ! function IO_stringPos(line,maxN)
@@ -175,27 +176,28 @@ end function
 !   : changed the function to open *.inp_assembly, which is basically 
 !     the input file without comment lines and possibly assembled includes
 !********************************************************************
- logical function IO_open_inputFile(unit)
+ logical function IO_open_inputFile(unit,model)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
+ character(len=*) model
 
  IO_open_inputFile = .false.
  
  if (FEsolver == 'Abaqus') then
    open(unit+1,status='old',err=100,&
                file=trim(getSolverWorkingDirectoryName())//&
-                    trim(getModelName())//InputFileExtension)
+                    trim(model)//InputFileExtension)
    open(unit,err=100,file=trim(getSolverWorkingDirectoryName())//&
-                          trim(getModelName())//InputFileExtension//'_assembly')
+                          trim(model)//InputFileExtension//'_assembly')
    IO_open_inputFile = IO_abaqus_assembleInputFile(unit,unit+1)          ! strip comments and concatenate any "include"s
    close(unit+1) 
  else
    open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                       trim(getModelName())//InputFileExtension)
+                                       trim(model)//InputFileExtension)
    IO_open_inputFile = .true.
  endif
 
@@ -1183,6 +1185,8 @@ endfunction
    msg = 'FFTW init error'
  case (105)
    msg = 'Error reading from ODF file'
+ case (106)
+   msg = 'Error reading info on old job'
  case (110)
    msg = 'No homogenization specified via State Variable 2'
  case (120)

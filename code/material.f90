@@ -445,7 +445,7 @@ subroutine material_parseTexture(file,myPart)
 
  use prec, only: pInt, pReal
  use IO
- use math, only: inRad
+ use math, only: inRad, math_sampleRandomOri
  implicit none
 
  character(len=*), intent(in) :: myPart
@@ -467,8 +467,9 @@ subroutine material_parseTexture(file,myPart)
  allocate(texture_Ngauss(Nsections));   texture_Ngauss = 0_pInt
  allocate(texture_Nfiber(Nsections));   texture_Nfiber = 0_pInt
 
- texture_Ngauss = IO_countTagInPart(file,myPart,'(gauss)',Nsections)
- texture_Nfiber = IO_countTagInPart(file,myPart,'(fiber)',Nsections)
+ texture_Ngauss = IO_countTagInPart(file,myPart,'(gauss)', Nsections) + &
+                  IO_countTagInPart(file,myPart,'(random)',Nsections)
+ texture_Nfiber = IO_countTagInPart(file,myPart,'(fiber)', Nsections)
  texture_maxNgauss = maxval(texture_Ngauss)
  texture_maxNfiber = maxval(texture_Nfiber)
  allocate(texture_Gauss   (5,texture_maxNgauss,Nsections)); texture_Gauss    = 0.0_pReal
@@ -511,6 +512,19 @@ subroutine material_parseTexture(file,myPart)
              texture_symmetry(section) = 1
          end select
          
+       case ('(random)')
+         gauss = gauss + 1
+         texture_Gauss(1:3,gauss,section) = math_sampleRandomOri()
+         do i = 2,4,2
+           tag = IO_lc(IO_stringValue(line,positions,i))
+           select case (tag)
+             case('scatter')
+                 texture_Gauss(4,gauss,section) = IO_floatValue(line,positions,i+1)*inRad
+             case('fraction')
+                 texture_Gauss(5,gauss,section) = IO_floatValue(line,positions,i+1)
+           end select
+         enddo
+
        case ('(gauss)')
          gauss = gauss + 1
          do i = 2,10,2
@@ -528,6 +542,7 @@ subroutine material_parseTexture(file,myPart)
                  texture_Gauss(5,gauss,section) = IO_floatValue(line,positions,i+1)
            end select
          enddo
+
        case ('(fiber)')
          fiber = fiber + 1
          do i = 2,12,2

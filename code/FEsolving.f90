@@ -36,7 +36,7 @@
  logical, dimension(:,:), allocatable :: calcMode
  integer(pInt), dimension(:,:), allocatable :: FEsolving_execIP
  integer(pInt), dimension(2) :: FEsolving_execElem
- character(len=1024) restartJob
+ character(len=1024) FEmodelGeometry
 
  CONTAINS
 
@@ -48,17 +48,20 @@
  
  use prec, only: pInt
  use debug, only: debug_verbosity
+ use DAMASK_interface, only: getModelName, FEsolver
  use IO
  implicit none
  
  integer(pInt), parameter :: fileunit = 222
  integer(pInt), parameter :: maxNchunks = 6
+ integer(pInt) i
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=64) tag
  character(len=1024) line
 
+ FEmodelGeometry = getModelName()
 
- if (IO_open_inputFile(fileunit)) then
+ if (IO_open_inputFile(fileunit,FEmodelGeometry)) then
  
    rewind(fileunit)
    do
@@ -75,6 +78,11 @@
          positions = IO_stringPos(line,maxNchunks)
          restartWrite = iand(IO_intValue(line,positions,1),1_pInt) > 0_pInt
          restartRead  = iand(IO_intValue(line,positions,1),2_pInt) > 0_pInt
+       case ('*restart')
+         do i=2,positions(1)
+           restartWrite = IO_lc(IO_StringValue(line,positions,i)) == 'write'
+!           restartRead  = IO_lc(IO_StringValue(line,positions,i)) == 'read'
+         enddo
      end select
    enddo
  else
@@ -83,17 +91,29 @@
 
 100 close(fileunit)
  
- if (restartRead .and. IO_open_logFile(fileunit)) then
-   rewind(fileunit)
-   do
-     read (fileunit,'(a1024)',END=200) line
-     positions = IO_stringPos(line,maxNchunks)
-     if ( IO_lc(IO_stringValue(line,positions,1)) == 'restart' .and. &
-          IO_lc(IO_stringValue(line,positions,2)) == 'file' .and. &
-          IO_lc(IO_stringValue(line,positions,3)) == 'job' .and. &
-          IO_lc(IO_stringValue(line,positions,4)) == 'id' ) &
-       restartJob = IO_StringValue(line,positions,6)
-   enddo
+ if (restartRead) then
+   if(FEsolver == 'Marc' .and. IO_open_logFile(fileunit)) then
+     rewind(fileunit)
+     do
+       read (fileunit,'(a1024)',END=200) line
+       positions = IO_stringPos(line,maxNchunks)
+       if ( IO_lc(IO_stringValue(line,positions,1)) == 'restart' .and. &
+            IO_lc(IO_stringValue(line,positions,2)) == 'file' .and. &
+            IO_lc(IO_stringValue(line,positions,3)) == 'job' .and. &
+            IO_lc(IO_stringValue(line,positions,4)) == 'id' ) &
+          FEmodelGeometry = IO_StringValue(line,positions,6)
+     enddo
+   elseif (FEsolver == 'Abaqus' .and. IO_open_jobFile(fileunit, 'com')) then
+     rewind(fileunit)
+     do
+       read (fileunit,'(a1024)',END=200) line
+       positions = IO_stringPos(line,maxNchunks)
+!       if ( IO_lc(IO_stringValue(line,positions,?)) == 'oldjob?') &
+!          FEmodelGeometry = IO_StringValue(line,positions,?)       
+     enddo
+   else
+     call IO_error(106) ! cannot open file for old job info
+   endif
  endif
 
 200 close(fileunit)
@@ -106,7 +126,7 @@
  if (debug_verbosity > 0) then
    write(6,*) 'restart writing:    ', restartWrite
    write(6,*) 'restart reading:    ', restartRead
-   if (restartRead) write(6,*) 'restart Job:        ', trim(restartJob)
+   if (restartRead) write(6,*) 'restart Job:        ', trim(FEmodelGeometry)
    write(6,*)
  endif
 !$OMP END CRITICAL (write2out)

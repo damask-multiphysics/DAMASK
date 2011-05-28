@@ -265,7 +265,7 @@
  use DAMASK_interface
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile,IO_abaqus_hasNoPart
- use FEsolving, only: parallelExecution, FEsolving_execElem, FEsolving_execIP, calcMode, lastMode
+ use FEsolving, only: parallelExecution, FEsolving_execElem, FEsolving_execIP, calcMode, lastMode, FEmodelGeometry
  
  implicit none
  
@@ -279,9 +279,9 @@
    write(6,*)
  !$OMP END CRITICAL (write2out)
 
- call mesh_build_FEdata()                                      ! --- get properties of the different types of elements
+ call mesh_build_FEdata()                                                      ! --- get properties of the different types of elements
 
- if (IO_open_inputFile(fileUnit)) then                         ! --- parse info from input file...
+ if (IO_open_inputFile(fileUnit,FEmodelGeometry)) then                         ! --- parse info from input file...
 
  select case (FEsolver)
      case ('Spectral')

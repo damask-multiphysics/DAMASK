@@ -116,7 +116,7 @@ subroutine CPFEM_init()
   use FEsolving, only:                            parallelExecution, &
                                                   symmetricSolver, &
                                                   restartRead, &
-                                                  restartJob
+                                                  FEmodelGeometry
   use mesh, only:                                 mesh_NcpElems, &
                                                   mesh_maxNips
   use material, only:                             homogenization_maxNgrains, &
@@ -149,31 +149,31 @@ subroutine CPFEM_init()
        write(6,'(a)') '<< CPFEM >> Restored state variables of last converged step from binary files'
       !$OMP END CRITICAL (write2out)
     endif
-    if (IO_read_jobBinaryFile(777,'recordedPhase',restartJob,size(material_phase))) then
+    if (IO_read_jobBinaryFile(777,'recordedPhase',FEmodelGeometry,size(material_phase))) then
       read (777,rec=1) material_phase
       close (777)
     endif
-    if (IO_read_jobBinaryFile(777,'convergedF',restartJob,size(crystallite_F0))) then
+    if (IO_read_jobBinaryFile(777,'convergedF',FEmodelGeometry,size(crystallite_F0))) then
       read (777,rec=1) crystallite_F0
       close (777)
     endif
-    if (IO_read_jobBinaryFile(777,'convergedFp',restartJob,size(crystallite_Fp0))) then
+    if (IO_read_jobBinaryFile(777,'convergedFp',FEmodelGeometry,size(crystallite_Fp0))) then
       read (777,rec=1) crystallite_Fp0
       close (777)
     endif
-    if (IO_read_jobBinaryFile(777,'convergedLp',restartJob,size(crystallite_Lp0))) then
+    if (IO_read_jobBinaryFile(777,'convergedLp',FEmodelGeometry,size(crystallite_Lp0))) then
       read (777,rec=1) crystallite_Lp0
       close (777)
     endif
-    if (IO_read_jobBinaryFile(777,'convergeddPdF',restartJob,size(crystallite_dPdF0))) then
+    if (IO_read_jobBinaryFile(777,'convergeddPdF',FEmodelGeometry,size(crystallite_dPdF0))) then
       read (777,rec=1) crystallite_dPdF0
       close (777)
     endif
-    if (IO_read_jobBinaryFile(777,'convergedTstar',restartJob,size(crystallite_Tstar0_v))) then
+    if (IO_read_jobBinaryFile(777,'convergedTstar',FEmodelGeometry,size(crystallite_Tstar0_v))) then
       read (777,rec=1) crystallite_Tstar0_v
       close (777)
     endif
-    if (IO_read_jobBinaryFile(777,'convergedStateConst',restartJob)) then
+    if (IO_read_jobBinaryFile(777,'convergedStateConst',FEmodelGeometry)) then
       m = 0_pInt
       do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
         do l = 1,size(constitutive_state0(i,j,k)%p)
@@ -183,7 +183,7 @@ subroutine CPFEM_init()
       enddo; enddo; enddo
       close (777)
     endif
-    if (IO_read_jobBinaryFile(777,'convergedStateHomog',restartJob)) then
+    if (IO_read_jobBinaryFile(777,'convergedStateHomog',FEmodelGeometry)) then
       m = 0_pInt
       do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
         do l = 1,homogenization_sizeState(j,k)
@@ -193,7 +193,7 @@ subroutine CPFEM_init()
       enddo; enddo
       close (777)
     endif
-    if (IO_read_jobBinaryFile(777,'convergeddcsdE',restartJob,size(CPFEM_dcsdE))) then
+    if (IO_read_jobBinaryFile(777,'convergeddcsdE',FEmodelGeometry,size(CPFEM_dcsdE))) then
       read (777,rec=1) CPFEM_dcsdE
       close (777)
     endif
