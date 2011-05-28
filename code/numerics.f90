@@ -76,7 +76,7 @@ integer(pInt)                   itmax , &                               ! maximu
 !* Random seeding parameters
                                 fixedSeed                               ! fixed seeding for pseudo-random number generator
 !* OpenMP variable
-!$ integer(pInt)                mpieNumThreadsInt                       ! value stored in environment variable MPIE_NUM_THREADS
+!$ integer(pInt)                DAMASK_NumThreadsInt                    ! value stored in environment variable DAMASK_NUM_THREADS
 
 
 CONTAINS
@@ -113,7 +113,7 @@ subroutine numerics_init()
   character(len=1024)                         line
   
 ! OpenMP variable
-!$ character(len=4) mpieNumThreadsString                               !environment variable MPIE_NUMTHREADS
+!$ character(len=4) DAMASK_NumThreadsString                               !environment variable DAMASK_NUM_THREADS
 
   !$OMP CRITICAL (write2out)
     write(6,*)
@@ -173,11 +173,11 @@ subroutine numerics_init()
   fixedSeed               = 0_pInt
 
 
-!* determin number of threads from environment variable MPIE_NUM_THREADS
-!$ call GetEnv('MPIE_NUM_THREADS',mpieNumThreadsString)                     ! get environment variable MPIE_NUM_THREADS...
-!$ read(mpieNumThreadsString,'(i4)') mpieNumThreadsInt                      ! ...convert it to integer...
-!$ if (mpieNumThreadsInt < 1) mpieNumThreadsInt = 1                         ! ...ensure that its at least one...
-!$ call omp_set_num_threads(mpieNumThreadsInt)                              ! ...and use it as number of threads for parallel execution
+!* determin number of threads from environment variable DAMASK_NUM_THREADS
+!$ call GetEnv('DAMASK_NUM_THREADS',DAMASK_NumThreadsString)                   ! get environment variable DAMASK_NUM_THREADS...
+!$ read(DAMASK_NumThreadsString,'(i4)') DAMASK_NumThreadsInt                   ! ...convert it to integer...
+!$ if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                      ! ...ensure that its at least one...
+!$ call omp_set_num_threads(DAMASK_NumThreadsInt)                              ! ...and use it as number of threads for parallel execution
 
   ! try to open the config file
   if(IO_open_file(fileunit,numerics_configFile)) then 
@@ -356,7 +356,7 @@ subroutine numerics_init()
   !$OMP END CRITICAL (write2out)
 
 !* openMP parameter
-!$  write(6,'(a24,x,i8)')   'number of threads:      ',OMP_get_max_threads()
+!$  write(6,'(a24,x,i8)')   'number of threads:      ',DAMASK_NumThreadsInt
 !$  write(6,*)
   
   ! sanity check  

@@ -233,7 +233,7 @@ subroutine hypela2(&
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_initAll,CPFEM_general,CPFEM_init_done
 !$ use OMP_LIB                                                                ! the openMP function library
-!$ use numerics, only: mpieNumThreadsInt                                      ! number of threads set by MPIE_NUMTHREADS
+!$ use numerics, only: DAMASK_NumThreadsInt                                   ! number of threads set by DAMASK_NUM_THREADS
  implicit none
  
 !     ** Start of generated type statements **
@@ -269,7 +269,7 @@ subroutine hypela2(&
 
  if (.not. CPFEM_init_done) call CPFEM_initAll(t(1),n(1),nn)
 
-!$ call omp_set_num_threads(mpieNumThreadsInt)                            ! set number of threads for parallel execution set by MPIE_NUM_THREADS
+!$ call omp_set_num_threads(DAMASK_NumThreadsInt)                         ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
  if (lovl == 4) then                                                      ! Marc requires stiffness in separate call
    if ( timinc < theDelta .and. theInc == inc ) then                      ! first after cutback
