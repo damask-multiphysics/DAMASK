@@ -344,7 +344,7 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
       draw.text(map(lambda x:x+border,coords),'%i -> %i'%(grainID,rcData['grainMapping'][grainID]),fill=(128,32,32))
       grainID += 1
       
-    img.save(os.path.splitext(args[0])[0]+'.png',"PNG")
+    img.save(imagename+'.png',"PNG")
   
   return rcData
 
@@ -722,7 +722,7 @@ if not len(args):
   parser.error('no boundary file specified')
 
 if not imageCapability:
-  options.imagesize = 0
+  options.imgsize = 0
 
 try:
   boundaryFile = open(args[0])
@@ -738,15 +738,13 @@ orientationData = rcbOrientationParser(boundarySegments)
 rcData = rcbParser(boundarySegments,options.size,options.tolerance,myName,options.imgsize,options.border)
 
 # ----- write texture data to file -----
-configFile = open(os.path.splitext(args[0])[0]+'.config','w')
+configFile = open(myName+'.config','w')
 configFile.write('\n\n<microstructure>\n\n')
 for i,grain in enumerate(rcData['grainMapping']):
   configFile.write('\n[grain %i]\n'%grain)
-  configFile.write('(constituent)\tphase %i\ttexture %i\tfraction 1.0\n'%(i+1,i+1))
+  configFile.write('(constituent)\tphase 1\ttexture %i\tfraction 1.0\n'%(i+1))
 
 configFile.write('\n\n<phase>\n\n')
-for grain in rcData['grainMapping']:
-  configFile.write('\n[grain %i]\n'%grain)
 
 configFile.write('\n\n<texture>\n\n')
 for grain in rcData['grainMapping']:
