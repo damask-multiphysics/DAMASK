@@ -676,6 +676,9 @@ endfunction
  do while (verify(line(right+1:),sep)>0)
    left  = right + verify(line(right+1:),sep)
    right = left + scan(line(left:),sep) - 2
+   if ( line(left:left) == '#' ) then
+     exit
+   endif
    if ( IO_stringPos(1)<N ) then
      IO_stringPos(1+IO_stringPos(1)*2+1) = left
      IO_stringPos(1+IO_stringPos(1)*2+2) = right
