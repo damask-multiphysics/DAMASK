@@ -19,9 +19,10 @@ bin_link = { \
 							'voronoi_tessellation',
 							],
 				'post' : [
-							'postResults',
 							'3Dvisualize',
 							'mentat_colorMap',
+							'postResults',
+							'spectral_iterationCount',
 							],
 						}
 
