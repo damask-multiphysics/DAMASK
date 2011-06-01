@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
+
+import os,sys,string,numpy
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
+# -----------------------------
+class extendedOption(Option):
+# -----------------------------
+# used for definition of new option parser action 'extend', which enables to take multiple option arguments
+# taken from online tutorial http://docs.python.org/library/optparse.html
+    
+    ACTIONS = Option.ACTIONS + ("extend",)
+    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+    def take_action(self, action, dest, opt, value, values, parser):
+        if action == "extend":
+            lvalue = value.split(",")
+            values.ensure_value(dest, []).extend(lvalue)
+        else:
+            Option.take_action(self, action, dest, opt, value, values, parser)
+
+
+
+def outStdout(cmd,locals):
+  if cmd[0:3] == '(!)':
+    exec(cmd[3:])
+  elif cmd[0:3] == '(?)':
+    cmd = eval(cmd[3:])
+    print cmd
+  else:
+    print cmd
+  return
+
+def outFile(cmd,locals):
+  if cmd[0:3] == '(!)':
+    exec(cmd[3:])
+  elif cmd[0:3] == '(?)':
+    cmd = eval(cmd[3:])
+    locals['filepointer'].write(cmd+'\n')
+  else:
+    locals['filepointer'].write(cmd+'\n')
+  return
+
+
+def output(cmds,locals,dest):
+  for cmd in cmds:
+    if isinstance(cmd,list):
+      output(cmd,locals,dest)
+    else:
+      {\
+      'File': outFile,\
+      'Stdout': outStdout,\
+      }[dest](str(cmd),locals)
+  return
+
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++
+def vtk_writeASCII_mesh(dim,res,data):
+# +++++++++++++++++++++++++++++++++++++++++++++++++++
+  """ function writes data array defined on a rectilinear grid """
+  N  = res[0]*res[1]*res[2]
+  
+  cmds = [\
+          '# vtk DataFile Version 3.1',
+          'powered by $Id$',
+          'ASCII',
+          'DATASET RECTILINEAR_GRID',
+          'DIMENSIONS %i %i %i'%(res[0]+1,res[1]+1,res[2]+1),
+          'X_COORDINATES %i float'%(res[0]+1),
+          ' '.join(map(str,[i*dim[0]/res[0] for i in range(res[0]+1)])),
+          'Y_COORDINATES %i float'%(res[1]+1),
+          ' '.join(map(str,[i*dim[1]/res[1] for i in range(res[1]+1)])),
+          'Z_COORDINATES %i float'%(res[2]+1),
+          ' '.join(map(str,[i*dim[2]/res[2] for i in range(res[2]+1)])),
+          'CELL_DATA %i'%N,
+         ]
+  
+  for datatype in data:
+    for item in data[datatype]:
+      cmds += [\
+               '%s %s float'%(datatype.upper()+{True:'',False:'S'}[datatype.lower().endswith('s')],item),
+               'LOOKUP_TABLE default',
+               [[['\t'.join(map(str,data[datatype][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])]
+              ]
+
+  return cmds
+
+
+# ----------------------- MAIN -------------------------------
+
+mapping = {
+        'resolution': {'a':0,'b':1,'c':2},
+        'dimension':  {'x':0,'y':1,'z':2},
+          }
+
+parser = OptionParser(option_class=extendedOption, usage='%prog geomfile[s]', description = """
+Produce VTK point file from geom data
+
+$Id$
+""")
+
+(options, args) = parser.parse_args()
+
+for filename in args:
+  if not os.path.exists(filename):
+    continue
+
+  print filename
+  file = open(filename)
+  
+  res = [0,0,0]
+  resolutionData = file.readline().split()
+  if resolutionData[0].lower() != 'resolution':
+    sys.stderr.write('no resolution info found...\n')
+    continue
+  else:
+    for i in range(1,6,2):
+      if resolutionData[i] not in mapping['resolution']:
+        sys.stderr.write('corrupt resolution info...\n')
+        continue
+      else:
+        res[mapping['resolution'][resolutionData[i]]] = int(resolutionData[i+1])
+        N = res[0]*res[1]*res[2]
+      
+  dim = [0.0,0.0,0.0]
+  dimensionData = file.readline().split()
+  if dimensionData[0].lower() != 'dimension':
+    sys.stderr.write('no dimension info found...\n')
+    continue
+  else:
+    for i in range(1,6,2):
+      if dimensionData[i] not in mapping['dimension']:
+        sys.stderr.write('corrupt dimension info...\n')
+        continue
+      else:
+        dim[mapping['dimension'][dimensionData[i]]] = float(dimensionData[i+1])
+
+  print 'dimension',dim
+  
+  file.readline()                        # skip homogenization
+
+  data = {'scalar':{'texture':numpy.zeros(N,'i').reshape(res[2],res[1],res[0]).T}}
+  for k in range(res[2]):
+    for j in range(res[1]):
+      for i in range(res[0]):
+        data['scalar']['texture'][i,j,k] = int(file.readline().split()[0])
+
+  out = {}
+  out['mesh'] = vtk_writeASCII_mesh(dim,res,data)
+  
+  for what in out.keys():
+    (head,tail) = os.path.split(filename)
+    vtk = open(os.path.join(head,'%s_'%what+os.path.splitext(tail)[0]+'.vtk'), 'w')
+    output(out[what],{'filepointer':vtk},'File')
+    vtk.close()
