@@ -50,7 +50,7 @@ program DAMASK_spectral
  use mesh, only: mesh_ipCenterOfGravity
  use CPFEM, only: CPFEM_general, CPFEM_initAll 
  use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol,&
-                     itmax, memory_efficient, mpieNumThreadsInt       
+                     itmax, memory_efficient, DAMASK_NumThreadsInt       
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 !$ use OMP_LIB                                                          ! the openMP function library
 
@@ -112,7 +112,7 @@ program DAMASK_spectral
  real(pReal) temperature                               ! not used, but needed for call to CPFEM_general
 
 !Initializing
-!$ call omp_set_num_threads(mpieNumThreadsInt)         ! set number of threads for parallel execution set by MPIE_NUM_THREADS
+!$ call omp_set_num_threads(DAMASK_NumThreadsInt)         ! set number of threads for parallel execution set by MPIE_NUM_THREADS
 
  bc_maskvector = ''
  unit = 234_pInt
@@ -331,7 +331,7 @@ program DAMASK_spectral
 ! Initialization of fftw (see manual on fftw.org for more details) 
  call dfftw_init_threads(ierr)
  if(ierr == 0) call IO_error(104,ierr)
- call dfftw_plan_with_nthreads(mpieNumThreadsInt) 
+ call dfftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
  call dfftw_plan_many_dft_r2c(plan_fft(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
    workfft,(/resolution(1)  +2,resolution(2),resolution(3)/),1,(resolution(1)  +2)*resolution(2)*resolution(3),&
    workfft,(/resolution(1)/2+1,resolution(2),resolution(3)/),1,(resolution(1)/2+1)*resolution(2)*resolution(3),FFTW_PATIENT)   
