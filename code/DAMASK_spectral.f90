@@ -109,14 +109,14 @@ program DAMASK_spectral
  integer(pInt)  loadcase, ielem, iter, calcmode, CPFEM_mode, ierr
  logical errmatinv
  
- real(pReal) temperature                               ! not used, but needed for call to CPFEM_general
+ real(pReal) temperature                                  ! not used, but needed for call to CPFEM_general
 
 !Initializing
-!$ call omp_set_num_threads(DAMASK_NumThreadsInt)         ! set number of threads for parallel execution set by MPIE_NUM_THREADS
+!$ call omp_set_num_threads(DAMASK_NumThreadsInt)         ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
- bc_maskvector = ''
+ bc_maskvector = .false.
  unit = 234_pInt
- ones   = 1.0_pReal; zeroes = 0.0_pReal
+ ones = 1.0_pReal; zeroes = 0.0_pReal
  img = cmplx(0.0,1.0)
  
  N_l = 0_pInt; N_s = 0_pInt
@@ -175,7 +175,7 @@ program DAMASK_spectral
      select case (IO_lc(IO_stringValue(line,posInput,j)))
        case('l','velocitygrad')
          valuevector = 0.0_pReal
-         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '#'
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '*'
          do k = 1,9
            if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k) ! assign values for the velocity gradient matrix
          enddo
@@ -183,7 +183,7 @@ program DAMASK_spectral
          bc_velocityGrad(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
        case('s','stress')
          valuevector = 0.0_pReal
-         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '#'
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '*'
          do k = 1,9
            if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k)  ! assign values for the bc_stress matrix
          enddo
@@ -199,7 +199,7 @@ program DAMASK_spectral
 200 close(unit)
 
  do i = 1, N_Loadcases                                                      ! consistency checks
-   if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(46,i)       ! exclisive or masking only
+   if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(46,i)       ! exclusive or masking only
    if (bc_timeIncrement(i) < 0.0_pReal) call IO_error(47,i)                 ! negative time increment
    if (bc_steps(i) < 1_pInt) call IO_error(48,i)                            ! non-positive increment count
    print '(a,/,3(3(f12.6,x)/))','L:'        ,math_transpose3x3(bc_velocityGrad(:,:,i))
@@ -397,8 +397,8 @@ program DAMASK_spectral
 !*************************************************************
 ! convergence loop
      do while(iter < itmax .and. &
-             (err_div > err_div_tol .or. &
-              err_stress > err_stress_tol .or. &
+             (err_div     > err_div_tol    .or. &
+              err_stress  > err_stress_tol .or. &
               err_defgrad > err_defgrad_tol))
        iter = iter + 1_pInt
        print*, ' '
@@ -414,7 +414,8 @@ program DAMASK_spectral
          ielem = 0_pInt
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1
-           call CPFEM_general(3, coordinates(1:3,i,j,k), defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
+           call CPFEM_general(3,&                                          ! collect cycle
+                              coordinates(1:3,i,j,k), defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
@@ -428,14 +429,14 @@ program DAMASK_spectral
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
            CPFEM_mode = 2_pInt
-           workfft(i,j,k,:,:) = pstress
-           cstress_av = cstress_av + math_mandel6to33(cstress)
+           workfft(i,j,k,:,:) = pstress                                     ! prepare Fourier transform of first P--K stress
+           cstress_av = cstress_av + math_mandel6to33(cstress)              ! build up average Cauchy stress
          enddo; enddo; enddo
          
          cstress_av = cstress_av * wgt
-         do m = 1,3; do n = 1,3
-           pstress_av(m,n) = sum(workfft(1:resolution(1),:,:,m,n)) * wgt
-           defgrad_av(m,n) = sum(defgrad(:,:,:,m,n)) * wgt
+         do n = 1,3; do m = 1,3
+           pstress_av(m,n) = sum(workfft(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
+           defgrad_av(m,n) = sum(defgrad(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
          enddo; enddo
 
          err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
@@ -445,7 +446,7 @@ program DAMASK_spectral
          defgradAimCorrPrev = defgradAimCorr
          defgradAimCorr     = -mask_stress * math_mul3333xx33(s0, (mask_stress*(pstress_av - bc_stress(:,:,loadcase))))
 
-         do m=1,3; do n =1,3                                        ! calculate damper (correction is far to strong)
+         do m=1,3; do n =1,3                                        ! calculate damper (correction is far too strong)
            if ( sign(1.0_pReal,defgradAimCorr(m,n))/=sign(1.0_pReal,defgradAimCorrPrev(m,n))) then
              damper(m,n) = max(0.01_pReal,damper(m,n)*0.8)
            else
@@ -461,7 +462,7 @@ program DAMASK_spectral
          err_div = 2 * err_div_tol
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))
          print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:',math_transpose3x3(defgrad_av)
-         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress / MPa: '   ,math_transpose3x3(cstress_av)/1.e6
+         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress / MPa: ',math_transpose3x3(cstress_av)/1.e6
          print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol
          print '(2(a,E8.2))', ' error deformation gradient: ',err_defgrad,'  Tol. = ', err_defgrad_tol*0.8
          if(err_stress < err_stress_tol*0.8) then 
@@ -491,15 +492,15 @@ program DAMASK_spectral
            cstress_av = cstress_av + math_mandel6to33(cstress)          
          enddo; enddo; enddo       
          cstress_av = cstress_av * wgt
-         do m = 1,3; do n = 1,3
-           pstress_av(m,n) = sum(workfft(1:resolution(1),:,:,m,n))*wgt
+         do n = 1,3; do m = 1,3
+           pstress_av(m,n) = sum(workfft(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
          enddo; enddo
          
          print *, 'Calculating equilibrium using spectral method'
          err_div = 0.0_pReal; sigma0 = 0.0_pReal
          call dfftw_execute_dft_r2c(plan_fft(1),workfft,workfft)           ! FFT of pstress
          do m = 1,3 ! L infinity Norm of stress tensor 
-           sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:) + (workfft(2,1,1,m,:))*img)))     
+           sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:) + workfft(2,1,1,m,:)*img)))     
          enddo
          err_div = (maxval(abs(math_mul33x3_complex(workfft(resolution(1)+1,resolution(2)/2+1,resolution(3)/2+1,:,:)+& ! L infinity norm of div(stress)
                                                     workfft(resolution(1)+2,resolution(2)/2+1,resolution(3)/2+1,:,:)*img,xi_central))))
