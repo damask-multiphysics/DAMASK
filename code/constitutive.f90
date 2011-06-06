@@ -643,7 +643,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
  
 end select
 
-if (debug_verbosity > 0) then
+if (debug_verbosity > 6) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDotState)
     debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
@@ -721,7 +721,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
    
 end select
 
-if (debug_verbosity > 0) then
+if (debug_verbosity > 6) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDotTemperature)
     debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt

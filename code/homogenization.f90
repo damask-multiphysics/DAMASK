@@ -388,7 +388,7 @@ subroutine materialpoint_stressAndItsTangent(&
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                             ! ...def grad
            !$OMP FLUSH(materialpoint_subF0)
          elseif (materialpoint_requested(i,e)) then                                                       ! this materialpoint just converged    ! already at final time (??)
-           if (debug_verbosity > 0) then
+           if (debug_verbosity > 2) then
              !$OMP CRITICAL (distributionHomog)
                debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
                  debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
@@ -498,7 +498,7 @@ subroutine materialpoint_stressAndItsTangent(&
            endif
            !$OMP FLUSH(materialpoint_converged)
            if (materialpoint_converged(i,e)) then
-             if (debug_verbosity > 0) then
+             if (debug_verbosity > 2) then
                !$OMP CRITICAL (distributionMPState)
                  debug_MaterialpointStateLoopdistribution(NiterationMPstate) = &
                    debug_MaterialpointStateLoopdistribution(NiterationMPstate) + 1

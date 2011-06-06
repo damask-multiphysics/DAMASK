@@ -218,7 +218,7 @@ subroutine debug_info()
  
   call system_clock(count_rate=tickrate)
 
-  if (debug_verbosity > 0) then
+  if (debug_verbosity > 4) then
     !$OMP CRITICAL (write2out)
   
       write(6,*)
@@ -288,7 +288,13 @@ subroutine debug_info()
         endif
       enddo
       write(6,'(a15,i10,x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
+
+    !$OMP END CRITICAL (write2out)
+  endif
       
+  if (debug_verbosity > 2) then
+    !$OMP CRITICAL (write2out)
+  
       integral = 0_pInt
       write(6,*)
       write(6,*) 'distribution_MaterialpointStateLoop :'

@@ -604,7 +604,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
               crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                       ! ...2nd PK stress
               !$OMP FLUSH(crystallite_subF0)
             elseif (formerSubStep > subStepMinCryst) then                                               ! this crystallite just converged
-              if (debug_verbosity > 0) then
+              if (debug_verbosity > 4) then
                 !$OMP CRITICAL (distributionCrystallite)
                   debug_CrystalliteLoopDistribution(min(nCryst+1,NiterationCrystallite)) = &
                     debug_CrystalliteLoopDistribution(min(nCryst+1,NiterationCrystallite)) + 1
@@ -1024,7 +1024,7 @@ do n = 1,4
 #endif
             crystallite_converged(g,i,e) = .true.                                                         ! ... converged per definition
             crystallite_todo(g,i,e) = .false.                                                             ! ... integration done
-            if (debug_verbosity > 0) then
+            if (debug_verbosity > 4) then
               !$OMP CRITICAL (distributionState)
                 debug_StateLoopDistribution(n,numerics_integrationMode) = &
                   debug_StateLoopDistribution(n,numerics_integrationMode) + 1
@@ -1540,7 +1540,7 @@ relTemperatureResiduum = 0.0_pReal
       if (crystallite_integrateStress(g,i,e)) then
         crystallite_converged(g,i,e) = .true.                                                           ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                               ! ... integration done
-        if (debug_verbosity > 0) then
+        if (debug_verbosity > 4) then
           !$OMP CRITICAL (distributionState)
             debug_StateLoopDistribution(6,numerics_integrationMode) = debug_StateLoopDistribution(6,numerics_integrationMode) + 1
           !$OMP END CRITICAL (distributionState)
@@ -1831,7 +1831,7 @@ relTemperatureResiduum = 0.0_pReal
           .and. abs(relTemperatureResiduum(g,i,e)) < rTol_crystalliteTemperature ) then        
         crystallite_converged(g,i,e) = .true.                                                             ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
-        if (debug_verbosity > 0) then
+        if (debug_verbosity > 4) then
           !$OMP CRITICAL (distributionState)
             debug_StateLoopDistribution(2,numerics_integrationMode) = debug_StateLoopDistribution(2,numerics_integrationMode) + 1
           !$OMP END CRITICAL (distributionState)
@@ -2011,7 +2011,7 @@ endif
     if (crystallite_todo(g,i,e)) then
       if (crystallite_integrateStress(g,i,e)) then
         crystallite_converged(g,i,e) = .true.
-        if (debug_verbosity > 0) then
+        if (debug_verbosity > 4) then
           !$OMP CRITICAL (distributionState)
             debug_StateLoopDistribution(1,numerics_integrationMode) = debug_StateLoopDistribution(1,numerics_integrationMode) + 1
           !$OMP END CRITICAL (distributionState)
@@ -2260,7 +2260,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         elseif (stateConverged .and. temperatureConverged) then                                           ! check (private) logicals "stateConverged" and "temperatureConverged" instead of (shared) "crystallite_converged", so no need to flush the "crystallite_converged" array
-          if (debug_verbosity > 0) then
+          if (debug_verbosity > 4) then
             !$OMP CRITICAL (distributionState)
               debug_StateLoopDistribution(NiterationState,numerics_integrationMode) = &
                 debug_StateLoopDistribution(NiterationState,numerics_integrationMode) + 1
@@ -2681,7 +2681,7 @@ LpLoop: do
     call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
   endif
   call constitutive_LpAndItsTangent(Lp_constitutive, dLpdT_constitutive, Tstar_v, crystallite_Temperature(g,i,e), g, i, e)
-  if (debug_verbosity > 0) then
+  if (debug_verbosity > 4) then
     call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
     !$OMP CRITICAL (debugTimingLpTangent)
       debug_cumLpCalls = debug_cumLpCalls + 1_pInt
@@ -2748,7 +2748,7 @@ LpLoop: do
     jacoCounter = 0_pInt                                           ! reset counter for Jacobian update (we want to do an update next time!)
     Lpguess = Lpguess_old                                       
     residuum  = residuum_old
-    if (debug_verbosity > 0) then
+    if (debug_verbosity > 4) then
       !$OMP CRITICAL (distributionLeapfrogBreak)
         debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) = &
           debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) + 1
@@ -2858,7 +2858,7 @@ if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug
 endif
 #endif
 
-if (debug_verbosity > 0) then
+if (debug_verbosity > 4) then
   !$OMP CRITICAL (distributionStress)
    debug_StressLoopDistribution(NiterationStress,numerics_integrationMode) = &
      debug_StressLoopDistribution(NiterationStress,numerics_integrationMode) + 1
