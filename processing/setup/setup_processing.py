@@ -15,6 +15,7 @@ bin_link = { \
 							'mentat_pbcOnBoxMesh',
 							'mentat_patchFromReconstructedBoundaries',
 							'mentat_spectralBox',
+							'spectral_geomCheck',
 							'voronoi_randomSeeding',
 							'voronoi_tessellation',
 							],
