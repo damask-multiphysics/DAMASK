@@ -13,8 +13,8 @@ bin_link = { \
 				'pre' : [
 							'marc_addUserOutput',
 							'mentat_pbcOnBoxMesh',
-							'mentat_patchFromReconstructedBoundaries',
 							'mentat_spectralBox',
+							'patchFromReconstructedBoundaries',
 							'spectral_geomCheck',
 							'voronoi_randomSeeding',
 							'voronoi_tessellation',

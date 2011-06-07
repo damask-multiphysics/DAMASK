@@ -3,11 +3,30 @@
 import sys,os,pwd,math,re
 try:
   import Image,ImageDraw
-  imageCapability = True
+  ImageCapability = True
 except:
-  imageCapability = False
+  ImageCapability = False
 
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
+# -----------------------------
+class extendedOption(Option):
+# -----------------------------
+# used for definition of new option parser action 'extend', which enables to take multiple option arguments
+# taken from online tutorial http://docs.python.org/library/optparse.html
+    
+    ACTIONS = Option.ACTIONS + ("extend",)
+    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+    def take_action(self, action, dest, opt, value, values, parser):
+        if action == "extend":
+            lvalue = value.split(",")
+            values.ensure_value(dest, []).extend(lvalue)
+        else:
+            Option.take_action(self, action, dest, opt, value, values, parser)
+
 
 releases = {'2010':['linux64',''],
             '2008r1':[''],
@@ -34,9 +53,10 @@ for release,subdirs in sorted(releases.items(),reverse=True):
 
 try:
   from py_mentat import *
+  MentatCapability = True
 except:
   print('error: no valid Mentat release found in %s'%MSCpath)
-  sys.exit(-1)
+  MentatCapability = False
 
 
 
@@ -46,8 +66,10 @@ def outMentat(cmd,locals):
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
     py_send(cmd)
+    if 'log' in locals: locals['log'].append(cmd)
   else:
     py_send(cmd)
+    if 'log' in locals: locals['log'].append(cmd)
   return
 
 def outStdout(cmd,locals):
@@ -89,7 +111,7 @@ def rcbOrientationParser(content):
   
   return grains
 
-def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for TSL-OIM reconstructed boundary files
+def rcbParser(content,M,size,tolerance):                      # parser for TSL-OIM reconstructed boundary files
 
 # find bounding box
 
@@ -98,8 +120,10 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
   x = [0.,0.]
   y = [0.,0.]
   for line in content:
-    if line[0] != '#':                      # skip comments
-      (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12] # get start and end coordinates of each segment
+    if line[0] != '#':                                          # skip comments
+      (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]     # get start and end coordinates of each segment.
+      (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
+      (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
       boxX[0] = min(boxX[0],x[0],x[1])
       boxX[1] = max(boxX[1],x[0],x[1])
       boxY[0] = min(boxY[0],y[0],y[1])
@@ -107,14 +131,10 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
   dX = boxX[1]-boxX[0]
   dY = boxY[1]-boxY[0]
   
-  scaleImg = imagesize/max(dX,dY)
-  scalePatch = size/dY
+  scalePatch = size/dX
 
-  if scaleImg > 0:                        # create image
-    img = Image.new("RGB",map(lambda x:int(round(x))+border*2,(scaleImg*dX,scaleImg*dY)),(255,255,255))
-    draw = ImageDraw.Draw(img)
 
-# read segments and draw them
+# read segments
   segment = 0
   connectivityXY = {"0": {"0":[],"%g"%dY:[],},\
           "%g"%dX: {"0":[],"%g"%dY:[],},}
@@ -123,13 +143,15 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
   grainNeighbors = []
   
   for line in content:
-    if line[0] != '#':                      # skip comments
-      (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]   # get start and end coordinates of each segment
-                                                              # make relative to origin of bounding box
-      x[0] -= boxX[0]
+    if line[0] != '#':                                          # skip comments
+      (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]     # get start and end coordinates of each segment
+      (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
+      (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
+
+      x[0] -= boxX[0]                                           # make relative to origin of bounding box
       x[1] -= boxX[0]
-      y[0]=boxY[1]-y[0]
-      y[1]=boxY[1]-y[1]
+      y[0] -= boxY[0]
+      y[1] -= boxY[0]
       grainNeighbors.append(map(int,line.split()[12:14]))     # remember right and left grain per segment
       for i in range(2):                                      # store segment to both points
         match = False                                         # check whether point is already known (within a small range)
@@ -164,9 +186,6 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
             connectivityYX[keyY][keyX] = []
         connectivityXY[keyX][keyY].append(segment)
         connectivityYX[keyY][keyX].append(segment)
-      if scaleImg > 0:
-        draw.line(map(lambda x:int(scaleImg*x)+border,[x[0],y[0],x[1],y[1]]),fill=(128,128,128))
-        draw.text(map(lambda x:int(scaleImg*x)+border,[(x[1]+x[0])/2.0,(y[1]+y[0])/2.0]),"%i"%segment,fill=(0,0,128))
       segment += 1
       
 
@@ -179,9 +198,6 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
     connectivityXY[boundary[indexBdy+1]][keyId].append(segment)
     connectivityYX[keyId][boundary[indexBdy]].append(segment)
     connectivityYX[keyId][boundary[indexBdy+1]].append(segment)
-    if scaleImg > 0:
-      draw.line(map(lambda x:int(scaleImg*x)+border,[float(boundary[indexBdy]),float(keyId),float(boundary[indexBdy+1]),float(keyId)]),width=3,fill=(128,128*(segment%2),0))
-      draw.text(map(lambda x:int(scaleImg*x)+border,[(float(boundary[indexBdy])+float(boundary[indexBdy+1]))/2.0,float(keyId)]),"%i"%segment,fill=(0,0,128))
     segment += 1
 
 # right border
@@ -193,9 +209,6 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
     connectivityYX[boundary[indexBdy+1]][keyId].append(segment)
     connectivityXY[keyId][boundary[indexBdy]].append(segment)
     connectivityXY[keyId][boundary[indexBdy+1]].append(segment)
-    if scaleImg > 0:
-      draw.line(map(lambda x:int(scaleImg*x)+border,[float(keyId),float(boundary[indexBdy]),float(keyId),float(boundary[indexBdy+1])]),width=3,fill=(128,128*(segment%2),0))
-      draw.text(map(lambda x:int(scaleImg*x)+border,[float(keyId),(float(boundary[indexBdy])+float(boundary[indexBdy+1]))/2.0]),"%i"%segment,fill=(0,0,128))
     segment += 1
 
 # bottom border
@@ -207,9 +220,6 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
     connectivityXY[boundary[indexBdy+1]][keyId].append(segment)
     connectivityYX[keyId][boundary[indexBdy]].append(segment)
     connectivityYX[keyId][boundary[indexBdy+1]].append(segment)
-    if scaleImg > 0:
-      draw.line(map(lambda x:int(scaleImg*x)+border,[float(boundary[indexBdy]),float(keyId),float(boundary[indexBdy+1]),float(keyId)]),width=3,fill=(128,128*(segment%2),0))
-      draw.text(map(lambda x:int(scaleImg*x)+border,[(float(boundary[indexBdy])+float(boundary[indexBdy+1]))/2.0,float(keyId)]),"%i"%segment,fill=(0,0,128))
     segment += 1
 
 # left border
@@ -221,9 +231,6 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
     connectivityYX[boundary[indexBdy+1]][keyId].append(segment)
     connectivityXY[keyId][boundary[indexBdy]].append(segment)
     connectivityXY[keyId][boundary[indexBdy+1]].append(segment)
-    if scaleImg > 0:
-      draw.line(map(lambda x:int(scaleImg*x)+border,[float(keyId),float(boundary[indexBdy]),float(keyId),float(boundary[indexBdy+1])]),width=3,fill=(128,128*(segment%2),0))
-      draw.text(map(lambda x:int(scaleImg*x)+border,[float(keyId),(float(boundary[indexBdy])+float(boundary[indexBdy+1]))/2.0]),"%i"%segment,fill=(0,0,128))
     segment += 1
 
 
@@ -242,13 +249,7 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
           segments[segment] = pointId
         else:
           segments[segment].append(pointId)
-      if scaleImg > 0:
-        draw.text(map(lambda x:int(scaleImg*x)+border,[float(keyX),float(keyY)]),"%i"%pointId,fill=(0,0,0))
       pointId += 1
-
-  if scaleImg > 0:
-    img.save(imagename+'.png',"PNG")
-
 
   grains = {'draw': [], 'legs': []}
   pointId = 0
@@ -332,19 +333,6 @@ def rcbParser(content,size,tolerance,imagename,imagesize,border): # parser for T
   rcData['box'] = grains['box']
 
 
-  if scaleImg > 0:
-    grainID = 0
-    for grain in grains['draw']:
-      coords = [0,0]
-      for point in grain:
-        coords[0] += int(scaleImg/scalePatch*point[0])
-        coords[1] += int(scaleImg/scalePatch*point[1])
-      coords[0] /= len(grain)
-      coords[1] /= len(grain)
-      draw.text(map(lambda x:x+border,coords),'%i -> %i'%(grainID,rcData['grainMapping'][grainID]),fill=(128,32,32))
-      grainID += 1
-      
-    img.save(imagename+'.png',"PNG")
   
   return rcData
 
@@ -362,14 +350,14 @@ def init():
       ]
 
 
-def sample(a,n,size):
+def sample(size,aspect,n,xmargin,ymargin):
 
   cmds = [\
 # gauge
-    "*add_points %f %f %f"%(-size*a,size*a,0),
-    "*add_points %f %f %f"%( size*a,size*a,0),
-    "*add_points %f %f %f"%( size*a,-size*a,0),
-    "*add_points %f %f %f"%(-size*a,-size*a,0),
+    "*add_points %f %f %f"%(-size*(0.5+xmargin), size*(0.5*aspect+ymargin),0),
+    "*add_points %f %f %f"%( size*(0.5+xmargin), size*(0.5*aspect+ymargin),0),
+    "*add_points %f %f %f"%( size*(0.5+xmargin),-size*(0.5*aspect+ymargin),0),
+    "*add_points %f %f %f"%(-size*(0.5+xmargin),-size*(0.5*aspect+ymargin),0),
     "*set_curve_type line",
     "*add_curves %i %i"%(1,2),
     "*add_curves %i %i"%(3,4),
@@ -391,7 +379,7 @@ def sample(a,n,size):
 def patch(a,n,mesh,rcData):
   cmds = []
   for l in range(len(rcData['point'])):           # generate all points
-    cmds.append("*add_points %f %f %f"%(rcData['point'][l][0]-a*rcData['dimension'][0]/rcData['dimension'][1]/2.0,rcData['point'][l][1]-a/2.0,0))
+    cmds.append("*add_points %f %f %f"%(rcData['point'][l][0]-a/2.0,rcData['point'][l][1]-a/rcData['dimension'][0]*rcData['dimension'][1]/2.0,0))
 
   cmds.append(["*set_curve_type line",
          "*set_curve_div_type_fix_ndiv",
@@ -446,7 +434,7 @@ def gage(mesh,rcData):
     "*select_mode_invert",
     "*select_elements",
     "all_existing",
-    "*store_elements grains",
+    "*store_elements _grains",
     "all_selected",
     "*select_clear",
     "*select_reset",
@@ -465,14 +453,14 @@ def expand3D(thickness,steps):
 def initial_conditions(grainNumber,grainMapping):
   cmds = [\
     "*new_icond",
-    "*icond_name temperature",
+    "*icond_name _temperature",
     "*icond_type state_variable",
     "*icond_param_value state_var_id 1",
     "*icond_dof_value var 300",
     "*add_icond_elements",
     "all_existing",
     "*new_icond",
-    "*icond_name homogenization",
+    "*icond_name _homogenization",
     "*icond_type state_variable",
     "*icond_param_value state_var_id 2",
     "*icond_dof_value var 1",
@@ -503,11 +491,12 @@ def initial_conditions(grainNumber,grainMapping):
   return cmds
 
 
-def boundary_conditions(rate,thickness, a,size):
-  inner = size*(1 - 1.0e-4) * a
-  outer = size*(1 + 1.0e-4) * a
-  upper = size*(1 + 1.0e-4) * a
-  lower = size*(1 - 1.0e-4) * a
+def boundary_conditions(rate,thickness, size,aspect,xmargin,ymargin):
+
+  inner = (1 - 1.0e-4) * size*(0.5+xmargin)
+  outer = (1 + 1.0e-4) * size*(0.5+xmargin)
+  lower = (1 - 1.0e-4) * size*(0.5*aspect+ymargin)
+  upper = (1 + 1.0e-4) * size*(0.5*aspect+ymargin)
   
   return [\
   "*new_md_table 1 1",
@@ -527,7 +516,7 @@ def boundary_conditions(rate,thickness, a,size):
   "*select_nodes",
   "%f %f"%(-outer,outer),
   "%f %f"%(-upper,-lower),
-  "%f %f"%(-.0001*a,(thickness+1.0e-4)*a),
+  "%f %f"%(-.0001*thickness,1.0001*thickness),
   "*add_apply_nodes",
   "all_selected",
   "*new_apply",
@@ -540,7 +529,7 @@ def boundary_conditions(rate,thickness, a,size):
   "*select_nodes",
   "%f %f"%(-outer,outer),
   "%f %f"%(lower,upper),
-  "%f %f"%(-.0001*a,(thickness+1.0e-4)*a),
+  "%f %f"%(-.0001*thickness,1.0001*thickness),
   "*add_apply_nodes",
   "all_selected",
   "*new_apply",
@@ -552,16 +541,16 @@ def boundary_conditions(rate,thickness, a,size):
   "*select_nodes",
   "%f %f"%(-outer,-inner),
   "%f %f"%(lower,upper),
-  "%f %f"%(-.0001*a,.0001*a),
+  "%f %f"%(-.0001*thickness,.0001*thickness),
   "%f %f"%(-outer,-inner),
   "%f %f"%(lower,upper),
-  "%f %f"%((thickness-1.0e-4)*a,(thickness+1.0e-4)*a),
+  "%f %f"%(0.9999*thickness,1.0001*thickness),
   "%f %f"%(-outer,-inner),
   "%f %f"%(-upper,-lower),
-  "%f %f"%(-.0001*a,.0001*a),
+  "%f %f"%(-.0001*thickness,.0001*thickness),
   "%f %f"%(-outer,-inner),
   "%f %f"%(-upper,-lower),
-  "%f %f"%((thickness-1.0e-4)*a,(thickness+1.0e-4)*a),
+  "%f %f"%(0.9999*thickness,1.0001*thickness),
   "*add_apply_nodes",
   "all_selected",
   "*new_apply",
@@ -573,16 +562,16 @@ def boundary_conditions(rate,thickness, a,size):
   "*select_nodes",
   "%f %f"%(-outer,-inner),
   "%f %f"%(lower,upper),
-  "%f %f"%(-.0001*a,.0001*a),
+  "%f %f"%(-.0001*thickness,.0001*thickness),
   "%f %f"%(-outer,-inner),
   "%f %f"%(-upper,-lower),
-  "%f %f"%(-.0001*a,.0001*a),
+  "%f %f"%(-.0001*thickness,.0001*thickness),
   "%f %f"%(inner,outer),
   "%f %f"%(lower,upper),
-  "%f %f"%(-.0001*a,.0001*a),
+  "%f %f"%(-.0001*thickness,.0001*thickness),
   "%f %f"%(inner,outer),
   "%f %f"%(-upper,-lower),
-  "%f %f"%(-.0001*a,.0001*a),
+  "%f %f"%(-.0001*thickness,.0001*thickness),
   "*add_apply_nodes",
   "all_selected",
   "*select_clear",
@@ -628,7 +617,7 @@ def job(grainNumber,grainMapping,twoD):
   "*add_job_iconds homogenization",
   ["*add_job_iconds grain_%i"%i for i in grainMapping[:grainNumber]],
   "*add_job_iconds rim",
-  "*job_option dimen:%s                  | analysis dimension"%({True:'two',False:'three'}[twoD]),
+  "*job_option dimen:%s                     | analysis dimension"%({True:'two',False:'three'}[twoD]),
   "*job_option strain:large                 | finite strains",
   "*job_option large_strn_proc:upd_lagrange | updated Lagrange framework",
   "*job_option plas_proc:multiplicative     | multiplicative decomp of F",
@@ -638,9 +627,16 @@ def job(grainNumber,grainMapping,twoD):
   "*job_param univ_gas_const 8.314472",
   "*job_param planck_radiation_2 1.4387752e-2",
   "*job_param speed_light_vacuum 299792458",
-  "*job_usersub_file /san/%s/FEM/subroutine_svn/mpie_cpfem_marc2007r1.f90  | subroutine definition"%(pwd.getpwuid(os.geteuid())[0].rpartition("\\")[2]),
+  "*job_usersub_file /san/%s/FEM/DAMASK/code/mpie_cpfem_marc2010.f90  | subroutine definition"%(pwd.getpwuid(os.geteuid())[0].rpartition("\\")[2]),
   "*job_option user_source:compile_save",
   ]
+
+# "*job_option large:on                  | large displacement",
+# "*job_option plasticity:l_strn_mn_add  | large strain additive",
+# "*job_option cdilatation:on            | constant dilatation",
+# "*job_option update:on                 | updated lagrange procedure",
+# "*job_option finite:on                 | large strains",
+# "*job_option restart_mode:write        | enable restarting",
 
 
 def postprocess():
@@ -659,70 +655,213 @@ def cleanUp(a):
   "all_existing",
   "*remove_points",
   "all_existing",
-  "*set_sweep_tolerance %f"%(1e-3*a),
+  "*set_sweep_tolerance %f"%(1e-5*a),
   "*sweep_all",
   "*renumber_all",
   ]
+
+
+# -------------------------
+def image(name,imgsize,marginX,marginY,rcData):
+# -------------------------
+
+  dX = max([coords[0] for coords in rcData['point']])
+  dY = max([coords[1] for coords in rcData['point']])
+  offsetX = imgsize*marginX
+  offsetY = imgsize*marginY
+  sizeX = int(imgsize*(1    +2*marginX))
+  sizeY = int(imgsize*(dY/dX+2*marginY))
+
+  scaleImg = imgsize/dX            # rescale from max x coord
+
+  img = Image.new("RGB",(sizeX,sizeY),(255,255,255))
+  draw = ImageDraw.Draw(img)
+
+  for id,point in enumerate(rcData['point']):
+    draw.text([offsetX+point[0]*scaleImg,sizeY-(offsetY+point[1]*scaleImg)],"%i"%id,fill=(0,0,0))
+
+  for id,vertex in enumerate(rcData['segment']):
+      start = rcData['point'][vertex[0]]
+      end   = rcData['point'][vertex[1]]
+      draw.text([offsetX+(start[0]+end[0])/2.0*scaleImg,sizeY-(offsetY+(start[1]+end[1])/2.0*scaleImg)],"%i"%id,fill=(0,0,128))
+      draw.line([offsetX+start[0]*scaleImg,sizeY-(offsetY+start[1]*scaleImg),
+                 offsetX+  end[0]*scaleImg,sizeY-(offsetY+  end[1]*scaleImg)],width=1,fill=(128,128,128))
+
+  for id,segment in enumerate(rcData['box']):
+        start = rcData['point'][rcData['segment'][segment][0]]
+        end   = rcData['point'][rcData['segment'][segment][1]]
+        draw.line([offsetX+start[0]*scaleImg,sizeY-(offsetY+start[1]*scaleImg),
+                   offsetX+  end[0]*scaleImg,sizeY-(offsetY+  end[1]*scaleImg)],width=3,fill=(128,128*(id%2),0))
+
+  for grain,origGrain in enumerate(rcData['grainMapping']):
+    center = [0.0,0.0]
+    for segment in rcData['grain'][grain]:                    # loop thru segments around grain
+      for point in rcData['segment'][segment]:                # take start and end points
+        center[0] += rcData['point'][point][0]                # build vector sum
+        center[1] += rcData['point'][point][1]
+
+    center[0] /= len(rcData['grain'][grain])*2                 # normalize by two times segment count, i.e. point count
+    center[1] /= len(rcData['grain'][grain])*2
+
+    draw.text([offsetX+center[0]*scaleImg,sizeY-(offsetY+center[1]*scaleImg)],'%i -> %i'%(grain,origGrain),fill=(128,32,32))
+
+    img.save(name+'.png',"PNG")
+
+# -------------------------
+def inside(x,y,points):                                                     # tests whether point(x,y) is within polygon described by points
+# -------------------------
+ inside = False
+ npoints=len(points)
+ (x1,y1) = points[npoints-1]                                                # start with last point of points
+ startover = (y1 >= y)                                                      # am I above testpoint?
+ for i in range(npoints):                                                   # loop through all points
+   (x2,y2) = points[i]                                                      # next point
+   endover = (y2 >= y)                                                      # am I above testpoint?
+   if (startover != endover):                                               # one above one below testpoint?
+     if((y2 - y)*(x2 - x1) <= (y2 - y1)*(x2 - x)):                          # check for intersection
+       if (endover):
+         inside = not inside                                                # found intersection
+     else:
+       if (not endover):
+         inside = not inside                                                # found intersection
+   startover = endover                                                      # make second point first point
+   (x1,y1) = (x2,y2)
+   
+ return inside
   
+# -------------------------
+def fftbuild(rcData, height,xframe,yframe,resolution,extrusion):            # build array of grain numbers
+# -------------------------
+ maxX = -1.*sys.maxint
+ maxY = -1.*sys.maxint
+ for line in rcData['point']:                                               # find data range
+   (x,y) = line
+   maxX = max(maxX, x)
+   maxY = max(maxY, y)
+ xsize = maxX+2*xframe                                                      # add framsize
+ ysize = maxY+2*yframe
+ xres=round(resolution/2.0)*2                                               # use only even resolution
+ yres=round(xres/xsize*ysize/2.0)*2                                         # calculate other resolutions
+ zres=round(extrusion/2.0)*2
+ zsize = xsize/xres*zres                                                    # calculate z size
+ 
+ fftdata = {'fftpoints':[], \
+            'resolution':(xres,yres,zres), \
+            'dimension':(xsize,ysize,zsize)}
+ 
+ frameindex=len(rcData['grain'])+1                                          # calculate frame index as largest grain index plus one 
+ dx = xsize/(xres+1)                                                        # calculate step sizes
+ dy = ysize/(yres+1)
+
+ grainpoints = []
+ for segments in rcData['grain']:                                           # get segments of each grain
+   points = {}
+   for i,segment in enumerate(segments[:-1]):                               # loop thru segments except last (s=[start,end])
+     points[rcData['segment'][segment][0]] = i                              # assign segment index to start point
+     points[rcData['segment'][segment][1]] = i                              # assigne segment index to endpoint
+   for i in range(2):                                                       # check points of last segment
+     if points[rcData['segment'][segments[-1]][i]] != 0:                    # not on first segment
+       points[rcData['segment'][segments[-1]][i]] = len(segments)-1         # assign segment index to last point
+   
+   grainpoints.append([])                                                   # start out blank for current grain
+   for p in sorted(points, key=points.get):                                 # loop thru set of sorted points
+     grainpoints[-1].append([rcData['point'][p][0],rcData['point'][p][1]])  # append x,y of point
+
+ bestGuess = 0                                                              # assume grain 0 as best guess
+ for i in range(int(xres*yres)):                                            # walk through all points in xy plane
+   xtest = -xframe+((i%xres)+0.5)*dx                                        # calculate coordinates
+   ytest = -yframe+(int(i/xres)+0.5)*dy
+   if(xtest < 0 or xtest > maxX or ytest < 0 or ytest > maxY):              # check wether part of frame
+     fftdata['fftpoints'].append(frameindex)                                # append frameindex to result array
+   else:
+      if inside(xtest,ytest,grainpoints[bestGuess]):                        # check best guess first
+        fftdata['fftpoints'].append(bestGuess+1)
+      else:                                                                 # no success
+        for g in range(len(grainpoints)):                                   # test all
+          if inside(xtest,ytest,grainpoints[g]):
+            fftdata['fftpoints'].append(g+1)
+            bestGuess = g
+            break
+        
+ return fftdata  
+
 
 # ----------------------- MAIN -------------------------------
   
-parser = OptionParser()
+parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
+what I do...
+""")
+
+parser.add_option("-o", "--output", action='extend', dest='output', type='string', \
+        help="type of output [image,mentat,procedure,spectral]")
 parser.add_option("-p", "--port", type="int",\
         dest="port",\
         help="Mentat connection port")
 parser.add_option("-2", "--twodimensional", action="store_true",\
         dest="twoD",\
         help="twodimensional model [%default]")
-parser.add_option("-a", "--patchsize", type="float",\
+parser.add_option("-s","--patchsize", type="float",\
         dest="size",\
         help="height of patch [%default]")
 parser.add_option("-f", "--frame", type="float",\
         dest="frame",\
         help="frame thickness in units of patch height [%default]")
-parser.add_option("-n", "--resolution", type="int",\
-        dest="resolution",\
-        help="number of elements along patch perimeter [%default]")
 parser.add_option("-e", "--strain", type="float",\
         dest="strain",\
         help="final strain to reach in simulation [%default]")
-parser.add_option("-r", "--rate", type="float",\
+parser.add_option("--rate", type="float",\
         dest="strainrate",\
         help="(engineering) strain rate to simulate")
-parser.add_option("-i", "--increments", type="int",\
+parser.add_option("-N", "--increments", type="int",\
         dest="increments",\
         help="number of increments to take")
-parser.add_option("-s", "--imagesize", type="int",\
-        dest="imgsize",\
-        help="size of image")
-parser.add_option("-b", "--border", type="int",\
-        dest="border",\
-        help="border of image")
 parser.add_option("-t", "--tolerance", type="float",\
         dest="tolerance",\
         help="relative tolerance of pixel positions to be swept")
 parser.add_option("-m", "--mesh", choices=['dt_planar_trimesh','af_planar_trimesh','af_planar_quadmesh'],\
         dest="mesh",\
         help="algorithm and element type for automeshing [%default]")
+parser.add_option("-x", "--xmargin", type="float",\
+        dest="xmargin",\
+        help="margin in x in units of patch size [%default]")
+parser.add_option("-y", "--ymargin", type="float",\
+        dest="ymargin",\
+        help="margin in y in units of patch size [%default]")
+parser.add_option("-r", "--resolution", type="int",\
+        dest="resolution",\
+        help="number of Fourier points/Finite Elements across patch size + x_margin [%default]")
+parser.add_option("-z", "--extrusion", type="int",\
+        dest="extrusion",\
+        help="number of repetitions in z-direction [%default]")
+parser.add_option("-i", "--imagesize", type="int",\
+        dest="imgsize",\
+        help="size of PNG image")
+parser.add_option("-M", "--coordtransformation", type="float", nargs=4, \
+        dest="M",\
+        help="2x2 transformation from rcb to Euler coords ( = M . [x_rcb,y_rcb])")
+parser.add_option("--scatter", type="float",\
+        dest="scatter",\
+        help="orientation scatter [%default]")
 
+parser.set_defaults(output = [])
 parser.set_defaults(size = 1.0)
-parser.set_defaults(frame = 0.5)
-parser.set_defaults(resolution = 30)
+parser.set_defaults(xmargin = 0.0)
+parser.set_defaults(ymargin = 0.0)
+parser.set_defaults(resolution = 64)
+parser.set_defaults(extrusion = 2)
+parser.set_defaults(imgsize = 512)
+parser.set_defaults(M = [0.0,1.0,1.0,0])  # M_11, M_12, M_21, M_22.  x,y in RCB is y,x of Eulers!!
+parser.set_defaults(tolerance = 1.0e-3)
+parser.set_defaults(scatter = 0.0)
 parser.set_defaults(strain = 0.2)
 parser.set_defaults(strainrate = 1.0e-3)
 parser.set_defaults(increments = 200)
-parser.set_defaults(imgsize = 0)
-parser.set_defaults(border = 20)
-parser.set_defaults(tolerance = 1.0e-3)
 parser.set_defaults(mesh = 'dt_planar_trimesh')
 parser.set_defaults(twoD = False)
 
 (options, args) = parser.parse_args()
 if not len(args):
   parser.error('no boundary file specified')
-
-if not imageCapability:
-  options.imgsize = 0
 
 try:
   boundaryFile = open(args[0])
@@ -732,64 +871,108 @@ except:
   print 'unable to read boundary file "%s"'%args[0]
   sys.exit(-1)
 
+options.output = [s.lower() for s in options.output]                        # lower case
+
 myName = os.path.splitext(args[0])[0]
 print "\n",myName
+
 orientationData = rcbOrientationParser(boundarySegments)
-rcData = rcbParser(boundarySegments,options.size,options.tolerance,myName,options.imgsize,options.border)
+rcData = rcbParser(boundarySegments,options.M,options.size,options.tolerance)
 
-# ----- write texture data to file -----
-configFile = open(myName+'.config','w')
-configFile.write('\n\n<microstructure>\n\n')
-for i,grain in enumerate(rcData['grainMapping']):
-  configFile.write('\n[grain %i]\n'%grain)
-  configFile.write('(constituent)\tphase 1\ttexture %i\tfraction 1.0\n'%(i+1))
+# ----- write image -----
 
-configFile.write('\n\n<phase>\n\n')
+if ImageCapability and 'image' in options.output and options.imgsize > 0:
+  image(myName,options.imgsize,options.xmargin,options.ymargin,rcData)
 
-configFile.write('\n\n<texture>\n\n')
-for grain in rcData['grainMapping']:
-  configFile.write('\n[grain %i]\n'%grain)
-  configFile.write('(gauss)\tphi1\t%f\tphi\t%f\tphi2\t%f\tscatter\t0.0\tfraction\t1.0\n'\
-            %(math.degrees(orientationData[grain-1][0]),math.degrees(orientationData[grain-1][1]),math.degrees(orientationData[grain-1][2])))
-configFile.close()
+# ----- write spectral geom -----
 
-rcData['offsetPoints']   = 1+4                # gage definition generates 4 points
-rcData['offsetSegments'] = 1+4                # gage definition generates 4 segments
+if 'spectral' in options.output:
+  fftdata = fftbuild(rcData, options.size, options.xmargin, options.ymargin, options.resolution, options.extrusion)
+  
+  geomFile = open(myName+'_'+str(int(fftdata['resolution'][0]))+'.geom','w')  # open geom file for writing
+  geomFile.write('resolution a %i b %i c %i\n'%(fftdata['resolution']))       # write resolution
+  geomFile.write('dimension x %f y %f z %f\n'%(fftdata['dimension']))         # write size
+  geomFile.write('homogenization 1\n')                                        # write homogenization
+  for i in range(int(fftdata['resolution'][2])):                              # repetitions according to z resolution, i.e. extrude 2D to 3D
+   geomFile.write('\n'.join(map(str,fftdata['fftpoints']))+'\n')              # write grain indexes, one per line
+  geomFile.close()                                                            # close geom file
+  
+  print('assigned %i out of %i Fourier points'%(len(fftdata['fftpoints']), int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
+  
 
-cmds = [\
-  init(),
-  sample(options.size,12,options.frame+0.5),
-  patch(options.size,options.resolution,options.mesh,rcData),
-  gage(options.mesh,rcData),
+# ----- write Mentat procedure -----
+
+if MentatCapability and 'mentat' in options.output:
+  rcData['offsetPoints']   = 1+4                # gage definition generates 4 points
+  rcData['offsetSegments'] = 1+4                # gage definition generates 4 segments
+  
+  cmds = [\
+    init(),
+    sample(options.size,rcData['dimension'][1]/rcData['dimension'][0],12,options.xmargin,options.ymargin),
+    patch(options.size,options.resolution,options.mesh,rcData),
+    gage(options.mesh,rcData),
+    ]
+  
+  if not options.twoD:
+    cmds += [expand3D(options.size*(1.0+2.0*options.xmargin)/options.resolution*options.extrusion,options.extrusion),]
+  
+  cmds += [\
+    cleanUp(options.size),
+    materials(),
+    initial_conditions(len(rcData['grain']),rcData['grainMapping']),
+    boundary_conditions(options.strainrate,options.size*(1.0+2.0*options.xmargin)/options.resolution*options.extrusion,\
+                        options.size,rcData['dimension'][1]/rcData['dimension'][0],options.xmargin,options.ymargin),
+    loadcase(options.strain/options.strainrate,options.increments,0.01),
+    job(len(rcData['grain']),rcData['grainMapping'],options.twoD),
+    postprocess(),
+    ["*identify_sets","*regen","*fill_view","*save_as_model %s yes"%(myName)],
   ]
+  
+  outputLocals = {'log':[]}
+  if (options.port != None):
+    py_connect('',options.port)
+    output(cmds,outputLocals,'Mentat')
+    py_disconnect()
+    if 'procedure' in options.output:
+      output(outputLocals['log'],outputLocals,'Stdout')
+    
 
-if (not options.twoD):
-  cmds += [expand3D(options.size/6,4),]
+# ----- write config data to file -----
 
-cmds += [\
-  cleanUp(options.size),
-  materials(),
-  initial_conditions(len(rcData['grain']),rcData['grainMapping']),
-  boundary_conditions(options.strainrate,options.size/6,options.size,options.frame+0.5),
-  loadcase(options.strain/options.strainrate,options.increments,0.03),
-  job(len(rcData['grain']),rcData['grainMapping'],options.twoD),
-  postprocess(),
-  ["*identify_sets","*regen","*fill_view","*save_as_model %s yes"%(myName)],
-]
+if 'mentat' in options.output or 'spectral' in options.output:
+  output = ''
+  output += '\n\n<homogenization>\n' + \
+            '\n[SX]\n' + \
+            'type\tisostrain\n' + \
+            'Ngrains\t1\n' + \
+            '\n\n<microstructure>\n'
+  
+  for i,grain in enumerate(rcData['grainMapping']):
+    output += '\n[grain %i]\n'%grain + \
+              'crystallite\t1\n' + \
+              '(constituent)\tphase 1\ttexture %i\tfraction 1.0\n'%(i+1)
+  if (options.xmargin > 0.0 or options.ymargin > 0.0):
+      output += '\n[margin]\n' + \
+                'crystallite\t1\n' + \
+                '(constituent)\tphase 2\ttexture %i\tfraction 1.0\n'%(len(rcData['grainMapping'])+1)
+  
+  output += '\n\n<crystallite>\n' + \
+            '\n[fillMeIn]\n' + \
+            '\n\n<phase>\n' + \
+            '\n[patch]\n'
+  if (options.xmargin > 0.0 or options.ymargin > 0.0):
+    output += '\n[margin]\n'
+  
+  output += '\n\n<texture>\n\n'
+  for grain in rcData['grainMapping']:
+    output += '\n[grain %i]\n'%grain + \
+              '(gauss)\tphi1\t%f\tphi\t%f\tphi2\t%f\tscatter\t%f\tfraction\t1.0\n'\
+              %(math.degrees(orientationData[grain-1][0]),math.degrees(orientationData[grain-1][1]),math.degrees(orientationData[grain-1][2]),options.scatter)
+  if (options.xmargin > 0.0 or options.ymargin > 0.0):
+    output += '\n[frame]\n' + \
+              '(random)\t\tscatter\t0.0\tfraction\t1.0\n'
+  
+  configFile = open(myName+'.config','w')
+  configFile.write(output)
+  configFile.close()
 
-outputLocals = {}
-if (options.port != None):
-  py_connect('',options.port)
-  output(cmds,outputLocals,'Mentat')
-  py_disconnect()
-else:
-  output(cmds,outputLocals,'Stdout')
-
-print outputLocals
-
-# "*job_option large:on                  | large displacement",
-# "*job_option plasticity:l_strn_mn_add  | large strain additive",
-# "*job_option cdilatation:on            | constant dilatation",
-# "*job_option update:on                 | updated lagrange procedure",
-# "*job_option finite:on                 | large strains",
-# "*job_option restart_mode:write        | enable restarting",
