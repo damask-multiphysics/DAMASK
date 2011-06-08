@@ -803,9 +803,6 @@ parser.add_option("-2", "--twodimensional", action="store_true",\
 parser.add_option("-s","--patchsize", type="float",\
         dest="size",\
         help="height of patch [%default]")
-parser.add_option("-f", "--frame", type="float",\
-        dest="frame",\
-        help="frame thickness in units of patch height [%default]")
 parser.add_option("-e", "--strain", type="float",\
         dest="strain",\
         help="final strain to reach in simulation [%default]")
@@ -969,7 +966,7 @@ if 'mentat' in options.output or 'spectral' in options.output:
               '(gauss)\tphi1\t%f\tphi\t%f\tphi2\t%f\tscatter\t%f\tfraction\t1.0\n'\
               %(math.degrees(orientationData[grain-1][0]),math.degrees(orientationData[grain-1][1]),math.degrees(orientationData[grain-1][2]),options.scatter)
   if (options.xmargin > 0.0 or options.ymargin > 0.0):
-    output += '\n[frame]\n' + \
+    output += '\n[margin]\n' + \
               '(random)\t\tscatter\t0.0\tfraction\t1.0\n'
   
   configFile = open(myName+'.config','w')
