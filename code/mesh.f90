@@ -3352,7 +3352,7 @@ if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(120) ! no microstructure spec
 allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
 do e = 1,mesh_NcpElems
   if (mesh_element(3,e) < 1_pInt) call IO_error(110,e) ! no homogenization specified
-  if (mesh_element(4,e) < 1_pInt) call IO_error(120,e) ! no homogenization specified
+  if (mesh_element(4,e) < 1_pInt) call IO_error(120,e) ! no microstructure specified
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1 ! count combinations of homogenization and microstructure
 enddo

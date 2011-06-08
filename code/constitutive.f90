@@ -47,7 +47,7 @@ type(p_vec), dimension(:,:,:,:), allocatable :: constitutive_RKCK45dotState     
 integer(pInt), dimension(:,:,:), allocatable :: constitutive_sizeDotState, &    ! size of dotState array
                                                constitutive_sizeState, &       ! size of state array per grain
                                                constitutive_sizePostResults    ! size of postResults array per grain
-integer(pInt)                                   constitutive_maxSizeDotState, &
+integer(pInt)                                  constitutive_maxSizeDotState, &
                                                constitutive_maxSizeState, &
                                                constitutive_maxSizePostResults
 

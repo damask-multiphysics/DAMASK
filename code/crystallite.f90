@@ -284,7 +284,13 @@ do i = 1,material_Ncrystallite
     endif
   enddo
 enddo
-crystallite_maxSizePostResults = maxval(crystallite_sizePostResults)
+
+crystallite_maxSizePostResults = 0_pInt
+do j = 1,material_Nmicrostructure
+  if (microstructure_active(j)) &
+    crystallite_maxSizePostResults = max(crystallite_maxSizePostResults,&
+                                         crystallite_sizePostResults(microstructure_crystallite(j)))
+enddo
 
 ! write description file for crystallite output
 
