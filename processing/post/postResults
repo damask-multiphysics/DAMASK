@@ -573,6 +573,8 @@ $Id$
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
           help='list contents of resultfile [%default]')
+parser.add_option(    '--prefix', dest='prefix', \
+          help='prefix to result file name [%default]')
 parser.add_option('-d','--dir', dest='directory', \
           help='name of subdirectory to hold output [%default]')
 parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
@@ -624,6 +626,7 @@ parser.add_option_group(group_special)
 
 parser.set_defaults(info = False)
 parser.set_defaults(sloppy = False)
+parser.set_defaults(prefix = '')
 parser.set_defaults(directory = 'postProc')
 parser.set_defaults(filetype = 'marc')
 parser.set_defaults(func = 'avg')
@@ -745,7 +748,7 @@ if options.filetype == 'marc':
 for opt in ['nodalScalar','elementalScalar','elementalTensor','homogenizationResult','crystalliteResult','constitutiveResult']:
   if eval('options.%s'%opt):
     for label in eval('options.%s'%opt):
-      if (opt in ['nodalScalar','elementalScalar','elementalTensor'] and not label in stat['IndexOfLabel']) \
+      if (opt in ['nodalScalar','elementalScalar','elementalTensor'] and label not in stat['IndexOfLabel'] and label not in ['elements',]) \
            or (opt in ['homogenizationResult','crystalliteResult','constitutiveResult'] \
                and (not outputFormat[opt[:-6].capitalize()]['outputs'] or not label in zip(*outputFormat[opt[:-6].capitalize()]['outputs'])[0])):
         parser.error('%s "%s" unknown...'%(opt,label))
@@ -767,6 +770,22 @@ if options.info:
   
   sys.exit(0)
 
+
+# --- build connectivity maps
+
+elementsOfNode = {}
+for e in xrange(stat['NumberOfElements']):
+  if e%1000 == 0:
+    bg.set_message('connect elem %i...'%e)
+  for n in map(p.node_sequence,p.element(e).items):
+    if n not in elementsOfNode:
+	  elementsOfNode[n] = [p.element_id(e)]
+    else:
+	  elementsOfNode[n] += [p.element_id(e)]
+	
+maxCountElementsOfNode = 0
+for l in elementsOfNode.values():
+  maxCountElementsOfNode = max(maxCountElementsOfNode,len(l))
 
 # --- get output data from .t16 file
 
@@ -816,7 +835,7 @@ if options.nodalScalar:
 
     if grp not in index:                                                                               # create a new group if not yet present
       index[grp] = groupCount
-      groups[groupCount] = [[0,0,0,0,0.0,0.0,0.0]]                                                     # initialize with avg location
+      groups.append([[0,0,0,0,0.0,0.0,0.0]])                                                           # initialize with avg location
       groupCount += 1
 
     groups[index[grp]][0][:4] = mapIncremental('','unique',
@@ -923,9 +942,9 @@ for incCount,increment in enumerate(increments):
     if fileOpen:
       file.close()
       fileOpen = False
-    outFilename = eval('"'+eval("'%%s_inc%%0%ii.txt'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + os.path.split(filename)[1],increment)')
+    outFilename = eval('"'+eval("'%%s_inc%%0%ii.txt'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + options.prefix + os.path.split(filename)[1],increment)')
   else:
-    outFilename = '%s.txt'%(dirname + os.sep + os.path.split(filename)[1])
+    outFilename = '%s.txt'%(dirname + os.sep + options.prefix + os.path.split(filename)[1])
   
   if not fileOpen:
     file = open(outFilename,'w')
@@ -950,6 +969,19 @@ for incCount,increment in enumerate(increments):
         bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i...'%(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increment))
 
       newby = []                                                                   # current member's data
+
+      if options.nodalScalar:
+        for label in options.nodalScalar:
+          if label == 'elements':
+            length = maxCountElementsOfNode
+            content = elementsOfNode[p.node_sequence(n)]+[0]*(length-len(elementsOfNode[p.node_sequence(n)]))
+          else:
+            length = 1
+            content = [ p.node_scalar(p.node_sequence(n),stat['IndexOfLabel'][label]) ]
+          if assembleHeader: header += heading('_',[[component,label] for component in range(int(length>1),length+int(length>1))])
+          newby.append({'label':label,
+                        'len':length,
+                        'content':content })
 
       if options.elementalScalar:
         for label in options.elementalScalar:
