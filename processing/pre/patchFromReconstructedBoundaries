@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys,os,pwd,math,re
+import sys,os,math,re
+#import sys,os,pwd,math,re
 try:
   import Image,ImageDraw
   ImageCapability = True
@@ -627,7 +628,7 @@ def job(grainNumber,grainMapping,twoD):
   "*job_param univ_gas_const 8.314472",
   "*job_param planck_radiation_2 1.4387752e-2",
   "*job_param speed_light_vacuum 299792458",
-  "*job_usersub_file /san/%s/FEM/DAMASK/code/mpie_cpfem_marc2010.f90  | subroutine definition"%(pwd.getpwuid(os.geteuid())[0].rpartition("\\")[2]),
+#  "*job_usersub_file /san/%s/FEM/DAMASK/code/mpie_cpfem_marc2010.f90  | subroutine definition"%(pwd.getpwuid(os.geteuid())[0].rpartition("\\")[2]),
   "*job_option user_source:compile_save",
   ]
 
@@ -771,8 +772,13 @@ def fftbuild(rcData, height,xframe,yframe,resolution,extrusion):            # bu
  for i in range(int(xres*yres)):                                            # walk through all points in xy plane
    xtest = -xframe+((i%xres)+0.5)*dx                                        # calculate coordinates
    ytest = -yframe+(int(i/xres)+0.5)*dy
-   if(xtest < 0 or xtest > maxX or ytest < 0 or ytest > maxY):              # check wether part of frame
-     fftdata['fftpoints'].append(frameindex)                                # append frameindex to result array
+   if(xtest < 0 or xtest > maxX):                                           # check wether part of frame
+     if( ytest < 0 or ytest > maxY):                                        # part of edges
+       fftdata['fftpoints'].append(frameindex+2)                            # append frameindex to result array
+     else:                                                                  # part of xframe
+       fftdata['fftpoints'].append(frameindex)                              # append frameindex to result array
+   elif( ytest < 0 or ytest > maxY):                                        # part of yframe
+       fftdata['fftpoints'].append(frameindex+1)                            # append frameindex to result array
    else:
       if inside(xtest,ytest,grainpoints[bestGuess]):                        # check best guess first
         fftdata['fftpoints'].append(bestGuess+1)
@@ -948,8 +954,16 @@ if 'mentat' in options.output or 'spectral' in options.output:
     output += '\n[grain %i]\n'%grain + \
               'crystallite\t1\n' + \
               '(constituent)\tphase 1\ttexture %i\tfraction 1.0\n'%(i+1)
-  if (options.xmargin > 0.0 or options.ymargin > 0.0):
-      output += '\n[margin]\n' + \
+  if (options.xmargin > 0.0):
+      output += '\n[x-margin]\n' + \
+                'crystallite\t1\n' + \
+                '(constituent)\tphase 2\ttexture %i\tfraction 1.0\n'%(len(rcData['grainMapping'])+1)
+  if (options.ymargin > 0.0):
+      output += '\n[y-margin]\n' + \
+                'crystallite\t1\n' + \
+                '(constituent)\tphase 2\ttexture %i\tfraction 1.0\n'%(len(rcData['grainMapping'])+1)
+  if (options.xmargin > 0.0 and options.ymargin > 0.0):
+      output += '\n[margin edge]\n' + \
                 'crystallite\t1\n' + \
                 '(constituent)\tphase 2\ttexture %i\tfraction 1.0\n'%(len(rcData['grainMapping'])+1)
   
