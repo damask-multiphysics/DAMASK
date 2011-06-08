@@ -368,7 +368,7 @@ def mapIncremental(label, mapping, N, base, new):
       mapped = map(lambda x: x/orientationNorm, mapped)                         # ...renormalize quaternion
   else:
     try:
-      mapped = eval('map(%s,[N]*len(base),base,new)'%map)                         # map user defined function to colums in chunks
+      mapped = eval('map(%s,[N]*len(base),base,new)'%mapping)                   # map user defined function to colums in chunks
     except:
       mapped = ['n/a']*len(base)
 
