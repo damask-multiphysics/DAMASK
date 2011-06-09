@@ -1,14 +1,43 @@
 #!/usr/bin/env python
 
 import sys,os,math,re
-#import sys,os,pwd,math,re
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
 try:
   import Image,ImageDraw
   ImageCapability = True
 except:
   ImageCapability = False
 
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
+try:
+  file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
+  MSCpath = os.path.normpath(file.readline().strip())
+  file.close()
+except:
+  MSCpath = '/msc'
+
+releases = {'2010':['linux64',''],
+            '2008r1':[''],
+            '2007r1':[''],
+            '2005r3':[''],
+           }
+for release,subdirs in sorted(releases.items(),reverse=True):
+  for subdir in subdirs:
+    libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
+    if os.path.exists(libPath):
+      sys.path.append(libPath)
+      break
+    else:
+      continue
+  break
+
+try:
+  from py_mentat import *
+  MentatCapability = True
+except:
+  MentatCapability = False
+
 
 # -----------------------------
 class extendedOption(Option):
@@ -27,37 +56,6 @@ class extendedOption(Option):
             values.ensure_value(dest, []).extend(lvalue)
         else:
             Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-releases = {'2010':['linux64',''],
-            '2008r1':[''],
-            '2007r1':[''],
-            '2005r3':[''],
-           }
-
-try:
-  file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
-  MSCpath = os.path.normpath(file.readline().strip())
-  file.close()
-except:
-  MSCpath = '/msc'
-
-for release,subdirs in sorted(releases.items(),reverse=True):
-  for subdir in subdirs:
-    libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
-    if os.path.exists(libPath):
-      sys.path.append(libPath)
-      break
-    else:
-      continue
-  break
-
-try:
-  from py_mentat import *
-  MentatCapability = True
-except:
-  print('error: no valid Mentat release found in %s'%MSCpath)
-  MentatCapability = False
 
 
 
@@ -311,7 +309,7 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
 
   for point in points:
     rcData['point'].append(point['coords'])
-  print "found %i points"%(len(rcData['point']))
+  print "\nfound %i points"%(len(rcData['point']))
 
   for segment in segments:  
     rcData['segment'].append(segment)
@@ -329,11 +327,9 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
             myNeighbors[grainNeighbors[leg][side]] = 1
     if myNeighbors:   # do I have any neighbors
       rcData['grainMapping'].append(sorted(myNeighbors.iteritems(), key=lambda (k,v): (v,k), reverse=True)[0][0])   # most frequent grain is me
-  print "found %i grains"%(len(rcData['grain']))
+  print "found %i grains\n"%(len(rcData['grain']))
 
   rcData['box'] = grains['box']
-
-
   
   return rcData
 
