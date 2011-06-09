@@ -65,7 +65,7 @@ for file in files:
 # ------------------------------------------ assemble header ---------------------------------------  
 
   output = '1\theader\n' + \
-           '\t'.join(['step','iteration']) + '\n'
+           '\t'.join(['inc','iteration']) + '\n'
 
   if options.memory:
     data = file['input'].readlines()
