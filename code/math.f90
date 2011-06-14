@@ -169,7 +169,6 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  write(6,*) 'random seed: ',randInit(1)
  write(6,*)
  !$OMP END CRITICAL (write2out)
- endif
   
  call halton_seed_set(randInit(1))
  call halton_ndim_set(3)
