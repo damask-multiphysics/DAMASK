@@ -536,9 +536,11 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
             call mesh_build_subNodeCoords()                               ! update subnodal coordinates
             call mesh_build_ipVolumes()                                   ! update ip center of gravity
           endif
+          if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i5,a,i5)') '<< CPFEM >> Start stress and tangent ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
+          endif
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent (parallel execution inside)
           call materialpoint_postResults(dt)                              ! post results
           !$OMP PARALLEL DO

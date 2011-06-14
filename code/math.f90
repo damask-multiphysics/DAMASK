@@ -164,12 +164,11 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  endif
 
  call random_seed(get=randInit)
- if (debug_verbosity > 0) then
-   !$OMP CRITICAL (write2out)
-   ! this critical block did cause trouble at IWM
-     write(6,*) 'random seed: ',randInit(1)
-     write(6,*)
-   !$OMP END CRITICAL (write2out)
+ !$OMP CRITICAL (write2out)
+ ! this critical block did cause trouble at IWM
+ write(6,*) 'random seed: ',randInit(1)
+ write(6,*)
+ !$OMP END CRITICAL (write2out)
  endif
   
  call halton_seed_set(randInit(1))
