@@ -1171,9 +1171,9 @@ endfunction
  case (47)
    msg = 'negative time increment in spectral loadcase'
  case (48)
-   msg = 'Non-positive increment in spectral loadcase'
+   msg = 'Non-positive increments in spectral loadcase'
  case (49)
-   msg = 'Non-positive relative parameter for spectral method'
+   msg = 'Non-positive result frequency in spectral loadcase'
  case (50)
    msg = 'Error writing constitutive output description'
  case (100)

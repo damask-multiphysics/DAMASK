@@ -59,11 +59,11 @@ program DAMASK_spectral
                    ! compile FFTW 3.2.2 with ./configure --enable-threads
 ! variables to read from loadcase and geom file
  real(pReal), dimension(9) ::                      valuevector           ! stores information temporarily from loadcase file
- integer(pInt), parameter ::                       maxNchunksInput = 24  ! 4 identifiers, 18 values for the matrices and 2 scalars
+ integer(pInt), parameter ::                       maxNchunksInput = 26  ! 5 identifiers, 18 values for the matrices and 3 scalars
  integer(pInt), dimension (1+maxNchunksInput*2) :: posInput
  integer(pInt), parameter ::                       maxNchunksGeom = 7    ! 4 identifiers, 3 values
  integer(pInt), dimension (1+2*maxNchunksGeom) ::  posGeom
- integer(pInt) unit, N_l, N_s, N_t, N_n                                  ! numbers of identifiers
+ integer(pInt) unit, N_l, N_s, N_t, N_n, N_f                             ! numbers of identifiers
  character(len=1024) path, line
  logical gotResolution,gotDimension,gotHomogenization
  logical, dimension(9) :: bc_maskvector
@@ -73,8 +73,9 @@ program DAMASK_spectral
  real(pReal), dimension (:,:,:), allocatable :: bc_velocityGrad, &
                                                 bc_stress             ! velocity gradient and stress BC
  real(pReal), dimension(:), allocatable ::      bc_timeIncrement      ! length of increment
- integer(pInt)                                  N_Loadcases, steps
+ integer(pInt)                                  N_Loadcases, step
  integer(pInt), dimension(:), allocatable ::    bc_steps              ! number of steps
+ integer(pInt), dimension(:), allocatable ::    bc_frequency          ! frequency of result writes
  logical, dimension(:,:,:,:), allocatable ::    bc_mask               ! mask of boundary conditions
 
 ! variables storing information from geom file
@@ -119,10 +120,14 @@ program DAMASK_spectral
  ones = 1.0_pReal; zeroes = 0.0_pReal
  img = cmplx(0.0,1.0)
  
- N_l = 0_pInt; N_s = 0_pInt
- N_t = 0_pInt; N_n = 0_pInt
+ N_l = 0_pInt
+ N_s = 0_pInt
+ N_t = 0_pInt
+ N_n = 0_pInt
+ N_f = 0_pInt
  gotResolution =.false.; gotDimension =.false.; gotHomogenization = .false.
- resolution = 1_pInt; geomdimension = 0.0_pReal
+ resolution = 1_pInt
+ geomdimension = 0.0_pReal
  
  temperature = 300.0_pReal
 
@@ -151,6 +156,8 @@ program DAMASK_spectral
                  N_t = N_t+1
             case('n','incs','increments','steps')
                  N_n = N_n+1
+            case('f','freq','frequency')
+                 N_f = N_f+1
         end select
    enddo                                                  ! count all identifiers to allocate memory and do sanity check
  enddo
@@ -163,6 +170,7 @@ program DAMASK_spectral
  allocate (bc_mask(3,3,2,N_Loadcases));             bc_mask = .false.
  allocate (bc_timeIncrement(N_Loadcases));          bc_timeIncrement = 0.0_pReal
  allocate (bc_steps(N_Loadcases));                  bc_steps = 0_pInt
+ allocate (bc_frequency(N_Loadcases));              bc_frequency = 1_pInt
 
  rewind(unit)
  i = 0_pInt
@@ -193,6 +201,8 @@ program DAMASK_spectral
            bc_timeIncrement(i) = IO_floatValue(line,posInput,j+1)
        case('n','incs','increments','steps')                               ! bc_steps
            bc_steps(i) = IO_intValue(line,posInput,j+1)
+       case('f','frequency')                                               ! frequency of result writings
+           bc_frequency(i) = IO_intValue(line,posInput,j+1)
      end select
  enddo; enddo
 
@@ -202,12 +212,14 @@ program DAMASK_spectral
    if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(46,i)       ! exclusive or masking only
    if (bc_timeIncrement(i) < 0.0_pReal) call IO_error(47,i)                 ! negative time increment
    if (bc_steps(i) < 1_pInt) call IO_error(48,i)                            ! non-positive increment count
+   if (bc_frequency(i) < 1_pInt) call IO_error(49,i)                        ! non-positive result frequency
    print '(a,/,3(3(f12.6,x)/))','L:'        ,math_transpose3x3(bc_velocityGrad(:,:,i))
    print '(a,/,3(3(f12.6,x)/))','bc_stress:',math_transpose3x3(bc_stress(:,:,i))
    print '(a,/,3(3(l,x)/))',    'bc_mask for velocitygrad:',transpose(bc_mask(:,:,1,i))
    print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'      ,transpose(bc_mask(:,:,2,i))
    print '(a,f12.6)','time: ',bc_timeIncrement(i)
    print '(a,i6)','incs: ',bc_steps(i)
+   print '(a,i6)','freq: ',bc_frequency(i)
    print *, ''
  enddo
 
@@ -342,14 +354,19 @@ program DAMASK_spectral
 ! write header of output file
  open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
                                                     //'.spectralOut',form='UNFORMATTED')       
- write(538), 'load',trim(getLoadcaseName())
- write(538), 'workingdir',trim(getSolverWorkingDirectoryName())
- write(538), 'geometry',trim(getSolverJobName())//InputFileExtension
- write(538), 'resolution',resolution
- write(538), 'dimension',geomdimension
+ write(538), 'load', trim(getLoadcaseName())
+ write(538), 'workingdir', trim(getSolverWorkingDirectoryName())
+ write(538), 'geometry', trim(getSolverJobName())//InputFileExtension
+ write(538), 'resolution', resolution
+ write(538), 'dimension', geomdimension
  write(538), 'materialpoint_sizeResults', materialpoint_sizeResults
- write(538), 'increments', sum(bc_steps+1)                                 ! +1 to store initial situation
- write(538), 'eoh'
+ write(538), 'loadcases', N_Loadcases
+ write(538), 'frequencies', bc_frequency                                   ! one entry per loadcase
+ write(538), 'times', bc_timeIncrement                                     ! one entry per loadcase
+ bc_steps(1) = bc_steps(1)+1                                               ! +1 to store initial situation
+ write(538), 'increments', bc_steps                                        ! one entry per loadcase
+ bc_steps(1) = bc_steps(1)-1                                               ! re-adjust for correct looping
+ write(538), 'eoh'                                                         ! end of header
  write(538)  materialpoint_results(:,1,:)                                  ! initial (non-deformed) results
 ! Initialization done
 
@@ -366,7 +383,7 @@ program DAMASK_spectral
    damper = ones/10
 !*************************************************************
 ! loop oper steps defined in input file for current loadcase
-   do steps = 1, bc_steps(loadcase)
+   do step = 1, bc_steps(loadcase)
 !*************************************************************
      temp33_Real = defgradAim
      defgradAim = defgradAim &                        ! update macroscopic displacement gradient (defgrad BC)
@@ -402,7 +419,7 @@ program DAMASK_spectral
               err_defgrad > err_defgrad_tol))
        iter = iter + 1_pInt
        print*, ' '
-       print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',steps,'Iteration = ',iter
+       print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',step,'Iteration = ',iter
        cstress_av = 0.0_pReal
        workfft = 0.0_pReal !needed because of the padding for FFTW
 !*************************************************************
@@ -576,7 +593,8 @@ program DAMASK_spectral
        end select 
      enddo    ! end looping when convergency is achieved 
      
-     write(538)  materialpoint_results(:,1,:)                                 ! write to output file
+     if (mod(step,bc_frequency(loadcase)) == 0_pInt) &                          ! at output frequency
+       write(538)  materialpoint_results(:,1,:)                                 ! write result to file
      
      print '(a,x,f12.7)'         , ' Determinant of Deformation Aim: ', math_det3x3(defgradAim)
      print '(a,/,3(3(f12.7,x)/))', ' Deformation Aim:     ',math_transpose3x3(defgradAim)
