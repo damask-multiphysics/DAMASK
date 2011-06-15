@@ -27,18 +27,15 @@ class extendedOption(Option):
 # ----------------------- MAIN -------------------------------
 
 parser = OptionParser(option_class=extendedOption, usage='%prog [options] spectralOut[s]', description = """
-Generate datafile of converged iteration per increment for specified loadcase.
+Generate datafile of converged iteration per increment.
 
 """ + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-m','--memory',      dest='memory', action='store_true', \
                                         help='load complete file into memory [%default]')
-parser.add_option('-l','--loadcase',    dest='loadcase', type='int', \
-                                        help='loadcase number to parse for')
 
 parser.set_defaults(memory = False)
-parser.set_defaults(loadcase = 1)
 
 (options, filenames) = parser.parse_args()
 
@@ -59,6 +56,7 @@ else:
 
 for file in files:
   print file['name']
+  inc  = 1
   step = 1
   iter = 0
 
@@ -80,19 +78,20 @@ for file in files:
                False : file['input']}[options.memory]:
 
     items = line.split()
-    if len(items) > 7 and items[0] == 'Loadcase' and int(items[2]) == options.loadcase:  # 'magic' line?
+    if len(items) > 7 and items[0] == 'Loadcase':  # 'magic' line?
       if int(items[5]) == step:
         iter += 1                                                  # next iteration found
       else:
-        output += '\t'.join(map(str,[step,iter])) + '\n'
+        output += '\t'.join(map(str,[inc,iter])) + '\n'
         step = int(items[5])                                       # store current step count
-        iter = 1                                                   # was first iteration of next step
+        inc += 1                                                   # is next inc
+        iter = 1                                                   # was first iteration of next step/inc
 
         if not options.memory:
           file['output'].write(output)
           output = ''
 
-  output += '\t'.join(map(str,[step,iter])) + '\n'                 # process last step (for which, of course, no further step can be found)
+  output += '\t'.join(map(str,[inc,iter])) + '\n'                 # process last step (for which, of course, no further step can be found)
 
   file['input'].close()
 
