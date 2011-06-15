@@ -54,8 +54,13 @@ class MPIEspectral_result:    # mimic py_post result object
   wd = ''
   geometry = ''
   extrapolate = ''
+  N_loadcases = 0
   N_increments = 0
+  _frequencies = []
+  _increments = []
+  _times = []
   increment = 0
+  position = 0
   time = 0.0                              # this is a dummy at the moment, we need to parse the load file and figure out what time a particular increment corresponds to
   N_nodes = 0
   N_node_scalars = 0
@@ -67,27 +72,40 @@ class MPIEspectral_result:    # mimic py_post result object
 
     self.file = open(filename, 'rb')
   
-    self.theTitle = self._keyedString('load')
-    self.wd = self._keyedString('workingdir')
-    self.geometry = self._keyedString('geometry')
-    self.N_increments =  self._keyedInt('increments')
+    self.theTitle     = self._keyedString('load')
+    self.wd           = self._keyedString('workingdir')
+    self.geometry     = self._keyedString('geometry')
+    self.N_loadcases  = self._keyedInt('loadcases',default=1)
+    self._frequencies = self._keyedInts('frequencies',self.N_loadcases,1)
+    self._increments  = self._keyedInts('increments',self.N_loadcases)
+    self._increments[0] -= 1                                                 # delete zero'th entry
+    self._times       = self._keyedFloats('times',self.N_loadcases,0.0)
+    self.dimension    = self._keyedPackedArray('dimension',3,'d')
+    self.resolution   = self._keyedPackedArray('resolution',3,'i')
+    self.N_nodes      = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
+    self.N_elements   =  self.resolution[0]   * self.resolution[1]   * self.resolution[2]
     self.N_element_scalars = self._keyedInt('materialpoint_sizeResults')
-    self.resolution = self._keyedPackedArray('resolution',3,'i')
-    self.N_nodes = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
-    self.N_elements = self.resolution[0]*self.resolution[1]*self.resolution[2]
-    self.dimension = self._keyedPackedArray('dimension',3,'d')
   
     self.file.seek(0)
     self.dataOffset = self.file.read(2048).find('eoh')+7
 
+    self.N_increments = 1                                                    # add zero'th entry
+    for i in range(self.N_loadcases):
+      self.N_increments += self._increments[i]//self._frequencies[i]
+    
+    
+    
   def __str__(self):
     return '\n'.join([
       'title: %s'%self.theTitle,
       'workdir: %s'%self.wd,
       'geometry: %s'%self.geometry,
       'extrapolation: %s'%self.extrapolate,
+      'loadcases: %i'%self.N_loadcases,
       'increments: %i'%self.N_increments,
       'increment: %i'%self.increment,
+      'position: %i'%self.position,
+      'time: %i'%self.time,
       'nodes: %i'%self.N_nodes,
       'resolution: %s'%(','.join(map(str,self.resolution))),
       'dimension: %s'%(','.join(map(str,self.dimension))),
@@ -108,16 +126,34 @@ class MPIEspectral_result:    # mimic py_post result object
         values.append(struct.unpack(type,i)[0])
     return values
 
-  def _keyedInt(self,identifier):
-    value = None
+  def _keyedInt(self,identifier,default=None):
+    value = default
     self.file.seek(0)
     m = re.search('%s%s'%(identifier,'(.{4})'),self.file.read(2048),re.DOTALL)
     if m:
       value = struct.unpack('i',m.group(1))[0]
     return value
 
-  def _keyedString(self,identifier):
-    value = None
+  def _keyedInts(self,identifier,number=1,default=None):
+    values = [default]*number
+    self.file.seek(0)
+    m = re.search('%s%s'%(identifier,'(.{4})'*number),self.file.read(2048),re.DOTALL)
+    if m:
+      for i in range(number):
+        values[i] = struct.unpack('i',m.group(1+i))[0]
+    return values
+
+  def _keyedFloats(self,identifier,number=1,default=None):
+    values = [default]*number
+    self.file.seek(0)
+    m = re.search('%s%s'%(identifier,'(.{8})'*number),self.file.read(2048),re.DOTALL)
+    if m:
+      for i in range(number):
+        values[i] = struct.unpack('d',m.group(1+i))[0]
+    return values
+
+  def _keyedString(self,identifier,default=None):
+    value = default
     self.file.seek(0)
     m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(2048),re.DOTALL)
     if m:
@@ -127,8 +163,20 @@ class MPIEspectral_result:    # mimic py_post result object
   def title(self):
     return self.theTitle
 
-  def moveto(self,inc):
-    self.increment = inc
+  def moveto(self,pos):
+    self.position = pos
+    self.increment = 0
+    self.time = 0.0
+    p = pos
+    for l in range(self.N_loadcases):
+      if p <= self._increments[l]//self._frequencies[l]:
+        break
+      else:
+        self.increment += self._increments[l]
+        self.time      += self._times[l]
+        p -= self._increments[l]//self._frequencies[l]
+    self.increment += self._frequencies[l] * p
+    self.time      += self._times[l]/self._increments[l] * self._frequencies[l] * p
 
   def extrapolation(self,value):
     self.extrapolate = value
@@ -155,14 +203,14 @@ class MPIEspectral_result:    # mimic py_post result object
     return e+1
  
   def element(self,e):
-     a = self.resolution[0]+1
-     b = self.resolution[1]+1
-     c = self.resolution[2]+1
-     basenode = 1 + e+e/self.resolution[0] + e/self.resolution[0]/self.resolution[1]*a
-     basenode2 = basenode+a*b
-     return (element([basenode ,basenode +1,basenode +a+1,basenode +a,
-                      basenode2,basenode2+1,basenode2+a+1,basenode2+a,
-                     ],117))
+    a = self.resolution[0]+1
+    b = self.resolution[1]+1
+    c = self.resolution[2]+1
+    basenode = 1 + e+e/self.resolution[0] + e/self.resolution[0]/self.resolution[1]*a
+    basenode2 = basenode+a*b
+    return (element([basenode ,basenode +1,basenode +a+1,basenode +a,
+                    basenode2 ,basenode2+1,basenode2+a+1,basenode2+a,
+                   ],117))
 
   def increments(self):
     return self.N_increments
@@ -180,7 +228,7 @@ class MPIEspectral_result:    # mimic py_post result object
     return self.N_element_scalars
 
   def element_scalar(self,e,idx):
-    self.file.seek(self.dataOffset+(self.increment*(4+self.N_elements*self.N_element_scalars*8+4) + 4+(e*self.N_element_scalars + idx)*8))
+    self.file.seek(self.dataOffset+(self.position*(4+self.N_elements*self.N_element_scalars*8+4) + 4+(e*self.N_element_scalars + idx)*8))
     value = struct.unpack('d',self.file.read(8))[0]
     return [elemental_scalar(node,value) for node in self.element(e).items]
 
@@ -240,7 +288,7 @@ class backgroundMessage(threading.Thread):
   
   def print_message(self):
     length = len(self.message) + len(self.symbols[self.counter])
-    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)                # delete former message
+    sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)                  # delete former message
     sys.stderr.write(self.symbols[self.counter] + self.new_message)               # print new message
     self.message = self.new_message
     
@@ -405,17 +453,20 @@ def ParseOutputFormat(filename,what,me):
 # parse .output* files in order to get a list of outputs 
 # -----------------------------
 
+  content = []
   format = {'outputs':{},'specials':{'brothers':[]}}
   for prefix in ['']+map(str,range(1,17)):
     if os.path.exists(prefix+filename+'.output'+what):
-      break
-  try:
-    file = open(prefix+filename+'.output'+what)
-    content = file.readlines()
-    file.close()
-  except:
-    return format
+      try:
+        file = open(prefix+filename+'.output'+what)
+        content = file.readlines()
+        file.close()
+        break
+      except:
+        pass
 
+  if content == []: return format                                         # nothing found...
+  
   tag = ''
   tagID = 0
   for line in content:
@@ -714,9 +765,6 @@ bg.start()
 # --- parse .output and .t16 files
 
 filename = os.path.splitext(files[0])[0]
-dirname = os.path.abspath(os.path.dirname(filename))+os.sep+options.directory
-if not os.path.isdir(dirname):
-  os.mkdir(dirname,0755)
 
 outputFormat = {}
 me = {  
@@ -732,7 +780,6 @@ for what in me:
   if not '_id' in outputFormat[what]['specials']:
     print "'%s' not found in <%s>"%(me[what], what)
     print '\n'.join(map(lambda x:'  '+x, outputFormat[what]['specials']['brothers']))
-    sys.exit(1)
     
 bg.set_message('opening result file...')
 p = OpenPostfile(filename,options.filetype)
@@ -919,6 +966,12 @@ bg.set_message('sorting groups...')
 groups.sort(key = sortKeys)                                                                                 # in-place sorting to save mem
 
 
+# ---------------------------   create output directory   --------------------------------
+
+dirname = os.path.abspath(os.path.dirname(filename))+os.sep+options.directory
+if not os.path.isdir(dirname):
+  os.mkdir(dirname,0755)
+
 fileOpen = False
 assembleHeader = True
 header = []
@@ -935,7 +988,6 @@ time_start = time.time()
 
 for incCount,increment in enumerate(increments):
   p.moveto(increment+offset_inc)
-  
 # ---------------------------   file management   --------------------------------
 
   if options.separateFiles:
@@ -1043,7 +1095,7 @@ for incCount,increment in enumerate(increments):
       file.write('\t'.join(standard + header) + '\n')
       headerWritten = True
 
-    file.write('\t'.join(map(str,[increment] + \
+    file.write('\t'.join(map(str,[p.increment] + \
                                  {True:[p.time],False:[]}[options.time] + \
                                  group[0] + \
                                  mappedResult)
