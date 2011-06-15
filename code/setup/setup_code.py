@@ -31,5 +31,5 @@ for arch in architectures:
 
 os.system('make --directory %s'%wd)
 
-if not '--noclean' in [s.lower() for s in sys.argv]:
+if '--clean' in [s.lower() for s in sys.argv]:
   os.system('make --directory %s clean'%wd)
