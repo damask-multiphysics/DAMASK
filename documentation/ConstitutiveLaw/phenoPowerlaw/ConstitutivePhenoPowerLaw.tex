@@ -1,52 +1,54 @@
 %% LyX 1.6.2 created this file.  For more info, see http://www.lyx.org/.
 %% Do not edit unless you really know what you are doing.
-\documentclass[english]{scrartcl}
-\usepackage[T1]{fontenc}
-\usepackage[latin9]{inputenc}
-\usepackage[letterpaper]{geometry}
-\geometry{verbose,tmargin=2cm,bmargin=2cm,lmargin=2cm,rmargin=2cm,headheight=2cm,headsep=1cm,footskip=1cm}
-\usepackage{array}
-\usepackage{float}
-\usepackage{endnotes}
-\usepackage{graphicx}
-\usepackage{setspace}
-\usepackage{amssymb}
+\documentclass{scrartcl}
+\usepackage[usenames,dvipsnames,pdftex]{color}
+\usepackage{amsmath,amssymb,amsfonts}
+%\usepackage[alsoload={accepted,named,prefix}]{siunitx}
+%\usepackage[load-configurations=version-1]{siunitx}
+\usepackage{subeqnarray}
+\usepackage[format=hang]{subfig}
+\usepackage{booktabs}
+\usepackage{verbatim}
+\usepackage{miller}
+\usepackage{bm}
+\usepackage{geometry}
 \usepackage[authoryear]{natbib}
-\onehalfspacing
+%Check if we are compiling under latex or pdflatex
+\ifx\pdftexversion\undefined
+  \usepackage[dvips,draft]{graphicx}
+\else
+%  \usepackage[pdftex,draft]{graphicx}
+  \usepackage[pdftex]{graphicx}
+\fi
+\graphicspath{
+                          {./figures/}
+                          {./}
+                         }
+\DeclareGraphicsExtensions{.pdf,.png}
+\definecolor{DarkBlue}{rgb}{.106, .212, .4}
 
+\usepackage[pdftex,%                             hyper-references for pdftex
+bookmarksnumbered=true,%                         generate bookmarks with numbers
+pagebackref=true,%                               generate backref in biblio
+colorlinks=true,%
+linkcolor=DarkBlue,citecolor=DarkBlue,urlcolor=DarkBlue%
+]{hyperref}%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
-%% Because html converters don't know tabularnewline
-\providecommand{\tabularnewline}{\\}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
- \let\footnote=\endnote
-\usepackage{braille}
-\newcommand{\braillenormal}[1]
- {\setlength{\brailleunit}{2.4mm}\braille{#1}}
-% With \brailleunit == 0.75ex, the braille letters will
-% approximately match the other letters in size.
-\newcommand{\brailletext}[1]
- {\setlength{\brailleunit}{0.75ex}\braille{#1}}
-
-\usepackage{babel}
 
 \begin{document}
 
 \title{Summary of constitutive\_phenoPowerlaw}
-
-
-\author{YUN JO RO}
-
+\author{YunJo Ro \and Philip Eisenlohr}
 \maketitle
+\begin{abstract}
 This document contains information for constitutive\_phenoPowerlaw.f90.
 This constitutive subroutine is modified from the current contitutive\_phenomenological.f90.
 We introduce slip and twin family as additional index (or input) for
 each crystal structure in lattice.f90 subroutine (e.g., for HCP crystal:
-slip and twin system has four faimilies, respectively). 
+slip and twin system has four families, respectively). 
+\end{abstract}
 
-
-\section{State Variables in constitutive\_phenoPowelaw.f90}
+\section{State Variables in constitutive\_phenoPowerlaw.f90}
 
 The current State variables in constitutive\_phenoPowerlaw are {}``slip
 resistance $\left(s^{\alpha}\right)$'', ''twin resistance $\left(s^{\beta}\right)$'',
@@ -64,65 +66,86 @@ the {}``hex (hcp)'' case.\medskip{}
 
 %
 \begin{table}[tbph]
-\centering{}\begin{tabular}{|c|c|c|c|}
-\hline 
- &  &  & No. of slip system\tabularnewline
-\hline 
-slip system & basal & $\left\{ 0001\right\} \left\langle 1\bar{2}10\right\rangle $ & 3\tabularnewline
-\cline{2-4} 
- & prism & $\left\{ 10\bar{1}0\right\} \left\langle 1\bar{2}10\right\rangle $ & 3\tabularnewline
-\cline{2-4} 
- & pyr <a> & $\left\{ 10\bar{1}1\right\} \left\langle 1\bar{2}10\right\rangle $ & 6\tabularnewline
-\cline{2-4} 
- & pyr <c+a> & $\left\{ 10\bar{1}1\right\} \left\langle 2\bar{1}\bar{1}3\right\rangle $ & 12\tabularnewline
-\hline
-twin system & tensile (T1) & $\left\{ 10\bar{1}2\right\} \left\langle \bar{1}011\right\rangle $ & 6\tabularnewline
-\cline{2-4} 
- & compressive (C1) & $\left\{ 11\bar{2}2\right\} \left\langle 11\bar{2}\bar{3}\right\rangle $ & 6\tabularnewline
-\cline{2-4} 
- & tensile (T2) & $\left\{ 11\bar{2}1\right\} \left\langle \bar{1}\bar{1}26\right\rangle $ & 6\tabularnewline
-\cline{2-4} 
- & compressive (C1) & $\left\{ 10\bar{1}1\right\} \left\langle 10\bar{1}\bar{2}\right\rangle $ & 6\tabularnewline
-\hline
+\centering
+\begin{tabular}{cccc}
+\toprule
+ \textbf{type} & \textbf{system} & \textbf{plane / direction} & \textbf{multiplicity}\\
+\midrule
+slip  & basal & $\left\{ 0001\right\} \left\langle 1\bar{2}10\right\rangle $ & 3\\
+ & prism & $\left\{ 10\bar{1}0\right\} \left\langle 1\bar{2}10\right\rangle $ & 3\\
+ & pyr \hkl<a> & $\left\{ 10\bar{1}1\right\} \left\langle 1\bar{2}10\right\rangle $ & 6\\
+ & pyr \hkl<c+a> & $\left\{ 10\bar{1}1\right\} \left\langle 2\bar{1}\bar{1}3\right\rangle $ & 12\\
+\midrule
+twin & T1 & $\left\{ 10\bar{1}2\right\} \left\langle \bar{1}011\right\rangle $ & 6\\
+ & C1 & $\left\{ 11\bar{2}2\right\} \left\langle 11\bar{2}\bar{3}\right\rangle $ & 6\\
+ & T2 & $\left\{ 11\bar{2}1\right\} \left\langle \bar{1}\bar{1}26\right\rangle $ & 6\\
+ & C2 & $\left\{ 10\bar{1}1\right\} \left\langle 10\bar{1}\bar{2}\right\rangle $ & 6\\
+\bottomrule
 \end{tabular}\caption{Implemented deformation mechanims in $\alpha$-Ti }
 \label{Flo:DeformationSystemTable}
 \end{table}
 
-\begin{itemize}
-\item Slip/twin system for HCP are illustrated in Figures \ref{Fig:slipSystemHCP}
-and \ref{Fig:twinSystemHCP}.
-\end{itemize}
-%
+Slip/twin system for HCP are illustrated in Figures \ref{fig: dislocation slip systems}
+and \ref{fig: twinning systems}.
+
+
+%..............FIG...............
+% === SEM ===
 \begin{figure}
-\begin{centering}
-\includegraphics[clip,scale=0.25]{figures/slipSystemForHCP}
-\par\end{centering}
-
-\caption{Drawing for slip system for HCP. Burgers vectors were scaled.}
-\label{Fig:slipSystemHCP}
-
-
+\centering
+\subfloat[Basal \hkl<a> slip]{%
+\label{fig: dislocation slip basal}%
+\includegraphics{slipSystem_basal}}
+\quad
+\subfloat[Prismatic \hkl<a> slip]{%
+\label{fig: dislocation slip prism}%
+\includegraphics{slipSystem_prismA}}
+\quad
+\subfloat[Pyramidal \hkl<a> slip]{%
+\label{fig: dislocation slip pyramidal a}%
+\includegraphics{slipSystem_pyrA}}
+\quad
+\subfloat[Pyramidal \hkl<c+a> slip]{%
+\label{fig: dislocation slip pyramidal ca}%
+\includegraphics{slipSystem_pyrCA}}
+\quad
+\caption{
+Dislocation slip systems considered for hexagonal lattice structure.}
+\label{fig: dislocation slip systems}
 \end{figure}
-%
+%...................................
+
+%..............FIG...............
+% === SEM ===
 \begin{figure}
-\begin{centering}
-\includegraphics[clip,scale=0.25]{figures/twinSystemForHCP}
-\par\end{centering}
-
-\caption{Drawing for twin system for HCP ($\alpha$- Ti). Twin directions are
-not scaled yet. }
-\label{Fig:twinSystemHCP}
-
-
+\centering
+\subfloat[Extension (T1)]{%
+\label{fig: twin T1}%
+\includegraphics{twinSystem_T1}}
+\quad
+\subfloat[Contraction (C1)]{%
+\label{fig: twin C1}%
+\includegraphics{twinSystem_C1}}
+\quad
+\subfloat[Extension (T2)]{%
+\label{fig: twin T2}%
+\includegraphics{twinSystem_T2}}
+\quad
+\subfloat[Contraction (C2)]{%
+\label{fig: twin C2}%
+\includegraphics{twinSystem_C2}}
+\quad
+\caption{
+Mechanical twinning systems considered for hexagonal lattice structure. Burgers vectors are not drawn to scale.}
+\label{fig: twinning systems}
 \end{figure}
+%...................................
 
-
-\clearpage{}
 
 
 \section{Kinetics}
 
-Shear strain rate due to slip is described by following eqation \citet{Salem2005,Wu2007}:\begin{equation}
+Shear strain rate due to slip is described by following equation \citet{Salem2005,Wu2007}:\begin{equation}
 \dot{\gamma}^{\alpha}=\dot{\gamma_{o}}\left|\frac{\tau^{\alpha}}{s^{\alpha}}\right|^{n}sign\left(\tau^{\alpha}\right)\label{eq:slipStrainRate}\end{equation}
 
 
@@ -131,7 +154,7 @@ reference shear strain rate, $\tau^{\alpha}$; resolved shear stress
 on the slip system, $n$; stress exponent, and $s^{\alpha}$; slip
 resistance.
 
-Twin volume fraction rate is described by following eqation \citet{Salem2005,Wu2007}:
+Twin volume fraction rate is described by following equation \citet{Salem2005,Wu2007}:
 
 \begin{equation}
 \dot{f}^{\beta}=\frac{\dot{\gamma_{o}}}{\gamma^{\beta}}\left|\frac{\tau^{\beta}}{s^{\beta}}\right|^{n}\mathbb{\mathcal{H}}\left(\tau^{\beta}\right)\label{eq:twinVolrate}\end{equation}
@@ -196,22 +219,19 @@ is listed in Equation \ref{eq:SlipSlipIntMatrix}.
 %
 \begin{table}[H]
 \begin{centering}
-\begin{tabular}{|>{\centering}m{0.8in}|>{\centering}m{0.7in}|>{\centering}m{0.6in}|>{\centering}m{0.6in}|>{\centering}m{0.7in}|}
-\hline 
- & basal & prism & pyr <a> & pyr<c+a>\tabularnewline
-\hline 
-basal & 1, 5 & 9 & 12 & 14\tabularnewline
-\hline 
-prism & 15 & 2, 6 & 10 & 13\tabularnewline
-\hline 
-pyr <a> & 18 & 16 & 3, 7 & 11\tabularnewline
-\hline 
-pyr <c+a> & 20 & 19 & 17 & 4, 8\tabularnewline
-\hline
+\begin{tabular}{ccccc}
+\toprule
+ & basal & prism & pyr \hkl<a> & pyr\hkl<c+a>\\
+\midrule
+basal & 1, 5 & 9 & 12 & 14\\
+prism & 15 & 2, 6 & 10 & 13\\
+pyr \hkl<a> & 18 & 16 & 3, 7 & 11\\
+pyr \hkl<c+a> & 20 & 19 & 17 & 4, 8\\
+\bottomrule
 \end{tabular}
 \par\end{centering}
 
-\caption{Slip-slip interaction type}
+\caption{Slip--slip interaction type}
 \label{Flo:SlipSlipIntTypeTable}
 \end{table}
 
@@ -259,18 +279,15 @@ is listed in Equation \ref{eq:SlipTwinIntMatrix}.
 %
 \begin{table}[H]
 \begin{centering}
-\begin{tabular}{|>{\centering}m{0.8in}|>{\centering}m{0.7in}|>{\centering}m{0.6in}|>{\centering}m{0.6in}|>{\centering}m{0.7in}|}
-\hline 
- & T1 & C1 & T2 & C1\tabularnewline
-\hline 
-basal & 1 & 2 & 3 & 4\tabularnewline
-\hline 
-prism & 5 & 6 & 7 & 8\tabularnewline
-\hline 
-pyr <a> & 9 & 10 & 11 & 12\tabularnewline
-\hline 
-pyr <c+a> & 13 & 14 & 15 & 16\tabularnewline
-\hline
+\begin{tabular}{ccccc}
+\toprule 
+ & T1 & C1 & T2 & C1\\
+\midrule
+basal & 1 & 2 & 3 & 4\\
+prism & 5 & 6 & 7 & 8\\
+pyr \hkl<a> & 9 & 10 & 11 & 12\\
+pyr \hkl<c+a> & 13 & 14 & 15 & 16\\
+\bottomrule
 \end{tabular}
 \par\end{centering}
 
@@ -298,18 +315,15 @@ is listed in Equation \ref{eq:TwinSlipIntMatrix}.
 %
 \begin{table}[H]
 \begin{centering}
-\begin{tabular}{|>{\centering}m{0.8in}|>{\centering}m{0.7in}|>{\centering}m{0.6in}|>{\centering}m{0.6in}|>{\centering}m{0.7in}|}
-\hline 
- & basal & prism & pyr <a> & pyr <c+a>\tabularnewline
-\hline 
-T1 & 1 & 5 & 9 & 13\tabularnewline
-\hline 
-C1 & 2 & 6 & 10 & 14\tabularnewline
-\hline 
-T2 & 3 & 7 & 11 & 15\tabularnewline
-\hline 
-C2 & 4 & 8 & 12 & 16\tabularnewline
-\hline
+\begin{tabular}{ccccc}
+\toprule 
+ & basal & prism & pyr \hkl<a> & pyr \hkl<c+a>\\
+ \midrule
+T1 & 1 & 5 & 9 & 13\\
+C1 & 2 & 6 & 10 & 14\\
+T2 & 3 & 7 & 11 & 15\\
+C2 & 4 & 8 & 12 & 16\\
+\bottomrule
 \end{tabular}
 \par\end{centering}
 
@@ -338,18 +352,15 @@ is listed in Equation \ref{eq:TwinTwinIntMatrix}.
 %
 \begin{table}[H]
 \begin{centering}
-\begin{tabular}{|>{\centering}m{0.8in}|>{\centering}m{0.7in}|>{\centering}m{0.6in}|>{\centering}m{0.6in}|>{\centering}m{0.7in}|}
-\hline 
- & T1 & C1 & T2 & C2\tabularnewline
-\hline 
-T1 & 1, 5 & 9 & 12 & 14\tabularnewline
-\hline 
-C1 & 15 & 2, 6 & 10 & 13\tabularnewline
-\hline 
-T2 & 18 & 16 & 3, 7 & 11\tabularnewline
-\hline 
-C2 & 20 & 19 & 17 & 4, 8\tabularnewline
-\hline
+\begin{tabular}{ccccc}
+\toprule 
+ & T1 & C1 & T2 & C2\\
+\midrule
+T1 & 1, 5 & 9 & 12 & 14\\
+C1 & 15 & 2, 6 & 10 & 13\\
+T2 & 18 & 16 & 3, 7 & 11\\
+C2 & 20 & 19 & 17 & 4, 8\\
+\bottomrule
 \end{tabular}
 \par\end{centering}
 
@@ -454,7 +465,7 @@ contribution, and $\Gamma=\sum_{\alpha}\gamma^{\alpha}$.
 %
 \begin{figure}[tbph]
 \begin{centering}
-\includegraphics[clip,scale=0.8]{figures/ExpectedMaterialConfigFile}\caption{Expected of phenomenological modelling parameters.}
+\includegraphics[clip,scale=0.6]{figures/ExpectedMaterialConfigFile}\caption{Expected of phenomenological modelling parameters.}
 \label{Fig:ModelParameters}
 \par\end{centering}
 
@@ -467,9 +478,9 @@ is the sequence of numbering in Tables \ref{Flo:SlipSlipIntTypeTable},
 \ref{Flo:SlipTwinIntTypeTable}, \ref{Flo:TwinSlipIntTypeTable},
 and \ref{Flo:TwinTwinIntTypeTable} above.
 \end{itemize}
-\clearpage{}
 
-\bibliographystyle{plain}
-\addcontentsline{toc}{section}{\refname}\bibliography{MPIEyjr}
+\clearpage{}
+\bibliographystyle{plainnat}
+\bibliography{MPIEyjr}
 
 \end{document}
