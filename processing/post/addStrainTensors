@@ -1,0 +1,215 @@
+#!/usr/bin/python
+
+import os,re,sys,math,numpy,string
+from optparse import OptionParser, Option
+
+def operator(how,vector):
+  return { \
+    'ln':    numpy.log(vector)*1.0,\
+    'Biot':  vector           *1.0,\
+    'Green': vector*vector    *0.5,\
+         }[how]
+
+
+# -----------------------------
+class extendableOption(Option):
+# -----------------------------
+# used for definition of new option parser action 'extend', which enables to take multiple option arguments
+# taken from online tutorial http://docs.python.org/library/optparse.html
+    
+  ACTIONS = Option.ACTIONS + ("extend",)
+  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+  def take_action(self, action, dest, opt, value, values, parser):
+    if action == "extend":
+      lvalue = value.split(",")
+      values.ensure_value(dest, []).extend(lvalue)
+    else:
+      Option.take_action(self, action, dest, opt, value, values, parser)
+
+
+def prefixMultiply(what,len):
+
+  return {True: ['%i_%s'%(i+1,what) for i in range(len)],
+          False:[what]}[len>1]
+
+
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
+
+parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+Add column(s) containing given strains based on given stretches of requested deformation gradient column(s).
+
+$Id: addStrainTensors 274 2011-06-14 12:59:39Z MPIE\o.guevenc $
+""")
+
+
+parser.add_option('-m','--memory',      dest='memory', action='store_true', \
+                                        help='load complete file into memory [%default]')
+parser.add_option('-u','--right',       action='store_true', dest='right', \
+                                        help='calculate strains based on right Cauchy--Green deformation, i.e., C and U')
+parser.add_option('-v','--left',        action='store_true', dest='left', \
+                                        help='calculate strains based on left Cauchy--Green deformation, i.e., B and V')
+parser.add_option('-l','--logarithmic', action='store_true', dest='logarithmic', \
+                                        help='calculate logarithmic strain tensor')
+parser.add_option('-b','--biot',        action='store_true', dest='biot', \
+                                        help='calculate biot strain tensor')
+parser.add_option('-g','--green',       action='store_true', dest='green', \
+                                        help='calculate green strain tensor')
+parser.add_option('-f','--deformation', dest='defgrad', action='extend', type='string', \
+                                        help='heading(s) of columns containing deformation tensor values %default')
+
+parser.set_defaults(memory      = False)
+parser.set_defaults(right       = False)
+parser.set_defaults(left        = False)
+parser.set_defaults(logarithmic = False)
+parser.set_defaults(biot        = False)
+parser.set_defaults(green       = False)
+parser.set_defaults(defgrad     = ['f'])
+
+(options,filenames) = parser.parse_args()
+
+stretches = []
+stretch = {}
+strains = []
+
+if options.right: stretches.append('U')
+if options.left:  stretches.append('V')
+if options.logarithmic: strains.append('ln')
+if options.biot: strains.append('Biot')
+if options.green: strains.append('Green')
+
+datainfo = {                                                               # list of requested labels per datatype
+             'defgrad':     {'len':9,
+                             'label':[]},
+           }
+
+
+if options.defgrad != None:   datainfo['defgrad']['label'] += options.defgrad
+
+
+# ------------------------------------------ setup file handles ---------------------------------------  
+
+files = []
+if filenames == []:
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+else:
+  for name in filenames:
+    if os.path.exists(name):
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+
+# ------------------------------------------ loop over input files ---------------------------------------  
+
+for file in files:
+  print file['name']
+
+  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
+
+  firstline = file['input'].readline()
+  m = re.search('(\d+)\s*head', firstline.lower())
+  if m:
+    headerlines = int(m.group(1))
+    passOn  = [file['input'].readline() for i in range(1,headerlines)]
+    headers = file['input'].readline().split()
+  else:
+    headerlines = 1
+    passOn  = []
+    headers = firstline.split()
+
+  if options.memory:
+    data = file['input'].readlines()
+  else:
+    data = []
+
+  for i,l in enumerate(headers):
+    if l.startswith('1_'):
+      if re.match('\d+_',l[2:]) or i == len(headers)-1 or not headers[i+1].endswith(l[2:]):
+        headers[i] = l[2:]
+
+  active = {}
+  column = {}
+  head = []
+
+  for datatype,info in datainfo.items():
+    for label in info['label']:
+      key = {True :'1_%s',
+             False:'%s'   }[info['len']>1]%label
+      if key not in headers:
+        sys.stderr.write('column %s not found...\n'%key)
+      else:
+        if datatype not in active: active[datatype] = []
+        if datatype not in column: column[datatype] = {}
+        active[datatype].append(label)
+        column[datatype][label] = headers.index(key)
+        for theStretch in stretches:
+          for theStrain in strains:
+            head += prefixMultiply('%s(%s)'%(theStrain,theStretch), 9)
+
+# ------------------------------------------ assemble header ---------------------------------------  
+
+  output = '%i\theader'%(headerlines+1) + '\n' + \
+           ''.join(passOn) + \
+           string.replace('$Id: addStrainTensors 274 2011-06-14 12:59:39Z MPIE\o.guevenc $','\n','\\n')+ '\t' + \
+           ' '.join(sys.argv[1:]) + '\n' + \
+           '\t'.join(headers + head) + '\n'                              # build extended header
+
+  if not options.memory:
+    file['output'].write(output)
+    output = ''
+
+# ------------------------------------------ read file ---------------------------------------  
+
+  for line in {True  : data,
+               False : file['input']}[options.memory]:
+    items = line.split()[:len(headers)]
+    if len(items) < len(headers):
+      continue
+  
+    output += '\t'.join(items)
+
+    for datatype,labels in active.items():
+      for label in labels:
+        defgrad = numpy.array(map(float,items[column[datatype][label]:
+                                              column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)
+        (U,S,Vh) = numpy.linalg.svd(defgrad)
+        R = numpy.dot(U,Vh)
+        stretch['U'] = numpy.dot(numpy.linalg.inv(R),defgrad)
+        stretch['V'] = numpy.dot(defgrad,numpy.linalg.inv(R))
+        for theStretch in stretches:
+          for i in range(9):
+            if stretch[theStretch][i%3,i//3] < 1e-15:
+              stretch[theStretch][i%3,i//3] = 0.0
+          (D,V) = numpy.linalg.eig(stretch[theStretch])       # eigen decomposition (of symmetric matrix)
+          for i,eigval in enumerate(D):
+            if eigval < 0.0:                                  # flip negative eigenvalues
+              D[i] = -D[i]
+              V[:,i] = -V[:,i]
+          if numpy.dot(V[:,i],V[:,(i+1)%3]) != 0.0:         # check each vector for orthogonality
+              V[:,(i+1)%3] = numpy.cross(V[:,(i+2)%3],V[:,i]) # correct next vector
+              V[:,(i+1)%3] /= numpy.sqrt(numpy.dot(V[:,(i+1)%3],V[:,(i+1)%3].conj()))  # and renormalize (hyperphobic?)
+          for theStrain in strains:
+            d = operator(theStrain,D)                         # operate on eigenvalues of U or V
+            I = operator(theStrain,numpy.ones(3))             # operate on eigenvalues of I (i.e. [1,1,1])
+            eps = (numpy.dot(V,numpy.dot(numpy.diag(d),V.T)).real-numpy.diag(I)).reshape(9)  # build tensor back from eigenvalue/vector basis
+            output += '\t'+'\t'.join(map(str,eps))
+         
+          
+    output += '\n'
+  
+    if not options.memory:
+      file['output'].write(output)
+      output = ''
+
+  file['input'].close()
+
+# ------------------------------------------ output result ---------------------------------------  
+
+  if options.memory:
+    file['output'].write(output)
+
+  if file['name'] != 'STDIN':
+    file['output'].close
+    os.rename(file['name']+'_tmp',file['name'])

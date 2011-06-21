@@ -1,0 +1,221 @@
+#!/usr/bin/python
+
+import os,re,sys,math,string
+from optparse import OptionParser, Option
+
+# -----------------------------
+class extendableOption(Option):
+# -----------------------------
+# used for definition of new option parser action 'extend', which enables to take multiple option arguments
+# taken from online tutorial http://docs.python.org/library/optparse.html
+  
+  ACTIONS = Option.ACTIONS + ("extend",)
+  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+  def take_action(self, action, dest, opt, value, values, parser):
+    if action == "extend":
+      lvalue = value.split(",")
+      values.ensure_value(dest, []).extend(lvalue)
+    else:
+      Option.take_action(self, action, dest, opt, value, values, parser)
+
+
+
+def location(idx,res):
+
+  return ( idx  % res[0], \
+          (idx // res[0]) % res[1], \
+          (idx // res[0] // res[1]) % res[2] )
+
+def index(location,res):
+
+  return ( location[0] % res[0]                    + \
+          (location[1] % res[1]) * res[0]          + \
+          (location[2] % res[2]) * res[0] * res[1]   )
+
+def prefixMultiply(what,len):
+
+  return {True: ['%i_%s'%(i+1,what) for i in range(len)],
+          False:[what]}[len>1]
+
+
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
+
+FDcoefficients = [ \
+                   [1.0/2.0,      0.0,      0.0,       0.0],\
+                   [2.0/3.0,-1.0/12.0,      0.0,       0.0],\
+                   [3.0/4.0,-3.0/20.0,1.0/ 60.0,       0.0],\
+                   [4.0/5.0,-1.0/ 5.0,4.0/105.0,-1.0/280.0],\
+                 ]
+parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+Add column(s) containing divergence of requested column(s).
+Operates on periodic ordered three-dimensional data sets.
+Deals with both vector- and tensor-valued fields.
+
+$Id: addDivergence 264 2011-05-25 17:43:45Z MPIE\p.eisenlohr $
+""")
+
+
+parser.add_option('-a','--accuracy',    dest='accuracy', type='int', \
+                                        help='degree of central difference accuracy [%default]')
+parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', \
+                                        help='heading of columns containing vector field values')
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', \
+                                        help='heading of columns containing tensor field values')
+parser.add_option('-d','--dimension',   dest='dim', type='float', nargs=3, \
+                                        help='physical dimension of data set in x (fast) y z (slow) [%default]')
+parser.add_option('-r','--resolution',  dest='res', type='int', nargs=3, \
+                                        help='resolution of data set in x (fast) y z (slow)')
+
+parser.set_defaults(accuracy = 8)
+parser.set_defaults(vector = [])
+parser.set_defaults(tensor = [])
+parser.set_defaults(dim = [1.0,1.0,1.0])
+accuracyChoices = [2,4,6,8]
+
+(options,filenames) = parser.parse_args()
+
+if len(options.vector) + len(options.tensor) == 0:
+  parser.error('no data column specified...')
+if len(options.dim) < 3:
+  parser.error('improper dimension specification...')
+if not options.res or len(options.res) < 3:
+  parser.error('improper resolution specification...')
+if options.accuracy not in accuracyChoices:
+  parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
+accuracy = options.accuracy//2-1
+
+datainfo = {                                                               # list of requested labels per datatype
+             'vector':     {'len':3,
+                            'label':[]},
+             'tensor':     {'len':9,
+                            'label':[]},
+           }
+
+
+if options.vector != None:    datainfo['vector']['label'] += options.vector
+if options.tensor != None:    datainfo['tensor']['label'] += options.tensor
+
+# ------------------------------------------ setup file handles ---------------------------------------  
+
+files = []
+if filenames == []:
+  files.append({'name':'STDIN', 'handle':sys.stdin})
+else:
+  for name in filenames:
+    if os.path.exists(name):
+      files.append({'name':name, 'handle':open(name)})
+
+# ------------------------------------------ loop over input files ---------------------------------------  
+
+for file in files:
+  print file['name']
+
+  content = file['handle'].readlines()
+  file['handle'].close()
+  
+  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
+
+  headerlines = 1
+  m = re.search('(\d+)\s*head', content[0].lower())
+  if m:
+    headerlines = int(m.group(1))
+  passOn  = content[1:headerlines]
+  headers = content[headerlines].split()
+  data    = content[headerlines+1:]
+    
+  regexp = re.compile('1_\d+_')
+  for i,l in enumerate(headers):
+    if regexp.match(l):
+      headers[i] = l[2:]
+
+  active = {}
+  column = {}
+  values = {}
+  head = []
+
+  for datatype,info in datainfo.items():
+    for label in info['label']:
+      key = {True :'1_%s',
+             False:'%s'   }[info['len']>1]%label
+      if key not in headers:
+        print 'column %s not found...'%key
+      else:
+        if datatype not in active: active[datatype] = []
+        if datatype not in column: column[datatype] = {}
+        if datatype not in values: values[datatype] = {}
+        active[datatype].append(label)
+        column[datatype][label] = headers.index(key)
+        values[datatype][label] = [[0.0 for i in range(datainfo[datatype]['len'])] \
+                                        for j in range(options.res[0]*options.res[1]*options.res[2])]
+        head += prefixMultiply('div%i(%s)'%(options.accuracy,label),datainfo[datatype]['len']/3)
+  
+# ------------------------------------------ assemble header ---------------------------------------  
+
+  output = '%i\theader'%(headerlines+1) + '\n' + \
+           ''.join(passOn)                 + \
+           string.replace('$Id: addDivergence 264 2011-05-25 17:43:45Z MPIE\p.eisenlohr $','\n','\\n')+ '\t' + \
+           ' '.join(sys.argv[1:]) + '\n' + \
+           '\t'.join(headers + head) + '\n'                              # build extended header
+
+# ------------------------------------------ read value field ---------------------------------------  
+
+  idx = 0
+  for line in data:
+    items = line.split()[:len(headers)]
+    if len(items) < len(headers):
+      continue
+  
+    for datatype,labels in active.items():
+      for label in labels:
+        values[datatype][label][idx] = map(float,items[column[datatype][label]:
+                                                       column[datatype][label]+datainfo[datatype]['len']])
+    idx += 1
+  
+# ------------------------------------------ read file ---------------------------------------  
+
+  idx = 0
+  for line in data:
+    items = line.split()[:len(headers)]
+    if len(items) < len(headers):
+      continue
+  
+    output += '\t'.join(items)
+    
+    (x,y,z) = location(idx,options.res)
+  
+    for datatype,labels in active.items():
+      for label in labels:
+        for k in range(datainfo[datatype]['len']/3):                                  # formulas from Mikhail Itskov: Tensor Algebra and Tensor Analysis for Engineers, Springer 2009, p 52
+          theDiv = 0.0
+          for a in range(1+accuracy):
+            theDiv += FDcoefficients[accuracy][a] * \
+                      ( \
+                       (values[datatype][label][index([x+1+a,y,z],options.res)][k*3+0] - \
+                        values[datatype][label][index([x-1-a,y,z],options.res)][k*3+0]) * options.res[0] / options.dim[0] + \
+                       (values[datatype][label][index([x,y+1+a,z],options.res)][k*3+1] - \
+                        values[datatype][label][index([x,y-1-a,z],options.res)][k*3+1]) * options.res[1] / options.dim[1] + \
+                       (values[datatype][label][index([x,y,z+1+a],options.res)][k*3+2] - \
+                        values[datatype][label][index([x,y,z-1-a],options.res)][k*3+2]) * options.res[2] / options.dim[2] \
+                      )
+          output += '\t%f'%theDiv
+    
+    output += '\n'
+    idx += 1
+  
+# ------------------------------------------ output result ---------------------------------------  
+
+  if file['name'] == 'STDIN':
+    print output
+  else:
+    file['handle'] = open(file['name']+'_tmp','w')
+    try:
+      file['handle'].write(output)
+      file['handle'].close()
+      os.rename(file['name']+'_tmp',file['name'])
+    except:
+      print 'error during writing',file['name']+'_tmp'

@@ -21,6 +21,12 @@ bin_link = { \
 							],
 				'post' : [
 							'3Dvisualize',
+							'addCauchy',
+							'addDeterminant',
+							'addDivergence',
+							'addMises',
+							'addNorm',
+							'addStrainTensors',
 							'mentat_colorMap',
 							'postResults',
 							'spectral_iterationCount',
