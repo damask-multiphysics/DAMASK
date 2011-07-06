@@ -69,14 +69,15 @@ program DAMASK_spectral
  logical, dimension(9) :: bc_maskvector
 
 ! variables storing information from loadcase file
- real(pReal)                                    timeinc
+ real(pReal)                                    time, time0, timeinc   ! elapsed time, begin of interval, time interval
  real(pReal), dimension (:,:,:), allocatable :: bc_velocityGrad, &
-                                                bc_stress             ! velocity gradient and stress BC
- real(pReal), dimension(:), allocatable ::      bc_timeIncrement      ! length of increment
+                                                bc_stress              ! velocity gradient and stress BC
+ real(pReal), dimension(:), allocatable ::      bc_timeIncrement       ! length of increment
  integer(pInt)                                  N_Loadcases, step
- integer(pInt), dimension(:), allocatable ::    bc_steps              ! number of steps
- integer(pInt), dimension(:), allocatable ::    bc_frequency          ! frequency of result writes
- logical, dimension(:,:,:,:), allocatable ::    bc_mask               ! mask of boundary conditions
+ integer(pInt), dimension(:), allocatable ::    bc_steps               ! number of steps
+ integer(pInt), dimension(:), allocatable ::    bc_frequency           ! frequency of result writes
+ integer(pInt), dimension(:), allocatable ::    bc_logscale            ! linear/logaritmic time step flag
+ logical, dimension(:,:,:,:), allocatable ::    bc_mask                ! mask of boundary conditions
 
 ! variables storing information from geom file
  real(pReal) wgt
@@ -119,10 +120,10 @@ program DAMASK_spectral
  unit = 234_pInt
  ones = 1.0_pReal; zeroes = 0.0_pReal
  img = cmplx(0.0,1.0)
- 
  N_l = 0_pInt
  N_s = 0_pInt
  N_t = 0_pInt
+ time = 0.0_pReal
  N_n = 0_pInt
  N_f = 0_pInt
  gotResolution =.false.; gotDimension =.false.; gotHomogenization = .false.
@@ -154,7 +155,7 @@ program DAMASK_spectral
                  N_s = N_s+1
             case('t','time','delta')
                  N_t = N_t+1
-            case('n','incs','increments','steps')
+            case('n','incs','increments','steps','logincs','logsteps')
                  N_n = N_n+1
             case('f','freq','frequency')
                  N_f = N_f+1
@@ -164,12 +165,14 @@ program DAMASK_spectral
 
 101 N_Loadcases = N_l
 
+
 ! allocate memory depending on lines in input file
  allocate (bc_velocityGrad(3,3,N_Loadcases));       bc_velocityGrad = 0.0_pReal
  allocate (bc_stress(3,3,N_Loadcases));             bc_stress = 0.0_pReal
  allocate (bc_mask(3,3,2,N_Loadcases));             bc_mask = .false.
  allocate (bc_timeIncrement(N_Loadcases));          bc_timeIncrement = 0.0_pReal
  allocate (bc_steps(N_Loadcases));                  bc_steps = 0_pInt
+ allocate (bc_logscale(N_Loadcases));               bc_logscale = 0_pInt
  allocate (bc_frequency(N_Loadcases));              bc_frequency = 1_pInt
 
  rewind(unit)
@@ -201,13 +204,16 @@ program DAMASK_spectral
            bc_timeIncrement(i) = IO_floatValue(line,posInput,j+1)
        case('n','incs','increments','steps')                               ! bc_steps
            bc_steps(i) = IO_intValue(line,posInput,j+1)
+       case('logincs','logsteps')                                          ! = 1, if log scale
+           bc_steps(i) = IO_intValue(line,posInput,j+1)
+           bc_logscale(i) = 1
        case('f','frequency')                                               ! frequency of result writings
            bc_frequency(i) = IO_intValue(line,posInput,j+1)
      end select
  enddo; enddo
 
 200 close(unit)
-
+ 
  do i = 1, N_Loadcases                                                      ! consistency checks
    if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(46,i)       ! exclusive or masking only
    if (bc_timeIncrement(i) < 0.0_pReal) call IO_error(47,i)                 ! negative time increment
@@ -361,12 +367,14 @@ program DAMASK_spectral
  write(538), 'dimension', geomdimension
  write(538), 'materialpoint_sizeResults', materialpoint_sizeResults
  write(538), 'loadcases', N_Loadcases
+ write(538), 'logscale', bc_logscale                                       ! one entry per loadcase (0: linear, 1: log)
  write(538), 'frequencies', bc_frequency                                   ! one entry per loadcase
  write(538), 'times', bc_timeIncrement                                     ! one entry per loadcase
  bc_steps(1) = bc_steps(1)+1                                               ! +1 to store initial situation
  write(538), 'increments', bc_steps                                        ! one entry per loadcase
  bc_steps(1) = bc_steps(1)-1                                               ! re-adjust for correct looping
  write(538), 'eoh'                                                         ! end of header
+
  write(538)  materialpoint_results(:,1,:)                                  ! initial (non-deformed) results
 ! Initialization done
 
@@ -374,10 +382,9 @@ program DAMASK_spectral
 ! Loop over loadcases defined in the loadcase file
  do loadcase = 1, N_Loadcases
 !*************************************************************
-
-   timeinc = bc_timeIncrement(loadcase)/bc_steps(loadcase)
-   guessmode = 0.0_pReal                                   ! change of load case, homogeneous guess for the first step
-  
+   time0 = time                                                            ! loadcase start time 
+   guessmode = 0.0_pReal                                                   ! change of load case, homogeneous guess for the first step
+   
    mask_defgrad =  merge(ones,zeroes,bc_mask(:,:,1,loadcase))
    mask_stress =  merge(ones,zeroes,bc_mask(:,:,2,loadcase))
    damper = ones/10
@@ -385,12 +392,28 @@ program DAMASK_spectral
 ! loop oper steps defined in input file for current loadcase
    do step = 1, bc_steps(loadcase)
 !*************************************************************
+     if (bc_logscale(loadcase) == 1) then                                                          ! loglinear scale
+        if (loadcase == 1) then                                                                   ! 1st loadcase of loglinear scale            
+            if (step == 1) then                                                                   ! 1st step of 1st loadcase of loglinear scale
+                timeinc = bc_timeIncrement(1)*(2.0**(1 - bc_steps(1)))                            ! assume 1st step is equal to 2nd 
+            else                                                                                  ! not-1st step of 1st loadcase of loglinear scale
+                timeinc = bc_timeIncrement(1)*(2.0**(step - (1 + bc_steps(1))))
+            endif
+        else                                                                                      ! not-1st loadcase of loglinear scale
+            timeinc = time0 * (  ((1.0+bc_timeIncrement(loadcase)/time0)**( step   *1.0/(bc_steps(loadcase))))  &
+                               - ((1.0+bc_timeIncrement(loadcase)/time0)**((step-1)*1.0/(bc_steps(loadcase)))) )
+        endif
+     else                                                                                         ! linear scale
+        timeinc = bc_timeIncrement(loadcase)/bc_steps(loadcase)
+     endif
+     
+     time = time + timeinc
      temp33_Real = defgradAim
      defgradAim = defgradAim &                        ! update macroscopic displacement gradient (defgrad BC)
                   + guessmode * mask_stress * (defgradAim - defgradAimOld) &
                   + math_mul33x33(bc_velocityGrad(:,:,loadcase), defgradAim)*timeinc
-     defgradAimOld = temp33_Real
-     
+     defgradAimOld = temp33_Real  
+ 
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
        temp33_Real = defgrad(i,j,k,:,:)
        defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:)&         ! old fluctuations as guess for new step, no fluctuations for new loadcase
@@ -419,7 +442,7 @@ program DAMASK_spectral
               err_defgrad > err_defgrad_tol))
        iter = iter + 1_pInt
        print*, ' '
-       print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',step,'Iteration = ',iter
+       print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',step, ' Iteration = ',iter 
        cstress_av = 0.0_pReal
        workfft = 0.0_pReal !needed because of the padding for FFTW
 !*************************************************************
