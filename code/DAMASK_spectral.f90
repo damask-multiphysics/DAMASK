@@ -207,7 +207,7 @@ program DAMASK_spectral
        case('logincs','logsteps')                                          ! = 1, if log scale
            bc_steps(i) = IO_intValue(line,posInput,j+1)
            bc_logscale(i) = 1
-       case('f','frequency')                                               ! frequency of result writings
+       case('f','freq','frequency')                                               ! frequency of result writings
            bc_frequency(i) = IO_intValue(line,posInput,j+1)
      end select
  enddo; enddo
