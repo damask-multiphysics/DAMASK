@@ -56,7 +56,7 @@ program DAMASK_spectral
 
  implicit none
  include 'include/fftw3.f' ! header file for fftw3 (declaring variables). Library files are also needed
-                   ! compile FFTW 3.2.2 with ./configure --enable-threads
+                           ! compile FFTW 3.2.2 with ./configure --enable-threads
 ! variables to read from loadcase and geom file
  real(pReal), dimension(9) ::                      valuevector           ! stores information temporarily from loadcase file
  integer(pInt), parameter ::                       maxNchunksInput = 26  ! 5 identifiers, 18 values for the matrices and 3 scalars
@@ -90,7 +90,8 @@ program DAMASK_spectral
                                                         pstress, pstress_av, cstress_av, defgrad_av,&
                                                         defgradAim, defgradAimOld, defgradAimCorr, defgradAimCorrPrev,&
                                                         mask_stress, mask_defgrad                          
- real(pReal), dimension(3,3,3,3) ::                     dPdF, c0, s0
+ real(pReal), dimension(3,3,3,3) ::                     dPdF, c0, s0, c0_temp
+ real(pReal), dimension(9,9) ::                         s099
  real(pReal), dimension(6) ::                           cstress                                ! cauchy stress in Mandel notation
  real(pReal), dimension(6,6) ::                         dsde, c066, s066                       ! Mandel notation of 4th order tensors
  real(pReal), dimension(:,:,:,:,:), allocatable ::      workfft, defgrad, defgradold
@@ -99,14 +100,14 @@ program DAMASK_spectral
 ! variables storing information for spectral method
  complex(pReal) ::                                      img
  complex(pReal), dimension(3,3) ::                      temp33_Complex
- real(pReal), dimension(3,3) ::                         xinormdyad
+ real(pReal), dimension(3,3) ::                         xidyad
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat
- real(pReal), dimension(3) ::                           xi, xi_central
+ real(pReal), dimension(:,:,:,:), allocatable ::        xi
  integer(pInt), dimension(3) ::                         k_s
  integer*8, dimension(2) ::                             plan_fft
  
 ! loop variables, convergence etc.
- real(pReal) guessmode, err_div, err_stress, err_defgrad, sigma0        
+ real(pReal) guessmode, err_div, err_stress, err_defgrad, pHatAv        
  integer(pInt)  i, j, k, l, m, n, p
  integer(pInt)  loadcase, ielem, iter, calcmode, CPFEM_mode, ierr
  logical errmatinv
@@ -281,7 +282,8 @@ program DAMASK_spectral
  
  allocate (defgrad   (resolution(1),resolution(2),resolution(3),3,3)); defgrad    = 0.0_pReal
  allocate (defgradold(resolution(1),resolution(2),resolution(3),3,3)); defgradold = 0.0_pReal
- allocate (coordinates(3,resolution(1),resolution(2),resolution(3))); coordinates = 0.0_pReal
+ allocate (coordinates(3,resolution(1),resolution(2),resolution(3)));  coordinates = 0.0_pReal
+ allocate (xi         (3,resolution(1)/2+1,resolution(2),resolution(3)));  xi = 0.0_pReal
  
  wgt = 1.0_pReal/real(resolution(1)*resolution(2)*resolution(3), pReal)
  defgradAim    = math_I3
@@ -301,49 +303,43 @@ program DAMASK_spectral
    c066 = c066 + dsde
  enddo; enddo; enddo
  c066 = c066 * wgt
- c0 = math_mandel66to3333(c066)
- call math_invert(6, c066, s066,i, errmatinv)
- if(errmatinv) call IO_error(800)                     ! Matrix inversion error
- s0 = math_mandel66to3333(s066)
+ c0 = math_mandel66to3333(c066)                       ! linear reference material stiffness
+ 
+ do k = 1, resolution(3)                              ! calculation of discrete frequencies, order as in FFTW (wrap around)
+    k_s(3) = k-1
+    if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
+    do j = 1, resolution(2)
+      k_s(2) = j-1
+      if(j > resolution(2)/2+1) k_s(2) = k_s(2)-resolution(2)     
+      do i = 1, resolution(1)/2+1
+        k_s(1) = i-1
+        xi(3,i,j,k) = 0.0_pReal                                                  ! 2D case
+        if(resolution(3) > 1) xi(3,i,j,k) = real(k_s(3), pReal)*2*pi/geomdimension(3) ! 3D case     ToDo: Check if to multiply by 2 pi?
+                              xi(2,i,j,k) = real(k_s(2), pReal)*2*pi/geomdimension(2)
+                              xi(1,i,j,k) = real(k_s(1), pReal)*2*pi/geomdimension(1)
+  enddo; enddo; enddo
  
  if(memory_efficient) then                            ! allocate just single fourth order tensor
    allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
  else                                                 ! precalculation of gamma_hat field
    allocate (gamma_hat(resolution(1)/2+1,resolution(2),resolution(3),3,3,3,3)); gamma_hat = 0.0_pReal
-   do k = 1, resolution(3)
-     k_s(3) = k-1
-     if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
-     do j = 1, resolution(2)
-       k_s(2) = j-1
-       if(j > resolution(2)/2+1) k_s(2) = k_s(2)-resolution(2)     
-       do i = 1, resolution(1)/2+1
-         k_s(1) = i-1
-         xi(3) = 0.0_pReal                                                  ! for the 2D case
-         if(resolution(3) > 1) xi(3) = real(k_s(3), pReal)/geomdimension(3) ! 3D case
-                               xi(2) = real(k_s(2), pReal)/geomdimension(2)
-                               xi(1) = real(k_s(1), pReal)/geomdimension(1)
-         if (any(xi /= 0.0_pReal)) then     
-           do l = 1,3; do m = 1,3
-             xinormdyad(l,m) = xi(l)*xi(m)/sum(xi**2)                       ! unit sphere, unit vectors in Fourier space
-           enddo; enddo
-           temp33_Real = math_inv3x3(math_mul3333xx33(c0, xinormdyad)) 
-         else
-           xinormdyad  = 0.0_pReal
-           temp33_Real = 0.0_pReal
-         endif 
-         do l=1,3; do m=1,3; do n=1,3; do p=1,3
-           gamma_hat(i,j,k, l,m,n,p) = - 0.25*(temp33_Real(l,n)+temp33_Real(n,l)) *&
-                                              (xinormdyad(m,p)+xinormdyad(p,m))
-         enddo; enddo; enddo; enddo         
+   do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
+     if (any(xi(:,i,j,k) /= 0.0_pReal)) then     
+       do l = 1,3; do m = 1,3
+          xidyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
+       enddo; enddo
+       temp33_Real = math_inv3x3(math_mul3333xx33(c0, xidyad)) 
+     else
+        xidyad  = 0.0_pReal
+        temp33_Real = 0.0_pReal
+     endif 
+     do l=1,3; do m=1,3; do n=1,3; do p=1,3
+       gamma_hat(i,j,k, l,m,n,p) = - 0.25*(temp33_Real(l,n)+temp33_Real(n,l)) *&
+                                            (xidyad(m,p)+xidyad(p,m))
+     enddo; enddo; enddo; enddo         
    enddo; enddo; enddo
  endif
- 
-! calculate xi for the calculation of divergence in Fourier space (central frequency)
- xi_central(3) = 0.0_pReal                                                           ! 2D case
- if(resolution(3) > 1) xi_central(3) = real(resolution(3)/2, pReal)/geomdimension(3) ! 3D case
-                       xi_central(2) = real(resolution(2)/2, pReal)/geomdimension(2)
-                       xi_central(1) = real(resolution(1)/2, pReal)/geomdimension(1)
- 
+
  allocate (workfft(resolution(1)+2,resolution(2),resolution(3),3,3)); workfft = 0.0_pReal
 
 ! Initialization of fftw (see manual on fftw.org for more details) 
@@ -392,7 +388,7 @@ program DAMASK_spectral
 ! loop oper steps defined in input file for current loadcase
    do step = 1, bc_steps(loadcase)
 !*************************************************************
-     if (bc_logscale(loadcase) == 1) then                                                          ! loglinear scale
+     if (bc_logscale(loadcase) == 1) then                                                         ! loglinear scale
         if (loadcase == 1) then                                                                   ! 1st loadcase of loglinear scale            
             if (step == 1) then                                                                   ! 1st step of 1st loadcase of loglinear scale
                 timeinc = bc_timeIncrement(1)*(2.0**(1 - bc_steps(1)))                            ! assume 1st step is equal to 2nd 
@@ -444,7 +440,7 @@ program DAMASK_spectral
        print*, ' '
        print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',step, ' Iteration = ',iter 
        cstress_av = 0.0_pReal
-       workfft = 0.0_pReal !needed because of the padding for FFTW
+       workfft = 0.0_pReal                               ! needed because of the padding for FFTW
 !*************************************************************
        
 ! adjust defgrad to fulfill BCs 
@@ -460,6 +456,7 @@ program DAMASK_spectral
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
          
+         c0_temp = 0.0_pReal    !for calculation of s0
          ielem = 0_pInt       
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
@@ -469,9 +466,14 @@ program DAMASK_spectral
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
            CPFEM_mode = 2_pInt
-           workfft(i,j,k,:,:) = pstress                                     ! prepare Fourier transform of first P--K stress
+           c0_temp = c0_temp + dPdF
+           workfft(i,j,k,:,:) = pstress                                     ! build up average P-K stress
            cstress_av = cstress_av + math_mandel6to33(cstress)              ! build up average Cauchy stress
          enddo; enddo; enddo
+
+         call math_invert(9, math_plain3333to99(c0_temp),s099,i,errmatinv)               
+         if(errmatinv) call IO_error(800,ext_msg = "problem in c0 inversion") 
+         s0 = math_plain99to3333(s099) *real(resolution(1)*resolution(2)*resolution(3), pReal) ! average s0 for calculation of BC
          
          cstress_av = cstress_av * wgt
          do n = 1,3; do m = 1,3
@@ -486,7 +488,7 @@ program DAMASK_spectral
          defgradAimCorrPrev = defgradAimCorr
          defgradAimCorr     = -mask_stress * math_mul3333xx33(s0, (mask_stress*(pstress_av - bc_stress(:,:,loadcase))))
 
-         do m=1,3; do n =1,3                                        ! calculate damper (correction is far too strong)
+         do m=1,3; do n =1,3                                        ! calculate damper (correction is far too strong) !ToDo:
            if ( sign(1.0_pReal,defgradAimCorr(m,n))/=sign(1.0_pReal,defgradAimCorrPrev(m,n))) then
              damper(m,n) = max(0.01_pReal,damper(m,n)*0.8)
            else
@@ -537,47 +539,38 @@ program DAMASK_spectral
          enddo; enddo
          
          print *, 'Calculating equilibrium using spectral method'
-         err_div = 0.0_pReal; sigma0 = 0.0_pReal
+         err_div = 0.0_pReal; pHatAv = 0.0_pReal
          call dfftw_execute_dft_r2c(plan_fft(1),workfft,workfft)           ! FFT of pstress
          do m = 1,3 ! L infinity Norm of stress tensor 
-           sigma0 = max(sigma0, sum(abs(workfft(1,1,1,m,:) + workfft(2,1,1,m,:)*img)))     
+           pHatAv = max(pHatAv, sum(abs(workfft(1,1,1,m,:) + workfft(2,1,1,m,:)*img)))     
          enddo
-         err_div = (maxval(abs(math_mul33x3_complex(workfft(resolution(1)+1,resolution(2)/2+1,resolution(3)/2+1,:,:)+& ! L infinity norm of div(stress)
-                                                    workfft(resolution(1)+2,resolution(2)/2+1,resolution(3)/2+1,:,:)*img,xi_central))))
-         err_div = err_div/sigma0                                          ! weighting of error
+         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1 
+           err_div = max(err_div, maxval(abs(math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+& ! L infinity norm of div(stress)
+                                                                  workfft(i*2,  j,k,:,:)*img,xi(:,i,j,k)))))
+         enddo; enddo; enddo         
+         err_div = err_div/pHatAv                                          ! Criterion as supposed in Suquet 2001
 
          if(memory_efficient) then                                         ! memory saving version, on-the-fly calculation of gamma_hat
-         do k = 1, resolution(3)
-           k_s(3) = k-1
-           if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
-           do j = 1, resolution(2)
-             k_s(2) = j-1
-             if(j > resolution(2)/2+1) k_s(2) = k_s(2)-resolution(2)
-             do i = 1, resolution(1)/2+1
-               k_s(1) = i-1
-               xi(3) = 0.0_pReal                                                  ! for the 2D case
-               if(resolution(3) > 1) xi(3) = real(k_s(3), pReal)/geomdimension(3) ! 3D case
-                                     xi(2) = real(k_s(2), pReal)/geomdimension(2)
-                                     xi(1) = real(k_s(1), pReal)/geomdimension(1)                                 
-               if (any(xi(:) /= 0.0_pReal)) then     
-                 do l = 1,3; do m = 1,3
-                    xinormdyad(l,m) = xi(l)*xi(m)/sum(xi**2)
-                 enddo; enddo
-                 temp33_Real = math_inv3x3(math_mul3333xx33(c0, xinormdyad)) 
-               else
-                 xinormdyad = 0.0_pReal
-                 temp33_Real = 0.0_pReal
-               endif 
-               do l=1,3; do m=1,3; do n=1,3; do p=1,3
-                gamma_hat(1,1,1, l,m,n,p) = - 0.25_pReal*(temp33_Real(l,n)+temp33_Real(n,l))*&
-                                                         (xinormdyad(m,p) +xinormdyad(p,m))
-               enddo; enddo; enddo; enddo   
-               do m = 1,3; do n = 1,3
-                 temp33_Complex(m,n) = sum(gamma_hat(1,1,1,m,n,:,:) *(workfft(i*2-1,j,k,:,:)&                 
-                                                                     +workfft(i*2  ,j,k,:,:)*img))
-               enddo; enddo
-               workfft(i*2-1,j,k,:,:) = real (temp33_Complex)                             ! change of strain
-               workfft(i*2  ,j,k,:,:) = aimag(temp33_Complex)
+         do k = 1, resolution(3); do j = 1, resolution(2) ;do i = 1, resolution(1)/2+1                         
+           if (any(xi(:,i,j,k) /= 0.0_pReal)) then     
+             do l = 1,3; do m = 1,3
+               xidyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
+             enddo; enddo
+             temp33_Real = math_inv3x3(math_mul3333xx33(c0, xidyad)) 
+           else
+             xidyad = 0.0_pReal
+             temp33_Real = 0.0_pReal
+           endif 
+           do l=1,3; do m=1,3; do n=1,3; do p=1,3
+             gamma_hat(1,1,1, l,m,n,p) = - 0.25_pReal*(temp33_Real(l,n)+temp33_Real(n,l))*&
+                                                       (xidyad(m,p) +xidyad(p,m))
+           enddo; enddo; enddo; enddo   
+           do m = 1,3; do n = 1,3
+             temp33_Complex(m,n) = sum(gamma_hat(1,1,1,m,n,:,:) *(workfft(i*2-1,j,k,:,:)&                 
+                                                                 +workfft(i*2  ,j,k,:,:)*img))
+           enddo; enddo
+           workfft(i*2-1,j,k,:,:) = real (temp33_Complex)                                 ! change of av strain
+           workfft(i*2  ,j,k,:,:) = aimag(temp33_Complex)
            enddo; enddo; enddo
          else                                                                             ! use precalculated gamma-operator
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
@@ -585,7 +578,7 @@ program DAMASK_spectral
              temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n,:,:) *(workfft(i*2-1,j,k,:,:)&
                                                                  + workfft(i*2  ,j,k,:,:)*img))
            enddo; enddo
-           workfft(i*2-1,j,k,:,:) = real (temp33_Complex)                                 ! change of strain
+           workfft(i*2-1,j,k,:,:) = real (temp33_Complex)                                 ! change of av strain
            workfft(i*2  ,j,k,:,:) = aimag(temp33_Complex) 
           enddo; enddo; enddo
          endif
