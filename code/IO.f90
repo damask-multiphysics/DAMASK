@@ -1181,7 +1181,7 @@ endfunction
  case (101)
    msg = 'Cannot open input file'
  case (102)
-   msg = 'argument count error (mesh and loadcase) for mpie_spectral'
+   msg = 'argument count error (mesh and loadcase) for DAMASK_spectral'
  case (103)
    msg = 'Resolution contains odd number'
  case (104)
