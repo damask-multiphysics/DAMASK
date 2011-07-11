@@ -163,10 +163,10 @@ subroutine numerics_init()
   volDiscrPow_RGC         = 5.0
 
 !* spectral parameters:  
-  err_div_tol             = 1.0e-4   ! proposed by Suquet, less strict criteria are usefull, e.g. 5e-3
+  err_div_tol             = 1.0e-2   ! proposed by Suquet, less strict criteria are usefull, e.g. 5e-3
   err_defgrad_tol         = 1.0e-3   ! relative tolerance for fullfillment of average deformation gradient (is usually passively fullfilled)
   err_stress_tolrel       = 0.01     ! relative tolerance for fullfillment of stress BC
-  itmax                   = 20_pInt  ! Maximum iteration number
+  itmax                   = 40_pInt  ! Maximum iteration number
   memory_efficient        = .true.   ! Precalculate Gamma-operator (81 double per point)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
