@@ -63,21 +63,23 @@ program DAMASK_spectral
  integer(pInt), dimension (1+maxNchunksInput*2) :: posInput
  integer(pInt), parameter ::                       maxNchunksGeom = 7    ! 4 identifiers, 3 values
  integer(pInt), dimension (1+2*maxNchunksGeom) ::  posGeom
- integer(pInt) unit, N_l, N_s, N_t, N_n, N_f                             ! numbers of identifiers
+ integer(pInt) unit, N_l, N_s, N_t, N_n, N_freq, N_Fdot                  ! numbers of identifiers
  character(len=1024) path, line
  logical gotResolution,gotDimension,gotHomogenization
  logical, dimension(9) :: bc_maskvector
 
 ! variables storing information from loadcase file
- real(pReal)                                    time, time0, timeinc   ! elapsed time, begin of interval, time interval
- real(pReal), dimension (:,:,:), allocatable :: bc_velocityGrad, &
-                                                bc_stress              ! velocity gradient and stress BC
- real(pReal), dimension(:), allocatable ::      bc_timeIncrement       ! length of increment
- integer(pInt)                                  N_Loadcases, step
- integer(pInt), dimension(:), allocatable ::    bc_steps               ! number of steps
- integer(pInt), dimension(:), allocatable ::    bc_frequency           ! frequency of result writes
- integer(pInt), dimension(:), allocatable ::    bc_logscale            ! linear/logaritmic time step flag
- logical, dimension(:,:,:,:), allocatable ::    bc_mask                ! mask of boundary conditions
+ real(pReal)                                    time, time0, timeinc    ! elapsed time, begin of interval, time interval
+ real(pReal), dimension (:,:,:), allocatable :: bc_deformation, &       ! applied velocity gradient or time derivative of deformation gradient
+                                                bc_stress               ! stress BC (if applicable)
+ real(pReal), dimension(:), allocatable ::      bc_timeIncrement        ! length of increment
+ integer(pInt)                                  N_Loadcases, step       ! ToDo: rename?
+ integer(pInt), dimension(:), allocatable ::    bc_steps, &             ! number of steps
+                                                bc_frequency            ! frequency of result writes
+ logical, dimension(:), allocatable ::          bc_logscale, &          ! linear/logaritmic time step flag
+                                                followFormeTrajectory,& ! follow trajectory of former loadcase
+                                                velGradApplied          ! decide wether velocity gradient or fdot is given 
+ logical, dimension(:,:,:,:), allocatable ::    bc_mask                 ! mask of boundary conditions
 
 ! variables storing information from geom file
  real(pReal) wgt
@@ -109,7 +111,7 @@ program DAMASK_spectral
 ! loop variables, convergence etc.
  real(pReal) guessmode, err_div, err_stress, err_defgrad, p_hat_av        
  integer(pInt)  i, j, k, l, m, n, p
- integer(pInt)  loadcase, ielem, iter, calcmode, CPFEM_mode, ierr
+ integer(pInt)  loadcase, ielem, iter, calcmode, CPFEM_mode, ierr, doesNotConverge
  logical errmatinv
  
  real(pReal) temperature                                  ! not used, but needed for call to CPFEM_general
@@ -126,7 +128,9 @@ program DAMASK_spectral
  N_t = 0_pInt
  time = 0.0_pReal
  N_n = 0_pInt
- N_f = 0_pInt
+ N_freq = 0_pInt
+ N_Fdot = 0_pInt
+ doesNotConverge = 0_pInt
  gotResolution =.false.; gotDimension =.false.; gotHomogenization = .false.
  resolution = 1_pInt
  geomdimension = 0.0_pReal
@@ -150,31 +154,36 @@ program DAMASK_spectral
    posInput = IO_stringPos(line,maxNchunksInput)
    do i = 1, maxNchunksInput, 1
        select case (IO_lc(IO_stringValue(line,posInput,i)))
-            case('l','velocitygrad')
+            case('l', 'velocitygrad')
                  N_l = N_l+1
-            case('s','stress')
+            case('fdot')
+                 N_Fdot = N_Fdot+1
+            case('s', 'stress', 'pk1', 'piolakirchhoff')
                  N_s = N_s+1
-            case('t','time','delta')
+            case('t', 'time', 'delta')
                  N_t = N_t+1
-            case('n','incs','increments','steps','logincs','logsteps')
+            case('n', 'incs', 'increments', 'steps', 'logincs', 'logsteps')
                  N_n = N_n+1
-            case('f','freq','frequency')
-                 N_f = N_f+1
+            case('f', 'freq', 'frequency')
+                 N_freq = N_freq+1
         end select
    enddo                                                  ! count all identifiers to allocate memory and do sanity check
  enddo
 
-101 N_Loadcases = N_l
-
+101 N_Loadcases = N_n
+if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
+  call IO_error(46,ext_msg = path)                        ! error message for incomplete inp !ToDo:change message
 
 ! allocate memory depending on lines in input file
- allocate (bc_velocityGrad(3,3,N_Loadcases));       bc_velocityGrad = 0.0_pReal
+ allocate (bc_deformation(3,3,N_Loadcases));        bc_deformation = 0.0_pReal
  allocate (bc_stress(3,3,N_Loadcases));             bc_stress = 0.0_pReal
  allocate (bc_mask(3,3,2,N_Loadcases));             bc_mask = .false.
+ allocate (velGradApplied(N_Loadcases));            velGradApplied = .false.
  allocate (bc_timeIncrement(N_Loadcases));          bc_timeIncrement = 0.0_pReal
  allocate (bc_steps(N_Loadcases));                  bc_steps = 0_pInt
- allocate (bc_logscale(N_Loadcases));               bc_logscale = 0_pInt
+ allocate (bc_logscale(N_Loadcases));               bc_logscale = .false.
  allocate (bc_frequency(N_Loadcases));              bc_frequency = 1_pInt
+ allocate (followFormeTrajectory(N_Loadcases));     followFormeTrajectory = .false.
 
  rewind(unit)
  i = 0_pInt
@@ -186,14 +195,24 @@ program DAMASK_spectral
    do j = 1,maxNchunksInput,2
      select case (IO_lc(IO_stringValue(line,posInput,j)))
        case('l','velocitygrad')
+         velGradApplied(i) = .true.
          valuevector = 0.0_pReal
          forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '*'
          do k = 1,9
            if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k) ! assign values for the velocity gradient matrix
          enddo
          bc_mask(:,:,1,i) = transpose(reshape(bc_maskvector,(/3,3/)))
-         bc_velocityGrad(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
-       case('s','stress')
+         bc_deformation(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
+       case('fdot')
+         velGradApplied(i) = .false.
+         valuevector = 0.0_pReal
+         forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '*'
+         do k = 1,9
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k) ! assign values for the matrix of time derivative of defgrad
+         enddo
+         bc_mask(:,:,1,i) = transpose(reshape(bc_maskvector,(/3,3/)))
+         bc_deformation(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
+       case('s', 'stress', 'pk1', 'piolakirchhoff')
          valuevector = 0.0_pReal
          forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '*'
          do k = 1,9
@@ -205,11 +224,13 @@ program DAMASK_spectral
            bc_timeIncrement(i) = IO_floatValue(line,posInput,j+1)
        case('n','incs','increments','steps')                               ! bc_steps
            bc_steps(i) = IO_intValue(line,posInput,j+1)
-       case('logincs','logsteps')                                          ! = 1, if log scale
+       case('logincs','logsteps')                                          ! true, if log scale
            bc_steps(i) = IO_intValue(line,posInput,j+1)
-           bc_logscale(i) = 1
+           bc_logscale(i) = .true.
        case('f','freq','frequency')                                        ! frequency of result writings
-           bc_frequency(i) = IO_intValue(line,posInput,j+1)
+           bc_frequency(i) = IO_intValue(line,posInput,j+1)                
+       case('continue','keepguessing','followtrajectory','followformertrajectory')
+           followFormeTrajectory(i) = .true.                               ! continue to predict deformation along former trajectory
      end select
  enddo; enddo
 
@@ -217,13 +238,26 @@ program DAMASK_spectral
  
  do i = 1, N_Loadcases                                                      ! consistency checks
    if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(46,i)       ! exclusive or masking only
+   if (velGradApplied(i) == .true.) then
+     do j = 1, 3
+       if (any(bc_mask(j,:,1,i) == .true.) .and. any(bc_mask(j,:,1,i) == .false.)) &
+                   call IO_error(46,i)                                      ! ToDo: change message
+     enddo
+   endif
+   if (followFormeTrajectory(1) == .true.) call IO_error(47,i)              ! ToDo: Change message
    if (bc_timeIncrement(i) < 0.0_pReal) call IO_error(47,i)                 ! negative time increment
    if (bc_steps(i) < 1_pInt) call IO_error(48,i)                            ! non-positive increment count
    if (bc_frequency(i) < 1_pInt) call IO_error(49,i)                        ! non-positive result frequency
-   print '(a,/,3(3(f12.6,x)/))','L:'        ,math_transpose3x3(bc_velocityGrad(:,:,i))
+   print '(a,i5)', 'Loadcase:', i
+   if (velGradApplied(i) == .true.) then
+     print '(a,/,3(3(f12.6,x)/))','L:'        ,math_transpose3x3(bc_deformation(:,:,i))
+     print '(a,/,3(3(l,x)/))',    'bc_mask for L:',transpose(bc_mask(:,:,1,i))
+   else
+     print '(a,/,3(3(f12.6,x)/))','Fdot:'       ,math_transpose3x3(bc_deformation(:,:,i))
+     print '(a,/,3(3(l,x)/))',    'bc_mask for Fdot:',transpose(bc_mask(:,:,1,i))
+   endif
    print '(a,/,3(3(f12.6,x)/))','bc_stress:',math_transpose3x3(bc_stress(:,:,i))
-   print '(a,/,3(3(l,x)/))',    'bc_mask for velocitygrad:',transpose(bc_mask(:,:,1,i))
-   print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'      ,transpose(bc_mask(:,:,2,i))
+   print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'     ,transpose(bc_mask(:,:,2,i))
    print '(a,f12.6)','time: ',bc_timeIncrement(i)
    print '(a,i6)','incs: ',bc_steps(i)
    print '(a,i6)','freq: ',bc_frequency(i)
@@ -304,6 +338,9 @@ program DAMASK_spectral
  enddo; enddo; enddo
  c066 = c066 * wgt
  c0 = math_mandel66to3333(c066)                       ! linear reference material stiffness
+ call math_invert(6, c066, s066,i, errmatinv)         ! ToDo
+ if(errmatinv) call IO_error(800)                     ! Matrix inversion error ToDo
+ s0 = math_mandel66to3333(s066)                       ! ToDo
  
  do k = 1, resolution(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
     k_s(3) = k-1
@@ -344,7 +381,7 @@ program DAMASK_spectral
 
 ! Initialization of fftw (see manual on fftw.org for more details) 
  call dfftw_init_threads(ierr)
- if(ierr == 0) call IO_error(104,ierr)
+ if(ierr == 0_pInt) call IO_error(104,ierr)
  call dfftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
  call dfftw_plan_many_dft_r2c(plan_fft(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
    workfft,(/resolution(1)  +2,resolution(2),resolution(3)/),1,(resolution(1)  +2)*resolution(2)*resolution(3),&
@@ -363,7 +400,7 @@ program DAMASK_spectral
  write(538), 'dimension', geomdimension
  write(538), 'materialpoint_sizeResults', materialpoint_sizeResults
  write(538), 'loadcases', N_Loadcases
- write(538), 'logscale', bc_logscale                                       ! one entry per loadcase (0: linear, 1: log)
+ write(538), 'logscale', bc_logscale                                       ! one entry per loadcase (false: linear, true: log)
  write(538), 'frequencies', bc_frequency                                   ! one entry per loadcase
  write(538), 'times', bc_timeIncrement                                     ! one entry per loadcase
  bc_steps(1) = bc_steps(1)+1                                               ! +1 to store initial situation
@@ -378,8 +415,13 @@ program DAMASK_spectral
 ! Loop over loadcases defined in the loadcase file
  do loadcase = 1, N_Loadcases
 !*************************************************************
-   time0 = time                                                            ! loadcase start time 
-   guessmode = 0.0_pReal                                                   ! change of load case, homogeneous guess for the first step
+   time0 = time                                                            ! loadcase start time                
+
+   if (followFormeTrajectory(loadcase) == .true.) then
+     guessmode = 1.0_pReal
+   else
+     guessmode = 0.0_pReal                                                 ! change of load case, homogeneous guess for the first step
+   endif
    
    mask_defgrad =  merge(ones,zeroes,bc_mask(:,:,1,loadcase))
    mask_stress =  merge(ones,zeroes,bc_mask(:,:,2,loadcase))
@@ -388,9 +430,9 @@ program DAMASK_spectral
 ! loop oper steps defined in input file for current loadcase
    do step = 1, bc_steps(loadcase)
 !*************************************************************
-     if (bc_logscale(loadcase) == 1) then                                                         ! loglinear scale
-        if (loadcase == 1) then                                                                   ! 1st loadcase of loglinear scale            
-            if (step == 1) then                                                                   ! 1st step of 1st loadcase of loglinear scale
+     if (bc_logscale(loadcase) == .true.) then                                                    ! loglinear scale
+        if (loadcase == 1_pInt) then                                                              ! 1st loadcase of loglinear scale            
+            if (step == 1_pInt) then                                                              ! 1st step of 1st loadcase of loglinear scale
                 timeinc = bc_timeIncrement(1)*(2.0**(1 - bc_steps(1)))                            ! assume 1st step is equal to 2nd 
             else                                                                                  ! not-1st step of 1st loadcase of loglinear scale
                 timeinc = bc_timeIncrement(1)*(2.0**(step - (1 + bc_steps(1))))
@@ -404,29 +446,47 @@ program DAMASK_spectral
      endif
      
      time = time + timeinc
+
+! update macroscopic deformation gradient (defgrad BC)
      temp33_Real = defgradAim
-     defgradAim = defgradAim &                        ! update macroscopic displacement gradient (defgrad BC)
-                  + guessmode * mask_stress * (defgradAim - defgradAimOld) &
-                  + math_mul33x33(bc_velocityGrad(:,:,loadcase), defgradAim)*timeinc
-     defgradAimOld = temp33_Real  
- 
+     if (velGradApplied(loadcase) == .true.) then                                                 ! calculate from given L and current F
+       defgradAim = defgradAim &
+                    + guessmode * mask_stress * (defgradAim - defgradAimOld) &
+                    + math_mul33x33(bc_deformation(:,:,loadcase), defgradAim)*timeinc
+     else                                                                                         ! calculate from given Fdot and current F
+       defgradAim = defgradAim &                                                                         
+                    + guessmode * mask_stress * (defgradAim - defgradAimOld) &      
+                    + mask_defgrad * bc_deformation(:,:,loadcase) * timeinc  
+     endif
+     defgradAimOld = temp33_Real
+! update local deformation gradient
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-       temp33_Real = defgrad(i,j,k,:,:)
-       defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:)&         ! old fluctuations as guess for new step, no fluctuations for new loadcase
-                          + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))&
-                          + (1.0_pReal-guessmode) * math_mul33x33(bc_velocityGrad(:,:,loadcase),defgradold(i,j,k,:,:))*timeinc
-       defgradold(i,j,k,:,:) = temp33_Real                                                                  
+       if (velGradApplied(loadcase) == .true.) then       ! using velocity gradient to calculate new deformation gradient (if not guessing)
+         temp33_Real = defgrad(i,j,k,:,:)
+         defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:) &        ! decide if guessing along former trajectory or apply homogeneous addon
+                            + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))&
+                            + (1.0_pReal-guessmode) * math_mul33x33(bc_deformation(:,:,loadcase),defgradold(i,j,k,:,:))*timeinc
+         defgradold(i,j,k,:,:) = temp33_Real   
+       else                                               ! using time derivative of deformation gradient to calculate new deformation gradient (if not guessing)
+         temp33_Real = defgrad(i,j,k,:,:)
+         defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:) &        ! decide if guessing along former trajectory or apply homogeneous addon     
+                            + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))&
+                            + (1.0_pReal-guessmode) * bc_deformation(:,:,loadcase) * timeinc
+          defgradold(i,j,k,:,:) = temp33_Real
+       endif
      enddo; enddo; enddo
 
      guessmode = 1.0_pReal                              ! keep guessing along former trajectory during same loadcase
+
      if(all(bc_mask(:,:,1,loadcase))) then
        calcmode = 1_pInt                                ! if no stress BC is given (calmode 0 is not needed)
      else
        calcmode = 0_pInt                                ! start calculation of BC fulfillment
      endif
+
      CPFEM_mode = 1_pInt                                ! winding forward
      iter = 0_pInt
-     err_div= 2_pReal * err_div_tol                     ! go into loop 
+     err_div= 2.0_pReal * err_div_tol                     ! go into loop 
      defgradAimCorr = 0.0_pReal                         ! reset damping calculation
      damper = damper * 0.9_pReal
     
@@ -437,6 +497,7 @@ program DAMASK_spectral
               err_stress  > err_stress_tol .or. &
               err_defgrad > err_defgrad_tol))
        iter = iter + 1_pInt
+       if (iter == itmax) doesNotConverge = doesNotConverge + 1
        print*, ' '
        print '(3(A,I5.5,tr2))', ' Loadcase = ',loadcase, ' Step = ',step, ' Iteration = ',iter 
        cstress_av = 0.0_pReal
@@ -456,7 +517,7 @@ program DAMASK_spectral
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
          
-         c0_temp = 0.0_pReal    !for calculation of s0
+       ! c0_temp = 0.0_pReal    !for calculation of s0 ToDo
          ielem = 0_pInt       
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
@@ -466,14 +527,14 @@ program DAMASK_spectral
                               temperature,timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
            CPFEM_mode = 2_pInt
-           c0_temp = c0_temp + dPdF
-           workfft(i,j,k,:,:) = pstress                                     ! build up average P-K stress
+         ! c0_temp = c0_temp + dPdF                                         ToDo
+           workfft(i,j,k,:,:) = pstress                                     ! build up average P-K stress 
            cstress_av = cstress_av + math_mandel6to33(cstress)              ! build up average Cauchy stress
          enddo; enddo; enddo
 
-         call math_invert(9, math_plain3333to99(c0_temp),s099,i,errmatinv)               
-         if(errmatinv) call IO_error(800,ext_msg = "problem in c0 inversion") 
-         s0 = math_plain99to3333(s099) *real(resolution(1)*resolution(2)*resolution(3), pReal) ! average s0 for calculation of BC
+       ! call math_invert(9, math_plain3333to99(c0_temp),s099,i,errmatinv)        ToDo       
+       ! if(errmatinv) call IO_error(800,ext_msg = "problem in c0 inversion") ToDo
+       ! s0 = math_plain99to3333(s099) *real(resolution(1)*resolution(2)*resolution(3), pReal) ! average s0 for calculation of BC ToDo
          
          cstress_av = cstress_av * wgt
          do n = 1,3; do m = 1,3
@@ -501,12 +562,12 @@ program DAMASK_spectral
          do m = 1,3; do n = 1,3
            defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim(m,n) - defgrad_av(m,n)) ! anticipated target minus current state
          enddo; enddo
-         err_div = 2 * err_div_tol
+         err_div = 2.0_pReal * err_div_tol
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))
          print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:',math_transpose3x3(defgrad_av)
-         print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress / MPa: ',math_transpose3x3(cstress_av)/1.e6
-         print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol
-         print '(2(a,E8.2))', ' error deformation gradient: ',err_defgrad,'  Tol. = ', err_defgrad_tol*0.8
+         print '(a,/,3(3(f10.4,x)/))', ' Piola-Kirchhoff Stress / MPa: ',math_transpose3x3(pstress_av)/1.e6
+         print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol*0.8
+         print '(2(a,E8.2))', ' error deformation gradient: ',err_defgrad,'  Tol. = ', err_defgrad_tol
          if(err_stress < err_stress_tol*0.8) then 
            calcmode = 1_pInt
          endif
@@ -590,7 +651,7 @@ program DAMASK_spectral
          defgrad = defgrad + workfft(1:resolution(1),:,:,:,:)*wgt
          do m = 1,3; do n = 1,3
            defgrad_av(m,n) = sum(defgrad(:,:,:,m,n))*wgt
-           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim(m,n) - defgrad_av(m,n))  ! anticipated target minus current state
+           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + mask_defgrad(m,n)*(defgradAim(m,n) - defgrad_av(m,n))  ! anticipated target minus current state on components with prescribed deformation
          enddo; enddo
          
          err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
@@ -616,9 +677,11 @@ program DAMASK_spectral
      print '(a,/,3(3(f12.7,x)/))', ' Deformation Aim:     ',math_transpose3x3(defgradAim)
      print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:',math_transpose3x3(defgrad_av) 
      print '(a,/,3(3(f10.4,x)/))', ' Cauchy Stress / MPa: ',math_transpose3x3(cstress_av)/1.e6
+     print '(a,/,3(3(f10.4,x)/))', ' Piola-Kirchhoff Stress / MPa: ',math_transpose3x3(pstress_av)/1.e6
      print '(A)', '************************************************************'
    enddo  ! end looping over steps in current loadcase
  enddo    ! end looping over loadcases
+ print '(a,i10,a)', 'A Total of ', doesNotConverge, ' Steps did not converge!'
  close(538)
  call dfftw_destroy_plan(plan_fft(1)); call dfftw_destroy_plan(plan_fft(2))
     
