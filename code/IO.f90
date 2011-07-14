@@ -1154,6 +1154,18 @@ endfunction
  character(len=120) msg
 
  select case (ID)
+ case (30)
+   msg = 'error opening spectral loadcase'
+ case (31)
+   msg = 'mask consistency violated in spectral loadcase'
+ case (32)
+   msg = 'ill defined L (each line should be either fully or not at all defined) in spectral loadcase'
+ case (34)
+   msg = 'negative time increment in spectral loadcase'
+ case (35)
+   msg = 'Non-positive increments in spectral loadcase'
+ case (36)
+   msg = 'Non-positive result frequency in spectral loadcase'
  case (40)
    msg = 'path rectification error'
  case (41)
@@ -1164,16 +1176,6 @@ endfunction
    msg = 'resolution error in spectral mesh'
  case (44)
    msg = 'dimension error in spectral mesh'
- case (45)
-   msg = 'error opening spectral loadcase'
- case (46)
-   msg = 'mask consistency violated in spectral loadcase'
- case (47)
-   msg = 'negative time increment in spectral loadcase'
- case (48)
-   msg = 'Non-positive increments in spectral loadcase'
- case (49)
-   msg = 'Non-positive result frequency in spectral loadcase'
  case (50)
    msg = 'Error writing constitutive output description'
  case (100)
@@ -1417,6 +1419,8 @@ endfunction
  character(len=80) msg
 
  select case (ID)
+ case (33)
+   msg = 'cannot guess along trajectory for first step of first loadcase'
  case (101)
    msg = '+    crystallite debugging off...    +'
  case (600)

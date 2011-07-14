@@ -91,9 +91,9 @@ program DAMASK_spectral
  real(pReal), dimension(3,3) ::                         ones, zeroes, temp33_Real, damper,&
                                                         pstress, pstress_av, cstress_av, defgrad_av,&
                                                         defgradAim, defgradAimOld, defgradAimCorr, defgradAimCorrPrev,&
-                                                        mask_stress, mask_defgrad                          
+                                                        mask_stress, mask_defgrad, deltaF                          
  real(pReal), dimension(3,3,3,3) ::                     dPdF, c0, s0, c0_temp
- real(pReal), dimension(9,9) ::                         s099                                   ! compliance in matrix notation
+! real(pReal), dimension(9,9) ::                         s099                                  ! compliance in matrix notation
  real(pReal), dimension(6) ::                           cstress                                ! cauchy stress in Mandel notation
  real(pReal), dimension(6,6) ::                         dsde, c066, s066                       ! Mandel notation of 4th order tensors
  real(pReal), dimension(:,:,:,:,:), allocatable ::      workfft, defgrad, defgradold
@@ -145,7 +145,7 @@ program DAMASK_spectral
  print '(a,/,a)', 'Workingdir:    ',trim(getSolverWorkingDirectoryName())
  print '(a,/,a)', 'SolverJobName: ',trim(getSolverJobName())
 
- if (.not. IO_open_file(unit,path)) call IO_error(45,ext_msg = path)
+ if (.not. IO_open_file(unit,path)) call IO_error(30,ext_msg = path)
  
  rewind(unit)
  do
@@ -183,89 +183,94 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
  allocate (bc_steps(N_Loadcases));                  bc_steps = 0_pInt
  allocate (bc_logscale(N_Loadcases));               bc_logscale = .false.
  allocate (bc_frequency(N_Loadcases));              bc_frequency = 1_pInt
- allocate (followFormeTrajectory(N_Loadcases));     followFormeTrajectory = .false.
+ allocate (followFormeTrajectory(N_Loadcases));     followFormeTrajectory = .true.
 
  rewind(unit)
- i = 0_pInt
+ loadcase = 0_pInt
  do
    read(unit,'(a1024)',END = 200) line
-   if (IO_isBlank(line)) cycle                           ! skip empty lines
-   i = i + 1
+   if (IO_isBlank(line)) cycle                                                      ! skip empty lines
+   loadcase = loadcase + 1
    posInput = IO_stringPos(line,maxNchunksInput)
    do j = 1,maxNchunksInput,2
      select case (IO_lc(IO_stringValue(line,posInput,j)))
-       case('l','velocitygrad')
-         velGradApplied(i) = .true.
+       case('fdot')                                                               ! assign values for the deformation BC matrix (in case of given fdot)
          valuevector = 0.0_pReal
          forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '*'
          do k = 1,9
-           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k) ! assign values for the velocity gradient matrix
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k)
          enddo
-         bc_mask(:,:,1,i) = transpose(reshape(bc_maskvector,(/3,3/)))
-         bc_deformation(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
-       case('fdot')
-         velGradApplied(i) = .false.
+         bc_mask(:,:,1,loadcase) = transpose(reshape(bc_maskvector,(/3,3/)))
+         bc_deformation(:,:,loadcase) = math_transpose3x3(reshape(valuevector,(/3,3/)))
+       case('l','velocitygrad')                                                     ! assign values for the deformation BC matrix (in case of given L)
+         velGradApplied(loadcase) = .true.                                          ! in case of given L, set flag to true
          valuevector = 0.0_pReal
          forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '*'
          do k = 1,9
-           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k) ! assign values for the matrix of time derivative of defgrad
+           if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k)
          enddo
-         bc_mask(:,:,1,i) = transpose(reshape(bc_maskvector,(/3,3/)))
-         bc_deformation(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
+         bc_mask(:,:,1,loadcase) = transpose(reshape(bc_maskvector,(/3,3/)))
+         bc_deformation(:,:,loadcase) = math_transpose3x3(reshape(valuevector,(/3,3/)))
        case('s', 'stress', 'pk1', 'piolakirchhoff')
          valuevector = 0.0_pReal
          forall (k = 1:9) bc_maskvector(k) = IO_stringValue(line,posInput,j+k) /= '*'
          do k = 1,9
            if (bc_maskvector(k)) valuevector(k) = IO_floatValue(line,posInput,j+k)  ! assign values for the bc_stress matrix
          enddo
-         bc_mask(:,:,2,i) = transpose(reshape(bc_maskvector,(/3,3/)))
-         bc_stress(:,:,i) = math_transpose3x3(reshape(valuevector,(/3,3/)))
+         bc_mask(:,:,2,loadcase) = transpose(reshape(bc_maskvector,(/3,3/)))
+         bc_stress(:,:,loadcase) = math_transpose3x3(reshape(valuevector,(/3,3/)))
        case('t','time','delta')                                            ! increment time
-           bc_timeIncrement(i) = IO_floatValue(line,posInput,j+1)
+           bc_timeIncrement(loadcase) = IO_floatValue(line,posInput,j+1)
        case('n','incs','increments','steps')                               ! bc_steps
-           bc_steps(i) = IO_intValue(line,posInput,j+1)
+           bc_steps(loadcase) = IO_intValue(line,posInput,j+1)
        case('logincs','logsteps')                                          ! true, if log scale
-           bc_steps(i) = IO_intValue(line,posInput,j+1)
-           bc_logscale(i) = .true.
+           bc_steps(loadcase) = IO_intValue(line,posInput,j+1)
+           bc_logscale(loadcase) = .true.
        case('f','freq','frequency')                                        ! frequency of result writings
-           bc_frequency(i) = IO_intValue(line,posInput,j+1)                
-       case('continue','keepguessing','followtrajectory','followformertrajectory')
-           followFormeTrajectory(i) = .true.                               ! continue to predict deformation along former trajectory
+           bc_frequency(loadcase) = IO_intValue(line,posInput,j+1)                
+       case('guessreset','dropguessing')
+           followFormeTrajectory(loadcase) = .false.                       ! do not continue to predict deformation along former trajectory
      end select
  enddo; enddo
 
 200 close(unit)
+
+ if (followFormeTrajectory(1)) then
+   call IO_warning(33,loadcase)                 ! cannot guess along trajectory for first step of first loadcase
+   followFormeTrajectory(1) = .false.
+ endif
  
- do i = 1, N_Loadcases                                                      ! consistency checks
-   if (any(bc_mask(:,:,1,i) == bc_mask(:,:,2,i))) call IO_error(46,i)       ! exclusive or masking only
-   if (velGradApplied(i) == .true.) then
+ do loadcase = 1, N_Loadcases                                                      ! consistency checks and output
+   print *, '------------------------------------------------------'
+   print '(a,i5)', 'Loadcase:', loadcase
+   if (.not. followFormeTrajectory(loadcase)) &
+     print '(a)', 'drop guessing along trajectory'
+   if (any(bc_mask(:,:,1,loadcase) == bc_mask(:,:,2,loadcase)))&
+     call IO_error(31,loadcase)                                                    ! exclusive or masking only
+   if (velGradApplied(loadcase)) then
      do j = 1, 3
-       if (any(bc_mask(j,:,1,i) == .true.) .and. any(bc_mask(j,:,1,i) == .false.)) &
-                   call IO_error(46,i)                                      ! ToDo: change message
+       if (any(bc_mask(j,:,1,loadcase) == .true.) .and.&
+           any(bc_mask(j,:,1,loadcase) == .false.)) call IO_error(32,loadcase)     ! each line should be either fully or not at all defined
      enddo
-   endif
-   if (followFormeTrajectory(1) == .true.) call IO_error(47,i)              ! ToDo: Change message
-   if (bc_timeIncrement(i) < 0.0_pReal) call IO_error(47,i)                 ! negative time increment
-   if (bc_steps(i) < 1_pInt) call IO_error(48,i)                            ! non-positive increment count
-   if (bc_frequency(i) < 1_pInt) call IO_error(49,i)                        ! non-positive result frequency
-   print '(a,i5)', 'Loadcase:', i
-   if (velGradApplied(i) == .true.) then
-     print '(a,/,3(3(f12.6,x)/))','L:'        ,math_transpose3x3(bc_deformation(:,:,i))
-     print '(a,/,3(3(l,x)/))',    'bc_mask for L:',transpose(bc_mask(:,:,1,i))
+     print '(a,/,3(3(f12.6,x)/))','L:'        ,math_transpose3x3(bc_deformation(:,:,loadcase))
+     print '(a,/,3(3(l,x)/))',    'bc_mask for L:',transpose(bc_mask(:,:,1,loadcase))
    else
-     print '(a,/,3(3(f12.6,x)/))','Fdot:'       ,math_transpose3x3(bc_deformation(:,:,i))
-     print '(a,/,3(3(l,x)/))',    'bc_mask for Fdot:',transpose(bc_mask(:,:,1,i))
+     print '(a,/,3(3(f12.6,x)/))','Fdot:'       ,math_transpose3x3(bc_deformation(:,:,loadcase))
+     print '(a,/,3(3(l,x)/))',    'bc_mask for Fdot:',transpose(bc_mask(:,:,1,loadcase))
    endif
-   print '(a,/,3(3(f12.6,x)/))','bc_stress:',math_transpose3x3(bc_stress(:,:,i))
-   print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'     ,transpose(bc_mask(:,:,2,i))
-   print '(a,f12.6)','time: ',bc_timeIncrement(i)
-   print '(a,i6)','incs: ',bc_steps(i)
-   print '(a,i6)','freq: ',bc_frequency(i)
-   print *, ''
+   print '(a,/,3(3(f12.6,x)/))','bc_stress:',math_transpose3x3(bc_stress(:,:,loadcase))
+   print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'     ,transpose(bc_mask(:,:,2,loadcase))
+   if (bc_timeIncrement(loadcase) < 0.0_pReal) call IO_error(34,loadcase)                 ! negative time increment
+   print '(a,f12.6)','time: ',bc_timeIncrement(loadcase)
+   if (bc_steps(loadcase) < 1_pInt) call IO_error(35,loadcase)                            ! non-positive increment count
+   print '(a,i6)','incs: ',bc_steps(loadcase)
+   if (bc_frequency(loadcase) < 1_pInt) call IO_error(36,loadcase)                        ! non-positive result frequency
+   print '(a,i6)','freq: ',bc_frequency(loadcase)
  enddo
 
 !read header of geom file to get the information needed before the complete geom file is intepretated by mesh.f90
  path = getModelName()
+ print *, '------------------------------------------------------'
  print '(a,a)', 'GeomName: ',trim(path)
  if (.not. IO_open_file(unit,trim(path)//InputFileExtension)) call IO_error(101,ext_msg = trim(path)//InputFileExtension)
 
@@ -417,7 +422,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
 !*************************************************************
    time0 = time                                                            ! loadcase start time                
 
-   if (followFormeTrajectory(loadcase) == .true.) then
+   if (followFormeTrajectory(loadcase)) then
      guessmode = 1.0_pReal
    else
      guessmode = 0.0_pReal                                                 ! change of load case, homogeneous guess for the first step
@@ -426,6 +431,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
    mask_defgrad =  merge(ones,zeroes,bc_mask(:,:,1,loadcase))
    mask_stress =  merge(ones,zeroes,bc_mask(:,:,2,loadcase))
    damper = ones/10
+   deltaF = bc_deformation(:,:,loadcase)                                  ! only valid for given fDot. will be overwritten later in case L is given
 !*************************************************************
 ! loop oper steps defined in input file for current loadcase
    do step = 1, bc_steps(loadcase)
@@ -448,32 +454,25 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
      time = time + timeinc
 
 ! update macroscopic deformation gradient (defgrad BC)
-     temp33_Real = defgradAim
-     if (velGradApplied(loadcase) == .true.) then                                                 ! calculate from given L and current F
-       defgradAim = defgradAim &
-                    + guessmode * mask_stress * (defgradAim - defgradAimOld) &
-                    + math_mul33x33(bc_deformation(:,:,loadcase), defgradAim)*timeinc
-     else                                                                                         ! calculate from given Fdot and current F
-       defgradAim = defgradAim &                                                                         
-                    + guessmode * mask_stress * (defgradAim - defgradAimOld) &      
-                    + mask_defgrad * bc_deformation(:,:,loadcase) * timeinc  
-     endif
+     
+     if (velGradApplied(loadcase)) &                                                 ! calculate deltaF from given L and current F
+       deltaF = math_mul33x33(bc_deformation(:,:,loadcase), defgradAim)
+
+     temp33_Real = defgradAim                                            
+     defgradAim = defgradAim &                                                                         
+                + guessmode * mask_stress * (defgradAim - defgradAimOld) &      
+                + mask_defgrad * deltaF * timeinc 
      defgradAimOld = temp33_Real
+ 
 ! update local deformation gradient
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-       if (velGradApplied(loadcase) == .true.) then       ! using velocity gradient to calculate new deformation gradient (if not guessing)
-         temp33_Real = defgrad(i,j,k,:,:)
-         defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:) &        ! decide if guessing along former trajectory or apply homogeneous addon
+       temp33_Real = defgrad(i,j,k,:,:)
+       if (velGradApplied(loadcase)) &       ! using velocity gradient to calculate new deformation gradient (if not guessing)
+         deltaF = math_mul33x33(bc_deformation(:,:,loadcase),defgradold(i,j,k,:,:))
+       defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:) &        ! decide if guessing along former trajectory or apply homogeneous addon (addon only for applied deformation)
                             + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))&
-                            + (1.0_pReal-guessmode) * math_mul33x33(bc_deformation(:,:,loadcase),defgradold(i,j,k,:,:))*timeinc
-         defgradold(i,j,k,:,:) = temp33_Real   
-       else                                               ! using time derivative of deformation gradient to calculate new deformation gradient (if not guessing)
-         temp33_Real = defgrad(i,j,k,:,:)
-         defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:) &        ! decide if guessing along former trajectory or apply homogeneous addon     
-                            + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))&
-                            + (1.0_pReal-guessmode) * bc_deformation(:,:,loadcase) * timeinc
-          defgradold(i,j,k,:,:) = temp33_Real
-       endif
+                            + (1.0_pReal-guessmode) * mask_defgrad * deltaF *timeinc
+       defgradold(i,j,k,:,:) = temp33_Real   
      enddo; enddo; enddo
 
      guessmode = 1.0_pReal                              ! keep guessing along former trajectory during same loadcase
@@ -486,7 +485,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
 
      CPFEM_mode = 1_pInt                                ! winding forward
      iter = 0_pInt
-     err_div= 2.0_pReal * err_div_tol                     ! go into loop 
+     err_div= 2.0_pReal * err_div_tol                   ! go into loop 
      defgradAimCorr = 0.0_pReal                         ! reset damping calculation
      damper = damper * 0.9_pReal
     
