@@ -1383,7 +1383,7 @@ endfunction
  write(6,*)
  write(6,'(a38)') '+------------------------------------+'
  write(6,'(a38)') '+               error                +'
- write(6,'(a17,i3,a18)') '+               ',ID,'                 +'
+ write(6,'(a17,i3,a18)') '+                ',ID,'                 +'
  write(6,'(a38)') '+                                    +'
  write(6,'(a2,a)')       '+ ',msg
  if (present(ext_msg))  write(6,*) '+ ',ext_msg

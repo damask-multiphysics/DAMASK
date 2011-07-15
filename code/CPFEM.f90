@@ -403,7 +403,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           !$OMP CRITICAL (write2out)
             write(6,'(a)') '<< CPFEM >> Aging states'
             if (debug_e == cp_en .and. debug_i == IP) then
-              write(6,'(a,x,i8,x,i2,x,i3,/,(12(x),6(e20.8,x)))') '<< CPFEM >> AGED state of element ip grain',&
+              write(6,'(a,x,i8,x,i2,x,i4,/,(12(x),6(e20.8,x)))') '<< CPFEM >> AGED state of element ip grain',&
                                                               cp_en, IP, 1, constitutive_state(1,IP,cp_en)%p
               write(6,*)
             endif
@@ -538,7 +538,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           endif
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
-              write(6,'(a,i5,a,i5)') '<< CPFEM >> Start stress and tangent ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
+              write(6,'(a,i8,a,i8)') '<< CPFEM >> Start stress and tangent ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
           endif
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent (parallel execution inside)
