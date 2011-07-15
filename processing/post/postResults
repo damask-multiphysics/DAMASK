@@ -400,6 +400,7 @@ def mapIncremental(label, mapping, N, base, new):
   theMap =  { 'min': lambda n,b,a: min(b,a),
               'max': lambda n,b,a: max(b,a),
               'avg': lambda n,b,a: (n*b+a)/(n+1),
+              'absavg': lambda n,b,a: (n*b+abs(a))/(n+1),
               'sum': lambda n,b,a: b+a,
               'abssum': lambda n,b,a: b+abs(a),
               'unique': lambda n,b,a: {True:a,False:'n/a'}[n==0 or b==a]
@@ -624,7 +625,7 @@ parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
 parser.add_option('--sloppy', action='store_true', dest='sloppy', \
           help='do not pre-check validity of increment range')
 parser.add_option('-m','--map', dest='func', type='string', \
-          help='data reduction mapping ["%default"] out of min, max, avg, sum, abssum or user-lambda')
+          help='data reduction mapping ["%default"] out of min, max, avg, absavg, sum, abssum or user-lambda')
 parser.add_option('-p','--type', dest='filetype', type='string', \
           help = 'type of result file [%default]')
 
