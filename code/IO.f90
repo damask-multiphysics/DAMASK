@@ -76,12 +76,18 @@ recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess
  character(len=300) line,fname
  integer(pInt), intent(in) :: unit1, unit2
  logical createSuccess,fexist
+ integer(pInt), parameter :: maxNchunks = 6
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
+
  
  do
    read(unit2,'(A300)',END=220) line
-   line = IO_lc(trim(line))
+!   line = IO_lc(trim(line))
+!  do not change the whole line to lower case, file names in Linux are case sensitive!
+   positions = IO_stringPos(line,maxNchunks)
+
 !   call IO_lcInPlace(line)
-   if (line(1:8)=='*include') then
+   if (IO_lc(IO_StringValue(line,positions,1))=='*include') then
      fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
      inquire(file=fname, exist=fexist)
      if (.not.(fexist)) then

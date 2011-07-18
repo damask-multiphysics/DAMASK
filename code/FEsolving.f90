@@ -80,9 +80,14 @@
          restartRead  = iand(IO_intValue(line,positions,1),2_pInt) > 0_pInt
        case ('*restart')
          do i=2,positions(1)
-           restartWrite = IO_lc(IO_StringValue(line,positions,i)) == 'write'
-!           restartRead  = IO_lc(IO_StringValue(line,positions,i)) == 'read'
+           restartWrite = (IO_lc(IO_StringValue(line,positions,i)) == 'write') .or. restartWrite
+           restartRead  = (IO_lc(IO_StringValue(line,positions,i)) == 'read')  .or. restartRead
          enddo
+         if(restartWrite) then
+           do i=2,positions(1)
+             restartWrite = (IO_lc(IO_StringValue(line,positions,i)) /= 'frequency=0') .and. restartWrite
+           enddo
+         endif
      end select
    enddo
  else
@@ -103,13 +108,16 @@
             IO_lc(IO_stringValue(line,positions,4)) == 'id' ) &
           FEmodelGeometry = IO_StringValue(line,positions,6)
      enddo
-   elseif (FEsolver == 'Abaqus' .and. IO_open_jobFile(fileunit, 'com')) then
+   elseif (FEsolver == 'Abaqus' .and. IO_open_inputFile(fileunit,FEmodelGeometry)) then
      rewind(fileunit)
      do
        read (fileunit,'(a1024)',END=200) line
        positions = IO_stringPos(line,maxNchunks)
-!       if ( IO_lc(IO_stringValue(line,positions,?)) == 'oldjob?') &
-!          FEmodelGeometry = IO_StringValue(line,positions,?)       
+       if ( IO_lc(IO_stringValue(line,positions,1))=='*heading') then
+         read (fileunit,'(a1024)',END=200) line
+         positions = IO_stringPos(line,maxNchunks)
+         FEmodelGeometry = IO_StringValue(line,positions,1)
+       endif
      enddo
    else
      call IO_error(106) ! cannot open file for old job info
