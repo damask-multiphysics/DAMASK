@@ -62,6 +62,7 @@ class MPIEspectral_result:    # mimic py_post result object
   extrapolate = ''
   N_loadcases = 0
   N_increments = 0
+  N_positions = 0
   _frequencies = []
   _increments = []
   _times = []
@@ -77,7 +78,13 @@ class MPIEspectral_result:    # mimic py_post result object
   def __init__(self,filename):
 
     self.file = open(filename, 'rb')
-  
+    self.filesize = os.path.getsize(filename)
+    self.dataOffset = 0
+    while self.dataOffset < self.filesize:
+      self.file.seek(self.dataOffset)
+      if self.file.read(3) == 'eoh': break
+      self.dataOffset += 1
+    self.dataOffset   += 7
     self.theTitle     = self._keyedString('load')
     self.wd           = self._keyedString('workingdir')
     self.geometry     = self._keyedString('geometry')
@@ -91,10 +98,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.N_nodes      = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
     self.N_elements   =  self.resolution[0]   * self.resolution[1]   * self.resolution[2]
     self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i',default=0)[0]
-  
-    self.file.seek(0)
-    self.dataOffset = self.file.read(2048).find('eoh')+7
-
+    self.N_positions  = (self.filesize-self.dataOffset)/(8+self.N_elements*self.N_element_scalars*8)
     self.N_increments = 1                                                    # add zero'th entry
     for i in range(self.N_loadcases):
       self.N_increments += self._increments[i]//self._frequencies[i]
@@ -109,7 +113,9 @@ class MPIEspectral_result:    # mimic py_post result object
       'resolution: %s'%(','.join(map(str,self.resolution))),
       'dimension: %s'%(','.join(map(str,self.dimension))),
       'header size: %i'%self.dataOffset,
-      'file size: %i'%(self.dataOffset+self.N_increments*(8+self.N_elements*self.N_element_scalars*8)),
+      'actual   file size: %i'%self.filesize,
+      'expected file size: %i'%(self.dataOffset+self.N_increments*(8+self.N_elements*self.N_element_scalars*8)),
+      'positions in file : %i'%self.N_positions,
       ]
     )
 
@@ -118,13 +124,13 @@ class MPIEspectral_result:    # mimic py_post result object
 
     key = {'name':'','pos':0}
     filepos = 0
-    while key['name'] != identifier and key['name'] != 'eoh' and filepos < 2048:
+    while key['name'] != identifier and key['name'] != 'eoh' and filepos < self.dataOffset:
       self.file.seek(filepos)
-      tag = self.file.read(4)                                   # read the starting/ending tag
-      key['name'] = self.file.read(len(identifier))             # anticipate identifier
-      key['pos']  = self.file.tell()                            # remember position right after identifier
-      self.file.seek(filepos+4)                                 # start looking after opening tag
-      filepos += 4 + self.file.read(2048).find(tag) + 4         # locate end of closing tag
+      tag = self.file.read(4)                                         # read the starting/ending tag
+      key['name'] = self.file.read(len(identifier))                   # anticipate identifier
+      key['pos']  = self.file.tell()                                  # remember position right after identifier
+      self.file.seek(filepos+4)                                       # start looking after opening tag
+      filepos += 4 + self.file.read(self.dataOffset).find(tag) + 4    # locate end of closing tag
 
     return key
 
@@ -137,14 +143,13 @@ class MPIEspectral_result:    # mimic py_post result object
       self.file.seek(key['pos'])
       for i in range(count):
         values[i] = struct.unpack(type,self.file.read(bytecount[type]))[0]
-    
     return values
 
 
   def _keyedString(self,identifier,default=None):
     value = default
     self.file.seek(0)
-    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(2048),re.DOTALL)
+    m = re.search(r'(.{4})%s(.*?)\1'%identifier,self.file.read(self.dataOffset),re.DOTALL)
     if m:
       value = m.group(2)
     return value
@@ -202,7 +207,7 @@ class MPIEspectral_result:    # mimic py_post result object
                    ],117))
 
   def increments(self):
-    return self.N_increments
+    return self.N_positions
 
   def nodes(self):
     return self.N_nodes
@@ -453,7 +458,7 @@ def ParseOutputFormat(filename,what,me):
         break
       except:
         pass
-
+  
   if content == []: return format                                         # nothing found...
   
   tag = ''
@@ -461,8 +466,8 @@ def ParseOutputFormat(filename,what,me):
   for line in content:
     if re.match("\s*$",line) or re.match("#",line):                       # skip blank lines and comments
       continue
-    m = re.match("\[(.+)\]",line)                               # look for block indicator
-    if m:                                           # next section
+    m = re.match("\[(.+)\]",line)                                         # look for block indicator
+    if m:                                                                 # next section
       tag = m.group(1)
       tagID += 1
       format['specials']['brothers'].append(tag)
@@ -613,56 +618,58 @@ $Id$
 """)
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
-          help='list contents of resultfile [%default]')
+                  help='list contents of resultfile [%default]')
 parser.add_option(    '--prefix', dest='prefix', \
-          help='prefix to result file name [%default]')
-parser.add_option('-d','--dir', dest='directory', \
-          help='name of subdirectory to hold output [%default]')
+                  help='prefix to result file name [%default]')
+parser.add_option('-d','--dir', dest='dir', \
+                  help='name of subdirectory to hold output [%default]')
 parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
-          help='split output per increment [%default]')
+                  help='split output per increment [%default]')
 parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
-          help='range of increments to output (start, end, step) [all]')
+                  help='range of positions (or increments) to output (start, end, step) [all]')
+parser.add_option('--increments', action='store_true', dest='getIncrements', \
+                  help='switch to increment range [%default]')
 parser.add_option('--sloppy', action='store_true', dest='sloppy', \
-          help='do not pre-check validity of increment range')
+                  help='do not pre-check validity of increment range')
 parser.add_option('-m','--map', dest='func', type='string', \
-          help='data reduction mapping ["%default"] out of min, max, avg, avgabs, sum, sumabs or user-lambda')
+                  help='data reduction mapping ["%default"] out of min, max, avg, avgabs, sum, sumabs or user-lambda')
 parser.add_option('-p','--type', dest='filetype', type='string', \
-          help = 'type of result file [%default]')
+                  help = 'type of result file [auto]')
 
 group_material = OptionGroup(parser,'Material identifier')
 
 group_material.add_option('--homogenization', dest='homog', type='string', \
-          help='homogenization identifier (as string or integer [%default])')
+                          help='homogenization identifier (as string or integer [%default])', metavar='<ID>')
 group_material.add_option('--crystallite', dest='cryst', type='string', \
-          help='crystallite identifier (as string or integer [%default])')
+                          help='crystallite identifier (as string or integer [%default])', metavar='<ID>')
 group_material.add_option('--phase', dest='phase', type='string', \
-          help='phase identifier (as string or integer [%default])')
+                          help='phase identifier (as string or integer [%default])', metavar='<ID>')
 
 group_special  = OptionGroup(parser,'Special outputs')
 
 group_special.add_option('-t','--time', action='store_true', dest='time', \
-          help='output time of increment [%default]')
+                         help='output time of increment [%default]')
 group_special.add_option('-f','--filter', dest='filter', type='string', \
-          help='condition(s) to filter results [%default]')
-group_special.add_option('--separation', action='extend', dest='separation', type='string', \
-          help='properties to separate results [%default]')
+                         help='condition(s) to filter results [%default]', metavar='<CODE>')
+group_special.add_option('--separation', action='extend', dest='sep', type='string', \
+                         help='properties to separate results [%default]', metavar='<LIST>')
 group_special.add_option('--sort', action='extend', dest='sort', type='string', \
-          help='properties to sort results [%default]')
+                         help='properties to sort results [%default]', metavar='<LIST>')
 
 group_general  = OptionGroup(parser,'General outputs')
 
 group_general.add_option('--ns', action='extend', dest='nodalScalar', type='string', \
-          help='list of nodal scalars to extract')
-group_general.add_option('--es', action='extend', dest='elementalScalar', type='string', \
-          help='list of elemental scalars to extract')
-group_general.add_option('--et', action='extend', dest='elementalTensor', type='string', \
-          help='list of elemental tensors to extract')
+                         help='nodal scalars to extract', metavar='<LIST>')
+group_general.add_option('--es', action='extend', dest='elemScalar', type='string', \
+                         help='elemental scalars to extract', metavar='<LIST>')
+group_general.add_option('--et', action='extend', dest='elemTensor', type='string', \
+                         help='elemental tensors to extract', metavar='<LIST>')
 group_general.add_option('--ho', action='extend', dest='homogenizationResult', type='string', \
-          help='list of homogenization results to extract')
+                         help='homogenization results to extract', metavar='<LIST>')
 group_general.add_option('--cr', action='extend', dest='crystalliteResult', type='string', \
-          help='list of crystallite results to extract')
+                         help='crystallite results to extract', metavar='<LIST>')
 group_general.add_option('--co', action='extend', dest='constitutiveResult', type='string', \
-          help='list of constitutive results to extract')
+                         help='constitutive results to extract', metavar='<LIST>')
 
 parser.add_option_group(group_material)
 parser.add_option_group(group_general)
@@ -671,18 +678,19 @@ parser.add_option_group(group_special)
 parser.set_defaults(info = False)
 parser.set_defaults(sloppy = False)
 parser.set_defaults(prefix = '')
-parser.set_defaults(directory = 'postProc')
+parser.set_defaults(dir = 'postProc')
 parser.set_defaults(filetype = None)
 parser.set_defaults(func = 'avg')
 parser.set_defaults(homog = '1')
 parser.set_defaults(cryst = '1')
 parser.set_defaults(phase = '1')
 parser.set_defaults(filter = '')
-parser.set_defaults(separation = [])
+parser.set_defaults(sep = [])
 parser.set_defaults(sort = [])
 parser.set_defaults(inc = False)
 parser.set_defaults(time = False)
 parser.set_defaults(separateFiles = False)
+parser.set_defaults(getIncrements= False)
 
 (options, files) = parser.parse_args()
 
@@ -744,20 +752,20 @@ if options.constitutiveResult and not options.phase:
   parser.print_help()
   parser.error('constitutive results require phase...')
 
-if options.nodalScalar and (   options.elementalScalar or options.elementalTensor 
+if options.nodalScalar and (   options.elemScalar or options.elemTensor 
                             or options.homogenizationResult or options.crystalliteResult or options.constitutiveResult ):
   parser.print_help()
   parser.error('not allowed to mix nodal with elemental results...')
 
-if not options.nodalScalar:          options.nodalScalar          = []
-if not options.elementalScalar:      options.elementalScalar      = []
-if not options.elementalTensor:      options.elementalTensor      = []
-if not options.homogenizationResult: options.homogenizationResult = []
-if not options.crystalliteResult:    options.crystalliteResult    = []
-if not options.constitutiveResult:   options.constitutiveResult   = []
+if not options.nodalScalar:     options.nodalScalar   = []
+if not options.elemScalar:      options.elemScalar    = []
+if not options.elemTensor:      options.elemTensor    = []
+if not options.homogenizationResult:     options.homogenizationResult   = []
+if not options.crystalliteResult:     options.crystalliteResult   = []
+if not options.constitutiveResult:   options.constitutiveResult = []
 
 options.sort.reverse()
-options.separation.reverse()
+options.sep.reverse()
 
 # --- start background messaging
 
@@ -785,8 +793,8 @@ bg.set_message('parsing .output files...')
 for what in me:
   outputFormat[what] = ParseOutputFormat(filename, what, me[what])
   if not '_id' in outputFormat[what]['specials']:
-    print "'%s' not found in <%s>"%(me[what], what)
-    print '\n'.join(map(lambda x:'  '+x, outputFormat[what]['specials']['brothers']))
+    print "\nsection '%s' not found in <%s>"%(me[what], what)
+    print '\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers']))
     
 bg.set_message('opening result file...')
 p = OpenPostfile(filename+extension,options.filetype)
@@ -796,13 +804,13 @@ if options.filetype == 'marc':
   stat['NumberOfIncrements'] -= 1             # t16 contains one "virtual" increment (at 0)
 
 # --- sanity check for output variables
-# for mentat variables (nodalScalar,elementalScalar,elementalTensor) we simply have to check whether the label is found in the stat[indexOfLabel] dictionary
+# for mentat variables (nodalScalar,elemScalar,elemTensor) we simply have to check whether the label is found in the stat[indexOfLabel] dictionary
 # for user defined variables (homogenizationResult,crystalliteResult,constitutiveResult) we have to check the corresponding outputFormat, since the namescheme in stat['IndexOfLabel'] is different
 
-for opt in ['nodalScalar','elementalScalar','elementalTensor','homogenizationResult','crystalliteResult','constitutiveResult']:
+for opt in ['nodalScalar','elemScalar','elemTensor','homogenizationResult','crystalliteResult','constitutiveResult']:
   if eval('options.%s'%opt):
     for label in eval('options.%s'%opt):
-      if (opt in ['nodalScalar','elementalScalar','elementalTensor'] and label not in stat['IndexOfLabel'] and label not in ['elements',]) \
+      if (opt in ['nodalScalar','elemScalar','elemTensor'] and label not in stat['IndexOfLabel'] and label not in ['elements',]) \
            or (opt in ['homogenizationResult','crystalliteResult','constitutiveResult'] \
                and (not outputFormat[opt[:-6].capitalize()]['outputs'] or not label in zip(*outputFormat[opt[:-6].capitalize()]['outputs'])[0])):
         parser.error('%s "%s" unknown...'%(opt,label))
@@ -835,10 +843,10 @@ for e in xrange(stat['NumberOfElements']):
     bg.set_message('connect elem %i...'%e)
   for n in map(p.node_sequence,p.element(e).items):
     if n not in elementsOfNode:
-	  elementsOfNode[n] = [p.element_id(e)]
+      elementsOfNode[n] = [p.element_id(e)]
     else:
-	  elementsOfNode[n] += [p.element_id(e)]
-	
+      elementsOfNode[n] += [p.element_id(e)]
+
 maxCountElementsOfNode = 0
 for l in elementsOfNode.values():
   maxCountElementsOfNode = max(maxCountElementsOfNode,len(l))
@@ -851,16 +859,8 @@ if options.filetype == 'marc':
   offset_pos = 1
 else:
   offset_pos = 0
-if options.range:
-  options.range = list(options.range)
-  if options.sloppy:
-    positions = range(options.range[0],options.range[1]+1,options.range[2])
-  else:
-    positions = range( max(0,options.range[0]),
-                        min(stat['NumberOfIncrements'],options.range[1]+1),
-                        options.range[2])
 
-
+  
 # ---------------------------   build group membership   --------------------------------
 
 p.moveto(positions[0]+offset_pos)
@@ -887,7 +887,7 @@ if options.nodalScalar:
     
     # --- group data locations
     
-    grp = substituteLocation('#'.join(options.separation), [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)    # generates a unique key for a group of separated data based on the separation criterium for the location
+    grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myNodeCoordinates)    # generates a unique key for a group of separated data based on the separation criterium for the location
 
     if grp not in index:                                                                               # create a new group if not yet present
       index[grp] = groupCount
@@ -929,7 +929,7 @@ else:
         
         # --- group data locations
         
-        grp = substituteLocation('#'.join(options.separation), [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) # generates a unique key for a group of separated data based on the separation criterium for the location
+        grp = substituteLocation('#'.join(options.sep), [myElemID,myNodeID,myIpID,myGrainID], myIpCoordinates[n]) # generates a unique key for a group of separated data based on the separation criterium for the location
   
         if grp not in index:                                                                                # create a new group if not yet present
           index[grp] = groupCount
@@ -961,7 +961,7 @@ where = {
     }
 
 sortProperties = []
-for item in options.separation:
+for item in options.sep:
   if item not in options.sort:
     sortProperties.append(item)
 
@@ -975,9 +975,9 @@ bg.set_message('sorting groups...')
 groups.sort(key = sortKeys)                                                                                 # in-place sorting to save mem
 
 
-# ---------------------------   create output directory   --------------------------------
+# ---------------------------   create output dir   --------------------------------
 
-dirname = os.path.abspath(os.path.dirname(filename))+os.sep+options.directory
+dirname = os.path.abspath(os.path.dirname(filename))+os.sep+options.dir
 if not os.path.isdir(dirname):
   os.mkdir(dirname,0755)
 
@@ -993,16 +993,37 @@ standard = ['inc'] + \
 
 # ---------------------------   loop over positions   --------------------------------
 
-bg.set_message('getting increments...')
-increments = [None]*len(positions)
+bg.set_message('getting map between positions and increments...')
 
-for incCount,position in enumerate(positions):
+incAtPosition = {}
+positionOfInc = {}
+
+for position in range(stat['NumberOfIncrements']):
   p.moveto(position+offset_pos)
-  increments[incCount] = p.increment              # remember "real" increment at this position
+  incAtPosition[position] = p.increment            # remember "real" increment at this position
+  positionOfInc[p.increment] = position            # remember position of "real" increment
+
+
+if options.range:
+  options.range = list(options.range)
+  if options.sloppy:
+    locations = range(options.range[0],options.range[1]+1,options.range[2])
+  else:
+    locations = range( max(0,options.range[0]),
+                       min({False:stat['NumberOfIncrements'],
+                            True :incAtPosition[stat['NumberOfIncrements']-1]+1}[options.getIncrements],
+                           options.range[1]+1),
+                       options.range[2] )
+
 
 time_start = time.time()
 
-for incCount,position in enumerate(positions):
+for incCount,location in enumerate(locations):
+  if options.getIncrements:
+    position = positionOfInc[location]
+  else:
+    position = location
+
   p.moveto(position+offset_pos)
 # ---------------------------   file management   --------------------------------
 
@@ -1051,16 +1072,16 @@ for incCount,position in enumerate(positions):
                         'len':length,
                         'content':content })
 
-      if options.elementalScalar:
-        for label in options.elementalScalar:
+      if options.elemScalar:
+        for label in options.elemScalar:
           if assembleHeader: 
             header += [label.replace(' ','')]
           newby.append({'label':label,
                         'len':1,
                         'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local].value ]})
 
-      if options.elementalTensor:
-        for label in options.elementalTensor:
+      if options.elemTensor:
+        for label in options.elemTensor:
           if assembleHeader: 
             header += heading('.',[[label.replace(' ',''),component] for component in ['intensity','t11','t22','t33','t12','t23','t13']])
           myTensor = p.element_tensor(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local]
@@ -1075,12 +1096,12 @@ for incCount,position in enumerate(positions):
          options.crystalliteResult or \
          options.constitutiveResult:
         for (label,resultType) in zip(options.homogenizationResult +
-                                options.crystalliteResult +
-                                options.constitutiveResult,
-                                ['Homogenization']*len(options.homogenizationResult) +
-                                ['Crystallite']*len(options.crystalliteResult) +
-                                ['Constitutive']*len(options.constitutiveResult)
-                                ):
+                                      options.crystalliteResult +
+                                      options.constitutiveResult,
+                                      ['Homogenization']*len(options.homogenizationResult) +
+                                      ['Crystallite']*len(options.crystalliteResult) +
+                                      ['Constitutive']*len(options.constitutiveResult)
+                                      ):
           outputIndex = list(zip(*outputFormat[resultType]['outputs'])[0]).index(label)       # find the position of this output in the outputFormat
           length = int(outputFormat[resultType]['outputs'][outputIndex][1])
           thisHead = heading('_',[[component,label] for component in range(int(length>1),length+int(length>1))])
