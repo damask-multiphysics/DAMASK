@@ -715,6 +715,10 @@ if options.filetype == None:
       
 options.filetype = options.filetype.lower()
 
+if options.filetype == 'marc':  offset_pos = 1
+else:                           offset_pos = 0
+  
+
 # --- more sanity checks
 
 if options.filetype not in ['marc','spectral']:
@@ -851,19 +855,10 @@ maxCountElementsOfNode = 0
 for l in elementsOfNode.values():
   maxCountElementsOfNode = max(maxCountElementsOfNode,len(l))
 
-# --- get output data from .t16 file
 
-  
-positions = range(stat['NumberOfIncrements'])
-if options.filetype == 'marc':
-  offset_pos = 1
-else:
-  offset_pos = 0
-
-  
 # ---------------------------   build group membership   --------------------------------
 
-p.moveto(positions[0]+offset_pos)
+p.moveto(offset_pos)
 index = {}
 groups = []
 groupCount = 0
@@ -1003,9 +998,11 @@ for position in range(stat['NumberOfIncrements']):
   incAtPosition[position] = p.increment            # remember "real" increment at this position
   positionOfInc[p.increment] = position            # remember position of "real" increment
 
-
-if options.range:
-  options.range = list(options.range)
+if not options.range:
+  options.getIncrements = False
+  locations = range(stat['NumberOfIncrements'])    # process all positions
+else:
+  options.range = list(options.range)              # convert to list
   if options.sloppy:
     locations = range(options.range[0],options.range[1]+1,options.range[2])
   else:
@@ -1015,16 +1012,18 @@ if options.range:
                            options.range[1]+1),
                        options.range[2] )
 
+increments = map(lambda x: {False:incAtPosition[x],True:x}[options.getIncrements],locations)  # build list of increments to process
 
 time_start = time.time()
 
-for incCount,location in enumerate(locations):
-  if options.getIncrements:
-    position = positionOfInc[location]
-  else:
-    position = location
+for incCount,location in enumerate(locations):     # walk through locations
+  if options.getIncrements:                        # we talk in increments
+    position = positionOfInc[location]             # map back the actual position in the result file
+  else:                                            # we talk positions anyway
+    position = location                            # just take it then
 
-  p.moveto(position+offset_pos)
+  p.moveto(position+offset_pos)                    # wind to correct position
+
 # ---------------------------   file management   --------------------------------
 
   if options.separateFiles:
@@ -1054,8 +1053,8 @@ for incCount,location in enumerate(locations):
     for (e,n,i,g,n_local) in group[1:]:                                            # loop over group members
       member += 1
       if member%1000 == 0:
-        time_delta = ((len(positions)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
-        bg.set_message('(%02i:%02i:%02i) processing point %i of %i from position %i...'%(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,position))
+        time_delta = ((len(locations)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
+        bg.set_message('(%02i:%02i:%02i) processing point %i of %i from %s %i...'%(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,{True:'increment',False:'position'}[options.getIncrements],position))
 
       newby = []                                                                   # current member's data
 
