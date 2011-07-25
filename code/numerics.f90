@@ -69,7 +69,7 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 err_stress_tol, &                       ! absolut stress error, will be computed from err_stress_tolrel (dont prescribe a value)
                                 err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
                                 err_defgrad_tol                         ! tolerance for error of defgrad compared to prescribed defgrad
-logical                         memory_efficient                          ! for fast execution (pre calculation of gamma_hat)
+logical                         memory_efficient                         ! for fast execution (pre calculation of gamma_hat)
 integer(pInt)                   itmax , &                               ! maximum number of iterations
 
 
