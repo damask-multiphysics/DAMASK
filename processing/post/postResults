@@ -1012,7 +1012,10 @@ else:
                            options.range[1]+1),
                        options.range[2] )
 
-increments = map(lambda x: {False:incAtPosition[x],True:x}[options.getIncrements],locations)  # build list of increments to process
+if options.getIncrements:                          # build list of increments to process
+  increments = locations                             # from increment range 
+else:
+  increments = [incAtPosition[x] for x in locations] # from position range
 
 time_start = time.time()
 
