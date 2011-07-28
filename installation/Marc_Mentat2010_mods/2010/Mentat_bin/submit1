@@ -4,7 +4,7 @@
 # Normal exit status is 0.
 #
 
-DIR=%INSTALLDIR%/marc2010
+DIR=%INSTALLDIR%/marc%VERSION%
 if test $MARCDIR1
 then
  DIR=$MARCDIR1
@@ -149,7 +149,7 @@ rm -f $job.log
 unset PYTHONHOME
 unset PYTHONPATH
 
-"${DIR}/tools/run_mp_marc" $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
+"${DIR}/tools/run_h_marc" $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
                         $srcfile $restart $postfile $viewfactorsfile $hostfile \
                         $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
                         $nthread $nsolver $mode > /dev/null 2>&1

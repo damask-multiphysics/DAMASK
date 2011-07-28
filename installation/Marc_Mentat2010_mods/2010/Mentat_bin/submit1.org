@@ -4,7 +4,7 @@
 # Normal exit status is 0.
 #
 
-DIR=%INSTALLDIR%/marc2010
+DIR=/home/MPIE/f.roters/test_release/marc2010
 if test $MARCDIR1
 then
  DIR=$MARCDIR1
@@ -57,7 +57,7 @@ else
 fi
 
 if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
-#  srcfile=`echo $srcfile | sed "s/$SRCEXT$//"`
+  srcfile=`echo $srcfile | sed "s/$SRCEXT$//"`
   case "$srcmeth" in
     -)
       srcfile="-u $srcfile"
@@ -66,7 +66,6 @@ if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
       srcfile="-u $srcfile -save y"
       ;;
     runsaved)
-      srcfile=${srcfile%.*}".marc"
       srcfile="-prog $srcfile"
       ;;
   esac

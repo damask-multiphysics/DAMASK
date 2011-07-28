@@ -1,6 +1,13 @@
 #!/bin/bash
 
 WORKINGDIR=`dirname $0`
+VERSION="2010.2"
+echo "Input version of MARC/MENTAT installation: [$VERSION]"
+read VERSION
+if [ -z $VERSION ]; then
+   VERSION="2010.2"
+fi
+
 INSTALLDIR="/msc"
 echo "Input path of MARC/MENTAT installation: [$INSTALLDIR]"
 read INSTALLDIR
@@ -10,8 +17,9 @@ if [ -z $INSTALLDIR ]; then
 fi
 
 # tools
+echo ''
 echo 'copying Marc tools...'
-theDIR=$INSTALLDIR/marc2010/tools
+theDIR=$INSTALLDIR/marc$VERSION/tools
 for filename in 'comp_user' \
                 'comp_user_h' \
                 'comp_user_mp' \
@@ -19,39 +27,47 @@ for filename in 'comp_user' \
                 'run_h_marc' \
                 'run_mp_marc' \
                 'include_linux64'; do
-  cp $WORKINGDIR/Marc_tools/$filename $theDIR
+  cp $WORKINGDIR/$VERSION/Marc_tools/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
+  echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $filename
 done
 
 # Mentat scripts
+echo ''
 echo 'copying Mentat scripts...'
-theDIR=$INSTALLDIR/mentat2010/bin
+theDIR=$INSTALLDIR/mentat$VERSION/bin
 for filename in 'edit_window' \
                 'submit1' \
                 'submit2' \
                 'submit3'; do
-  cp $WORKINGDIR/Mentat_bin/$filename $theDIR
+  cp $WORKINGDIR/$VERSION/Mentat_bin/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
+  echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $filename
 done
 
 # Mentat scripts
+echo ''
 echo 'copying Mentat menus...'
-theDIR=$INSTALLDIR/mentat2010/menus
+theDIR=$INSTALLDIR/mentat$VERSION/menus
 for filename in 'job_run.ms'; do
-  cp $WORKINGDIR/Mentat_menus/$filename $theDIR
+  cp $WORKINGDIR/$VERSION/Mentat_menus/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
+  echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $filename
 done
 
 # compile menus
+echo ''
 echo 'compiling menus...'
-$INSTALLDIR/mentat2010/bin/mentat -compile $INSTALLDIR/mentat2010/menus/linux64/main.msb
+$INSTALLDIR/mentat$VERSION/bin/mentat -compile $INSTALLDIR/mentat$VERSION/menus/linux64/main.msb
 
 # setting access rights
+echo ''
 echo 'setting file access rights...'
-chmod 555 $INSTALLDIR/marc2010/tools/run_*_marc
-chmod 555 $INSTALLDIR/marc2010/tools/comp_user?*
+chmod 555 $INSTALLDIR/marc$VERSION/tools/run_*_marc
+chmod 555 $INSTALLDIR/marc$VERSION/tools/comp_user?*
 
+echo ''
 echo 'done.'
