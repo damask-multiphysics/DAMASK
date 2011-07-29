@@ -343,11 +343,11 @@ subroutine numerics_init()
     write(6,*)
 
 !* spectral parameters
-    write(6,'(a24,x,e8.1)') 'err_div_tol:             ',err_div_tol
-    write(6,'(a24,x,e8.1)') 'err_defgrad_tol:         ',err_defgrad_tol
-    write(6,'(a24,x,e8.1)') 'err_stress_tolrel:       ',err_stress_tolrel
-    write(6,'(a24,x,i8)')   'itmax:                   ',itmax
-    write(6,'(a24,x,L8)')   'memory_efficient:          ',memory_efficient
+    write(6,'(a24,x,e8.1)') 'err_div_tol:            ',err_div_tol
+    write(6,'(a24,x,e8.1)') 'err_defgrad_tol:        ',err_defgrad_tol
+    write(6,'(a24,x,e8.1)') 'err_stress_tolrel:      ',err_stress_tolrel
+    write(6,'(a24,x,i8)')   'itmax:                  ',itmax
+    write(6,'(a24,x,L8)')   'memory_efficient:       ',memory_efficient
     write(6,*)
 
 !* Random seeding parameters
