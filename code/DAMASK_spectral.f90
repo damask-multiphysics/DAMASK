@@ -50,7 +50,7 @@ program DAMASK_spectral
  use mesh, only: mesh_ipCenterOfGravity
  use CPFEM, only: CPFEM_general, CPFEM_initAll 
  use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel, err_defgrad_tol,&
-                     itmax, memory_efficient, DAMASK_NumThreadsInt       
+                     relevantStrain,itmax, memory_efficient, DAMASK_NumThreadsInt       
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 !$ use OMP_LIB                                                          ! the openMP function library
 
@@ -93,7 +93,6 @@ program DAMASK_spectral
                                                         defgradAim, defgradAimOld, defgradAimCorr, defgradAimCorrPrev,&
                                                         mask_stress, mask_defgrad, deltaF                          
  real(pReal), dimension(3,3,3,3) ::                     dPdF, c0, s0       !, c0_temp          ! ToDo
-!real(pReal), dimension(9,9) ::                         s099                                   ! compliance in matrix notation
  real(pReal), dimension(6) ::                           cstress                                ! cauchy stress in Mandel notation
  real(pReal), dimension(6,6) ::                         dsde, c066, s066                       ! Mandel notation of 4th order tensors
  real(pReal), dimension(:,:,:,:,:), allocatable ::      workfft, defgrad, defgradold
@@ -259,8 +258,8 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
    print '(a,i5)', 'Loadcase:', loadcase
    if (.not. followFormerTrajectory(loadcase)) &
      print '(a)', 'drop guessing along trajectory'
-   if (any(bc_mask(:,:,1,loadcase) == bc_mask(:,:,2,loadcase)))&
-     call IO_error(31,loadcase)                                                    ! exclusive or masking only
+   if (any(bc_mask(:,:,1,loadcase) .and. bc_mask(:,:,2,loadcase)))&                ! check whther stress and strain is prescribed simultaneously
+     call IO_error(31,loadcase)
    if (velGradApplied(loadcase)) then
      do j = 1, 3
        if (any(bc_mask(j,:,1,loadcase) == .true.) .and.&
@@ -272,7 +271,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
      print '(a,/,3(3(f12.6,x)/))','Fdot:'       ,math_transpose3x3(bc_deformation(:,:,loadcase))
      print '(a,/,3(3(l,x)/))',    'bc_mask for Fdot:',transpose(bc_mask(:,:,1,loadcase))
    endif
-   print '(a,/,3(3(f12.6,x)/))','bc_stress:',math_transpose3x3(bc_stress(:,:,loadcase))
+   print '(a,/,3(3(f12.6,x)/))','bc_stress/MPa:',math_transpose3x3(bc_stress(:,:,loadcase))*1e-6
    print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'     ,transpose(bc_mask(:,:,2,loadcase))
    if (bc_timeIncrement(loadcase) < 0.0_pReal) call IO_error(34,loadcase)                 ! negative time increment
    print '(a,f12.6)','time: ',bc_timeIncrement(loadcase)
@@ -365,9 +364,9 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
  enddo; enddo; enddo
  c066 = c066 * wgt
  c0 = math_mandel66to3333(c066)                       ! linear reference material stiffness
- call math_invert(6, c066, s066,i, errmatinv)         ! ToDo
+ call math_invert(6, math_Mandel66toPlain66(c066), s066,i, errmatinv)         ! ToDo
  if(errmatinv) call IO_error(800)                     ! Matrix inversion error ToDo
- s0 = math_mandel66to3333(s066)                       ! ToDo
+ s0 = math_mandel66to3333(math_Plain66toMandel66(s066))                       ! ToDo
  
  do k = 1, resolution(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
     k_s(3) = k-1
@@ -464,7 +463,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
      guessmode = 1.0_pReal
    else
      guessmode = 0.0_pReal                                                 ! change of load case, homogeneous guess for the first step
-     damper = ones/10
+     damper = 1.0_pReal
    endif
    
    mask_defgrad =  merge(ones,zeroes,bc_mask(:,:,1,loadcase))
@@ -525,7 +524,6 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
      iter = 0_pInt
      err_div= 2.0_pReal * err_div_tol                   ! go into loop 
      defgradAimCorr = 0.0_pReal                         ! reset damping calculation
-     damper = damper * 0.9_pReal
     
 !*************************************************************
 ! convergence loop
@@ -568,7 +566,6 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
            workfft(i,j,k,:,:) = pstress                                     ! build up average P-K stress 
            cstress_av = cstress_av + math_mandel6to33(cstress)              ! build up average Cauchy stress
          enddo; enddo; enddo
-
        ! call math_invert(9, math_plain3333to99(c0_temp),s099,i,errmatinv)        ToDo       
        ! if(errmatinv) call IO_error(800,ext_msg = "problem in c0 inversion")     ToDo
        ! s0 = math_plain99to3333(s099) *real(resolution(1)*resolution(2)*resolution(3), pReal) ! average s0 for calculation of BC  ToDo
@@ -580,20 +577,21 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
          enddo; enddo
 
          err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
-         err_stress_tol = maxval(abs(pstress_av))*err_stress_tolrel
+         err_stress_tol = maxval(abs(pstress_av))*0.8*err_stress_tolrel
          
          print*, 'Correcting deformation gradient to fullfill BCs'
          defgradAimCorrPrev = defgradAimCorr
-         defgradAimCorr     = -mask_stress * math_mul3333xx33(s0, (mask_stress*(pstress_av - bc_stress(:,:,loadcase))))
+         defgradAimCorr     = - (1.0_pReal - mask_defgrad) &             ! allow alteration of all non-fixed defgrad components
+                            * math_mul3333xx33(s0, (mask_stress*(pstress_av - bc_stress(:,:,loadcase)))) ! residual on given stress components
 
          do m=1,3; do n =1,3                                        ! calculate damper (correction is far too strong) !ToDo: Check for better values
-           if ( sign(1.0_pReal,defgradAimCorr(m,n))/=sign(1.0_pReal,defgradAimCorrPrev(m,n))) then
+           if (defgradAimCorr(m,n) * defgradAimCorrPrev(m,n) < -relevantStrain ** 2.0_pReal) then ! insignificant within relevantstrain around zero
              damper(m,n) = max(0.01_pReal,damper(m,n)*0.8)
            else
              damper(m,n) = min(1.0_pReal,damper(m,n) *1.2)
            endif
          enddo; enddo
-         defgradAimCorr = mask_Stress*(damper * defgradAimCorr)
+         defgradAimCorr = damper * defgradAimCorr
          defgradAim = defgradAim + defgradAimCorr
 
          do m = 1,3; do n = 1,3
@@ -603,9 +601,9 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
          err_defgrad = maxval(abs(mask_defgrad * (defgrad_av - defgradAim)))
          print '(a,/,3(3(f12.7,x)/))', ' Deformation Gradient:',math_transpose3x3(defgrad_av)
          print '(a,/,3(3(f10.4,x)/))', ' Piola-Kirchhoff Stress / MPa: ',math_transpose3x3(pstress_av)/1.e6
-         print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol*0.8
+         print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol
          print '(2(a,E8.2))', ' error deformation gradient: ',err_defgrad,'  Tol. = ', err_defgrad_tol
-         if(err_stress < err_stress_tol*0.8) then 
+         if(err_stress < err_stress_tol) then 
            calcmode = 1_pInt
          endif
              

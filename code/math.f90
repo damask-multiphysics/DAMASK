@@ -1121,6 +1121,7 @@ pure function math_transpose3x3(A)
 
  endfunction
 
+
 !********************************************************************
 ! determinant of a 3x3 matrix
 !********************************************************************
@@ -1136,6 +1137,22 @@ pure function math_transpose3x3(A)
               -m(1,2)*(m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
               +m(1,3)*(m(2,1)*m(3,2)-m(2,2)*m(3,1))
  return
+
+ endfunction
+
+ 
+!********************************************************************
+! norm of a 3x3 matrix
+!********************************************************************
+ pure function math_norm33(m)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) math_norm33
+
+ math_norm33 = sqrt(sum(m**2.0_pReal))
 
  endfunction
 
@@ -1267,6 +1284,47 @@ pure function math_transpose3x3(A)
  return
 
  endfunction
+
+
+!********************************************************************
+! convert Mandel matrix 6x6 into Plain matrix 6x6
+!********************************************************************
+ pure function math_Mandel66toPlain66(m66)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(6,6), intent(in) :: m66
+ real(pReal), dimension(6,6) :: math_Mandel66toPlain66
+ integer(pInt) i,j
+ 
+ forall (i=1:6,j=1:6) &
+   math_Mandel66toPlain66(i,j) = invnrmMandel(i) * invnrmMandel(j) * m66(i,j)
+ return
+
+ endfunction
+
+
+
+!********************************************************************
+! convert Plain matrix 6x6 into Mandel matrix 6x6
+!********************************************************************
+ pure function math_Plain66toMandel66(m66)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(6,6), intent(in) :: m66
+ real(pReal), dimension(6,6) :: math_Plain66toMandel66
+ integer(pInt) i,j
+ 
+ forall (i=1:6,j=1:6) &
+   math_Plain66toMandel66(i,j) = nrmMandel(i) * nrmMandel(j) * m66(i,j)
+ return
+
+ endfunction
+
+
 
 !********************************************************************
 ! convert symmetric 3x3x3x3 tensor into Mandel matrix 6x6
