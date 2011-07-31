@@ -2418,8 +2418,8 @@ subroutine mesh_marc_count_cpSizes (unit)
  character(len=64) tag
  character(len=1024) line
 
- allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0_pInt
- allocate ( mesh_node (3,mesh_Nnodes) ); mesh_node = 0_pInt
+ allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
+ allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
  
  a = 1_pInt
  b = 1_pInt
@@ -2506,8 +2506,8 @@ subroutine mesh_marc_count_cpSizes (unit)
 
  integer(pInt) unit,i,j,m
 
- allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0_pInt
- allocate ( mesh_node (3,mesh_Nnodes) ); mesh_node = 0_pInt
+ allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
+ allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
 
 610 FORMAT(A300)
 
@@ -2551,8 +2551,8 @@ return
  integer(pInt) unit,i,j,m,count
  logical inPart
  
- allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0_pInt
- allocate ( mesh_node (3,mesh_Nnodes) ); mesh_node = 0_pInt
+ allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
+ allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
 
 610 FORMAT(A300)
 
@@ -2898,16 +2898,16 @@ allocate(node_seen(maxval(FE_Nnodes)))
 node_count = 0_pInt
 
 do e = 1,mesh_NcpElems
-  t = mesh_element(2,e)
+  t = mesh_element(2,e)                                                   ! get element type
 
   node_seen = 0_pInt                                                      ! reset node duplicates
   do j = 1,FE_Nnodes(t)                                                   ! check each node of element
-    node = mesh_FEasCP('node',mesh_element(4+j,e))
+    node = mesh_FEasCP('node',mesh_element(4+j,e))                        ! translate to internal (consecutive) numbering
     if (all(node_seen /= node)) then
       node_count(node) = node_count(node) + 1_pInt                        ! if FE node not yet encountered -> count it
       do dim = 1,3                                                        ! check in each dimension...
         nodeTwin = mesh_nodeTwins(dim,node)
-        if (nodeTwin > 0) &                                               ! if i am a twin of some node...
+        if (nodeTwin > 0_pInt) &                                          ! if I am a twin of some node...
           node_count(nodeTwin) = node_count(nodeTwin) + 1_pInt            ! -> count me again for the twin node
       enddo
     endif
@@ -2984,9 +2984,10 @@ linkedNodes = 0_pInt
 do myElem = 1,mesh_NcpElems                                                         ! loop over cpElems
   myType = mesh_element(2,myElem)                                                   ! get elemType
   do myIP = 1,FE_Nips(myType)                                                       ! loop over IPs of elem
+
     do neighbor = 1,FE_NipNeighbors(myType)                                         ! loop over neighbors of IP
       neighboringIPkey = FE_ipNeighbor(neighbor,myIP,myType)
-      
+
       !*** if the key is positive, the neighbor is inside the element
       !*** that means, we have already found our neighboring IP
       
@@ -3021,7 +3022,8 @@ do myElem = 1,mesh_NcpElems                                                     
             if (anchor /= 0_pInt) then                                              ! valid anchor node
               if (any(FE_nodeOnFace(:,myFace,myType) == anchor)) then               ! ip anchor sits on face?
                 NlinkedNodes = NlinkedNodes + 1_pInt
-                linkedNodes(NlinkedNodes) = mesh_element(4+anchor,myElem)           ! FE id of anchor node
+                linkedNodes(NlinkedNodes) = &
+                   mesh_FEasCP('node',mesh_element(4+anchor,myElem))                ! CP id of anchor node
               else                                                                  ! something went wrong with the linkage, since not all anchors sit on my face
                 NlinkedNodes = 0_pInt
                 linkedNodes = 0_pInt
@@ -3033,7 +3035,7 @@ do myElem = 1,mesh_NcpElems                                                     
           !*** loop through the ips of my neighbor
           !*** and try to find an ip with matching nodes
           !*** also try to match with node twins
-          
+
 checkCandidateIP: do candidateIP = 1,FE_Nips(neighboringType)
             NmatchingNodes = 0_pInt
             matchingNodes = 0_pInt
@@ -3042,7 +3044,8 @@ checkCandidateIP: do candidateIP = 1,FE_Nips(neighboringType)
               if (anchor /= 0_pInt) then                                            ! valid anchor node
                 if (any(FE_nodeOnFace(:,matchingFace,neighboringType) == anchor)) then  ! sits on matching face?
                   NmatchingNodes = NmatchingNodes + 1_pInt
-                  matchingNodes(NmatchingNodes) = mesh_element(4+anchor,matchingElem)   ! FE id of neighbor's anchor node
+                  matchingNodes(NmatchingNodes) = &
+                     mesh_FEasCP('node',mesh_element(4+anchor,matchingElem))        ! CP id of neighbor's anchor node
                 else                                                                ! no matching, because not all nodes sit on the matching face
                   NmatchingNodes = 0_pInt
                   matchingNodes = 0_pInt
@@ -3070,21 +3073,21 @@ checkCandidateIP: do candidateIP = 1,FE_Nips(neighboringType)
               dir = maxloc(abs(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem)),1)      ! check for twins only in direction of the surface normal
               do a = 1,NlinkedNodes
                 twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
-                if (twin_of_linkedNode == 0_pInt &                                  ! twin of linkedNode does not exist...
-                    .or. all(matchingNodes /= twin_of_linkedNode)) then             ! ... or it does not match any matchingNode
-                  cycle checkCandidateIP                                            ! ... so check next candidateIP
+                if (twin_of_linkedNode == 0_pInt .or. &                             ! twin of linkedNode does not exist...
+                    all(matchingNodes /= twin_of_linkedNode)) then                  ! ... or it does not match any matchingNode
+                  cycle checkCandidateIP                                            ! ... then check next candidateIP
                 endif
               enddo
             endif
 
             !*** we found a match !!!
-            
+
             mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
             mesh_ipNeighborhood(2,neighbor,myIP,myElem) = candidateIP
             exit checkCandidateIP            
           enddo checkCandidateIP
-        endif                                                                     ! end of valid external matching
-      endif                                                                       ! end of internal/external matching
+        endif                                                                       ! end of valid external matching
+      endif                                                                         ! end of internal/external matching
     enddo
   enddo
 enddo
@@ -3269,7 +3272,7 @@ integer(pInt), dimension(mesh_Nnodes+1) :: minimumNodes, maximumNodes ! list of 
 real(pReal)   minCoord, maxCoord, &     ! extreme positions in one dimension
               tolerance                 ! tolerance below which positions are assumed identical
 real(pReal), dimension(3) ::  distance  ! distance between two nodes in all three coordinates
-logical, dimension(mesh_Nnodes) ::  node_seen
+logical, dimension(mesh_Nnodes) :: unpaired
 
 allocate(mesh_nodeTwins(3,mesh_Nnodes))
 mesh_nodeTwins = 0_pInt
@@ -3300,21 +3303,21 @@ do dir = 1,3                                    ! check periodicity in direction
     
     !*** find the corresponding node on the other side with the same position in this dimension
     
-    node_seen = .false.
+    unpaired = .true.
     do n1 = 1,minimumNodes(1)
       minimumNode = minimumNodes(n1+1)
-      if (node_seen(minimumNode)) &
-        cycle
-      do n2 = 1,maximumNodes(1)
-        maximumNode = maximumNodes(n2+1)
-        distance = abs(mesh_node0(:,minimumNode) - mesh_node0(:,maximumNode))
-        if (sum(distance) - distance(dir) <= tolerance) then        ! minimum possible distance (within tolerance)
-          mesh_nodeTwins(dir,minimumNode) = maximumNode
-          mesh_nodeTwins(dir,maximumNode) = minimumNode
-          node_seen(maximumNode) = .true.                           ! remember this node, we don't have to look for his partner again
-          exit
-        endif
-      enddo
+      if (unpaired(minimumNode)) then
+        do n2 = 1,maximumNodes(1)
+          maximumNode = maximumNodes(n2+1)
+          distance = abs(mesh_node0(:,minimumNode) - mesh_node0(:,maximumNode))
+          if (sum(distance) - distance(dir) <= tolerance) then        ! minimum possible distance (within tolerance)
+            mesh_nodeTwins(dir,minimumNode) = maximumNode
+            mesh_nodeTwins(dir,maximumNode) = minimumNode
+            unpaired(maximumNode) = .false.                           ! remember this node, we don't have to look for his partner again
+            exit
+          endif
+        enddo
+      endif
     enddo
 
   endif
