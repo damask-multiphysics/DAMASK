@@ -39,8 +39,7 @@ subroutine DAMASK_interface_init()
  write(6,*) '$Id$'
  write(6,*)
 
- return
-endsubroutine
+endsubroutine DAMASK_interface_init
 
 !********************************************************************
 ! extract working directory from loadcase file
@@ -64,9 +63,7 @@ function getSolverWorkingDirectoryName()
 
  getSolverWorkingDirectoryName = rectifyPath(getSolverWorkingDirectoryName)
 
- return
-
-endfunction
+endfunction getSolverWorkingDirectoryName
 
 !********************************************************************
 ! basename of geometry file from command line arguments
@@ -81,7 +78,7 @@ function getSolverJobName()
  character(1024) getSolverJobName
  getSolverJobName = trim(getModelName())//'_'//trim(getLoadCase())
  
-endfunction
+endfunction getSolverJobName
 
 !********************************************************************
 ! basename of geometry file from command line arguments
@@ -115,8 +112,7 @@ function getModelName()
 
  getModelName = makeRelativePath(getSolverWorkingDirectoryName(),&
                                  getModelName)
- return
-endfunction
+endfunction getModelName
 
 !********************************************************************
 ! name of load case file exluding extension
@@ -142,8 +138,7 @@ function getLoadCase()
  if (posExt <= posSep) posExt = len_trim(outName)+1       ! no extension present
  getLoadCase = outName(posSep+1:posExt-1)              ! name of load case file exluding extension
 
- return
-endfunction
+endfunction getLoadCase
 
 
 !********************************************************************
@@ -175,8 +170,7 @@ function getLoadcaseName()
 
  getLoadcaseName = makeRelativePath(getSolverWorkingDirectoryName(),&
                                     getLoadcaseName)
- return
-endfunction
+endfunction getLoadcaseName
 
 
 !********************************************************************
@@ -211,7 +205,7 @@ function rectifyPath(path)
     i = j+index(rectifyPath(j+1:l),'../')
  enddo
  if(len_trim(rectifyPath) == 0) rectifyPath = '/'
- return
+
  endfunction rectifyPath
 
 
@@ -239,7 +233,7 @@ function makeRelativePath(a,b)
    if (a(i:i) == '/') remainingSlashes = remainingSlashes + 1
  enddo
  makeRelativePath = repeat('../',remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
- return
+
 endfunction makeRelativePath
 
 END MODULE

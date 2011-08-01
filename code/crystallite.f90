@@ -3058,60 +3058,55 @@ function crystallite_postResults(&
  c = c + 1_pInt
  
  do o = 1,crystallite_Noutput(crystID)
+   mySize = 0_pInt
    select case(crystallite_output(o,crystID))
      case ('phase')
+       mySize = 1_pInt
        crystallite_postResults(c+1) = material_phase(g,i,e)                     ! phaseID of grain
-       c = c + 1_pInt
      case ('texture')
+       mySize = 1_pInt
        crystallite_postResults(c+1) = material_texture(g,i,e)                   ! textureID of grain
-       c = c + 1_pInt
      case ('volume')
+       mySize = 1_pInt
        crystallite_postResults(c+1) = material_volume(g,i,e)                    ! grain volume (not fraction but absolute, right?)
-       c = c + 1_pInt
      case ('orientation')
-       crystallite_postResults(c+1:c+4) = crystallite_orientation(1:4,g,i,e)    ! grain orientation as quaternion
-       c = c + 4_pInt
+       mySize = 4_pInt
+       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,g,i,e)    ! grain orientation as quaternion
      case ('eulerangles')
-       crystallite_postResults(c+1:c+3) = inDeg * math_QuaternionToEuler(crystallite_orientation(1:4,g,i,e)) ! grain orientation as Euler angles in degree
-       c = c + 3_pInt
+       mySize = 3_pInt
+       crystallite_postResults(c+1:c+mySize) = inDeg * math_QuaternionToEuler(crystallite_orientation(1:4,g,i,e)) ! grain orientation as Euler angles in degree
      case ('grainrotation')
-       crystallite_postResults(c+1:c+4) = math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e)) ! grain rotation away from initial orientation as axis-angle 
+       mySize = 4_pInt
+       crystallite_postResults(c+1:c+mySize) = math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e)) ! grain rotation away from initial orientation as axis-angle 
        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)      ! angle in degree
-       c = c + 4_pInt
 
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
 ! thus row index i is slow, while column index j is fast. reminder: "row is slow"
   
      case ('defgrad','f')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_partionedF(1:3,1:3,g,i,e)),(/mySize/))
-       c = c + mySize
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_partionedF(1:3,1:3,g,i,e)),(/mySize/))
      case ('fe')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_Fe(1:3,1:3,g,i,e)),(/mySize/))
-       c = c + mySize
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_Fe(1:3,1:3,g,i,e)),(/mySize/))
      case ('ee')
        Ee = 0.5_pReal * (math_mul33x33(math_transpose3x3(crystallite_Fe(1:3,1:3,g,i,e)), crystallite_Fe(1:3,1:3,g,i,e)) - math_I3)
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(Ee,(/mySize/))
-       c = c + mySize
+       crystallite_postResults(c+1:c+mySize) = reshape(Ee,(/mySize/))
      case ('fp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_Fp(1:3,1:3,g,i,e)),(/mySize/))
-       c = c + mySize
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_Fp(1:3,1:3,g,i,e)),(/mySize/))
      case ('lp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_Lp(1:3,1:3,g,i,e)),(/mySize/))
-       c = c + mySize
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_Lp(1:3,1:3,g,i,e)),(/mySize/))
      case ('p','firstpiola','1stpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(math_transpose3x3(crystallite_P(1:3,1:3,g,i,e)),(/mySize/))
-       c = c + mySize
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_P(1:3,1:3,g,i,e)),(/mySize/))
      case ('s','tstar','secondpiola','2ndpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+1+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)),(/mySize/))
-       c = c + mySize
+       crystallite_postResults(c+1:c+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)),(/mySize/))
    end select
+   c = c + mySize
  enddo
 
  crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e)             ! size of constitutive results

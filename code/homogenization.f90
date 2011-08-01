@@ -553,31 +553,31 @@ subroutine materialpoint_postResults(dt)
  implicit none
 
  real(pReal), intent(in) :: dt
- integer(pInt) g,i,e,pos,size,myNgrains,myCrystallite
+ integer(pInt) g,i,e,thePos,theSize,myNgrains,myCrystallite
 
- !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,pos,size)
+ !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,thePos,theSize)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)           ! iterate over elements to be processed
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      myCrystallite = microstructure_crystallite(mesh_element(4,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)         ! iterate over IPs of this element to be processed
-       pos = 0_pInt
+       thePos = 0_pInt
        
-       materialpoint_results(pos+1,i,e) = myNgrains             ! tell number of grains at materialpoint
-       pos = pos + 1_pInt
+       materialpoint_results(thePos+1,i,e) = myNgrains             ! tell number of grains at materialpoint
+       thePos = thePos + 1_pInt
 
-       size = homogenization_sizePostResults(i,e)
-       materialpoint_results(pos+1,i,e) = size                  ! tell size of homogenization results
-       pos = pos + 1_pInt
+       theSize = homogenization_sizePostResults(i,e)
+       materialpoint_results(thePos+1,i,e) = theSize                  ! tell size of homogenization results
+       thePos = thePos + 1_pInt
 
-       if (size > 0_pInt) then                                  ! any homogenization results to mention?
-         materialpoint_results(pos+1:pos+size,i,e) = homogenization_postResults(i,e) ! tell homogenization results
-         pos = pos + size
+       if (theSize > 0_pInt) then                                  ! any homogenization results to mention?
+         materialpoint_results(thePos+1:thePos+theSize,i,e) = homogenization_postResults(i,e) ! tell homogenization results
+         thePos = thePos + theSize
        endif
        
        do g = 1,myNgrains                                       ! loop over all grains
-         size = (1 + crystallite_sizePostResults(myCrystallite)) + (1 + constitutive_sizePostResults(g,i,e))
-         materialpoint_results(pos+1:pos+size,i,e) = crystallite_postResults(dt,g,i,e) ! tell crystallite results
-         pos = pos + size
+         theSize = (1 + crystallite_sizePostResults(myCrystallite)) + (1 + constitutive_sizePostResults(g,i,e))
+         materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(dt,g,i,e) ! tell crystallite results
+         thePos = thePos + theSize
        enddo
      enddo
    enddo
