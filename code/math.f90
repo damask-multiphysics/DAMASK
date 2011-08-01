@@ -29,7 +29,10 @@
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
- real(pReal), parameter :: NaN = 0.0_pReal/0.0_pReal ! Not a number 
+ real(pReal), dimension(3), parameter :: NaN = & ! taken from http://ftp.aset.psu.edu/pub/ger/fortran/hdk/nan.f90
+  (/B'01111111100000100000000000000000',&        ! NaN
+    B'11111111100100010001001010101010',&        ! NaN
+    B'11111111110000000000000000000000'/)        ! 0/0
 ! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
  reshape( (/ &
@@ -146,16 +149,19 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3,3) :: R,R2
  real(pReal), dimension(3) ::   Eulers
  real(pReal), dimension(4) ::   q,q2,axisangle
- integer(pInt), dimension(1) :: randInit
- 
+ integer(pInt), dimension(8) :: randInit     ! gfortran requires "8" to compile
+                                             ! if recalculations of former randomness (with given seed) is necessary
+                                             ! set this value back to "1" and use ifort...
  
  !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  math init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
+ write(6,*) 'NaN check: ',NaN/=NaN
+ write(6,*)
  !$OMP END CRITICAL (write2out)
-  
+ 
  if (fixedSeed > 0_pInt) then
    randInit = fixedSeed
    call random_seed(put=randInit)
@@ -204,7 +210,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    call IO_error(673)
  
  
- ENDSUBROUTINE
+ ENDSUBROUTINE math_init
  
 
 
@@ -225,9 +231,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    call qsort(a, istart, ipivot-1)
    call qsort(a, ipivot+1, iend)
  endif
- return
   
- ENDSUBROUTINE
+ ENDSUBROUTINE qsort
 
 !**************************************************************************
 ! Partitioning required for quicksort
@@ -271,7 +276,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    endif
  enddo
 
- endfunction
+ endfunction math_partition
  
 
 !**************************************************************************
@@ -287,9 +292,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  integer(pInt), dimension(N) :: math_range
 
  forall (i=1:N) math_range(i) = i
- return
 
- endfunction
+ endfunction math_range
 
 !**************************************************************************
 ! second rank identity tensor of specified dimension
@@ -305,9 +309,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  math_identity2nd = 0.0_pReal 
  forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
- return
 
- endfunction
+ endfunction math_identity2nd
 
 !**************************************************************************
 ! permutation tensor e_ijk used for computing cross product of two tensors
@@ -331,9 +334,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  if (((i == 1).and.(j == 3).and.(k == 2)) .or. &
      ((i == 2).and.(j == 1).and.(k == 3)) .or. &
      ((i == 3).and.(j == 2).and.(k == 1))) math_civita = -1.0_pReal
- return
 
- endfunction
+ endfunction math_civita
 
 !**************************************************************************
 ! kronecker delta function d_ij
@@ -351,9 +353,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_delta = 0.0_pReal
  if (i == j) math_delta = 1.0_pReal
 
- return
-
- endfunction
+ endfunction math_delta
 
 !**************************************************************************
 ! fourth rank identity tensor of specified dimension
@@ -369,9 +369,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
         0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
- return
 
- endfunction
+ endfunction math_identity4th
 
  
 !**************************************************************************
@@ -389,9 +388,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_vectorproduct(2) = A(3)*B(1)-A(1)*B(3)
  math_vectorproduct(3) = A(1)*B(2)-A(2)*B(1)
 
- return
 
- endfunction
+ endfunction math_vectorproduct
 
 
 !**************************************************************************
@@ -408,9 +406,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  forall (i=1:3,j=1:3) math_tensorproduct(i,j) = A(i)*B(j)
 
- return
 
- endfunction
+ endfunction math_tensorproduct
 
 
 !**************************************************************************
@@ -428,10 +425,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall (i=1:3) C(i) = A(i)*B(i)
  math_mul3x3 = sum(C)
- 
- return
 
- endfunction
+ endfunction math_mul3x3
 
 
 !**************************************************************************
@@ -449,10 +444,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall (i=1:6) C(i) = A(i)*B(i)
  math_mul6x6 = sum(C)
- 
- return
 
- endfunction
+ endfunction math_mul6x6
 
  
 !**************************************************************************
@@ -470,9 +463,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall (i=1:3,j=1:3) C(i,j) = A(i,j) * B(i,j)
  math_mul33xx33 = sum(C)
- return
 
- endfunction
+ endfunction math_mul33xx33
 
 !**************************************************************************
 ! matrix multiplication 3333x33 = 33 (double contraction --> ijkl *kl = ij)
@@ -491,9 +483,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    do j = 1,3
      math_mul3333xx33(i,j) = sum(A(i,j,:,:)*B(:,:))
  enddo; enddo
- return
 
- endfunction
+ endfunction math_mul3333xx33
 
 
 !**************************************************************************
@@ -510,9 +501,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall (i=1:3,j=1:3) math_mul33x33(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
- return
 
- endfunction
+ endfunction math_mul33x33
 
 
 !**************************************************************************
@@ -530,9 +520,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1:6,j=1:6) math_mul66x66(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
    A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
- return
 
- endfunction
+ endfunction math_mul66x66
 
  
 !**************************************************************************
@@ -553,9 +542,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
    A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j) + &
    A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
- return
 
- endfunction
+ endfunction math_mul99x99
 
  
 !**************************************************************************
@@ -572,9 +560,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3) ::  math_mul33x3
 
  forall (i=1:3) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
- return
 
- endfunction 
+ endfunction math_mul33x3
  
  !**************************************************************************
 ! matrix multiplication complex(33) x real(3) = complex(3)
@@ -590,9 +577,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  complex(pReal), dimension(3) ::  math_mul33x3_complex
 
  forall (i=1:3) math_mul33x3_complex(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
- return
 
- endfunction 
+ endfunction math_mul33x3_complex
 
  
 !**************************************************************************
@@ -611,9 +597,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1:6) math_mul66x6(i) = &
    A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
    A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
- return
 
- endfunction
+ endfunction math_mul66x6
 
  
 !**************************************************************************
@@ -633,7 +618,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_qRnd(3) = cos(2.0_pReal*pi*rnd(2))*sqrt(1.0_pReal-rnd(3))
  math_qRnd(4) = sin(2.0_pReal*pi*rnd(1))*sqrt(rnd(3))
 
- endfunction
+ endfunction math_qRnd
 
  
 !**************************************************************************
@@ -652,7 +637,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_qMul(3) = A(1)*B(3) - A(2)*B(4) + A(3)*B(1) + A(4)*B(2)
  math_qMul(4) = A(1)*B(4) + A(2)*B(3) - A(3)*B(2) + A(4)*B(1)
 
- endfunction
+ endfunction math_qMul
 
  
 !**************************************************************************
@@ -668,7 +653,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  math_qDot = A(1)*B(1) + A(2)*B(2) + A(3)*B(3) + A(4)*B(4)
 
- endfunction
+ endfunction math_qDot
 
  
 !**************************************************************************
@@ -685,7 +670,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_qConj(1) = Q(1)
  math_qConj(2:4) = -Q(2:4)
 
- endfunction
+ endfunction math_qConj
 
  
 !**************************************************************************
@@ -701,7 +686,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  math_qNorm = sqrt(max(0.0_pReal, Q(1)*Q(1) + Q(2)*Q(2) + Q(3)*Q(3) + Q(4)*Q(4)))
 
- endfunction
+ endfunction math_qNorm
 
 
 !**************************************************************************
@@ -722,7 +707,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  if (squareNorm > tiny(squareNorm)) &
    math_qInv = math_qConj(Q) / squareNorm
  
- endfunction
+ endfunction math_qInv
 
  
 !**************************************************************************
@@ -751,7 +736,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  math_qRot = 2.0_pReal * math_qRot + v
 
- endfunction
+ endfunction math_qRot
 
  
 !**************************************************************************
@@ -767,9 +752,8 @@ pure function math_transpose3x3(A)
  integer(pInt) i,j
  
  forall(i=1:3, j=1:3) math_transpose3x3(i,j) = A(j,i)
- return
 
- endfunction
+ endfunction math_transpose3x3
  
 
 !**************************************************************************
@@ -807,9 +791,8 @@ pure function math_transpose3x3(A)
    math_inv3x3(2,3) = ( -A(1,1) * A(2,3) + A(1,3) * A(2,1) ) / DetA
    math_inv3x3(3,3) = (  A(1,1) * A(2,2) - A(1,2) * A(2,1) ) / DetA
  endif
- return
 
- endfunction
+ endfunction math_inv3x3
 
 
 
@@ -854,9 +837,8 @@ pure function math_transpose3x3(A)
    
    error = .false.
  endif
- return
 
- ENDSUBROUTINE
+ ENDSUBROUTINE math_invert3x3
 
 
 
@@ -888,7 +870,6 @@ pure function math_transpose3x3(A)
  InvA = math_identity2nd(dimen)
  B = A
  CALL Gauss(dimen,B,InvA,LogAbsDetA,AnzNegEW,error)
- RETURN
 
  ENDSUBROUTINE math_invert
 
@@ -1058,8 +1039,6 @@ pure function math_transpose3x3(A)
 
  error = .false.
 
- RETURN
-
  ENDSUBROUTINE Gauss
 
 
@@ -1077,7 +1056,7 @@ pure function math_transpose3x3(A)
  
  forall (i=1:3,j=1:3) math_symmetric3x3(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- endfunction
+ endfunction math_symmetric3x3
  
 
 !********************************************************************
@@ -1094,7 +1073,7 @@ pure function math_transpose3x3(A)
  
  forall (i=1:6,j=1:6) math_symmetric6x6(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- endfunction
+ endfunction math_symmetric6x6
  
 
 !********************************************************************
@@ -1117,9 +1096,8 @@ pure function math_transpose3x3(A)
 
  math_equivStrain33 = 2.0_pReal*(1.50_pReal*(e11**2.0_pReal+e22**2.0_pReal+e33**2.0_pReal) + &
                                  0.75_pReal*(s12**2.0_pReal+s23**2.0_pReal+s31**2.0_pReal))**(0.5_pReal)/3.0_pReal
- return
 
- endfunction
+ endfunction math_equivStrain33
 
 
 !********************************************************************
@@ -1136,9 +1114,8 @@ pure function math_transpose3x3(A)
  math_det3x3 = m(1,1)*(m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
               -m(1,2)*(m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
               +m(1,3)*(m(2,1)*m(3,2)-m(2,2)*m(3,1))
- return
 
- endfunction
+ endfunction math_det3x3
 
  
 !********************************************************************
@@ -1169,9 +1146,8 @@ pure function math_transpose3x3(A)
  real(pReal) math_norm3
 
  math_norm3 = sqrt(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
- return
  
- endfunction
+ endfunction math_norm3
 
  
 !********************************************************************
@@ -1187,9 +1163,8 @@ pure function math_transpose3x3(A)
  integer(pInt) i
  
  forall (i=1:9) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
- return
 
- endfunction
+ endfunction math_Plain33to9
 
 
 !********************************************************************
@@ -1205,9 +1180,8 @@ pure function math_transpose3x3(A)
  integer(pInt) i
  
  forall (i=1:9) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
- return
 
- endfunction
+ endfunction math_Plain9to33
  
 
 !********************************************************************
@@ -1223,9 +1197,8 @@ pure function math_transpose3x3(A)
  integer(pInt) i
  
  forall (i=1:6) math_Mandel33to6(i) = nrmMandel(i)*m33(mapMandel(1,i),mapMandel(2,i))
- return
 
- endfunction
+ endfunction math_Mandel33to6
 
 
 !********************************************************************
@@ -1244,9 +1217,8 @@ pure function math_transpose3x3(A)
   math_Mandel6to33(mapMandel(1,i),mapMandel(2,i)) = invnrmMandel(i)*v6(i)
   math_Mandel6to33(mapMandel(2,i),mapMandel(1,i)) = invnrmMandel(i)*v6(i)
  end forall
- return
 
- endfunction
+ endfunction math_Mandel6to33
 
 
 !********************************************************************
@@ -1263,9 +1235,8 @@ pure function math_transpose3x3(A)
  
  forall (i=1:9,j=1:9) math_Plain3333to99(i,j) = &
    m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
- return
 
- endfunction
+ endfunction math_Plain3333to99
  
 !********************************************************************
 ! plain matrix 9x9 into 3x3x3x3 tensor
@@ -1281,9 +1252,8 @@ pure function math_transpose3x3(A)
  
  forall (i=1:9,j=1:9) math_Plain99to3333(mapPlain(1,i),mapPlain(2,i),&
      mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
- return
 
- endfunction
+ endfunction math_Plain99to3333
 
 
 !********************************************************************
@@ -1340,9 +1310,8 @@ pure function math_transpose3x3(A)
  
  forall (i=1:6,j=1:6) math_Mandel3333to66(i,j) = &
    nrmMandel(i)*nrmMandel(j)*m3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j))
- return
 
- endfunction
+ endfunction math_Mandel3333to66
 
 
 
@@ -1364,9 +1333,8 @@ pure function math_transpose3x3(A)
    math_Mandel66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(2,j),mapMandel(1,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
    math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(2,j),mapMandel(1,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
  end forall
- return
 
- endfunction
+ endfunction math_Mandel66to3333
 
 
 
@@ -1388,9 +1356,8 @@ pure function math_transpose3x3(A)
    math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
    math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(2,j),mapVoigt(1,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
  end forall
- return
 
- endfunction
+ endfunction math_Voigt66to3333
 
 
 
@@ -1443,9 +1410,8 @@ pure function math_transpose3x3(A)
      math_RtoEuler(1) = acos(val)
      if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  end if
- return
  
- endfunction
+ endfunction math_RtoEuler
 
 
 !********************************************************************
@@ -1502,16 +1468,14 @@ pure function math_transpose3x3(A)
 
  math_RtoQuaternion = math_RtoQuaternion*0.25_pReal/max_absQ
  math_RtoQuaternion(largest(1)) = max_absQ
-
- return
  
- endfunction
+ endfunction math_RtoQuaternion
 
 
 !****************************************************************
 ! rotation matrix from Euler angles (in radians)
 !****************************************************************
- pure function math_EulerToR (Euler)
+ pure function math_EulerToR(Euler)
 
  use prec, only: pReal, pInt
  implicit none
@@ -1535,9 +1499,8 @@ pure function math_transpose3x3(A)
  math_EulerToR(3,1)=S1*S
  math_EulerToR(3,2)=-C1*S
  math_EulerToR(3,3)=C
- return
  
- endfunction
+ endfunction math_EulerToR
 
 
 !********************************************************************
@@ -1563,7 +1526,7 @@ pure function math_transpose3x3(A)
  math_EulerToQuaternion(3) = sin(halfangles(1)-halfangles(3)) * s
  math_EulerToQuaternion(4) = sin(halfangles(1)+halfangles(3)) * c
   
- endfunction
+ endfunction math_EulerToQuaternion
 
 
 !****************************************************************
@@ -1607,9 +1570,8 @@ pure function math_transpose3x3(A)
    math_AxisAngleToR = math_I3
  endif
  
- return
 
- endfunction
+ endfunction math_AxisAngleToR
 
 
 !****************************************************************
@@ -1639,9 +1601,8 @@ pure function math_transpose3x3(A)
    math_AxisAngleToQuaternion = (/1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal/)   ! no rotation
  endif
 
- return
 
- endfunction
+ endfunction math_AxisAngleToQuaternion
 
 
 !********************************************************************
@@ -1666,9 +1627,8 @@ pure function math_transpose3x3(A)
                       2.0_pReal * T - &
                       2.0_pReal * Q(1) * S
  
- return
  
- endfunction
+ endfunction math_QuaternionToR
 
 
 !********************************************************************
@@ -1704,9 +1664,7 @@ pure function math_transpose3x3(A)
  if (math_QuaternionToEuler(2) < 0.0_pReal) &
    math_QuaternionToEuler(2) = math_QuaternionToEuler(2) + pi
 
- return
- 
- endfunction
+ endfunction math_QuaternionToEuler
 
 
 !********************************************************************
@@ -1730,10 +1688,9 @@ pure function math_transpose3x3(A)
    math_QuaternionToAxisAngle(1:3) = Q(2:4)/sinHalfAngle
    math_QuaternionToAxisAngle(4) = halfAngle*2.0_pReal
  endif
+
  
- return
- 
- endfunction
+ endfunction math_QuaternionToAxisAngle
 
 
 !********************************************************************
@@ -1750,12 +1707,11 @@ pure function math_transpose3x3(A)
  if (Q(1) /= 0.0_pReal) then                                   ! unless rotation by 180 deg
    math_QuaternionToRodrig = Q(2:4)/Q(1)
  else
-   math_QuaternionToRodrig = NaN                               ! Rodrig is unbound for 180 deg...
+   math_QuaternionToRodrig = NaN(3)                            ! 0/0, since Rodrig is unbound for 180 deg...
  endif
 
- return
 
- endfunction
+ endfunction math_QuaternionToRodrig
 
 
 !**************************************************************************
@@ -1774,9 +1730,8 @@ pure function math_transpose3x3(A)
 
  tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
  math_EulerMisorientation = abs(0.5_pReal*pi-asin(tr))
- return
 
- endfunction
+ endfunction math_EulerMisorientation
 
 
 !**************************************************************************
@@ -1811,7 +1766,7 @@ pure function math_QuaternionInSST(Q, symmetryType)
       math_QuaternionInSST = .true.
   end select
   
-endfunction
+endfunction math_QuaternionInSST
 
 
 !**************************************************************************
@@ -1862,8 +1817,7 @@ function math_QuaternionDisorientation(Q1, Q2, symmetryType)
       call IO_error(550,symmetryType)                           ! complain about unknown symmetry
   end select
   
-  
-endfunction
+endfunction math_QuaternionDisorientation
 
 
 !********************************************************************
@@ -1880,9 +1834,8 @@ endfunction
  math_sampleRandomOri(1) = rnd(1)*2.0_pReal*pi
  math_sampleRandomOri(2) = acos(2.0_pReal*rnd(2)-1.0_pReal)
  math_sampleRandomOri(3) = rnd(3)*2.0_pReal*pi
- return
 
- endfunction
+ endfunction math_sampleRandomOri
 
 
 !********************************************************************
@@ -1920,10 +1873,8 @@ endif
  enddo
 
  math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
-
- return
  
- endfunction
+ endfunction math_sampleGaussOri
  
 
 !********************************************************************
@@ -1996,9 +1947,7 @@ endif
 ! ---# apply the three rotations #---
  math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))) 
 
- return
-
- endfunction
+ endfunction math_sampleFiberOri
 
 
 
@@ -2040,9 +1989,8 @@ endif
      math_symmetricEulers = 0.0_pReal
  end select
 
- return
 
- endfunction
+ endfunction math_symmetricEulers
 
 
 
@@ -2087,7 +2035,7 @@ enddo
 
 math_sampleGaussVar = scatter * stddev
 
-endfunction
+endfunction math_sampleGaussVar
  
 
 
@@ -2111,9 +2059,8 @@ endfunction
  call math_invert3x3(U,UI,det,error)
  if (.not. error) R = math_mul33x33(FE,UI)
 
- return 
  
- ENDSUBROUTINE
+ ENDSUBROUTINE math_pDecomposition
 
 
 !**********************************************************************
@@ -2208,8 +2155,8 @@ endfunction
 
    END IF
  END IF
- RETURN
- ENDSUBROUTINE
+
+ ENDSUBROUTINE math_spectral1
 
 
 !********************************************************************** 
@@ -2226,9 +2173,8 @@ endfunction
  HI2M=HI1M**2/2.0_pReal-(M(1,1)**2+M(2,2)**2+M(3,3)**2)/2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
  HI3M=math_det3x3(M)
 ! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
- return  
 
- ENDSUBROUTINE
+ ENDSUBROUTINE math_hi
 
 
  SUBROUTINE get_seed(seed)
@@ -2305,9 +2251,8 @@ endfunction
    seed = seed - 1
  end if
 
- return
 
- ENDSUBROUTINE
+ ENDSUBROUTINE get_seed
 
 
  subroutine halton ( ndim, r )
@@ -2360,9 +2305,8 @@ endfunction
  value(1) = 1
  call halton_memory ( 'INC', 'SEED', 1, value )
 
- return
 
- ENDSUBROUTINE
+ ENDSUBROUTINE halton
 
 
  subroutine halton_memory ( action, name, ndim, value )
@@ -2490,9 +2434,8 @@ endfunction
    end if
  end if
 
- return
 
- ENDSUBROUTINE
+ ENDSUBROUTINE halton_memory
 
 
  subroutine halton_ndim_set ( ndim )
@@ -2531,9 +2474,8 @@ endfunction
  value(1) = ndim
  call halton_memory ( 'SET', 'NDIM', 1, value )
 
- return
 
- ENDSUBROUTINE
+ ENDSUBROUTINE halton_ndim_set
 
 
  subroutine halton_seed_set ( seed )
@@ -2588,9 +2530,8 @@ endfunction
  value(1) = seed
  call halton_memory ( 'SET', 'SEED', ndim, value )
 
- return
 
- ENDSUBROUTINE
+ ENDSUBROUTINE halton_seed_set
 
 
  subroutine i_to_halton ( seed, base, ndim, r )
@@ -2678,9 +2619,8 @@ endfunction
    seed2(1:ndim) = seed2(1:ndim) / base(1:ndim)
  enddo
 
- return
 
- ENDSUBROUTINE
+ ENDSUBROUTINE i_to_halton
 
 
  function prime ( n )
@@ -2946,9 +2886,7 @@ endfunction
    stop
  end if
 
- return
- 
- endfunction
+ endfunction prime
 
 !**************************************************************************
 ! volume of tetrahedron given by four vertices
@@ -2967,10 +2905,8 @@ endfunction
  m(:,3) = v3-v4
 
  math_volTetrahedron = math_det3x3(m)/6.0_pReal 
- return
 
- endfunction
-
+ endfunction math_volTetrahedron
 
 
  END MODULE math

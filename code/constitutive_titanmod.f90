@@ -52,27 +52,27 @@ implicit none
 
 !* Lists of states and physical parameters
 character(len=*), parameter :: constitutive_titanmod_label = 'titanmod'
-character(len=18), dimension(3), parameter:: constitutive_titanmod_listBasicSlipStates = (/'rho_edge', &
-                                                                                           'rho_screw', &
+character(len=18), dimension(3), parameter:: constitutive_titanmod_listBasicSlipStates = (/'rho_edge    ', &
+                                                                                           'rho_screw   ', &
                                                                                            'shear_system'/)
 
 character(len=18), dimension(1), parameter:: constitutive_titanmod_listBasicTwinStates = (/'gdot_twin'/)
                                                                                             
-character(len=18), dimension(11), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge', &
-                                                                                              'segment_screw', &
-                                                                                              'resistance_edge', &
-                                                                                              'resistance_screw', &
-                                                                                              'tau_slip', &
-                                                                                              'velocity_edge', &
-                                                                                              'velocity_screw', &
-                                                                                              'gdot_slip_edge', &
-                                                                                              'gdot_slip_screw', &
-                                                                                              'stressratio_edge_p', &
-                                                                                              'stressratio_screw_p' &
+character(len=18), dimension(11), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge       ', &
+                                                                                               'segment_screw      ', &
+                                                                                               'resistance_edge    ', &
+                                                                                               'resistance_screw   ', &
+                                                                                               'tau_slip           ', &
+                                                                                               'velocity_edge      ', &
+                                                                                               'velocity_screw     ', &
+                                                                                               'gdot_slip_edge     ', &
+                                                                                               'gdot_slip_screw    ', &
+                                                                                               'stressratio_edge_p ', &
+                                                                                               'stressratio_screw_p' &
                                                                                               /)
 
 character(len=18), dimension(2), parameter:: constitutive_titanmod_listDependentTwinStates =(/'twin_fraction', &
-                                                                                              'tau_twin' &
+                                                                                              'tau_twin     ' &
                                                                                               /)
 real(pReal), parameter :: kB = 1.38e-23_pReal ! Boltzmann constant in J/Kelvin
 

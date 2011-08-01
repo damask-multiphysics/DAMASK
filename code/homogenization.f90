@@ -124,7 +124,7 @@ do p = 1,material_Nhomogenization
   write(fileunit,*)
   if (knownHomogenization) then
     write(fileunit,'(a)') '(type)'//char(9)//trim(homogenization_type(p))
-    write(fileunit,'(a,i)') '(ngrains)'//char(9),homogenization_Ngrains(p)
+    write(fileunit,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
     do e = 1,homogenization_Noutput(p)
       write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
     enddo
@@ -410,7 +410,8 @@ subroutine materialpoint_stressAndItsTangent(&
            
 #ifndef _OPENMP
            if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
-             write(6,'(a,x,f10.8,/)') '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
+             write(6,'(a,x,f10.8,/)') '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with&
+                                                                 new materialpoint_subStep:',&
                                        materialpoint_subStep(i,e)
            endif
 #endif

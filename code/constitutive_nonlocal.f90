@@ -1650,7 +1650,7 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) 
 
 if (any(1.2_pReal * constitutive_nonlocal_v(1:ns,1:4,g,ip,el) * timestep &                    ! security factor 1.2
         > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then
-  dotState%p = NaN
+  dotState%p = NaN(3)
   return
 endif
 

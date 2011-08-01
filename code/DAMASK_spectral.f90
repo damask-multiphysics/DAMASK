@@ -262,8 +262,8 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
      call IO_error(31,loadcase)
    if (velGradApplied(loadcase)) then
      do j = 1, 3
-       if (any(bc_mask(j,:,1,loadcase) == .true.) .and.&
-           any(bc_mask(j,:,1,loadcase) == .false.)) call IO_error(32,loadcase)     ! each line should be either fully or not at all defined
+       if (any(bc_mask(j,:,1,loadcase) .eqv. .true.) .and.&
+           any(bc_mask(j,:,1,loadcase) .eqv. .false.)) call IO_error(32,loadcase)     ! each line should be either fully or not at all defined
      enddo
      print '(a,/,3(3(f12.6,x)/))','L:'        ,math_transpose3x3(bc_deformation(:,:,loadcase))
      print '(a,/,3(3(l,x)/))',    'bc_mask for L:',transpose(bc_mask(:,:,1,loadcase))
@@ -326,7 +326,9 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
  enddo
  100 close(unit)
  
- if(mod(resolution(1),2)/=0 .or. mod(resolution(2),2)/=0 .or. mod(resolution(3),2)/=0)  call IO_error(103)
+ if(mod(resolution(1),2_pInt)/=0_pInt .or.&
+    mod(resolution(2),2_pInt)/=0_pInt .or.&
+   (mod(resolution(3),2_pInt)/=0_pInt .and. resolution(3)/= 1_pInt))  call IO_error(103)
  
  print '(a,/,i4,i4,i4)','resolution a b c:', resolution
  print '(a,/,f8.4,f8.5,f8.5)','dimension x y z:', geomdimension
@@ -426,10 +428,12 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
  call dfftw_plan_many_dft(plan_div(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
    pstress_field,(/resolution(1),resolution(2),resolution(3)/),1,(resolution(1)*resolution(2)*resolution(3)),&
-   pstress_field_hat,     (/resolution(1),resolution(2),resolution(3)/),1,(resolution(1)*resolution(2)*resolution(3)),FFTW_FORWARD,FFTW_PATIENT)
+   pstress_field_hat,     (/resolution(1),resolution(2),resolution(3)/),1,(resolution(1)*resolution(2)*resolution(3)),&
+                                                                                     FFTW_FORWARD,FFTW_PATIENT)
  call dfftw_plan_many_dft_c2r(plan_div(2),3,(/resolution(1),resolution(2),resolution(3)/),3/3,&
    divergence_hat,    (/resolution(1)/2+1,resolution(2),resolution(3)/),1,(resolution(1)/2+1)*resolution(2)*resolution(3),&
-   divergence        ,(/resolution(1),    resolution(2),resolution(3)/),1, resolution(1)*     resolution(2)*resolution(3),FFTW_PATIENT) 
+   divergence        ,(/resolution(1),    resolution(2),resolution(3)/),1, resolution(1)*     resolution(2)*resolution(3),&
+                                                                                                     FFTW_PATIENT) 
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging
 
 ! write header of output file
@@ -676,7 +680,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
          
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
               err_div = max(err_div, maxval(abs(math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+& ! maximum of L infinity norm of div(stress), Suquet 2001
-                                                                     workfft(i*2,  j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))))  
+                                                                  workfft(i*2,  j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))))  
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
               err_div_max_two = max(err_div_max_two,abs(sqrt(sum(math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+&  ! maximum of L two norm of div(stress), Suquet 2001
                                      workfft(i*2,  j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))**2.0)))
@@ -694,9 +698,9 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
             n = 1
             do j = 1, resolution(2)
               err_div_avg_inf = err_div_avg_inf + (maxval(abs(math_mul33x3_complex&
-                                            (workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*img,xi(:,resolution(1)-i,j,k)*minval(geomdimension)))))**2.0 
-              err_div_avg_two = err_div_avg_two +  abs(sum((math_mul33x3_complex(workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*img,xi(:,resolution(1)-i,j,k)&
-                                                                       *minval(geomdimension)))**2.0))
+                     (workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*img,xi(:,resolution(1)-i,j,k)*minval(geomdimension)))))**2.0 
+              err_div_avg_two = err_div_avg_two +  abs(sum((math_mul33x3_complex(workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*img,&
+                                                   xi(:,resolution(1)-i,j,k)*minval(geomdimension)))**2.0))
               ! workfft(resolution(1)-i,j,k,:,:) = conjg(workfft(2+i,n,m,:,:)) original code for complex array, above little bit confusing because compley data is stored in real array
               if(n == 1) n = resolution(2) +1
               n = n-1
@@ -706,8 +710,10 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
         enddo; enddo
          
         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1) !calculating divergence criteria for full field (no complex symmetry)
-           err_div_max_two2 = max(err_div_max_two,abs(sqrt(sum(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*minval(geomdimension)))**2.0)))
-           err_div_max_inf2 = max(err_div_max_inf2 , (maxval(abs(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*minval(geomdimension))))))  
+           err_div_max_two2 = max(err_div_max_two,abs(sqrt(sum(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*&
+           minval(geomdimension)))**2.0)))
+           err_div_max_inf2 = max(err_div_max_inf2 , (maxval(abs(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*&
+           minval(geomdimension))))))  
            err_div_avg_inf2 = err_div_avg_inf2 + (maxval(abs(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),&
                      xi(:,i,j,k)*minval(geomdimension)))))**2.0
            err_div_avg_two2 = err_div_avg_two2 + abs(sum((math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),&
@@ -737,15 +743,15 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
              if(j > resolution(2)/2+1) k_s(2) = k_s(2)-resolution(2)  
              do i = 1, resolution(1)/2+1
                k_s(1) = i-1
-                 divergence_hat(i,j,k,1) = (workfft(i*2-1,j,k,1,1)+ workfft(i*2,j,k,1,1)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
-                                         + (workfft(i*2-1,j,k,2,1)+ workfft(i*2,j,k,2,1)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
-                                         + (workfft(i*2-1,j,k,3,1)+ workfft(i*2,j,k,3,1)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
-                 divergence_hat(i,j,k,2) = (workfft(i*2-1,j,k,1,2)+ workfft(i*2,j,k,1,2)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
-                                         + (workfft(i*2-1,j,k,2,2)+ workfft(i*2,j,k,2,2)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
-                                         + (workfft(i*2-1,j,k,3,2)+ workfft(i*2,j,k,3,2)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
-                 divergence_hat(i,j,k,3) = (workfft(i*2-1,j,k,1,3)+ workfft(i*2,j,k,1,3)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
-                                         + (workfft(i*2-1,j,k,2,3)+ workfft(i*2,j,k,2,3)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
-                                         + (workfft(i*2-1,j,k,3,3)+ workfft(i*2,j,k,3,3)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
+          divergence_hat(i,j,k,1) = (workfft(i*2-1,j,k,1,1)+ workfft(i*2,j,k,1,1)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
+                                  + (workfft(i*2-1,j,k,2,1)+ workfft(i*2,j,k,2,1)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
+                                  + (workfft(i*2-1,j,k,3,1)+ workfft(i*2,j,k,3,1)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
+          divergence_hat(i,j,k,2) = (workfft(i*2-1,j,k,1,2)+ workfft(i*2,j,k,1,2)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
+                                  + (workfft(i*2-1,j,k,2,2)+ workfft(i*2,j,k,2,2)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
+                                  + (workfft(i*2-1,j,k,3,2)+ workfft(i*2,j,k,3,2)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
+          divergence_hat(i,j,k,3) = (workfft(i*2-1,j,k,1,3)+ workfft(i*2,j,k,1,3)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
+                                  + (workfft(i*2-1,j,k,2,3)+ workfft(i*2,j,k,2,3)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
+                                  + (workfft(i*2-1,j,k,3,3)+ workfft(i*2,j,k,3,3)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
          enddo; enddo; enddo
          
          call dfftw_execute_dft_c2r(plan_div(2), divergence_hat, divergence)

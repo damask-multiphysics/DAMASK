@@ -10,36 +10,47 @@
 # Install fftw3 (v3.2.2 is tested) with "./configure --enable-threads --enable-float"  and "make", "make install" is not needed
 # as long as the two library files are copied to the source code directory.
 
-#standart values
-PRECISION :=double  # precision
-F90 :=ifort         # compiler (Intel or gfortran, default intel)
-VERSION :=10        # version of intel compiler. More aggressive optimization if VERSION =12
-PORTABLE :=TRUE     # decision, if executable is optimized for the machine on which it was built
+# OPTIONS = standart (alternative): meaning
+#-------------------------------------------------------------
+# PRECISION = double (single): floating point precision
+# F90 = ifort (gfortran): compiler, choose Intel or GNU
+# VERSION = 10 (12): version of Intel compiler. More aggressive optimization if VERSION =12
+# PORTABLE = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built
 
-ifeq ($(PORTABLE), FALSE)
-PORTABLE_SWITCH = -xHost
-endif
-
-ifeq ($(F90), ifort)
-OPENMP_FLAG = -openmp
-COMPILE_OPTIONS = -fpp -diag-disable 8291   #for preprocessor, switch of messages on formatting of output
-OPTIMIZATION_AGGRESSIVE = -O3 -static $(PORTABLE_SWITCH)
-endif
 
 ifeq ($(F90), gfortran)
-OPENMP_FLAG := -fopenmp
-OPTIMIZATION_AGGRESSIVE = -O3
+OPENMP_FLAG =-fopenmp
+OPTIMIZATION_AGGRESSIVE =-O3
+OPTIMIZATION_DEFENSIVE =-O2
+COMPILE_OPTIONS =-xf95-cpp-input
+#COMPILE_OPTIONS =
+HEAP_ARRAYS =
+
+else
+F90 =ifort
+
+ifeq ($(PORTABLE), FALSE)
+PORTABLE_SWITCH =-xHost
 endif
+
+OPENMP_FLAG =-openmp
+HEAP_ARRAYS =-heap-arrays 500000000
+COMPILE_OPTIONS =-fpp -diag-disable 8291   #for preprocessor, switch off messages on formatting of output
+OPTIMIZATION_AGGRESSIVE =-O3 -static $(PORTABLE_SWITCH)
 
 ifeq ($(VERSION), 12)
-OPTIMIZATION_DEFENSIVE = -O3 -static $(PORTABLE_SWITCH)
+OPTIMIZATION_DEFENSIVE =$(OPTIMIZATION_AGGRESIVE)
+
 else
-OPTIMIZATION_DEFENSIVE = -O2
+OPTIMIZATION_DEFENSIVE =-O2
 endif
 
+endif
+
+
 COMPILE = $(OPENMP_FLAG) $(COMPILE_OPTIONS) $(OPTIMIZATION_AGGRESSIVE) -c
-COMPILE_HEAP = $(COMPILE) -heap-arrays 500000000
-COMPILE_HEAP_DEFENSIVE = $(OPENMP_FLAG) $(COMPILE_OPTIONS) $(OPTIMIZATION_DEFENSIVE) -c -heap-arrays 500000000
+COMPILE_HEAP = $(COMPILE) $(HEAP_ARRAYS)
+COMPILE_HEAP_DEFENSIVE = $(OPENMP_FLAG) $(COMPILE_OPTIONS) $(OPTIMIZATION_DEFENSIVE) -c $(HEAP_ARRAYS)
 
    
 ifeq ($(PRECISION),single)

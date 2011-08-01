@@ -94,7 +94,7 @@ function getModelName()
  implicit none
 
  character(1024) getModelName, outName, cwd
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
  integer(pInt) posExt,posSep
 
  getModelName = ''
@@ -129,7 +129,7 @@ function getLoadCase()
  implicit none
 
  character(1024) getLoadCase, outName
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
  integer(pInt) posExt,posSep
 
  getLoadCase = ''
@@ -157,7 +157,7 @@ function getLoadcaseName()
  implicit none
 
  character(len=1024) getLoadcaseName, outName, cwd
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! /, \
+ character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
  integer(pInt) posExt,posSep
  posExt = 0
 
