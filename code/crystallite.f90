@@ -661,7 +661,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
     enddo
   !$OMP END PARALLEL DO
 
-  ! --- integrate ---
+  ! --- integrate --- requires fully defined state array (basic + dependent state)
   
   if (any(crystallite_todo)) then
     select case(numerics_integrator(numerics_integrationMode))
@@ -2533,6 +2533,7 @@ use math, only:         math_mul33x33, &
                         math_invert3x3, &
                         math_invert, &
                         math_det3x3, &
+                        math_norm33, &
                         math_I3, &
                         math_identity2nd, &
                         math_Mandel66to3333, &
@@ -2562,22 +2563,25 @@ real(pReal), dimension(3,3)::       Fg_new, &                     ! deformation 
                                     Lp_constitutive, &            ! plastic velocity gradient resulting from constitutive law
                                     residuum, &                   ! current residuum of plastic velocity gradient
                                     residuum_old, &               ! last residuum of plastic velocity gradient
+                                    deltaLp, &
+                                    expectedImprovement, &
                                     A, &
                                     B, &
                                     BT, &
                                     AB, &
                                     BTA
 real(pReal), dimension(6)::         Tstar_v                       ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
-real(pReal), dimension(9,9)::       dLpdT_constitutive, &         ! partial derivative of plastic velocity gradient calculated by constitutive law
-                                    dTdLp, &                      ! partial derivative of 2nd Piola-Kirchhoff stress
-                                    dRdLp, &                      ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
-                                    invdRdLp                      ! inverse of dRdLp
+real(pReal), dimension(9,9)::       dLp_dT_constitutive, &         ! partial derivative of plastic velocity gradient calculated by constitutive law
+                                    dT_dLp, &                      ! partial derivative of 2nd Piola-Kirchhoff stress
+                                    dR_dLp, &                      ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
+                                    inv_dR_dLp                      ! inverse of dRdLp
 real(pReal), dimension(3,3,3,3)::   C                             ! 4th rank elasticity tensor
 real(pReal), dimension(6,6)::       C_66                          ! simplified 2nd rank elasticity tensor 
 real(pReal)                         p_hydro, &                    ! volumetric part of 2nd Piola-Kirchhoff Stress
                                     det, &                        ! determinant
-                                    leapfrog, &                   ! acceleration factor for Newton-Raphson scheme
-                                    maxleap, &                    ! maximum acceleration factor
+                                    steplength0, & 
+                                    steplength, & 
+                                    steplength_max, & 
                                     dt                            ! time increment
 logical                             error                         ! flag indicating an error
 integer(pInt)                       NiterationStress, &           ! number of stress integrations
@@ -2593,6 +2597,7 @@ integer(pLongInt)                   tick, &
                                     tock, &
                                     tickrate, &
                                     maxticks
+
  
 !* be pessimistic
 
@@ -2647,11 +2652,12 @@ C_66 = constitutive_homogenizedC(g,i,e)
 C = math_Mandel66to3333(C_66)
 
 
-!* start LpLoop with no acceleration
+!* start LpLoop with normal step length
 
 NiterationStress = 0_pInt
-leapfrog = 1.0_pReal
-maxleap = 16.0_pReal
+steplength0 = 1.0_pReal
+steplength = steplength0
+steplength_max = 16.0_pReal
 jacoCounter = 0_pInt
 
 LpLoop: do
@@ -2688,7 +2694,7 @@ LpLoop: do
   if (debug_verbosity > 0) then
     call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
   endif
-  call constitutive_LpAndItsTangent(Lp_constitutive, dLpdT_constitutive, Tstar_v, crystallite_Temperature(g,i,e), g, i, e)
+  call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT_constitutive, Tstar_v, crystallite_Temperature(g,i,e), g, i, e)
   if (debug_verbosity > 4) then
     call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
     !$OMP CRITICAL (debugTimingLpTangent)
@@ -2713,20 +2719,19 @@ LpLoop: do
   !* update current residuum and check for convergence of loop
   
   residuum = Lpguess - Lp_constitutive
-  if (.not.(any(residuum/=residuum)) .and. &                       ! exclude any NaN in residuum
+  if (.not.(any(residuum /= residuum)) .and. &                      ! exclude any NaN in residuum
        ( maxval(abs(residuum)) < aTol_crystalliteStress .or. &      ! below absolute tolerance .or.
-         ( any(abs(dt*Lpguess) > relevantStrain) .and. &            ! worth checking? .and.
-             maxval(abs(residuum/Lpguess), abs(dt*Lpguess) > relevantStrain) < rTol_crystalliteStress & ! below relative tolerance
+         ( any(abs(dt * Lpguess) > relevantStrain) .and. &          ! worth checking? .and.
+             maxval(abs(residuum / Lpguess), abs(dt*Lpguess) > relevantStrain) < rTol_crystalliteStress & ! below relative tolerance
          ) &
        ) &
       ) then
     exit LpLoop
   endif
   
-  
-  !* NaN occured at regular speed?  ->  return
-  
-  if (any(residuum/=residuum) .and. leapfrog == 1.0) then
+
+  !* NaN occured at regular speed  ->  return
+  if (steplength >= steplength0 .and. any(residuum /= residuum)) then
 #ifndef _OPENMP
     if (debug_verbosity > 4) then 
       write(6,'(a,i8,x,i2,x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el ip g ',e,i,g,&
@@ -2735,82 +2740,116 @@ LpLoop: do
     endif
 #endif
     return
-
-   
-  !* something went wrong at accelerated speed?  ->  restore old residuum and Lp
- 
-  elseif (leapfrog > 1.0_pReal .and. &                             ! at fast pace .and.
-           ( sum(residuum*residuum) > sum(residuum_old*residuum_old) .or. &  ! worse residuum .or.
-             sum(residuum*residuum_old) < 0.0_pReal .or. &         ! residuum changed sign (overshoot) .or.
-             any(residuum/=residuum) &                             ! NaN occured
-           ) &
-         ) then
-#ifndef _OPENMP
-    if (debug_verbosity > 5) then 
-      write(6,'(a,i8,x,i2,x,i3,x,a,i3)') '<< CRYST >> integrateStress encountered high-speed crash at el ip g ',e,i,g,&
-                                         '; iteration ', NiterationStress
-    endif
-#endif
-    maxleap = 0.5_pReal * leapfrog                                 ! limit next acceleration
-    leapfrog = 1.0_pReal                                           ! grinding halt
-    jacoCounter = 0_pInt                                           ! reset counter for Jacobian update (we want to do an update next time!)
-    Lpguess = Lpguess_old                                       
-    residuum  = residuum_old
-    if (debug_verbosity > 4) then
-      !$OMP CRITICAL (distributionLeapfrogBreak)
-        debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) = &
-          debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) + 1
-      !$OMP END CRITICAL (distributionLeapfrogBreak)
-    endif
-  
-  
-  !* residuum got better?  ->  calculate Jacobian for correction term  and remember current residuum and Lpguess
-  
-  else
-    if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
-      dTdLp = 0.0_pReal
-      do h=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3
-        dTdLp(3*(h-1)+j,3*(k-1)+l) = dTdLp(3*(h-1)+j,3*(k-1)+l) + C(h,j,l,m)*AB(k,m)+C(h,j,m,l)*BTA(m,k)
-      enddo; enddo; enddo; enddo; enddo
-      dTdLp = -0.5_pReal*dt*dTdLp
-      dRdLp = math_identity2nd(9) - math_mul99x99(dLpdT_constitutive,dTdLp)
-      invdRdLp = 0.0_pReal
-      call math_invert(9,dRdLp,invdRdLp,dummy,error)               ! invert dR/dLp --> dLp/dR
-      if (error) then
-#ifndef _OPENMP
-        if (debug_verbosity > 4) then
-          write(6,'(a,i8,x,i2,x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ',e,i,g,&
-                                      ' ; iteration ', NiterationStress
-          if (debug_verbosity > 5 &
-              .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-            write(6,*)
-            write(6,'(a,/,9(12(x),9(e15.3,x)/))') '<< CRYST >> dRdLp',transpose(dRdLp)
-            write(6,'(a,/,9(12(x),9(e15.3,x)/))') '<< CRYST >> dLpdT_constitutive',transpose(dLpdT_constitutive)
-            write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lp_constitutive',math_transpose3x3(Lp_constitutive)
-            write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lpguess',math_transpose3x3(Lpguess)
-          endif
-        endif
-#endif
-        return
-      endif
-    endif
-    jacoCounter = jacoCounter + 1_pInt                             ! increase counter for jaco update
-    residuum_old = residuum
-    Lpguess_old = Lpguess 
-     
-    
-    !* accelerate?
-    
-    if (NiterationStress > 1 .and. leapfrog+1.0_pReal <= maxleap) leapfrog = leapfrog + 1.0_pReal
-    
   endif
 
+
+  if (NiterationStress > 1_pInt) then
+    
+    !* not at regular speed
+    if (steplength <= steplength0) then
+
+      !* Armijo rule is fullfilled (norm of residuum was reduced by at least 0.01 of what was expected)
+      if (math_norm33(residuum) <= math_norm33(residuum_old + 0.01_pReal * steplength * expectedImprovement)) then
+      
+        !* reduced step length -> return to normal step length
+        if (steplength < steplength0) then
+          steplength = steplength0
+        
+        !* normal step length without change in sign of residuum -> accelerate if not yet at maximum speed
+        elseif (sum(residuum * residuum_old) >= 0.0_pReal .and. steplength + 1_pInt <= steplength_max) then
+          steplength = steplength + 1.0_pReal
+        endif
+
+      !* Armijo rule not fullfilled -> try smaller step size in same direction
+      else
+        steplength = 0.5_pReal * steplength 
+        Lpguess = Lpguess_old + steplength * deltaLp
+        cycle LpLoop
+      endif
+
+    !* at high-speed
+    else
+      
+      !* no NaN, Armijo rule fullfilled, and sign of residuum did not change -> accelerate if not yet at maximum speed
+      if (.not. any(residuum /= residuum) & 
+          .and. math_norm33(residuum) <= math_norm33(residuum_old + 0.01_pReal * steplength * expectedImprovement) &
+          .and. sum(residuum * residuum_old) >= 0.0_pReal) then
+        if (steplength + 1_pInt <= steplength_max) then
+          steplength = steplength + 1.0_pReal
+        endif
+      
+      !* something went wrong at accelerated speed?  ->  return to regular speed and try again
+      else
+#ifndef _OPENMP
+        if (debug_verbosity > 5) then 
+          write(6,'(a,i8,x,i2,x,i3,x,a,i3)') '<< CRYST >> integrateStress encountered high-speed crash at el ip g ',e,i,g,&
+                                             '; iteration ', NiterationStress
+        endif
+#endif
+        !* NaN occured -> use old guess and residuum
+        if (any(residuum /= residuum)) then
+          Lpguess = Lpguess_old
+          residuum = residuum_old
+        endif
+        steplength_max = steplength - 1.0_pReal                       ! limit acceleration
+        steplength = steplength0                                      ! grinding halt
+        jacoCounter = 0_pInt                                          ! reset counter for Jacobian update (we want to do an update next time!)
+        if (debug_verbosity > 4) then
+          !$OMP CRITICAL (distributionLeapfrogBreak)
+            debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) = &
+              debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) + 1
+          !$OMP END CRITICAL (distributionLeapfrogBreak)
+        endif
+      endif
+    endif
+  endif
+
+
+  !* calculate Jacobian for correction term  and remember current residuum and Lpguess
   
-  !* leapfrog to updated Lp
-  
-  do k=1,3; do l=1,3; do m=1,3; do n=1,3
-    Lpguess(k,l) = Lpguess(k,l) - leapfrog * invdRdLp(3*(k-1)+l,3*(m-1)+n) * residuum(m,n)
-  enddo; enddo; enddo; enddo
+  if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
+    dT_dLp = 0.0_pReal
+    do h=1,3; do j=1,3; do k=1,3; do l=1,3; do m=1,3
+      dT_dLp(3*(h-1)+j,3*(k-1)+l) = dT_dLp(3*(h-1)+j,3*(k-1)+l) + C(h,j,l,m) * AB(k,m) + C(h,j,m,l) * BTA(m,k)
+    enddo; enddo; enddo; enddo; enddo
+    dT_dLp = -0.5_pReal * dt * dT_dLp
+    dR_dLp = math_identity2nd(9) - math_mul99x99(dLp_dT_constitutive, dT_dLp)
+    inv_dR_dLp = 0.0_pReal
+    call math_invert(9,dR_dLp,inv_dR_dLp,dummy,error)               ! invert dR/dLp --> dLp/dR
+    if (error) then
+#ifndef _OPENMP
+      if (debug_verbosity > 4) then
+        write(6,'(a,i8,x,i2,x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ',e,i,g
+        if (debug_verbosity > 5 &
+            .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+          write(6,*)
+          write(6,'(a,/,9(12(x),9(e15.3,x)/))') '<< CRYST >> dR_dLp',transpose(dR_dLp)
+          write(6,'(a,/,9(12(x),9(e15.3,x)/))') '<< CRYST >> dT_dLp',transpose(dT_dLp)
+          write(6,'(a,/,9(12(x),9(e15.3,x)/))') '<< CRYST >> dLp_dT_constitutive',transpose(dLp_dT_constitutive)
+          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> AB',math_transpose3x3(AB)
+          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> BTA',math_transpose3x3(BTA)
+          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lp_constitutive',math_transpose3x3(Lp_constitutive)
+          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lpguess',math_transpose3x3(Lpguess)
+        endif
+      endif
+#endif
+      return
+    endif
+    deltaLp = 0.0_pReal
+    do k=1,3; do l=1,3; do m=1,3; do n=1,3
+      deltaLp(k,l) = deltaLp(k,l) - inv_dR_dLp(3*(k-1)+l,3*(m-1)+n) * residuum(m,n)
+    enddo; enddo; enddo; enddo
+
+    expectedImprovement = 0.0_pReal
+    do k=1,3; do l=1,3; do m=1,3; do n=1,3
+      expectedImprovement(k,l) = expectedImprovement(k,l) - dR_dLp(3*(k-1)+l,3*(m-1)+n) * deltaLp(m,n)
+    enddo; enddo; enddo; enddo
+  endif
+
+  jacoCounter = jacoCounter + 1_pInt                             ! increase counter for jaco update
+  residuum_old = residuum
+  Lpguess_old = Lpguess 
+  Lpguess = Lpguess + steplength * deltaLp
 
 enddo LpLoop
 
@@ -2861,7 +2900,7 @@ if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug
   write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> Cauchy / MPa', &
                               math_mul33x33(crystallite_P(1:3,1:3,g,i,e), math_transpose3x3(Fg_new)) / 1e6 / math_det3x3(Fg_new)
   write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> Fe Lp Fe^-1', &
-                      math_transpose3x3(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), math_inv3x3(Fe_new))))                     ! transpose to get correct print out order
+                      math_transpose3x3(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), math_inv3x3(Fe_new))))    ! transpose to get correct print out order
   write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> Fp',math_transpose3x3(crystallite_Fp(1:3,1:3,g,i,e))
 endif
 #endif
