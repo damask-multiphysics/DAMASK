@@ -31,12 +31,13 @@ MODULE material
 use prec, only: pReal,pInt
 implicit none
 
-character(len=64), parameter :: material_configFile = 'material.config'
+character(len=64), parameter :: material_configFile         = 'material.config'
+character(len=64), parameter :: material_localFileExt       = 'materialConfig'
 character(len=32), parameter :: material_partHomogenization = 'homogenization'
 character(len=32), parameter :: material_partMicrostructure = 'microstructure'
-character(len=32), parameter :: material_partCrystallite =    'crystallite'
-character(len=32), parameter :: material_partPhase =          'phase'
-character(len=32), parameter :: material_partTexture =        'texture'
+character(len=32), parameter :: material_partCrystallite    = 'crystallite'
+character(len=32), parameter :: material_partPhase          = 'phase'
+character(len=32), parameter :: material_partTexture        = 'texture'
 
 
 !*************************************
@@ -106,7 +107,7 @@ subroutine material_init()
 !*      Module initialization         *
 !**************************************
  use prec, only: pReal,pInt
- use IO, only: IO_error, IO_open_file
+ use IO, only: IO_error, IO_open_file, IO_open_jobFile
  use debug, only: debug_verbosity
  implicit none
 
@@ -121,7 +122,9 @@ subroutine material_init()
    write(6,*)
  !$OMP END CRITICAL (write2out)
  
- if(.not. IO_open_file(fileunit,material_configFile)) call IO_error(100) ! cannot open config file
+ if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
+   if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
+ endif
  call material_parseHomogenization(fileunit,material_partHomogenization)
  call material_parseMicrostructure(fileunit,material_partMicrostructure)
  call material_parseCrystallite(fileunit,material_partCrystallite)

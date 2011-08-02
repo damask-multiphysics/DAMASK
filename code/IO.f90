@@ -249,9 +249,33 @@ end function
 
  IO_open_jobFile = .false.
  
- open(unit,status='replace',err=100,file=trim(getSolverWorkingDirectoryName())//&
+ open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
                                      trim(getSolverJobName())//'.'//newExt)
  IO_open_jobFile = .true.
+ 
+100 return
+
+ endfunction
+
+
+!********************************************************************
+! open (write) file related to current job
+! but with different extension to given unit
+!********************************************************************
+ logical function IO_write_jobFile(unit,newExt)
+
+ use prec, only: pReal, pInt
+ use DAMASK_interface
+ implicit none
+
+ integer(pInt), intent(in) :: unit
+ character(*), intent(in) :: newExt
+
+ IO_write_jobFile = .false.
+ 
+ open(unit,status='replace',err=100,file=trim(getSolverWorkingDirectoryName())//&
+                                         trim(getSolverJobName())//'.'//newExt)
+ IO_write_jobFile = .true.
  
 100 return
 
@@ -1161,185 +1185,185 @@ endfunction
 
  select case (ID)
  case (30)
-   msg = 'error opening spectral loadcase'
+   msg = 'opening spectral loadcase'
  case (31)
    msg = 'mask consistency violated in spectral loadcase'
  case (32)
-   msg = 'ill defined L (each line should be either fully or not at all defined) in spectral loadcase'
+   msg = 'ill-defined L (each line should be either fully or not at all defined) in spectral loadcase'
  case (34)
    msg = 'negative time increment in spectral loadcase'
  case (35)
-   msg = 'Non-positive increments in spectral loadcase'
+   msg = 'non-positive increments in spectral loadcase'
  case (36)
-   msg = 'Non-positive result frequency in spectral loadcase'
+   msg = 'non-positive result frequency in spectral loadcase'
  case (40)
    msg = 'path rectification error'
  case (41)
    msg = 'path too long'
  case (42)
-   msg = 'missing descriptive information in spectral mesh'
+   msg = 'missing header info in spectral mesh'
  case (43)
-   msg = 'resolution error in spectral mesh'
+   msg = 'resolution in spectral mesh'
  case (44)
-   msg = 'dimension error in spectral mesh'
+   msg = 'dimension in spectral mesh'
  case (50)
-   msg = 'Error writing constitutive output description'
+   msg = 'writing constitutive output description'
  case (100)
-   msg = 'Cannot open config file'
+   msg = 'opening material configuration'
  case (101)
-   msg = 'Cannot open input file'
+   msg = 'opening input file'
  case (102)
-   msg = 'argument count error (mesh and loadcase) for DAMASK_spectral'
+   msg = 'DAMASK_spectral misses arguments geom + load'
  case (103)
-   msg = 'Resolution contains odd number'
+   msg = 'odd resolution given'
  case (104)
-   msg = 'FFTW init error'
+   msg = 'initializing FFTW'
  case (105)
-   msg = 'Error reading from ODF file'
+   msg = 'reading from ODF file'
  case (106)
-   msg = 'Error reading info on old job'
+   msg = 'reading info on old job'
  case (110)
-   msg = 'No homogenization specified via State Variable 2'
+   msg = 'no homogenization specified via State Variable 2'
  case (120)
-   msg = 'No microstructure specified via State Variable 3'
+   msg = 'no microstructure specified via State Variable 3'
  case (125)
-   msg = 'No entries in config part'
+   msg = 'no entries in config part'
  case (130)
-   msg = 'Homogenization index out of bounds'
+   msg = 'homogenization index out of bounds'
  case (140)
-   msg = 'Microstructure index out of bounds'
+   msg = 'microstructure index out of bounds'
  case (150)
-   msg = 'Crystallite index out of bounds'
+   msg = 'crystallite index out of bounds'
  case (155)
-   msg = 'Phase index out of bounds'
+   msg = 'phase index out of bounds'
  case (160)
-   msg = 'Texture index out of bounds'
+   msg = 'texture index out of bounds'
  case (170)
-   msg = 'Sum of phase fractions differs from 1'
+   msg = 'sum of phase fractions differs from 1'
  case (200)
-   msg = 'Unknown constitution specified'
+   msg = 'unknown constitution specified'
  case (201)
-   msg = 'Unknown homogenization specified'
+   msg = 'unknown homogenization specified'
  case (205)
-   msg = 'Unknown lattice structure encountered'
+   msg = 'unknown lattice structure encountered'
  case (210)
-   msg = 'Negative initial resistance'
+   msg = 'negative initial resistance'
  case (211)
-   msg = 'Non-positive reference shear rate'
+   msg = 'non-positive reference shear rate'
  case (212)
-   msg = 'Non-positive stress exponent'
+   msg = 'non-positive stress exponent'
  case (213)
-   msg = 'Non-positive saturation stress'
+   msg = 'non-positive saturation stress'
  case (214)
-   msg = 'Zero hardening exponent'
+   msg = 'zero hardening exponent'
  case (220)
-   msg = 'Negative initial dislocation density'
+   msg = 'negative initial dislocation density'
  case (221)
-   msg = 'Negative Bugers vector'
+   msg = 'negative Burgers vector'
  case (222)
-   msg = 'Negative activation energy for edge dislocation glide'
+   msg = 'negative activation energy for edge dislocation glide'
  case (223)
-   msg = 'Negative self diffusion energy'
+   msg = 'negative self diffusion energy'
  case (224)
-   msg = 'Non-positive diffusion prefactor'
+   msg = 'non-positive diffusion prefactor'
  case (225)
-   msg = 'No slip systems specified'
+   msg = 'no slip systems specified'
  case (226)
-   msg = 'Non-positive prefactor for dislocation velocity'
+   msg = 'non-positive prefactor for dislocation velocity'
  case (227)
-   msg = 'Non-positive prefactor for mean free path'
+   msg = 'non-positive prefactor for mean free path'
  case (228)
-   msg = 'Non-positive minimum stable dipole distance'
+   msg = 'non-positive minimum stable dipole distance'
  case (229)
-   msg = 'Non-positive hardening interaction coefficients'
+   msg = 'non-positive hardening interaction coefficients'
  case (230)
-   msg = 'Non-positive atomic volume'
+   msg = 'non-positive atomic volume'
  case (231)
-   msg = 'Non-positive prefactor for self-diffusion coefficient'
+   msg = 'non-positive prefactor for self-diffusion coefficient'  ! what is the difference to 224 ??
  case (232)
-   msg = 'Non-positive activation energy'   
+   msg = 'non-positive activation energy'   
  case (233)
-   msg = 'Non-positive relevant dislocation density'   
+   msg = 'non-positive relevant dislocation density'   
  case (235)
-   msg = 'Material parameter in nonlocal constitutive phase out of bounds:'
+   msg = 'material parameter in nonlocal constitutive phase out of bounds:'
  case (236)
-   msg = 'Unknown material parameter in nonlocal constitutive phase:'
+   msg = 'unknown material parameter in nonlocal constitutive phase:'
  case (237)
-   msg = 'Singularity in internal stress calculation'
+   msg = 'singularity in internal stress calculation'
  case (240)
-   msg = 'Non-positive Taylor factor'
+   msg = 'non-positive Taylor factor'
  case (241)
-   msg = 'Non-positive hardening exponent'
+   msg = 'non-positive hardening exponent'
  case (242)
-   msg = 'Non-positive relevant slip resistance'   
+   msg = 'non-positive relevant slip resistance'   
  case (260)
-   msg = 'Non-positive relevant strain'
+   msg = 'non-positive relevant strain'
  case (261)
-   msg = 'Frequency for Stiffness update smaller than zero'
+   msg = 'frequency of stiffness update < 0'
  case (262)
-   msg = 'Frequency for Jacobian update of Lp residuum smaller than zero'
+   msg = 'frequency of Jacobian update of Lp residuum < 0'
  case (263)
-   msg = 'Non-positive perturbation value'
+   msg = 'non-positive perturbation value'
  case (264)
-   msg = 'Limit for homogenization loop too small'
+   msg = 'limit for homogenization loop too small'
  case (265)
-   msg = 'Limit for crystallite loop too small'
+   msg = 'limit for crystallite loop too small'
  case (266)
-   msg = 'Limit for state loop too small'
+   msg = 'limit for state loop too small'
  case (267)
-   msg = 'Limit for stress loop too small'
+   msg = 'limit for stress loop too small'
  case (268)
-   msg = 'Non-positive minimum substep size'
+   msg = 'non-positive minimum substep size'
  case (269)
-   msg = 'Non-positive relative tolerance for state'
+   msg = 'non-positive relative state tolerance'
  case (270)
-   msg = 'Non-positive relative tolerance for stress'
+   msg = 'Non-positive relative stress tolerance'
  case (271)
-   msg = 'Non-positive absolute tolerance for stress'
+   msg = 'Non-positive absolute stress tolerance'
 
 !* Error messages related to RGC numerical parameters <<<updated 31.07.2009>>>
  case (272)
-   msg = 'Non-positive relative tolerance of residual in RGC'
+   msg = 'non-positive relative tolerance of residual in RGC'
  case (273)
-   msg = 'Non-positive absolute tolerance of residual in RGC'
+   msg = 'non-positive absolute tolerance of residual in RGC'
  case (274)
-   msg = 'Non-positive relative maximum of residual in RGC'
+   msg = 'non-positive relative maximum of residual in RGC'
  case (275)
-   msg = 'Non-positive absolute maximum of residual in RGC'
+   msg = 'non-positive absolute maximum of residual in RGC'
  case (276)
-   msg = 'Non-positive penalty perturbation in RGC'
+   msg = 'non-positive penalty perturbation in RGC'
  case (277)
-   msg = 'Non-positive relevant mismatch in RGC'
+   msg = 'non-positive relevant mismatch in RGC'
  case (278)
-   msg = 'Non-positive definite viscosity model in RGC'
+   msg = 'non-positive definite viscosity model in RGC'
  case (288)
-   msg = 'Non-positive maximum threshold of relaxation change in RGC'
+   msg = 'non-positive maximum threshold of relaxation change in RGC'
  case (289)
-   msg = 'Non-positive definite volume discrepancy penalty in RGC'
+   msg = 'non-positive definite volume discrepancy penalty in RGC'
 
  case (294)
-   msg = 'Non-positive tolerance for deformation gradient'
+   msg = 'non-positive tolerance for deformation gradient'
 
  case (298)
-   msg = 'Chosen integration method does not exist'
+   msg = 'chosen integration method does not exist'
  case (299)
-   msg = 'Chosen perturbation method does not exist'
+   msg = 'chosen perturbation method does not exist'
 
  case (300)
-   msg = 'This material can only be used with elements with three direct stress components'
+   msg = 'this material can only be used with elements with three direct stress components'
  case (500)
-   msg = 'Unknown lattice type specified'
+   msg = 'unknown lattice type specified'
  case (550)
-   msg = 'Unknown symmetry type specified'
+   msg = 'unknown symmetry type specified'
  case (600)
-   msg = 'Convergence not reached'
+   msg = 'convergence not reached'
  case (610)
-   msg = 'Stress loop not converged'
+   msg = 'stress loop not converged'
 
  case (666)
-   msg = 'Memory leak detected'
+   msg = 'memory leak detected'
  case (667)
-   msg = 'Invalid materialpoint result requested'
+   msg = 'invalid materialpoint result requested'
 
  case (670)
    msg = 'math_check: quat -> axisAngle -> quat failed'
@@ -1351,10 +1375,10 @@ endfunction
    msg = 'math_check: R -> euler -> R failed'
 
  case (700)
-   msg = 'Singular matrix in stress iteration'
+   msg = 'singular matrix in stress iteration'
 
  case (800)
-   msg = 'Matrix inversion error'
+   msg = 'matrix inversion error'
 
 !    Error messages related to parsing of Abaqus input file
  case (900)
@@ -1366,7 +1390,7 @@ endfunction
  case (903)
    msg = 'PARSE ERROR: No Materials defined in input file (Look into section assigments)'
  case (904)
-   msg = 'PARSE ERROR: No elements could be assigned for Elset: '//ext_msg
+   msg = 'PARSE ERROR: No elements could be assigned for Elset: '
  case (905)
    msg = 'PARSE ERROR: Error in mesh_abaqus_map_materials'
  case (906)
@@ -1378,7 +1402,7 @@ endfunction
  case (909)
    msg = 'PARSE ERROR: Incorrect size of mesh_node in mesh_abaqus_build_nodes; must be equal to mesh_Nnodes'
  case(910)
-   msg = 'PARSE ERROR: Incorrect element type mapping in '//ext_msg
+   msg = 'PARSE ERROR: Incorrect element type mapping in '
  
  
  case default

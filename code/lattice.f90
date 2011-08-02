@@ -706,8 +706,8 @@ subroutine lattice_init()
 !**************************************
 !*      Module initialization         *
 !**************************************
- use IO, only: IO_open_file,IO_countSections,IO_countTagInPart,IO_error
- use material, only: material_configfile,material_partPhase
+ use IO, only: IO_open_file,IO_open_jobFile,IO_countSections,IO_countTagInPart,IO_error
+ use material, only: material_configfile,material_localFileExt,material_partPhase
  use debug, only: debug_verbosity
  implicit none
  
@@ -721,7 +721,9 @@ subroutine lattice_init()
    write(6,*)
  !$OMP END CRITICAL (write2out)
 
- if(.not. IO_open_file(fileunit,material_configFile)) call IO_error(100) ! cannot open config file
+ if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
+   if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
+ endif
  Nsections = IO_countSections(fileunit,material_partPhase)
  lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
 ! lattice_Nstructure = Nsections + 2_pInt                                                ! most conservative assumption

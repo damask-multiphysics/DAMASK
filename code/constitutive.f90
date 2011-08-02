@@ -71,7 +71,7 @@ subroutine constitutive_init()
 use prec, only: pReal,pInt
 use debug, only: debug_verbosity, debug_selectiveDebugger, debug_e, debug_i, debug_g
 use numerics, only: numerics_integrator
-use IO, only: IO_error, IO_open_file, IO_open_jobFile
+use IO, only: IO_error, IO_open_file, IO_open_jobFile, IO_write_jobFile
 use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
 use material
 use constitutive_j2
@@ -100,7 +100,9 @@ logical knownConstitution
 
 ! --- PARSE CONSTITUTIONS FROM CONFIG FILE ---
 
-if(.not. IO_open_file(fileunit,material_configFile)) call IO_error (100) ! corrupt config file
+if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
+  if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
+endif
 call constitutive_j2_init(fileunit)
 call constitutive_phenopowerlaw_init(fileunit)
 call constitutive_titanmod_init(fileunit)
@@ -111,7 +113,7 @@ close(fileunit)
 
 ! --- WRITE DESCRIPTION FILE FOR CONSTITUTIVE PHASE OUTPUT ---
 
-if(.not. IO_open_jobFile(fileunit,'outputConstitutive')) then ! problems in writing file
+if(.not. IO_write_jobFile(fileunit,'outputConstitutive')) then ! problems in writing file
   call IO_error (50) 
 endif
 do p = 1,material_Nphase

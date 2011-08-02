@@ -231,7 +231,9 @@ allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
                                     material_Ncrystallite)) ;       crystallite_sizePostResult = 0_pInt
 
 
-if(.not. IO_open_file(file,material_configFile)) call IO_error (100) ! corrupt config file
+if (.not. IO_open_jobFile(file,material_localFileExt)) then             ! no local material configuration present...
+  if (.not.  IO_open_file(file,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
+endif
 line = ''
 section = 0
 
@@ -294,7 +296,7 @@ enddo
 
 ! write description file for crystallite output
 
-if(.not. IO_open_jobFile(file,'outputCrystallite')) call IO_error (50) ! problems in writing file
+if(.not. IO_write_jobFile(file,'outputCrystallite')) call IO_error (50) ! problems in writing file
  
 do p = 1,material_Ncrystallite
   write(file,*)
