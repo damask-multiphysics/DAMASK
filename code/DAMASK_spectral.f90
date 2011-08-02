@@ -63,7 +63,7 @@ program DAMASK_spectral
  integer(pInt), dimension (1+maxNchunksInput*2) :: posInput
  integer(pInt), parameter ::                       maxNchunksGeom = 7    ! 4 identifiers, 3 values
  integer(pInt), dimension (1+2*maxNchunksGeom) ::  posGeom
- integer(pInt) unit, N_l, N_s, N_t, N_n, N_freq, N_Fdot                  ! numbers of identifiers
+ integer(pInt) unit, N_l, N_s, N_t, N_n, N_freq, N_Fdot, N_temperature   ! numbers of identifiers
  character(len=1024) path, line
  logical gotResolution,gotDimension,gotHomogenization
  logical, dimension(9) :: bc_maskvector
@@ -72,7 +72,8 @@ program DAMASK_spectral
  real(pReal)                                    time, time0, timeinc     ! elapsed time, begin of interval, time interval
  real(pReal), dimension (:,:,:), allocatable :: bc_deformation, &        ! applied velocity gradient or time derivative of deformation gradient
                                                 bc_stress                ! stress BC (if applicable)
- real(pReal), dimension(:), allocatable ::      bc_timeIncrement         ! length of increment
+ real(pReal), dimension(:), allocatable ::      bc_timeIncrement, &      ! length of increment
+                                                bc_temperature           ! isothermal starting conditions
  integer(pInt)                                  N_Loadcases, step        ! ToDo: rename?
  integer(pInt), dimension(:), allocatable ::    bc_steps, &              ! number of steps
                                                 bc_frequency, &          ! frequency of result writes
@@ -97,6 +98,7 @@ program DAMASK_spectral
  real(pReal), dimension(6,6) ::                         dsde, c066, s066                       ! Mandel notation of 4th order tensors
  real(pReal), dimension(:,:,:,:,:), allocatable ::      workfft, defgrad, defgradold
  real(pReal), dimension(:,:,:,:), allocatable ::        coordinates
+ real(pReal), dimension(:,:,:), allocatable ::          temperature
  
 ! variables storing information for spectral method
  complex(pReal) ::                                      img
@@ -113,7 +115,7 @@ program DAMASK_spectral
  integer(pInt)  loadcase, ielem, iter, calcmode, CPFEM_mode, ierr, not_converged_counter
  logical errmatinv
  
- real(pReal) temperature                                  ! not used, but needed for call to CPFEM_general
+ !real(pReal) temperature                                  ! not used, but needed for call to CPFEM_general
 
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
  integer*8 plan_div(3)
@@ -139,6 +141,8 @@ program DAMASK_spectral
  N_l = 0_pInt
  N_s = 0_pInt
  N_t = 0_pInt
+ N_temperature = 0_pInt
+ 
  time = 0.0_pReal
  N_n = 0_pInt
  N_freq = 0_pInt
@@ -148,7 +152,6 @@ program DAMASK_spectral
  resolution = 1_pInt
  geomdimension = 0.0_pReal
  
- temperature = 300.0_pReal
 
  if (IargC() /= 2) call IO_error(102)                     ! check for correct number of given arguments
 
@@ -179,6 +182,8 @@ program DAMASK_spectral
                  N_n = N_n+1
             case('f', 'freq', 'frequency')
                  N_freq = N_freq+1
+            case('temp','temperature')
+                 N_temperature = N_temperature+1
         end select
    enddo                                                  ! count all identifiers to allocate memory and do sanity check
  enddo
@@ -193,7 +198,9 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
  allocate (bc_mask(3,3,2,N_Loadcases));             bc_mask = .false.
  allocate (velGradApplied(N_Loadcases));            velGradApplied = .false.
  allocate (bc_timeIncrement(N_Loadcases));          bc_timeIncrement = 0.0_pReal
+ allocate (bc_temperature(N_Loadcases));            bc_temperature = 0.0_pReal
  allocate (bc_steps(N_Loadcases));                  bc_steps = 0_pInt
+ 
  allocate (bc_logscale(N_Loadcases));               bc_logscale = 0_pInt
  allocate (bc_frequency(N_Loadcases));              bc_frequency = 1_pInt
  allocate (followFormerTrajectory(N_Loadcases));    followFormerTrajectory = .true.
@@ -234,6 +241,8 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
          bc_stress(:,:,loadcase) = math_transpose3x3(reshape(valuevector,(/3,3/)))
        case('t','time','delta')                                            ! increment time
            bc_timeIncrement(loadcase) = IO_floatValue(line,posInput,j+1)
+       case('temp','temperature')                                          ! starting temperature
+           bc_temperature(i) = IO_floatValue(line,posInput,j+1)
        case('n','incs','increments','steps')                               ! bc_steps
            bc_steps(loadcase) = IO_intValue(line,posInput,j+1)
        case('logincs','logsteps')                                          ! true, if log scale
@@ -334,6 +343,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
  print '(a,/,f8.4,f8.5,f8.5)','dimension x y z:', geomdimension
  print '(a,i4)','homogenization: ',homog
  
+ allocate (temperature(resolution(1),resolution(2),resolution(3)));
  allocate (defgrad   (resolution(1),       resolution(2),resolution(3),3,3));  defgrad     = 0.0_pReal
  allocate (defgradold(resolution(1),       resolution(2),resolution(3),3,3));  defgradold  = 0.0_pReal
  allocate (coordinates(3,resolution(1),    resolution(2),resolution(3)));      coordinates = 0.0_pReal
@@ -353,7 +363,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
  defgrad_av    = math_I3
  
 ! Initialization of CPFEM_general (= constitutive law) and of deformation gradient field
- call CPFEM_initAll(temperature,1_pInt,1_pInt)
+ call CPFEM_initAll(bc_temperature(1),1_pInt,1_pInt)
  ielem = 0_pInt
  c066 = 0.0_pReal 
  do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
@@ -361,7 +371,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
    defgrad(i,j,k,:,:) = math_I3 
    ielem = ielem +1 
    coordinates(1:3,i,j,k) = mesh_ipCenterOfGravity(1:3,1,ielem)  ! set to initial coordinates ToDo: SHOULD BE UPDATED TO CURRENT POSITION IN FUTURE REVISIONS!!!
-   call CPFEM_general(2,coordinates(1:3,i,j,k),math_I3,math_I3,temperature,0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
+   call CPFEM_general(2,coordinates(1:3,i,j,k),math_I3,math_I3,temperature(i,j,k),0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
    c066 = c066 + dsde
  enddo; enddo; enddo
  c066 = c066 * wgt
@@ -485,8 +495,8 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
                 timeinc = bc_timeIncrement(1)*(2.0**(step - (1 + bc_steps(1))))
             endif
         else                                                                                      ! not-1st loadcase of loglinear scale
-            timeinc = time0 * (  ((1.0+bc_timeIncrement(loadcase)/time0)**( step   *1.0/(bc_steps(loadcase))))  &
-                               - ((1.0+bc_timeIncrement(loadcase)/time0)**((step-1)*1.0/(bc_steps(loadcase)))) )
+            timeinc = time0 * (  ((1.0_pReal+bc_timeIncrement(loadcase)/time0)**(float( step   )/(bc_steps(loadcase))))  &
+                               - ((1.0_pReal+bc_timeIncrement(loadcase)/time0)**(float((step-1))/(bc_steps(loadcase)))) )
         endif
      else                                                                                         ! linear scale
         timeinc = bc_timeIncrement(loadcase)/bc_steps(loadcase)
@@ -552,7 +562,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
            ielem = ielem + 1
            call CPFEM_general(3,&                                          ! collect cycle
                               coordinates(1:3,i,j,k), defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
-                              temperature,timeinc,ielem,1_pInt,&
+                              temperature(i,j,k),timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
          
@@ -563,7 +573,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
            call CPFEM_general(CPFEM_mode,&                                  ! first element in first iteration retains CPFEM_mode 1, 
                               coordinates(1:3,i,j,k),&
                               defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&   ! others get 2 (saves winding forward effort)
-                              temperature,timeinc,ielem,1_pInt,&
+                              temperature(i,j,k),timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
            CPFEM_mode = 2_pInt
          ! c0_temp = c0_temp + dPdF                                         ToDo
@@ -618,7 +628,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(3, coordinates(1:3,i,j,k), defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
-                              temperature,timeinc,ielem,1_pInt,&
+                              temperature(i,j,k),timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
          ielem = 0_pInt                 
@@ -627,7 +637,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
            call CPFEM_general(CPFEM_mode,&                                 ! first element in first iteration retains CPFEM_mode 1,
                               coordinates(1:3,i,j,k),&
                               defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
-                              temperature,timeinc,ielem,1_pInt,&
+                              temperature(i,j,k),timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
            CPFEM_mode = 2_pInt
            workfft(i,j,k,:,:) = pstress
