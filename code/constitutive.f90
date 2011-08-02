@@ -326,7 +326,8 @@ endif
             call IO_error(200,material_phase(g,i,e))      ! unknown constitution
            
         end select
-        constitutive_partionedState0(g,i,e)%p =  constitutive_state0(g,i,e)%p
+        constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p
+        constitutive_state(g,i,e)%p = constitutive_state0(g,i,e)%p    ! need to be defined for first call of constitutive_microstructure in crystallite_init
       enddo
     enddo
   enddo
