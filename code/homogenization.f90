@@ -412,9 +412,9 @@ subroutine materialpoint_stressAndItsTangent(&
            
 #ifndef _OPENMP
            if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
-             write(6,'(a,x,f10.8,/)') '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with&
-                                                                 new materialpoint_subStep:',&
-                                       materialpoint_subStep(i,e)
+             write(6,'(a,x,f10.8,/)') &
+               '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
+               materialpoint_subStep(i,e)
            endif
 #endif
   
