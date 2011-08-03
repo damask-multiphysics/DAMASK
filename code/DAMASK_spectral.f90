@@ -189,8 +189,8 @@ program DAMASK_spectral
  enddo
 
 101 N_Loadcases = N_n
-if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
-  call IO_error(31,ext_msg = path)                        ! error message for incomplete inp !ToDo:change message
+ if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &            ! sanity check
+   call IO_error(31,ext_msg = path)                        ! error message for incomplete inp !ToDo:change message
 
 ! allocate memory depending on lines in input file
  allocate (bc_deformation(3,3,N_Loadcases));        bc_deformation = 0.0_pReal
@@ -198,7 +198,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
  allocate (bc_mask(3,3,2,N_Loadcases));             bc_mask = .false.
  allocate (velGradApplied(N_Loadcases));            velGradApplied = .false.
  allocate (bc_timeIncrement(N_Loadcases));          bc_timeIncrement = 0.0_pReal
- allocate (bc_temperature(N_Loadcases));            bc_temperature = 0.0_pReal
+ allocate (bc_temperature(N_Loadcases));            bc_temperature = 300.0_pReal
  allocate (bc_steps(N_Loadcases));                  bc_steps = 0_pInt
  
  allocate (bc_logscale(N_Loadcases));               bc_logscale = 0_pInt
@@ -242,7 +242,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
        case('t','time','delta')                                            ! increment time
            bc_timeIncrement(loadcase) = IO_floatValue(line,posInput,j+1)
        case('temp','temperature')                                          ! starting temperature
-           bc_temperature(i) = IO_floatValue(line,posInput,j+1)
+           bc_temperature(loadcase) = IO_floatValue(line,posInput,j+1)
        case('n','incs','increments','steps')                               ! bc_steps
            bc_steps(loadcase) = IO_intValue(line,posInput,j+1)
        case('logincs','logsteps')                                          ! true, if log scale
@@ -283,6 +283,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
    print '(a,/,3(3(f12.6,x)/))','bc_stress/MPa:',math_transpose3x3(bc_stress(:,:,loadcase))*1e-6
    print '(a,/,3(3(l,x)/))',    'bc_mask for stress:'     ,transpose(bc_mask(:,:,2,loadcase))
    if (bc_timeIncrement(loadcase) < 0.0_pReal) call IO_error(34,loadcase)                 ! negative time increment
+   print '(a,f12.6)','temperature: ',bc_temperature(loadcase)
    print '(a,f12.6)','time: ',bc_timeIncrement(loadcase)
    if (bc_steps(loadcase) < 1_pInt) call IO_error(35,loadcase)                            ! non-positive increment count
    print '(a,i6)','incs: ',bc_steps(loadcase)
@@ -343,10 +344,10 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
  print '(a,/,f8.4,f8.5,f8.5)','dimension x y z:', geomdimension
  print '(a,i4)','homogenization: ',homog
  
- allocate (temperature(resolution(1),resolution(2),resolution(3)));
- allocate (defgrad   (resolution(1),       resolution(2),resolution(3),3,3));  defgrad     = 0.0_pReal
- allocate (defgradold(resolution(1),       resolution(2),resolution(3),3,3));  defgradold  = 0.0_pReal
- allocate (coordinates(3,resolution(1),    resolution(2),resolution(3)));      coordinates = 0.0_pReal
+ allocate (defgrad    (  resolution(1),resolution(2),resolution(3),3,3));  defgrad     = 0.0_pReal
+ allocate (defgradold (  resolution(1),resolution(2),resolution(3),3,3));  defgradold  = 0.0_pReal
+ allocate (coordinates(3,resolution(1),resolution(2),resolution(3)));      coordinates = 0.0_pReal
+ allocate (temperature(  resolution(1),resolution(2),resolution(3)));      temperature = bc_temperature(1)  ! start out isothermally
  
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
 !allocate (xi         (3,resolution(1)/2+1,resolution(2),resolution(3)));      xi          = 0.0_pReal

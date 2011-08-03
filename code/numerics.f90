@@ -76,7 +76,7 @@ integer(pInt)                   itmax , &                               ! maximu
 !* Random seeding parameters
                                 fixedSeed                               ! fixed seeding for pseudo-random number generator
 !* OpenMP variable
-!$ integer(pInt)                DAMASK_NumThreadsInt                    ! value stored in environment variable DAMASK_NUM_THREADS
+integer(pInt)                DAMASK_NumThreadsInt                    ! value stored in environment variable DAMASK_NUM_THREADS
 
 
 CONTAINS
@@ -174,6 +174,7 @@ subroutine numerics_init()
 
 
 !* determin number of threads from environment variable DAMASK_NUM_THREADS
+  DAMASK_NumThreadsInt = 0_pInt
 !$ call GetEnv('DAMASK_NUM_THREADS',DAMASK_NumThreadsString)                   ! get environment variable DAMASK_NUM_THREADS...
 !$ read(DAMASK_NumThreadsString,'(i4)') DAMASK_NumThreadsInt                   ! ...convert it to integer...
 !$ if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                      ! ...ensure that its at least one...

@@ -39,8 +39,11 @@ endif
 
 endif
 
+ifneq ($(OPENMP), OFF)
 OPENMP_FLAG_ifort =-openmp
 OPENMP_FLAG_gfortran =-fopenmp
+endif
+
 
 OPTIMIZATION_OFF_ifort =-O0
 OPTIMIZATION_OFF_gfortran =-O0
