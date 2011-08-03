@@ -642,7 +642,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
     Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
   endif
 
-  if (mode < 6 .and. debug_verbosity > 0 .and. ((debug_e == cp_en .and. debug_i == IP) .or. .not. debug_selectiveDebugger)) then
+  if (mode < 3 .and. debug_verbosity > 0 .and. ((debug_e == cp_en .and. debug_i == IP) .or. .not. debug_selectiveDebugger)) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,i8,x,i2,/,12(x),6(f10.3,x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1e6
       write(6,'(a,i8,x,i2,/,6(12(x),6(f10.3,x)/))') '<< CPFEM >> jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1e9
