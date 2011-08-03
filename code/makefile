@@ -17,52 +17,61 @@
 # VERSION = 10 (12): version of Intel compiler. More aggressive optimization if VERSION =12
 # PORTABLE = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built
 
-
-ifeq ($(F90), gfortran)
-OPENMP_FLAG =-fopenmp
-OPTIMIZATION_AGGRESSIVE =-O3
-OPTIMIZATION_DEFENSIVE =-O2
-COMPILE_OPTIONS =-xf95-cpp-input
-HEAP_ARRAYS =
-
-else
+ifeq ($(F90), )
 F90 =ifort
+endif
+
+ifeq ($(OPTIMIZATION), )
+OPTIMIZATION =DEFENSIVE
+endif
+MAXOPTI =$(OPTIMIZATION)
+
+ifeq ($(F90), ifort)
 
 ifeq ($(PORTABLE), FALSE)
 PORTABLE_SWITCH =-xHost
 endif
-
-OPENMP_FLAG =-openmp
-HEAP_ARRAYS =-heap-arrays 500000000
-COMPILE_OPTIONS =-fpp -diag-disable 8291,8290
-#fpp: for preprocessor, diag-disable: switch off messages on formatting of output
-OPTIMIZATION_AGGRESSIVE =-O3 -static $(PORTABLE_SWITCH)
-
-ifeq ($(VERSION), 12)
-OPTIMIZATION_DEFENSIVE =$(OPTIMIZATION_AGGRESIVE)
-else
-OPTIMIZATION_DEFENSIVE =-O2
+ifneq ($(VERSION), 12)
+ifeq ($(OPTIMIZATION), AGGRESSIVE)
+MAXOPTI =DEFENSIVE
+endif
 endif
 
 endif
 
+OPENMP_FLAG_ifort =-openmp
+OPENMP_FLAG_gfortran =-fopenmp
 
-COMPILE =$(OPENMP_FLAG) $(COMPILE_OPTIONS) $(OPTIMIZATION_AGGRESSIVE) -c
-COMPILE_HEAP =$(COMPILE) $(HEAP_ARRAYS)
-COMPILE_HEAP_DEFENSIVE =$(OPENMP_FLAG) $(COMPILE_OPTIONS) $(OPTIMIZATION_DEFENSIVE) -c $(HEAP_ARRAYS)
+OPTIMIZATION_OFF_ifort =-O0
+OPTIMIZATION_OFF_gfortran =-O0
+OPTIMIZATION_DEFENSIVE_ifort =-O2
+OPTIMIZATION_DEFENSIVE_gfortran =-O2
+OPTIMIZATION_AGGRESSIVE_ifort =-O3 -static $(PORTABLE_SWITCH)
+OPTIMIZATION_AGGRESSIVE_gfortran =-O3
+
+COMPILE_OPTIONS_ifort =-fpp -diag-disable 8291,8290
+COMPILE_OPTIONS_gfortran =-xf95-cpp-input
+
+HEAP_ARRAYS_ifort =-heap-arrays 500000000
+HEAP_ARRAYS_gfortran =
+
+
+COMPILE =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZATION_${OPTIMIZATION}_${F90}} -c
+COMPILE_HEAP =$(COMPILE) ${HEAP_ARRAYS_${F90}}
+COMPILE_HEAP_MAXOPTI =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZATION_${MAXOPTI}_${F90}} ${HEAP_ARRAYS_${F90}} -c
 
    
 ifeq ($(PRECISION),single)
 DAMASK_spectral_single.exe: DAMASK_spectral_single.o CPFEM.a
-	$(F90) $(OPENMP_FLAG) -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a include/libfftw3f_threads.a include/libfftw3f.a constitutive.a advanced.a basics.a -lpthread
+	$(F90) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a include/libfftw3f_threads.a include/libfftw3f.a constitutive.a advanced.a basics.a -lpthread
 DAMASK_spectral_single.o: DAMASK_spectral_single.f90 CPFEM.o 
-	$(F90) $(COMPILE_HEAP_DEFENSIVE) DAMASK_spectral_single.f90 
+	$(F90) $(COMPILE_HEAP_MAXOPTI) DAMASK_spectral_single.f90 
 
 else
 DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
-	$(F90) $(OPENMP_FLAG) -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a include/libfftw3_threads.a include/libfftw3.a constitutive.a advanced.a basics.a -lpthread
+	$(F90) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a include/libfftw3_threads.a include/libfftw3.a constitutive.a advanced.a basics.a -lpthread
 DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o 
-	$(F90) $(COMPILE_HEAP_DEFENSIVE) DAMASK_spectral.f90 
+	$(F90) $(COMPILE_HEAP_MAXOPTI) DAMASK_spectral.f90 
 endif
 
 CPFEM.a: CPFEM.o

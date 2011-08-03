@@ -520,10 +520,10 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
        temp33_Real = defgrad(i,j,k,:,:)
        if (velGradApplied(loadcase)) &       ! using velocity gradient to calculate new deformation gradient (if not guessing)
          deltaF = math_mul33x33(bc_deformation(:,:,loadcase),defgradold(i,j,k,:,:))
-       defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:) &        ! decide if guessing along former trajectory or apply homogeneous addon (addon only for applied deformation)
-                          + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))&
-                          + (1.0_pReal-guessmode) * mask_defgrad * deltaF *timeinc
-       defgradold(i,j,k,:,:) = temp33_Real   
+         defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:) &        ! decide if guessing along former trajectory or apply homogeneous addon (addon only for applied deformation)
+                            + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))&
+                            + (1.0_pReal-guessmode) * mask_defgrad * deltaF *timeinc
+         defgradold(i,j,k,:,:) = temp33_Real   
      enddo; enddo; enddo
 
      guessmode = 1.0_pReal                              ! keep guessing along former trajectory during same loadcase
@@ -598,7 +598,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
          defgradAimCorr     = - (1.0_pReal - mask_defgrad) &             ! allow alteration of all non-fixed defgrad components
                             * math_mul3333xx33(s0, (mask_stress*(pstress_av - bc_stress(:,:,loadcase)))) ! residual on given stress components
 
-         do m=1,3; do n =1,3                                        ! calculate damper (correction is far too strong) !ToDo: Check for better values
+         do m=1,3; do n =1,3                                        ! calculate damper
            if (defgradAimCorr(m,n) * defgradAimCorrPrev(m,n) < -relevantStrain ** 2.0_pReal) then ! insignificant within relevantstrain around zero
              damper(m,n) = max(0.01_pReal,damper(m,n)*0.8)
            else
@@ -853,7 +853,7 @@ if ((N_l + N_Fdot /= N_n).or.(N_n /= N_t)) &              ! sanity check
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging 
          print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol 
          print '(2(a,E8.2))', ' error deformation gradient: ',err_defgrad,'  Tol. = ', err_defgrad_tol 
-
+                                                                              !ToDo: usefull .and. for err_div?
          if((err_stress > err_stress_tol .or. err_defgrad > err_defgrad_tol) .and. err_div < err_div_tol) then  ! change to calculation of BCs, reset damper etc.
            calcmode = 0_pInt
            defgradAimCorr = 0.0_pReal
