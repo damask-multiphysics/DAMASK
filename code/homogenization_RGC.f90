@@ -594,8 +594,9 @@ function homogenization_RGC_updateState(&
      mornN = homogenization_RGC_interfaceNormal(intFaceN,ip,el)          ! get normal of the interfaces
      iMun = homogenization_RGC_interface4to1(intFaceN,homID)             ! translate the interfaces ID into local 4-dimensional index
      if (iMun .gt. 0) then                                               ! get the corresponding tangent
-       forall(i=1:3,j=1:3,k=1:3,l=1:3) &
-       smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrN)*normN(k)*mornN(l)
+       do i=1,3; do j=1,3; do k=1,3; do l=1,3
+         smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrN)*normN(k)*mornN(l)
+       enddo;enddo;enddo;enddo
                                                                          ! projecting the material tangent dPdF into the interface
                                                                          ! to obtain the Jacobian matrix contribution of dPdF
      endif
@@ -612,8 +613,9 @@ function homogenization_RGC_updateState(&
      mornP = homogenization_RGC_interfaceNormal(intFaceP,ip,el)          ! get normal of the interfaces
      iMun = homogenization_RGC_interface4to1(intFaceP,homID)             ! translate the interfaces ID into local 4-dimensional index
      if (iMun .gt. 0) then                                               ! get the corresponding tangent
-       forall(i=1:3,j=1:3,k=1:3,l=1:3) &
-       smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrP)*normP(k)*mornP(l)
+       do i=1,3; do j=1,3; do k=1,3; do l=1,3
+         smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrP)*normP(k)*mornP(l)
+       enddo;enddo;enddo;enddo
      endif
    enddo
  enddo
