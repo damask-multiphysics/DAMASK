@@ -3066,12 +3066,13 @@ function crystallite_postResults(&
                                       math_I3, &
                                       inDeg, &
                                       math_Mandel6to33
- use mesh, only:                      mesh_element
+ use mesh, only:                      mesh_element, &
+                                      mesh_ipVolume
  use material, only:                  microstructure_crystallite, &
                                       crystallite_Noutput, &
                                       material_phase, &
                                       material_texture, &
-                                      material_volume
+                                      homogenization_Ngrains
  use constitutive, only:              constitutive_sizePostResults, &
                                       constitutive_postResults
  
@@ -3109,7 +3110,7 @@ function crystallite_postResults(&
        crystallite_postResults(c+1) = material_texture(g,i,e)                   ! textureID of grain
      case ('volume')
        mySize = 1_pInt
-       crystallite_postResults(c+1) = material_volume(g,i,e)                    ! grain volume (not fraction but absolute, right?)
+       crystallite_postResults(c+1) = mesh_ipVolume(i,e) / homogenization_Ngrains(mesh_element(3,e)) ! grain volume (not fraction but absolute)
      case ('orientation')
        mySize = 4_pInt
        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,g,i,e)    ! grain orientation as quaternion

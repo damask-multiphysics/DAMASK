@@ -322,6 +322,7 @@
    close (fileUnit)
    
    call mesh_build_subNodeCoords()
+   call mesh_build_ipCoordinates()
    call mesh_build_ipVolumes()
    call mesh_build_ipAreas()
    call mesh_build_nodeTwins()
@@ -3134,32 +3135,23 @@ endsubroutine
 
 
 !***********************************************************
-! calculation of IP volume
+! calculation of IP coordinates
 !
 ! allocate globals
-! _ipVolume
+! _ipCenterOfGravity
 !***********************************************************
- subroutine mesh_build_ipVolumes()
+ subroutine mesh_build_ipCoordinates()
  
  use prec, only: pInt, tol_gravityNodePos
- use math, only: math_volTetrahedron
  implicit none
  
  integer(pInt) e,f,t,i,j,k,n
- integer(pInt), parameter :: Ntriangles = FE_NipFaceNodes-2                     ! each interface is made up of this many triangles
  logical(pInt), dimension(mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNode      ! flagList to find subnodes determining center of grav
  real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos   ! coordinates of subnodes determining center of grav
- real(pReal), dimension(3,FE_NipFaceNodes) :: nPos                              ! coordinates of nodes on IP face
- real(pReal), dimension(Ntriangles,FE_NipFaceNodes) :: volume                   ! volumes of possible tetrahedra
  real(pReal), dimension(3) :: centerOfGravity
- logical :: calcIPvolume = .false.
 
- if (.not. allocated(mesh_ipVolume)) then
-   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
+ if (.not. allocated(mesh_ipCenterOfGravity)) then
    allocate(mesh_ipCenterOfGravity(3,mesh_maxNips,mesh_NcpElems))
-   mesh_ipVolume = 0.0_pReal
-   mesh_ipCenterOfGravity = 0.0_pReal
-   calcIPvolume = .true.
  endif
  
  do e = 1,mesh_NcpElems                                    ! loop over cpElems
@@ -3187,23 +3179,51 @@ endsubroutine
      enddo
      centerOfGravity = sum(gravityNodePos,2)/count(gravityNode)
      mesh_ipCenterOfGravity(:,i,e) = centerOfGravity
-     
-     if (calcIPvolume) then
-       do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
-         forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
-         forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles) &  ! start at each interface node and build valid triangles to cover interface
-           volume(j,n) = math_volTetrahedron(nPos(:,n), &    ! calc volume of respective tetrahedron to CoG
-                                             nPos(:,1+mod(n-1 +j  ,FE_NipFaceNodes)), & ! start at offset j
-                                             nPos(:,1+mod(n-1 +j+1,FE_NipFaceNodes)), & ! and take j's neighbor
-                                             centerOfGravity)
-         mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
-       enddo
-       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes  ! renormalize with interfaceNodeNum due to loop over them
-     endif
-
    enddo
  enddo
+
+ endsubroutine
+
+
+!***********************************************************
+! calculation of IP volume
+!
+! allocate globals
+! _ipVolume
+!***********************************************************
+ subroutine mesh_build_ipVolumes()
  
+ use prec, only: pInt, tol_gravityNodePos
+ use math, only: math_volTetrahedron
+ implicit none
+ 
+ integer(pInt) e,f,t,i,j,n
+ integer(pInt), parameter :: Ntriangles = FE_NipFaceNodes-2                     ! each interface is made up of this many triangles
+ real(pReal), dimension(3,FE_NipFaceNodes) :: nPos                              ! coordinates of nodes on IP face
+ real(pReal), dimension(Ntriangles,FE_NipFaceNodes) :: volume                   ! volumes of possible tetrahedra
+
+ if (.not. allocated(mesh_ipVolume)) then
+   allocate(mesh_ipVolume(mesh_maxNips,mesh_NcpElems))
+ endif
+ 
+ mesh_ipVolume = 0.0_pReal 
+ do e = 1,mesh_NcpElems                                    ! loop over cpElems
+   t = mesh_element(2,e)                                   ! get elemType
+   do i = 1,FE_Nips(t)                                     ! loop over IPs of elem
+     do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
+       forall (n = 1:FE_NipFaceNodes) &
+         nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+       forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles) &  ! start at each interface node and build valid triangles to cover interface
+         volume(j,n) = math_volTetrahedron(nPos(:,n), &    ! calc volume of respective tetrahedron to CoG
+                                           nPos(:,1+mod(n-1 +j  ,FE_NipFaceNodes)), & ! start at offset j
+                                           nPos(:,1+mod(n-1 +j+1,FE_NipFaceNodes)), & ! and take j's neighbor
+                                           mesh_ipCenterOfGravity(:,i,e))
+       mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
+     enddo
+     mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes  ! renormalize with interfaceNodeNum due to loop over them
+   enddo
+ enddo
+
  endsubroutine
 
 

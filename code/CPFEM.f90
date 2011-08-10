@@ -275,6 +275,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                                                       mesh_ipCenterOfGravity, &
                                                       mesh_build_subNodeCoords, &
                                                       mesh_build_ipVolumes, &
+                                                      mesh_build_ipCoordinates, &
                                                       FE_Nips, &
                                                       FE_Nnodes
   use material, only:                                 homogenization_maxNgrains, &
@@ -532,9 +533,10 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
           endif
-          if (any(.not. crystallite_localConstitution) .and. FEsolver == 'Marc') then
+          if (FEsolver == 'Marc') then                                    ! marc updates nodal coordinates, whereas Abaqus and spectral solver directly update ip coordinates. In the latter case it is not possible to get the current ip volume, since the current nodal positions are unknown
             call mesh_build_subNodeCoords()                               ! update subnodal coordinates
-            call mesh_build_ipVolumes()                                   ! update ip center of gravity
+            call mesh_build_ipCoordinates()                               ! update ip coordinates
+            call mesh_build_ipVolumes()                                   ! update ip volumes
           endif
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
