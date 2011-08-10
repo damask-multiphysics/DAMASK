@@ -4,7 +4,7 @@
 # default is PRECISION=double
 # be sure to remove all librarys with different PRECISION (make clean)
 # 
-# Uses openmp to parallelise the material subroutines (set number of cores with "export MPIE_NUM_THREADS=n" to n)
+# Uses openmp to parallelise the material subroutines (set number of cores with "export DAMASK_NUM_THREADS=n" to n)
 # Uses linux threads to parallelise fftw3 (should also be possible with openmp)
 # Besides of the f90 files written at MPIE, the two library files of fftw3 "libfftw3_threads.a" "libfftw3.a" are also needed
 # Install fftw3 (v3.2.2 is tested) with "./configure --enable-threads --enable-float"  and "make", "make install" is not needed
@@ -16,6 +16,9 @@
 # F90 = ifort (gfortran): compiler, choose Intel or GNU
 # VERSION = 10 (12): version of Intel compiler. More aggressive optimization if VERSION =12
 # PORTABLE = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built
+# OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE): Optimization mode, O0, O2, O3
+# OPENMP = TRUE (FALSE): OpenMP multiprocessor support
+# AMCL = FALSE (TRUE): link with AMD math core library (v. 4.4 need to be installed)
 
 ifeq ($(F90), )
 F90 =ifort
@@ -42,8 +45,15 @@ endif
 ifneq ($(OPENMP), OFF)
 OPENMP_FLAG_ifort =-openmp
 OPENMP_FLAG_gfortran =-fopenmp
+OPENMP =ON
 endif
 
+ifeq ($(AMCL), ON)
+BLAS_ON_ifort =-L /opt/acml4.4.0/ifort64_mp/lib -lacml_mp
+BLAS_OFF_ifort =-L /opt/acml4.4.0/ifort64/lib -lacml
+BLAS_ON_gfortran =
+BLAS_ON_gfortran =
+endif
 
 OPTIMIZATION_OFF_ifort =-O0
 OPTIMIZATION_OFF_gfortran =-O0
@@ -66,13 +76,15 @@ COMPILE_HEAP_MAXOPTI =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZA
    
 ifeq ($(PRECISION),single)
 DAMASK_spectral_single.exe: DAMASK_spectral_single.o CPFEM.a
-	$(F90) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a include/libfftw3f_threads.a include/libfftw3f.a constitutive.a advanced.a basics.a -lpthread
+	$(F90) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a include/libfftw3f_threads.a include/libfftw3f.a constitutive.a advanced.a basics.a\
+    -lpthread ${BLAS_${OPENMP}_${F90}}
 DAMASK_spectral_single.o: DAMASK_spectral_single.f90 CPFEM.o 
 	$(F90) $(COMPILE_HEAP_MAXOPTI) DAMASK_spectral_single.f90 
 
 else
 DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
-	$(F90) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a include/libfftw3_threads.a include/libfftw3.a constitutive.a advanced.a basics.a -lpthread
+	$(F90) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a include/libfftw3_threads.a include/libfftw3.a constitutive.a advanced.a basics.a\
+    -lpthread ${BLAS_${OPENMP}_${F90}}
 DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o 
 	$(F90) $(COMPILE_HEAP_MAXOPTI) DAMASK_spectral.f90 
 endif
