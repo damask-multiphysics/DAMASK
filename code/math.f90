@@ -1165,6 +1165,23 @@ pure function math_transpose3x3(A)
  forall (i=1:9) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
 
  endfunction math_Plain33to9
+ 
+ 
+!********************************************************************
+! convert symmetric 3x3 matrix into plain vector 6x1
+!********************************************************************
+ pure function math_Plain33to6(m33)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3), intent(in) :: m33
+ real(pReal), dimension(6) :: math_Plain33to6
+ integer(pInt) i
+ 
+ forall (i=1:6) math_Plain33to6(i) = m33(mapMandel(1,i),mapMandel(2,i))
+
+ endfunction math_Plain33to6
 
 
 !********************************************************************
@@ -1313,6 +1330,43 @@ pure function math_transpose3x3(A)
 
  endfunction math_Mandel3333to66
 
+!********************************************************************
+! convert symmetric 3x3x3x3 tensor into Plain matrix 6x6
+!********************************************************************
+ pure function math_Plain3333to66(m3333)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(3,3,3,3), intent(in) :: m3333
+ real(pReal), dimension(6,6) :: math_Plain3333to66
+ integer(pInt) i,j
+ 
+ forall (i=1:6,j=1:6) math_Plain3333to66(i,j) = &
+        m3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j))
+
+ endfunction math_Plain3333to66
+ 
+!********************************************************************
+! convert Plain matrix 6x6 back to symmetric 3x3x3x3 tensor
+!********************************************************************
+ pure function math_Plain66to3333(m66)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ real(pReal), dimension(6,6), intent(in) :: m66
+ real(pReal), dimension(3,3,3,3) :: math_Plain66to3333
+ integer(pInt) i,j
+ 
+ forall (i=1:6,j=1:6) 
+   math_Plain66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j)) = m66(i,j)
+   math_Plain66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(1,j),mapMandel(2,j)) = m66(i,j)
+   math_Plain66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(2,j),mapMandel(1,j)) = m66(i,j)
+   math_Plain66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(2,j),mapMandel(1,j)) = m66(i,j)
+ end forall
+
+ endfunction math_Plain66to3333
 
 
 !********************************************************************

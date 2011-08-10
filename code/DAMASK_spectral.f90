@@ -93,12 +93,17 @@ program DAMASK_spectral
                                                         pstress, pstress_av, cstress_av, defgrad_av,&
                                                         defgradAim, defgradAimOld, defgradAimCorr, defgradAimCorrPrev,&
                                                         mask_stress, mask_defgrad, deltaF                          
- real(pReal), dimension(3,3,3,3) ::                     dPdF, c0, s0       !, c0_temp          ! ToDo
- real(pReal), dimension(6) ::                           cstress                                ! cauchy stress in Mandel notation
- real(pReal), dimension(6,6) ::                         dsde, c066, s066                       ! Mandel notation of 4th order tensors
+ real(pReal), dimension(3,3,3,3) ::                     dPdF, c_current, s_current, c0_reference  ! ToDo
+ real(pReal), dimension(6) ::                           cstress, stress_res, delta_defgrad        ! cauchy stress, residuum_stress, change of defgrad in Mandel notation
+ real(pReal), dimension(6,6) ::                         dsde, c_current66, s_current66                         ! Mandel notation of 4th order tensors
+ real(pReal), dimension(9,9) ::                         s_current99, c_current99                        
  real(pReal), dimension(:,:,:,:,:), allocatable ::      workfft, defgrad, defgradold
  real(pReal), dimension(:,:,:,:), allocatable ::        coordinates
  real(pReal), dimension(:,:,:), allocatable ::          temperature
+ real(pReal), dimension(:,:), allocatable ::            s_reduced, c_reduced
+ logical, dimension(6) ::                               mask_stress6
+ logical, dimension(9) ::                               mask_stress9
+ integer(pInt)                                          size_reduced
  
 ! variables storing information for spectral method
  complex(pReal) ::                                      img
@@ -121,6 +126,8 @@ program DAMASK_spectral
  integer*8 plan_div(3)
  real(pReal), dimension(:,:,:,:), allocatable ::      divergence
  complex(pReal), dimension(:,:,:,:), allocatable ::   divergence_hat
+ complex(pReal), dimension(:,:,:,:), allocatable ::   divergence_hat_full
+ complex(pReal), dimension(:,:,:,:), allocatable ::   divergence_hat_full2
  complex(pReal), dimension(:,:,:,:,:), allocatable :: pstress_field_hat, pstress_field
  real(pReal) ev1, ev2, ev3
  real(pReal), dimension(3,3) :: evb1, evb2, evb3
@@ -128,6 +135,7 @@ program DAMASK_spectral
          err_div_avg_inf,  err_div_avg_two,  err_div_max_inf,  err_div_max_two, &
          err_div_avg_inf2, err_div_avg_two2, err_div_max_two2, err_div_max_inf2, &
          err_real_div_avg_inf,  err_real_div_avg_two,  err_real_div_max_inf,  err_real_div_max_two, &
+         err_real_div_avg_inf2,  err_real_div_avg_two2,  err_real_div_max_inf2,  err_real_div_max_two2, &
          rho
 !!!!!!!!!!!!!!!!!!!!!!!!  end divergence debugging
 
@@ -267,7 +275,7 @@ program DAMASK_spectral
    print '(a,i5)', 'Loadcase:', loadcase
    if (.not. followFormerTrajectory(loadcase)) &
      print '(a)', 'drop guessing along trajectory'
-   if (any(bc_mask(:,:,1,loadcase) .and. bc_mask(:,:,2,loadcase)))&                ! check whther stress and strain is prescribed simultaneously
+    if (any(bc_mask(:,:,1,loadcase) .eqv. bc_mask(:,:,2,loadcase)))&                ! exclusive or masking only
      call IO_error(31,loadcase)
    if (velGradApplied(loadcase)) then
      do j = 1, 3
@@ -352,8 +360,10 @@ program DAMASK_spectral
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
 !allocate (xi         (3,resolution(1)/2+1,resolution(2),resolution(3)));      xi          = 0.0_pReal
  allocate (xi         (3,resolution(1),resolution(2),resolution(3)));      xi          = 0.0_pReal
- allocate (divergence        (resolution(1)    ,resolution(2),resolution(3),3));      divergence          = 0.0_pReal
- allocate (divergence_hat    (resolution(1)/2+1,resolution(2),resolution(3),3));      divergence_hat      = 0.0_pReal
+ allocate (divergence         (resolution(1)    ,resolution(2),resolution(3),3));      divergence          = 0.0_pReal
+ allocate (divergence_hat     (resolution(1)/2+1,resolution(2),resolution(3),3));      divergence_hat      = 0.0_pReal
+ allocate (divergence_hat_full(resolution(1),resolution(2),resolution(3),3));      divergence_hat_full     = 0.0_pReal
+ allocate (divergence_hat_full2(resolution(1),resolution(2),resolution(3),3));      divergence_hat_full2     = 0.0_pReal
  allocate (pstress_field_hat(resolution(1),resolution(2),resolution(3),3,3)); pstress_field_hat = 0.0_pReal
  allocate (pstress_field    (resolution(1),resolution(2),resolution(3),3,3)); pstress_field = 0.0_pReal
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging
@@ -366,20 +376,16 @@ program DAMASK_spectral
 ! Initialization of CPFEM_general (= constitutive law) and of deformation gradient field
  call CPFEM_initAll(bc_temperature(1),1_pInt,1_pInt)
  ielem = 0_pInt
- c066 = 0.0_pReal 
+ c_current = 0.0_pReal 
  do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-   defgradold(i,j,k,:,:) = math_I3                    ! no deformation at the beginning
+   defgradold(i,j,k,:,:) = math_I3                       ! no deformation at the beginning
    defgrad(i,j,k,:,:) = math_I3 
    ielem = ielem +1 
    coordinates(1:3,i,j,k) = mesh_ipCenterOfGravity(1:3,1,ielem)  ! set to initial coordinates ToDo: SHOULD BE UPDATED TO CURRENT POSITION IN FUTURE REVISIONS!!!
    call CPFEM_general(2,coordinates(1:3,i,j,k),math_I3,math_I3,temperature(i,j,k),0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
-   c066 = c066 + dsde
+   c_current = c_current + dPdF
  enddo; enddo; enddo
- c066 = c066 * wgt
- c0 = math_mandel66to3333(c066)                       ! linear reference material stiffness
- call math_invert(6, math_Mandel66toPlain66(c066), s066,i, errmatinv)         ! ToDo
- if(errmatinv) call IO_error(800)                     ! Matrix inversion error ToDo
- s0 = math_mandel66to3333(math_Plain66toMandel66(s066))                       ! ToDo
+ c0_reference = c_current * wgt  ! linear reference material stiffness
  
  do k = 1, resolution(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
     k_s(3) = k-1
@@ -409,7 +415,7 @@ program DAMASK_spectral
        do l = 1,3; do m = 1,3
           xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
        enddo; enddo
-       temp33_Real = math_inv3x3(math_mul3333xx33(c0, xiDyad)) 
+       temp33_Real = math_inv3x3(math_mul3333xx33(c0_reference, xiDyad)) 
      else
         xiDyad  = 0.0_pReal
         temp33_Real = 0.0_pReal
@@ -425,9 +431,11 @@ program DAMASK_spectral
 
 ! Initialization of fftw (see manual on fftw.org for more details)
 
- call dfftw_init_threads(ierr)
- if(ierr == 0_pInt) call IO_error(104,ierr)
- call dfftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
+ if(DAMASK_NumThreadsInt>0_pInt) then
+   call dfftw_init_threads(ierr)
+   if(ierr == 0_pInt) call IO_error(104,ierr)
+   call dfftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
+ endif
 
  call dfftw_plan_many_dft_r2c(plan_fft(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
    workfft,(/resolution(1)  +2,resolution(2),resolution(3)/),1,(resolution(1)  +2)*resolution(2)*resolution(3),&
@@ -438,13 +446,17 @@ program DAMASK_spectral
    
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
  call dfftw_plan_many_dft(plan_div(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
-   pstress_field,(/resolution(1),resolution(2),resolution(3)/),1,(resolution(1)*resolution(2)*resolution(3)),&
-   pstress_field_hat,     (/resolution(1),resolution(2),resolution(3)/),1,(resolution(1)*resolution(2)*resolution(3)),&
+   pstress_field,    (/resolution(1),resolution(2),resolution(3)/),1,(resolution(1)*resolution(2)*resolution(3)),&
+   pstress_field_hat,(/resolution(1),resolution(2),resolution(3)/),1,(resolution(1)*resolution(2)*resolution(3)),&
                                                                                      FFTW_FORWARD,FFTW_PATIENT)
- call dfftw_plan_many_dft_c2r(plan_div(2),3,(/resolution(1),resolution(2),resolution(3)/),3/3,&
+ call dfftw_plan_many_dft_c2r(plan_div(2),3,(/resolution(1),resolution(2),resolution(3)/),3,&
    divergence_hat,    (/resolution(1)/2+1,resolution(2),resolution(3)/),1,(resolution(1)/2+1)*resolution(2)*resolution(3),&
    divergence        ,(/resolution(1),    resolution(2),resolution(3)/),1, resolution(1)*     resolution(2)*resolution(3),&
-                                                                                                     FFTW_PATIENT) 
+                                                                                                     FFTW_PATIENT)
+call dfftw_plan_many_dft(plan_div(3),3,(/resolution(1),resolution(2),resolution(3)/),3,&
+   divergence_hat_full,(/resolution(1),resolution(2),resolution(3)/),1,resolution(1)*resolution(2)*resolution(3),&
+   divergence_hat_full2,(/resolution(1),resolution(2),resolution(3)/),1,resolution(1)* resolution(2)*resolution(3),&
+                                                                                            FFTW_BACKWARD,FFTW_PATIENT) 
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging
 
 ! write header of output file
@@ -483,6 +495,7 @@ program DAMASK_spectral
    
    mask_defgrad =  merge(ones,zeroes,bc_mask(:,:,1,loadcase))
    mask_stress =  merge(ones,zeroes,bc_mask(:,:,2,loadcase))
+
    deltaF = bc_deformation(:,:,loadcase)                                  ! only valid for given fDot. will be overwritten later in case L is given
 !*************************************************************
 ! loop oper steps defined in input file for current loadcase
@@ -567,7 +580,7 @@ program DAMASK_spectral
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
          
-       ! c0_temp = 0.0_pReal    !for calculation of s0 ToDo
+         c_current = 0.0_pReal
          ielem = 0_pInt       
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
@@ -577,29 +590,110 @@ program DAMASK_spectral
                               temperature(i,j,k),timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
            CPFEM_mode = 2_pInt
-         ! c0_temp = c0_temp + dPdF                                         ToDo
            workfft(i,j,k,:,:) = pstress                                     ! build up average P-K stress 
            cstress_av = cstress_av + math_mandel6to33(cstress)              ! build up average Cauchy stress
+           c_current = c_current + dPdF
          enddo; enddo; enddo
-       ! call math_invert(9, math_plain3333to99(c0_temp),s099,i,errmatinv)        ToDo       
-       ! if(errmatinv) call IO_error(800,ext_msg = "problem in c0 inversion")     ToDo
-       ! s0 = math_plain99to3333(s099) *real(resolution(1)*resolution(2)*resolution(3), pReal) ! average s0 for calculation of BC  ToDo
-         
+         c_current = c_current * wgt
          cstress_av = cstress_av * wgt
          do n = 1,3; do m = 1,3
-           pstress_av(m,n) = sum(workfft(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
-           defgrad_av(m,n) = sum(defgrad(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
+           pstress_av(m,n) = sum(workfft(1:resolution(1),:,:,m,n)) * wgt
+           defgrad_av(m,n) = sum(defgrad(:              ,:,:,m,n)) * wgt
          enddo; enddo
 
          err_stress = maxval(abs(mask_stress * (pstress_av - bc_stress(:,:,loadcase))))
          err_stress_tol = maxval(abs(pstress_av))*0.8*err_stress_tolrel
-         
-         print*, 'Correcting deformation gradient to fullfill BCs'
-         defgradAimCorrPrev = defgradAimCorr
-         defgradAimCorr     = - (1.0_pReal - mask_defgrad) &             ! allow alteration of all non-fixed defgrad components
-                            * math_mul3333xx33(s0, (mask_stress*(pstress_av - bc_stress(:,:,loadcase)))) ! residual on given stress components
+                
+        call math_invert(9, math_plain3333to99(c_current),s_current99,i,errmatinv)
+        if(errmatinv) then
+          print*, 'using symmetric compliance'
+          pause !somehow not working, maybe we don't need it
+          !mask_stress6 = math_Plain33to6_logical(bc_mask(:,:,2,loadcase))
+          size_reduced = count(mask_stress6)
+          allocate (c_reduced(size_reduced,size_reduced));          c_reduced = 0.0_pReal
+          allocate (s_reduced(size_reduced,size_reduced));          s_reduced = 0.0_pReal
+          c_current66 =  math_Plain3333to66(c_current)
+          k = 0_pInt
+          do n = 1,6
+            if(mask_stress6(n)) then
+              k = k + 1_pInt
+              j = 0_pInt
+              do m = 1,6
+                if(mask_stress6(m)) then
+                  j = j + 1_pInt
+                  c_reduced(k,j) = c_current66(n,m)
+                endif
+              enddo
+            endif
+          enddo
+          call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)
+          if(errmatinv) call IO_error(800)
+          s_current66 = 0.0_pReal
+          k = 0_pInt
+          do n = 1,6
+            if(mask_stress6(n)) then
+              k = k + 1_pInt
+              j = 0_pInt
+              do m = 1,6
+                if(mask_stress6(m)) then
+                  j = j + 1_pInt
+                  s_current66(n,m) = s_reduced(k,j)
+                endif
+              enddo
+            endif
+          enddo
+          s_current = math_Plain66to3333(s_current66)
+        else
+          print*, 'using non-symmetric compliance'
+          mask_stress9 = reshape(bc_mask(:,:,2,loadcase),(/9/))
+          size_reduced = count(mask_stress9)
+          allocate (c_reduced(size_reduced,size_reduced));          c_reduced = 0.0_pReal
+          allocate (s_reduced(size_reduced,size_reduced));          s_reduced = 0.0_pReal
+           c_current99 = math_Plain3333to99(c_current)
+           k = 0_pInt
+           do n = 1,9
+             if(mask_stress9(n)) then
+               k = k + 1_pInt
+               j = 0_pInt
+               do m = 1,9
+                 if(mask_stress9(m)) then
+                   j = j + 1_pInt
+                   c_reduced(k,j) = c_current99(n,m)
+                 endif
+               enddo
+             endif
+           enddo
+           call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)
+           if(errmatinv) call IO_error(800)
 
+           s_current99 = 0.0_pReal
+           k = 0_pInt
+           do n = 1,9
+             if(mask_stress9(n)) then
+               k = k + 1_pInt
+               j = 0_pInt
+               do m = 1,9
+                 if(mask_stress9(m)) then
+                   j = j + 1_pInt
+                   s_current99(n,m) = s_reduced(k,j)
+                 endif
+               enddo
+             endif
+           enddo
+           s_current = math_Plain99to3333(s_current99)
+         endif
+         deallocate(c_reduced)
+         deallocate(s_reduced)
+         print*, 'Correcting deformation gradient to fullfill BCs'
+
+         defgradAimCorr = - math_mul3333xx33(s_current, ((pstress_av - bc_stress(:,:,loadcase)))) ! residual on given stress components
+
+         print*, 'change of Stress:'
+         print '(3(f10.4,x))', -math_transpose3x3(math_mul3333xx33(c_current,defgradAimCorr))/1.e6
+         print*, 'defgradAimCorr:'
+         print '(3(e12.3,x))', math_transpose3x3(defgradAimCorr)
          do m=1,3; do n =1,3                                        ! calculate damper
+           ! if ( sign(1.0_pReal,defgradAimCorr(m,n))/=sign(1.0_pReal,defgradAimCorrPrev(m,n))) then
            if (defgradAimCorr(m,n) * defgradAimCorrPrev(m,n) < -relevantStrain ** 2.0_pReal) then ! insignificant within relevantstrain around zero
              damper(m,n) = max(0.01_pReal,damper(m,n)*0.8)
            else
@@ -632,7 +726,10 @@ program DAMASK_spectral
                               temperature(i,j,k),timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
-         ielem = 0_pInt                 
+         ielem = 0_pInt
+!!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
+         pstress_field = cmplx(0.0_pReal,0.0_pReal)
+!!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&                                 ! first element in first iteration retains CPFEM_mode 1,
@@ -655,8 +752,8 @@ program DAMASK_spectral
          print *, 'Calculating equilibrium using spectral method'
          err_div = 0.0_pReal
          p_hat_avg = 0.0_pReal
-
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
+
          p_hat_avg_inf = 0.0_pReal 
          p_hat_avg_two = 0.0_pReal
          p_real_avg_inf = 0.0_pReal 
@@ -673,6 +770,10 @@ program DAMASK_spectral
          err_real_div_avg_two = 0.0_pReal
          err_real_div_max_inf = 0.0_pReal
          err_real_div_max_two = 0.0_pReal
+         err_real_div_avg_inf2 = 0.0_pReal
+         err_real_div_avg_two2 = 0.0_pReal
+         err_real_div_max_inf2 = 0.0_pReal
+         err_real_div_max_two2 = 0.0_pReal
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging
 
          call dfftw_execute_dft_r2c(plan_fft(1),workfft,workfft)           ! FFT of pstress
@@ -690,15 +791,17 @@ program DAMASK_spectral
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging
          
          do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
+ !             print*, workfft(2*i-1,j,k,:,:)+workfft(i*2,j,k,:,:)*cmplx(0.0,1.0)-pstress_field_hat(i,j,k,:,:) 
               err_div = max(err_div, maxval(abs(math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+& ! maximum of L infinity norm of div(stress), Suquet 2001
                                                                   workfft(i*2,  j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))))  
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging
+              !if(abs(sqrt(sum(math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+workfft(i*2,j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))**2.0))>err_div_max_two) print*, i,j,k
               err_div_max_two = max(err_div_max_two,abs(sqrt(sum(math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+&  ! maximum of L two norm of div(stress), Suquet 2001
-                                     workfft(i*2,  j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))**2.0)))
+                                     workfft(i*2,j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))**2.0)))
               err_div_avg_inf = err_div_avg_inf    + (maxval(abs(math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+&  ! sum of squared L infinity norm of div(stress), Suquet 1998
-                                     workfft(i*2,  j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))))**2.0
-              err_div_avg_two = err_div_avg_two     + abs(sum((math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+& ! sum of squared L2 norm of div(stress) ((sqrt())**2 missing), Suquet 1998
-                                     workfft(i*2,  j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))**2.0))
+                                     workfft(i*2,j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))))**2.0
+              err_div_avg_two = err_div_avg_two +   abs(sum((math_mul33x3_complex(workfft(i*2-1,j,k,:,:)+& ! sum of squared L2 norm of div(stress) ((sqrt())**2 missing), Suquet 1998
+                                     workfft(i*2,j,k,:,:)*img,xi(:,i,j,k)*minval(geomdimension)))**2.0))
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging
         enddo; enddo; enddo
 
@@ -708,23 +811,27 @@ program DAMASK_spectral
           do k = 1, resolution(3)
             n = 1
             do j = 1, resolution(2)
+              !print*, xi(:,resolution(1)-i,j,k) + xi(:,i+2,n,m), resolution(1)-i,j,k
               err_div_avg_inf = err_div_avg_inf + (maxval(abs(math_mul33x3_complex&
-                     (workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*img,xi(:,resolution(1)-i,j,k)*minval(geomdimension)))))**2.0 
-              err_div_avg_two = err_div_avg_two +  abs(sum((math_mul33x3_complex(workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*img,&
+                     (workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*cmplx(0.0,-1.0),xi(:,resolution(1)-i,j,k)*minval(geomdimension)))))**2.0 
+              err_div_avg_two = err_div_avg_two +  abs(sum((math_mul33x3_complex(workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*cmplx(0.0,-1.0),&
                                                    xi(:,resolution(1)-i,j,k)*minval(geomdimension)))**2.0))
-              ! workfft(resolution(1)-i,j,k,:,:) = conjg(workfft(2+i,n,m,:,:)) original code for complex array, above little bit confusing because compley data is stored in real array
+!              print*, workfft(3+2*i,n,m,:,:)+workfft(4+i*2,n,m,:,:)*cmplx(0.0,-1.0)-pstress_field_hat(resolution(1)-i,j,k,:,:)
+
+              ! workfft(resolution(1)-i,j,k,:,:) = conjg(workfft(2+i,n,m,:,:)) original code for complex array, code above is a little bit confusing because compley data is stored in real array
               if(n == 1) n = resolution(2) +1
               n = n-1
            enddo
            if(m == 1) m = resolution(3) +1
              m = m -1
         enddo; enddo
-         
+        ! print*, 'new'
         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1) !calculating divergence criteria for full field (no complex symmetry)
-           err_div_max_two2 = max(err_div_max_two,abs(sqrt(sum(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*&
+           if (abs(sqrt(sum(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*minval(geomdimension)))**2.0))>err_div_max_two2) print*, i,j,k
+           err_div_max_two2 = max(err_div_max_two2,abs(sqrt(sum(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*&
            minval(geomdimension)))**2.0)))
-           err_div_max_inf2 = max(err_div_max_inf2 , (maxval(abs(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*&
-           minval(geomdimension))))))  
+           err_div_max_inf2 = max(err_div_max_inf2,(maxval(abs(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),xi(:,i,j,k)*&
+           minval(geomdimension))))))
            err_div_avg_inf2 = err_div_avg_inf2 + (maxval(abs(math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),&
                      xi(:,i,j,k)*minval(geomdimension)))))**2.0
            err_div_avg_two2 = err_div_avg_two2 + abs(sum((math_mul33x3_complex(pstress_field_hat(i,j,k,:,:),&
@@ -744,30 +851,65 @@ program DAMASK_spectral
 
          err_div = err_div/p_hat_avg   !weigthting of error by average stress (L infinity norm)
         
-!!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging        
+!!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging  
+divergence_hat_full=0.0      
 !divergence in real space         
          do k = 1, resolution(3)                                       ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
-           k_s(3) = k-1
-           if(k > resolution(3)/2+1) k_s(3) = k_s(3)-resolution(3)
            do j = 1, resolution(2)
-             k_s(2) = j-1
-             if(j > resolution(2)/2+1) k_s(2) = k_s(2)-resolution(2)  
              do i = 1, resolution(1)/2+1
-               k_s(1) = i-1
-          divergence_hat(i,j,k,1) = (workfft(i*2-1,j,k,1,1)+ workfft(i*2,j,k,1,1)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
-                                  + (workfft(i*2-1,j,k,2,1)+ workfft(i*2,j,k,2,1)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
-                                  + (workfft(i*2-1,j,k,3,1)+ workfft(i*2,j,k,3,1)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
-          divergence_hat(i,j,k,2) = (workfft(i*2-1,j,k,1,2)+ workfft(i*2,j,k,1,2)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
-                                  + (workfft(i*2-1,j,k,2,2)+ workfft(i*2,j,k,2,2)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
-                                  + (workfft(i*2-1,j,k,3,2)+ workfft(i*2,j,k,3,2)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
-          divergence_hat(i,j,k,3) = (workfft(i*2-1,j,k,1,3)+ workfft(i*2,j,k,1,3)*img)*(real(k_s(1))*img*pi*2.0)/geomdimension(1)&
-                                  + (workfft(i*2-1,j,k,2,3)+ workfft(i*2,j,k,2,3)*img)*(real(k_s(2))*img*pi*2.0)/geomdimension(2)&
-                                  + (workfft(i*2-1,j,k,3,3)+ workfft(i*2,j,k,3,3)*img)*(real(k_s(3))*img*pi*2.0)/geomdimension(3)
+          divergence_hat(i,j,k,1) = (workfft(i*2-1,j,k,1,1)+ workfft(i*2,j,k,1,1)*img)*xi(1,i,j,k)*img*pi*2.0&
+                                  + (workfft(i*2-1,j,k,2,1)+ workfft(i*2,j,k,2,1)*img)*xi(2,i,j,k)*img*pi*2.0&
+                                  + (workfft(i*2-1,j,k,3,1)+ workfft(i*2,j,k,3,1)*img)*xi(3,i,j,k)*img*pi*2.0
+          divergence_hat(i,j,k,2) = (workfft(i*2-1,j,k,1,2)+ workfft(i*2,j,k,1,2)*img)*xi(1,i,j,k)*img*pi*2.0&
+                                  + (workfft(i*2-1,j,k,2,2)+ workfft(i*2,j,k,2,2)*img)*xi(2,i,j,k)*img*pi*2.0&
+                                  + (workfft(i*2-1,j,k,3,2)+ workfft(i*2,j,k,3,2)*img)*xi(3,i,j,k)*img*pi*2.0
+          divergence_hat(i,j,k,3) = (workfft(i*2-1,j,k,1,3)+ workfft(i*2,j,k,1,3)*img)*xi(1,i,j,k)*img*pi*2.0&
+                                  + (workfft(i*2-1,j,k,2,3)+ workfft(i*2,j,k,2,3)*img)*xi(2,i,j,k)*img*pi*2.0&
+                                  + (workfft(i*2-1,j,k,3,3)+ workfft(i*2,j,k,3,3)*img)*xi(3,i,j,k)*img*pi*2.0
+         enddo; enddo; enddo
+         do k = 1, resolution(3)                                       ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
+           do j = 1, resolution(2)
+             do i = 1, resolution(1)/2+1
+          divergence_hat_full(i,j,k,1) = pstress_field_hat(i,j,k,1,1)*xi(1,i,j,k)*img*pi*2.0&
+                                       + pstress_field_hat(i,j,k,2,1)*xi(2,i,j,k)*img*pi*2.0&
+                                       + pstress_field_hat(i,j,k,3,1)*xi(3,i,j,k)*img*pi*2.0
+          divergence_hat_full(i,j,k,2) = pstress_field_hat(i,j,k,1,2)*xi(1,i,j,k)*img*pi*2.0&
+                                       + pstress_field_hat(i,j,k,2,2)*xi(2,i,j,k)*img*pi*2.0&
+                                       + pstress_field_hat(i,j,k,3,2)*xi(3,i,j,k)*img*pi*2.0
+          divergence_hat_full(i,j,k,3) = pstress_field_hat(i,j,k,1,3)*xi(1,i,j,k)*img*pi*2.0&
+                                       + pstress_field_hat(i,j,k,2,3)*xi(2,i,j,k)*img*pi*2.0&
+                                       + pstress_field_hat(i,j,k,3,3)*xi(3,i,j,k)*img*pi*2.0
          enddo; enddo; enddo
          
+        ! do i = 0, resolution(1)/2-2 ! reconstruct data of conjugated complex (symmetric) part in Fourier spaced
+          ! m = 1
+          ! do k = 1, resolution(3)
+            ! n = 1
+            ! do j = 1, resolution(2)
+          ! divergence_hat_full(resolution(1)-i,j,k,1) = pstress_field_hat(resolution(1)-i,j,k,1,1)*xi(1,2+i,n,m)*img*pi*2.0&
+                                                     ! + pstress_field_hat(resolution(1)-i,j,k,2,1)*xi(2,2+i,n,m)*img*pi*2.0&
+                                                     ! + pstress_field_hat(resolution(1)-i,j,k,3,1)*xi(3,2+i,n,m)*img*pi*2.0
+          ! divergence_hat_full(resolution(1)-i,j,k,2) = pstress_field_hat(resolution(1)-i,j,k,1,2)*xi(1,2+i,n,m)*img*pi*2.0&
+                                                     ! + pstress_field_hat(resolution(1)-i,j,k,2,2)*xi(2,2+i,n,m)*img*pi*2.0&
+                                                     ! + pstress_field_hat(resolution(1)-i,j,k,3,2)*xi(3,2+i,n,m)*img*pi*2.0
+          ! divergence_hat_full(resolution(1)-i,j,k,3) = pstress_field_hat(resolution(1)-i,j,k,1,3)*xi(1,2+i,n,m)*img*pi*2.0&
+                                                     ! + pstress_field_hat(resolution(1)-i,j,k,2,3)*xi(2,2+i,n,m)*img*pi*2.0&
+                                                     ! + pstress_field_hat(resolution(1)-i,j,k,3,3)*xi(3,2+i,n,m)*img*pi*2.0
+              ! if(n == 1) n = resolution(2) +1
+              ! n = n-1
+           ! enddo
+           ! if(m == 1) m = resolution(3) +1
+             ! m = m -1
+        ! enddo; enddo
+         print*, divergence_hat_full
+         
+         pause
          call dfftw_execute_dft_c2r(plan_div(2), divergence_hat, divergence)
+         call dfftw_execute_dft(plan_div(3), divergence_hat_full, divergence_hat_full2)
          
          divergence = divergence*wgt
+         divergence_hat_full2 = divergence_hat_full2*wgt
+         print*, divergence_hat_full2
          
          do m = 1,3                                                        ! L infinity norm of stress tensor 
            p_real_avg_inf = max(p_real_avg_inf, sum(abs(pstress_av(:,m))))     
@@ -779,15 +921,23 @@ program DAMASK_spectral
          
          do k = 1, resolution(3); do j = 1, resolution(2) ;do i = 1, resolution(1)
            err_real_div_max_inf = max(err_real_div_max_inf, maxval(divergence(i,j,k,:)))
+           err_real_div_max_inf2 = max(err_real_div_max_inf2, maxval(real(divergence_hat_full2(i,j,k,:))))
            err_real_div_max_two = max(err_real_div_max_two, sqrt(sum(divergence(i,j,k,:)**2.0)))
+           err_real_div_max_two2 = max(err_real_div_max_two2, sqrt(sum(real(divergence_hat_full2(i,j,k,:))**2.0)))
            err_real_div_avg_inf = err_real_div_avg_inf + (maxval(divergence(i,j,k,:)))**2.0
+           err_real_div_avg_inf2 = err_real_div_avg_inf2 + (maxval(real(divergence_hat_full2(i,j,k,:))))**2.0
            err_real_div_avg_two = err_real_div_avg_two +     sum(divergence(i,j,k,:)**2.0) ! don't take square root just to  square it again
+           err_real_div_avg_two2 = err_real_div_avg_two2 +     sum(real(divergence_hat_full2(i,j,k,:))**2.0) ! don't take square root just to  square it again
          enddo; enddo; enddo
          
          err_real_div_max_inf = err_real_div_max_inf/p_real_avg_inf
+         err_real_div_max_inf2 = err_real_div_max_inf2/p_real_avg_inf
          err_real_div_max_two = err_real_div_max_two/p_real_avg_two  
+         err_real_div_max_two2 = err_real_div_max_two2/p_real_avg_two  
          err_real_div_avg_inf = sqrt(err_real_div_avg_inf*wgt)/p_real_avg_inf
+         err_real_div_avg_inf2 = sqrt(err_real_div_avg_inf2*wgt)/p_real_avg_inf
          err_real_div_avg_two = sqrt(err_real_div_avg_two*wgt)/p_real_avg_two
+         err_real_div_avg_two2 = sqrt(err_real_div_avg_two2*wgt)/p_real_avg_two
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging   
 
          if(memory_efficient) then                                         ! memory saving version, on-the-fly calculation of gamma_hat
@@ -796,7 +946,7 @@ program DAMASK_spectral
              do l = 1,3; do m = 1,3
                xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
              enddo; enddo
-             temp33_Real = math_inv3x3(math_mul3333xx33(c0, xiDyad)) 
+             temp33_Real = math_inv3x3(math_mul3333xx33(c0_reference, xiDyad)) 
            else
              xiDyad = 0.0_pReal
              temp33_Real = 0.0_pReal
@@ -839,18 +989,22 @@ program DAMASK_spectral
          
          print '(2(a,E8.2))', ' error divergence:           ',err_div,    '  Tol. = ', err_div_tol
 !!!!!!!!!!!!!!!!!!!!!!!! start divergence debugging 
-         print '((a,E12.7))', ' error divergence FT (max,inf):       ',err_div_max_inf
-         print '((a,E12.7))', ' error divergence FT (max,inf2):      ',err_div_max_inf2
-         print '((a,E12.7))', ' error divergence FT (max,two):       ',err_div_max_two
-         print '((a,E12.7))', ' error divergence FT (max,two2):      ',err_div_max_two2
-         print '((a,E12.6))', ' error divergence FT (avg,inf):       ',err_div_avg_inf
-         print '((a,E12.6))', ' error divergence FT (avg,inf2):      ',err_div_avg_inf2
-         print '((a,E12.7))', ' error divergence FT (avg,two):       ',err_div_avg_two
-         print '((a,E12.7))', ' error divergence FT (avg,two2):      ',err_div_avg_two2
+         print '((a,E16.11))', ' error divergence FT (max,inf):       ',err_div_max_inf
+         print '((a,E16.11))', ' error divergence FT (max,inf2):      ',err_div_max_inf2
+         print '((a,E16.11))', ' error divergence FT (max,two):       ',err_div_max_two
+         print '((a,E16.11))', ' error divergence FT (max,two2):      ',err_div_max_two2
+         print '((a,E16.11))', ' error divergence FT (avg,inf):       ',err_div_avg_inf
+         print '((a,E16.11))', ' error divergence FT (avg,inf2):      ',err_div_avg_inf2
+         print '((a,E16.11))', ' error divergence FT (avg,two):       ',err_div_avg_two
+         print '((a,E16.11))', ' error divergence FT (avg,two2):      ',err_div_avg_two2
          print '((a,E8.2))', ' error divergence Real (max,inf):      ',err_real_div_max_inf
+         print '((a,E8.2))', ' error divergence Real (max,inf2):      ',err_real_div_max_inf2
          print '((a,E8.2))', ' error divergence Real (max,two):      ',err_real_div_max_two
+         print '((a,E8.2))', ' error divergence Real (max,two2):      ',err_real_div_max_two2
          print '((a,E8.2))', ' error divergence Real (avg,inf):      ',err_real_div_avg_inf
+         print '((a,E8.2))', ' error divergence Real (avg,inf2):      ',err_real_div_avg_inf2
          print '((a,E8.2))', ' error divergence Real (avg,two):      ',err_real_div_avg_two
+         print '((a,E8.2))', ' error divergence Real (avg,two2):      ',err_real_div_avg_two2
 !!!!!!!!!!!!!!!!!!!!!!!! end divergence debugging 
          print '(2(a,E8.2))', ' error stress:               ',err_stress, '  Tol. = ', err_stress_tol 
          print '(2(a,E8.2))', ' error deformation gradient: ',err_defgrad,'  Tol. = ', err_defgrad_tol 
@@ -858,7 +1012,7 @@ program DAMASK_spectral
          if((err_stress > err_stress_tol .or. err_defgrad > err_defgrad_tol) .and. err_div < err_div_tol) then  ! change to calculation of BCs, reset damper etc.
            calcmode = 0_pInt
            defgradAimCorr = 0.0_pReal
-           damper = damper * 0.9_pReal
+           damper = 1.0_pReal
          endif     
        end select 
      enddo    ! end looping when convergency is achieved 
