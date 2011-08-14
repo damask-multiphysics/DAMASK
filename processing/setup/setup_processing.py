@@ -30,6 +30,7 @@ bin_link = { \
 							'mentat_colorMap',
 							'postResults',
 							'spectral_iterationCount',
+							'spectral_convergence',
 							],
 						}
 
