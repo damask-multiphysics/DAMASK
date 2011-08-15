@@ -236,21 +236,21 @@ spectral: phi1,Phi,phi2,x,y,z,id,phase.
 $Id$
 """)
 parser.add_option("-p", "--port", type="int",\
-        dest="port",\
-        help="Mentat connection port")
-parser.add_option("-d", "--dimension", type="int", nargs=3,\
-        dest="d",\
-        help="physical dimension")
-parser.add_option("--homogenization", type="int",\
-        dest="homogenization",\
-        help="index of homogenization to be chosen from material.config file")
-parser.add_option("-s", "--spectral", action="store_const", const="spectral",\
-        dest="filetype",\
-        help="file has 'spectral' format")
+                                  dest="port",\
+                                  help="Mentat connection port")
 parser.add_option("-g", "--geom", action="store_const", const="geom",\
-        dest="filetype",\
-        help="file has 'geom' format")
+                                  dest="filetype",\
+                                  help="file has 'geom' format")
+parser.add_option("-s", "--spectral", action="store_const", const="spectral",\
+                                      dest="filetype",\
+                                      help="file has 'spectral' format")
 
+parser.add_option("--homogenization", type="int",\
+                                      dest="homogenization",\
+                                      help="homogenization index from material.config (only required for spectral file type)")
+
+
+parser.set_defaults(filetype = 'geom')
 parser.set_defaults(homogenization = 1)
 
 (options, args) = parser.parse_args()
