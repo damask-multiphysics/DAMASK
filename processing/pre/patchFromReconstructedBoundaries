@@ -739,7 +739,7 @@ def fftbuild(rcData, height,xframe,yframe,resolution,extrusion):            # bu
  ysize = maxY+2*yframe
  xres=round(resolution/2.0)*2                                               # use only even resolution
  yres=round(xres/xsize*ysize/2.0)*2                                         # calculate other resolutions
- zres=round(extrusion/2.0)*2
+ zres=round(1)
  zsize = xsize/xres*zres                                                    # calculate z size
  
  fftdata = {'fftpoints':[], \
@@ -892,8 +892,7 @@ if 'spectral' in options.output:
   geomFile.write('resolution a %i b %i c %i\n'%(fftdata['resolution']))       # write resolution
   geomFile.write('dimension x %f y %f z %f\n'%(fftdata['dimension']))         # write size
   geomFile.write('homogenization 1\n')                                        # write homogenization
-  for i in range(int(fftdata['resolution'][2])):                              # repetitions according to z resolution, i.e. extrude 2D to 3D
-   geomFile.write('\n'.join(map(str,fftdata['fftpoints']))+'\n')              # write grain indexes, one per line
+  geomFile.write('\n'.join(map(str,fftdata['fftpoints']))+'\n')              # write grain indexes, one per line
   geomFile.close()                                                            # close geom file
   
   print('assigned %i out of %i Fourier points'%(len(fftdata['fftpoints']), int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
