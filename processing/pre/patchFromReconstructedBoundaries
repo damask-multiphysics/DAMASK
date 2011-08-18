@@ -3,14 +3,14 @@
 import sys,os,math,re
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-try:
+
+try:                                        # check for Python Image Lib
   import Image,ImageDraw
   ImageCapability = True
 except:
   ImageCapability = False
 
-
-try:
+try:                                        # check for MSC.Mentat installation location
   file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
   MSCpath = os.path.normpath(file.readline().strip())
   file.close()
@@ -32,7 +32,7 @@ for release,subdirs in sorted(releases.items(),reverse=True):
       continue
   break
 
-try:
+try:                                        # check for MSC.Mentat Python interface
   from py_mentat import *
   MentatCapability = True
 except:
@@ -309,11 +309,11 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
 
   for point in points:
     rcData['point'].append(point['coords'])
-  print "\nfound %i points"%(len(rcData['point']))
+  print "  found %i points"%(len(rcData['point']))
 
   for segment in segments:  
     rcData['segment'].append(segment)
-  print "built %i segments"%(len(rcData['segment']))
+  print "  built %i segments"%(len(rcData['segment']))
 
   for grain in grains['legs']:  
     rcData['grain'].append(grain)
@@ -327,7 +327,7 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
             myNeighbors[grainNeighbors[leg][side]] = 1
     if myNeighbors:   # do I have any neighbors
       rcData['grainMapping'].append(sorted(myNeighbors.iteritems(), key=lambda (k,v): (v,k), reverse=True)[0][0])   # most frequent grain is me
-  print "found %i grains\n"%(len(rcData['grain']))
+  print "  found %i grains\n"%(len(rcData['grain']))
 
   rcData['box'] = grains['box']
   
@@ -791,11 +791,14 @@ def fftbuild(rcData, height,xframe,yframe,resolution,extrusion):            # bu
 # ----------------------- MAIN -------------------------------
   
 parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
-what I do...
-""")
+Produce image, spectral geometry description, and (auto) Mentat procedure from TSL/OIM
+reconstructed boundary file
+
+""" + string.replace('$Id: spectral_iterationCount 919 2011-06-15 18:14:05Z MPIE\p.eisenlohr $','\n','\\n')
+)
 
 parser.add_option("-o", "--output", action='extend', dest='output', type='string', \
-        help="type of output [image,mentat,procedure,spectral]")
+        help="types of output [image,mentat,procedure,spectral]")
 parser.add_option("-p", "--port", type="int",\
         dest="port",\
         help="Mentat connection port")
@@ -859,6 +862,7 @@ parser.set_defaults(mesh = 'dt_planar_trimesh')
 parser.set_defaults(twoD = False)
 
 (options, args) = parser.parse_args()
+
 if not len(args):
   parser.error('no boundary file specified')
 
@@ -873,15 +877,18 @@ except:
 options.output = [s.lower() for s in options.output]                        # lower case
 
 myName = os.path.splitext(args[0])[0]
-print "\n",myName
+print "\n%s\n"%myName
 
 orientationData = rcbOrientationParser(boundarySegments)
 rcData = rcbParser(boundarySegments,options.M,options.size,options.tolerance)
 
 # ----- write image -----
 
-if ImageCapability and 'image' in options.output and options.imgsize > 0:
-  image(myName,options.imgsize,options.xmargin,options.ymargin,rcData)
+if 'image' in options.output and options.imgsize > 0:
+  if ImageCapability:
+    image(myName,options.imgsize,options.xmargin,options.ymargin,rcData)
+  else:
+    print '...no image drawing possible (PIL missing)...'
 
 # ----- write spectral geom -----
 
@@ -895,44 +902,47 @@ if 'spectral' in options.output:
   geomFile.write('\n'.join(map(str,fftdata['fftpoints']))+'\n')              # write grain indexes, one per line
   geomFile.close()                                                            # close geom file
   
-  print('assigned %i out of %i Fourier points'%(len(fftdata['fftpoints']), int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
+  print('assigned %i out of %i Fourier points.'%(len(fftdata['fftpoints']), int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
   
 
 # ----- write Mentat procedure -----
 
-if MentatCapability and 'mentat' in options.output:
-  rcData['offsetPoints']   = 1+4                # gage definition generates 4 points
-  rcData['offsetSegments'] = 1+4                # gage definition generates 4 segments
-  
-  cmds = [\
-    init(),
-    sample(options.size,rcData['dimension'][1]/rcData['dimension'][0],12,options.xmargin,options.ymargin),
-    patch(options.size,options.resolution,options.mesh,rcData),
-    gage(options.mesh,rcData),
+if 'mentat' in options.output:
+  if MentatCapability:
+    rcData['offsetPoints']   = 1+4                # gage definition generates 4 points
+    rcData['offsetSegments'] = 1+4                # gage definition generates 4 segments
+    
+    cmds = [\
+      init(),
+      sample(options.size,rcData['dimension'][1]/rcData['dimension'][0],12,options.xmargin,options.ymargin),
+      patch(options.size,options.resolution,options.mesh,rcData),
+      gage(options.mesh,rcData),
+      ]
+    
+    if not options.twoD:
+      cmds += [expand3D(options.size*(1.0+2.0*options.xmargin)/options.resolution*options.extrusion,options.extrusion),]
+    
+    cmds += [\
+      cleanUp(options.size),
+      materials(),
+      initial_conditions(len(rcData['grain']),rcData['grainMapping']),
+      boundary_conditions(options.strainrate,options.size*(1.0+2.0*options.xmargin)/options.resolution*options.extrusion,\
+                          options.size,rcData['dimension'][1]/rcData['dimension'][0],options.xmargin,options.ymargin),
+      loadcase(options.strain/options.strainrate,options.increments,0.01),
+      job(len(rcData['grain']),rcData['grainMapping'],options.twoD),
+      postprocess(),
+      ["*identify_sets","*regen","*fill_view","*save_as_model %s yes"%(myName)],
     ]
-  
-  if not options.twoD:
-    cmds += [expand3D(options.size*(1.0+2.0*options.xmargin)/options.resolution*options.extrusion,options.extrusion),]
-  
-  cmds += [\
-    cleanUp(options.size),
-    materials(),
-    initial_conditions(len(rcData['grain']),rcData['grainMapping']),
-    boundary_conditions(options.strainrate,options.size*(1.0+2.0*options.xmargin)/options.resolution*options.extrusion,\
-                        options.size,rcData['dimension'][1]/rcData['dimension'][0],options.xmargin,options.ymargin),
-    loadcase(options.strain/options.strainrate,options.increments,0.01),
-    job(len(rcData['grain']),rcData['grainMapping'],options.twoD),
-    postprocess(),
-    ["*identify_sets","*regen","*fill_view","*save_as_model %s yes"%(myName)],
-  ]
-  
-  outputLocals = {'log':[]}
-  if (options.port != None):
-    py_connect('',options.port)
-    output(cmds,outputLocals,'Mentat')
-    py_disconnect()
-    if 'procedure' in options.output:
-      output(outputLocals['log'],outputLocals,'Stdout')
+    
+    outputLocals = {'log':[]}
+    if (options.port != None):
+      py_connect('',options.port)
+      output(cmds,outputLocals,'Mentat')
+      py_disconnect()
+      if 'procedure' in options.output:
+        output(outputLocals['log'],outputLocals,'Stdout')
+  else:
+    print '...no interaction with Mentat possible...'
     
 
 # ----- write config data to file -----
