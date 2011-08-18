@@ -44,8 +44,8 @@ parser = OptionParser(option_class=extendableOption, usage='%prog [options] [fil
 Average each data block of size 'packing' into single values thus reducing the former resolution
 to resolution/packing. (Requires numpy.)
 
-$Id: averageDown 266 2011-05-29 19:38:42Z MPIE\p.eisenlohr $
-""")
+""" + string.replace('$Id$','\n','\\n')
+)
 
 
 parser.add_option('-m','--memory',      dest='memory', action='store_true', \
@@ -105,7 +105,7 @@ for file in files:
 
   output = '%i\theader'%(headerlines+1) + '\n' + \
            ''.join(passOn) + \
-           string.replace('$Id: averageDown 266 2011-05-29 19:38:42Z MPIE\p.eisenlohr $','\n','\\n')+ '\t' + \
+           string.replace('$Id$','\n','\\n')+ '\t' + \
            ' '.join(sys.argv[1:]) + '\n' + \
            '\t'.join(headers) + '\n'                              # build extended header
 

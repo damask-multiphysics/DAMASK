@@ -35,8 +35,8 @@ def L2(object):
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) containing norm of requested column(s) being either vectors or tensors.
 
-$Id: addNorm 263 2011-05-25 17:42:50Z MPIE\p.eisenlohr $
-""")
+""" + string.replace('$Id$','\n','\\n')
+)
 
 
 parser.add_option('-m','--memory',      dest='memory', action='store_true', \
@@ -126,7 +126,7 @@ for file in files:
 
   output = '%i\theader'%(headerlines+1) + '\n' + \
            ''.join(passOn) + \
-           string.replace('$Id: addNorm 263 2011-05-25 17:42:50Z MPIE\p.eisenlohr $','\n','\\n')+ '\t' + \
+           string.replace('$Id$','\n','\\n')+ '\t' + \
            ' '.join(sys.argv[1:]) + '\n' + \
            '\t'.join(headers + head) + '\n'                              # build extended header
 

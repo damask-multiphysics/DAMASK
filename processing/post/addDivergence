@@ -56,8 +56,8 @@ Add column(s) containing divergence of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
 Deals with both vector- and tensor-valued fields.
 
-$Id: addDivergence 264 2011-05-25 17:43:45Z MPIE\p.eisenlohr $
-""")
+""" + string.replace('$Id$','\n','\\n')
+)
 
 
 parser.add_option('-a','--accuracy',    dest='accuracy', type='int', \
@@ -158,7 +158,7 @@ for file in files:
 
   output = '%i\theader'%(headerlines+1) + '\n' + \
            ''.join(passOn)                 + \
-           string.replace('$Id: addDivergence 264 2011-05-25 17:43:45Z MPIE\p.eisenlohr $','\n','\\n')+ '\t' + \
+           string.replace('$Id$','\n','\\n')+ '\t' + \
            ' '.join(sys.argv[1:]) + '\n' + \
            '\t'.join(headers + head) + '\n'                              # build extended header
 

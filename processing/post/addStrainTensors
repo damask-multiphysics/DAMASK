@@ -43,8 +43,8 @@ def prefixMultiply(what,len):
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) containing given strains based on given stretches of requested deformation gradient column(s).
 
-$Id: addStrainTensors 274 2011-06-14 12:59:39Z MPIE\o.guevenc $
-""")
+""" + string.replace('$Id$','\n','\\n')
+)
 
 
 parser.add_option('-m','--memory',      dest='memory', action='store_true', \
@@ -152,7 +152,7 @@ for file in files:
 
   output = '%i\theader'%(headerlines+1) + '\n' + \
            ''.join(passOn) + \
-           string.replace('$Id: addStrainTensors 274 2011-06-14 12:59:39Z MPIE\o.guevenc $','\n','\\n')+ '\t' + \
+           string.replace('$Id$','\n','\\n')+ '\t' + \
            ' '.join(sys.argv[1:]) + '\n' + \
            '\t'.join(headers + head) + '\n'                              # build extended header
 

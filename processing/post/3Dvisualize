@@ -284,8 +284,9 @@ def vtk_writeASCII_box(diag,defgrad):
 parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
 Produce VTK file from data field. Coordinates are taken from (consecutive) ip.x, ip.y, and ip.z columns.
 
-$Id$
-""")
+""" + string.replace('$Id$','\n','\\n')
+)
+
 parser.add_option('-s', '--scalar', action='extend', dest='scalar', type='string', \
                   help='list of scalars to visualize')
 parser.add_option('-d', '--deformation', dest='defgrad', type='string', \

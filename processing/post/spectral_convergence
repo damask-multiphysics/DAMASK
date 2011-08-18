@@ -29,7 +29,7 @@ class extendedOption(Option):
 parser = OptionParser(option_class=extendedOption, usage='%prog [options] spectralOut[s]', description = """
 Generate datafile of converged iteration per increment.
 
-""" + string.replace('$Id: spectral_iterationCount 919 2011-06-15 18:14:05Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-m','--memory',      dest='memory', action='store_true', \

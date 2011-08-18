@@ -614,8 +614,8 @@ User mappings need to be formulated in an incremental fashion for each new data 
 and may use the current (incremental) result, b(ase), as well as the number, n(umber),
 of already processed data points for evaluation.
 
-$Id$
-""")
+""" + string.replace('$Id$','\n','\\n')
+)
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')
