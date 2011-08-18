@@ -99,8 +99,8 @@ mapping = {
 parser = OptionParser(option_class=extendedOption, usage='%prog geomfile[s]', description = """
 Produce VTK point file from geom data
 
-$Id$
-""")
+""" + string.replace('$Id$','\n','\\n')
+)
 
 (options, args) = parser.parse_args()
 

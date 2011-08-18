@@ -164,15 +164,20 @@ def servoLink():
 
 # ----------------------- MAIN -------------------------------
   
-parser = OptionParser()
+parser = OptionParser(usage='%prog [options]', description = """
+Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh presently opened in MSC.Mentat
+
+""" + string.replace('$Id: spectral_iterationCount 919 2011-06-15 18:14:05Z MPIE\p.eisenlohr $','\n','\\n')
+)
+
 parser.add_option("-p", "--port", type="int",\
-        dest="port",\
-        help="Mentat connection port [%default]")
+                                  dest="port",\
+                                  help="Mentat connection port [%default]")
 parser.add_option("-v", "--verbose", action="store_true",\
-        dest="verbose",\
-        help="write Mentat command stream also to stdout [%default]")
-parser.set_defaults(port=40007)
-parser.set_defaults(verbose=False)
+                                  dest="verbose",\
+                                  help="write Mentat command stream also to stdout [%default]")
+parser.set_defaults(port = 40007)
+parser.set_defaults(verbose = False)
 
 (options, args) = parser.parse_args()
 
