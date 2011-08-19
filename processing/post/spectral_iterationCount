@@ -57,6 +57,7 @@ else:
 for file in files:
   print file['name']
   inc  = 1
+  loadcase = 1
   step = 1
   iter = 0
 
@@ -79,10 +80,11 @@ for file in files:
 
     items = line.split()
     if len(items) > 7 and items[0] == 'Loadcase':  # 'magic' line?
-      if int(items[5]) == step:
+      if int(items[5]) == step and int(items[2]) == loadcase:
         iter += 1                                                  # next iteration found
       else:
         output += '\t'.join(map(str,[inc,iter])) + '\n'
+        loadcase = int(items[2])                                   # store current loadcase count
         step = int(items[5])                                       # store current step count
         inc += 1                                                   # is next inc
         iter = 1                                                   # was first iteration of next step/inc
