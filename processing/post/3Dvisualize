@@ -291,11 +291,26 @@ parser.add_option('-s', '--scalar', action='extend', dest='scalar', type='string
                   help='list of scalars to visualize')
 parser.add_option('-d', '--deformation', dest='defgrad', type='string', \
                   help='heading of deformation gradient columns [%default]')
+parser.add_option('-m', '--mesh', dest='output_mesh', action='store_true', \
+                  help='produce VTK mesh file [%default]')
+parser.add_option('-p', '--points', dest='output_points', action='store_true', \
+                  help='produce VTK points file [%default]')
+parser.add_option('-b', '--box', dest='output_box', action='store_true', \
+                  help='produce VTK box file [%default]')
+parser.add_option('--scaling', dest='scaling', type='int', nargs=1, \
+                  help='scaling of fluctuastion [%default]')
+parser.add_option('--undeformed', dest='undeformed', action='store_true',\
+                  help='do not calculate average deformation of ve [%default]')
 
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(scalar = [])
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
+parser.set_defaults(output_mesh = True)
+parser.set_defaults(output_points = False)
+parser.set_defaults(output_box = False)
+parser.set_defaults(scaling = 1)
+parser.set_defaults(undeformed = False)
 
 (options, args) = parser.parse_args()
 
@@ -377,16 +392,21 @@ for filename in args:
     if r > 1:
       dim[i] = (max(map(float,grid[i].keys()))-min(map(float,grid[i].keys())))*r/(r-1.0)
 
-  print res,dim
-
-  defgrad_av = postprocessingMath.tensor_avg(res[0],res[1],res[2],\
+  for i,r in enumerate(res): # for 2D (and 1D) case make undefined dimension thin
+    if r == 1 :
+      dim[i] = 1.0/float(max(res))*min(dim)
+  if options.undeformed:
+    defgrad_av = numpy.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]])
+  else:
+    defgrad_av = postprocessingMath.tensor_avg(res[0],res[1],res[2],\
                                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                     column['tensor'][options.defgrad]+9],
                                              (res[0],res[1],res[2],3,3)))
+					     
   centroids = postprocessingMath.deformed_fft(res[0],res[1],res[2],dim,\
                                               numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                      column['tensor'][options.defgrad]+9],
-                                                            (res[0],res[1],res[2],3,3)),defgrad_av,1.0)
+                                                            (res[0],res[1],res[2],3,3)),defgrad_av,options.scaling)
   ms = postprocessingMath.mesh(res[0],res[1],res[2],dim,defgrad_av,centroids)
 
   fields =  {\
@@ -415,9 +435,9 @@ for filename in args:
   print '\n'
 
   out = {}
-  out['mesh']   = vtk_writeASCII_mesh(ms,fields,res)
-  out['points'] = vtk_writeASCII_points(centroids,fields,res)
-  out['box']    = vtk_writeASCII_box(dim,defgrad_av)
+  if options.output_mesh:   out['mesh']   = vtk_writeASCII_mesh(ms,fields,res)
+  if options.output_points: out['points'] = vtk_writeASCII_points(centroids,fields,res)
+  if options.output_box:    out['box']    = vtk_writeASCII_box(dim,defgrad_av)
   
   for what in out.keys():
     print what
