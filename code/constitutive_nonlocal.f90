@@ -1008,7 +1008,7 @@ if (.not. phase_localConstitution(phase)) then
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
       neighboring_invFe = math_inv3x3(Fe(1:3,1:3,1,neighboring_ip,neighboring_el))
-      neighboring_ipVolumeSideLength = mesh_ipVolume(neighboring_ip,neighboring_el) ** (1.0_pReal/3.0_pReal)
+      neighboring_ipVolumeSideLength = mesh_ipVolume(neighboring_ip,neighboring_el) ** (1.0_pReal/3.0_pReal) ! reference volume used here
       forall (s = 1:neighboring_ns, c = 1:2) &
         neighboring_rhoExcess(c,1,s) = state(g,neighboring_ip,neighboring_el)%p((2*c-2)*neighboring_ns+s) &  ! positive mobiles
                                      - state(g,neighboring_ip,neighboring_el)%p((2*c-1)*neighboring_ns+s)    ! negative mobiles
@@ -1178,7 +1178,7 @@ if (.not. phase_localConstitution(phase)) then
                 sigma = sigma * constitutive_nonlocal_Gmod(neighboring_instance) &
                               * constitutive_nonlocal_burgersPerSlipSystem(s,neighboring_instance) &
                               / (4.0_pReal * pi * (1.0_pReal - nu)) &
-                              * mesh_ipVolume(neighboring_ip,neighboring_el) / segmentLength
+                              * mesh_ipVolume(neighboring_ip,neighboring_el) / segmentLength      ! reference volume is used here (according to the segment length calculation)
                 Tdislo_neighboringLattice = Tdislo_neighboringLattice &
                       + math_mul33x33(math_transpose3x3(constitutive_nonlocal_lattice2slip(1:3,1:3,s,neighboring_instance)), &
                         math_mul33x33(sigma, constitutive_nonlocal_lattice2slip(1:3,1:3,s,neighboring_instance)))
@@ -1678,7 +1678,7 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) 
 !*** check CFL condition for flux
 
 if (any(1.2_pReal * constitutive_nonlocal_v(1:ns,1:4,g,ip,el) * timestep &                    ! security factor 1.2
-        > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then
+        > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                          ! reference volume and area
   dotState%p = NaN(3)
   return
 endif

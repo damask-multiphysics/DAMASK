@@ -3063,6 +3063,7 @@ function crystallite_postResults(&
                                       math_QuaternionToAxisAngle, &
                                       math_mul33x33, &
                                       math_transpose3x3, &
+                                      math_det3x3, &
                                       math_I3, &
                                       inDeg, &
                                       math_Mandel6to33
@@ -3090,6 +3091,7 @@ function crystallite_postResults(&
  
  !*** local variables ***!
  real(pReal), dimension(3,3) ::       Ee
+ real(pReal)                          detF
  integer(pInt)                        o,c,crystID,mySize
 
  crystID = microstructure_crystallite(mesh_element(4,e))
@@ -3110,7 +3112,8 @@ function crystallite_postResults(&
        crystallite_postResults(c+1) = material_texture(g,i,e)                   ! textureID of grain
      case ('volume')
        mySize = 1_pInt
-       crystallite_postResults(c+1) = mesh_ipVolume(i,e) / homogenization_Ngrains(mesh_element(3,e)) ! grain volume (not fraction but absolute)
+       detF = math_det3x3(crystallite_partionedF(1:3,1:3,g,i,e))                ! V_current = det(F) * V_reference
+       crystallite_postResults(c+1) = detF * mesh_ipVolume(i,e) / homogenization_Ngrains(mesh_element(3,e)) ! grain volume (not fraction but absolute)
      case ('orientation')
        mySize = 4_pInt
        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,g,i,e)    ! grain orientation as quaternion
