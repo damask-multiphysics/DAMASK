@@ -32,6 +32,7 @@ bin_link = { \
 							'postResults',
 							'spectral_iterationCount',
 							'spectral_convergence',
+							'spectral_scaleGeom',
 							],
 						}
 
