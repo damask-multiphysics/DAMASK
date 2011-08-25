@@ -40,7 +40,7 @@ parser = OptionParser(option_class=extendableOption, usage='%prog options [file[
 Add column containing debug information
 Operates on periodic ordered three-dimensional data sets.
 
-""" + string.replace('$Id:  $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 
@@ -128,7 +128,7 @@ for file in files:
 
   output = '%i\theader'%(headerlines+1) + '\n' + \
            ''.join(passOn)                 + \
-           string.replace('$Id: $','\n','\\n')+ '\t' + \
+           string.replace('$Id$','\n','\\n')+ '\t' + \
            ' '.join(sys.argv[1:]) + '\n' + \
            '\t'.join(headers + head) + '\n'                              # build extended header
 
