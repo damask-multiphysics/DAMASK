@@ -3,8 +3,7 @@
 
 # This script is used for the post processing of the results achieved by the spectral method.
 # As it reads in the data coming from "materialpoint_results", it can be adopted to the data
-# computed using the FEM solvers. Until now, its capable to handle elements with one IP in a regular order
-# written by M. Diehl, m.diehl@mpie.de
+# computed using the FEM solvers. Its capable to handle elements with one IP in a regular order
 
 import os,sys,threading,re,numpy,time,string,postprocessingMath
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
@@ -301,7 +300,8 @@ parser.add_option('--scaling', dest='scaling', type='int', nargs=1, \
                   help='scaling of fluctuastion [%default]')
 parser.add_option('--undeformed', dest='undeformed', action='store_true',\
                   help='do not calculate average deformation of ve [%default]')
-
+parser.add_option('-u', '--unitlength', dest='unitlength', type='float', nargs=1, \
+                  help='set unit length for 2D model [%default]')
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(scalar = [])
 parser.set_defaults(vector = [])
@@ -311,6 +311,7 @@ parser.set_defaults(output_points = False)
 parser.set_defaults(output_box = False)
 parser.set_defaults(scaling = 1)
 parser.set_defaults(undeformed = False)
+parser.set_defaults(unitlength = 0.0)
 
 (options, args) = parser.parse_args()
 
@@ -387,14 +388,15 @@ for filename in args:
                      len(grid[2]),],'i')
   
   dim = numpy.ones(3)
-
+  print options.unitlength
   for i,r in enumerate(res):
     if r > 1:
       dim[i] = (max(map(float,grid[i].keys()))-min(map(float,grid[i].keys())))*r/(r-1.0)
-
-  for i,r in enumerate(res): # for 2D (and 1D) case make undefined dimension thin
-    if r == 1 :
-      dim[i] = 1.0/float(max(res))*min(dim)
+  if res[2]==1: # for 2D case set undefined dimension to given unitlength or alternatively give it the lengt of the smallest element
+    if options.unitlength == 0.0: 
+      dim[2] = 1.0/(min([float(res[0])/dim[0]],[float(res[1])/dim[1]])[0])
+    else:
+      dim[2] = options.unitlength
   if options.undeformed:
     defgrad_av = numpy.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]])
   else:
