@@ -27,6 +27,7 @@ bin_link = { \
 							'addMises',
 							'addNorm',
 							'addStrainTensors',
+              'addDebugInformation',
 							'averageDown',
 							'mentat_colorMap',
 							'postResults',

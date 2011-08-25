@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os,re,sys,math,string
+import os,re,sys,math,string,numpy,postprocessingMath
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -60,8 +60,12 @@ Deals with both vector- and tensor-valued fields.
 )
 
 
-parser.add_option('-a','--accuracy',    dest='accuracy', type='int', \
-                                        help='degree of central difference accuracy [%default]')
+parser.add_option('--fdm',              dest='accuracy', action='extend', type='string', \
+                                        help='degree of central difference accuracy')
+parser.add_option('--fft',              dest='fft', action='store_true', \
+                                        help='calculate divergence in Fourier space [%default]')
+parser.add_option('-m','--memory',      dest='memory', action='store_true', \
+                                        help='memory efficient calculation (not possible for FFT based divergency [%default]')
 parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', \
                                         help='heading of columns containing vector field values')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', \
@@ -71,10 +75,12 @@ parser.add_option('-d','--dimension',   dest='dim', type='float', nargs=3, \
 parser.add_option('-r','--resolution',  dest='res', type='int', nargs=3, \
                                         help='resolution of data set in x (fast) y z (slow)')
 
-parser.set_defaults(accuracy = 8)
+parser.set_defaults(accuracy = [])
+parser.set_defaults(memory = False)
+parser.set_defaults(fft = False)
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
-parser.set_defaults(dim = [1.0,1.0,1.0])
+parser.set_defaults(dim = [])
 accuracyChoices = [2,4,6,8]
 
 (options,filenames) = parser.parse_args()
@@ -85,9 +91,10 @@ if len(options.dim) < 3:
   parser.error('improper dimension specification...')
 if not options.res or len(options.res) < 3:
   parser.error('improper resolution specification...')
-if options.accuracy not in accuracyChoices:
-  parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
-accuracy = options.accuracy//2-1
+for choice in options.accuracy:
+  if int(choice) not in accuracyChoices:
+    parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
+if options.fft: options.accuracy.append('fft')
 
 datainfo = {                                                               # list of requested labels per datatype
              'vector':     {'len':3,
@@ -95,7 +102,6 @@ datainfo = {                                                               # lis
              'tensor':     {'len':9,
                             'label':[]},
            }
-
 
 if options.vector != None:    datainfo['vector']['label'] += options.vector
 if options.tensor != None:    datainfo['tensor']['label'] += options.tensor
@@ -136,6 +142,7 @@ for file in files:
   active = {}
   column = {}
   values = {}
+  div_field ={}
   head = []
 
   for datatype,info in datainfo.items():
@@ -148,12 +155,18 @@ for file in files:
         if datatype not in active: active[datatype] = []
         if datatype not in column: column[datatype] = {}
         if datatype not in values: values[datatype] = {}
+        if datatype not in div_field: div_field[datatype] = {}
         active[datatype].append(label)
         column[datatype][label] = headers.index(key)
-        values[datatype][label] = [[0.0 for i in range(datainfo[datatype]['len'])] \
-                                        for j in range(options.res[0]*options.res[1]*options.res[2])]
-        head += prefixMultiply('div%i(%s)'%(options.accuracy,label),datainfo[datatype]['len']/3)
-  
+        values[datatype][label] = numpy.array([0.0 for i in range(datainfo[datatype]['len']*\
+                                          options.res[0]*options.res[1]*options.res[2])]).\
+                                          reshape((options.res[0],options.res[1],options.res[2],\
+                                                     3,datainfo[datatype]['len']//3))
+
+        for what in options.accuracy:                                                               # loop over all requested degrees of accuracy (plus potentially fft)
+          if not options.memory or what != 'fft':                                                   # FFT divergence excluded in memory saving mode
+            head += prefixMultiply('div%s(%s)'%(what,label),datainfo[datatype]['len']//3)
+        
 # ------------------------------------------ assemble header ---------------------------------------  
 
   output = '%i\theader'%(headerlines+1) + '\n' + \
@@ -172,40 +185,87 @@ for file in files:
   
     for datatype,labels in active.items():
       for label in labels:
-        values[datatype][label][idx] = map(float,items[column[datatype][label]:
-                                                       column[datatype][label]+datainfo[datatype]['len']])
+        values[datatype][label][location(idx,options.res)[0]][location(idx,options.res)[1]][location(idx,options.res)[2]]\
+            = numpy.reshape(items[column[datatype][label]:
+                                  column[datatype][label]+datainfo[datatype]['len']],(3,datainfo[datatype]['len']//3))
     idx += 1
-  
-# ------------------------------------------ read file ---------------------------------------  
-
-  idx = 0
-  for line in data:
-    items = line.split()[:len(headers)]
-    if len(items) < len(headers):
-      continue
-  
-    output += '\t'.join(items)
+# ------------------------------------------ read file --------------------------------------- 
+  if options.memory:
+    idx = 0
+    for line in data:
+      items = line.split()[:len(headers)]
+      if len(items) < len(headers):
+        continue
     
-    (x,y,z) = location(idx,options.res)
+      output += '\t'.join(items)
+      
+      (x,y,z) = location(idx,options.res)
+    
+      for datatype,labels in active.items():
+        for label in labels:
+          for accuracy in options.accuracy:
+            if accuracy == 'fft': continue
+            for k in range(datainfo[datatype]['len']/3):                                  # formulas from Mikhail Itskov: Tensor Algebra and Tensor Analysis for Engineers, Springer 2009, p 52
+              theDiv = 0.0
+              for a in range(int(accuracy)//2):
+
+                theDiv += FDcoefficients[int(accuracy)//2-1][a] * \
+                          ( \
+                           (values[datatype][label][location(index([x+1+a,y,z],options.res),options.res)[0]] \
+                                                   [location(index([x+1+a,y,z],options.res),options.res)[1]] \
+                                                   [location(index([x+1+a,y,z],options.res),options.res)[2]][k][0] - \
+                            values[datatype][label][location(index([x-1-a,y,z],options.res),options.res)[0]] \
+                                                   [location(index([x-1-a,y,z],options.res),options.res)[1]] \
+                                                   [location(index([x-1-a,y,z],options.res),options.res)[2]][k][0]) * options.res[0] / options.dim[0] + \
+                           (values[datatype][label][location(index([x,y+1+a,z],options.res),options.res)[0]] \
+                                                   [location(index([x,y+1+a,z],options.res),options.res)[1]] \
+                                                   [location(index([x,y+1+a,z],options.res),options.res)[2]][k][1] - \
+                            values[datatype][label][location(index([x,y-1-a,z],options.res),options.res)[0]] \
+                                                   [location(index([x,y-1-a,z],options.res),options.res)[1]] \
+                                                   [location(index([x,y-1-a,z],options.res),options.res)[2]][k][1]) * options.res[1] / options.dim[1] + \
+                           (values[datatype][label][location(index([x,y,z+1+a],options.res),options.res)[0]] \
+                                                   [location(index([x,y,z+1+a],options.res),options.res)[1]] \
+                                                   [location(index([x,y,z+1+a],options.res),options.res)[2]][k][2]- \
+                            values[datatype][label][location(index([x,y,z-1-a],options.res),options.res)[0]] \
+                                                   [location(index([x,y,z-1-a],options.res),options.res)[1]] \
+                                                   [location(index([x,y,z-1-a],options.res),options.res)[2]][k][2]) * options.res[2] / options.dim[2] \
+                          )
+              output += '\t%f'%theDiv
+      
+      output += '\n'
+      idx += 1
   
+  else:
     for datatype,labels in active.items():
       for label in labels:
-        for k in range(datainfo[datatype]['len']/3):                                  # formulas from Mikhail Itskov: Tensor Algebra and Tensor Analysis for Engineers, Springer 2009, p 52
-          theDiv = 0.0
-          for a in range(1+accuracy):
-            theDiv += FDcoefficients[accuracy][a] * \
-                      ( \
-                       (values[datatype][label][index([x+1+a,y,z],options.res)][k*3+0] - \
-                        values[datatype][label][index([x-1-a,y,z],options.res)][k*3+0]) * options.res[0] / options.dim[0] + \
-                       (values[datatype][label][index([x,y+1+a,z],options.res)][k*3+1] - \
-                        values[datatype][label][index([x,y-1-a,z],options.res)][k*3+1]) * options.res[1] / options.dim[1] + \
-                       (values[datatype][label][index([x,y,z+1+a],options.res)][k*3+2] - \
-                        values[datatype][label][index([x,y,z-1-a],options.res)][k*3+2]) * options.res[2] / options.dim[2] \
-                      )
-          output += '\t%f'%theDiv
+        if label not in div_field[datatype]: div_field[datatype][label] = {}
+        for accuracy in options.accuracy:
+          div_field[datatype][label][accuracy] = numpy.array([0.0 for i in range((datainfo[datatype]['len'])//3*\
+                                                                                  options.res[0]*options.res[1]*options.res[2])]).\
+                                                                                  reshape((options.res[0],options.res[1],options.res[2],\
+                                                                                  datainfo[datatype]['len']//3))
+          if accuracy == 'fft':
+            div_field[datatype][label][accuracy] = postprocessingMath.divergence_fft(options.res[0],options.res[1],options.res[2],datainfo[datatype]['len']//3,options.dim,values[datatype][label])
+          else:
+            div_field[datatype][label][accuracy] = postprocessingMath.divergence(options.res[0],options.res[1],options.res[2],datainfo[datatype]['len']//3,eval(accuracy)//2-1,options.dim,values[datatype][label])
+
+    idx = 0
+    for line in data:
+      items = line.split()[:len(headers)]
+      if len(items) < len(headers):
+        continue
     
-    output += '\n'
-    idx += 1
+      output += '\t'.join(items)
+      
+    
+      for datatype,labels in active.items():
+        for label in labels:
+          for accuracy in options.accuracy:
+            for i in range(datainfo[datatype]['len']/3):    
+              output += '\t%f'%div_field[datatype][label][accuracy][location(idx,options.res)[0]][location(idx,options.res)[1]][location(idx,options.res)[2]][i]
+      output += '\n'
+      idx += 1
+ 
   
 # ------------------------------------------ output result ---------------------------------------  
 

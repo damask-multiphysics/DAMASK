@@ -266,13 +266,60 @@ end function math_mul33x33
  END IF
  RETURN
  END SUBROUTINE math_spectral1
+ 
+!**************************************************************************
+! volume of tetrahedron given by four vertices
+!**************************************************************************
+ pure function math_volTetrahedron(v1,v2,v3,v4)  
+
+ implicit none
+
+ real*8 math_volTetrahedron
+ real*8, dimension (3), intent(in) :: v1,v2,v3,v4
+ real*8, dimension (3,3) :: m
+
+ m(:,1) = v1-v2
+ m(:,2) = v2-v3
+ m(:,3) = v3-v4
+
+ math_volTetrahedron = math_det3x3(m)/6.0 
+
+ end function math_volTetrahedron
+ 
+!subroutines below are for postprocessing with python
+
+!two small helper functions for indexing
+! CAREFULL, index and location runs from 0 to N-1 (python style)
+
+ function mesh_location(idx,resolution)
+   integer, intent(in) :: idx
+   integer, intent(in) :: resolution(3)
+   integer :: mesh_location(3)
+   mesh_location = (/modulo(idx/ resolution(3) / resolution(2),resolution(1)), &
+                     modulo(idx/ resolution(3),                resolution(2)), &
+                     modulo(idx,                               resolution(3))/)
+ end function mesh_location
+ 
+ function mesh_index(location,resolution)
+   integer, intent(in) :: location(3)
+   integer, intent(in) :: resolution(3)
+   integer :: mesh_index
+   
+   mesh_index = modulo(location(3), resolution(3))     +&
+               (modulo(location(2), resolution(2)))*resolution(3) +&
+               (modulo(location(1), resolution(1)))*resolution(3)*resolution(2)
+ end function mesh_index
 
  end module math
  
-!subroutines below are for postprocessing with python
+
+ 
+
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine mesh(res_x,res_y,res_z,geomdim,defgrad_av,centroids,nodes)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+! Routine to build a regular mesh of cubes for given coordinates (= center of the cubes)
+!
  implicit none
  
  real*8 geomdim(3)
@@ -335,6 +382,9 @@ end subroutine mesh
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine deformed(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,coord_avgCorner)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate coordinates in current configuration for given defgrad
+! using linear interpolation (blurres out high frequency defomation)
+!
  implicit none
  real*8 geomdim(3)
  integer res_x, res_y, res_z
@@ -380,6 +430,9 @@ subroutine deformed(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,coord_avgCorner
  integer rear(3), init(3), ones(3), oppo(3), me(3), res(3)
  integer i, j, k, s, o 
 
+ print*, 'Restore geometry using linear integration'
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res_x,res_y,res_z
  ones = 1
  fones = 1.0
  coord_avgOrder=0.0
@@ -435,7 +488,9 @@ end subroutine deformed
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine deformed_fft(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,scaling,coords)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+! Routine to calculate coordinates in current configuration for given defgrad
+! using integration in Fourier space (more accurate than deformed(...))
+!
  implicit none
  integer res_x, res_y, res_z
  real*8 geomdim(3)
@@ -452,7 +507,11 @@ subroutine deformed_fft(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,scaling,coo
  real*8, parameter :: pi = 3.14159265358979323846264338327950288419716939937510
  integer*8 ::  plan_fft(2)
  include 'fftw3.f' !header file for fftw3 (declaring variables). Library files are also needed
-
+ 
+ print*, 'Restore geometry using FFT-based integration'
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res_x,res_y,res_z
+ 
  call dfftw_plan_many_dft(plan_fft(1),3,(/res_x,res_y,res_z/),9,&
    defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,&
    defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,FFTW_FORWARD,FFTW_PATIENT)  
@@ -499,9 +558,99 @@ subroutine deformed_fft(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,scaling,coo
  enddo; enddo; enddo
 end subroutine deformed_fft
 
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine volume_compare(res_x,res_y,res_z,geomdim,nodes,defgrad,volume_mismatch)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+! Routine to calculate the mismatch between volume of reconstructed (compatible)
+! cube and determinant of defgrad at the FP
+
+ use math
+ implicit none
+ 
+ real*8 geomdim(3)
+ integer res_x, res_y, res_z
+ real*8            nodes(res_x+1,res_y+1,res_z+1,3)
+ real*8          defgrad(res_x  ,res_y  ,res_z  ,3,3)
+ real*8  volume_mismatch(res_x  ,res_y  ,res_z  )
+ real*8  coords(8,3)
+ integer i,j,k
+ real*8, dimension(3,3) :: defgrad_av
+ real*8 vol_initial
+
+ print*, 'Calculating volume  mismatch'
+ vol_initial = geomdim(1)*geomdim(2)*geomdim(3)/real(res_x)/real(res_y)/real(res_z)
+ do k = 1,res_z
+   do j = 1,res_y
+     do i = 1,res_x 
+       coords(1,:) = nodes(i  ,j  ,k  ,:)
+       coords(2,:) = nodes(i+1,j  ,k  ,:)
+       coords(3,:) = nodes(i+1,j+1,k  ,:)
+       coords(4,:) = nodes(i  ,j+1,k  ,:)
+       coords(5,:) = nodes(i  ,j,  k+1,:)
+       coords(6,:) = nodes(i+1,j  ,k+1,:)
+       coords(7,:) = nodes(i+1,j+1,k+1,:)
+       coords(8,:) = nodes(i  ,j+1,k+1,:)
+       volume_mismatch(i,j,k) = abs(math_volTetrahedron(coords(7,:),coords(1,:),coords(8,:),coords(4,:))) &
+                              + abs(math_volTetrahedron(coords(7,:),coords(1,:),coords(8,:),coords(5,:))) &
+                              + abs(math_volTetrahedron(coords(7,:),coords(1,:),coords(3,:),coords(4,:))) &
+                              + abs(math_volTetrahedron(coords(7,:),coords(1,:),coords(3,:),coords(2,:))) &
+                              + abs(math_volTetrahedron(coords(7,:),coords(5,:),coords(2,:),coords(6,:))) &
+                              + abs(math_volTetrahedron(coords(7,:),coords(5,:),coords(2,:),coords(1,:)))
+       volume_mismatch(i,j,k) = volume_mismatch(i,j,k)/math_det3x3(defgrad(i,j,k,:,:))
+ enddo; enddo; enddo
+ volume_mismatch = volume_mismatch/vol_initial
+end subroutine volume_compare
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine shape_compare(res_x,res_y,res_z,geomdim,nodes,centroids,defgrad,shape_mismatch)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+! Routine to calculate the mismatch between the vectors from the central point to
+! the corners of reconstructed (combatible) volume element and the vectors calculated by deforming 
+! the initial volume element with the  current deformation gradient 
+ implicit none
+ 
+ real*8 geomdim(3)
+ integer res_x, res_y, res_z
+ real*8            nodes(res_x+1,res_y+1,res_z+1,3)
+ real*8        centroids(res_x  ,res_y  ,res_z  ,3)
+ real*8          defgrad(res_x  ,res_y  ,res_z  ,3,3)
+ real*8   shape_mismatch(res_x  ,res_y  ,res_z)
+ real*8  coords(8,3)
+ real*8  coords_initial(8,3)
+ integer i,j,k,n
+
+ print*, 'Calculating shape mismatch'
+ coords_initial(1,:) = (/-geomdim(1)/2.0/real(res_x),-geomdim(2)/2.0/real(res_y),-geomdim(3)/2.0/real(res_z)/)
+ coords_initial(2,:) = (/+geomdim(1)/2.0/real(res_x),-geomdim(2)/2.0/real(res_y),-geomdim(3)/2.0/real(res_z)/)
+ coords_initial(3,:) = (/+geomdim(1)/2.0/real(res_x),+geomdim(2)/2.0/real(res_y),-geomdim(3)/2.0/real(res_z)/)
+ coords_initial(4,:) = (/-geomdim(1)/2.0/real(res_x),+geomdim(2)/2.0/real(res_y),-geomdim(3)/2.0/real(res_z)/)
+ coords_initial(5,:) = (/-geomdim(1)/2.0/real(res_x),-geomdim(2)/2.0/real(res_y),+geomdim(3)/2.0/real(res_z)/)
+ coords_initial(6,:) = (/+geomdim(1)/2.0/real(res_x),-geomdim(2)/2.0/real(res_y),+geomdim(3)/2.0/real(res_z)/)
+ coords_initial(7,:) = (/+geomdim(1)/2.0/real(res_x),+geomdim(2)/2.0/real(res_y),+geomdim(3)/2.0/real(res_z)/)
+ coords_initial(8,:) = (/-geomdim(1)/2.0/real(res_x),+geomdim(2)/2.0/real(res_y),+geomdim(3)/2.0/real(res_z)/)
+ do i=1,8
+ enddo
+ do k = 1,res_z
+   do j = 1,res_y
+     do i = 1,res_x
+       shape_mismatch(i,j,k) = sqrt(sum((nodes(i  ,j  ,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(1,:)))**2.0))&
+                             + sqrt(sum((nodes(i+1,j  ,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(2,:)))**2.0))&
+                             + sqrt(sum((nodes(i+1,j+1,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(3,:)))**2.0))&
+                             + sqrt(sum((nodes(i  ,j+1,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(4,:)))**2.0))&
+                             + sqrt(sum((nodes(i  ,j,  k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(5,:)))**2.0))&
+                             + sqrt(sum((nodes(i+1,j  ,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(6,:)))**2.0))&
+                             + sqrt(sum((nodes(i+1,j+1,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(7,:)))**2.0))&
+                             + sqrt(sum((nodes(i  ,j+1,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(8,:)))**2.0))
+ enddo; enddo; enddo
+ end subroutine shape_compare
+
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine inverse_reconstruction(res_x,res_y,res_z,reference_configuration,current_configuration,defgrad)
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate deformation gradient from reference and current configuration
+! NOT WORKING BY NOW!!!!!!!!!!!!!
+!
  use math
  implicit none
  integer res_x, res_y, res_z
@@ -600,6 +749,8 @@ end subroutine inverse_reconstruction
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine tensor_avg(res_x,res_y,res_z,tensor,avg)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate average of tensor field
+!
 
  implicit none
  integer res_x, res_y, res_z
@@ -618,6 +769,8 @@ end subroutine tensor_avg
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine logstrain_spat(res_x,res_y,res_z,defgrad,logstrain_field)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate logarithmic strain in spatial configuration for given defgrad field
+!
  use math
  implicit none
  integer res_x, res_y, res_z
@@ -644,7 +797,9 @@ subroutine logstrain_spat(res_x,res_y,res_z,defgrad,logstrain_field)
  
  !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine logstrain_mat(res_x,res_y,res_z,defgrad,logstrain_field)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate logarithmic strain in material configuration for given defgrad field
+!
  use math
  implicit none
  integer res_x, res_y, res_z
@@ -669,7 +824,9 @@ subroutine logstrain_mat(res_x,res_y,res_z,defgrad,logstrain_field)
  
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine calculate_cauchy(res_x,res_y,res_z,defgrad,p_stress,c_stress)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate cauchy stress for given PK1 stress and defgrad field
+!
  use math
  implicit none
  integer res_x, res_y, res_z
@@ -687,7 +844,9 @@ end subroutine calculate_cauchy
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++   
 subroutine calculate_mises(res_x,res_y,res_z,tensor,vm)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate von Mises equivalent of tensor field
+!
  implicit none
  integer res_x, res_y, res_z
  integer i, j, k
@@ -712,3 +871,134 @@ subroutine calculate_mises(res_x,res_y,res_z,tensor,vm)
    vm(i,j,k,:) = sqrt(3*J_2)
  enddo; enddo; enddo
 end subroutine calculate_mises
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine divergence_fft(res_x,res_y,res_z,vec_tens,geomdim,field,divergence_field)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! calculates divergence field using integration in Fourier space
+!use vec_tens to decide if tensor (3) or vector (1)
+
+ implicit none
+ integer res_x, res_y, res_z, vec_tens
+ real*8 geomdim(3)
+ real*8 field(res_x,res_y,res_z,vec_tens,3)
+ real*8 field_copy(res_x,res_y,res_z,vec_tens,3)
+ real*8 xi(res_x,res_y,res_z,3)
+ real*8 divergence_field(res_x,res_y,res_z,vec_tens)
+ complex*16 divergence_field_fft(res_x/2+1,res_y,res_z,vec_tens)
+ complex*16 field_fft(res_x,res_y,res_z,vec_tens,3)
+ complex*16 img
+ integer i, j, k
+ integer k_s(3)
+ real*8, parameter :: pi = 3.14159265358979323846264338327950288419716939937510
+ integer*8 ::  plan_fft(2)
+ include 'fftw3.f' !header file for fftw3 (declaring variables). Library files are also needed
+
+ img = cmplx(0.0,1.0)
+
+ call dfftw_plan_many_dft_r2c(plan_fft(1),3,(/res_x,res_y,res_z/),vec_tens*3,&
+    field_copy,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,&
+    field_fft,(/res_x/2+1,res_y,res_z/),1,(res_x/2+1)*res_y*res_z,FFTW_PATIENT)
+
+ call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res_x,res_y,res_z/),vec_tens,&
+   divergence_field_fft,(/res_x/2+1,res_y,res_z/),1,(res_x/2+1)*res_y*res_z,&
+   divergence_field,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,FFTW_PATIENT)
+
+! field_copy is destroyed during plan creation
+ field_copy = field
+
+ call dfftw_execute_dft_r2c(plan_fft(1), field_copy, field_fft)
+
+ xi = 0.0
+! Alternative calculation of discrete frequencies k_s, ordered as in FFTW (wrap around) 
+! do k = 0,res_z/2 -1                                       
+  ! do j = 0,res_y/2 -1
+     ! do i = 0,res_x/2 -1
+         ! xi(1+mod(res_x-i,res_x),1+mod(res_y-j,res_y),1+mod(res_z-k,res_z),:) = (/-i,-j,-k/)/geomdim
+         ! xi(1+i,                 1+mod(res_y-j,res_y),1+mod(res_z-k,res_z),:) = (/ i,-j,-k/)/geomdim
+         ! xi(1+mod(res_x-i,res_x),1+j,                 1+mod(res_z-k,res_z),:) = (/-i, j,-k/)/geomdim
+         ! xi(1+i,                 1+j,                 1+mod(res_z-k,res_z),:) = (/ i, j,-k/)/geomdim
+         ! xi(1+mod(res_x-i,res_x),1+mod(res_y-j,res_y),1+k,                 :) = (/-i,-j, k/)/geomdim
+         ! xi(1+i,                 1+mod(res_y-j,res_y),1+k,                 :) = (/ i,-j, k/)/geomdim
+         ! xi(1+mod(res_x-i,res_x),1+j,                 1+k,                 :) = (/-i, j, k/)/geomdim
+         ! xi(1+i,                 1+j,                 1+k,                 :) = (/ i, j, k/)/geomdim
+         ! xi(1+i,                 1+j,                 1+k,                 :) = (/ i, j, k/)/geomdim
+         ! xi(1+mod(res_x-i,res_x),1+j,                 1+k,                 :) = (/-i, j, k/)/geomdim
+         ! xi(1+i,                 1+mod(res_y-j,res_y),1+k,                 :) = (/ i,-j, k/)/geomdim
+         ! xi(1+mod(res_x-i,res_x),1+mod(res_y-j,res_y),1+k,                 :) = (/-i,-j, k/)/geomdim
+         ! xi(1+i,                 1+j,                 1+mod(res_z-k,res_z),:) = (/ i, j,-k/)/geomdim
+         ! xi(1+mod(res_x-i,res_x),1+j,                 1+mod(res_z-k,res_z),:) = (/-i, j,-k/)/geomdim
+         ! xi(1+i,                 1+mod(res_y-j,res_y),1+mod(res_z-k,res_z),:) = (/ i,-j,-k/)/geomdim
+         ! xi(1+mod(res_x-i,res_x),1+mod(res_y-j,res_y),1+mod(res_z-k,res_z),:) = (/-i,-j,-k/)/geomdim
+  ! enddo; enddo; enddo
+  
+ do k = 0, res_z-1         
+   do j = 0, res_y-1
+     do i = 0, res_x/2
+       xi(i+1,j+1,k+1,:) = (/real(i),real(j),real(k)/)/geomdim
+       if(k==res_z/2) xi(i+1,j+1,k+1,3)= 0.0 ! set highest frequencies to zero
+       if(j==res_y/2) xi(i+1,j+1,k+1,2)= 0.0
+       if(i==res_x/2) xi(i+1,j+1,k+1,1)= 0.0
+ enddo; enddo; enddo
+
+ 
+ do k = 1, res_z                                       
+   do j = 1, res_y
+     do i = 1, res_x/2+1
+       divergence_field_fft(i,j,k,1) = sum(field_fft(i,j,k,1,:)*xi(i,j,k,:))
+       if(vec_tens == 3) then
+       divergence_field_fft(i,j,k,2) = sum(field_fft(i,j,k,2,:)*xi(i,j,k,:))
+       divergence_field_fft(i,j,k,3) = sum(field_fft(i,j,k,3,:)*xi(i,j,k,:))
+       endif
+ enddo; enddo; enddo
+ divergence_field_fft = divergence_field_fft*img*2.0*pi
+
+ call dfftw_execute_dft_c2r(plan_fft(2), divergence_field_fft, divergence_field)
+
+end subroutine divergence_fft
+          
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine divergence(res_x,res_y,res_z,vec_tens,order,geomdim,field,divergence_field)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! calculates divergence field using FDM with variable accuracy
+!use vec_tes to decide if tensor (3) or vector (1)
+ 
+ use math       
+ implicit none
+ integer res_x, res_y, res_z, vec_tens, order
+ integer coordinates(6,3)
+ real*8 geomdim(3)
+ real*8 field(res_x,res_y,res_z,vec_tens,3)
+ real*8 divergence_field(res_x,res_y,res_z,vec_tens)
+ integer i, j, k, m, l, x
+ integer k_s(3)
+ real*8, dimension(4,4) :: FDcoefficient = reshape((/ & !from http://en.wikipedia.org/wiki/Finite_difference_coefficients
+                                1.0/2.0,      0.0,      0.0,       0.0,&
+                                2.0/3.0,-1.0/12.0,      0.0,       0.0,&
+                                3.0/4.0,-3.0/20.0,1.0/ 60.0,       0.0,&
+                                4.0/5.0,-1.0/ 5.0,4.0/105.0,-1.0/280.0/),&
+                               (/4,4/))
+ divergence_field = 0.0
+ order = order + 1
+ do k = 0, res_z-1; do j = 0, res_y-1; do i = 0, res_x-1
+   do m = 1, order 
+     coordinates(1,:) = mesh_location(mesh_index((/i+m,j,k/),(/res_x,res_y,res_z/)),(/res_x,res_y,res_z/)) + (/1,1,1/) 
+     coordinates(2,:) = mesh_location(mesh_index((/i-m,j,k/),(/res_x,res_y,res_z/)),(/res_x,res_y,res_z/)) + (/1,1,1/)
+     coordinates(3,:) = mesh_location(mesh_index((/i,j+m,k/),(/res_x,res_y,res_z/)),(/res_x,res_y,res_z/)) + (/1,1,1/) 
+     coordinates(4,:) = mesh_location(mesh_index((/i,j-m,k/),(/res_x,res_y,res_z/)),(/res_x,res_y,res_z/)) + (/1,1,1/)
+     coordinates(5,:) = mesh_location(mesh_index((/i,j,k+m/),(/res_x,res_y,res_z/)),(/res_x,res_y,res_z/)) + (/1,1,1/) 
+     coordinates(6,:) = mesh_location(mesh_index((/i,j,k-m/),(/res_x,res_y,res_z/)),(/res_x,res_y,res_z/)) + (/1,1,1/)
+     do l = 1, vec_tens
+       divergence_field(i+1,j+1,k+1,l) = divergence_field(i+1,j+1,k+1,l) + FDcoefficient(m,order) * &
+                ((field(coordinates(1,1),coordinates(1,2),coordinates(1,3),l,1)- &
+                  field(coordinates(2,1),coordinates(2,2),coordinates(2,3),l,1))*real(res_x)/geomdim(1) +&
+                 (field(coordinates(3,1),coordinates(3,2),coordinates(3,3),l,2)- &
+                  field(coordinates(4,1),coordinates(4,2),coordinates(4,3),l,2))*real(res_y)/geomdim(2) +&
+                 (field(coordinates(5,1),coordinates(5,2),coordinates(5,3),l,3)- &
+                  field(coordinates(6,1),coordinates(6,2),coordinates(6,3),l,3))*real(res_z)/geomdim(3))  
+     enddo
+   enddo
+ enddo; enddo; enddo
+end subroutine divergence
+
+

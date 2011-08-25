@@ -46,6 +46,22 @@ python module postprocessingMath ! in
                 real*8 dimension(3,3),intent(out) :: eb2
                 real*8 dimension(3,3),intent(out) :: eb3
             end subroutine math_spectral1
+            function math_volTetrahedron(v1,v2,v3,v4) ! in :postprocessingMath:postprocessingMath.f90:math
+               real*8 dimension(3), intent(in) :: v1
+               real*8 dimension(3), intent(in) :: v2
+               real*8 dimension(3), intent(in) :: v3
+               real*8 dimension(3), intent(in) :: v4
+            end function math_volTetrahedron
+            function mesh_location(idx,resolution) ! in :postprocessingMath:postprocessingMath.f90:math
+               integer, intent(in) :: idx
+               integer dimension(3), intent(in) :: resolution
+               integer dimension(3) :: mesh_location
+            end function mesh_location
+            function mesh_index(location,resolution) ! in :postprocessingMath:postprocessingMath.f90:math
+               integer dimension(3), intent(in) :: resolution
+               integer dimension(3), intent(in) :: location
+               integer :: mesh_index
+            end function mesh_location
         end module math
         subroutine mesh(res_x,res_y,res_z,geomdim,defgrad_av,centroids,nodes) ! in :postprocessingMath:postprocessingMath.f90
             integer intent(in) :: res_x
@@ -75,12 +91,30 @@ python module postprocessingMath ! in
             real*8 intent(in) :: scaling
             real*8 dimension(3),intent(in) :: geomdim
             real*8 dimension(3,3),intent(in) :: defgrad_av
-            real*8 dimension(res_x,res_y,res_z,3),intent(out),depend(res_x,res_y,res_z) :: coords
-            complex*16 dimension(res_x/2+1,res_y,res_z,3),depend(res_x,res_y,res_z) :: coords_fft
             real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: defgrad
+            real*8 dimension(res_x,res_y,res_z,3),intent(out),depend(res_x,res_y,res_z) :: coords
             complex*16 dimension(res_x,res_y,res_z,3,3),depend(res_x,res_y,res_z) :: defgrad_fft
-            complex*16 dimension(res_x/2+1,res_y,res_z,3),depend(res_x,res_y,res_z) :: integrator
+            complex*16 dimension(res_x/2+1,res_y,res_z,3),depend(res_x,res_y,res_z) :: coords_fft
         end subroutine deformed_fft
+        subroutine volume_compare(res_x,res_y,res_z,geomdim,nodes,defgrad,volume_mismatch) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            real*8 dimension(3),intent(in) :: geomdim
+            real*8 dimension(res_x+1,res_y+1,res_z+1,3),intent(in),depend(res_x,res_y,res_z) :: nodes
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: defgrad
+            real*8 dimension(res_x,res_y,res_z),intent(out),depend(res_x,res_y,res_z) :: volume_mismatch
+        end subroutine volume_compare
+        subroutine shape_compare(res_x,res_y,res_z,geomdim,nodes,centroids,defgrad,shape_mismatch) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            real*8 dimension(3),intent(in) :: geomdim
+            real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: defgrad
+            real*8 dimension(res_x+1,res_y+1,res_z+1,3),intent(in),depend(res_x,res_y,res_z) :: nodes
+            real*8 dimension(res_x,res_y,res_z,3),intent(in),depend(res_x,res_y,res_z) :: centroids
+            real*8 dimension(res_x,res_y,res_z),intent(out),depend(res_x,res_y,res_z) :: shape_mismatch
+        end subroutine shape_compare
         subroutine inverse_reconstruction(res_x,res_y,res_z,reference_configuration,current_configuration,defgrad) ! in :postprocessingMath:postprocessingMath.f90
             integer intent(in) :: res_x
             integer intent(in) :: res_y
@@ -125,6 +159,27 @@ python module postprocessingMath ! in
             real*8 dimension(res_x,res_y,res_z,3,3),intent(in),depend(res_x,res_y,res_z) :: tensor
             real*8 dimension(res_x,res_y,res_z,1),intent(out),depend(res_x,res_y,res_z) :: vm
         end subroutine calculate_mises
+        subroutine divergence_fft(res_x,res_y,res_z,vec_tens,geomdim,field,divergence_field) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            integer intent(in) :: vec_tens
+            real*8 dimension(3),intent(in) :: geomdim
+            real*8 dimension(res_x,res_y,res_z,3,vec_tens),intent(in),depend(res_x,res_y,res_z,vec_tens) :: field
+            real*8 dimension(res_x,res_y,res_z,vec_tens), intent(out),depend(res_x,res_y,res_z,vec_tens) :: divergence_field
+            complex*8 dimension(res_x,res_y,res_z,3,vec_tens),depend(res_x,res_y,res_z,vec_tens) :: field_fft
+            complex*8 dimension(res_x/2+1,res_y,res_z,vec_tens),depend(res_x,res_y,res_z,vec_tens) :: divergence_field_fft       
+        end subroutine divergence_fft
+        subroutine divergence(res_x,res_y,res_z,vec_tens,order,geomdim,field,divergence_field) ! in :postprocessingMath:postprocessingMath.f90
+            integer intent(in) :: res_x
+            integer intent(in) :: res_y
+            integer intent(in) :: res_z
+            integer intent(in) :: vec_tens
+            integer intent(in) :: order
+            real*8 dimension(3),intent(in) :: geomdim
+            real*8 dimension(res_x,res_y,res_z,vec_tens,3),intent(in),depend(res_x,res_y,res_z,vec_tens,3) :: field
+            real*8 dimension(res_x,res_y,res_z,vec_tens),intent(out),depend(res_x,res_y,res_z,vec_tens) :: divergence_field
+        end subroutine divergence
     end interface 
 end python module postprocessingMath
 
