@@ -72,7 +72,8 @@ for dir in compile:
     src = os.path.abspath(os.path.join(basedir,dir,file))
     if os.path.isfile(src):
       print file
-      os.system('ifort -O3 -parallel -o%s %s'%(os.path.splitext(src)[0],src))
+      os.system('rm %s.exe'%(os.path.splitext(src)[0]))
+      os.system('ifort -O3 -parallel -o%s.exe %s'%(os.path.splitext(src)[0],src))
  
 modules = glob.glob('*.mod')
 for module in modules:

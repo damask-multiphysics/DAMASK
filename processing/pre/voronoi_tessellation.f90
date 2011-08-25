@@ -127,7 +127,7 @@
 
  endfunction
  
- !********************************************************************
+!********************************************************************
 ! locate at most N space-separated parts in line
 ! return array containing number of parts in line and
 ! the left/right positions of at most N to be used by IO_xxxVal
@@ -172,10 +172,12 @@ program voronoi
  logical gotN_Seeds, gotResolution
  logical, dimension(:), allocatable :: grainCheck
  character(len=1024) input_name, output_name, format1, format2, N_Digits, line, key
- integer(pInt) a, b, c, N_Seeds, theGrain, i, j, k, l, m
+ integer(pInt) N_Seeds, theGrain, i, j, k, l, m
  integer(pInt), dimension (1+2*7) ::  posGeom
  real(pReal), dimension(:,:), allocatable :: grainEuler, seeds
- real(pReal), dimension(3) :: step,dim,delta
+ real(pReal), dimension(3) :: step,geomdim,delta
+ integer(pInt), dimension(3) :: resolution
+ logical, dimension(3) :: validDim
  real(pReal) minDist, theDist
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
 
@@ -209,11 +211,11 @@ program voronoi
        do i = 2,6,2
          select case (IO_lc(IO_stringValue(line,posGeom,i)))
            case('a')
-             a = IO_intValue(line,posGeom,i+1)
+             resolution(1) = IO_intValue(line,posGeom,i+1)
            case('b')
-             b = IO_intValue(line,posGeom,i+1)
+             resolution(2) = IO_intValue(line,posGeom,i+1)
            case('c')
-             c = IO_intValue(line,posGeom,i+1)
+             resolution(3) = IO_intValue(line,posGeom,i+1)
          end select
        enddo
    end select
@@ -225,24 +227,24 @@ program voronoi
  allocate(grainCheck(N_Seeds))
  grainCheck = .false.
  
- print*, 'resolution: ' ,a,b,c
+ print*, 'resolution: ' ,resolution(1),resolution(2),resolution(3)
  write(*, '(A)', advance = 'NO') 'resolution in x: '
- read(*, *), a
+ read(*, *), resolution(1)
  write(*, '(A)', advance = 'NO') 'resolution in y: '
- read(*, *), b
+ read(*, *), resolution(2)
  write(*, '(A)', advance = 'NO') 'resolution in z: '
- read(*, *), c
+ read(*, *), resolution(3)
  
- step(1) = 1.0_pReal/real(a,pReal)
- step(2) = 1.0_pReal/real(b,pReal)
- step(3) = 1.0_pReal/real(c,pReal)
+ step(1) = 1.0_pReal/real(resolution(1),pReal)
+ step(2) = 1.0_pReal/real(resolution(2),pReal)
+ step(3) = 1.0_pReal/real(resolution(3),pReal)
  
  write(*, '(A)', advance = 'NO') 'size in x: '
- read(*, *), dim(1)
+ read(*, *), geomdim(1)
  write(*, '(A)', advance = 'NO') 'size in y: '
- read(*, *), dim(2)
+ read(*, *), geomdim(2)
  write(*, '(A)', advance = 'NO') 'size in z: '
- read(*, *), dim(3)
+ read(*, *), geomdim(3)
  
  rewind(20)
  read(20,'(a1024)') line
@@ -262,84 +264,101 @@ program voronoi
     grainEuler(i,j) = IO_floatValue(line,posGeom,j+3)
   enddo
  enddo
- close(20) 
+ close(20)
  
+ !check dimensions, set dimension with 0 to smallest step of other dimensions
+ validDim = .false.
+   
+ do i = 1,3
+   if(geomdim(i) .gt. 0.0) validDim(i) = .true.
+ enddo
  
+ if(all(validDim == .false.)) then
+   geomdim(maxval(maxloc(resolution))) = 1.0
+   validDim(maxval(maxloc(resolution))) = .true.
+   print*, 'no valid dimension specified, using automated setting'
+ endif
+ 
+ do i=1,3
+   if (validDim(i) == .false.) then
+     print*, 'rescaling ivalid dimension' , i
+     geomdim(i) = maxval(geomdim/real(resolution),validDim)*real(resolution(i))
+    endif
+ enddo    
 ! calculate No. of digits needed for name of the grains
-  i = 1 + int( log10(real( N_Seeds )))
-  write(N_Digits, *) i
-  N_Digits = adjustl( N_Digits )
+ i = 1 + int( log10(real( N_Seeds )))
+ write(N_Digits, *) i
+ N_Digits = adjustl( N_Digits )
 
 !write material.config header and add a microstructure entry for every grain
-  open(20, file = trim(output_name)//('_material.config'))
-  write(20, '(A)'), '<microstructure>'
-  format1 = '(A, I'//trim(N_Digits)//'.'//trim(N_Digits)//', A)'
-  format2 = '(A, I'//trim(N_Digits)//', A)'
-  do i = 1, N_Seeds
-    write(20, trim(format1)), '[Grain', i, ']'
-    write(20, '(A)'), 'crystallite 1'
-    write(20, trim(format2)), '(constituent)  phase 1   texture ', i, '   fraction 1.0'
-  end do
+ open(20, file = trim(output_name)//('_material.config'))
+ write(20, '(A)'), '<microstructure>'
+ format1 = '(A, I'//trim(N_Digits)//'.'//trim(N_Digits)//', A)'
+ format2 = '(A, I'//trim(N_Digits)//', A)'
+ do i = 1, N_Seeds
+   write(20, trim(format1)), '[Grain', i, ']'
+   write(20, '(A)'), 'crystallite 1'
+   write(20, trim(format2)), '(constituent)  phase 1   texture ', i, '   fraction 1.0'
+ end do
 
 ! get random euler angles for every grain, store them in grainEuler and write them to the material.config file
-  format2 = '(6(A, F10.6))'
-  write(20, '(/, A)'), '<texture>'
-    do i = 1, N_Seeds
-      write(20, trim(format1)), '[Grain', i, ']'
-      write(20, trim(format2)), '(gauss)  phi1 ', grainEuler(i,1), '   Phi ', grainEuler(i,2), &
-            &'   Phi2 ', grainEuler(i,3), '   scatter 0   fraction 1'
-    end do
-  close(20)
-  print*, ''
-  print*, 'material.config done.'
+ format2 = '(6(A, F10.6))'
+ write(20, '(/, A)'), '<texture>'
+   do i = 1, N_Seeds
+     write(20, trim(format1)), '[Grain', i, ']'
+     write(20, trim(format2)), '(gauss)  phi1 ', grainEuler(i,1), '   Phi ', grainEuler(i,2), &
+           &'   Phi2 ', grainEuler(i,3), '   scatter 0   fraction 1'
+   end do
+ close(20)
+ print*, 'material.config done.'
 
 !write header of geom file
-  open(20, file = ((trim(output_name))//'.geom'))
-  open(21, file = ((trim(output_name))//'.spectral'))
-  write(20, '(A)'), '3 header'
-  write(20, '(A, I8, A, I8, A, I8)'), 'resolution  a ', a, '  b ', b, '  c ', c
-  write(20, '(A, g15.10, A, g15.10, A, g15.10)'), 'dimension   x ', dim(1), '  y ', dim(2), '  z ', dim(3)
-  write(20, '(A)'), 'homogenization  1'
+ open(20, file = ((trim(output_name))//'.geom'))
+ open(21, file = ((trim(output_name))//'.spectral'))
+ write(20, '(A)'), '3 header'
+ write(20, '(A, I8, A, I8, A, I8)'), 'resolution  a ', resolution(1), '  b ', resolution(2), '  c ', resolution(3)
+ write(20, '(A, g15.10, A, g15.10, A, g15.10)'), 'dimension   x ', geomdim(1), '  y ', geomdim(2), '  z ', geomdim(3)
+ write(20, '(A)'), 'homogenization  1'
 
-  format1 = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//')'                    ! geom format
-  format2 = '(3(tr2, f6.2), 3(tr2,g10.5), I10, a)'                                ! spectral (Lebensohn) format
+ format1 = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//')'                    ! geom format
+ format2 = '(3(tr2, f6.2), 3(tr2,g10.5), I10, a)'                                ! spectral (Lebensohn) format
 
 
 ! perform voronoi tessellation and write result to files
-  do i = 0, a*b*c-1
-    minDist = dim(1)*dim(1)+dim(2)*dim(2)+dim(3)*dim(3)                   ! diagonal of rve
-    do j = 1, N_Seeds
-      delta(1) = step(1)*(mod(i    , a)+0.5_pReal) - seeds(j,1)
-      delta(2) = step(2)*(mod(i/a  , b)+0.5_pReal) - seeds(j,2)
-      delta(3) = step(3)*(mod(i/a/b, c)+0.5_pReal) - seeds(j,3)
-      do k = -1, 1                                                                                            ! left, me, right image
-        do l = -1, 1                                                                                          ! front, me, back image
-          do m = -1, 1                                                                                        ! lower, me, upper image
-            theDist = ( dim(1) * ( delta(1)-real(k,pReal) ) )**2 + &
-                      ( dim(2) * ( delta(2)-real(l,pReal) ) )**2 + &
-                      ( dim(3) * ( delta(3)-real(m,pReal) ) )**2
-            if (theDist < minDist) then
-              minDist = theDist
-              theGrain = j
-            endif
-          enddo
-        enddo
-      enddo
-    enddo
-    grainCheck(theGrain) = .true.
-    write(20, trim(format1)), theGrain
-    write(21, trim(format2)), grainEuler(theGrain,1), grainEuler(theGrain,2), grainEuler(theGrain,3), &
-                              dim(1)*step(1)*(mod(i    , a)+0.5_pReal), &
-                              dim(2)*step(2)*(mod(i/a  , b)+0.5_pReal), &
-                              dim(3)*step(3)*(mod(i/a/b, c)+0.5_pReal), &
-                              theGrain, '   1'
-  enddo
-  close(20)
-  close(21)
-  print*, 'voronoi tesselation done.'
-  if (all(grainCheck)) then
-    print*, 'all grains mapped!'
-  else
+ do i = 0, resolution(1)*resolution(2)*resolution(3)-1
+   minDist = geomdim(1)*geomdim(1)+geomdim(2)*geomdim(2)+geomdim(3)*geomdim(3)                   ! diagonal of rve
+   do j = 1, N_Seeds
+     delta(1) = step(1)*(mod(i    , resolution(1))+0.5_pReal) - seeds(j,1)
+     delta(2) = step(2)*(mod(i/resolution(1)  , resolution(2))+0.5_pReal) - seeds(j,2)
+     delta(3) = step(3)*(mod(i/resolution(1)/resolution(2), resolution(3))+0.5_pReal) - seeds(j,3)
+     do k = -1, 1                                                                                            ! left, me, right image
+       do l = -1, 1                                                                                          ! front, me, back image
+         do m = -1, 1                                                                                        ! lower, me, upper image
+           theDist = ( geomdim(1) * ( delta(1)-real(k,pReal) ) )**2 + &
+                     ( geomdim(2) * ( delta(2)-real(l,pReal) ) )**2 + &
+                     ( geomdim(3) * ( delta(3)-real(m,pReal) ) )**2
+           if (theDist < minDist) then
+             minDist = theDist
+             theGrain = j
+           endif
+         enddo
+       enddo
+     enddo
+   enddo
+   grainCheck(theGrain) = .true.
+   write(20, trim(format1)), theGrain
+   write(21, trim(format2)), grainEuler(theGrain,1), grainEuler(theGrain,2), grainEuler(theGrain,3), &
+                             geomdim(1)*step(1)*(mod(i    , resolution(1))+0.5_pReal), &
+                             geomdim(2)*step(2)*(mod(i/resolution(1)  , resolution(2))+0.5_pReal), &
+                             geomdim(3)*step(3)*(mod(i/resolution(1)/resolution(2), resolution(3))+0.5_pReal), &
+                             theGrain, '   1'
+ enddo
+ close(20)
+ close(21)
+ print*, 'voronoi tesselation done.'
+ if (all(grainCheck)) then
+   print*, 'all grains mapped!'
+ else
     print*, 'only',count(grainCheck),'grains mapped!'
   endif
  
