@@ -1,3 +1,4 @@
+$Id$
 #!/bin/bash
 
 # This script is used to compile the python module used for geometry reconstruction.

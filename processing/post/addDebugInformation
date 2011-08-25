@@ -66,10 +66,12 @@ if not options.res or len(options.res) < 3:
 if not options.dim or len(options.dim) < 3:
   parser.error('improper dimension specification...')
 
-defgrad      = {}
-defgrad_av   = {}
-centroids    = {}
-nodes        = {}
+defgrad        = {}
+defgrad_av     = {}
+centroids      = {}
+nodes          = {}
+shape_mismatch = {}
+volume_mismatch= {}
 
 datainfo = {                                                               # list of requested labels per datatype
              'defgrad':     {'len':9,
@@ -128,8 +130,8 @@ for file in files:
         if datatype not in column: column[datatype] = {}
         active[datatype].append(label)
         column[datatype][label] = headers.index(key)
-        if options.shape:  head += 'mismatch_shape(%s)'%label
-        if options.volume: head += 'mismatch_volume(%s)'%label
+        if options.shape:  head += ['mismatch_shape(%s)'%label]
+        if options.volume: head += ['mismatch_volume(%s)'%label]
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
@@ -158,12 +160,12 @@ for file in files:
                       [location(idx,options.res)[2]]\
                 = numpy.array(map(float,items[column[datatype][label]:
                                               column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)
-        defgrad_av[label] = postprocessingMath.tensor_avg(options.res[0],options.res[1],options.res[2],defgrad[label])
-        centroids[label] = postprocessingMath.deformed_fft(options.res[0],options.res[1],options.res[2],options.dim,defgrad[label],defgrad_av[label],1.0)
-        nodes[label] = postprocessingMath.mesh(options.res[0],options.res[1],options.res[2],options.dim,defgrad_av[label],centroids[label])
-        if options.shape:   shape_mismatch[label] = postprocessingMath.shape_compare( options.res[0],options.res[1],options.res[2],options.dim,nodes[label],centroids[label],defgrad[label])
-        if options.volume: volume_mismatch[label] = postprocessingMath.volume_compare(options.res[0],options.res[1],options.res[2],options.dim,nodes[label],                 defgrad[label])
         idx += 1                                                   
+      defgrad_av[label] = postprocessingMath.tensor_avg(options.res[0],options.res[1],options.res[2],defgrad[label])
+      centroids[label] = postprocessingMath.deformed_fft(options.res[0],options.res[1],options.res[2],options.dim,defgrad[label],defgrad_av[label],1.0)
+      nodes[label] = postprocessingMath.mesh(options.res[0],options.res[1],options.res[2],options.dim,defgrad_av[label],centroids[label])
+      if options.shape:   shape_mismatch[label] = postprocessingMath.shape_compare( options.res[0],options.res[1],options.res[2],options.dim,nodes[label],centroids[label],defgrad[label])
+      if options.volume: volume_mismatch[label] = postprocessingMath.volume_compare(options.res[0],options.res[1],options.res[2],options.dim,nodes[label],                 defgrad[label])
 
 # ------------------------------------------ read file ---------------------------------------  
 
