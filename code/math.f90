@@ -1165,6 +1165,23 @@ pure function math_transpose3x3(A)
  forall (i=1:9) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
 
  endfunction math_Plain33to9
+ 
+ !********************************************************************
+! convert 3x3 matrix into vector 9x1
+!********************************************************************
+ pure function math_Plain33to9_logical(m33)
+
+ use prec, only: pReal,pInt
+ implicit none
+
+ logical, dimension(3,3), intent(in) :: m33
+ logical, dimension(9) :: math_Plain33to9_logical
+ integer(pInt) i
+ 
+ forall (i=1:9) math_Plain33to9_logical(i) = m33(mapPlain(1,i),mapPlain(2,i))
+
+ endfunction math_Plain33to9_logical
+ 
 !********************************************************************
 ! convert Plain 9x1 back to 3x3 matrix
 !********************************************************************
@@ -2048,7 +2065,7 @@ endfunction math_sampleGaussVar
  real(pReal) CE(3,3),EW1,EW2,EW3,EB1(3,3),EB2(3,3),EB3(3,3),UI(3,3),det
 
  error = .false.
- ce = math_mul33x33(transpose(FE),FE)
+ ce = math_mul33x33(math_transpose3x3(FE),FE)
 
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=sqrt(EW1)*EB1+sqrt(EW2)*EB2+sqrt(EW3)*EB3
@@ -2154,6 +2171,51 @@ endfunction math_sampleGaussVar
 
  ENDSUBROUTINE math_spectral1
 
+!**********************************************************************
+ function math_eigenvalues3x3(M)
+!**** Eigenvalues of symmetric 3X3 matrix M
+
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), intent(in) :: M(3,3)
+ real(pReal), dimension(3,3) :: EB1(3,3),EB2(3,3),EB3(3,3)
+ real(pReal), dimension(3) :: math_eigenvalues3x3
+ real(pReal) HI1M,HI2M,HI3M,TOL,R,S,T,P,Q,RHO,PHI,Y1,Y2,Y3,arg,EW1,EW2,EW3
+ TOL=1.e-14_pReal
+ CALL math_hi(M,HI1M,HI2M,HI3M)
+ R=-HI1M
+ S= HI2M
+ T=-HI3M
+ P=S-R**2.0_pReal/3.0_pReal
+ Q=2.0_pReal/27.0_pReal*R**3.0_pReal-R*S/3.0_pReal+T
+ EB1=0.0_pReal
+ EB2=0.0_pReal
+ EB3=0.0_pReal
+ if((abs(P) < TOL) .and. (abs(Q) < TOL)) THEN
+! three equivalent eigenvalues
+   math_eigenvalues3x3(1) = HI1M/3.0_pReal
+   math_eigenvalues3x3(2)=math_eigenvalues3x3(1)
+   math_eigenvalues3x3(3)=math_eigenvalues3x3(1)
+!   this is not really correct, but this way U is calculated
+!   correctly in PDECOMPOSITION (correct is EB?=I)
+   EB1(1,1)=1.0_pReal
+   EB2(2,2)=1.0_pReal
+   EB3(3,3)=1.0_pReal
+ else
+   RHO=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
+   arg=-Q/RHO/2.0_pReal
+   if(arg.GT.1) arg=1
+   if(arg.LT.-1) arg=-1
+   PHI=acos(arg)
+   Y1=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
+   Y2=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
+   Y3=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
+   math_eigenvalues3x3(1) = Y1-R/3.0_pReal
+   math_eigenvalues3x3(2) = Y2-R/3.0_pReal
+   math_eigenvalues3x3(3) = Y3-R/3.0_pReal
+ endif
+ endfunction  math_eigenvalues3x3
 
 !********************************************************************** 
 !**** HAUPTINVARIANTEN HI1M, HI2M, HI3M DER 3X3 MATRIX M

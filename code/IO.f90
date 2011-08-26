@@ -1196,6 +1196,8 @@ endfunction
    msg = 'non-positive increments in spectral loadcase'
  case (36)
    msg = 'non-positive result frequency in spectral loadcase'
+ case (37)
+   msg = 'incomplete loadcase'
  case (40)
    msg = 'path rectification error'
  case (41)

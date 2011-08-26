@@ -67,9 +67,8 @@ real(pReal)                     relevantStrain, &                       ! strain
 !* spectral parameters:
                                 err_div_tol, &                          ! error of divergence in fourier space
                                 err_stress_tol, &                       ! absolut stress error, will be computed from err_stress_tolrel (dont prescribe a value)
-                                err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
-                                err_defgrad_tol                         ! tolerance for error of defgrad compared to prescribed defgrad
-logical                         memory_efficient                         ! for fast execution (pre calculation of gamma_hat)
+                                err_stress_tolrel                       ! factor to multiply with highest stress to get err_stress_tol
+logical                         memory_efficient                        ! for fast execution (pre calculation of gamma_hat)
 integer(pInt)                   itmax , &                               ! maximum number of iterations
 
 
@@ -163,10 +162,9 @@ subroutine numerics_init()
   volDiscrPow_RGC         = 5.0
 
 !* spectral parameters:  
-  err_div_tol             = 1.0e-2   ! proposed by Suquet, less strict criteria are usefull, e.g. 5e-3
-  err_defgrad_tol         = 1.0e-3   ! relative tolerance for fullfillment of average deformation gradient (is usually passively fullfilled)
+  err_div_tol             = 1.0e-4   ! 1.0e-4 proposed by Suquet
   err_stress_tolrel       = 0.01     ! relative tolerance for fullfillment of stress BC
-  itmax                   = 40_pInt  ! Maximum iteration number
+  itmax                   = 20_pInt  ! Maximum iteration number
   memory_efficient        = .true.   ! Precalculate Gamma-operator (81 double per point)
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
@@ -274,8 +272,6 @@ subroutine numerics_init()
 !* spectral parameters
         case ('err_div_tol')
               err_div_tol = IO_floatValue(line,positions,2)
-        case ('err_defgrad_tol')
-              err_defgrad_tol = IO_floatValue(line,positions,2)
         case ('err_stress_tolrel')
               err_stress_tolrel = IO_floatValue(line,positions,2)
         case ('itmax')
@@ -345,7 +341,6 @@ subroutine numerics_init()
 
 !* spectral parameters
     write(6,'(a24,x,e8.1)') 'err_div_tol:            ',err_div_tol
-    write(6,'(a24,x,e8.1)') 'err_defgrad_tol:        ',err_defgrad_tol
     write(6,'(a24,x,e8.1)') 'err_stress_tolrel:      ',err_stress_tolrel
     write(6,'(a24,x,i8)')   'itmax:                  ',itmax
     write(6,'(a24,x,L8)')   'memory_efficient:       ',memory_efficient
@@ -403,7 +398,6 @@ subroutine numerics_init()
 
 !* spectral parameters
   if (err_div_tol <= 0.0_pReal)             call IO_error(49)
-  if (err_defgrad_tol <= 0.0_pReal)         call IO_error(49)
   if (err_stress_tolrel <= 0.0_pReal)       call IO_error(49)
   if (itmax <= 1.0_pInt)                    call IO_error(49)
   
