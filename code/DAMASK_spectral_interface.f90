@@ -35,7 +35,7 @@ CONTAINS
 subroutine DAMASK_interface_init()
 
  write(6,*)
- write(6,*) '<<<+-  DAMASK_spectral init  -+>>>'
+ write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
 

@@ -75,7 +75,7 @@ subroutine homogenization_isostrain_init(&
  
  !$OMP CRITICAL (write2out)
    write(6,*)
-   write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_isostrain_label,' init  -+>>>'
+   write(6,*) '<<<+-  homogenization_',trim(homogenization_isostrain_label),' init  -+>>>'
    write(6,*) '$Id$'
    write(6,*)
  !$OMP END CRITICAL (write2out)

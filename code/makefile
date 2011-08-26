@@ -18,7 +18,7 @@
 # PORTABLE = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built
 # OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE): Optimization mode, O0, O2, O3
 # OPENMP = TRUE (FALSE): OpenMP multiprocessor support
-# AMCL = FALSE (TRUE): link with AMD math core library (v. 4.4 need to be installed)
+# ACML = OFF (ON): link with AMD math core library (v. 4.4 need to be installed)
 
 ifeq ($(F90), )
 F90 =ifort
@@ -48,7 +48,7 @@ OPENMP_FLAG_gfortran =-fopenmp
 OPENMP =ON
 endif
 
-ifeq ($(AMCL), ON)
+ifeq ($(ACML), ON)
 BLAS_ON_ifort =-L /opt/acml4.4.0/ifort64_mp/lib -lacml_mp
 BLAS_OFF_ifort =-L /opt/acml4.4.0/ifort64/lib -lacml
 BLAS_ON_gfortran =

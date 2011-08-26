@@ -195,7 +195,7 @@ character(len=1024)                         line
 
 !$OMP CRITICAL (write2out)
   write(6,*)
-  write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_nonlocal_label,' init  -+>>>'
+  write(6,*) '<<<+-  constitutive_',trim(constitutive_nonlocal_label),' init  -+>>>'
   write(6,*) '$Id$'
   write(6,*)
 !$OMP END CRITICAL (write2out)

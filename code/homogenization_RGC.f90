@@ -81,7 +81,7 @@ subroutine homogenization_RGC_init(&
 
 !$OMP CRITICAL (write2out)
    write(6,*)
-   write(6,'(a21,a20,a12)') '<<<+-  homogenization',homogenization_RGC_label,' init  -+>>>'
+   write(6,*) '<<<+-  homogenization_',trim(homogenization_RGC_label),' init  -+>>>'
    write(6,*) '$Id$'
    write(6,*)
 !$OMP END CRITICAL (write2out)

@@ -172,7 +172,7 @@ subroutine constitutive_phenopowerlaw_init(file)
 
  !$OMP CRITICAL (write2out)
    write(6,*)
-   write(6,'(a20,a20,a12)') '<<<+-  constitutive_',constitutive_phenopowerlaw_label,' init  -+>>>'
+   write(6,*) '<<<+-  constitutive_',trim(constitutive_phenopowerlaw_label),' init  -+>>>'
    write(6,*) '$Id$'
    write(6,*)
  !$OMP END CRITICAL (write2out)
