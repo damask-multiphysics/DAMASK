@@ -843,7 +843,7 @@ pure function math_transpose3x3(A)
 
 
 !**************************************************************************
-! Gauss elimination to invert 6x6 matrix
+! Gauss elimination to invert matrix of arbitrary dimension
 !**************************************************************************
  PURE SUBROUTINE math_invert(dimen,A, InvA, AnzNegEW, error)
 
