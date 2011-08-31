@@ -1166,21 +1166,6 @@ pure function math_transpose3x3(A)
 
  endfunction math_Plain33to9
  
- !********************************************************************
-! convert 3x3 matrix into vector 9x1
-!********************************************************************
- pure function math_Plain33to9_logical(m33)
-
- use prec, only: pReal,pInt
- implicit none
-
- logical, dimension(3,3), intent(in) :: m33
- logical, dimension(9) :: math_Plain33to9_logical
- integer(pInt) i
- 
- forall (i=1:9) math_Plain33to9_logical(i) = m33(mapPlain(1,i),mapPlain(2,i))
-
- endfunction math_Plain33to9_logical
  
 !********************************************************************
 ! convert Plain 9x1 back to 3x3 matrix
