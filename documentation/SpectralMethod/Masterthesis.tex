@@ -182,6 +182,7 @@ bookmarksnumbered=true,%                       % generate bookmarks with numbers
 \begin{document}
 \maketitle
 % ----------------------------------------------------------------------------------------------------------------------------
+\section{General Information}
 At MPIE, the flexible crystal plasticity framework ``Düsseldorf Advanced MAterial Simulation Kit'' (DAMASK) is developed.
 It consists of different constitutive models, homogenization schemes, and tools for post- and preprocessing \cite{Roters_etal2010}.
 It has interfaces to different solvers to the mechanical boundary value problem.
@@ -191,10 +192,16 @@ However, their use is limited to periodic boundary conditions due to the approxi
 The spectral method implemented at MPIE uses a finite-strain formulation proposed in \cite{Lahellec_etal2001} that is written in terms of deformation gradient \tnsr F and Piola--Kirchhoff stress \tnsr P and can therefore be used to solve the mechanical boundary value problem in the reference configuration.
 Calculations have shown that for inhomogeneous material convergence cannot be achieved any longer at strains larger than ca.~15--20 \%.
 We presently believe that this is due to the fact that the regular mesh in the reference configuration is locally heavily deformed to an extent where single points cross the path of neighboring points.
-To reach higher strains, a remeshing scheme should be implemented as follows.\begin{enumerate}
-\item Write out the current state 
-\item Approximate the deformed configuration by a regular (undeformed, new) mesh
-\item Translate the old state values to the new mesh
+To reach higher strains, a remeshing scheme should be implemented as follows.
+\begin{enumerate}
+\item Write out the current state
+\item Reconstruct current geometry
+\item Approximate the deformed configuration by a regular (undeformed, new) mesh with potentially $a \ne b \ne c$
+\item Translate the old state values to the new mesh (``The winner takes it all?'')
+\end{enumerate}
+\section{Remarks, Notes}
+\begin{enumerate}
+\item Which criterion? Even for converged solutions we get ``chess board patterns?''
 \end{enumerate}
 \bibliographystyle{unsrtnat}
 \bibliography{Masterthesis}

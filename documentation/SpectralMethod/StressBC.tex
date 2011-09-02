@@ -31,16 +31,18 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows}
 \usepackage{booktabs}
-
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage{graphicx}
+\usepackage{natbib}
 \newcommand{\pathToFigures}{./figures}
 \graphicspath{{\pathToFigures/}}
 \DeclareGraphicsExtensions{.pdf,.png}
 
 \usepackage[pdftex,                                     % hyper-references for pdftex
 bookmarksnumbered=true,%                       % generate bookmarks with numbers
-pagebackref=true,%                                      % generate backref in biblio
-colorlinks=true,%
+%pagebackref=true,%                                      % generate backref in biblio
+%colorlinks=true,%
 ]{hyperref}%
 
 %% The amsthm package provides extended theorem environments
@@ -165,7 +167,7 @@ colorlinks=true,%
 %% \address{Address\fnref{label3}}
 %% \fntext[label3]{}
 
-\title{Calculation of Divergence in Fourier space}
+\title{Calculation of Mixed Boundary Conditions}
 
 %% use optional labels to link authors explicitly to addresses:
 %% \author[label1,label2]{}
@@ -179,49 +181,17 @@ colorlinks=true,%
 % main text
 \begin{document}
 \maketitle
+\section{Residuum Method}
+Make step of $\partial \tnsr P $ from current situation towards $\tnsr P_{wish} $ (leaving free components as they are).
+This results in $\inc{\tnsr F} = \frac{\partial \tnsr F}{\partial \tnsr P} \cdot \inc{\tnsr P} $ which has potentially non-zero components at prescribed $F_{ij}$. Isolate those as residuum $\tnsr R$.
+Use $\frac{\partial \tnsr P}{\partial \tnsr F} \cdot \tnsr R$ to calculate change of \inc{\tnsr P} to kill \tnsr R.
+Adjust initial \inc{\tnsr P} by change and calculate $\inc{\tnsr F}= \frac{\partial \tnsr F}{\partial \tnsr P} \cdot \inc{\tnsr P_{corr}}$ which should be now free of fixed components.
+Check wether $\inc{\tnsr F}= \tnsr R \cdot \tnsr U$ has $\tnsr R \approx \tnsr I$
+\section{Reduction Method}
+Calculate $\frac{\partial \tnsr F}{\partial \tnsr P}$ and convert into 9x9 matrix. Convert $\tnsr{\Delta P}$ and $\tnsr{\Delta F}$ into an vector of dimension 9.
+Remove all entries from the stiffness matrix where \tnsr F is prescribed (and where $\tnsr{\Delta P}$ is undefined).
+Invert the reduced matrix and fill the removed entries with 0.
+For a linear behavior, ${\frac{\partial \tnsr F}{\partial \tnsr P}}_{red}:\tnsr{\Delta P}$ gives the exact change of $\tnsr{\Delta F}$.
 % ----------------------------------------------------------------------------------------------------------------------------
-\section{Idea}
-% ----------------------------------------------------------------------------------------------------------------------------
-A field of 3x3 tensors in the form
-\begin{equation}
-\begin{pmatrix} P_{11} & P_{12} & P_{13}\\ P_{21} & P_{22} & P_{23} \\ P_{31} & P_{32}& P_{33} \end{pmatrix} = \tnsr{P}(\vec{x})
-\end{equation}
-depending on a discrete 3D vector $\vec x$ (spatial coordinates in real space)
-\begin{equation}
-\vec x \mathrm{~with~} x_1=1,2,...,N_1\mathrm{,~}x_2=1,2,...,N_2\mathrm{,~and~}x_3=1,2,...,N_3
-\end{equation}
-is transformed into Fourier space using the FFT (Subroutines provided by FFTW, 9 transforms of rank 3). The result is a 3x3 tensor field depending on the frequencies $\vec \xi$:
-\begin{equation}
-\hat{\tnsr P}(\vec \xi) = \mathcal{F}\left( \tnsr P(\vec x) \right)
-\end{equation}
-the divergence of a tensor is defined as:
-\begin{equation}
-\operatorname{div}\,(\tnsr P) = 
-\begin{pmatrix}
-\frac{\partial P_{11}}{\partial x_1} +\frac{\partial P_{12}}{\partial x_2} +\frac{\partial P_{13}}{\partial x_3}\\[6pt]
-\frac{\partial P_{21}}{\partial x_1} +\frac{\partial P_{22}}{\partial x_2} +\frac{\partial P_{23}}{\partial x_3}\\[6pt]
-\frac{\partial P_{z1}}{\partial x_1} +\frac{\partial P_{z2}}{\partial x_2} +\frac{\partial P_{33}}{\partial x_3}
-\end{pmatrix}
-\end{equation}
-It is a 3D vector. With
-\begin{equation}\label{div}
-\mathcal{F}(\frac{d^n f(x)}{dx^n}) = (2\pi i\xi)^n  \hat{f}(\xi)
-\end{equation}
-follows:
-\begin{equation}
-\mathcal{F}\left(\operatorname{div}\,(\tnsr P) \right) = 2\pi i\vec \xi \times \hat{\tnsr P}(\vec \xi)
-\end{equation}
-Due to the order in which FFTW stores the array, the components of the 3D frequencies can be calculated by dividing a linear list $0,1,2,...N/2-1,\pm N/2,-(N/2-1),...,-2,-1$ by the sampling length in each dimension.
- 
-
-\section{Remarks}
-The inverse transform of $\mathcal{F}\left(\operatorname{div}\,(\tnsr P) \right)$ (FFTW, 3 transforms of rank 3) gives the divergence field in real space.
-
-If a complex-to-complex transform is done, $\hat{\tnsr P} (\vec \xi)$ possesses conjugate complex symmetry.
-$\operatorname{div}\,(\hat{\tnsr P})(\vec xi) \right)$ also has conjugate complex symmetry as it would lead to a real-only divergence after the inverse transform. It can be seen for the simple derivative as given in formula eq.(\ref{div}) that the complex conjugate symmetry is preserved.
-
-As the tensor $\tnsr P$ is a real-only tensor, it is possible to use a real-to-complex transform for the tensor field and a complex-to-real transform for the back transform of the divergence field. Than one of the dimensions should run from $0$ to $N/2+1$ only. That implies, that the divergence in Fourier space has conjugate complex symmetry.
-
-The important think is that the highest frequencies are not correct for the DFT. Therefore, they should not contribute to the divergence calculation. This becomes obvious, as they can be multiplied with $\pm N/2$ (again divided by sampling length) in the case of an even number of data points. This shows, that they are not properly defined.
 \end{document}
 \endinput
