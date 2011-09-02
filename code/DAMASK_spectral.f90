@@ -252,8 +252,11 @@ program DAMASK_spectral
    print '(a,i5)', 'Loadcase:', loadcase
    if (.not. followFormerTrajectory(loadcase)) &
      print '(a)', 'drop guessing along trajectory'
-    if (any(bc_mask(:,:,1,loadcase) .eqv. bc_mask(:,:,2,loadcase)))&                ! exclusive or masking only
+   if (any(bc_mask(:,:,1,loadcase) .eqv. bc_mask(:,:,2,loadcase)))&                ! exclusive or masking only
      call IO_error(31,loadcase)
+   if (any(bc_mask(1:3,1:3,2,loadcase).and.transpose(bc_mask(1:3,1:3,2,loadcase)).and.&
+           reshape((/.false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false./),(/3,3/))))&
+     call IO_error(38,loadcase)
    if (velGradApplied(loadcase)) then
      do j = 1, 3
        if (any(bc_mask(j,:,1,loadcase) .eqv. .true.) .and.&
