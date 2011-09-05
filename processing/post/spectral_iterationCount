@@ -79,8 +79,8 @@ for file in files:
                False : file['input']}[options.memory]:
 
     items = line.split()
-    if len(items) > 7 and items[0] == 'Loadcase':  # 'magic' line?
-      if int(items[5]) == step and int(items[2]) == loadcase:
+    if len(items) > 8 and items[1] == 'Loadcase':  # 'magic' line?
+      if int(items[6]) == step and int(items[3]) == loadcase:
         iter += 1                                                  # next iteration found
       else:
         output += '\t'.join(map(str,[inc,iter])) + '\n'
