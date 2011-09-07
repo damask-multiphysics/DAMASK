@@ -589,6 +589,8 @@ do i = 1,maxNinstance
             'd_upper_edge', &
             'd_upper_screw' )
         mySize = constitutive_nonlocal_totalNslip(i)
+      case('internalstress')
+        mySize = 6_pInt
       case default
         mySize = 0_pInt
     end select
@@ -839,7 +841,7 @@ use IO,       only: IO_error
 use math,     only: math_Mandel33to6, &
                     math_mul33x33, &
                     math_mul33x3, &
-                    math_inv3x3, &
+                    math_invert3x3, &
                     math_transpose3x3, &
                     pi
 use debug,    only: debug_verbosity, &
@@ -907,7 +909,8 @@ real(pReal)                     nu, &                         ! poisson's ratio
                                 R, Rsquare, Rcube, &
                                 denominator, &
                                 flipSign, &
-                                neighboring_ipVolumeSideLength
+                                neighboring_ipVolumeSideLength, &
+                                detFe
 real(pReal), dimension(3) ::    connection, &                 ! connection vector between me and my neighbor in the deformed configuration
                                 connection_neighboringLattice, & ! connection vector between me and my neighbor in the lattice configuration of my neighbor
                                 connection_neighboringSlip, & ! connection vector between me and my neighbor in the slip system frame of my neighbor
@@ -932,6 +935,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                 rhoForest, &                  ! forest dislocation density
                                 tauThreshold                  ! threshold shear stress
+logical                         inversionError
 
 phase = material_phase(g,ip,el)
 instance = phase_constitutionInstance(phase)
@@ -942,9 +946,12 @@ ns = constitutive_nonlocal_totalNslip(instance)
 
 !*** get basic states
 
-forall (t = 1:4) rhoSgl(1:ns,t) = max(state(g,ip,el)%p((t-1)*ns+1:t*ns), 0.0_pReal)                       ! ensure positive single mobile densities
-forall (t = 5:8) rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
-forall (c = 1:2) rhoDip(1:ns,c) = max(state(g,ip,el)%p((c+7)*ns+1:(c+8)*ns), 0.0_pReal)                   ! ensure positive dipole densities
+forall (s = 1:ns, t = 1:4) &
+  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1)*ns+s), 0.0_pReal)                                                        ! ensure positive single mobile densities
+forall (t = 5:8) & 
+  rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
+forall (s = 1:ns, c = 1:2) &
+  rhoDip(s,c) = max(state(g,ip,el)%p((7+c)*ns+s), 0.0_pReal)                                                        ! ensure positive dipole densities
 
 
 
@@ -975,8 +982,10 @@ forall (s = 1:ns) &
 Tdislo = 0.0_pReal
 
 if (.not. phase_localConstitution(phase)) then
-  invFe = math_inv3x3(Fe(1:3,1:3,1,ip,el))
-
+  call math_invert3x3(Fe(1:3,1:3,1,ip,el), invFe, detFe, inversionError)
+!  if (inversionError) then
+!    return
+!  endif
 
   !* in case of periodic surfaces we have to find out how many periodic images in each direction we need
   
@@ -1007,7 +1016,10 @@ if (.not. phase_localConstitution(phase)) then
       neighboring_instance = phase_constitutionInstance(neighboring_phase)
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
-      neighboring_invFe = math_inv3x3(Fe(1:3,1:3,1,neighboring_ip,neighboring_el))
+      call math_invert3x3(Fe(1:3,1:3,1,neighboring_ip,neighboring_el), neighboring_invFe, detFe, inversionError)
+!      if (inversionError) then
+!        return
+!      endif
       neighboring_ipVolumeSideLength = mesh_ipVolume(neighboring_ip,neighboring_el) ** (1.0_pReal/3.0_pReal) ! reference volume used here
       forall (s = 1:neighboring_ns, c = 1:2) &
         neighboring_rhoExcess(c,1,s) = state(g,neighboring_ip,neighboring_el)%p((2*c-2)*neighboring_ns+s) &  ! positive mobiles
@@ -1022,37 +1034,10 @@ if (.not. phase_localConstitution(phase)) then
           do deltaZ = periodicImages(1,3),periodicImages(2,3)
             
             
-            !* special case of central ip volume
-            !* only consider dead dislocations
-            !* we assume that they all sit at a distance equal to half the third root of V
-            !* in direction of the according slip direction
-            
-            if (neighboring_el == el .and. neighboring_ip == ip &
-                .and. deltaX == 0 .and. deltaY == 0 .and. deltaZ == 0) then
-              
-              forall (s = 1:ns, c = 1:2) &
-                rhoExcessDead(c,s) = state(g,ip,el)%p((2*c+2)*ns+s) &  ! positive deads (here we use symmetry: if this has negative sign it is treated as negative density at positive position instead of positive density at negative position)
-                                   + state(g,ip,el)%p((2*c+3)*ns+s)    ! negative deads (here we use symmetry: if this has negative sign it is treated as positive density at positive position instead of negative density at negative position)
-              do s = 1,ns
-                if (all(abs(rhoExcessDead(:,s)) < constitutive_nonlocal_aTolRho(instance))) then
-                  cycle                                                                             ! not significant
-                endif
-                sigma = 0.0_pReal                                                                   ! all components except for sigma13 are zero
-                sigma(1,3) = - (rhoExcessDead(1,s) + rhoExcessDead(2,s) * (1.0_pReal - nu)) * neighboring_ipVolumeSideLength &
-                             * constitutive_nonlocal_Gmod(instance) * constitutive_nonlocal_burgersPerSlipSystem(s,instance) &
-                             / (sqrt(2.0_pReal) * pi * (1.0_pReal - nu))
-                sigma(3,1) = sigma(1,3)
-                
-                Tdislo_neighboringLattice = Tdislo_neighboringLattice &
-                                      + math_mul33x33(math_transpose3x3(constitutive_nonlocal_lattice2slip(1:3,1:3,s,instance)), &
-                                                      math_mul33x33(sigma, constitutive_nonlocal_lattice2slip(1:3,1:3,s,instance)))
-                                            
-              enddo ! slip system loop
-            
-
             !* regular case
             
-            else
+            if (neighboring_el /= el .or. neighboring_ip /= ip &
+                .or. deltaX /= 0_pInt .or. deltaY /= 0_pInt .or. deltaZ /= 0_pInt) then
             
               neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) &
                                    + (/real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)/) * meshSize
@@ -1185,6 +1170,33 @@ if (.not. phase_localConstitution(phase)) then
                                             
               enddo ! slip system loop
 
+
+            !* special case of central ip volume
+            !* only consider dead dislocations
+            !* we assume that they all sit at a distance equal to half the third root of V
+            !* in direction of the according slip direction
+            
+            else
+              
+              forall (s = 1:ns, c = 1:2) &
+                rhoExcessDead(c,s) = state(g,ip,el)%p((2*c+2)*ns+s) &  ! positive deads (here we use symmetry: if this has negative sign it is treated as negative density at positive position instead of positive density at negative position)
+                                   + state(g,ip,el)%p((2*c+3)*ns+s)    ! negative deads (here we use symmetry: if this has negative sign it is treated as positive density at positive position instead of negative density at negative position)
+              do s = 1,ns
+                if (all(abs(rhoExcessDead(:,s)) < constitutive_nonlocal_aTolRho(instance))) then
+                  cycle                                                                             ! not significant
+                endif
+                sigma = 0.0_pReal                                                                   ! all components except for sigma13 are zero
+                sigma(1,3) = - (rhoExcessDead(1,s) + rhoExcessDead(2,s) * (1.0_pReal - nu)) * neighboring_ipVolumeSideLength &
+                             * constitutive_nonlocal_Gmod(instance) * constitutive_nonlocal_burgersPerSlipSystem(s,instance) &
+                             / (sqrt(2.0_pReal) * pi * (1.0_pReal - nu))
+                sigma(3,1) = sigma(1,3)
+                
+                Tdislo_neighboringLattice = Tdislo_neighboringLattice &
+                                      + math_mul33x33(math_transpose3x3(constitutive_nonlocal_lattice2slip(1:3,1:3,s,instance)), &
+                                                      math_mul33x33(sigma, constitutive_nonlocal_lattice2slip(1:3,1:3,s,instance)))
+                                            
+              enddo ! slip system loop
+
             endif
 
           enddo ! deltaZ loop
@@ -1261,21 +1273,23 @@ type(p_vec), intent(in) ::                  state                       ! micros
 real(pReal), dimension(6), intent(in) ::    Tstar_v                     ! 2nd Piola-Kirchhoff stress in Mandel notation
 
 !*** output variables
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))), &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4), &
                    intent(out), optional :: dv_dtau                     ! velocity derivative with respect to resolved shear stress
 
 !*** local variables
 integer(pInt)                               myInstance, &               ! current instance of this constitution
                                             myStructure, &              ! current lattice structure
                                             ns, &                       ! short notation for the total number of active slip systems
-                                            s                           ! index of my current slip system
+                                            s, &                        ! index of my current slip system
+                                            t                           ! index of dislocation character
 real(pReal), dimension(6) ::                Tdislocation_v              ! dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             tauThreshold, &             ! threshold shear stress
                                             tau, &                      ! resolved shear stress
                                             rhoForest                   ! forest dislocation density
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
-                                            v                           ! velocity for the current element and ip
+                                            v, &                        ! velocity for the current element and ip
+                                            rhoSgl
 real(pReal)                                 boltzmannProbability, &
                                             tauRel, &                   ! relative thermally active resolved shear stress
                                             wallFunc, &                 ! functions reflecting the shape of the obstacle wall (see PhD thesis Mohles p.53)
@@ -1286,6 +1300,8 @@ myInstance = phase_constitutionInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
 ns = constitutive_nonlocal_totalNslip(myInstance)
 
+forall (s = 1:ns, t = 1:4) &
+  rhoSgl(s,t) = max(state%p((t-1)*ns+s), 0.0_pReal) 
 rhoForest = state%p(10*ns+1:11*ns)
 tauThreshold = state%p(11*ns+1:12*ns)
 Tdislocation_v = state%p(12*ns+1:12*ns+6)
@@ -1322,8 +1338,8 @@ if (Temperature > 0.0_pReal) then
       v(s,1:4) = sign(constitutive_nonlocal_vs(myInstance),tau(s)) * timeRatio / (1.0_pReal + timeRatio)
       
       if (present(dv_dtau)) then
-        dv_dtau(s) = abs(v(s,1)) * constitutive_nonlocal_Qeff0(s,myInstance) / (kB * Temperature * (1.0_pReal + timeRatio)) &
-                   * 0.5_pReal * wallFunc * (2.0_pReal - tauRel) / ((1.0_pReal - tauRel) * (abs(tau(s)) - tauThreshold(s)))
+        dv_dtau(s,1:4) = abs(v(s,1:4)) * constitutive_nonlocal_Qeff0(s,myInstance) / (kB * Temperature * (1.0_pReal + timeRatio)) &
+                       * 0.5_pReal * wallFunc * (2.0_pReal - tauRel) / ((1.0_pReal - tauRel) * (abs(tau(s)) - tauThreshold(s)))
       endif
     
     !*** If resolved stress exceeds threshold plus obstacle stress, the probability for thermal activation is 1.
@@ -1331,7 +1347,7 @@ if (Temperature > 0.0_pReal) then
     
     elseif (tauRel >= 1.0_pReal) then
       v(s,1:4) = sign(constitutive_nonlocal_vs(myInstance), tau(s)) * constitutive_nonlocal_fattack(myInstance) &
-               / (constitutive_nonlocal_vs(myInstance) * sqrt(rhoForest(s)) + constitutive_nonlocal_fattack(myInstance))
+             / (constitutive_nonlocal_vs(myInstance) * sqrt(rhoForest(s)) + constitutive_nonlocal_fattack(myInstance))
     endif
   enddo
 endif
@@ -1404,21 +1420,16 @@ integer(pInt)                               myInstance, &               ! curren
                                             s, &                        ! index of my current slip system
                                             sLattice                    ! index of my current slip system according to lattice order
 real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              ! derivative of Lp with respect to Tstar (3x3x3x3 matrix)
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),8) :: &
-                                            rhoSgl                      ! single dislocation densities (including used) 
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
-                                            gdot                        ! shear rate per dislocation type 
+                                            rhoSgl, &                   ! single dislocation densities (including used) 
+                                            dv_dtau                     ! velocity derivative with respect to the shear stress
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-                                            tauThreshold, &             ! threshold shear stress
                                             gdotTotal, &                ! shear rate
-                                            dv_dtau, &                  ! velocity derivative with respect to the shear stress
-                                            dgdotTotal_dtau, &          ! derivative of the shear rate with respect to the shear stress
-                                            rhoForest                   ! forest dislocation density
+                                            dgdotTotal_dtau             ! derivative of the shear rate with respect to the shear stress
 
 
 !*** initialize local variables
 
-gdot = 0.0_pReal
 Lp = 0.0_pReal
 dLp_dTstar3333 = 0.0_pReal
 
@@ -1434,21 +1445,16 @@ call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip,
 
 !*** shortcut to state variables 
 
-forall (t = 1:8) &
-  rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
-forall (s = 1:ns, t = 5:8, rhoSgl(s,t) * constitutive_nonlocal_v(s,t-4,g,ip,el) < 0.0_pReal) &                                      ! contribution of used rho for changing sign of v
-  rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(rhoSgl(s,t))
-rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
-tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
+forall (s = 1:ns, t = 1:4) &
+  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1)*ns+s), 0.0_pReal)
+forall (s = 1:ns, t = 5:8, state(g,ip,el)%p((t-1)*ns+s) * constitutive_nonlocal_v(s,t-4,g,ip,el) < 0.0_pReal) &     ! dead dislocations cntribute instantaneously to slip when sign of velocity changes
+  rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(state(g,ip,el)%p((t-1)*ns+s))
 
 
 !*** Calculation of gdot and its tangent
 
-forall (t = 1:4) &
-  gdot(1:ns,t) =  rhoSgl(1:ns,t) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) &
-                                 * constitutive_nonlocal_v(1:ns,t,g,ip,el)
-gdotTotal = sum(gdot,2)
-dgdotTotal_dtau = sum(rhoSgl(1:ns,1:4),2) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) * dv_dtau
+gdotTotal = sum(rhoSgl * constitutive_nonlocal_v(1:ns,1:4,g,ip,el), 2) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance)
+dgdotTotal_dtau = sum(rhoSgl * dv_dtau, 2) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) 
 
 
 !*** Calculation of Lp and its tangent
@@ -1467,7 +1473,6 @@ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
     write(6,*)
     write(6,'(a,i8,x,i2,x,i1)') '<< CONST >> nonlocal_LpandItsTangent at el ip g ',el,ip,g
     write(6,*)
-    write(6,'(a,/,4(12(x),12(f12.5,x)),/)') '<< CONST >> gdot / 1e-3',gdot*1e3_pReal
     write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> gdot total / 1e-3',gdotTotal*1e3_pReal
     write(6,'(a,/,3(12(x),3(f12.7,x),/))') '<< CONST >> Lp',Lp
   endif
@@ -1517,7 +1522,8 @@ use mesh,     only: mesh_NcpElems, &
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_constitutionInstance, &
-                    phase_localConstitution
+                    phase_localConstitution, &
+                    phase_constitution
 use lattice,  only: lattice_Sslip, &
                     lattice_Sslip_v, &
                     lattice_sd, &
@@ -1637,8 +1643,12 @@ dUpper = 0.0_pReal
 
 !*** shortcut to state variables 
 
-forall (t = 1:8) rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1)*ns+1:t*ns)
-forall (c = 1:2) rhoDip(1:ns,c) = state(g,ip,el)%p((7+c)*ns+1:(8+c)*ns)
+forall (s = 1:ns, t = 1:4) &
+  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1)*ns+s), 0.0_pReal)
+forall (s = 1:ns, t = 5:8) &
+  rhoSgl(s,t) = state(g,ip,el)%p((t-1)*ns+s)
+forall (s = 1:ns, c = 1:2) &
+  rhoDip(s,c) = max(state(g,ip,el)%p((7+c)*ns+s), 0.0_pReal)
 rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
 tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 Tdislocation_v = state(g,ip,el)%p(12*ns+1:12*ns+6)
@@ -1679,7 +1689,12 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) 
 
 if (any(1.2_pReal * constitutive_nonlocal_v(1:ns,1:4,g,ip,el) * timestep &                    ! security factor 1.2
         > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                          ! reference volume and area
-  dotState%p = NaN(3)
+#ifndef _OPENMP
+  if (debug_verbosity > 6) then
+    write(6,*) '<< CONST >> CFL condition not fullfilled'
+  endif
+#endif
+  dotState%p = 0.0_pReal/0.0_pReal
   return
 endif
 
@@ -1785,14 +1800,14 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     
 
     !* FLUX FROM MY NEIGHBOR TO ME
-    !* This is only considered, if I have a neighbor of nonlocal constitution that is at least a little bit compatible.
+    !* This is only considered, if I have a neighbor of nonlocal constitution (also nonlocal constitutive law with local properties) that is at least a little bit compatible.
     !* If it's not at all compatible, no flux is arriving, because everything is dammed in front of my neighbor's interface.
     !* The entering flux from my neighbor will be distributed on my slip systems according to the compatibility
     
     considerEnteringFlux = .false.
     neighboring_fluxdensity = 0.0_pReal   ! needed for check of sign change in flux density below 
     if (neighboring_el > 0_pInt .or. neighboring_ip > 0_pInt) then
-      if (.not. phase_localConstitution(material_phase(1,neighboring_ip,neighboring_el)) &
+      if (phase_constitution(material_phase(1,neighboring_ip,neighboring_el)) == constitutive_nonlocal_label &
           .and. any(constitutive_nonlocal_compatibility(:,:,:,n,ip,el) > 0.0_pReal)) &
         considerEnteringFlux = .true.
     endif
@@ -1826,7 +1841,7 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
    
  
     !* FLUX FROM ME TO MY NEIGHBOR
-    !* This is not considered, if my opposite neighbor has a local constitution. 
+    !* This is not considered, if my opposite neighbor has a different constitutive law than nonlocal (still considered for nonlocal law with lcal properties). 
     !* Then, we assume, that the opposite(!) neighbor sends an equal amount of dislocations to me.
     !* So the net flux in the direction of my neighbor is equal to zero:
     !*    leaving flux to neighbor == entering flux from opposite neighbor
@@ -1835,7 +1850,7 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     
     considerLeavingFlux = .true.
     if (opposite_el > 0 .and. opposite_ip > 0) then
-      if (phase_localConstitution(material_phase(1,opposite_ip,opposite_el))) &
+      if (phase_constitution(material_phase(1,opposite_ip,opposite_el)) /= constitutive_nonlocal_label) &
         considerLeavingFlux = .false.
     endif
 
@@ -2167,6 +2182,7 @@ use math,     only: math_norm3, &
                     math_inv3x3, &
                     math_det3x3, &
                     math_Mandel6to33, &
+                    math_transpose3x3, &
                     pi
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
@@ -2229,7 +2245,7 @@ real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInst
                                             m_currentconf             ! direction of dislocation motion for edge and screw (unit vector) in current configuration
 real(pReal), dimension(6) ::                Tdislocation_v            ! current dislocation stress (resulting from the neighboring excess dislocation densities) as 2nd Piola-Kirchhoff stress
 real(pReal)                                 D                         ! self diffusion
-
+real(pReal), dimension(3,3) ::              sigma
 
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
@@ -2613,6 +2629,16 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
     case ('d_upper_screw')
       constitutive_nonlocal_postResults(cs+1:cs+ns) = dUpper(1:ns,2)
       cs = cs + ns
+    
+    case('internalstress')
+      sigma = math_mul33x33(Fe, math_mul33x33(math_Mandel6to33(Tdislocation_v), math_transpose3x3(Fe))) / math_det3x3(Fe)
+      constitutive_nonlocal_postResults(cs+1) = sigma(1,1)
+      constitutive_nonlocal_postResults(cs+2) = sigma(2,2)
+      constitutive_nonlocal_postResults(cs+3) = sigma(3,3)
+      constitutive_nonlocal_postResults(cs+4) = sigma(1,2)
+      constitutive_nonlocal_postResults(cs+5) = sigma(2,3)
+      constitutive_nonlocal_postResults(cs+6) = sigma(3,1)
+      cs = cs + 6_pInt
             
  end select
 enddo
