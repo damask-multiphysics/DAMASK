@@ -3,4 +3,6 @@ Install the AMD Core Math Library
 1. untar the tgz file to a local directory
 2. run the install script, use standard directory (/opt/acml4.4.0) for install otherwise run_marc scripts need to be adjusted
 3. add acml path to LD_LIBRARY_PATH, the best place to do so is: /etc/csh.cshrc.local and/or /etc/bash.bashrc.local
-   path should read: /opt/acml4.4.0/ifort64_mp/lib (this is the version using paralllization, ie openmp)
+   path should read: /opt/acml4.4.0/ifort64_mp/lib (this is the version using paralllization, ie openmp):
+   for bash: LD_LIBRARY_PATH="/opt/acml4.4.0/ifort64_mp/lib:${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH
+   for csh: setenv LD_LIBRARY_PATH /opt/acml4.4.0/ifort64_mp/lib:${LD_LIBRARY_PATH}
