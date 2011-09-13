@@ -190,7 +190,7 @@ function rectifyPath(path)
  !remove ./ from path
  l = len_trim(path)
  rectifyPath = path
- do i = l,2,-1
+ do i = l,3,-1
     if ( rectifyPath(i-1:i) == './' .and. rectifyPath(i-2:i-2) /= '.' ) &
       rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
  enddo

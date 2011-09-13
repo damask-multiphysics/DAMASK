@@ -245,7 +245,6 @@ subroutine material_parseHomogenization(file,myPart)
  enddo
 
 100 homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
-  return
 
  endsubroutine
 
@@ -266,7 +265,7 @@ subroutine material_parseMicrostructure(file,myPart)
  integer(pInt) Nsections, section, constituent, i
  character(len=64) tag
  character(len=1024) line
- 
+
  Nsections = IO_countSections(file,myPart)
  material_Nmicrostructure = Nsections
  if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
@@ -799,8 +798,6 @@ subroutine material_populateGrains()
  deallocate(phaseOfGrain)
  deallocate(textureOfGrain)
  deallocate(orientationOfGrain)
- 
- return
 
  endsubroutine
 

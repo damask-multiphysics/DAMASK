@@ -805,7 +805,9 @@ if(updateJaco) then                                                             
                 mySizeDotState = constitutive_sizeDotState(g,i,e)
                 constitutive_state(g,i,e)%p(1:mySizeState) = constitutive_state_backup(g,i,e)%p(1:mySizeState)
                 constitutive_dotState(g,i,e)%p(1:mySizeDotState) = constitutive_dotState_backup(g,i,e)%p(1:mySizeDotState)
-          enddo; enddo; enddo
+              enddo
+            enddo
+          enddo
         !OMP END PARALLEL DO
         crystallite_Temperature = Temperature_backup
         crystallite_subF = F_backup
@@ -842,8 +844,10 @@ if(updateJaco) then                                                             
           elseif (crystallite_requested(g,i,e) .and. .not. crystallite_converged(g,i,e)) then           ! central solution did not converge
             crystallite_dPdF(1:3,1:3,1:3,1:3,g,i,e) = crystallite_fallbackdPdF(1:3,1:3,1:3,1:3,g,i,e)   ! use (elastic) fallback
           endif
-    enddo; enddo; enddo
-  !OMP END PARALLEL DO
+        enddo
+      enddo
+    enddo
+  !$OMP END PARALLEL DO
   
 endif                                                                                                   ! jacobian calculation
  
@@ -2996,8 +3000,7 @@ logical error
 ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
 ! --- we use crystallite_orientation from above, so need a seperate loop
 
-!$OMP PARALLEL DO PRIVATE(myPhase,myInstance,myStructure,neighboring_e,neighboring_i, & 
-!$OMP &                   neighboringPhase,neighboringInstance,neighboringStructure)
+!$OMP PARALLEL DO PRIVATE(myPhase,myInstance,myStructure,neighboring_e,neighboring_i,neighboringPhase,neighboringInstance,neighboringStructure)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       myPhase = material_phase(1,i,e)                                                                     ! get my phase
@@ -3161,9 +3164,7 @@ function crystallite_postResults(&
                                                                                                crystallite_Temperature(g,i,e), &
                                                                                                dt, g, i, e)
  c = c + constitutive_sizePostResults(g,i,e)
- 
- return 
- 
+
 endfunction
 
 

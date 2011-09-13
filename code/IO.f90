@@ -58,7 +58,6 @@ subroutine IO_init ()
   call flush(6)
   !$OMP END CRITICAL (write2out)
  
- return
 endsubroutine
 
 
@@ -115,8 +114,7 @@ recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess
  return
  
 200 createSuccess =.false.
- return
- 
+
 end function
 
 !***********************************************************
@@ -536,7 +534,7 @@ end function
 !********************************************************************
 ! get tagged content of line
 !********************************************************************
- pure function IO_getTag (line,openChar,closechar)
+ pure function IO_getTag (line,openChar,closeChar)
 
  use prec, only: pInt
  implicit none
@@ -553,8 +551,6 @@ end function
  if (left == verify(line,sep) .and. right > left) & ! openChar is first and closeChar occurs
    IO_getTag = line(left+1:right-1)
 
- return
- 
  endfunction
 
 

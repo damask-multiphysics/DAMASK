@@ -10,7 +10,7 @@
 # Install fftw3 (v3.2.2 is tested) with "./configure --enable-threads --enable-float"  and "make", "make install" is not needed
 # as long as the two library files are copied to the source code directory.
 
-# OPTIONS = standart (alternative): meaning
+# OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
 # PRECISION = double (single): floating point precision
 # F90 = ifort (gfortran): compiler, choose Intel or GNU
@@ -19,6 +19,25 @@
 # OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE): Optimization mode, O0, O2, O3
 # OPENMP = TRUE (FALSE): OpenMP multiprocessor support
 # ACML = OFF (ON): link with AMD math core library (v. 4.4 need to be installed)
+# PREFIX: specifie an arbitrary prefix
+# COMPILERNAME = overwrite name of Compiler, e.g. using mpich-g90 instead of ifort
+
+# Here are some usefull debugging switches. Switch on by uncommenting last line:
+#--------------------------------------------------------------------------------
+# information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
+# check if an array index is too small (<1) or too large!
+DEBUG1 =-check bounds -g
+#will cause a lot of warnings because we create a bunch of temporary arrays
+DEBUG2 =-check arg_temp_created
+#check from time to time
+DEBUG3 =-fp-stack-check -g -traceback -gen-interfaces -warn interfaces
+
+#should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Porblably it helps to also unlimit other limits
+DEBUG4 =-heap-arrays
+
+#SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3) 
+#SUFFIX =$(DEBUG1) $(DEBUG3) 
+
 
 ifeq ($(F90), )
 F90 =ifort
@@ -43,7 +62,7 @@ endif
 endif
 
 ifneq ($(OPENMP), OFF)
-OPENMP_FLAG_ifort =-openmp
+OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
 OPENMP_FLAG_gfortran =-fopenmp
 OPENMP =ON
 endif
@@ -59,49 +78,46 @@ OPTIMIZATION_OFF_ifort =-O0
 OPTIMIZATION_OFF_gfortran =-O0
 OPTIMIZATION_DEFENSIVE_ifort =-O2
 OPTIMIZATION_DEFENSIVE_gfortran =-O2
-OPTIMIZATION_AGGRESSIVE_ifort =-O3 -static $(PORTABLE_SWITCH)
+OPTIMIZATION_AGGRESSIVE_ifort =-O3 $(PORTABLE_SWITCH) -ip
 OPTIMIZATION_AGGRESSIVE_gfortran =-O3
 
-COMPILE_OPTIONS_ifort =-fpp -diag-disable 8291,8290
-COMPILE_OPTIONS_gfortran =-xf95-cpp-input
-
-HEAP_ARRAYS_ifort =-heap-arrays 500000000
-HEAP_ARRAYS_gfortran =
-
+COMPILE_OPTIONS_ifort =-fpp -diag-disable 8291,8290 
+COMPILE_OPTIONS_gfortran =-xf95-cpp-input -ffree-line-length-none
 
 COMPILE =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZATION_${OPTIMIZATION}_${F90}} -c
-COMPILE_HEAP =$(COMPILE) ${HEAP_ARRAYS_${F90}}
-COMPILE_HEAP_MAXOPTI =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZATION_${MAXOPTI}_${F90}} ${HEAP_ARRAYS_${F90}} -c
+COMPILE_MAXOPTI =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZATION_${MAXOPTI}_${F90}} -c
 
-   
+ifndef COMPILERNAME
+COMPILERNAME=$(F90)
+endif
+
 ifeq ($(PRECISION),single)
 DAMASK_spectral_single.exe: DAMASK_spectral_single.o CPFEM.a
-	$(F90) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a include/libfftw3f_threads.a include/libfftw3f.a constitutive.a advanced.a basics.a\
-    -lpthread ${BLAS_${OPENMP}_${F90}}
+	$(PREFIX)	$(COMPILERNAME) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a include/libfftw3f_threads.a include/libfftw3f.a\
+  constitutive.a advanced.a basics.a -lpthread ${BLAS_${OPENMP}_${F90}}
 DAMASK_spectral_single.o: DAMASK_spectral_single.f90 CPFEM.o 
-	$(F90) $(COMPILE_HEAP_MAXOPTI) DAMASK_spectral_single.f90 
-
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE_MAXOPTI) DAMASK_spectral_single.f90 $(SUFFIX)
 else
 DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
-	$(F90) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a include/libfftw3_threads.a include/libfftw3.a constitutive.a advanced.a basics.a\
-    -lpthread ${BLAS_${OPENMP}_${F90}}
+	$(PREFIX)	$(COMPILERNAME) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a include/libfftw3_threads.a include/libfftw3.a\
+  constitutive.a advanced.a basics.a -lpthread ${BLAS_${OPENMP}_${F90}}
 DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o 
-	$(F90) $(COMPILE_HEAP_MAXOPTI) DAMASK_spectral.f90 
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE_MAXOPTI) DAMASK_spectral.f90 $(SUFFIX)
 endif
 
 CPFEM.a: CPFEM.o
 	ar rc CPFEM.a homogenization.o homogenization_RGC.o homogenization_isostrain.o crystallite.o CPFEM.o constitutive.o
 
 CPFEM.o: CPFEM.f90 homogenization.o
-	$(F90) $(COMPILE_HEAP) CPFEM.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) CPFEM.f90 $(SUFFIX)
 homogenization.o: homogenization.f90 homogenization_isostrain.o homogenization_RGC.o crystallite.o
-	$(F90) $(COMPILE_HEAP) homogenization.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) homogenization.f90 $(SUFFIX)
 homogenization_RGC.o: homogenization_RGC.f90 constitutive.a
-	$(F90) $(COMPILE_HEAP) homogenization_RGC.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) homogenization_RGC.f90 $(SUFFIX)
 homogenization_isostrain.o: homogenization_isostrain.f90 basics.a advanced.a
-	$(F90) $(COMPILE_HEAP) homogenization_isostrain.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) homogenization_isostrain.f90 $(SUFFIX)
 crystallite.o: crystallite.f90 constitutive.a
-	$(F90) $(COMPILE_HEAP) crystallite.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) crystallite.f90 $(SUFFIX)
 
 
 
@@ -109,22 +125,22 @@ constitutive.a: constitutive.o
 	ar rc constitutive.a constitutive.o constitutive_titanmod.o constitutive_nonlocal.o constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o basics.a advanced.a
 
 constitutive.o: constitutive.f90 constitutive_titanmod.o constitutive_nonlocal.o constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o
-	$(F90) $(COMPILE_HEAP) constitutive.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) constitutive.f90 $(SUFFIX)
 
 constitutive_titanmod.o: constitutive_titanmod.f90 basics.a advanced.a
-	$(F90) $(COMPILE_HEAP) constitutive_titanmod.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) constitutive_titanmod.f90 $(SUFFIX)
 
 constitutive_nonlocal.o: constitutive_nonlocal.f90 basics.a advanced.a
-	$(F90) $(COMPILE_HEAP) constitutive_nonlocal.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) constitutive_nonlocal.f90 $(SUFFIX)
 
 constitutive_dislotwin.o: constitutive_dislotwin.f90 basics.a advanced.a
-	$(F90) $(COMPILE_HEAP) constitutive_dislotwin.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) constitutive_dislotwin.f90 $(SUFFIX)
 
 constitutive_j2.o: constitutive_j2.f90 basics.a advanced.a
-	$(F90) $(COMPILE_HEAP) constitutive_j2.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) constitutive_j2.f90 $(SUFFIX)
 
 constitutive_phenopowerlaw.o: constitutive_phenopowerlaw.f90 basics.a advanced.a
-	$(F90) $(COMPILE_HEAP) constitutive_phenopowerlaw.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) constitutive_phenopowerlaw.f90 $(SUFFIX)
 
 
 
@@ -133,13 +149,13 @@ advanced.a: lattice.o
 
 
 lattice.o: lattice.f90 material.o
-	$(F90) $(COMPILE_HEAP) lattice.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) lattice.f90 $(SUFFIX)
 material.o: material.f90 mesh.o
-	$(F90) $(COMPILE_HEAP) material.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) material.f90 $(SUFFIX)
 mesh.o: mesh.f90 FEsolving.o
-	$(F90) $(COMPILE_HEAP) mesh.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) mesh.f90 $(SUFFIX)
 FEsolving.o: FEsolving.f90 basics.a
-	$(F90) $(COMPILE_HEAP) FEsolving.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) FEsolving.f90 $(SUFFIX)
 
 ifeq ($(PRECISION),single)
 basics.a: debug.o math.o
@@ -150,25 +166,25 @@ basics.a: debug.o math.o
 endif
 
 debug.o: debug.f90 numerics.o
-	$(F90) $(COMPILE) debug.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) debug.f90 $(SUFFIX)
 math.o: math.f90 numerics.o
-	$(F90) $(COMPILE) math.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) math.f90 $(SUFFIX)
 
 numerics.o: numerics.f90 IO.o
-	$(F90) $(COMPILE) numerics.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) numerics.f90 $(SUFFIX)
 IO.o: IO.f90 DAMASK_spectral_interface.o
-	$(F90) $(COMPILE) IO.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) IO.f90 $(SUFFIX)
 
 ifeq ($(PRECISION),single)
 DAMASK_spectral_interface.o: DAMASK_spectral_interface.f90 prec_single.o
-	$(F90) $(COMPILE) DAMASK_spectral_interface.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) DAMASK_spectral_interface.f90 $(SUFFIX)
 prec_single.o: prec_single.f90
-	$(F90) $(COMPILE) prec_single.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) prec_single.f90 $(SUFFIX)
 else
 DAMASK_spectral_interface.o: DAMASK_spectral_interface.f90 prec.o
-	$(F90) $(COMPILE) DAMASK_spectral_interface.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) DAMASK_spectral_interface.f90 $(SUFFIX)
 prec.o: prec.f90
-	$(F90) $(COMPILE) prec.f90
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) prec.f90 $(SUFFIX)
 endif
 
 

@@ -811,7 +811,6 @@ function lattice_initializeStructure(struct,CoverA)
  logical :: processMe
 
  integer(pInt) lattice_initializeStructure
-
  processMe = .false.
 
  select case(struct(1:3))                          ! check first three chars of structure name
@@ -825,14 +824,14 @@ function lattice_initializeStructure(struct,CoverA)
      if (lattice_fcc_Nstructure == 1_pInt) then    ! me is first fcc structure
        processMe = .true.
        do i = 1,myNslip                            ! calculate slip system vectors
-         sd(:,i) = lattice_fcc_systemSlip(1:3,i)/sqrt(math_mul3x3(lattice_fcc_systemSlip(1:3,i),lattice_fcc_systemSlip(1:3,i)))
-         sn(:,i) = lattice_fcc_systemSlip(4:6,i)/sqrt(math_mul3x3(lattice_fcc_systemSlip(4:6,i),lattice_fcc_systemSlip(4:6,i)))
-         st(:,i) = math_vectorproduct(sd(:,i),sn(:,i))
+         sd(1:3,i) = lattice_fcc_systemSlip(1:3,i)/sqrt(math_mul3x3(lattice_fcc_systemSlip(1:3,i),lattice_fcc_systemSlip(1:3,i)))
+         sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)/sqrt(math_mul3x3(lattice_fcc_systemSlip(4:6,i),lattice_fcc_systemSlip(4:6,i)))
+         st(1:3,i) = math_vectorproduct(sd(1:3,i),sn(1:3,i))
        enddo
        do i = 1,myNtwin                            ! calculate twin system vectors and (assign) shears
-         td(:,i) = lattice_fcc_systemTwin(1:3,i)/sqrt(math_mul3x3(lattice_fcc_systemTwin(1:3,i),lattice_fcc_systemTwin(1:3,i)))
-         tn(:,i) = lattice_fcc_systemTwin(4:6,i)/sqrt(math_mul3x3(lattice_fcc_systemTwin(4:6,i),lattice_fcc_systemTwin(4:6,i)))
-         tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
+         td(1:3,i) = lattice_fcc_systemTwin(1:3,i)/sqrt(math_mul3x3(lattice_fcc_systemTwin(1:3,i),lattice_fcc_systemTwin(1:3,i)))
+         tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)/sqrt(math_mul3x3(lattice_fcc_systemTwin(4:6,i),lattice_fcc_systemTwin(4:6,i)))
+         tt(1:3,i) = math_vectorproduct(td(1:3,i),tn(1:3,i))
          ts(i)   = lattice_fcc_shearTwin(i)
        enddo
        interactionSlipSlip => lattice_fcc_interactionSlipSlip
@@ -851,14 +850,14 @@ function lattice_initializeStructure(struct,CoverA)
      if (lattice_bcc_Nstructure == 1_pInt) then    ! me is first bcc structure
        processMe = .true.
        do i = 1,myNslip                            ! calculate slip system vectors
-         sd(:,i) = lattice_bcc_systemSlip(1:3,i)/sqrt(math_mul3x3(lattice_bcc_systemSlip(1:3,i),lattice_bcc_systemSlip(1:3,i)))
-         sn(:,i) = lattice_bcc_systemSlip(4:6,i)/sqrt(math_mul3x3(lattice_bcc_systemSlip(4:6,i),lattice_bcc_systemSlip(4:6,i)))
-         st(:,i) = math_vectorproduct(sd(:,i),sn(:,i))
+         sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)/sqrt(math_mul3x3(lattice_bcc_systemSlip(1:3,i),lattice_bcc_systemSlip(1:3,i)))
+         sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)/sqrt(math_mul3x3(lattice_bcc_systemSlip(4:6,i),lattice_bcc_systemSlip(4:6,i)))
+         st(1:3,i) = math_vectorproduct(sd(1:3,i),sn(1:3,i))
        enddo
        do i = 1,myNtwin                            ! calculate twin system vectors and (assign) shears
-         td(:,i) = lattice_bcc_systemTwin(1:3,i)/sqrt(math_mul3x3(lattice_bcc_systemTwin(1:3,i),lattice_bcc_systemTwin(1:3,i)))
-         tn(:,i) = lattice_bcc_systemTwin(4:6,i)/sqrt(math_mul3x3(lattice_bcc_systemTwin(4:6,i),lattice_bcc_systemTwin(4:6,i)))
-         tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
+         td(1:3,i) = lattice_bcc_systemTwin(1:3,i)/sqrt(math_mul3x3(lattice_bcc_systemTwin(1:3,i),lattice_bcc_systemTwin(1:3,i)))
+         tn(1:3,i) = lattice_bcc_systemTwin(4:6,i)/sqrt(math_mul3x3(lattice_bcc_systemTwin(4:6,i),lattice_bcc_systemTwin(4:6,i)))
+         tt(1:3,i) = math_vectorproduct(td(1:3,i),tn(1:3,i))
          ts(i)   = lattice_bcc_shearTwin(i)
        enddo
        interactionSlipSlip => lattice_bcc_interactionSlipSlip
@@ -885,9 +884,9 @@ function lattice_initializeStructure(struct,CoverA)
          hex_n(2) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/sqrt(3.0_pReal)
          hex_n(3) =  lattice_hex_systemSlip(8,i)/CoverA
 
-         sd(:,i) = hex_d/sqrt(math_mul3x3(hex_d,hex_d))
-         sn(:,i) = hex_n/sqrt(math_mul3x3(hex_n,hex_n))
-         st(:,i) = math_vectorproduct(sd(:,i),sn(:,i))
+         sd(1:3,i) = hex_d/sqrt(math_mul3x3(hex_d,hex_d))
+         sn(1:3,i) = hex_n/sqrt(math_mul3x3(hex_n,hex_n))
+         st(1:3,i) = math_vectorproduct(sd(1:3,i),sn(1:3,i))
        enddo
        do i = 1,myNtwin
          hex_d(1) =  lattice_hex_systemTwin(1,i)*1.5_pReal
@@ -897,9 +896,9 @@ function lattice_initializeStructure(struct,CoverA)
          hex_n(2) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/sqrt(3.0_pReal)
          hex_n(3) =  lattice_hex_systemTwin(8,i)/CoverA
 
-         td(:,i) = hex_d/sqrt(math_mul3x3(hex_d,hex_d))
-         tn(:,i) = hex_n/sqrt(math_mul3x3(hex_n,hex_n))
-         tt(:,i) = math_vectorproduct(td(:,i),tn(:,i))
+         td(1:3,i) = hex_d/sqrt(math_mul3x3(hex_d,hex_d))
+         tn(1:3,i) = hex_n/sqrt(math_mul3x3(hex_n,hex_n))
+         tt(1:3,i) = math_vectorproduct(td(1:3,i),tn(1:3,i))
 
          select case(lattice_hex_shearTwin(i))                                     ! from Christian & Mahajan 1995 p.29
            case (1)                                                                ! {10.2}<-10.1>
@@ -924,19 +923,19 @@ function lattice_initializeStructure(struct,CoverA)
    if  (myStructure > lattice_Nstructure) &
      call IO_error(666,0,0,0,'structure index too large')        ! check for memory leakage
    do i = 1,myNslip                                              ! store slip system vectors and Schmid matrix for my structure
-     lattice_sd(:,i,myStructure) = sd(:,i)
-     lattice_st(:,i,myStructure) = st(:,i)
-     lattice_sn(:,i,myStructure) = sn(:,i)
-     lattice_Sslip(:,:,i,myStructure) = math_tensorproduct(sd(:,i),sn(:,i))
-     lattice_Sslip_v(:,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Sslip(:,:,i,myStructure)))
+     lattice_sd(1:3,i,myStructure) = sd(1:3,i)
+     lattice_st(1:3,i,myStructure) = st(1:3,i)
+     lattice_sn(1:3,i,myStructure) = sn(1:3,i)
+     lattice_Sslip(1:3,1:3,i,myStructure) = math_tensorproduct(sd(1:3,i),sn(1:3,i))
+     lattice_Sslip_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Sslip(1:3,1:3,i,myStructure)))
    enddo
    do i = 1,myNtwin                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
-     lattice_td(:,i,myStructure) = td(:,i)
-     lattice_tt(:,i,myStructure) = tt(:,i)
-     lattice_tn(:,i,myStructure) = tn(:,i)
-     lattice_Stwin(:,:,i,myStructure) = math_tensorproduct(td(:,i),tn(:,i))
-     lattice_Stwin_v(:,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Stwin(:,:,i,myStructure)))
-     lattice_Qtwin(:,:,i,myStructure) = math_AxisAngleToR(tn(:,i),180.0_pReal*inRad)
+     lattice_td(1:3,i,myStructure) = td(1:3,i)
+     lattice_tt(1:3,i,myStructure) = tt(1:3,i)
+     lattice_tn(1:3,i,myStructure) = tn(1:3,i)
+     lattice_Stwin(1:3,1:3,i,myStructure) = math_tensorproduct(td(1:3,i),tn(1:3,i))
+     lattice_Stwin_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Stwin(1:3,1:3,i,myStructure)))
+     lattice_Qtwin(1:3,1:3,i,myStructure) = math_AxisAngleToR(tn(1:3,i),180.0_pReal*inRad)
      lattice_shearTwin(i,myStructure) = ts(i)
    enddo
    lattice_NslipSystem(1:lattice_maxNslipFamily,myStructure) = myNslipSystem                                ! number of slip systems in each family

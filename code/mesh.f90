@@ -449,7 +449,6 @@
      exit
    endif
  enddo
- return
  
  endfunction
 
@@ -1353,8 +1352,6 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
      6, 7, 7, 6   &
     /),(/FE_NipFaceNodes,FE_NipNeighbors(10),FE_Nips(10)/))
  
- return
- 
  endsubroutine
 
 
@@ -1392,9 +1389,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    endif
  enddo
 
-620 return
- 
- endsubroutine
+620 endsubroutine
 
 
 !********************************************************************
@@ -1441,9 +1436,7 @@ do
   endif
 enddo
 
-620 return
-
-endsubroutine
+620 endsubroutine
 
  
 !********************************************************************
@@ -1490,9 +1483,7 @@ endsubroutine
    endif
  enddo
 
-100 return
- 
- endsubroutine
+100 endsubroutine
 
 !********************************************************************
 ! count overall number of nodes and elements in mesh
@@ -1528,9 +1519,7 @@ endsubroutine
    endif
  enddo
 
-620 return
- 
- endsubroutine
+620 endsubroutine
 
 !********************************************************************
 ! count overall number of nodes and elements in mesh
@@ -1588,8 +1577,6 @@ endsubroutine
  
 620 if (mesh_Nnodes < 2)  call IO_error(900)
  if (mesh_Nelems == 0) call IO_error(901)
-
- return
  
  endsubroutine
 
@@ -1629,9 +1616,7 @@ endsubroutine
    endif
  enddo
 
-620 return
- 
- endsubroutine
+620 endsubroutine
 
 
 !********************************************************************
@@ -1673,7 +1658,6 @@ endsubroutine
 620 continue
  if (mesh_NelemSets == 0) call IO_error(902)
 
- return
  endsubroutine
 
 
@@ -1716,7 +1700,6 @@ endsubroutine
 
 620 if (mesh_Nmaterials == 0) call IO_error(903)
  
- return
  endsubroutine
 
 
@@ -1731,7 +1714,6 @@ endsubroutine
  implicit none
 
  mesh_NcpElems = mesh_Nelems
- return
  
  endsubroutine
  
@@ -1771,9 +1753,7 @@ endsubroutine
    endif
  enddo
 
-620 return
- 
- endsubroutine
+620 endsubroutine
  
 
 !********************************************************************
@@ -1825,7 +1805,6 @@ endsubroutine
  
 620 if (mesh_NcpElems == 0) call IO_error(906)
 
- return 
  endsubroutine
 
 
@@ -1865,9 +1844,7 @@ endsubroutine
    endif
  enddo
  
-640 return
-
- endsubroutine
+640 endsubroutine
 
 
 !********************************************************************
@@ -1917,7 +1894,6 @@ endsubroutine
    if (mesh_mapElemSet(1,i) == 0) call IO_error(ID=904,ext_msg=mesh_nameElemSet(i))
  enddo
 
- return
  endsubroutine
 
 
@@ -1984,7 +1960,6 @@ endsubroutine
    if (mesh_nameMaterial(i)=='' .or. mesh_mapMaterial(i)=='') call IO_error(905)
  enddo
 
- return
  endsubroutine
 
 
@@ -2004,9 +1979,7 @@ endsubroutine
  allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
 
  forall (i = 1:mesh_Nnodes) &
-   mesh_mapFEtoCPnode(:,i) = i
-
- return
+   mesh_mapFEtoCPnode(1:2,i) = i
  
  endsubroutine
 
@@ -2054,8 +2027,6 @@ endsubroutine
  enddo
 
 650 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
-
- return
  
  endsubroutine
 
@@ -2119,7 +2090,6 @@ endsubroutine
 650 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
 
  if (size(mesh_mapFEtoCPnode) == 0) call IO_error(908)
- return
 
  endsubroutine
 
@@ -2139,9 +2109,7 @@ endsubroutine
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
 
  forall (i = 1:mesh_NcpElems) &
-   mesh_mapFEtoCPelem(:,i) = i
-
- return
+   mesh_mapFEtoCPelem(1:2,i) = i
 
  endsubroutine
 
@@ -2191,7 +2159,6 @@ endsubroutine
 
 660 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))           ! should be mesh_NcpElems
 
- return
  endsubroutine
 
 
@@ -2253,8 +2220,7 @@ endsubroutine
 660 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))             ! should be mesh_NcpElems
 
  if (size(mesh_mapFEtoCPelem) < 2) call IO_error(907)
- 
- return
+
  endsubroutine
 
 
@@ -2328,8 +2294,7 @@ subroutine mesh_marc_count_cpSizes (unit)
    endif
  enddo
  
-630 return
- endsubroutine
+630 endsubroutine
 
 
 !********************************************************************
@@ -2392,9 +2357,7 @@ subroutine mesh_marc_count_cpSizes (unit)
    endif
  enddo
  
-620 return
-
- endsubroutine
+620 endsubroutine
 
 
 !********************************************************************
@@ -2483,9 +2446,7 @@ subroutine mesh_marc_count_cpSizes (unit)
  
  mesh_node = mesh_node0
 
-100 return
-
- endsubroutine
+100 endsubroutine
 
 
 !********************************************************************
@@ -2528,7 +2489,6 @@ subroutine mesh_marc_count_cpSizes (unit)
  enddo
 
 670 mesh_node = mesh_node0
-return
 
  endsubroutine
 
@@ -2588,7 +2548,6 @@ return
 
 670 if (size(mesh_node0,2) /= mesh_Nnodes) call IO_error(909)
  mesh_node = mesh_node0
- return
 
  endsubroutine
 
@@ -2676,9 +2635,7 @@ return
    mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
  enddo
 
-110 return
-
- endsubroutine
+110 endsubroutine
 
 
 
@@ -2762,9 +2719,7 @@ return
    endif
  enddo
 
-630 return
-
- endsubroutine
+630 endsubroutine
 
 
 
@@ -2867,9 +2822,7 @@ return
    endselect
  enddo
 
-630 return
-
- endsubroutine
+630 endsubroutine
 
 
 !********************************************************************
@@ -3247,7 +3200,6 @@ endsubroutine
 
  allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ;         mesh_ipArea       = 0.0_pReal
  allocate(mesh_ipAreaNormal(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipAreaNormal = 0.0_pReal
- 
  do e = 1,mesh_NcpElems                                         ! loop over cpElems
    t = mesh_element(2,e)                                        ! get elemType
    do i = 1,FE_Nips(t)                                          ! loop over IPs of elem
@@ -3259,14 +3211,13 @@ endsubroutine
          area(j,n) = sqrt(sum(normal(:,j,n)*normal(:,j,n)))                                       ! and area
        end forall
        forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles, area(j,n) > 0.0_pReal) &
-         normal(:,j,n) = normal(:,j,n) / area(j,n)            ! make unit normal
+         normal(1:3,j,n) = normal(1:3,j,n) / area(j,n)            ! make unit normal
        
        mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)                   ! area of parallelograms instead of triangles
        mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2) / count(area > 0.0_pReal)  ! average of all valid normals
      enddo
    enddo
  enddo
- return
  
  endsubroutine
 
@@ -3399,11 +3350,11 @@ if (debug_verbosity > 0) then
     write (6,*) mesh_maxValStateVar(1), " : maximum homogenization index"
     write (6,*) mesh_maxValStateVar(2), " : maximum microstructure index"
     write (6,*)
-    write (fmt,"(a,i5,a)") "(9(x),a2,x,",mesh_maxValStateVar(2),"(i8))"
+    write (fmt,"(a,i32.32,a)") "(9(x),a2,x,",mesh_maxValStateVar(2),"(i8))"
     write (6,fmt) "+-",math_range(mesh_maxValStateVar(2))
-    write (fmt,"(a,i5,a)") "(i8,x,a2,x,",mesh_maxValStateVar(2),"(i8))"
+    write (fmt,"(a,i32.32,a)") "(i8,x,a2,x,",mesh_maxValStateVar(2),"(i8))"
     do i=1,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
-      write (6,fmt) i,"| ",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstrcutures
+      write (6,fmt) i,"| ",mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstructures
     enddo
     write(6,*)
     write(6,*) "Input Parser: ADDITIONAL MPIE OPTIONS"

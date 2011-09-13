@@ -152,7 +152,7 @@ program DAMASK_spectral
  print '(a,/,a)', 'Workingdir:    ',trim(getSolverWorkingDirectoryName())
  print '(a,/,a)', 'SolverJobName: ',trim(getSolverJobName())
 
- if (.not. IO_open_file(unit,path)) call IO_error(30,ext_msg = path)
+ if (.not. IO_open_file(unit,path)) call IO_error(30,ext_msg = trim(path))
  
  rewind(unit)
  do
@@ -181,7 +181,7 @@ program DAMASK_spectral
 
 101 N_Loadcases = N_n
  if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &            ! sanity check
-   call IO_error(31,ext_msg = path)                        ! error message for incomplete loadcase
+   call IO_error(31,ext_msg = trim(path))                  ! error message for incomplete loadcase
 
 ! allocate memory depending on lines in input file
  allocate (bc_deformation(3,3,N_Loadcases));        bc_deformation = 0.0_pReal
@@ -476,7 +476,7 @@ program DAMASK_spectral
      time = time + timeinc
      
      if (velGradApplied(loadcase)) &                                                 ! calculate fDot from given L and current F
-       fDot = math_mul33x33(bc_deformation(:,:,loadcase), defgradAim)
+       fDot = math_mul33x33(bc_deformation(1:3,1:3,loadcase), defgradAim)
 
 !winding forward of deformation aim
      temp33_Real = defgradAim                                            
@@ -489,11 +489,11 @@ program DAMASK_spectral
      do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
        temp33_Real = defgrad(i,j,k,:,:)
        if (velGradApplied(loadcase)) &                                                  ! use velocity gradient to calculate new deformation gradient (if not guessing)
-         fDot = math_mul33x33(bc_deformation(:,:,loadcase),defgradold(i,j,k,:,:))
-         defgrad(i,j,k,:,:) = defgrad(i,j,k,:,:) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
-                            + guessmode * (defgrad(i,j,k,:,:) - defgradold(i,j,k,:,:))& ! guessing... 
+         fDot = math_mul33x33(bc_deformation(1:3,1:3,loadcase),defgradold(i,j,k,1:3,1:3))
+         defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
+                            + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
                             + (1.0_pReal-guessmode) * mask_defgrad * fDot *timeinc    ! apply the prescribed value where deformation is given if not guessing
-         defgradold(i,j,k,:,:) = temp33_Real   
+         defgradold(i,j,k,1:3,1:3) = temp33_Real   
      enddo; enddo; enddo
      guessmode = 1.0_pReal                                                              ! keep guessing along former trajectory during same loadcase
 

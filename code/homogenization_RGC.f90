@@ -219,8 +219,6 @@ subroutine homogenization_RGC_init(&
                     ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
  enddo
 
- return
-
 endsubroutine
 
 
@@ -238,8 +236,6 @@ function homogenization_RGC_stateInit(myInstance)
 !* Open a debugging file 
 !  open(1978,file='homogenization_RGC_debugging.out',status='unknown')
  homogenization_RGC_stateInit = 0.0_pReal
-
- return
  
 endfunction
 
@@ -319,8 +315,6 @@ subroutine homogenization_RGC_partitionDeformation(&
    endif
 
  enddo
- 
- return
 
 endsubroutine
 
@@ -773,8 +767,6 @@ function homogenization_RGC_updateState(&
 
  deallocate(tract,resid,jmatrix,jnverse,relax,drelax,pmatrix,smatrix,p_relax,p_resid)
 !*** End of calculation of state update
-
- return 
  
 endfunction
 
@@ -815,7 +807,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
  if (debug_verbosity == 4) then
    !$OMP CRITICAL (write2out)
    do iGrain = 1,Ngrains
-     dPdF99 = math_Plain3333to99(dPdF(:,:,:,:,iGrain))
+     dPdF99 = math_Plain3333to99(dPdF(1:3,1:3,1:3,1:3,iGrain))
      write(6,'(x,a30,x,i3)')'Stress tangent of grain: ',iGrain
      do i = 1,9
        write(6,'(x,(e14.8,x))') (dPdF99(i,j), j = 1,9)
@@ -829,8 +821,6 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
 !* Computing the average first Piola-Kirchhoff stress P and the average tangent dPdF
  avgP = sum(P,3)/dble(Ngrains)
  dAvgPdAvgF = sum(dPdF,5)/dble(Ngrains)
-
- return
 
 endsubroutine
 
@@ -857,8 +847,6 @@ function homogenization_RGC_averageTemperature(&
 !* Computing the average temperature
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
  homogenization_RGC_averageTemperature = sum(Temperature(1:Ngrains))/dble(Ngrains)
-
- return
 
 endfunction
 
@@ -915,8 +903,6 @@ pure function homogenization_RGC_postResults(&
        c = c + 1
    end select
  enddo
- 
- return
 
 endfunction
 
@@ -1051,8 +1037,6 @@ subroutine homogenization_RGC_stressPenalty(&
  enddo
 !*** End of mismatch and penalty stress tensor calculation
 
- return
-
 endsubroutine
 
 !********************************************************************
@@ -1112,8 +1096,6 @@ subroutine homogenization_RGC_volumePenalty(&
 
  enddo
 
- return
-
 endsubroutine
 
 !********************************************************************
@@ -1159,8 +1141,6 @@ function homogenization_RGC_surfaceCorrection(&
      sqrt(homogenization_RGC_surfaceCorrection(iBase))*detF
  enddo
 
- return
-
 endfunction
 
 !********************************************************************
@@ -1196,8 +1176,6 @@ function homogenization_RGC_equivalentModuli(&
 !* Obtain the length of Burgers vector
  homogenization_RGC_equivalentModuli(2) = constitutive_averageBurgers(grainID,ip,el)
 
- return
-
 endfunction
 
 !********************************************************************
@@ -1227,8 +1205,6 @@ function homogenization_RGC_relaxationVector(&
  iNum = homogenization_RGC_interface4to1(intFace,homID)                  ! identify the position of the interface in global state array
  if (iNum .gt. 0_pInt) homogenization_RGC_relaxationVector = state%p((3*iNum-2):(3*iNum))    
                                                                          ! get the corresponding entries
-
- return
 
 endfunction
 
@@ -1268,8 +1244,6 @@ function homogenization_RGC_interfaceNormal(&
 !    call flush(6)
 !  endif
 
- return
-
 endfunction
 
 !********************************************************************
@@ -1297,8 +1271,6 @@ function homogenization_RGC_getInterface(&
  if (iDir < 0_pInt) &                                                   ! to have a correlation with coordinate/position in real space
    homogenization_RGC_getInterface(1_pInt-iDir) = homogenization_RGC_getInterface(1_pInt-iDir)-1_pInt
 
- return
-
 endfunction
 
 !********************************************************************
@@ -1324,8 +1296,6 @@ function homogenization_RGC_grain1to3(&
  homogenization_RGC_grain1to3(2) = 1+mod((grain1-1)/nGDim(1),nGDim(2))
  homogenization_RGC_grain1to3(1) = 1+mod((grain1-1),nGDim(1))
 
- return
-
 endfunction
 
 !********************************************************************
@@ -1349,8 +1319,6 @@ function homogenization_RGC_grain3to1(&
 !* Get the grain ID
  nGDim = homogenization_RGC_Ngrains(:,homID)
  homogenization_RGC_grain3to1 = grain3(1) + nGDim(1)*(grain3(2)-1) + nGDim(1)*nGDim(2)*(grain3(3)-1)
-
- return
 
 endfunction
 
@@ -1392,8 +1360,6 @@ function homogenization_RGC_interface4to1(&
                                       + nGDim(1)*nGDim(2)*(iFace4D(4)-1) + nIntFace(1) + nIntFace(2)
    if ((iFace4D(4) == 0_pInt) .or. (iFace4D(4) == nGDim(3))) homogenization_RGC_interface4to1 = 0_pInt
  endif
-
- return
 
 endfunction
 
@@ -1440,8 +1406,6 @@ function homogenization_RGC_interface1to4(&
    homogenization_RGC_interface1to4(3) = mod(int(dble(iFace1D-nIntFace(2)-nIntFace(1)-1)/dble(nGDim(1))),nGDim(2))+1
    homogenization_RGC_interface1to4(4) = int(dble(iFace1D-nIntFace(2)-nIntFace(1)-1)/dble(nGDim(1))/dble(nGDim(2)))+1
  endif
-
- return
 
 endfunction
 
@@ -1492,8 +1456,6 @@ subroutine homogenization_RGC_grainDeformation(&
    enddo
    F(:,:,iGrain) = F(:,:,iGrain) + avgF(:,:)                         ! relaxed deformation gradient
  enddo
- 
- return
 
 endsubroutine
 
