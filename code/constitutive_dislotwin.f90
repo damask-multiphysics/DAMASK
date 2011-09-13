@@ -390,7 +390,7 @@ enddo
      endif
    enddo
    do f = 1,lattice_maxNtwinFamily
-     if (constitutive_dislotwin_Nslip(f,i) > 0_pInt) then
+     if (constitutive_dislotwin_Ntwin(f,i) > 0_pInt) then
        if (constitutive_dislotwin_burgersPerTwinFamily(f,i) <= 0.0_pReal)    call IO_error(221) !***
        if (constitutive_dislotwin_Ndot0PerTwinFamily(f,i) < 0.0_pReal)       call IO_error(226) !***
      endif
