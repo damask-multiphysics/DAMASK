@@ -579,7 +579,7 @@ subroutine volume_compare(res_x,res_y,res_z,geomdim,nodes,defgrad,volume_mismatc
  real*8, dimension(3,3) :: defgrad_av
  real*8 vol_initial
 
- print*, 'Calculating volume  mismatch'
+ print*, 'Calculating volume mismatch'
  vol_initial = geomdim(1)*geomdim(2)*geomdim(3)/real(res_x)/real(res_y)/real(res_z)
  do k = 1,res_z
    do j = 1,res_y

@@ -3,21 +3,21 @@ Install MPIE modifications to use DAMASK_marc2010
 Usually you will need to be root for this to work!
 
 This is for the Linux64 version of Marc/Mentat2010(.2).
-See Marc and Mentat Release Guide for List of Build and Supported Platforms!
+See Marc and Mentat Release Guide for List of Build and Supported Platforms (p. 50)!
 
-The Intel Fortran compiler needs to be installed. The 2010 release of Marc/Mentat relies on Intel Fortran 10.1!
-Make shure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly,
+The Intel Fortran compiler needs to be installed. The 2010 release of Marc/Mentat relies on Intel Fortran 10.1(_18)!
+Make sure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly,
 refer to the Intel installation guide for instructions on how to do this.
 
 The AMD Core Math Library needs to be installed in the standard path /opt/acml4.4.0,
-otherwise the scripts run_marc run_h_marc and run_mp_marc need to be adopted accordingly!
+otherwise the scripts run_marc, run_h_marc, and run_mp_marc need to be adopted accordingly!
 Add acml path to LD_LIBRARY_PATH, the best place to do so is: /etc/csh.cshrc.local and/or /etc/bash.bashrc.local
 The path should read: /opt/acml4.4.0/ifort64_mp/lib (this is the version using paralllization, ie openmp):
-for bash: LD_LIBRARY_PATH="/opt/acml4.4.0/ifort64_mp/lib:${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH
-for csh: setenv LD_LIBRARY_PATH /opt/acml4.4.0/ifort64_mp/lib:${LD_LIBRARY_PATH}
+ for bash: LD_LIBRARY_PATH="/opt/acml4.4.0/ifort64_mp/lib:${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH
+ for csh:  setenv LD_LIBRARY_PATH /opt/acml4.4.0/ifort64_mp/lib:${LD_LIBRARY_PATH}
 
-1) Install Marc, Mentat and Documentation as ususal
-   Run the test example including subroutines to make shure the installation of both Marc/Mentat and the Fortran Comnpiler is ok!
+1) Install Marc, Mentat and Documentation as usual
+   Run the test example including subroutines to confirm that the installation of both Marc/Mentat and the Intel Fortran Compiler is ok!
 2) Run the apply_MPIE_modifications script from this directory.
 
 
@@ -25,25 +25,25 @@ APPENDIX:
 
 The structure of this directory should be (VERSION = 2010 or 2010.2):
 
-./installation.txt						this text
-./apply_MPIE_modifications				script file to apply modifications to the installation
-./VERSION/Marc_tools/comp_user.org				original file from installation
-./VERSION/Marc_tools/comp_user					modified
-./VERSION/Marc_tools/comp_user_h				modified version using -O3 optimization
-./VERSION/Marc_tools/comp_user_mp				modified version using -O3 optimization and OpenMP
-./VERSION/Marc_tools/run_marc.org				original file from installation
-./VERSION/Marc_tools/run_marc					modified version
-./VERSION/Marc_tools/run_h_marc					modified version using -O3 optimization
-./VERSION/Marc_tools/run_mp_marc				modified version using -O3 optimization and OpenMP
-./VERSION/Marc_tools/include_linux64.org		original file from installation
-./VERSION/Marc_tools/include_linux64			modified version
-./VERSION/Mentat_bin/edit_window.org			original file from installation
-./VERSION/Mentat_bin/edit_window				modified version
-./VERSION/Mentat_bin/submit1.org				original file from installation
-./VERSION/Mentat_bin/submit1					modified version of original calling run_h_marc
-./VERSION/Mentat_bin/submit2.org				original file from installation
-./VERSION/Mentat_bin/submit2					modified version of original calling run_marc
-./VERSION/Mentat_bin/submit3.org				original file from installation
-./VERSION/Mentat_bin/submit3					modified version of original calling run_mp_marc
-./VERSION/Mentat_menus/job_run.ms.org			original file from installation
-./VERSION/Mentat_menus/job_run.ms				modified version
+./installation.txt                          this text
+./apply_MPIE_modifications                  script file to apply modifications to the installation
+./VERSION/Marc_tools/comp_user.org          original file from installation
+./VERSION/Marc_tools/comp_user              modified
+./VERSION/Marc_tools/comp_user_h            modified version using -O3 optimization
+./VERSION/Marc_tools/comp_user_mp           modified version using -O3 optimization and OpenMP
+./VERSION/Marc_tools/run_marc.org           original file from installation
+./VERSION/Marc_tools/run_marc               modified version
+./VERSION/Marc_tools/run_h_marc             modified version using -O3 optimization
+./VERSION/Marc_tools/run_mp_marc            modified version using -O3 optimization and OpenMP
+./VERSION/Marc_tools/include_linux64.org    original file from installation
+./VERSION/Marc_tools/include_linux64        modified version
+./VERSION/Mentat_bin/edit_window.org        original file from installation
+./VERSION/Mentat_bin/edit_window            modified version
+./VERSION/Mentat_bin/submit1.org            original file from installation
+./VERSION/Mentat_bin/submit1                modified version of original calling run_h_marc
+./VERSION/Mentat_bin/submit2.org            original file from installation
+./VERSION/Mentat_bin/submit2                modified version of original calling run_marc
+./VERSION/Mentat_bin/submit3.org            original file from installation
+./VERSION/Mentat_bin/submit3                modified version of original calling run_mp_marc
+./VERSION/Mentat_menus/job_run.ms.org       original file from installation
+./VERSION/Mentat_menus/job_run.ms           modified version

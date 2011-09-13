@@ -41,7 +41,7 @@
  CONTAINS
 
 !***********************************************************
-! determine wether a symmetric solver is used
+! determine whether a symmetric solver is used
 ! and whether restart is requested
 !***********************************************************
  subroutine FE_init()

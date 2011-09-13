@@ -75,7 +75,7 @@ integer(pInt)                   itmax , &                               ! maximu
 !* Random seeding parameters
                                 fixedSeed                               ! fixed seeding for pseudo-random number generator
 !* OpenMP variable
-integer(pInt)                DAMASK_NumThreadsInt                    ! value stored in environment variable DAMASK_NUM_THREADS
+integer(pInt)                   DAMASK_NumThreadsInt                    ! value stored in environment variable DAMASK_NUM_THREADS
 
 
 CONTAINS
