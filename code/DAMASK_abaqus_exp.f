@@ -202,6 +202,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
  real(pReal), dimension (3,3) :: pstress                ! not used, but needed for call of cpfem_general
  real(pReal), dimension (3,3,3,3) :: dPdF               ! not used, but needed for call of cpfem_general
 ! local variables
+ real(pReal), dimension(3) :: coordinates
  real(pReal), dimension(3,3) :: defgrd0,defgrd1
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
@@ -283,7 +284,8 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
      defgrd1(3,2) = defgradNew(n,8)
    endif
 
-   call CPFEM_general(computationMode,coordMp(n,1:3),defgrd0,defgrd1,temp,timeInc,nElement(n),nMatPoint(n),stress,ddsdde, pstress, dPdF)
+   coordinates = coordMp(n,1:3)
+   call CPFEM_general(computationMode,coordinates,defgrd0,defgrd1,temp,timeInc,nElement(n),nMatPoint(n),stress,ddsdde, pstress, dPdF)
   
   !     Mandel:     11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
   !     straight:   11, 22, 33, 12, 23, 13
