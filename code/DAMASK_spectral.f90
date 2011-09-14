@@ -52,7 +52,7 @@ program DAMASK_spectral
  use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel,&
                      relevantStrain, itmax, memory_efficient, DAMASK_NumThreadsInt       
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
-!$ use OMP_LIB                                                          ! the openMP function library
+!$ use OMP_LIB                                                           ! the openMP function library
 
  implicit none
  include 'include/fftw3.f' ! header file for fftw3 (declaring variables). Library files are also needed
