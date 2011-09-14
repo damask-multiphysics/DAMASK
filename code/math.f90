@@ -2034,7 +2034,28 @@ enddo
 math_sampleGaussVar = scatter * stddev
 
 endfunction math_sampleGaussVar
+
+
+!****************************************************************
+subroutine math_spectralDecompositionSym3x3(M,values,vectors,error)
+!****************************************************************
+ use prec, only: pReal, pInt
+ implicit none
+
+ real(pReal), dimension(3,3), intent(in) :: M
+ real(pReal), dimension(3),   intent(out) :: values
+ real(pReal), dimension(3,3), intent(out) :: vectors
+ logical, intent(out) :: error
+
+ integer(pInt) info
+ real(pReal), dimension((64+2)*3) :: work                          ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
  
+ vectors = M                                                       ! copy matrix to input (doubles as output) array
+ call DSYEV('V','U',3,vectors,3,values,work,(64+2)*3,info)
+ error = (info == 0_pInt)
+ 
+ return
+end subroutine
 
 
 !****************************************************************
