@@ -1263,9 +1263,9 @@ endfunction
  case (222)
    msg = 'negative activation energy for edge dislocation glide'
  case (223)
-   msg = 'negative self diffusion energy'
- case (224)
-   msg = 'non-positive diffusion prefactor'
+   msg = 'zero stackin fault energy'
+! case (224)
+!   msg = 'non-positive diffusion prefactor'
  case (225)
    msg = 'no slip systems specified'
  case (226)
@@ -1281,9 +1281,11 @@ endfunction
  case (231)
    msg = 'non-positive prefactor for self-diffusion coefficient'  ! what is the difference to 224 ??
  case (232)
-   msg = 'non-positive activation energy'   
+   msg = 'non-positive activation energy for self-diffusion'
  case (233)
    msg = 'non-positive relevant dislocation density'   
+ case (234)
+   msg = 'error in shear banding input'   
  case (235)
    msg = 'material parameter in nonlocal constitutive phase out of bounds:'
  case (236)
