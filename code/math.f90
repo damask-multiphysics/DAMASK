@@ -2187,7 +2187,7 @@ end subroutine
  real(pReal), intent(in) :: M(3,3)
  real(pReal), dimension(3,3) :: EB1(3,3),EB2(3,3),EB3(3,3)
  real(pReal), dimension(3) :: math_eigenvalues3x3
- real(pReal) HI1M,HI2M,HI3M,TOL,R,S,T,P,Q,RHO,PHI,Y1,Y2,Y3,arg,EW1,EW2,EW3
+ real(pReal) HI1M,HI2M,HI3M,TOL,R,S,T,P,Q,RHO,PHI,Y1,Y2,Y3,arg
  TOL=1.e-14_pReal
  CALL math_hi(M,HI1M,HI2M,HI3M)
  R=-HI1M
