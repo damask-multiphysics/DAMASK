@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,numpy
+import os,sys,string,re,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 # -----------------------------
@@ -65,7 +65,7 @@ def vtk_writeASCII_mesh(dim,res,data):
   
   cmds = [\
           '# vtk DataFile Version 3.1',
-          string.replace('powered by $Id$','\n','\\n')
+          string.replace('powered by $Id$','\n','\\n'),
           'ASCII',
           'DATASET RECTILINEAR_GRID',
           'DIMENSIONS %i %i %i'%(res[0]+1,res[1]+1,res[2]+1),
@@ -91,68 +91,89 @@ def vtk_writeASCII_mesh(dim,res,data):
 
 # ----------------------- MAIN -------------------------------
 
-mapping = {
-        'resolution': {'a':0,'b':1,'c':2},
-        'dimension':  {'x':0,'y':1,'z':2},
+identifiers = {
+        'resolution': ['a','b','c'],
+        'dimension':  ['x','y','z'],
+          }
+mappings = {
+        'resolution': lambda x: int(x),
+        'dimension':  lambda x: float(x),
           }
 
-parser = OptionParser(option_class=extendedOption, usage='%prog geomfile[s]', description = """
-Produce VTK point file from geom data
+parser = OptionParser(option_class=extendedOption, usage='%prog [geomfile[s]]', description = """
+Produce VTK rectilinear mesh of texture data from geom description
 
 """ + string.replace('$Id$','\n','\\n')
 )
 
-(options, args) = parser.parse_args()
+(options, filenames) = parser.parse_args()
 
-for filename in args:
-  if not os.path.exists(filename):
-    continue
+# ------------------------------------------ setup file handles ---------------------------------------  
 
-  print filename
-  file = open(filename)
-  
-  res = [0,0,0]
-  resolutionData = file.readline().split()
-  if resolutionData[0].lower() != 'resolution':
-    sys.stderr.write('no resolution info found...\n')
-    continue
+files = []
+if filenames == []:
+  files.append({'name':'STDIN', 'input':sys.stdin})
+else:
+  for name in filenames:
+    if os.path.exists(name):
+      files.append({'name':name, 'input':open(name)})
+
+# ------------------------------------------ loop over input files ---------------------------------------  
+
+for file in files:
+  if file['name'] != 'STDIN': print file['name']
+
+  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
+
+  firstline = file['input'].readline()
+  m = re.search('(\d+)\s*head', firstline.lower())
+  if m:
+    headerlines = int(m.group(1))
+    headers  = [file['input'].readline() for i in range(headerlines)]
   else:
-    for i in range(1,6,2):
-      if resolutionData[i] not in mapping['resolution']:
-        sys.stderr.write('corrupt resolution info...\n')
-        continue
-      else:
-        res[mapping['resolution'][resolutionData[i]]] = int(resolutionData[i+1])
-        N = res[0]*res[1]*res[2]
-      
-  dim = [0.0,0.0,0.0]
-  dimensionData = file.readline().split()
-  if dimensionData[0].lower() != 'dimension':
-    sys.stderr.write('no dimension info found...\n')
-    continue
-  else:
-    for i in range(1,6,2):
-      if dimensionData[i] not in mapping['dimension']:
-        sys.stderr.write('corrupt dimension info...\n')
-        continue
-      else:
-        dim[mapping['dimension'][dimensionData[i]]] = float(dimensionData[i+1])
+    headerlines = 1
+    headers = firstline
 
-  print 'dimension',dim
+  content = file['input'].readlines()
+  file['input'].close()
   
-  file.readline()                        # skip homogenization
+  resolution = [0,0,0]
+  dimension = [0.0,0.0,0.0]
+  for header in headers:
+    headitems = header.split()
+    if headitems[0] == 'resolution':         # located resolution entry
+      for i in xrange(3):
+        resolution[i] = mappings['resolution'](headitems[headitems.index(identifiers['resolution'][i])+1])
+    if headitems[0] == 'dimension':          # located dimension entry
+      for i in xrange(3):
+        dimension[i] = mappings['dimension'](headitems[headitems.index(identifiers['dimension'][i])+1])
 
-  data = {'scalar':{'texture':numpy.zeros(N,'i').reshape(res[2],res[1],res[0]).T}}
-  for k in range(res[2]):
-    for j in range(res[1]):
-      for i in range(res[0]):
-        data['scalar']['texture'][i,j,k] = int(file.readline().split()[0])
+  if resolution == [0,0,0]:
+    print 'no resolution info found.'
+    sys.exit(1)
+  if dimension == [0.0,0.0,0.0]:
+    print 'no dimension info found.'
+    sys.exit(1)
+
+  print 'resolution: %s'%(' x '.join(map(str,resolution)))
+  print 'dimension:  %s'%(' x '.join(map(str,dimension)))
+  
+  data = {'scalar':{'texture':numpy.zeros(resolution,'i')}}
+  i = 0
+  for line in content:  
+    for item in map(int,line.split()):
+      data['scalar']['texture'][i%resolution[0],(i/resolution[0])%resolution[1],i/resolution[0]/resolution[1]] = item
+      i += 1
+
 
   out = {}
-  out['mesh'] = vtk_writeASCII_mesh(dim,res,data)
+  out['mesh'] = vtk_writeASCII_mesh(dimension,resolution,data)
   
   for what in out.keys():
-    (head,tail) = os.path.split(filename)
-    vtk = open(os.path.join(head,'%s_'%what+os.path.splitext(tail)[0]+'.vtk'), 'w')
-    output(out[what],{'filepointer':vtk},'File')
-    vtk.close()
+    if file['name'] == 'STDIN':
+      output(out[what],{},'Stdout')
+    else:
+      (head,tail) = os.path.split(file['name'])
+      vtk = open(os.path.join(head,what+'_'+os.path.splitext(tail)[0]+'.vtk'), 'w')
+      output(out[what],{'filepointer':vtk},'File')
+      vtk.close()
