@@ -7,19 +7,18 @@
 # Uses openmp to parallelise the material subroutines (set number of cores with "export DAMASK_NUM_THREADS=n" to n)
 # Uses linux threads to parallelise fftw3 (should also be possible with openmp)
 # Besides of the f90 files written at MPIE, the two library files of fftw3 "libfftw3_threads.a" "libfftw3.a" are also needed
-# Install fftw3 (v3.2.2 is tested) with "./configure --enable-threads --enable-float"  and "make", "make install" is not needed
-# as long as the two library files are copied to the source code directory.
+# Install fftw3 (v3.3 is tested) with "./configure --enable-threads --enable-sse2" and "make"; "make install" is not needed
+# as long as the two library files "libfftw3_threads.a" "libfftw3.a" are copied to the code/include directory.
 
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
 # PRECISION = double (single): floating point precision
 # F90 = ifort (gfortran): compiler, choose Intel or GNU
-# VERSION = 10 (12): version of Intel compiler. More aggressive optimization if VERSION =12
-# PORTABLE = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built
-# OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE): Optimization mode, O0, O2, O3
+# PORTABLE = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built. Until now only for ifort
+# OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode, O0, O2, O3
 # OPENMP = TRUE (FALSE): OpenMP multiprocessor support
-# ACML = OFF (ON): link with AMD math core library (v. 4.4 need to be installed)
 # PREFIX: specifie an arbitrary prefix
+# SUFFIX: specife an arbitrary suffix, e.g
 # COMPILERNAME = overwrite name of Compiler, e.g. using mpich-g90 instead of ifort
 
 # Here are some usefull debugging switches. Switch on by uncommenting last line:
@@ -31,57 +30,57 @@ DEBUG1 =-check bounds -g
 DEBUG2 =-check arg_temp_created
 #check from time to time
 DEBUG3 =-fp-stack-check -g -traceback -gen-interfaces -warn interfaces
-
-#should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Porblably it helps to also unlimit other limits
+#should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Problably it helps also to unlimit other limits
 DEBUG4 =-heap-arrays
 
-#SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3) 
-#SUFFIX =$(DEBUG1) $(DEBUG3) 
+#checks for standard
+DEBUG5 =stand std03/std95
 
+#SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3) 
+
+#BLAS for OPENMP=OFF
+BLAS_ifort =-L /opt/acml4.4.0/ifort64/lib -lacml
+BLAS_gfortran =
 
 ifeq ($(F90), )
 F90 =ifort
 endif
+
 
 ifeq ($(OPTIMIZATION), )
 OPTIMIZATION =DEFENSIVE
 endif
 MAXOPTI =$(OPTIMIZATION)
 
-ifeq ($(F90), ifort)
-
-ifeq ($(PORTABLE), FALSE)
-PORTABLE_SWITCH =-xHost
-endif
-ifneq ($(VERSION), 12)
-ifeq ($(OPTIMIZATION), AGGRESSIVE)
-MAXOPTI =DEFENSIVE
-endif
+ifeq ($(OPTIMIZATION),ULTRA)
+MAXOPTI=AGGRESSIVE
 endif
 
+ifeq ($(OPTIMIZATION),AGGRESSIVE)
+MAXOPTI=DEFENSIVE
+endif
+
+ifeq ($(PORTABLE),FALSE)
+PORTABLE_SWITCH =-msse3
 endif
 
 ifneq ($(OPENMP), OFF)
 OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
 OPENMP_FLAG_gfortran =-fopenmp
+BLAS_ifort =-L /opt/acml4.4.0/ifort64_mp/lib -lacml_mp
+BLAS_gfortran =
 OPENMP =ON
-endif
-
-ifeq ($(ACML), ON)
-BLAS_ON_ifort =-L /opt/acml4.4.0/ifort64_mp/lib -lacml_mp
-BLAS_OFF_ifort =-L /opt/acml4.4.0/ifort64/lib -lacml
-BLAS_ON_gfortran =
-BLAS_ON_gfortran =
 endif
 
 OPTIMIZATION_OFF_ifort =-O0
 OPTIMIZATION_OFF_gfortran =-O0
 OPTIMIZATION_DEFENSIVE_ifort =-O2
 OPTIMIZATION_DEFENSIVE_gfortran =-O2
-OPTIMIZATION_AGGRESSIVE_ifort =-O3 $(PORTABLE_SWITCH) -ip
-OPTIMIZATION_AGGRESSIVE_gfortran =-O3
+OPTIMIZATION_AGGRESSIVE_ifort =-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div
+OPTIMIZATION_ULTRA_ifort =-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div
+OPTIMIZATION_AGGRESSIVE_gfortran =-O3 -march=opteron -ffast-math -funroll-loops -ftree-vectorize -ftree-loop-linear $(PORTABLE_SWITCH)
 
-COMPILE_OPTIONS_ifort =-fpp -diag-disable 8291,8290 
+COMPILE_OPTIONS_ifort =-fpp -diag-disable 8291,8290
 COMPILE_OPTIONS_gfortran =-xf95-cpp-input -ffree-line-length-none
 
 COMPILE =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZATION_${OPTIMIZATION}_${F90}} -c
@@ -94,13 +93,13 @@ endif
 ifeq ($(PRECISION),single)
 DAMASK_spectral_single.exe: DAMASK_spectral_single.o CPFEM.a
 	$(PREFIX)	$(COMPILERNAME) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a include/libfftw3f_threads.a include/libfftw3f.a\
-  constitutive.a advanced.a basics.a -lpthread ${BLAS_${OPENMP}_${F90}}
+  constitutive.a advanced.a basics.a -lpthread ${BLAS_${F90}}
 DAMASK_spectral_single.o: DAMASK_spectral_single.f90 CPFEM.o 
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE_MAXOPTI) DAMASK_spectral_single.f90 $(SUFFIX)
 else
 DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
 	$(PREFIX)	$(COMPILERNAME) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a include/libfftw3_threads.a include/libfftw3.a\
-  constitutive.a advanced.a basics.a -lpthread ${BLAS_${OPENMP}_${F90}}
+  constitutive.a advanced.a basics.a -lpthread ${BLAS_${F90}}
 DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o 
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE_MAXOPTI) DAMASK_spectral.f90 $(SUFFIX)
 endif
@@ -184,6 +183,8 @@ else
 DAMASK_spectral_interface.o: DAMASK_spectral_interface.f90 prec.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) DAMASK_spectral_interface.f90 $(SUFFIX)
 prec.o: prec.f90
+	@echo $(OPTIMIZATION)
+	@echo $(MAXOPTI)
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) prec.f90 $(SUFFIX)
 endif
 
