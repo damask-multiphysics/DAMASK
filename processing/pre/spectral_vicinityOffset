@@ -46,8 +46,11 @@ parser.add_option('-v', '--vicinity', dest='vicinity', type='int', \
                   help='voxel distance checked for presence of other microstructure')
 parser.add_option('-o', '--offset', dest='offset', type='int', \
                   help='integer offset for tagged microstructure')
+parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
+                  help='output geom file with two-dimensional data arrangement')
 
 parser.set_defaults(vicinity = 1)
+parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
 
@@ -140,8 +143,8 @@ for file in files:
 # ------------------------------------- regenerate texture information ----------------------------------  
 
   for z in xrange(resolution[2]):
-    for y in xrange(resolution[2]):
-      output += ' '.join(map(lambda x: ('%%%ii'%formatwidth)%x, microstructure[:,y,z])) + '\n'
+    for y in xrange(resolution[1]):
+      output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: ('%%%ii'%formatwidth)%x, microstructure[:,y,z])) + '\n'
     
     output += '\n'
     
