@@ -16,8 +16,10 @@ bin_link = { \
 							'mentat_spectralBox',
 							'patchFromReconstructedBoundaries',
 							'spectral_geomCheck',
-							'voronoi_randomSeeding.exe',
-							'voronoi_tessellation.exe',
+							'spectral_minimalSurface',
+							'spectral_vicinityOffset',
+							'voronoi_randomSeeding',
+							'voronoi_tessellation',
 							],
 				'post' : [
 							'3Dvisualize',
@@ -74,7 +76,7 @@ for dir in compile:
     if os.path.isfile(src):
       print file
       os.system('rm %s.exe'%(os.path.splitext(src)[0]))
-      os.system('ifort -O3 -parallel -o%s.exe %s'%(os.path.splitext(src)[0],src))
+      os.system('ifort -O3 -parallel -o%s %s'%(os.path.splitext(src)[0],src))
  
 modules = glob.glob('*.mod')
 for module in modules:

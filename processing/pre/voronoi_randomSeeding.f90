@@ -80,7 +80,7 @@ program voronoi
 ! write description file with orientation and position of each seed
  open(21, file = trim(filename)//('.seeds'))
  write(21, '(i1,a1,a6)') 4,achar(9),'header'
- write(21, '(A, I2, A, I2, A, I2)') 'resolution  a ', a, '  b ', b, '  c ', c
+ write(21, '(A, I8, A, I8, A, I8)') 'resolution  a ', a, '  b ', b, '  c ', c
  write(21,*) 'grains', N_Seeds
  write(21,*) 'random seed ',rndInit(1)
  write(21,'(6(a,a1))') 'x',achar(9),'y',achar(9),'z',achar(9),'phi1',achar(9),'Phi',achar(9),'phi2',achar(9)
