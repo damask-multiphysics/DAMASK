@@ -67,7 +67,9 @@ real(pReal)                     relevantStrain, &                       ! strain
 !* spectral parameters:
                                 err_div_tol, &                          ! error of divergence in fourier space
                                 err_stress_tol, &                       ! absolut stress error, will be computed from err_stress_tolrel (dont prescribe a value)
-                                err_stress_tolrel                       ! factor to multiply with highest stress to get err_stress_tol
+                                err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
+                                fftw_timelimit                          ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org
+character(len=64)               fftw_planner_flag                       ! sets the planig-rigor flag, see manual on www.fftw.org
 logical                         memory_efficient                        ! for fast execution (pre calculation of gamma_hat)
 integer(pInt)                   itmax , &                               ! maximum number of iterations
 
@@ -162,10 +164,13 @@ subroutine numerics_init()
   volDiscrPow_RGC         = 5.0
 
 !* spectral parameters:  
-  err_div_tol             = 1.0e-4   ! 1.0e-4 proposed by Suquet
-  err_stress_tolrel       = 0.01     ! relative tolerance for fullfillment of stress BC
-  itmax                   = 20_pInt  ! Maximum iteration number
-  memory_efficient        = .true.   ! Precalculate Gamma-operator (81 double per point)
+  err_div_tol             = 1.0e-4       ! 1.0e-4 proposed by Suquet
+  err_stress_tolrel       = 0.01         ! relative tolerance for fullfillment of stress BC (1% of maximum stress)
+  itmax                   = 20_pInt      ! Maximum iteration number
+  memory_efficient        = .true.       ! Precalculate Gamma-operator (81 double per point)
+  fftw_timelimit          = -1.0_pReal   ! no timelimit of plan creation for FFTW
+  fftw_planner_flag       ='patient'
+  
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
@@ -278,6 +283,10 @@ subroutine numerics_init()
               itmax = IO_intValue(line,positions,2)
         case ('memory_efficient')
               memory_efficient = IO_intValue(line,positions,2)  > 0_pInt
+        case ('fftw_timelimit')
+              fftw_timelimit = IO_floatValue(line,positions,2)
+        case ('fftw_planner_flag')
+              fftw_planner_flag = IO_stringValue(line,positions,2)
 
 !* Random seeding parameters
         case ('fixed_seed')
@@ -340,10 +349,16 @@ subroutine numerics_init()
     write(6,*)
 
 !* spectral parameters
-    write(6,'(a24,x,e8.1)') 'err_div_tol:            ',err_div_tol
-    write(6,'(a24,x,e8.1)') 'err_stress_tolrel:      ',err_stress_tolrel
-    write(6,'(a24,x,i8)')   'itmax:                  ',itmax
-    write(6,'(a24,x,L8)')   'memory_efficient:       ',memory_efficient
+    write(6,'(a24,x,e8.1)')   'err_div_tol:            ',err_div_tol
+    write(6,'(a24,x,e8.1)')   'err_stress_tolrel:      ',err_stress_tolrel
+    write(6,'(a24,x,i8)')     'itmax:                  ',itmax
+    write(6,'(a24,x,L8)')     'memory_efficient:       ',memory_efficient
+    if(fftw_timelimit<0) then
+      write(6,'(a24,x,L8)')   'fftw_timelimit:         ',.false.
+    else    
+      write(6,'(a24,x,e8.1)') 'fftw_timelimit:         ',fftw_timelimit
+    endif
+    write(6,'(a24,x,a)')      'fftw_planner_flag:      ',trim(fftw_planner_flag)
     write(6,*)
 
 !* Random seeding parameters
