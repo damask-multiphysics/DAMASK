@@ -126,10 +126,35 @@ subroutine material_init()
    if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
  endif
  call material_parseHomogenization(fileunit,material_partHomogenization)
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+   write (6,*) 'Homogenization parsed'
+   !$OMP END CRITICAL (write2out)
+ endif
  call material_parseMicrostructure(fileunit,material_partMicrostructure)
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+   write (6,*) 'Microstructure parsed'
+   !$OMP END CRITICAL (write2out)
+ endif
  call material_parseCrystallite(fileunit,material_partCrystallite)
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+   write (6,*) 'Crystallite parsed'
+   !$OMP END CRITICAL (write2out)
+ endif
  call material_parseTexture(fileunit,material_partTexture)
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+   write (6,*) 'Texture parsed'
+   !$OMP END CRITICAL (write2out)
+ endif
  call material_parsePhase(fileunit,material_partPhase)
+ if (debug_verbosity > 0) then
+   !$OMP CRITICAL (write2out)
+   write (6,*) 'Phase parsed'
+   !$OMP END CRITICAL (write2out)
+ endif
  close(fileunit)
 
  do i = 1,material_Nmicrostructure
@@ -255,7 +280,7 @@ subroutine material_parseMicrostructure(file,myPart)
 
  use prec, only: pInt
  use IO
- use mesh, only: mesh_element
+ use mesh, only: mesh_element, spectralPictureMode
  implicit none
 
  character(len=*), intent(in) :: myPart
@@ -276,8 +301,12 @@ subroutine material_parseMicrostructure(file,myPart)
  allocate(microstructure_active(Nsections))
  allocate(microstructure_elemhomo(Nsections))
 
- forall (i = 1:Nsections) microstructure_active(i) = any(mesh_element(4,:) == i)    ! current microstructure used in model?
-
+ if (spectralPictureMode) then
+   microstructure_active = .true.
+ else
+   forall (i = 1:Nsections) microstructure_active(i) = any(mesh_element(4,:) == i)    ! current microstructure used in model?
+ endif
+  
  microstructure_Nconstituents = IO_countTagInPart(file,myPart,'(constituent)',Nsections)
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
  microstructure_elemhomo = IO_spotTagInPart(file,myPart,'/elementhomogeneous/',Nsections)
@@ -326,9 +355,7 @@ subroutine material_parseMicrostructure(file,myPart)
    endif
  enddo
 
-100 return
-
- endsubroutine
+100 endsubroutine
 
 
 !*********************************************************************
@@ -372,9 +399,7 @@ subroutine material_parseCrystallite(file,myPart)
    endif
  enddo
 
-100 return
-
- endsubroutine
+100 endsubroutine
 
 
 !*********************************************************************
@@ -436,9 +461,7 @@ subroutine material_parsePhase(file,myPart)
    endif
  enddo
 
-100 return
-
- endsubroutine
+100 endsubroutine
 
 
 !*********************************************************************
@@ -569,9 +592,7 @@ subroutine material_parseTexture(file,myPart)
    endif
  enddo
 
-100 return
-
- endsubroutine
+100 endsubroutine
 
 
 !*********************************************************************
@@ -580,7 +601,7 @@ subroutine material_populateGrains()
 
  use prec, only: pInt, pReal
  use math, only: math_sampleRandomOri, math_sampleGaussOri, math_sampleFiberOri, math_symmetricEulers, inDeg
- use mesh, only: mesh_element, mesh_maxNips, mesh_NcpElems, mesh_ipVolume, FE_Nips
+ use mesh, only: mesh_element, mesh_maxNips, mesh_NcpElems, mesh_ipVolume, FE_Nips, spectralPictureMode
  use IO,   only: IO_error, IO_hybridIA
  use FEsolving, only: FEsolving_execIP
  use debug, only: debug_verbosity
@@ -593,7 +614,7 @@ subroutine material_populateGrains()
  real(pReal), dimension (3) :: orientation
  real(pReal), dimension (3,3) :: symOrientation
  integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
- integer(pInt) t,e,i,g,j,m,homog,micro,sgn
+ integer(pInt) t,e,i,g,j,m,homog,micro,sgn,loopStart,loopEnd
  integer(pInt) phaseID,textureID,dGrains,myNgrains,myNorientations, &
                grain,constituentGrain,symExtension
  real(pReal) extreme,rnd
@@ -650,7 +671,14 @@ subroutine material_populateGrains()
 ! ----------------------------------------------------------------------------  calculate volume of each grain
        volumeOfGrain = 0.0_pReal
        grain = 0_pInt                               ! microstructure grain index
-       do e = 1,mesh_NcpElems                       ! check each element
+       if (spectralPictureMode) then
+         loopStart = micro
+         loopEnd = micro
+       else
+         loopStart = 1_pInt
+         loopEnd = mesh_NcpElems
+       endif
+       do e = loopStart,loopEnd                             ! check each element
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
            if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
              volumeOfGrain(grain+1:grain+dGrains) = sum(mesh_ipVolume(1:FE_Nips(mesh_element(2,e)),e))/dGrains
@@ -767,7 +795,14 @@ subroutine material_populateGrains()
 
 ! ----------------------------------------------------------------------------
        grain = 0_pInt                                                           ! microstructure grain index
-       do e = 1,mesh_NcpElems                                                   ! check each element
+       if (spectralPictureMode) then
+         loopStart = micro
+         loopEnd = micro
+       else
+         loopStart = 1_pInt
+         loopEnd = mesh_NcpElems
+       endif
+       do e = loopStart,loopEnd                             ! check each element
          if (mesh_element(3,e) == homog .and. mesh_element(4,e) == micro) then  ! my combination of homog and micro
            if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
              forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)           ! loop over IPs and grains
