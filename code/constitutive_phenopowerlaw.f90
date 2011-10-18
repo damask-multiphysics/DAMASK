@@ -163,7 +163,7 @@ subroutine constitutive_phenopowerlaw_init(file)
                     lattice_interactionTwinTwin
 
  integer(pInt), intent(in) :: file
- integer(pInt), parameter :: maxNchunks = 21
+ integer(pInt), parameter :: maxNchunks = lattice_maxNinteraction + 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) section, maxNinstance, i,j,k, f,o, output, &
                mySize, myStructure, index_myFamily, index_otherFamily
@@ -186,7 +186,6 @@ subroutine constitutive_phenopowerlaw_init(file)
      write(6,*)
    !$OMP END CRITICAL (write2out)
  endif
-
  allocate(constitutive_phenopowerlaw_sizeDotState(maxNinstance)) ;   constitutive_phenopowerlaw_sizeDotState = 0_pInt
  allocate(constitutive_phenopowerlaw_sizeState(maxNinstance)) ;      constitutive_phenopowerlaw_sizeState = 0_pInt
  allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance)); constitutive_phenopowerlaw_sizePostResults = 0_pInt
