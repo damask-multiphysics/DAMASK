@@ -47,6 +47,7 @@ program DAMASK_spectral
  use DAMASK_interface
  use prec, only: pInt, pReal
  use IO
+ use IFPORT, only: fseek, ftellI8
  use debug, only: debug_Verbosity
  use math
  use mesh, only: mesh_ipCenterOfGravity
@@ -128,6 +129,7 @@ program DAMASK_spectral
  integer(pInt) :: i, j, k, l, m, n, p
  integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode, ierr, notConvergedCounter
  logical errmatinv
+ integer*8 :: incPosition
 
 !Initializing
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)         ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
@@ -503,12 +505,14 @@ program DAMASK_spectral
  write(538), 'logscale', bc_logscale                                       ! one entry per loadcase (0: linear, 1: log)
  write(538), 'frequencies', bc_frequency                                   ! one entry per loadcase
  write(538), 'times', bc_timeIncrement                                     ! one entry per loadcase
- bc_steps(1) = bc_steps(1)+1                                               ! +1 to store initial situation
- write(538), 'increments', bc_steps                                        ! one entry per loadcase
- bc_steps(1) = bc_steps(1)-1                                               ! re-adjust for correct looping
+ write(538), 'increments'                                                  ! one entry per loadcase
+ incPosition = ftellI8(538)
+ write(538), 0_pInt                                                        ! end of header
  write(538), 'eoh'                                                         ! end of header
-
  write(538)  materialpoint_results(:,1,:)                                  ! initial (non-deformed) results
+ ierr = fseek(538,incPosition,0)
+ if (ierr/=0_pInt ) call IO_error(107,ext_msg = 'inc 1')
+ write(538), 1_pInt                                                        ! 0 inc is written out
 !$OMP END CRITICAL (write2out)
 ! Initialization done
 

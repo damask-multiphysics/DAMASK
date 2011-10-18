@@ -47,11 +47,12 @@ endsubroutine DAMASK_interface_init
 !********************************************************************
 function getSolverWorkingDirectoryName()
 
+ use prec, only: pInt
  implicit none
 
  character(len=1024) cwd,commandLine,outName,getSolverWorkingDirectoryName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
- integer :: i, start, length
+ integer(pInt):: i, start, length
  
  call get_command(commandLine)
  do i=1,len(commandLine)                                           ! remove capitals

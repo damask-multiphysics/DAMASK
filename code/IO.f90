@@ -1178,6 +1178,8 @@ endfunction
    msg = 'reading from ODF file'
  case (106)
    msg = 'reading info on old job'
+ case (107)
+   msg = 'writing spectralOut file'
  case (110)
    msg = 'no homogenization specified via State Variable 2'
  case (120)
