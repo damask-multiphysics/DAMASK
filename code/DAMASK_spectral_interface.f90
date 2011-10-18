@@ -49,20 +49,38 @@ function getSolverWorkingDirectoryName()
 
  implicit none
 
- character(len=1024) cwd,outname,getSolverWorkingDirectoryName
+ character(len=1024) cwd,commandLine,outName,getSolverWorkingDirectoryName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
+ integer :: i, start, length
+ 
+ call get_command(commandLine)
+ do i=1,len(commandLine)                                           ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+ enddo
+ 
+ start = index(commandLine,'-g',.true.) + 3_pInt                   ! search for '-g' and jump to first char of geometry
+ if (index(commandLine,'--geom',.true.)>0) then                    ! if '--geom' is found, use that (contains '-g')
+   start = index(commandLine,'--geom',.true.) + 7_pInt
+ endif               
+ if (index(commandLine,'--geometry',.true.)>0) then                ! again, now searching for --geometry'
+   start = index(commandLine,'--geometry',.true.) + 11_pInt
+ endif
+ if(start==3_pInt) stop 'No Geometry Specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
+ length = index(commandLine(start:len(commandLine)),' ',.false.)
 
- call getarg(1,outname)                                ! path to loadFile
-
- if (scan(outname,pathSep) == 1) then                  ! absolute path given as command line argument
-   getSolverWorkingDirectoryName = outname(1:scan(outname,pathSep,back=.true.))
+ call get_command(commandLine)                                     ! may contain capitals
+ outName = ' '                                                     ! should be empty
+ outName(1:length)=commandLine(start:start+length)
+ 
+ if (scan(outName,pathSep) == 1) then                              ! absolute path given as command line argument
+   getSolverWorkingDirectoryName = outName(1:scan(outName,pathSep,back=.true.))
  else
    call getcwd(cwd)
-   getSolverWorkingDirectoryName = trim(cwd)//'/'//outname(1:scan(outname,pathSep,back=.true.))
+   getSolverWorkingDirectoryName = trim(cwd)//'/'//outName(1:scan(outName,pathSep,back=.true.))
  endif
 
  getSolverWorkingDirectoryName = rectifyPath(getSolverWorkingDirectoryName)
-
+ 
 endfunction getSolverWorkingDirectoryName
 
 !********************************************************************
@@ -71,13 +89,11 @@ endfunction getSolverWorkingDirectoryName
 !********************************************************************
 function getSolverJobName()
 
- use prec, only: pInt
-
  implicit none
+ character(1024) :: getSolverJobName
 
- character(1024) getSolverJobName
  getSolverJobName = trim(getModelName())//'_'//trim(getLoadCase())
- 
+
 endfunction getSolverJobName
 
 !********************************************************************
@@ -90,13 +106,29 @@ function getModelName()
 
  implicit none
 
- character(1024) getModelName, outName, cwd
+ character(1024) getModelName, outName, cwd, commandLine
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
- integer(pInt) posExt,posSep
-
- getModelName = ''
-
- call getarg(1,outName)
+ integer(pInt) :: i,posExt,posSep,start,length
+ 
+ call get_command(commandLine)
+ do i=1,len(commandLine)                                           ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+ enddo
+ 
+ start = index(commandLine,'-g',.true.) + 3_pInt                   ! search for '-g' and jump to first char of geometry
+ if (index(commandLine,'--geom',.true.)>0) then                    ! if '--geom' is found, use that (contains '-g')
+   start = index(commandLine,'--geom',.true.) + 7_pInt
+ endif               
+ if (index(commandLine,'--geometry',.true.)>0) then                ! again, now searching for --geometry'
+   start = index(commandLine,'--geometry',.true.) + 11_pInt
+ endif
+ if(start==3_pInt) stop 'No Geometry Specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
+ length = index(commandLine(start:len(commandLine)),' ',.false.)
+ 
+ call get_command(commandLine)                                     ! may contain capitals
+ getModelName = ' '
+ outName = ' '                                                     ! should be empty
+ outName(1:length)=commandLine(start:start+length)
  posExt = scan(outName,'.',back=.true.)
  posSep = scan(outName,pathSep,back=.true.)
 
@@ -112,6 +144,7 @@ function getModelName()
 
  getModelName = makeRelativePath(getSolverWorkingDirectoryName(),&
                                  getModelName)
+                                 
 endfunction getModelName
 
 !********************************************************************
@@ -124,19 +157,34 @@ function getLoadCase()
 
  implicit none
 
- character(1024) getLoadCase, outName
+ character(1024) getLoadCase, outName, commandLine
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
- integer(pInt) posExt,posSep
+ integer(pInt) posExt,posSep,i,start,length
 
+ call get_command(commandLine)
+ do i=1,len(commandLine)                                           ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+ enddo
+ 
+ start = index(commandLine,'-l',.true.) + 3_pInt                   ! search for '-l' and jump forward to given name
+ if (index(commandLine,'--load',.true.)>0) then                    ! if '--load' is found, use that (contains '-l')
+   start = index(commandLine,'--load',.true.) + 7_pInt
+ endif               
+ if (index(commandLine,'--loadcase',.true.)>0) then                ! again, now searching for --loadcase'
+   start = index(commandLine,'--loadcase',.true.) + 11_pInt
+ endif
+ if(start==3_pInt) stop 'No Loadcase  Specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
+ length = index(commandLine(start:len(commandLine)),' ',.false.)
+ 
+ call get_command(commandLine)                                     ! may contain capitals
  getLoadCase = ''
-
- posSep=1
- call getarg(2,outName)
+ outName = ' '                                                     ! should be empty
+ outName(1:length)=commandLine(start:start+length)
  posExt = scan(outName,'.',back=.true.)
  posSep = scan(outName,pathSep,back=.true.)
 
- if (posExt <= posSep) posExt = len_trim(outName)+1       ! no extension present
- getLoadCase = outName(posSep+1:posExt-1)              ! name of load case file exluding extension
+ if (posExt <= posSep) posExt = len_trim(outName)+1                ! no extension present
+ getLoadCase = outName(posSep+1:posExt-1)                          ! name of load case file exluding extension
 
 endfunction getLoadCase
 
@@ -151,12 +199,30 @@ function getLoadcaseName()
 
  implicit none
 
- character(len=1024) getLoadcaseName, outName, cwd
+ character(len=1024) getLoadcaseName, cwd, commandLine
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
- integer(pInt) posExt,posSep
+ integer(pInt) posExt,posSep,i,start,length
  posExt = 0
 
- call getarg(2,getLoadcaseName)
+ call get_command(commandLine)
+ do i=1,len(commandLine)                                           ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+ enddo
+ 
+ start = index(commandLine,'-l',.true.) + 3_pInt                   ! search for '-l' and jump forward to given name
+ if (index(commandLine,'--load',.true.)>0) then                    ! if '--load' is found, use that (contains '-l')
+   start = index(commandLine,'--load',.true.) + 7_pInt
+ endif               
+ if (index(commandLine,'--loadcase',.true.)>0) then                ! again, now searching for --loadcase'
+   start = index(commandLine,'--loadcase',.true.) + 11_pInt
+ endif
+ if(start==3_pInt) stop 'No Loadcase  Specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
+ length = index(commandLine(start:len(commandLine)),' ',.false.)
+
+ call get_command(commandLine)                                     ! may contain capitals
+ getLoadCaseName = ' '
+ getLoadCaseName(1:length)=commandLine(start:start+length)
+
  posExt = scan(getLoadcaseName,'.',back=.true.)
  posSep = scan(getLoadcaseName,pathSep,back=.true.)
 
