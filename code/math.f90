@@ -29,10 +29,7 @@
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
- real(pReal), dimension(3), parameter :: NaN = & ! taken from http://ftp.aset.psu.edu/pub/ger/fortran/hdk/nan.f90
-  (/B'01111111100000100000000000000000',&        ! NaN
-    B'11111111100100010001001010101010',&        ! NaN
-    B'11111111110000000000000000000000'/)        ! 0/0
+ real(pReal), parameter :: DAMASK_NaN = Z'7FF0000000000001'
 ! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
  reshape( (/ &
@@ -158,7 +155,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  write(6,*) '<<<+-  math init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
- write(6,*) 'NaN check: ',NaN/=NaN
+ write(6,*) 'NaN:        ',DAMASK_NAN
+ write(6,*) 'NaN /= NaN: ',DAMASK_NaN/=DAMASK_NaN
  write(6,*)
  !$OMP END CRITICAL (write2out)
  
@@ -1705,7 +1703,7 @@ pure function math_transpose3x3(A)
  if (Q(1) /= 0.0_pReal) then                                   ! unless rotation by 180 deg
    math_QuaternionToRodrig = Q(2:4)/Q(1)
  else
-   math_QuaternionToRodrig = NaN(3)                            ! 0/0, since Rodrig is unbound for 180 deg...
+   math_QuaternionToRodrig = DAMASK_NaN                        ! NaN since Rodrig is unbound for 180 deg...
  endif
 
 
