@@ -87,6 +87,7 @@
  integer(pInt), dimension(:,:,:),   allocatable :: FE_ipNeighbor
  integer(pInt), dimension(:,:,:),   allocatable :: FE_subNodeParent
  integer(pInt), dimension(:,:,:,:), allocatable :: FE_subNodeOnIPFace
+ logical spectralPictureMode
  
  logical :: noPart                                                        ! for cases where the ABAQUS input file does not use part/assembly information
  logical, dimension(3) :: mesh_periodicSurface                            ! flag indicating periodic outer surfaces (used for fluxes)
@@ -1360,16 +1361,16 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
 !
 ! initialcondTableStyle, hypoelasticTableStyle
 !********************************************************************
- subroutine mesh_marc_get_tableStyles (unit)
+ subroutine mesh_marc_get_tableStyles (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 6
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
 
- integer(pInt) unit
+ integer(pInt) myUnit
  character(len=300) line
 
  initialcondTableStyle = 0_pInt
@@ -1377,14 +1378,14 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
  
 610 FORMAT(A300)
 
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_stringValue(line,pos,1)) == 'table' .and. pos(1) .GT. 5) then
-     initialcondTableStyle = IO_intValue(line,pos,4)
-     hypoelasticTableStyle = IO_intValue(line,pos,5)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == 'table' .and. myPos(1) .GT. 5) then
+     initialcondTableStyle = IO_intValue(line,myPos,4)
+     hypoelasticTableStyle = IO_intValue(line,myPos,5)
      exit
    endif
  enddo
@@ -1397,16 +1398,16 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
 !
 ! mesh_periodicSurface
 !********************************************************************
-subroutine mesh_marc_get_mpieOptions(unit)
+subroutine mesh_marc_get_mpieOptions(myUnit)
 
 use prec, only: pInt
 use IO
 implicit none
 
-integer(pInt), intent(in) :: unit
+integer(pInt), intent(in) :: myUnit
 
 integer(pInt), parameter :: maxNchunks = 5
-integer(pInt), dimension (1+2*maxNchunks) :: pos
+integer(pInt), dimension (1+2*maxNchunks) :: myPos
 integer(pInt) chunk
 character(len=300) line
 
@@ -1414,16 +1415,16 @@ mesh_periodicSurface = (/.false., .false., .false./)
 
 610 FORMAT(A300)
 
-rewind(unit)
+rewind(myUnit)
 do 
-  read (unit,610,END=620) line
-  pos = IO_stringPos(line,maxNchunks)
+  read (myUnit,610,END=620) line
+  myPos = IO_stringPos(line,maxNchunks)
 
-  if (IO_lc(IO_stringValue(line,pos,1)) == '$mpie') then              ! found keyword for user defined input
-    if (IO_lc(IO_stringValue(line,pos,2)) == 'periodic' &             ! found keyword 'periodic'
-        .and. pos(1) > 2) then                                        ! and there is at least one more chunk to read
-      do chunk = 2,pos(1)                                             ! loop through chunks (skipping the keyword)
-        select case(IO_stringValue(line,pos,chunk))                   ! chunk matches keyvalues x,y or z?
+  if (IO_lc(IO_stringValue(line,myPos,1)) == '$mpie') then              ! found keyword for user defined input
+    if (IO_lc(IO_stringValue(line,myPos,2)) == 'periodic' &             ! found keyword 'periodic'
+        .and. myPos(1) > 2) then                                        ! and there is at least one more chunk to read
+      do chunk = 2,myPos(1)                                             ! loop through chunks (skipping the keyword)
+        select case(IO_stringValue(line,myPos,chunk))                   ! chunk matches keyvalues x,y or z?
           case('x')
             mesh_periodicSurface(1) = .true.
           case('y')
@@ -1444,62 +1445,69 @@ enddo
 !
 ! mesh_Nelems, mesh_Nnodes
 !********************************************************************
- subroutine mesh_spectral_count_nodesAndElements (unit)
+ subroutine mesh_spectral_count_nodesAndElements (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 7
- integer(pInt), dimension (1+2*maxNchunks) :: pos
- integer(pInt) a,b,c,i
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt) a,b,c,i,j,headerLength
 
- integer(pInt) unit
- character(len=1024) line
+ integer(pInt) myUnit
+ character(len=1024) line,keyword
 
  mesh_Nnodes = 0_pInt
  mesh_Nelems = 0_pInt
-
- rewind(unit)
- do 
-   read(unit,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   pos = IO_stringPos(line,maxNchunks)
-
-   if ( IO_lc(IO_StringValue(line,pos,1)) == 'resolution') then
-     do i = 2,6,2
-       select case (IO_lc(IO_stringValue(line,pos,i)))
+ 
+ rewind(myUnit)
+ read(myUnit,'(a1024)') line
+ myPos = IO_stringPos(line,2)
+ keyword = IO_lc(IO_StringValue(line,myPos,2))
+ if (keyword(1:4) == 'head') then
+   headerLength = IO_intValue(line,myPos,1) + 1_pInt 
+ else
+   call IO_error(42)
+ endif
+ 
+ rewind(myUnit)
+ do i = 1, headerLength
+   read(myUnit,'(a1024)') line
+   myPos = IO_stringPos(line,maxNchunks)             
+   if ( IO_lc(IO_StringValue(line,myPos,1)) == 'resolution') then
+     do j = 2,6,2
+       select case (IO_lc(IO_stringValue(line,myPos,j)))
          case('a')
-             a = IO_intValue(line,pos,i+1)
+           a = IO_intValue(line,myPos,j+1)
          case('b')
-             b = IO_intValue(line,pos,i+1)
+           b = IO_intValue(line,myPos,j+1)
          case('c')
-             c = IO_intValue(line,pos,i+1)
+           c = IO_intValue(line,myPos,j+1)
        end select
      enddo
      mesh_Nelems = a * b * c
      mesh_Nnodes = (1 + a)*(1 + b)*(1 + c)
-     exit
    endif
  enddo
 
-100 endsubroutine
+ endsubroutine
 
 !********************************************************************
 ! count overall number of nodes and elements in mesh
 !
 ! mesh_Nelems, mesh_Nnodes
 !********************************************************************
- subroutine mesh_marc_count_nodesAndElements (unit)
+ subroutine mesh_marc_count_nodesAndElements (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 4
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
 
- integer(pInt) unit
+ integer(pInt) myUnit
  character(len=300) line
 
  mesh_Nnodes = 0_pInt
@@ -1507,14 +1515,14 @@ enddo
 
 610 FORMAT(A300)
 
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_StringValue(line,pos,1)) == 'sizing') then
-       mesh_Nelems = IO_IntValue (line,pos,3)
-       mesh_Nnodes = IO_IntValue (line,pos,4)
+   if ( IO_lc(IO_StringValue(line,myPos,1)) == 'sizing') then
+       mesh_Nelems = IO_IntValue (line,myPos,3)
+       mesh_Nnodes = IO_IntValue (line,myPos,4)
      exit
    endif
  enddo
@@ -1526,17 +1534,17 @@ enddo
 !
 ! mesh_Nelems, mesh_Nnodes
 !********************************************************************
- subroutine mesh_abaqus_count_nodesAndElements (unit)
+ subroutine mesh_abaqus_count_nodesAndElements (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit
+ integer(pInt) myUnit
  logical inPart
 
  mesh_Nnodes = 0
@@ -1545,31 +1553,31 @@ enddo
 610 FORMAT(A300)
 
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
    
    if (inPart .or. noPart) then
-     select case ( IO_lc(IO_stringValue(line,pos,1)))
+     select case ( IO_lc(IO_stringValue(line,myPos,1)))
        case('*node')
           if( &
-              IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
-              IO_lc(IO_stringValue(line,pos,2)) /= 'print'    .and. &
-              IO_lc(IO_stringValue(line,pos,2)) /= 'file'     .and. &
-              IO_lc(IO_stringValue(line,pos,2)) /= 'response' &
+              IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
+              IO_lc(IO_stringValue(line,myPos,2)) /= 'print'    .and. &
+              IO_lc(IO_stringValue(line,myPos,2)) /= 'file'     .and. &
+              IO_lc(IO_stringValue(line,myPos,2)) /= 'response' &
              ) &
-            mesh_Nnodes = mesh_Nnodes + IO_countDataLines(unit)
+            mesh_Nnodes = mesh_Nnodes + IO_countDataLines(myUnit)
        case('*element')
           if( &
-              IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
-              IO_lc(IO_stringValue(line,pos,2)) /= 'matrix'   .and. &
-              IO_lc(IO_stringValue(line,pos,2)) /= 'response' &
+              IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
+              IO_lc(IO_stringValue(line,myPos,2)) /= 'matrix'   .and. &
+              IO_lc(IO_stringValue(line,myPos,2)) /= 'response' &
              ) then
-            mesh_Nelems = mesh_Nelems + IO_countDataLines(unit)
+            mesh_Nelems = mesh_Nelems + IO_countDataLines(myUnit)
           endif
      endselect
    endif
@@ -1586,16 +1594,16 @@ enddo
 !
 ! mesh_NelemSets, mesh_maxNelemInSet
 !********************************************************************
- subroutine mesh_marc_count_elementSets (unit)
+ subroutine mesh_marc_count_elementSets (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
 
- integer(pInt) unit
+ integer(pInt) myUnit
  character(len=300) line
 
  mesh_NelemSets     = 0_pInt
@@ -1603,16 +1611,16 @@ enddo
 
 610 FORMAT(A300)
 
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_StringValue(line,pos,1)) == 'define' .and. &
-        IO_lc(IO_StringValue(line,pos,2)) == 'element' ) then
+   if ( IO_lc(IO_StringValue(line,myPos,1)) == 'define' .and. &
+        IO_lc(IO_StringValue(line,myPos,2)) == 'element' ) then
      mesh_NelemSets = mesh_NelemSets + 1_pInt
      mesh_maxNelemInSet = max(mesh_maxNelemInSet, &
-                              IO_countContinousIntValues(unit))
+                              IO_countContinousIntValues(myUnit))
    endif
  enddo
 
@@ -1624,17 +1632,17 @@ enddo
 !
 ! mesh_NelemSets, mesh_maxNelemInSet
 !********************************************************************
- subroutine mesh_abaqus_count_elementSets (unit)
+ subroutine mesh_abaqus_count_elementSets (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit
+ integer(pInt) myUnit
  logical inPart
  
  mesh_NelemSets     = 0_pInt
@@ -1643,15 +1651,15 @@ enddo
 610 FORMAT(A300)
 
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
    
-   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,pos,1)) == '*elset' ) &
+   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1)) == '*elset' ) &
      mesh_NelemSets = mesh_NelemSets + 1_pInt
  enddo
 
@@ -1666,17 +1674,17 @@ enddo
 !
 ! mesh_Nmaterials
 !********************************************************************
- subroutine mesh_abaqus_count_materials (unit)
+ subroutine mesh_abaqus_count_materials (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit
+ integer(pInt) myUnit
  logical inPart
  
  mesh_Nmaterials = 0_pInt
@@ -1684,17 +1692,17 @@ enddo
 610 FORMAT(A300)
 
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
 
    if ( (inPart .or. noPart) .and. &
-        IO_lc(IO_StringValue(line,pos,1)) == '*solid' .and. &
-        IO_lc(IO_StringValue(line,pos,2)) == 'section' ) &
+        IO_lc(IO_StringValue(line,myPos,1)) == '*solid' .and. &
+        IO_lc(IO_StringValue(line,myPos,2)) == 'section' ) &
      mesh_Nmaterials = mesh_Nmaterials + 1_pInt
  enddo
 
@@ -1723,32 +1731,32 @@ enddo
 !
 ! mesh_NcpElems
 !********************************************************************
- subroutine mesh_marc_count_cpElements (unit)
+ subroutine mesh_marc_count_cpElements (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 1
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
 
- integer(pInt) unit,i
+ integer(pInt) myUnit,i
  character(len=300) line
 
  mesh_NcpElems = 0_pInt
 
 610 FORMAT(A300)
 
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_stringValue(line,pos,1)) == 'hypoelastic') then
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == 'hypoelastic') then
        do i=1,3+hypoelasticTableStyle  ! Skip 3 or 4 lines
-         read (unit,610,END=620) line
+         read (myUnit,610,END=620) line
        enddo
-       mesh_NcpElems = mesh_NcpElems + IO_countContinousIntValues(unit)
+       mesh_NcpElems = mesh_NcpElems + IO_countContinousIntValues(myUnit)
      exit
    endif
  enddo
@@ -1761,17 +1769,17 @@ enddo
 !
 ! mesh_NcpElems
 !********************************************************************
- subroutine mesh_abaqus_count_cpElements (unit)
+ subroutine mesh_abaqus_count_cpElements (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,i,k
+ integer(pInt) myUnit,i,k
  logical materialFound
  character (len=64) materialName,elemSetName
  
@@ -1779,16 +1787,16 @@ enddo
  
 610 FORMAT(A300)
 
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
-   select case ( IO_lc(IO_stringValue(line,pos,1)) )
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
+   select case ( IO_lc(IO_stringValue(line,myPos,1)) )
      case('*material')
-       materialName = IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'name')     ! extract name=value
+       materialName = IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'name')     ! extract name=value
        materialFound = materialName /= ''                                           ! valid name?
      case('*user')
-       if (IO_lc(IO_StringValue(line,pos,2)) == 'material' .and. materialFound) then
+       if (IO_lc(IO_StringValue(line,myPos,2)) == 'material' .and. materialFound) then
          do i = 1,mesh_Nmaterials                                                   ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                           ! found one
              elemSetName = mesh_mapMaterial(i)                                      ! take corresponding elemSet
@@ -1813,7 +1821,7 @@ enddo
 !
 ! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !********************************************************************
- subroutine mesh_marc_map_elementSets (unit)
+ subroutine mesh_marc_map_elementSets (myUnit)
 
  use prec, only: pInt
  use IO
@@ -1821,10 +1829,10 @@ enddo
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 4
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,elemSet
+ integer(pInt) myUnit,elemSet
 
  allocate (mesh_nameElemSet(mesh_NelemSets))                     ; mesh_nameElemSet = ''
  allocate (mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
@@ -1832,15 +1840,15 @@ enddo
 610 FORMAT(A300)
 
  elemSet = 0_pInt
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=640) line
-   pos = IO_stringPos(line,maxNchunks)
-   if( (IO_lc(IO_stringValue(line,pos,1)) == 'define' ) .and. &
-       (IO_lc(IO_stringValue(line,pos,2)) == 'element' ) ) then
+   read (myUnit,610,END=640) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if( (IO_lc(IO_stringValue(line,myPos,1)) == 'define' ) .and. &
+       (IO_lc(IO_stringValue(line,myPos,2)) == 'element' ) ) then
       elemSet = elemSet+1
-      mesh_nameElemSet(elemSet) = IO_stringValue(line,pos,4)
-      mesh_mapElemSet(:,elemSet) = IO_continousIntValues(unit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+      mesh_nameElemSet(elemSet) = IO_stringValue(line,myPos,4)
+      mesh_mapElemSet(:,elemSet) = IO_continousIntValues(myUnit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
    endif
  enddo
  
@@ -1852,7 +1860,7 @@ enddo
 !
 ! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !********************************************************************
- subroutine mesh_abaqus_map_elementSets (unit)
+ subroutine mesh_abaqus_map_elementSets (myUnit)
 
  use prec, only: pInt
  use IO
@@ -1860,10 +1868,10 @@ enddo
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 4
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,elemSet,i
+ integer(pInt) myUnit,elemSet,i
  logical inPart
 
  allocate (mesh_nameElemSet(mesh_NelemSets))                     ; mesh_nameElemSet = ''
@@ -1873,18 +1881,18 @@ enddo
 
  elemSet = 0_pInt
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=640) line
-   pos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=640) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
    
-   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,pos,1)) == '*elset' ) then
+   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1)) == '*elset' ) then
      elemSet = elemSet + 1_pInt
-     mesh_nameElemSet(elemSet)  = IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'elset')
-     mesh_mapElemSet(:,elemSet) = IO_continousIntValues(unit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,elemSet-1)
+     mesh_nameElemSet(elemSet)  = IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'elset')
+     mesh_mapElemSet(:,elemSet) = IO_continousIntValues(myUnit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,elemSet-1)
    endif
  enddo
 
@@ -1902,17 +1910,17 @@ enddo
 !
 ! allocate globals: mesh_nameMaterial, mesh_mapMaterial
 !********************************************************************
- subroutine mesh_abaqus_map_materials (unit)
+ subroutine mesh_abaqus_map_materials (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 20
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,i,count
+ integer(pInt) myUnit,i,count
  logical inPart
  character(len=64) elemSetName,materialName
  
@@ -1923,26 +1931,26 @@ enddo
 
  count = 0
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
 
    if ( (inPart .or. noPart) .and. &
-        IO_lc(IO_StringValue(line,pos,1)) == '*solid' .and. &
-        IO_lc(IO_StringValue(line,pos,2)) == 'section' ) then
+        IO_lc(IO_StringValue(line,myPos,1)) == '*solid' .and. &
+        IO_lc(IO_StringValue(line,myPos,2)) == 'section' ) then
 
      elemSetName = ''
      materialName = ''
 
-     do i = 3,pos(1)
-       if (IO_extractValue(IO_lc(IO_stringValue(line,pos,i)),'elset') /= '') &
-         elemSetName = IO_extractValue(IO_lc(IO_stringValue(line,pos,i)),'elset')
-       if (IO_extractValue(IO_lc(IO_stringValue(line,pos,i)),'material') /= '') &
-         materialName = IO_extractValue(IO_lc(IO_stringValue(line,pos,i)),'material')
+     do i = 3,myPos(1)
+       if (IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'elset') /= '') &
+         elemSetName = IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'elset')
+       if (IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'material') /= '') &
+         materialName = IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'material')
      enddo
 
      if (elemSetName /= '' .and. materialName /= '') then
@@ -1990,7 +1998,7 @@ enddo
 !
 ! allocate globals: mesh_mapFEtoCPnode
 !********************************************************************
- subroutine mesh_marc_map_nodes (unit)
+ subroutine mesh_marc_map_nodes (myUnit)
 
  use prec, only: pInt
  use math, only: qsort
@@ -1999,11 +2007,11 @@ enddo
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 1
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
  integer(pInt), dimension (mesh_Nnodes) :: node_count
- integer(pInt) unit,i
+ integer(pInt) myUnit,i
 
  allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
 
@@ -2011,14 +2019,14 @@ enddo
 
  node_count = 0_pInt
 
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=650) line
-   pos = IO_stringPos(line,maxNchunks)
-   if( IO_lc(IO_stringValue(line,pos,1)) == 'coordinates' ) then
-     read (unit,610,END=650) line                                         ! skip crap line
+   read (myUnit,610,END=650) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if( IO_lc(IO_stringValue(line,myPos,1)) == 'coordinates' ) then
+     read (myUnit,610,END=650) line                                         ! skip crap line
      do i = 1,mesh_Nnodes
-       read (unit,610,END=650) line
+       read (myUnit,610,END=650) line
        mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (line,(/0,10/),1)
        mesh_mapFEtoCPnode(2,i) = i
      enddo
@@ -2037,7 +2045,7 @@ enddo
 !
 ! allocate globals: mesh_mapFEtoCPnode
 !********************************************************************
- subroutine mesh_abaqus_map_nodes (unit)
+ subroutine mesh_abaqus_map_nodes (myUnit)
 
  use prec, only: pInt
  use math, only: qsort
@@ -2046,10 +2054,10 @@ enddo
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,i,count,cpNode
+ integer(pInt) myUnit,i,count,cpNode
  logical inPart
 
  allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
@@ -2058,30 +2066,30 @@ enddo
 
  cpNode = 0_pInt
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=650) line
-   pos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=650) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,pos,1)) == '*node' .and. &
-       ( IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'print'    .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'file'     .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,myPos,1)) == '*node' .and. &
+       ( IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'print'    .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'file'     .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
    ) then
-     count = IO_countDataLines(unit)
+     count = IO_countDataLines(myUnit)
      do i = 1,count
-       backspace(unit)
+       backspace(myUnit)
      enddo
      do i = 1,count
-       read (unit,610,END=650) line
-       pos = IO_stringPos(line,maxNchunks)
+       read (myUnit,610,END=650) line
+       myPos = IO_stringPos(line,maxNchunks)
        cpNode = cpNode + 1_pInt
-       mesh_mapFEtoCPnode(1,cpNode) = IO_intValue(line,pos,1)
+       mesh_mapFEtoCPnode(1,cpNode) = IO_intValue(line,myPos,1)
        mesh_mapFEtoCPnode(2,cpNode) = cpNode
      enddo
    endif
@@ -2120,7 +2128,7 @@ enddo
 !
 ! allocate globals: mesh_mapFEtoCPelem
 !********************************************************************
- subroutine mesh_marc_map_elements (unit)
+ subroutine mesh_marc_map_elements (myUnit)
 
  use prec, only: pInt
  use math, only: qsort
@@ -2129,26 +2137,26 @@ enddo
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 1
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
  integer(pInt), dimension (1+mesh_NcpElems) :: contInts
- integer(pInt) unit,i,cpElem
+ integer(pInt) myUnit,i,cpElem
 
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
 
 610 FORMAT(A300)
 
  cpElem = 0_pInt
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=660) line
-   pos = IO_stringPos(line,maxNchunks)
-   if( IO_lc(IO_stringValue(line,pos,1)) == 'hypoelastic' ) then
+   read (myUnit,610,END=660) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if( IO_lc(IO_stringValue(line,myPos,1)) == 'hypoelastic' ) then
      do i=1,3+hypoelasticTableStyle                                       ! skip three (or four if new table style!) lines
-       read (unit,610,END=660) line 
+       read (myUnit,610,END=660) line 
      enddo
-     contInts = IO_continousIntValues(unit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+     contInts = IO_continousIntValues(myUnit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
      do i = 1,contInts(1)
        cpElem = cpElem+1
        mesh_mapFEtoCPelem(1,cpElem) = contInts(1+i)
@@ -2167,7 +2175,7 @@ enddo
 !
 ! allocate globals: mesh_mapFEtoCPelem
 !********************************************************************
- subroutine mesh_abaqus_map_elements (unit)
+ subroutine mesh_abaqus_map_elements (myUnit)
 
  use prec, only: pInt
  use math, only: qsort
@@ -2176,10 +2184,10 @@ enddo
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,i,j,k,cpElem
+ integer(pInt) myUnit,i,j,k,cpElem
  logical materialFound
  character (len=64) materialName,elemSetName
 
@@ -2188,16 +2196,16 @@ enddo
 610 FORMAT(A300)
 
  cpElem = 0_pInt
- rewind(unit)
+ rewind(myUnit)
  do 
-   read (unit,610,END=660) line
-   pos = IO_stringPos(line,maxNchunks)
-   select case ( IO_lc(IO_stringValue(line,pos,1)) )
+   read (myUnit,610,END=660) line
+   myPos = IO_stringPos(line,maxNchunks)
+   select case ( IO_lc(IO_stringValue(line,myPos,1)) )
      case('*material')
-       materialName = IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'name')     ! extract name=value
+       materialName = IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'name')     ! extract name=value
        materialFound = materialName /= ''                                           ! valid name?
      case('*user')
-       if (IO_lc(IO_stringValue(line,pos,2)) == 'material' .and. materialFound) then
+       if (IO_lc(IO_stringValue(line,myPos,2)) == 'material' .and. materialFound) then
          do i = 1,mesh_Nmaterials                                                   ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                           ! found one
              elemSetName = mesh_mapMaterial(i)                                      ! take corresponding elemSet
@@ -2253,17 +2261,17 @@ subroutine mesh_spectral_count_cpSizes ()
 !
 ! _maxNnodes, _maxNips, _maxNipNeighbors, _maxNsubNodes
 !********************************************************************
-subroutine mesh_marc_count_cpSizes (unit)
+subroutine mesh_marc_count_cpSizes (myUnit)
  
  use prec, only: pInt
  use IO
  implicit none
  
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,i,t,e
+ integer(pInt) myUnit,i,t,e
 
  mesh_maxNnodes       = 0_pInt
  mesh_maxNips         = 0_pInt
@@ -2271,23 +2279,23 @@ subroutine mesh_marc_count_cpSizes (unit)
  mesh_maxNsubNodes    = 0_pInt
  
 610 FORMAT(A300)
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=630) line
-   pos = IO_stringPos(line,maxNchunks)
-   if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
-     read (unit,610,END=630) line  ! Garbage line
+   read (myUnit,610,END=630) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if( IO_lc(IO_stringValue(line,myPos,1)) == 'connectivity' ) then
+     read (myUnit,610,END=630) line  ! Garbage line
      do i=1,mesh_Nelems            ! read all elements
-       read (unit,610,END=630) line
-       pos = IO_stringPos(line,maxNchunks)  ! limit to id and type
-       e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
+       read (myUnit,610,END=630) line
+       myPos = IO_stringPos(line,maxNchunks)  ! limit to id and type
+       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1))
        if (e /= 0) then
-         t = FE_mapElemtype(IO_stringValue(line,pos,2))
+         t = FE_mapElemtype(IO_stringValue(line,myPos,2))
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
          mesh_maxNsubNodes =    max(mesh_maxNsubNodes,FE_NsubNodes(t))
-         call IO_skipChunks(unit,FE_NoriginalNodes(t)-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
+         call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
        endif
      enddo
      exit
@@ -2303,17 +2311,17 @@ subroutine mesh_marc_count_cpSizes (unit)
 !
 ! _maxNnodes, _maxNips, _maxNipNeighbors, _maxNsubNodes
 !********************************************************************
- subroutine mesh_abaqus_count_cpSizes (unit)
+ subroutine mesh_abaqus_count_cpSizes (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,i,count,t
+ integer(pInt) myUnit,i,count,t
  logical inPart
 
  mesh_maxNnodes       = 0_pInt
@@ -2324,30 +2332,30 @@ subroutine mesh_marc_count_cpSizes (unit)
 610 FORMAT(A300)
 
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,pos,1)) == '*element' .and. &
-       ( IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'matrix'   .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,myPos,1)) == '*element' .and. &
+       ( IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'matrix'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'type'))  ! remember elem type
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'type'))  ! remember elem type
      if (t==0) call IO_error(ID=910,ext_msg='mesh_abaqus_count_cpSizes')
-     count = IO_countDataLines(unit)
+     count = IO_countDataLines(myUnit)
      do i = 1,count
-       backspace(unit)
+       backspace(myUnit)
      enddo
      do i = 1,count
-       read (unit,610,END=620) line
-       pos = IO_stringPos(line,maxNchunks)                                  ! limit to 64 nodes max
-       if (mesh_FEasCP('elem',IO_intValue(line,pos,1)) /= 0) then                                                     ! disregard non CP elems
+       read (myUnit,610,END=620) line
+       myPos = IO_stringPos(line,maxNchunks)                                  ! limit to 64 nodes max
+       if (mesh_FEasCP('elem',IO_intValue(line,myPos,1)) /= 0) then                                                     ! disregard non CP elems
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
@@ -2366,21 +2374,21 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! allocate globals:
 ! _node
 !********************************************************************
- subroutine mesh_spectral_build_nodes (unit)
+ subroutine mesh_spectral_build_nodes (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 7
- integer(pInt), dimension (1+2*maxNchunks) :: pos
- integer(pInt) a,b,c,n,i
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt) a,b,c,n,i,j,headerLength
  real(pReal)   x,y,z
  logical gotResolution,gotDimension
 
- integer(pInt) unit
+ integer(pInt) myUnit
  character(len=64) tag
- character(len=1024) line
+ character(len=1024) line, keyword
 
  allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
  allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
@@ -2394,49 +2402,56 @@ subroutine mesh_marc_count_cpSizes (unit)
 
  gotResolution = .false.
  gotDimension =  .false.
-
- rewind(unit)
- do 
-   read(unit,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   pos = IO_stringPos(line,maxNchunks)
-
-   select case ( IO_lc(IO_StringValue(line,pos,1)) )
-     case ('resolution')
-         gotResolution = .true.
-         do i = 2,6,2
-           tag = IO_lc(IO_stringValue(line,pos,i))
-           select case (tag)
-             case('a')
-                 a = 1 + IO_intValue(line,pos,i+1)
-             case('b')
-                 b = 1 + IO_intValue(line,pos,i+1)
-             case('c')
-                 c = 1 + IO_intValue(line,pos,i+1)
-           end select
-         enddo
+ spectralPictureMode = .false.
+ rewind(myUnit)
+ read(myUnit,'(a1024)') line
+ myPos = IO_stringPos(line,2)
+ keyword = IO_lc(IO_StringValue(line,myPos,2))
+ if (keyword(1:4) == 'head') then 
+   headerLength = IO_intValue(line,myPos,1) + 1_pInt
+ else
+   call IO_error(42)
+ endif
+ 
+ rewind(myUnit)
+ do i = 1, headerLength
+   read(myUnit,'(a1024)') line
+   myPos = IO_stringPos(line,maxNchunks)             
+   select case ( IO_lc(IO_StringValue(line,myPos,1)) )
      case ('dimension')
-         gotDimension = .true.
-         do i = 2,6,2
-           tag = IO_lc(IO_stringValue(line,pos,i))
-           select case (tag)
-             case('x')
-                 x = IO_floatValue(line,pos,i+1)
-             case('y')
-                 y = IO_floatValue(line,pos,i+1)
-             case('z')
-                 z = IO_floatValue(line,pos,i+1)
-           end select
-         enddo
+       gotDimension = .true.
+       do j = 2,6,2
+         select case (IO_lc(IO_stringValue(line,myPos,j)))
+           case('x')
+              x = IO_floatValue(line,myPos,j+1)
+           case('y')
+              y = IO_floatValue(line,myPos,j+1)
+           case('z')
+              z = IO_floatValue(line,myPos,j+1)
+         end select
+       enddo
+     case ('resolution')
+       gotResolution = .true.
+       do j = 2,6,2
+         select case (IO_lc(IO_stringValue(line,myPos,j)))
+           case('a')
+             a = 1_pInt + IO_intValue(line,myPos,j+1)
+           case('b')
+             b = 1_pInt + IO_intValue(line,myPos,j+1)
+           case('c')
+             c = 1_pInt + IO_intValue(line,myPos,j+1)
+         end select
+       enddo
+      case ('picture')
+        spectralPictureMode = .true.
    end select
-   if (gotDimension .and. gotResolution) exit
  enddo
 
 ! --- sanity checks ---
 
- if (.not. gotDimension .or. .not. gotResolution) call IO_error(42)
- if (a < 2 .or. b < 2 .or. c < 2) call IO_error(43)
- if (x <= 0.0_pReal .or. y <= 0.0_pReal .or. z <= 0.0_pReal) call IO_error(44)
+ if ((.not. gotDimension) .or. (.not. gotResolution)) call IO_error(42)
+ if ((a < 1) .or. (b < 1) .or. (c < 0)) call IO_error(43)           ! 1_pInt is already added
+ if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(44)
  
  forall (n = 0:mesh_Nnodes-1)
    mesh_node0(1,n+1) = x * dble(mod(n,a)     / (a-1.0_pReal))
@@ -2444,9 +2459,9 @@ subroutine mesh_marc_count_cpSizes (unit)
    mesh_node0(3,n+1) = z * dble(mod(n/a/b,c) / (c-1.0_pReal))
  end forall
  
- mesh_node = mesh_node0
+ mesh_node = mesh_node0                                         !why?
 
-100 endsubroutine
+ endsubroutine
 
 
 !********************************************************************
@@ -2455,7 +2470,7 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! allocate globals:
 ! _node
 !********************************************************************
- subroutine mesh_marc_build_nodes (unit)
+ subroutine mesh_marc_build_nodes (myUnit)
 
  use prec, only: pInt
  use IO
@@ -2463,24 +2478,24 @@ subroutine mesh_marc_count_cpSizes (unit)
 
  integer(pInt), dimension(5), parameter :: node_ends = (/0,10,30,50,70/)
  integer(pInt), parameter :: maxNchunks = 1
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,i,j,m
+ integer(pInt) myUnit,i,j,m
 
  allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
  allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
 
 610 FORMAT(A300)
 
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=670) line
-   pos = IO_stringPos(line,maxNchunks)
-   if( IO_lc(IO_stringValue(line,pos,1)) == 'coordinates' ) then
-     read (unit,610,END=670) line                                         ! skip crap line
+   read (myUnit,610,END=670) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if( IO_lc(IO_stringValue(line,myPos,1)) == 'coordinates' ) then
+     read (myUnit,610,END=670) line                                         ! skip crap line
      do i=1,mesh_Nnodes
-       read (unit,610,END=670) line
+       read (myUnit,610,END=670) line
        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1))
        forall (j = 1:3) mesh_node0(j,m) = IO_fixedNoEFloatValue(line,node_ends,j+1)
      enddo
@@ -2499,17 +2514,17 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! allocate globals:
 ! _node
 !********************************************************************
- subroutine mesh_abaqus_build_nodes (unit)
+ subroutine mesh_abaqus_build_nodes (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 4
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
- integer(pInt) unit,i,j,m,count
+ integer(pInt) myUnit,i,j,m,count
  logical inPart
  
  allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
@@ -2518,30 +2533,30 @@ subroutine mesh_marc_count_cpSizes (unit)
 610 FORMAT(A300)
 
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=670) line
-   pos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=670) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,pos,1)) == '*node' .and. &
-       ( IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'print'    .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'file'     .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,myPos,1)) == '*node' .and. &
+       ( IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'print'    .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'file'     .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
    ) then
-     count = IO_countDataLines(unit)                          ! how many nodes are defined here?
+     count = IO_countDataLines(myUnit)                          ! how many nodes are defined here?
      do i = 1,count
-       backspace(unit)                                        ! rewind to first entry
+       backspace(myUnit)                                        ! rewind to first entry
      enddo
      do i = 1,count
-       read (unit,610,END=670) line
-       pos = IO_stringPos(line,maxNchunks)
-       m = mesh_FEasCP('node',IO_intValue(line,pos,1))
-       forall (j=1:3) mesh_node0(j,m) = IO_floatValue(line,pos,j+1)
+       read (myUnit,610,END=670) line
+       myPos = IO_stringPos(line,maxNchunks)
+       m = mesh_FEasCP('node',IO_intValue(line,myPos,1))
+       forall (j=1:3) mesh_node0(j,m) = IO_floatValue(line,myPos,j+1)
      enddo
    endif
  enddo
@@ -2558,71 +2573,67 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! allocate globals:
 ! _element
 !********************************************************************
- subroutine mesh_spectral_build_elements (unit)
+ subroutine mesh_spectral_build_elements (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 7
- integer(pInt), dimension (1+2*maxNchunks) :: pos
- integer(pInt) a,b,c,e,i,homog
- logical gotResolution,gotDimension,gotHomogenization
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt) a,b,c,e,i,j,homog,headerLength
 
- integer(pInt) unit
- character(len=1024) line
+ integer(pInt) myUnit
+ character(len=1024) line,keyword
 
  a = 1_pInt
  b = 1_pInt
  c = 1_pInt
  
- gotResolution =      .false.
- gotDimension =       .false.
- gotHomogenization =  .false.
-
- rewind(unit)
- do 
-   read(unit,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   pos = IO_stringPos(line,maxNchunks)
-
-   select case ( IO_lc(IO_StringValue(line,pos,1)) )
-     case ('dimension')
-         gotDimension = .true.
-
-     case ('homogenization')
-         gotHomogenization = .true.
-         homog = IO_intValue(line,pos,2)
-
+ rewind(myUnit)
+ read(myUnit,'(a1024)') line
+ myPos = IO_stringPos(line,2)
+ keyword = IO_lc(IO_StringValue(line,myPos,2))
+ if (keyword(1:4) == 'head') then
+   headerLength = IO_intValue(line,myPos,1) + 1_pInt
+ else
+   call IO_error(42)
+ endif
+ 
+ rewind(myUnit)
+ do i = 1, headerLength
+   read(myUnit,'(a1024)') line
+   myPos = IO_stringPos(line,maxNchunks)             
+   select case ( IO_lc(IO_StringValue(line,myPos,1)) )
      case ('resolution')
-         gotResolution = .true.
-         do i = 2,6,2
-           select case (IO_lc(IO_stringValue(line,pos,i)))
-             case('a')
-                 a = IO_intValue(line,pos,i+1)
-             case('b')
-                 b = IO_intValue(line,pos,i+1)
-             case('c')
-                 c = IO_intValue(line,pos,i+1)
-           end select
-         enddo
+       do j = 2,6,2
+         select case (IO_lc(IO_stringValue(line,myPos,j)))
+           case('a')
+             a = 1_pInt + IO_intValue(line,myPos,j+1)
+           case('b')
+             b = 1_pInt + IO_intValue(line,myPos,j+1)
+           case('c')
+             c = 1_pInt + IO_intValue(line,myPos,j+1)
+         end select
+       enddo
+     case ('homogenization')
+       homog = IO_intValue(line,myPos,2)
    end select
-   if (gotDimension .and. gotHomogenization .and. gotResolution) exit
  enddo
-
-100 allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
+ 
+  allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
 
  e = 0_pInt
  do while (e < mesh_NcpElems)
-   read(unit,'(a1024)',END=110) line
+   read(myUnit,'(a1024)',END=110) line
    if (IO_isBlank(line)) cycle                             ! skip empty lines
-   pos(1:1+2*1) = IO_stringPos(line,1)
+   myPos(1:1+2*1) = IO_stringPos(line,1)
   
    e = e+1                                                 ! valid element entry
    mesh_element ( 1,e) = e                                 ! FE id
    mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
    mesh_element ( 3,e) = homog                             ! homogenization
-   mesh_element ( 4,e) = IO_IntValue(line,pos,1)           ! microstructure
+   mesh_element ( 4,e) = IO_IntValue(line,myPos,1)           ! microstructure
    mesh_element ( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1)     ! base node
    mesh_element ( 6,e) = mesh_element ( 5,e) + 1
    mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
@@ -2645,77 +2656,77 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! allocate globals:
 ! _element
 !********************************************************************
- subroutine mesh_marc_build_elements (unit)
+ subroutine mesh_marc_build_elements (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 66
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
  character(len=300) line
 
  integer(pInt), dimension(1+mesh_NcpElems) :: contInts
- integer(pInt) unit,i,j,sv,val,e
+ integer(pInt) myUnit,i,j,sv,val,e
 
  allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
 
 610 FORMAT(A300)
 
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=620) line
-   pos(1:1+2*1) = IO_stringPos(line,1)
-   if( IO_lc(IO_stringValue(line,pos,1)) == 'connectivity' ) then
-     read (unit,610,END=620) line  ! Garbage line
+   read (myUnit,610,END=620) line
+   myPos(1:1+2*1) = IO_stringPos(line,1)
+   if( IO_lc(IO_stringValue(line,myPos,1)) == 'connectivity' ) then
+     read (myUnit,610,END=620) line  ! Garbage line
      do i = 1,mesh_Nelems
-       read (unit,610,END=620) line
-       pos = IO_stringPos(line,maxNchunks)  ! limit to 64 nodes max (plus ID, type)
-       e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
+       read (myUnit,610,END=620) line
+       myPos = IO_stringPos(line,maxNchunks)  ! limit to 64 nodes max (plus ID, type)
+       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1))
        if (e /= 0) then       ! disregard non CP elems
-         mesh_element(1,e) = IO_IntValue (line,pos,1)                     ! FE id
-         mesh_element(2,e) = FE_mapElemtype(IO_StringValue(line,pos,2))   ! elem type
+         mesh_element(1,e) = IO_IntValue (line,myPos,1)                     ! FE id
+         mesh_element(2,e) = FE_mapElemtype(IO_StringValue(line,myPos,2))   ! elem type
            forall (j = 1:FE_Nnodes(mesh_element(2,e))) &
-             mesh_element(j+4,e) = IO_IntValue(line,pos,j+2)              ! copy FE ids of nodes
-           call IO_skipChunks(unit,FE_NoriginalNodes(mesh_element(2,e))-(pos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
+             mesh_element(j+4,e) = IO_IntValue(line,myPos,j+2)              ! copy FE ids of nodes
+           call IO_skipChunks(myUnit,FE_NoriginalNodes(mesh_element(2,e))-(myPos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
        endif
      enddo
      exit
    endif
  enddo
  
-620 rewind(unit)                                     ! just in case "initial state" apears before "connectivity"
- read (unit,610,END=620) line
+620 rewind(myUnit)                                     ! just in case "initial state" apears before "connectivity"
+ read (myUnit,610,END=620) line
  do
-   pos(1:1+2*2) = IO_stringPos(line,2)
-   if( (IO_lc(IO_stringValue(line,pos,1)) == 'initial') .and. &
-       (IO_lc(IO_stringValue(line,pos,2)) == 'state') ) then
-     if (initialcondTableStyle == 2) read (unit,610,END=620) line          ! read extra line for new style     
-     read (unit,610,END=630) line                                          ! read line with index of state var
-     pos(1:1+2*1) = IO_stringPos(line,1)
-     sv = IO_IntValue(line,pos,1)                                          ! figure state variable index
+   myPos(1:1+2*2) = IO_stringPos(line,2)
+   if( (IO_lc(IO_stringValue(line,myPos,1)) == 'initial') .and. &
+       (IO_lc(IO_stringValue(line,myPos,2)) == 'state') ) then
+     if (initialcondTableStyle == 2) read (myUnit,610,END=620) line          ! read extra line for new style     
+     read (myUnit,610,END=630) line                                          ! read line with index of state var
+     myPos(1:1+2*1) = IO_stringPos(line,1)
+     sv = IO_IntValue(line,myPos,1)                                          ! figure state variable index
      if( (sv == 2).or.(sv == 3) ) then                                     ! only state vars 2 and 3 of interest
-       read (unit,610,END=620) line                                        ! read line with value of state var
-       pos(1:1+2*1) = IO_stringPos(line,1)
-       do while (scan(IO_stringValue(line,pos,1),'+-',back=.true.)>1)      ! is noEfloat value?
+       read (myUnit,610,END=620) line                                        ! read line with value of state var
+       myPos(1:1+2*1) = IO_stringPos(line,1)
+       do while (scan(IO_stringValue(line,myPos,1),'+-',back=.true.)>1)      ! is noEfloat value?
          val = NINT(IO_fixedNoEFloatValue(line,(/0,20/),1))                ! state var's value
          mesh_maxValStateVar(sv-1) = max(val,mesh_maxValStateVar(sv-1))    ! remember max val of homogenization and microstructure index
          if (initialcondTableStyle == 2) then
-           read (unit,610,END=630) line                                    ! read extra line     
-           read (unit,610,END=630) line                                    ! read extra line     
+           read (myUnit,610,END=630) line                                    ! read extra line     
+           read (myUnit,610,END=630) line                                    ! read extra line     
          endif
-         contInts = IO_continousIntValues(unit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)  ! get affected elements
+         contInts = IO_continousIntValues(myUnit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)  ! get affected elements
          do i = 1,contInts(1)
            e = mesh_FEasCP('elem',contInts(1+i))
            mesh_element(1+sv,e) = val
          enddo
-         if (initialcondTableStyle == 0) read (unit,610,END=620) line      ! ignore IP range for old table style
-         read (unit,610,END=630) line
-         pos(1:1+2*1) = IO_stringPos(line,1)
+         if (initialcondTableStyle == 0) read (myUnit,610,END=620) line      ! ignore IP range for old table style
+         read (myUnit,610,END=630) line
+         myPos(1:1+2*1) = IO_stringPos(line,1)
        enddo
      endif
    else   
-     read (unit,610,END=630) line
+     read (myUnit,610,END=630) line
    endif
  enddo
 
@@ -2729,16 +2740,16 @@ subroutine mesh_marc_count_cpSizes (unit)
 ! allocate globals:
 ! _element
 !********************************************************************
- subroutine mesh_abaqus_build_elements (unit)
+ subroutine mesh_abaqus_build_elements (myUnit)
 
  use prec, only: pInt
  use IO
  implicit none
 
  integer(pInt), parameter :: maxNchunks = 65
- integer(pInt), dimension (1+2*maxNchunks) :: pos
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
 
- integer(pInt) unit,i,j,k,count,e,t,homog,micro
+ integer(pInt) myUnit,i,j,k,count,e,t,homog,micro
  logical inPart,materialFound
  character (len=64) materialName,elemSetName
  character(len=300) line
@@ -2748,59 +2759,59 @@ subroutine mesh_marc_count_cpSizes (unit)
 610 FORMAT(A300)
 
  inPart = .false.
- rewind(unit)
+ rewind(myUnit)
  do
-   read (unit,610,END=620) line
-   pos(1:1+2*2) = IO_stringPos(line,2)
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,pos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,pos,2)) == 'part' ) inPart = .false.
+   read (myUnit,610,END=620) line
+   myPos(1:1+2*2) = IO_stringPos(line,2)
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,pos,1)) == '*element' .and. &
-       ( IO_lc(IO_stringValue(line,pos,2)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'matrix'   .and. &
-         IO_lc(IO_stringValue(line,pos,2)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,myPos,1)) == '*element' .and. &
+       ( IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'matrix'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,pos,2)),'type'))  ! remember elem type
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'type'))  ! remember elem type
      if (t==0) call IO_error(ID=910,ext_msg='mesh_abaqus_build_elements')
-     count = IO_countDataLines(unit)
+     count = IO_countDataLines(myUnit)
      do i = 1,count
-       backspace(unit)
+       backspace(myUnit)
      enddo
      do i = 1,count
-       read (unit,610,END=620) line
-       pos = IO_stringPos(line,maxNchunks)                                  ! limit to 64 nodes max
-       e = mesh_FEasCP('elem',IO_intValue(line,pos,1))
+       read (myUnit,610,END=620) line
+       myPos = IO_stringPos(line,maxNchunks)                                  ! limit to 64 nodes max
+       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1))
        if (e /= 0) then                                                     ! disregard non CP elems
-         mesh_element(1,e) = IO_intValue(line,pos,1)                        ! FE id
+         mesh_element(1,e) = IO_intValue(line,myPos,1)                        ! FE id
          mesh_element(2,e) = t                                              ! elem type
          forall (j=1:FE_Nnodes(t)) &
-           mesh_element(4+j,e) = IO_intValue(line,pos,1+j)                  ! copy FE ids of nodes to position 5:
-         call IO_skipChunks(unit,FE_NoriginalNodes(t)-(pos(1)-1))           ! read on (even multiple lines) if FE_NoriginalNodes exceeds required node count
+           mesh_element(4+j,e) = IO_intValue(line,myPos,1+j)                  ! copy FE ids of nodes to position 5:
+         call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1)-1))           ! read on (even multiple lines) if FE_NoriginalNodes exceeds required node count
        endif
      enddo
    endif
  enddo
 
  
-620 rewind(unit) ! just in case "*material" definitions apear before "*element"
+620 rewind(myUnit) ! just in case "*material" definitions apear before "*element"
 
  materialFound = .false.
  do 
-   read (unit,610,END=630) line
-   pos = IO_stringPos(line,maxNchunks)
-   select case ( IO_lc(IO_StringValue(line,pos,1)))
+   read (myUnit,610,END=630) line
+   myPos = IO_stringPos(line,maxNchunks)
+   select case ( IO_lc(IO_StringValue(line,myPos,1)))
      case('*material')
-       materialName = IO_extractValue(IO_lc(IO_StringValue(line,pos,2)),'name')    ! extract name=value
+       materialName = IO_extractValue(IO_lc(IO_StringValue(line,myPos,2)),'name')    ! extract name=value
        materialFound = materialName /= ''                                          ! valid name?
      case('*user')
-       if ( IO_lc(IO_StringValue(line,pos,2)) == 'material' .and. &
+       if ( IO_lc(IO_StringValue(line,myPos,2)) == 'material' .and. &
             materialFound ) then
-         read (unit,610,END=630) line                                              ! read homogenization and microstructure
-         pos(1:1+2*2) = IO_stringPos(line,2)
-         homog = NINT(IO_floatValue(line,pos,1))
-         micro = NINT(IO_floatValue(line,pos,2))
+         read (myUnit,610,END=630) line                                              ! read homogenization and microstructure
+         myPos(1:1+2*2) = IO_stringPos(line,2)
+         homog = NINT(IO_floatValue(line,myPos,1))
+         micro = NINT(IO_floatValue(line,myPos,2))
          do i = 1,mesh_Nmaterials                                                  ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                          ! found one
              elemSetName = mesh_mapMaterial(i)                                     ! take corresponding elemSet
@@ -3211,7 +3222,7 @@ endsubroutine
          area(j,n) = sqrt(sum(normal(:,j,n)*normal(:,j,n)))                                       ! and area
        end forall
        forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles, area(j,n) > 0.0_pReal) &
-         normal(1:3,j,n) = normal(1:3,j,n) / area(j,n)            ! make unit normal
+         normal(1:3,j,n) = normal(1:3,j,n) / area(j,n)            ! make myUnit normal
        
        mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)                   ! area of parallelograms instead of triangles
        mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2) / count(area > 0.0_pReal)  ! average of all valid normals
