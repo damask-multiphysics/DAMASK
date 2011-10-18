@@ -144,9 +144,7 @@ end function
    endif
  enddo
  
-620 return 
- 
- endfunction
+620 endfunction
 
 
 
@@ -169,9 +167,7 @@ end function
  open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//relPath)
  IO_open_file = .true.
  
-100 return
- 
- endfunction
+100 endfunction
 
 
 !********************************************************************
@@ -205,9 +201,7 @@ end function
    IO_open_inputFile = .true.
  endif
 
-100 return
-
- endfunction
+100 endfunction
 
 
 !********************************************************************
@@ -227,9 +221,7 @@ end function
                                      trim(getSolverJobName())//LogFileExtension)
  IO_open_logFile = .true.
 
-100 return
-
- endfunction
+100 endfunction
 
 
 !********************************************************************
@@ -251,9 +243,7 @@ end function
                                      trim(getSolverJobName())//'.'//newExt)
  IO_open_jobFile = .true.
  
-100 return
-
- endfunction
+100 endfunction
 
 
 !********************************************************************
@@ -275,9 +265,7 @@ end function
                                          trim(getSolverJobName())//'.'//newExt)
  IO_write_jobFile = .true.
  
-100 return
-
- endfunction
+100 endfunction
 
 
 !********************************************************************
@@ -306,9 +294,7 @@ end function
  endif
  IO_write_jobBinaryFile = .true.
  
-100 return
-
- endfunction
+100 endfunction
 
 
 !********************************************************************
@@ -337,9 +323,7 @@ end function
  endif
  IO_read_jobBinaryFile = .true.
  
-100 return
-
- endfunction
+100 endfunction
 
 
 !********************************************************************
@@ -363,7 +347,6 @@ end function
      enddo
    enddo
  enddo
- return
  
  endfunction
 
@@ -504,7 +487,6 @@ end function
 ! on error
 100 IO_hybridIA = -1
  close(999)
- return
  
  endfunction 
 
@@ -526,8 +508,6 @@ end function
  posNonBlank = verify(line,blank)
  posComment  = scan(line,comment)
  IO_isBlank = posNonBlank == 0 .or. posNonBlank == posComment
-
- return
  
  endfunction
 
@@ -582,9 +562,7 @@ end function
      IO_countSections = IO_countSections + 1
  enddo
 
-100 return
-
- endfunction
+100 endfunction
  
 
 !*********************************************************************
@@ -628,7 +606,6 @@ end function
  enddo
 
 100 IO_countTagInPart = counter
- return
 
 endfunction
 
@@ -673,10 +650,7 @@ endfunction
    endif   
  enddo
 
-100 return
-
-endfunction
-
+100 endfunction
 
 !********************************************************************
 ! locate at most N space-separated parts in line
@@ -712,9 +686,7 @@ endfunction
    IO_stringPos(1) = IO_stringPos(1)+1
  enddo
 
- return
-
- endfunction
+endfunction
 
 
 !********************************************************************
@@ -734,7 +706,6 @@ endfunction
  else
    IO_stringValue = line(positions(pos*2):positions(pos*2+1))
  endif
- return
 
  endfunction
 
@@ -752,7 +723,6 @@ endfunction
  character(len=ends(pos+1)-ends(pos)) IO_fixedStringValue
 
  IO_fixedStringValue = line(ends(pos)+1:ends(pos+1))
- return
 
  endfunction
 
@@ -760,23 +730,22 @@ endfunction
 !********************************************************************
 ! read float value at pos from line
 !********************************************************************
- pure function IO_floatValue (line,positions,pos)
+ pure function IO_floatValue (line,positions,myPos)
  
  use prec, only: pReal,pInt
  implicit none
  
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: positions(*),pos
+ integer(pInt), intent(in) :: positions(*),myPos
  real(pReal) IO_floatValue
 
- if (positions(1) < pos) then
+ if (positions(1) < myPos) then
    IO_floatValue = 0.0_pReal
  else
-   read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_floatValue
+   read(UNIT=line(positions(myPos*2):positions(myPos*2+1)),ERR=100,FMT=*) IO_floatValue
  endif
  return
 100 IO_floatValue = huge(1.0_pReal)
- return
 
  endfunction
 
@@ -796,7 +765,6 @@ endfunction
  read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT=*) IO_fixedFloatValue
  return
 100 IO_fixedFloatValue = huge(1.0_pReal)
- return
 
  endfunction
 
@@ -825,7 +793,6 @@ endfunction
  IO_fixedNoEFloatValue = base*10.0_pReal**expon
  return
 100 IO_fixedNoEFloatValue = huge(1.0_pReal)
- return
 
  endfunction
 
@@ -849,7 +816,6 @@ endfunction
  endif
  return
 100 IO_intValue = huge(1_pInt)
- return
 
  endfunction
 
@@ -869,7 +835,6 @@ endfunction
  read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT=*) IO_fixedIntValue
  return
 100 IO_fixedIntValue = huge(1_pInt)
- return
 
  endfunction
 
@@ -890,7 +855,6 @@ endfunction
  do i=1,len(line)
     if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
  enddo
- return 
 
  endfunction
 
@@ -912,7 +876,6 @@ endfunction
     if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
  enddo
  line = IO_lc
- return 
 
  endsubroutine
 
@@ -936,9 +899,7 @@ endfunction
    pos = IO_stringPos(line,maxNchunks)
    remainingChunks = remainingChunks - pos(1)
  enddo
-100 return
-
- endsubroutine
+100  endsubroutine
 
 
 !********************************************************************
@@ -959,8 +920,6 @@ endfunction
  pos = scan(line,sep)
  if (pos > 0 .and. line(:pos-1) == key(:pos-1)) &       ! key matches expected key
    IO_extractValue = line(pos+1:)                       ! extract value
-
- return
 
  endfunction
 
@@ -993,7 +952,6 @@ endfunction
    endif
  enddo
 100 backspace(unit)
- return
 
  endfunction
 
@@ -1051,9 +1009,7 @@ endfunction
  
  endselect
 
-100 return
-
- endfunction
+100  endfunction
 
 
 !********************************************************************
@@ -1158,9 +1114,7 @@ endfunction
  
  endselect
 
-100 return
-
- endfunction
+100 endfunction
 
 
 
@@ -1181,7 +1135,7 @@ endfunction
 
  select case (ID)
  case (30)
-   msg = 'opening spectral loadcase'
+   msg = 'could not open spectral loadcase'
  case (31)
    msg = 'mask consistency violated in spectral loadcase'
  case (32)
@@ -1206,6 +1160,8 @@ endfunction
    msg = 'resolution in spectral mesh'
  case (44)
    msg = 'dimension in spectral mesh'
+ case (45)
+   msg = 'incomplete information in spectral mesh header'
  case (50)
    msg = 'writing constitutive output description'
  case (100)
@@ -1213,7 +1169,7 @@ endfunction
  case (101)
    msg = 'opening input file'
  case (102)
-   msg = 'DAMASK_spectral misses arguments geom + load'
+   msg = 'DAMASK_spectral misses arguments'
  case (103)
    msg = 'odd resolution given'
  case (104)
@@ -1432,7 +1388,6 @@ endfunction
  !$OMP END CRITICAL (write2out)
 
 ! ABAQUS returns in some cases
- return
 
  endsubroutine
 
