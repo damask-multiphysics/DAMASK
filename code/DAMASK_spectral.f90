@@ -127,7 +127,7 @@ program DAMASK_spectral
  complex(pReal), dimension(3,3) ::                      temp33_Complex
  real(pReal), dimension(3,3) ::                         temp33_Real
  integer(pInt) :: i, j, k, l, m, n, p
- integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode, ierr, notConvergedCounter
+ integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode, ierr, notConvergedCounter, writtenOutCounter
  logical errmatinv
  integer*8 :: incPosition
 
@@ -494,7 +494,7 @@ program DAMASK_spectral
 
 ! write header of output file
  open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
-                                                    //'.spectralOut',form='UNFORMATTED')       
+                                                    //'.spectralOut',form='UNFORMATTED',status='REPLACE')!,access='DIRECT')
  write(538), 'load', trim(getLoadcaseName())
  write(538), 'workingdir', trim(getSolverWorkingDirectoryName())
  write(538), 'geometry', trim(getSolverJobName())//InputFileExtension
@@ -509,10 +509,11 @@ program DAMASK_spectral
  incPosition = ftellI8(538)
  write(538), 0_pInt                                                        ! end of header
  write(538), 'eoh'                                                         ! end of header
- write(538)  materialpoint_results(:,1,:)                                  ! initial (non-deformed) results
+ write(538),  materialpoint_results(:,1,:)                                  ! initial (non-deformed) results
  ierr = fseek(538,incPosition,0)
  if (ierr/=0_pInt ) call IO_error(107,ext_msg = 'inc 1')
- write(538), 1_pInt                                                        ! 0 inc is written out
+ writtenOutCounter = 1_pInt
+ write(538), writtenOutCounter                                                        ! 0 inc is written out
 !$OMP END CRITICAL (write2out)
 ! Initialization done
 
@@ -726,8 +727,15 @@ program DAMASK_spectral
      
      c_prev = c_current*wgt        ! calculate stiffness for next step
      
-     if (mod(step,bc_frequency(loadcase)) == 0_pInt) &                          ! at output frequency
-       write(538)  materialpoint_results(:,1,:)                                 ! write result to file
+    ! if (mod(step,bc_frequency(loadcase)) == 0_pInt) then                          ! at output frequency
+  !     ierr = fseek(538,0,2)
+   !    if (ierr/=0_pInt ) call IO_error(107,ext_msg = 'searching backwards')
+    !   write(538),  materialpoint_results(:,1,:)                                 ! write result to file
+    !   writtenOutCounter = writtenOutCounter + 1_pInt 
+     !  ierr = fseek(538,incPosition,0)
+      ! if (ierr/=0_pInt ) call IO_error(107,ext_msg = 'searching Position of Inc')
+     !  write(538), writtenOutCounter                                 ! write result to file
+    ! endif
      if(err_div<=err_div_tol .and. err_stress<=err_stress_tol) then
        print '(2(A,I5.5),A,/)', '== Step = ',step, ' of Loadcase = ',loadcase, ' Converged =============='
      else
@@ -740,6 +748,7 @@ program DAMASK_spectral
    enddo    ! end looping over loadcases
    print '(A,/)', '############################################################'
    print '(a,i5.5,a)', 'A Total of ', notConvergedCounter, ' Steps did not Converge!'
+   print '(a,i5.5,a)', 'A Total of ', writtenOutCounter, ' Steps are written to File!'
  close(538)
  call dfftw_destroy_plan(fftw_plan(1)); call dfftw_destroy_plan(fftw_plan(2))
     
