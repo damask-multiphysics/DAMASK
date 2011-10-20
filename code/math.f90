@@ -23,13 +23,12 @@
 !##############################################################
 
 
- use prec, only: pReal,pInt
+ use prec, only: pReal,pInt,DAMASK_NaN
  implicit none
 
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
- real(pReal), parameter :: DAMASK_NaN = Z'7FF0000000000001'
 ! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
  reshape( (/ &
@@ -154,9 +153,6 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  write(6,*)
  write(6,*) '<<<+-  math init  -+>>>'
  write(6,*) '$Id$'
- write(6,*)
- write(6,*) 'NaN:        ',DAMASK_NAN
- write(6,*) 'NaN /= NaN: ',DAMASK_NaN/=DAMASK_NaN
  write(6,*)
  !$OMP END CRITICAL (write2out)
  

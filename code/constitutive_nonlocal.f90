@@ -1489,7 +1489,8 @@ subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, Fe, Fp, Temperature
 
 use prec,     only: pReal, &
                     pInt, &
-                    p_vec
+                    p_vec, &
+                    DAMASK_NaN
 use numerics, only: numerics_integrationMode
 use IO,       only: IO_error
 use debug,    only: debug_verbosity, &
@@ -1507,8 +1508,7 @@ use math,     only: math_norm3, &
                     math_Mandel6to33, &
                     math_QuaternionDisorientation, &
                     math_qRot, &
-                    pi, &
-                    NaN
+                    pi                
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_maxNipNeighbors, &
@@ -1694,7 +1694,7 @@ if (any(1.2_pReal * constitutive_nonlocal_v(1:ns,1:4,g,ip,el) * timestep &      
     write(6,*) '<< CONST >> CFL condition not fullfilled'
   endif
 #endif
-  dotState%p = 0.0_pReal/0.0_pReal
+  dotState%p = DAMASK_NaN
   return
 endif
 

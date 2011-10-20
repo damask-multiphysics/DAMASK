@@ -30,6 +30,10 @@ integer, parameter :: pInt  = selected_int_kind(9)           ! up to +- 1e9
 integer, parameter :: pLongInt  = 8                          ! should be 64bit
 real(pReal), parameter :: tol_math_check = 1.0e-8_pReal
 real(pReal), parameter :: tol_gravityNodePos = 1.0e-100_pReal
+! NaN is precistion dependent 
+! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
+! copy found in documentation/Code/Fortran
+real(pReal), parameter :: DAMASK_NaN = Z'7FF0000000000001'
  
 type :: p_vec
   real(pReal), dimension(:), pointer :: p
@@ -44,6 +48,9 @@ implicit none
   write(6,*)
   write(6,*) '<<<+-  prec init  -+>>>'
   write(6,*) '$Id$'
+  write(6,*) 
+  write(6,*) 'NaN:        ',DAMASK_NAN
+  write(6,*) 'NaN /= NaN: ',DAMASK_NaN/=DAMASK_NaN
   write(6,*)
 !$OMP END CRITICAL (write2out)
 
