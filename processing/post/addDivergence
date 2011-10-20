@@ -74,6 +74,8 @@ parser.add_option('-d','--dimension',   dest='dim', type='float', nargs=3, \
                                         help='physical dimension of data set in x (fast) y z (slow) [%default]')
 parser.add_option('-r','--resolution',  dest='res', type='int', nargs=3, \
                                         help='resolution of data set in x (fast) y z (slow)')
+parser.add_option('-s','--skip',        dest='skip', type='int', nargs=3, \
+                                        help='items skipped due to periodicity in x (fast) y z (slow)')
 
 parser.set_defaults(accuracy = [])
 parser.set_defaults(memory = False)
@@ -81,6 +83,7 @@ parser.set_defaults(fft = False)
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
 parser.set_defaults(dim = [])
+parser.set_defaults(skip = [0,0,0])
 accuracyChoices = [2,4,6,8]
 
 (options,filenames) = parser.parse_args()
@@ -96,6 +99,7 @@ for choice in options.accuracy:
     parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
 if options.fft: options.accuracy.append('fft')
 
+resSkip = [lambda a,b: a+b for a,b in zip(options.res,options.skip)]
 datainfo = {                                                               # list of requested labels per datatype
              'vector':     {'len':3,
                             'label':[]},
@@ -158,7 +162,7 @@ for file in files:
         if datatype not in div_field: div_field[datatype] = {}
         active[datatype].append(label)
         column[datatype][label] = headers.index(key)
-        values[datatype][label] = numpy.array([0.0 for i in range(datainfo[datatype]['len']*\
+        values[datatype][label] = numpy.array([0.0 for i in xrange(datainfo[datatype]['len']*\
                                           options.res[0]*options.res[1]*options.res[2])]).\
                                           reshape((options.res[0],options.res[1],options.res[2],\
                                                      3,datainfo[datatype]['len']//3))
@@ -180,14 +184,17 @@ for file in files:
   idx = 0
   for line in data:
     items = line.split()[:len(headers)]
-    if len(items) < len(headers):
+    if len(items) < len(headers):                             # skip too short lines (probably comments or invalid)
       continue
-  
-    for datatype,labels in active.items():
-      for label in labels:
-        values[datatype][label][location(idx,options.res)[0]][location(idx,options.res)[1]][location(idx,options.res)[2]]\
-            = numpy.reshape(items[column[datatype][label]:
-                                  column[datatype][label]+datainfo[datatype]['len']],(3,datainfo[datatype]['len']//3))
+    locSkip = location(idx,resSkip)
+    if (    locSkip[0] < options.res[0]
+        and locSkip[1] < options.res[1]
+        and locSkip[2] < options.res[2] ):                    # only take values that are not periodic images
+      for datatype,labels in active.items():
+        for label in labels:
+          values[datatype][label][locSkip[0]][locSkip[1]][locSkip[2]]\
+              = numpy.reshape(items[column[datatype][label]:
+                                    column[datatype][label]+datainfo[datatype]['len']],(3,datainfo[datatype]['len']//3))
     idx += 1
 # ------------------------------------------ read file --------------------------------------- 
   if options.memory:
