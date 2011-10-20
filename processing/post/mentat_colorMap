@@ -30,8 +30,7 @@ for release,subdirs in sorted(releases.items(),reverse=True):
 try:
   from py_mentat import *
 except:
-  print('error: no valid Mentat release found in %s'%MSCpath)
-  sys.exit(-1)
+  print('warning: no valid Mentat release found in %s'%MSCpath)
 
 
 # -----------------------------
@@ -144,12 +143,18 @@ parser.add_option("-s","--symmetric", action = "store_true",
 parser.add_option("-i","--inverse", action = "store_true", 
                   dest = "inverse", \
                   help = "invert legend [%default]")
+parser.add_option(     "--palette", action = "store_true", 
+                  dest = "palette", \
+                  help = "output plain rgb palette values [%default]")
 parser.add_option("-p", "--port", type = "int",\
                   dest = "port",\
                   help = "Mentat connection port [%default]")
 parser.add_option("-b", "--baseindex", type = "int",\
                   dest = "baseIdx",\
                   help = "base index of colormap [%default]")
+parser.add_option("-n", "--colorcount", type = "int",\
+                  dest = "colorcount",\
+                  help = "number of colors [%default]")
 parser.add_option("-c", "--config", type='string', \
                   dest = "config",\
                   help = "configuration file [%default]")
@@ -159,9 +164,11 @@ parser.add_option("-v", "--verbose", action="store_true",\
 
 parser.set_defaults(port = 40007)
 parser.set_defaults(baseIdx = 32)
+parser.set_defaults(colorcount = 32)
 parser.set_defaults(config = 'colorMap.config')
 parser.set_defaults(symmetric = False)
 parser.set_defaults(inverse   = False)
+parser.set_defaults(palette   = False)
 parser.set_defaults(verbose   = False)
 
 msg = []
@@ -198,15 +205,14 @@ if msg != []:
 
 ### interpolate hls values
 
-nColors = 32
 if options.symmetric:
-    hlsColors = [ [ syminterpolate(comp, hlsColor_range[0][j], hlsColor_range[1][j], float(idx)/(nColors-1)) 
+    hlsColors = [ [ syminterpolate(comp, hlsColor_range[0][j], hlsColor_range[1][j], float(idx)/(options.colorcount-1)) 
                     for j,comp in enumerate(["hue","lightness","saturation"]) ]
-                  for idx in range(nColors) ]
+                  for idx in range(options.colorcount) ]
 else:
-    hlsColors = [ [ interpolate(hlsColor_range[0][j], hlsColor_range[1][j], float(idx)/(nColors-1)) 
+    hlsColors = [ [ interpolate(hlsColor_range[0][j], hlsColor_range[1][j], float(idx)/(options.colorcount-1)) 
                     for j,comp in enumerate(["hue","lightness","saturation"]) ]
-                  for idx in range(nColors) ]
+                  for idx in range(options.colorcount) ]
 
 
 
@@ -215,8 +221,11 @@ else:
 rgbColors = [ hls_to_rgb(hlsColor[0], hlsColor[1], hlsColor[2]) 
               for hlsColor in hlsColors ]
 
-
-
+if options.palette:
+  for rgb in rgbColors:
+    print '\t'.join(map(lambda x: str(int(255*x)),rgb))
+  sys.exit(0)
+  
 ### connect to mentat and change colorMap
 
 outputLocals = {}
