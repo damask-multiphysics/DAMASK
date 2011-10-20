@@ -281,26 +281,38 @@ def vtk_writeASCII_box(diag,defgrad):
 # ----------------------- MAIN -------------------------------
 
 parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
-Produce VTK file from data field. Coordinates are taken from (consecutive) ip.x, ip.y, and ip.z columns.
+Produce VTK file from data field. Coordinates are taken from (consecutive) x, y, and z columns.
 
 """ + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-s', '--scalar', action='extend', dest='scalar', type='string', \
                   help='list of scalars to visualize')
+parser.add_option('-v', '--vector', action='extend', dest='vector', type='string', \
+                  help='list of vectors to visualize')
 parser.add_option('-d', '--deformation', dest='defgrad', type='string', \
                   help='heading of deformation gradient columns [%default]')
-parser.add_option('-m', '--mesh', dest='output_mesh', action='store_true', \
-                  help='produce VTK mesh file [%default]')
-parser.add_option('-p', '--points', dest='output_points', action='store_true', \
+parser.add_option('--reference', dest='undeformed', action='store_true',\
+                  help='map results to reference (undeformed) configuration')
+parser.add_option('-c','--cell', dest='cell', action='store_true',\
+                  help='data is cell-centered')
+parser.add_option('-p','--vertex', dest='cell', action='store_false',\
+                  help='data is vertex-centered')
+parser.add_option('--mesh', dest='output_mesh', action='store_true', \
+                  help='produce VTK mesh file')
+parser.add_option('--nomesh', dest='output_mesh', action='store_false', \
+                  help='omit VTK mesh file')
+parser.add_option('--points', dest='output_points', action='store_true', \
                   help='produce VTK points file [%default]')
-parser.add_option('-b', '--box', dest='output_box', action='store_true', \
-                  help='produce VTK box file [%default]')
-parser.add_option('--scaling', dest='scaling', type='int', nargs=1, \
-                  help='scaling of fluctuastion [%default]')
-parser.add_option('--undeformed', dest='undeformed', action='store_true',\
-                  help='do not calculate average deformation of ve [%default]')
-parser.add_option('-u', '--unitlength', dest='unitlength', type='float', nargs=1, \
+parser.add_option('--nopoints', dest='output_points', action='store_false', \
+                  help='omit VTK points file')
+parser.add_option('--box', dest='output_box', action='store_true', \
+                  help='produce VTK box file')
+parser.add_option('--nobox', dest='output_box', action='store_false', \
+                  help='omit VTK box file')
+parser.add_option('--scaling', dest='scaling', type='int', \
+                  help='scaling of fluctuation [%default]')
+parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
                   help='set unit length for 2D model [%default]')
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(scalar = [])
@@ -312,6 +324,7 @@ parser.set_defaults(output_box = False)
 parser.set_defaults(scaling = 1)
 parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
+parser.set_defaults(cell = True)
 
 (options, args) = parser.parse_args()
 
@@ -333,13 +346,13 @@ for filename in args:
   maxcol = 0
   
   for col,head in enumerate(headings):
-    if head == 'ip.x':
-      ipcol = col
+    if head == {True:'ip.x',False:'node.x'}[options.cell]:
+      locol = col
       maxcol = max(maxcol,col+3)
       break
 
-  if ipcol < 0:
-    print 'missing ip coordinates..!'
+  if locol < 0:
+    print 'missing coordinates..!'
     continue
     
   column['tensor'] = {}
@@ -374,37 +387,38 @@ for filename in args:
         break
 
   values = numpy.array(sorted([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],
-                              key=lambda x:(x[ipcol+0],x[ipcol+1],x[ipcol+2])),             # sort with z as fastest and x as slowest index
+                              key=lambda x:(x[locol+0],x[locol+1],x[locol+2])),             # sort with z as fastest and x as slowest index
                        'd')       
 
   N = len(values)
   grid = [{},{},{}]
-  for j in range(3):
-    for i in range(N):
-     grid[j][str(values[i,ipcol+j])] = True
+  for j in xrange(3):
+    for i in xrange(N):
+     grid[j][str(values[i,locol+j])] = True
 
   res = numpy.array([len(grid[0]),\
                      len(grid[1]),\
                      len(grid[2]),],'i')
   
   dim = numpy.ones(3)
-  print options.unitlength
+
   for i,r in enumerate(res):
     if r > 1:
       dim[i] = (max(map(float,grid[i].keys()))-min(map(float,grid[i].keys())))*r/(r-1.0)
-  if res[2]==1: # for 2D case set undefined dimension to given unitlength or alternatively give it the lengt of the smallest element
+  if res[2]==1: # for 2D case set undefined dimension to given unitlength or alternatively give it the length of the smallest element
     if options.unitlength == 0.0: 
-      dim[2] = 1.0/(min([float(res[0])/dim[0]],[float(res[1])/dim[1]])[0])
+      dim[2] = min(dim/res)
     else:
       dim[2] = options.unitlength
   if options.undeformed:
-    defgrad_av = numpy.array([[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]])
-  else:
+    defgrad_av = numpy.eye(3)
+  else:           # @Martin: why do we have to reshape this data when just averaging??
     defgrad_av = postprocessingMath.tensor_avg(res[0],res[1],res[2],\
                                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                     column['tensor'][options.defgrad]+9],
                                              (res[0],res[1],res[2],3,3)))
-					     
+
+  # @Martin: any reason for having 3 args for res but a single vector arg for dim?					     
   centroids = postprocessingMath.deformed_fft(res[0],res[1],res[2],dim,\
                                               numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                      column['tensor'][options.defgrad]+9],
