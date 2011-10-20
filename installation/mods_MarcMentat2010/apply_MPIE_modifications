@@ -1,20 +1,35 @@
 #!/bin/bash
 
-WORKINGDIR=`dirname $0`
-VERSION="2010.2"
-echo "Input version of MARC/MENTAT installation: [$VERSION]"
-read VERSION
-if [ -z $VERSION ]; then
-   VERSION="2010.2"
-fi
+DEFAULT_INSTALLDIR='/msc'
+DEFAULT_VERSION='2010.2'
 
-INSTALLDIR="/msc"
-echo "Input path of MARC/MENTAT installation: [$INSTALLDIR]"
-read INSTALLDIR
-INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
-if [ -z $INSTALLDIR ]; then
-   INSTALLDIR="/msc"
+WORKINGDIR=`dirname $0`
+
+while [ ! -d "$WORKINGDIR/$VERSION" ] || [ -z "$VERSION" ]
+do
+  echo "Input version of MARC/MENTAT installation: [${DEFAULT_VERSION}]"
+  read VERSION
+  if [ -z "$VERSION" ]; then
+    VERSION=${DEFAULT_VERSION}
+  fi
+done
+echo "MSC version: $VERSION"
+
+INSTALLDIR=''
+if [ -f $WORKINGDIR/../../processing/MSCpath ]; then
+  INSTALLDIR=`head $WORKINGDIR/../../processing/MSCpath`
 fi
+while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
+do
+  echo "Input path of MARC/MENTAT installation: [${DEFAULT_INSTALLDIR}]"
+  read INSTALLDIR
+  if [ -z $INSTALLDIR ]; then
+    INSTALLDIR=${DEFAULT_INSTALLDIR}
+  fi
+done
+
+INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
+echo "MSC installation path: $INSTALLDIR"
 
 # tools
 echo ''
