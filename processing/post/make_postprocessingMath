@@ -19,7 +19,9 @@ fi
 
 cd $wd
 rm postprocessingMath.so
-f2py -c --f90flags="-heap-arrays 500000000" \
+f2py -c \
 postprocessingMath.pyf \
 postprocessingMath.f90 \
--L libfftw3.a
+-lfftw3 \
+-L./
+#--f90flags="-heap-arrays 500000000" \

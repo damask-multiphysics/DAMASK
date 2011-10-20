@@ -576,7 +576,6 @@ subroutine volume_compare(res_x,res_y,res_z,geomdim,nodes,defgrad,volume_mismatc
  real*8  volume_mismatch(res_x  ,res_y  ,res_z  )
  real*8  coords(8,3)
  integer i,j,k
- real*8, dimension(3,3) :: defgrad_av
  real*8 vol_initial
 
  print*, 'Calculating volume mismatch'
@@ -617,9 +616,8 @@ subroutine shape_compare(res_x,res_y,res_z,geomdim,nodes,centroids,defgrad,shape
  real*8        centroids(res_x  ,res_y  ,res_z  ,3)
  real*8          defgrad(res_x  ,res_y  ,res_z  ,3,3)
  real*8   shape_mismatch(res_x  ,res_y  ,res_z)
- real*8  coords(8,3)
  real*8  coords_initial(8,3)
- integer i,j,k,n
+ integer i,j,k
 
  print*, 'Calculating shape mismatch'
  coords_initial(1,:) = (/-geomdim(1)/2.0/real(res_x),-geomdim(2)/2.0/real(res_y),-geomdim(3)/2.0/real(res_z)/)
@@ -635,14 +633,15 @@ subroutine shape_compare(res_x,res_y,res_z,geomdim,nodes,centroids,defgrad,shape
  do k = 1,res_z
    do j = 1,res_y
      do i = 1,res_x
-       shape_mismatch(i,j,k) = sqrt(sum((nodes(i  ,j  ,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(1,:)))**2.0))&
-                             + sqrt(sum((nodes(i+1,j  ,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(2,:)))**2.0))&
-                             + sqrt(sum((nodes(i+1,j+1,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(3,:)))**2.0))&
-                             + sqrt(sum((nodes(i  ,j+1,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(4,:)))**2.0))&
-                             + sqrt(sum((nodes(i  ,j,  k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(5,:)))**2.0))&
-                             + sqrt(sum((nodes(i+1,j  ,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(6,:)))**2.0))&
-                             + sqrt(sum((nodes(i+1,j+1,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(7,:)))**2.0))&
-                             + sqrt(sum((nodes(i  ,j+1,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(8,:)))**2.0))
+       shape_mismatch(i,j,k) = &
+           sqrt(sum((nodes(i  ,j  ,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(1,:)))**2.0))&
+         + sqrt(sum((nodes(i+1,j  ,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(2,:)))**2.0))&
+         + sqrt(sum((nodes(i+1,j+1,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(3,:)))**2.0))&
+         + sqrt(sum((nodes(i  ,j+1,k  ,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(4,:)))**2.0))&
+         + sqrt(sum((nodes(i  ,j,  k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(5,:)))**2.0))&
+         + sqrt(sum((nodes(i+1,j  ,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(6,:)))**2.0))&
+         + sqrt(sum((nodes(i+1,j+1,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(7,:)))**2.0))&
+         + sqrt(sum((nodes(i  ,j+1,k+1,:) - centroids(i,j,k,:) - matmul(defgrad(i,j,k,:,:), coords_initial(8,:)))**2.0))
  enddo; enddo; enddo
  end subroutine shape_compare
 
@@ -740,7 +739,7 @@ subroutine inverse_reconstruction(res_x,res_y,res_z,reference_configuration,curr
          print*, 'deltadef', math_inv3x3(dres_dF)*res_center
          defgrad_temp = defgrad_temp - math_inv3x3(dres_dF)*res_center          ! Newton--Raphson
          print*, o, res_center
-         pause
+!         pause
        enddo
        defgrad(i,j,k,:,:) = defgrad_temp       
  enddo; enddo; enddo
@@ -890,7 +889,6 @@ subroutine divergence_fft(res_x,res_y,res_z,vec_tens,geomdim,field,divergence_fi
  complex*16 field_fft(res_x,res_y,res_z,vec_tens,3)
  complex*16 img
  integer i, j, k
- integer k_s(3)
  real*8, parameter :: pi = 3.14159265358979323846264338327950288419716939937510
  integer*8 ::  plan_fft(2)
  include 'fftw3.f' !header file for fftw3 (declaring variables). Library files are also needed
@@ -971,8 +969,7 @@ subroutine divergence(res_x,res_y,res_z,vec_tens,order,geomdim,field,divergence_
  real*8 geomdim(3)
  real*8 field(res_x,res_y,res_z,vec_tens,3)
  real*8 divergence_field(res_x,res_y,res_z,vec_tens)
- integer i, j, k, m, l, x
- integer k_s(3)
+ integer i, j, k, m, l
  real*8, dimension(4,4) :: FDcoefficient = reshape((/ & !from http://en.wikipedia.org/wiki/Finite_difference_coefficients
                                 1.0/2.0,      0.0,      0.0,       0.0,&
                                 2.0/3.0,-1.0/12.0,      0.0,       0.0,&
