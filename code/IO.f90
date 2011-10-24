@@ -1162,6 +1162,8 @@ endfunction
    msg = 'dimension in spectral mesh'
  case (45)
    msg = 'incomplete information in spectral mesh header'
+ case (46)
+   msg = 'not a rotation defined for loadcase rotation'
  case (50)
    msg = 'writing constitutive output description'
  case (100)

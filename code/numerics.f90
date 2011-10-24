@@ -26,7 +26,7 @@ use prec, only: pInt, pReal
 implicit none
 
 character(len=64), parameter :: numerics_configFile = 'numerics.config' ! name of configuration file
-integer(pInt)                   iJacoStiffness, &                       ! frequency of stiffness update
+integer(pInt) ::                iJacoStiffness, &                       ! frequency of stiffness update
                                 iJacoLpresiduum, &                      ! frequency of Jacobian update of residuum in Lp
                                 nHomog, &                               ! homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
                                 nMPstate, &                             ! materialpoint state loop limit
@@ -36,7 +36,7 @@ integer(pInt)                   iJacoStiffness, &                       ! freque
                                 pert_method, &                          ! method used in perturbation technique for tangent
                                 numerics_integrationMode                ! integration mode 1 = central solution ; integration mode 2 = perturbation
 integer(pInt), dimension(2) ::  numerics_integrator                     ! method used for state integration (central & perturbed state)
-real(pReal)                     relevantStrain, &                       ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
+real(pReal) ::                  relevantStrain, &                       ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
                                 defgradTolerance, &                     ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
                                 pert_Fg, &                              ! strain perturbation for FEM Jacobi
                                 subStepMinCryst, &                      ! minimum (relative) size of sub-step allowed during cutback in crystallite
@@ -68,7 +68,8 @@ real(pReal)                     relevantStrain, &                       ! strain
                                 err_div_tol, &                          ! error of divergence in fourier space
                                 err_stress_tol, &                       ! absolut stress error, will be computed from err_stress_tolrel (dont prescribe a value)
                                 err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
-                                fftw_timelimit                          ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org
+                                fftw_timelimit, &                       ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org
+                                tol_rotation                            ! tolerance of rotation specified in loadcase
 character(len=64)               fftw_planner_flag                       ! sets the planig-rigor flag, see manual on www.fftw.org
 logical                         memory_efficient                        ! for fast execution (pre calculation of gamma_hat)
 integer(pInt)                   itmax , &                               ! maximum number of iterations
@@ -169,8 +170,8 @@ subroutine numerics_init()
   itmax                   = 20_pInt      ! Maximum iteration number
   memory_efficient        = .true.       ! Precalculate Gamma-operator (81 double per point)
   fftw_timelimit          = -1.0_pReal   ! no timelimit of plan creation for FFTW
-  fftw_planner_flag       ='patient'
-  
+  fftw_planner_flag       ='FFTW_PATIENT'
+  tol_rotation            = 1.0e-4 
 
 !* Random seeding parameters: added <<<updated 27.08.2009>>>
   fixedSeed               = 0_pInt
@@ -287,6 +288,8 @@ subroutine numerics_init()
               fftw_timelimit = IO_floatValue(line,positions,2)
         case ('fftw_planner_flag')
               fftw_planner_flag = IO_stringValue(line,positions,2)
+        case ('tol_rotation')
+              tol_rotation = IO_floatValue(line,positions,2)
 
 !* Random seeding parameters
         case ('fixed_seed')
@@ -359,6 +362,7 @@ subroutine numerics_init()
       write(6,'(a24,x,e8.1)') 'fftw_timelimit:         ',fftw_timelimit
     endif
     write(6,'(a24,x,a)')      'fftw_planner_flag:      ',trim(fftw_planner_flag)
+    write(6,'(a24,x,e8.1)')   'tol_rotation:           ',tol_rotation
     write(6,*)
 
 !* Random seeding parameters

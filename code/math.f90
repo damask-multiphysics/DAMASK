@@ -2966,5 +2966,53 @@ end subroutine
 
  endfunction math_volTetrahedron
 
+!**************************************************************************
+! rotate 3x3 tensor forward
+!**************************************************************************
+ pure function math_rotate_forward3x3(tensor,rot_tensor)
+
+ use prec, only: pReal
+ implicit none
+
+ real(pReal), dimension(3,3) ::  math_rotate_forward3x3
+ real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
+ 
+ math_rotate_forward3x3 = math_mul33x33(rot_tensor,&
+                          math_mul33x33(tensor,math_transpose3x3(rot_tensor)))
+ 
+ endfunction math_rotate_forward3x3
+
+!**************************************************************************
+! rotate 3x3 tensor backward
+!**************************************************************************
+ pure function math_rotate_backward3x3(tensor,rot_tensor)
+
+ use prec, only: pReal
+ implicit none
+
+ real(pReal), dimension(3,3) ::  math_rotate_backward3x3
+ real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
+ 
+ math_rotate_backward3x3 = math_mul33x33(math_transpose3x3(rot_tensor),&
+                           math_mul33x33(tensor,rot_tensor))
+ 
+ endfunction math_rotate_backward3x3
+
+!**************************************************************************
+! rotate 3x3x3x3 tensor forward
+! DUMMY FUNCTION, does nothing!
+!**************************************************************************
+ pure function math_rotate_forward3x3x3x3(tensor,rot_tensor)
+
+ use prec, only: pReal
+ implicit none
+
+ real(pReal), dimension(3,3,3,3) ::  math_rotate_forward3x3x3x3
+ real(pReal), dimension(3,3), intent(in) :: rot_tensor
+ real(pReal), dimension(3,3,3,3), intent(in) :: tensor
+ 
+ math_rotate_forward3x3x3x3 =  tensor
+ 
+ endfunction math_rotate_forward3x3x3x3
 
  END MODULE math
