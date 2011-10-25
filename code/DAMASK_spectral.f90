@@ -51,9 +51,9 @@ program DAMASK_spectral
  use math
  use mesh, only: mesh_ipCenterOfGravity
  use CPFEM, only: CPFEM_general, CPFEM_initAll 
- use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel,&
-                     relevantStrain, itmax, memory_efficient, DAMASK_NumThreadsInt,&
-                     fftw_planner_flag, fftw_timelimit, tol_rotation
+ use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel , rotation_tol,&
+                     itmax, memory_efficient, DAMASK_NumThreadsInt,&
+                     fftw_planner_flag, fftw_timelimit
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 !$ use OMP_LIB                                                           ! the openMP function library
 
@@ -65,7 +65,7 @@ program DAMASK_spectral
                                                    (1_pInt + 1_pInt)*4_pInt + &       ! time, (log)incs, temp, and frequency
                                                    1_pInt                             ! dropguessing
  integer(pInt), dimension (1 + maxNchunksLoadcase*2) :: posLoadcase
- integer(pInt), parameter :: maxNchunksGeom = 7                                       ! 4 identifiers, 3 values
+ integer(pInt), parameter :: maxNchunksGeom = 7_pInt                                  ! 4 identifiers, 3 values
  integer(pInt), dimension (1 + maxNchunksGeom*2) ::  posGeom
  integer(pInt) :: myUnit, N_l, N_s, N_t, N_n, N_Fdot, headerLength                    ! numbers of identifiers
  character(len=1024) :: path, line, keyword
@@ -111,7 +111,7 @@ program DAMASK_spectral
  real(pReal), dimension(:,:,:), allocatable ::          temperature
 
  
-! variables storing information for spectral method
+! variables storing information for spectral method and FFTW
  real(pReal), dimension(3,3) ::                         xiDyad                                   ! product of wave vectors
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                ! gamma operator (field) for spectral method
  real(pReal), dimension(:,:,:,:), allocatable ::        xi                                       ! wave vector field 
@@ -122,7 +122,7 @@ program DAMASK_spectral
 ! loop variables, convergence etc.
  real(pReal) :: time, time0, timeinc                                                             ! elapsed time, begin of interval, time interval 
  real(pReal) :: guessmode, err_div, err_stress, p_hat_avg
- complex(pReal), parameter ::                           img = cmplx(0.0,1.0)
+ complex(pReal), parameter ::                           img = cmplx(0.0_pReal,1.0_pReal)
  real(pReal), dimension(3,3), parameter ::              ones = 1.0_pReal, zeroes = 0.0_pReal
  complex(pReal), dimension(3,3) ::                      temp33_Complex
  real(pReal), dimension(3,3) ::                         temp33_Real
@@ -171,7 +171,7 @@ program DAMASK_spectral
    posLoadcase = IO_stringPos(line,maxNchunksLoadcase)
    do i = 1, maxNchunksLoadcase, 1                            ! reading compulsory parameters for loadcase
        select case (IO_lc(IO_stringValue(line,posLoadcase,i)))
-            case('l', 'velocitygrad', 'velgrad')
+            case('l', 'velocitygrad', 'velgrad','velocitygradient')
                  N_l = N_l+1
             case('fdot')
                  N_Fdot = N_Fdot+1
@@ -210,7 +210,7 @@ program DAMASK_spectral
    posLoadcase = IO_stringPos(line,maxNchunksLoadcase)
    do j = 1,maxNchunksLoadcase
      select case (IO_lc(IO_stringValue(line,posLoadcase,j)))
-       case('fdot','l','velocitygrad')                                            ! assign values for the deformation BC matrix
+       case('fdot','l','velocitygrad','velgrad','velocitygradient')                                            ! assign values for the deformation BC matrix
          bc_velGradApplied(loadcase) = (IO_lc(IO_stringValue(line,posLoadcase,j)) == 'l' .or. &
                                      IO_lc(IO_stringValue(line,posLoadcase,j)) == 'velocitygrad')         ! in case of given L, set flag to true
          valueVector = 0.0_pReal
@@ -346,7 +346,7 @@ program DAMASK_spectral
  print '(a)', '------------------------------------------------------'
  print '(a,/,i12,i12,i12)','resolution a b c:', resolution
  print '(a,/,f12.5,f12.5,f12.5)','dimension x y z:', geomdimension
- print '(a,i5)','homogenization:      ',homog
+ print '(a,i5)','homogenization:     ',homog
  print '(a,L)','spectralPictureMode: ',spectralPictureMode
  print '(a)', '******************************************************'
  print '(a,a)','Loadcase File Name:   ',trim(getLoadcaseName())
@@ -383,12 +383,10 @@ program DAMASK_spectral
                                                  reshape(spread(DAMASK_NaN,1,9),(/3,3/)),&
                                                  transpose(bc_mask(:,:,2,loadcase)))*1e-6
    if (any(abs(math_mul33x33(bc_rotation(1:3,1:3,loadcase),math_transpose3x3(bc_rotation(1:3,1:3,loadcase)))-math_I3)&
-               >reshape(spread(tol_rotation,1,9),(/3,3/)))&
-               .or. abs(math_det3x3(bc_rotation(1:3,1:3,loadcase)))>1.0_pReal + tol_rotation) call IO_error(46,loadcase)
-   if (any(bc_rotation(1:3,1:3,loadcase)/=math_I3)) then
-     print '(a,/,3(3(f12.6,x)/))','Rotation of BCs:',math_transpose3x3(bc_rotation(1:3,1:3,loadcase))
-     print '(a,f12.6)', 'Determinant of Rotation matrix',  math_det3x3(bc_rotation(1:3,1:3,loadcase))
-   endif
+               >reshape(spread(rotation_tol,1,9),(/3,3/)))&
+               .or. abs(math_det3x3(bc_rotation(1:3,1:3,loadcase)))>1.0_pReal + rotation_tol) call IO_error(46,loadcase)
+   if (any(bc_rotation(1:3,1:3,loadcase)/=math_I3)) &
+               print '(a,/,3(3(f12.6,x)/))','Rotation of BCs:',math_transpose3x3(bc_rotation(1:3,1:3,loadcase))
    if (bc_timeIncrement(loadcase) < 0.0_pReal) call IO_error(34,loadcase)                 ! negative time increment
    print '(a,f12.6)','Temperature: ',bc_temperature(loadcase)
    print '(a,f12.6)','Time:        ',bc_timeIncrement(loadcase)
@@ -397,7 +395,6 @@ program DAMASK_spectral
    if (bc_frequency(loadcase) < 1_pInt) call IO_error(36,loadcase)                        ! non-positive result frequency
    print '(a,i5)','Freq. of Output:    ',bc_frequency(loadcase)
  enddo
- print '(a)', '******************************************************'
  !$OMP END CRITICAL (write2out)
 
  ielem = 0_pInt
@@ -410,9 +407,9 @@ program DAMASK_spectral
    call CPFEM_general(2,coordinates(1:3,i,j,k),math_I3,math_I3,temperature(i,j,k),0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
    c_current = c_current + dPdF
  enddo; enddo; enddo
- c0_reference = c_current * wgt  ! linear reference material stiffness
- c_prev = math_rotate_forward3x3x3x3(c0_reference,bc_rotation(1:3,1:3,loadcase))
-! rotate_forward: lab -> load system 
+ c0_reference = c_current * wgt                                                  ! linear reference material stiffness
+ c_prev = math_rotate_forward3x3x3x3(c0_reference,bc_rotation(1:3,1:3,loadcase)) ! rotate_forward: lab -> load system
+ 
  if (debug_verbosity > 1) then
   !$OMP CRITICAL (write2out)
     write (6,*) 'First Call to CPFEM_general finished'
@@ -474,7 +471,8 @@ program DAMASK_spectral
  !is not working, have to find out how it is working in FORTRAN 
  !call dfftw_timelimit(fftw_timelimit)
  
- ! basically a translation from fftw.h
+ ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+ ! ordered from slow execution (but fast plan creation) to fast execution
  select case(IO_lc(fftw_planner_flag))
    case('estimate','fftw_estimate')
      fftw_flag = 64
@@ -573,17 +571,29 @@ program DAMASK_spectral
      defgradAimOld = temp33_Real
  
 ! update local deformation gradient
-     do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-       temp33_Real = defgrad(i,j,k,1:3,1:3)
-       if (bc_velGradApplied(loadcase)) &                                                       ! use velocity gradient to calculate new deformation gradient (if not guessing)
-         fDot = math_mul33x33(bc_deformation(1:3,1:3,loadcase),&
-                              math_rotate_forward3x3(defgradold(i,j,k,1:3,1:3),bc_rotation(1:3,1:3,loadcase)))
-         defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
-                            + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
-                            + math_rotate_backward3x3((1.0_pReal-guessmode) * mask_defgrad * fDot,&
-                                       bc_rotation(1:3,1:3,loadcase)) *timeinc                  ! apply the prescribed value where deformation is given if not guessing
-         defgradold(i,j,k,1:3,1:3) = temp33_Real 
-     enddo; enddo; enddo
+     if (any(bc_rotation(1:3,1:3,loadcase)/=math_I3)) then                                       ! lab and loadcase coordinate system are NOT the same
+       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+         temp33_Real = defgrad(i,j,k,1:3,1:3)
+         if (bc_velGradApplied(loadcase)) &                                                      ! use velocity gradient to calculate new deformation gradient (if not guessing)
+                                fDot = math_mul33x33(bc_deformation(1:3,1:3,loadcase),&
+                                math_rotate_forward3x3(defgradold(i,j,k,1:3,1:3),bc_rotation(1:3,1:3,loadcase)))
+           defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
+                              + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
+                              + math_rotate_backward3x3((1.0_pReal-guessmode) * mask_defgrad * fDot,&
+                                         bc_rotation(1:3,1:3,loadcase)) *timeinc                  ! apply the prescribed value where deformation is given if not guessing
+           defgradold(i,j,k,1:3,1:3) = temp33_Real 
+       enddo; enddo; enddo
+     else                                                                                         ! one coordinate system for lab and loadcase, save some multiplication  
+       do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+         temp33_Real = defgrad(i,j,k,1:3,1:3)
+         if (bc_velGradApplied(loadcase)) &                                                       ! use velocity gradient to calculate new deformation gradient (if not guessing)
+                               fDot = math_mul33x33(bc_deformation(1:3,1:3,loadcase),defgradold(i,j,k,1:3,1:3))
+           defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
+                              + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
+                              + (1.0_pReal-guessmode) * mask_defgrad * fDot * timeinc               ! apply the prescribed value where deformation is given if not guessing
+           defgradold(i,j,k,1:3,1:3) = temp33_Real 
+       enddo; enddo; enddo
+     endif
      guessmode = 1.0_pReal                                                              ! keep guessing along former trajectory during same loadcase
 
      CPFEM_mode = 1_pInt                                                                ! winding forward

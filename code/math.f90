@@ -2999,8 +2999,8 @@ end subroutine
  endfunction math_rotate_backward3x3
 
 !**************************************************************************
-! rotate 3x3x3x3 tensor forward
-! DUMMY FUNCTION, does nothing!
+! rotate 3x3x3x3 tensor
+! C'_ijkl=g_im*g_jn*g_ko*g_lp*C_mnop
 !**************************************************************************
  pure function math_rotate_forward3x3x3x3(tensor,rot_tensor)
 
@@ -3010,8 +3010,15 @@ end subroutine
  real(pReal), dimension(3,3,3,3) ::  math_rotate_forward3x3x3x3
  real(pReal), dimension(3,3), intent(in) :: rot_tensor
  real(pReal), dimension(3,3,3,3), intent(in) :: tensor
+ integer(pInt) :: i,j,k,l,m,n,o,p
  
- math_rotate_forward3x3x3x3 =  tensor
+ math_rotate_forward3x3x3x3= 0.0_pReal
+
+ do i = 1,3; do j = 1,3; do k = 1,3; do l = 1,3
+   do m = 1,3; do n = 1,3; do o = 1,3; do p = 1,3
+     math_rotate_forward3x3x3x3(i,j,k,l) = tensor(i,j,k,l)+rot_tensor(m,i)*rot_tensor(n,j)*&
+                                                           rot_tensor(o,k)*rot_tensor(p,l)*tensor(m,n,o,p)
+ enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
  
  endfunction math_rotate_forward3x3x3x3
 
