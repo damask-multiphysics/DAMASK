@@ -29,7 +29,8 @@ for arch in architectures:
 			childFile.write(line.replace(me['versions'][0],version))
 		childFile.close()
 
-os.system('make --directory %s'%wd)
+if raw_input("Do you want to compile the spectral code now? (y/n)") is 'y':
+  os.system('make --directory %s'%wd)
 
 if '--clean' in [s.lower() for s in sys.argv]:
   os.system('make --directory %s clean'%wd)

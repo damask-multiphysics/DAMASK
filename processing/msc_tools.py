@@ -1,10 +1,9 @@
 class MSC_TOOLS():
-    import string
-    
+    import os,string
     
     def submit_job(self,
                  run_marc_path='/msc/marc2010/tools/',
-                 subroutine_dir='../../../code/',
+                 subroutine_dir=None,
                  subroutine_name='DAMASK_marc2010',
                  compile='yes',
                  compiled_dir='../../../code/',
@@ -13,8 +12,12 @@ class MSC_TOOLS():
                  #IOdir='',
                  host=[]
                  ):
+      import os
       import subprocess, shlex   
-      import shutil      
+      import shutil   
+           
+      if subroutine_dir is None: 
+        subroutine_dir=os.getenv('DAMASK_ROOT')+'/code/'
       # Define all options [see Marc Installation and Operation Guide, pp 23]
       run_marc=run_marc_path+'run_marc'
       jid=' -jid '+modelname+'_'+jobname
