@@ -1123,17 +1123,17 @@ endfunction
 ! and terminate the Marc run with exit #9xxx
 ! in ABAQUS either time step is reduced or execution terminated
 !********************************************************************
- subroutine IO_error(ID,e,i,g,ext_msg)
+ subroutine IO_error(error_ID,e,i,g,ext_msg)
 
  use prec, only: pInt
  implicit none
 
- integer(pInt), intent(in) :: ID
+ integer(pInt), intent(in) :: error_ID
  integer(pInt), optional, intent(in) :: e,i,g
  character(len=*), optional, intent(in) :: ext_msg
- character(len=120) msg
+ character(len=1024) msg
 
- select case (ID)
+ select case (error_ID)
  case (30)
    msg = 'could not open spectral loadcase'
  case (31)
@@ -1373,12 +1373,12 @@ endfunction
  
  !$OMP CRITICAL (write2out)
  write(6,*)
- write(6,'(a38)') '+------------------------------------+'
- write(6,'(a38)') '+               error                +'
- write(6,'(a17,i3,a18)') '+                ',ID,'                 +'
- write(6,'(a38)') '+                                    +'
- write(6,'(a2,a)')       '+ ',msg
- if (present(ext_msg))  write(6,*) '+ ',ext_msg
+ write(6,'(a38)')        '+------------------------------------+'
+ write(6,'(a38)')        '+               error                +'
+ write(6,'(a17,i3,a18)') '+                ',error_ID,'                 +'
+ write(6,'(a38)')        '+                                    +'
+ write(6,'(a2,a)')       '+ ', trim(msg)
+ if (present(ext_msg))  write(6,'(a2,a)') '+ ', trim(ext_msg)
  if (present(e)) then
    if (present(i) .and. present(g)) then
      write(6,'(a13,i6,a4,i2,a7,i4,a2)') '+ at element ',e,' IP ',i,' grain ',g,' +'
@@ -1388,7 +1388,7 @@ endfunction
  endif
  write(6,'(a38)') '+------------------------------------+'
  call flush(6)
- call quit(9000+ID)
+ call quit(9000+error_ID)
  !$OMP END CRITICAL (write2out)
 
 ! ABAQUS returns in some cases
@@ -1399,28 +1399,28 @@ endfunction
 !********************************************************************
 ! write warning statements to standard out
 !********************************************************************
- subroutine IO_warning(ID,e,i,g,ext_msg)
+ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
 
  use prec, only: pInt
  implicit none
 
- integer(pInt), intent(in) :: ID
+ integer(pInt), intent(in) :: warning_ID
  integer(pInt), optional, intent(in) :: e,i,g
  character(len=*), optional, intent(in) :: ext_msg
- character(len=80) msg
+ character(len=1024) msg
 
- select case (ID)
- case (33)
+ select case (warning_ID)
+ case (33_pInt)
    msg = 'cannot guess along trajectory for first step of first loadcase'
- case (101)
+ case (101_pInt)
    msg = '+    crystallite debugging off...    +'
- case (600)
+ case (600_pInt)
    msg = '+  crystallite responds elastically  +'
- case (601)
+ case (601_pInt)
    msg = '+      stiffness close to zero       +'
- case (650)
+ case (650_pInt)
    msg = '+     polar decomposition failed     +'
- case (700)
+ case (700_pInt)
    msg = '+      unknown crystal symmetry      +'
  case default
    msg = '+     unknown warning number...      +'
@@ -1428,11 +1428,12 @@ endfunction
  
  !$OMP CRITICAL (write2out)
  write(6,*)
- write(6,'(a38)') '+------------------------------------+'
- write(6,'(a38)') '+              warning               +'
- write(6,'(a38)') '+                                    +'
- write(6,'(a38)') msg
- if (present(ext_msg))  write(6,*) '+ ',ext_msg
+ write(6,'(a38)')        '+------------------------------------+'
+ write(6,'(a38)')        '+              warning               +'
+ write(6,'(a38)')        '+                                    +'
+ write(6,'(a17,i3,a18)') '+                ',warning_ID,'                 +'
+ write(6,'(a2,a)') '+ ', trim(msg)
+ if (present(ext_msg))  write(6,'(a2,a)') '+ ', trim(ext_msg)
  if (present(e)) then
    if (present(i)) then
      if (present(g)) then

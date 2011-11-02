@@ -333,7 +333,7 @@
 
    parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))      ! plus potential killer from non-local constitutive
  else
-   call IO_error(101) ! cannot open input file
+   call IO_error(error_ID=101) ! cannot open input file
  endif
  
  FEsolving_execElem = (/1,mesh_NcpElems/)
@@ -1468,7 +1468,7 @@ enddo
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,myPos,1) + 1_pInt 
  else
-   call IO_error(42)
+   call IO_error(error_ID=42)
  endif
  
  rewind(myUnit)
@@ -1583,8 +1583,8 @@ enddo
    endif
  enddo
  
-620 if (mesh_Nnodes < 2)  call IO_error(900)
- if (mesh_Nelems == 0) call IO_error(901)
+620 if (mesh_Nnodes < 2)  call IO_error(error_ID=900)
+ if (mesh_Nelems == 0) call IO_error(error_ID=901)
  
  endsubroutine
 
@@ -1664,7 +1664,7 @@ enddo
  enddo
 
 620 continue
- if (mesh_NelemSets == 0) call IO_error(902)
+ if (mesh_NelemSets == 0) call IO_error(error_ID=902)
 
  endsubroutine
 
@@ -1706,7 +1706,7 @@ enddo
      mesh_Nmaterials = mesh_Nmaterials + 1_pInt
  enddo
 
-620 if (mesh_Nmaterials == 0) call IO_error(903)
+620 if (mesh_Nmaterials == 0) call IO_error(error_ID=903)
  
  endsubroutine
 
@@ -1811,7 +1811,7 @@ enddo
    endselect
  enddo
  
-620 if (mesh_NcpElems == 0) call IO_error(906)
+620 if (mesh_NcpElems == 0) call IO_error(error_ID=906)
 
  endsubroutine
 
@@ -1899,7 +1899,7 @@ enddo
 640 do i = 1,elemSet
 !   write(6,*)'elemSetName: ',mesh_nameElemSet(i)
 !   write(6,*)'elems in Elset',mesh_mapElemSet(:,i)
-   if (mesh_mapElemSet(1,i) == 0) call IO_error(ID=904,ext_msg=mesh_nameElemSet(i))
+   if (mesh_mapElemSet(1,i) == 0) call IO_error(error_ID=904,ext_msg=mesh_nameElemSet(i))
  enddo
 
  endsubroutine
@@ -1961,11 +1961,11 @@ enddo
    endif
  enddo
 
-620 if (count==0) call IO_error(905)
+620 if (count==0) call IO_error(error_ID=905)
  do i=1,count
 !   write(6,*)'name of materials: ',i,mesh_nameMaterial(i)
 !   write(6,*)'name of elemSets:  ',i,mesh_mapMaterial(i)
-   if (mesh_nameMaterial(i)=='' .or. mesh_mapMaterial(i)=='') call IO_error(905)
+   if (mesh_nameMaterial(i)=='' .or. mesh_mapMaterial(i)=='') call IO_error(error_ID=905)
  enddo
 
  endsubroutine
@@ -2097,7 +2097,7 @@ enddo
 
 650 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
 
- if (size(mesh_mapFEtoCPnode) == 0) call IO_error(908)
+ if (size(mesh_mapFEtoCPnode) == 0) call IO_error(error_ID=908)
 
  endsubroutine
 
@@ -2227,7 +2227,7 @@ enddo
 
 660 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))             ! should be mesh_NcpElems
 
- if (size(mesh_mapFEtoCPelem) < 2) call IO_error(907)
+ if (size(mesh_mapFEtoCPelem) < 2) call IO_error(error_ID=907)
 
  endsubroutine
 
@@ -2347,7 +2347,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
          IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
      ) then
      t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'type'))  ! remember elem type
-     if (t==0) call IO_error(ID=910,ext_msg='mesh_abaqus_count_cpSizes')
+     if (t==0) call IO_error(error_ID=910,ext_msg='mesh_abaqus_count_cpSizes')
      count = IO_countDataLines(myUnit)
      do i = 1,count
        backspace(myUnit)
@@ -2410,7 +2410,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  if (keyword(1:4) == 'head') then 
    headerLength = IO_intValue(line,myPos,1) + 1_pInt
  else
-   call IO_error(42)
+   call IO_error(error_ID=42)
  endif
  
  rewind(myUnit)
@@ -2449,9 +2449,9 @@ subroutine mesh_marc_count_cpSizes (myUnit)
 
 ! --- sanity checks ---
 
- if ((.not. gotDimension) .or. (.not. gotResolution)) call IO_error(42)
- if ((a < 1) .or. (b < 1) .or. (c < 0)) call IO_error(43)           ! 1_pInt is already added
- if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(44)
+ if ((.not. gotDimension) .or. (.not. gotResolution)) call IO_error(error_ID=42)
+ if ((a < 1) .or. (b < 1) .or. (c < 0)) call IO_error(error_ID=43)           ! 1_pInt is already added
+ if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(error_ID=44)
  
  forall (n = 0:mesh_Nnodes-1)
    mesh_node0(1,n+1) = x * dble(mod(n,a)     / (a-1.0_pReal))
@@ -2561,7 +2561,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
    endif
  enddo
 
-670 if (size(mesh_node0,2) /= mesh_Nnodes) call IO_error(909)
+670 if (size(mesh_node0,2) /= mesh_Nnodes) call IO_error(error_ID=909)
  mesh_node = mesh_node0
 
  endsubroutine
@@ -2597,7 +2597,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,myPos,1) + 1_pInt
  else
-   call IO_error(42)
+   call IO_error(error_ID=42)
  endif
  
  rewind(myUnit)
@@ -2774,7 +2774,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
          IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
      ) then
      t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'type'))  ! remember elem type
-     if (t==0) call IO_error(ID=910,ext_msg='mesh_abaqus_build_elements')
+     if (t==0) call IO_error(error_ID=910,ext_msg='mesh_abaqus_build_elements')
      count = IO_countDataLines(myUnit)
      do i = 1,count
        backspace(myUnit)
@@ -3331,13 +3331,13 @@ character(len=64) fmt
 
 integer(pInt) i,e,n,f,t
 
-if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(110) ! no homogenization specified
-if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(120) ! no microstructure specified
+if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=110) ! no homogenization specified
+if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=120) ! no microstructure specified
  
 allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
 do e = 1,mesh_NcpElems
-  if (mesh_element(3,e) < 1_pInt) call IO_error(110,e) ! no homogenization specified
-  if (mesh_element(4,e) < 1_pInt) call IO_error(120,e) ! no microstructure specified
+  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=110,e=e) ! no homogenization specified
+  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=120,e=e) ! no microstructure specified
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1 ! count combinations of homogenization and microstructure
 enddo

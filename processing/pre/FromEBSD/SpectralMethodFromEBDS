@@ -37,6 +37,6 @@ for line in file_in:
 dimY = float(re.findall('\S*',str(line))[8])
 dimZ = min(dimX/resX,dimY/resY)
 file_out3 = open(sys.argv[1]+'.geom','w')
-file_out3.write('resolution x '+str(resX)+' y '+str(resY)+' z 1 \ndimension a '+str(dimX)+' b '+str(dimY)+' c '+str(dimZ)+'\nhomogenization 1\n')
+file_out3.write('resolution a '+str(resX)+' b '+str(resY)+' c 1 \ndimension x '+str(dimX)+' y '+str(dimY)+' z '+str(dimZ)+'\nhomogenization 1\n')
 for x in xrange(resX*resY):
   file_out3.write(str(x+1)+'\n')

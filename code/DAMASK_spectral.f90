@@ -84,7 +84,8 @@ program DAMASK_spectral
  logical, dimension(:), allocatable ::          bc_followFormerTrajectory,& ! follow trajectory of former loadcase
                                                 bc_velGradApplied           ! decide wether velocity gradient or fdot is given 
  logical, dimension(:,:,:,:), allocatable ::    bc_mask                     ! mask of boundary conditions
- logical, dimension(:,:,:), allocatable ::      bc_maskvector               ! linear mask of boundary conditions                  
+ logical, dimension(:,:,:), allocatable ::      bc_maskvector               ! linear mask of boundary conditions    
+ character(len=3) ::                            loadcase_string
 
 ! variables storing information from geom file
  real(pReal) :: wgt
@@ -152,7 +153,7 @@ program DAMASK_spectral
  resolution = 1_pInt
  geomdimension = 0.0_pReal
  
- if (command_argument_count() /= 4) call IO_error(102)         ! check for correct number of given arguments
+ if (command_argument_count() /= 4) call IO_error(error_ID=102)         ! check for correct number of given arguments
 
 ! Reading the loadcase file and allocate variables
  path = getLoadcaseName()
@@ -162,7 +163,7 @@ program DAMASK_spectral
  print '(a,a)', 'Solver Job Name:      ',trim(getSolverJobName())
  print '(a)', '******************************************************'
  !$OMP END CRITICAL (write2out)
- if (.not. IO_open_file(myUnit,path)) call IO_error(30,ext_msg = trim(path))
+ if (.not. IO_open_file(myUnit,path)) call IO_error(error_ID=30,ext_msg = trim(path))
 
  rewind(myUnit)
  do
@@ -185,7 +186,7 @@ program DAMASK_spectral
 
 100 N_Loadcases = N_n
  if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &               ! sanity check
-   call IO_error(37,ext_msg = trim(path))                     ! error message for incomplete loadcase
+   call IO_error(error_ID=37,ext_msg = trim(path))                     ! error message for incomplete loadcase
 
  allocate (bc_deformation(3,3,N_Loadcases));        bc_deformation = 0.0_pReal
  allocate (bc_stress(3,3,N_Loadcases));             bc_stress = 0.0_pReal
@@ -270,7 +271,7 @@ program DAMASK_spectral
  
  path = getModelName()
  if (.not. IO_open_file(myUnit,trim(path)//InputFileExtension))&
-        call IO_error(101,ext_msg = trim(path)//InputFileExtension)
+        call IO_error(error_ID=101,ext_msg = trim(path)//InputFileExtension)
 
  rewind(myUnit)
  read(myUnit,'(a1024)') line
@@ -279,7 +280,7 @@ program DAMASK_spectral
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,posGeom,1) + 1_pInt
  else
-   call IO_error(42)
+   call IO_error(error_ID=42)
  endif
  
  rewind(myUnit)
@@ -319,11 +320,11 @@ program DAMASK_spectral
    end select
  enddo
  close(myUnit)
- if (.not.(gotDimension .and. gotHomogenization .and. gotResolution)) call IO_error(45)
+ if (.not.(gotDimension .and. gotHomogenization .and. gotResolution)) call IO_error(error_ID=45)
  
  if(mod(resolution(1),2_pInt)/=0_pInt .or.&
     mod(resolution(2),2_pInt)/=0_pInt .or.&
-   (mod(resolution(3),2_pInt)/=0_pInt .and. resolution(3)/= 1_pInt))  call IO_error(103)
+   (mod(resolution(3),2_pInt)/=0_pInt .and. resolution(3)/= 1_pInt))  call IO_error(error_ID=103)
 
  allocate (defgrad    (  resolution(1),resolution(2),resolution(3),3,3));  defgrad     = 0.0_pReal
  allocate (defgradold (  resolution(1),resolution(2),resolution(3),3,3));  defgradold  = 0.0_pReal
@@ -350,52 +351,68 @@ program DAMASK_spectral
  print '(a,L)','spectralPictureMode: ',spectralPictureMode
  print '(a)', '******************************************************'
  print '(a,a)','Loadcase File Name:   ',trim(getLoadcaseName())
+ !$OMP END CRITICAL (write2out)
  if (bc_followFormerTrajectory(1)) then
-   call IO_warning(33)                 ! cannot guess along trajectory for first step of first loadcase
+   call IO_warning(warning_ID=33_pInt)                 ! cannot guess along trajectory for first step of first loadcase
    bc_followFormerTrajectory(1) = .false.
  endif
- 
 ! consistency checks and output of loadcase
  do loadcase = 1, N_Loadcases
+   !$OMP CRITICAL (write2out)
    print '(a)', '------------------------------------------------------'
    print '(a,i5)', 'Loadcase:            ', loadcase
+   write (loadcase_string, '(i3)' ) loadcase
    if (.not. bc_followFormerTrajectory(loadcase)) &
      print '(a)', 'Drop Guessing Along Trajectory'
+   !$OMP END CRITICAL (write2out)
    if (any(bc_mask(:,:,1,loadcase) .eqv. bc_mask(1:3,1:3,2,loadcase)))&                ! exclusive or masking only
-     call IO_error(31,loadcase)
-     if (any(bc_mask(1:3,1:3,2,loadcase).and.transpose(bc_mask(1:3,1:3,2,loadcase)).and.& !checking if no rotation is allowed by stress BC
-           reshape((/.false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false./),(/3,3/))))&
-     call IO_error(38,loadcase)
+     call IO_error(error_ID=31,ext_msg=loadcase_string)
+   if (any(bc_mask(1:3,1:3,2,loadcase).and.transpose(bc_mask(1:3,1:3,2,loadcase)).and.& !checking if no rotation is allowed by stress BC
+     reshape((/.false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false./),(/3,3/))))&
+     call IO_error(error_ID=38,ext_msg=loadcase_string)
    if (bc_velGradApplied(loadcase)) then
      do j = 1, 3
        if (any(bc_mask(j,1:3,1,loadcase) .eqv. .true.) .and.&
-           any(bc_mask(j,1:3,1,loadcase) .eqv. .false.)) call IO_error(32,loadcase)     ! each line should be either fully or not at all defined
+           any(bc_mask(j,1:3,1,loadcase) .eqv. .false.)) call IO_error(error_ID=32,ext_msg=loadcase_string)     ! each line should be either fully or not at all defined
      enddo
+     !$OMP CRITICAL (write2out)
      print '(a,/,3(3(f12.6,x)/))','Velocity Gradient:',    merge(math_transpose3x3(bc_deformation(1:3,1:3,loadcase)),&
                                               reshape(spread(DAMASK_NaN,1,9),(/3,3/)),&
                                               transpose(bc_mask(1:3,1:3,1,loadcase)))
+     !$OMP END CRITICAL (write2out)
    else
+     !$OMP CRITICAL (write2out)
      print '(a,/,3(3(f12.6,x)/))','Change of Deformation Gradient:', merge(math_transpose3x3(bc_deformation(1:3,1:3,loadcase)),&
                                              reshape(spread(DAMASK_NaN,1,9),(/3,3/)),&
                                              transpose(bc_mask(1:3,1:3,1,loadcase)))
+     !$OMP END CRITICAL (write2out)
    endif
+   !$OMP CRITICAL (write2out)
    print '(a,/,3(3(f12.6,x)/))','Stress Boundary Condition/MPa:',merge(math_transpose3x3(bc_stress(1:3,1:3,loadcase)),&
                                                  reshape(spread(DAMASK_NaN,1,9),(/3,3/)),&
                                                  transpose(bc_mask(:,:,2,loadcase)))*1e-6
+   !$OMP END CRITICAL (write2out)
    if (any(abs(math_mul33x33(bc_rotation(1:3,1:3,loadcase),math_transpose3x3(bc_rotation(1:3,1:3,loadcase)))-math_I3)&
                >reshape(spread(rotation_tol,1,9),(/3,3/)))&
-               .or. abs(math_det3x3(bc_rotation(1:3,1:3,loadcase)))>1.0_pReal + rotation_tol) call IO_error(46,loadcase)
+               .or. abs(math_det3x3(bc_rotation(1:3,1:3,loadcase)))>1.0_pReal + rotation_tol) call IO_error(error_ID=46,ext_msg=loadcase_string)
+   !$OMP CRITICAL (write2out)
    if (any(bc_rotation(1:3,1:3,loadcase)/=math_I3)) &
                print '(a,/,3(3(f12.6,x)/))','Rotation of BCs:',math_transpose3x3(bc_rotation(1:3,1:3,loadcase))
-   if (bc_timeIncrement(loadcase) < 0.0_pReal) call IO_error(34,loadcase)                 ! negative time increment
+   !$OMP END CRITICAL (write2out)
+   if (bc_timeIncrement(loadcase) < 0.0_pReal) call IO_error(error_ID=34,ext_msg=loadcase_string)                 ! negative time increment
+   !$OMP CRITICAL (write2out)
    print '(a,f12.6)','Temperature: ',bc_temperature(loadcase)
    print '(a,f12.6)','Time:        ',bc_timeIncrement(loadcase)
-   if (bc_steps(loadcase) < 1_pInt) call IO_error(35,loadcase)                            ! non-positive increment count
+   !$OMP END CRITICAL (write2out)
+   if (bc_steps(loadcase) < 1_pInt) call IO_error(error_ID=35,ext_msg=loadcase_string)                            ! non-positive increment count
+   !$OMP CRITICAL (write2out)
    print '(a,i5)','Increments:         ',bc_steps(loadcase)
-   if (bc_frequency(loadcase) < 1_pInt) call IO_error(36,loadcase)                        ! non-positive result frequency
+   !$OMP END CRITICAL (write2out)
+   if (bc_frequency(loadcase) < 1_pInt) call IO_error(error_ID=36,ext_msg=loadcase_string)                        ! non-positive result frequency
+   !$OMP CRITICAL (write2out)
    print '(a,i5)','Freq. of Output:    ',bc_frequency(loadcase)
+   !$OMP END CRITICAL (write2out)
  enddo
- !$OMP END CRITICAL (write2out)
 
  ielem = 0_pInt
  c_current = 0.0_pReal 
@@ -463,7 +480,7 @@ program DAMASK_spectral
 #ifdef _OPENMP
    if(DAMASK_NumThreadsInt>0_pInt) then
      call dfftw_init_threads(ierr)
-     if(ierr == 0_pInt) call IO_error(104,ierr)
+     if(ierr == 0_pInt) call IO_error(error_ID=104)
      call dfftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
    endif
 #endif
@@ -513,9 +530,9 @@ program DAMASK_spectral
  write(538), 'logscale', bc_logscale                                       ! one entry per loadcase (0: linear, 1: log)
  write(538), 'frequencies', bc_frequency                                   ! one entry per loadcase
  write(538), 'times', bc_timeIncrement                                     ! one entry per loadcase
- bc_timeIncrement(1)= bc_timeIncrement(1) + 1_pInt
- write(538), 'increments', bc_timeIncrement                                ! one entry per loadcase
- bc_timeIncrement(1)= bc_timeIncrement(1) - 1_pInt
+ bc_steps(1)= bc_steps(1) + 1_pInt
+ write(538), 'increments', bc_steps                                        ! one entry per loadcase ToDo: rename keyword to steps
+ bc_steps(1)= bc_steps(1) - 1_pInt
  write(538), 'startingIncrement', writtenOutCounter 
  write(538), 'eoh'                                                         ! end of header
  write(538),  materialpoint_results(:,1,:)                                 ! initial (non-deformed) results
@@ -613,7 +630,7 @@ program DAMASK_spectral
                c_reduced(k,j) = c_prev99(n,m)
        endif; enddo; endif; enddo
        call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)               ! invert reduced stiffness
-       if(errmatinv) call IO_error(800)
+       if(errmatinv) call IO_error(error_ID=800)
        s_prev99 = 0.0_pReal                                                             ! build full compliance
        k = 0_pInt
        do n = 1,9
@@ -633,17 +650,21 @@ program DAMASK_spectral
              (err_div     > err_div_tol    .or. &
               err_stress  > err_stress_tol)) 
        iter = iter + 1_pInt
+       !$OMP CRITICAL (write2out)
        print '(A)', '************************************************************'
        print '(3(A,I5.5,tr2)A)', '**** Loadcase = ',loadcase, 'Step = ',step, 'Iteration = ',iter,'****'
        print '(A)', '************************************************************'
+       !$OMP END CRITICAL (write2out)
        workfft = 0.0_pReal                                                            ! needed because of the padding for FFTW
 !*************************************************************
        do n = 1,3; do m = 1,3
          defgrad_av(m,n) = sum(defgrad(:,:,:,m,n)) * wgt
        enddo; enddo
+       !$OMP CRITICAL (write2out)
        print '(a,/,3(3(f12.7,x)/))', 'Deformation Gradient:',math_transpose3x3(defgrad_av)
        
        print '(A,/)', '== Update Stress Field (Constitutive Evaluation P(F)) ======'
+       !$OMP END CRITICAL (write2out)
        ielem = 0_pInt
        do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
          ielem = ielem + 1
@@ -670,8 +691,10 @@ program DAMASK_spectral
        do n = 1,3; do m = 1,3
          pstress_av(m,n) = sum(workfft(1:resolution(1),:,:,m,n)) * wgt
        enddo; enddo
+       
+       !$OMP CRITICAL (write2out)
        print '(a,/,3(3(f12.7,x)/))', 'Piola-Kirchhoff Stress / MPa: ',math_transpose3x3(pstress_av)/1.e6
-
+       
        err_stress_tol = 0.0_pReal
        pstress_av_load = math_rotate_forward3x3(pstress_av,bc_rotation(1:3,1:3,loadcase))
        if(size_reduced > 0_pInt) then                                                                                ! calculate stress BC if applied
@@ -686,6 +709,7 @@ program DAMASK_spectral
          print '(a,x,f12.7,/)'       , 'Determinant of Deformation Aim: ', math_det3x3(defgradAim)
        endif
        print '(A,/)', '== Calculating Equilibrium Using Spectral Method ===========' 
+       !$OMP END CRITICAL (write2out)
        call dfftw_execute_dft_r2c(fftw_plan(1),workfft,workfft)                                                   ! FFT of pstress
  
        p_hat_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(workfft(1,1,1,1:3,1:3),&                       ! L_2 norm of average stress in fourier space,  
@@ -744,8 +768,9 @@ program DAMASK_spectral
        do m = 1,3; do n = 1,3 
          defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim_lab(m,n) - defgrad_av(m,n))  ! anticipated target minus current state
        enddo; enddo
-
+       !$OMP CRITICAL (write2out)
        print '(2(a,E10.5)/)', 'Error Divergence = ',err_div,    ', Tol. = ', err_div_tol
+       !$OMP END CRITICAL (write2out)
        
      enddo    ! end looping when convergency is achieved 
      
@@ -755,19 +780,23 @@ program DAMASK_spectral
        write(538),  materialpoint_results(:,1,:)                                   ! write result to file
        writtenOutCounter = writtenOutCounter + 1_pInt 
      endif
+     !$OMP CRITICAL (write2out)
      if(err_div<=err_div_tol .and. err_stress<=err_stress_tol) then
        print '(2(A,I5.5),A,/)', '== Step = ',step, ' of Loadcase = ',loadcase, ' Converged =============='
      else
        print '(2(A,I5.5),A,/)', '== Step = ',step, ' of Loadcase = ',loadcase, ' NOT Converged =========='
        notConvergedCounter = notConvergedCounter + 1
      endif
+     !$OMP END CRITICAL (write2out)
    enddo  ! end looping over steps in current loadcase
    deallocate(c_reduced)
    deallocate(s_reduced)
    enddo    ! end looping over loadcases
+   !$OMP CRITICAL (write2out)
    print '(A,/)', '############################################################'
    print '(a,i5.5,a)', 'A Total of ', notConvergedCounter, ' Steps did not Converge!'
    print '(a,i5.5,a)', 'A Total of ', writtenOutCounter, ' Steps are written to File!'
+   !$OMP END CRITICAL (write2out)
  close(538)
  call dfftw_destroy_plan(fftw_plan(1)); call dfftw_destroy_plan(fftw_plan(2))
     
