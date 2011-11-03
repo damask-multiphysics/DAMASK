@@ -3,7 +3,7 @@
 import sys,os,pwd,math,re,string,msc_tools
 from optparse import OptionParser
 
-sys.path.append(msc_tools.MSC_TOOLS().library_paths())
+sys.path.append(msc_tools.MSC_TOOLS().library_paths(sys.argv[0],'../../'))
 
 try:
   from py_mentat import *
