@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+
+import os,sys,string,re
+from optparse import OptionParser
+
+validShells = {\
+               'bash':['.bashrc','.bash_profile'],
+               'csh': ['.cshrc']
+              }
+
+parser = OptionParser(usage="%prog [options]", description = """
+Sets up your shell resource to be compatible with DAMASK. 
+""" + string.replace('$Id$','\n','\\n')
+)
+
+parser.add_option("-s","--shell", type="string", 
+                  dest = "shell", \
+                  help = "type of shell, e.g. "+', '.join(validShells.keys())+" [%default]")
+
+parser.set_defaults(shell = 'bash')
+
+
+(options, args) = parser.parse_args()
+
+DamaskRoot = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])),'../'))
+try:                                        # check for MSC.Mentat installation location
+  file = open(os.path.join(DamaskRoot,'lib/pathinfo'))
+  for line in file.readlines():
+    if line.split()[0].lower() == 'acml': ACMLpath = os.path.normpath(line.split()[1])
+  file.close()
+except:
+  ACMLpath = os.path.join(DamaskRoot,'lib/acml-4-4-0/')
+
+theShell = options.shell.lower()
+theHome = os.getenv('USERPROFILE') or os.getenv('HOME')
+
+if theShell == 'bash':
+  for theRC in validShells[theShell]:
+    thePath = os.path.join(theHome,theRC)
+    if os.path.exists(thePath):
+      rc = open(os.path.join(theHome,theRC))
+      content = map(string.strip,rc.readlines())
+      rc.close()
+
+      matched = {'LD_LIB': False, 'PYTHONPATH': False}
+      output = []
+
+      for line in content:
+
+        m = re.search('^(.*?LD_LIBRARY_PATH=)([^;]*)(.*)$',line)
+        if m:
+          newPath = [os.path.join(ACMLpath,'ifort64_mp/lib'),os.path.join(ACMLpath,'ifort64/lib')]
+          for item in m.group(2).split(':'):
+            if 'acml' not in item.lower(): newPath.append(item)
+          line = m.group(1)+':'.join(newPath)+m.group(3)
+          matched['LD_LIB'] = True
+
+        m = re.search('^(.*?PYTHONPATH=)([^;]*)(.*)$',line)
+        if m:
+          newPath = [os.path.join(DamaskRoot,'lib')]
+          for item in m.group(2).split(':'):
+            if os.path.join(DamaskRoot,'lib') != item: newPath.append(item)
+          line = m.group(1)+':'.join(newPath)+m.group(3)
+          matched['PYTHONPATH'] = True
+
+        output.append(line)
+
+      if not matched['LD_LIB']:
+        output.append('export LD_LIBRARY_PATH=%s:%s'%(os.path.join(ACMLpath,'ifort64_mp/lib'),os.path.join(ACMLpath,'ifort64/lib')))
+      if not matched['PYTHONPATH']:
+        output.append('export PYTHONPATH=%s'%(os.path.join(DamaskRoot,'lib')))
+
+      rc = open(os.path.join(theHome,theRC),'w')
+      rc.write('\n'.join(output)+'\n')
+      rc.close()
+
+elif theShell == 'csh':
+  print 'csh not supported yet...'
