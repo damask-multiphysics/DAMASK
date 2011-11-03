@@ -101,7 +101,7 @@ mappings = {
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog [geomfile[s]]', description = """
-Produce VTK rectilinear mesh of texture data from geom description
+Produce VTK rectilinear mesh of structure data from geom description
 
 """ + string.replace('$Id$','\n','\\n')
 )
@@ -158,11 +158,11 @@ for file in files:
   print 'resolution: %s'%(' x '.join(map(str,resolution)))
   print 'dimension:  %s'%(' x '.join(map(str,dimension)))
   
-  data = {'scalar':{'texture':numpy.zeros(resolution,'i')}}
+  data = {'scalar':{'structure':numpy.zeros(resolution,'i')}}
   i = 0
   for line in content:  
     for item in map(int,line.split()):
-      data['scalar']['texture'][i%resolution[0],(i/resolution[0])%resolution[1],i/resolution[0]/resolution[1]] = item
+      data['scalar']['structure'][i%resolution[0],(i/resolution[0])%resolution[1],i/resolution[0]/resolution[1]] = item
       i += 1
 
 
