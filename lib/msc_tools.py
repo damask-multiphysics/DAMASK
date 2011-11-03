@@ -1,5 +1,36 @@
 class MSC_TOOLS():
     import os,string
+
+    releases = { \
+                '2010.2':['linux64',''],
+                '2010':  ['linux64',''],
+                '2008r1':[''],
+                '2007r1':[''],
+                '2005r3':[''],
+               }
+
+    def library_paths(self):
+      import os
+
+      thePath = ''
+      try:                                        # check for MSC.Mentat installation location
+        file = open(os.path.join(os.getenv('DAMASK_ROOT'),'lib/pathinfo'))
+        for line in file.readlines():
+          if line.split()[0] == 'MSC': MSCpath = os.path.normpath(line.split()[1])
+        file.close()
+      except:
+        MSCpath = '/msc'
+      
+      for release,subdirs in sorted(self.releases.items(),reverse=True):
+        for subdir in subdirs:
+          libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
+          if os.path.exists(libPath):
+            thePath = libPath
+            break
+          else:
+            continue
+        break
+      return thePath
     
     def submit_job(self,
                  run_marc_path='/msc/marc2010/tools/',
