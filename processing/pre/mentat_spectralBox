@@ -1,13 +1,8 @@
 #!/usr/bin/env python
 
-import os, sys, math, re, threading, time, string
+import os, sys, math, re, threading, time, string, msc_tools
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-releases = {'2010':['linux64',''],
-            '2008r1':[''],
-            '2007r1':[''],
-            '2005r3':[''],
-           }
 
 # ----------------------- FUNCTIONS ----------------------------
 
@@ -256,27 +251,12 @@ parser.set_defaults(homogenization = 1)
 (options, args) = parser.parse_args()
 
 
-try:
-  file = open('%s/../MSCpath'%os.path.dirname(os.path.realpath(sys.argv[0])))
-  MSCpath = os.path.normpath(file.readline().strip())
-  file.close()
-except:
-  MSCpath = '/msc'
-
-for release,subdirs in sorted(releases.items(),reverse=True):
-  for subdir in subdirs:
-    libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
-    if os.path.exists(libPath):
-      sys.path.append(libPath)
-      break
-    else:
-      continue
-  break
+sys.path.append(msc_tools.MSC_TOOLS().library_paths())
 
 try:
   from py_mentat import *
 except:
-  print('no valid Mentat release found in %s'%MSCpath)
+  print('no valid Mentat release found')
   if options.port != None: sys.exit(-1)
 
 if not os.path.isfile(args[0]):
