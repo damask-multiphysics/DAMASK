@@ -136,9 +136,9 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
 # read segments
   segment = 0
   connectivityXY = {"0": {"0":[],"%g"%dY:[],},\
-          "%g"%dX: {"0":[],"%g"%dY:[],},}
+                    "%g"%dX: {"0":[],"%g"%dY:[],},}
   connectivityYX = {"0": {"0":[],"%g"%dX:[],},\
-          "%g"%dY: {"0":[],"%g"%dX:[],},}
+                    "%g"%dY: {"0":[],"%g"%dX:[],},}
   grainNeighbors = []
   
   for line in content:
@@ -175,13 +175,13 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
             y[i] = dY
           keyX = "%g"%x[i]
           keyY = "%g"%y[i]
-          if keyX not in connectivityXY: # create new hash entry for so far unknown point
+          if keyX not in connectivityXY:                      # create new hash entry for so far unknown point
             connectivityXY[keyX] = {}
-          if keyY not in connectivityXY[keyX]: # create new hash entry for so far unknown point
+          if keyY not in connectivityXY[keyX]:                # create new hash entry for so far unknown point
             connectivityXY[keyX][keyY] = []
-          if keyY not in connectivityYX: # create new hash entry for so far unknown point
+          if keyY not in connectivityYX:                      # create new hash entry for so far unknown point
             connectivityYX[keyY] = {}
-          if keyX not in connectivityYX[keyY]: # create new hash entry for so far unknown point
+          if keyX not in connectivityYX[keyY]:                # create new hash entry for so far unknown point
             connectivityYX[keyY][keyX] = []
         connectivityXY[keyX][keyY].append(segment)
         connectivityYX[keyY][keyX].append(segment)
@@ -991,4 +991,3 @@ if 'mentat' in options.output or 'spectral' in options.output:
   configFile = open(myName+'.config','w')
   configFile.write(output)
   configFile.close()
-
