@@ -9,11 +9,11 @@ class MSC_TOOLS():
                 '2005r3':[''],
                }
 
-    def library_paths(self,callerPath=None,libRelation=''):
+    def library_paths(self,callerPath='',libRelation=''):
       import os
 
-      if callerPath: DamaskRoot = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(callerPath)),libRelation))
-      else:          DamaskRoot = os.getenv('DAMASK_ROOT')
+      if os.getenv('DAMASK_ROOT'): DamaskRoot = os.getenv('DAMASK_ROOT')
+      else:                        DamaskRoot = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(callerPath)),libRelation))
 
       thePath = ''
       try:                                        # check for MSC.Mentat installation location
