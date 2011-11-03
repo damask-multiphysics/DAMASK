@@ -92,7 +92,7 @@ subroutine CPFEM_initAll(Temperature,element,IP)
       call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
       call homogenization_init(Temperature)
       call CPFEM_init()
-      call DAMASK_interface_init()
+      if (trim(FEsolver)/='Spectral') call DAMASK_interface_init() ! Spectral solver is doing initialization earlier
       CPFEM_init_done = .true.
       CPFEM_init_inProgress = .false.
     else                                                                ! loser, loser...

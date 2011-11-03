@@ -22,10 +22,14 @@
 
 MODULE DAMASK_interface
  use prec, only: pInt, pReal
+ implicit none
+
  character(len=64), parameter :: FEsolver = 'Spectral'
  character(len=5),  parameter :: InputFileExtension = '.geom'
  character(len=4),  parameter :: LogFileExtension = '.log'    !until now, we don't have a log file. But IO.f90 requires it
-
+ logical :: restart_Write_Interface, restart_Read_Interface
+ character(len=1024) :: geometryParameter,loadcaseParameter
+ integer(pInt) :: restartParameter
 CONTAINS
 
 !********************************************************************
@@ -34,10 +38,87 @@ CONTAINS
 !********************************************************************
 subroutine DAMASK_interface_init()
 
+ implicit none
+
+ character(len=1024) commandLine
+ integer(pInt):: i, start, length
+
+ start = 0_pInt
+ length= 0_pInt
+ restart_Write_Interface =.true.
+ restart_Read_Interface = .false.
+
+ call get_command(commandLine)
+
+ do i=1,len(commandLine)                                           ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+ enddo
+ start = index(commandLine,'-g',.true.) + 3_pInt                   ! search for '-g' and jump to first char of geometry
+ if (index(commandLine,'--geom',.true.)>0) then                    ! if '--geom' is found, use that (contains '-g')
+   start = index(commandLine,'--geom',.true.) + 7_pInt
+ endif               
+ if (index(commandLine,'--geometry',.true.)>0) then                ! again, now searching for --geometry'
+   start = index(commandLine,'--geometry',.true.) + 11_pInt
+ endif
+ if(start==3_pInt) stop 'No Geometry specified, terminating DAMASK'! Could not find valid keyword. Functions from IO.f90 are not available
+ length = index(commandLine(start:len(commandLine)),' ',.false.)
+
+ call get_command(commandLine)                                     ! may contain capitals
+ geometryParameter = ''                                            ! should be empty
+ geometryParameter(1:length)=commandLine(start:start+length)
+ 
+ call get_command(commandLine)
+ do i=1,len(commandLine)                                           ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+ enddo
+ 
+ start = index(commandLine,'-l',.true.) + 3_pInt                   ! search for '-l' and jump forward to given name
+ if (index(commandLine,'--load',.true.)>0) then                    ! if '--load' is found, use that (contains '-l')
+   start = index(commandLine,'--load',.true.) + 7_pInt
+ endif               
+ if (index(commandLine,'--loadcase',.true.)>0) then                ! again, now searching for --loadcase'
+   start = index(commandLine,'--loadcase',.true.) + 11_pInt
+ endif
+ if(start==3_pInt) stop 'No Loadcase specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
+ length = index(commandLine(start:len(commandLine)),' ',.false.)
+ 
+ call get_command(commandLine)                                     ! may contain capitals
+ loadcaseParameter = ''                                            ! should be empty
+ loadcaseParameter(1:length)=commandLine(start:start+length)
+
+ do i=1,len(commandLine)                                           ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+ enddo
+ 
+ start = index(commandLine,'-r',.true.) + 3_pInt                   ! search for '-r' and jump forward to given name
+ if (index(commandLine,'--restart',.true.)>0) then                 ! if '--restart' is found, use that (contains '-r')
+   start = index(commandLine,'--restart',.true.) + 10_pInt
+ endif               
+ length = index(commandLine(start:len(commandLine)),' ',.false.)
+
+ if(start/=3_pInt) then
+   read(commandLine(start:start+length),'(I)') restartParameter
+   if (restartParameter>0) then
+      restart_Read_Interface = .true.
+   else
+     restart_Write_Interface =.false.
+   endif
+ endif
+ !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
+ write(6,*) 'Geometry Parameter: ', trim(geometryParameter)
+ write(6,*) 'Loadcase Parameter: ', trim(loadcaseParameter)
+ write(6,*) 'Restart Write: ', restart_Write_Interface
+ if (restart_Read_Interface) then
+   write(6,*) 'Restart Read: ', restartParameter
+ else 
+   write(6,'(a,I5)') 'Restart Read at Step: ', restart_Read_Interface
+ endif
+ write(6,*)
+ !$OMP END CRITICAL (write2out)
 
 endsubroutine DAMASK_interface_init
 
@@ -50,34 +131,14 @@ function getSolverWorkingDirectoryName()
  use prec, only: pInt
  implicit none
 
- character(len=1024) cwd,commandLine,outName,getSolverWorkingDirectoryName
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
- integer(pInt):: i, start, length
- 
- call get_command(commandLine)
- do i=1,len(commandLine)                                           ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
- enddo
- 
- start = index(commandLine,'-g',.true.) + 3_pInt                   ! search for '-g' and jump to first char of geometry
- if (index(commandLine,'--geom',.true.)>0) then                    ! if '--geom' is found, use that (contains '-g')
-   start = index(commandLine,'--geom',.true.) + 7_pInt
- endif               
- if (index(commandLine,'--geometry',.true.)>0) then                ! again, now searching for --geometry'
-   start = index(commandLine,'--geometry',.true.) + 11_pInt
- endif
- if(start==3_pInt) stop 'No Geometry Specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
- length = index(commandLine(start:len(commandLine)),' ',.false.)
+ character(len=1024) cwd,getSolverWorkingDirectoryName
+ character(len=*), parameter :: pathSep = achar(47) //achar(92)              !forwardslash, backwardslash
 
- call get_command(commandLine)                                     ! may contain capitals
- outName = ' '                                                     ! should be empty
- outName(1:length)=commandLine(start:start+length)
- 
- if (scan(outName,pathSep) == 1) then                              ! absolute path given as command line argument
-   getSolverWorkingDirectoryName = outName(1:scan(outName,pathSep,back=.true.))
+ if (scan(geometryParameter,pathSep) == 1) then                              ! absolute path given as command line argument
+   getSolverWorkingDirectoryName = geometryParameter(1:scan(geometryParameter,pathSep,back=.true.))
  else
    call getcwd(cwd)
-   getSolverWorkingDirectoryName = trim(cwd)//'/'//outName(1:scan(outName,pathSep,back=.true.))
+   getSolverWorkingDirectoryName = trim(cwd)//'/'//geometryParameter(1:scan(geometryParameter,pathSep,back=.true.))
  endif
 
  getSolverWorkingDirectoryName = rectifyPath(getSolverWorkingDirectoryName)
@@ -91,6 +152,7 @@ endfunction getSolverWorkingDirectoryName
 function getSolverJobName()
 
  implicit none
+
  character(1024) :: getSolverJobName
 
  getSolverJobName = trim(getModelName())//'_'//trim(getLoadCase())
@@ -107,34 +169,15 @@ function getModelName()
 
  implicit none
 
- character(1024) getModelName, outName, cwd, commandLine
+ character(1024) getModelName, cwd
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
- integer(pInt) :: i,posExt,posSep,start,length
+ integer(pInt) :: posExt,posSep
  
- call get_command(commandLine)
- do i=1,len(commandLine)                                           ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
- enddo
- 
- start = index(commandLine,'-g',.true.) + 3_pInt                   ! search for '-g' and jump to first char of geometry
- if (index(commandLine,'--geom',.true.)>0) then                    ! if '--geom' is found, use that (contains '-g')
-   start = index(commandLine,'--geom',.true.) + 7_pInt
- endif               
- if (index(commandLine,'--geometry',.true.)>0) then                ! again, now searching for --geometry'
-   start = index(commandLine,'--geometry',.true.) + 11_pInt
- endif
- if(start==3_pInt) stop 'No Geometry Specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
- length = index(commandLine(start:len(commandLine)),' ',.false.)
- 
- call get_command(commandLine)                                     ! may contain capitals
- getModelName = ' '
- outName = ' '                                                     ! should be empty
- outName(1:length)=commandLine(start:start+length)
- posExt = scan(outName,'.',back=.true.)
- posSep = scan(outName,pathSep,back=.true.)
+ posExt = scan(geometryParameter,'.',back=.true.)
+ posSep = scan(geometryParameter,pathSep,back=.true.)
 
- if (posExt <= posSep) posExt = len_trim(outName)+1       ! no extension present
- getModelName = outName(1:posExt-1)                       ! path to geometry file (excl. extension)
+ if (posExt <= posSep) posExt = len_trim(geometryParameter)+1       ! no extension present
+ getModelName = geometryParameter(1:posExt-1)                       ! path to geometry file (excl. extension)
 
  if (scan(getModelName,pathSep) /= 1) then                ! relative path given as command line argument
    call getcwd(cwd)
@@ -158,34 +201,15 @@ function getLoadCase()
 
  implicit none
 
- character(1024) getLoadCase, outName, commandLine
+ character(1024) getLoadCase
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
- integer(pInt) posExt,posSep,i,start,length
+ integer(pInt) posExt,posSep
 
- call get_command(commandLine)
- do i=1,len(commandLine)                                           ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
- enddo
- 
- start = index(commandLine,'-l',.true.) + 3_pInt                   ! search for '-l' and jump forward to given name
- if (index(commandLine,'--load',.true.)>0) then                    ! if '--load' is found, use that (contains '-l')
-   start = index(commandLine,'--load',.true.) + 7_pInt
- endif               
- if (index(commandLine,'--loadcase',.true.)>0) then                ! again, now searching for --loadcase'
-   start = index(commandLine,'--loadcase',.true.) + 11_pInt
- endif
- if(start==3_pInt) stop 'No Loadcase  Specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
- length = index(commandLine(start:len(commandLine)),' ',.false.)
- 
- call get_command(commandLine)                                     ! may contain capitals
- getLoadCase = ''
- outName = ' '                                                     ! should be empty
- outName(1:length)=commandLine(start:start+length)
- posExt = scan(outName,'.',back=.true.)
- posSep = scan(outName,pathSep,back=.true.)
+ posExt = scan(loadcaseParameter,'.',back=.true.)
+ posSep = scan(loadcaseParameter,pathSep,back=.true.)
 
- if (posExt <= posSep) posExt = len_trim(outName)+1                ! no extension present
- getLoadCase = outName(posSep+1:posExt-1)                          ! name of load case file exluding extension
+ if (posExt <= posSep) posExt = len_trim(loadcaseParameter)+1                ! no extension present
+ getLoadCase = loadcaseParameter(posSep+1:posExt-1)                          ! name of load case file exluding extension
 
 endfunction getLoadCase
 
@@ -200,30 +224,12 @@ function getLoadcaseName()
 
  implicit none
 
- character(len=1024) getLoadcaseName, cwd, commandLine
+ character(len=1024) getLoadcaseName,cwd
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forwardslash, backwardslash
- integer(pInt) posExt,posSep,i,start,length
- posExt = 0
+ integer(pInt) posExt,posSep
+ posExt = 0_pInt
 
- call get_command(commandLine)
- do i=1,len(commandLine)                                           ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
- enddo
- 
- start = index(commandLine,'-l',.true.) + 3_pInt                   ! search for '-l' and jump forward to given name
- if (index(commandLine,'--load',.true.)>0) then                    ! if '--load' is found, use that (contains '-l')
-   start = index(commandLine,'--load',.true.) + 7_pInt
- endif               
- if (index(commandLine,'--loadcase',.true.)>0) then                ! again, now searching for --loadcase'
-   start = index(commandLine,'--loadcase',.true.) + 11_pInt
- endif
- if(start==3_pInt) stop 'No Loadcase  Specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
- length = index(commandLine(start:len(commandLine)),' ',.false.)
-
- call get_command(commandLine)                                     ! may contain capitals
- getLoadCaseName = ' '
- getLoadCaseName(1:length)=commandLine(start:start+length)
-
+ getLoadcaseName = loadcaseParameter
  posExt = scan(getLoadcaseName,'.',back=.true.)
  posSep = scan(getLoadcaseName,pathSep,back=.true.)
 

@@ -19,8 +19,8 @@
 # OPENMP = TRUE (FALSE): OpenMP multiprocessor support
 # ACMLPATH =/opt/acml4.4.0/ifort64/lib (...) Path to ACML Library, choose according to your system
 # ACMLPATH =/opt/acml4.4.0/ifort64_mp/lib (...) Path to ACML Library with multicore support, choose according to your system
-# FFTWOPTIONS =include/libfftw3.a include/libfftw3_threads.a -lpthread (...) Path to FFTW library files with Linux threads (multicore) support
-# FFTWOPTIONS =include/libfftw3.a (...) Path to FFTW library files without Linux threads (multicore) support
+# FFTWOPTIONS =./../lib/libfftw3.a include/libfftw3_threads.a -lpthread (...) Path to FFTW library files with Linux threads (multicore) support
+# FFTWOPTIONS =./../lib/libfftw3.a (...) Path to FFTW library files without Linux threads (multicore) support
 # FFTWOPTIONS is different for single and double precision. Choose the options to use OpenMP instead of pthreads support or change the directory
 # PREFIX: specify an arbitrary prefix
 # SUFFIX: specify an arbitrary suffix
@@ -75,9 +75,9 @@ ACMLPATH =/opt/acml4.4.0/ifort64_mp/lib
 endif
 ifndef FFTWOPTIONS
 ifeq ($(PRECISION),single)
-FFTWOPTIONS =include/libfftw3f_threads.a include/libfftw3f.a -lpthread
+FFTWOPTIONS =./../lib/libfftw3f_threads.a ./../lib/libfftw3f.a -lpthread
 else
-FFTWOPTIONS =include/libfftw3_threads.a include/libfftw3.a -lpthread
+FFTWOPTIONS =./../lib/libfftw3_threads.a ./../lib/libfftw3.a -lpthread
 endif
 endif
 BLAS_ifort =-L $(ACMLPATH) -lacml_mp
@@ -88,9 +88,9 @@ ACMLPATH =/opt/acml4.4.0/ifort64/lib
 endif
 ifndef FFTWOPTIONS
 ifeq ($(PRECISION),single)
-FFTWOPTIONS =include/libfftw3f.a
+FFTWOPTIONS =./../lib/libfftw3f.a
 else
-FFTWOPTIONS =include/libfftw3.a
+FFTWOPTIONS =./../lib/libfftw3.a
 endif
 endif
 BLAS_ifort =-L $(ACMLPATH) -lacml

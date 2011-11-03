@@ -1171,7 +1171,7 @@ endfunction
  case (101)
    msg = 'opening input file'
  case (102)
-   msg = 'DAMASK_spectral misses arguments'
+   msg = 'DAMASK_spectral has wrong number of arguments'
  case (103)
    msg = 'odd resolution given'
  case (104)

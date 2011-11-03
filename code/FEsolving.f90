@@ -48,7 +48,7 @@
  
  use prec, only: pInt
  use debug, only: debug_verbosity
- use DAMASK_interface, only: getModelName, FEsolver
+ use DAMASK_interface
  use IO
  implicit none
  
@@ -60,41 +60,43 @@
  character(len=1024) line
 
  FEmodelGeometry = getModelName()
-
  if (IO_open_inputFile(fileunit,FEmodelGeometry)) then
- 
-   rewind(fileunit)
-   do
-     read (fileunit,'(a1024)',END=100) line
-     positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
-     select case(tag)
-       case ('solver')
-         read (fileunit,'(a1024)',END=100) line  ! next line
-         positions = IO_stringPos(line,maxNchunks)
-         symmetricSolver = (IO_intValue(line,positions,2) /= 1_pInt)
-       case ('restart')
-         read (fileunit,'(a1024)',END=100) line  ! next line
-         positions = IO_stringPos(line,maxNchunks)
-         restartWrite = iand(IO_intValue(line,positions,1),1_pInt) > 0_pInt
-         restartRead  = iand(IO_intValue(line,positions,1),2_pInt) > 0_pInt
-       case ('*restart')
-         do i=2,positions(1)
-           restartWrite = (IO_lc(IO_StringValue(line,positions,i)) == 'write') .or. restartWrite
-           restartRead  = (IO_lc(IO_StringValue(line,positions,i)) == 'read')  .or. restartRead
-         enddo
-         if(restartWrite) then
+   if(trim(FEsolver)=='Spectral') then
+     restartWrite = restart_Write_Interface
+     restartRead  = restart_Read_Interface
+   else
+     rewind(fileunit)
+     do
+       read (fileunit,'(a1024)',END=100) line
+       positions = IO_stringPos(line,maxNchunks)
+       tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+       select case(tag)
+         case ('solver')
+           read (fileunit,'(a1024)',END=100) line  ! next line
+           positions = IO_stringPos(line,maxNchunks)
+           symmetricSolver = (IO_intValue(line,positions,2) /= 1_pInt)
+         case ('restart')
+           read (fileunit,'(a1024)',END=100) line  ! next line
+           positions = IO_stringPos(line,maxNchunks)
+           restartWrite = iand(IO_intValue(line,positions,1),1_pInt) > 0_pInt
+           restartRead  = iand(IO_intValue(line,positions,1),2_pInt) > 0_pInt
+         case ('*restart')
            do i=2,positions(1)
-             restartWrite = (IO_lc(IO_StringValue(line,positions,i)) /= 'frequency=0') .and. restartWrite
+             restartWrite = (IO_lc(IO_StringValue(line,positions,i)) == 'write') .or. restartWrite
+             restartRead  = (IO_lc(IO_StringValue(line,positions,i)) == 'read')  .or. restartRead
            enddo
-         endif
-     end select
-   enddo
+           if(restartWrite) then
+             do i=2,positions(1)
+               restartWrite = (IO_lc(IO_StringValue(line,positions,i)) /= 'frequency=0') .and. restartWrite
+             enddo
+           endif
+       end select
+     enddo
+   endif
  else
    call IO_error(101) ! cannot open input file
  endif
-
-100 close(fileunit)
+ 100 close(fileunit)
  
  if (restartRead) then
    if(FEsolver == 'Marc' .and. IO_open_logFile(fileunit)) then

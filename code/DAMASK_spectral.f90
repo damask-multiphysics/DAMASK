@@ -1,7 +1,7 @@
 ! Copyright 2011 Max-Planck-Institut fuer Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Duesseldorf Advanced MAterial Simulation Kit.
+! the Duesseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -128,49 +128,41 @@ program DAMASK_spectral
  complex(pReal), dimension(3,3) ::                      temp33_Complex
  real(pReal), dimension(3,3) ::                         temp33_Real
  integer(pInt) :: i, j, k, l, m, n, p
- integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode, ierr, notConvergedCounter, writtenOutCounter
+ integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode, ierr, notConvergedCounter, totalStepsCounter
  logical errmatinv
 
 !Initializing
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)         ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
-
- print*, ''
- print*, '<<<+-  DAMASK_spectral init  -+>>>'
- print*, '$Id$'
- print*, ''
+ if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) call IO_error(error_ID=102)   ! check for correct number of given arguments
  
- myUnit = 234_pInt
+ call DAMASK_interface_init()
+ 
+ !$OMP CRITICAL (write2out)
+ print '(a)', ''
+ print '(a,a)', '<<<+-  DAMASK_spectral init  -+>>>'
+ print '(a,a)', '$Id$'
+ print '(a)', ''
+ print '(a,a)', 'Working Directory:    ',trim(getSolverWorkingDirectoryName())
+ print '(a,a)', 'Solver Job Name:      ',trim(getSolverJobName())
+ print '(a)', ''
+ !$OMP END CRITICAL (write2out)
 
+! Reading the loadcase file and allocate variables
+ myUnit = 234_pInt
+ path = getLoadcaseName()
+ if (.not. IO_open_file(myUnit,path)) call IO_error(error_ID=30,ext_msg = trim(path))
+ 
  N_l = 0_pInt
  N_Fdot = 0_pInt
  N_t = 0_pInt
  N_n = 0_pInt
- 
- time = 0.0_pReal
-
- notConvergedCounter = 0_pInt
- writtenOutCounter = 0_pInt
- resolution = 1_pInt
- geomdimension = 0.0_pReal
- 
- if (command_argument_count() /= 4) call IO_error(error_ID=102)         ! check for correct number of given arguments
-
-! Reading the loadcase file and allocate variables
- path = getLoadcaseName()
- !$OMP CRITICAL (write2out)
- print '(a)', '******************************************************'
- print '(a,a)', 'Working Directory:    ',trim(getSolverWorkingDirectoryName())
- print '(a,a)', 'Solver Job Name:      ',trim(getSolverJobName())
- print '(a)', '******************************************************'
- !$OMP END CRITICAL (write2out)
- if (.not. IO_open_file(myUnit,path)) call IO_error(error_ID=30,ext_msg = trim(path))
 
  rewind(myUnit)
  do
    read(myUnit,'(a1024)',END = 100) line
-   if (IO_isBlank(line)) cycle                                ! skip empty lines
+   if (IO_isBlank(line)) cycle                                         ! skip empty lines
    posLoadcase = IO_stringPos(line,maxNchunksLoadcase)
-   do i = 1, maxNchunksLoadcase, 1                            ! reading compulsory parameters for loadcase
+   do i = 1, maxNchunksLoadcase, 1                                     ! reading compulsory parameters for loadcase
        select case (IO_lc(IO_stringValue(line,posLoadcase,i)))
             case('l', 'velocitygrad', 'velgrad','velocitygradient')
                  N_l = N_l+1
@@ -181,11 +173,11 @@ program DAMASK_spectral
             case('n', 'incs', 'increments', 'steps', 'logincs', 'logsteps')
                  N_n = N_n+1
         end select
-   enddo                                                      ! count all identifiers to allocate memory and do sanity check
+   enddo                                                               ! count all identifiers to allocate memory and do sanity check
  enddo
 
 100 N_Loadcases = N_n
- if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &               ! sanity check
+ if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &                        ! sanity check
    call IO_error(error_ID=37,ext_msg = trim(path))                     ! error message for incomplete loadcase
 
  allocate (bc_deformation(3,3,N_Loadcases));        bc_deformation = 0.0_pReal
@@ -221,7 +213,7 @@ program DAMASK_spectral
          enddo
          bc_mask(:,:,1,loadcase) = transpose(reshape(bc_maskvector(1:9,1,loadcase),(/3,3/)))
          bc_deformation(:,:,loadcase) = math_plain9to33(valueVector)
-       case('s', 'stress', 'pk1', 'piolakirchhoff')
+       case('p', 'pk1', 'piolakirchhoff', 'stress')
          valueVector = 0.0_pReal
          forall (k = 1:9) bc_maskvector(k,2,loadcase) = IO_stringValue(line,posLoadcase,j+k) /= '*'
          do k = 1,9
@@ -268,6 +260,8 @@ program DAMASK_spectral
  gotDimension =.false.
  gotHomogenization = .false.
  spectralPictureMode = .false.
+ resolution = 1_pInt
+ geomdimension = 0.0_pReal
  
  path = getModelName()
  if (.not. IO_open_file(myUnit,trim(path)//InputFileExtension))&
@@ -342,6 +336,11 @@ program DAMASK_spectral
  
  !Output of geom file
  !$OMP CRITICAL (write2out)
+ print '(a)', ''
+ print '(a)', '******************************************************'
+ print '(a)', 'DAMASK spectral:'
+ print '(a)', 'The spectral method boundary value problem solver for'
+ print '(a)', 'the Duesseldorf Advanced Material Simulation Kit'
  print '(a)', '******************************************************'
  print '(a,a)', 'Geom File Name:       ',trim(path)//'.geom'
  print '(a)', '------------------------------------------------------'
@@ -533,12 +532,15 @@ program DAMASK_spectral
  bc_steps(1)= bc_steps(1) + 1_pInt
  write(538), 'increments', bc_steps                                        ! one entry per loadcase ToDo: rename keyword to steps
  bc_steps(1)= bc_steps(1) - 1_pInt
- write(538), 'startingIncrement', writtenOutCounter 
+ write(538), 'startingIncrement', totalStepsCounter 
  write(538), 'eoh'                                                         ! end of header
  write(538),  materialpoint_results(:,1,:)                                 ! initial (non-deformed) results
 !$OMP END CRITICAL (write2out)
 ! Initialization done
-
+  
+ time = 0.0_pReal
+ notConvergedCounter = 0_pInt
+ totalStepsCounter = 1_pInt
 !*************************************************************
 ! Loop over loadcases defined in the loadcase file
  do loadcase = 1, N_Loadcases
@@ -778,13 +780,13 @@ program DAMASK_spectral
      !ToDo: Incfluence for next loadcase
      if (mod(step,bc_frequency(loadcase)) == 0_pInt) then                          ! at output frequency
        write(538),  materialpoint_results(:,1,:)                                   ! write result to file
-       writtenOutCounter = writtenOutCounter + 1_pInt 
      endif
+     totalStepsCounter = totalStepsCounter + 1_pInt
      !$OMP CRITICAL (write2out)
      if(err_div<=err_div_tol .and. err_stress<=err_stress_tol) then
-       print '(2(A,I5.5),A,/)', '== Step = ',step, ' of Loadcase = ',loadcase, ' Converged =============='
+       print '(3(A,I5.5),A,/)', '== Step ',step, ' of Loadcase ',loadcase,' (Total ', totalStepsCounter,') Converged ====='
      else
-       print '(2(A,I5.5),A,/)', '== Step = ',step, ' of Loadcase = ',loadcase, ' NOT Converged =========='
+       print '(3(A,I5.5),A,/)', '== Step ',step, ' of Loadcase ',loadcase,' (Total ', totalStepsCounter,') NOT Converged ='
        notConvergedCounter = notConvergedCounter + 1
      endif
      !$OMP END CRITICAL (write2out)
@@ -794,8 +796,7 @@ program DAMASK_spectral
    enddo    ! end looping over loadcases
    !$OMP CRITICAL (write2out)
    print '(A,/)', '############################################################'
-   print '(a,i5.5,a)', 'A Total of ', notConvergedCounter, ' Steps did not Converge!'
-   print '(a,i5.5,a)', 'A Total of ', writtenOutCounter, ' Steps are written to File!'
+   print '(a,i5.5,a,i5.5,a)', 'Of ', totalStepsCounter, ' Total Steps,', notConvergedCounter, ' Steps did not Converge!'
    !$OMP END CRITICAL (write2out)
  close(538)
  call dfftw_destroy_plan(fftw_plan(1)); call dfftw_destroy_plan(fftw_plan(2))
