@@ -19,7 +19,7 @@ class MSC_TOOLS():
       try:                                        # check for MSC.Mentat installation location
         file = open(os.path.join(DamaskRoot,'lib/pathinfo'))
         for line in file.readlines():
-          if line.split()[0] == 'MSC': MSCpath = os.path.normpath(line.split()[1])
+          if line.split()[0].lower() == 'msc': MSCpath = os.path.normpath(line.split()[1])
         file.close()
       except:
         MSCpath = '/msc'
