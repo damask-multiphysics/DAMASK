@@ -2592,6 +2592,7 @@ use debug, only:        debug_verbosity, &
 use constitutive, only: constitutive_homogenizedC, &
                         constitutive_LpAndItsTangent
 use math, only:         math_mul33x33, &
+                        math_mul33xx33, &
                         math_mul66x6, &
                         math_mul99x99, &
                         math_transpose3x3, &
@@ -2629,8 +2630,8 @@ real(pReal), dimension(3,3)::       Fg_new, &                     ! deformation 
                                     Lp_constitutive, &            ! plastic velocity gradient resulting from constitutive law
                                     residuum, &                   ! current residuum of plastic velocity gradient
                                     residuum_old, &               ! last residuum of plastic velocity gradient
-                                    deltaLp, &
-                                    expectedImprovement, &
+                                    deltaLp, &                    ! direction of next guess
+                                    gradientR, &                  ! derivative of the residuum norm
                                     A, &
                                     B, &
                                     BT, &
@@ -2645,6 +2646,7 @@ real(pReal), dimension(3,3,3,3)::   C                             ! 4th rank ela
 real(pReal), dimension(6,6)::       C_66                          ! simplified 2nd rank elasticity tensor 
 real(pReal)                         p_hydro, &                    ! volumetric part of 2nd Piola-Kirchhoff Stress
                                     det, &                        ! determinant
+                                    expectedImprovement, &
                                     steplength0, & 
                                     steplength, & 
                                     steplength_max, & 
@@ -2689,7 +2691,6 @@ endif
 !* feed local variables
 
 Fp_current =   crystallite_subFp0(1:3,1:3,g,i,e)
-Tstar_v =      crystallite_Tstar_v(1:6,g,i,e)
 Lpguess_old =  crystallite_Lp(1:3,1:3,g,i,e)                       ! consider present Lp good (i.e. worth remembering) ...
 Lpguess =      crystallite_Lp(1:3,1:3,g,i,e)                       ! ... and take it as first guess
 
@@ -2815,7 +2816,7 @@ LpLoop: do
     if (steplength <= steplength0) then
 
       !* Armijo rule is fullfilled (norm of residuum was reduced by at least 0.01 of what was expected)
-      if (math_norm33(residuum) <= math_norm33(residuum_old + 0.01_pReal * steplength * expectedImprovement)) then
+      if (math_norm33(residuum) <= math_norm33(residuum_old) + 0.01_pReal * steplength * expectedImprovement) then
       
         !* reduced step length -> return to normal step length
         if (steplength < steplength0) then
@@ -2838,7 +2839,7 @@ LpLoop: do
       
       !* no NaN, Armijo rule fullfilled, and sign of residuum did not change -> accelerate if not yet at maximum speed
       if (.not. any(residuum /= residuum) & 
-          .and. math_norm33(residuum) <= math_norm33(residuum_old + 0.01_pReal * steplength * expectedImprovement) &
+          .and. math_norm33(residuum) <= math_norm33(residuum_old) + 0.01_pReal * steplength * expectedImprovement &
           .and. sum(residuum * residuum_old) >= 0.0_pReal) then
         if (steplength + 1_pInt <= steplength_max) then
           steplength = steplength + 1.0_pReal
@@ -2905,11 +2906,13 @@ LpLoop: do
     do k=1,3; do l=1,3; do m=1,3; do n=1,3
       deltaLp(k,l) = deltaLp(k,l) - inv_dR_dLp(3*(k-1)+l,3*(m-1)+n) * residuum(m,n)
     enddo; enddo; enddo; enddo
-
-    expectedImprovement = 0.0_pReal
+ 
+    gradientR = 0.0_pReal
     do k=1,3; do l=1,3; do m=1,3; do n=1,3
-      expectedImprovement(k,l) = expectedImprovement(k,l) - dR_dLp(3*(k-1)+l,3*(m-1)+n) * deltaLp(m,n)
+      gradientR(k,l) = gradientR(k,l) + dR_dLp(3*(k-1)+l,3*(m-1)+n) * residuum(m,n)
     enddo; enddo; enddo; enddo
+    gradientR = gradientR / math_norm33(gradientR)
+    expectedImprovement = math_mul33xx33(deltaLp, gradientR)
   endif
 
   jacoCounter = jacoCounter + 1_pInt                             ! increase counter for jaco update
