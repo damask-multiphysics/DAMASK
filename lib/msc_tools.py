@@ -29,11 +29,10 @@ class MSC_TOOLS():
           libPath = '%s/mentat%s/shlib/%s'%(MSCpath,release,subdir)
           if os.path.exists(libPath):
             thePath = libPath
-            break
+            return thePath
           else:
             continue
-        break
-      return thePath
+      
     
     def submit_job(self,
                  run_marc_path='/msc/marc2010/tools/',
