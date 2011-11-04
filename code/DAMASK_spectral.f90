@@ -337,18 +337,18 @@ program DAMASK_spectral
  !Output of geom file
  !$OMP CRITICAL (write2out)
  print '(a)', ''
- print '(a)', '******************************************************'
+ print '(a)', '*************************************************************'
  print '(a)', 'DAMASK spectral:'
  print '(a)', 'The spectral method boundary value problem solver for'
  print '(a)', 'the Duesseldorf Advanced Material Simulation Kit'
- print '(a)', '******************************************************'
+ print '(a)', '*************************************************************'
  print '(a,a)', 'Geom File Name:       ',trim(path)//'.geom'
- print '(a)', '------------------------------------------------------'
+ print '(a)', '-------------------------------------------------------------'
  print '(a,/,i12,i12,i12)','resolution a b c:', resolution
  print '(a,/,f12.5,f12.5,f12.5)','dimension x y z:', geomdimension
  print '(a,i5)','homogenization:     ',homog
  print '(a,L)','spectralPictureMode: ',spectralPictureMode
- print '(a)', '******************************************************'
+ print '(a)', '************************************************************'
  print '(a,a)','Loadcase File Name:   ',trim(getLoadcaseName())
  !$OMP END CRITICAL (write2out)
  if (bc_followFormerTrajectory(1)) then
@@ -358,7 +358,7 @@ program DAMASK_spectral
 ! consistency checks and output of loadcase
  do loadcase = 1, N_Loadcases
    !$OMP CRITICAL (write2out)
-   print '(a)', '------------------------------------------------------'
+   print '(a)', '-------------------------------------------------------------'
    print '(a,i5)', 'Loadcase:            ', loadcase
    write (loadcase_string, '(i3)' ) loadcase
    if (.not. bc_followFormerTrajectory(loadcase)) &
@@ -784,9 +784,9 @@ program DAMASK_spectral
      totalStepsCounter = totalStepsCounter + 1_pInt
      !$OMP CRITICAL (write2out)
      if(err_div<=err_div_tol .and. err_stress<=err_stress_tol) then
-       print '(3(A,I5.5),A,/)', '== Step ',step, ' of Loadcase ',loadcase,' (Total ', totalStepsCounter,') Converged ====='
+       print '(3(A,I5.5),A,/)', '== Step ',step, ' of Loadcase ',loadcase,' (Total ', totalStepsCounter,') Converged ===='
      else
-       print '(3(A,I5.5),A,/)', '== Step ',step, ' of Loadcase ',loadcase,' (Total ', totalStepsCounter,') NOT Converged ='
+       print '(3(A,I5.5),A,/)', '== Step ',step, ' of Loadcase ',loadcase,' (Total ', totalStepsCounter,') NOT Converged '
        notConvergedCounter = notConvergedCounter + 1
      endif
      !$OMP END CRITICAL (write2out)

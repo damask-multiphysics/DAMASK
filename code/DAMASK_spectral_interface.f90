@@ -97,7 +97,7 @@ subroutine DAMASK_interface_init()
  length = index(commandLine(start:len(commandLine)),' ',.false.)
 
  if(start/=3_pInt) then
-   read(commandLine(start:start+length),'(I)') restartParameter
+   read(commandLine(start:start+length),'(I12)') restartParameter
    if (restartParameter>0) then
       restart_Read_Interface = .true.
    else
@@ -115,7 +115,7 @@ subroutine DAMASK_interface_init()
  if (restart_Read_Interface) then
    write(6,*) 'Restart Read: ', restartParameter
  else 
-   write(6,'(a,I5)') 'Restart Read at Step: ', restart_Read_Interface
+   write(6,'(a,I5)') ' Restart Read at Step: ', restart_Read_Interface
  endif
  write(6,*)
  !$OMP END CRITICAL (write2out)

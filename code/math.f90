@@ -142,12 +142,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  use debug,    only: debug_verbosity
  implicit none
 
+ integer(pInt) :: i
  real(pReal), dimension(3,3) :: R,R2
  real(pReal), dimension(3) ::   Eulers
- real(pReal), dimension(4) ::   q,q2,axisangle
- integer(pInt), dimension(8) :: randInit     ! gfortran requires "8" to compile
-                                             ! if recalculations of former randomness (with given seed) is necessary
-                                             ! set this value back to "1" and use ifort...
+ real(pReal), dimension(4) ::   q,q2,axisangle,randTest
+! the following variables are system depented and shound NOT be pInt
+ integer :: randSize                                ! gfortran requires a variable length to compile 
+ integer, dimension(:), allocatable :: randInit     ! if recalculations of former randomness (with given seed) is necessary
+                                                    ! comment the first random_seed call out, set randSize to 1, and use ifort
  
  !$OMP CRITICAL (write2out)
  write(6,*)
@@ -156,20 +158,32 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  write(6,*)
  !$OMP END CRITICAL (write2out)
  
+ call random_seed(size=randSize)
+ allocate(randInit(randSize))
  if (fixedSeed > 0_pInt) then
-   randInit = fixedSeed
+   randInit(1:randSize) = int(fixedSeed)                      ! fixedSeed is of type pInt, randInit not
    call random_seed(put=randInit)
  else
    call random_seed()
  endif
 
  call random_seed(get=randInit)
+
+ do i = 1, 4
+   call random_number(randTest(i))
+ enddo
+
  !$OMP CRITICAL (write2out)
  ! this critical block did cause trouble at IWM
- write(6,*) 'random seed: ',randInit(1)
- write(6,*)
+ write(6,*) 'value of random seed:    ', randInit(1)
+ write(6,*) 'size of random seed:     ', randSize
+ write(6,'(a,4(/,26x,f16.14))') ' start of random sequence: ', randTest
+ write(6,*) ''
  !$OMP END CRITICAL (write2out)
   
+ call random_seed(put=randInit)
+ call random_seed(get=randInit)
+
  call halton_seed_set(randInit(1))
  call halton_ndim_set(3)
 

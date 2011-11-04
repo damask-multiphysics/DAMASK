@@ -293,7 +293,7 @@ subroutine numerics_init()
 
 !* Random seeding parameters
         case ('fixed_seed')
-              fixedSeed = IO_floatValue(line,positions,2)
+              fixedSeed = IO_intValue(line,positions,2)
       endselect
     enddo
     100 close(fileunit)
@@ -366,7 +366,7 @@ subroutine numerics_init()
     write(6,*)
 
 !* Random seeding parameters
-    write(6,'(a24,x,i8)')   'fixed_seed:             ',fixedSeed
+    write(6,'(a24,x,i16)')   'fixed_seed:             ',fixedSeed
     write(6,*)
   !$OMP END CRITICAL (write2out)
 
