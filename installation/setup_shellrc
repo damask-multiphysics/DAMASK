@@ -29,7 +29,7 @@ try:                                        # check for MSC.Mentat installation 
     if line.split()[0].lower() == 'acml': ACMLpath = os.path.normpath(line.split()[1])
   file.close()
 except:
-  ACMLpath = os.path.join(DamaskRoot,'lib/acml-4-4-0/')
+  ACMLpath = os.path.join(DamaskRoot,'lib/acml4.4.0/')
 
 theShell = options.shell.lower()
 theHome = os.getenv('USERPROFILE') or os.getenv('HOME')
@@ -66,9 +66,9 @@ if theShell == 'bash':
         output.append(line)
 
       if not matched['LD_LIB']:
-        output.append('export LD_LIBRARY_PATH=%s:%s'%(os.path.join(ACMLpath,'ifort64_mp/lib'),os.path.join(ACMLpath,'ifort64/lib')))
+        output.append('export LD_LIBRARY_PATH=%s:%s:${LD_LIBRARY_PATH}'%(os.path.join(ACMLpath,'ifort64_mp/lib'),os.path.join(ACMLpath,'ifort64/lib')))
       if not matched['PYTHONPATH']:
-        output.append('export PYTHONPATH=%s'%(os.path.join(DamaskRoot,'lib')))
+        output.append('export PYTHONPATH=%s:$PYTHONPATH'%(os.path.join(DamaskRoot,'lib')))
 
       rc = open(os.path.join(theHome,theRC),'w')
       rc.write('\n'.join(output)+'\n')
