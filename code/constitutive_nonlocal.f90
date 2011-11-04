@@ -49,11 +49,14 @@ character(len=22), dimension(10), parameter ::    constitutive_nonlocal_listBasi
 character(len=15), dimension(3), parameter :: constitutive_nonlocal_listDependentStates = (/'rhoForest      ', &
                                                                                             'tauThreshold   ', &
                                                                                             'Tdislocation_v ' /) ! list of microstructural state variables that depend on other state variables
+character(len=15), dimension(2), parameter ::     constitutive_nonlocal_listOtherStates = (/'velocityEdge   ', &
+                                                                                            'velocityScrew  ' /) ! list of other dependent state variables that are not updated by microstructure
 real(pReal), parameter :: kB = 1.38e-23_pReal                                                                   ! Physical parameter, Boltzmann constant in J/Kelvin
 
 !* Definition of global variables
-integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_sizeDotState, &                 ! number of dotStates
-                                                          constitutive_nonlocal_sizeState, &                    ! total number of microstructural state variables
+integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_sizeDotState, &                 ! number of dotStates = number of basic state variables
+                                                          constitutive_nonlocal_sizeDependentState, &           ! number of dependent state variables
+                                                          constitutive_nonlocal_sizeState, &                    ! total number of state variables
                                                           constitutive_nonlocal_sizePostResults                 ! cumulative size of post results
 integer(pInt), dimension(:,:), allocatable, target ::     constitutive_nonlocal_sizePostResult                  ! size of each post result output
 character(len=64), dimension(:,:), allocatable, target :: constitutive_nonlocal_output                          ! name of each post result output
@@ -102,8 +105,7 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_
                                                           constitutive_nonlocal_dLowerScrewPerSlipSystem, &     ! minimum stable screw dipole height for each slip system and instance
                                                           constitutive_nonlocal_Qeff0, &                        ! prefactor for activation enthalpy for dislocation glide in J
                                                           constitutive_nonlocal_interactionSlipSlip             ! coefficients for slip-slip interaction for each interaction type and instance
-real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_v, &                            ! dislocation velocity
-                                                          constitutive_nonlocal_rhoDotFlux                      ! dislocation convection term
+real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_rhoDotFlux                      ! dislocation convection term
 real(pReal), dimension(:,:,:,:,:,:), allocatable ::       constitutive_nonlocal_compatibility                   ! slip system compatibility between me and my neighbors
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_forestProjectionEdge, &         ! matrix of forest projections of edge dislocations for each instance
                                                           constitutive_nonlocal_forestProjectionScrew, &        ! matrix of forest projections of screw dislocations for each instance
@@ -213,11 +215,13 @@ endif
 !*** space allocation for global variables
 
 allocate(constitutive_nonlocal_sizeDotState(maxNinstance))
+allocate(constitutive_nonlocal_sizeDependentState(maxNinstance))
 allocate(constitutive_nonlocal_sizeState(maxNinstance))
 allocate(constitutive_nonlocal_sizePostResults(maxNinstance))
 allocate(constitutive_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstance))
 allocate(constitutive_nonlocal_output(maxval(phase_Noutput), maxNinstance))
 constitutive_nonlocal_sizeDotState = 0_pInt
+constitutive_nonlocal_sizeDependentState = 0_pInt
 constitutive_nonlocal_sizeState = 0_pInt
 constitutive_nonlocal_sizePostResults = 0_pInt
 constitutive_nonlocal_sizePostResult = 0_pInt
@@ -485,9 +489,6 @@ constitutive_nonlocal_interactionMatrixSlipSlip = 0.0_pReal
 allocate(constitutive_nonlocal_lattice2slip(1:3, 1:3, maxTotalNslip, maxNinstance))
 constitutive_nonlocal_lattice2slip = 0.0_pReal
 
-allocate(constitutive_nonlocal_v(maxTotalNslip, 4, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-constitutive_nonlocal_v = 0.0_pReal
-
 allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 10, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_rhoDotFlux = 0.0_pReal
 
@@ -513,10 +514,12 @@ do i = 1,maxNinstance
   !*** determine size of state array
   
   ns = constitutive_nonlocal_totalNslip(i)
-  constitutive_nonlocal_sizeState(i) = size(constitutive_nonlocal_listBasicStates) * ns & 
-                                       + (size(constitutive_nonlocal_listDependentStates) - 1_pInt) * ns + 6_pInt
   constitutive_nonlocal_sizeDotState(i) = size(constitutive_nonlocal_listBasicStates) * ns
-  
+  constitutive_nonlocal_sizeDependentState(i) = (size(constitutive_nonlocal_listDependentStates) - 1_pInt) * ns + 6_pInt
+  constitutive_nonlocal_sizeState(i) = constitutive_nonlocal_sizeDotState(i) &
+                                     + constitutive_nonlocal_sizeDependentState(i) &
+                                     + size(constitutive_nonlocal_listOtherStates) * ns
+
   
   !*** determine size of postResults array
   
@@ -875,13 +878,13 @@ real(pReal), intent(in) ::      Temperature                   ! temperature
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                 Fe                            ! elastic deformation gradient
 
-  !*** input/output variables
+!*** input/output variables
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(inout) :: &
                                 state                         ! microstructural state
 
-  !*** output variables
+!*** output variables
 
-  !*** local variables
+!*** local variables
 integer(pInt)                   neighboring_el, &             ! element number of neighboring material point
                                 neighboring_ip, &             ! integration point of neighboring material point
                                 instance, &                   ! my instance of this constitution
@@ -1242,7 +1245,7 @@ endsubroutine
 !*********************************************************************
 !* calculates kinetics                                               *
 !*********************************************************************
-subroutine constitutive_nonlocal_kinetics(Tstar_v, Temperature, state, g, ip, el, dv_dtau)
+subroutine constitutive_nonlocal_kinetics(v, Tstar_v, Temperature, state, g, ip, el, dv_dtau)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1269,10 +1272,14 @@ integer(pInt), intent(in) ::                g, &                        ! curren
                                             ip, &                       ! current integration point
                                             el                          ! current element number
 real(pReal), intent(in) ::                  Temperature                 ! temperature
-type(p_vec), intent(in) ::                  state                       ! microstructural state
 real(pReal), dimension(6), intent(in) ::    Tstar_v                     ! 2nd Piola-Kirchhoff stress in Mandel notation
 
+!*** input/output variables
+type(p_vec), intent(inout) ::               state                       ! microstructural state
+
 !*** output variables
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4), &
+                            intent(out) ::  v                           ! velocity
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4), &
                    intent(out), optional :: dv_dtau                     ! velocity derivative with respect to resolved shear stress
 
@@ -1288,7 +1295,6 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                             tau, &                      ! resolved shear stress
                                             rhoForest                   ! forest dislocation density
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
-                                            v, &                        ! velocity for the current element and ip
                                             rhoSgl
 real(pReal)                                 boltzmannProbability, &
                                             tauRel, &                   ! relative thermally active resolved shear stress
@@ -1352,16 +1358,16 @@ if (Temperature > 0.0_pReal) then
   enddo
 endif
 
-constitutive_nonlocal_v(1:ns,1:4,g,ip,el) = v
-!$OMP FLUSH(constitutive_nonlocal_v)
+state%p(12*ns+6+1:13*ns+6) = v(1:ns,1)
+state%p(13*ns+6+1:14*ns+6) = v(1:ns,3)
 
 #ifndef _OPENMP
   if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
     write(6,'(a,i8,x,i2,x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
     write(6,*)
-    write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> tau / MPa', tau/1e6_pReal
-    write(6,'(a,/,4(12(x),12(f12.5,x),/))') '<< CONST >> v / 1e-3m/s', constitutive_nonlocal_v(:,:,g,ip,el)*1e3
+    write(6,'(a,/,12(x),12(f12.5,x))') '<< CONST >> tau / MPa', tau / 1e6_pReal
+    write(6,'(a,/,4(12(x),12(f12.5,x),/))') '<< CONST >> v / 1e-3m/s', v * 1e3
   endif
 #endif
 
@@ -1400,9 +1406,10 @@ integer(pInt), intent(in) ::                g, &                        ! curren
                                             ip, &                       ! current integration point
                                             el                          ! current element number
 real(pReal), intent(in) ::                  Temperature                 ! temperature
-type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            state                       ! microstructural state
 real(pReal), dimension(6), intent(in) ::    Tstar_v                     ! 2nd Piola-Kirchhoff stress in Mandel notation
+
+!*** input/output variables
+type(p_vec), intent(inout) ::               state                       ! microstructural state
 
 !*** output variables
 real(pReal), dimension(3,3), intent(out) :: Lp                          ! plastic velocity gradient
@@ -1422,6 +1429,7 @@ integer(pInt)                               myInstance, &               ! curren
 real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              ! derivative of Lp with respect to Tstar (3x3x3x3 matrix)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
                                             rhoSgl, &                   ! single dislocation densities (including used) 
+                                            v, &                        ! velocity
                                             dv_dtau                     ! velocity derivative with respect to the shear stress
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             gdotTotal, &                ! shear rate
@@ -1440,20 +1448,20 @@ ns = constitutive_nonlocal_totalNslip(myInstance)
 
 !*** update dislocation velocity
 
-call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip, el, dv_dtau)
+call constitutive_nonlocal_kinetics(v, Tstar_v, Temperature, state, g, ip, el, dv_dtau)
 
 
 !*** shortcut to state variables 
 
 forall (s = 1:ns, t = 1:4) &
-  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1)*ns+s), 0.0_pReal)
-forall (s = 1:ns, t = 5:8, state(g,ip,el)%p((t-1)*ns+s) * constitutive_nonlocal_v(s,t-4,g,ip,el) < 0.0_pReal) &     ! dead dislocations cntribute instantaneously to slip when sign of velocity changes
-  rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(state(g,ip,el)%p((t-1)*ns+s))
+  rhoSgl(s,t) = max(state%p((t-1)*ns+s), 0.0_pReal)
+forall (s = 1:ns, t = 5:8, state%p((t-1)*ns+s) * v(s,t-4) < 0.0_pReal) &     ! dead dislocations cntribute instantaneously to slip when sign of velocity changes
+  rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(state%p((t-1)*ns+s))
 
 
 !*** Calculation of gdot and its tangent
 
-gdotTotal = sum(rhoSgl * constitutive_nonlocal_v(1:ns,1:4,g,ip,el), 2) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance)
+gdotTotal = sum(rhoSgl * v(1:ns,1:4), 2) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance)
 dgdotTotal_dtau = sum(rhoSgl * dv_dtau, 2) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) 
 
 
@@ -1585,6 +1593,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),8) :: &
                                             rhoSgl                        ! current single dislocation densities (positive/negative screw and edge without dipoles)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
+                                            v, &                          ! dislocation glide velocity
                                             fluxdensity, &                ! flux density at central material point
                                             neighboring_fluxdensity, &    ! flux density at neighboring material point
                                             gdot                          ! shear rates
@@ -1652,6 +1661,10 @@ forall (s = 1:ns, c = 1:2) &
 rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
 tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 Tdislocation_v = state(g,ip,el)%p(12*ns+1:12*ns+6)
+v(1:ns,1) = state(g,ip,el)%p(12*ns+6+1:13*ns+6)
+v(1:ns,2) = state(g,ip,el)%p(12*ns+6+1:13*ns+6)
+v(1:ns,3) = state(g,ip,el)%p(13*ns+6+1:13*ns+6)
+v(1:ns,4) = state(g,ip,el)%p(13*ns+6+1:13*ns+6)
 
 
 !*** sanity check for timestep
@@ -1666,14 +1679,10 @@ endif
 !****************************************************************************
 !*** Calculate shear rate
 
-call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip, el)                                                ! velocities
-
 forall (t = 1:4) &
-  gdot(1:ns,t) = rhoSgl(1:ns,t) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) &
-                                * constitutive_nonlocal_v(1:ns,t,g,ip,el)
-forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) < 0.0_pReal) &                                      ! contribution of used rho for changing sign of v
-  gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) &
-                                             * constitutive_nonlocal_v(s,t,g,ip,el)
+  gdot(1:ns,t) = rhoSgl(1:ns,t) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) * v(1:ns,t)
+forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * v(s,t) < 0.0_pReal) &                                                                    ! contribution of used rho for changing sign of v
+  gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgersPerSlipSystem(s,myInstance) * v(s,t)
 
 #ifndef _OPENMP
   if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
@@ -1687,8 +1696,7 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) 
 !****************************************************************************
 !*** check CFL condition for flux
 
-if (any(1.2_pReal * constitutive_nonlocal_v(1:ns,1:4,g,ip,el) * timestep &                    ! security factor 1.2
-        > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                          ! reference volume and area
+if (any(1.2_pReal * abs(v) * timestep > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                             ! safety factor 1.2 (we use the reference volume and are for simplicity here)
 #ifndef _OPENMP
   if (debug_verbosity > 6) then
     write(6,*) '<< CONST >> CFL condition not fullfilled'
@@ -1724,7 +1732,7 @@ rhoDotRemobilization = 0.0_pReal
 if (timestep > 0.0_pReal) then
   do t = 1,4
     do s = 1,ns
-      if (rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) < 0.0_pReal) then
+      if (rhoSgl(s,t+4) * v(s,t) < 0.0_pReal) then
         rhoDotRemobilization(s,t) = abs(rhoSgl(s,t+4)) / timestep
         rhoSgl(s,t) = rhoSgl(s,t) + abs(rhoSgl(s,t+4))
         rhoDotRemobilization(s,t+4) = - rhoSgl(s,t+4) / timestep
@@ -1769,7 +1777,7 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
   my_Fe = Fe(1:3,1:3,g,ip,el)
   my_F = math_mul33x33(my_Fe, Fp(1:3,1:3,g,ip,el))
   
-  fluxdensity = rhoSgl(1:ns,1:4) * constitutive_nonlocal_v(1:ns,1:4,g,ip,el)
+  fluxdensity = rhoSgl(1:ns,1:4) * v
     
   do n = 1,FE_NipNeighbors(mesh_element(2,el))                                                                                      ! loop through my neighbors
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
@@ -1813,9 +1821,14 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     endif
     
     if (considerEnteringFlux) then
-      forall (t = 1:4) &
-        neighboring_fluxdensity(1:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+1:t*ns) &
-                                        * constitutive_nonlocal_v(1:ns,t,g,neighboring_ip,neighboring_el)
+      neighboring_fluxdensity(1:ns,1) = state(g,neighboring_ip,neighboring_el)%p(1:ns) &
+                                      * state(g,neighboring_ip,neighboring_el)%p(12*ns+6+1:13*ns+6)
+      neighboring_fluxdensity(1:ns,2) = state(g,neighboring_ip,neighboring_el)%p(ns+1:2*ns) &
+                                      * state(g,neighboring_ip,neighboring_el)%p(12*ns+6+1:13*ns+6)
+      neighboring_fluxdensity(1:ns,3) = state(g,neighboring_ip,neighboring_el)%p(2*ns+1:3*ns) &
+                                      * state(g,neighboring_ip,neighboring_el)%p(13*ns+6+1:14*ns+6)
+      neighboring_fluxdensity(1:ns,4) = state(g,neighboring_ip,neighboring_el)%p(3*ns+1:4*ns) &
+                                      * state(g,neighboring_ip,neighboring_el)%p(13*ns+6+1:14*ns+6)
       normal_neighbor2me_defConf = math_det3x3(Favg) &
                   * math_mul33x3(math_inv3x3(transpose(Favg)), mesh_ipAreaNormal(1:3,neighboring_n,neighboring_ip,neighboring_el))  ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
       normal_neighbor2me = math_mul33x3(transpose(neighboring_Fe), normal_neighbor2me_defConf) / math_det3x3(neighboring_Fe)        ! interface normal in the lattice configuration of my neighbor
@@ -2229,7 +2242,8 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                             rhoSgl, &                 ! current single dislocation densities (positive/negative screw and edge without dipoles)
                                             rhoDotSgl                 ! evolution rate of single dislocation densities (positive/negative screw and edge without dipoles)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
-                                            gdot                      ! shear rates
+                                            gdot, &                   ! shear rates
+                                            v                         ! velocities
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &              ! forest dislocation density
                                             tauThreshold, &           ! threshold shear stress
@@ -2264,15 +2278,14 @@ tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 Tdislocation_v = state(g,ip,el)%p(12*ns+1:12*ns+6)
 forall (t = 1:8) rhoDotSgl(1:ns,t) = dotState(g,ip,el)%p((t-1)*ns+1:t*ns)
 forall (c = 1:2) rhoDotDip(1:ns,c) = dotState(g,ip,el)%p((7+c)*ns+1:(8+c)*ns)
+forall (t = 1:4) v(1:ns,t) = state(g,ip,el)%p((12+(t-1)/2)*ns+6+1:(13+(t-1)/2)*ns+6)
 
 
 !* Calculate shear rate
 
-call constitutive_nonlocal_kinetics(Tstar_v, Temperature, state(g,ip,el), g, ip, el)                                  ! need to calculate dislocation velocity again, because it was overwritten during stiffness calculation
-
 do t = 1,4
   do s = 1,ns
-    if (rhoSgl(s,t+4) * constitutive_nonlocal_v(s,t,g,ip,el) < 0.0_pReal) then
+    if (rhoSgl(s,t+4) * v(s,t) < 0.0_pReal) then
       rhoSgl(s,t) = rhoSgl(s,t) + abs(rhoSgl(s,t+4))                                                                  ! remobilization of immobile singles for changing sign of v (bauschinger effect)
       rhoSgl(s,t+4) = 0.0_pReal                                                                                       ! remobilization of immobile singles for changing sign of v (bauschinger effect)
     endif
@@ -2280,9 +2293,9 @@ do t = 1,4
 enddo
 
 forall (t = 1:4) &
-  gdot(1:ns,t) = rhoSgl(1:ns,t) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) &
-                                * constitutive_nonlocal_v(1:ns,t,g,ip,el)
+  gdot(1:ns,t) = rhoSgl(1:ns,t) * constitutive_nonlocal_burgersPerSlipSystem(1:ns,myInstance) * v(1:ns,t)
   
+
 !* calculate limits for stable dipole height
 
 do s = 1,ns
@@ -2559,67 +2572,55 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
             
     case ('dislocationvelocity')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = constitutive_nonlocal_v(1:ns,1,g,ip,el)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = v(1:ns,1)
       cs = cs + ns
     
     case ('fluxdensity_edge_pos_x')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,1) * constitutive_nonlocal_v(1:ns,1,g,ip,el) &
-                                                                     * m_currentconf(1,1:ns,1)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(1,1:ns,1)
       cs = cs + ns
     
     case ('fluxdensity_edge_pos_y')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,1) * constitutive_nonlocal_v(1:ns,1,g,ip,el) &
-                                                                     * m_currentconf(2,1:ns,1)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(2,1:ns,1)
       cs = cs + ns
     
     case ('fluxdensity_edge_pos_z')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,1) * constitutive_nonlocal_v(1:ns,1,g,ip,el) &
-                                                                     * m_currentconf(3,1:ns,1)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(3,1:ns,1)
       cs = cs + ns
     
     case ('fluxdensity_edge_neg_x')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,2) * constitutive_nonlocal_v(1:ns,2,g,ip,el) &
-                                                                       * m_currentconf(1,1:ns,1)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(1,1:ns,1)
       cs = cs + ns
     
     case ('fluxdensity_edge_neg_y')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,2) * constitutive_nonlocal_v(1:ns,2,g,ip,el) &
-                                                                       * m_currentconf(2,1:ns,1)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(2,1:ns,1)
       cs = cs + ns
     
     case ('fluxdensity_edge_neg_z')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,2) * constitutive_nonlocal_v(1:ns,2,g,ip,el) &
-                                                                       * m_currentconf(3,1:ns,1)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(3,1:ns,1)
       cs = cs + ns
     
     case ('fluxdensity_screw_pos_x')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,3) * constitutive_nonlocal_v(1:ns,3,g,ip,el) &
-                                                                     * m_currentconf(1,1:ns,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(1,1:ns,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_pos_y')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,3) * constitutive_nonlocal_v(1:ns,3,g,ip,el) &
-                                                                     * m_currentconf(2,1:ns,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(2,1:ns,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_pos_z')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,3) * constitutive_nonlocal_v(1:ns,3,g,ip,el) &
-                                                                     * m_currentconf(3,1:ns,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(3,1:ns,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_neg_x')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,4) * constitutive_nonlocal_v(1:ns,4,g,ip,el) &
-                                                                       * m_currentconf(1,1:ns,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(1,1:ns,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_neg_y')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,4) * constitutive_nonlocal_v(1:ns,4,g,ip,el) &
-                                                                       * m_currentconf(2,1:ns,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(2,1:ns,2)
       cs = cs + ns
     
     case ('fluxdensity_screw_neg_z')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,4) * constitutive_nonlocal_v(1:ns,4,g,ip,el) &
-                                                                     * m_currentconf(3,1:ns,2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(3,1:ns,2)
       cs = cs + ns
     
     case ('d_upper_edge')

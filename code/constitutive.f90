@@ -564,7 +564,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
    
   case (constitutive_nonlocal_label)
-    call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, constitutive_state, ipc, ip, el)
+    call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, constitutive_state(ipc,ip,el), ipc, ip, el)
    
 end select
 
