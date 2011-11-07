@@ -2331,11 +2331,11 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_mobile')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(abs(rhoSgl(1:ns,1:4)),2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(rhoSgl(1:ns,1:4),2)
       cs = cs + ns
       
     case ('rho_sgl_immobile')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(abs(rhoSgl(1:ns,5:8)),2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(rhoSgl(1:ns,5:8),2)
       cs = cs + ns
       
     case ('rho_dip')
@@ -2355,7 +2355,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_edge_immobile')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(abs(rhoSgl(1:ns,5:6)),2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(rhoSgl(1:ns,5:6),2)
       cs = cs + ns
       
     case ('rho_sgl_edge_pos')
@@ -2367,7 +2367,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_edge_pos_immobile')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = abs(rhoSgl(1:ns,5))
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,5)
       cs = cs + ns
       
     case ('rho_sgl_edge_neg')
@@ -2379,7 +2379,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_edge_neg_immobile')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = abs(rhoSgl(1:ns,6))
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,6)
       cs = cs + ns
       
     case ('rho_dip_edge')
@@ -2399,7 +2399,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_screw_immobile')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(abs(rhoSgl(1:ns,7:8)),2)
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = sum(rhoSgl(1:ns,7:8),2)
       cs = cs + ns
       
     case ('rho_sgl_screw_pos')
@@ -2411,7 +2411,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_screw_pos_immobile')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = abs(rhoSgl(1:ns,7))
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,7)
       cs = cs + ns
       
     case ('rho_sgl_screw_neg')
@@ -2423,7 +2423,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
 
     case ('rho_sgl_screw_neg_immobile')
-      constitutive_nonlocal_postResults(cs+1:cs+ns) = abs(rhoSgl(1:ns,8))
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = rhoSgl(1:ns,8)
       cs = cs + ns
 
     case ('rho_dip_screw')
