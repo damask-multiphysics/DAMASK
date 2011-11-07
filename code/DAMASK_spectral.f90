@@ -68,10 +68,11 @@ program DAMASK_spectral
  integer(pInt), dimension (1 + maxNchunksLoadcase*2) :: posLoadcase
  integer(pInt), parameter :: maxNchunksGeom = 7_pInt                                  ! 4 identifiers, 3 values
  integer(pInt), dimension (1 + maxNchunksGeom*2) ::  posGeom
- integer(pInt) :: myUnit, N_l, N_s, N_t, N_n, N_Fdot, headerLength                    ! numbers of identifiers
+ integer(pInt) :: headerLength,N_l=0_pInt, N_t=0_pInt, N_n=0_pInt, N_Fdot=0_pInt
+ integer(pInt), parameter :: myUnit = 234_pInt
  character(len=1024) :: path, line, keyword
- logical ::  gotResolution, gotDimension, gotHomogenization
-
+ logical ::  gotResolution =.false., gotDimension =.false., gotHomogenization = .false.
+ 
 ! variables storing information from loadcase file
 !ToDo: create Data Structure loadcase
  real(pReal), dimension (:,:,:), allocatable :: bc_deformation, &           ! applied velocity gradient or time derivative of deformation gradient
@@ -91,22 +92,22 @@ program DAMASK_spectral
 
 ! variables storing information from geom file
  real(pReal) :: wgt
- real(pReal), dimension(3) ::  geomdimension    ! physical dimension of volume element in each direction
- integer(pInt) :: homog                         ! homogenization scheme used
- integer(pInt), dimension(3) :: resolution      ! resolution (number of Fourier points) in each direction
- logical :: spectralPictureMode                 ! indicating 1 to 1 mapping of FP to microstructure
+ real(pReal), dimension(3) ::  geomdimension = 0.0_pReal                    ! physical dimension of volume element in each direction
+ integer(pInt) :: homog                                                     ! homogenization scheme used
+ integer(pInt), dimension(3) :: resolution = 1_pInt                         ! resolution (number of Fourier points) in each direction
+ logical :: spectralPictureMode = .false.                                   ! indicating 1 to 1 mapping of FP to microstructure
 
-! stress etc.
- real(pReal), dimension(3,3) ::                         pstress, pstress_av, defgrad_av, &
-                                                        defgradAim, defgradAimOld, defgradAimCorr,&
-                                                        mask_stress, mask_defgrad, fDot, &
-                                                        pstress_av_load, defgradAim_lab               ! quantities rotated to other coordinate system
- real(pReal), dimension(3,3,3,3) ::                     dPdF, c0_reference, c_current, s_prev, c_prev ! stiffness and compliance
- real(pReal), dimension(6) ::                           cstress                                       ! cauchy stress
- real(pReal), dimension(6,6) ::                         dsde                                          ! small strain stiffness
- real(pReal), dimension(9,9) ::                         s_prev99, c_prev99                            ! compliance and stiffness in matrix notation 
- real(pReal), dimension(:,:), allocatable ::            s_reduced, c_reduced                          ! reduced compliance and stiffness (only for stress BC)
- integer(pInt) ::                                       size_reduced                                  ! number of stress BCs
+! stress, stiffness and compliance average etc.
+ real(pReal), dimension(3,3) ::                pstress, pstress_av, defgrad_av, &
+                                               defgradAim = math_I3, defgradAimOld= math_I3, defgradAimCorr= math_I3,&
+                                               mask_stress, mask_defgrad, fDot, &
+                                               pstress_av_load, defgradAim_lab               ! quantities rotated to other coordinate system
+ real(pReal), dimension(3,3,3,3) ::            dPdF, c0_reference, c_current, s_prev, c_prev ! stiffness and compliance
+ real(pReal), dimension(6) ::                  cstress                                       ! cauchy stress
+ real(pReal), dimension(6,6) ::                dsde                                          ! small strain stiffness
+ real(pReal), dimension(9,9) ::                s_prev99, c_prev99                            ! compliance and stiffness in matrix notation 
+ real(pReal), dimension(:,:), allocatable ::   s_reduced, c_reduced                          ! reduced compliance and stiffness (only for stress BC)
+ integer(pInt) ::                              size_reduced = 0.0_pReal                                  ! number of stress BCs
 
 ! pointwise data 
  real(pReal), dimension(:,:,:,:,:), allocatable ::      workfft, defgrad, defgradold
@@ -150,15 +151,8 @@ program DAMASK_spectral
  !$OMP END CRITICAL (write2out)
 
 ! Reading the loadcase file and allocate variables
- myUnit = 234_pInt
  path = getLoadcaseName()
  if (.not. IO_open_file(myUnit,path)) call IO_error(error_ID=30,ext_msg = trim(path))
- 
- N_l = 0_pInt
- N_Fdot = 0_pInt
- N_t = 0_pInt
- N_n = 0_pInt
-
  rewind(myUnit)
  do
    read(myUnit,'(a1024)',END = 100) line
@@ -261,17 +255,10 @@ program DAMASK_spectral
 101 close(myUnit)
 
 !read header of geom file to get the information needed before the complete geom file is intepretated by mesh.f90
- gotResolution =.false.
- gotDimension =.false.
- gotHomogenization = .false.
- spectralPictureMode = .false.
- resolution = 1_pInt
- geomdimension = 0.0_pReal
  
  path = getModelName()
  if (.not. IO_open_file(myUnit,trim(path)//InputFileExtension))&
         call IO_error(error_ID=101,ext_msg = trim(path)//InputFileExtension)
-
  rewind(myUnit)
  read(myUnit,'(a1024)') line
  posGeom = IO_stringPos(line,2)
@@ -332,9 +319,6 @@ program DAMASK_spectral
  allocate (xi         (3,resolution(1)/2+1,resolution(2),resolution(3)));  xi          =0.0_pReal 
 
  wgt = 1.0_pReal/real(resolution(1)*resolution(2)*resolution(3), pReal)
- defgradAim    = math_I3
- defgradAimOld = math_I3
- defgrad_av    = math_I3
  
 ! Initialization of CPFEM_general (= constitutive law) and of deformation gradient field
  call CPFEM_initAll(bc_temperature(1),1_pInt,1_pInt)

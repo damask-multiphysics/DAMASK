@@ -10,8 +10,7 @@
 # for the generation of the pyf file:
 # f2py -m postprocessingMath -h postprocessingMath.pyf --overwrite-signature postprocessingMath.f90
 
-# --f90flags="-heap-arrays 500000000" prevents segmentation fault for large arrays
-# use ./configure --enable-portable-binary --enable-shared for the compilation of fftw3.2.2
+# use ./configure --enable-sse2 --enable-shared for the compilation of fftw3.3
 
 if [[ $# -eq 0 ]]; then
   wd='.'
@@ -20,10 +19,10 @@ else
 fi
 
 cd $wd
-rm postprocessingMath.so
+rm ../../lib/postprocessingMath.so
 f2py -c \
 postprocessingMath.pyf \
 postprocessingMath.f90 \
--lfftw3 \
+../../lib/libfftw3.a \
 -L./
-#--f90flags="-heap-arrays 500000000"
+mv postprocessingMath.so ../../lib/.

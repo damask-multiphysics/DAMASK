@@ -27,9 +27,7 @@ MODULE DAMASK_interface
  character(len=64), parameter :: FEsolver = 'Spectral'
  character(len=5),  parameter :: InputFileExtension = '.geom'
  character(len=4),  parameter :: LogFileExtension = '.log'    !until now, we don't have a log file. But IO.f90 requires it
- logical :: restartReadFlag
  character(len=1024) :: geometryParameter,loadcaseParameter
- integer(pInt) :: restartReadStep
 CONTAINS
 
 !********************************************************************
@@ -41,11 +39,7 @@ subroutine DAMASK_interface_init()
  implicit none
 
  character(len=1024) commandLine
- integer(pInt):: i, start, length
-
- start = 0_pInt
- length= 0_pInt
- restartReadFlag = .false.
+ integer(pInt):: i, start = 0_pInt, length=0_pInt
 
  call get_command(commandLine)
 
@@ -66,7 +60,6 @@ subroutine DAMASK_interface_init()
  geometryParameter = ''                                            ! should be empty
  geometryParameter(1:length)=commandLine(start:start+length)
  
- call get_command(commandLine)
  do i=1,len(commandLine)                                           ! remove capitals
    if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
  enddo
@@ -84,25 +77,7 @@ subroutine DAMASK_interface_init()
  call get_command(commandLine)                                     ! may contain capitals
  loadcaseParameter = ''                                            ! should be empty
  loadcaseParameter(1:length)=commandLine(start:start+length)
-
- do i=1,len(commandLine)                                           ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
- enddo
  
- start = index(commandLine,'-r',.true.) + 3_pInt                   ! search for '-r' and jump forward to given name
- if (index(commandLine,'--restart',.true.)>0) then                 ! if '--restart' is found, use that (contains '-r')
-   start = index(commandLine,'--restart',.true.) + 10_pInt
- endif               
- length = index(commandLine(start:len(commandLine)),' ',.false.)
-
- restartReadStep = 0_pInt
- if(start/=3_pInt) then                                           ! found -r
-   read(commandLine(start:start+length),'(I12)') restartReadStep
-   restartReadFlag = .true.
- endif
- 
- if(restartReadStep<1_pInt .and. RestartReadFlag .eq. .true.) stop 'Invalid Restart Parameter, terminating DAMASK' ! Functions from IO.f90 are not available
-
  !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
@@ -110,11 +85,6 @@ subroutine DAMASK_interface_init()
  write(6,*)
  write(6,*) 'Geometry Parameter: ', trim(geometryParameter)
  write(6,*) 'Loadcase Parameter: ', trim(loadcaseParameter)
- if (restartReadFlag) then
-   write(6,*) 'Restart Read: ', restartReadFlag
- else 
-   write(6,'(a,I5)') ' Restart Read at Step: ', restartReadStep
- endif
  write(6,*)
  !$OMP END CRITICAL (write2out)
 

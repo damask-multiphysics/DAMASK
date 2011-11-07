@@ -6,8 +6,8 @@
 # Uses OpenMP to parallelise the material subroutines (set number of cores with "export DAMASK_NUM_THREADS=n" to n)
 # Uses linux threads to parallelise fftw3
 # Besides of the f90 files written at MPIE, the two library files of fftw3 "libfftw3_threads.a" "libfftw3.a" are also needed
-# Install fftw3 (v3.3 is tested) with "./configure --enable-threads --enable-sse2" and "make"; "make install" is not needed
-# as long as the two library files "libfftw3_threads.a" "libfftw3.a" are copied to the code/include directory.
+# Install fftw3 (v3.3 is tested) with "./configure --enable-threads --enable-sse2 --enable-shared" and "make"; "make install" is not needed
+# as long as the two library files "libfftw3_threads.a" "libfftw3.a" are copied to the /../lib directory.
 # Need the AMD Core Math Library to be installed (v 4.4 is tested)
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
