@@ -1663,8 +1663,8 @@ tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 Tdislocation_v = state(g,ip,el)%p(12*ns+1:12*ns+6)
 v(1:ns,1) = state(g,ip,el)%p(12*ns+6+1:13*ns+6)
 v(1:ns,2) = state(g,ip,el)%p(12*ns+6+1:13*ns+6)
-v(1:ns,3) = state(g,ip,el)%p(13*ns+6+1:13*ns+6)
-v(1:ns,4) = state(g,ip,el)%p(13*ns+6+1:13*ns+6)
+v(1:ns,3) = state(g,ip,el)%p(13*ns+6+1:14*ns+6)
+v(1:ns,4) = state(g,ip,el)%p(13*ns+6+1:14*ns+6)
 
 
 !*** sanity check for timestep
