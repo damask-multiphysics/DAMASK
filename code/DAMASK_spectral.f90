@@ -51,6 +51,7 @@ program DAMASK_spectral
  use math
  use mesh, only: mesh_ipCenterOfGravity
  use CPFEM, only: CPFEM_general, CPFEM_initAll 
+ use FEsolving, only: restartWrite
  use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel , rotation_tol,&
                      itmax, memory_efficient, DAMASK_NumThreadsInt,&
                      fftw_planner_flag, fftw_timelimit
@@ -62,7 +63,7 @@ program DAMASK_spectral
  real(pReal), dimension(9) ::                      valueVector                        ! stores information temporarily from loadcase file
  integer(pInt), parameter ::                       maxNchunksLoadcase = &
                                                    (1_pInt + 9_pInt)*3_pInt + &       ! deformation, rotation, and stress
-                                                   (1_pInt + 1_pInt)*4_pInt + &       ! time, (log)incs, temp, and frequency
+                                                   (1_pInt + 1_pInt)*5_pInt + &       ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                    1_pInt                             ! dropguessing
  integer(pInt), dimension (1 + maxNchunksLoadcase*2) :: posLoadcase
  integer(pInt), parameter :: maxNchunksGeom = 7_pInt                                  ! 4 identifiers, 3 values
@@ -79,7 +80,8 @@ program DAMASK_spectral
  real(pReal), dimension(:), allocatable ::      bc_timeIncrement, &         ! length of increment
                                                 bc_temperature              ! isothermal starting conditions
  integer(pInt), dimension(:), allocatable ::    bc_steps, &                 ! number of steps
-                                                bc_frequency, &             ! frequency of result writes
+                                                bc_outputfrequency, &       ! frequency of result writes
+                                                bc_restartfrequency, &       ! frequency of result writes
                                                 bc_logscale                 ! linear/logaritmic time step flag
  logical, dimension(:), allocatable ::          bc_followFormerTrajectory,& ! follow trajectory of former loadcase
                                                 bc_velGradApplied           ! decide wether velocity gradient or fdot is given 
@@ -189,7 +191,8 @@ program DAMASK_spectral
  allocate (bc_temperature(N_Loadcases));            bc_temperature = 300.0_pReal
  allocate (bc_steps(N_Loadcases));                  bc_steps = 0_pInt
  allocate (bc_logscale(N_Loadcases));               bc_logscale = 0_pInt
- allocate (bc_frequency(N_Loadcases));              bc_frequency = 1_pInt
+ allocate (bc_outputfrequency(N_Loadcases));        bc_outputfrequency = 1_pInt
+ allocate (bc_restartfrequency(N_Loadcases));       bc_restartfrequency = 1_pInt
  allocate (bc_followFormerTrajectory(N_Loadcases)); bc_followFormerTrajectory = .true.
  allocate (bc_rotation(3,3,N_Loadcases));           bc_rotation = 0.0_pReal
 
@@ -230,8 +233,10 @@ program DAMASK_spectral
        case('logincs','logsteps')                                          ! true, if log scale
          bc_steps(loadcase) = IO_intValue(line,posLoadcase,j+1)
          bc_logscale(loadcase) = 1_pInt
-       case('f','freq','frequency')                                        ! frequency of result writings
-         bc_frequency(loadcase) = IO_intValue(line,posLoadcase,j+1)                
+       case('f','freq','frequency','outputfreq')                           ! frequency of result writings
+         bc_outputfrequency(loadcase) = IO_intValue(line,posLoadcase,j+1)                
+       case('r','restart','restartwrite')                                  ! frequency of writing restart information
+         bc_restartfrequency(loadcase) = IO_intValue(line,posLoadcase,j+1)                
        case('guessreset','dropguessing')
          bc_followFormerTrajectory(loadcase) = .false.                     ! do not continue to predict deformation along former trajectory
        case('euler')                                                       ! rotation of loadcase given in euler angles
@@ -407,9 +412,13 @@ program DAMASK_spectral
    !$OMP CRITICAL (write2out)
    print '(a,i5)','Increments:         ',bc_steps(loadcase)
    !$OMP END CRITICAL (write2out)
-   if (bc_frequency(loadcase) < 1_pInt) call IO_error(error_ID=36,ext_msg=loadcase_string)                        ! non-positive result frequency
+   if (bc_outputfrequency(loadcase) < 1_pInt) call IO_error(error_ID=36,ext_msg=loadcase_string)                        ! non-positive result frequency
    !$OMP CRITICAL (write2out)
-   print '(a,i5)','Freq. of Output:    ',bc_frequency(loadcase)
+   print '(a,i5)','Freq. of Restults Output: ',bc_outputfrequency(loadcase)
+   !$OMP END CRITICAL (write2out)
+   if (bc_restartfrequency(loadcase) < 1_pInt) call IO_error(error_ID=39,ext_msg=loadcase_string)                        ! non-positive result frequency
+   !$OMP CRITICAL (write2out)
+   print '(a,i5)','Freq. of Restart Information Output: ',bc_restartfrequency(loadcase)
    !$OMP END CRITICAL (write2out)
  enddo
 
@@ -527,7 +536,7 @@ program DAMASK_spectral
  write(538), 'materialpoint_sizeResults', materialpoint_sizeResults
  write(538), 'loadcases', N_Loadcases
  write(538), 'logscale', bc_logscale                                       ! one entry per loadcase (0: linear, 1: log)
- write(538), 'frequencies', bc_frequency                                   ! one entry per loadcase
+ write(538), 'frequencies', bc_outputfrequency                             ! one entry per loadcase
  write(538), 'times', bc_timeIncrement                                     ! one entry per loadcase
  bc_steps(1)= bc_steps(1) + 1_pInt
  write(538), 'increments', bc_steps                                        ! one entry per loadcase ToDo: rename keyword to steps
@@ -565,6 +574,11 @@ program DAMASK_spectral
 ! loop oper steps defined in input file for current loadcase
    do step = 1, bc_steps(loadcase)
 !*************************************************************
+     if (mod(step,bc_restartFrequency(loadcase))==0_pInt) then                      ! setting restart parameter for FEsolving
+       restartWrite = .true.
+     else
+       restartWrite = .false.
+     endif
      if (bc_logscale(loadcase) == 1_pInt) then                                                    ! loglinear scale
         if (loadcase == 1_pInt) then                                                              ! 1st loadcase of loglinear scale            
             if (step == 1_pInt) then                                                              ! 1st step of 1st loadcase of loglinear scale
@@ -778,8 +792,8 @@ program DAMASK_spectral
      
      c_prev = math_rotate_forward3x3x3x3(c_current*wgt,bc_rotation(1:3,1:3,loadcase))        ! calculate stiffness for next step
      !ToDo: Incfluence for next loadcase
-     if (mod(step,bc_frequency(loadcase)) == 0_pInt) then                          ! at output frequency
-       write(538),  materialpoint_results(:,1,:)                                   ! write result to file
+     if (mod(totalStepsCounter,bc_outputfrequency(loadcase)) == 0_pInt) then                 ! at output frequency
+       write(538),  materialpoint_results(:,1,:)                                             ! write result to file
      endif
      totalStepsCounter = totalStepsCounter + 1_pInt
      !$OMP CRITICAL (write2out)

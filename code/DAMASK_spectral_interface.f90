@@ -27,9 +27,9 @@ MODULE DAMASK_interface
  character(len=64), parameter :: FEsolver = 'Spectral'
  character(len=5),  parameter :: InputFileExtension = '.geom'
  character(len=4),  parameter :: LogFileExtension = '.log'    !until now, we don't have a log file. But IO.f90 requires it
- logical :: restart_Write_Interface, restart_Read_Interface
+ logical :: restartReadFlag
  character(len=1024) :: geometryParameter,loadcaseParameter
- integer(pInt) :: restartParameter
+ integer(pInt) :: restartReadStep
 CONTAINS
 
 !********************************************************************
@@ -45,8 +45,7 @@ subroutine DAMASK_interface_init()
 
  start = 0_pInt
  length= 0_pInt
- restart_Write_Interface =.true.
- restart_Read_Interface = .false.
+ restartReadFlag = .false.
 
  call get_command(commandLine)
 
@@ -60,7 +59,7 @@ subroutine DAMASK_interface_init()
  if (index(commandLine,'--geometry',.true.)>0) then                ! again, now searching for --geometry'
    start = index(commandLine,'--geometry',.true.) + 11_pInt
  endif
- if(start==3_pInt) stop 'No Geometry specified, terminating DAMASK'! Could not find valid keyword. Functions from IO.f90 are not available
+ if(start==3_pInt) stop 'No Geometry specified, terminating DAMASK'! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
  length = index(commandLine(start:len(commandLine)),' ',.false.)
 
  call get_command(commandLine)                                     ! may contain capitals
@@ -72,14 +71,14 @@ subroutine DAMASK_interface_init()
    if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
  enddo
  
- start = index(commandLine,'-l',.true.) + 3_pInt                   ! search for '-l' and jump forward to given name
+ start = index(commandLine,'-l',.true.) + 3_pInt                   ! search for '-l' and jump forward iby 3 to given name
  if (index(commandLine,'--load',.true.)>0) then                    ! if '--load' is found, use that (contains '-l')
    start = index(commandLine,'--load',.true.) + 7_pInt
  endif               
  if (index(commandLine,'--loadcase',.true.)>0) then                ! again, now searching for --loadcase'
    start = index(commandLine,'--loadcase',.true.) + 11_pInt
  endif
- if(start==3_pInt) stop 'No Loadcase specified, terminating DAMASK'! Could not find valid keyword functions from IO.f90 are not available
+ if(start==3_pInt) stop 'No Loadcase specified, terminating DAMASK'! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
  length = index(commandLine(start:len(commandLine)),' ',.false.)
  
  call get_command(commandLine)                                     ! may contain capitals
@@ -96,14 +95,14 @@ subroutine DAMASK_interface_init()
  endif               
  length = index(commandLine(start:len(commandLine)),' ',.false.)
 
- if(start/=3_pInt) then
-   read(commandLine(start:start+length),'(I12)') restartParameter
-   if (restartParameter>0) then
-      restart_Read_Interface = .true.
-   else
-     restart_Write_Interface =.false.
-   endif
+ restartReadStep = 0_pInt
+ if(start/=3_pInt) then                                           ! found -r
+   read(commandLine(start:start+length),'(I12)') restartReadStep
+   restartReadFlag = .true.
  endif
+ 
+ if(restartReadStep<1_pInt .and. RestartReadFlag .eq. .true.) stop 'Invalid Restart Parameter, terminating DAMASK' ! Functions from IO.f90 are not available
+
  !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
@@ -111,11 +110,10 @@ subroutine DAMASK_interface_init()
  write(6,*)
  write(6,*) 'Geometry Parameter: ', trim(geometryParameter)
  write(6,*) 'Loadcase Parameter: ', trim(loadcaseParameter)
- write(6,*) 'Restart Write: ', restart_Write_Interface
- if (restart_Read_Interface) then
-   write(6,*) 'Restart Read: ', restartParameter
+ if (restartReadFlag) then
+   write(6,*) 'Restart Read: ', restartReadFlag
  else 
-   write(6,'(a,I5)') ' Restart Read at Step: ', restart_Read_Interface
+   write(6,'(a,I5)') ' Restart Read at Step: ', restartReadStep
  endif
  write(6,*)
  !$OMP END CRITICAL (write2out)

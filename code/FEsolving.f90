@@ -62,8 +62,8 @@
  FEmodelGeometry = getModelName()
  if (IO_open_inputFile(fileunit,FEmodelGeometry)) then
    if(trim(FEsolver)=='Spectral') then
-     restartWrite = restart_Write_Interface
-     restartRead  = restart_Read_Interface
+     restartWrite = .true.
+     restartRead  = restartReadFlag
    else
      rewind(fileunit)
      do

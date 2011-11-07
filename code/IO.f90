@@ -1150,6 +1150,8 @@ endfunction
    msg = 'incomplete loadcase'
  case (38)
    msg = 'mixed boundary conditions allow rotation'
+ case (39)
+   msg = 'non-positive restart frequency in spectral loadcase'
  case (40)
    msg = 'path rectification error'
  case (41)
