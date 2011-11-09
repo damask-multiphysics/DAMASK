@@ -1702,7 +1702,7 @@ forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * v(s,t) < 0.0_pReal) &                
 !****************************************************************************
 !*** check CFL condition for flux
 
-if (any(1.2_pReal * abs(v) * timestep > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                             ! safety factor 1.2 (we use the reference volume and are for simplicity here)
+if (any(abs(gdot) > 0.0_pReal .and. 1.5_pReal * v * timestep > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then           ! safety factor 1.5 (we use the reference volume and are for simplicity here)
 #ifndef _OPENMP
   if (debug_verbosity > 6) then
     write(6,*) '<< CONST >> CFL condition not fullfilled'
