@@ -9,6 +9,9 @@
 
 import os,sys,glob
 
+import damask_tools; reload(damask_tools)
+damask_tools.DAMASK_TOOLS().check_env()
+
 bin_link = { \
 				'pre' : [
 							'marc_addUserOutput.py',
@@ -56,22 +59,28 @@ execute = { \
 							],
 						}
 
-#homedir = os.getenv('HOME')
+homedir = os.getenv('HOME')
 #basedir = os.path.join(os.path.dirname(sys.argv[0]),'..')
-homedir = os.getenv('DAMASK_ROOT')
+damask_root = os.getenv('DAMASK_ROOT')
 basedir = os.getenv('DAMASK_ROOT')+'/processing/'
 
 for dir in bin_link:
   for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(basedir,dir,file))
     if (file == ''):
-      dst = os.path.abspath(os.path.join(homedir,'bin',dir))
+      sym_link = os.path.abspath(os.path.join(damask_root,'bin',dir))
     else:
-      dst = os.path.abspath(os.path.join(homedir,'bin',os.path.splitext(file)[0]))
-    print src,'-->',dst
-    if os.path.lexists(dst):
-      os.remove(dst)
-    os.symlink(src,dst)
+      sym_link = os.path.abspath(os.path.join(damask_root,'bin',os.path.splitext(file)[0]))
+    print sym_link,'-->',src
+    if os.path.lexists(sym_link):
+      os.remove(sym_link)    
+    os.symlink(src,sym_link)
+    
+    #--- uncomment next lines to remove your old symbolic links in ~/bin
+    #old_link=sym_link.replace(damask_root,homedir)
+    #if os.path.lexists(old_link):
+    #  os.remove(old_link)
+
     
 for dir in compile:
   for file in compile[dir]:

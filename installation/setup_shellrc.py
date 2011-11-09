@@ -28,6 +28,10 @@ environment = {\
                                     'substitute':'[DamaskRoot]',
                                     'append': False,
                                    },
+                'PATH':            {'delete':'os.path.join(DamaskRoot,"bin")',
+                                    'substitute':'[os.path.join(DamaskRoot,"bin")]',
+                                    'append': True,
+                                   },
               }
 parser = OptionParser(usage="%prog [options]", description = """
 Sets up your shell resource to be compatible with DAMASK. 
