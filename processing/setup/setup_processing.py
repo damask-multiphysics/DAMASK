@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 
-# renders the postprocessing routines acessible from everywhere.
-# you need a ~/bin directory in your home folder
-# if necessary, add the bin directory to your path by
-# adding the following lines to your .bashrc file: 
-#  PATH="$PATH:~/bin"
-#  export PATH 
+# Makes postprocessing routines acessible from everywhere.
 
 import os,sys,glob
 
@@ -59,7 +54,6 @@ execute = { \
                 ],
             }
 
-homedir = os.getenv('HOME')
 damask_root = os.getenv('DAMASK_ROOT')
 if damask_root == '' or damask_root == None: damask_root = os.path.join(os.path.dirname(sys.argv[0]),'../../')
 damask_bin  = os.getenv('DAMASK_BIN')
@@ -79,7 +73,7 @@ for dir in bin_link:
     os.symlink(src,sym_link)
     
     #--- uncomment next lines to remove your old symbolic links in ~/bin
-    #old_link=sym_link.replace(damask_root,homedir)
+    #old_link=sym_link.replace(damask_root,os.getenv('HOME'))
     #if os.path.lexists(old_link):
     #  os.remove(old_link)
 
