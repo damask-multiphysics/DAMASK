@@ -14,25 +14,34 @@ validShells = {\
                'csh': ['.cshrc'],
               }
 
-environment = {\
-                'LD_LIBRARY_PATH': {'delete':'"acml"',                                                 # what keywords trigger item deletion from existing path 
-                                    'substitute':'[os.path.join(pathInfo["acml"],"ifort64_mp/lib"),\
-                                                   os.path.join(pathInfo["acml"],"ifort64/lib")]',     # what to substitute for deleted path items
-                                    'append': True,                                                    # whether new entries append to existing ${env}
-                                   },
-                'PYTHONPATH':      {'delete':'os.path.join(DamaskRoot,"lib")',
-                                    'substitute':'[os.path.join(DamaskRoot,"lib")]',
-                                    'append': True,
-                                   },
-                'DAMASK_ROOT':     {'delete':'DamaskRoot',
-                                    'substitute':'[DamaskRoot]',
-                                    'append': False,
-                                   },
-                'PATH':            {'delete':'os.path.join(DamaskRoot,"bin")',
-                                    'substitute':'[os.path.join(DamaskRoot,"bin")]',
-                                    'append': True,
-                                   },
-              }
+environment = [\
+                { 'name': 'DAMASK_ROOT',
+                  'delete':'DamaskRoot',
+                  'substitute':'[DamaskRoot]',
+                  'append': False,
+                 },
+                { 'name': 'DAMASK_BIN',
+                  'delete':'os.path.join(DamaskRoot,"bin")',
+                  'substitute':'[os.path.join(DamaskRoot,"bin")]',
+                  'append': False,
+                 },
+                { 'name': 'PATH',
+                  'delete':'"${DAMASK_BIN}"',
+                  'substitute':'["${DAMASK_BIN}"]',
+                  'append': True,
+                 },
+                { 'name': 'PYTHONPATH',
+                  'delete':'"${DAMASK_ROOT}/lib"',
+                  'substitute':'["${DAMASK_ROOT}/lib"]',
+                  'append': True,
+                 },
+                { 'name': 'LD_LIBRARY_PATH',
+                  'delete':'"acml"',                                                 # what keywords trigger item deletion from existing path 
+                  'substitute':'[os.path.join(pathInfo["acml"],"ifort64_mp/lib"),\
+                                 os.path.join(pathInfo["acml"],"ifort64/lib")]',     # what to substitute for deleted path items
+                  'append': True,                                                    # whether new entries append to existing ${env}
+                 },
+              ]
 parser = OptionParser(usage="%prog [options]", description = """
 Sets up your shell resource to be compatible with DAMASK. 
 """ + string.replace('$Id$','\n','\\n')
@@ -69,21 +78,23 @@ if theShell == 'bash':
       rc.close()
 
       output = []
-      for envVar in environment.keys(): environment[envVar]['matched'] = False
+      for var in environment: var['matched'] = False
   
       for line in content:
-        for envVar,data in environment.items():
-          m = re.search(r'^(.*? %s=)([^;]*)(.*)$'%envVar,line)
+        for var in environment:
+          m = re.search(r'^(.*? %s=)([^;]*)(.*)$'%var['name'],line)
           if m:
-            substitute = eval(data['substitute'])+[path for path in m.group(2).split(':') if eval(data['delete']) not in path]
+            substitute = [path for path in m.group(2).split(':') if eval(var['delete']) not in path] + \
+                         eval(var['substitute'])
             line = m.group(1)+':'.join(substitute)+m.group(3)
-            environment[envVar]['matched'] = True
+            var['matched'] = True
 
         output.append(line)
 
-      for envVar,data in environment.items():
-        if not data['matched']:
-          output.append('export %s=%s'%(envVar,':'.join(eval(data['substitute'])+{True:['${%s}'%envVar],False:[]}[data['append']])))
+      for var in environment:
+        if not var['matched']:
+          output.append('export %s=%s'%(var['name'],':'.join({True:['${%s}'%var['name']],False:[]}[var['append']]+\
+                                                             eval(var['substitute']))))
 
       rc = open(os.path.join(theHome,theRC),'w')
       rc.write('\n'.join(output)+'\n')
