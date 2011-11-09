@@ -11,31 +11,31 @@ import os,sys,glob
 
 bin_link = { \
 				'pre' : [
-							'marc_addUserOutput',
-							'mentat_pbcOnBoxMesh',
-							'mentat_spectralBox',
-							'patchFromReconstructedBoundaries',
-							'spectral_geomCheck',
-							'spectral_minimalSurface',
-							'spectral_vicinityOffset',
-							'voronoi_randomSeeding',
-							'voronoi_tessellation',
+							'marc_addUserOutput.py',
+							'mentat_pbcOnBoxMesh.py',
+							'mentat_spectralBox.py',
+							'patchFromReconstructedBoundaries.py',
+							'spectral_geomCheck.py',
+							'spectral_minimalSurface.py',
+							'spectral_vicinityOffset.py',
+							'voronoi_randomSeeding.py',
+							'voronoi_tessellation.py',
 							],
 				'post' : [
-							'3Dvisualize',
-							'addCauchy',
-							'addDeterminant',
-							'addDivergence',
-							'addMises',
-							'addNorm',
-							'addStrainTensors',
-              'addCompatibilityMismatch',
-							'averageDown',
-							'mentat_colorMap',
-							'postResults',
-							'spectral_iterationCount',
-							'spectral_convergence',
-							'spectral_scaleGeom',
+							'3Dvisualize.py',
+							'addCauchy.py',
+							'addDeterminant.py',
+							'addDivergence.py',
+							'addMises.py',
+							'addNorm.py',
+							'addStrainTensors.py',
+              'addCompatibilityMismatch.py',
+							'averageDown.py',
+							'mentat_colorMap.py',
+							'postResults.py',
+							'spectral_iterationCount.py',
+							'spectral_convergence.py',
+							'spectral_scaleGeom.py',
 							],
 						}
 
@@ -56,20 +56,23 @@ execute = { \
 							],
 						}
 
-homedir = os.getenv('HOME')
-basedir = os.path.join(os.path.dirname(sys.argv[0]),'..')
+#homedir = os.getenv('HOME')
+#basedir = os.path.join(os.path.dirname(sys.argv[0]),'..')
+homedir = os.getenv('DAMASK_ROOT')
+basedir = os.getenv('DAMASK_ROOT')+'/processing/'
+
 for dir in bin_link:
   for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(basedir,dir,file))
     if (file == ''):
       dst = os.path.abspath(os.path.join(homedir,'bin',dir))
     else:
-      dst = os.path.abspath(os.path.join(homedir,'bin',file))
+      dst = os.path.abspath(os.path.join(homedir,'bin',os.path.splitext(file)[0]))
     print src,'-->',dst
     if os.path.lexists(dst):
       os.remove(dst)
     os.symlink(src,dst)
-
+    
 for dir in compile:
   for file in compile[dir]:
     src = os.path.abspath(os.path.join(basedir,dir,file))
