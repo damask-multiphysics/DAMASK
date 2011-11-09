@@ -73,7 +73,7 @@ if theShell == 'bash':
   
       for line in content:
         for envVar,data in environment.items():
-          m = re.search(r'^(.*?%s=)([^;]*)(.*)$'%envVar,line)
+          m = re.search(r'^(.*? %s=)([^;]*)(.*)$'%envVar,line)
           if m:
             substitute = eval(data['substitute'])+[path for path in m.group(2).split(':') if eval(data['delete']) not in path]
             line = m.group(1)+':'.join(substitute)+m.group(3)
