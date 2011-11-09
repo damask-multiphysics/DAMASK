@@ -2652,7 +2652,7 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       cs = cs + 6_pInt
     
     case('accumulatedshear')
-      constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) + sum(gdot,2) 
+      constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) + sum(gdot,2)*dt 
       constitutive_nonlocal_postResults(cs+1:cs+ns) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el)
       cs = cs + ns
 
