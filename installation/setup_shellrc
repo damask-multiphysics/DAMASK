@@ -3,11 +3,32 @@
 import os,sys,string,re
 from optparse import OptionParser
 
+pathInfo = {\
+            'acml': 'lib/acml4.4.0',
+            'fftw': 'lib/fftw',
+            'msc':  '/msc',
+           }
+
 validShells = {\
                'bash':['.bashrc','.bash_profile'],
-               'csh': ['.cshrc']
+               'csh': ['.cshrc'],
               }
 
+environment = {\
+                'LD_LIBRARY_PATH': {'delete':'"acml"',                                                 # what keywords trigger item deletion from existing path 
+                                    'substitute':'[os.path.join(pathInfo["acml"],"ifort64_mp/lib"),\
+                                                   os.path.join(pathInfo["acml"],"ifort64/lib")]',     # what to substitute for deleted path items
+                                    'append': True,                                                    # whether new entries append to existing ${env}
+                                   },
+                'PYTHONPATH':      {'delete':'os.path.join(DamaskRoot,"lib")',
+                                    'substitute':'[os.path.join(DamaskRoot,"lib")]',
+                                    'append': True,
+                                   },
+                'DAMASK_ROOT':     {'delete':'DamaskRoot',
+                                    'substitute':'[DamaskRoot]',
+                                    'append': False,
+                                   },
+              }
 parser = OptionParser(usage="%prog [options]", description = """
 Sets up your shell resource to be compatible with DAMASK. 
 """ + string.replace('$Id$','\n','\\n')
@@ -19,17 +40,18 @@ parser.add_option("-s","--shell", type="string",
 
 parser.set_defaults(shell = 'bash')
 
-
 (options, args) = parser.parse_args()
 
 DamaskRoot = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])),'../'))
-try:                                        # check for MSC.Mentat installation location
+
+try:                                        # check for user-defined pathinfo
   file = open(os.path.join(DamaskRoot,'lib/pathinfo'))
-  for line in file.readlines():
-    if line.split()[0].lower() == 'acml': ACMLpath = os.path.normpath(line.split()[1])
+  content = file.readlines()
   file.close()
+  for line in content:
+    pathinfo[line.split()[0].lower()] = os.path.normpath(line.split()[1])
 except:
-  ACMLpath = os.path.join(DamaskRoot,'lib/acml4.4.0/')
+  pass
 
 theShell = options.shell.lower()
 theHome = os.getenv('USERPROFILE') or os.getenv('HOME')
@@ -42,33 +64,22 @@ if theShell == 'bash':
       content = map(string.strip,rc.readlines())
       rc.close()
 
-      matched = {'LD_LIB': False, 'PYTHONPATH': False}
       output = []
-
+      for envVar in environment.keys(): environment[envVar]['matched'] = False
+  
       for line in content:
-
-        m = re.search('^(.*?LD_LIBRARY_PATH=)([^;]*)(.*)$',line)
-        if m:
-          newPath = [os.path.join(ACMLpath,'ifort64_mp/lib'),os.path.join(ACMLpath,'ifort64/lib')]
-          for item in m.group(2).split(':'):
-            if 'acml' not in item.lower(): newPath.append(item)
-          line = m.group(1)+':'.join(newPath)+m.group(3)
-          matched['LD_LIB'] = True
-
-        m = re.search('^(.*?PYTHONPATH=)([^;]*)(.*)$',line)
-        if m:
-          newPath = [os.path.join(DamaskRoot,'lib')]
-          for item in m.group(2).split(':'):
-            if os.path.join(DamaskRoot,'lib') != item: newPath.append(item)
-          line = m.group(1)+':'.join(newPath)+m.group(3)
-          matched['PYTHONPATH'] = True
+        for envVar,data in environment.items():
+          m = re.search(r'^(.*?%s=)([^;]*)(.*)$'%envVar,line)
+          if m:
+            substitute = eval(data['substitute'])+[path for path in m.group(2).split(':') if eval(data['delete']) not in path]
+            line = m.group(1)+':'.join(substitute)+m.group(3)
+            environment[envVar]['matched'] = True
 
         output.append(line)
 
-      if not matched['LD_LIB']:
-        output.append('export LD_LIBRARY_PATH=%s:%s:${LD_LIBRARY_PATH}'%(os.path.join(ACMLpath,'ifort64_mp/lib'),os.path.join(ACMLpath,'ifort64/lib')))
-      if not matched['PYTHONPATH']:
-        output.append('export PYTHONPATH=%s:$PYTHONPATH'%(os.path.join(DamaskRoot,'lib')))
+      for envVar,data in environment.items():
+        if not data['matched']:
+          output.append('export %s=%s'%(envVar,':'.join(eval(data['substitute'])+{True:['${%s}'%envVar],False:[]}[data['append']])))
 
       rc = open(os.path.join(theHome,theRC),'w')
       rc.write('\n'.join(output)+'\n')
