@@ -46,11 +46,11 @@ character(len=22), dimension(10), parameter ::    constitutive_nonlocal_listBasi
                                                                                             'rhoSglScrewNegImmobile', &
                                                                                             'rhoDipEdge            ', &
                                                                                             'rhoDipScrew           ' /) ! list of "basic" microstructural state variables that are independent from other state variables
-character(len=15), dimension(3), parameter :: constitutive_nonlocal_listDependentStates = (/'rhoForest      ', &
-                                                                                            'tauThreshold   ', &
-                                                                                            'Tdislocation_v ' /) ! list of microstructural state variables that depend on other state variables
-character(len=15), dimension(2), parameter ::     constitutive_nonlocal_listOtherStates = (/'velocityEdge   ', &
-                                                                                            'velocityScrew  ' /) ! list of other dependent state variables that are not updated by microstructure
+character(len=16), dimension(3), parameter :: constitutive_nonlocal_listDependentStates = (/'rhoForest       ', &
+                                                                                            'tauThreshold    ', &
+                                                                                            'Tdislocation_v  ' /) ! list of microstructural state variables that depend on other state variables
+character(len=16), dimension(2), parameter ::     constitutive_nonlocal_listOtherStates = (/'velocityEdge    ', &
+                                                                                            'velocityScrew   ' /) ! list of other dependent state variables that are not updated by microstructure
 real(pReal), parameter :: kB = 1.38e-23_pReal                                                                   ! Physical parameter, Boltzmann constant in J/Kelvin
 
 !* Definition of global variables
@@ -110,7 +110,8 @@ real(pReal), dimension(:,:,:,:,:,:), allocatable ::       constitutive_nonlocal_
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_forestProjectionEdge, &         ! matrix of forest projections of edge dislocations for each instance
                                                           constitutive_nonlocal_forestProjectionScrew, &        ! matrix of forest projections of screw dislocations for each instance
                                                           constitutive_nonlocal_interactionMatrixSlipSlip       ! interaction matrix of the different slip systems for each instance
-real(pReal), dimension(:,:,:,:), allocatable ::           constitutive_nonlocal_lattice2slip                    ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
+real(pReal), dimension(:,:,:,:), allocatable ::           constitutive_nonlocal_lattice2slip, &                 ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
+                                                          constitutive_nonlocal_accumulatedShear                ! accumulated shear per slip system up to the start of the FE increment
 
 
 CONTAINS
@@ -489,6 +490,9 @@ constitutive_nonlocal_interactionMatrixSlipSlip = 0.0_pReal
 allocate(constitutive_nonlocal_lattice2slip(1:3, 1:3, maxTotalNslip, maxNinstance))
 constitutive_nonlocal_lattice2slip = 0.0_pReal
 
+allocate(constitutive_nonlocal_accumulatedShear(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+constitutive_nonlocal_accumulatedShear = 0.0_pReal
+
 allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 10, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_rhoDotFlux = 0.0_pReal
 
@@ -576,7 +580,8 @@ do i = 1,maxNinstance
             'rho_dot_flux', &
             'rho_dot_flux_edge', &
             'rho_dot_flux_screw', &
-            'dislocationvelocity', &
+            'velocity_edge', &
+            'velocity_screw', &
             'fluxdensity_edge_pos_x', &
             'fluxdensity_edge_pos_y', &
             'fluxdensity_edge_pos_z', &
@@ -590,7 +595,8 @@ do i = 1,maxNinstance
             'fluxdensity_screw_neg_y', &
             'fluxdensity_screw_neg_z', &
             'd_upper_edge', &
-            'd_upper_screw' )
+            'd_upper_screw', &
+            'accumulatedshear' )
         mySize = constitutive_nonlocal_totalNslip(i)
       case('internalstress')
         mySize = 6_pInt
@@ -2571,8 +2577,12 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
                                                       + sum(abs(constitutive_nonlocal_rhoDotFlux(1:ns,7:8,g,ip,el)),2)
       cs = cs + ns
             
-    case ('dislocationvelocity')
+    case ('velocity_edge')
       constitutive_nonlocal_postResults(cs+1:cs+ns) = v(1:ns,1)
+      cs = cs + ns
+    
+    case ('velocity_screw')
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = v(1:ns,3)
       cs = cs + ns
     
     case ('fluxdensity_edge_pos_x')
@@ -2640,7 +2650,12 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
       constitutive_nonlocal_postResults(cs+5) = sigma(2,3)
       constitutive_nonlocal_postResults(cs+6) = sigma(3,1)
       cs = cs + 6_pInt
-            
+    
+    case('accumulatedshear')
+      constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) + sum(gdot,2) 
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el)
+      cs = cs + ns
+
  end select
 enddo
 
