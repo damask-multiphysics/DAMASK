@@ -69,7 +69,7 @@ class MSC_TOOLS():
         print 'Job submission without compilation, using %s'%prog
       out=open('out.log','w')
       print(cmd)
-      print shlex.split(cmd)
+      #print shlex.split(cmd)
       self.p=subprocess.Popen(shlex.split(cmd),stdout=out,stderr=subprocess.STDOUT)
       self.p.wait()
       out.close()
