@@ -514,8 +514,7 @@ subroutine deformed_fft(res_x,res_y,res_z,geomdim,defgrad,defgrad_av,scaling,coo
  
  call dfftw_plan_many_dft(plan_fft(1),3,(/res_x,res_y,res_z/),9,&
    defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,&
-   defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,-1 + 32)      ! -1 = FFTW_FORWARD, 32 =FFTW_PATIENT 
-    
+   defgrad_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,-1,32)      ! -1 = FFTW_FORWARD, 32 =FFTW_PATIENT 
  call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res_x,res_y,res_z/),3,&
    coords_fft,(/res_x/2+1,res_y,res_z/),1,(res_x/2+1)*res_y*res_z,&
    coords,    (/res_x,    res_y,res_z/),1, res_x*     res_y*res_z,32)  ! 32 = FFTW_PATIENT 
@@ -738,7 +737,6 @@ subroutine inverse_reconstruction(res_x,res_y,res_z,reference_configuration,curr
          print*, 'deltadef', math_inv3x3(dres_dF)*res_center
          defgrad_temp = defgrad_temp - math_inv3x3(dres_dF)*res_center          ! Newton--Raphson
          print*, o, res_center
-!         pause
        enddo
        defgrad(i,j,k,:,:) = defgrad_temp       
  enddo; enddo; enddo
