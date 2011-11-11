@@ -31,7 +31,7 @@
  logical :: symmetricSolver = .false. 
  logical :: parallelExecution = .true. 
  logical :: restartWrite = .false.
- logical :: restartRead  = .false.
+ logical :: restartRead  = .false., restartReadSpectral = .false.
  logical :: lastMode = .true., cutBack = .false.
  logical, dimension(:,:), allocatable :: calcMode
  integer(pInt), dimension(:,:), allocatable :: FEsolving_execIP
@@ -134,6 +134,8 @@
          FEmodelGeometry = IO_StringValue(line,positions,1)
        endif
      enddo
+   elseif (FEsolver == 'Spectral') then
+     restartReadSpectral = .true.
    else
      call IO_error(106) ! cannot open file for old job info
    endif

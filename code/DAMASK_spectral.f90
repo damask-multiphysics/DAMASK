@@ -50,8 +50,8 @@ program DAMASK_spectral
  use debug, only: debug_Verbosity
  use math
  use mesh, only: mesh_ipCenterOfGravity
- use CPFEM, only: CPFEM_general, CPFEM_initAll 
- use FEsolving, only: restartWrite
+ use CPFEM, only: CPFEM_general, CPFEM_initAll
+ use FEsolving, only: restartWrite, restartReadSpectral, restartReadStep
  use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel , rotation_tol,&
                      itmax, memory_efficient, DAMASK_NumThreadsInt,&
                      fftw_planner_flag, fftw_timelimit
@@ -101,12 +101,12 @@ program DAMASK_spectral
  real(pReal), dimension(3,3) ::                pstress, pstress_av, defgrad_av, &
                                                defgradAim = math_I3, defgradAimOld= math_I3, defgradAimCorr= math_I3,&
                                                mask_stress, mask_defgrad, fDot, &
-                                               pstress_av_load, defgradAim_lab               ! quantities rotated to other coordinate system
- real(pReal), dimension(3,3,3,3) ::            dPdF, c0_reference, c_current, s_prev, c_prev ! stiffness and compliance
- real(pReal), dimension(6) ::                  cstress                                       ! cauchy stress
- real(pReal), dimension(6,6) ::                dsde                                          ! small strain stiffness
- real(pReal), dimension(9,9) ::                s_prev99, c_prev99                            ! compliance and stiffness in matrix notation 
- real(pReal), dimension(:,:), allocatable ::   s_reduced, c_reduced                          ! reduced compliance and stiffness (only for stress BC)
+                                               pstress_av_load, defgradAim_lab                           ! quantities rotated to other coordinate system
+ real(pReal), dimension(3,3,3,3) ::            dPdF, c0_reference, c_current = 0.0_pReal, s_prev, c_prev ! stiffness and compliance
+ real(pReal), dimension(6) ::                  cstress                                                   ! cauchy stress
+ real(pReal), dimension(6,6) ::                dsde                                                      ! small strain stiffness
+ real(pReal), dimension(9,9) ::                s_prev99, c_prev99                                        ! compliance and stiffness in matrix notation 
+ real(pReal), dimension(:,:), allocatable ::   s_reduced, c_reduced                                      ! reduced compliance and stiffness (only for stress BC)
  integer(pInt) ::                              size_reduced = 0.0_pReal                                  ! number of stress BCs
 
 ! pointwise data 
@@ -124,15 +124,17 @@ program DAMASK_spectral
  integer*8 ::                                           fftw_flag                                ! planner flag for fftw
  
 ! loop variables, convergence etc.
- real(pReal) :: time, time0, timeinc                                                             ! elapsed time, begin of interval, time interval 
+ real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc                                     ! elapsed time, begin of interval, time interval 
  real(pReal) :: guessmode, err_div, err_stress, p_hat_avg
  complex(pReal), parameter ::                           img = cmplx(0.0_pReal,1.0_pReal)
  real(pReal), dimension(3,3), parameter ::              ones = 1.0_pReal, zeroes = 0.0_pReal
  complex(pReal), dimension(3,3) ::                      temp33_Complex
  real(pReal), dimension(3,3) ::                         temp33_Real
  integer(pInt) :: i, j, k, l, m, n, p
- integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode, ierr, notConvergedCounter, totalStepsCounter
+ integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode,&
+                     ierr, notConvergedCounter = 0_pInt, totalStepsCounter = 0_pInt
  logical errmatinv
+ real(pReal) :: defgradDet, defgradDetMax, defgradDetMin
 
 !Initializing
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)         ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
@@ -322,7 +324,7 @@ program DAMASK_spectral
  
 ! Initialization of CPFEM_general (= constitutive law) and of deformation gradient field
  call CPFEM_initAll(bc_temperature(1),1_pInt,1_pInt)
- 
+
  !Output of geom file
  !$OMP CRITICAL (write2out)
  print '(a)', ''
@@ -345,7 +347,7 @@ program DAMASK_spectral
    bc_followFormerTrajectory(1) = .false.
  endif
 ! consistency checks and output of loadcase
- do loadcase = 1, N_Loadcases
+ do loadcase = 1_pInt, N_Loadcases
    !$OMP CRITICAL (write2out)
    print '(a)', '-------------------------------------------------------------'
    print '(a,i5)', 'Loadcase:            ', loadcase
@@ -396,28 +398,70 @@ program DAMASK_spectral
    !$OMP CRITICAL (write2out)
    print '(a,i5)','Increments:         ',bc_steps(loadcase)
    !$OMP END CRITICAL (write2out)
-   if (bc_outputfrequency(loadcase) < 1_pInt) call IO_error(error_ID=36,ext_msg=loadcase_string)                        ! non-positive result frequency
+   if (bc_outputfrequency(loadcase) < 1_pInt) call IO_error(error_ID=36,ext_msg=loadcase_string)                  ! non-positive result frequency
    !$OMP CRITICAL (write2out)
    print '(a,i5)','Freq. of Restults Output: ',bc_outputfrequency(loadcase)
    !$OMP END CRITICAL (write2out)
-   if (bc_restartfrequency(loadcase) < 1_pInt) call IO_error(error_ID=39,ext_msg=loadcase_string)                        ! non-positive result frequency
+   if (bc_restartfrequency(loadcase) < 1_pInt) call IO_error(error_ID=39,ext_msg=loadcase_string)                 ! non-positive restart frequency
    !$OMP CRITICAL (write2out)
    print '(a,i5)','Freq. of Restart Information Output: ',bc_restartfrequency(loadcase)
    !$OMP END CRITICAL (write2out)
  enddo
 
+ if (.not. restartReadSpectral) then                                                   ! no deformation at the beginning
+   do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+     defgrad(i,j,k,1:3,1:3) = math_I3            
+     defgradold(i,j,k,1:3,1:3) = math_I3
+   enddo; enddo; enddo
+   loadcase = 1_pInt
+   step = 1_pInt
+ else                                                                         ! using old values 
+   if (IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getModelName()),size(defgrad))) then
+     read (777,rec=1) defgrad
+     close (777)
+   endif
+   defgradold = defgrad
+   defgradAim = 0.0_pReal
+   do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+     defgradAim = defgradAim + defgrad(i,j,k,1:3,1:3)
+   enddo; enddo; enddo
+   defgradAim = defgradAim * wgt
+   defgradAimOld = defgradAim
+   do i = 1_pInt, N_loadcases                                                 ! looping over ALL loadcase
+     time0 = time                                                             ! loadcase start time                
+     timeinc = bc_timeIncrement(i)/bc_steps(i)                                ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
+     do j = 1_pInt, bc_steps(i)                                               ! looping over ALL steps in current loadcase
+       if (totalStepsCounter <= restartReadStep) then                          ! forwarding to restart step
+         totalStepsCounter = totalStepsCounter + 1_pInt
+         if (bc_logscale(i) == 1_pInt) then                                   ! loglinear scale
+           if (i == 1_pInt) then                                              ! 1st loadcase of loglinear scale            
+             if (j == 1_pInt) then                                            ! 1st step of 1st loadcase of loglinear scale
+               timeinc = bc_timeIncrement(1)*(2.0**(1 - bc_steps(1)))         ! assume 1st step is equal to 2nd 
+             else                                                             ! not-1st step of 1st loadcase of loglinear scale
+               timeinc = bc_timeIncrement(1)*(2.0**(j - (1 + bc_steps(1))))
+            endif
+           else                                                               ! not-1st loadcase of loglinear scale
+             timeinc = time0 * (  ((1.0_pReal+bc_timeIncrement(i)/time0)**(float( j   )/(bc_steps(i))))  &
+                                - ((1.0_pReal+bc_timeIncrement(i)/time0)**(float((j-1))/(bc_steps(i)))) )
+          endif
+       endif
+       time = time + timeinc
+       step = j
+       loadcase = i
+       endif
+     enddo
+   enddo   
+   totalStepsCounter = totalStepsCounter - 1_pInt
+ endif
  ielem = 0_pInt
- c_current = 0.0_pReal 
  do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
-   defgradold(i,j,k,:,:) = math_I3                       ! no deformation at the beginning
-   defgrad(i,j,k,:,:) = math_I3 
    ielem = ielem +1 
    coordinates(1:3,i,j,k) = mesh_ipCenterOfGravity(1:3,1,ielem)  ! set to initial coordinates ToDo: SHOULD BE UPDATED TO CURRENT POSITION IN FUTURE REVISIONS!!!
    call CPFEM_general(2,coordinates(1:3,i,j,k),math_I3,math_I3,temperature(i,j,k),0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
    c_current = c_current + dPdF
  enddo; enddo; enddo
  c0_reference = c_current * wgt                                                  ! linear reference material stiffness
- c_prev = math_rotate_forward3x3x3x3(c0_reference,bc_rotation(1:3,1:3,loadcase)) ! rotate_forward: lab -> load system
+ c_prev = math_rotate_forward3x3x3x3(c0_reference,bc_rotation(1:3,1:3,loadcase)) ! rotate_forward: lab -> load system 
  
  if (debug_verbosity > 1) then
   !$OMP CRITICAL (write2out)
@@ -531,12 +575,9 @@ program DAMASK_spectral
 !$OMP END CRITICAL (write2out)
 ! Initialization done
   
- time = 0.0_pReal
- notConvergedCounter = 0_pInt
- totalStepsCounter = 1_pInt
 !*************************************************************
 ! Loop over loadcases defined in the loadcase file
- do loadcase = 1, N_Loadcases
+ do loadcase = loadcase,  N_Loadcases
 !*************************************************************
    time0 = time                                                            ! loadcase start time                
 
@@ -556,10 +597,14 @@ program DAMASK_spectral
    fDot = bc_deformation(:,:,loadcase)                                    ! only valid for given fDot. will be overwritten later in case L is given
 !*************************************************************
 ! loop oper steps defined in input file for current loadcase
-   do step = 1, bc_steps(loadcase)
+   do step = step,  bc_steps(loadcase)
 !*************************************************************
-     if (mod(step,bc_restartFrequency(loadcase))==0_pInt) then                      ! setting restart parameter for FEsolving
+     if (mod(step - 1_pInt,bc_restartFrequency(loadcase))==0_pInt) then                      ! setting restart parameter for FEsolving
        restartWrite = .true.
+       if(IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(defgrad))) then
+         write (777,rec=1) defgrad
+         close (777)
+       endif
      else
        restartWrite = .false.
      endif
@@ -655,6 +700,12 @@ program DAMASK_spectral
        print '(3(A,I5.5,tr2)A)', '**** Loadcase = ',loadcase, 'Step = ',step, 'Iteration = ',iter,'****'
        print '(A)', '************************************************************'
        !$OMP END CRITICAL (write2out)
+       if (restartWrite .eq. .true. .and. iter == 1_pInt) then
+       !$OMP CRITICAL (write2out)
+       print '(A)', 'Writing converged Results of previous Step for Restart'
+       print '(A)', '************************************************************'
+       !$OMP END CRITICAL (write2out)
+       endif
        workfft = 0.0_pReal                                                            ! needed because of the padding for FFTW
 !*************************************************************
        do n = 1,3; do m = 1,3
@@ -666,7 +717,12 @@ program DAMASK_spectral
        print '(A,/)', '== Update Stress Field (Constitutive Evaluation P(F)) ======'
        !$OMP END CRITICAL (write2out)
        ielem = 0_pInt
+       defgradDetMax =   0.0_pReal
+       defgradDetMin = 999.0_pReal
        do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)
+         defgradDet = math_det3x3(defgrad(i,j,k,1:3,1:3))
+         defgradDetMax = max(defgradDetMax,defgradDet)
+         defgradDetMin = min(defgradDetMin,defgradDet) 
          ielem = ielem + 1
          call CPFEM_general(3,&                                                       ! collect cycle
                             coordinates(1:3,i,j,k), defgradold(i,j,k,:,:), defgrad(i,j,k,:,:),&
@@ -687,7 +743,7 @@ program DAMASK_spectral
          workfft(i,j,k,:,:) = pstress                                     ! build up average P-K stress 
          c_current = c_current + dPdF
        enddo; enddo; enddo
-       
+       restartWrite = .false. ! ToDo: don't know if we need it 
        do n = 1,3; do m = 1,3
          pstress_av(m,n) = sum(workfft(1:resolution(1),:,:,m,n)) * wgt
        enddo; enddo
@@ -707,6 +763,8 @@ program DAMASK_spectral
          print '(a,/,3(3(f12.7,x)/))', 'Deformation Aim:     ',math_transpose3x3(math_rotate_backward3x3(&
                                                                defgradAim,bc_rotation(1:3,1:3,loadcase)))
          print '(a,x,f12.7,/)'       , 'Determinant of Deformation Aim: ', math_det3x3(defgradAim)
+         print '(a,x,f12.7,/)'       , 'Volume Change Max:              ', defgradDetMax
+         print '(a,x,f12.7,/)'       , 'Volume Change Min:              ', defgradDetMin
        endif
        print '(A,/)', '== Calculating Equilibrium Using Spectral Method ===========' 
        !$OMP END CRITICAL (write2out)
@@ -794,7 +852,7 @@ program DAMASK_spectral
    enddo    ! end looping over loadcases
    !$OMP CRITICAL (write2out)
    print '(A,/)', '############################################################'
-   print '(a,i5.5,a,i5.5,a)', 'Of ', totalStepsCounter, ' Total Steps,', notConvergedCounter, ' Steps did not Converge!'
+   print '(a,i5.5,a,i5.5,a)', 'Of ', totalStepsCounter -restartReadStep, ' Total Steps, ', notConvergedCounter, ' Steps did not Converge!'
    !$OMP END CRITICAL (write2out)
  close(538)
  call dfftw_destroy_plan(fftw_plan(1)); call dfftw_destroy_plan(fftw_plan(2))
