@@ -1818,7 +1818,7 @@ fi
 # user subroutine used
 #
 # add BLAS options for linking (taken from ACML, AMD CORE MATH LIBRARY)
-  AMD_BLAS=" -L /opt/acml4.4.0/ifort64_mp/lib -lacml_mp"
+  AMD_BLAS=" -L %ACMLDIR%/ifort64_mp/lib -lacml_mp"
 
   if test "$user"
   then

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 DEFAULT_INSTALLDIR='/msc'
+DEFAULT_ACMLDIR='/opt/acml4.0.0'
 DEFAULT_VERSION='2010.2'
 
 WORKINGDIR=`dirname $0`
@@ -16,8 +17,8 @@ done
 echo "MSC version: $VERSION"
 
 INSTALLDIR=''
-if [ -f $WORKINGDIR/../../processing/MSCpath ]; then
-  INSTALLDIR=`head $WORKINGDIR/../../processing/MSCpath`
+if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
+  INSTALLDIR=`grep msc $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
 fi
 while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
 do
@@ -30,6 +31,22 @@ done
 
 INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
 echo "MSC installation path: $INSTALLDIR"
+
+ACMLDIR=''
+if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
+  INSTALLDIR=`grep acml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+fi
+while [ ! -d "$ACMLDIR" ] || [ -z "$ACMLDIR" ]
+do
+  echo "Input path of ACML installation: [${DEFAULT_ACMLDIR}]"
+  read ACMLDIR
+  if [ -z $ACMLDIR ]; then
+    ACMLDIR=${DEFAULT_ACMLDIR}
+  fi
+done
+
+ACMLDIR=${ACMLDIR%/}               # remove trailing slash
+echo "ACML installation path: $ACMLDIR"
 
 # tools
 echo ''
@@ -44,6 +61,7 @@ for filename in 'comp_user' \
                 'include_linux64'; do
   cp $WORKINGDIR/$VERSION/Marc_tools/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
+  echo $theDIR/$filename | xargs perl -pi -e "s:%ACMLDIR%:${ACMLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $filename
 done
@@ -58,6 +76,7 @@ for filename in 'edit_window' \
                 'submit3'; do
   cp $WORKINGDIR/$VERSION/Mentat_bin/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
+  echo $theDIR/$filename | xargs perl -pi -e "s:%ACMLDIR%:${ACMLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $filename
 done
