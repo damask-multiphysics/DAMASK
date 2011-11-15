@@ -51,6 +51,7 @@ real(pReal) :: debug_jacobianMax
 real(pReal) :: debug_jacobianMin
 logical :: debug_selectiveDebugger = .true.
 integer(pInt) :: debug_verbosity = 1_pInt
+integer(pInt) :: spectral_debug_verbosity = 0_pInt
 
 CONTAINS
 
@@ -122,6 +123,12 @@ subroutine debug_init()
               debug_selectiveDebugger = IO_intValue(line,positions,2) > 0_pInt
         case ('verbosity')
               debug_verbosity = IO_intValue(line,positions,2)
+        case ('generaldebugspectral')                          ! use bitwise logical and, continue with +8_pInt
+              if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 1_pInt 
+        case ('divergencedebugspectral')
+              if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 2_pInt
+        case ('restartdebugspectral')
+              if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 4_pInt
       endselect
     enddo
     100 close(fileunit)
@@ -164,7 +171,11 @@ subroutine debug_init()
     debug_i = 0_pInt
     debug_g = 0_pInt
   endif
-
+  !$OMP CRITICAL (write2out)                                                   ! bitwise coded
+  if (iand(spectral_debug_verbosity,1_pInt)==1_pInt)  write(6,'(a)') ' Spectral General Debugging'
+  if (iand(spectral_debug_verbosity,2_pInt)==2_pInt)  write(6,'(a)') ' Spectral Divergence Debugging'
+  if (iand(spectral_debug_verbosity,4_pInt)==4_pInt)  write(6,'(a)') ' Spectral Restart Debugging'
+  !$OMP END CRITICAL (write2out)
 
 endsubroutine
  
@@ -196,6 +207,7 @@ subroutine debug_reset()
   debug_stressMin = huge(1.0_pReal)
   debug_jacobianMax = -huge(1.0_pReal)
   debug_jacobianMin = huge(1.0_pReal)
+  spectral_debug_verbosity = 0.0_pReal
 
 
 endsubroutine

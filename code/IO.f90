@@ -1416,6 +1416,8 @@ endfunction
  select case (warning_ID)
  case (33_pInt)
    msg = 'cannot guess along trajectory for first step of first loadcase'
+ case (47_pInt)
+   msg = 'No valid parameter for FFTW given, using FFTW_PATIENT'
  case (101_pInt)
    msg = '+    crystallite debugging off...    +'
  case (600_pInt)

@@ -70,9 +70,10 @@ real(pReal) ::                  relevantStrain, &                       ! strain
                                 err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
                                 fftw_timelimit, &                       ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org
                                 rotation_tol                            ! tolerance of rotation specified in loadcase
-character(len=64)               fftw_planner_flag                       ! sets the planig-rigor flag, see manual on www.fftw.org
-logical                         memory_efficient                        ! for fast execution (pre calculation of gamma_hat)
-integer(pInt)                   itmax , &                               ! maximum number of iterations
+character(len=64) ::            fftw_planner_flag                       ! sets the planig-rigor flag, see manual on www.fftw.org
+logical ::                      memory_efficient,&                      ! for fast execution (pre calculation of gamma_hat)
+                                divergence_correction                     ! correct divergence calculation in fourier space
+integer(pInt) ::                itmax , &                               ! maximum number of iterations
 
 
 !* Random seeding parameters
@@ -172,8 +173,8 @@ subroutine numerics_init()
   fftw_timelimit          = -1.0_pReal   ! no timelimit of plan creation for FFTW
   fftw_planner_flag       ='FFTW_PATIENT'
   rotation_tol            = 1.0e-12 
-
-!* Random seeding parameters: added <<<updated 27.08.2009>>>
+  divergence_correction   = .true.
+!* Random seeding parameters
   fixedSeed               = 0_pInt
 
 
@@ -290,6 +291,8 @@ subroutine numerics_init()
               fftw_planner_flag = IO_stringValue(line,positions,2)
         case ('rotation_tol')
               rotation_tol = IO_floatValue(line,positions,2)
+        case ('divergence_correction')
+              divergence_correction = IO_intValue(line,positions,2)  > 0_pInt
 
 !* Random seeding parameters
         case ('fixed_seed')
@@ -310,69 +313,64 @@ subroutine numerics_init()
 
   ! writing parameters to output file
   !$OMP CRITICAL (write2out)
-    write(6,'(a24,x,e8.1)') 'relevantStrain:         ',relevantStrain
-    write(6,'(a24,x,e8.1)') 'defgradTolerance:       ',defgradTolerance
-    write(6,'(a24,x,i8)')   'iJacoStiffness:         ',iJacoStiffness
-    write(6,'(a24,x,i8)')   'iJacoLpresiduum:        ',iJacoLpresiduum
-    write(6,'(a24,x,e8.1)') 'pert_Fg:                ',pert_Fg
-    write(6,'(a24,x,i8)')   'pert_method:            ',pert_method
-    write(6,'(a24,x,i8)')   'nCryst:                 ',nCryst
-    write(6,'(a24,x,e8.1)') 'subStepMinCryst:        ',subStepMinCryst
-    write(6,'(a24,x,e8.1)') 'subStepSizeCryst:       ',subStepSizeCryst
-    write(6,'(a24,x,e8.1)') 'stepIncreaseCryst:      ',stepIncreaseCryst
-    write(6,'(a24,x,i8)')   'nState:                 ',nState
-    write(6,'(a24,x,i8)')   'nStress:                ',nStress
-    write(6,'(a24,x,e8.1)') 'rTol_crystalliteState:  ',rTol_crystalliteState
-    write(6,'(a24,x,e8.1)') 'rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
-    write(6,'(a24,x,e8.1)') 'rTol_crystalliteStress: ',rTol_crystalliteStress
-    write(6,'(a24,x,e8.1)') 'aTol_crystalliteStress: ',aTol_crystalliteStress
-    write(6,'(a24,2(x,i8))')'integrator:             ',numerics_integrator
-    write(6,*)
+    write(6,'(a24,x,e8.1)') ' relevantStrain:         ',relevantStrain
+    write(6,'(a24,x,e8.1)') ' defgradTolerance:       ',defgradTolerance
+    write(6,'(a24,x,i8)')   ' iJacoStiffness:         ',iJacoStiffness
+    write(6,'(a24,x,i8)')   ' iJacoLpresiduum:        ',iJacoLpresiduum
+    write(6,'(a24,x,e8.1)') ' pert_Fg:                ',pert_Fg
+    write(6,'(a24,x,i8)')   ' pert_method:            ',pert_method
+    write(6,'(a24,x,i8)')   ' nCryst:                 ',nCryst
+    write(6,'(a24,x,e8.1)') ' subStepMinCryst:        ',subStepMinCryst
+    write(6,'(a24,x,e8.1)') ' subStepSizeCryst:       ',subStepSizeCryst
+    write(6,'(a24,x,e8.1)') ' stepIncreaseCryst:      ',stepIncreaseCryst
+    write(6,'(a24,x,i8)')   ' nState:                 ',nState
+    write(6,'(a24,x,i8)')   ' nStress:                ',nStress
+    write(6,'(a24,x,e8.1)') ' rTol_crystalliteState:  ',rTol_crystalliteState
+    write(6,'(a24,x,e8.1)') ' rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
+    write(6,'(a24,x,e8.1)') ' rTol_crystalliteStress: ',rTol_crystalliteStress
+    write(6,'(a24,x,e8.1)') ' aTol_crystalliteStress: ',aTol_crystalliteStress
+    write(6,'(a24,2(x,i8),/)')' integrator:             ',numerics_integrator
   
-    write(6,'(a24,x,i8)')   'nHomog:                 ',nHomog
-    write(6,'(a24,x,e8.1)') 'subStepMinHomog:        ',subStepMinHomog
-    write(6,'(a24,x,e8.1)') 'subStepSizeHomog:       ',subStepSizeHomog
-    write(6,'(a24,x,e8.1)') 'stepIncreaseHomog:      ',stepIncreaseHomog
-    write(6,'(a24,x,i8)')   'nMPstate:               ',nMPstate
-    write(6,*)
+    write(6,'(a24,x,i8)')   ' nHomog:                 ',nHomog
+    write(6,'(a24,x,e8.1)') ' subStepMinHomog:        ',subStepMinHomog
+    write(6,'(a24,x,e8.1)') ' subStepSizeHomog:       ',subStepSizeHomog
+    write(6,'(a24,x,e8.1)') ' stepIncreaseHomog:      ',stepIncreaseHomog
+    write(6,'(a24,x,i8,/)') ' nMPstate:               ',nMPstate
 
 !* RGC parameters
-    write(6,'(a24,x,e8.1)') 'aTol_RGC:               ',absTol_RGC
-    write(6,'(a24,x,e8.1)') 'rTol_RGC:               ',relTol_RGC
-    write(6,'(a24,x,e8.1)') 'aMax_RGC:               ',absMax_RGC
-    write(6,'(a24,x,e8.1)') 'rMax_RGC:               ',relMax_RGC
-    write(6,'(a24,x,e8.1)') 'perturbPenalty_RGC:     ',pPert_RGC
-    write(6,'(a24,x,e8.1)') 'relevantMismatch_RGC:   ',xSmoo_RGC
-    write(6,'(a24,x,e8.1)') 'viscosityrate_RGC:      ',viscPower_RGC
-    write(6,'(a24,x,e8.1)') 'viscositymodulus_RGC:   ',viscModus_RGC
-    write(6,'(a24,x,e8.1)') 'maxrelaxation_RGC:      ',maxdRelax_RGC
-    write(6,'(a24,x,e8.1)') 'maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
-    write(6,'(a24,x,e8.1)') 'volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
-    write(6,'(a24,x,e8.1)') 'discrepancyPower_RGC:   ',volDiscrPow_RGC
-    write(6,*)
+    write(6,'(a24,x,e8.1)') ' aTol_RGC:               ',absTol_RGC
+    write(6,'(a24,x,e8.1)') ' rTol_RGC:               ',relTol_RGC
+    write(6,'(a24,x,e8.1)') ' aMax_RGC:               ',absMax_RGC
+    write(6,'(a24,x,e8.1)') ' rMax_RGC:               ',relMax_RGC
+    write(6,'(a24,x,e8.1)') ' perturbPenalty_RGC:     ',pPert_RGC
+    write(6,'(a24,x,e8.1)') ' relevantMismatch_RGC:   ',xSmoo_RGC
+    write(6,'(a24,x,e8.1)') ' viscosityrate_RGC:      ',viscPower_RGC
+    write(6,'(a24,x,e8.1)') ' viscositymodulus_RGC:   ',viscModus_RGC
+    write(6,'(a24,x,e8.1)') ' maxrelaxation_RGC:      ',maxdRelax_RGC
+    write(6,'(a24,x,e8.1)') ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
+    write(6,'(a24,x,e8.1)') ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
+    write(6,'(a24,x,e8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
 
 !* spectral parameters
-    write(6,'(a24,x,e8.1)')   'err_div_tol:            ',err_div_tol
-    write(6,'(a24,x,e8.1)')   'err_stress_tolrel:      ',err_stress_tolrel
-    write(6,'(a24,x,i8)')     'itmax:                  ',itmax
-    write(6,'(a24,x,L8)')     'memory_efficient:       ',memory_efficient
+    write(6,'(a24,x,e8.1)')   ' err_div_tol:            ',err_div_tol
+    write(6,'(a24,x,e8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
+    write(6,'(a24,x,i8)')     ' itmax:                  ',itmax
+    write(6,'(a24,x,L8)')     ' memory_efficient:       ',memory_efficient
     if(fftw_timelimit<0) then
-      write(6,'(a24,x,L8)')   'fftw_timelimit:         ',.false.
+      write(6,'(a24,x,L8)')   ' fftw_timelimit:         ',.false.
     else    
-      write(6,'(a24,x,e8.1)') 'fftw_timelimit:         ',fftw_timelimit
+      write(6,'(a24,x,e8.1)') ' fftw_timelimit:         ',fftw_timelimit
     endif
-    write(6,'(a24,x,a)')      'fftw_planner_flag:      ',trim(fftw_planner_flag)
-    write(6,'(a24,x,e8.1)')   'rotation_tol:           ',rotation_tol
-    write(6,*)
+    write(6,'(a24,x,a)')      ' fftw_planner_flag:      ',trim(fftw_planner_flag)
+    write(6,'(a24,x,e8.1)')   ' rotation_tol:           ',rotation_tol
+    write(6,'(a24,x,L8,/)')   ' divergence_correction:  ',divergence_correction
 
 !* Random seeding parameters
-    write(6,'(a24,x,i16)')   'fixed_seed:             ',fixedSeed
-    write(6,*)
+    write(6,'(a24,x,i16,/)')   ' fixed_seed:             ',fixedSeed
   !$OMP END CRITICAL (write2out)
 
 !* openMP parameter
-!$  write(6,'(a24,x,i8)')   'number of threads:      ',DAMASK_NumThreadsInt
-!$  write(6,*)
+!$  write(6,'(a24,x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
   
   ! sanity check  
   if (relevantStrain <= 0.0_pReal)          call IO_error(260)
