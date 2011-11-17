@@ -13,14 +13,14 @@ class MATERIAL_CONFIG():
     import os,sys
     
     def __init__(self):
-    homogenization=[]
+      homogenization=[]
     
     def add_homogenization(self, name=None, type=None):
       
       if type is 'isostrain':
-      h={'type':type}
-      h['ngrains']=ngrains
-      return h
+        h={'type':type}
+        h['ngrains']=ngrains
+        return h
         
     def add_crystallite(self, name=None):
         pass
@@ -42,4 +42,5 @@ class MATERIAL_CONFIG():
 
 
 class HOMOGENIZATION():
-    type=None      
+    type=None
+    
