@@ -38,7 +38,7 @@ class MSC_TOOLS():
                  run_marc_path='/msc/marc2010/tools/',
                  subroutine_dir=None,
                  subroutine_name='DAMASK_marc2010',
-                 compile='yes',
+                 compile=False,
                  compiled_dir='../../../code/',
                  modelname='one_element_model',
                  jobname='job1',
@@ -58,7 +58,7 @@ class MSC_TOOLS():
       options=' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
       cmd=run_marc+jid+options
             
-      if compile=='yes' or compile=='y':
+      if compile:
         cmd=cmd+compilation
         print 'Job submission with compilation.'
       else:
