@@ -53,7 +53,7 @@ program DAMASK_spectral
  use mesh, only: mesh_ipCenterOfGravity
  use CPFEM, only: CPFEM_general, CPFEM_initAll
  use FEsolving, only: restartWrite, restartReadSpectral, restartReadStep
- use numerics, only: err_div_tol, err_stress_tol, err_stress_tolrel , rotation_tol,&
+ use numerics, only: err_div_tol, err_stress_tolrel , rotation_tol,&
                      itmax, memory_efficient, DAMASK_NumThreadsInt, divergence_correction, &
                      fftw_planner_flag, fftw_timelimit
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
@@ -129,14 +129,14 @@ program DAMASK_spectral
  
 ! loop variables, convergence etc.
  real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc                                     ! elapsed time, begin of interval, time interval 
- real(pReal) :: guessmode, err_div, err_stress, p_hat_avg
+ real(pReal) :: guessmode, err_div, err_stress, err_stress_tol, p_hat_avg
  complex(pReal), parameter ::               img = cmplx(0.0_pReal,1.0_pReal)
  real(pReal), dimension(3,3), parameter ::  ones = 1.0_pReal, zeroes = 0.0_pReal
  complex(pReal), dimension(3,3) ::          temp33_Complex
  real(pReal), dimension(3,3) ::             temp33_Real
  integer(pInt) :: i, j, k, l, m, n, p
- integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode, stepZero=1_pInt, &
-                     ierr, notConvergedCounter = 0_pInt, totalStepsCounter = 0_pInt
+ integer(pInt) :: N_Loadcases, loadcase, step, iter, ielem, CPFEM_mode, &
+                  ierr, notConvergedCounter = 0_pInt, totalStepsCounter = 0_pInt
  logical :: errmatinv, regrid = .false.
  real(pReal) :: defgradDet, defgradDetMax, defgradDetMin
  real(pReal) :: correctionFactor
@@ -146,16 +146,13 @@ program DAMASK_spectral
  real(pReal) :: p_real_avg, err_div_max, err_real_div_avg, err_real_div_max
  logical :: debugGeneral = .false., debugDivergence = .false., debugRestart = .false.
 
-!Initializing
- !$ call omp_set_num_threads(DAMASK_NumThreadsInt)         ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
- if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) call IO_error(error_ID=102_pInt)   ! check for correct number of given arguments
+! Initializing model size independed parameters
+ !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                          ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
+ if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) &! check for correct number of given arguments
+    call IO_error(error_ID=102_pInt)
  
  call DAMASK_interface_init()
  
- if (iand(spectral_debug_verbosity,1_pInt)==1_pInt) debugGeneral = .true.
- if (iand(spectral_debug_verbosity,2_pInt)==2_pInt) debugDivergence = .true.
- if (iand(spectral_debug_verbosity,4_pInt)==4_pInt) debugRestart = .true.
-
  !$OMP CRITICAL (write2out)
  print '(a)', ''
  print '(a,a)', ' <<<+-  DAMASK_spectral init  -+>>>'
@@ -166,7 +163,7 @@ program DAMASK_spectral
  print '(a)', ''
  !$OMP END CRITICAL (write2out)
 
-! Reading the loadcase file and allocate variables
+! Reading the loadcase file and allocate variables for loadcases
  path = getLoadcaseName()
  if (.not. IO_open_file(myUnit,path)) call IO_error(error_ID=30_pInt,ext_msg = trim(path))
  rewind(myUnit)
@@ -194,6 +191,7 @@ program DAMASK_spectral
 
  allocate (bc(N_Loadcases))
 
+! Reading the loadcase and assign values to the allocated data structure
  rewind(myUnit)
  loadcase = 0_pInt
  do
@@ -269,8 +267,8 @@ program DAMASK_spectral
 101 close(myUnit)
 
 !read header of geom file to get the information needed before the complete geom file is intepretated by mesh.f90
- 
  path = getModelName()
+
  if (.not. IO_open_file(myUnit,trim(path)//InputFileExtension))&
         call IO_error(error_ID=101_pInt,ext_msg = trim(path)//InputFileExtension)
  rewind(myUnit)
@@ -326,10 +324,15 @@ program DAMASK_spectral
     mod(resolution(2),2_pInt)/=0_pInt .or.&
    (mod(resolution(3),2_pInt)/=0_pInt .and. resolution(3)/= 1_pInt))  call IO_error(error_ID=103_pInt)
 
-! Initialization of CPFEM_general (= constitutive law) and of deformation gradient field
+! Initialization of CPFEM_general (= constitutive law)
  call CPFEM_initAll(bc(1)%temperature,1_pInt,1_pInt)
 
- !Output of geom file
+! Get debugging parameters
+ if (iand(spectral_debug_verbosity,1_pInt)==1_pInt) debugGeneral = .true.
+ if (iand(spectral_debug_verbosity,2_pInt)==2_pInt) debugDivergence = .true.
+ if (iand(spectral_debug_verbosity,4_pInt)==4_pInt) debugRestart = .true.
+ 
+!Output of geometry
  !$OMP CRITICAL (write2out)
  print '(a)', ''
  print '(a)', '#############################################################'
@@ -350,7 +353,8 @@ program DAMASK_spectral
    call IO_warning(warning_ID=33_pInt)                 ! cannot guess along trajectory for first step of first loadcase
    bc(1)%followFormerTrajectory = .false.
  endif
-! consistency checks and output of loadcase
+ 
+ ! consistency checks and output of loadcase
  do loadcase = 1_pInt, N_Loadcases
    !$OMP CRITICAL (write2out)
    print '(a)', '============================================================='
@@ -418,9 +422,7 @@ program DAMASK_spectral
      call dfftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
    endif
 #endif
-
- !call dfftw_timelimit(fftw_timelimit)                          !is not working, have to fix it in FFTW source file
- 
+ !call dfftw_timelimit(fftw_timelimit)                          ! is not working, have to fix it in FFTW source file
  select case(IO_lc(fftw_planner_flag))                          ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
    case('estimate','fftw_estimate')                             ! ordered from slow execution (but fast plan creation) to fast execution
      fftw_flag = 64
@@ -434,53 +436,11 @@ program DAMASK_spectral
      call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_planner_flag)))
      fftw_flag = 32
  end select
- 
- if (.not. restartReadSpectral) then                                                          ! start at first step of first loadcase
-   loadcase = 1_pInt
-   step = 1_pInt
- else                                                                                         ! going forwarnd and use old values 
-   do i = 1_pInt, N_Loadcases                                                                 ! looping over ALL loadcases
-     time0 = time                                                                             ! loadcase start time
-     timeinc = bc(i)%timeIncrement/bc(i)%steps                                                ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
-     do j = 1_pInt, bc(i)%steps                                                               ! looping over ALL steps in current loadcase
-       if (totalStepsCounter < restartReadStep) then                                 ! forwarding to restart step
-         totalStepsCounter = totalStepsCounter + 1_pInt
-         if (bc(i)%logscale == 1_pInt) then                                                   ! loglinear scale
-           if (i == 1_pInt) then                                                              ! 1st loadcase of loglinear scale
-             if (j == 1_pInt) then                                                            ! 1st step of 1st loadcase of loglinear scale
-               timeinc = bc(1)%timeIncrement*(2.0_pReal**real(  1_pInt-bc(1)%steps ,pReal))  ! assume 1st step is equal to 2nd 
-             else                                                                             ! not-1st step of 1st loadcase of loglinear scale
-               timeinc = bc(1)%timeIncrement*(2.0_pReal**real(j-1_pInt-bc(1)%steps ,pReal))
-             endif
-           else                                                                               ! not-1st loadcase of loglinear scale
-             timeinc = time0 *( (1.0_pReal + bc(i)%timeIncrement/time0 )**real(          j/bc(i)%steps ,pReal)  &
-                               -(1.0_pReal + bc(i)%timeIncrement/time0 )**real( (j-1_pInt)/bc(i)%steps ,pReal) ) !ToDo: correct? how should the float casting be done
-            endif
-          endif
-         time = time + timeinc
-       endif
-     enddo
-   enddo   
-   do i = 1_pInt, N_Loadcases                                                                 ! looping over ALL loadcases
-     do j = 1_pInt, bc(i)%steps                                                               ! looping over ALL steps in current loadcase
-       if (totalStepsCounter -1_pInt  < restartReadStep) then                                 ! forwarding to restart step
-         step = j
-         loadcase = i
-       endif
-     enddo
-   enddo   
-
- endif
-print*, totalStepsCounter
-print*, loadcase
-print*, step
-pause
 !*************************************************************
 ! Loop over loadcases defined in the loadcase file
- do loadcase = loadcase,  N_Loadcases
+ do loadcase = 1_pInt,  N_Loadcases
 !*************************************************************
    time0 = time                                                            ! loadcase start time                
-
    if (bc(loadcase)%followFormerTrajectory) then                           ! continue to guess along former trajectory where applicable
      guessmode = 1.0_pReal
    else
@@ -495,428 +455,434 @@ pause
 
    timeinc = bc(loadcase)%timeIncrement/bc(loadcase)%steps                ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
    fDot = bc(loadcase)%deformation                                        ! only valid for given fDot. will be overwritten later in case L is given
+
 !*************************************************************
 ! loop oper steps defined in input file for current loadcase
-   do step = step,  bc(loadcase)%steps
+   do step = 1_pInt,  bc(loadcase)%steps
 !*************************************************************
+! forwarding time
+     if (bc(loadcase)%logscale == 1_pInt) then                                                 ! loglinear scale
+       if (loadcase == 1_pInt) then                                                            ! 1st loadcase of loglinear scale            
+         if (step == 1_pInt) then                                                              ! 1st step of 1st loadcase of loglinear scale
+           timeinc = bc(1)%timeIncrement*(2.0_pReal**real(     1_pInt-bc(1)%steps ,pReal))     ! assume 1st step is equal to 2nd 
+         else                                                                                  ! not-1st step of 1st loadcase of loglinear scale
+           timeinc = bc(1)%timeIncrement*(2.0_pReal**real(step-1_pInt-bc(1)%steps ,pReal))
+         endif
+       else                                                                                      ! not-1st loadcase of loglinear scale
+           timeinc = time0 *( (1.0_pReal + bc(loadcase)%timeIncrement/time0 )**real(          step/bc(loadcase)%steps ,pReal)  &
+                             -(1.0_pReal + bc(loadcase)%timeIncrement/time0 )**real( (step-1_pInt)/bc(loadcase)%steps ,pReal) )
+       endif
+     endif
+     time = time + timeinc
+     totalStepsCounter = totalStepsCounter + 1_pInt
+
 !*************************************************************
 ! Initialization Start
 !*************************************************************
-   if(stepZero==1_pInt) then                                                   ! we start
-     stepZero = 0_pInt
-     if (regrid==.true. ) then                                            ! 'real' start vs. regrid start
-       call dfftw_destroy_plan(fftw_plan(1)); call dfftw_destroy_plan(fftw_plan(2))
-       if(debugDivergence) call dfftw_destroy_plan(fftw_plan(3))
-       deallocate (defgrad)
-       deallocate (defgradold)
-       deallocate (coordinates)
-       deallocate (temperature)
-       deallocate (xi)
-       deallocate (workfft)
-    ! here we have to create the new geometry and assign the values from the previous step
-     endif 
-     allocate (defgrad    (  resolution(1),resolution(2),resolution(3),3,3));  defgrad     = 0.0_pReal
-     allocate (defgradold (  resolution(1),resolution(2),resolution(3),3,3));  defgradold  = 0.0_pReal
-     allocate (coordinates(3,resolution(1),resolution(2),resolution(3)));      coordinates = 0.0_pReal
-     allocate (temperature(  resolution(1),resolution(2),resolution(3)));      temperature = bc(1)%temperature  ! start out isothermally
-     allocate (xi         (3,resolution(1)/2+1,resolution(2),resolution(3)));  xi          =0.0_pReal 
-     allocate (workfft(resolution(1)+2,resolution(2),resolution(3),3,3)); workfft = 0.0_pReal
-     if (debugDivergence) allocate (divergence(resolution(1)+2,resolution(2),resolution(3),3)); divergence = 0.0_pReal
+     if(totalStepsCounter >= restartReadStep) then                          ! Do calculations (otherwise just forwarding)
+       if (regrid==.true. ) then                                            ! 'DeInitialize' the values changing in case of regridding
+         regrid = .false.
+         call dfftw_destroy_plan(fftw_plan(1)); call dfftw_destroy_plan(fftw_plan(2))
+         if(debugDivergence) call dfftw_destroy_plan(fftw_plan(3))
+         deallocate (defgrad)
+         deallocate (defgradold)
+         deallocate (coordinates)
+         deallocate (temperature)
+         deallocate (xi)
+         deallocate (workfft)
+        !ToDo:  here we have to create the new geometry and assign the values from the previous step
+       endif 
+       if(totalStepsCounter == restartReadStep) then                                              ! Initialize values
+         guessmode = 0.0_pReal                                                 ! change of load case, homogeneous guess for the first step
+         allocate (defgrad    (  resolution(1),resolution(2),resolution(3),3,3));  defgrad     = 0.0_pReal
+         allocate (defgradold (  resolution(1),resolution(2),resolution(3),3,3));  defgradold  = 0.0_pReal
+         allocate (coordinates(3,resolution(1),resolution(2),resolution(3)));      coordinates = 0.0_pReal
+         allocate (temperature(  resolution(1),resolution(2),resolution(3)));      temperature = bc(1)%temperature  ! start out isothermally
+         allocate (xi         (3,resolution(1)/2+1,resolution(2),resolution(3)));  xi          =0.0_pReal 
+         allocate (workfft(resolution(1)+2,resolution(2),resolution(3),3,3)); workfft = 0.0_pReal
+         if (debugDivergence) allocate (divergence(resolution(1)+2,resolution(2),resolution(3),3)); divergence = 0.0_pReal
 
-     wgt = 1.0_pReal/real(resolution(1)*resolution(2)*resolution(3), pReal)
-     call dfftw_plan_many_dft_r2c(fftw_plan(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
-       workfft,(/resolution(1)       +2_pInt,resolution(2),resolution(3)/),1,(resolution(1)       +2_pInt)*resolution(2)*resolution(3),&
-       workfft,(/resolution(1)/2_pInt+1_pInt,resolution(2),resolution(3)/),1,(resolution(1)/2_pInt+1_pInt)*resolution(2)*resolution(3),fftw_flag)   
-     call dfftw_plan_many_dft_c2r(fftw_plan(2),3,(/resolution(1),resolution(2),resolution(3)/),9,&
-       workfft,(/resolution(1)/2_pInt+1_pInt,resolution(2),resolution(3)/),1,(resolution(1)/2_pInt+1_pInt)*resolution(2)*resolution(3),&
-       workfft,(/resolution(1)       +2_pInt,resolution(2),resolution(3)/),1,(resolution(1)       +2_pInt)*resolution(2)*resolution(3),fftw_flag)
-     if (debugDivergence ) &
-       call dfftw_plan_many_dft_c2r(fftw_plan(3),3,(/resolution(1),resolution(2),resolution(3)/),3,&
-         divergence,(/resolution(1)/2_pInt+1_pInt,resolution(2),resolution(3)/),1,(resolution(1)/2_pInt+1_pInt)*resolution(2)*resolution(3),&
-         divergence,(/resolution(1)       +2_pInt,resolution(2),resolution(3)/),1,(resolution(1)       +2_pInt)*resolution(2)*resolution(3),fftw_flag)
-     if (debugGeneral) then
-       !$OMP CRITICAL (write2out)
-       write (6,*) 'FFTW initialized'
-       !$OMP END CRITICAL (write2out)
+         wgt = 1.0_pReal/real(resolution(1)*resolution(2)*resolution(3), pReal)
+         call dfftw_plan_many_dft_r2c(fftw_plan(1),3,(/resolution(1),resolution(2),resolution(3)/),9,&
+           workfft,(/resolution(1)       +2_pInt,resolution(2),resolution(3)/),1,(resolution(1)       +2_pInt)*resolution(2)*resolution(3),&
+           workfft,(/resolution(1)/2_pInt+1_pInt,resolution(2),resolution(3)/),1,(resolution(1)/2_pInt+1_pInt)*resolution(2)*resolution(3),fftw_flag)   
+         call dfftw_plan_many_dft_c2r(fftw_plan(2),3,(/resolution(1),resolution(2),resolution(3)/),9,&
+           workfft,(/resolution(1)/2_pInt+1_pInt,resolution(2),resolution(3)/),1,(resolution(1)/2_pInt+1_pInt)*resolution(2)*resolution(3),&
+           workfft,(/resolution(1)       +2_pInt,resolution(2),resolution(3)/),1,(resolution(1)       +2_pInt)*resolution(2)*resolution(3),fftw_flag)
+         if (debugDivergence ) &
+           call dfftw_plan_many_dft_c2r(fftw_plan(3),3,(/resolution(1),resolution(2),resolution(3)/),3,&
+             divergence,(/resolution(1)/2_pInt+1_pInt,resolution(2),resolution(3)/),1,(resolution(1)/2_pInt+1_pInt)*resolution(2)*resolution(3),&
+             divergence,(/resolution(1)       +2_pInt,resolution(2),resolution(3)/),1,(resolution(1)       +2_pInt)*resolution(2)*resolution(3),fftw_flag)
+         if (debugGeneral) then
+           !$OMP CRITICAL (write2out)
+           write (6,*) 'FFTW initialized'
+           !$OMP END CRITICAL (write2out)
+         endif
+         if (restartReadStep==1_pInt) then                                          ! no deformation at the beginning
+           do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
+             defgrad(i,j,k,1:3,1:3) = math_I3            
+             defgradold(i,j,k,1:3,1:3) = math_I3
+           enddo; enddo; enddo
+         else                                                                         ! using old values 
+           if (IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getSolverJobName()),size(defgrad))) then
+             read (777,rec=1) defgrad
+             close (777)
+           endif
+           defgradold = defgrad
+           defgradAim = 0.0_pReal
+           do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
+             defgradAim = defgradAim + defgrad(i,j,k,1:3,1:3)                        ! calculating old average deformation
+           enddo; enddo; enddo
+           defgradAim = defgradAim * wgt
+           defgradAimOld = defgradAim
+           guessmode=0.0_pInt
+         endif
+         ielem = 0_pInt
+         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
+           ielem = ielem + 1_pInt 
+           coordinates(1:3,i,j,k) = mesh_ipCenterOfGravity(1:3,1,ielem)  ! set to initial coordinates ToDo: SHOULD BE UPDATED TO CURRENT POSITION IN FUTURE REVISIONS!!! But do we know them? I don't think so. Otherwise we don't need geometry reconstruction
+           call CPFEM_general(2_pInt,coordinates(1:3,i,j,k),math_I3,math_I3,temperature(i,j,k),0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
+           c_current = c_current + dPdF
+         enddo; enddo; enddo
+         c0_reference = c_current * wgt                                                  ! linear reference material stiffness
+         c_prev = math_rotate_forward3x3x3x3(c0_reference,bc(loadcase)%rotation) ! rotate_forward: lab -> load system 
+   
+         if (debugGeneral) then
+           !$OMP CRITICAL (write2out)
+           write (6,*) 'First Call to CPFEM_general finished'
+           !$OMP END CRITICAL (write2out)
+         endif
+   
+         do k = 1_pInt, resolution(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
+           k_s(3) = k - 1_pInt
+           if(k > resolution(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - resolution(3)
+             do j = 1_pInt, resolution(2)
+               k_s(2) = j - 1_pInt
+               if(j > resolution(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - resolution(2) 
+                 do i = 1, resolution(1)/2_pInt + 1_pInt
+                   k_s(1) = i - 1_pInt
+                   xi(3,i,j,k) = 0.0_pReal                                                  ! 2D case
+                   if(resolution(3) > 1_pInt) xi(3,i,j,k) = real(k_s(3), pReal)/geomdimension(3) ! 3D case  
+                                              xi(2,i,j,k) = real(k_s(2), pReal)/geomdimension(2)
+                                              xi(1,i,j,k) = real(k_s(1), pReal)/geomdimension(1)
+         enddo; enddo; enddo
+  ! remove highest frequencies for calculation of divergence (CAREFULL, they will be used for pre calculatet gamma operator!) 
+         do k = 1_pInt ,resolution(3); do j = 1_pInt ,resolution(2); do i = 1_pInt,resolution(1)/2_pInt + 1_pInt
+           if(k==resolution(3)/2_pInt+1_pInt) xi(3,i,j,k)= 0.0_pReal
+           if(j==resolution(2)/2_pInt+1_pInt) xi(2,i,j,k)= 0.0_pReal
+           if(i==resolution(1)/2_pInt+1_pInt) xi(1,i,j,k)= 0.0_pReal
+         enddo; enddo; enddo
+   
+         if(memory_efficient) then                            ! allocate just single fourth order tensor
+           allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
+         else                                                 ! precalculation of gamma_hat field
+           allocate (gamma_hat(resolution(1)/2_pInt + 1_pInt ,resolution(2),resolution(3),3,3,3,3)); gamma_hat = 0.0_pReal
+           do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)/2_pInt + 1_pInt
+             if (any(xi(:,i,j,k) /= 0.0_pReal)) then     
+               do l = 1_pInt ,3_pInt; do m = 1_pInt,3_pInt
+                 xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
+               enddo; enddo
+               temp33_Real = math_inv3x3(math_mul3333xx33(c0_reference, xiDyad)) 
+             else
+               xiDyad  = 0.0_pReal
+               temp33_Real = 0.0_pReal
+             endif 
+             do l=1_pInt,3_pInt; do m=1_pInt,3_pInt; do n=1_pInt,3_pInt; do p=1_pInt,3_pInt
+               gamma_hat(i,j,k, l,m,n,p) = - 0.25*(temp33_Real(l,n)+temp33_Real(n,l)) *&
+                                                   (xiDyad(m,p)+xiDyad(p,m))
+             enddo; enddo; enddo; enddo         
+           enddo; enddo; enddo
+         endif
+
+   ! write header of output file
+         !$OMP CRITICAL (write2out)
+         open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
+                                                            //'.spectralOut',form='UNFORMATTED',status='REPLACE')
+         write(538), 'load', trim(getLoadcaseName())
+         write(538), 'workingdir', trim(getSolverWorkingDirectoryName())
+         write(538), 'geometry', trim(getSolverJobName())//InputFileExtension
+         write(538), 'resolution', resolution
+         write(538), 'dimension', geomdimension
+         write(538), 'materialpoint_sizeResults', materialpoint_sizeResults
+         write(538), 'loadcases', N_Loadcases
+         write(538), 'logscale', bc(1:N_Loadcases)%logscale                                  ! one entry per loadcase (0: linear, 1: log)
+         write(538), 'frequencies', bc(1:N_Loadcases)%outputfrequency                        ! one entry per loadcase
+         write(538), 'times', bc(1:N_Loadcases)%timeIncrement                                ! one entry per loadcase
+         bc(1)%steps= bc(1)%steps + 1_pInt                                                   
+         write(538), 'increments', bc(1:N_Loadcases)%steps                                   ! one entry per loadcase ToDo: rename keyword to steps
+         bc(1)%steps= bc(1)%steps - 1_pInt
+         write(538), 'startingIncrement', restartReadStep -1_pInt                            ! start with writing out the previous step
+         write(538), 'eoh'                                                                   ! end of header
+         write(538),  materialpoint_results(:,1,:)                                           ! initial (non-deformed) results !ToDo: define array size
+        !$OMP END CRITICAL (write2out)
+       endif
+  !*************************************************************
+  ! Initialization End
+  !*************************************************************
+          
+     if (mod(step - 1_pInt,bc(loadcase)%restartFrequency)==0_pInt) then                    ! at frequency of writing restart information
+       restartWrite = .true.                                                               ! setting restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
+     else
+       restartWrite = .false.
      endif
+       
+     if (bc(loadcase)%velGradApplied) &                                                           ! calculate fDot from given L and current F
+       fDot = math_mul33x33(bc(loadcase)%deformation, defgradAim)
 
-     if (.not. restartReadSpectral) then                                          ! no deformation at the beginning
-       do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
-         defgrad(i,j,k,1:3,1:3) = math_I3            
-         defgradold(i,j,k,1:3,1:3) = math_I3
-       enddo; enddo; enddo
-     else                                                                         ! using old values 
-       if (IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getModelName()),size(defgrad))) then
-         read (777,rec=1) defgrad
+  !winding forward of deformation aim in loadcase system
+       temp33_Real = defgradAim                                            
+       defgradAim = defgradAim &                                                                         
+                  + guessmode * mask_stress * (defgradAim - defgradAimOld) &      
+                  + mask_defgrad * fDot * timeinc 
+       defgradAimOld = temp33_Real
+   
+  ! update local deformation gradient
+       if (any(bc(loadcase)%rotation/=math_I3)) then                                               ! lab and loadcase coordinate system are NOT the same 
+         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
+           temp33_Real = defgrad(i,j,k,1:3,1:3)
+           if (bc(loadcase)%velGradApplied) &                                                      ! use velocity gradient to calculate new deformation gradient (if not guessing)
+                                  fDot = math_mul33x33(bc(loadcase)%deformation,&
+                                  math_rotate_forward3x3(defgradold(i,j,k,1:3,1:3),bc(loadcase)%rotation))
+             defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
+                                + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
+                                + math_rotate_backward3x3((1.0_pReal-guessmode) * mask_defgrad * fDot,&
+                                           bc(loadcase)%rotation) *timeinc                          ! apply the prescribed value where deformation is given if not guessing
+             defgradold(i,j,k,1:3,1:3) = temp33_Real 
+         enddo; enddo; enddo
+       else                                                                                         ! one coordinate system for lab and loadcase, save some multiplications
+         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
+           temp33_Real = defgrad(i,j,k,1:3,1:3)
+           if (bc(loadcase)%velGradApplied) &                                                       ! use velocity gradient to calculate new deformation gradient (if not guessing)
+                                 fDot = math_mul33x33(bc(loadcase)%deformation,defgradold(i,j,k,1:3,1:3))
+             defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
+                                + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
+                                + (1.0_pReal-guessmode) * mask_defgrad * fDot * timeinc               ! apply the prescribed value where deformation is given if not guessing
+             defgradold(i,j,k,1:3,1:3) = temp33_Real 
+         enddo; enddo; enddo
+       endif
+       guessmode = 1.0_pReal                                                              ! keep guessing along former trajectory during same loadcase
+
+       CPFEM_mode = 1_pInt                                                                ! winding forward
+       iter = 0_pInt
+       err_div = 2.0_pReal * err_div_tol                                                  ! go into loop 
+
+       if(size_reduced > 0_pInt) then                                                     ! calculate compliance in case stress BC is applied
+         c_prev99 = math_Plain3333to99(c_prev)
+         k = 0_pInt                                                                       ! build reduced stiffness
+         do n = 1_pInt,9_pInt
+           if(bc(loadcase)%maskStressVector(n)) then
+             k = k + 1_pInt
+             j = 0_pInt
+             do m = 1_pInt,9_pInt
+               if(bc(loadcase)%maskStressVector(m)) then
+                 j = j + 1_pInt
+                 c_reduced(k,j) = c_prev99(n,m)
+         endif; enddo; endif; enddo
+         call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)               ! invert reduced stiffness
+         if(errmatinv) call IO_error(error_ID=800)
+         s_prev99 = 0.0_pReal                                                             ! build full compliance
+         k = 0_pInt
+         do n = 1_pInt,9_pInt
+           if(bc(loadcase)%maskStressVector(n)) then
+             k = k + 1_pInt
+             j = 0_pInt
+             do m = 1_pInt,9_pInt
+             if(bc(loadcase)%maskStressVector(m)) then
+                   j = j + 1_pInt
+                   s_prev99(n,m) = s_reduced(k,j)
+         endif; enddo; endif; enddo
+         s_prev = (math_Plain99to3333(s_prev99))
+       endif
+
+       !$OMP CRITICAL (write2out)
+       print '(a)', '#############################################################'
+       print '(A,I5.5,A,es12.6)', 'Increment ', totalStepsCounter, ' Time ',time
+       if (restartWrite ) then
+         print '(A)', 'Writing converged Results of previous Step for Restart'
+       if(IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(defgrad))) then       ! and writing deformation gradient field to file
+         write (777,rec=1) defgrad
          close (777)
        endif
-       defgradold = defgrad
-       defgradAim = 0.0_pReal
-       do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
-         defgradAim = defgradAim + defgrad(i,j,k,1:3,1:3)                        ! calculating old average deformation
-       enddo; enddo; enddo
-       defgradAim = defgradAim * wgt
-       defgradAimOld = defgradAim
-     endif
-
-     ielem = 0_pInt
-     do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
-       ielem = ielem + 1_pInt 
-       coordinates(1:3,i,j,k) = mesh_ipCenterOfGravity(1:3,1,ielem)  ! set to initial coordinates ToDo: SHOULD BE UPDATED TO CURRENT POSITION IN FUTURE REVISIONS!!! But do we know them? I don't think so. Otherwise we don't need geometry reconstruction
-       call CPFEM_general(2_pInt,coordinates(1:3,i,j,k),math_I3,math_I3,temperature(i,j,k),0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
-       c_current = c_current + dPdF
-     enddo; enddo; enddo
-     c0_reference = c_current * wgt                                                  ! linear reference material stiffness
-     c_prev = math_rotate_forward3x3x3x3(c0_reference,bc(loadcase)%rotation) ! rotate_forward: lab -> load system 
- 
-     if (debugGeneral) then
-       !$OMP CRITICAL (write2out)
-       write (6,*) 'First Call to CPFEM_general finished'
+     endif 
        !$OMP END CRITICAL (write2out)
-     endif
- 
-     do k = 1_pInt, resolution(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
-       k_s(3) = k - 1_pInt
-       if(k > resolution(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - resolution(3)
-         do j = 1_pInt, resolution(2)
-           k_s(2) = j - 1_pInt
-           if(j > resolution(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - resolution(2) 
-             do i = 1, resolution(1)/2_pInt + 1_pInt
-               k_s(1) = i - 1_pInt
-               xi(3,i,j,k) = 0.0_pReal                                                  ! 2D case
-               if(resolution(3) > 1_pInt) xi(3,i,j,k) = real(k_s(3), pReal)/geomdimension(3) ! 3D case  
-                                          xi(2,i,j,k) = real(k_s(2), pReal)/geomdimension(2)
-                                          xi(1,i,j,k) = real(k_s(1), pReal)/geomdimension(1)
-     enddo; enddo; enddo
-! remove highest frequencies for calculation of divergence (CAREFULL, they will be used for pre calculatet gamma operator!) 
-     do k = 1_pInt ,resolution(3); do j = 1_pInt ,resolution(2); do i = 1_pInt,resolution(1)/2_pInt + 1_pInt
-       if(k==resolution(3)/2_pInt+1_pInt) xi(3,i,j,k)= 0.0_pReal
-       if(j==resolution(2)/2_pInt+1_pInt) xi(2,i,j,k)= 0.0_pReal
-       if(i==resolution(1)/2_pInt+1_pInt) xi(1,i,j,k)= 0.0_pReal
-     enddo; enddo; enddo
- 
-     if(memory_efficient) then                            ! allocate just single fourth order tensor
-       allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
-     else                                                 ! precalculation of gamma_hat field
-       allocate (gamma_hat(resolution(1)/2_pInt + 1_pInt ,resolution(2),resolution(3),3,3,3,3)); gamma_hat = 0.0_pReal
-         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)/2_pInt + 1_pInt
-           if (any(xi(:,i,j,k) /= 0.0_pReal)) then     
-             do l = 1_pInt ,3_pInt; do m = 1_pInt,3_pInt
-               xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
-             enddo; enddo
-             temp33_Real = math_inv3x3(math_mul3333xx33(c0_reference, xiDyad)) 
-          else
-            xiDyad  = 0.0_pReal
-            temp33_Real = 0.0_pReal
-          endif 
-          do l=1_pInt,3_pInt; do m=1_pInt,3_pInt; do n=1_pInt,3_pInt; do p=1_pInt,3_pInt
-            gamma_hat(i,j,k, l,m,n,p) = - 0.25*(temp33_Real(l,n)+temp33_Real(n,l)) *&
-                                               (xiDyad(m,p)+xiDyad(p,m))
-          enddo; enddo; enddo; enddo         
-        enddo; enddo; enddo
-     endif
+  !*************************************************************
+  ! convergence loop
+       do while(iter < itmax .and. &
+               (err_div     > err_div_tol    .or. &
+                err_stress  > err_stress_tol)) 
+         iter = iter + 1_pInt
+  !*************************************************************
+         print '(a)', '============================================================='
+         print '(5(A,I5.5))', 'Loadcase ',loadcase,' Step ',step,'/',bc(loadcase)%steps,'@Iteration ',iter,'/',itmax
+         do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
+           defgrad_av(m,n) = sum(defgrad(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
+         enddo; enddo
+         !$OMP CRITICAL (write2out)
+         print '(a,/,3(3(f12.7,x)/)\)', 'Deformation Gradient:',math_transpose3x3(defgrad_av)
+         print '(A)', '... Update Stress Field (Constitutive Evaluation P(F)) ......'
+         !$OMP END CRITICAL (write2out)
+         ielem = 0_pInt
+         defgradDetMax = -999.0_pReal
+         defgradDetMin =  999.0_pReal
+         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
+           defgradDet = math_det3x3(defgrad(i,j,k,1:3,1:3))
+           defgradDetMax = max(defgradDetMax,defgradDet)
+           defgradDetMin = min(defgradDetMin,defgradDet) 
+           ielem = ielem + 1_pInt
+           call CPFEM_general(3_pInt,&                                                       ! collect cycle
+                              coordinates(1:3,i,j,k), defgradold(i,j,k,1:3,1:3), defgrad(i,j,k,1:3,1:3),&
+                              temperature(i,j,k),timeinc,ielem,1_pInt,&
+                              cstress,dsde, pstress, dPdF)
+         enddo; enddo; enddo
 
- ! write header of output file
-     !$OMP CRITICAL (write2out)
-     open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
-                                                        //'.spectralOut',form='UNFORMATTED',status='REPLACE')
-     write(538), 'load', trim(getLoadcaseName())
-     write(538), 'workingdir', trim(getSolverWorkingDirectoryName())
-     write(538), 'geometry', trim(getSolverJobName())//InputFileExtension
-     write(538), 'resolution', resolution
-     write(538), 'dimension', geomdimension
-     write(538), 'materialpoint_sizeResults', materialpoint_sizeResults
-     write(538), 'loadcases', N_Loadcases
-     write(538), 'logscale', bc(loadcase)%logscale                                       ! one entry per loadcase (0: linear, 1: log)
-     write(538), 'frequencies', bc(loadcase)%outputfrequency                             ! one entry per loadcase
-     write(538), 'times', bc(loadcase)%timeIncrement                                     ! one entry per loadcase
-     bc(1)%steps= bc(1)%steps + 1_pInt
-     write(538), 'increments', bc(loadcase)%steps                                        ! one entry per loadcase ToDo: rename keyword to steps
-     bc(1)%steps= bc(1)%steps - 1_pInt
-     write(538), 'startingIncrement', totalStepsCounter 
-     write(538), 'eoh'                                                                   ! end of header
-     write(538),  materialpoint_results(:,1,:)                                           ! initial (non-deformed) results !ToDo: define array size
-    !$OMP END CRITICAL (write2out)
-   endif
-!*************************************************************
-! Initialization End
-!*************************************************************
-   totalStepsCounter = totalStepsCounter + 1_pInt
-   if (mod(step - 1_pInt,bc(loadcase)%restartFrequency)==0_pInt) then                    ! at frequency of writing restart information
-     restartWrite = .true.                                                               ! setting restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
-     if(IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(defgrad))) then       ! and writing deformation gradient field to file
-       write (777,rec=1) defgrad
-       close (777)
-     endif
-   else
-     restartWrite = .false.
-   endif
+         print '(a,x,es10.4)'       , 'Maximum Determinant of Deformation:', defgradDetMax
+         print '(a,x,es10.4)'       , 'Minimum Determinant of Deformation:', defgradDetMin
 
-   if (bc(loadcase)%logscale == 1_pInt) then                                                 ! loglinear scale
-     if (loadcase == 1_pInt) then                                                            ! 1st loadcase of loglinear scale            
-       if (step == 1_pInt) then                                                              ! 1st step of 1st loadcase of loglinear scale
-         timeinc = bc(1)%timeIncrement*(2.0_pReal**real(     1_pInt-bc(1)%steps ,pReal))     ! assume 1st step is equal to 2nd 
-       else                                                                                  ! not-1st step of 1st loadcase of loglinear scale
-         timeinc = bc(1)%timeIncrement*(2.0_pReal**real(step-1_pInt-bc(1)%steps ,pReal))
-       endif
-     else                                                                                      ! not-1st loadcase of loglinear scale
-         timeinc = time0 *( (1.0_pReal + bc(loadcase)%timeIncrement/time0 )**real(          step/bc(loadcase)%steps ,pReal)  &
-                           -(1.0_pReal + bc(loadcase)%timeIncrement/time0 )**real( (step-1_pInt)/bc(loadcase)%steps ,pReal) )
-     endif
-   endif
-   time = time + timeinc
-     
-   if (bc(loadcase)%velGradApplied) &                                                           ! calculate fDot from given L and current F
-     fDot = math_mul33x33(bc(loadcase)%deformation, defgradAim)
-
-!winding forward of deformation aim in loadcase system
-     temp33_Real = defgradAim                                            
-     defgradAim = defgradAim &                                                                         
-                + guessmode * mask_stress * (defgradAim - defgradAimOld) &      
-                + mask_defgrad * fDot * timeinc 
-     defgradAimOld = temp33_Real
- 
-! update local deformation gradient
-     if (any(bc(loadcase)%rotation/=math_I3)) then                                               ! lab and loadcase coordinate system are NOT the same 
-       do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
-         temp33_Real = defgrad(i,j,k,1:3,1:3)
-         if (bc(loadcase)%velGradApplied) &                                                      ! use velocity gradient to calculate new deformation gradient (if not guessing)
-                                fDot = math_mul33x33(bc(loadcase)%deformation,&
-                                math_rotate_forward3x3(defgradold(i,j,k,1:3,1:3),bc(loadcase)%rotation))
-           defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
-                              + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
-                              + math_rotate_backward3x3((1.0_pReal-guessmode) * mask_defgrad * fDot,&
-                                         bc(loadcase)%rotation) *timeinc                  ! apply the prescribed value where deformation is given if not guessing
-           defgradold(i,j,k,1:3,1:3) = temp33_Real 
-       enddo; enddo; enddo
-     else                                                                                         ! one coordinate system for lab and loadcase, save some multiplications
-       do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
-         temp33_Real = defgrad(i,j,k,1:3,1:3)
-         if (bc(loadcase)%velGradApplied) &                                                       ! use velocity gradient to calculate new deformation gradient (if not guessing)
-                               fDot = math_mul33x33(bc(loadcase)%deformation,defgradold(i,j,k,1:3,1:3))
-           defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
-                              + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
-                              + (1.0_pReal-guessmode) * mask_defgrad * fDot * timeinc               ! apply the prescribed value where deformation is given if not guessing
-           defgradold(i,j,k,1:3,1:3) = temp33_Real 
-       enddo; enddo; enddo
-     endif
-     guessmode = 1.0_pReal                                                              ! keep guessing along former trajectory during same loadcase
-
-     CPFEM_mode = 1_pInt                                                                ! winding forward
-     iter = 0_pInt
-     err_div = 2.0_pReal * err_div_tol                                                  ! go into loop 
-
-     if(size_reduced > 0_pInt) then                                                     ! calculate compliance in case stress BC is applied
-       c_prev99 = math_Plain3333to99(c_prev)
-       k = 0_pInt                                                                       ! build reduced stiffness
-       do n = 1_pInt,9_pInt
-         if(bc(loadcase)%maskStressVector(n)) then
-           k = k + 1_pInt
-           j = 0_pInt
-           do m = 1_pInt,9_pInt
-             if(bc(loadcase)%maskStressVector(m)) then
-               j = j + 1_pInt
-               c_reduced(k,j) = c_prev99(n,m)
-       endif; enddo; endif; enddo
-       call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)               ! invert reduced stiffness
-       if(errmatinv) call IO_error(error_ID=800)
-       s_prev99 = 0.0_pReal                                                             ! build full compliance
-       k = 0_pInt
-       do n = 1_pInt,9_pInt
-         if(bc(loadcase)%maskStressVector(n)) then
-           k = k + 1_pInt
-           j = 0_pInt
-           do m = 1_pInt,9_pInt
-           if(bc(loadcase)%maskStressVector(m)) then
-                 j = j + 1_pInt
-                 s_prev99(n,m) = s_reduced(k,j)
-       endif; enddo; endif; enddo
-       s_prev = (math_Plain99to3333(s_prev99))
-     endif
-
-     !$OMP CRITICAL (write2out)
-     print '(a)', '#############################################################'
-     print '(A,I5.5,A,es12.6)', 'Increment ', totalStepsCounter, ' Time ',time
-     if (restartWrite .eq. .true. ) print '(A)', 'Writing converged Results of previous Step for Restart'
-     !$OMP END CRITICAL (write2out)
-  
-!*************************************************************
-! convergence loop
-     do while(iter < itmax .and. &
-             (err_div     > err_div_tol    .or. &
-              err_stress  > err_stress_tol)) 
-       iter = iter + 1_pInt
-!*************************************************************
-       print '(a)', '============================================================='
-       print '(5(A,I5.5))', 'Loadcase ',loadcase,' Step ',step,'/',bc(loadcase)%steps,'@Iteration ',iter,'/',itmax
-       do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
-         defgrad_av(m,n) = sum(defgrad(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
-       enddo; enddo
-       !$OMP CRITICAL (write2out)
-       print '(a,/,3(3(f12.7,x)/)\)', 'Deformation Gradient:',math_transpose3x3(defgrad_av)
-       print '(A)', '... Update Stress Field (Constitutive Evaluation P(F)) ......'
-       !$OMP END CRITICAL (write2out)
-       ielem = 0_pInt
-       defgradDetMax = -999.0_pReal
-       defgradDetMin =  999.0_pReal
-       do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
-         defgradDet = math_det3x3(defgrad(i,j,k,1:3,1:3))
-         defgradDetMax = max(defgradDetMax,defgradDet)
-         defgradDetMin = min(defgradDetMin,defgradDet) 
-         ielem = ielem + 1_pInt
-         call CPFEM_general(3_pInt,&                                                       ! collect cycle
-                            coordinates(1:3,i,j,k), defgradold(i,j,k,1:3,1:3), defgrad(i,j,k,1:3,1:3),&
-                            temperature(i,j,k),timeinc,ielem,1_pInt,&
-                            cstress,dsde, pstress, dPdF)
-       enddo; enddo; enddo
-
-       print '(a,x,es10.4)'       , 'Maximum Determinant of Deformation:', defgradDetMax
-       print '(a,x,es10.4)'       , 'Minimum Determinant of Deformation:', defgradDetMin
-
-       workfft = 0.0_pReal                                                            ! needed because of the padding for FFTW
-       c_current = 0.0_pReal
-       ielem = 0_pInt       
-       do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
-         ielem = ielem + 1_pInt
-         call CPFEM_general(CPFEM_mode,&                                              ! first element in first iteration retains CPFEM_mode 1, 
-                            coordinates(1:3,i,j,k),&
-                            defgradold(i,j,k,1:3,1:3), defgrad(i,j,k,1:3,1:3),&       ! others get 2 (saves winding forward effort)
-                            temperature(i,j,k),timeinc,ielem,1_pInt,&
-                            cstress,dsde, pstress,dPdF)
-         CPFEM_mode = 2_pInt
-         workfft(i,j,k,1:3,1:3) = pstress                                     ! build up average P-K stress 
-         c_current = c_current + dPdF
-       enddo; enddo; enddo
-       restartWrite = .false. ! ToDo: don't know if we need it. Depends on how CPFEM_general is writing results 
-       do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
-         pstress_av(m,n) = sum(workfft(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
-       enddo; enddo
-       
-       !$OMP CRITICAL (write2out)
-       print '(a,/,3(3(f12.7,x)/)\)', 'Piola-Kirchhoff Stress / MPa: ',math_transpose3x3(pstress_av)/1.e6
-       
-       err_stress_tol = 0.0_pReal
-       pstress_av_load = math_rotate_forward3x3(pstress_av,bc(loadcase)%rotation)
-       if(size_reduced > 0_pInt) then                                                                            ! calculate stress BC if applied
-         err_stress = maxval(abs(mask_stress * (pstress_av_load - bc(loadcase)%stress)))                         ! maximum deviaton (tensor norm not applicable)
-         err_stress_tol = maxval(abs(mask_defgrad * pstress_av_load)) * err_stress_tolrel                        ! don't use any tensor norm because the comparison should be coherent
-         print '(A)', '... Correcting Deformation Gradient to Fullfill BCs .........'
-         print '(2(a,es10.4))', 'Error Stress = ',err_stress, ', Tol. = ', err_stress_tol 
-         defgradAimCorr = - math_mul3333xx33(s_prev, ((pstress_av_load - bc(loadcase)%stress)))                  ! residual on given stress components
-         defgradAim = defgradAim + defgradAimCorr
-         print '(a,/,3(3(f12.7,x)/)\)', 'New Deformation Aim:     ',math_transpose3x3(math_rotate_backward3x3(&
-                                                               defgradAim,bc(loadcase)%rotation))
-         print '(a,x,es10.4)'         , 'Determinant of New Deformation Aim:', math_det3x3(defgradAim)
-       endif
-       print '(A)', '... Calculating Equilibrium Using Spectral Method ...........'
-       !$OMP END CRITICAL (write2out)
-       call dfftw_execute_dft_r2c(fftw_plan(1),workfft,workfft)                                                  ! FFT of pstress
- 
-       p_hat_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(workfft(1,1,1,1:3,1:3),&                       ! L_2 norm of average stress in fourier space,  
-                                                math_transpose3x3(workfft(1,1,1,1:3,1:3))))))                    ! ignore imaginary part as it is always zero for real only input))
-       err_div = 0.0_pReal
-       err_div_max = 0.0_pReal
-       do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)/2_pInt+1_pInt
-         err_div = err_div + sqrt(sum((&                                                                         ! avg of L_2 norm of div(stress) in fourier space (Suquet small strain)
-                                       math_mul33x3_complex(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3) + &
-                                                            workfft(i*2_pInt       ,j,k,1:3,1:3)*img,&
-                                                            xi(1:3,i,j,k))&
-                                         )**2.0_pReal))                                                    
-         if(debugDivergence) &
-           err_div_max = max(err_div_max,abs(sqrt(sum((&                                                           ! maximum of L two norm of div(stress) in fourier space (Suquet large strain)
-                                         math_mul33x3_complex(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3)+&
+         workfft = 0.0_pReal                                                            ! needed because of the padding for FFTW
+         c_current = 0.0_pReal
+         ielem = 0_pInt       
+         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)
+           ielem = ielem + 1_pInt
+           call CPFEM_general(CPFEM_mode,&                                              ! first element in first iteration retains CPFEM_mode 1, 
+                              coordinates(1:3,i,j,k),&
+                              defgradold(i,j,k,1:3,1:3), defgrad(i,j,k,1:3,1:3),&       ! others get 2 (saves winding forward effort)
+                              temperature(i,j,k),timeinc,ielem,1_pInt,&
+                              cstress,dsde, pstress,dPdF)
+           CPFEM_mode = 2_pInt
+           workfft(i,j,k,1:3,1:3) = pstress                                     ! build up average P-K stress 
+           c_current = c_current + dPdF
+         enddo; enddo; enddo
+         restartWrite = .false. ! ToDo: don't know if we need it. Depends on how CPFEM_general is writing results 
+         do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
+           pstress_av(m,n) = sum(workfft(1:resolution(1),1:resolution(2),1:resolution(3),m,n)) * wgt
+         enddo; enddo
+         
+         !$OMP CRITICAL (write2out)
+         print '(a,/,3(3(f12.7,x)/)\)', 'Piola-Kirchhoff Stress / MPa: ',math_transpose3x3(pstress_av)/1.e6
+         
+         err_stress_tol = 0.0_pReal
+         pstress_av_load = math_rotate_forward3x3(pstress_av,bc(loadcase)%rotation)
+         if(size_reduced > 0_pInt) then                                                                            ! calculate stress BC if applied
+           err_stress = maxval(abs(mask_stress * (pstress_av_load - bc(loadcase)%stress)))                         ! maximum deviaton (tensor norm not applicable)
+           err_stress_tol = maxval(abs(mask_defgrad * pstress_av_load)) * err_stress_tolrel                        ! don't use any tensor norm because the comparison should be coherent
+           print '(A)', '... Correcting Deformation Gradient to Fullfill BCs .........'
+           print '(2(a,es10.4))', 'Error Stress = ',err_stress, ', Tol. = ', err_stress_tol 
+           defgradAimCorr = - math_mul3333xx33(s_prev, ((pstress_av_load - bc(loadcase)%stress)))                  ! residual on given stress components
+           defgradAim = defgradAim + defgradAimCorr
+           print '(a,/,3(3(f12.7,x)/)\)', 'New Deformation Aim:     ',math_transpose3x3(math_rotate_backward3x3(&
+                                                                 defgradAim,bc(loadcase)%rotation))
+           print '(a,x,es10.4)'         , 'Determinant of New Deformation Aim:', math_det3x3(defgradAim)
+         endif
+         print '(A)', '... Calculating Equilibrium Using Spectral Method ...........'
+         !$OMP END CRITICAL (write2out)
+         call dfftw_execute_dft_r2c(fftw_plan(1),workfft,workfft)                                                  ! FFT of pstress
+   
+         p_hat_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(workfft(1,1,1,1:3,1:3),&                       ! L_2 norm of average stress in fourier space,  
+                                                  math_transpose3x3(workfft(1,1,1,1:3,1:3))))))                    ! ignore imaginary part as it is always zero for real only input))
+         err_div = 0.0_pReal
+         err_div_max = 0.0_pReal
+         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)/2_pInt+1_pInt
+           err_div = err_div + sqrt(sum((&                                                                         ! avg of L_2 norm of div(stress) in fourier space (Suquet small strain)
+                                         math_mul33x3_complex(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3) + &
                                                               workfft(i*2_pInt       ,j,k,1:3,1:3)*img,&
                                                               xi(1:3,i,j,k))&
-                                                         )**2.0_pReal))))
-       enddo; enddo; enddo
-       correctionFactor = minval(geomdimension)*wgt**(-1.0_pReal/4.0_pReal)                                      ! multiplying by minimum dimension to get rid of dimension dependency and phenomenologigal factor wgt**(-1/4) to get rid of resolution dependency
-       if (resolution(3)==1_pInt) correctionFactor = minval(geomdimension(1:2))*wgt**(-1.0_pReal/4.0_pReal)      ! 2D case, ToDo: correct?
-       if (.not. divergence_correction) correctionFactor = 1.0_pReal   
-       err_div = err_div*wgt/p_hat_avg*correctionFactor                                                          ! weighting by points and average stress and multiplying with correction factor
-       err_div_max = err_div_max/p_hat_avg*correctionFactor                                                      ! weighting by average stress and multiplying with correction factor
+                                           )**2.0_pReal))                                                    
+           if(debugDivergence) &
+             err_div_max = max(err_div_max,abs(sqrt(sum((&                                                           ! maximum of L two norm of div(stress) in fourier space (Suquet large strain)
+                                           math_mul33x3_complex(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3)+&
+                                                                workfft(i*2_pInt       ,j,k,1:3,1:3)*img,&
+                                                                xi(1:3,i,j,k))&
+                                                           )**2.0_pReal))))
+         enddo; enddo; enddo
+         correctionFactor = minval(geomdimension)*wgt**(-1.0_pReal/4.0_pReal)                                      ! multiplying by minimum dimension to get rid of dimension dependency and phenomenologigal factor wgt**(-1/4) to get rid of resolution dependency
+         if (resolution(3)==1_pInt) correctionFactor = minval(geomdimension(1:2))*wgt**(-1.0_pReal/4.0_pReal)      ! 2D case, ToDo: correct?
+         if (.not. divergence_correction) correctionFactor = 1.0_pReal   
+         err_div = err_div*wgt/p_hat_avg*correctionFactor                                                          ! weighting by points and average stress and multiplying with correction factor
+         err_div_max = err_div_max/p_hat_avg*correctionFactor                                                      ! weighting by average stress and multiplying with correction factor
 
-       if(memory_efficient) then                                                                                 ! memory saving version, on-the-fly calculation of gamma_hat
-         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2) ;do i = 1_pInt, resolution(1)/2_pInt+1_pInt                         
-           if (any(xi(:,i,j,k) /= 0.0_pReal)) then     
-             do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
-               xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
+         if(memory_efficient) then                                                                                 ! memory saving version, on-the-fly calculation of gamma_hat
+           do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2) ;do i = 1_pInt, resolution(1)/2_pInt+1_pInt                         
+             if (any(xi(:,i,j,k) /= 0.0_pReal)) then     
+               do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
+                 xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
+               enddo; enddo
+               temp33_Real = math_inv3x3(math_mul3333xx33(c0_reference, xiDyad)) 
+             else
+               xiDyad = 0.0_pReal
+               temp33_Real = 0.0_pReal
+             endif 
+             do l=1_pInt,3_pInt; do m=1_pInt,3_pInt; do n=1_pInt,3_pInt; do p=1_pInt,3_pInt
+               gamma_hat(1,1,1, l,m,n,p) = - 0.25_pReal*(temp33_Real(l,n)+temp33_Real(n,l))*&
+                                                         (xiDyad(m,p) +xiDyad(p,m))
+             enddo; enddo; enddo; enddo   
+             do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
+               temp33_Complex(m,n) = sum(gamma_hat(1,1,1,m,n,1:3,1:3) *(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3)&                 
+                                                                       +workfft(i*2_pInt       ,j,k,1:3,1:3)*img))
              enddo; enddo
-             temp33_Real = math_inv3x3(math_mul3333xx33(c0_reference, xiDyad)) 
-           else
-             xiDyad = 0.0_pReal
-             temp33_Real = 0.0_pReal
-           endif 
-           do l=1_pInt,3_pInt; do m=1_pInt,3_pInt; do n=1_pInt,3_pInt; do p=1_pInt,3_pInt
-             gamma_hat(1,1,1, l,m,n,p) = - 0.25_pReal*(temp33_Real(l,n)+temp33_Real(n,l))*&
-                                                       (xiDyad(m,p) +xiDyad(p,m))
-           enddo; enddo; enddo; enddo   
-           do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
-             temp33_Complex(m,n) = sum(gamma_hat(1,1,1,m,n,1:3,1:3) *(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3)&                 
-                                                                     +workfft(i*2_pInt       ,j,k,1:3,1:3)*img))
-           enddo; enddo
-           workfft(i*2_pInt-1_pInt,j,k,1:3,1:3) = real (temp33_Complex) 
-           workfft(i*2_pInt       ,j,k,1:3,1:3) = aimag(temp33_Complex)
-         enddo; enddo; enddo
-       else                                                                                                       ! use precalculated gamma-operator
-         do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)/2_pInt+1_pInt
-           do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
-             temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n,1:3,1:3) *(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3)&
-                                                                     + workfft(i*2_pInt       ,j,k,1:3,1:3)*img))
-           enddo; enddo
-           workfft(i*2_pInt-1_pInt,j,k,1:3,1:3) = real (temp33_Complex)
-           workfft(i*2_pInt       ,j,k,1:3,1:3) = aimag(temp33_Complex) 
-         enddo; enddo; enddo
-       endif
-       if(debugDivergence) then
-         divergence=0.0      
-         do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
-           divergence(i,j,k,1) = (workfft(i*2-1,j,k,1,1)+ workfft(i*2,j,k,1,1)*img)*xi(1,i,j,k)*img*pi*2.0&
-                                    + (workfft(i*2-1,j,k,2,1)+ workfft(i*2,j,k,2,1)*img)*xi(2,i,j,k)*img*pi*2.0&
-                                    + (workfft(i*2-1,j,k,3,1)+ workfft(i*2,j,k,3,1)*img)*xi(3,i,j,k)*img*pi*2.0
-           divergence(i,j,k,2) = (workfft(i*2-1,j,k,1,2)+ workfft(i*2,j,k,1,2)*img)*xi(1,i,j,k)*img*pi*2.0&
-                                    + (workfft(i*2-1,j,k,2,2)+ workfft(i*2,j,k,2,2)*img)*xi(2,i,j,k)*img*pi*2.0&
-                                    + (workfft(i*2-1,j,k,3,2)+ workfft(i*2,j,k,3,2)*img)*xi(3,i,j,k)*img*pi*2.0
-           divergence(i,j,k,3) = (workfft(i*2-1,j,k,1,3)+ workfft(i*2,j,k,1,3)*img)*xi(1,i,j,k)*img*pi*2.0&
-                                    + (workfft(i*2-1,j,k,2,3)+ workfft(i*2,j,k,2,3)*img)*xi(2,i,j,k)*img*pi*2.0&
-                                    + (workfft(i*2-1,j,k,3,3)+ workfft(i*2,j,k,3,3)*img)*xi(3,i,j,k)*img*pi*2.0
-         enddo; enddo; enddo
-         call dfftw_execute_dft_c2r(fftw_plan(3),divergence,divergence)
-       endif
+             workfft(i*2_pInt-1_pInt,j,k,1:3,1:3) = real (temp33_Complex) 
+             workfft(i*2_pInt       ,j,k,1:3,1:3) = aimag(temp33_Complex)
+           enddo; enddo; enddo
+         else                                                                                                       ! use precalculated gamma-operator
+           do k = 1_pInt, resolution(3); do j = 1_pInt, resolution(2); do i = 1_pInt, resolution(1)/2_pInt+1_pInt
+             do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
+               temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n,1:3,1:3) *(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3)&
+                                                                       + workfft(i*2_pInt       ,j,k,1:3,1:3)*img))
+             enddo; enddo
+             workfft(i*2_pInt-1_pInt,j,k,1:3,1:3) = real (temp33_Complex)
+             workfft(i*2_pInt       ,j,k,1:3,1:3) = aimag(temp33_Complex) 
+           enddo; enddo; enddo
+         endif
+         if(debugDivergence) then
+           divergence=0.0      
+           do k = 1, resolution(3); do j = 1, resolution(2); do i = 1, resolution(1)/2+1
+             divergence(i,j,k,1) = (workfft(i*2-1,j,k,1,1)+ workfft(i*2,j,k,1,1)*img)*xi(1,i,j,k)*img*pi*2.0&
+                                      + (workfft(i*2-1,j,k,2,1)+ workfft(i*2,j,k,2,1)*img)*xi(2,i,j,k)*img*pi*2.0&
+                                      + (workfft(i*2-1,j,k,3,1)+ workfft(i*2,j,k,3,1)*img)*xi(3,i,j,k)*img*pi*2.0
+             divergence(i,j,k,2) = (workfft(i*2-1,j,k,1,2)+ workfft(i*2,j,k,1,2)*img)*xi(1,i,j,k)*img*pi*2.0&
+                                      + (workfft(i*2-1,j,k,2,2)+ workfft(i*2,j,k,2,2)*img)*xi(2,i,j,k)*img*pi*2.0&
+                                      + (workfft(i*2-1,j,k,3,2)+ workfft(i*2,j,k,3,2)*img)*xi(3,i,j,k)*img*pi*2.0
+             divergence(i,j,k,3) = (workfft(i*2-1,j,k,1,3)+ workfft(i*2,j,k,1,3)*img)*xi(1,i,j,k)*img*pi*2.0&
+                                      + (workfft(i*2-1,j,k,2,3)+ workfft(i*2,j,k,2,3)*img)*xi(2,i,j,k)*img*pi*2.0&
+                                      + (workfft(i*2-1,j,k,3,3)+ workfft(i*2,j,k,3,3)*img)*xi(3,i,j,k)*img*pi*2.0
+           enddo; enddo; enddo
+           call dfftw_execute_dft_c2r(fftw_plan(3),divergence,divergence)
+         endif
 
-! average strain 
-       workfft(1,1,1,1:3,1:3) = defgrad_av - math_I3                                        ! zero frequency (real part)
-       workfft(2,1,1,1:3,1:3) = 0.0_pReal                                                   ! zero frequency (imaginary part)
+  ! average strain 
+         workfft(1,1,1,1:3,1:3) = defgrad_av - math_I3                                        ! zero frequency (real part)
+         workfft(2,1,1,1:3,1:3) = 0.0_pReal                                                   ! zero frequency (imaginary part)
+         
+         call dfftw_execute_dft_c2r(fftw_plan(2),workfft,workfft)
+         defgrad = defgrad + workfft(1:resolution(1),:,:,:,:)*wgt
+         do m = 1,3; do n = 1,3 
+           defgrad_av(m,n) = sum(defgrad(:,:,:,m,n))*wgt
+         enddo; enddo
+         defgradAim_lab = math_rotate_backward3x3(defgradAim,bc(loadcase)%rotation)
+         do m = 1,3; do n = 1,3 
+           defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim_lab(m,n) - defgrad_av(m,n))  ! anticipated target minus current state
+         enddo; enddo
+         !$OMP CRITICAL (write2out)
+         print '(2(a,es10.4))', 'Error Divergence = ',err_div,    ', Tol. = ', err_div_tol
+         !$OMP END CRITICAL (write2out)
+         
+       enddo    ! end looping when convergency is achieved 
        
-       call dfftw_execute_dft_c2r(fftw_plan(2),workfft,workfft)
-       defgrad = defgrad + workfft(1:resolution(1),:,:,:,:)*wgt
-       do m = 1,3; do n = 1,3 
-         defgrad_av(m,n) = sum(defgrad(:,:,:,m,n))*wgt
-       enddo; enddo
-       defgradAim_lab = math_rotate_backward3x3(defgradAim,bc(loadcase)%rotation)
-       do m = 1,3; do n = 1,3 
-         defgrad(:,:,:,m,n) = defgrad(:,:,:,m,n) + (defgradAim_lab(m,n) - defgrad_av(m,n))  ! anticipated target minus current state
-       enddo; enddo
+       c_prev = math_rotate_forward3x3x3x3(c_current*wgt,bc(loadcase)%rotation)        ! calculate stiffness for next step
+       !ToDo: Incfluence for next loadcase
        !$OMP CRITICAL (write2out)
-       print '(2(a,es10.4))', 'Error Divergence = ',err_div,    ', Tol. = ', err_div_tol
+       print '(a)', '============================================================='
+       if(err_div<=err_div_tol .and. err_stress<=err_stress_tol) then
+         print '(A,I5.5,A)', 'Increment ', totalStepsCounter, ' Converged'
+       else
+         print '(A,I5.5,A)', 'Increment ', totalStepsCounter, ' NOT Converged'
+         notConvergedCounter = notConvergedCounter + 1
+       endif
+       if (mod(totalStepsCounter -1_pInt,bc(loadcase)%outputfrequency) == 0_pInt) then                 ! at output frequency
+         print '(A)', '... Writing Results to File .................................'
+         write(538),  materialpoint_results(:,1,:)                                             ! write result to file
+       endif
        !$OMP END CRITICAL (write2out)
-       
-     enddo    ! end looping when convergency is achieved 
-     
-     c_prev = math_rotate_forward3x3x3x3(c_current*wgt,bc(loadcase)%rotation)        ! calculate stiffness for next step
-     !ToDo: Incfluence for next loadcase
-     !$OMP CRITICAL (write2out)
-     print '(a)', '============================================================='
-     if(err_div<=err_div_tol .and. err_stress<=err_stress_tol) then
-       print '(A,I5.5,A)', 'Increment ', totalStepsCounter, ' Converged'
-     else
-       print '(A,I5.5,A)', 'Increment ', totalStepsCounter, ' NOT Converged'
-       notConvergedCounter = notConvergedCounter + 1
      endif
-     if (mod(totalStepsCounter -1_pInt,bc(loadcase)%outputfrequency) == 0_pInt) then                 ! at output frequency
-       print '(A)', '... Writing Results to File .................................'
-       write(538),  materialpoint_results(:,1,:)                                             ! write result to file
-     endif
-     !$OMP END CRITICAL (write2out)
    enddo  ! end looping over steps in current loadcase
    deallocate(c_reduced)
    deallocate(s_reduced)
