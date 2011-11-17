@@ -71,9 +71,9 @@ class DAMASK_TEST():
         file=open('../postprocessing.cmd','r')
         postproc=file.readlines()
         file.close()
-        for cmd in postproc:
+        for cmd in postproc:    # PHILIP: suggestion to just execute the script "postprocessing" directly within a shell, i.e. os.system('../postprocessing')
           print(cmd)
-          os.system(cmd)        
+          os.system(cmd)        # PHILIP: reason is that for loops and the like get broken with line by line execution from here...
         
     def compare_to_reference(self,tol=1e-5):    
         import string
