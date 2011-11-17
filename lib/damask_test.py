@@ -74,7 +74,9 @@ class DAMASK_TEST():
         for cmd in postproc:    # PHILIP: suggestion to just execute the script "postprocessing" directly within a shell, i.e. os.system('../postprocessing')
           print(cmd)
           os.system(cmd)        # PHILIP: reason is that for loops and the like get broken with line by line execution from here...
-        
+# CLAUDIO: Actually that's what we had before - I stole the code from one of your scripts because for lengthy postprocessing, the user can then see the progress. I don't get the part about the breaking loops, let's discuss tomorrow. 
+
+
     def compare_to_reference(self,tol=1e-5):    
         import string
         print 'comparing results against reference_results...'  
