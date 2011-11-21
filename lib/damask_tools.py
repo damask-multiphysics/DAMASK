@@ -15,6 +15,13 @@ class MATERIAL_CONFIG():
   __slots__ = ['data']
 
   def __init__(self):
+    self.parts = [
+             'homogenization',
+             'microstructure',
+             'crystallite',
+             'phase',
+             'texture',
+            ]
     self.data = {\
               'homogenization': {'__order__': []},
               'microstructure': {'__order__': []},
@@ -25,13 +32,7 @@ class MATERIAL_CONFIG():
            
   def __repr__(self):
     me = []
-    for part in [
-                 'homogenization',
-                 'microstructure',
-                 'crystallite',
-                 'phase',
-                 'texture',
-                ]:
+    for part in self.parts:
       me += ['','#-----------------------------#','<%s>'%part,'#-----------------------------#',]
       for section in self.data[part]['__order__']:
         me += ['','[%s]\t\t#-----------------------'%section,'',]
@@ -79,22 +80,104 @@ class MATERIAL_CONFIG():
             else:                                                     # plain key
               self.data[part][name_section][items[0]] = items[1:]
                   
-
-  def add_homogenization(self, name=None, type=None):
-    
-    if type is 'isostrain':
-      h={'type':type}
-      h['ngrains']=ngrains
-      return h
+  def read(self,file=None):
+     f=open(file,'r')
+     c=f.readlines()
+     f.close()
+     for p in self.parts:
+       self.parse_data(part=p, content=c)
+       
+  def write(self,file='material.config', overwrite=False):
+     if overwrite is False:
+       if os.path.exists(file):
+         i=1
+         while os.path.exists(file+'_%i'%i):i+=1
+         file=file+'_%i'%i
+     print('Writing material data to file %s'%file)
+     f=open(file,'w')
+     f.write(str(self))
+     f.close()
+                  
+  def add_homogenization(self, label='', type='', Ngrains=None):
+      old_len=len(self.data['homogenization'])
+      if type is 'isostrain':
+          h={'type':[type]}
+          h['Ngrains']=[Ngrains]
+          h['__order__']=['type','Ngrains']
+          #return h
+          self.data['homogenization'][label]=h
+          if len(self.data['homogenization'])>old_len: # added new label
+            self.data['homogenization']['__order__'].append(label)
       
-  def add_crystallite(self, name=None):
-      pass
-  def add_texture(self, name=None):
-      pass
-  def add_phase(self, name=None):
-      pass
-  def add_microstructure(self, name=None, phases=None, textures=None, fractions=None):
-    self.data['microstructure'][name] = {}        # kill existing entry (should warn?)
-    
+  def add_crystallite(self, label='', output=[]):
+      old_len=len(self.data['crystallite'])
+      self.data['crystallite'][label]={'(output)':[[o] for o in output],'__order__':'(output)'}
+      if len(self.data['crystallite'])>old_len: # added new label
+        self.data['crystallite']['__order__'].append(label)
+  
+  def add_texture(self, label='',type='', eulers=[], scatter=0., fraction=1.):
+      ''' Experimental! Needs expansion to multi-component textures...''' 
+      old_len=len(self.data['texture'])
+      if type is '(gauss)':
+          gauss={type:[['phi1',eulers[0],'Phi',eulers[1], 'phi2',eulers[2],'scatter',scatter,          'fraction',fraction]],'__order__':label}
+          self.data['texture'][label]=gauss
+          if len(self.data['texture'])>old_len: # added new label
+            self.data['texture']['__order__'].append(label)
 
+  def add_phase(self, file='', label='', phase=None):
+      ''' USAGE:
+          -read phase "label" from file
+          OR
+          -phase is dict with one key
+      '''
+      import copy
+      print(file,label,phase)
+      old_len=len(self.data['phase'])
+      if file and label and (phase is None):
+        data_so_far = copy.deepcopy(self.data)
+        self.__init__()
+        self.read(file=file)
+        phase={label:self.data['phase'][label]}
+        label=None
+        self.data=copy.deepcopy(data_so_far)
+        print phase
+      if len(phase)==1 and label is None:
+        print('Adding phase %s'%phase.keys()[0])
+        label=phase.keys()[0]
+        self.data['phase'][label]=phase[label]
+        if len(self.data['phase'])>old_len: # added new label
+          self.data['phase']['__order__'].append(label)
+      else: 
+        raise Exception('Wrong arguments')
+
+  def add_microstructure(self, crystallite=None, 
+                               label=None, 
+                               phases=None, 
+                               textures=None, 
+                               fractions=None):
+    ''' Experimental! Needs expansion to multi-constituent microstructures...''' 
+    old_len=len(self.data['microstructure'])
+    c=self.data['crystallite']['__order__'].index(crystallite)+1
+    constituent=phases[:]
+    for i in range(len(phases)):
+      p=self.data['phase']['__order__'].index(phases[i])+1
+      t=self.data['texture']['__order__'].index(textures[i])+1           
+      f=fractions[i]   
+      constituent[i]=['phase','%i'%p,'texture','%i'%t,'fraction','%f'%f]
+    self.data['microstructure'][label]={'crystallite':['%i'%c],
+               '(constituent)':constituent,
+               '__order__':['crystallite','(constituent)']}
+    if len(self.data['microstructure'])>old_len: # added new label           
+      self.data['microstructure']['__order__'].append(label)
+    
+class HOMOGENIZATION():
+  def __init__(self):
+    pass
+   
+
+
+
+
+
+    
   
