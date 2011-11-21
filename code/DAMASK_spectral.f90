@@ -424,7 +424,7 @@ program DAMASK_spectral
      call dfftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
    endif
 #endif
- !call dfftw_timelimit(fftw_timelimit)                          ! is not working, have to fix it in FFTW source file
+ call dfftw_set_timelimit(fftw_timelimit)                          ! is not working, have to fix it in FFTW source file
  select case(IO_lc(fftw_planner_flag))                          ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
    case('estimate','fftw_estimate')                             ! ordered from slow execution (but fast plan creation) to fast execution
      fftw_flag = 64
