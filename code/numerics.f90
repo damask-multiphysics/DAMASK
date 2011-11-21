@@ -66,13 +66,12 @@ real(pReal) ::                  relevantStrain, &                       ! strain
                                 volDiscrPow_RGC, &                      ! powerlaw penalty for volume discrepancy
 !* spectral parameters:
                                 err_div_tol, &                          ! error of divergence in fourier space
-                                err_stress_tol, &                       ! absolut stress error, will be computed from err_stress_tolrel (dont prescribe a value)
                                 err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
                                 fftw_timelimit, &                       ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org
                                 rotation_tol                            ! tolerance of rotation specified in loadcase
 character(len=64) ::            fftw_planner_flag                       ! sets the planig-rigor flag, see manual on www.fftw.org
 logical ::                      memory_efficient,&                      ! for fast execution (pre calculation of gamma_hat)
-                                divergence_correction                     ! correct divergence calculation in fourier space
+                                divergence_correction                   ! correct divergence calculation in fourier space
 integer(pInt) ::                itmax , &                               ! maximum number of iterations
 
 

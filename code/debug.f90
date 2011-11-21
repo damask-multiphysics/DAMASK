@@ -123,11 +123,11 @@ subroutine debug_init()
               debug_selectiveDebugger = IO_intValue(line,positions,2) > 0_pInt
         case ('verbosity')
               debug_verbosity = IO_intValue(line,positions,2)
-        case ('generaldebugspectral')                          ! use bitwise logical and, continue with +8_pInt
+        case ('(generaldebugspectral)')                          ! use bitwise logical and, continue with +8_pInt
               if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 1_pInt 
-        case ('divergencedebugspectral')
+        case ('(divergencedebugspectral)')
               if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 2_pInt
-        case ('restartdebugspectral')
+        case ('(restartdebugspectral)')
               if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 4_pInt
       endselect
     enddo
@@ -207,7 +207,6 @@ subroutine debug_reset()
   debug_stressMin = huge(1.0_pReal)
   debug_jacobianMax = -huge(1.0_pReal)
   debug_jacobianMin = huge(1.0_pReal)
-  spectral_debug_verbosity = 0.0_pReal
 
 
 endsubroutine

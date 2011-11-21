@@ -25,7 +25,7 @@
  use prec, only: pInt,pReal
  implicit none
 
- integer(pInt) :: cycleCounter = 0_pInt, theInc = -1_pInt, restartReadStep = 0_pInt
+ integer(pInt) :: cycleCounter = 0_pInt, theInc = -1_pInt, restartReadStep = 1_pInt
  real(pReal)   :: theTime = 0.0_pReal, theDelta = 0.0_pReal
  logical :: lastIncConverged = .false.,outdatedByNewInc = .false.,outdatedFFN1 = .false.,terminallyIll = .false.
  logical :: symmetricSolver = .false. 

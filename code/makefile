@@ -215,3 +215,4 @@ clean:
 	rm -rf *.o
 	rm -rf *.mod
 	rm -rf *.a
+	rm -rf *.exe
