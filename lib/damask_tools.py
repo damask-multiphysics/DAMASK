@@ -231,13 +231,13 @@ class MATERIAL_CONFIG():
      f=open(file,'w')
      f.write(str(self))
      f.close()
-      
+     return file
 
   def add_data(self, part=None, section=None, data={}):
+    '''Generic data adding/updating'''
     if part not in self.parts: raise Exception('invalid part %s'%part)
     if section not in self.data[part]: self.data[part]['__order__'] += [section]
     self.data[part][section] = data
-    
     
   def add_homogenization(self, label='', type='', Ngrains=None):
       if type.lower() == 'isostrain':
@@ -252,28 +252,28 @@ class MATERIAL_CONFIG():
           raise Exception('Please implement me')
       
   def add_crystallite(self, label='', output=[]):
-      old_len=len(self.data['crystallite'])
-      self.data['crystallite'][label]={'(output)':[[o] for o in output],'__order__':'(output)'}
-      if len(self.data['crystallite'])>old_len: # added new label
-        self.data['crystallite']['__order__'].append(label)
-  
+      self.add_data(part='crystallite', 
+                    section=label, 
+                    data={'(output)':[[o] for o in output],
+                          '__order__':'(output)'})      
+      
   def add_texture(self, label='',type='', eulers=[], scatter=0., fraction=1.):
       ''' Experimental! Needs expansion to multi-component textures...''' 
-      old_len=len(self.data['texture'])
       if type == '(gauss)':
-          gauss={type:[['phi1',eulers[0],'Phi',eulers[1], 'phi2',eulers[2],'scatter',scatter,          'fraction',fraction]],'__order__':label}
-          self.data['texture'][label]=gauss
-          if len(self.data['texture'])>old_len: # added new label
-            self.data['texture']['__order__'].append(label)
+          texture={type:[['phi1','%f'%float(eulers[0]),'Phi','%f'%float(eulers[1]), 'phi2','%f'%float(eulers[2]),'scatter','%f'%float(scatter), 'fraction','%f'%fraction]],'__order__':label}
+          #self.data['texture'][label]=texture
+          #if len(self.data['texture'])>old_len: # added new label
+          # self.data['texture']['__order__'].append(label)
+      else:
+          raise Exception('Please implement me.')      
+      self.add_data(part='texture',section=label, data=texture)      
 
-  def add_phase(self, file='', label='', phase=None):
+  def add_phase(self, file='', label='', newlabel=None, phase=None):
       ''' USAGE:
-          -read phase "label" from file
+           - read phase "label" from file
           OR
-          -phase is dict with one key
-      '''
-      print(file,label,phase)
-      old_len=len(self.data['phase'])
+           - phase is dict with one key
+      ''' 
       if file and label and (phase is None):
         other=MATERIAL_CONFIG()
         other.read(file=file)
@@ -281,38 +281,62 @@ class MATERIAL_CONFIG():
         label=None
         print phase
       if len(phase)==1 and label is None:
-        print('Adding phase %s'%phase.keys()[0])
-        label=phase.keys()[0]
-        self.data['phase'][label]=phase[label]
-        if len(self.data['phase'])>old_len: # added new label
-          self.data['phase']['__order__'].append(label)
+        if newlabel:
+          label=newlabel
+        else:  
+          label=phase.keys()[0]
+        print('Adding phase %s'%label)
+        self.add_data(part='phase', section=label, data=phase)
       else: 
         raise Exception('Wrong arguments')
 
   def add_microstructure(self, label=None,
-                               crystallite=None, 
-                               phases=None, 
-                               textures=None, 
-                               fractions=None):
+                               crystallite=None, # label
+                               phases=None,      # list of labels
+                               textures=None,    # list of labels
+                               fractions=None):  # list of floats
     ''' Experimental! Needs expansion to multi-constituent microstructures...''' 
-    old_len=len(self.data['microstructure'])
     c=self.data['crystallite']['__order__'].index(crystallite)+1
     constituent=phases[:]
+    if fractions is None:
+      fractions=[1./len(phases)]*len(phases)
     for i in range(len(phases)):
       p=self.data['phase']['__order__'].index(phases[i])+1
       t=self.data['texture']['__order__'].index(textures[i])+1           
       f=fractions[i]   
       constituent[i]=['phase','%i'%p,'texture','%i'%t,'fraction','%f'%f]
-    self.data['microstructure'][label]={'crystallite':['%i'%c],
+    data={'crystallite':['%i'%c],
                '(constituent)':constituent,
-               '__order__':['crystallite','(constituent)']}
-    if len(self.data['microstructure'])>old_len: # added new label           
-      self.data['microstructure']['__order__'].append(label)
-      
-
-
-
-
-
+               '__order__':['crystallite','(constituent)']}               
+    self.add_data(part='microstructure',section=label,data=data)           
     
-  
+    
+  def change_value(self,part=None,section=None,key=None,value=None):
+    if type(value) is not type([]): 
+      if type(value) is not type('s'):
+        value='%s'%value
+      value=[value]
+    newlen=len(value)  
+    oldval=self.data[part][section][key]
+    oldlen=len(oldval)
+    print('changing %s:%s:%s:%s'%(part,section,key,oldval))
+    self.data[part][section][key]=value
+    print('new: %s'%self.data[part][section][key])
+    if newlen is not oldlen:
+      print('Length of value was changed from %i to %i!'%(oldlen,newlen))
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
