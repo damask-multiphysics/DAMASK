@@ -251,7 +251,7 @@ parser.set_defaults(homogenization = 1)
 (options, args) = parser.parse_args()
 
 
-sys.path.append(msc_tools.MSC_TOOLS().library_paths(sys.argv[0],'../../'))
+sys.path.append(msc_tools.MSC_TOOLS().libraryPath(sys.argv[0],'../../'))
 
 try:
   from py_mentat import *
