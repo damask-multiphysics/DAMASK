@@ -870,6 +870,66 @@ subroutine calculate_mises(res_x,res_y,res_z,tensor,vm)
 end subroutine calculate_mises
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine curl_fft(res_x,res_y,res_z,vec_tens,geomdim,field,divergence_field)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! calculates divergence field using integration in Fourier space
+!use vec_tens to decide if tensor (3) or vector (1)
+
+ implicit none
+ integer res_x, res_y, res_z, vec_tens
+ real*8 geomdim(3)
+ real*8 field(res_x,res_y,res_z,vec_tens,3)
+ real*8 curl_fft(res_x,res_y,res_z,vec_tens,3)
+ complex*8 field_fft(res_x/2_pInt+1,res_y,res_z,vec_tens,3)
+ real*8 xi(res_x,res_y,res_z,3)
+ complex*16 img
+ integer i, j, k
+ real*8, parameter :: pi = 3.14159265358979323846264338327950288419716939937510
+ integer*8 ::  plan_fft(2)
+
+ img = cmplx(0.0,1.0)
+
+ call dfftw_plan_many_dft_r2c(plan_fft(1),3,(/res_x,res_y,res_z/),vec_tens*3,&
+    curl_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,&
+    field_fft,(/res_x/2+1,res_y,res_z/),1,(res_x/2+1)*res_y*res_z,32) ! 32 =FFTW_PATIENT
+
+ call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res_x,res_y,res_z/),vec_tens*3,&
+   field_fft,(/res_x/2+1,res_y,res_z/),1,(res_x/2+1)*res_y*res_z,&
+   curl_fft,(/res_x,res_y,res_z/),1,res_x*res_y*res_z,32) ! 32 = FFTW_PATIENT
+
+! field_copy is destroyed during plan creation
+ curl_fft = field
+
+ call dfftw_execute_dft_r2c(plan_fft(1), field_copy, field_fft)
+
+ xi = 0.0
+  
+ do k = 0, res_z-1         
+   do j = 0, res_y-1
+     do i = 0, res_x/2
+       xi(i+1,j+1,k+1,:) = (/real(i),real(j),real(k)/)/geomdim
+       if(k==res_z/2) xi(i+1,j+1,k+1,3)= 0.0 ! set highest frequencies to zero
+       if(j==res_y/2) xi(i+1,j+1,k+1,2)= 0.0
+       if(i==res_x/2) xi(i+1,j+1,k+1,1)= 0.0
+ enddo; enddo; enddo
+
+ 
+ do k = 1, res_z                                       
+   do j = 1, res_y
+     do i = 1, res_x/2+1
+       divergence_field_fft(i,j,k,1) = sum(field_fft(i,j,k,1,:)*xi(i,j,k,:))
+       if(vec_tens == 3) then
+       divergence_field_fft(i,j,k,2) = sum(field_fft(i,j,k,2,:)*xi(i,j,k,:))
+       divergence_field_fft(i,j,k,3) = sum(field_fft(i,j,k,3,:)*xi(i,j,k,:))
+       endif
+ enddo; enddo; enddo
+ divergence_field_fft = divergence_field_fft*img*2.0*pi
+
+ call dfftw_execute_dft_c2r(plan_fft(2), divergence_field_fft, divergence_field)
+
+end subroutine curl_fft
+ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine divergence_fft(res_x,res_y,res_z,vec_tens,geomdim,field,divergence_field)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! calculates divergence field using integration in Fourier space
