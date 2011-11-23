@@ -38,7 +38,7 @@
 ! n                       20
 ! h0                      75e6
 ! tausat                  63e6
-! w0                      2.25
+! a                       2.25
 
 MODULE constitutive_j2
 
@@ -63,7 +63,7 @@ MODULE constitutive_j2
  real(pReal), dimension(:),     allocatable :: constitutive_j2_n
  real(pReal), dimension(:),     allocatable :: constitutive_j2_h0
  real(pReal), dimension(:),     allocatable :: constitutive_j2_tausat
- real(pReal), dimension(:),     allocatable :: constitutive_j2_w0
+ real(pReal), dimension(:),     allocatable :: constitutive_j2_a
  real(pReal), dimension(:),     allocatable :: constitutive_j2_aTolResistance
 
 
@@ -126,7 +126,7 @@ subroutine constitutive_j2_init(file)
  allocate(constitutive_j2_n(maxNinstance)) ;                                    constitutive_j2_n = 0.0_pReal
  allocate(constitutive_j2_h0(maxNinstance)) ;                                   constitutive_j2_h0 = 0.0_pReal
  allocate(constitutive_j2_tausat(maxNinstance)) ;                               constitutive_j2_tausat = 0.0_pReal
- allocate(constitutive_j2_w0(maxNinstance)) ;                                   constitutive_j2_w0 = 0.0_pReal
+ allocate(constitutive_j2_a(maxNinstance)) ;                                   constitutive_j2_a = 0.0_pReal
  allocate(constitutive_j2_aTolResistance(maxNinstance)) ;                       constitutive_j2_aTolResistance = 0.0_pReal
  
  rewind(file)
@@ -167,8 +167,8 @@ subroutine constitutive_j2_init(file)
               constitutive_j2_h0(i) = IO_floatValue(line,positions,2)
        case ('tausat')
               constitutive_j2_tausat(i) = IO_floatValue(line,positions,2)
-       case ('w0')
-              constitutive_j2_w0(i) = IO_floatValue(line,positions,2)
+       case ('a', 'w0')
+              constitutive_j2_a(i) = IO_floatValue(line,positions,2)
        case ('taylorfactor')
               constitutive_j2_fTaylor(i) = IO_floatValue(line,positions,2)
        case ('atol_resistance')
@@ -182,7 +182,7 @@ subroutine constitutive_j2_init(file)
    if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211)
    if (constitutive_j2_n(i) <= 0.0_pReal)                 call IO_error(212)
    if (constitutive_j2_tausat(i) <= 0.0_pReal)            call IO_error(213)
-   if (constitutive_j2_w0(i) <= 0.0_pReal)                call IO_error(241)
+   if (constitutive_j2_a(i) <= 0.0_pReal)                call IO_error(241)
    if (constitutive_j2_fTaylor(i) <= 0.0_pReal)           call IO_error(240)
    if (constitutive_j2_aTolResistance(i) <= 0.0_pReal)    call IO_error(242)
  enddo
@@ -449,7 +449,7 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
   
   ! hardening coefficient
   hardening = constitutive_j2_h0(matID) * &
-                  ( 1.0_pReal - state(g,ip,el)%p(1) / constitutive_j2_tausat(matID) ) ** constitutive_j2_w0(matID)
+                  ( 1.0_pReal - state(g,ip,el)%p(1) / constitutive_j2_tausat(matID) ) ** constitutive_j2_a(matID)
   
   ! dotState
   constitutive_j2_dotState =  hardening * gamma_dot
