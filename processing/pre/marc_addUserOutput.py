@@ -105,14 +105,15 @@ for file in files:
         print '\n'.join(map(lambda x:'  '+x,outputFormat[what]['specials']['brothers']))
         sys.exit(1)
 
-    UserVars = ['GrainCount']
-
-    UserVars += ['HomogenizationCount']
+    UserVars = ['HomogenizationCount']
     for var in outputFormat['Homogenization']['outputs']:
       if var[1] > 1:
         UserVars += ['%i_%s'%(i+1,var[0]) for i in range(var[1])]
       else:
         UserVars += ['%s'%(var[0]) for i in range(var[1])]
+
+    UserVars += ['GrainCount']
+
     for grain in range(outputFormat['Homogenization']['specials']['(ngrains)']):
       UserVars += ['%i_CrystalliteCount'%(grain+1)]
       for var in outputFormat['Crystallite']['outputs']:
