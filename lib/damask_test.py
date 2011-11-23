@@ -2,25 +2,61 @@
 import os, sys
 import subprocess,shutil
 
-import damask_tools; reload(damask_tools)
-import msc_tools; reload(msc_tools)  
+import damask_tools
+import msc_tools
 
 damask_tools.DAMASK_TOOLS().check_env()
   
 class DAMASK_TEST():
+    '''
+       General class for testing.
+       Is sub-classed by the individual tests.
+    '''
     modelname=None
     jobname=None
     testdir=None
     spectral_options=None
-    orientations=[]
     compile=False
-        
-    def run_test(self):
-        self.modelname='one_element_model'    
-        self.jobname='job1'
-        self.testdir='2001_hex_plastic'
-        self.orientations=[]
+    
+    has_variants=False  # False ==> A single test case is run
+    #has_variants=True   # True ==> Need to define the test_variants generator
 
+    def test_variants(self):
+        ''' 
+           If has_subtests == True this method defines the generator for subtests
+           This generator must be defined in each test, 
+           depending on what to change: orientations, parameters,....
+           Below is an EXAMPLE.
+        '''
+        subtest_orientations=[[0.0,90.0,0.0],[0.0,0.0,90.0]]
+        for i,o in enumerate(subtest_orientations):
+          from damask_tools import MATERIAL_CONFIG
+          mat=MATERIAL_CONFIG()
+          mat.read('material.config_base')
+          mat.add_texture(label='Grain001',
+                          type ='(gauss)',
+                          eulers = o)
+          mat.write(overwrite=True)
+          print(mat.data['texture']['Grain001'])
+          testlabel='orientation_%03i'%i
+          yield(testlabel)
+
+    def run_test(self):
+        res=[]
+        if self.has_variants:
+          for t in self.subtests():
+            print(t)
+            val=self.run_single_test()
+            res.append(val==True)
+        else:
+          val=self.run_single_test()
+          res.append(val==True)
+        if all(res) is True:
+          return True     
+        print(res)
+        return False 
+          
+    def run_single_test(self):
         self.clean_current_results()        
         if self.calc_current_results() is False:
           return False
@@ -37,23 +73,24 @@ class DAMASK_TEST():
         except:
           print('Could not delete current_results')
         os.mkdir('current_results')
+        
+    def calc_current_results(self):
+        '''
+           Should be defined in the individual tests
+        '''
+        pass
 
-    def calc_current_results(self,compile=None):
-        #theDir = os.path.split(sys.argv[0])[0]
-        #os.chdir(theDir)
-        #os.chdir('..')
-        #os.chdir('%s/testing'%os.getenv('DAMASK_ROOT'))
+    def calc_marc(self,compile=None):
+        '''
+           Calculates current results for MSC.Marc
+        '''
         if compile is None: compile=self.compile
         self.copy_from_ref=[self.modelname+'_'+self.jobname+'.dat',
                    self.modelname+'.mfd', # for dev
                    'material.config'
         ]
-        for file in self.copy_from_ref:
-            shutil.copy2('./reference_results/%s'%file,'./current_results/%s'%file)  
-            # Note: possibly symlinking? No, because copy is OS independent.
-
-        os.chdir('./current_results')
-
+        self.copy_files_from_reference_results()
+        os.chdir('./current_results')                
         m=msc_tools.MSC_TOOLS()
         m.submit_job(compile=compile, compiled_dir='../../../code/')
         print('simulation submitted')
@@ -62,7 +99,15 @@ class DAMASK_TEST():
         if not self.exit_number==3004:
           print('Job did not exit with No. 3004')
           return False 
-        return True  
+        return True
+        
+    def calc_spectral(self, compile=None):
+        pass
+
+    def copy_files_from_reference_results(self):
+        for file in self.copy_from_ref:
+            shutil.copy2('./reference_results/%s'%file,'./current_results/%s'%file)  
+            # Note: possibly symlinking? No, because copy is OS independent.
         
     def postprocess(self):
         #print 'postprocessing results ...'
