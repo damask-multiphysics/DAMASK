@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os,re,sys,math,string
+import os,re,sys,math,string,damask_tools
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -44,29 +44,22 @@ Add column(s) containing determinant of requested tensor column(s).
 )
 
 
-parser.add_option('-m','--memory',      dest='memory', action='store_true', \
-                                        help='load complete file into memory [%default]')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', \
                                         help='heading of columns containing tensor field values')
 
-parser.set_defaults(memory = False)
-parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
 
 (options,filenames) = parser.parse_args()
 
-if len(options.vector) + len(options.tensor) == 0:
+if len(options.tensor) == 0:
   parser.error('no data column specified...')
 
 datainfo = {                                                               # list of requested labels per datatype
-             'vector':    {'len':3,
-                            'label':[]},
              'tensor':     {'len':9,
                             'label':[]},
            }
 
 
-if options.vector != None:    datainfo['vector']['label'] += options.vector
 if options.tensor != None:    datainfo['tensor']['label'] += options.tensor
 
 
@@ -84,30 +77,12 @@ else:
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  print file['name']
+  if file['name'] != 'STDIN': print file['name']
 
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
-
-  firstline = file['input'].readline()
-  m = re.search('(\d+)\s*head', firstline.lower())
-  if m:
-    headerlines = int(m.group(1))
-    passOn  = [file['input'].readline() for i in range(1,headerlines)]
-    headers = file['input'].readline().split()
-  else:
-    headerlines = 1
-    passOn  = []
-    headers = firstline.split()
-
-  if options.memory:
-    data = file['input'].readlines()
-  else:
-    data = []
-
-  for i,l in enumerate(headers):
-    if l.startswith('1_'):
-      if re.match('\d+_',l[2:]) or i == len(headers)-1 or not headers[i+1].endswith(l[2:]):
-        headers[i] = l[2:]
+  table = damask_tools.ASCII_TABLE(file['input'],file['output'],False)      # make unbuffered ASCII_table
+  table.head_read()                                                         # read ASCII header info
+  table.info_append(string.replace('$Id$','\n','\\n') + \
+                    '\t' + ' '.join(sys.argv[1:]))
 
   active = {}
   column = {}
@@ -117,56 +92,35 @@ for file in files:
     for label in info['label']:
       key = {True :'1_%s',
              False:'%s'   }[info['len']>1]%label
-      if key not in headers:
+      if key not in table.labels:
         sys.stderr.write('column %s not found...\n'%key)
       else:
         if datatype not in active: active[datatype] = []
         if datatype not in column: column[datatype] = {}
         active[datatype].append(label)
-        column[datatype][label] = headers.index(key)
-        head.append('det(%s)'%label)
+        column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
+        table.labels_append('det(%s)'%label)                                # extend ASCII header with new labels
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
-  output = '%i\theader'%(headerlines+1) + '\n' + \
-           ''.join(passOn) + \
-           string.replace('$Id$','\n','\\n')+ '\t' + \
-           ' '.join(sys.argv[1:]) + '\n' + \
-           '\t'.join(headers + head) + '\n'                              # build extended header
+  table.head_write()
 
-  if not options.memory:
-    file['output'].write(output)
-    output = ''
+# ------------------------------------------ process data ---------------------------------------  
 
-# ------------------------------------------ read file ---------------------------------------  
-
-  for line in {True  : data,
-               False : file['input']}[options.memory]:
-    items = line.split()[:len(headers)]
-    if len(items) < len(headers):
-      continue
+  while table.data_read():                                                  # read next data line of ASCII table
   
-    output += '\t'.join(items)
+    for datatype,labels in active.items():                                  # loop over vector,tensor
+      for label in labels:                                                  # loop over all requested norms
+        table.data_append(determinant(map(float,table.data[column[datatype][label]:
+                                                           column[datatype][label]+datainfo[datatype]['len']])))
 
-    for datatype,labels in active.items():
-      for label in labels:
-        theValue = determinant(map(float,items[column[datatype][label]:
-                                               column[datatype][label]+datainfo[datatype]['len']]))
-        output += '\t%f'%theValue
-
-    output += '\n'
-
-    if not options.memory:
-      file['output'].write(output)
-      output = ''
-
-  file['input'].close()
+    table.data_write()                                                      # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
 
-  if options.memory:
-    file['output'].write(output)
+  table.output_flush()                                                      # just in case of buffered ASCII table
 
+  file['input'].close()                                                     # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close
-    os.rename(file['name']+'_tmp',file['name'])
+    file['output'].close                                                    # close output ASCII table
+    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
