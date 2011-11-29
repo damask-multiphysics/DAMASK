@@ -4,8 +4,8 @@ import os,sys,string,re
 from optparse import OptionParser
 
 pathInfo = {\
-            'acml': 'lib/acml4.4.0',
-            'fftw': 'lib/fftw',
+            'acml': './acml4.4.0',
+            'fftw': './fftw',
             'msc':  '/msc',
            }
 
@@ -56,13 +56,12 @@ parser.set_defaults(shell = 'bash')
 (options, args) = parser.parse_args()
 
 DamaskRoot = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])),'../'))
-
 try:                                        # check for user-defined pathinfo
   file = open(os.path.join(DamaskRoot,'lib/pathinfo'))
   content = file.readlines()
   file.close()
   for line in content:
-    pathinfo[line.split()[0].lower()] = os.path.normpath(line.split()[1])
+    pathInfo[line.split()[0].lower()] = os.path.normpath(line.split()[1])
 except:
   pass
 
