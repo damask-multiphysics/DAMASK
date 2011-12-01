@@ -30,7 +30,7 @@ integer, parameter :: pInt  = selected_int_kind(9)           ! up to +- 1e9
 integer, parameter :: pLongInt  = 8                          ! should be 64bit
 real(pReal), parameter :: tol_math_check = 1.0e-8_pReal
 real(pReal), parameter :: tol_gravityNodePos = 1.0e-100_pReal
-! NaN is precistion dependent 
+! NaN is precision dependent 
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy found in documentation/Code/Fortran
 real(pReal), parameter :: DAMASK_NaN = Z'7FF0000000000001'

@@ -5,7 +5,7 @@
 # As it reads in the data coming from "materialpoint_results", it can be adopted to the data
 # computed using the FEM solvers. Its capable to handle elements with one IP in a regular order
 
-import os,sys,threading,re,numpy,time,string,postprocessingMath
+import os,sys,threading,re,numpy,time,string,DAMASK
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 # -----------------------------
@@ -412,18 +412,16 @@ for filename in args:
       dim[2] = options.unitlength
   if options.undeformed:
     defgrad_av = numpy.eye(3)
-  else:           # @Martin: why do we have to reshape this data when just averaging??
-    defgrad_av = postprocessingMath.tensor_avg(res[0],res[1],res[2],\
-                                             numpy.reshape(values[:,column['tensor'][options.defgrad]:
-                                                                    column['tensor'][options.defgrad]+9],
-                                             (res[0],res[1],res[2],3,3)))
+  else:
+    defgrad_av = DAMASK.math.tensor_avg(res,numpy.reshape(values[:,column['tensor'][options.defgrad]:
+                                                                        column['tensor'][options.defgrad]+9],
+                                                                                (res[0],res[1],res[2],3,3)))
 
-  # @Martin: any reason for having 3 args for res but a single vector arg for dim?					     
-  centroids = postprocessingMath.deformed_fft(res[0],res[1],res[2],dim,\
-                                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
-                                                                     column['tensor'][options.defgrad]+9],
-                                                            (res[0],res[1],res[2],3,3)),defgrad_av,options.scaling)
-  ms = postprocessingMath.mesh(res[0],res[1],res[2],dim,defgrad_av,centroids)
+  centroids = DAMASK.math.deformed_fft(res,dim,defgrad_av,options.scaling,
+                                            numpy.reshape(values[:,column['tensor'][options.defgrad]:
+                                                                   column['tensor'][options.defgrad]+9],
+                                                                   (res[0],res[1],res[2],3,3)))
+  ms = DAMASK.math.mesh_regular_grid(res,dim,defgrad_av,centroids)
 
   fields =  {\
              'tensor': {},\

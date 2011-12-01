@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os,re,sys,math,string,numpy,postprocessingMath
+import os,re,sys,math,string,numpy,DAMASK
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -21,24 +21,19 @@ class extendableOption(Option):
     else:
       Option.take_action(self, action, dest, opt, value, values, parser)
 
-
-
 def location(idx,res):
-
   return ( idx  % res[0], \
-          (idx // res[0]) % res[1], \
-          (idx // res[0] // res[1]) % res[2] )
+         (idx // res[0]) % res[1], \
+         (idx // res[0] // res[1]) % res[2] )
 
 def index(location,res):
-
-  return ( location[0] % res[0]                    + \
-          (location[1] % res[1]) * res[0]          + \
-          (location[2] % res[2]) * res[0] * res[1]   )
+  return ( location[0] % res[0]                   + \
+         (location[1] % res[1]) * res[0]          + \
+         (location[2] % res[2]) * res[0] * res[1]   )
 
 def prefixMultiply(what,len):
-
   return {True: ['%i_%s'%(i+1,what) for i in range(len)],
-          False:[what]}[len>1]
+         False:[what]}[len>1]
 
 
 # --------------------------------------------------------------------
@@ -205,7 +200,6 @@ for file in files:
         continue
     
       output += '\t'.join(items)
-      
       (x,y,z) = location(idx,options.res)
     
       for datatype,labels in active.items():
@@ -252,9 +246,9 @@ for file in files:
                                                                                   reshape((options.res[0],options.res[1],options.res[2],\
                                                                                   datainfo[datatype]['len']//3))
           if accuracy == 'fft':
-            div_field[datatype][label][accuracy] = postprocessingMath.divergence_fft(options.res[0],options.res[1],options.res[2],datainfo[datatype]['len']//3,options.dim,values[datatype][label])
+            div_field[datatype][label][accuracy] = DAMASK.math.divergence_fft(options.res,options.dim,datainfo[datatype]['len']//3,values[datatype][label])
           else:
-            div_field[datatype][label][accuracy] = postprocessingMath.divergence(options.res[0],options.res[1],options.res[2],datainfo[datatype]['len']//3,eval(accuracy)//2-1,options.dim,values[datatype][label])
+            div_field[datatype][label][accuracy] = DAMASK.math.divergence_fdm(options.res,options.dim,datainfo[datatype]['len']//3,eval(accuracy)//2-1,values[datatype][label])
 
     idx = 0
     for line in data:

@@ -46,7 +46,7 @@ program DAMASK_spectral
 !********************************************************************
 
  use DAMASK_interface
- use prec, only: pInt, pReal
+ use prec, only: pInt, pReal, DAMASK_NaN
  use IO
  use debug, only: spectral_debug_verbosity
  use math
@@ -124,7 +124,6 @@ program DAMASK_spectral
  real(pReal), dimension(:,:,:,:), allocatable ::        xi                                       ! wave vector field 
  integer(pInt), dimension(3) ::                         k_s                                
  integer*8, dimension(3) ::                             fftw_plan                                ! plans for fftw (forward and backward)
- integer*8 ::                                           fftw_flag                                ! planner flag for fftw
  
 ! loop variables, convergence etc.
  real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc                                     ! elapsed time, begin of interval, time interval 
@@ -424,21 +423,8 @@ program DAMASK_spectral
      call dfftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
    endif
 #endif
- call dfftw_set_timelimit(fftw_timelimit)                          ! is not working, have to fix it in FFTW source file
- select case(IO_lc(fftw_planner_flag))                          ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-   case('estimate','fftw_estimate')                             ! ordered from slow execution (but fast plan creation) to fast execution
-     fftw_flag = 64
-   case('measure','fftw_measure')
-     fftw_flag = 0
-   case('patient','fftw_patient')
-     fftw_flag= 32
-   case('exhaustive','fftw_exhaustive')
-     fftw_flag = 8 
-   case default
-     call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_planner_flag)))
-     fftw_flag = 32
- end select
-!*************************************************************
+ call dfftw_set_timelimit(fftw_timelimit)
+ !*************************************************************
 ! Loop over loadcases defined in the loadcase file
  do loadcase = 1_pInt,  N_Loadcases
 !*************************************************************
@@ -509,14 +495,14 @@ program DAMASK_spectral
          wgt = 1.0_pReal/real(res(1)*res(2)*res(3), pReal)
          call dfftw_plan_many_dft_r2c(fftw_plan(1),3,(/res(1),res(2),res(3)/),9,&
            workfft,(/res(1)       +2_pInt,res(2),res(3)/),1,(res(1)       +2_pInt)*res(2)*res(3),&
-           workfft,(/res(1)/2_pInt+1_pInt,res(2),res(3)/),1,(res(1)/2_pInt+1_pInt)*res(2)*res(3),fftw_flag)   
+           workfft,(/res(1)/2_pInt+1_pInt,res(2),res(3)/),1,(res(1)/2_pInt+1_pInt)*res(2)*res(3),fftw_planner_flag)   
          call dfftw_plan_many_dft_c2r(fftw_plan(2),3,(/res(1),res(2),res(3)/),9,&
            workfft,(/res(1)/2_pInt+1_pInt,res(2),res(3)/),1,(res(1)/2_pInt+1_pInt)*res(2)*res(3),&
-           workfft,(/res(1)       +2_pInt,res(2),res(3)/),1,(res(1)       +2_pInt)*res(2)*res(3),fftw_flag)
+           workfft,(/res(1)       +2_pInt,res(2),res(3)/),1,(res(1)       +2_pInt)*res(2)*res(3),fftw_planner_flag)
          if (debugDivergence) &
            call dfftw_plan_many_dft_c2r(fftw_plan(3),3,(/res(1),res(2),res(3)/),3,&
              divergence,(/res(1)/2_pInt+1_pInt,res(2),res(3)/),1,(res(1)/2_pInt+1_pInt)*res(2)*res(3),&
-             divergence,(/res(1)       +2_pInt,res(2),res(3)/),1,(res(1)       +2_pInt)*res(2)*res(3),fftw_flag)
+             divergence,(/res(1)       +2_pInt,res(2),res(3)/),1,(res(1)       +2_pInt)*res(2)*res(3),fftw_planner_flag)
          if (debugGeneral) then
            !$OMP CRITICAL (write2out)
            write (6,*) 'FFTW initialized'

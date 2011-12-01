@@ -23,6 +23,7 @@ MODULE numerics
 !##############################################################
 
 use prec, only: pInt, pReal
+use IO, only: IO_warning
 implicit none
 
 character(len=64), parameter :: numerics_configFile = 'numerics.config' ! name of configuration file
@@ -69,7 +70,8 @@ real(pReal) ::                  relevantStrain, &                       ! strain
                                 err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
                                 fftw_timelimit, &                       ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org
                                 rotation_tol                            ! tolerance of rotation specified in loadcase
-character(len=64) ::            fftw_planner_flag                       ! sets the planig-rigor flag, see manual on www.fftw.org
+character(len=64) ::            fftw_planner_string                     ! reads the planing-rigor flag, see manual on www.fftw.org
+integer*8 ::                    fftw_planner_flag                       ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
 logical ::                      memory_efficient,&                      ! for fast execution (pre calculation of gamma_hat)
                                 divergence_correction                   ! correct divergence calculation in fourier space
 integer(pInt) ::                itmax , &                               ! maximum number of iterations
@@ -170,7 +172,7 @@ subroutine numerics_init()
   itmax                   = 20_pInt      ! Maximum iteration number
   memory_efficient        = .true.       ! Precalculate Gamma-operator (81 double per point)
   fftw_timelimit          = -1.0_pReal   ! no timelimit of plan creation for FFTW
-  fftw_planner_flag       ='FFTW_PATIENT'
+  fftw_planner_string     ='FFTW_PATIENT'
   rotation_tol            = 1.0e-12 
   divergence_correction   = .true.
 !* Random seeding parameters
@@ -286,8 +288,8 @@ subroutine numerics_init()
               memory_efficient = IO_intValue(line,positions,2)  > 0_pInt
         case ('fftw_timelimit')
               fftw_timelimit = IO_floatValue(line,positions,2)
-        case ('fftw_planner_flag')
-              fftw_planner_flag = IO_stringValue(line,positions,2)
+        case ('fftw_planner_string')
+              fftw_planner_string = IO_stringValue(line,positions,2)
         case ('rotation_tol')
               rotation_tol = IO_floatValue(line,positions,2)
         case ('divergence_correction')
@@ -309,6 +311,19 @@ subroutine numerics_init()
     !$OMP END CRITICAL (write2out)
     
   endif
+  select case(IO_lc(fftw_planner_string))                        ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+    case('estimate','fftw_estimate')                             ! ordered from slow execution (but fast plan creation) to fast execution
+       fftw_planner_flag = 64
+     case('measure','fftw_measure')
+       fftw_planner_flag = 0
+     case('patient','fftw_patient')
+       fftw_planner_flag= 32
+     case('exhaustive','fftw_exhaustive')
+       fftw_planner_flag = 8 
+     case default
+       call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_planner_string)))
+       fftw_planner_flag = 32
+  end select
 
   ! writing parameters to output file
   !$OMP CRITICAL (write2out)
@@ -360,7 +375,8 @@ subroutine numerics_init()
     else    
       write(6,'(a24,x,e8.1)') ' fftw_timelimit:         ',fftw_timelimit
     endif
-    write(6,'(a24,x,a)')      ' fftw_planner_flag:      ',trim(fftw_planner_flag)
+    write(6,'(a24,x,a)')      ' fftw_planner_string:    ',trim(fftw_planner_string)
+    write(6,'(a24,x,i8)')     ' fftw_planner_flag:      ',fftw_planner_flag
     write(6,'(a24,x,e8.1)')   ' rotation_tol:           ',rotation_tol
     write(6,'(a24,x,L8,/)')   ' divergence_correction:  ',divergence_correction
 

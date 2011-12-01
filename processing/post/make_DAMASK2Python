@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# $Id: make_postprocessingMath 1106 2011-11-17 21:36:56Z MPIE\m.diehl $
+
+# This script is used to compile math.f90 and make the functions defined in DAMASK_math.pyf
+# avialable for python in the module DAMASK_math.so
+# It uses the fortran wrapper f2py that is included in the numpy package to construct the
+# module postprocessingMath.so out of the fortran code postprocessingMath.f90
+# for the generation of the pyf file:
+#f2py -m DAMASK -h DAMASK.pyf --overwrite-signature ../../code/math.f90 \
+
+if [[ $# -eq 0 ]]; then
+  wd='.'
+else
+  wd=$1
+fi
+# use env. variables here!
+cd $wd
+rm ../../lib/DAMASK.so
+f2py -c \
+DAMASK.pyf \
+../../code/DAMASK2Python_helper.f90 \
+../../code/math.f90 \
+../../lib/libfftw3.a \
+/opt/acml4.4.0/ifort64/lib/libacml.a
+mv DAMASK.so ../../lib/.

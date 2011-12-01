@@ -23,12 +23,13 @@
 !##############################################################
 
 
- use prec, only: pReal,pInt,DAMASK_NaN
+ use prec, only: pReal,pInt
  implicit none
 
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
+
 ! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
  reshape( (/ &
@@ -39,12 +40,12 @@
 ! *** Mandel notation ***
  integer(pInt), dimension (2,6), parameter :: mapMandel = &
  reshape((/&
-  1,1, &
-  2,2, &
-  3,3, &
-  1,2, &
-  2,3, &
-  1,3  &
+  1_pInt,1_pInt, &
+  2_pInt,2_pInt, &
+  3_pInt,3_pInt, &
+  1_pInt,2_pInt, &
+  2_pInt,3_pInt, &
+  1_pInt,3_pInt  &
  /),(/2,6/))
 
  real(pReal), dimension(6), parameter :: nrmMandel = &
@@ -55,12 +56,12 @@
 ! *** Voigt notation ***
  integer(pInt), dimension (2,6), parameter :: mapVoigt = &
  reshape((/&
-  1,1, &
-  2,2, &
-  3,3, &
-  2,3, &
-  1,3, &
-  1,2  &
+  1_pInt,1_pInt, &
+  2_pInt,2_pInt, &
+  3_pInt,3_pInt, &
+  2_pInt,3_pInt, &
+  1_pInt,3_pInt, &
+  1_pInt,2_pInt  &
  /),(/2,6/))
 
  real(pReal), dimension(6), parameter :: nrmVoigt = &
@@ -71,22 +72,20 @@
 ! *** Plain notation ***
  integer(pInt), dimension (2,9), parameter :: mapPlain = &
  reshape((/&
-  1,1, &
-  1,2, &
-  1,3, &
-  2,1, &
-  2,2, &
-  2,3, &
-  3,1, &
-  3,2, &
-  3,3  &
+  1_pInt,1_pInt, &
+  1_pInt,2_pInt, &
+  1_pInt,3_pInt, &
+  2_pInt,1_pInt, &
+  2_pInt,2_pInt, &
+  2_pInt,3_pInt, &
+  3_pInt,1_pInt, &
+  3_pInt,2_pInt, &
+  3_pInt,3_pInt  &
  /),(/2,9/))
-
- 
 
 ! Symmetry operations as quaternions
 ! 24 for cubic, 12 for hexagonal = 36
-integer(pInt), dimension(2), parameter :: math_NsymOperations = (/24,12/)
+integer(pInt), dimension(2), parameter :: math_NsymOperations = (/24_pInt,12_pInt/)
 real(pReal), dimension(4,36), parameter :: math_symOperations = &
   reshape((/&
      1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! cubic symmetry operations
@@ -127,8 +126,6 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
      0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal &
   /),(/4,36/))
 
-
-
  CONTAINS
 
 !**************************************************************************
@@ -136,7 +133,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  SUBROUTINE math_init ()
 
- use prec,     only: pReal,pInt,tol_math_check
+ use prec,     only: tol_math_check
  use numerics, only: fixedSeed
  use IO,       only: IO_error
  use debug,    only: debug_verbosity
@@ -146,11 +143,10 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3,3) :: R,R2
  real(pReal), dimension(3) ::   Eulers
  real(pReal), dimension(4) ::   q,q2,axisangle,randTest
-! the following variables are system depented and shound NOT be pInt
+! the following variables are system dependend and shound NOT be pInt
  integer :: randSize                                ! gfortran requires a variable length to compile 
  integer, dimension(:), allocatable :: randInit     ! if recalculations of former randomness (with given seed) is necessary
                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
- 
  !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  math init  -+>>>'
@@ -169,7 +165,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  call random_seed(get=randInit)
 
- do i = 1, 4
+ do i = 1_pInt, 4_pInt
    call random_number(randTest(i))
  enddo
 
@@ -185,7 +181,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  call random_seed(get=randInit)
 
  call halton_seed_set(randInit(1))
- call halton_ndim_set(3)
+ call halton_ndim_set(3_pInt)
 
  ! --- check rotation dictionary ---
 
@@ -193,34 +189,32 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  q = math_qRnd();
  axisangle = math_QuaternionToAxisAngle(q);
  q2 = math_AxisAngleToQuaternion(axisangle(1:3),axisangle(4))
- if ( any(abs( q-q2) > tol_math_check ) .and. &
-      any(abs(-q-q2) > tol_math_check ) ) &
-   call IO_error(670)
+ if ( any(abs( q-q2) > tol_math_check) .and. &
+      any(abs(-q-q2) > tol_math_check) ) &
+   call IO_error(670_pInt)
  
  ! +++ q -> R -> q  +++
  R = math_QuaternionToR(q);
  q2 = math_RToQuaternion(R)
- if ( any(abs( q-q2) > tol_math_check ) .and. &
-      any(abs(-q-q2) > tol_math_check ) ) &
-   call IO_error(671)
+ if ( any(abs( q-q2) > tol_math_check) .and. &
+      any(abs(-q-q2) > tol_math_check) ) &
+   call IO_error(671_pInt)
  
  ! +++ q -> euler -> q  +++
  Eulers = math_QuaternionToEuler(q);
  q2 = math_EulerToQuaternion(Eulers)
- if ( any(abs( q-q2) > tol_math_check ) .and. &
-      any(abs(-q-q2) > tol_math_check ) ) &
-   call IO_error(672)
+ if ( any(abs( q-q2) > tol_math_check) .and. &
+      any(abs(-q-q2) > tol_math_check) ) &
+   call IO_error(672_pInt)
  
  ! +++ R -> euler -> R  +++
  Eulers = math_RToEuler(R);
  R2 = math_EulerToR(Eulers)
- if ( any(abs( R-R2) > tol_math_check ) ) &
-   call IO_error(673)
- 
+ if ( any(abs( R-R2) > tol_math_check) ) &
+   call IO_error(673_pInt)
  
  ENDSUBROUTINE math_init
  
-
 
 !**************************************************************************
 ! Quicksort algorithm for two-dimensional integer arrays
@@ -236,11 +230,12 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  if (istart < iend) then
    ipivot = math_partition(a,istart, iend)
-   call qsort(a, istart, ipivot-1)
-   call qsort(a, ipivot+1, iend)
+   call qsort(a, istart, ipivot-1_pInt)
+   call qsort(a, ipivot+1_pInt, iend)
  endif
   
  ENDSUBROUTINE qsort
+
 
 !**************************************************************************
 ! Partitioning required for quicksort
@@ -251,7 +246,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  integer(pInt), dimension(:,:) :: a
  integer(pInt) :: istart,iend,d,i,j,k,x,tmp
 
- d = size(a,1) ! number of linked data
+ d = size(a,1_pInt) ! number of linked data
 ! set the starting and ending points, and the pivot point
 
  i = istart
@@ -260,21 +255,21 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  x = a(1,istart)
  do
 ! find the first element on the right side less than or equal to the pivot point
-   do j = j, istart, -1
+   do j = j, istart, -1_pInt
      if (a(1,j) <= x) exit
    enddo
 ! find the first element on the left side greater than the pivot point
    do i = i, iend
      if (a(1,i) > x) exit
    enddo
-   if (i < j ) then ! if the indexes do not cross, exchange values
-     do k = 1,d
+   if (i < j) then ! if the indexes do not cross, exchange values
+     do k = 1_pInt,d
       tmp = a(k,i)
       a(k,i) = a(k,j)
       a(k,j) = tmp
      enddo
    else           ! if they do cross, exchange left value with pivot and return with the partition index
-     do k = 1,d
+     do k = 1_pInt,d
       tmp = a(k,istart)
       a(k,istart) = a(k,j)
       a(k,j) = tmp
@@ -292,33 +287,33 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_range(N)  
 
- use prec, only: pInt
  implicit none
 
  integer(pInt), intent(in) :: N
- integer(pInt) i
+ integer(pInt) :: i
  integer(pInt), dimension(N) :: math_range
 
- forall (i=1:N) math_range(i) = i
+ forall (i=1_pInt:N) math_range(i) = i
 
  endfunction math_range
+
 
 !**************************************************************************
 ! second rank identity tensor of specified dimension
 !**************************************************************************
  pure function math_identity2nd(dimen)  
 
- use prec, only: pReal, pInt
  implicit none
 
  integer(pInt), intent(in) :: dimen
- integer(pInt)  i
+ integer(pInt) :: i
  real(pReal), dimension(dimen,dimen) :: math_identity2nd
 
  math_identity2nd = 0.0_pReal 
- forall (i=1:dimen) math_identity2nd(i,i) = 1.0_pReal 
+ forall (i=1_pInt:dimen) math_identity2nd(i,i) = 1.0_pReal 
 
  endfunction math_identity2nd
+
 
 !**************************************************************************
 ! permutation tensor e_ijk used for computing cross product of two tensors
@@ -326,24 +321,23 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 ! e_ijk = -1 if odd permutation of ijk
 ! e_ijk =  0 otherwise
 !**************************************************************************
- pure function math_civita(i,j,k)     ! change its name from math_permut 
-                                 ! to math_civita <<<updated 31.07.2009>>>
+ pure function math_civita(i,j,k)
 
- use prec, only: pReal, pInt
  implicit none
 
  integer(pInt), intent(in) :: i,j,k
  real(pReal) math_civita
 
  math_civita = 0.0_pReal
- if (((i == 1).and.(j == 2).and.(k == 3)) .or. &
-     ((i == 2).and.(j == 3).and.(k == 1)) .or. &
-     ((i == 3).and.(j == 1).and.(k == 2))) math_civita = 1.0_pReal
- if (((i == 1).and.(j == 3).and.(k == 2)) .or. &
-     ((i == 2).and.(j == 1).and.(k == 3)) .or. &
-     ((i == 3).and.(j == 2).and.(k == 1))) math_civita = -1.0_pReal
+ if (((i == 1_pInt).and.(j == 2_pInt).and.(k == 3_pInt)) .or. &
+     ((i == 2_pInt).and.(j == 3_pInt).and.(k == 1_pInt)) .or. &
+     ((i == 3_pInt).and.(j == 1_pInt).and.(k == 2_pInt))) math_civita = 1.0_pReal
+ if (((i == 1_pInt).and.(j == 3_pInt).and.(k == 2_pInt)) .or. &
+     ((i == 2_pInt).and.(j == 1_pInt).and.(k == 3_pInt)) .or. &
+     ((i == 3_pInt).and.(j == 2_pInt).and.(k == 1_pInt))) math_civita = -1.0_pReal
 
  endfunction math_civita
+
 
 !**************************************************************************
 ! kronecker delta function d_ij
@@ -352,41 +346,39 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_delta(i,j)
 
- use prec, only: pReal, pInt
  implicit none
 
  integer(pInt), intent (in) :: i,j
- real(pReal) math_delta
+ real(pReal) :: math_delta
 
  math_delta = 0.0_pReal
  if (i == j) math_delta = 1.0_pReal
 
  endfunction math_delta
 
+
 !**************************************************************************
 ! fourth rank identity tensor of specified dimension
 !**************************************************************************
  pure function math_identity4th(dimen)  
 
- use prec, only: pReal, pInt
  implicit none
 
  integer(pInt), intent(in) :: dimen
- integer(pInt)  i,j,k,l
+ integer(pInt) :: i,j,k,l
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
 
- forall (i=1:dimen,j=1:dimen,k=1:dimen,l=1:dimen) math_identity4th(i,j,k,l) = &
+ forall (i=1_pInt:dimen,j=1_pInt:dimen,k=1_pInt:dimen,l=1_pInt:dimen) math_identity4th(i,j,k,l) = &
         0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
 
  endfunction math_identity4th
-
  
+
 !**************************************************************************
 ! vector product a x b
 !**************************************************************************
  pure function math_vectorproduct(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) ::  A,B
@@ -396,7 +388,6 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_vectorproduct(2) = A(3)*B(1)-A(1)*B(3)
  math_vectorproduct(3) = A(1)*B(2)-A(2)*B(1)
 
-
  endfunction math_vectorproduct
 
 
@@ -405,15 +396,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_tensorproduct(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) ::  A,B
  real(pReal), dimension(3,3) ::  math_tensorproduct
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
- forall (i=1:3,j=1:3) math_tensorproduct(i,j) = A(i)*B(j)
-
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct(i,j) = A(i)*B(j)
 
  endfunction math_tensorproduct
 
@@ -423,15 +412,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_mul3x3(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i
+ integer(pInt) :: i
  real(pReal), dimension(3), intent(in) ::  A,B
  real(pReal), dimension(3) ::              C
- real(pReal) math_mul3x3
+ real(pReal) :: math_mul3x3
 
- forall (i=1:3) C(i) = A(i)*B(i)
+ forall (i=1_pInt:3_pInt) C(i) = A(i)*B(i)
  math_mul3x3 = sum(C)
 
  endfunction math_mul3x3
@@ -442,15 +430,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_mul6x6(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i
+ integer(pInt) :: i
  real(pReal), dimension(6), intent(in) ::  A,B
  real(pReal), dimension(6) ::              C
- real(pReal) math_mul6x6
+ real(pReal) :: math_mul6x6
 
- forall (i=1:6) C(i) = A(i)*B(i)
+ forall (i=1_pInt:6_pInt) C(i) = A(i)*B(i)
  math_mul6x6 = sum(C)
 
  endfunction math_mul6x6
@@ -461,35 +448,34 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_mul33xx33(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,j
+ integer(pInt) :: i,j
  real(pReal), dimension(3,3), intent(in) ::  A,B
  real(pReal), dimension(3,3) ::              C
- real(pReal)  math_mul33xx33
+ real(pReal) :: math_mul33xx33
 
- forall (i=1:3,j=1:3) C(i,j) = A(i,j) * B(i,j)
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) C(i,j) = A(i,j) * B(i,j)
  math_mul33xx33 = sum(C)
 
  endfunction math_mul33xx33
 
+ 
 !**************************************************************************
 ! matrix multiplication 3333x33 = 33 (double contraction --> ijkl *kl = ij)
 !**************************************************************************
  pure function math_mul3333xx33(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,j
+ integer(pInt) :: i,j
  real(pReal), dimension(3,3,3,3), intent(in) ::  A
  real(pReal), dimension(3,3), intent(in) ::  B
  real(pReal), dimension(3,3) :: math_mul3333xx33
 
- do i = 1,3
-   do j = 1,3
-     math_mul3333xx33(i,j) = sum(A(i,j,:,:)*B(:,:))
+ do i = 1_pInt,3_pInt
+   do j = 1_pInt,3_pInt
+     math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
  enddo; enddo
 
  endfunction math_mul3333xx33
@@ -500,14 +486,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_mul33x33(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,j
+ integer(pInt) :: i,j
  real(pReal), dimension(3,3), intent(in) ::  A,B
  real(pReal), dimension(3,3) ::  math_mul33x33
 
- forall (i=1:3,j=1:3) math_mul33x33(i,j) = &
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_mul33x33(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
 
  endfunction math_mul33x33
@@ -518,14 +503,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_mul66x66(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i,j
+ integer(pInt) :: i,j
  real(pReal), dimension(6,6), intent(in) ::  A,B
  real(pReal), dimension(6,6) ::  math_mul66x66
 
- forall (i=1:6,j=1:6) math_mul66x66(i,j) = &
+ forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_mul66x66(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
    A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
 
@@ -546,7 +530,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(9,9) ::  math_mul99x99
 
 
- forall (i=1:9,j=1:9) math_mul99x99(i,j) = &
+ forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_mul99x99(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
    A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j) + &
    A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
@@ -559,15 +543,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_mul33x3(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i
+ integer(pInt) :: i
  real(pReal), dimension(3,3), intent(in) ::  A
  real(pReal), dimension(3),   intent(in) ::  B
  real(pReal), dimension(3) ::  math_mul33x3
 
- forall (i=1:3) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
+ forall (i=1_pInt:3_pInt) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
 
  endfunction math_mul33x3
  
@@ -576,15 +559,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_mul33x3_complex(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i
+ integer(pInt) :: i
  complex(pReal), dimension(3,3), intent(in) ::  A
  real(pReal),    dimension(3),   intent(in) ::  B
  complex(pReal), dimension(3) ::  math_mul33x3_complex
 
- forall (i=1:3) math_mul33x3_complex(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
+ forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
 
  endfunction math_mul33x3_complex
 
@@ -594,15 +576,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_mul66x6(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
- integer(pInt)  i
+ integer(pInt) :: i
  real(pReal), dimension(6,6), intent(in) ::  A
  real(pReal), dimension(6),   intent(in) ::  B
  real(pReal), dimension(6) ::  math_mul66x6
 
- forall (i=1:6) math_mul66x6(i) = &
+ forall (i=1_pInt:6_pInt) math_mul66x6(i) = &
    A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
    A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
 
@@ -614,7 +595,6 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  function math_qRnd()  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4) :: math_qRnd
@@ -634,7 +614,6 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_qMul(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) ::  A, B
@@ -653,11 +632,10 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_qDot(A,B)  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) :: A, B
- real(pReal) math_qDot
+ real(pReal) :: math_qDot
 
  math_qDot = A(1)*B(1) + A(2)*B(2) + A(3)*B(3) + A(4)*B(4)
 
@@ -669,7 +647,6 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_qConj(Q)  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) ::  Q
@@ -686,11 +663,10 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_qNorm(Q)  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) ::  Q
- real(pReal)  math_qNorm
+ real(pReal) :: math_qNorm
  
  math_qNorm = sqrt(max(0.0_pReal, Q(1)*Q(1) + Q(2)*Q(2) + Q(3)*Q(3) + Q(4)*Q(4)))
 
@@ -702,12 +678,11 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_qInv(Q)  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) ::  Q
  real(pReal), dimension(4) ::  math_qInv
- real(pReal) squareNorm
+ real(pReal) :: squareNorm
  
  math_qInv = 0.0_pReal
  
@@ -723,17 +698,16 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  pure function math_qRot(Q,v)  
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3), intent(in) :: v
  real(pReal), dimension(3) :: math_qRot
  real(pReal), dimension(4,4) :: T
- integer(pInt) i, j
+ integer(pInt) :: i, j
  
- do i = 1,4
-   do j = 1,i
+ do i = 1_pInt,4_pInt
+   do j = 1_pInt,i
      T(i,j) = Q(i) * Q(j)
    enddo
  enddo
@@ -752,14 +726,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
 pure function math_transpose3x3(A)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal),dimension(3,3) :: math_transpose3x3
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
- forall(i=1:3, j=1:3) math_transpose3x3(i,j) = A(j,i)
+ forall(i=1_pInt:3_pInt, j=1_pInt:3_pInt) math_transpose3x3(i,j) = A(j,i)
 
  endfunction math_transpose3x3
  
@@ -772,36 +745,33 @@ pure function math_transpose3x3(A)
 !   direct Cramer inversion of matrix A.
 !   returns all zeroes if not possible, i.e. if det close to zero
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal),dimension(3,3),intent(in)  :: A
- real(pReal) DetA
-
+ real(pReal) :: DetA
  real(pReal),dimension(3,3) :: math_inv3x3
  
  math_inv3x3 = 0.0_pReal
 
- DetA =   A(1,1) * ( A(2,2) * A(3,3) - A(2,3) * A(3,2) )&
-        - A(1,2) * ( A(2,1) * A(3,3) - A(2,3) * A(3,1) )&
-        + A(1,3) * ( A(2,1) * A(3,2) - A(2,2) * A(3,1) )
+ DetA =   A(1,1) * (A(2,2) * A(3,3) - A(2,3) * A(3,2))&
+        - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
+        + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
 
  if (DetA > tiny(DetA)) then
-   math_inv3x3(1,1) = (  A(2,2) * A(3,3) - A(2,3) * A(3,2) ) / DetA
-   math_inv3x3(2,1) = ( -A(2,1) * A(3,3) + A(2,3) * A(3,1) ) / DetA
-   math_inv3x3(3,1) = (  A(2,1) * A(3,2) - A(2,2) * A(3,1) ) / DetA
+   math_inv3x3(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
+   math_inv3x3(2,1) = (-A(2,1) * A(3,3) + A(2,3) * A(3,1)) / DetA
+   math_inv3x3(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1)) / DetA
 
-   math_inv3x3(1,2) = ( -A(1,2) * A(3,3) + A(1,3) * A(3,2) ) / DetA
-   math_inv3x3(2,2) = (  A(1,1) * A(3,3) - A(1,3) * A(3,1) ) / DetA
-   math_inv3x3(3,2) = ( -A(1,1) * A(3,2) + A(1,2) * A(3,1) ) / DetA
+   math_inv3x3(1,2) = (-A(1,2) * A(3,3) + A(1,3) * A(3,2)) / DetA
+   math_inv3x3(2,2) = ( A(1,1) * A(3,3) - A(1,3) * A(3,1)) / DetA
+   math_inv3x3(3,2) = (-A(1,1) * A(3,2) + A(1,2) * A(3,1)) / DetA
 
-   math_inv3x3(1,3) = (  A(1,2) * A(2,3) - A(1,3) * A(2,2) ) / DetA
-   math_inv3x3(2,3) = ( -A(1,1) * A(2,3) + A(1,3) * A(2,1) ) / DetA
-   math_inv3x3(3,3) = (  A(1,1) * A(2,2) - A(1,2) * A(2,1) ) / DetA
+   math_inv3x3(1,3) = ( A(1,2) * A(2,3) - A(1,3) * A(2,2)) / DetA
+   math_inv3x3(2,3) = (-A(1,1) * A(2,3) + A(1,3) * A(2,1)) / DetA
+   math_inv3x3(3,3) = ( A(1,1) * A(2,2) - A(1,2) * A(2,1)) / DetA
  endif
 
  endfunction math_inv3x3
-
 
 
 !**************************************************************************
@@ -815,39 +785,36 @@ pure function math_transpose3x3(A)
 !   DetA   = Determinant of A
 !   error  = logical
 
- use prec, only: pReal,pInt
  implicit none
 
  logical, intent(out) :: error
-
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal),dimension(3,3),intent(out) :: InvA
  real(pReal), intent(out) :: DetA
 
- DetA =   A(1,1) * ( A(2,2) * A(3,3) - A(2,3) * A(3,2) )&
-        - A(1,2) * ( A(2,1) * A(3,3) - A(2,3) * A(3,1) )&
-        + A(1,3) * ( A(2,1) * A(3,2) - A(2,2) * A(3,1) )
+ DetA =   A(1,1) * (A(2,2) * A(3,3) - A(2,3) * A(3,2))&
+        - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
+        + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
 
  if (DetA <= tiny(DetA)) then
    error = .true.
  else
-   InvA(1,1) = (  A(2,2) * A(3,3) - A(2,3) * A(3,2) ) / DetA
-   InvA(2,1) = ( -A(2,1) * A(3,3) + A(2,3) * A(3,1) ) / DetA
-   InvA(3,1) = (  A(2,1) * A(3,2) - A(2,2) * A(3,1) ) / DetA
+   InvA(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
+   InvA(2,1) = (-A(2,1) * A(3,3) + A(2,3) * A(3,1)) / DetA
+   InvA(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1)) / DetA
 
-   InvA(1,2) = ( -A(1,2) * A(3,3) + A(1,3) * A(3,2) ) / DetA
-   InvA(2,2) = (  A(1,1) * A(3,3) - A(1,3) * A(3,1) ) / DetA
-   InvA(3,2) = ( -A(1,1) * A(3,2) + A(1,2) * A(3,1) ) / DetA
+   InvA(1,2) = (-A(1,2) * A(3,3) + A(1,3) * A(3,2)) / DetA
+   InvA(2,2) = ( A(1,1) * A(3,3) - A(1,3) * A(3,1)) / DetA
+   InvA(3,2) = (-A(1,1) * A(3,2) + A(1,2) * A(3,1)) / DetA
 
-   InvA(1,3) = (  A(1,2) * A(2,3) - A(1,3) * A(2,2) ) / DetA
-   InvA(2,3) = ( -A(1,1) * A(2,3) + A(1,3) * A(2,1) ) / DetA
-   InvA(3,3) = (  A(1,1) * A(2,2) - A(1,2) * A(2,1) ) / DetA
+   InvA(1,3) = ( A(1,2) * A(2,3) - A(1,3) * A(2,2)) / DetA
+   InvA(2,3) = (-A(1,1) * A(2,3) + A(1,3) * A(2,1)) / DetA
+   InvA(3,3) = ( A(1,1) * A(2,2) - A(1,2) * A(2,1)) / DetA
    
    error = .false.
  endif
 
  ENDSUBROUTINE math_invert3x3
-
 
 
 !**************************************************************************
@@ -864,16 +831,15 @@ pure function math_transpose3x3(A)
 !              = true:  Die Inversion in SymGauss wurde wegen eines verschwindenen
 !                       Pivotelement abgebrochen.
 
- use prec, only: pReal,pInt
  implicit none
 
  integer(pInt), intent(in) :: dimen
- real(pReal),dimension(dimen,dimen), intent(in)  :: A
- real(pReal),dimension(dimen,dimen), intent(out) :: InvA
+ real(pReal), dimension(dimen,dimen), intent(in)  :: A
+ real(pReal), dimension(dimen,dimen), intent(out) :: InvA
  integer(pInt), intent(out) :: AnzNegEW
  logical, intent(out) :: error
- real(pReal) LogAbsDetA
- real(pReal),dimension(dimen,dimen) :: B
+ real(pReal) :: LogAbsDetA
+ real(pReal), dimension(dimen,dimen) :: B
 
  InvA = math_identity2nd(dimen)
  B = A
@@ -881,7 +847,6 @@ pure function math_transpose3x3(A)
 
  ENDSUBROUTINE math_invert
 
- 
 
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -891,14 +856,12 @@ pure function math_transpose3x3(A)
 !   GAUSS-Algorithmus
 !   Zur numerischen Stabilisierung wird eine Zeilen- und Spaltenpivotsuche
 !   durchgefuehrt.
-
-!   Eingabeparameter:
 !
+!   Eingabeparameter:
 !   A(dimen,dimen) = Koeffizientenmatrix A
 !   B(dimen,dimen) = rechte Seiten B
 !
 !   Ausgabeparameter:
-!
 !   B(dimen,dimen)    = Matrix der Unbekanntenvektoren X
 !   LogAbsDetA    = 10-Logarithmus des Betrages der Determinanten von A
 !   NegHDK        = Anzahl der negativen Hauptdiagonalkoeffizienten nach der
@@ -906,61 +869,52 @@ pure function math_transpose3x3(A)
 !   error         = logical
 !                   = false: Das Gleichungssystem wurde geloest.
 !                   = true : Matrix A ist singulaer.
-
+!
 !   A und B werden veraendert!
 
- use prec, only: pReal,pInt
  implicit none
 
- logical error
- integer (pInt) dimen,NegHDK
- real(pReal)    LogAbsDetA
- real(pReal)    A(dimen,dimen), B(dimen,dimen)
+ logical, intent(out) :: error
+ integer(pInt), intent(in) :: dimen
+ integer(pInt), intent(out) :: NegHDK
+ real(pReal), intent(out) :: LogAbsDetA
+ real(pReal), intent(inout), dimension(dimen,dimen) ::  A, B
+ logical :: SortX
+ integer(pInt) :: PivotZeile, PivotSpalte, StoreI, I, IP1, J, K, L
+ integer(pInt), dimension(dimen) :: XNr
+ real(pReal) :: AbsA, PivotWert, EpsAbs, Quote
+ real(pReal), dimension(dimen) :: StoreA, StoreB
 
- INTENT (IN)     dimen
- INTENT (OUT)    LogAbsDetA, NegHDK, error
- INTENT (INOUT)  A, B
-
- LOGICAL        SortX
- integer (pInt) PivotZeile, PivotSpalte, StoreI, I, IP1, J, K, L
- integer (pInt) XNr(dimen)
- real(pReal)    AbsA, PivotWert, EpsAbs, Quote
- real(pReal)    StoreA(dimen), StoreB(dimen)
-
- error = .true.
- NegHDK = 1
- SortX  = .FALSE.
+ error = .true.; NegHDK = 1_pInt; SortX = .false.
 
 !   Unbekanntennumerierung
 
- DO  I = 1, dimen
+ DO  I = 1_pInt, dimen
     XNr(I) = I
  ENDDO
 
 !   Genauigkeitsschranke und Bestimmung des groessten Pivotelementes
 
  PivotWert   = ABS(A(1,1))
- PivotZeile  = 1
- PivotSpalte = 1
+ PivotZeile  = 1_pInt
+ PivotSpalte = 1_pInt
 
- DO  I = 1, dimen
-    DO  J = 1, dimen
+ do  I = 1_pInt, dimen; do  J = 1_pInt, dimen
         AbsA = ABS(A(I,J))
         IF (AbsA .GT. PivotWert) THEN
             PivotWert   = AbsA
             PivotZeile  = I
             PivotSpalte = J
         ENDIF
-    ENDDO
- ENDDO
+ enddo; enddo
 
- IF (PivotWert .LT. 0.0000001) RETURN   ! Pivotelement = 0?
+ IF (PivotWert .LT. 0.0000001_pReal) RETURN   ! Pivotelement = 0?
 
  EpsAbs = PivotWert * 0.1_pReal ** PRECISION(1.0_pReal)
 
 !   V O R W A E R T S T R I A N G U L A T I O N
 
- DO  I = 1, dimen - 1
+ DO  I = 1_pInt, dimen - 1_pInt
 !     Zeilentausch?
     IF (PivotZeile .NE. I) THEN
         StoreA(I:dimen)       = A(I,I:dimen)
@@ -982,17 +936,17 @@ pure function math_transpose3x3(A)
         SortX                 = .TRUE.
     ENDIF
 !     Triangulation
-    DO  J = I + 1, dimen
+    DO  J = I + 1_pInt, dimen
         Quote = A(J,I) / A(I,I)
-        DO  K = I + 1, dimen
+        DO  K = I + 1_pInt, dimen
             A(J,K) = A(J,K) - Quote * A(I,K)
         ENDDO
-        DO  K = 1, dimen
+        DO  K = 1_pInt, dimen
             B(J,K) = B(J,K) - Quote * B(I,K)
         ENDDO
     ENDDO
 !     Bestimmung des groessten Pivotelementes
-    IP1         = I + 1
+    IP1         = I + 1_pInt
     PivotWert   = ABS(A(IP1,IP1))
     PivotZeile  = IP1
     PivotSpalte = IP1
@@ -1013,9 +967,9 @@ pure function math_transpose3x3(A)
 
 !   R U E C K W A E R T S A U F L O E S U N G
 
- DO  I = dimen, 1, -1
-    DO  L = 1, dimen
-        DO  J = I + 1, dimen
+ DO  I = dimen, 1_pInt, -1_pInt
+    DO  L = 1_pInt, dimen
+        DO  J = I + 1_pInt, dimen
             B(I,L) = B(I,L) - A(I,J) * B(J,L)
         ENDDO
         B(I,L) = B(I,L) / A(I,I)
@@ -1025,9 +979,9 @@ pure function math_transpose3x3(A)
 !   Sortieren der Unbekanntenvektoren?
 
  IF (SortX) THEN
-    DO  L = 1, dimen
+    DO  L = 1_pInt, dimen
         StoreA(1:dimen) = B(1:dimen,L)
-        DO  I = 1, dimen
+        DO  I = 1_pInt, dimen
             J      = XNr(I)
             B(J,L) = StoreA(I)
         ENDDO
@@ -1037,10 +991,10 @@ pure function math_transpose3x3(A)
 !   Determinante
 
  LogAbsDetA = 0.0_pReal
- NegHDK     = 0
+ NegHDK     = 0_pInt
 
- DO  I = 1, dimen
-    IF (A(I,I) .LT. 0.0_pReal) NegHDK = NegHDK + 1
+ DO  I = 1_pInt, dimen
+    IF (A(I,I) .LT. 0.0_pReal) NegHDK = NegHDK + 1_pInt
     AbsA       = ABS(A(I,I))
     LogAbsDetA = LogAbsDetA + LOG10(AbsA)
  ENDDO
@@ -1050,19 +1004,18 @@ pure function math_transpose3x3(A)
  ENDSUBROUTINE Gauss
 
 
-
 !********************************************************************
 ! symmetrize a 3x3 matrix
 !********************************************************************
  function math_symmetric3x3(m)
 
- use prec, only: pReal,pInt
  implicit none
 
- real(pReal), dimension(3,3) :: math_symmetric3x3,m
- integer(pInt) i,j
+ real(pReal), dimension(3,3) :: math_symmetric3x3
+ real(pReal), dimension(3,3), intent(in) :: m
+ integer(pInt) :: i,j
  
- forall (i=1:3,j=1:3) math_symmetric3x3(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetric3x3(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
  endfunction math_symmetric3x3
  
@@ -1072,14 +1025,13 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_symmetric6x6(m)
 
- use prec, only: pReal,pInt
  implicit none
 
- integer(pInt) i,j
+ integer(pInt) :: i,j
  real(pReal), dimension(6,6), intent(in) :: m
  real(pReal), dimension(6,6) :: math_symmetric6x6
  
- forall (i=1:6,j=1:6) math_symmetric6x6(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
+ forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_symmetric6x6(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
  endfunction math_symmetric6x6
  
@@ -1089,11 +1041,10 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_equivStrain33(m)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(3,3), intent(in) :: m
- real(pReal) math_equivStrain33,e11,e22,e33,s12,s23,s31
+ real(pReal) :: math_equivStrain33,e11,e22,e33,s12,s23,s31
 
  e11 = (2.0_pReal*m(1,1)-m(2,2)-m(3,3))/3.0_pReal
  e22 = (2.0_pReal*m(2,2)-m(3,3)-m(1,1))/3.0_pReal
@@ -1107,17 +1058,48 @@ pure function math_transpose3x3(A)
 
  endfunction math_equivStrain33
 
+!********************************************************************
+ subroutine math_equivStrain33_field(res,tensor,vm)
+!********************************************************************
+!calculate von Mises equivalent of tensor field
+!
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: tensor
+ ! output variables
+ real(pReal), intent(out),  dimension(res(1),res(2),res(3)) :: vm
+ ! other variables
+ integer(pInt) :: i, j, k
+ real(pReal), dimension(3,3) :: deviator, delta = 0.0_pReal
+ real(pReal) :: J_2
+ 
+ delta(1,1) = 1.0_pReal
+ delta(2,2) = 1.0_pReal
+ delta(3,3) = 1.0_pReal
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   deviator = tensor(i,j,k,1:3,1:3) - 1.0_pReal/3.0_pReal*tensor(i,j,k,1,1)*tensor(i,j,k,2,2)*tensor(i,j,k,3,3)*delta
+   J_2 = deviator(1,1)*deviator(2,2)&
+       + deviator(2,2)*deviator(3,3)&
+       + deviator(1,1)*deviator(3,3)&
+       - (deviator(1,2))**2.0_pReal&
+       - (deviator(2,3))**2.0_pReal&
+       - (deviator(1,3))**2.0_pReal
+   vm(i,j,k) = sqrt(3.0_pReal*J_2)
+ enddo; enddo; enddo
+
+ end subroutine math_equivStrain33_field
+
 
 !********************************************************************
 ! determinant of a 3x3 matrix
 !********************************************************************
  pure function math_det3x3(m)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(3,3), intent(in) :: m
- real(pReal) math_det3x3
+ real(pReal) :: math_det3x3
 
  math_det3x3 = m(1,1)*(m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
               -m(1,2)*(m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
@@ -1131,11 +1113,10 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_norm33(m)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(3,3), intent(in) :: m
- real(pReal) math_norm33
+ real(pReal) :: math_norm33
 
  math_norm33 = sqrt(sum(m**2.0_pReal))
 
@@ -1147,11 +1128,10 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_norm3(v)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) :: v
- real(pReal) math_norm3
+ real(pReal) :: math_norm3
 
  math_norm3 = sqrt(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
  
@@ -1163,14 +1143,13 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Plain33to9(m33)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(3,3), intent(in) :: m33
  real(pReal), dimension(9) :: math_Plain33to9
- integer(pInt) i
+ integer(pInt) :: i
  
- forall (i=1:9) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
+ forall (i=1_pInt:9_pInt) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
 
  endfunction math_Plain33to9
  
@@ -1180,14 +1159,13 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Plain9to33(v9)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(9), intent(in) :: v9
  real(pReal), dimension(3,3) :: math_Plain9to33
- integer(pInt) i
+ integer(pInt) :: i
  
- forall (i=1:9) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
+ forall (i=1_pInt:9_pInt) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
 
  endfunction math_Plain9to33
  
@@ -1197,14 +1175,13 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Mandel33to6(m33)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(3,3), intent(in) :: m33
  real(pReal), dimension(6) :: math_Mandel33to6
- integer(pInt) i
+ integer(pInt) :: i
  
- forall (i=1:6) math_Mandel33to6(i) = nrmMandel(i)*m33(mapMandel(1,i),mapMandel(2,i))
+ forall (i=1_pInt:6_pInt) math_Mandel33to6(i) = nrmMandel(i)*m33(mapMandel(1,i),mapMandel(2,i))
 
  endfunction math_Mandel33to6
 
@@ -1214,14 +1191,13 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Mandel6to33(v6)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(6), intent(in) :: v6
  real(pReal), dimension(3,3) :: math_Mandel6to33
- integer(pInt) i
+ integer(pInt) :: i
  
- forall (i=1:6)
+ forall (i=1_pInt:6_pInt)
   math_Mandel6to33(mapMandel(1,i),mapMandel(2,i)) = invnrmMandel(i)*v6(i)
   math_Mandel6to33(mapMandel(2,i),mapMandel(1,i)) = invnrmMandel(i)*v6(i)
  end forall
@@ -1234,14 +1210,13 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Plain3333to99(m3333)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
  real(pReal), dimension(9,9) :: math_Plain3333to99
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
- forall (i=1:9,j=1:9) math_Plain3333to99(i,j) = &
+ forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_Plain3333to99(i,j) = &
    m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
 
  endfunction math_Plain3333to99
@@ -1251,14 +1226,13 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Plain99to3333(m99)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(9,9), intent(in) :: m99
  real(pReal), dimension(3,3,3,3) :: math_Plain99to3333
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
- forall (i=1:9,j=1:9) math_Plain99to3333(mapPlain(1,i),mapPlain(2,i),&
+ forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_Plain99to3333(mapPlain(1,i),mapPlain(2,i),&
      mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
 
  endfunction math_Plain99to3333
@@ -1269,19 +1243,17 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Mandel66toPlain66(m66)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(6,6) :: math_Mandel66toPlain66
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
- forall (i=1:6,j=1:6) &
+ forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
    math_Mandel66toPlain66(i,j) = invnrmMandel(i) * invnrmMandel(j) * m66(i,j)
  return
 
  endfunction
-
 
 
 !********************************************************************
@@ -1289,19 +1261,17 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Plain66toMandel66(m66)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(6,6) :: math_Plain66toMandel66
  integer(pInt) i,j
  
- forall (i=1:6,j=1:6) &
+ forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) &
    math_Plain66toMandel66(i,j) = nrmMandel(i) * nrmMandel(j) * m66(i,j)
  return
 
  endfunction
-
 
 
 !********************************************************************
@@ -1309,31 +1279,30 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_Mandel3333to66(m3333)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
  real(pReal), dimension(6,6) :: math_Mandel3333to66
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
- forall (i=1:6,j=1:6) math_Mandel3333to66(i,j) = &
+ forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_Mandel3333to66(i,j) = &
    nrmMandel(i)*nrmMandel(j)*m3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j))
 
  endfunction math_Mandel3333to66
+
 
 !********************************************************************
 ! convert Mandel matrix 6x6 back to symmetric 3x3x3x3 tensor
 !********************************************************************
  pure function math_Mandel66to3333(m66)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(3,3,3,3) :: math_Mandel66to3333
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
- forall (i=1:6,j=1:6) 
+ forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) 
    math_Mandel66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
    math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(1,j),mapMandel(2,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
    math_Mandel66to3333(mapMandel(1,i),mapMandel(2,i),mapMandel(2,j),mapMandel(1,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
@@ -1343,20 +1312,18 @@ pure function math_transpose3x3(A)
  endfunction math_Mandel66to3333
 
 
-
 !********************************************************************
 ! convert Voigt matrix 6x6 back to symmetric 3x3x3x3 tensor
 !********************************************************************
  pure function math_Voigt66to3333(m66)
 
- use prec, only: pReal,pInt
  implicit none
 
  real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(3,3,3,3) :: math_Voigt66to3333
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
- forall (i=1:6,j=1:6) 
+ forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) 
    math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(1,j),mapVoigt(2,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
    math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(1,j),mapVoigt(2,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
    math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
@@ -1366,18 +1333,16 @@ pure function math_transpose3x3(A)
  endfunction math_Voigt66to3333
 
 
-
 !********************************************************************
 ! Euler angles (in radians) from rotation matrix
 !********************************************************************
  pure function math_RtoEuler(R)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension (3,3), intent(in) :: R
  real(pReal), dimension(3) :: math_RtoEuler
- real(pReal) sqhkl, squvw, sqhk, val
+ real(pReal) :: sqhkl, squvw, sqhk, val
 
  sqhkl=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3)+R(3,3)*R(3,3))
  squvw=sqrt(R(1,1)*R(1,1)+R(2,1)*R(2,1)+R(3,1)*R(3,1))
@@ -1423,53 +1388,50 @@ pure function math_transpose3x3(A)
 !********************************************************************
 ! quaternion (w+ix+jy+kz) from orientation matrix
 !********************************************************************
+! math adopted from http://code.google.com/p/mtex/source/browse/trunk/geometry/geometry_tools/mat2quat.m
  pure function math_RtoQuaternion(R)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension (3,3), intent(in) :: R
- real(pReal), dimension(4)   :: absQ,math_RtoQuaternion
- real(pReal) max_absQ
+ real(pReal), dimension(4)   :: absQ, math_RtoQuaternion
+ real(pReal) :: max_absQ
  integer(pInt), dimension(1) :: largest
- 
- ! math adopted from http://code.google.com/p/mtex/source/browse/trunk/geometry/geometry_tools/mat2quat.m
-
- math_RtoQuaternion = 0.0_pReal
 
  absQ(1) = 1.0_pReal+R(1,1)+R(2,2)+R(3,3)
  absQ(2) = 1.0_pReal+R(1,1)-R(2,2)-R(3,3)
  absQ(3) = 1.0_pReal-R(1,1)+R(2,2)-R(3,3)
  absQ(4) = 1.0_pReal-R(1,1)-R(2,2)+R(3,3)
+ math_RtoQuaternion = 0.0_pReal
 
  largest = maxloc(absQ)
 
  max_absQ=0.5_pReal * sqrt(absQ(largest(1))) 
 
  select case(largest(1))
-   case (1)
-
+   case (1_pInt)
+      !1----------------------------------
       math_RtoQuaternion(2) = R(2,3)-R(3,2)
       math_RtoQuaternion(3) = R(3,1)-R(1,3)
       math_RtoQuaternion(4) = R(1,2)-R(2,1)
    
-   case (2)
+   case (2_pInt)
       math_RtoQuaternion(1) = R(2,3)-R(3,2)
-
+      !2----------------------------------
       math_RtoQuaternion(3) = R(1,2)+R(2,1)
       math_RtoQuaternion(4) = R(3,1)+R(1,3)
    
-   case (3)
+   case (3_pInt)
       math_RtoQuaternion(1) = R(3,1)-R(1,3)
       math_RtoQuaternion(2) = R(1,2)+R(2,1)
-
+      !3----------------------------------
       math_RtoQuaternion(4) = R(2,3)+R(3,2)
    
-   case (4)
+   case (4_pInt)
       math_RtoQuaternion (1) = R(1,2)-R(2,1)
       math_RtoQuaternion (2) = R(3,1)+R(1,3)
       math_RtoQuaternion (3) = R(3,2)+R(2,3)
- 
+      !4----------------------------------
  end select
 
  math_RtoQuaternion = math_RtoQuaternion*0.25_pReal/max_absQ
@@ -1483,7 +1445,6 @@ pure function math_transpose3x3(A)
 !****************************************************************
  pure function math_EulerToR(Euler)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) :: Euler
@@ -1496,6 +1457,7 @@ pure function math_transpose3x3(A)
  S1 = sin(Euler(1))
  S = sin(Euler(2))
  S2 = sin(Euler(3))
+
  math_EulerToR(1,1)=C1*C2-S1*S2*C
  math_EulerToR(1,2)=S1*C2+C1*S2*C
  math_EulerToR(1,3)=S2*S
@@ -1507,20 +1469,19 @@ pure function math_transpose3x3(A)
  math_EulerToR(3,3)=C
  
  endfunction math_EulerToR
-
+ 
 
 !********************************************************************
 ! quaternion (w+ix+jy+kz) from 3-1-3 Euler angles (in radians)
 !********************************************************************
  pure function math_EulerToQuaternion(eulerangles)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) :: eulerangles
  real(pReal), dimension(4) :: math_EulerToQuaternion
  real(pReal), dimension(3) :: halfangles
- real(pReal) c, s
+ real(pReal) :: c, s
  
  halfangles = 0.5_pReal * eulerangles
  
@@ -1540,19 +1501,18 @@ pure function math_transpose3x3(A)
 !****************************************************************
  pure function math_AxisAngleToR(axis,omega)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
  real(pReal), dimension(3) :: axisNrm
  real(pReal), dimension(3,3) :: math_AxisAngleToR
- real(pReal) norm,s,c,c1
- integer(pInt) i
+ real(pReal) :: norm,s,c,c1
+ integer(pInt) :: i
 
  norm = sqrt(math_mul3x3(axis,axis))
- if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
-   forall (i=1:3) axisNrm(i) = axis(i)/norm          ! normalize axis to be sure
+ if (norm > 1.0e-8_pReal) then                             ! non-zero rotation
+   forall (i=1_pInt:3_pInt) axisNrm(i) = axis(i)/norm      ! normalize axis to be sure
 
    s = sin(omega)
    c = cos(omega)
@@ -1561,17 +1521,17 @@ pure function math_transpose3x3(A)
    ! formula for active rotation taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
    ! below is transposed form to get passive rotation
   
-   math_AxisAngleToR(1,1) = c + c1*axisNrm(1)**2
+   math_AxisAngleToR(1,1) =  c + c1*axisNrm(1)**2.0_pReal
    math_AxisAngleToR(2,1) = -s*axisNrm(3) + c1*axisNrm(1)*axisNrm(2) 
    math_AxisAngleToR(3,1) =  s*axisNrm(2) + c1*axisNrm(1)*axisNrm(3)
   
    math_AxisAngleToR(1,2) =  s*axisNrm(3) + c1*axisNrm(2)*axisNrm(1)
-   math_AxisAngleToR(2,2) = c + c1*axisNrm(2)**2
+   math_AxisAngleToR(2,2) =  c + c1*axisNrm(2)**2.0_pReal
    math_AxisAngleToR(3,2) = -s*axisNrm(1) + c1*axisNrm(2)*axisNrm(3)
   
    math_AxisAngleToR(1,3) = -s*axisNrm(2) + c1*axisNrm(3)*axisNrm(1)
    math_AxisAngleToR(2,3) =  s*axisNrm(1) + c1*axisNrm(3)*axisNrm(2)
-   math_AxisAngleToR(3,3) = c + c1*axisNrm(3)**2
+   math_AxisAngleToR(3,3) =  c + c1*axisNrm(3)**2.0_pReal
  else
    math_AxisAngleToR = math_I3
  endif
@@ -1585,19 +1545,18 @@ pure function math_transpose3x3(A)
 !****************************************************************
  pure function math_AxisAngleToQuaternion(axis,omega)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
  real(pReal), dimension(3) :: axisNrm
  real(pReal), dimension(4) :: math_AxisAngleToQuaternion
- real(pReal) s,c,norm
- integer(pInt) i
+ real(pReal) :: s,c,norm
+ integer(pInt) :: i
 
  norm = sqrt(math_mul3x3(axis,axis))
  if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
-   forall (i=1:3) axisNrm(i) = axis(i)/norm          ! normalize axis to be sure
+   forall (i=1_pInt:3_pInt) axisNrm(i) = axis(i)/norm          ! normalize axis to be sure
    ! formula taken from http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
    s = sin(omega/2.0_pReal)
    c = cos(omega/2.0_pReal)
@@ -1607,7 +1566,6 @@ pure function math_transpose3x3(A)
    math_AxisAngleToQuaternion = (/1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal/)   ! no rotation
  endif
 
-
  endfunction math_AxisAngleToQuaternion
 
 
@@ -1616,15 +1574,14 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_QuaternionToR(Q)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3,3) :: math_QuaternionToR, T,S
- integer(pInt) i, j
+ integer(pInt) :: i, j
  
- forall (i = 1:3, j = 1:3) &
-   T(i,j) = Q(i+1) * Q(j+1)
+ forall (i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
+   T(i,j) = Q(i+1_pInt) * Q(j+1_pInt)
  S = reshape( (/0.0_pReal,     Q(4),    -Q(3), &
                     -Q(4),0.0_pReal,    +Q(2), &
                      Q(3),    -Q(2),0.0_pReal/),(/3,3/))  ! notation is transposed!
@@ -1632,8 +1589,7 @@ pure function math_transpose3x3(A)
  math_QuaternionToR = (2.0_pReal * Q(1)*Q(1) - 1.0_pReal) * math_I3 + &
                       2.0_pReal * T - &
                       2.0_pReal * Q(1) * S
- 
- 
+
  endfunction math_QuaternionToR
 
 
@@ -1642,12 +1598,11 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_QuaternionToEuler(Q)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_QuaternionToEuler
- real(pReal) acos_arg
+ real(pReal) :: acos_arg
 
  math_QuaternionToEuler(2) = acos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
 
@@ -1678,11 +1633,10 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_QuaternionToAxisAngle(Q)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(4), intent(in) :: Q
- real(pReal) halfAngle, sinHalfAngle
+ real(pReal) :: halfAngle, sinHalfAngle
  real(pReal), dimension(4) :: math_QuaternionToAxisAngle  
 
  halfAngle = acos(max(-1.0_pReal, min(1.0_pReal, Q(1))))            ! limit to [-1,1] --> 0 to 180 deg
@@ -1695,7 +1649,6 @@ pure function math_transpose3x3(A)
    math_QuaternionToAxisAngle(4) = halfAngle*2.0_pReal
  endif
 
- 
  endfunction math_QuaternionToAxisAngle
 
 
@@ -1704,7 +1657,7 @@ pure function math_transpose3x3(A)
 !********************************************************************
  pure function math_QuaternionToRodrig(Q)
 
- use prec, only: pReal, pInt
+ use prec, only: DAMASK_NaN
  implicit none
 
  real(pReal), dimension(4), intent(in) :: Q
@@ -1716,7 +1669,6 @@ pure function math_transpose3x3(A)
    math_QuaternionToRodrig = DAMASK_NaN                        ! NaN since Rodrig is unbound for 180 deg...
  endif
 
-
  endfunction math_QuaternionToRodrig
 
 
@@ -1725,12 +1677,11 @@ pure function math_transpose3x3(A)
 !**************************************************************************
  pure function math_EulerMisorientation(EulerA,EulerB)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3), intent(in) :: EulerA,EulerB
  real(pReal), dimension(3,3) :: r
- real(pReal) math_EulerMisorientation, tr
+ real(pReal) :: math_EulerMisorientation, tr
 
  r = math_mul33x33(math_EulerToR(EulerB),transpose(math_EulerToR(EulerA)))
 
@@ -1745,7 +1696,6 @@ pure function math_transpose3x3(A)
 !**************************************************************************
 pure function math_QuaternionInSST(Q, symmetryType)
 
-  use prec, only: pReal, pInt
   implicit none
 
   !*** input variables 
@@ -1753,18 +1703,18 @@ pure function math_QuaternionInSST(Q, symmetryType)
   integer(pInt), intent(in) ::                  symmetryType                ! Type of crystal symmetry; 1:cubic, 2:hexagonal
 
   !*** output variables
-  logical                                       math_QuaternionInSST
+  logical           ::                          math_QuaternionInSST
   
   !*** local variables
   real(pReal), dimension(3) ::                  Rodrig                      ! Rodrigues vector of Q
  
   Rodrig = math_QuaternionToRodrig(Q)
   select case (symmetryType)
-    case (1)
+    case (1_pInt)
       math_QuaternionInSST = Rodrig(1) > Rodrig(2) .and. &
                              Rodrig(2) > Rodrig(3) .and. &
                              Rodrig(3) > 0.0_pReal
-    case (2)
+    case (2_pInt)
       math_QuaternionInSST = Rodrig(1) > sqrt(3.0_pReal)*Rodrig(2) .and. &
                              Rodrig(2) > 0.0_pReal .and. &
                              Rodrig(3) > 0.0_pReal
@@ -1780,7 +1730,6 @@ endfunction math_QuaternionInSST
 !**************************************************************************
 function math_QuaternionDisorientation(Q1, Q2, symmetryType)
 
-  use prec, only: pReal, pInt
   use IO,   only: IO_error
   implicit none
   
@@ -1794,24 +1743,24 @@ function math_QuaternionDisorientation(Q1, Q2, symmetryType)
   
   !*** local variables
   real(pReal), dimension(4) ::                  dQ,dQsymA,mis
-  integer(pInt)                                 i,j,k,s
+  integer(pInt)    ::                           i,j,k,s
   
   dQ = math_qMul(math_qConj(Q1),Q2)
   math_QuaternionDisorientation = dQ
     
   select case (symmetryType)
-    case (0)
+    case (0_pInt)
       if (math_QuaternionDisorientation(1) < 0.0_pReal) &
         math_QuaternionDisorientation = -math_QuaternionDisorientation          ! keep omega within 0 to 180 deg
     
-    case (1,2)
-      s = sum(math_NsymOperations(1:symmetryType-1))
-      do i = 1,2
+    case (1_pInt,2_pInt)
+      s = sum(math_NsymOperations(1:symmetryType-1_pInt))
+      do i = 1_pInt,2_pInt
         dQ = math_qConj(dQ)                                     ! switch order of "from -- to"
-        do j = 1,math_NsymOperations(symmetryType)              ! run through first crystal's symmetries
-          dQsymA = math_qMul(math_symOperations(:,s+j),dQ)      ! apply sym
-          do k = 1,math_NsymOperations(symmetryType)            ! run through 2nd crystal's symmetries
-            mis = math_qMul(dQsymA,math_symOperations(:,s+k))   ! apply sym
+        do j = 1_pInt,math_NsymOperations(symmetryType)              ! run through first crystal's symmetries
+          dQsymA = math_qMul(math_symOperations(1:4,s+j),dQ)      ! apply sym
+          do k = 1_pInt,math_NsymOperations(symmetryType)            ! run through 2nd crystal's symmetries
+            mis = math_qMul(dQsymA,math_symOperations(1:4,s+k))   ! apply sym
             if (mis(1) < 0.0_pReal) &                           ! want positive angle
               mis = -mis
             if (mis(1)-math_QuaternionDisorientation(1) > -1e-8_pReal .and. &
@@ -1820,7 +1769,7 @@ function math_QuaternionDisorientation(Q1, Q2, symmetryType)
       enddo; enddo; enddo
   
     case default
-      call IO_error(550,symmetryType)                           ! complain about unknown symmetry
+      call IO_error(550_pInt,symmetryType)                           ! complain about unknown symmetry
   end select
   
 endfunction math_QuaternionDisorientation
@@ -1831,12 +1780,11 @@ endfunction math_QuaternionDisorientation
 !********************************************************************
  function math_sampleRandomOri()
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3) :: math_sampleRandomOri, rnd
 
- call halton(3,rnd)
+ call halton(3_pInt,rnd)
  math_sampleRandomOri(1) = rnd(1)*2.0_pReal*pi
  math_sampleRandomOri(2) = acos(2.0_pReal*rnd(2)-1.0_pReal)
  math_sampleRandomOri(3) = rnd(3)*2.0_pReal*pi
@@ -1850,16 +1798,15 @@ endfunction math_QuaternionDisorientation
 !********************************************************************
  function math_sampleGaussOri(center,noise)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3) :: math_sampleGaussOri, center, disturb
  real(pReal), dimension(3), parameter :: origin = (/0.0_pReal,0.0_pReal,0.0_pReal/)
  real(pReal), dimension(5) :: rnd
- real(pReal) noise,scatter,cosScatter
+ real(pReal) :: noise,scatter,cosScatter
  integer(pInt) i
 
-if (noise==0.0) then
+if (noise==0.0_pReal) then
     math_sampleGaussOri = center
     return
 endif
@@ -1870,12 +1817,12 @@ endif
  cosScatter = cos(scatter)
 
  do
-   call halton(5,rnd)
-   forall (i=1:3) rnd(i) = 2.0_pReal*rnd(i)-1.0_pReal  ! expand 1:3 to range [-1,+1] 
+   call halton(5_pInt,rnd)
+   forall (i=1_pInt:3_pInt) rnd(i) = 2.0_pReal*rnd(i)-1.0_pReal  ! expand 1:3 to range [-1,+1] 
    disturb(1) = scatter * rnd(1)                                                      ! phi1
    disturb(2) = sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)) ! Phi
    disturb(3) = scatter * rnd(2)                                                      ! phi2
-   if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(origin,disturb)/scatter)**2)) exit   
+   if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(origin,disturb)/scatter)**2_pReal)) exit   
  enddo
 
  math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
@@ -1889,15 +1836,16 @@ endif
 !********************************************************************
  function math_sampleFiberOri(alpha,beta,noise)
 
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
  real(pReal), dimension(2) :: alpha,beta, rnd
  real(pReal), dimension(3,3) :: oRot,fRot,pRot
- real(pReal) noise, scatter, cos2Scatter, angle
- integer(pInt), dimension(2,3), parameter :: rotMap = reshape((/2,3, 3,1, 1,2/),(/2,3/))
- integer(pInt) i
+ real(pReal) :: noise, scatter, cos2Scatter, angle
+ integer(pInt), dimension(2,3), parameter :: rotMap = reshape((/2_pInt,3_pInt,&
+                                                                3_pInt,1_pInt,&
+                                                                1_pInt,2_pInt/),(/2,3/))
+ integer(pInt) :: i
 
 ! Helming uses different distribution with Bessel functions
 ! therefore the gauss scatter width has to be scaled differently
@@ -1924,12 +1872,12 @@ endif
  end if
 
 ! ---# rotation matrix about fiber axis (random angle) #---
- call halton(1,rnd)
+ call halton(1_pInt,rnd)
  fRot = math_AxisAngleToR(fiberInS,rnd(1)*2.0_pReal*pi)
 
 ! ---# rotation about random axis perpend to fiber #---
 ! random axis pependicular to fiber axis 
- call halton(2,axis)
+ call halton(2_pInt,axis)
  if (fiberInS(3) /= 0.0_pReal) then
      axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))/fiberInS(3)
  else if(fiberInS(2) /= 0.0_pReal) then
@@ -1942,11 +1890,11 @@ endif
 
 ! scattered rotation angle 
  do
-   call halton(2,rnd)
+   call halton(2_pInt,rnd)
      angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(1))
-     if (rnd(2) <= exp(-1.0_pReal*(angle/scatter)**2)) exit
+     if (rnd(2) <= exp(-1.0_pReal*(angle/scatter)**2.0_pReal)) exit
  enddo
- call halton(1,rnd)
+ call halton(1_pInt,rnd)
  if (rnd(1) <= 0.5) angle = -angle
  pRot = math_AxisAngleToR(axis,angle)
 
@@ -1956,20 +1904,18 @@ endif
  endfunction math_sampleFiberOri
 
 
-
 !********************************************************************
 !   symmetric Euler angles for given symmetry string
 !   'triclinic' or '', 'monoclinic', 'orthotropic'
 !********************************************************************
  pure function math_symmetricEulers(sym,Euler)
 
- use prec, only: pReal, pInt
  implicit none
 
  integer(pInt), intent(in) :: sym
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_symmetricEulers
- integer(pInt) i,j
+ integer(pInt) :: i,j
  
  math_symmetricEulers(1,1) = pi+Euler(1)
  math_symmetricEulers(2,1) = Euler(2)
@@ -1983,21 +1929,19 @@ endif
  math_symmetricEulers(2,3) = pi-Euler(2)
  math_symmetricEulers(3,3) = pi+Euler(3)
 
- forall (i=1:3,j=1:3) math_symmetricEulers(j,i) = modulo(math_symmetricEulers(j,i),2.0_pReal*pi)
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetricEulers(j,i) = modulo(math_symmetricEulers(j,i),2.0_pReal*pi)
 
  select case (sym)
-   case (4) ! all done
+   case (4_pInt) ! all done
 
-   case (2)  ! return only first
-     math_symmetricEulers(:,2:3) = 0.0_pReal
+   case (2_pInt)  ! return only first
+     math_symmetricEulers(1:3,2:3) = 0.0_pReal
 
    case default         ! return blank
      math_symmetricEulers = 0.0_pReal
  end select
 
-
  endfunction math_symmetricEulers
-
 
 
 !********************************************************************
@@ -2005,7 +1949,6 @@ endif
 !********************************************************************
 function math_sampleGaussVar(meanvalue, stddev, width)
 
-use prec, only: pReal, pInt
 implicit none
 
 !*** input variables
@@ -2014,14 +1957,14 @@ real(pReal), intent(in) ::            meanvalue, &      ! meanvalue of gauss dis
 real(pReal), intent(in), optional ::  width             ! width of considered values as multiples of standard deviation
 
 !*** output variables
-real(pReal)                           math_sampleGaussVar
+real(pReal) ::                        math_sampleGaussVar
 
 !*** local variables
 real(pReal), dimension(2) ::          rnd               ! random numbers
-real(pReal)                           scatter, &        ! normalized scatter around meanvalue
+real(pReal) ::                        scatter, &        ! normalized scatter around meanvalue
                                       myWidth
 
-if (stddev == 0.0) then
+if (stddev == 0.0_pReal) then
     math_sampleGaussVar = meanvalue
     return
 endif
@@ -2033,7 +1976,7 @@ else
 endif
 
 do
-  call halton(2, rnd)
+  call halton(2_pInt, rnd)
   scatter = myWidth * (2.0_pReal * rnd(1) - 1.0_pReal)
   if (rnd(2) <= exp(-0.5_pReal * scatter ** 2.0_pReal)) &     ! test if scattered value is drawn
     exit
@@ -2047,7 +1990,6 @@ endfunction math_sampleGaussVar
 !****************************************************************
 subroutine math_spectralDecompositionSym3x3(M,values,vectors,error)
 !****************************************************************
- use prec, only: pReal, pInt
  implicit none
 
  real(pReal), dimension(3,3), intent(in) :: M
@@ -2055,7 +1997,7 @@ subroutine math_spectralDecompositionSym3x3(M,values,vectors,error)
  real(pReal), dimension(3,3), intent(out) :: vectors
  logical, intent(out) :: error
 
- integer(pInt) info
+ integer(pInt) :: info
  real(pReal), dimension((64+2)*3) :: work                          ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
  
  vectors = M                                                       ! copy matrix to input (doubles as output) array
@@ -2070,13 +2012,13 @@ end subroutine
  pure subroutine math_pDecomposition(FE,U,R,error)
 !-----FE = R.U 
 !****************************************************************
- use prec, only: pReal, pInt
  implicit none
 
- real(pReal), intent(in) :: FE(3,3)
- real(pReal), intent(out) :: R(3,3), U(3,3)
+ real(pReal), intent(in), dimension(3,3) :: FE
+ real(pReal), intent(out), dimension(3,3) :: R, U
  logical, intent(out) :: error
- real(pReal) CE(3,3),EW1,EW2,EW3,EB1(3,3),EB2(3,3),EB3(3,3),UI(3,3),det
+ real(pReal), dimension(3,3) :: CE, EB1, EB2, EB3, UI
+ real(pReal) :: EW1, EW2, EW3, det
 
  error = .false.
  ce = math_mul33x33(math_transpose3x3(FE),FE)
@@ -2086,7 +2028,6 @@ end subroutine
  call math_invert3x3(U,UI,det,error)
  if (.not. error) R = math_mul33x33(FE,UI)
 
- 
  ENDSUBROUTINE math_pDecomposition
 
 
@@ -2094,14 +2035,16 @@ end subroutine
  pure subroutine math_spectral1(M,EW1,EW2,EW3,EB1,EB2,EB3)
 !**** EIGENWERTE UND EIGENWERTBASIS DER SYMMETRISCHEN 3X3 MATRIX M
 
- use prec, only: pReal, pInt
  implicit none
 
- real(pReal), intent(in) :: M(3,3)
- real(pReal), intent(out) :: EB1(3,3),EB2(3,3),EB3(3,3),EW1,EW2,EW3
- real(pReal) HI1M,HI2M,HI3M,TOL,R,S,T,P,Q,RHO,PHI,Y1,Y2,Y3,D1,D2,D3
- real(pReal) C1,C2,C3,M1(3,3),M2(3,3),M3(3,3),arg
- TOL=1.e-14_pReal
+ real(pReal), dimension(3,3), intent(in) :: M
+ real(pReal), dimension(3,3), intent(out) :: EB1, EB2, EB3
+ real(pReal), intent(out) :: EW1,EW2,EW3
+ real(pReal) HI1M, HI2M, HI3M, R, S, T, P, Q, RHO, PHI, Y1, Y2, Y3, D1, D2, D3
+ real(pReal), parameter :: TOL=1.e-14_pReal
+ real(pReal), dimension(3,3) :: M1, M2, M3
+ real(pReal) C1,C2,C3,arg
+
  CALL math_hi(M,HI1M,HI2M,HI3M)
  R=-HI1M
  S= HI2M
@@ -2124,12 +2067,12 @@ end subroutine
  ELSE
    RHO=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
    arg=-Q/RHO/2.0_pReal
-   if(arg.GT.1) arg=1
-   if(arg.LT.-1) arg=-1
+   if(arg.GT.1.0_pReal) arg=1.0_pReal
+   if(arg.LT.-1.0_pReal) arg=-1.0_pReal
    PHI=acos(arg)
-   Y1=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
-   Y2=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
-   Y3=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
+   Y1=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
+   Y2=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
+   Y3=2.0_pReal*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
    EW1=Y1-R/3.0_pReal
    EW2=Y2-R/3.0_pReal
    EW3=Y3-R/3.0_pReal
@@ -2185,27 +2128,26 @@ end subroutine
 
  ENDSUBROUTINE math_spectral1
 
+
 !**********************************************************************
  function math_eigenvalues3x3(M)
 !**** Eigenvalues of symmetric 3X3 matrix M
 
- use prec, only: pReal, pInt
  implicit none
 
- real(pReal), intent(in) :: M(3,3)
- real(pReal), dimension(3,3) :: EB1(3,3),EB2(3,3),EB3(3,3)
+ real(pReal), intent(in), dimension(3,3) :: M
+ real(pReal), dimension(3,3) :: EB1 = 0.0_pReal, EB2 = 0.0_pReal, EB3 = 0.0_pReal
  real(pReal), dimension(3) :: math_eigenvalues3x3
- real(pReal) HI1M,HI2M,HI3M,TOL,R,S,T,P,Q,RHO,PHI,Y1,Y2,Y3,arg
- TOL=1.e-14_pReal
+ real(pReal) :: HI1M, HI2M, HI3M, R, S, T, P, Q, RHO, PHI, Y1, Y2, Y3, arg
+ real(pReal), parameter :: TOL=1.e-14_pReal
+
  CALL math_hi(M,HI1M,HI2M,HI3M)
  R=-HI1M
  S= HI2M
  T=-HI3M
  P=S-R**2.0_pReal/3.0_pReal
  Q=2.0_pReal/27.0_pReal*R**3.0_pReal-R*S/3.0_pReal+T
- EB1=0.0_pReal
- EB2=0.0_pReal
- EB3=0.0_pReal
+ 
  if((abs(P) < TOL) .and. (abs(Q) < TOL)) THEN
 ! three equivalent eigenvalues
    math_eigenvalues3x3(1) = HI1M/3.0_pReal
@@ -2219,8 +2161,8 @@ end subroutine
  else
    RHO=sqrt(-3.0_pReal*P**3.0_pReal)/9.0_pReal
    arg=-Q/RHO/2.0_pReal
-   if(arg.GT.1) arg=1
-   if(arg.LT.-1) arg=-1
+   if(arg.GT.1.0_pReal) arg=1.0_pReal
+   if(arg.LT.-1.0_pReal) arg=-1.0_pReal
    PHI=acos(arg)
    Y1=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
    Y2=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
@@ -2231,761 +2173,626 @@ end subroutine
  endif
  endfunction  math_eigenvalues3x3
 
+
 !********************************************************************** 
 !**** HAUPTINVARIANTEN HI1M, HI2M, HI3M DER 3X3 MATRIX M
 
  PURE SUBROUTINE math_hi(M,HI1M,HI2M,HI3M)
- use prec, only: pReal, pInt
+ 
  implicit none
 
  real(pReal), intent(in) :: M(3,3) 
  real(pReal), intent(out) :: HI1M, HI2M, HI3M 
 
  HI1M=M(1,1)+M(2,2)+M(3,3)
- HI2M=HI1M**2/2.0_pReal-(M(1,1)**2+M(2,2)**2+M(3,3)**2)/2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
+ HI2M=HI1M**2.0_pReal/2.0_pReal-  (M(1,1)**2.0_pReal+M(2,2)**2.0_pReal+M(3,3)**2.0_pReal)&
+                                     /2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
  HI3M=math_det3x3(M)
 ! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
 
  ENDSUBROUTINE math_hi
 
 
- SUBROUTINE get_seed(seed)
-!
 !*******************************************************************************
+! GET_SEED returns a seed for the random number generator.
 !
-!! GET_SEED returns a seed for the random number generator.
-!
-!
-!  Discussion:
-!
-! The seed depends on the current time, and ought to be (slightly)
-! different every millisecond. Once the seed is obtained, a random
-! number generator should be called a few times to further process
-! the seed.
-!
-!  Modified:
-!
-! 27 June 2000
-!
-!  Author:
-!
-! John Burkardt
+!  The seed depends on the current time, and ought to be (slightly)
+!  different every millisecond. Once the seed is obtained, a random
+!  number generator should be called a few times to further process
+!  the seed.
 !
 !  Parameters:
+!  Output, integer SEED, a pseudorandom seed value.
 !
-! Output, integer SEED, a pseudorandom seed value.
+!  Modified: 27 June 2000
+!  Author:  John Burkardt
 !
-!  Modified:
+!  Modified: 29 April 2005
+!  Author: Franz Roters
 !
-! 29 April 2005
-!
-!  Author:
-!
-! Franz Roters
-!
- use prec, only: pReal, pInt
+ SUBROUTINE get_seed(seed)
  implicit none
 
- integer(pInt) seed
- real(pReal)  temp
- character ( len = 10 ) time
- character ( len = 8 ) today
- integer(pInt) values(8)
- character ( len = 5 ) zone
+ integer(pInt) :: seed
+ real(pReal) ::  temp = 0.0_pReal
+ character(len = 10) :: time
+ character(len = 8) :: today
+ integer(pInt) :: values(8)
+ character(len = 5) :: zone
 
- call date_and_time ( today, time, zone, values )
+ call date_and_time (today, time, zone, values)
 
- temp = 0.0D+00
+ temp = temp + real(values(2)- 1_pInt, pReal) / 11.0_pReal
+ temp = temp + real(values(3)- 1_pInt, pReal) / 30.0_pReal
+ temp = temp + real(values(5),         pReal) / 23.0_pReal
+ temp = temp + real(values(6),         pReal) / 59.0_pReal
+ temp = temp + real(values(7),         pReal) / 59.0_pReal
+ temp = temp + real(values(8),         pReal) / 999.0_pReal
+ temp = temp / 6.0_pReal
 
- temp = temp + dble ( values(2) - 1 ) / 11.0D+00
- temp = temp + dble ( values(3) - 1 ) / 30.0D+00
- temp = temp + dble ( values(5) ) / 23.0D+00
- temp = temp + dble ( values(6) ) / 59.0D+00
- temp = temp + dble ( values(7) ) / 59.0D+00
- temp = temp + dble ( values(8) ) / 999.0D+00
- temp = temp / 6.0D+00
-
- if ( temp <= 0.0D+00 ) then
-   temp = 1.0D+00 / 3.0D+00
- else if ( 1.0D+00 <= temp ) then
-   temp = 2.0D+00 / 3.0D+00
+ if (temp <= 0.0_pReal) then
+   temp = 1.0_pReal / 3.0_pReal
+ else if (1.0_pReal <= temp) then
+   temp = 2.0_pReal / 3.0_pReal
  end if
 
- seed = int ( dble ( huge ( 1 ) ) * temp , pInt)
+ seed = int(real(huge(1_pInt),pReal)*temp, pInt)
 !
 !  Never use a seed of 0 or maximum integer.
 !
- if ( seed == 0 ) then
-   seed = 1
+ if (seed == 0_pInt) then
+   seed = 1_pInt
  end if
 
- if ( seed == huge ( 1 ) ) then
-   seed = seed - 1
+ if (seed == huge(1_pInt)) then
+   seed = seed -1_pInt
  end if
-
 
  ENDSUBROUTINE get_seed
 
 
- subroutine halton ( ndim, r )
-!
 !*******************************************************************************
-!
-!! HALTON computes the next element in the Halton sequence.
-!
-!
-!  Modified:
-!
-! 09 March 2003
-!
-!  Author:
-!
-! John Burkardt
+! HALTON computes the next element in the Halton sequence.
 !
 !  Parameters:
+!  Input, integer NDIM, the dimension of the element.
+!  Output, real R(NDIM), the next element of the current Halton sequence.
 !
-! Input, integer NDIM, the dimension of the element.
+!  Modified: 09 March 2003
+!  Author: John Burkardt
 !
-! Output, real R(NDIM), the next element of the current Halton
-! sequence.
+!  Modified: 29 April 2005
+!  Author: Franz Roters
 !
-!  Modified:
-!
-! 29 April 2005
-!
-!  Author:
-!
-! Franz Roters
-!
- use prec, ONLY: pReal, pInt
+ subroutine halton(ndim, r)
  implicit none
 
- integer(pInt) ndim
+ integer(pInt), intent(in) :: ndim
+ real(pReal), intent(out), dimension(ndim) :: r
+ integer(pInt), dimension(ndim) :: base
+ integer(pInt) :: seed
+ integer(pInt), dimension(1) :: value_halton
 
- integer(pInt) base(ndim)
- real(pReal) r(ndim)
- integer(pInt) seed
- integer(pInt) value(1)
+ call halton_memory ('GET', 'SEED', 1_pInt, value_halton)
+ seed = value_halton(1)
 
- call halton_memory ( 'GET', 'SEED', 1, value )
- seed = value(1)
+ call halton_memory ('GET', 'BASE', ndim, base)
 
- call halton_memory ( 'GET', 'BASE', ndim, base )
+ call i_to_halton (seed, base, ndim, r)
 
- call i_to_halton ( seed, base, ndim, r )
-
- value(1) = 1
- call halton_memory ( 'INC', 'SEED', 1, value )
-
+ value_halton(1) = 1_pInt
+ call halton_memory ('INC', 'SEED', 1_pInt, value_halton)
 
  ENDSUBROUTINE halton
 
 
- subroutine halton_memory ( action, name, ndim, value )
-!
 !*******************************************************************************
-!
-!! HALTON_MEMORY sets or returns quantities associated with the Halton sequence.
-!
-!
-!  Modified:
-!
-! 09 March 2003
-!
-!  Author:
-!
-! John Burkardt
+! HALTON_MEMORY sets or returns quantities associated with the Halton sequence.
 !
 !  Parameters:
+!  Input, character (len = *) action_halton, the desired action.
+!  'GET' means get the value of a particular quantity.
+!  'SET' means set the value of a particular quantity.
+!  'INC' means increment the value of a particular quantity.
+!   (Only the SEED can be incremented.)
 !
-! Input, character ( len = * ) ACTION, the desired action.
-! 'GET' means get the value of a particular quantity.
-! 'SET' means set the value of a particular quantity.
-! 'INC' means increment the value of a particular quantity.
-!  (Only the SEED can be incremented.)
+!  Input, character (len = *) name_halton, the name of the quantity.
+!  'BASE' means the Halton base or bases.
+!  'NDIM' means the spatial dimension.
+!  'SEED' means the current Halton seed.
 !
-! Input, character ( len = * ) NAME, the name of the quantity.
-! 'BASE' means the Halton base or bases.
-! 'NDIM' means the spatial dimension.
-! 'SEED' means the current Halton seed.
+!  Input/output, integer NDIM, the dimension of the quantity.
+!  If action_halton is 'SET' and action_halton is 'BASE', then NDIM is input, and
+!  is the number of entries in value_halton to be put into BASE.
 !
-! Input/output, integer NDIM, the dimension of the quantity.
-! If ACTION is 'SET' and NAME is 'BASE', then NDIM is input, and
-! is the number of entries in VALUE to be put into BASE.
+!  Input/output, integer value_halton(NDIM), contains a value.
+!  If action_halton is 'SET', then on input, value_halton contains values to be assigned
+!  to the internal variable.
+!  If action_halton is 'GET', then on output, value_halton contains the values of
+!  the specified internal variable.
+!  If action_halton is 'INC', then on input, value_halton contains the increment to
+!  be added to the specified internal variable.
 !
-! Input/output, integer VALUE(NDIM), contains a value.
-! If ACTION is 'SET', then on input, VALUE contains values to be assigned
-! to the internal variable.
-! If ACTION is 'GET', then on output, VALUE contains the values of
-! the specified internal variable.
-! If ACTION is 'INC', then on input, VALUE contains the increment to
-! be added to the specified internal variable.
+!  Modified: 09 March 2003
+!  Author: John Burkardt
 !
-!  Modified:
-!
-! 29 April 2005
-!
-!  Author:
-!
-! Franz Roters
-!
- use prec, only: pReal, pInt
+!  Modified: 29 April 2005
+!  Author:  Franz Roters
+
+ subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
  implicit none
 
- character ( len = * ) action
- integer(pInt), allocatable, save :: base(:)
+ character(len = *), intent(in) :: action_halton, name_halton
+ integer(pInt), dimension(*), intent(inout) :: value_halton
+ integer(pInt), allocatable, save, dimension(:) :: base
  logical, save :: first_call = .true.
- integer(pInt) i
- character ( len = * ) name
- integer(pInt) ndim
- integer(pInt), save :: ndim_save = 0
- integer(pInt), save :: seed = 1
- integer(pInt) value(*)
+ integer(pInt), intent(in) :: ndim
+ integer(pInt):: i
+ integer(pInt), save :: ndim_save = 0_pInt, seed = 1_pInt
 
- if ( first_call ) then
-   ndim_save = 1
-   allocate ( base(ndim_save) )
-   base(1) = 2
+
+ if (first_call) then
+   ndim_save = 1_pInt
+   allocate(base(ndim_save))
+   base(1) = 2_pInt
    first_call = .false.
- end if
+ endif
 !
 !  Set
 !
- if ( action(1:1) == 'S' .or. action(1:1) == 's' ) then
+ if(action_halton(1:1) == 'S' .or. action_halton(1:1) == 's') then
 
-   if ( name(1:1) == 'B' .or. name(1:1) == 'b' ) then
+   if(name_halton(1:1) == 'B' .or. name_halton(1:1) == 'b') then
 
-     if ( ndim_save /= ndim ) then
-       deallocate ( base )
+     if(ndim_save /= ndim) then
+       deallocate(base)
        ndim_save = ndim
-       allocate ( base(ndim_save) )
-     end if
+       allocate(base(ndim_save))
+     endif
 
-     base(1:ndim) = value(1:ndim)
+     base(1:ndim) = value_halton(1:ndim)
 
-   else if ( name(1:1) == 'N' .or. name(1:1) == 'n' ) then
+   elseif(name_halton(1:1) == 'N' .or. name_halton(1:1) == 'n') then
 
-     if ( ndim_save /= value(1) ) then
-       deallocate ( base )
-       ndim_save = value(1)
-       allocate ( base(ndim_save) )
-       do i = 1, ndim_save
-         base(i) = prime ( i )
+     if(ndim_save /= value_halton(1)) then
+       deallocate(base)
+       ndim_save = value_halton(1)
+       allocate(base(ndim_save))
+       do i = 1_pInt, ndim_save
+         base(i) = prime (i)
        enddo
      else
-       ndim_save = value(1)
-     end if
-   else if ( name(1:1) == 'S' .or. name(1:1) == 's' ) then
-     seed = value(1)
- end if
+       ndim_save = value_halton(1)
+     endif
+   elseif(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
+     seed = value_halton(1)
+ endif
 !
 !  Get
 !
- else if ( action(1:1) == 'G' .or. action(1:1) == 'g' ) then
-   if ( name(1:1) == 'B' .or. name(1:1) == 'b' ) then
-     if ( ndim /= ndim_save ) then
-  deallocate ( base )
+ elseif(action_halton(1:1) == 'G' .or. action_halton(1:1) == 'g') then
+   if(name_halton(1:1) == 'B' .or. name_halton(1:1) == 'b') then
+     if(ndim /= ndim_save) then
+  deallocate(base)
   ndim_save = ndim
-  allocate ( base(ndim_save) )
-  do i = 1, ndim_save
+  allocate(base(ndim_save))
+  do i = 1_pInt, ndim_save
     base(i) = prime(i)
   enddo
-     end if
-     value(1:ndim_save) = base(1:ndim_save)
-   else if ( name(1:1) == 'N' .or. name(1:1) == 'n' ) then
-     value(1) = ndim_save
-   else if ( name(1:1) == 'S' .or. name(1:1) == 's' ) then
-     value(1) = seed
-   end if
+     endif
+     value_halton(1:ndim_save) = base(1:ndim_save)
+   elseif(name_halton(1:1) == 'N' .or. name_halton(1:1) == 'n') then
+     value_halton(1) = ndim_save
+   elseif(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
+     value_halton(1) = seed
+   endif
 !
 !  Increment
 !
- else if ( action(1:1) == 'I' .or. action(1:1) == 'i' ) then
-   if ( name(1:1) == 'S' .or. name(1:1) == 's' ) then
-     seed = seed + value(1)
+ elseif(action_halton(1:1) == 'I' .or. action_halton(1:1) == 'i') then
+   if(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
+     seed = seed + value_halton(1)
    end if
- end if
-
+ endif
 
  ENDSUBROUTINE halton_memory
 
 
- subroutine halton_ndim_set ( ndim )
-!
 !*******************************************************************************
-!
-!! HALTON_NDIM_SET sets the dimension for a Halton sequence.
-!
-!
-!  Modified:
-!
-! 26 February 2001
-!
-!  Author:
-!
-! John Burkardt
+! HALTON_NDIM_SET sets the dimension for a Halton sequence.
 !
 !  Parameters:
+!  Input, integer NDIM, the dimension of the Halton vectors.
 !
-! Input, integer NDIM, the dimension of the Halton vectors.
+!  Modified: 26 February 2001
+!  Author: John Burkardt
 !
-!  Modified:
+!  Modified: 29 April 2005
+!  Author: Franz Roters
 !
-! 29 April 2005
-!
-!  Author:
-!
-! Franz Roters
-!
- use prec, only: pReal, pInt
+ subroutine halton_ndim_set (ndim)
  implicit none
 
- integer(pInt) ndim
- integer(pInt) value(1)
+ integer(pInt), intent(in) :: ndim
+ integer(pInt) :: value_halton(1)
 
- value(1) = ndim
- call halton_memory ( 'SET', 'NDIM', 1, value )
-
+ value_halton(1) = ndim
+ call halton_memory ('SET', 'NDIM', 1_pInt, value_halton)
 
  ENDSUBROUTINE halton_ndim_set
 
 
- subroutine halton_seed_set ( seed )
-!
 !*******************************************************************************
+! HALTON_SEED_SET sets the "seed" for the Halton sequence.
 !
-!! HALTON_SEED_SET sets the "seed" for the Halton sequence.
-!
-!
-!  Discussion:
-!
-! Calling HALTON repeatedly returns the elements of the
-! Halton sequence in order, starting with element number 1.
-! An internal counter, called SEED, keeps track of the next element
-! to return. Each time the routine is called, the SEED-th element
-! is computed, and then SEED is incremented by 1.
-!
-! To restart the Halton sequence, it is only necessary to reset
-! SEED to 1. It might also be desirable to reset SEED to some other value.
-! This routine allows the user to specify any value of SEED.
-!
-! The default value of SEED is 1, which restarts the Halton sequence.
-!
-!  Modified:
-!
-! 26 February 2001
-!
-!  Author:
-!
-! John Burkardt
+!  Calling HALTON repeatedly returns the elements of the
+!  Halton sequence in order, starting with element number 1.
+!  An internal counter, called SEED, keeps track of the next element
+!  to return. Each time the routine is called, the SEED-th element
+!  is computed, and then SEED is incremented by 1.
+! 
+!  To restart the Halton sequence, it is only necessary to reset
+!  SEED to 1. It might also be desirable to reset SEED to some other value.
+!  This routine allows the user to specify any value of SEED.
+! 
+!  The default value of SEED is 1, which restarts the Halton sequence.
 !
 !  Parameters:
+!  Input, integer SEED, the seed for the Halton sequence.
 !
-! Input, integer SEED, the seed for the Halton sequence.
+!  Modified: 26 February 2001
+!  Author: John Burkardt
 !
-!  Modified:
+!  Modified: 29 April 2005
+!  Author: Franz Roters
 !
-! 29 April 2005
-!
-!  Author:
-!
-! Franz Roters
-!
- use prec, only: pReal, pInt
+ subroutine halton_seed_set (seed)
  implicit none
 
- integer(pInt), parameter :: ndim = 1
+ integer(pInt), parameter :: ndim = 1_pInt
+ integer(pInt), intent(in) :: seed
+ integer(pInt) :: value_halton(ndim)
 
- integer(pInt) seed
- integer(pInt) value(ndim)
-
- value(1) = seed
- call halton_memory ( 'SET', 'SEED', ndim, value )
-
+ value_halton(1) = seed
+ call halton_memory ('SET', 'SEED', ndim, value_halton)
 
  ENDSUBROUTINE halton_seed_set
 
 
- subroutine i_to_halton ( seed, base, ndim, r )
-!
 !*******************************************************************************
-!
-!! I_TO_HALTON computes an element of a Halton sequence.
-!
+! I_TO_HALTON computes an element of a Halton sequence.
 !
 !  Reference:
-!
-! J H Halton,
-! On the efficiency of certain quasi-random sequences of points
-! in evaluating multi-dimensional integrals,
-! Numerische Mathematik,
-! Volume 2, pages 84-90, 1960.
-!
-!  Modified:
-!
-! 26 February 2001
-!
-!  Author:
-!
-! John Burkardt
-!
+!  J H Halton: On the efficiency of certain quasi-random sequences of points
+!  in evaluating multi-dimensional integrals, Numerische Mathematik, Volume 2, pages 84-90, 1960.
+! 
 !  Parameters:
+!  Input, integer SEED, the index of the desired element.
+!  Only the absolute value of SEED is considered. SEED = 0 is allowed,
+!  and returns R = 0.
+! 
+!  Input, integer BASE(NDIM), the Halton bases, which should be
+!  distinct prime numbers.  This routine only checks that each base
+!  is greater than 1.
+! 
+!  Input, integer NDIM, the dimension of the sequence.
+! 
+!  Output, real R(NDIM), the SEED-th element of the Halton sequence
+!  for the given bases.
 !
-! Input, integer SEED, the index of the desired element.
-! Only the absolute value of SEED is considered. SEED = 0 is allowed,
-! and returns R = 0.
+!  Modified: 26 February 2001
+!  Author: John Burkardt
 !
-! Input, integer BASE(NDIM), the Halton bases, which should be
-! distinct prime numbers.  This routine only checks that each base
-! is greater than 1.
-!
-! Input, integer NDIM, the dimension of the sequence.
-!
-! Output, real R(NDIM), the SEED-th element of the Halton sequence
-! for the given bases.
-!
-!  Modified:
-!
-! 29 April 2005
-!
-!  Author:
-!
-! Franz Roters
-!
- use prec, ONLY: pReal, pInt
+!  Modified: 29 April 2005
+!  Author: Franz RotersA
+
+ subroutine i_to_halton (seed, base, ndim, r)
  implicit none
 
- integer(pInt) ndim
+ integer(pInt), intent(in) :: ndim
+ integer(pInt), intent(in), dimension(ndim) :: base
+ real(pReal), dimension(ndim) ::  base_inv
+ integer(pInt), dimension(ndim) :: digit
+ integer(pInt) :: i
+ real(pReal), dimension(ndim), intent(out) ::r
+ integer(pInt) :: seed
+ integer(pInt), dimension(ndim) :: seed2
 
- integer(pInt) base(ndim)
- real(pReal) base_inv(ndim)
- integer(pInt) digit(ndim)
- integer(pInt) i
- real(pReal) r(ndim)
- integer(pInt) seed
- integer(pInt) seed2(ndim)
-
- seed2(1:ndim) = abs ( seed )
+ seed2(1:ndim) = abs(seed)
 
  r(1:ndim) = 0.0_pReal
 
- if ( any ( base(1:ndim) <= 1 ) ) then
+ if (any (base(1:ndim) <= 1_pInt)) then
    !$OMP CRITICAL (write2out)
-   write ( *, '(a)' ) ' '
-   write ( *, '(a)' ) 'I_TO_HALTON - Fatal error!'
-   write ( *, '(a)' ) ' An input base BASE is <= 1!'
+   write (*, '(a)') ' '
+   write (*, '(a)') 'I_TO_HALTON - Fatal error!'
+   write (*, '(a)') ' An input base BASE is <= 1!'
    do i = 1, ndim
-     write ( *, '(i6,i6)' ) i, base(i)
+     write (*, '(i6,i6)') i, base(i)
    enddo
    call flush(6)
    !$OMP END CRITICAL (write2out)
    stop
  end if
 
- base_inv(1:ndim) = 1.0_pReal / real ( base(1:ndim), pReal )
+ base_inv(1:ndim) = 1.0_pReal / real (base(1:ndim), pReal)
 
- do while ( any ( seed2(1:ndim) /= 0 ) )
-   digit(1:ndim) = mod ( seed2(1:ndim), base(1:ndim) )
-   r(1:ndim) = r(1:ndim) + real ( digit(1:ndim), pReal ) * base_inv(1:ndim)
-   base_inv(1:ndim) = base_inv(1:ndim) / real ( base(1:ndim), pReal )
+ do while ( any ( seed2(1:ndim) /= 0_pInt) )
+   digit(1:ndim) = mod ( seed2(1:ndim), base(1:ndim))
+   r(1:ndim) = r(1:ndim) + real ( digit(1:ndim), pReal) * base_inv(1:ndim)
+   base_inv(1:ndim) = base_inv(1:ndim) / real ( base(1:ndim), pReal)
    seed2(1:ndim) = seed2(1:ndim) / base(1:ndim)
  enddo
-
 
  ENDSUBROUTINE i_to_halton
 
 
- function prime ( n )
-!
 !*******************************************************************************
-!
-!! PRIME returns any of the first PRIME_MAX prime numbers.
-!
+! PRIME returns any of the first PRIME_MAX prime numbers.
 !
 !  Note:
-!
-! PRIME_MAX is 1500, and the largest prime stored is 12553.
-!
-!  Modified:
-!
-! 21 June 2002
-!
-!  Author:
-!
-! John Burkardt
-!
+!  PRIME_MAX is 1500, and the largest prime stored is 12553.
 !  Reference:
-!
-! Milton Abramowitz and Irene Stegun,
-! Handbook of Mathematical Functions,
-! US Department of Commerce, 1964, pages 870-873.
-!
-! Daniel Zwillinger,
-! CRC Standard Mathematical Tables and Formulae,
-! 30th Edition,
-! CRC Press, 1996, pages 95-98.
-!
+!  Milton Abramowitz and Irene Stegun: Handbook of Mathematical Functions,
+!  US Department of Commerce, 1964, pages 870-873.
+! 
+!  Daniel Zwillinger: CRC Standard Mathematical Tables and Formulae,
+!  30th Edition, CRC Press, 1996, pages 95-98.
+! 
 !  Parameters:
+!  Input, integer N, the index of the desired prime number.
+!  N = -1 returns PRIME_MAX, the index of the largest prime available.
+!  N = 0 is legal, returning PRIME = 1.
+!  It should generally be true that 0 <= N <= PRIME_MAX.
+! 
+!  Output, integer PRIME, the N-th prime.  If N is out of range, PRIME
+!  is returned as 0.
+! 
+!  Modified:  21 June 2002
+!  Author: John Burkardt
+! 
+!  Modified: 29 April 2005
+!  Author: Franz Roters
 !
-! Input, integer N, the index of the desired prime number.
-! N = -1 returns PRIME_MAX, the index of the largest prime available.
-! N = 0 is legal, returning PRIME = 1.
-! It should generally be true that 0 <= N <= PRIME_MAX.
-!
-! Output, integer PRIME, the N-th prime.  If N is out of range, PRIME
-! is returned as 0.
-!
-!  Modified:
-!
-! 29 April 2005
-!
-!  Author:
-!
-! Franz Roters
-!
- use prec, only: pReal, pInt
+ function prime(n)
  implicit none
 
  integer(pInt), parameter :: prime_max = 1500
+ integer(pInt), save :: icall = 0_pInt
+ integer(pInt), intent(in) :: n
+ integer(pInt), save, dimension(prime_max) :: npvec
+ integer(pInt)  prime
 
- integer(pInt), save :: icall = 0
- integer(pInt) n
- integer(pInt), save, dimension ( prime_max ) :: npvec
- integer(pInt) prime
+ if (icall == 0_pInt) then
+   icall = 1_pInt
+  
+   npvec(1:100) = (/&
+          2_pInt,    3_pInt,    5_pInt,    7_pInt,   11_pInt,   13_pInt,   17_pInt,   19_pInt,   23_pInt,   29_pInt, &
+         31_pInt,   37_pInt,   41_pInt,   43_pInt,   47_pInt,   53_pInt,   59_pInt,   61_pInt,   67_pInt,   71_pInt, &
+         73_pInt,   79_pInt,   83_pInt,   89_pInt,   97_pInt,  101_pInt,  103_pInt,  107_pInt,  109_pInt,  113_pInt, &
+        127_pInt,  131_pInt,  137_pInt,  139_pInt,  149_pInt,  151_pInt,  157_pInt,  163_pInt,  167_pInt,  173_pInt, &
+        179_pInt,  181_pInt,  191_pInt,  193_pInt,  197_pInt,  199_pInt,  211_pInt,  223_pInt,  227_pInt,  229_pInt, &
+        233_pInt,  239_pInt,  241_pInt,  251_pInt,  257_pInt,  263_pInt,  269_pInt,  271_pInt,  277_pInt,  281_pInt, &
+        283_pInt,  293_pInt,  307_pInt,  311_pInt,  313_pInt,  317_pInt,  331_pInt,  337_pInt,  347_pInt,  349_pInt, &
+        353_pInt,  359_pInt,  367_pInt,  373_pInt,  379_pInt,  383_pInt,  389_pInt,  397_pInt,  401_pInt,  409_pInt, &
+        419_pInt,  421_pInt,  431_pInt,  433_pInt,  439_pInt,  443_pInt,  449_pInt,  457_pInt,  461_pInt,  463_pInt, &
+        467_pInt,  479_pInt,  487_pInt,  491_pInt,  499_pInt,  503_pInt,  509_pInt,  521_pInt,  523_pInt,  541_pInt/)
+  
+   npvec(101:200) = (/ &
+         547_pInt,  557_pInt,  563_pInt,  569_pInt,  571_pInt,  577_pInt,  587_pInt,  593_pInt,  599_pInt,  601_pInt, &
+         607_pInt,  613_pInt,  617_pInt,  619_pInt,  631_pInt,  641_pInt,  643_pInt,  647_pInt,  653_pInt,  659_pInt, &
+         661_pInt,  673_pInt,  677_pInt,  683_pInt,  691_pInt,  701_pInt,  709_pInt,  719_pInt,  727_pInt,  733_pInt, &
+         739_pInt,  743_pInt,  751_pInt,  757_pInt,  761_pInt,  769_pInt,  773_pInt,  787_pInt,  797_pInt,  809_pInt, &
+         811_pInt,  821_pInt,  823_pInt,  827_pInt,  829_pInt,  839_pInt,  853_pInt,  857_pInt,  859_pInt,  863_pInt, &
+         877_pInt,  881_pInt,  883_pInt,  887_pInt,  907_pInt,  911_pInt,  919_pInt,  929_pInt,  937_pInt,  941_pInt, &
+         947_pInt,  953_pInt,  967_pInt,  971_pInt,  977_pInt,  983_pInt,  991_pInt,  997_pInt, 1009_pInt, 1013_pInt, &
+        1019_pInt, 1021_pInt, 1031_pInt, 1033_pInt, 1039_pInt, 1049_pInt, 1051_pInt, 1061_pInt, 1063_pInt, 1069_pInt, &
+        1087_pInt, 1091_pInt, 1093_pInt, 1097_pInt, 1103_pInt, 1109_pInt, 1117_pInt, 1123_pInt, 1129_pInt, 1151_pInt, &
+        1153_pInt, 1163_pInt, 1171_pInt, 1181_pInt, 1187_pInt, 1193_pInt, 1201_pInt, 1213_pInt, 1217_pInt, 1223_pInt/)
+  
+   npvec(201:300) = (/ &
+        1229_pInt, 1231_pInt, 1237_pInt, 1249_pInt, 1259_pInt, 1277_pInt, 1279_pInt, 1283_pInt, 1289_pInt, 1291_pInt, &
+        1297_pInt, 1301_pInt, 1303_pInt, 1307_pInt, 1319_pInt, 1321_pInt, 1327_pInt, 1361_pInt, 1367_pInt, 1373_pInt, &
+        1381_pInt, 1399_pInt, 1409_pInt, 1423_pInt, 1427_pInt, 1429_pInt, 1433_pInt, 1439_pInt, 1447_pInt, 1451_pInt, &
+        1453_pInt, 1459_pInt, 1471_pInt, 1481_pInt, 1483_pInt, 1487_pInt, 1489_pInt, 1493_pInt, 1499_pInt, 1511_pInt, &
+        1523_pInt, 1531_pInt, 1543_pInt, 1549_pInt, 1553_pInt, 1559_pInt, 1567_pInt, 1571_pInt, 1579_pInt, 1583_pInt, &
+        1597_pInt, 1601_pInt, 1607_pInt, 1609_pInt, 1613_pInt, 1619_pInt, 1621_pInt, 1627_pInt, 1637_pInt, 1657_pInt, &
+        1663_pInt, 1667_pInt, 1669_pInt, 1693_pInt, 1697_pInt, 1699_pInt, 1709_pInt, 1721_pInt, 1723_pInt, 1733_pInt, &
+        1741_pInt, 1747_pInt, 1753_pInt, 1759_pInt, 1777_pInt, 1783_pInt, 1787_pInt, 1789_pInt, 1801_pInt, 1811_pInt, &
+        1823_pInt, 1831_pInt, 1847_pInt, 1861_pInt, 1867_pInt, 1871_pInt, 1873_pInt, 1877_pInt, 1879_pInt, 1889_pInt, &
+        1901_pInt, 1907_pInt, 1913_pInt, 1931_pInt, 1933_pInt, 1949_pInt, 1951_pInt, 1973_pInt, 1979_pInt, 1987_pInt/)
+  
+   npvec(301:400) = (/ &
+        1993_pInt, 1997_pInt, 1999_pInt, 2003_pInt, 2011_pInt, 2017_pInt, 2027_pInt, 2029_pInt, 2039_pInt, 2053_pInt, &
+        2063_pInt, 2069_pInt, 2081_pInt, 2083_pInt, 2087_pInt, 2089_pInt, 2099_pInt, 2111_pInt, 2113_pInt, 2129_pInt, &
+        2131_pInt, 2137_pInt, 2141_pInt, 2143_pInt, 2153_pInt, 2161_pInt, 2179_pInt, 2203_pInt, 2207_pInt, 2213_pInt, &
+        2221_pInt, 2237_pInt, 2239_pInt, 2243_pInt, 2251_pInt, 2267_pInt, 2269_pInt, 2273_pInt, 2281_pInt, 2287_pInt, &
+        2293_pInt, 2297_pInt, 2309_pInt, 2311_pInt, 2333_pInt, 2339_pInt, 2341_pInt, 2347_pInt, 2351_pInt, 2357_pInt, &
+        2371_pInt, 2377_pInt, 2381_pInt, 2383_pInt, 2389_pInt, 2393_pInt, 2399_pInt, 2411_pInt, 2417_pInt, 2423_pInt, &
+        2437_pInt, 2441_pInt, 2447_pInt, 2459_pInt, 2467_pInt, 2473_pInt, 2477_pInt, 2503_pInt, 2521_pInt, 2531_pInt, &
+        2539_pInt, 2543_pInt, 2549_pInt, 2551_pInt, 2557_pInt, 2579_pInt, 2591_pInt, 2593_pInt, 2609_pInt, 2617_pInt, &
+        2621_pInt, 2633_pInt, 2647_pInt, 2657_pInt, 2659_pInt, 2663_pInt, 2671_pInt, 2677_pInt, 2683_pInt, 2687_pInt, &
+        2689_pInt, 2693_pInt, 2699_pInt, 2707_pInt, 2711_pInt, 2713_pInt, 2719_pInt, 2729_pInt, 2731_pInt, 2741_pInt/)
+  
+   npvec(401:500) = (/ &
+        2749_pInt, 2753_pInt, 2767_pInt, 2777_pInt, 2789_pInt, 2791_pInt, 2797_pInt, 2801_pInt, 2803_pInt, 2819_pInt, &
+        2833_pInt, 2837_pInt, 2843_pInt, 2851_pInt, 2857_pInt, 2861_pInt, 2879_pInt, 2887_pInt, 2897_pInt, 2903_pInt, &
+        2909_pInt, 2917_pInt, 2927_pInt, 2939_pInt, 2953_pInt, 2957_pInt, 2963_pInt, 2969_pInt, 2971_pInt, 2999_pInt, &
+        3001_pInt, 3011_pInt, 3019_pInt, 3023_pInt, 3037_pInt, 3041_pInt, 3049_pInt, 3061_pInt, 3067_pInt, 3079_pInt, &
+        3083_pInt, 3089_pInt, 3109_pInt, 3119_pInt, 3121_pInt, 3137_pInt, 3163_pInt, 3167_pInt, 3169_pInt, 3181_pInt, &
+        3187_pInt, 3191_pInt, 3203_pInt, 3209_pInt, 3217_pInt, 3221_pInt, 3229_pInt, 3251_pInt, 3253_pInt, 3257_pInt, &
+        3259_pInt, 3271_pInt, 3299_pInt, 3301_pInt, 3307_pInt, 3313_pInt, 3319_pInt, 3323_pInt, 3329_pInt, 3331_pInt, &
+        3343_pInt, 3347_pInt, 3359_pInt, 3361_pInt, 3371_pInt, 3373_pInt, 3389_pInt, 3391_pInt, 3407_pInt, 3413_pInt, &
+        3433_pInt, 3449_pInt, 3457_pInt, 3461_pInt, 3463_pInt, 3467_pInt, 3469_pInt, 3491_pInt, 3499_pInt, 3511_pInt, &
+        3517_pInt, 3527_pInt, 3529_pInt, 3533_pInt, 3539_pInt, 3541_pInt, 3547_pInt, 3557_pInt, 3559_pInt, 3571_pInt/)
+  
+   npvec(501:600) = (/ &
+        3581_pInt, 3583_pInt, 3593_pInt, 3607_pInt, 3613_pInt, 3617_pInt, 3623_pInt, 3631_pInt, 3637_pInt, 3643_pInt, &
+        3659_pInt, 3671_pInt, 3673_pInt, 3677_pInt, 3691_pInt, 3697_pInt, 3701_pInt, 3709_pInt, 3719_pInt, 3727_pInt, &
+        3733_pInt, 3739_pInt, 3761_pInt, 3767_pInt, 3769_pInt, 3779_pInt, 3793_pInt, 3797_pInt, 3803_pInt, 3821_pInt, &
+        3823_pInt, 3833_pInt, 3847_pInt, 3851_pInt, 3853_pInt, 3863_pInt, 3877_pInt, 3881_pInt, 3889_pInt, 3907_pInt, &
+        3911_pInt, 3917_pInt, 3919_pInt, 3923_pInt, 3929_pInt, 3931_pInt, 3943_pInt, 3947_pInt, 3967_pInt, 3989_pInt, &
+        4001_pInt, 4003_pInt, 4007_pInt, 4013_pInt, 4019_pInt, 4021_pInt, 4027_pInt, 4049_pInt, 4051_pInt, 4057_pInt, &
+        4073_pInt, 4079_pInt, 4091_pInt, 4093_pInt, 4099_pInt, 4111_pInt, 4127_pInt, 4129_pInt, 4133_pInt, 4139_pInt, &
+        4153_pInt, 4157_pInt, 4159_pInt, 4177_pInt, 4201_pInt, 4211_pInt, 4217_pInt, 4219_pInt, 4229_pInt, 4231_pInt, &
+        4241_pInt, 4243_pInt, 4253_pInt, 4259_pInt, 4261_pInt, 4271_pInt, 4273_pInt, 4283_pInt, 4289_pInt, 4297_pInt, &
+        4327_pInt, 4337_pInt, 4339_pInt, 4349_pInt, 4357_pInt, 4363_pInt, 4373_pInt, 4391_pInt, 4397_pInt, 4409_pInt/)
+  
+   npvec(601:700) = (/ &
+        4421_pInt, 4423_pInt, 4441_pInt, 4447_pInt, 4451_pInt, 4457_pInt, 4463_pInt, 4481_pInt, 4483_pInt, 4493_pInt, &
+        4507_pInt, 4513_pInt, 4517_pInt, 4519_pInt, 4523_pInt, 4547_pInt, 4549_pInt, 4561_pInt, 4567_pInt, 4583_pInt, &
+        4591_pInt, 4597_pInt, 4603_pInt, 4621_pInt, 4637_pInt, 4639_pInt, 4643_pInt, 4649_pInt, 4651_pInt, 4657_pInt, &
+        4663_pInt, 4673_pInt, 4679_pInt, 4691_pInt, 4703_pInt, 4721_pInt, 4723_pInt, 4729_pInt, 4733_pInt, 4751_pInt, &
+        4759_pInt, 4783_pInt, 4787_pInt, 4789_pInt, 4793_pInt, 4799_pInt, 4801_pInt, 4813_pInt, 4817_pInt, 4831_pInt, &
+        4861_pInt, 4871_pInt, 4877_pInt, 4889_pInt, 4903_pInt, 4909_pInt, 4919_pInt, 4931_pInt, 4933_pInt, 4937_pInt, &
+        4943_pInt, 4951_pInt, 4957_pInt, 4967_pInt, 4969_pInt, 4973_pInt, 4987_pInt, 4993_pInt, 4999_pInt, 5003_pInt, &
+        5009_pInt, 5011_pInt, 5021_pInt, 5023_pInt, 5039_pInt, 5051_pInt, 5059_pInt, 5077_pInt, 5081_pInt, 5087_pInt, &
+        5099_pInt, 5101_pInt, 5107_pInt, 5113_pInt, 5119_pInt, 5147_pInt, 5153_pInt, 5167_pInt, 5171_pInt, 5179_pInt, &
+        5189_pInt, 5197_pInt, 5209_pInt, 5227_pInt, 5231_pInt, 5233_pInt, 5237_pInt, 5261_pInt, 5273_pInt, 5279_pInt/)
+  
+   npvec(701:800) = (/ &
+        5281_pInt, 5297_pInt, 5303_pInt, 5309_pInt, 5323_pInt, 5333_pInt, 5347_pInt, 5351_pInt, 5381_pInt, 5387_pInt, &
+        5393_pInt, 5399_pInt, 5407_pInt, 5413_pInt, 5417_pInt, 5419_pInt, 5431_pInt, 5437_pInt, 5441_pInt, 5443_pInt, &
+        5449_pInt, 5471_pInt, 5477_pInt, 5479_pInt, 5483_pInt, 5501_pInt, 5503_pInt, 5507_pInt, 5519_pInt, 5521_pInt, &
+        5527_pInt, 5531_pInt, 5557_pInt, 5563_pInt, 5569_pInt, 5573_pInt, 5581_pInt, 5591_pInt, 5623_pInt, 5639_pInt, &
+        5641_pInt, 5647_pInt, 5651_pInt, 5653_pInt, 5657_pInt, 5659_pInt, 5669_pInt, 5683_pInt, 5689_pInt, 5693_pInt, &
+        5701_pInt, 5711_pInt, 5717_pInt, 5737_pInt, 5741_pInt, 5743_pInt, 5749_pInt, 5779_pInt, 5783_pInt, 5791_pInt, &
+        5801_pInt, 5807_pInt, 5813_pInt, 5821_pInt, 5827_pInt, 5839_pInt, 5843_pInt, 5849_pInt, 5851_pInt, 5857_pInt, &
+        5861_pInt, 5867_pInt, 5869_pInt, 5879_pInt, 5881_pInt, 5897_pInt, 5903_pInt, 5923_pInt, 5927_pInt, 5939_pInt, &
+        5953_pInt, 5981_pInt, 5987_pInt, 6007_pInt, 6011_pInt, 6029_pInt, 6037_pInt, 6043_pInt, 6047_pInt, 6053_pInt, &
+        6067_pInt, 6073_pInt, 6079_pInt, 6089_pInt, 6091_pInt, 6101_pInt, 6113_pInt, 6121_pInt, 6131_pInt, 6133_pInt/)
+  
+   npvec(801:900) = (/ &
+        6143_pInt, 6151_pInt, 6163_pInt, 6173_pInt, 6197_pInt, 6199_pInt, 6203_pInt, 6211_pInt, 6217_pInt, 6221_pInt, &
+        6229_pInt, 6247_pInt, 6257_pInt, 6263_pInt, 6269_pInt, 6271_pInt, 6277_pInt, 6287_pInt, 6299_pInt, 6301_pInt, &
+        6311_pInt, 6317_pInt, 6323_pInt, 6329_pInt, 6337_pInt, 6343_pInt, 6353_pInt, 6359_pInt, 6361_pInt, 6367_pInt, &
+        6373_pInt, 6379_pInt, 6389_pInt, 6397_pInt, 6421_pInt, 6427_pInt, 6449_pInt, 6451_pInt, 6469_pInt, 6473_pInt, &
+        6481_pInt, 6491_pInt, 6521_pInt, 6529_pInt, 6547_pInt, 6551_pInt, 6553_pInt, 6563_pInt, 6569_pInt, 6571_pInt, &
+        6577_pInt, 6581_pInt, 6599_pInt, 6607_pInt, 6619_pInt, 6637_pInt, 6653_pInt, 6659_pInt, 6661_pInt, 6673_pInt, &
+        6679_pInt, 6689_pInt, 6691_pInt, 6701_pInt, 6703_pInt, 6709_pInt, 6719_pInt, 6733_pInt, 6737_pInt, 6761_pInt, &
+        6763_pInt, 6779_pInt, 6781_pInt, 6791_pInt, 6793_pInt, 6803_pInt, 6823_pInt, 6827_pInt, 6829_pInt, 6833_pInt, &
+        6841_pInt, 6857_pInt, 6863_pInt, 6869_pInt, 6871_pInt, 6883_pInt, 6899_pInt, 6907_pInt, 6911_pInt, 6917_pInt, &
+        6947_pInt, 6949_pInt, 6959_pInt, 6961_pInt, 6967_pInt, 6971_pInt, 6977_pInt, 6983_pInt, 6991_pInt, 6997_pInt/)
+  
+   npvec(901:1000) = (/ &
+        7001_pInt, 7013_pInt, 7019_pInt, 7027_pInt, 7039_pInt, 7043_pInt, 7057_pInt, 7069_pInt, 7079_pInt, 7103_pInt, &
+        7109_pInt, 7121_pInt, 7127_pInt, 7129_pInt, 7151_pInt, 7159_pInt, 7177_pInt, 7187_pInt, 7193_pInt, 7207_pInt, &
+        7211_pInt, 7213_pInt, 7219_pInt, 7229_pInt, 7237_pInt, 7243_pInt, 7247_pInt, 7253_pInt, 7283_pInt, 7297_pInt, &
+        7307_pInt, 7309_pInt, 7321_pInt, 7331_pInt, 7333_pInt, 7349_pInt, 7351_pInt, 7369_pInt, 7393_pInt, 7411_pInt, &
+        7417_pInt, 7433_pInt, 7451_pInt, 7457_pInt, 7459_pInt, 7477_pInt, 7481_pInt, 7487_pInt, 7489_pInt, 7499_pInt, &
+        7507_pInt, 7517_pInt, 7523_pInt, 7529_pInt, 7537_pInt, 7541_pInt, 7547_pInt, 7549_pInt, 7559_pInt, 7561_pInt, &
+        7573_pInt, 7577_pInt, 7583_pInt, 7589_pInt, 7591_pInt, 7603_pInt, 7607_pInt, 7621_pInt, 7639_pInt, 7643_pInt, &
+        7649_pInt, 7669_pInt, 7673_pInt, 7681_pInt, 7687_pInt, 7691_pInt, 7699_pInt, 7703_pInt, 7717_pInt, 7723_pInt, &
+        7727_pInt, 7741_pInt, 7753_pInt, 7757_pInt, 7759_pInt, 7789_pInt, 7793_pInt, 7817_pInt, 7823_pInt, 7829_pInt, &
+        7841_pInt, 7853_pInt, 7867_pInt, 7873_pInt, 7877_pInt, 7879_pInt, 7883_pInt, 7901_pInt, 7907_pInt, 7919_pInt/)
+  
+   npvec(1001:1100) = (/ &
+        7927_pInt, 7933_pInt, 7937_pInt, 7949_pInt, 7951_pInt, 7963_pInt, 7993_pInt, 8009_pInt, 8011_pInt, 8017_pInt, &
+        8039_pInt, 8053_pInt, 8059_pInt, 8069_pInt, 8081_pInt, 8087_pInt, 8089_pInt, 8093_pInt, 8101_pInt, 8111_pInt, &
+        8117_pInt, 8123_pInt, 8147_pInt, 8161_pInt, 8167_pInt, 8171_pInt, 8179_pInt, 8191_pInt, 8209_pInt, 8219_pInt, &
+        8221_pInt, 8231_pInt, 8233_pInt, 8237_pInt, 8243_pInt, 8263_pInt, 8269_pInt, 8273_pInt, 8287_pInt, 8291_pInt, &
+        8293_pInt, 8297_pInt, 8311_pInt, 8317_pInt, 8329_pInt, 8353_pInt, 8363_pInt, 8369_pInt, 8377_pInt, 8387_pInt, &
+        8389_pInt, 8419_pInt, 8423_pInt, 8429_pInt, 8431_pInt, 8443_pInt, 8447_pInt, 8461_pInt, 8467_pInt, 8501_pInt, &
+        8513_pInt, 8521_pInt, 8527_pInt, 8537_pInt, 8539_pInt, 8543_pInt, 8563_pInt, 8573_pInt, 8581_pInt, 8597_pInt, &
+        8599_pInt, 8609_pInt, 8623_pInt, 8627_pInt, 8629_pInt, 8641_pInt, 8647_pInt, 8663_pInt, 8669_pInt, 8677_pInt, &
+        8681_pInt, 8689_pInt, 8693_pInt, 8699_pInt, 8707_pInt, 8713_pInt, 8719_pInt, 8731_pInt, 8737_pInt, 8741_pInt, &
+        8747_pInt, 8753_pInt, 8761_pInt, 8779_pInt, 8783_pInt, 8803_pInt, 8807_pInt, 8819_pInt, 8821_pInt, 8831_pInt/)
+  
+   npvec(1101:1200) = (/ &
+        8837_pInt, 8839_pInt, 8849_pInt, 8861_pInt, 8863_pInt, 8867_pInt, 8887_pInt, 8893_pInt, 8923_pInt, 8929_pInt, &
+        8933_pInt, 8941_pInt, 8951_pInt, 8963_pInt, 8969_pInt, 8971_pInt, 8999_pInt, 9001_pInt, 9007_pInt, 9011_pInt, &
+        9013_pInt, 9029_pInt, 9041_pInt, 9043_pInt, 9049_pInt, 9059_pInt, 9067_pInt, 9091_pInt, 9103_pInt, 9109_pInt, &
+        9127_pInt, 9133_pInt, 9137_pInt, 9151_pInt, 9157_pInt, 9161_pInt, 9173_pInt, 9181_pInt, 9187_pInt, 9199_pInt, &
+        9203_pInt, 9209_pInt, 9221_pInt, 9227_pInt, 9239_pInt, 9241_pInt, 9257_pInt, 9277_pInt, 9281_pInt, 9283_pInt, &
+        9293_pInt, 9311_pInt, 9319_pInt, 9323_pInt, 9337_pInt, 9341_pInt, 9343_pInt, 9349_pInt, 9371_pInt, 9377_pInt, &
+        9391_pInt, 9397_pInt, 9403_pInt, 9413_pInt, 9419_pInt, 9421_pInt, 9431_pInt, 9433_pInt, 9437_pInt, 9439_pInt, &
+        9461_pInt, 9463_pInt, 9467_pInt, 9473_pInt, 9479_pInt, 9491_pInt, 9497_pInt, 9511_pInt, 9521_pInt, 9533_pInt, &
+        9539_pInt, 9547_pInt, 9551_pInt, 9587_pInt, 9601_pInt, 9613_pInt, 9619_pInt, 9623_pInt, 9629_pInt, 9631_pInt, &
+        9643_pInt, 9649_pInt, 9661_pInt, 9677_pInt, 9679_pInt, 9689_pInt, 9697_pInt, 9719_pInt, 9721_pInt, 9733_pInt/)
+  
+   npvec(1201:1300) = (/ &
+         9739_pInt, 9743_pInt, 9749_pInt, 9767_pInt, 9769_pInt, 9781_pInt, 9787_pInt, 9791_pInt, 9803_pInt, 9811_pInt, &
+         9817_pInt, 9829_pInt, 9833_pInt, 9839_pInt, 9851_pInt, 9857_pInt, 9859_pInt, 9871_pInt, 9883_pInt, 9887_pInt, &
+         9901_pInt, 9907_pInt, 9923_pInt, 9929_pInt, 9931_pInt, 9941_pInt, 9949_pInt, 9967_pInt, 9973_pInt,10007_pInt, &
+        10009_pInt,10037_pInt,10039_pInt,10061_pInt,10067_pInt,10069_pInt,10079_pInt,10091_pInt,10093_pInt,10099_pInt, &
+        10103_pInt,10111_pInt,10133_pInt,10139_pInt,10141_pInt,10151_pInt,10159_pInt,10163_pInt,10169_pInt,10177_pInt, &
+        10181_pInt,10193_pInt,10211_pInt,10223_pInt,10243_pInt,10247_pInt,10253_pInt,10259_pInt,10267_pInt,10271_pInt, &
+        10273_pInt,10289_pInt,10301_pInt,10303_pInt,10313_pInt,10321_pInt,10331_pInt,10333_pInt,10337_pInt,10343_pInt, &
+        10357_pInt,10369_pInt,10391_pInt,10399_pInt,10427_pInt,10429_pInt,10433_pInt,10453_pInt,10457_pInt,10459_pInt, &
+        10463_pInt,10477_pInt,10487_pInt,10499_pInt,10501_pInt,10513_pInt,10529_pInt,10531_pInt,10559_pInt,10567_pInt, &
+        10589_pInt,10597_pInt,10601_pInt,10607_pInt,10613_pInt,10627_pInt,10631_pInt,10639_pInt,10651_pInt,10657_pInt/)
+  
+   npvec(1301:1400) = (/ &
+        10663_pInt,10667_pInt,10687_pInt,10691_pInt,10709_pInt,10711_pInt,10723_pInt,10729_pInt,10733_pInt,10739_pInt, &
+        10753_pInt,10771_pInt,10781_pInt,10789_pInt,10799_pInt,10831_pInt,10837_pInt,10847_pInt,10853_pInt,10859_pInt, &
+        10861_pInt,10867_pInt,10883_pInt,10889_pInt,10891_pInt,10903_pInt,10909_pInt,19037_pInt,10939_pInt,10949_pInt, &
+        10957_pInt,10973_pInt,10979_pInt,10987_pInt,10993_pInt,11003_pInt,11027_pInt,11047_pInt,11057_pInt,11059_pInt, &
+        11069_pInt,11071_pInt,11083_pInt,11087_pInt,11093_pInt,11113_pInt,11117_pInt,11119_pInt,11131_pInt,11149_pInt, &
+        11159_pInt,11161_pInt,11171_pInt,11173_pInt,11177_pInt,11197_pInt,11213_pInt,11239_pInt,11243_pInt,11251_pInt, &
+        11257_pInt,11261_pInt,11273_pInt,11279_pInt,11287_pInt,11299_pInt,11311_pInt,11317_pInt,11321_pInt,11329_pInt, &
+        11351_pInt,11353_pInt,11369_pInt,11383_pInt,11393_pInt,11399_pInt,11411_pInt,11423_pInt,11437_pInt,11443_pInt, &
+        11447_pInt,11467_pInt,11471_pInt,11483_pInt,11489_pInt,11491_pInt,11497_pInt,11503_pInt,11519_pInt,11527_pInt, &
+        11549_pInt,11551_pInt,11579_pInt,11587_pInt,11593_pInt,11597_pInt,11617_pInt,11621_pInt,11633_pInt,11657_pInt/)
+  
+   npvec(1401:1500) = (/ &
+        11677_pInt,11681_pInt,11689_pInt,11699_pInt,11701_pInt,11717_pInt,11719_pInt,11731_pInt,11743_pInt,11777_pInt, &
+        11779_pInt,11783_pInt,11789_pInt,11801_pInt,11807_pInt,11813_pInt,11821_pInt,11827_pInt,11831_pInt,11833_pInt, &
+        11839_pInt,11863_pInt,11867_pInt,11887_pInt,11897_pInt,11903_pInt,11909_pInt,11923_pInt,11927_pInt,11933_pInt, &
+        11939_pInt,11941_pInt,11953_pInt,11959_pInt,11969_pInt,11971_pInt,11981_pInt,11987_pInt,12007_pInt,12011_pInt, &
+        12037_pInt,12041_pInt,12043_pInt,12049_pInt,12071_pInt,12073_pInt,12097_pInt,12101_pInt,12107_pInt,12109_pInt, &
+        12113_pInt,12119_pInt,12143_pInt,12149_pInt,12157_pInt,12161_pInt,12163_pInt,12197_pInt,12203_pInt,12211_pInt, &
+        12227_pInt,12239_pInt,12241_pInt,12251_pInt,12253_pInt,12263_pInt,12269_pInt,12277_pInt,12281_pInt,12289_pInt, &
+        12301_pInt,12323_pInt,12329_pInt,12343_pInt,12347_pInt,12373_pInt,12377_pInt,12379_pInt,12391_pInt,12401_pInt, &
+        12409_pInt,12413_pInt,12421_pInt,12433_pInt,12437_pInt,12451_pInt,12457_pInt,12473_pInt,12479_pInt,12487_pInt, &
+        12491_pInt,12497_pInt,12503_pInt,12511_pInt,12517_pInt,12527_pInt,12539_pInt,12541_pInt,12547_pInt,12553_pInt/)
 
- if ( icall == 0 ) then
+ endif
 
- icall = 1
-
- npvec(1:100) = (/&
-        2,    3,    5,    7,   11,   13,   17,   19,   23,   29, &
-       31,   37,   41,   43,   47,   53,   59,   61,   67,   71, &
-       73,   79,   83,   89,   97,  101,  103,  107,  109,  113, &
-      127,  131,  137,  139,  149,  151,  157,  163,  167,  173, &
-      179,  181,  191,  193,  197,  199,  211,  223,  227,  229, &
-      233,  239,  241,  251,  257,  263,  269,  271,  277,  281, &
-      283,  293,  307,  311,  313,  317,  331,  337,  347,  349, &
-      353,  359,  367,  373,  379,  383,  389,  397,  401,  409, &
-      419,  421,  431,  433,  439,  443,  449,  457,  461,  463, &
-      467,  479,  487,  491,  499,  503,  509,  521,  523,  541 /)
-
- npvec(101:200) = (/ &
-       547,  557,  563,  569,  571,  577,  587,  593,  599,  601, &
-       607,  613,  617,  619,  631,  641,  643,  647,  653,  659, &
-       661,  673,  677,  683,  691,  701,  709,  719,  727,  733, &
-       739,  743,  751,  757,  761,  769,  773,  787,  797,  809, &
-       811,  821,  823,  827,  829,  839,  853,  857,  859,  863, &
-       877,  881,  883,  887,  907,  911,  919,  929,  937,  941, &
-       947,  953,  967,  971,  977,  983,  991,  997, 1009, 1013, &
-      1019, 1021, 1031, 1033, 1039, 1049, 1051, 1061, 1063, 1069, &
-      1087, 1091, 1093, 1097, 1103, 1109, 1117, 1123, 1129, 1151, &
-      1153, 1163, 1171, 1181, 1187, 1193, 1201, 1213, 1217, 1223 /)
-
- npvec(201:300) = (/ &
-      1229, 1231, 1237, 1249, 1259, 1277, 1279, 1283, 1289, 1291, &
-      1297, 1301, 1303, 1307, 1319, 1321, 1327, 1361, 1367, 1373, &
-      1381, 1399, 1409, 1423, 1427, 1429, 1433, 1439, 1447, 1451, &
-      1453, 1459, 1471, 1481, 1483, 1487, 1489, 1493, 1499, 1511, &
-      1523, 1531, 1543, 1549, 1553, 1559, 1567, 1571, 1579, 1583, &
-      1597, 1601, 1607, 1609, 1613, 1619, 1621, 1627, 1637, 1657, &
-      1663, 1667, 1669, 1693, 1697, 1699, 1709, 1721, 1723, 1733, &
-      1741, 1747, 1753, 1759, 1777, 1783, 1787, 1789, 1801, 1811, &
-      1823, 1831, 1847, 1861, 1867, 1871, 1873, 1877, 1879, 1889, &
-      1901, 1907, 1913, 1931, 1933, 1949, 1951, 1973, 1979, 1987 /)
-
- npvec(301:400) = (/ &
-      1993, 1997, 1999, 2003, 2011, 2017, 2027, 2029, 2039, 2053, &
-      2063, 2069, 2081, 2083, 2087, 2089, 2099, 2111, 2113, 2129, &
-      2131, 2137, 2141, 2143, 2153, 2161, 2179, 2203, 2207, 2213, &
-      2221, 2237, 2239, 2243, 2251, 2267, 2269, 2273, 2281, 2287, &
-      2293, 2297, 2309, 2311, 2333, 2339, 2341, 2347, 2351, 2357, &
-      2371, 2377, 2381, 2383, 2389, 2393, 2399, 2411, 2417, 2423, &
-      2437, 2441, 2447, 2459, 2467, 2473, 2477, 2503, 2521, 2531, &
-      2539, 2543, 2549, 2551, 2557, 2579, 2591, 2593, 2609, 2617, &
-      2621, 2633, 2647, 2657, 2659, 2663, 2671, 2677, 2683, 2687, &
-      2689, 2693, 2699, 2707, 2711, 2713, 2719, 2729, 2731, 2741 /)
-
- npvec(401:500) = (/ &
-      2749, 2753, 2767, 2777, 2789, 2791, 2797, 2801, 2803, 2819, &
-      2833, 2837, 2843, 2851, 2857, 2861, 2879, 2887, 2897, 2903, &
-      2909, 2917, 2927, 2939, 2953, 2957, 2963, 2969, 2971, 2999, &
-      3001, 3011, 3019, 3023, 3037, 3041, 3049, 3061, 3067, 3079, &
-      3083, 3089, 3109, 3119, 3121, 3137, 3163, 3167, 3169, 3181, &
-      3187, 3191, 3203, 3209, 3217, 3221, 3229, 3251, 3253, 3257, &
-      3259, 3271, 3299, 3301, 3307, 3313, 3319, 3323, 3329, 3331, &
-      3343, 3347, 3359, 3361, 3371, 3373, 3389, 3391, 3407, 3413, &
-      3433, 3449, 3457, 3461, 3463, 3467, 3469, 3491, 3499, 3511, &
-      3517, 3527, 3529, 3533, 3539, 3541, 3547, 3557, 3559, 3571 /)
-
- npvec(501:600) = (/ &
-      3581, 3583, 3593, 3607, 3613, 3617, 3623, 3631, 3637, 3643, &
-      3659, 3671, 3673, 3677, 3691, 3697, 3701, 3709, 3719, 3727, &
-      3733, 3739, 3761, 3767, 3769, 3779, 3793, 3797, 3803, 3821, &
-      3823, 3833, 3847, 3851, 3853, 3863, 3877, 3881, 3889, 3907, &
-      3911, 3917, 3919, 3923, 3929, 3931, 3943, 3947, 3967, 3989, &
-      4001, 4003, 4007, 4013, 4019, 4021, 4027, 4049, 4051, 4057, &
-      4073, 4079, 4091, 4093, 4099, 4111, 4127, 4129, 4133, 4139, &
-      4153, 4157, 4159, 4177, 4201, 4211, 4217, 4219, 4229, 4231, &
-      4241, 4243, 4253, 4259, 4261, 4271, 4273, 4283, 4289, 4297, &
-      4327, 4337, 4339, 4349, 4357, 4363, 4373, 4391, 4397, 4409 /)
-
- npvec(601:700) = (/ &
-      4421, 4423, 4441, 4447, 4451, 4457, 4463, 4481, 4483, 4493, &
-      4507, 4513, 4517, 4519, 4523, 4547, 4549, 4561, 4567, 4583, &
-      4591, 4597, 4603, 4621, 4637, 4639, 4643, 4649, 4651, 4657, &
-      4663, 4673, 4679, 4691, 4703, 4721, 4723, 4729, 4733, 4751, &
-      4759, 4783, 4787, 4789, 4793, 4799, 4801, 4813, 4817, 4831, &
-      4861, 4871, 4877, 4889, 4903, 4909, 4919, 4931, 4933, 4937, &
-      4943, 4951, 4957, 4967, 4969, 4973, 4987, 4993, 4999, 5003, &
-      5009, 5011, 5021, 5023, 5039, 5051, 5059, 5077, 5081, 5087, &
-      5099, 5101, 5107, 5113, 5119, 5147, 5153, 5167, 5171, 5179, &
-      5189, 5197, 5209, 5227, 5231, 5233, 5237, 5261, 5273, 5279 /)
-
- npvec(701:800) = (/ &
-      5281, 5297, 5303, 5309, 5323, 5333, 5347, 5351, 5381, 5387, &
-      5393, 5399, 5407, 5413, 5417, 5419, 5431, 5437, 5441, 5443, &
-      5449, 5471, 5477, 5479, 5483, 5501, 5503, 5507, 5519, 5521, &
-      5527, 5531, 5557, 5563, 5569, 5573, 5581, 5591, 5623, 5639, &
-      5641, 5647, 5651, 5653, 5657, 5659, 5669, 5683, 5689, 5693, &
-      5701, 5711, 5717, 5737, 5741, 5743, 5749, 5779, 5783, 5791, &
-      5801, 5807, 5813, 5821, 5827, 5839, 5843, 5849, 5851, 5857, &
-      5861, 5867, 5869, 5879, 5881, 5897, 5903, 5923, 5927, 5939, &
-      5953, 5981, 5987, 6007, 6011, 6029, 6037, 6043, 6047, 6053, &
-      6067, 6073, 6079, 6089, 6091, 6101, 6113, 6121, 6131, 6133 /)
-
- npvec(801:900) = (/ &
-      6143, 6151, 6163, 6173, 6197, 6199, 6203, 6211, 6217, 6221, &
-      6229, 6247, 6257, 6263, 6269, 6271, 6277, 6287, 6299, 6301, &
-      6311, 6317, 6323, 6329, 6337, 6343, 6353, 6359, 6361, 6367, &
-      6373, 6379, 6389, 6397, 6421, 6427, 6449, 6451, 6469, 6473, &
-      6481, 6491, 6521, 6529, 6547, 6551, 6553, 6563, 6569, 6571, &
-      6577, 6581, 6599, 6607, 6619, 6637, 6653, 6659, 6661, 6673, &
-      6679, 6689, 6691, 6701, 6703, 6709, 6719, 6733, 6737, 6761, &
-      6763, 6779, 6781, 6791, 6793, 6803, 6823, 6827, 6829, 6833, &
-      6841, 6857, 6863, 6869, 6871, 6883, 6899, 6907, 6911, 6917, &
-      6947, 6949, 6959, 6961, 6967, 6971, 6977, 6983, 6991, 6997 /)
-
- npvec(901:1000) = (/ &
-      7001, 7013, 7019, 7027, 7039, 7043, 7057, 7069, 7079, 7103, &
-      7109, 7121, 7127, 7129, 7151, 7159, 7177, 7187, 7193, 7207, &
-      7211, 7213, 7219, 7229, 7237, 7243, 7247, 7253, 7283, 7297, &
-      7307, 7309, 7321, 7331, 7333, 7349, 7351, 7369, 7393, 7411, &
-      7417, 7433, 7451, 7457, 7459, 7477, 7481, 7487, 7489, 7499, &
-      7507, 7517, 7523, 7529, 7537, 7541, 7547, 7549, 7559, 7561, &
-      7573, 7577, 7583, 7589, 7591, 7603, 7607, 7621, 7639, 7643, &
-      7649, 7669, 7673, 7681, 7687, 7691, 7699, 7703, 7717, 7723, &
-      7727, 7741, 7753, 7757, 7759, 7789, 7793, 7817, 7823, 7829, &
-      7841, 7853, 7867, 7873, 7877, 7879, 7883, 7901, 7907, 7919 /)
-
- npvec(1001:1100) = (/ &
-      7927, 7933, 7937, 7949, 7951, 7963, 7993, 8009, 8011, 8017, &
-      8039, 8053, 8059, 8069, 8081, 8087, 8089, 8093, 8101, 8111, &
-      8117, 8123, 8147, 8161, 8167, 8171, 8179, 8191, 8209, 8219, &
-      8221, 8231, 8233, 8237, 8243, 8263, 8269, 8273, 8287, 8291, &
-      8293, 8297, 8311, 8317, 8329, 8353, 8363, 8369, 8377, 8387, &
-      8389, 8419, 8423, 8429, 8431, 8443, 8447, 8461, 8467, 8501, &
-      8513, 8521, 8527, 8537, 8539, 8543, 8563, 8573, 8581, 8597, &
-      8599, 8609, 8623, 8627, 8629, 8641, 8647, 8663, 8669, 8677, &
-      8681, 8689, 8693, 8699, 8707, 8713, 8719, 8731, 8737, 8741, &
-      8747, 8753, 8761, 8779, 8783, 8803, 8807, 8819, 8821, 8831 /)
-
- npvec(1101:1200) = (/ &
-      8837, 8839, 8849, 8861, 8863, 8867, 8887, 8893, 8923, 8929, &
-      8933, 8941, 8951, 8963, 8969, 8971, 8999, 9001, 9007, 9011, &
-      9013, 9029, 9041, 9043, 9049, 9059, 9067, 9091, 9103, 9109, &
-      9127, 9133, 9137, 9151, 9157, 9161, 9173, 9181, 9187, 9199, &
-      9203, 9209, 9221, 9227, 9239, 9241, 9257, 9277, 9281, 9283, &
-      9293, 9311, 9319, 9323, 9337, 9341, 9343, 9349, 9371, 9377, &
-      9391, 9397, 9403, 9413, 9419, 9421, 9431, 9433, 9437, 9439, &
-      9461, 9463, 9467, 9473, 9479, 9491, 9497, 9511, 9521, 9533, &
-      9539, 9547, 9551, 9587, 9601, 9613, 9619, 9623, 9629, 9631, &
-      9643, 9649, 9661, 9677, 9679, 9689, 9697, 9719, 9721, 9733 /)
-
- npvec(1201:1300) = (/ &
-       9739, 9743, 9749, 9767, 9769, 9781, 9787, 9791, 9803, 9811, &
-       9817, 9829, 9833, 9839, 9851, 9857, 9859, 9871, 9883, 9887, &
-       9901, 9907, 9923, 9929, 9931, 9941, 9949, 9967, 9973,10007, &
-      10009,10037,10039,10061,10067,10069,10079,10091,10093,10099, &
-      10103,10111,10133,10139,10141,10151,10159,10163,10169,10177, &
-      10181,10193,10211,10223,10243,10247,10253,10259,10267,10271, &
-      10273,10289,10301,10303,10313,10321,10331,10333,10337,10343, &
-      10357,10369,10391,10399,10427,10429,10433,10453,10457,10459, &
-      10463,10477,10487,10499,10501,10513,10529,10531,10559,10567, &
-      10589,10597,10601,10607,10613,10627,10631,10639,10651,10657 /)
-
- npvec(1301:1400) = (/ &
-      10663,10667,10687,10691,10709,10711,10723,10729,10733,10739, &
-      10753,10771,10781,10789,10799,10831,10837,10847,10853,10859, &
-      10861,10867,10883,10889,10891,10903,10909,19037,10939,10949, &
-      10957,10973,10979,10987,10993,11003,11027,11047,11057,11059, &
-      11069,11071,11083,11087,11093,11113,11117,11119,11131,11149, &
-      11159,11161,11171,11173,11177,11197,11213,11239,11243,11251, &
-      11257,11261,11273,11279,11287,11299,11311,11317,11321,11329, &
-      11351,11353,11369,11383,11393,11399,11411,11423,11437,11443, &
-      11447,11467,11471,11483,11489,11491,11497,11503,11519,11527, &
-      11549,11551,11579,11587,11593,11597,11617,11621,11633,11657 /)
-
- npvec(1401:1500) = (/ &
-      11677,11681,11689,11699,11701,11717,11719,11731,11743,11777, &
-      11779,11783,11789,11801,11807,11813,11821,11827,11831,11833, &
-      11839,11863,11867,11887,11897,11903,11909,11923,11927,11933, &
-      11939,11941,11953,11959,11969,11971,11981,11987,12007,12011, &
-      12037,12041,12043,12049,12071,12073,12097,12101,12107,12109, &
-      12113,12119,12143,12149,12157,12161,12163,12197,12203,12211, &
-      12227,12239,12241,12251,12253,12263,12269,12277,12281,12289, &
-      12301,12323,12329,12343,12347,12373,12377,12379,12391,12401, &
-      12409,12413,12421,12433,12437,12451,12457,12473,12479,12487, &
-      12491,12497,12503,12511,12517,12527,12539,12541,12547,12553 /)
-
- end if
-
- if ( n == -1 ) then
+ if(n == -1_pInt) then
    prime = prime_max
- else if ( n == 0 ) then
-   prime = 1
- else if ( n <= prime_max ) then
+ else if (n == 0_pInt) then
+   prime = 1_pInt
+ else if (n <= prime_max) then
    prime = npvec(n)
- else
-   prime = 0
+ else                                 ! why not use io_error here?
+   prime = 0_pInt
 !$OMP CRITICAL (write2out)
-   write ( 6, '(a)' ) ' '
-   write ( 6, '(a)' ) 'PRIME - Fatal error!'
-   write ( 6, '(a,i6)' ) '  Illegal prime index N = ', n
-   write ( 6, '(a,i6)' ) '  N must be between 0 and PRIME_MAX =',prime_max
+   write (6, '(a)') ' '
+   write (6, '(a)') 'PRIME - Fatal error!'
+   write (6, '(a,i6)') '  Illegal prime index N = ', n
+   write (6, '(a,i6)') '  N must be between 0 and PRIME_MAX = ', prime_max
    call flush(6)
 !$OMP END CRITICAL (write2out)
-
    stop
  end if
-
  endfunction prime
+
 
 !**************************************************************************
 ! volume of tetrahedron given by four vertices
 !**************************************************************************
  pure function math_volTetrahedron(v1,v2,v3,v4)  
 
- use prec, only: pReal
  implicit none
 
  real(pReal) math_volTetrahedron
  real(pReal), dimension (3), intent(in) :: v1,v2,v3,v4
  real(pReal), dimension (3,3) :: m
 
- m(:,1) = v1-v2
- m(:,2) = v2-v3
- m(:,3) = v3-v4
+ m(1:3,1) = v1-v2
+ m(1:3,2) = v2-v3
+ m(1:3,3) = v3-v4
 
  math_volTetrahedron = math_det3x3(m)/6.0_pReal 
 
  endfunction math_volTetrahedron
+
 
 !**************************************************************************
 ! rotate 3x3 tensor forward
 !**************************************************************************
  pure function math_rotate_forward3x3(tensor,rot_tensor)
 
- use prec, only: pReal
  implicit none
 
  real(pReal), dimension(3,3) ::  math_rotate_forward3x3
@@ -2996,12 +2803,12 @@ end subroutine
  
  endfunction math_rotate_forward3x3
 
+
 !**************************************************************************
 ! rotate 3x3 tensor backward
 !**************************************************************************
  pure function math_rotate_backward3x3(tensor,rot_tensor)
 
- use prec, only: pReal
  implicit none
 
  real(pReal), dimension(3,3) ::  math_rotate_backward3x3
@@ -3012,13 +2819,13 @@ end subroutine
  
  endfunction math_rotate_backward3x3
 
+
 !**************************************************************************
 ! rotate 3x3x3x3 tensor
 ! C'_ijkl=g_im*g_jn*g_ko*g_lp*C_mnop
 !**************************************************************************
  pure function math_rotate_forward3x3x3x3(tensor,rot_tensor)
 
- use prec, only: pReal
  implicit none
 
  real(pReal), dimension(3,3,3,3) ::  math_rotate_forward3x3x3x3
@@ -3028,12 +2835,730 @@ end subroutine
  
  math_rotate_forward3x3x3x3= 0.0_pReal
 
- do i = 1,3; do j = 1,3; do k = 1,3; do l = 1,3
-   do m = 1,3; do n = 1,3; do o = 1,3; do p = 1,3
+ do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt; do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
+   do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt; do p = 1_pInt,3_pInt
      math_rotate_forward3x3x3x3(i,j,k,l) = tensor(i,j,k,l)+rot_tensor(m,i)*rot_tensor(n,j)*&
                                                            rot_tensor(o,k)*rot_tensor(p,l)*tensor(m,n,o,p)
  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
  
  endfunction math_rotate_forward3x3x3x3
 
- END MODULE math
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!  Functions below are taken from the old postprocessingMath.f90
+!  mostly they are used in combination with f2py to build fortran 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+! put the next two funtions into mesh?
+ function mesh_location(idx,resolution)
+ ! small helper functions for indexing
+ ! CAREFULL, index and location runs from 0 to N-1 (python style)
+
+   integer(pInt), intent(in) :: idx
+   integer(pInt), intent(in), dimension(3) :: resolution
+   integer(pInt), dimension(3) :: mesh_location
+   mesh_location = (/modulo(idx/ resolution(3) / resolution(2),resolution(1)), &
+                     modulo(idx/ resolution(3),                resolution(2)), &
+                     modulo(idx,                               resolution(3))/)
+
+ end function mesh_location
+ 
+
+ function mesh_index(location,resolution)
+ ! small helper functions for indexing
+ ! CAREFULL, index and location runs from 0 to N-1 (python style)
+   integer(pInt), intent(in), dimension(3) :: resolution, location
+   integer(pInt) :: mesh_index
+   
+   mesh_index = modulo(location(3), resolution(3))     +&
+               (modulo(location(2), resolution(2)))*resolution(3) +&
+               (modulo(location(1), resolution(1)))*resolution(3)*resolution(2)
+
+ end function mesh_index
+
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+ subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+! Routine to calculate the mismatch between volume of reconstructed (compatible
+! cube and determinant of defgrad at the FP
+
+ implicit none
+ 
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal),   intent(in), dimension(3) :: geomdim
+ real(pReal),   intent(in), dimension(res(1),       res(2),       res(3),       3,3) :: defgrad
+ real(pReal),   intent(in), dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3)   :: nodes
+ ! output variables
+ real(pReal),  intent(out), dimension(res(1),       res(2),       res(3))            :: volume_mismatch
+ ! other variables
+ real(pReal),   dimension(8,3) ::  coords
+ integer(pInt) i,j,k
+ real(pReal) vol_initial
+
+ print*, 'Calculating volume mismatch'
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res
+
+ vol_initial = geomdim(1)*geomdim(2)*geomdim(3)/(real(res(1)*res(2)*res(3), pReal))
+ do k = 1_pInt,res(3)
+   do j = 1_pInt,res(2)
+     do i = 1_pInt,res(1) 
+       coords(1,1:3) = nodes(i,       j,       k       ,1:3)
+       coords(2,1:3) = nodes(i+1_pInt,j,       k       ,1:3)
+       coords(3,1:3) = nodes(i+1_pInt,j+1_pInt,k       ,1:3)
+       coords(4,1:3) = nodes(i,       j+1_pInt,k       ,1:3)
+       coords(5,1:3) = nodes(i,       j,       k+1_pInt,1:3)
+       coords(6,1:3) = nodes(i+1_pInt,j,       k+1_pInt,1:3)
+       coords(7,1:3) = nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3)
+       coords(8,1:3) = nodes(i,       j+1_pInt,k+1_pInt,1:3)
+       volume_mismatch(i,j,k) = abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(8,1:3),coords(4,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(8,1:3),coords(5,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(3,1:3),coords(4,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(3,1:3),coords(2,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(5,1:3),coords(2,1:3),coords(6,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(5,1:3),coords(2,1:3),coords(1,1:3)))
+       volume_mismatch(i,j,k) = volume_mismatch(i,j,k)/math_det3x3(defgrad(i,j,k,1:3,1:3))
+ enddo; enddo; enddo
+ volume_mismatch = volume_mismatch/vol_initial
+
+end subroutine volume_compare
+
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+! Routine to calculate the mismatch between the vectors from the central point to
+! the corners of reconstructed (combatible) volume element and the vectors calculated by deforming 
+! the initial volume element with the  current deformation gradient 
+ implicit none
+
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in),  dimension(res(1),       res(2),       res(3),       3,3) :: defgrad
+ real(pReal), intent(in),  dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3)   :: nodes
+ real(pReal), intent(in),  dimension(res(1),       res(2),       res(3),       3)   :: centroids
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),       res(2),       res(3))            :: shape_mismatch
+ ! other variables
+ real(pReal), dimension(8,3) :: coords_initial
+ integer(pInt) i,j,k
+
+ print*, 'Calculating shape mismatch'
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res
+
+ coords_initial(1,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(2,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(3,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(4,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(5,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(6,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(7,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(8,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ do i=1_pInt,8_pInt
+ enddo
+ do k = 1_pInt,res(3)
+   do j = 1_pInt,res(2)
+     do i = 1_pInt,res(1)
+       shape_mismatch(i,j,k) = &
+           sqrt(sum((nodes(i,       j,       k,       1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(1,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i+1_pInt,j,       k,       1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(2,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i+1_pInt,j+1_pInt,k,       1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(3,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i,       j+1_pInt,k,       1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(4,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i,       j,       k+1_pInt,1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(5,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i+1_pInt,j,       k+1_pInt,1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(6,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(7,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i,       j+1_pInt,k+1_pInt,1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(8,1:3)))**2.0_pReal))
+ enddo; enddo; enddo
+
+ end subroutine shape_compare
+
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+! Routine to build mesh of (distoreted) cubes for given coordinates (= center of the cubes)
+!
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in), dimension(3,3) :: defgrad_av
+ real(pReal), intent(in), dimension(res(1),       res(2),       res(3),       3) :: centroids
+ ! output variables
+ real(pReal),intent(out), dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3) :: nodes
+ ! variables with dimension depending on input
+ real(pReal),             dimension(res(1)+2_pInt,res(2)+2_pInt,res(3)+2_pInt,3) :: wrappedCentroids
+ ! other variables
+ integer(pInt) :: i,j,k,n
+ integer(pInt), dimension(3) :: diag = 0_pInt , shift = 0_pInt, lookup = 0_pInt, me
+ integer(pInt), dimension(3,8) :: neighbor = reshape((/ &
+                                     0_pInt, 0_pInt, 0_pInt, &
+                                     1_pInt, 0_pInt, 0_pInt, &
+                                     1_pInt, 1_pInt, 0_pInt, &
+                                     0_pInt, 1_pInt, 0_pInt, &
+                                     0_pInt, 0_pInt, 1_pInt, &
+                                     1_pInt, 0_pInt, 1_pInt, &
+                                     1_pInt, 1_pInt, 1_pInt, &
+                                     0_pInt, 1_pInt, 1_pInt  &
+                                    /), &
+                                    (/3,8/))
+ print*, 'Meshing cubes around centroids' 
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res
+
+ nodes = 0.0_pReal
+ wrappedCentroids = 0.0_pReal
+ wrappedCentroids(2_pInt:res(1)+1_pInt,2_pInt:res(2)+1_pInt,2_pInt:res(3)+1_pInt,1:3) = centroids
+
+ do k = 0_pInt,res(3)+1_pInt
+   do j = 0_pInt,res(2)+1_pInt
+     do i = 0_pInt,res(1)+1_pInt
+       if (k==0_pInt .or. k==res(3)+1_pInt .or. &                               ! z skin
+           j==0_pInt .or. j==res(2)+1_pInt .or. &                               ! y skin
+           i==0_pInt .or. i==res(1)+1_pInt      ) then                          ! x skin
+         me = (/i,j,k/)                                              ! me on skin
+         shift = sign(abs(res+diag-2_pInt*me)/(res+diag),res+diag-2_pInt*me)
+         lookup = me-diag+shift*res
+         wrappedCentroids(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = centroids(lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt,1:3) - &
+                                           matmul(defgrad_av, shift*geomdim)
+       endif
+ enddo; enddo; enddo
+ do k = 0_pInt,res(3)
+   do j = 0_pInt,res(2)
+     do i = 0_pInt,res(1)
+       do n = 1_pInt,8_pInt
+         nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = nodes(i+1_pInt,j+1_pInt,k+1_pInt,3) + wrappedCentroids(i+1_pInt+neighbor(1_pInt,n), &
+                                                                        j+1_pInt+neighbor(2,n), &
+                                                                        k+1_pInt+neighbor(3,n),1:3)
+ enddo; enddo; enddo; enddo
+ nodes = nodes/8.0_pReal
+
+end subroutine mesh_regular_grid
+ 
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate coordinates in current configuration for given defgrad
+! using linear interpolation (blurres out high frequency defomation)
+!
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in), dimension(3,3) :: defgrad_av
+ real(pReal), intent(in), dimension(     res(1),res(2),res(3),3,3) :: defgrad
+ ! output variables
+ real(pReal), intent(out), dimension(    res(1),res(2),res(3),3)   :: coord_avgCorner
+ ! variables with dimension depending on input
+ real(pReal),              dimension(8,6,res(1),res(2),res(3),3)   :: coord
+ real(pReal),              dimension(  8,res(1),res(2),res(3),3)   :: coord_avgOrder
+ ! other variables
+ real(pReal), dimension(3) ::  myStep, fones = 1.0_pReal, parameter_coords, negative, positive
+ integer(pInt), dimension(3) :: rear, init, ones = 1_pInt, oppo, me
+ integer(pInt) i, j, k, s, o 
+ integer(pInt), dimension(3,8) :: corner = reshape((/ &
+                                              0_pInt, 0_pInt, 0_pInt,&
+                                              1_pInt, 0_pInt, 0_pInt,&
+                                              1_pInt, 1_pInt, 0_pInt,&
+                                              0_pInt, 1_pInt, 0_pInt,&
+                                              1_pInt, 1_pInt, 1_pInt,&
+                                              0_pInt, 1_pInt, 1_pInt,&
+                                              0_pInt, 0_pInt, 1_pInt,&
+                                              1_pInt, 0_pInt, 1_pInt &
+                                                  /), &
+                                               (/3,8/))
+ integer(pInt), dimension(3,8) :: step = reshape((/ &
+                                            1_pInt, 1_pInt, 1_pInt,&
+                                           -1_pInt, 1_pInt, 1_pInt,& 
+                                           -1_pInt,-1_pInt, 1_pInt,&
+                                            1_pInt,-1_pInt, 1_pInt,&
+                                           -1_pInt,-1_pInt,-1_pInt,&
+                                            1_pInt,-1_pInt,-1_pInt,&
+                                            1_pInt, 1_pInt,-1_pInt,&
+                                           -1_pInt, 1_pInt,-1_pInt & 
+                                                /), &
+                                             (/3,8/))
+ integer(pInt), dimension(3,6) :: order = reshape((/ &
+                                            1_pInt, 2_pInt, 3_pInt,&
+                                            1_pInt, 3_pInt, 2_pInt,&
+                                            2_pInt, 1_pInt, 3_pInt,&
+                                            2_pInt, 3_pInt, 1_pInt,&
+                                            3_pInt, 1_pInt, 2_pInt,&
+                                            3_pInt, 2_pInt, 1_pInt &
+                                                /), &
+                                             (/3,6/))
+
+ print*, 'Restore geometry using linear integration'
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res
+ 
+ coord_avgOrder = 0.0_pReal
+ 
+ do s = 0_pInt, 7_pInt                               ! corners (from 0 to 7)
+   init = corner(:,s+1_pInt)*(res-ones) +ones
+   oppo = corner(:,mod((s+4_pInt),8_pInt)+1_pInt)*(res-ones) +ones
+   do o=1_pInt,6_pInt                                ! orders (from 1 to 6)
+     do k = init(order(3,o)), oppo(order(3,o)), step(order(3,o),s+1_pInt)
+       rear(order(2,o)) = init(order(2,o))
+       do j = init(order(2,o)), oppo(order(2,o)), step(order(2,o),s+1_pInt)
+         rear(order(1,o)) = init(order(1,o))
+         do i = init(order(1,o)), oppo(order(1,o)), step(order(1,o),s+1_pInt)
+           me(order(1,o)) = i
+           me(order(2,o)) = j
+           me(order(3,o)) = k
+           if ( (me(1)==init(1)).and.(me(2)==init(2)).and. (me(3)==init(3)) ) then
+             coord(s+1_pInt,o,me(1),me(2),me(3),1:3) = geomdim * (matmul(defgrad_av,corner(1:3,s+1)) + &
+                                                     matmul(defgrad(me(1),me(2),me(3),1:3,1:3),0.5*step(1:3,s+1_pInt)/res))
+
+           else
+             myStep = (me-rear)*geomdim/res
+             coord(s+1_pInt,o,me(1),me(2),me(3),1:3) = coord(s+1_pInt,o,rear(1),rear(2),rear(3),1:3) + &
+                                             0.5*matmul(defgrad(me(1),me(2),me(3),1:3,1:3) + &
+                                                        defgrad(rear(1),rear(2),rear(3),1:3,1:3),myStep)
+           endif
+           rear = me
+   enddo; enddo; enddo; enddo
+   do i = 1_pInt,6_pInt
+     coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) = coord_avgOrder(s+1_pInt,  1:res(1),1:res(2),1:res(3),1:3)&
+                                                                   + coord(s+1_pInt,i,1:res(1),1:res(2),1:res(3),1:3)/6.0
+   enddo
+ enddo
+
+ do k = 0_pInt, res(3)-1_pInt
+   do j = 0_pInt, res(2)-1_pInt
+     do i = 0_pInt, res(1)-1_pInt
+       parameter_coords = (2.0_pReal*(/real(i,pReal)+0.0_pReal,real(j,pReal)+0.0_pReal,real(k,pReal)+0.0_pReal/)&
+                                      -real(res,pReal)+fones)/(real(res,pReal)-fones)
+       positive = fones + parameter_coords
+       negative = fones - parameter_coords
+       coord_avgCorner(i+1_pInt,j+1_pInt,k+1_pInt,1:3)&
+                       =(coord_avgOrder(1,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*negative(3)&
+                       + coord_avgOrder(2,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*negative(3)&
+                       + coord_avgOrder(3,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*negative(3)&
+                       + coord_avgOrder(4,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*negative(3)&
+                       + coord_avgOrder(5,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*positive(3)&
+                       + coord_avgOrder(6,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*positive(3)&
+                       + coord_avgOrder(7,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*positive(3)&
+                       + coord_avgOrder(8,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*positive(3))*0.125
+ enddo; enddo; enddo
+
+end subroutine deformed_linear
+
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate coordinates in current configuration for given defgrad
+! using integration in Fourier space (more accurate than deformed(...))
+!
+ use numerics, only: fftw_timelimit, fftw_planner_flag  
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in), dimension(3,3) :: defgrad_av
+ real(pReal), intent(in)                 :: scaling
+ real(pReal), intent(in),  dimension(res(1),              res(2),res(3),3,3) :: defgrad
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),              res(2),res(3),3)   :: coords
+ ! variables with dimension depending on input
+ complex(pReal),           dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3)   :: coords_fft
+ complex(pReal),           dimension(res(1),              res(2),res(3),3,3) :: defgrad_fft
+ ! other variables
+ integer(pInt) :: i, j, k
+ integer(pInt), dimension(3) :: k_s
+ real(pReal), dimension(3)   :: step, offset_coords
+ integer*8, dimension(2)     :: plan_fft
+ 
+ print*, 'Restore geometry using FFT-based integration'
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res
+ 
+ call dfftw_set_timelimit(fftw_timelimit)
+ call dfftw_plan_many_dft(plan_fft(1),3,(/res(1),res(2),res(3)/),9,&
+   defgrad_fft,(/res(1),res(2),res(3)/),1,res(1)*res(2)*res(3),&
+   defgrad_fft,(/res(1),res(2),res(3)/),1,res(1)*res(2)*res(3),-1,fftw_planner_flag)        ! -1 = FFTW_FORWARD
+ call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res(1),res(2),res(3)/),3,&
+   coords_fft,(/res(1)/2_pInt+1_pInt,res(2),res(3)/),1,(res(1)/2_pInt+1_pInt)*res(2)*res(3),&
+   coords,    (/res(1),              res(2),res(3)/),1, res(1)*               res(2)*res(3),fftw_planner_flag)
+   
+ coords_fft = 0.0
+ defgrad_fft = defgrad  ! cannot do memory efficient r2c transform as input field is destroyed during plan creation
+
+ step = geomdim/real(res, pReal)
+
+ call dfftw_execute_dft(plan_fft(1), defgrad_fft, defgrad_fft)
+ 
+ do k = 1_pInt, res(3)
+   k_s(3) = k-1_pInt
+   if(k > res(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-res(3)
+   do j = 1_pInt, res(2)
+     k_s(2) = j-1_pInt
+     if(j > res(2)/2_pInt+1_pInt) k_s(2) = k_s(2)-res(2)
+     do i = 1_pInt, res(1)/2_pInt+1_pInt
+       k_s(1) = i-1_pInt
+       if(i/=1_pInt) coords_fft(i,j,k,1:3) = coords_fft(i,j,k,1:3)&
+                                + defgrad_fft(i,j,k,1:3,1)*geomdim(1)/(real(k_s(1),pReal)*cmplx(0.0_pReal,1.0_pReal)*pi*2.0_pReal)
+       if(j/=1_pInt) coords_fft(i,j,k,1:3) = coords_fft(i,j,k,1:3)&
+                                + defgrad_fft(i,j,k,1:3,2)*geomdim(2)/(real(k_s(2),pReal)*cmplx(0.0_pReal,1.0_pReal)*pi*2.0_pReal)
+       if(k/=1_pInt) coords_fft(i,j,k,1:3) = coords_fft(i,j,k,1:3)&
+                                + defgrad_fft(i,j,k,1:3,3)*geomdim(3)/(real(k_s(3),pReal)*cmplx(0.0_pReal,1.0_pReal)*pi*2.0_pReal)
+ enddo; enddo; enddo
+ 
+ call dfftw_execute_dft_c2r(plan_fft(2), coords_fft, coords)
+ coords = coords/real(res(1)*res(2)*res(3))
+
+ offset_coords = matmul(defgrad(1,1,1,1:3,1:3),step/2.0_pReal) - scaling*coords(1,1,1,1:3)
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     coords(i,j,k,1:3) =  scaling*coords(i,j,k,1:3) + offset_coords + matmul(defgrad_av,&
+                                                    (/step(1)*real(i-1_pInt,pReal),&
+                                                      step(2)*real(j-1_pInt,pReal),&
+                                                      step(3)*real(k-1_pInt,pReal)/))
+
+ enddo; enddo; enddo
+
+end subroutine deformed_fft
+
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine curl_fft(res,geomdim,vec_tens,field,curl_field)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! calculates curl field using differentation in Fourier space
+! use vec_tens to decide if tensor (3) or vector (1)
+
+ use numerics, only: fftw_timelimit, fftw_planner_flag  
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3) :: geomdim
+ integer(pInt), intent(in) :: vec_tens
+ real(pReal), intent(in),  dimension(res(1),              res(2),res(3),3,vec_tens) :: field
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),              res(2),res(3),3,vec_tens) :: curl_field
+ ! variables with dimension depending on input
+ complex(pReal),           dimension(res(1),              res(2),res(3),3,vec_tens) :: field_fft
+ complex(pReal),           dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3,vec_tens) :: curl_field_fft
+ real(pReal),              dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3) :: xi
+ ! other variables
+ integer(pInt) i, j, k
+ integer*8 ::  plan_fft(2)
+
+ print*, 'Calculating curl of vector/tensor field'
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res
+
+ call dfftw_set_timelimit(fftw_timelimit)
+ call dfftw_plan_many_dft(plan_fft(1),3,(/res(1),res(2),res(3)/),vec_tens*3_pInt,&
+   field_fft,(/res(1),res(2),res(3)/),1,res(1)*res(2)*res(3),&
+   field_fft,(/res(1),res(2),res(3)/),1,res(1)*res(2)*res(3),-1,fftw_planner_flag)        ! -1 = FFTW_FORWARD
+ call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res(1),res(2),res(3)/),vec_tens*3_pInt,&
+   curl_field_fft,(/res(1)/2_pInt+1_pInt,res(2),res(3)/),1,(res(1)/2_pInt+1_pInt)*res(2)*res(3),&
+   curl_field,(/res(1),res(2),res(3)/),1,res(1)*res(2)*res(3),fftw_planner_flag)
+
+ field_fft = field  ! cannot do memory efficient r2c transform as input field is destroyed during plan creation
+
+ call dfftw_execute_dft_r2c(plan_fft(1), field_fft, field_fft)
+
+ do k = 0_pInt, res(3)-1_pInt         
+   do j = 0_pInt, res(2)-1_pInt
+     do i = 0_pInt, res(1)/2_pInt
+       xi(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = real((/i,j,k/), pReal)/geomdim
+       if(k==res(3)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,3)= 0.0_pReal ! set highest frequencies to zero
+       if(j==res(2)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,2)= 0.0_pReal
+       if(i==res(1)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,1)= 0.0_pReal
+ enddo; enddo; enddo
+ 
+ do k = 1, res(3)                                       
+   do j = 1, res(2)
+     do i = 1, res(1)/2+1
+       curl_field_fft(i,j,k,1,vec_tens) = sum(field_fft(i,j,k,1,:)*xi(i,j,k,:))
+       if(vec_tens == 3) then
+       curl_field_fft (i,j,k,2,vec_tens) = sum(field_fft(i,j,k,2,:)*xi(i,j,k,:))
+       curl_field_fft(i,j,k,3,vec_tens) = sum(field_fft(i,j,k,3,:)*xi(i,j,k,:))
+       endif
+ enddo; enddo; enddo
+! divergence_field_fft = divergence_field_fft*img*2.0*pi
+
+ call dfftw_execute_dft_c2r(plan_fft(2), curl_field_fft, curl_field)
+
+end subroutine curl_fft
+
+ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine divergence_fft(res,geomdim,vec_tens,field,divergence_field)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! calculates divergence field using integration in Fourier space
+! use vec_tens to decide if tensor (3) or vector (1)
+
+ use numerics, only: fftw_timelimit, fftw_planner_flag  
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ integer(pInt), intent(in) :: vec_tens
+ real(pReal), intent(in),  dimension(res(1),    res(2),res(3),vec_tens,3) :: field
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),    res(2),res(3),vec_tens) :: divergence_field
+ ! variables with dimension depending on input
+ complex(pReal), dimension(res(1)              ,res(2),res(3),vec_tens,3) :: field_fft
+ complex(pReal), dimension(res(1)/2_pInt+1_pInt,res(2),res(3),vec_tens)   :: divergence_field_fft
+ real(pReal),    dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3) :: xi
+ ! other variables
+ integer(pInt) :: i, j, k
+ complex(pReal), parameter :: img = cmplx(0.0_pReal,1.0_pReal)
+ integer*8, dimension(2) :: plan_fft
+
+ call dfftw_set_timelimit(fftw_timelimit)
+ call dfftw_plan_many_dft(plan_fft(1),3,(/res(1),res(2),res(3)/),vec_tens*3_pInt,&
+   field_fft,(/res(1),res(2),res(3)/),1,res(1)*res(2)*res(3),&
+   field_fft,(/res(1),res(2),res(3)/),1,res(1)*res(2)*res(3),-1,fftw_planner_flag)        ! -1 = FFTW_FORWARD
+ call dfftw_plan_many_dft_c2r(plan_fft(2),3,(/res(1),res(2),res(3)/),vec_tens,&
+   divergence_field_fft,(/res(1)/2_pInt+1_pInt,res(2),res(3)/),1,(res(1)/2_pInt+1_pInt)*res(2)*res(3),&
+   divergence_field,(/res(1),res(2),res(3)/),1,res(1)*res(2)*res(3),fftw_planner_flag)
+
+ print*, 'Calculating divergence of tensor/vector field using FFT'  
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res
+
+ field_fft = field ! cannot do memory efficient r2c transform as input field is destroyed during plan creation
+
+ call dfftw_execute_dft_r2c(plan_fft(1), field_fft, field_fft)
+
+! Alternative calculation of discrete frequencies k_s, ordered as in FFTW (wrap around) 
+! do k = 0,res(3)/2 -1                                       
+  ! do j = 0,res(2)/2 -1
+     ! do i = 0,res(1)/2 -1
+         ! xi(1+mod(res(1)-i,res(1)),1+mod(res(2)-j,res(2)),1+mod(res(3)-k,res(3)),:) = (/-i,-j,-k/)/geomdim
+         ! xi(1+i,                 1+mod(res(2)-j,res(2)),1+mod(res(3)-k,res(3)),:) = (/ i,-j,-k/)/geomdim
+         ! xi(1+mod(res(1)-i,res(1)),1+j,                 1+mod(res(3)-k,res(3)),:) = (/-i, j,-k/)/geomdim
+         ! xi(1+i,                 1+j,                 1+mod(res(3)-k,res(3)),:) = (/ i, j,-k/)/geomdim
+         ! xi(1+mod(res(1)-i,res(1)),1+mod(res(2)-j,res(2)),1+k,                 :) = (/-i,-j, k/)/geomdim
+         ! xi(1+i,                 1+mod(res(2)-j,res(2)),1+k,                 :) = (/ i,-j, k/)/geomdim
+         ! xi(1+mod(res(1)-i,res(1)),1+j,                 1+k,                 :) = (/-i, j, k/)/geomdim
+         ! xi(1+i,                 1+j,                 1+k,                 :) = (/ i, j, k/)/geomdim
+         ! xi(1+i,                 1+j,                 1+k,                 :) = (/ i, j, k/)/geomdim
+         ! xi(1+mod(res(1)-i,res(1)),1+j,                 1+k,                 :) = (/-i, j, k/)/geomdim
+         ! xi(1+i,                 1+mod(res(2)-j,res(2)),1+k,                 :) = (/ i,-j, k/)/geomdim
+         ! xi(1+mod(res(1)-i,res(1)),1+mod(res(2)-j,res(2)),1+k,                 :) = (/-i,-j, k/)/geomdim
+         ! xi(1+i,                 1+j,                 1+mod(res(3)-k,res(3)),:) = (/ i, j,-k/)/geomdim
+         ! xi(1+mod(res(1)-i,res(1)),1+j,                 1+mod(res(3)-k,res(3)),:) = (/-i, j,-k/)/geomdim
+         ! xi(1+i,                 1+mod(res(2)-j,res(2)),1+mod(res(3)-k,res(3)),:) = (/ i,-j,-k/)/geomdim
+         ! xi(1+mod(res(1)-i,res(1)),1+mod(res(2)-j,res(2)),1+mod(res(3)-k,res(3)),:) = (/-i,-j,-k/)/geomdim
+  ! enddo; enddo; enddo
+  
+ do k = 0_pInt, res(3)-1_pInt         
+   do j = 0_pInt, res(2)-1_pInt
+     do i = 0_pInt, res(1)/2_pInt
+       xi(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = (/real(i,pReal),real(j,pReal),real(k,pReal)/)/geomdim
+       if(k==res(3)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,3)= 0.0_pReal ! set highest frequencies to zero
+       if(j==res(2)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,2)= 0.0_pReal
+       if(i==res(1)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,1)= 0.0_pReal
+ enddo; enddo; enddo
+ do k = 1_pInt, res(3)                                       
+   do j = 1_pInt, res(2)
+     do i = 1_pInt, res(1)/2_pInt+1_pInt
+       divergence_field_fft(i,j,k,1) = sum(field_fft(i,j,k,1,1:3)*xi(i,j,k,1:3))
+       if(vec_tens == 3_pInt) then
+       divergence_field_fft(i,j,k,2) = sum(field_fft(i,j,k,2,1:3)*xi(i,j,k,1:3))
+       divergence_field_fft(i,j,k,3) = sum(field_fft(i,j,k,3,1:3)*xi(i,j,k,1:3))
+       endif
+ enddo; enddo; enddo
+ divergence_field_fft = divergence_field_fft*img*2.0_pReal*pi
+
+ call dfftw_execute_dft_c2r(plan_fft(2), divergence_field_fft, divergence_field)
+ ! why not weighting the divergence field?
+ end subroutine divergence_fft
+
+          
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+ subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence_field)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! calculates divergence field using FDM with variable accuracy
+! use vec_tes to decide if tensor (3) or vector (1)
+ 
+ implicit none
+ integer(pInt), intent(in), dimension(3) :: res
+ integer(pInt), intent(in)               :: vec_tens
+ integer(pInt), intent(inout)            :: order
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in), dimension(res(1),res(2),res(3),vec_tens,3) :: field
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),res(2),res(3),vec_tens) :: divergence_field
+ ! other variables
+ integer(pInt), dimension(6,3) :: coordinates
+ integer(pInt) i, j, k, m, l
+ real(pReal), dimension(4,4), parameter :: FDcoefficient = reshape((/ & 
+                    1.0_pReal/2.0_pReal,       0.0_pReal,           0.0_pReal,             0.0_pReal,& !from http://en.wikipedia.org/wiki/Finite_difference_coefficients
+                    2.0_pReal/3.0_pReal,-1.0_pReal/12.0_pReal,      0.0_pReal,             0.0_pReal,&
+                    3.0_pReal/4.0_pReal,-3.0_pReal/20.0_pReal,1.0_pReal/ 60.0_pReal,       0.0_pReal,&
+                    4.0_pReal/5.0_pReal,-1.0_pReal/ 5.0_pReal,4.0_pReal/105.0_pReal,-1.0_pReal/280.0_pReal/),&
+                               (/4,4/))
+                               
+ print*, 'Calculating divergence of tensor/vector field using FDM'
+ print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
+ print '(a,/,i5,i5,i5)', ' Resolution:', res
+
+ divergence_field = 0.0_pReal
+ order = order + 1_pInt
+ do k = 0_pInt, res(3)-1_pInt; do j = 0_pInt, res(2)-1_pInt; do i = 0_pInt, res(1)-1_pInt
+   do m = 1_pInt, order 
+     coordinates(1,1:3) = mesh_location(mesh_index((/i+m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(2,1:3) = mesh_location(mesh_index((/i-m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(3,1:3) = mesh_location(mesh_index((/i,j+m,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(4,1:3) = mesh_location(mesh_index((/i,j-m,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(5,1:3) = mesh_location(mesh_index((/i,j,k+m/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(6,1:3) = mesh_location(mesh_index((/i,j,k-m/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
+     do l = 1_pInt, vec_tens
+       divergence_field(i+1_pInt,j+1_pInt,k+1_pInt,l) = divergence_field(i+1_pInt,j+1_pInt,k+1_pInt,l) + FDcoefficient(m,order) * &
+                ((field(coordinates(1,1),coordinates(1,2),coordinates(1,3),l,1)- &
+                  field(coordinates(2,1),coordinates(2,2),coordinates(2,3),l,1))*real(res(1),pReal)/geomdim(1) +&
+                 (field(coordinates(3,1),coordinates(3,2),coordinates(3,3),l,2)- &
+                  field(coordinates(4,1),coordinates(4,2),coordinates(4,3),l,2))*real(res(2),pReal)/geomdim(2) +&
+                 (field(coordinates(5,1),coordinates(5,2),coordinates(5,3),l,3)- &
+                  field(coordinates(6,1),coordinates(6,2),coordinates(6,3),l,3))*real(res(3),pReal)/geomdim(3))  
+     enddo
+   enddo
+ enddo; enddo; enddo
+
+ end subroutine divergence_fdm
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+ subroutine tensor_avg(res,tensor,avg)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate average of tensor field
+!
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(res(1),res(2),res(3),3,3) ::tensor
+ ! output variables
+ real(pReal), intent(out), dimension(3,3) :: avg
+ ! other variables
+ real(pReal) wgt
+ integer(pInt) m,n
+ 
+ wgt = 1.0_pReal/real(res(1)*res(2)*res(3), pReal)
+
+ do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
+    avg(m,n) = sum(tensor(1:res(1),1:res(2),1:res(3),m,n)) * wgt   
+ enddo; enddo
+
+ end subroutine tensor_avg
+ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine logstrain_spat(res,defgrad,logstrain_field)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate logarithmic strain in spatial configuration for given defgrad field
+!
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: defgrad
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),res(2),res(3),3,3) :: logstrain_field
+ ! other variables
+ real(pReal), dimension(3,3) ::  temp33_Real, temp33_Real2
+ real(pReal), dimension(3,3,3) :: eigenvectorbasis
+ real(pReal), dimension(3) ::  eigenvalue
+ integer(pInt) :: i, j, k
+ logical :: errmatinv
+ 
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   call math_pDecomposition(defgrad(i,j,k,1:3,1:3),temp33_Real2,temp33_Real,errmatinv)  !store R in temp33_Real
+   temp33_Real2 = math_inv3x3(temp33_Real)
+   temp33_Real = math_mul33x33(defgrad(i,j,k,1:3,1:3),temp33_Real2)       ! v = F o inv(R), store in temp33_Real2
+   call math_spectral1(temp33_Real,eigenvalue(1),              eigenvalue(2),              eigenvalue(3),&
+                                   eigenvectorbasis(1,1:3,1:3),eigenvectorbasis(2,1:3,1:3),eigenvectorbasis(3,1:3,1:3))
+   eigenvalue = log(sqrt(eigenvalue))
+   logstrain_field(i,j,k,1:3,1:3) = eigenvalue(1)*eigenvectorbasis(1,1:3,1:3)+&
+                                    eigenvalue(2)*eigenvectorbasis(2,1:3,1:3)+&
+                                    eigenvalue(3)*eigenvectorbasis(3,1:3,1:3)
+ enddo; enddo; enddo
+
+ end subroutine logstrain_spat
+ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine logstrain_mat(res,defgrad,logstrain_field)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate logarithmic strain in material configuration for given defgrad field
+!
+ implicit none
+  ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: defgrad
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),res(2),res(3),3,3) :: logstrain_field
+ ! other variables
+ real(pReal), dimension(3,3) ::  temp33_Real, temp33_Real2
+ real(pReal), dimension(3,3,3) :: eigenvectorbasis
+ real(pReal), dimension(3) ::  eigenvalue
+ integer(pInt) :: i, j, k
+ logical :: errmatinv
+ 
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   call math_pDecomposition(defgrad(i,j,k,1:3,1:3),temp33_Real,temp33_Real2,errmatinv)  !store U in temp33_Real
+   call math_spectral1(temp33_Real,eigenvalue(1),              eigenvalue(2),              eigenvalue(3),&
+                                   eigenvectorbasis(1,1:3,1:3),eigenvectorbasis(2,1:3,1:3),eigenvectorbasis(3,1:3,1:3))
+   eigenvalue = log(sqrt(eigenvalue))
+   logstrain_field(i,j,k,1:3,1:3) = eigenvalue(1)*eigenvectorbasis(1,1:3,1:3)+&
+                                    eigenvalue(2)*eigenvectorbasis(2,1:3,1:3)+&
+                                    eigenvalue(3)*eigenvectorbasis(3,1:3,1:3)
+ enddo; enddo; enddo
+
+ end subroutine logstrain_mat
+ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+subroutine calculate_cauchy(res,defgrad,p_stress,c_stress)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!calculate cauchy stress for given PK1 stress and defgrad field
+!
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: defgrad
+ real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: p_stress
+ ! output variables
+ real(pReal), intent(out),  dimension(res(1),res(2),res(3),3,3) :: c_stress
+ ! other variables
+ real(pReal) :: jacobi
+ integer(pInt) :: i, j, k
+
+ c_stress = 0.0_pInt
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   jacobi = math_det3x3(defgrad(i,j,k,1:3,1:3))
+   c_stress(i,j,k,1:3,1:3) = matmul(p_stress(i,j,k,1:3,1:3),transpose(defgrad(i,j,k,1:3,1:3)))/jacobi
+ enddo; enddo; enddo
+
+end subroutine calculate_cauchy
+
+END MODULE math
