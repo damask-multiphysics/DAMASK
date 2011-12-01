@@ -50,7 +50,7 @@ execute = { \
         'pre' : [
                 ],
         'post' : [
-                'make_postprocessingMath',
+                'make_DAMASK2Python',
                 ],
             }
 
