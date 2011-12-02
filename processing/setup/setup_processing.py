@@ -22,6 +22,7 @@ bin_link = { \
         'post' : [
                 '3Dvisualize.py',
                 'addCauchy.py',
+                'addCalculation.py',
                 'addDeterminant.py',
                 'addDivergence.py',
                 'addMises.py',
