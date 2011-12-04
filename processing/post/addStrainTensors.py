@@ -1,15 +1,7 @@
 #!/usr/bin/python
 
-import os,re,sys,math,numpy,string
+import os,re,sys,math,numpy,string,damask_tools
 from optparse import OptionParser, Option
-
-def operator(how,vector):
-  return { \
-    'ln':    numpy.log(vector)*1.0,\
-    'Biot':  vector           *1.0,\
-    'Green': vector*vector    *0.5,\
-         }[how]
-
 
 # -----------------------------
 class extendableOption(Option):
@@ -30,10 +22,14 @@ class extendableOption(Option):
       Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-def prefixMultiply(what,len):
 
-  return {True: ['%i_%s'%(i+1,what) for i in range(len)],
-          False:[what]}[len>1]
+def operator(how,vector):
+  return { \
+    'ln':    numpy.log(vector)*1.0,\
+    'Biot':  vector           *1.0,\
+    'Green': vector*vector    *0.5,\
+         }[how]
+
 
 
 # --------------------------------------------------------------------
@@ -47,8 +43,6 @@ Add column(s) containing given strains based on given stretches of requested def
 )
 
 
-parser.add_option('-m','--memory',      dest='memory', action='store_true', \
-                                        help='load complete file into memory [%default]')
 parser.add_option('-u','--right',       action='store_true', dest='right', \
                                         help='calculate strains based on right Cauchy--Green deformation, i.e., C and U')
 parser.add_option('-v','--left',        action='store_true', dest='left', \
@@ -62,7 +56,6 @@ parser.add_option('-g','--green',       action='store_true', dest='green', \
 parser.add_option('-f','--deformation', dest='defgrad', action='extend', type='string', \
                                         help='heading(s) of columns containing deformation tensor values %default')
 
-parser.set_defaults(memory      = False)
 parser.set_defaults(right       = False)
 parser.set_defaults(left        = False)
 parser.set_defaults(logarithmic = False)
@@ -104,30 +97,12 @@ else:
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  print file['name']
+  if file['name'] != 'STDIN': print file['name']
 
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
-
-  firstline = file['input'].readline()
-  m = re.search('(\d+)\s*head', firstline.lower())
-  if m:
-    headerlines = int(m.group(1))
-    passOn  = [file['input'].readline() for i in range(1,headerlines)]
-    headers = file['input'].readline().split()
-  else:
-    headerlines = 1
-    passOn  = []
-    headers = firstline.split()
-
-  if options.memory:
-    data = file['input'].readlines()
-  else:
-    data = []
-
-  for i,l in enumerate(headers):
-    if l.startswith('1_'):
-      if re.match('\d+_',l[2:]) or i == len(headers)-1 or not headers[i+1].endswith(l[2:]):
-        headers[i] = l[2:]
+  table = damask_tools.ASCII_TABLE(file['input'],file['output'],False)      # make unbuffered ASCII_table
+  table.head_read()                                                         # read ASCII header info
+  table.info_append(string.replace('$Id$','\n','\\n') + \
+                    '\t' + ' '.join(sys.argv[1:]))
 
   active = {}
   column = {}
@@ -137,79 +112,60 @@ for file in files:
     for label in info['label']:
       key = {True :'1_%s',
              False:'%s'   }[info['len']>1]%label
-      if key not in headers:
+      if key not in table.labels:
         sys.stderr.write('column %s not found...\n'%key)
       else:
         if datatype not in active: active[datatype] = []
         if datatype not in column: column[datatype] = {}
         active[datatype].append(label)
-        column[datatype][label] = headers.index(key)
+        column[datatype][label] = table.labels.index(key)
         for theStretch in stretches:
           for theStrain in strains:
-            head += prefixMultiply('%s(%s)'%(theStrain,theStretch), 9)
+            table.labels_append(['%i_%s(%s)'%(i+1,theStrain,theStretch) 
+                                for i in xrange(datainfo['defgrad']['len'])])         # extend ASCII header with new labels
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
-  output = '%i\theader'%(headerlines+1) + '\n' + \
-           ''.join(passOn) + \
-           string.replace('$Id$','\n','\\n')+ '\t' + \
-           ' '.join(sys.argv[1:]) + '\n' + \
-           '\t'.join(headers + head) + '\n'                              # build extended header
+  table.head_write()
 
-  if not options.memory:
-    file['output'].write(output)
-    output = ''
+# ------------------------------------------ process data ---------------------------------------  
 
-# ------------------------------------------ read file ---------------------------------------  
-
-  for line in {True  : data,
-               False : file['input']}[options.memory]:
-    items = line.split()[:len(headers)]
-    if len(items) < len(headers):
-      continue
+  while table.data_read():                                                  # read next data line of ASCII table
   
-    output += '\t'.join(items)
-
-    for datatype,labels in active.items():
-      for label in labels:
-        defgrad = numpy.array(map(float,items[column[datatype][label]:
-                                              column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)
-        (U,S,Vh) = numpy.linalg.svd(defgrad)
+    for datatype,labels in active.items():                                  # loop over vector,tensor
+      for label in labels:                                                  # loop over all requested norms
+        F = numpy.array(map(float,table.data[column['defgrad'][active['defgrad'][0]]:
+                                             column['defgrad'][active['defgrad'][0]]+datainfo['defgrad']['len']]),'d').reshape(3,3)
+        (U,S,Vh) = numpy.linalg.svd(F)
         R = numpy.dot(U,Vh)
-        stretch['U'] = numpy.dot(numpy.linalg.inv(R),defgrad)
-        stretch['V'] = numpy.dot(defgrad,numpy.linalg.inv(R))
+        stretch['U'] = numpy.dot(numpy.linalg.inv(R),F)
+        stretch['V'] = numpy.dot(F,numpy.linalg.inv(R))
         for theStretch in stretches:
           for i in range(9):
-            if stretch[theStretch][i%3,i//3] < 1e-15:
+            if abs(stretch[theStretch][i%3,i//3]) < 1e-15:    # kill nasty noisy data
               stretch[theStretch][i%3,i//3] = 0.0
           (D,V) = numpy.linalg.eig(stretch[theStretch])       # eigen decomposition (of symmetric matrix)
           for i,eigval in enumerate(D):
             if eigval < 0.0:                                  # flip negative eigenvalues
               D[i] = -D[i]
               V[:,i] = -V[:,i]
-          if numpy.dot(V[:,i],V[:,(i+1)%3]) != 0.0:         # check each vector for orthogonality
+          if numpy.dot(V[:,i],V[:,(i+1)%3]) != 0.0:           # check each vector for orthogonality
               V[:,(i+1)%3] = numpy.cross(V[:,(i+2)%3],V[:,i]) # correct next vector
               V[:,(i+1)%3] /= numpy.sqrt(numpy.dot(V[:,(i+1)%3],V[:,(i+1)%3].conj()))  # and renormalize (hyperphobic?)
           for theStrain in strains:
             d = operator(theStrain,D)                         # operate on eigenvalues of U or V
             I = operator(theStrain,numpy.ones(3))             # operate on eigenvalues of I (i.e. [1,1,1])
             eps = (numpy.dot(V,numpy.dot(numpy.diag(d),V.T)).real-numpy.diag(I)).reshape(9)  # build tensor back from eigenvalue/vector basis
-            output += '\t'+'\t'.join(map(str,eps))
-         
-          
-    output += '\n'
-  
-    if not options.memory:
-      file['output'].write(output)
-      output = ''
 
-  file['input'].close()
+            table.data_append(list(eps))
+
+    table.data_write()                                                      # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
 
-  if options.memory:
-    file['output'].write(output)
+  table.output_flush()                                                      # just in case of buffered ASCII table
 
+  file['input'].close()                                                     # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close
-    os.rename(file['name']+'_tmp',file['name'])
+    file['output'].close                                                    # close output ASCII table
+    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
