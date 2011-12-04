@@ -61,22 +61,29 @@
 
  FEmodelGeometry = getModelName()
  if (IO_open_inputFile(fileunit,FEmodelGeometry)) then
-   if(trim(FEsolver)=='Spectral') then
-     restartWrite = .true.
-     call get_command(commandLine)                                     ! may contain capitals
-     do i=1,len(commandLine)                                           ! remove capitals
-       if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+   if (trim(FEsolver) == 'Spectral') then
+     call get_command(commandLine)                                      ! may contain uppercase
+     do i=1,len(commandLine)
+       if(64 < iachar(commandLine(i:i)) .and. iachar(commandLine(i:i)) < 91) &
+         commandLine(i:i) = achar(iachar(commandLine(i:i))+32)          ! make lowercase
      enddo
-     start = index(commandLine,'-r',.true.) + 3_pInt                   ! search for '-r' and jump forward to given name
-     if (index(commandLine,'--restart',.true.)>0) then                 ! if '--restart' is found, use that (contains '-r')
-       start = index(commandLine,'--restart',.true.) + 10_pInt
+     start = index(commandLine,'-r ',.true.) + 3_pInt                   ! search for '-r' and jump forward to given name
+     if (index(commandLine,'--restart ',.true.)>0) then                 ! if '--restart' is found, use that (contains '-r')
+       start = index(commandLine,'--restart ',.true.) + 10_pInt
      endif               
      length = index(commandLine(start:len(commandLine)),' ',.false.)
-     if(start/=3_pInt) then                                            ! found at least -r
+     if(start /= 3_pInt) then                                            ! found at least -r
        read(commandLine(start:start+length),'(I12)') restartReadStep
-       restartRead = .true.
      endif
-   if(restartReadStep<0_pInt .and. restartRead .eq. .true.)  call IO_error(error_ID=47)
+     if (restartReadStep > 0_pInt) then
+       restartRead  = .true.
+       restartWrite = .true.
+     endif
+     if (restartReadStep == 0_pInt) then
+       restartRead  = .false.
+       restartWrite = .false.
+     endif
+     if(restartReadStep < 0_pInt) call IO_error(error_ID=47)
    else
      rewind(fileunit)
      do
@@ -107,7 +114,7 @@
      enddo
    endif
  else
-   call IO_error(101) ! cannot open input file
+   call IO_error(101, ext_msg=FEmodelGeometry) ! cannot open input file
  endif
  100 close(fileunit)
  
