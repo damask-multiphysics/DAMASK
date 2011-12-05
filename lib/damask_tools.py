@@ -1,7 +1,40 @@
-import os,string,re
+import os,sys,string,re
 
 
 class DAMASK_TOOLS():
+
+  __slots__ = ['pathInfo',
+              ]
+
+  def __init__(self,rootRelation = '.'):
+    self.pathInfo = {\
+                     'acml': './acml4.4.0',
+                     'fftw': './fftw',
+                     'msc':  '/msc',
+                    }
+    self.get_pathInfo(rootRelation)
+
+  def rootDir(self,rootRelation = '.'):      #getting pathinfo
+    damask_root = os.getenv('DAMASK_ROOT')
+    if damask_root == '' or damask_root == None: damask_root = os.path.join(os.path.dirname(sys.argv[0]),rootRelation)
+    return damask_root
+
+  def binDir(self,rootRelation = '.'):      #getting pathinfo
+    damask_bin  = os.getenv('DAMASK_BIN')
+    if damask_bin  == '' or damask_bin  == None: damask_bin = os.path.join(self.rootDir(),'bin/')
+    return damask_bin
+    
+  def get_pathInfo(self,rootRelation = '.'):      #getting pathinfo
+    damask_root = self.rootDir(rootRelation)
+
+    try:                                                  # check for user-defined pathinfo
+      file = open(os.path.join(damask_root,'lib/pathinfo'))
+      content = file.readlines()
+      file.close()
+      for line in content:
+        self.pathInfo[line.split()[0].lower()] = os.path.normpath(os.path.join(damask_root,'lib/',line.split()[1]))
+    except:
+      pass
 
   def check_env(self):
     import os
@@ -10,6 +43,7 @@ class DAMASK_TOOLS():
       sys.exit(1)
     else:
       return True       
+
 
 
 class ASCII_TABLE():
