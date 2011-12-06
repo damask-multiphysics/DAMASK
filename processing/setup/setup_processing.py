@@ -46,16 +46,16 @@ parser.set_defaults(compiler = 'ifort')
 #translating name of compiler for use with f2py and setting subdirname of acml
 if options.compiler == 'gfortran':
   f2py_compiler='gnu95  --f90flags="-fno-range-check"'
-  acml_subdir='ifort64/lib'
 else:
   f2py_compiler='intelem'
-  acml_subdir='ifort64/lib'
+
+acml_subdir='%s64/lib'%options.compiler
 
 
 #getting pathinfo
 damask_variables = damask_tools.DAMASK_TOOLS()
-baseDir = os.path.join(damask_variables.rootDir(),'processing/')
-codeDir = os.path.join(damask_variables.rootDir(),'code/')
+baseDir = damask_variables.relPath('processing/')
+codeDir = damask_variables.relPath('code/')
 
 #define ToDo list
 bin_link = { \
@@ -101,20 +101,20 @@ compile = { \
 
 execute = { \
           'postMath' : [ 
-                        'rm %slib/DAMASK.so' %(os.path.join(damask_variables.rootDir(),'lib/')),
+                        'rm %s'%(os.path.join(damask_variables.relPath('lib/'),'DAMASK.so')),
                         # The following command is used to compile math.f90 and make the functions defined in DAMASK_math.pyf
-                        # avialable for python in the module DAMASK_math.so
+                        # available for python in the module DAMASK_math.so
                         # It uses the fortran wrapper f2py that is included in the numpy package to construct the
                         # module postprocessingMath.so out of the fortran code postprocessingMath.f90
                         # for the generation of the pyf file:
                         #f2py -m DAMASK -h DAMASK.pyf --overwrite-signature ../../code/math.f90 \
-                        'f2py %sDAMASK.pyf '%(codeDir) +\
+                        'f2py %s '%(os.path.join(codeDir,'DAMASK.pyf')) +\
                         '-c --fcompiler=%s '%(f2py_compiler) +\
-                        '%sDAMASK2Python_helper.f90 ' %(codeDir)+\
-                        '%smath.f90 ' %(codeDir)+\
-                        '%s/libfftw3.a ' %(damask_variables.pathInfo['fftw'])+\
-                        '%s/%s/libacml.a' %(damask_variables.pathInfo['acml'],acml_subdir),
-                        'mv %sDAMASK.so %s/.' %(codeDir,os.path.join(damask_variables.rootDir(),'lib/')),
+                        '%s ' %(os.path.join(codeDir,'DAMASK2Python_helper.f90'))+\
+                        '%s ' %(os.path.join(codeDir,'math.f90'))+\
+                        '%s ' %(os.path.join(damask_variables.pathInfo['fftw'],'libfftw3.a'))+\
+                        '%s' %(os.path.join(damask_variables.pathInfo['acml'],acml_subdir,'libacml.a'),
+                        'mv %s %s' %(os.path.join(codeDir,'DAMASK.so'),damask_variables.relPath('lib/')),
                         ]
             }
 
@@ -135,7 +135,7 @@ os.chdir(codeDir)                   # needed for compilation with gfortran and f
 for tasks in execute:
   for cmd in execute[tasks]:
     os.system(cmd)  
-os.chdir(os.path.join(damask_variables.rootDir(),'processing/setup/'))
+os.chdir(damask_variables.relPath('processing/setup/'))
 
 modules = glob.glob('*.mod')
 for module in modules:

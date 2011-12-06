@@ -8,11 +8,14 @@ class DAMASK_TOOLS():
 
   def __init__(self,rootRelation = '.'):
     self.pathInfo = {\
-                     'acml': './acml4.4.0',
-                     'fftw': './fftw',
+                     'acml': '/opt/acml4.4.0',
+                     'fftw': '.',
                      'msc':  '/msc',
                     }
     self.get_pathInfo(rootRelation)
+
+  def relPath(self,relative = '.'):
+    return os.path.join(self.rootDir(),relative)
 
   def rootDir(self,rootRelation = '.'):      #getting pathinfo
     damask_root = os.getenv('DAMASK_ROOT')
@@ -21,18 +24,18 @@ class DAMASK_TOOLS():
 
   def binDir(self,rootRelation = '.'):      #getting pathinfo
     damask_bin  = os.getenv('DAMASK_BIN')
-    if damask_bin  == '' or damask_bin  == None: damask_bin = os.path.join(self.rootDir(),'bin/')
+    if damask_bin  == '' or damask_bin  == None: damask_bin = self.relPath('bin/')
     return damask_bin
     
   def get_pathInfo(self,rootRelation = '.'):      #getting pathinfo
     damask_root = self.rootDir(rootRelation)
 
     try:                                                  # check for user-defined pathinfo
-      file = open(os.path.join(damask_root,'lib/pathinfo'))
+      file = open(self.relPath('lib/pathinfo'))
       content = file.readlines()
       file.close()
       for line in content:
-        self.pathInfo[line.split()[0].lower()] = os.path.normpath(os.path.join(damask_root,'lib/',line.split()[1]))
+        self.pathInfo[line.split()[0].lower()] = os.path.normpath(os.path.join(self.relPath('lib/'),line.split()[1]))
     except:
       pass
 
@@ -40,9 +43,7 @@ class DAMASK_TOOLS():
     import os
     if os.getenv('DAMASK_ROOT') is None:
       print('No DAMASK_ROOT environment variable, did you run DAMASK/installation/setup_shellrc?')
-      sys.exit(1)
-    else:
-      return True       
+    return os.getenv('DAMASK_ROOT') != None  
 
 
 
