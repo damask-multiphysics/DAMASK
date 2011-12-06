@@ -1057,7 +1057,8 @@ if(constitutive_dislotwin_sbVelocity(myInstance) /= 0.0_pReal) then
   
     !* Stress ratios
     StressRatio_p = (abs(tau_sb(j))/constitutive_dislotwin_sbResistance(myInstance))**constitutive_dislotwin_p(myInstance)
-    StressRatio_pminus1 = (abs(tau_sb(j))/constitutive_dislotwin_sbResistance(myInstance))**(constitutive_dislotwin_p(myInstance)-1.0_pReal)
+    StressRatio_pminus1 = (abs(tau_sb(j))/constitutive_dislotwin_sbResistance(myInstance))&
+                                                                         **(constitutive_dislotwin_p(myInstance)-1.0_pReal)
     !* Boltzmann ratio
     BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(f,myInstance)/(kB*Temperature)
     !* Initial shear rates
@@ -1463,7 +1464,8 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
              tau = dot_product(Tstar_v,constitutive_dislotwin_sbSv(1:6,j,g,ip,el))
              !* Stress ratios
              StressRatio_p = (abs(tau)/constitutive_dislotwin_sbResistance(myInstance))**constitutive_dislotwin_p(myInstance)
-             StressRatio_pminus1 = (abs(tau)/constitutive_dislotwin_sbResistance(myInstance))**(constitutive_dislotwin_p(myInstance)-1.0_pReal)
+             StressRatio_pminus1 = (abs(tau)/constitutive_dislotwin_sbResistance(myInstance))&
+                                                                           **(constitutive_dislotwin_p(myInstance)-1.0_pReal)
              !* Boltzmann ratio
              BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(f,myInstance)/(kB*Temperature)
              !* Initial shear rates

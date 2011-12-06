@@ -115,7 +115,7 @@ subroutine debug_init()
       select case(tag)
         case ('element','e','el')
               debug_e = IO_intValue(line,positions,2)
-        case ('itegrationpoint','i','ip')
+        case ('integrationpoint','i','ip')
               debug_i = IO_intValue(line,positions,2)
         case ('grain','g','gr')
               debug_g = IO_intValue(line,positions,2)
@@ -123,12 +123,15 @@ subroutine debug_init()
               debug_selectiveDebugger = IO_intValue(line,positions,2) > 0_pInt
         case ('verbosity')
               debug_verbosity = IO_intValue(line,positions,2)
-        case ('(generaldebugspectral)')                          ! use bitwise logical and, continue with +8_pInt
-              if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 1_pInt 
-        case ('(divergencedebugspectral)')
-              if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 2_pInt
-        case ('(restartdebugspectral)')
-              if(IO_intValue(line,positions,2)) spectral_debug_verbosity = spectral_debug_verbosity + 4_pInt
+        case ('(spectral)')
+            select case(IO_lc(IO_stringValue(line,positions,2)))
+              case('general')
+                   spectral_debug_verbosity = ior(spectral_debug_verbosity, 1)
+              case('divergence')
+                   spectral_debug_verbosity = ior(spectral_debug_verbosity, 2)
+              case('restart')
+                   spectral_debug_verbosity = ior(spectral_debug_verbosity, 4)
+            endselect
       endselect
     enddo
     100 close(fileunit)

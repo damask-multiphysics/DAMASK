@@ -3048,7 +3048,8 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
          me = (/i,j,k/)                                              ! me on skin
          shift = sign(abs(res+diag-2_pInt*me)/(res+diag),res+diag-2_pInt*me)
          lookup = me-diag+shift*res
-         wrappedCentroids(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = centroids(lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt,1:3) - &
+   wrappedCentroids(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = &
+                                           centroids(lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt,1:3) - &
                                            matmul(defgrad_av, shift*geomdim)
        endif
  enddo; enddo; enddo
@@ -3056,7 +3057,8 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
    do j = 0_pInt,res(2)
      do i = 0_pInt,res(1)
        do n = 1_pInt,8_pInt
-         nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = nodes(i+1_pInt,j+1_pInt,k+1_pInt,3) + wrappedCentroids(i+1_pInt+neighbor(1_pInt,n), &
+ nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = &
+                                          nodes(i+1_pInt,j+1_pInt,k+1_pInt,3) + wrappedCentroids(i+1_pInt+neighbor(1_pInt,n), &
                                                                         j+1_pInt+neighbor(2,n), &
                                                                         k+1_pInt+neighbor(3,n),1:3)
  enddo; enddo; enddo; enddo
@@ -3197,6 +3199,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  ! other variables
  integer(pInt) :: i, j, k
  integer(pInt), dimension(3) :: k_s
+ complex(pReal), parameter   :: integration_factor = cmplx(0.0_pReal,pi*2.0_pReal)
  real(pReal), dimension(3)   :: step, offset_coords
  integer*8, dimension(2)     :: plan_fft
  
@@ -3228,11 +3231,11 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
      do i = 1_pInt, res(1)/2_pInt+1_pInt
        k_s(1) = i-1_pInt
        if(i/=1_pInt) coords_fft(i,j,k,1:3) = coords_fft(i,j,k,1:3)&
-                                + defgrad_fft(i,j,k,1:3,1)*geomdim(1)/(real(k_s(1),pReal)*cmplx(0.0_pReal,1.0_pReal)*pi*2.0_pReal)
+                                + defgrad_fft(i,j,k,1:3,1)*geomdim(1)/(real(k_s(1),pReal)*integration_factor)
        if(j/=1_pInt) coords_fft(i,j,k,1:3) = coords_fft(i,j,k,1:3)&
-                                + defgrad_fft(i,j,k,1:3,2)*geomdim(2)/(real(k_s(2),pReal)*cmplx(0.0_pReal,1.0_pReal)*pi*2.0_pReal)
+                                + defgrad_fft(i,j,k,1:3,2)*geomdim(2)/(real(k_s(2),pReal)*integration_factor)
        if(k/=1_pInt) coords_fft(i,j,k,1:3) = coords_fft(i,j,k,1:3)&
-                                + defgrad_fft(i,j,k,1:3,3)*geomdim(3)/(real(k_s(3),pReal)*cmplx(0.0_pReal,1.0_pReal)*pi*2.0_pReal)
+                                + defgrad_fft(i,j,k,1:3,3)*geomdim(3)/(real(k_s(3),pReal)*integration_factor)
  enddo; enddo; enddo
  
  call dfftw_execute_dft_c2r(plan_fft(2), coords_fft, coords)
@@ -3432,12 +3435,18 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence_field)
  order = order + 1_pInt
  do k = 0_pInt, res(3)-1_pInt; do j = 0_pInt, res(2)-1_pInt; do i = 0_pInt, res(1)-1_pInt
    do m = 1_pInt, order 
-     coordinates(1,1:3) = mesh_location(mesh_index((/i+m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
-     coordinates(2,1:3) = mesh_location(mesh_index((/i-m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
-     coordinates(3,1:3) = mesh_location(mesh_index((/i,j+m,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
-     coordinates(4,1:3) = mesh_location(mesh_index((/i,j-m,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
-     coordinates(5,1:3) = mesh_location(mesh_index((/i,j,k+m/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
-     coordinates(6,1:3) = mesh_location(mesh_index((/i,j,k-m/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/)) + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(1,1:3) = mesh_location(mesh_index((/i+m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
+                                                                                          + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(2,1:3) = mesh_location(mesh_index((/i-m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
+                                                                                          + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(3,1:3) = mesh_location(mesh_index((/i,j+m,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
+                                                                                          + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(4,1:3) = mesh_location(mesh_index((/i,j-m,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
+                                                                                          + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(5,1:3) = mesh_location(mesh_index((/i,j,k+m/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
+                                                                                          + (/1_pInt,1_pInt,1_pInt/)
+     coordinates(6,1:3) = mesh_location(mesh_index((/i,j,k-m/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
+                                                                                          + (/1_pInt,1_pInt,1_pInt/)
      do l = 1_pInt, vec_tens
        divergence_field(i+1_pInt,j+1_pInt,k+1_pInt,l) = divergence_field(i+1_pInt,j+1_pInt,k+1_pInt,l) + FDcoefficient(m,order) * &
                 ((field(coordinates(1,1),coordinates(1,2),coordinates(1,3),l,1)- &

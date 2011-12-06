@@ -62,28 +62,22 @@
  FEmodelGeometry = getModelName()
  if (IO_open_inputFile(fileunit,FEmodelGeometry)) then
    if (trim(FEsolver) == 'Spectral') then
-     call get_command(commandLine)                                      ! may contain uppercase
+     call get_command(commandLine)                                                 ! may contain uppercase
      do i=1,len(commandLine)
        if(64 < iachar(commandLine(i:i)) .and. iachar(commandLine(i:i)) < 91) &
-         commandLine(i:i) = achar(iachar(commandLine(i:i))+32)          ! make lowercase
+         commandLine(i:i) = achar(iachar(commandLine(i:i))+32)                     ! make lowercase
      enddo
-     start = index(commandLine,'-r ',.true.) + 3_pInt                   ! search for '-r' and jump forward to given name
-     if (index(commandLine,'--restart ',.true.)>0) then                 ! if '--restart' is found, use that (contains '-r')
-       start = index(commandLine,'--restart ',.true.) + 10_pInt
-     endif               
-     length = index(commandLine(start:len(commandLine)),' ',.false.)
-     if(start /= 3_pInt) then                                            ! found at least -r
-       read(commandLine(start:start+length),'(I12)') restartReadStep
+     if (index(commandLine,'-r ',.true.)>0) &                                      ! look for -r
+       start = index(commandLine,'-r ',.true.) + 3_pInt                            ! set to position after trailing space
+     if (index(commandLine,'--restart ',.true.)>0) &                               ! look for --restart
+       start = index(commandLine,'--restart ',.true.) + 10_pInt                    ! set to position after trailing space
+
+     if(start /= 0_pInt) then                                                      ! found something
+       length = verify(commandLine(start:len(commandLine)),'0123456789',.false.)   ! where is first non number after argument?
+       read(commandLine(start:start+length),'(I12)') restartReadStep               ! read argument
+       restartRead  = max(0_pInt,restartReadStep) > 0_pInt
+       if(restartReadStep < 0_pInt) call IO_warning(warning_ID=34_pInt)
      endif
-     if (restartReadStep > 0_pInt) then
-       restartRead  = .true.
-       restartWrite = .true.
-     endif
-     if (restartReadStep == 0_pInt) then
-       restartRead  = .false.
-       restartWrite = .false.
-     endif
-     if(restartReadStep < 0_pInt) call IO_error(error_ID=47)
    else
      rewind(fileunit)
      do
@@ -142,7 +136,7 @@
        endif
      enddo
    elseif (FEsolver == 'Spectral') then
-     restartReadSpectral = .true.
+   !do nothing
    else
      call IO_error(106) ! cannot open file for old job info
    endif

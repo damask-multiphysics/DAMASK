@@ -3065,7 +3065,8 @@ logical error
 ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
 ! --- we use crystallite_orientation from above, so need a seperate loop
 
-!$OMP PARALLEL DO PRIVATE(myPhase,myInstance,myStructure,neighboring_e,neighboring_i,neighboringPhase,neighboringInstance,neighboringStructure)
+!$OMP PARALLEL DO PRIVATE(myPhase,myInstance,myStructure,neighboring_e,neighboring_i,neighboringPhase,&
+!$OMP neighboringInstance,neighboringStructure)
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       myPhase = material_phase(1,i,e)                                                                     ! get my phase

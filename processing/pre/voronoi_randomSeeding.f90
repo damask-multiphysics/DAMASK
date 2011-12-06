@@ -81,8 +81,8 @@ program voronoi
  open(21, file = trim(filename)//('.seeds'))
  write(21, '(i1,a1,a6)') 4,achar(9),'header'
  write(21, '(A, I8, A, I8, A, I8)') 'resolution  a ', a, '  b ', b, '  c ', c
- write(21,*) 'grains', N_Seeds
- write(21,*) 'random seed ',rndInit(1)
+ write(21, '(A, I8)') 'grains', N_Seeds
+ write(21, '(A, I8)') 'random seed ',rndInit(1)
  write(21,'(6(a,a1))') 'x',achar(9),'y',achar(9),'z',achar(9),'phi1',achar(9),'Phi',achar(9),'phi2',achar(9)
  do i = 1, n_Seeds
    write(21, '(6(F10.6,a1))'),seeds(i,1),     achar(9), seeds(i,2),     achar(9), seeds(i,3),     achar(9), &

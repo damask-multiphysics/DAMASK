@@ -310,7 +310,7 @@ parser.add_option('--box', dest='output_box', action='store_true', \
                   help='produce VTK box file')
 parser.add_option('--nobox', dest='output_box', action='store_false', \
                   help='omit VTK box file')
-parser.add_option('--scaling', dest='scaling', type='int', \
+parser.add_option('--scaling', dest='scaling', type='float', \
                   help='scaling of fluctuation [%default]')
 parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
                   help='set unit length for 2D model [%default]')
@@ -321,7 +321,7 @@ parser.set_defaults(tensor = [])
 parser.set_defaults(output_mesh = True)
 parser.set_defaults(output_points = False)
 parser.set_defaults(output_box = False)
-parser.set_defaults(scaling = 1)
+parser.set_defaults(scaling = 1.0)
 parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
 parser.set_defaults(cell = True)

@@ -169,7 +169,7 @@ program voronoi
  use IO
  implicit none
 
- logical gotN_Seeds, gotResolution
+ logical :: gotN_Seeds=.false., gotResolution = .false.
  logical, dimension(:), allocatable :: grainCheck
  character(len=1024) input_name, output_name, format1, format2, N_Digits, line, key
  integer(pInt) N_Seeds, theGrain, i, j, k, l, m
@@ -273,14 +273,14 @@ program voronoi
    if(geomdim(i) .gt. 0.0) validDim(i) = .true.
  enddo
  
- if(all(validDim == .false.)) then
+ if(all(validDim .eqv. .false.)) then
    geomdim(maxval(maxloc(resolution))) = 1.0
    validDim(maxval(maxloc(resolution))) = .true.
    print*, 'no valid dimension specified, using automated setting'
  endif
  
  do i=1,3
-   if (validDim(i) == .false.) then
+   if (validDim(i) .eqv. .false.) then
      print*, 'rescaling ivalid dimension' , i
      geomdim(i) = maxval(geomdim/real(resolution),validDim)*real(resolution(i))
     endif
@@ -317,11 +317,11 @@ program voronoi
  open(21, file = ((trim(output_name))//'.spectral'))
  write(20, '(A)'), '3 header'
  write(20, '(A, I8, A, I8, A, I8)'), 'resolution  a ', resolution(1), '  b ', resolution(2), '  c ', resolution(3)
- write(20, '(A, g15.10, A, g15.10, A, g15.10)'), 'dimension   x ', geomdim(1), '  y ', geomdim(2), '  z ', geomdim(3)
+ write(20, '(A, g17.10, A, g17.10, A, g17.10)'), 'dimension   x ', geomdim(1), '  y ', geomdim(2), '  z ', geomdim(3)
  write(20, '(A)'), 'homogenization  1'
 
  format1 = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//')'                    ! geom format
- format2 = '(3(tr2, f6.2), 3(tr2,g10.5), I10, a)'                                ! spectral (Lebensohn) format
+ format2 = '(3(tr2, f6.2), 3(tr2,g10.5), I10, a)'                            ! spectral (Lebensohn) format
 
 
 ! perform voronoi tessellation and write result to files

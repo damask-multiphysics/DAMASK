@@ -1166,8 +1166,6 @@ endfunction
    msg = 'incomplete information in spectral mesh header'
  case (46)
    msg = 'not a rotation defined for loadcase rotation'
- case (47)
-   msg = 'invalid restart increment given'
  case (50)
    msg = 'writing constitutive output description'
  case (100)
@@ -1416,6 +1414,8 @@ endfunction
  select case (warning_ID)
  case (33_pInt)
    msg = 'cannot guess along trajectory for first step of first loadcase'
+ case (34)
+   msg = 'invalid restart increment given'
  case (47_pInt)
    msg = 'No valid parameter for FFTW given, using FFTW_PATIENT'
  case (101_pInt)
