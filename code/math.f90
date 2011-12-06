@@ -3019,7 +3019,8 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
  real(pReal),             dimension(res(1)+2_pInt,res(2)+2_pInt,res(3)+2_pInt,3) :: wrappedCentroids
  ! other variables
  integer(pInt) :: i,j,k,n
- integer(pInt), dimension(3) :: diag = 0_pInt , shift = 0_pInt, lookup = 0_pInt, me
+ integer(pInt), dimension(3), parameter :: diag = 1_pInt
+ integer(pInt), dimension(3)            :: shift = 0_pInt, lookup = 0_pInt, me = 0_pInt
  integer(pInt), dimension(3,8) :: neighbor = reshape((/ &
                                      0_pInt, 0_pInt, 0_pInt, &
                                      1_pInt, 0_pInt, 0_pInt, &
@@ -3058,9 +3059,9 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
      do i = 0_pInt,res(1)
        do n = 1_pInt,8_pInt
  nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = &
-                                          nodes(i+1_pInt,j+1_pInt,k+1_pInt,3) + wrappedCentroids(i+1_pInt+neighbor(1_pInt,n), &
-                                                                        j+1_pInt+neighbor(2,n), &
-                                                                        k+1_pInt+neighbor(3,n),1:3)
+                                nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) + wrappedCentroids(i+1_pInt+neighbor(1_pInt,n), &
+                                                                                         j+1_pInt+neighbor(2,n), &
+                                                                                         k+1_pInt+neighbor(3,n),1:3)
  enddo; enddo; enddo; enddo
  nodes = nodes/8.0_pReal
 

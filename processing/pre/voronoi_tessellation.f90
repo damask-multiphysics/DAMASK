@@ -307,7 +307,7 @@ program voronoi
    do i = 1, N_Seeds
      write(20, trim(format1)), '[Grain', i, ']'
      write(20, trim(format2)), '(gauss)  phi1 ', grainEuler(i,1), '   Phi ', grainEuler(i,2), &
-           &'   Phi2 ', grainEuler(i,3), '   scatter 0   fraction 1'
+           &'   Phi2 ', grainEuler(i,3), '   scatter 0.0   fraction 1.0'
    end do
  close(20)
  print*, 'material.config done.'

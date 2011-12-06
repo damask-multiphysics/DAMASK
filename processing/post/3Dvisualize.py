@@ -337,7 +337,7 @@ for filename in args:
   m = re.search('(\d+)\shead',content[0],re.I)
   if m == None:
     continue
-  print filename,
+  print filename,'\n'
   sys.stdout.flush()
   
   headrow = int(m.group(1))
@@ -417,12 +417,12 @@ for filename in args:
                                                                         column['tensor'][options.defgrad]+9],
                                                                                 (res[0],res[1],res[2],3,3)))
 
+  #centroids = DAMASK.math.deformed_linear(res,dim,defgrad_av,
   centroids = DAMASK.math.deformed_fft(res,dim,defgrad_av,options.scaling,
                                             numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                    column['tensor'][options.defgrad]+9],
                                                                    (res[0],res[1],res[2],3,3)))
   ms = DAMASK.math.mesh_regular_grid(res,dim,defgrad_av,centroids)
-
   fields =  {\
              'tensor': {},\
              'vector': {},\
