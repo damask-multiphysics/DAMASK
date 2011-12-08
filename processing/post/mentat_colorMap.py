@@ -126,7 +126,10 @@ parser.add_option("-i","--inverse", action = "store_true",
                   help = "invert legend [%default]")
 parser.add_option(     "--palette", action = "store_true", 
                   dest = "palette", \
-                  help = "output plain rgb palette values [%default]")
+                  help = "output plain rgb palette integer values (0-255) [%default]")
+parser.add_option(     "--palettef", action = "store_true", 
+                  dest = "palettef", \
+                  help = "output plain rgb palette float values (0.0-1.0) [%default]")
 parser.add_option("-p", "--port", type = "int",\
                   dest = "port",\
                   help = "Mentat connection port [%default]")
@@ -174,7 +177,7 @@ if msg == []:
 	hlsColors_limits = [[0.0,0.0,0.0],[1.0,1.0,1.0]]
 
 	if options.inverse:
-	  hlsColor_range = [hlsColor_range[1],hlsColor_range[0],]
+	  hlsColor_range = [hlsColor_range[1],hlsColor_range[0]]
 
 	for i in range(2):			
 		for j in range(min(3,len(hlsColor_range[i]))):
@@ -205,6 +208,10 @@ rgbColors = [ hls_to_rgb(hlsColor[0], hlsColor[1], hlsColor[2])
 if options.palette:
   for rgb in rgbColors:
     print '\t'.join(map(lambda x: str(int(255*x)),rgb))
+  sys.exit(0)
+if options.palettef:
+  for rgb in rgbColors:
+    print '\t'.join(map(str,rgb))
   sys.exit(0)
   
 ### connect to mentat and change colorMap
