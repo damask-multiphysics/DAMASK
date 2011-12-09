@@ -52,7 +52,7 @@ DEBUG3 =-fp-stack-check -g -traceback -gen-interfaces -warn interfaces
 DEBUG4 =-heap-arrays
 
 #checks for standard
-DEBUG5 =stand std03/std95
+DEBUG5 =-stand std03/std95
 
 #SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3)
 ########################################################################################

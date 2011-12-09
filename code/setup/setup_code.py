@@ -15,13 +15,14 @@ bin_link = { \
                 'DAMASK_spectral.exe',
              ],
             }
-
-basedir = damask_variables.relPath('code/')
+            
+damask_variables = damask_tools.DAMASK_TOOLS()
+baseDir = damask_variables.relPath('code/')
 
 for arch in architectures:
 	me = architectures[arch]
 	try:
-		parentFile = open(basedir+os.sep+me['parent'])
+		parentFile = open(baseDir+os.sep+me['parent'])
 		parentContent = parentFile.readlines()
 		parentFile.close()
 	except IOError:
@@ -30,17 +31,17 @@ for arch in architectures:
 
 	
 	for version in me['versions'][1:]:
-		childFile = open(basedir+os.sep+version.join(os.path.splitext(me['parent'])),'w')
+		childFile = open(baseDir+os.sep+version.join(os.path.splitext(me['parent'])),'w')
 		for line in parentContent:
 			childFile.write(line.replace(me['versions'][0],version))
 		childFile.close()
 
 # changing dirs in make file
-damask_variables = damask_tools.DAMASK_TOOLS()
-makefile = open(os.path.join(basedir,'makefile'))
+
+makefile = open(os.path.join(baseDir,'makefile'))
 content = makefile.readlines()
 makefile.close()
-makefile = open(os.path.join(basedir,'makefile'),'w')
+makefile = open(os.path.join(baseDir,'makefile'),'w')
 for line in content:
   if line.startswith('FFTWPATH'):
     line='FFTWPATH =%s\n'%(damask_variables.pathInfo['fftw'])
@@ -52,13 +53,14 @@ for line in content:
 makefile.close()
 
 # compiling spectral code
-if raw_input("Do you want to compile the spectral code now? (y/n) ") is 'y' or 'Y':
+compile = raw_input("Do you want to compile the spectral code now? (y/n) ")
+if (compile == 'y' or compile == 'Y'):
   compiler_switches = raw_input("Please give compiling switches (Enter to use default) ")
-  os.system('make --directory %s clean'%(basedir))
-  os.system('make --directory %s %s'%(basedir,compiler_switches))
+  os.system('make --directory %s clean'%(baseDir))
+  os.system('make --directory %s %s'%(baseDir,compiler_switches))
 
 if '--clean' in [s.lower() for s in sys.argv]:
-  os.system('make --directory %s clean'%basedir)
+  os.system('make --directory %s clean'%baseDir)
 
 
 for dir in bin_link:
