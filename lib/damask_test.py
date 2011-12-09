@@ -126,7 +126,7 @@ class DAMASK_TEST():
         return val
 
     def compare_to_reference(self):    
-        import string
+        import string, numpy as N
         print 'comparing results against reference_results...'
         os.chdir(os.path.join(self.test_dir,'current_results'))
         cur=self.read_val_from_file(fname='postProc/'+self.post_txt)
@@ -135,7 +135,8 @@ class DAMASK_TEST():
         err=abs((ref/cur)-1.) # relative tolerance
         #err=abs(ref-cur)      # absolute tolerance
         print 'tol', self.tol
-        if err.any()>self.tol: 
+        print 'max error', N.max(err)
+        if N.max(err)>self.tol:
           return False 
         return True
         

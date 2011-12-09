@@ -4,7 +4,7 @@ import os,sys,string,re
 from optparse import OptionParser
 
 pathInfo = {\
-            'acml': './acml4.4.0',
+            'acml': '/opt/acml4.4.0',
             'fftw': './fftw',
             'msc':  '/msc',
            }

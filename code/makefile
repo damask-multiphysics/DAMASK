@@ -104,7 +104,7 @@ else
 FFTWOPTIONS =$(FFTWPATH)/libfftw3_threads.a $(FFTWPATH)/libfftw3.a -lpthread
 endif
 endif
-BLAS=-L $(ACMLPATH) -lacml_mp
+BLAS=$(ACMLPATH)/libacml_mp.a
 
 #setting defaults in case of single core compilation
 else
@@ -118,7 +118,7 @@ else
 FFTWOPTIONS =$(FFTWPATH)/libfftw3.a
 endif
 endif
-BLAS=-L $(ACMLPATH) -lacml
+BLAS=$(ACMLPATH)/libacml.a
 endif
 
 
