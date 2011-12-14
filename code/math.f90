@@ -757,7 +757,7 @@ pure function math_transpose3x3(A)
         - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
         + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
 
- if (DetA > tiny(DetA)) then
+ if (abs(DetA) > tiny(abs(DetA))) then
    math_inv3x3(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
    math_inv3x3(2,1) = (-A(2,1) * A(3,3) + A(2,3) * A(3,1)) / DetA
    math_inv3x3(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1)) / DetA
@@ -796,7 +796,7 @@ pure function math_transpose3x3(A)
         - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
         + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
 
- if (DetA <= tiny(DetA)) then
+ if (abs(DetA) <= tiny(abs(DetA))) then
    error = .true.
  else
    InvA(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
