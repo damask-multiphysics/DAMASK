@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # $Id$
 # Writes version specific files for different MARC releases
-import os,sys,string,damask_tools
+import os,sys,string,damask
 
 architectures = { 
                  'marc': { 
@@ -16,8 +16,8 @@ bin_link = { \
              ],
             }
             
-damask_variables = damask_tools.DAMASK_TOOLS()
-baseDir = damask_variables.relPath('code/')
+damaskEnv = damask.Environment('../../')          # script location relative to root
+baseDir = damaskEnv.relPath('code/')
 
 for arch in architectures:
 	me = architectures[arch]
@@ -44,10 +44,10 @@ makefile.close()
 makefile = open(os.path.join(baseDir,'makefile'),'w')
 for line in content:
   if line.startswith('FFTWPATH'):
-    line='FFTWPATH =%s\n'%(damask_variables.pathInfo['fftw'])
+    line='FFTWPATH =%s\n'%(damaskEnv.pathInfo['fftw'])
     print line
   if line.startswith('ACMLROOT'):
-    line='ACMLROOT =%s\n'%(damask_variables.pathInfo['acml'])
+    line='ACMLROOT =%s\n'%(damaskEnv.pathInfo['acml'])
     print line
   makefile.writelines(line)
 makefile.close()
@@ -67,9 +67,9 @@ for dir in bin_link:
   for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(baseDir,dir,file))
     if (file == ''):
-      sym_link = os.path.abspath(os.path.join(damask_variables.binDir(),dir))
+      sym_link = os.path.abspath(os.path.join(damaskEnv.binDir(),dir))
     else:
-      sym_link = os.path.abspath(os.path.join(damask_variables.binDir(),os.path.splitext(file)[0]))
+      sym_link = os.path.abspath(os.path.join(damaskEnv.binDir(),os.path.splitext(file)[0]))
     print sym_link,'-->',src
     if os.path.lexists(sym_link):
       os.remove(sym_link)    
