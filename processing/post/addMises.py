@@ -118,8 +118,8 @@ for file in files:
     for datatype,labels in active.items():                                  # loop over vector,tensor
       for label in labels:                                                  # loop over all requested norms
         table.data_append(Mises(datatype,
-                                numpy.array(map(float,items[column[datatype][label]:
-                                                            column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)))
+                                numpy.array(map(float,table.data[column[datatype][label]:
+                                                                 column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)))
 
     table.data_write()                                                      # output processed line
 
