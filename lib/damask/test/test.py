@@ -84,9 +84,6 @@ class Test():
           print('Could not delete current_results')
         os.mkdir('current_results')
 
-    def copy_from_ref(self):
-        
-        
     def calc_current_results(self):
         '''
            Should be defined in the individual tests
@@ -161,8 +158,4 @@ class Test():
            print(cmd)
            os.system(cmd)        # PHILIP: reason is that for loops and the like get broken with line by line execution from here...
 
-
-if __name__ == "__main__":
-    test=DAMASK_TESTER()
-    test.run_test()
     
