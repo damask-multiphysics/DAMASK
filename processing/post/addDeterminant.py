@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os,re,sys,math,string,damask_tools
+import os,re,sys,math,string,damask
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -79,7 +79,7 @@ else:
 for file in files:
   if file['name'] != 'STDIN': print file['name']
 
-  table = damask_tools.ASCII_TABLE(file['input'],file['output'],False)      # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
   table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))

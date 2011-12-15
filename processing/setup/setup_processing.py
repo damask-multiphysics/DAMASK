@@ -2,10 +2,9 @@
 
 # Makes postprocessing routines acessible from everywhere.
 
-import os,sys,glob,string
+import os,sys,glob,string,damask
 from optparse import OptionParser, Option
 
-import damask_tools
 
 # -----------------------------
 class extendableOption(Option):
@@ -52,10 +51,9 @@ else:
 acml_subdir='%s64/lib'%options.compiler
 
 
-#getting pathinfo
-damask_variables = damask_tools.DAMASK_TOOLS()
-baseDir = damask_variables.relPath('processing/')
-codeDir = damask_variables.relPath('code/')
+damaskEnv = damask.Environment()
+baseDir = damaskEnv.relPath('processing/')
+codeDir = damaskEnv.relPath('code/')
 
 #define ToDo list
 bin_link = { \
@@ -101,7 +99,7 @@ compile = { \
 
 execute = { \
           'postMath' : [ 
-                        'rm %s'%(os.path.join(damask_variables.relPath('lib/'),'DAMASK.so')),
+                        'rm %s'%(os.path.join(damaskEnv.relPath('lib/'),'DAMASK.so')),
                         # The following command is used to compile math.f90 and make the functions defined in DAMASK_math.pyf
                         # available for python in the module DAMASK_math.so
                         # It uses the fortran wrapper f2py that is included in the numpy package to construct the
@@ -112,9 +110,9 @@ execute = { \
                         '-c --fcompiler=%s '%(f2py_compiler) +\
                         '%s ' %(os.path.join(codeDir,'DAMASK2Python_helper.f90'))+\
                         '%s ' %(os.path.join(codeDir,'math.f90'))+\
-                        '%s ' %(os.path.join(damask_variables.pathInfo['fftw'],'libfftw3.a'))+\
-                        '%s' %(os.path.join(damask_variables.pathInfo['acml'],acml_subdir,'libacml.a'),
-                        'mv %s %s' %(os.path.join(codeDir,'DAMASK.so'),damask_variables.relPath('lib/')),
+                        '%s ' %(os.path.join(damaskEnv.pathInfo['fftw'],'libfftw3.a'))+\
+                        '%s' %(os.path.join(damaskEnv.pathInfo['acml'],acml_subdir,'libacml.a')),
+                        'mv %s %s' %(os.path.join(codeDir,'DAMASK.so'),damaskEnv.relPath('lib/')),
                         ]
             }
 
@@ -135,7 +133,7 @@ os.chdir(codeDir)                   # needed for compilation with gfortran and f
 for tasks in execute:
   for cmd in execute[tasks]:
     os.system(cmd)  
-os.chdir(damask_variables.relPath('processing/setup/'))
+os.chdir(damaskEnv.relPath('processing/setup/'))
 
 modules = glob.glob('*.mod')
 for module in modules:
@@ -146,16 +144,11 @@ for dir in bin_link:
   for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(baseDir,dir,file))
     if (file == ''):
-      sym_link = os.path.abspath(os.path.join(damask_variables.binDir(),dir))
+      sym_link = os.path.abspath(os.path.join(damaskEnv.binDir(),dir))
     else:
-      sym_link = os.path.abspath(os.path.join(damask_variables.binDir(),os.path.splitext(file)[0]))
+      sym_link = os.path.abspath(os.path.join(damaskEnv.binDir(),os.path.splitext(file)[0]))
     print sym_link,'-->',src
     if os.path.lexists(sym_link):
       os.remove(sym_link)    
     os.symlink(src,sym_link)
     
-    #--- uncomment next lines to remove your old symbolic links in ~/bin
-    #old_link=sym_link.replace(damask_root,os.getenv('HOME'))
-    #if os.path.lexists(old_link):
-    #  os.remove(old_link)
-
