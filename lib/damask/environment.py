@@ -41,7 +41,9 @@ class Environment():
       content = file.readlines()
       file.close()
       for line in content:
-        self.pathInfo[line.split()[0].lower()] = os.path.normpath(os.path.join(self.relPath('lib/'),line.split()[1]))
+        items = line.split() + ['','']
+        self.pathInfo[items[0].lower()] = {False: os.path.normpath(os.path.join(self.relPath('lib/'),items[1])),
+                                            True: items[1]}[items[1] == '']
     except:
       pass
 
