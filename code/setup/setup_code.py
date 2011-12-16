@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # $Id$
 # Writes version specific files for different MARC releases
-import os,sys,string,damask
+import os,sys,string,re,damask
 
 architectures = { 
                  'marc': { 
@@ -36,19 +36,15 @@ for arch in architectures:
 			childFile.write(line.replace(me['versions'][0],version))
 		childFile.close()
 
-# changing dirs in make file
+# changing dirs in makefile
 
 makefile = open(os.path.join(baseDir,'makefile'))
 content = makefile.readlines()
 makefile.close()
 makefile = open(os.path.join(baseDir,'makefile'),'w')
 for line in content:
-  if line.startswith('FFTWPATH'):
-    line='FFTWPATH =%s\n'%(damaskEnv.pathInfo['fftw'])
-    print line
-  if line.startswith('ACMLROOT'):
-    line='ACMLROOT =%s\n'%(damaskEnv.pathInfo['acml'])
-    print line
+  m = re.match(r'(FFTW|ACML)ROOT\s*:?=',line)
+  if m: line = '%sROOT := %s\n'%(m.group(1),damaskEnv.pathInfo[m.group(1).lower()])
   makefile.writelines(line)
 makefile.close()
 

@@ -3,20 +3,25 @@
 ########################################################################################
 # Be sure to remove all files compiled with different options by using "make clean"
 # 
-# Uses OpenMP to parallelise the material subroutines (set number of cores with "export DAMASK_NUM_THREADS=n" to n)
-# Uses linux threads to parallelise fftw3
-# Besides of the f90 files written at MPIE, the two library files of fftw3 "libfftw3_threads.a" "libfftw3.a" are also needed
-# Install fftw3 (v3.3 is tested):
-# -Apply the following patch to api/f77funcs.h, line 92 in the FFTW source:
+# Uses OpenMP to parallelize the material subroutines (set number of threads with "export DAMASK_NUM_THREADS=n" to n)
 #
+# Install fftw3 (v3.3 is tested):
+# + patch api/f77funcs.h, line 92 in the FFTW source with:
 #  FFTW_VOIDFUNC F77(set_timelimit,SET_TIMELIMIT)(double *t)
 #  {
 #      X(set_timelimit)(*t);
 #  }
-# -Do "./configure --enable-threads --enable-sse2 --enable-shared" and "make"; "make install" is not needed
-#  as long as the two library files "libfftw3_threads.a" "libfftw3.a" are copied to the /../lib directory.
-# for single precision also use --enable-float
-# Need the AMD Core Math Library to be installed (v 4.4 is tested)
+# + run
+#   ./configure --enable-threads --enable-sse2 --enable-shared [-enable-float]
+#   make
+#   make install
+# + specify in the "pathinfo:FFTW" where FFTW was installed.
+#   We essentially look for two library files "lib/libfftw3_threads.a" and "lib/libfftw3.a", so you can copy those, for instance,
+#   into DAMASK_ROOT/lib/fftw/lib/ and specify "./fftw/" as pathinfo:FFTW
+# Use --enable-float in above configure for single precision...
+# Uses linux threads to parallelize fftw3
+#
+# Instead of the AMD Core Math Library a standard "liblapack.a/dylib/etc." can be used by leaving pathinfo:ACML blank
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
@@ -25,19 +30,16 @@
 # PORTABLE = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
 # OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, 03 + further options for all files
 # OPENMP = TRUE (FALSE): OpenMP multiprocessor support
-# FFTWPATH =TAKE_FFTW_PATH, will be adjusted by setup_code.py
-# ACMLROOT =TAKE_ACLM_ROOT, will be adjusted by setup_code.py
-# ACMLPATH =$(ACMLROOT)/"compilerdir"/lib (...) Path to ACML Library, choose according to your system
-# ACMLPATH =$(ACMLROOT/"compilerdir"_mp/lib (...) Path to ACML Library with multicore support, choose according to your system
+# FFTWROOT = pathinfo:FFTW (will be adjusted by setup_code.py)
+# ACMLROOT = pathinfo:ACML (will be adjusted by setup_code.py)
+# ACMLPATH =$(ACMLROOT)/"compilerdir"/lib (...) Path to ACML, choose according to your system
+# ACMLPATH =$(ACMLROOT/"compilerdir"_mp/lib (...) Path to ACML with multicore support, choose according to your system
 # "compilerdir" is "intel64" for ifort
-# FFTWOPTIONS =$(FFTWPATH)/libfftw3.a $(FFTWPATH)/libfftw3_threads.a -lpthread (...) Path to FFTW library files with Linux threads (multicore) support
-# FFTWOPTIONS =$(FFTWPATH)/libfftw3.a (...) Path to FFTW library files without Linux threads (multicore) support
-# FFTWOPTIONS is different for single and double precision. Choose the options to use OpenMP instead of pthreads support or change the directory
 # PREFIX: specify an arbitrary prefix
 # SUFFIX: specify an arbitrary suffix
 # COMPILERNAME = overwrite name of Compiler, e.g. using mpich-g90 instead of ifort
 ########################################################################################
-# Here are some usefull debugging switches. Switch on by uncommenting the #SUFFIX line at the end of this section:
+# Here are some useful debugging switches. Switch on by uncommenting the #SUFFIX line at the end of this section:
 # information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
 # check if an array index is too small (<1) or too large!
 DEBUG1 =-check bounds -g
@@ -57,98 +59,95 @@ DEBUG5 =-stand std03/std95
 #SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3)
 ########################################################################################
 
-#default values below will be set by setup_code.py
-#FFTWPATH =../lib
-#ACMLROOT =/opt/acml4.4.0
+#auto values will be set by setup_code.py
+FFTWROOT := auto
+ACMLROOT := auto
 
-FFTWPATH =/nethome/m.diehl/DAMASK/lib
-ACMLROOT =/opt/acml4.4.0
+F90 ?= ifort
 
-ifndef F90
-F90 =ifort
+COMPILERNAME ?= $(F90)
+
+OPENMP ?= ON
+
+OPTIMIZATION ?= DEFENSIVE
+
+ifeq "$(OPTIMIZATION)" "OFF"
+OPTI    := OFF
+MAXOPTI := OFF
+endif
+ifeq "$(OPTIMIZATION)" "DEFENSIVE"
+OPTI    := DEFENSIVE
+MAXOPTI := DEFENSIVE
+endif
+ifeq "$(OPTIMIZATION)" "AGGRESSIVE"
+OPTI    := AGGRESSIVE
+MAXOPTI := DEFENSIVE
+endif
+ifeq "$(OPTIMIZATION)" "ULTRA"
+OPTI    := AGGRESSIVE
+MAXOPTI := AGGRESSIVE
 endif
 
-ifndef OPTIMIZATION
-OPTIMIZATION =DEFENSIVE
-endif
-MAXOPTI =$(OPTIMIZATION)
-
-ifeq ($(OPTIMIZATION),AGGRESSIVE)
-MAXOPTI=DEFENSIVE
+ifndef OPTI
+OPTI    := DEFENSIVE
+MAXOPTI := DEFENSIVE
 endif
 
-ifeq ($(OPTIMIZATION),ULTRA)
-MAXOPTI=AGGRESSIVE
-OPTIMIZATION=AGGRESSIVE
+ifeq  "$(PORTABLE)" "FALSE"
+PORTABLE_SWITCH = -msse3
 endif
 
-ifeq ($(PORTABLE),FALSE)
-PORTABLE_SWITCH =-msse3
-endif
-
-ifndef OPENMP
-OPENMP=ON
-endif
-
-# setting defaults in case of multicore support
-ifeq ($(OPENMP),ON)
-OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
-OPENMP_FLAG_gfortran =-fopenmp
-ifndef ACMLPATH
-ACMLPATH =$(ACMLROOT)/$(F90)64_mp/lib
-endif
-ifndef FFTWOPTIONS
-ifeq ($(PRECISION),single)
-FFTWOPTIONS =$(FFTWPATH)/libfftw3f_threads.a $(FFTWPATH)/libfftw3f.a -lpthread
+ifeq "$(PRECISION)" "single"
+FFTWPREC = f
 else
-FFTWOPTIONS =$(FFTWPATH)/libfftw3_threads.a $(FFTWPATH)/libfftw3.a -lpthread
+FFTWPREC =
 endif
-endif
-BLAS=$(ACMLPATH)/libacml_mp.a
 
-#setting defaults in case of single core compilation
+
+# settings for multicore support
+ifeq "$(OPENMP)" "ON"
+OPENMP_FLAG_ifort = -openmp -openmp-report0 -parallel
+OPENMP_FLAG_gfortran = -fopenmp
+ACML_ARCH =_mp
+LIBRARIES += -lfftw3$(FFTWPREC)_threads -lpthread
+endif
+
+LIBRARIES += -lfftw3$(FFTWPREC)
+LIB_DIRS += -L$(FFTWROOT)/lib
+
+ifdef ACMLROOT
+LIB_DIRS += -L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
+LIBRARIES += -lacml$(ACML_ARCH)
 else
-ifndef ACMLPATH
-ACMLPATH=$(ACMLROOT)/$(F90)64/lib
-endif
-ifndef FFTWOPTIONS
-ifeq ($(PRECISION),single)
-FFTWOPTIONS =$(FFTWPATH)/libfftw3f.a
-else
-FFTWOPTIONS =$(FFTWPATH)/libfftw3.a
-endif
-endif
-BLAS=$(ACMLPATH)/libacml.a
+LIBRARIES += -llapack
 endif
 
 
-OPTIMIZATION_OFF_ifort =-O0
-OPTIMIZATION_OFF_gfortran =-O0
-OPTIMIZATION_DEFENSIVE_ifort =-O2
-OPTIMIZATION_DEFENSIVE_gfortran =-O2
-OPTIMIZATION_AGGRESSIVE_ifort =-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div
-OPTIMIZATION_AGGRESSIVE_gfortran =-O3 $(PORTABLE_SWITCH) -march=opteron -ffast-math -funroll-loops -ftree-vectorize -ftree-loop-linear
+OPTIMIZATION_OFF_ifort           :=-O0
+OPTIMIZATION_OFF_gfortran        :=-O0
+OPTIMIZATION_DEFENSIVE_ifort     :=-O2
+OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
+OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div
+OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
-COMPILE_OPTIONS_ifort =-fpp -diag-disable 8291,8290
-COMPILE_OPTIONS_gfortran =-xf95-cpp-input -fno-range-check
 
-COMPILE =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZATION_${OPTIMIZATION}_${F90}} -c
-COMPILE_MAXOPTI =${OPENMP_FLAG_${F90}} ${COMPILE_OPTIONS_${F90}} ${OPTIMIZATION_${MAXOPTI}_${F90}} -c
+COMPILE_OPTIONS_ifort    := -fpp -diag-disable 8291,8290
+COMPILE_OPTIONS_gfortran := -xf95-cpp-input -fno-range-check
 
-ifndef COMPILERNAME
-COMPILERNAME=$(F90)
-endif
+COMPILE         = $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) -c
+COMPILE_MAXOPTI = $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) -c
 
-ifeq ($(PRECISION),single)
+
+ifeq "$(PRECISION)" "single"
 DAMASK_spectral_single.exe: DAMASK_spectral_single.o CPFEM.a
-	$(PREFIX)	$(COMPILERNAME) $(OPENMP_FLAG_$(F90)) -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a $(FFTWOPTIONS)\
-  constitutive.a advanced.a basics.a $(BLAS)
+	$(PREFIX)	$(COMPILERNAME) $(OPENMP_FLAG_$(F90)) -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a \
+  constitutive.a advanced.a basics.a $(LIB_DIRS) $(LIBRARIES)
 DAMASK_spectral_single.o: DAMASK_spectral_single.f90 CPFEM.o 
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE_MAXOPTI) DAMASK_spectral_single.f90 $(SUFFIX)
 else
 DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
-	$(PREFIX)	$(COMPILERNAME) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a $(FFTWOPTIONS)\
-  constitutive.a advanced.a basics.a $(BLAS)
+	$(PREFIX)	$(COMPILERNAME) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a \
+  constitutive.a advanced.a basics.a $(LIB_DIRS) $(LIBRARIES)
 DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o 
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE_MAXOPTI) DAMASK_spectral.f90 $(SUFFIX)
 endif
@@ -205,7 +204,7 @@ mesh.o: mesh.f90 FEsolving.o
 FEsolving.o: FEsolving.f90 basics.a
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) FEsolving.f90 $(SUFFIX)
 
-ifeq ($(PRECISION),single)
+ifeq "$(PRECISION)" "single"
 basics.a: debug.o math.o
 	ar rc basics.a debug.o math.o numerics.o IO.o DAMASK_spectral_interface.o prec_single.o
 else
@@ -222,7 +221,7 @@ numerics.o: numerics.f90 IO.o
 IO.o: IO.f90 DAMASK_spectral_interface.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) IO.f90 $(SUFFIX)
   
-ifeq ($(PRECISION),single)
+ifeq "$(PRECISION)" "single"
 DAMASK_spectral_interface.o: DAMASK_spectral_interface.f90 prec_single.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) DAMASK_spectral_interface.f90 $(SUFFIX)
 prec_single.o: prec_single.f90
@@ -240,3 +239,4 @@ clean:
 	rm -rf *.mod
 	rm -rf *.a
 	rm -rf *.exe
+
