@@ -44,6 +44,7 @@ class ASCIItable():
        get column labels by either read the first row, or 
        --if keyword "head[*]" is present-- the last line of the header
     '''
+    import re
     try:
       self.__IO__['in'].seek(0)
     except:
