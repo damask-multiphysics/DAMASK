@@ -2,7 +2,7 @@
 
 DEFAULT_INSTALLDIR='/msc'
 DEFAULT_ACMLDIR='/opt/acml4.0.0'
-DEFAULT_VERSION='2010.2'
+DEFAULT_VERSION='2011'
 
 WORKINGDIR=`dirname $0`
 
@@ -34,7 +34,7 @@ echo "MSC installation path: $INSTALLDIR"
 
 ACMLDIR=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  INSTALLDIR=`grep acml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  ACMLDIR=`grep acml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
 fi
 while [ ! -d "$ACMLDIR" ] || [ -z "$ACMLDIR" ]
 do
