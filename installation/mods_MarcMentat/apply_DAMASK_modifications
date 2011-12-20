@@ -60,11 +60,6 @@ do
   read BLASTYPE
 done
 
-echo $IKMDIR
-echo $ACMLDIR
-echo $LAPACKDIR
-echo $FFTWDIR
-
 if [ ! -d "$FFTWDIR" ]; then
   echo "error, FFTW must be installed and specified in DAMASK_ROOT/lib/pathinfo"
   exit
@@ -72,7 +67,6 @@ fi
 
 BLASDIR=${BLASDIR%/}               # remove trailing slash
 FFTWDIR=${FFTWDIR%/}               # remove trailing slash
-echo '3'
 
 case $BLASTYPE in
     IKML | ikml) 
@@ -90,8 +84,7 @@ case $BLASTYPE in
     ;;
 esac
 
-FFTW=" -L${FFTWDIR}/lib -lfftw3_threads -lfftw3"
-echo '4'
+FFTW=" -L${FFTWDIR}/local/lib -lfftw3"
 
 # tools
 echo ''
