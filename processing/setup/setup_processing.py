@@ -63,6 +63,8 @@ bin_link = { \
                 'mentat_spectralBox.py',
                 'patchFromReconstructedBoundaries.py',
                 'spectral_geomCheck.py',
+                'spectral_geomScale.py',
+                'spectral_geomCrop.py',
                 'spectral_minimalSurface.py',
                 'spectral_vicinityOffset.py',
                 'voronoi_randomSeeding.exe',
@@ -83,7 +85,6 @@ bin_link = { \
                 'postResults.py',
                 'spectral_iterationCount.py',
                 'spectral_convergence.py',
-                'spectral_scaleGeom.py',
                 ],
             }
 
