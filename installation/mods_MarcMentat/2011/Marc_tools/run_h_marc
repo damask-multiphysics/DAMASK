@@ -1857,8 +1857,8 @@ fi
 # user subroutine used
 #
 # add BLAS and FFTW options for linking
-  BLAS="%BLAS"
-  FFTW="%FFTW"
+  BLAS="%BLAS%"
+  FFTW="%FFTW%"
 
   
   if test "$user"
