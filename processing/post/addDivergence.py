@@ -94,7 +94,7 @@ for choice in options.accuracy:
     parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
 if options.fft: options.accuracy.append('fft')
 
-resSkip = [lambda a,b: a+b for a,b in zip(options.res,options.skip)]
+resSkip = map(lambda (a,b): a+b,zip(options.res,options.skip))
 datainfo = {                                                               # list of requested labels per datatype
              'vector':     {'len':3,
                             'label':[]},
