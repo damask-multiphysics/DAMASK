@@ -1856,9 +1856,9 @@ fi
 #
 # user subroutine used
 #
-# add BLAS options for linking (taken from ACML, AMD CORE MATH LIBRARY)
-  AMD_BLAS=" -L %ACMLDIR%/ifort64_mp/lib -lacml_mp"
-
+# add BLAS and FFTW options for linking
+  BLAS="%BLAS%"
+  FFTW="%FFTW%"
   
   if test "$user"
   then
@@ -2835,7 +2835,8 @@ then
     $TKLIBS  \
     $MRCLIBS     \
     $METISLIBS \
-    $AMD_BLAS   \
+    $BLAS   \
+    $FFTW   \
     $SYSLIBS  \
     $SECLIBS      || \
     {
@@ -3127,7 +3128,8 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
-  $AMD_BLAS   \
+  $BLAS   \
+  $FFTW   \
   $SYSLIBS  \
   $SECLIBS    || \
   {
@@ -3418,7 +3420,8 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
-  $AMD_BLAS   \
+  $BLAS   \
+  $FFTW   \
   $SYSLIBS \
   $SECLIBS         || \
   {

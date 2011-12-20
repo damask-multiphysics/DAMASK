@@ -32,21 +32,58 @@ done
 INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
 echo "MSC installation path: $INSTALLDIR"
 
-ACMLDIR=''
+BLASDIR=''
+FFTWDIR=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
+  IKMLDIR=`grep ikml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
   ACMLDIR=`grep acml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-fi
-while [ ! -d "$ACMLDIR" ] || [ -z "$ACMLDIR" ]
-do
-  echo "Input path of ACML installation: [${DEFAULT_ACMLDIR}]"
-  read ACMLDIR
-  if [ -z $ACMLDIR ]; then
-    ACMLDIR=${DEFAULT_ACMLDIR}
+  LAPACKDIR=`grep lapack $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  FFTWDIR=`grep fftw $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  if [ -d "$IKMLDIR" ]
+    BLASDIR=$IKMLDIR
+    BLASTYPE='IKML'
+  elif [ -d "$ACMLDIR" ]
+    BLASDIR=$ACMLDIR
+    BLASTYPE='ACML'
+  elif [ -d "$LAPACKDIR" ]
+    BLASDIR=$LAPACKDIR
+    BLASTYPE='LAPACK'
   fi
+fi
+
+while [ ! -d "$BLASDIR" ] || [ -z "$BLASDIR" ]
+do
+  echo "Input path of BLAS installation:"
+  read BLASDIR
+  echo "Input path of BLAS installation [IKML | ACML | LAPACK]:"
+  read BLASTYPE
 done
 
-ACMLDIR=${ACMLDIR%/}               # remove trailing slash
-echo "ACML installation path: $ACMLDIR"
+if [ ! -d "$FFTWDIR" ]
+  echo "error, FFTW must be installed and specified in DAMASK_ROOT/lib/pathinfo"
+  exit
+fi
+
+BLASDIR=${BLASDIR%/}               # remove trailing slash
+FFTWDIR=${FFTWDIR%/}               # remove trailing slash
+
+case $BLASTYPE in
+    IKML | ikml) 
+    BLAS=" -mkl"
+    ;;
+    ACML | acml) 
+    BLAS=" -L $BLASDIR/ifort64_mp/lib -lacml_mp"
+    ;;
+    LAPACK | lapack) 
+    BLAS=" -L $BLASDIR/lib -llapack"
+    ;;
+    *)
+    echo "error, BLAS type must be IKML, ACML, or LAPACK"
+    exit
+    ;;
+esac
+
+FFTW=" -L${FFTWDIR}/lib -lfftw3_threads -lfftw3"
 
 # tools
 echo ''
@@ -61,8 +98,9 @@ for filename in 'comp_user' \
                 'include_linux64'; do
   cp $WORKINGDIR/$VERSION/Marc_tools/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
-  echo $theDIR/$filename | xargs perl -pi -e "s:%ACMLDIR%:${ACMLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
+  echo $theDIR/$filename | xargs perl -pi -e "s:%BLAS%:${BLAS}:g"
+  echo $theDIR/$filename | xargs perl -pi -e "s:%FFTW%:${FFTW}:g"
   echo $filename
 done
 
@@ -76,7 +114,6 @@ for filename in 'edit_window' \
                 'submit3'; do
   cp $WORKINGDIR/$VERSION/Mentat_bin/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
-  echo $theDIR/$filename | xargs perl -pi -e "s:%ACMLDIR%:${ACMLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $filename
 done
