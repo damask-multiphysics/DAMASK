@@ -65,10 +65,11 @@ pathInfo = {}
 DamaskRoot = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])),'../'))
 try:                                        # check for user-defined pathinfo
   file = open(os.path.join(DamaskRoot,'lib/pathinfo'))
-  content = file.readlines()
+  content = map(lambda string: string.strip(),file.readlines())
   file.close()
   for line in content:
-    pathInfo[line.split()[0].lower()] = os.path.normpath(line.split()[1])
+    if not (line.startswith('#') or line == ''):
+      pathInfo[line.split()[0].lower()] = os.path.normpath(line.split()[1])
 except:
   pass
 
