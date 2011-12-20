@@ -18,7 +18,7 @@ echo "MSC version: $VERSION"
 
 INSTALLDIR=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  INSTALLDIR=`grep msc $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  INSTALLDIR=`grep -vE "^[[:space:]]*#|^$" | grep msc $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
 fi
 while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
 do
@@ -35,10 +35,10 @@ echo "MSC installation path: $INSTALLDIR"
 BLASDIR=''
 FFTWDIR=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  IKMLDIR=`grep ikml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  ACMLDIR=`grep acml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  LAPACKDIR=`grep lapack $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  FFTWDIR=`grep fftw $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  IKMLDIR=`grep -vE "^[[:space:]]*#|^$" | grep ikml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  ACMLDIR=`grep -vE "^[[:space:]]*#|^$" | grep acml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  LAPACKDIR=`grep -vE "^[[:space:]]*#|^$" | grep lapack $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  FFTWDIR=`grep -vE "^[[:space:]]*#|^$" | grep fftw $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
   if [ -d "$IKMLDIR" ]
     BLASDIR=$IKMLDIR
     BLASTYPE='IKML'
@@ -72,10 +72,10 @@ case $BLASTYPE in
     BLAS=" -mkl"
     ;;
     ACML | acml) 
-    BLAS=" -L $BLASDIR/ifort64_mp/lib -lacml_mp"
+    BLAS=" -L$BLASDIR/ifort64_mp/lib -lacml_mp"
     ;;
     LAPACK | lapack) 
-    BLAS=" -L $BLASDIR/lib -llapack"
+    BLAS=" -L$BLASDIR/lib -L$BLASDIR/lib64 -llapack"
     ;;
     *)
     echo "error, BLAS type must be IKML, ACML, or LAPACK"
