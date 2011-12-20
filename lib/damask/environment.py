@@ -7,12 +7,8 @@ class Environment():
               ]
 
   def __init__(self,rootRelation = '.'):
-    self.pathInfo = {\
-                     'acml': '/opt/acml4.4.0',
-                     'fftw': '.',
-                     'msc':  '/msc',
-                    }
     self.rootRelation = rootRelation                    
+    self.pathInfo = {}
     self.get_pathInfo()
 
   def relPath(self,relative = '.'):
@@ -38,12 +34,13 @@ class Environment():
   def get_pathInfo(self):
     try:                                                    # check for user-defined pathinfo
       file = open(self.relPath('lib/pathinfo'))
-      content = file.readlines()
+      content = map(lambda string: string.strip(),file.readlines())
       file.close()
       for line in content:
-        items = line.split() + ['','']
-        self.pathInfo[items[0].lower()] = {False: os.path.normpath(os.path.join(self.relPath('lib/'),items[1])),
-                                            True: items[1]}[items[1] == '']
+        if not (line.startswith('#') or line == ''):
+          items = line.split() + ['','']
+          self.pathInfo[items[0].lower()] = {False: os.path.normpath(os.path.join(self.relPath('lib/'),items[1])),
+                                              True: items[1]}[items[1] == '']
     except:
       pass
 
