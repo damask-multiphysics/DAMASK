@@ -18,8 +18,9 @@ echo "MSC version: $VERSION"
 
 INSTALLDIR=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  INSTALLDIR=`grep -vE "^[[:space:]]*#|^$" | grep msc $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  INSTALLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep msc | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
 fi
+
 while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
 do
   echo "Input path of MARC/MENTAT installation: [${DEFAULT_INSTALLDIR}]"
@@ -35,17 +36,17 @@ echo "MSC installation path: $INSTALLDIR"
 BLASDIR=''
 FFTWDIR=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  IKMLDIR=`grep -vE "^[[:space:]]*#|^$" | grep ikml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  ACMLDIR=`grep -vE "^[[:space:]]*#|^$" | grep acml $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  LAPACKDIR=`grep -vE "^[[:space:]]*#|^$" | grep lapack $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  FFTWDIR=`grep -vE "^[[:space:]]*#|^$" | grep fftw $WORKINGDIR/../../lib/pathinfo | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  if [ -d "$IKMLDIR" ]
+  IKMLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i ikml | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  ACMLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i acml | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  LAPACKDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i lapack | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  FFTWDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i fftw | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  if [ -d "$IKMLDIR" ]; then
     BLASDIR=$IKMLDIR
     BLASTYPE='IKML'
-  elif [ -d "$ACMLDIR" ]
+  elif [ -d "$ACMLDIR" ]; then
     BLASDIR=$ACMLDIR
     BLASTYPE='ACML'
-  elif [ -d "$LAPACKDIR" ]
+  elif [ -d "$LAPACKDIR" ]; then
     BLASDIR=$LAPACKDIR
     BLASTYPE='LAPACK'
   fi
@@ -59,13 +60,19 @@ do
   read BLASTYPE
 done
 
-if [ ! -d "$FFTWDIR" ]
+echo $IKMDIR
+echo $ACMLDIR
+echo $LAPACKDIR
+echo $FFTWDIR
+
+if [ ! -d "$FFTWDIR" ]; then
   echo "error, FFTW must be installed and specified in DAMASK_ROOT/lib/pathinfo"
   exit
 fi
 
 BLASDIR=${BLASDIR%/}               # remove trailing slash
 FFTWDIR=${FFTWDIR%/}               # remove trailing slash
+echo '3'
 
 case $BLASTYPE in
     IKML | ikml) 
@@ -84,6 +91,7 @@ case $BLASTYPE in
 esac
 
 FFTW=" -L${FFTWDIR}/lib -lfftw3_threads -lfftw3"
+echo '4'
 
 # tools
 echo ''
