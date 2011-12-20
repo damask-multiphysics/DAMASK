@@ -60,15 +60,14 @@ DEBUG5 =-stand std03/std95
 ########################################################################################
 
 #auto values will be set by setup_code.py
-FFTWROOT := auto
-ACMLROOT := auto
+FFTWROOT := 
+IKMLROOT := 
+ACMLROOT := 
+LAPACKROOT := 
 
 F90 ?= ifort
-
 COMPILERNAME ?= $(F90)
-
 OPENMP ?= ON
-
 OPTIMIZATION ?= DEFENSIVE
 
 ifeq "$(OPTIMIZATION)" "OFF"
@@ -115,11 +114,18 @@ endif
 LIBRARIES += -lfftw3$(FFTWPREC)
 LIB_DIRS += -L$(FFTWROOT)/lib
 
+ifdef IKMLROOT
+LIBRARIES += -mkl
+else
 ifdef ACMLROOT
 LIB_DIRS += -L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES += -lacml$(ACML_ARCH)
 else
+ifdef LAPACKROOT
+LIB_DIRS += -L$(LAPACKROOT)/lib -L$(LAPACKROOT)/lib64
 LIBRARIES += -llapack
+endif
+endif
 endif
 
 

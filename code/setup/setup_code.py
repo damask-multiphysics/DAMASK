@@ -43,9 +43,14 @@ content = makefile.readlines()
 makefile.close()
 makefile = open(os.path.join(baseDir,'makefile'),'w')
 for line in content:
-  m = re.match(r'(FFTW|ACML)ROOT\s*:?=',line)
-  if m: line = '%sROOT := %s\n'%(m.group(1),damaskEnv.pathInfo[m.group(1).lower()])
-  makefile.writelines(line)
+  m = re.match(r'(FFTW|IKML|ACML|LAPACK)ROOT\s*:?=',line)
+  if m:
+    if m.group(1).lower() in damaskEnv.pathInfo:
+      substitution = damaskEnv.pathInfo[m.group(1).lower()]
+    else:
+      substitution = ''
+    line = '%sROOT := %s\n'%(m.group(1),substitution)
+  makefile.write(line)
 makefile.close()
 
 # compiling spectral code
