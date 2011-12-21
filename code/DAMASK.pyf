@@ -75,7 +75,7 @@ python module DAMASK ! in
             complex*16, dimension(res[0],res[1],res[2],3,3),                depend(res[0],res[1],res[2])    :: defgrad_fft
         end subroutine deformed_fft
 
-        subroutine curl_fft(res,geomdim,vec_tens,field,curl_fft) ! in :math:math.f90
+        subroutine curl_fft(res,geomdim,vec_tens,field,curl_field) ! in :math:math.f90
             ! input variables
             integer, dimension(3),                                     intent(in)                                          :: res
             real*8,  dimension(3),                                     intent(in)                                          :: geomdim

@@ -76,6 +76,7 @@ bin_link = { \
                 'addCalculation.py',
                 'addDeterminant.py',
                 'addDivergence.py',
+                'addCurl.py',
                 'addMises.py',
                 'addNorm.py',
                 'addStrainTensors.py',
@@ -111,7 +112,8 @@ execute = { \
                         '-c --fcompiler=%s '%(f2py_compiler) +\
                         '%s ' %(os.path.join(codeDir,'DAMASK2Python_helper.f90'))+\
                         '%s ' %(os.path.join(codeDir,'math.f90'))+\
-                        '%s ' %(os.path.join(damaskEnv.pathInfo['fftw'],'libfftw3.a'))+\
+                        '%s '
+			%(os.path.join(damaskEnv.pathInfo['fftw'],'lib/libfftw3.a'))+\
                         '%s' %(os.path.join(damaskEnv.pathInfo['acml'],acml_subdir,'libacml.a')),
                         'mv %s %s' %(os.path.join(codeDir,'DAMASK.so'),damaskEnv.relPath('lib/')),
                         ]

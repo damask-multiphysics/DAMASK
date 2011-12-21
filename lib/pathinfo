@@ -1,6 +1,6 @@
 # possible options are MSC, FFTW, IKML, ACML, LAPACK
 
-#ACML  /opt/acml5.0.0
+ACML  /opt/acml4.4.0
 LAPACK  /usr
 FFTW  ./fftw
 MSC   /msc
