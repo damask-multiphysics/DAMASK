@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# $Id$
+
 import os, sys
 import subprocess,shutil
 

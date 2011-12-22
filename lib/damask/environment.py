@@ -1,3 +1,5 @@
+# $Id$
+
 import os,sys,string,re
 
 class Environment():

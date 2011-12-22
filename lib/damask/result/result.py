@@ -1,3 +1,5 @@
+# $Id$
+
 import damask.result
 
 class Result():

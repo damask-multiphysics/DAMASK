@@ -1,3 +1,5 @@
+# $Id$
+
 class ASCIItable():
   '''
      There should be a doc string here  :)

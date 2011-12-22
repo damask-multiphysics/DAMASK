@@ -1,3 +1,5 @@
+# $Id$
+
 from .result import Result
 
 class Spectral(Result):

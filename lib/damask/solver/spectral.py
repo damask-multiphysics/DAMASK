@@ -1,3 +1,5 @@
+# $Id$
+
 from .solver import Solver
 
 class Spectral(Solver):

@@ -1,3 +1,5 @@
+# $Id$
+
 class Material():
   '''
      Reads, manipulates and writes material.config files
