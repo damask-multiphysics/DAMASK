@@ -240,6 +240,11 @@ prec.o: prec.f90
 endif
 
 
+tidy: 
+	rm -rf *.o
+	rm -rf *.mod
+	rm -rf *.a
+
 clean: 
 	rm -rf *.o
 	rm -rf *.mod

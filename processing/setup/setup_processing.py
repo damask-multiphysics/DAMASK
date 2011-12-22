@@ -36,24 +36,36 @@ Sets up the pre and post processing tools of DAMASK
 """ + string.replace('$Id: addDivergence.py 1129 2011-12-01 12:01:13Z MPIE\m.diehl $','\n','\\n')
 )
 
+compilers = ['intel','ifort','intel32','gfortran','gnu95']
+
 parser.add_option('--F90',              dest='compiler', type='string', \
-                                        help='name of F90 compiler [%default]')
+                                        help='name of F90 compiler')
                                         
-parser.set_defaults(compiler = 'ifort')
 (options,filenames) = parser.parse_args()
 
-#translating name of compiler for use with f2py and setting subdirname of acml
-if options.compiler == 'gfortran':
-  f2py_compiler='gnu95  --f90flags="-fno-range-check"'
-else:
-  f2py_compiler='intelem'
+if options.compiler not in compilers:
+  parser.error('compiler has to be one out of --F90 %s'%(', '.join(compilers)))
 
-acml_subdir='%s64/lib'%options.compiler
+f2py_compiler = {
+                  'gfortran': 'gnu95  --f90flags="-fno-range-check"',
+                  'gnu95':    'gnu95  --f90flags="-fno-range-check"',
+                  'intel32':  'intel',
+                  'intel':    'intelem',
+                  'ifort':    'intelem',
+                }[options.compiler]
 
 
 damaskEnv = damask.Environment()
 baseDir = damaskEnv.relPath('processing/')
 codeDir = damaskEnv.relPath('code/')
+
+if   'ikml' in damaskEnv.pathInfo and damaskEnv.pathInfo['ikml'] != '':
+  lib_lapack = ''  # TODO!!
+elif 'acml' in damaskEnv.pathInfo and damaskEnv.pathInfo['acml'] != '':
+  lib_lapack = '-L%s -lacml'%(os.path.join(damaskEnv.pathInfo['acml'],'%s64'))                                    # can we use linker flag?
+#  lib_lapack = os.path.join(damaskEnv.pathInfo['acml'],'%s64/lib/libacml.a'%options.compiler)     # why linking against static lib?
+elif 'lapack' in damaskEnv.pathInfo and damaskEnv.pathInfo['lapack'] != '':
+  lib_lapack = '-L%s -llapack'%(damaskEnv.pathInfo['lapack'])                                     # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 
 #define ToDo list
 bin_link = { \
@@ -101,21 +113,21 @@ compile = { \
 
 execute = { \
           'postMath' : [ 
-                        'rm %s'%(os.path.join(damaskEnv.relPath('lib/'),'DAMASK.so')),
+                        'make tidy',
+                        'rm %s'%(os.path.join(damaskEnv.relPath('lib/damask'),'core.so')),
                         # The following command is used to compile math.f90 and make the functions defined in DAMASK_math.pyf
                         # available for python in the module DAMASK_math.so
                         # It uses the fortran wrapper f2py that is included in the numpy package to construct the
                         # module postprocessingMath.so out of the fortran code postprocessingMath.f90
                         # for the generation of the pyf file:
                         #f2py -m DAMASK -h DAMASK.pyf --overwrite-signature ../../code/math.f90 \
-                        'f2py %s '%(os.path.join(codeDir,'DAMASK.pyf')) +\
-                        '-c --fcompiler=%s '%(f2py_compiler) +\
-                        '%s ' %(os.path.join(codeDir,'DAMASK2Python_helper.f90'))+\
-                        '%s ' %(os.path.join(codeDir,'math.f90'))+\
-                        '%s '
-			%(os.path.join(damaskEnv.pathInfo['fftw'],'lib/libfftw3.a'))+\
-                        '%s' %(os.path.join(damaskEnv.pathInfo['acml'],acml_subdir,'libacml.a')),
-                        'mv %s %s' %(os.path.join(codeDir,'DAMASK.so'),damaskEnv.relPath('lib/')),
+                        'f2py %s'%(os.path.join(codeDir,'damask.core.pyf')) +\
+                        ' -c --fcompiler=%s'%(f2py_compiler) +\
+                        ' %s'%(os.path.join(codeDir,'core_modules.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'math.f90'))+\
+                        ' -L%s -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
+                        ' %s'%lib_lapack,
+                        'mv %s %s' %(os.path.join(codeDir,'core.so'),damaskEnv.relPath('lib/damask')),
                         ]
             }
 
@@ -135,9 +147,14 @@ for dir in compile:
 os.chdir(codeDir)                   # needed for compilation with gfortran and f2py
 for tasks in execute:
   for cmd in execute[tasks]:
-    os.system(cmd)  
-os.chdir(damaskEnv.relPath('processing/setup/'))
+    try:
+      print 'executing...:',cmd
+      os.system(cmd)
+    except:
+      print 'failed..!'
+      pass
 
+os.chdir(damaskEnv.relPath('processing/setup/'))
 modules = glob.glob('*.mod')
 for module in modules:
   print 'removing', module

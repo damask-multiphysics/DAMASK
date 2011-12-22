@@ -1,4 +1,4 @@
-! $Id: postprocessingMath.pyf 979 2011-08-25 18:18:38Z MPIE\m.diehl $
+! $Id$
 !    -*- f90 -*-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Note: the context of this file is case sensitive.
@@ -11,8 +11,8 @@
 !   - if the dimension of an array depend on a array that is itself an input, use the C-Syntax: (1) becomes [0] etc.
 !   - be sure that the precision defined for math.f90 is integer, real*8, and complex*16
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-python module DAMASK ! in 
-   interface  ! in :DAMASK
+python module core ! in 
+   interface  ! in :core
       module math ! in :math:math.f90
 
         subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch) ! in  :math:math.f90
@@ -156,5 +156,5 @@ python module DAMASK ! in
         end subroutine math_equivStrain33_field
      end module math
    end interface 
-end python module DAMASK
+end python module core
 
