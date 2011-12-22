@@ -25,19 +25,17 @@
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
-# PRECISION = double (single): floating point precision
-# F90 = ifort (gfortran): compiler, choose Intel or GNU
-# PORTABLE = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
-# OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, 03 + further options for all files
-# OPENMP = TRUE (FALSE): OpenMP multiprocessor support
-# FFTWROOT = pathinfo:FFTW (will be adjusted by setup_code.py)
-# ACMLROOT = pathinfo:ACML (will be adjusted by setup_code.py)
-# ACMLPATH =$(ACMLROOT)/"compilerdir"/lib (...) Path to ACML, choose according to your system
-# ACMLPATH =$(ACMLROOT/"compilerdir"_mp/lib (...) Path to ACML with multicore support, choose according to your system
-# "compilerdir" is "intel64" for ifort
-# PREFIX: specify an arbitrary prefix
-# SUFFIX: specify an arbitrary suffix
+# F90          = ifort (gfortran): compiler, choose Intel or GNU
 # COMPILERNAME = overwrite name of Compiler, e.g. using mpich-g90 instead of ifort
+# PORTABLE     = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
+# OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
+# OPENMP       = TRUE (FALSE): OpenMP multiprocessor support
+# FFTWROOT     = pathinfo:FFTW   (will be adjusted by setup_code.py - required in pathinfo)
+# IKMLROOT     = pathinfo:IKML   (will be adjusted by setup_code.py if present in pathinfo)
+# ACMLROOT     = pathinfo:ACML   (will be adjusted by setup_code.py if present in pathinfo)
+# LAPACKROOT   = pathinfo:LAPACK (will be adjusted by setup_code.py if present in pathinfo)
+# PREFIX       = arbitrary prefix
+# SUFFIX       = arbitrary suffix
 ########################################################################################
 # Here are some useful debugging switches. Switch on by uncommenting the #SUFFIX line at the end of this section:
 # information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
@@ -50,7 +48,7 @@ DEBUG2 =-check arg_temp_created
 #check from time to time
 DEBUG3 =-fp-stack-check -g -traceback -gen-interfaces -warn interfaces
 
-#should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Problably it helps also to unlimit other limits
+#should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
 DEBUG4 =-heap-arrays
 
 #checks for standard
@@ -96,22 +94,16 @@ ifeq  "$(PORTABLE)" "FALSE"
 PORTABLE_SWITCH = -msse3
 endif
 
-ifeq "$(PRECISION)" "single"
-FFTWPREC = f
-else
-FFTWPREC =
-endif
-
 
 # settings for multicore support
 ifeq "$(OPENMP)" "ON"
 OPENMP_FLAG_ifort = -openmp -openmp-report0 -parallel
 OPENMP_FLAG_gfortran = -fopenmp
 ACML_ARCH =_mp
-LIBRARIES += -lfftw3$(FFTWPREC)_threads -lpthread
+LIBRARIES += -lfftw3_threads -lpthread
 endif
 
-LIBRARIES += -lfftw3$(FFTWPREC)
+LIBRARIES += -lfftw3
 LIB_DIRS += -L$(FFTWROOT)/lib
 
 ifdef IKMLROOT
@@ -144,31 +136,31 @@ COMPILE         = $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(OPTIMIZATION
 COMPILE_MAXOPTI = $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) -c
 
 
-ifeq "$(PRECISION)" "single"
-DAMASK_spectral_single.exe: DAMASK_spectral_single.o CPFEM.a
-	$(PREFIX)	$(COMPILERNAME) $(OPENMP_FLAG_$(F90)) -o DAMASK_spectral_single.exe DAMASK_spectral_single.o CPFEM.a \
-  constitutive.a advanced.a basics.a $(LIB_DIRS) $(LIBRARIES)
-DAMASK_spectral_single.o: DAMASK_spectral_single.f90 CPFEM.o 
-	$(PREFIX)	$(COMPILERNAME) $(COMPILE_MAXOPTI) DAMASK_spectral_single.f90 $(SUFFIX)
-else
+
 DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
 	$(PREFIX)	$(COMPILERNAME) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a \
   constitutive.a advanced.a basics.a $(LIB_DIRS) $(LIBRARIES)
+
 DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o 
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE_MAXOPTI) DAMASK_spectral.f90 $(SUFFIX)
-endif
+
+
 
 CPFEM.a: CPFEM.o
 	ar rc CPFEM.a homogenization.o homogenization_RGC.o homogenization_isostrain.o crystallite.o CPFEM.o constitutive.o
 
 CPFEM.o: CPFEM.f90 homogenization.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) CPFEM.f90 $(SUFFIX)
+
 homogenization.o: homogenization.f90 homogenization_isostrain.o homogenization_RGC.o crystallite.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) homogenization.f90 $(SUFFIX)
+
 homogenization_RGC.o: homogenization_RGC.f90 constitutive.a
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) homogenization_RGC.f90 $(SUFFIX)
+
 homogenization_isostrain.o: homogenization_isostrain.f90 basics.a advanced.a
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) homogenization_isostrain.f90 $(SUFFIX)
+
 crystallite.o: crystallite.f90 constitutive.a
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) crystallite.f90 $(SUFFIX)
 
@@ -200,44 +192,40 @@ constitutive_phenopowerlaw.o: constitutive_phenopowerlaw.f90 basics.a advanced.a
 advanced.a: lattice.o
 	ar rc advanced.a FEsolving.o mesh.o material.o lattice.o
 
-
 lattice.o: lattice.f90 material.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) lattice.f90 $(SUFFIX)
+
 material.o: material.f90 mesh.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) material.f90 $(SUFFIX)
+
 mesh.o: mesh.f90 FEsolving.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) mesh.f90 $(SUFFIX)
+
 FEsolving.o: FEsolving.f90 basics.a
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) FEsolving.f90 $(SUFFIX)
 
-ifeq "$(PRECISION)" "single"
-basics.a: debug.o math.o
-	ar rc basics.a debug.o math.o numerics.o IO.o DAMASK_spectral_interface.o prec_single.o
-else
+
+
 basics.a: debug.o math.o
 	ar rc basics.a debug.o math.o numerics.o IO.o DAMASK_spectral_interface.o prec.o
-endif
 
 debug.o: debug.f90 numerics.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) debug.f90 $(SUFFIX)
+
 math.o: math.f90 numerics.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) math.f90 $(SUFFIX)
+
 numerics.o: numerics.f90 IO.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) numerics.f90 $(SUFFIX)
+
 IO.o: IO.f90 DAMASK_spectral_interface.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) IO.f90 $(SUFFIX)
   
-ifeq "$(PRECISION)" "single"
-DAMASK_spectral_interface.o: DAMASK_spectral_interface.f90 prec_single.o
-	$(PREFIX)	$(COMPILERNAME) $(COMPILE) DAMASK_spectral_interface.f90 $(SUFFIX)
-prec_single.o: prec_single.f90
-	$(PREFIX)	$(COMPILERNAME) $(COMPILE) prec_single.f90 $(SUFFIX)
-else
 DAMASK_spectral_interface.o: DAMASK_spectral_interface.f90 prec.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) DAMASK_spectral_interface.f90 $(SUFFIX)
+
 prec.o: prec.f90
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) prec.f90 $(SUFFIX)
-endif
 
 
 tidy: 
