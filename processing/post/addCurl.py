@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os,re,sys,math,string,numpy,DAMASK
+import os,re,sys,math,string,numpy,damask
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -175,7 +175,7 @@ for file in files:
                                                                                   options.res[0]*options.res[1]*options.res[2])]).\
                                                                                   reshape(options.res[0],options.res[1],options.res[2],\
                                                                                   3,datainfo[datatype]['len']//3)
-        curl_field[datatype][label] = DAMASK.math.curl_fft(options.res,options.dim,datainfo[datatype]['len']//3,values[datatype][label])
+        curl_field[datatype][label] = damask.core.math.curl_fft(options.res,options.dim,datainfo[datatype]['len']//3,values[datatype][label])
     idx = 0
     for line in data:
       items = line.split()[:len(headers)]

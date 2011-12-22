@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os,re,sys,math,string,numpy,DAMASK
+import os,re,sys,math,string,numpy,damask
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -246,9 +246,9 @@ for file in files:
                                                                                   reshape((options.res[0],options.res[1],options.res[2],\
                                                                                   datainfo[datatype]['len']//3))
           if accuracy == 'fft':
-            div_field[datatype][label][accuracy] = DAMASK.math.divergence_fft(options.res,options.dim,datainfo[datatype]['len']//3,values[datatype][label])
+            div_field[datatype][label][accuracy] = damask.core.math.divergence_fft(options.res,options.dim,datainfo[datatype]['len']//3,values[datatype][label])
           else:
-            div_field[datatype][label][accuracy] = DAMASK.math.divergence_fdm(options.res,options.dim,datainfo[datatype]['len']//3,eval(accuracy)//2-1,values[datatype][label])
+            div_field[datatype][label][accuracy] = damask.core.math.divergence_fdm(options.res,options.dim,datainfo[datatype]['len']//3,eval(accuracy)//2-1,values[datatype][label])
 
     idx = 0
     for line in data:
