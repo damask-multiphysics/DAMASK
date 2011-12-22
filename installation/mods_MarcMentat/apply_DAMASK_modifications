@@ -84,7 +84,7 @@ case $BLASTYPE in
     ;;
 esac
 
-FFTW=" -L${FFTWDIR}/local/lib -lfftw3"
+FFTW=" -lfftw3"
 
 # tools
 echo ''
