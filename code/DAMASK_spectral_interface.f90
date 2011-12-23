@@ -46,6 +46,47 @@ subroutine DAMASK_interface_init()
  do i=1,len(commandLine)                                           ! remove capitals
    if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
  enddo
+
+ start = index(commandLine,'-h',.true.) + 3_pInt                   ! search for '-h' and jump to first char of geometry
+ if (index(commandLine,'--help',.true.)>0) then                    ! if '--help' is found, use that (contains '-g')
+   start = index(commandLine,'--geom',.true.) + 7_pInt
+ endif
+ if(start/=3_pInt) then
+   print '(a)',  '#############################################################'
+   print '(a)',  'DAMASK spectral:'
+   print '(a)',  'The spectral method boundary value problem solver for'
+   print '(a)',  'the Duesseldorf Advanced Material Simulation Kit'
+   print '(a)',  '#############################################################'
+   print '(a)',  'Valid command line switches:'
+   print '(a)',  '   --geom    (-g, --geometry)'
+   print '(a)',  '   --load    (-l, --loadcase)'
+   print '(a)',  '   --restart (-r)'
+   print '(a)',  '   --help    (-h)'
+   print '(a)',  ' '
+   print '(a)',  'Mandatory Arguments:'
+   print '(a)',  '  --load PathToLoadFile/NameOfLoadFile.load'
+   print '(a)',  '       "PathToGeomFile" will be the working directory.'
+   print '(a)',  '       Make sure the file "material.config" exists in the working'
+   print '(a)',  '           directory'   
+   print '(a)',  '       For further configuration place "numerics.config"'
+   print '(a)',  '           and "numerics.config" in that directory.'
+   print '(a)',  ' '
+   print '(a)',  '  --geom PathToGeomFile/NameOfGeom.geom'
+   print '(a)',  ' '
+   print '(a)',  'Optional Argument:'
+   print '(a)',  '  --restart XX'
+   print '(a)',  '       Restarts at total step No. XX and overwrites existing'
+   print '(a)',  '           results file "NameOfGeom_NameOfLoadFile_spectral.out".'
+   print '(a)',  '       Works only if the restart information for total step No. XX'
+   print '(a)',  '            is available.'
+   print '(a)',  'Help:'
+   print '(a)',  '  --help'
+   print '(a)',  '       Prints this message and exits'
+   print '(a)',  ' '
+   stop
+ endif
+ if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) & ! check for correct number of given arguments (no --help)
+   stop 'Wrong Nr. of Arguments. Run DAMASK_spectral.exe --help'   ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
  start = index(commandLine,'-g',.true.) + 3_pInt                   ! search for '-g' and jump to first char of geometry
  if (index(commandLine,'--geom',.true.)>0) then                    ! if '--geom' is found, use that (contains '-g')
    start = index(commandLine,'--geom',.true.) + 7_pInt

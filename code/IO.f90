@@ -1172,8 +1172,6 @@ endfunction
    msg = 'opening material configuration'
  case (101)
    msg = 'opening input file'
- case (102)
-   msg = 'DAMASK_spectral has wrong number of arguments'
  case (103)
    msg = 'odd resolution given'
  case (104)
