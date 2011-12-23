@@ -122,13 +122,15 @@ program DAMASK_spectral
 ! variables storing information for spectral method and FFTW
  real(pReal), dimension(3,3) ::                         xiDyad                                   ! product of wave vectors
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                ! gamma operator (field) for spectral method
- real(pReal), dimension(:,:,:,:), allocatable ::        xi                                       ! wave vector field 
+ real(pReal), dimension(:,:,:,:), allocatable ::        xi                                       ! wave vector field for divergence and for gamma operator
  integer(pInt), dimension(3) ::                         k_s                                
  integer*8, dimension(3) ::                             fftw_plan                                ! plans for fftw (forward and backward)
  
 ! loop variables, convergence etc.
  real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc                                     ! elapsed time, begin of interval, time interval 
  real(pReal) :: guessmode, err_div, err_stress, err_stress_tol, p_hat_avg
+ complex(pReal) :: err_div_avg_complex
+ complex(pReal), dimension(3) :: divergence_complex
  complex(pReal), parameter ::               img = cmplx(0.0_pReal,1.0_pReal)
  real(pReal), dimension(3,3), parameter ::  ones = 1.0_pReal, zeroes = 0.0_pReal
  complex(pReal), dimension(3,3) ::          temp33_Complex
@@ -139,6 +141,7 @@ program DAMASK_spectral
  logical :: errmatinv, regrid = .false.
  real(pReal) :: defgradDet, defgradDetMax, defgradDetMin
  real(pReal) :: correctionFactor
+ integer(pInt), dimension(3) :: cutting_freq
 
 ! --- debugging variables
  real(pReal), dimension(:,:,:,:), allocatable :: divergence
@@ -156,12 +159,10 @@ program DAMASK_spectral
  bc_init%rotation = math_I3                                                               ! assume no rotation
  
 ! --- initializing model size independed parameters
- !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                          ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
- if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) &! check for correct number of given arguments
-    call IO_error(error_ID=102_pInt)
+ !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                        ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
  
  call DAMASK_interface_init()
- 
+
  print '(a)', ''
  print '(a,a)', ' <<<+-  DAMASK_spectral init  -+>>>'
  print '(a,a)', ' $Id$'
@@ -474,11 +475,12 @@ program DAMASK_spectral
        allocate (defgradold (  res(1),res(2),res(3),3,3));  defgradold  = 0.0_pReal
        allocate (coordinates(3,res(1),res(2),res(3)));      coordinates = 0.0_pReal
        allocate (temperature(  res(1),res(2),res(3)));      temperature = bc(1)%temperature  ! start out isothermally
-       allocate (xi         (3,res(1)/2+1,res(2),res(3)));  xi          =0.0_pReal 
+       allocate (xi         (3,res(1)/2+1,res(2),res(3)));  xi          =0.0_pReal
        allocate (workfft(res(1)+2,res(2),res(3),3,3)); workfft = 0.0_pReal
        if (debugDivergence) allocate (divergence(res(1)+2,res(2),res(3),3)); divergence = 0.0_pReal
 
        wgt = 1.0_pReal/real(Npoints, pReal)
+              
        call dfftw_plan_many_dft_r2c(fftw_plan(1),3,(/res(1),res(2),res(3)/),9,&
          workfft,(/res(1)       +2_pInt,res(2),res(3)/),1,(res(1)       +2_pInt)*res(2)*res(3),&
          workfft,(/res(1)/2_pInt+1_pInt,res(2),res(3)/),1,(res(1)/2_pInt+1_pInt)*res(2)*res(3),fftw_planner_flag)   
@@ -538,24 +540,26 @@ program DAMASK_spectral
              if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2) 
                do i = 1, res(1)/2_pInt + 1_pInt
                  k_s(1) = i - 1_pInt
-                 xi(3,i,j,k) = 0.0_pReal                                                  ! 2D case
-                 if(res(3) > 1_pInt) xi(3,i,j,k) = real(k_s(3), pReal)/geomdimension(3) ! 3D case  
-                                            xi(2,i,j,k) = real(k_s(2), pReal)/geomdimension(2)
-                                            xi(1,i,j,k) = real(k_s(1), pReal)/geomdimension(1)
+                 xi(3,i,j,k) = 0.0_pReal                                                      ! 2D case
+                 if(res(3) > 1_pInt) xi(3,i,j,k) = real(k_s(3), pReal)/geomdimension(3)       ! 3D case
+                                     xi(2,i,j,k) = real(k_s(2), pReal)/geomdimension(2)       ! 2D and 3D case
+                                     xi(1,i,j,k) = real(k_s(1), pReal)/geomdimension(1)       ! 2D and 3D case
        enddo; enddo; enddo
-  !remove highest frequencies for calculation of divergence (CAREFULL, they will be used for pre calculatet gamma operator!) 
+       
+  !remove the given highest frequencies for calculation of the gamma operator
+       cutting_freq = (/0_pInt,0_pInt,0_pInt/)                                                      ! for 0,0,0, just the highest freq. is removed
        do k = 1_pInt ,res(3); do j = 1_pInt ,res(2); do i = 1_pInt,res(1)/2_pInt + 1_pInt
-         if(k==res(3)/2_pInt+1_pInt) xi(3,i,j,k)= 0.0_pReal
-         if(j==res(2)/2_pInt+1_pInt) xi(2,i,j,k)= 0.0_pReal
-         if(i==res(1)/2_pInt+1_pInt) xi(1,i,j,k)= 0.0_pReal
+         if((k .gt. res(3)/2_pInt - cutting_freq(3)).and.(k .le. res(3)/2_pInt + 1_pInt + cutting_freq(3))) xi(3,i,j,k)= 0.0_pReal
+         if((j .gt. res(2)/2_pInt - cutting_freq(2)).and.(j .le. res(2)/2_pInt + 1_pInt + cutting_freq(2))) xi(2,i,j,k)= 0.0_pReal
+         if((i .gt. res(1)/2_pInt - cutting_freq(1)).and.(i .le. res(2)/2_pInt + 1_pInt + cutting_freq(1))) xi(1,i,j,k)= 0.0_pReal
        enddo; enddo; enddo
- 
+
        if(memory_efficient) then                            ! allocate just single fourth order tensor
          allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
        else                                                 ! precalculation of gamma_hat field
          allocate (gamma_hat(res(1)/2_pInt + 1_pInt ,res(2),res(3),3,3,3,3)); gamma_hat = 0.0_pReal
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)/2_pInt + 1_pInt
-           if (any(xi(:,i,j,k) /= 0.0_pReal)) then     
+           if (any(xi(1:3,i,j,k) /= 0.0_pReal)) then
              do l = 1_pInt ,3_pInt; do m = 1_pInt,3_pInt
                xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
              enddo; enddo
@@ -651,7 +655,7 @@ program DAMASK_spectral
        iter = 0_pInt
        err_div = 2.0_pReal * err_div_tol                                                  ! go into loop 
        
-       c_prev = math_rotate_forward3x3x3x3(c_current*wgt,bc(loadcase)%rotation)        ! calculate stiffness from former step
+       c_prev = math_rotate_forward3x3x3x3(c_current*wgt,bc(loadcase)%rotation)           ! calculate stiffness from former step
        if(size_reduced > 0_pInt) then                                                     ! calculate compliance in case stress BC is applied
          c_prev99 = math_Plain3333to99(c_prev)
          k = 0_pInt                                                                       ! build reduced stiffness
@@ -731,7 +735,7 @@ program DAMASK_spectral
                               cstress,dsde, pstress,dPdF)
            CPFEM_mode = 2_pInt
 
-           workfft(i,j,k,1:3,1:3) = pstress                                             ! build up average P-K stress 
+           workfft(i,j,k,1:3,1:3) = pstress                                                                        ! build up average P-K stress 
            c_current = c_current + dPdF
          enddo; enddo; enddo
 
@@ -742,32 +746,60 @@ program DAMASK_spectral
          print '(a)', ''
          print '(a)', '... calculating equilibrium with spectral method ............'
 
-         call dfftw_execute_dft_r2c(fftw_plan(1),workfft,workfft)                                                  ! FFT of pstress
-   
-         p_hat_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(workfft(1,1,1,1:3,1:3),&                       ! L_2 norm of average stress in fourier space,  
-                                                  math_transpose3x3(workfft(1,1,1,1:3,1:3))))))                    ! ignore imaginary part as it is always zero for real only input))
-         err_div = 0.0_pReal
-         err_div_max = 0.0_pReal                                                                                   ! only if if(debugDivergence) == .true. of importace
+         call dfftw_execute_dft_r2c(fftw_plan(1),workfft,workfft)                                             ! FFT of pstress
+  
+         p_hat_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(workfft(1,1,1,1:3,1:3),&                  ! L_2 norm of average stress (freq 0,0,0) in fourier space,  
+                                                  math_transpose3x3(workfft(1,1,1,1:3,1:3))))))               ! ignore imaginary part as it is always zero for real only input
+         err_div_avg_complex = 0.0_pReal
+         err_div_max = 0.0_pReal                                                                              ! only if debugDivergence == .true. of importance
+         divergence = 0.0_pReal                                                                               !    - '' -
+
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)/2_pInt+1_pInt
-           err_div = err_div + sqrt(sum((&                                                                         ! avg of L_2 norm of div(stress) in fourier space (Suquet small strain)
-                                         math_mul33x3_complex(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3) + &
-                                                              workfft(i*2_pInt       ,j,k,1:3,1:3)*img,&
-                                                              xi(1:3,i,j,k))&
-                                           )**2.0_pReal))                                                    
-           if(debugDivergence) &
-             err_div_max = max(err_div_max,abs(sqrt(sum((&                                                         !  maximum of L two norm of div(stress) in fourier space (Suquet large strain)
-                                           math_mul33x3_complex(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3)+&
-                                                                workfft(i*2_pInt       ,j,k,1:3,1:3)*img,&
-                                                                xi(1:3,i,j,k))&
-                                                           )**2.0_pReal))))
+           divergence_complex = math_mul33x3_complex(workfft(i*2_pInt-1_pInt,j,k,1:3,1:3)&                    ! calculate divergence out of the real and imaginary part of the stress
+                                                   + workfft(i*2_pInt       ,j,k,1:3,1:3)*img,xi(1:3,i,j,k))
+           if(i==1_pInt .or. i == res(1)/2_pInt + 1_pInt) then                                                ! We are on one of the two slides without conjg. complex counterpart
+             err_div_avg_complex = err_div_avg_complex + sum(divergence_complex**2.0_pReal)                   ! Avg of L_2 norm of div(stress) in fourier space (Suquet small strain)
+           else                                                                                               ! Has somewhere a conj. complex counterpart. Therefore count it twice.
+             err_div_avg_complex = err_div_avg_complex +2.0*real(sum(divergence_complex**2.0_pReal))          ! Ignore img part (conjg. complex sum will end up 0). This and the different order 
+           endif                                                                                              ! compared to c2c transform results in slight numerical deviations. 
+           if(debugDivergence) then
+             err_div_max = max(err_div_max,abs(sqrt(sum(divergence_complex**2.0_pReal))))                     ! maximum of L two norm of div(stress) in fourier space (Suquet large strain)
+             divergence(i*2_pInt-1_pInt,j,k,1:3) = -aimag(divergence_complex)*pi*2.0_pReal                    ! real part at i*2-1, imaginary part at i*2,  multiply by i
+             divergence(i*2_pInt       ,j,k,1:3) =   real(divergence_complex)*pi*2.0_pReal                    ! ==> switch order and change sign of img part
+           endif
          enddo; enddo; enddo
 
-         err_div = err_div*wgt/p_hat_avg*correctionFactor                                                          ! weighting by points and average stress and multiplying with correction factor
-         err_div_max = err_div_max/p_hat_avg*correctionFactor                                                      ! weighting by average stress and multiplying with correction factor, only if if(debugDivergence) == .true. of importace
+         err_div = abs(sqrt (err_div_avg_complex*wgt))                                                        ! weighting by and taking square root. abs(...) because result is a complex number
+         err_div     = err_div    *correctionFactor/p_hat_avg                                                 ! weighting by average stress and multiplying with correction factor
+         err_div_max = err_div_max*correctionFactor/p_hat_avg                                                 !           - '' -               only if debugDivergence == .true. of importance
 
+ ! calculate additional divergence criteria and report -------------
+         if(debugDivergence) then
+           call dfftw_execute_dft_c2r(fftw_plan(3),divergence,divergence)
+           divergence = divergence * wgt
+           
+           err_real_div_avg = 0.0_pReal
+           err_real_div_max = 0.0_pReal
+           do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+             err_real_div_avg = err_real_div_avg    +      sum(divergence(i,j,k,1:3)**2.0_pReal)             ! avg of L_2 norm of div(stress) in real space
+             err_real_div_max = max(err_real_div_max, sqrt(sum(divergence(i,j,k,1:3)**2.0_pReal)))           ! maximum of L two norm of div(stress) in real space
+           enddo; enddo; enddo
+           p_real_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(pstress_av_lab,&                      ! L_2 norm of average stress in real space,  
+                                                     math_transpose3x3(pstress_av_lab)))))                   
+           err_real_div_avg = sqrt(wgt*err_real_div_avg)*correctionFactor/p_hat_avg 
+           err_real_div_max =          err_real_div_max *correctionFactor/p_hat_avg 
+
+           print '(a,es10.4,a,f6.2)', 'error divergence  FT  avg = ',err_div,    ', ', err_div/err_div_tol
+           print '(a,es10.4)',        'error divergence  FT  max = ',err_div_max
+           print '(a,es10.4)',        'error divergence Real avg = ',err_real_div_avg
+           print '(a,es10.4)',        'error divergence Real max = ',err_real_div_max
+         else
+           print '(a,es10.4,a,f6.2)', 'error divergence = ',err_div,    ', ', err_div/err_div_tol
+         endif
+  ! --------------------------
          if(memory_efficient) then                                                                                 ! memory saving version, on-the-fly calculation of gamma_hat
            do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res(1)/2_pInt+1_pInt                         
-             if (any(xi(:,i,j,k) /= 0.0_pReal)) then     
+             if (any(xi(1:3,i,j,k) /= 0.0_pReal)) then     
                do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
                  xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
                enddo; enddo
@@ -798,52 +830,16 @@ program DAMASK_spectral
            enddo; enddo; enddo
          endif
 
-  ! calculate additional divergence criteria and report -------------
-         if(debugDivergence) then
-           divergence = 0.0_pReal
-           do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)/2_pInt+1_pInt
-             ! real part at i*2-1, imaginary part at i*2 and multiply by i ==> switch and change sign
-             divergence(i*2_pInt-1_pInt,j,k,1:3) = workfft(i*2_pInt       ,j,k,1:3,1)*xi(1:3,i,j,k)*pi*2.0_pReal&
-                                                 + workfft(i*2_pInt       ,j,k,1:3,2)*xi(1:3,i,j,k)*pi*2.0_pReal&
-                                                 + workfft(i*2_pInt       ,j,k,1:3,3)*xi(1:3,i,j,k)*pi*2.0_pReal
-             divergence(i*2_pInt,j,k,1:3)      = - workfft(i*2_pInt-1_pInt,j,k,1:3,1)*xi(1:3,i,j,k)*pi*2.0_pReal&
-                                                 - workfft(i*2_pInt-1_pInt,j,k,1:3,2)*xi(1:3,i,j,k)*pi*2.0_pReal&
-                                                 - workfft(i*2_pInt-1_pInt,j,k,1:3,3)*xi(1:3,i,j,k)*pi*2.0_pReal
-           enddo; enddo; enddo
-           divergence = divergence*correctionFactor
-           call dfftw_execute_dft_c2r(fftw_plan(3),divergence,divergence)
-           divergence = divergence * wgt
-           err_real_div_avg = 0.0_pReal
-           err_real_div_max = 0.0_pReal
-           do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-             err_real_div_avg = err_real_div_avg + sqrt(sum((divergence(i,j,k,1:3))**2.0_pReal))              ! avg of L_2 norm of div(stress) in fourier space (Suquet small strain)
-             err_real_div_max = max(err_real_div_max,abs(sqrt(sum((divergence(i,j,k,1:3))**2.0_pReal))))      ! maximum of L two norm of div(stress) in fourier space (Suquet large strain)
-           enddo; enddo; enddo
-           p_real_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(pstress_av_lab,&                       ! L_2 norm of average stress in real space,  
-                                                      math_transpose3x3(pstress_av_lab)))))                   ! ignore imaginary part as it is always zero for real only input))
-           err_real_div_avg = err_real_div_avg*wgt/p_real_avg
-           err_real_div_max = err_real_div_max/p_real_avg
-
-           print '(a,es10.4,a,f6.2)', 'error divergence  FT  avg = ',err_div,    ', ', err_div/err_div_tol
-           print '(a,es10.4)',        'error divergence  FT  max = ',err_div_max
-           print '(a,es10.4)',        'error divergence Real avg = ',err_real_div_avg
-           print '(a,es10.4)',        'error divergence Real max = ',err_real_div_max
-         else
-           print '(a,es10.4,a,f6.2)', 'error divergence = ',err_div,    ', ', err_div/err_div_tol
-         endif
-  ! --------------------------
-
-         workfft(1,1,1,1:3,1:3) = defgrad_av_lab - math_I3                                        ! assign zero frequency (real part) with average displacement gradient
-         workfft(2,1,1,1:3,1:3) = 0.0_pReal                                                   ! zero frequency (imaginary part)
+         workfft(1,1,1,1:3,1:3) = defgrad_av_lab - math_I3                                                    ! assign zero frequency (real part) with average displacement gradient
+         workfft(2,1,1,1:3,1:3) = 0.0_pReal                                                                   ! zero frequency (imaginary part)
          
-         call dfftw_execute_dft_c2r(fftw_plan(2),workfft,workfft)                             ! backtransformation of fluct deformation gradient
+         call dfftw_execute_dft_c2r(fftw_plan(2),workfft,workfft)                                             ! back transform of fluct deformation gradient
 
-         defgrad = defgrad + workfft(1:res(1),1:res(2),1:res(3),1:3,1:3)*wgt                  ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
+         defgrad = defgrad + workfft(1:res(1),1:res(2),1:res(3),1:3,1:3)*wgt                                  ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
 
          do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt 
-           defgrad_av_lab(m,n) = sum(defgrad(1:res(1),1:res(2),1:res(3),m,n))*wgt                 ! ToDo: check whether this needs recalculation or is equivalent to former defgrad_av
+           defgrad_av_lab(m,n) = sum(defgrad(1:res(1),1:res(2),1:res(3),m,n))*wgt                             ! ToDo: check whether this needs recalculation or is equivalent to former defgrad_av
          enddo; enddo
-         
          
   ! stress boundary condition check -------------
          pstress_av = math_rotate_forward3x3(pstress_av_lab,bc(loadcase)%rotation)
@@ -865,10 +861,10 @@ program DAMASK_spectral
   ! ------------------------------
 
   ! homogeneous correction towards avg deformation gradient -------------
-         defgradAim_lab = math_rotate_backward3x3(defgradAim,bc(loadcase)%rotation)           ! boundary conditions from load frame into lab (Fourier) frame
+         defgradAim_lab = math_rotate_backward3x3(defgradAim,bc(loadcase)%rotation)                           ! boundary conditions from load frame into lab (Fourier) frame
          do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt 
            defgrad(1:res(1),1:res(2),1:res(3),m,n) = &
-           defgrad(1:res(1),1:res(2),1:res(3),m,n) + (defgradAim_lab(m,n) - defgrad_av_lab(m,n))  ! anticipated target minus current state
+           defgrad(1:res(1),1:res(2),1:res(3),m,n) + (defgradAim_lab(m,n) - defgrad_av_lab(m,n))              ! anticipated target minus current state
          enddo; enddo
   ! ------------------------------
 
