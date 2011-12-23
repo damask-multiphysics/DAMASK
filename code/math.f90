@@ -3274,8 +3274,9 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl_field)
  complex(pReal),           dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3,vec_tens) :: curl_field_fft
  real(pReal),              dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3) :: xi
  ! other variables
- integer(pInt) i, j, k
+ integer(pInt) i, j, k, l
  integer*8 ::  plan_fft(2)
+ complex(pReal), parameter :: img =cmplx(0.0_pReal,1.0_pReal)
 
  print*, 'Calculating curl of vector/tensor field'
  print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
@@ -3305,13 +3306,16 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl_field)
  do k = 1, res(3)                                       
    do j = 1, res(2)
      do i = 1, res(1)/2+1
-       curl_field_fft(i,j,k,1,vec_tens) = sum(field_fft(i,j,k,1,:)*xi(i,j,k,:))
-       if(vec_tens == 3) then
-       curl_field_fft (i,j,k,2,vec_tens) = sum(field_fft(i,j,k,2,:)*xi(i,j,k,:))
-       curl_field_fft(i,j,k,3,vec_tens) = sum(field_fft(i,j,k,3,:)*xi(i,j,k,:))
-       endif
+       do l = 1, vec_tens
+         curl_field_fft(i,j,k,1,l) =(  field_fft(i,j,k,3,l)*xi(i,j,k,2) - field_fft(i,j,k,2,l)*xi(i,j,k,3))&
+                                    *img*pi*2.0_pReal
+         curl_field_fft(i,j,k,2,l) =(- field_fft(i,j,k,3,l)*xi(i,j,k,1) + field_fft(i,j,k,1,l)*xi(i,j,k,3))&
+                                    *img*pi*2.0_pReal
+         curl_field_fft(i,j,k,3,l) =(  field_fft(i,j,k,2,l)*xi(i,j,k,1) - field_fft(i,j,k,1,l)*xi(i,j,k,2))&
+                                    *img*pi*2.0_pReal
+       enddo
+
  enddo; enddo; enddo
-! divergence_field_fft = divergence_field_fft*img*2.0*pi
 
  call dfftw_execute_dft_c2r(plan_fft(2), curl_field_fft, curl_field)
 
