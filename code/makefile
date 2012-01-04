@@ -58,9 +58,9 @@ DEBUG5 =-stand std03/std95
 ########################################################################################
 
 #auto values will be set by setup_code.py
-FFTWROOT := 
+FFTWROOT := /nethome/m.diehl/DAMASK/lib/fftw
 IKMLROOT := 
-ACMLROOT := 
+ACMLROOT := /opt/acml4.4.0
 LAPACKROOT := 
 
 F90 ?= ifort
@@ -206,14 +206,17 @@ FEsolving.o: FEsolving.f90 basics.a
 
 
 
-basics.a: debug.o math.o
-	ar rc basics.a debug.o math.o numerics.o IO.o DAMASK_spectral_interface.o prec.o
+basics.a: kdtree2.o
+	ar rc basics.a kdtree2.o math.o debug.o numerics.o IO.o DAMASK_spectral_interface.o prec.o
 
+kdtree2.o: kdtree2.f90 math.o
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) kdtree2.f90 $(SUFFIX)
+
+math.o: math.f90 debug.o
+	$(PREFIX)	$(COMPILERNAME) $(COMPILE) math.f90 $(SUFFIX)
+  
 debug.o: debug.f90 numerics.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) debug.f90 $(SUFFIX)
-
-math.o: math.f90 numerics.o
-	$(PREFIX)	$(COMPILERNAME) $(COMPILE) math.f90 $(SUFFIX)
 
 numerics.o: numerics.f90 IO.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) numerics.f90 $(SUFFIX)
