@@ -2,7 +2,8 @@
 
 # Makes postprocessing routines acessible from everywhere.
 
-import os,sys,glob,string,damask
+import os,sys,glob,string
+from damask import Environment
 from optparse import OptionParser, Option
 
 
@@ -44,7 +45,7 @@ parser.add_option('--F90',              dest='compiler', type='string', \
 (options,filenames) = parser.parse_args()
 
 if options.compiler not in compilers:
-  parser.error('compiler has to be one out of --F90 %s'%(', '.join(compilers)))
+  parser.error('compiler switch "--F90" has to be one out of: %s'%(', '.join(compilers)))
 
 f2py_compiler = {
                   'gfortran': 'gnu95  --f90flags="-fno-range-check"',
@@ -54,8 +55,7 @@ f2py_compiler = {
                   'ifort':    'intelem',
                 }[options.compiler]
 
-
-damaskEnv = damask.Environment()
+damaskEnv = Environment()
 baseDir = damaskEnv.relPath('processing/')
 codeDir = damaskEnv.relPath('code/')
 

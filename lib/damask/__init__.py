@@ -7,4 +7,7 @@ from .result      import Result           # one class with subclasses
 from .geometry    import Geometry         # one class with subclasses
 from .solver      import Solver           # one class with subclasses
 from .test        import Test
-from .            import core
+try:
+  from .          import core
+except:
+  print 'Core module (Fortran code) not available, try to run setup_processing.py'
