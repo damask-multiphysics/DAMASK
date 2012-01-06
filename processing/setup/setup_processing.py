@@ -69,8 +69,7 @@ codeDir = damaskEnv.relPath('code/')
 if   'ikml' in damaskEnv.pathInfo and damaskEnv.pathInfo['ikml'] != '':
   lib_lapack = ''  # TODO!!
 elif 'acml' in damaskEnv.pathInfo and damaskEnv.pathInfo['acml'] != '':
-  lib_lapack = '-L%s -lacml'%(os.path.join(damaskEnv.pathInfo['acml'],'%s64'))                                    # can we use linker flag?
-#  lib_lapack = os.path.join(damaskEnv.pathInfo['acml'],'%s64/lib/libacml.a'%options.compiler)     # why linking against static lib?
+  lib_lapack = '-L%s/%s64/lib -lacml'%(os.path.join(damaskEnv.pathInfo['acml']),compiler)                                    # can we use linker flag?
 elif 'lapack' in damaskEnv.pathInfo and damaskEnv.pathInfo['lapack'] != '':
   lib_lapack = '-L%s -llapack'%(damaskEnv.pathInfo['lapack'])                                     # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 
@@ -132,7 +131,7 @@ execute = { \
                         ' -c --fcompiler=%s'%(f2py_compiler) +\
                         ' %s'%(os.path.join(codeDir,'core_modules.f90'))+\
                         ' %s'%(os.path.join(codeDir,'math.f90'))+\
-                        ' -L%s -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
+                        ' -L%s/lib -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
                         ' %s'%lib_lapack,
                         'mv %s %s' %(os.path.join(codeDir,'core.so'),damaskEnv.relPath('lib/damask')),
                         ]
