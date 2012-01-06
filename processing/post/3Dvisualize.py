@@ -5,7 +5,7 @@
 # As it reads in the data coming from "materialpoint_results", it can be adopted to the data
 # computed using the FEM solvers. Its capable to handle elements with one IP in a regular order
 
-import os,sys,threading,re,numpy,time,string,DAMASK
+import os,sys,threading,re,numpy,time,string,damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 # -----------------------------
@@ -413,16 +413,16 @@ for filename in args:
   if options.undeformed:
     defgrad_av = numpy.eye(3)
   else:
-    defgrad_av = DAMASK.math.tensor_avg(res,numpy.reshape(values[:,column['tensor'][options.defgrad]:
+    defgrad_av = damask.core.math.tensor_avg(res,numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                         column['tensor'][options.defgrad]+9],
                                                                                 (res[0],res[1],res[2],3,3)))
 
-  #centroids = DAMASK.math.deformed_linear(res,dim,defgrad_av,
-  centroids = DAMASK.math.deformed_fft(res,dim,defgrad_av,options.scaling,
+  #centroids = damask.core.math.deformed_linear(res,dim,defgrad_av,
+  centroids = damask.core.math.deformed_fft(res,dim,defgrad_av,options.scaling,
                                             numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                    column['tensor'][options.defgrad]+9],
                                                                    (res[0],res[1],res[2],3,3)))
-  ms = DAMASK.math.mesh_regular_grid(res,dim,defgrad_av,centroids)
+  ms = damask.core.math.mesh_regular_grid(res,dim,defgrad_av,centroids)
   fields =  {\
              'tensor': {},\
              'vector': {},\
