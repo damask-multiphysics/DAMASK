@@ -54,6 +54,13 @@ f2py_compiler = {
                   'intel':    'intelem',
                   'ifort':    'intelem',
                 }[options.compiler]
+compiler = {
+                  'gfortran': 'gfortran',
+                  'gnu95':    'gfortran',
+                  'intel32':  'ifort',
+                  'intel':    'ifort',
+                  'ifort':    'ifort',
+                }[options.compiler]
 
 damaskEnv = Environment()
 baseDir = damaskEnv.relPath('processing/')
@@ -141,8 +148,8 @@ for dir in compile:
         print 'removing %s.exe '%(os.path.splitext(src)[0])
       except:
         pass
-      print 'compiling ',src,'using',options.compiler
-      os.system('%s -O2 -o%s.exe %s'%(options.compiler,os.path.splitext(src)[0],src))
+      print 'compiling ',src,'using',compiler
+      os.system('%s -O2 -o%s.exe %s'%(compiler,os.path.splitext(src)[0],src))
  
 os.chdir(codeDir)                   # needed for compilation with gfortran and f2py
 for tasks in execute:
