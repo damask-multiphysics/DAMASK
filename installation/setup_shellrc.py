@@ -10,13 +10,13 @@ validShells = {\
 
 env_order = ['DAMASK_ROOT','DAMASK_BIN','PATH','PYTHONPATH','LD_LIBRARY_PATH']
 environment = { 'DAMASK_ROOT':
-                              [{'delete':'DamaskRoot',
+                              [{'delete':'',
                                 'substitute':'[DamaskRoot]',
                                 'append': False,
                                },
                               ],
                 'DAMASK_BIN':
-                              [{'delete':'os.path.join(DamaskRoot,"bin")',
+                              [{'delete':'',
                                 'substitute':'[os.path.join(DamaskRoot,"bin")]',
                                 'append': False,
                                },
@@ -34,18 +34,21 @@ environment = { 'DAMASK_ROOT':
                                },
                               ], 
                 'LD_LIBRARY_PATH':
-                              [{'activate': 'pathInfo["acml"]',
-                                'delete':'"acml"',                                                # what keywords trigger item deletion from existing path 
+                              [{'activate':  'pathInfo["acml"]',
+                                'delete':    '"acml"',                                            # what keywords trigger item deletion from existing path 
                                 'substitute':'[os.path.join(pathInfo["acml"],"ifort64_mp/lib"),\
                                                os.path.join(pathInfo["acml"],"ifort64/lib")]',    # what to substitute for deleted path items
                                 'append': True,                                                   # whether new entries append to existing ${env}
                                },
-                               {'activate': 'pathInfo["lapack"]',
+                               {'activate':  'pathInfo["lapack"]',
+                                'delete':    '[os.path.join(pathInfo["lapack"],"lib"),\
+                                               os.path.join(pathInfo["lapack"],"lib64")]',        # deleted current (same) entry
                                 'substitute':'[os.path.join(pathInfo["lapack"],"lib"),\
                                                os.path.join(pathInfo["lapack"],"lib64")]',        # what to substitute for deleted path
                                 'append': True,                                                   # whether new entries append to existing ${env}
                                },
-                               {'activate': 'pathInfo["fftw"]',
+                               {'activate':  'pathInfo["fftw"]',
+                                'delete':    '[os.path.join(pathInfo["fftw"],"lib")]',            # deleted current (same) entry
                                 'substitute':'[os.path.join(pathInfo["fftw"],"lib")]',            # what to substitute for deleted path items
                                 'append': True,                                                   # whether new entries append to existing ${env}
                                },
@@ -74,7 +77,9 @@ try:                                        # check for user-defined pathinfo
   file.close()
   for line in content:
     if not (line.startswith('#') or line == ''):
-      pathInfo[line.split()[0].lower()] = os.path.normpath(line.split()[1])
+      items = line.split() + ['','']
+      pathInfo[items[0].lower()] = {False: os.path.normpath(os.path.join(DamaskRoot,'lib/',items[1])),
+                                    True: items[1]}[items[1] == '']
 except:
   pass
 
@@ -103,8 +108,16 @@ if theShell == 'bash':
             for piece in environment[var]:
               try:
                 if 'activate' not in piece or eval(piece['activate']) != '':
-                  items = [path for path in items if 'delete' not in piece or eval(piece['delete']) not in path] + \
-                          eval(piece['substitute'])
+                  if piece['append']:
+                    if 'delete' in piece:
+                      killer = eval(piece['delete'])
+                      if type(killer) == str:
+                        items = [path for path in items if killer not in path]
+                      if type(killer) == list:
+                        items = [path for path in items if path not in killer]
+                    items += eval(piece['substitute'])
+                  else:
+                    items = eval(piece['substitute'])
               except:
                pass
             line = m.group(1)+':'.join(items)+m.group(3)
