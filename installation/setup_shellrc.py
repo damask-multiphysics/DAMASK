@@ -69,6 +69,7 @@ parser.set_defaults(shell = 'bash')
 (options, args) = parser.parse_args()
 
 pathInfo = {}
+hitSomething = False
 
 DamaskRoot = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])),'../'))
 try:                                        # check for user-defined pathinfo
@@ -90,6 +91,8 @@ if theShell == 'bash':
   for theRC in validShells[theShell]:
     thePath = os.path.join(theHome,theRC)
     if os.path.exists(thePath):
+      print thePath
+      hitSomething = True
       rc = open(os.path.join(theHome,theRC))
       content = map(string.strip,rc.readlines())
       rc.close()
@@ -144,3 +147,5 @@ if theShell == 'bash':
 
 elif theShell == 'csh':
   print 'csh not supported yet...'
+
+if not hitSomething: print 'no %s found..!'%(', '.join(validShells[theShell]))
