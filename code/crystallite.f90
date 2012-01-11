@@ -1039,7 +1039,8 @@ do n = 1,4
           constitutive_RK4dotState(g,i,e)%p = constitutive_RK4dotState(g,i,e)%p + weight(n)*constitutive_dotState(g,i,e)%p
           RK4dotTemperature(g,i,e) = RK4dotTemperature(g,i,e) + weight(n)*crystallite_dotTemperature(g,i,e)
         elseif (n == 4) then
-          constitutive_dotState(g,i,e)%p = (constitutive_RK4dotState(g,i,e)%p + weight(n)*constitutive_dotState(g,i,e)%p) /6.0_pReal  ! use weighted RKdotState for final integration
+          constitutive_dotState(g,i,e)%p = (constitutive_RK4dotState(g,i,e)%p + &
+                                            weight(n)*constitutive_dotState(g,i,e)%p) / 6.0_pReal         ! use weighted RKdotState for final integration
           crystallite_dotTemperature(g,i,e) = (RK4dotTemperature(g,i,e) + weight(n)*crystallite_dotTemperature(g,i,e)) / 6.0_pReal
         endif
       endif

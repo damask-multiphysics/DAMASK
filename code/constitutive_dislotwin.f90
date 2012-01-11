@@ -113,8 +113,8 @@ real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislotwin
                                                           constitutive_dislotwin_interactionMatrixTwinSlip, &   ! interaction matrix of twin systems with slip systems for each instance
                                                           constitutive_dislotwin_interactionMatrixTwinTwin, &   ! interaction matrix of the different twin systems for each instance
                                                           constitutive_dislotwin_forestProjectionEdge           ! matrix of forest projections of edge dislocations for each instance
-real(pReal), dimension(:,:,:,:,:),        allocatable ::  constitutive_dislotwin_sbSv                                                          
-                                                          
+real(pReal), dimension(:,:,:,:,:),        allocatable ::  constitutive_dislotwin_sbSv
+
 CONTAINS
 !****************************************
 !* - constitutive_dislotwin_init

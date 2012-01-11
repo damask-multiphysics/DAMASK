@@ -776,10 +776,10 @@ subroutine lattice_init()
  allocate(lattice_NslipSystem(lattice_maxNslipFamily,lattice_Nstructure)); lattice_NslipSystem = 0.0_pReal
  allocate(lattice_NtwinSystem(lattice_maxNtwinFamily,lattice_Nstructure)); lattice_NtwinSystem = 0.0_pReal
 
- allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipSlip = 0_pInt  ! other:me
- allocate(lattice_interactionSlipTwin(lattice_maxNtwin,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt  ! other:me
- allocate(lattice_interactionTwinSlip(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt  ! other:me
- allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt  ! other:me
+ allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipSlip = 0_pInt ! other:me
+ allocate(lattice_interactionSlipTwin(lattice_maxNtwin,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt ! other:me
+ allocate(lattice_interactionTwinSlip(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt ! other:me
+ allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt ! other:me
 
 end subroutine
 
