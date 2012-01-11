@@ -34,7 +34,7 @@ class extendableOption(Option):
 parser = OptionParser(option_class=extendableOption, usage='%prog options', description = """
 Sets up the pre and post processing tools of DAMASK
 
-""" + string.replace('$Id: addDivergence.py 1129 2011-12-01 12:01:13Z MPIE\m.diehl $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 compilers = ['intel','ifort','intel32','gfortran','gnu95']
