@@ -610,12 +610,12 @@ subroutine material_populateGrains()
  real(pReal), dimension (3) :: orientation
  real(pReal), dimension (3,3) :: symOrientation
  integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
- integer(pInt) t,e,i,g,j,m,homog,micro,sgn,loopStart,loopEnd
+ integer(pInt) t,e,i,g,j,m,homog,micro,sgn,hme
  integer(pInt) phaseID,textureID,dGrains,myNgrains,myNorientations, &
-               grain,constituentGrain,symExtension, counter_cpElemsindex
+               grain,constituentGrain,symExtension
  real(pReal) extreme,rnd
- integer(pInt), dimension (:,:), allocatable :: NcpElemscounter   ! counts number of elements in homog, micro array
- integer(pInt), dimension (:,:,:), allocatable :: cpElemsindex    ! lists element number in homog, micro array
+ integer(pInt), dimension (:,:),   allocatable :: Nelems   ! counts number of elements in homog, micro array
+ integer(pInt), dimension (:,:,:), allocatable :: elemsOfHomogMicro    ! lists element number in homog, micro array
 
 
  allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;        material_volume      = 0.0_pReal
@@ -624,19 +624,21 @@ subroutine material_populateGrains()
  allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ; material_EulerAngles = 0.0_pReal
  
  allocate(Ngrains(material_Nhomogenization,material_Nmicrostructure)); Ngrains = 0_pInt
+ allocate(Nelems(material_Nhomogenization,material_Nmicrostructure));  Nelems = 0_pInt
  
- allocate(NcpElemscounter(material_Nhomogenization,material_Nmicrostructure)); NcpElemscounter = &  
-      0_pInt
-
-! identify maximum grain count per IP (from element) and find grains per homog/micro pair
+! precounting of elements for each homog/micro pair
  do e = 1, mesh_NcpElems
-   NcpElemscounter(homog,micro) = NcpElemscounter(homog,micro) + 1_pInt
+   homog = mesh_element(3,e)
+   micro = mesh_element(4,e)
+   Nelems(homog,micro) = Nelems(homog,micro) + 1_pInt
  enddo
  
- allocate(cpElemsindex(material_Nhomogenization,material_Nmicrostructure,maxval(NcpElemscounter)))  
-      cpElemsindex = 0_pInt
- 
- counter_cpElemsindex = 0_pInt
+ allocate(elemsOfHomogMicro(maxval(Nelems),material_Nhomogenization,material_Nmicrostructure))  
+ elemsOfHomogMicro = 0_pInt
+
+ Nelems = 0_pInt                                            ! reuse as counter
+
+! identify maximum grain count per IP (from element) and find grains per homog/micro pair
  do e = 1,mesh_NcpElems
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
@@ -650,8 +652,8 @@ subroutine material_populateGrains()
      dGrains = homogenization_Ngrains(homog) * FE_Nips(mesh_element(2,e))
    endif
    Ngrains(homog,micro) = Ngrains(homog,micro) + dGrains
-   counter_cpElemsindex = counter_cpElemsindex + 1_pInt
-   cpElemsindex(homog,micro,counter_cpElemsindex) = e         ! populate arrays
+   Nelems(homog,micro)  = Nelems(homog,micro) + 1_pInt
+   elemsOfHomogMicro(Nelems(homog,micro),homog,micro) = e         ! remember elements active in this homog/micro pair
    
  enddo
 
@@ -683,8 +685,8 @@ subroutine material_populateGrains()
 ! ----------------------------------------------------------------------------  calculate volume of each grain
        volumeOfGrain = 0.0_pReal
        grain = 0_pInt
-       do counter_cpElemsindex = 1, NcpElemscounter(homog,micro)
-         e = cpElemsindex(homog,micro,counter_cpElemsindex)    ! my combination of homog and micro, only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
+       do hme = 1_pInt, Nelems(homog,micro)
+         e = elemsOfHomogMicro(hme,homog,micro)                               ! my combination of homog and micro, only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
          if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
            volumeOfGrain(grain+1:grain+dGrains) = sum(mesh_ipVolume(1:FE_Nips(mesh_element(2,e)),e))/dGrains
            grain = grain + dGrains                                            ! wind forward by NgrainsPerIP
@@ -800,8 +802,8 @@ subroutine material_populateGrains()
 
 ! ----------------------------------------------------------------------------
        grain = 0_pInt
-       do counter_cpElemsindex = 1, NcpElemscounter(homog,micro)
-       e = cpElemsindex(homog,micro,counter_cpElemsindex)  ! only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
+       do hme = 1_pInt, Nelems(homog,micro)
+       e = elemsOfHomogMicro(hme,homog,micro)                                 ! only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
          if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
            forall (i = 1:FE_Nips(mesh_element(2,e)), g = 1:dGrains)           ! loop over IPs and grains
              material_volume(g,i,e)        = volumeOfGrain(grain+g)
@@ -829,8 +831,8 @@ subroutine material_populateGrains()
  deallocate(phaseOfGrain)
  deallocate(textureOfGrain)
  deallocate(orientationOfGrain)
- deallocate(cpElemsindex)
- deallocate(NcpElemscounter)
+ deallocate(Nelems)
+ deallocate(elemsOfHomogMicro)
 
  endsubroutine
 
