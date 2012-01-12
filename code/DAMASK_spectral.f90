@@ -95,7 +95,6 @@ program DAMASK_spectral
  integer(pInt) ::                             Npoints,&                                                 ! number of Fourier points
                                               homog                                                     ! homogenization scheme used
  integer(pInt), dimension(3) ::               res = 1_pInt                                              ! resolution (number of Fourier points) in each direction
- logical ::                                   spectralPictureMode = .false.                             ! indicating 1 to 1 mapping of FP to microstructure
 
 ! stress, stiffness and compliance average etc.
  real(pReal), dimension(3,3) ::               pstress, pstress_av, defgrad_av_lab, &
@@ -316,8 +315,6 @@ program DAMASK_spectral
              res(3) = IO_intValue(line,positions,j+1_pInt)
          end select
        enddo
-     case ('picture')
-       spectralPictureMode = .true.
    end select
  enddo
  close(myUnit)
@@ -349,7 +346,6 @@ program DAMASK_spectral
  print '(a,i12,i12,i12)','resolution a b c:', res
  print '(a,f12.5,f12.5,f12.5)','dimension x y z:', geomdimension
  print '(a,i5)','homogenization:       ',homog
- print '(a,L)', 'spectralPictureMode:  ',spectralPictureMode
  print '(a)',   '#############################################################'
  print '(a,a)', 'loadcase file:        ',trim(getLoadcaseName())
 

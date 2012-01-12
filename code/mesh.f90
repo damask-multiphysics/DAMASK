@@ -87,7 +87,6 @@
  integer(pInt), dimension(:,:,:),   allocatable :: FE_ipNeighbor
  integer(pInt), dimension(:,:,:),   allocatable :: FE_subNodeParent
  integer(pInt), dimension(:,:,:,:), allocatable :: FE_subNodeOnIPFace
- logical spectralPictureMode
  
  logical :: noPart                                                        ! for cases where the ABAQUS input file does not use part/assembly information
  logical, dimension(3) :: mesh_periodicSurface                            ! flag indicating periodic outer surfaces (used for fluxes)
@@ -2402,7 +2401,6 @@ subroutine mesh_marc_count_cpSizes (myUnit)
 
  gotResolution = .false.
  gotDimension =  .false.
- spectralPictureMode = .false.
  rewind(myUnit)
  read(myUnit,'(a1024)') line
  myPos = IO_stringPos(line,2)
@@ -2442,8 +2440,6 @@ subroutine mesh_marc_count_cpSizes (myUnit)
              c = 1_pInt + IO_intValue(line,myPos,j+1)
          end select
        enddo
-      case ('picture')
-        spectralPictureMode = .true.
    end select
  enddo
 
