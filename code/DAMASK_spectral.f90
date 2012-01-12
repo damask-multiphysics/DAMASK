@@ -63,7 +63,7 @@ program DAMASK_spectral
                                                      (1_pInt + 9_pInt)*3_pInt + &     ! deformation, rotation, and stress
                                                      (1_pInt + 1_pInt)*5_pInt + &     ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                      1_pInt, &                        ! dropguessing
-                                                   maxNchunksGeom = 7_pInt            ! 4 identifiers, 3 values
+                                                   maxNchunksGeom = 7_pInt, &         ! 4 identifiers, 3 values
                                                    myUnit = 234_pInt
  integer(pInt), dimension (1_pInt + maxNchunksLoadcase*2_pInt) :: positions           ! this is longer than needed for geometry parsing
  integer(pInt) :: headerLength, N_l=0_pInt, N_t=0_pInt, N_n=0_pInt, N_Fdot=0_pInt

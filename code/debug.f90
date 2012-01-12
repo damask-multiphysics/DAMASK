@@ -180,7 +180,7 @@ subroutine debug_init()
   !$OMP CRITICAL (write2out)                                                   ! bitwise coded
   if (iand(debug_spectral,debug_spectralGeneral)    > 0_pInt)  write(6,'(a)') ' spectral general    debugging'
   if (iand(debug_spectral,debug_spectralDivergence) > 0_pInt)  write(6,'(a)') ' spectral divergence debugging'
-  if (iand(debug_spectral,debug_spectalRestart)     > 0_pInt)  write(6,'(a)') ' spectral restart    debugging'
+  if (iand(debug_spectral,debug_spectralRestart)    > 0_pInt)  write(6,'(a)') ' spectral restart    debugging'
   !$OMP END CRITICAL (write2out)
 
 endsubroutine
