@@ -2577,17 +2577,20 @@ subroutine mesh_marc_count_cpSizes (myUnit)
 
  integer(pInt), parameter :: maxNchunks = 7
  integer(pInt), dimension (1+2*maxNchunks) :: myPos
- integer(pInt) a,b,c,e,i,j,homog,headerLength
-
+ integer(pInt) a,b,c,e,i,j,homog,headerLength,maxIntCount
+ integer(pInt), dimension(:), allocatable :: microstructures
+ integer(pInt), dimension(1,1) :: dummySet = 0_pInt
+ 
  integer(pInt) myUnit
- character(len=1024) line,keyword
+ character(len=65536) line,keyword
+ character(len=64), dimension(1) :: dummyName = ''
 
  a = 1_pInt
  b = 1_pInt
  c = 1_pInt
  
  rewind(myUnit)
- read(myUnit,'(a1024)') line
+ read(myUnit,'(a65536)') line
  myPos = IO_stringPos(line,2)
  keyword = IO_lc(IO_StringValue(line,myPos,2))
  if (keyword(1:4) == 'head') then
@@ -2598,7 +2601,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  
  rewind(myUnit)
  do i = 1, headerLength
-   read(myUnit,'(a1024)') line
+   read(myUnit,'(a65536)') line
    myPos = IO_stringPos(line,maxNchunks)             
    select case ( IO_lc(IO_StringValue(line,myPos,1)) )
      case ('resolution')
@@ -2616,33 +2619,49 @@ subroutine mesh_marc_count_cpSizes (myUnit)
        homog = IO_intValue(line,myPos,2)
    end select
  enddo
- 
-  allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
 
- e = 0_pInt
- do while (e < mesh_NcpElems)
-   read(myUnit,'(a1024)',END=110) line
-   if (IO_isBlank(line)) cycle                             ! skip empty lines
-   myPos(1:1+2*1) = IO_stringPos(line,1)
-  
-   e = e+1                                                 ! valid element entry
-   mesh_element ( 1,e) = e                                 ! FE id
-   mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
-   mesh_element ( 3,e) = homog                             ! homogenization
-   mesh_element ( 4,e) = IO_IntValue(line,myPos,1)           ! microstructure
-   mesh_element ( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1)     ! base node
-   mesh_element ( 6,e) = mesh_element ( 5,e) + 1
-   mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
-   mesh_element ( 8,e) = mesh_element ( 5,e) + (a+1)
-   mesh_element ( 9,e) = mesh_element ( 5,e) + (a+1)*(b+1) ! second floor base node
-   mesh_element (10,e) = mesh_element ( 9,e) + 1
-   mesh_element (11,e) = mesh_element ( 9,e) + (a+1) + 1
-   mesh_element (12,e) = mesh_element ( 9,e) + (a+1)
-   mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))    !needed for statistics
-   mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
+ maxIntCount = 0_pInt
+ i = 1_pInt
+
+ do while (i > 0_pInt)
+   i = IO_countContinousIntValues(myUnit)
+   maxIntCount = max(maxIntCount, i)
  enddo
 
-110 endsubroutine
+ rewind (myUnit)
+ do i=1,headerLength                                         ! skip header
+   read(myUnit,'(a65536)') line
+ enddo
+
+100 allocate (mesh_element (4+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
+ allocate (microstructures (1_pInt+maxIntCount))             ; microstructures = 2_pInt
+ 
+ e = 0_pInt
+ do while (e < mesh_NcpElems .and. microstructures(1) > 0_pInt)        ! fill expected number of elements, stop at end of data (or blank line!)
+   microstructures = IO_continousIntValues(myUnit,maxIntCount,dummyName,dummySet,0)  ! get affected elements
+   do i = 1,microstructures(1)
+     e = e+1                                                 ! valid element entry
+     mesh_element ( 1,e) = e                                 ! FE id
+     mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
+     mesh_element ( 3,e) = homog                             ! homogenization
+     mesh_element ( 4,e) = microstructures(1_pInt+i)         ! microstructure
+     mesh_element ( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1)     ! base node
+     mesh_element ( 6,e) = mesh_element ( 5,e) + 1
+     mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
+     mesh_element ( 8,e) = mesh_element ( 5,e) + (a+1)
+     mesh_element ( 9,e) = mesh_element ( 5,e) + (a+1)*(b+1) ! second floor base node
+     mesh_element (10,e) = mesh_element ( 9,e) + 1
+     mesh_element (11,e) = mesh_element ( 9,e) + (a+1) + 1
+     mesh_element (12,e) = mesh_element ( 9,e) + (a+1)
+     mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))    !needed for statistics
+     mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
+   enddo
+ enddo
+
+110 deallocate(microstructures)
+ if (e /= mesh_NcpElems) call IO_error(180,e)
+
+ endsubroutine
 
 
 

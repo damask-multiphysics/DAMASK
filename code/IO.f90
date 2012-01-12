@@ -969,14 +969,14 @@ endfunction
 
  integer(pInt)  unit,l,count
  integer(pInt)  IO_countContinousIntValues
- integer(pInt), parameter :: maxNchunks = 64
+ integer(pInt), parameter :: maxNchunks = 8192
  integer(pInt), dimension(1+2*maxNchunks) :: pos
- character(len=300) line
+ character(len=65536) line
 
  IO_countContinousIntValues = 0_pInt
 
  select case (FEsolver)
-   case ('Marc')
+   case ('Marc','Spectral')
    
      do
        read(unit,'(A300)',end=100) line
@@ -1025,22 +1025,22 @@ endfunction
 
  integer(pInt)  unit,maxN,i,j,l,count,first,last
  integer(pInt), dimension(1+maxN) :: IO_continousIntValues
- integer(pInt), parameter :: maxNchunks = 64
+ integer(pInt), parameter :: maxNchunks = 8192_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: pos
  character(len=64), dimension(:) :: lookupName
  integer(pInt) :: lookupMaxN
  integer(pInt), dimension(:,:) :: lookupMap
- character(len=300) line
+ character(len=65536) line
  logical rangeGeneration
 
  IO_continousIntValues = 0
  rangeGeneration = .false.
 
  select case (FEsolver)
-   case ('Marc')
+   case ('Marc','Spectral')
    
      do
-       read(unit,'(A300)',end=100) line
+       read(unit,'(A65536)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
        if (verify(IO_stringValue(line,pos,1),"0123456789") > 0) then     ! a non-int, i.e. set name
          do i = 1,lookupMaxN                                             ! loop over known set names
@@ -1050,7 +1050,7 @@ endfunction
            endif
          enddo
          exit
-       else if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then         ! found range indicator
+       else if (pos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then         ! found range indicator
          do i = IO_intValue(line,pos,1),IO_intValue(line,pos,3)
            IO_continousIntValues(1) = IO_continousIntValues(1) + 1
            IO_continousIntValues(1+IO_continousIntValues(1)) = i
@@ -1078,14 +1078,14 @@ endfunction
      
 !      check if the element values in the elset are auto generated
      backspace(unit)
-     read(unit,'(A300)',end=100) line
+     read(unit,'(A65536)',end=100) line
      pos = IO_stringPos(line,maxNchunks)
      do i = 1,pos(1)
        if (IO_lc(IO_stringValue(line,pos,i)) == 'generate') rangeGeneration = .true.
      enddo
      
      do l = 1,count
-       read(unit,'(A300)',end=100) line
+       read(unit,'(A65536)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
        if (verify(IO_stringValue(line,pos,1),"0123456789") > 0) then     ! a non-int, i.e. set names follow on this line
          do i = 1,pos(1)                                                 ! loop over set names in line
@@ -1200,6 +1200,8 @@ endfunction
    msg = 'texture index out of bounds'
  case (170)
    msg = 'sum of phase fractions differs from 1'
+ case (180)
+   msg = 'mismatch of microstructure count and a*b*c in geom file'
  case (200)
    msg = 'unknown constitution specified'
  case (201)
