@@ -95,6 +95,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
     self._increments[0] -= 1                                                 # delete zero'th entry
     self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d',default=0.0)
+    self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i',default=0)
     self.dimension    = self._keyedPackedArray('dimension',count=3,type='d')
     self.resolution   = self._keyedPackedArray('resolution',count=3,type='i')
     self.N_nodes      = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
@@ -171,8 +172,14 @@ class MPIEspectral_result:    # mimic py_post result object
         self.increment += self._increments[l]
         self.time      += self._times[l]
         p -= self._increments[l]//self._frequencies[l]
+
     self.increment += self._frequencies[l] * p
-    self.time      += self._times[l]/self._increments[l] * self._frequencies[l] * p
+
+    if self._logscales[l] > 0:                                                                                            # logarithmic time scale
+      if l == 0: self.time  = 2**(self._increments[l] - (1+self._frequencies[l]*p)) * self._times[l]                      # first loadcase
+      else:      self.time *= ((self.time + self._times[l])/self.time)**((1+self._frequencies[l]*p)/self._increments[l])  # any subsequent loadcase
+    else:                                                                                                                 # linear time scale
+      self.time += self._times[l]/self._increments[l] * self._frequencies[l] * p
 
   def extrapolation(self,value):
     self.extrapolate = value
