@@ -148,7 +148,7 @@ for dir in compile:
       except:
         pass
       print 'compiling ',src,'using',compiler
-      os.system('%s -O2 -o%s.exe %s'%(compiler,os.path.splitext(src)[0],src))
+      os.system('%s -O2 -o %s.exe %s'%(compiler,os.path.splitext(src)[0],src))
  
 os.chdir(codeDir)                   # needed for compilation with gfortran and f2py
 for tasks in execute:
