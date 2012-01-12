@@ -25,6 +25,9 @@ use prec
 
 implicit none
 character(len=64), parameter :: debug_configFile = 'debug.config' ! name of configuration file
+integer(pInt), parameter :: debug_spectralGeneral    = 1_pInt, &
+                            debug_spectralDivergence = 2_pInt, &
+                            debug_spectralRestart    = 4_pInt
 
 integer(pInt), dimension(:,:), allocatable :: debug_StressLoopDistribution
 integer(pInt), dimension(:,:), allocatable :: debug_LeapfrogBreakDistribution
@@ -51,7 +54,7 @@ real(pReal) :: debug_jacobianMax
 real(pReal) :: debug_jacobianMin
 logical :: debug_selectiveDebugger = .true.
 integer(pInt) :: debug_verbosity = 1_pInt
-integer(pInt) :: spectral_debug_verbosity = 0_pInt
+integer(pInt) :: debug_spectral = 0_pInt
 
 CONTAINS
 
@@ -126,11 +129,11 @@ subroutine debug_init()
         case ('(spectral)')
             select case(IO_lc(IO_stringValue(line,positions,2)))
               case('general')
-                   spectral_debug_verbosity = ior(spectral_debug_verbosity, 1)
+                   debug_spectral = ior(debug_spectral, debug_spectralGeneral)
               case('divergence')
-                   spectral_debug_verbosity = ior(spectral_debug_verbosity, 2)
+                   debug_spectral = ior(debug_spectral, debug_spectralDivergence)
               case('restart')
-                   spectral_debug_verbosity = ior(spectral_debug_verbosity, 4)
+                   debug_spectral = ior(debug_spectral, debug_spectralRestart)
             endselect
       endselect
     enddo
@@ -175,9 +178,9 @@ subroutine debug_init()
     debug_g = 0_pInt
   endif
   !$OMP CRITICAL (write2out)                                                   ! bitwise coded
-  if (iand(spectral_debug_verbosity,1_pInt)==1_pInt)  write(6,'(a)') ' Spectral General Debugging'
-  if (iand(spectral_debug_verbosity,2_pInt)==2_pInt)  write(6,'(a)') ' Spectral Divergence Debugging'
-  if (iand(spectral_debug_verbosity,4_pInt)==4_pInt)  write(6,'(a)') ' Spectral Restart Debugging'
+  if (iand(debug_spectral,debug_spectralGeneral)    > 0_pInt)  write(6,'(a)') ' spectral general    debugging'
+  if (iand(debug_spectral,debug_spectralDivergence) > 0_pInt)  write(6,'(a)') ' spectral divergence debugging'
+  if (iand(debug_spectral,debug_spectalRestart)     > 0_pInt)  write(6,'(a)') ' spectral restart    debugging'
   !$OMP END CRITICAL (write2out)
 
 endsubroutine

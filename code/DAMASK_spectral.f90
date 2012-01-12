@@ -40,7 +40,10 @@ program DAMASK_spectral
  use DAMASK_interface
  use prec, only: pInt, pReal, DAMASK_NaN
  use IO
- use debug, only: spectral_debug_verbosity
+ use debug, only: debug_spectral, &
+                  debug_spectralGeneral, &
+                  debug_spectralDivergence, &
+                  debug_spectralRestart
  use math
  use kdtree2_module
  use mesh, only: mesh_ipCenterOfGravity
@@ -57,14 +60,13 @@ program DAMASK_spectral
  real(pReal), dimension(9) ::                      temp_valueVector                   ! stores information temporarily from loadcase file
  logical, dimension(9) ::                          temp_maskVector
  integer(pInt), parameter ::                       maxNchunksLoadcase = &
-                                                   (1_pInt + 9_pInt)*3_pInt + &       ! deformation, rotation, and stress
-                                                   (1_pInt + 1_pInt)*5_pInt + &       ! time, (log)incs, temp, restartfrequency, and outputfrequency
-                                                   1_pInt                             ! dropguessing
- integer(pInt), dimension (1_pInt + maxNchunksLoadcase*2_pInt) :: posLoadcase
- integer(pInt), parameter :: maxNchunksGeom = 7_pInt                                  ! 4 identifiers, 3 values
- integer(pInt), dimension (1_pInt + maxNchunksGeom*2_pInt) ::  posGeom
+                                                     (1_pInt + 9_pInt)*3_pInt + &     ! deformation, rotation, and stress
+                                                     (1_pInt + 1_pInt)*5_pInt + &     ! time, (log)incs, temp, restartfrequency, and outputfrequency
+                                                     1_pInt, &                        ! dropguessing
+                                                   maxNchunksGeom = 7_pInt            ! 4 identifiers, 3 values
+                                                   myUnit = 234_pInt
+ integer(pInt), dimension (1_pInt + maxNchunksLoadcase*2_pInt) :: positions           ! this is longer than needed for geometry parsing
  integer(pInt) :: headerLength, N_l=0_pInt, N_t=0_pInt, N_n=0_pInt, N_Fdot=0_pInt
- integer(pInt), parameter :: myUnit = 234_pInt
  character(len=1024) :: path, line, keyword
  logical ::  gotResolution =.false., gotDimension =.false., gotHomogenization = .false.
  type bc_type
@@ -75,7 +77,7 @@ program DAMASK_spectral
                                    temperature              ! isothermal starting conditions
    integer(pInt) ::                steps, &                 ! number of steps
                                    outputfrequency, &       ! frequency of result writes
-                                   restartfrequency, &      ! frequency of result writes
+                                   restartfrequency, &      ! frequency of restart writes
                                    logscale                 ! linear/logaritmic time step flag
    logical ::                      followFormerTrajectory,& ! follow trajectory of former loadcase
                                    velGradApplied           ! decide wether velocity gradient or fdot is given 
@@ -84,8 +86,8 @@ program DAMASK_spectral
    logical, dimension(9) ::        maskStressVector         ! linear mask of boundary conditions    
  end type
  type(bc_type), allocatable, dimension(:) ::  bc
- type(bc_type) ::                             bc_init
- character(len=3) ::                          loadcase_string
+ type(bc_type) ::                             bc_default
+ character(len=6) ::                          loadcase_string
 
 ! variables storing information from geom file
  real(pReal) ::                               wgt
@@ -146,17 +148,17 @@ program DAMASK_spectral
 ! --- debugging variables
  real(pReal), dimension(:,:,:,:), allocatable :: divergence
  real(pReal) :: p_real_avg, err_div_max, err_real_div_avg, err_real_div_max
- logical :: debugGeneral = .false., debugDivergence = .false., debugRestart = .false.
+ logical :: debugGeneral, debugDivergence, debugRestart
 
 ! --- initialize default value for loadcase
- bc_init%deformation = zeroes; bc_init%stress = zeroes; bc_init%rotation = zeroes
- bc_init%timeIncrement = 0.0_pReal;                     bc_init%temperature = 300.0_pReal
- bc_init%steps = 0_pInt;                                bc_init%logscale = 0_pInt
- bc_init%outputfrequency = 1_pInt;                      bc_init%restartfrequency = 0_pInt
- bc_init%maskDeformation = .false.;                     bc_init%maskStress = .false.
- bc_init%maskStressVector = .false.;                    bc_init%velGradApplied = .false.
- bc_init%followFormerTrajectory = .true.
- bc_init%rotation = math_I3                                                               ! assume no rotation
+ bc_default%steps = 0_pInt;                               bc_default%timeIncrement = 0.0_pReal
+ bc_default%temperature = 300.0_pReal;                    bc_default%logscale = 0_pInt
+ bc_default%outputfrequency = 1_pInt;                     bc_default%restartfrequency = 0_pInt
+ bc_default%deformation = zeroes;                         bc_default%stress = zeroes
+ bc_default%maskDeformation = .false.;                    bc_default%maskStress = .false.
+ bc_default%velGradApplied = .false.;                     bc_default%maskStressVector = .false.
+ bc_default%followFormerTrajectory = .true.
+ bc_default%rotation = math_I3                                                            ! assume no rotation
  
 ! --- initializing model size independed parameters
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                        ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
@@ -178,9 +180,9 @@ program DAMASK_spectral
  do
    read(myUnit,'(a1024)',END = 100) line
    if (IO_isBlank(line)) cycle                                         ! skip empty lines
-   posLoadcase = IO_stringPos(line,maxNchunksLoadcase)
+   positions = IO_stringPos(line,maxNchunksLoadcase)
    do i = 1_pInt, maxNchunksLoadcase, 1_pInt                           ! reading compulsory parameters for loadcase
-       select case (IO_lc(IO_stringValue(line,posLoadcase,i)))
+       select case (IO_lc(IO_stringValue(line,positions,i)))
             case('l', 'velocitygrad', 'velgrad','velocitygradient')
                  N_l = N_l + 1_pInt
             case('fdot')
@@ -206,61 +208,61 @@ program DAMASK_spectral
    read(myUnit,'(a1024)',END = 101) line
    if (IO_isBlank(line)) cycle                                                ! skip empty lines
    loadcase = loadcase + 1_pInt
-   bc(loadcase) = bc_init
-   posLoadcase = IO_stringPos(line,maxNchunksLoadcase)
+   bc(loadcase) = bc_default
+   positions = IO_stringPos(line,maxNchunksLoadcase)
    do j = 1_pInt,maxNchunksLoadcase
-     select case (IO_lc(IO_stringValue(line,posLoadcase,j)))
+     select case (IO_lc(IO_stringValue(line,positions,j)))
        case('fdot','l','velocitygrad','velgrad','velocitygradient')                                 ! assign values for the deformation BC matrix
-         bc(loadcase)%velGradApplied = (IO_lc(IO_stringValue(line,posLoadcase,j)) == 'l' .or. &     ! in case of given L, set flag to true
-                                        IO_lc(IO_stringValue(line,posLoadcase,j)) == 'velocitygrad' .or. &
-                                        IO_lc(IO_stringValue(line,posLoadcase,j)) == 'velgrad' .or. &
-                                        IO_lc(IO_stringValue(line,posLoadcase,j)) == 'velocitygradient')
+         bc(loadcase)%velGradApplied = (IO_lc(IO_stringValue(line,positions,j)) == 'l' .or. &     ! in case of given L, set flag to true
+                                        IO_lc(IO_stringValue(line,positions,j)) == 'velocitygrad' .or. &
+                                        IO_lc(IO_stringValue(line,positions,j)) == 'velgrad' .or. &
+                                        IO_lc(IO_stringValue(line,positions,j)) == 'velocitygradient')
          temp_valueVector = 0.0_pReal
          temp_maskVector = .false.
-         forall (k = 1_pInt:9_pInt) temp_maskVector(k) = IO_stringValue(line,posLoadcase,j+k) /= '*'
+         forall (k = 1_pInt:9_pInt) temp_maskVector(k) = IO_stringValue(line,positions,j+k) /= '*'
          do k = 1_pInt,9_pInt
-           if (temp_maskVector(k)) temp_valueVector(k) = IO_floatValue(line,posLoadcase,j+k)
+           if (temp_maskVector(k)) temp_valueVector(k) = IO_floatValue(line,positions,j+k)
          enddo
          bc(loadcase)%maskDeformation = transpose(reshape(temp_maskVector,(/3,3/)))
          bc(loadcase)%deformation = math_plain9to33(temp_valueVector)
        case('p', 'pk1', 'piolakirchhoff', 'stress')
          temp_valueVector = 0.0_pReal
-         forall (k = 1_pInt:9_pInt) bc(loadcase)%maskStressVector(k) = IO_stringValue(line,posLoadcase,j+k) /= '*'
+         forall (k = 1_pInt:9_pInt) bc(loadcase)%maskStressVector(k) = IO_stringValue(line,positions,j+k) /= '*'
          do k = 1_pInt,9_pInt
-           if (bc(loadcase)%maskStressVector(k)) temp_valueVector(k) = IO_floatValue(line,posLoadcase,j+k)  ! assign values for the bc(loadcase)%stress matrix
+           if (bc(loadcase)%maskStressVector(k)) temp_valueVector(k) = IO_floatValue(line,positions,j+k)  ! assign values for the bc(loadcase)%stress matrix
          enddo
          bc(loadcase)%maskStress = transpose(reshape(bc(loadcase)%maskStressVector,(/3,3/)))
          bc(loadcase)%stress = math_plain9to33(temp_valueVector)
        case('t','time','delta')                                                  ! increment time
-         bc(loadcase)%timeIncrement = IO_floatValue(line,posLoadcase,j+1_pInt)
+         bc(loadcase)%timeIncrement = IO_floatValue(line,positions,j+1_pInt)
        case('temp','temperature')                                                ! starting temperature
-         bc(loadcase)%temperature = IO_floatValue(line,posLoadcase,j+1_pInt)
-       case('n','incs','increments','steps')                                     ! steps
-         bc(loadcase)%steps = IO_intValue(line,posLoadcase,j+1_pInt)
-       case('logincs','logsteps')                                                ! true, if log scale
-         bc(loadcase)%steps = IO_intValue(line,posLoadcase,j+1_pInt)
+         bc(loadcase)%temperature = IO_floatValue(line,positions,j+1_pInt)
+       case('n','incs','increments','steps')                                     ! number of increments
+         bc(loadcase)%steps = IO_intValue(line,positions,j+1_pInt)
+       case('logincs','logincrements','logsteps')                                ! number of increments (switch to log time scaling)
+         bc(loadcase)%steps = IO_intValue(line,positions,j+1_pInt)
          bc(loadcase)%logscale = 1_pInt
        case('f','freq','frequency','outputfreq')                                 ! frequency of result writings
-         bc(loadcase)%outputfrequency = IO_intValue(line,posLoadcase,j+1_pInt)                
+         bc(loadcase)%outputfrequency = IO_intValue(line,positions,j+1_pInt)                
        case('r','restart','restartwrite')                                        ! frequency of writing restart information
-         bc(loadcase)%restartfrequency = max(0_pInt,IO_intValue(line,posLoadcase,j+1_pInt))                
+         bc(loadcase)%restartfrequency = max(0_pInt,IO_intValue(line,positions,j+1_pInt))                
        case('guessreset','dropguessing')
          bc(loadcase)%followFormerTrajectory = .false.                           ! do not continue to predict deformation along former trajectory
        case('euler')                                                             ! rotation of loadcase given in euler angles
          p = 0_pInt                                                              ! assuming values given in radians
          l = 1_pInt                                                              ! assuming keyword indicating degree/radians
-         select case (IO_lc(IO_stringValue(line,posLoadcase,j+1_pInt)))
+         select case (IO_lc(IO_stringValue(line,positions,j+1_pInt)))
            case('deg','degree')
              p = 1_pInt                                                          ! for conversion from degree to radian           
            case('rad','radian') 
            case default               
-             l = 0_pInt                                                          ! imediately reading in angles, assuming radians
+             l = 0_pInt                                                          ! immediately reading in angles, assuming radians
          end select
-         forall(k = 1_pInt:3_pInt)  temp33_Real(k,1) = IO_floatValue(line,posLoadcase,j+l+k) * real(p,pReal) * inRad
+         forall(k = 1_pInt:3_pInt)  temp33_Real(k,1) = IO_floatValue(line,positions,j+l+k) * real(p,pReal) * inRad
          bc(loadcase)%rotation = math_EulerToR(temp33_Real(:,1))
        case('rotation','rot')                                                    ! assign values for the rotation of loadcase matrix
          temp_valueVector = 0.0_pReal
-         forall (k = 1_pInt:9_pInt) temp_valueVector(k) = IO_floatValue(line,posLoadcase,j+k)
+         forall (k = 1_pInt:9_pInt) temp_valueVector(k) = IO_floatValue(line,positions,j+k)
          bc(loadcase)%rotation = math_plain9to33(temp_valueVector)
      end select
  enddo; enddo
@@ -274,10 +276,10 @@ program DAMASK_spectral
         call IO_error(error_ID=101_pInt,ext_msg = trim(path)//InputFileExtension)
  rewind(myUnit)
  read(myUnit,'(a1024)') line
- posGeom = IO_stringPos(line,2_pInt)
- keyword = IO_lc(IO_StringValue(line,posGeom,2_pInt))
+ positions = IO_stringPos(line,2_pInt)
+ keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
  if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,posGeom,1_pInt) + 1_pInt
+   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
    call IO_error(error_ID=42_pInt)
  endif
@@ -285,33 +287,33 @@ program DAMASK_spectral
  rewind(myUnit)
  do i = 1_pInt, headerLength
    read(myUnit,'(a1024)') line
-   posGeom = IO_stringPos(line,maxNchunksGeom)             
-   select case ( IO_lc(IO_StringValue(line,posGeom,1)) )
+   positions = IO_stringPos(line,maxNchunksGeom)             
+   select case ( IO_lc(IO_StringValue(line,positions,1)) )
      case ('dimension')
        gotDimension = .true.
        do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,posGeom,j)))
+         select case (IO_lc(IO_stringValue(line,positions,j)))
            case('x')
-              geomdimension(1) = IO_floatValue(line,posGeom,j+1_pInt)
+              geomdimension(1) = IO_floatValue(line,positions,j+1_pInt)
            case('y')
-              geomdimension(2) = IO_floatValue(line,posGeom,j+1_pInt)
+              geomdimension(2) = IO_floatValue(line,positions,j+1_pInt)
            case('z')
-              geomdimension(3) = IO_floatValue(line,posGeom,j+1_pInt)
+              geomdimension(3) = IO_floatValue(line,positions,j+1_pInt)
          end select
        enddo
      case ('homogenization')
        gotHomogenization = .true.
-       homog = IO_intValue(line,posGeom,2_pInt)
+       homog = IO_intValue(line,positions,2_pInt)
      case ('resolution')
        gotResolution = .true.
        do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,posGeom,j)))
+         select case (IO_lc(IO_stringValue(line,positions,j)))
            case('a')
-             res(1) = IO_intValue(line,posGeom,j+1_pInt)
+             res(1) = IO_intValue(line,positions,j+1_pInt)
            case('b')
-             res(2) = IO_intValue(line,posGeom,j+1_pInt)
+             res(2) = IO_intValue(line,positions,j+1_pInt)
            case('c')
-             res(3) = IO_intValue(line,posGeom,j+1_pInt)
+             res(3) = IO_intValue(line,positions,j+1_pInt)
          end select
        enddo
      case ('picture')
@@ -331,9 +333,9 @@ program DAMASK_spectral
  call CPFEM_initAll(bc(1)%temperature,1_pInt,1_pInt)
 
 ! --- debugging parameters
- if (iand(spectral_debug_verbosity,1_pInt)==1_pInt) debugGeneral = .true.
- if (iand(spectral_debug_verbosity,2_pInt)==2_pInt) debugDivergence = .true.
- if (iand(spectral_debug_verbosity,4_pInt)==4_pInt) debugRestart = .true.
+ debugGeneral    = iand(debug_spectral,debug_spectralGeneral)    > 0_pInt
+ debugDivergence = iand(debug_spectral,debug_spectralDivergence) > 0_pInt
+ debugRestart    = iand(debug_spectral,debug_spectralRestart)    > 0_pInt
 
 ! --- output of geometry
  print '(a)',  ''
@@ -360,10 +362,10 @@ program DAMASK_spectral
 
  errorID = 0_pInt
  do loadcase = 1_pInt, N_Loadcases
-   write (loadcase_string, '(i3)' ) loadcase
+   write (loadcase_string, '(i6)' ) loadcase
 
    print '(a)', '============================================================='
-   print '(a,i5)', 'loadcase:            ', loadcase
+   print '(a,i6)', 'loadcase:            ', loadcase
 
    if (.not. bc(loadcase)%followFormerTrajectory) print '(a)', 'drop guessing along trajectory'
    if (bc(loadcase)%velGradApplied) then
@@ -429,7 +431,7 @@ program DAMASK_spectral
    allocate (c_reduced(size_reduced,size_reduced));          c_reduced = 0.0_pReal
    allocate (s_reduced(size_reduced,size_reduced));          s_reduced = 0.0_pReal
 
-   timeinc = bc(loadcase)%timeIncrement/bc(loadcase)%steps                ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
+   timeinc = bc(loadcase)%timeIncrement/bc(loadcase)%steps                ! only valid for given linear time scale. will be overwritten later in case logarithmic scale is used
    fDot = bc(loadcase)%deformation                                        ! only valid for given fDot. will be overwritten later in case L is given
 
 !*************************************************************
@@ -437,14 +439,14 @@ program DAMASK_spectral
    do step = 1_pInt,  bc(loadcase)%steps
 !*************************************************************
 ! forwarding time
-     if (bc(loadcase)%logscale == 1_pInt) then                                                 ! loglinear scale
-       if (loadcase == 1_pInt) then                                                            ! 1st loadcase of loglinear scale            
-         if (step == 1_pInt) then                                                              ! 1st step of 1st loadcase of loglinear scale
+     if (bc(loadcase)%logscale == 1_pInt) then                                                 ! logarithmic scale
+       if (loadcase == 1_pInt) then                                                            ! 1st loadcase of logarithmic scale            
+         if (step == 1_pInt) then                                                              ! 1st step of 1st loadcase of logarithmic scale
            timeinc = bc(1)%timeIncrement*(2.0_pReal**real(     1_pInt-bc(1)%steps ,pReal))     ! assume 1st step is equal to 2nd 
-         else                                                                                  ! not-1st step of 1st loadcase of loglinear scale
+         else                                                                                  ! not-1st step of 1st loadcase of logarithmic scale
            timeinc = bc(1)%timeIncrement*(2.0_pReal**real(step-1_pInt-bc(1)%steps ,pReal))
          endif
-       else                                                                                    ! not-1st loadcase of loglinear scale
+       else                                                                                    ! not-1st loadcase of logarithmic scale
            timeinc = time0 *( (1.0_pReal + bc(loadcase)%timeIncrement/time0 )**real(          step/bc(loadcase)%steps ,pReal)  &
                              -(1.0_pReal + bc(loadcase)%timeIncrement/time0 )**real( (step-1_pInt)/bc(loadcase)%steps ,pReal) )
        endif
@@ -586,18 +588,18 @@ program DAMASK_spectral
        !$OMP CRITICAL (write2out)
        open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
                                                           //'.spectralOut',form='UNFORMATTED',status='REPLACE')
-       write(538), 'load', trim(getLoadcaseName())
+       write(538), 'load',       trim(getLoadcaseName())
        write(538), 'workingdir', trim(getSolverWorkingDirectoryName())
-       write(538), 'geometry', trim(getSolverJobName())//InputFileExtension
+       write(538), 'geometry',   trim(getSolverJobName())//InputFileExtension
        write(538), 'resolution', res
-       write(538), 'dimension', geomdimension
+       write(538), 'dimension',  geomdimension
        write(538), 'materialpoint_sizeResults', materialpoint_sizeResults
-       write(538), 'loadcases', N_Loadcases
-       write(538), 'logscale', bc(1:N_Loadcases)%logscale                                   ! one entry per loadcase (0: linear, 1: log)
+       write(538), 'loadcases',        N_Loadcases
        write(538), 'frequencies', bc(1:N_Loadcases)%outputfrequency                         ! one entry per loadcase
-       write(538), 'times', bc(1:N_Loadcases)%timeIncrement                                 ! one entry per loadcase
+       write(538), 'times',       bc(1:N_Loadcases)%timeIncrement                           ! one entry per loadcase
+       write(538), 'logscales',   bc(1:N_Loadcases)%logscale                                ! one entry per loadcase (0: linear, 1: log)
        bc(1)%steps= bc(1)%steps + 1_pInt                                                   
-       write(538), 'increments', bc(1:N_Loadcases)%steps                                    ! one entry per loadcase ToDo: rename keyword to steps
+       write(538), 'increments',  bc(1:N_Loadcases)%steps                                   ! one entry per loadcase
        bc(1)%steps= bc(1)%steps - 1_pInt
        write(538), 'startingIncrement', restartReadStep -1_pInt                             ! start with writing out the previous step
        write(538), 'eoh'                                                                    ! end of header
