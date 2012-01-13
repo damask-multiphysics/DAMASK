@@ -49,8 +49,11 @@ implicit none
   write(6,*) '<<<+-  prec init  -+>>>'
   write(6,*) '$Id$'
   write(6,*) 
-  write(6,*) 'NaN:        ',DAMASK_NAN
-  write(6,*) 'NaN /= NaN: ',DAMASK_NaN/=DAMASK_NaN
+  write(6,'(a,i3)'),   ' Bytes for pReal:    ',pReal
+  write(6,'(a,i3)'),   ' Bytes for pInt:     ',pInt
+  write(6,'(a,i3)'),   ' Bytes for pLongInt: ',pLongInt
+  write(6,'(a,e3.3)'), ' NaN:                ',DAMASK_NAN
+  write(6,'(a,l3)'),   ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
   write(6,*)
 !$OMP END CRITICAL (write2out)
 
