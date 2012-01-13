@@ -16,12 +16,12 @@
 #   make
 #   make install
 # + specify in the "pathinfo:FFTW" where FFTW was installed.
-#   We essentially look for two library files "lib/libfftw3_threads.a" and "lib/libfftw3.a", so you can copy those, for instance,
+#   We essentially look for two library files "lib/libfftw3_threads" and "lib/libfftw3", so you can copy those, for instance,
 #   into DAMASK_ROOT/lib/fftw/lib/ and specify "./fftw/" as pathinfo:FFTW
 # Use --enable-float in above configure for single precision...
 # Uses linux threads to parallelize fftw3
 #
-# Instead of the AMD Core Math Library a standard "liblapack.a/dylib/etc." can be used by leaving pathinfo:ACML blank
+# Instead of the AMD Core Math Library a standard "liblapack.a/dylib/etc." can be used by leaving pathinfo:ACML and pathinfo:IKML blank
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
@@ -58,10 +58,10 @@ DEBUG5 =-stand std03/std95
 ########################################################################################
 
 #auto values will be set by setup_code.py
-FFTWROOT := /nethome/m.diehl/DAMASK/lib/fftw
-IKMLROOT := 
+FFTWROOT := $(DAMASK_ROOT)/lib/fftw
+IKMLROOT :=
 ACMLROOT := /opt/acml4.4.0
-LAPACKROOT := 
+LAPACKROOT :=
 
 F90 ?= ifort
 COMPILERNAME ?= $(F90)
@@ -114,8 +114,8 @@ LIB_DIRS += -L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES += -lacml$(ACML_ARCH)
 else
 ifdef LAPACKROOT
-LIB_DIRS += -L$(LAPACKROOT)/lib -L$(LAPACKROOT)/lib64
-LIBRARIES += -llapack
+LIB_DIRS += -L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
+LIBRARIES += -llapack 
 endif
 endif
 endif
@@ -206,11 +206,8 @@ FEsolving.o: FEsolving.f90 basics.a
 
 
 
-basics.a: kdtree2.o
-	ar rc basics.a kdtree2.o math.o debug.o numerics.o IO.o DAMASK_spectral_interface.o prec.o
-
-kdtree2.o: kdtree2.f90 math.o
-	$(PREFIX)	$(COMPILERNAME) $(COMPILE) kdtree2.f90 $(SUFFIX)
+basics.a: math.o
+	ar rc basics.a math.o debug.o numerics.o IO.o DAMASK_spectral_interface.o prec.o
 
 math.o: math.f90 debug.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) math.f90 $(SUFFIX)

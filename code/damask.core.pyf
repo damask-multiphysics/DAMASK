@@ -70,36 +70,29 @@ python module core ! in
             real*8,  dimension(res[0],  res[1],  res[2],  3,3),intent(in),  depend(res[0],res[1],res[2])    :: defgrad
             ! output variables
             real*8,  dimension(res[0],  res[1],  res[2],  3),  intent(out), depend(res[0],res[1],res[2])    :: coords
-            ! variables with dimension depending on input
-            complex*16, dimension(res[0]/2+1,res[1],res[2],3),              depend(res[0],res[1],res[2])    :: coords_fft
-            complex*16, dimension(res[0],res[1],res[2],3,3),                depend(res[0],res[1],res[2])    :: defgrad_fft
         end subroutine deformed_fft
 
-        subroutine curl_fft(res,geomdim,vec_tens,field,curl_field) ! in :math:math.f90
+        subroutine curl_fft(res,geomdim,vec_tens,field,curl) ! in :math:math.f90
             ! input variables
             integer, dimension(3),                                     intent(in)                                          :: res
             real*8,  dimension(3),                                     intent(in)                                          :: geomdim
             integer,                                                   intent(in)                                          :: vec_tens
             real*8,  dimension(res[0],  res[1],  res[2],  3,vec_tens), intent(in),  depend(res[0],res[1],res[2],vec_tens)  :: field
             ! output variables
-            real*8,  dimension(res[0],  res[1],  res[2],  3,vec_tens), intent(out), depend(res[0],res[1],res[2],vec_tens)  :: curl_field
+            real*8,  dimension(res[0],  res[1],  res[2],  3,vec_tens), intent(out), depend(res[0],res[1],res[2],vec_tens)  :: curl
             ! variables with dimension depending on input
-            complex*16, dimension(res[0],    res[1],res[2],3,vec_tens),             depend(res[0],res[1],res[2],vec_tens)  :: field_fft
-            complex*16, dimension(res[0]/2+1,res[1],res[2],3,vec_tens),             depend(res[0],res[1],res[2],vec_tens)  :: curl_field_fft
             real*8,     dimension(res[0]/2+1,res[1],res[2],3),                      depend(res[0],res[1],res[2])           :: xi
         end subroutine curl_fft
 
-        subroutine divergence_fft(res,geomdim,vec_tens,field,divergence_field) ! in :math:math.f90
+        subroutine divergence_fft(res,geomdim,vec_tens,field,divergence) ! in :math:math.f90
             ! input variables
             integer, dimension(3),                                     intent(in)                                          :: res
             real*8,  dimension(3),                                     intent(in)                                          :: geomdim
             integer,                                                   intent(in)                                          :: vec_tens
             real*8,  dimension(res[0],  res[1],  res[2],  3,vec_tens), intent(in),  depend(res[0],res[1],res[2],vec_tens)  :: field
             ! output variables
-            real*8,  dimension(res[0],  res[1],  res[2],  vec_tens),   intent(out), depend(res[0],res[1],res[2],vec_tens)  :: divergence_field
-            ! variables with dimension depending on input
-            complex*16, dimension(res[0],    res[1],res[2],vec_tens,3),i            depend(res[0],res[1],res[2],vec_tens)  :: field_fft
-            complex*16, dimension(res[0]/2+1,res[1],res[2],vec_tens),               depend(res[0],res[1],res[2],vec_tens)  :: divergence_field_fft     
+            real*8,  dimension(res[0],  res[1],  res[2],  vec_tens),   intent(out), depend(res[0],res[1],res[2],vec_tens)  :: divergence
+            ! variables with dimension depending on input   
             real*8,     dimension(res[0]/2+1,res[1],res[2],3),                      depend(res[0],res[1],res[2],3)         :: xi       
         end subroutine divergence_fft
 

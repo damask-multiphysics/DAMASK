@@ -32,7 +32,7 @@ END MODULE prec
 MODULE debug
  use prec, only: pInt
  implicit none
- integer(pInt), parameter :: debug_verbosity = 0_pInt
+ integer(pInt), parameter :: debug_verbosity = 1_pInt
 END MODULE debug
 
 MODULE numerics

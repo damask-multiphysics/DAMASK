@@ -25,7 +25,7 @@
  use prec, only: pInt,pReal
  implicit none
 
- integer(pInt) :: cycleCounter = 0_pInt, theInc = -1_pInt, restartReadStep = 1_pInt
+ integer(pInt) :: cycleCounter = 0_pInt, theInc = -1_pInt, restartReadInc = 1_pInt
  real(pReal)   :: theTime = 0.0_pReal, theDelta = 0.0_pReal
  logical :: lastIncConverged = .false.,outdatedByNewInc = .false.,outdatedFFN1 = .false.,terminallyIll = .false.
  logical :: symmetricSolver = .false. 
@@ -74,9 +74,9 @@
 
      if(start /= 0_pInt) then                                                      ! found something
        length = verify(commandLine(start:len(commandLine)),'0123456789',.false.)   ! where is first non number after argument?
-       read(commandLine(start:start+length),'(I12)') restartReadStep               ! read argument
-       restartRead  = max(0_pInt,restartReadStep) > 0_pInt
-       if(restartReadStep < 0_pInt) call IO_warning(warning_ID=34_pInt)
+       read(commandLine(start:start+length),'(I12)') restartReadInc                ! read argument
+       restartRead  = max(0_pInt,restartReadInc) > 0_pInt
+       if(restartReadInc < 0_pInt) call IO_warning(warning_ID=34_pInt)
      endif
    else
      rewind(fileunit)

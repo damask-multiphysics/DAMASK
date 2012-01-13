@@ -71,7 +71,7 @@ real(pReal) ::                  relevantStrain, &                       ! strain
                                 fftw_timelimit, &                       ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org
                                 rotation_tol                            ! tolerance of rotation specified in loadcase
 character(len=64) ::            fftw_planner_string                     ! reads the planing-rigor flag, see manual on www.fftw.org
-integer*8 ::                    fftw_planner_flag                       ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
+integer(pInt) ::                fftw_planner_flag                       ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
 logical ::                      memory_efficient,&                      ! for fast execution (pre calculation of gamma_hat)
                                 divergence_correction                   ! correct divergence calculation in fourier space
 integer(pInt) ::                itmax , &                               ! maximum number of iterations

@@ -1172,6 +1172,8 @@ endfunction
    msg = 'opening material configuration'
  case (101)
    msg = 'opening input file'
+ case (102)
+   msg = 'precistion not suitable for FFTW'
  case (103)
    msg = 'odd resolution given'
  case (104)
@@ -1412,8 +1414,6 @@ endfunction
  character(len=1024) msg
 
  select case (warning_ID)
- case (33_pInt)
-   msg = 'cannot guess along trajectory for first step of first loadcase'
  case (34)
    msg = 'invalid restart increment given'
  case (47_pInt)
