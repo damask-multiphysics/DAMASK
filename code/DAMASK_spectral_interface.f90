@@ -86,9 +86,9 @@ subroutine DAMASK_interface_init()
    stop
  endif
  if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) & ! check for correct number of given arguments (no --help)
-   stop 'Wrong Nr. of Arguments. Run DAMASK_spectral.exe --help'   ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
- start = index(commandLine,'-g',.true.) + 3_pInt                   ! search for '-g' and jump to first char of geometry
- if (index(commandLine,'--geom',.true.)>0) then                    ! if '--geom' is found, use that (contains '-g')
+   stop 'Wrong Nr. of Arguments. Run DAMASK_spectral.exe --help'            ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
+ start = index(commandLine,'-g',.true.) + 3_pInt                            ! search for '-g' and jump to first char of geometry
+ if (index(commandLine,'--geom',.true.)>0) then                             ! if '--geom' is found, use that (contains '-g')
    start = index(commandLine,'--geom',.true.) + 7_pInt
  endif               
  if (index(commandLine,'--geometry',.true.)>0) then                ! again, now searching for --geometry'
@@ -185,8 +185,8 @@ function getModelName()
  posExt = scan(geometryParameter,'.',back=.true.)
  posSep = scan(geometryParameter,pathSep,back=.true.)
 
- if (posExt <= posSep) posExt = len_trim(geometryParameter)+1       ! no extension present
- getModelName = geometryParameter(1:posExt-1)                       ! path to geometry file (excl. extension)
+ if (posExt <= posSep) posExt = len_trim(geometryParameter)+1_pInt     ! no extension present
+ getModelName = geometryParameter(1:posExt-1_pInt)                   ! path to geometry file (excl. extension)
 
  if (scan(getModelName,pathSep) /= 1) then                ! relative path given as command line argument
    call getcwd(cwd)
@@ -217,8 +217,8 @@ function getLoadCase()
  posExt = scan(loadcaseParameter,'.',back=.true.)
  posSep = scan(loadcaseParameter,pathSep,back=.true.)
 
- if (posExt <= posSep) posExt = len_trim(loadcaseParameter)+1                ! no extension present
- getLoadCase = loadcaseParameter(posSep+1:posExt-1)                          ! name of load case file exluding extension
+ if (posExt <= posSep) posExt = len_trim(loadcaseParameter)+1_pInt            ! no extension present
+ getLoadCase = loadcaseParameter(posSep+1_pInt:posExt-1_pInt)                 ! name of load case file exluding extension
 
 endfunction getLoadCase
 
@@ -272,9 +272,9 @@ function rectifyPath(path)
  !remove ./ from path
  l = len_trim(path)
  rectifyPath = path
- do i = l,3,-1
-    if ( rectifyPath(i-1:i) == './' .and. rectifyPath(i-2:i-2) /= '.' ) &
-      rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
+ do i = l,3_pInt,-1_pInt
+    if ( rectifyPath(i-1_pInt:i) == './' .and. rectifyPath(i-2_pInt:i-2_pInt) /= '.' ) &
+      rectifyPath(i-1_pInt:l) = rectifyPath(i+1_pInt:l)//'  '
  enddo
 
  !remove ../ and corresponding directory from rectifyPath
@@ -282,13 +282,19 @@ function rectifyPath(path)
  i = index(rectifyPath(i:l),'../')
  j = 0_pInt
  do while (i > j)
-    j = scan(rectifyPath(:i-2),'/',back=.true.)
-    rectifyPath(j+1:l) = rectifyPath(i+3:l)//repeat(' ',2+i-j)
-    i = j+index(rectifyPath(j+1:l),'../')
+    j = scan(rectifyPath(1:i-2_pInt),'/',back=.true.)
+    rectifyPath(j+1_pInt:l) = rectifyPath(i+3_pInt:l)//repeat(' ',2_pInt+i-j)
+    if (rectifyPath(j+1_pInt:j+1_pInt) == '/') then !search for '//' that appear in case of XXX/../../XXX
+      k = len_trim(rectifyPath)
+      rectifyPath(j+1_pInt:k-1_pInt) = rectifyPath(j+2_pInt:k)
+      rectifyPath(k:k) = ' '
+    endif
+    i = j+index(rectifyPath(j+1_pInt:l),'../')
  enddo
  if(len_trim(rectifyPath) == 0) rectifyPath = '/'
 
- endfunction rectifyPath
+ end function rectifyPath
+
 
 
 !********************************************************************
@@ -305,16 +311,16 @@ function makeRelativePath(a,b)
  character (len=1024) :: makeRelativePath
  integer(pInt) i,posLastCommonSlash,remainingSlashes
 
- posLastCommonSlash = 0
- remainingSlashes = 0
- do i = 1,min(1024,len_trim(a),len_trim(b))
+ posLastCommonSlash = 0_pInt
+ remainingSlashes = 0_pInt
+ do i = 1_pInt,min(1024,len_trim(a),len_trim(b))
    if (a(i:i) /= b(i:i)) exit
    if (a(i:i) == '/') posLastCommonSlash = i
  enddo
- do i = posLastCommonSlash+1,len_trim(a)
-   if (a(i:i) == '/') remainingSlashes = remainingSlashes + 1
+ do i = posLastCommonSlash+1_pInt,len_trim(a)
+   if (a(i:i) == '/') remainingSlashes = remainingSlashes + 1_pInt
  enddo
- makeRelativePath = repeat('../',remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
+ makeRelativePath = repeat('../',remainingSlashes)//b(posLastCommonSlash+1_pInt:len_trim(b))
 
 endfunction makeRelativePath
 
