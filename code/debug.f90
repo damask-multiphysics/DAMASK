@@ -27,7 +27,8 @@ implicit none
 character(len=64), parameter :: debug_configFile = 'debug.config' ! name of configuration file
 integer(pInt), parameter :: debug_spectralGeneral    = 1_pInt, &
                             debug_spectralDivergence = 2_pInt, &
-                            debug_spectralRestart    = 4_pInt
+                            debug_spectralRestart    = 4_pInt, &
+                            debug_spectralFFTW       = 8_pInt
 
 integer(pInt), dimension(:,:), allocatable :: debug_StressLoopDistribution
 integer(pInt), dimension(:,:), allocatable :: debug_LeapfrogBreakDistribution
@@ -134,6 +135,8 @@ subroutine debug_init()
                    debug_spectral = ior(debug_spectral, debug_spectralDivergence)
               case('restart')
                    debug_spectral = ior(debug_spectral, debug_spectralRestart)
+              case('fftw')
+                   debug_spectral = ior(debug_spectral, debug_spectralFFTW)
             endselect
       endselect
     enddo
@@ -181,6 +184,7 @@ subroutine debug_init()
   if (iand(debug_spectral,debug_spectralGeneral)    > 0_pInt)  write(6,'(a)') ' spectral general    debugging'
   if (iand(debug_spectral,debug_spectralDivergence) > 0_pInt)  write(6,'(a)') ' spectral divergence debugging'
   if (iand(debug_spectral,debug_spectralRestart)    > 0_pInt)  write(6,'(a)') ' spectral restart    debugging'
+  if (iand(debug_spectral,debug_spectralFFTW)       > 0_pInt)  write(6,'(a)') ' spectral FFTW       debugging'
   !$OMP END CRITICAL (write2out)
 
 endsubroutine
