@@ -1,7 +1,7 @@
 #!/usr/bin/env python 
 
 import pdb, os, sys, gc, math, re, threading, time, struct, string
-import msc_tools
+import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 
@@ -755,7 +755,7 @@ if options.filetype not in ['marc','spectral']:
   parser.error('file type "%s" not supported...'%options.filetype)
 
 if options.filetype == 'marc':
-  sys.path.append(msc_tools.MSC_TOOLS().libraryPath(sys.argv[0],'../../'))
+  sys.path.append(damask.solver.Marc().libraryPath('../../'))
   
   try:
     from py_post import *
@@ -838,7 +838,7 @@ for opt in ['nodalScalar','elemScalar','elemTensor','homogenizationResult','crys
 
 if options.info:
   if options.filetype == 'marc':
-    print '\n\nMentat release %s'%msc_tools.MSC_TOOLS().version(sys.argv[0],'../../')
+    print '\n\nMentat release %s'%damask.solver.Marc().version('../../')
   if options.filetype == 'spectral':
     print '\n\n',p
 

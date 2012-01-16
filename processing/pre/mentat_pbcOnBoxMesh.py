@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-import sys,os,pwd,math,re,string,msc_tools
+import sys,os,pwd,math,re,string, damask
 from optparse import OptionParser
 
-sys.path.append(msc_tools.MSC_TOOLS().libraryPath(sys.argv[0],'../../'))
+sys.path.append(damask.solver.Marc().libraryPath('../../'))
 
 try:
   from py_mentat import *

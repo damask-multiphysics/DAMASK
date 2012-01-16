@@ -1,10 +1,10 @@
 #!/usr/bin/env python 
 
-import sys, os, msc_tools, string
+import sys, os, string, damask
 from colorsys import *
 from optparse import OptionParser
 
-sys.path.append(msc_tools.MSC_TOOLS().libraryPath(sys.argv[0],'../../'))
+sys.path.append(damask.solver.Marc().libraryPath('../../'))
 
 try:
   from py_mentat import *

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys,os,math,re,string, msc_tools
+import sys,os,math,re,string, damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 
@@ -10,7 +10,7 @@ try:                                        # check for Python Image Lib
 except:
   ImageCapability = False
 
-sys.path.append(msc_tools.MSC_TOOLS().libraryPath(sys.argv[0],'../../'))
+sys.path.append(damask.solver.Marc().libraryPath('../../'))
 
 try:                                        # check for MSC.Mentat Python interface
   from py_mentat import *
@@ -79,15 +79,16 @@ def rcbOrientationParser(content):
   grains = []
   myOrientation = [0.0,0.0,0.0]
   for line in content:
-    if line[0] != '#':                      # skip comments
-      for grain in range(2):
-        myID = int(line.split()[12+grain])          # get grain id
-        myOrientation = map(float,line.split())[3*grain:3+3*grain]  # get orientation
-        if len(grains) < myID:
-          for i in range(myID-len(grains)):       # extend list to necessary length
-            grains.append([0.0,0.0,0.0])
-        grains[myID-1] = myOrientation            # store Euler angles
-  
+    m = re.match(r'\s*(#|$)',line)
+    if m: continue                                            # skip comments and blank lines
+    for grain in range(2):
+      myID = int(line.split()[12+grain])                      # get grain id
+      myOrientation = map(float,line.split())[3*grain:3+3*grain]  # get orientation
+      if len(grains) < myID:
+        for i in range(myID-len(grains)):                     # extend list to necessary length
+          grains.append([0.0,0.0,0.0])
+      grains[myID-1] = myOrientation                          # store Euler angles
+
   return grains
 
 def rcbParser(content,M,size,tolerance):                      # parser for TSL-OIM reconstructed boundary files
@@ -99,14 +100,15 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
   x = [0.,0.]
   y = [0.,0.]
   for line in content:
-    if line[0] != '#':                                          # skip comments
-      (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]     # get start and end coordinates of each segment.
-      (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
-      (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
-      boxX[0] = min(boxX[0],x[0],x[1])
-      boxX[1] = max(boxX[1],x[0],x[1])
-      boxY[0] = min(boxY[0],y[0],y[1])
-      boxY[1] = max(boxY[1],y[0],y[1])
+    m = re.match(r'\s*(#|$)',line)
+    if m: continue                                            # skip comments and blank lines
+    (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]     # get start and end coordinates of each segment.
+    (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
+    (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
+    boxX[0] = min(boxX[0],x[0],x[1])
+    boxX[1] = max(boxX[1],x[0],x[1])
+    boxY[0] = min(boxY[0],y[0],y[1])
+    boxY[1] = max(boxY[1],y[0],y[1])
   dX = boxX[1]-boxX[0]
   dY = boxY[1]-boxY[0]
   
@@ -122,50 +124,51 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
   grainNeighbors = []
   
   for line in content:
-    if line[0] != '#':                                          # skip comments
-      (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]     # get start and end coordinates of each segment
-      (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
-      (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
+    m = re.match(r'\s*(#|$)',line)
+    if m: continue                                # skip comments and blank lines
+    (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]     # get start and end coordinates of each segment
+    (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
+    (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
 
-      x[0] -= boxX[0]                                           # make relative to origin of bounding box
-      x[1] -= boxX[0]
-      y[0] -= boxY[0]
-      y[1] -= boxY[0]
-      grainNeighbors.append(map(int,line.split()[12:14]))     # remember right and left grain per segment
-      for i in range(2):                                      # store segment to both points
-        match = False                                         # check whether point is already known (within a small range)
-        for posX in connectivityXY.keys():
-          if (abs(float(posX)-x[i])<dX*tolerance):
-            for posY in connectivityXY[posX].keys():
-              if (abs(float(posY)-y[i])<dY*tolerance):
-                keyX = posX
-                keyY = posY
-                match = True
-                break
-            break
-        if (not match):
-        # force to boundary if inside tolerance to it
-          if (abs(x[i])<dX*tolerance):
-            x[i] = 0
-          if (abs(dX-x[i])<dX*tolerance):
-            x[i] = dX
-          if (abs(y[i])<dY*tolerance):
-            y[i] = 0
-          if (abs(dY-y[i])<dY*tolerance):
-            y[i] = dY
-          keyX = "%g"%x[i]
-          keyY = "%g"%y[i]
-          if keyX not in connectivityXY:                      # create new hash entry for so far unknown point
-            connectivityXY[keyX] = {}
-          if keyY not in connectivityXY[keyX]:                # create new hash entry for so far unknown point
-            connectivityXY[keyX][keyY] = []
-          if keyY not in connectivityYX:                      # create new hash entry for so far unknown point
-            connectivityYX[keyY] = {}
-          if keyX not in connectivityYX[keyY]:                # create new hash entry for so far unknown point
-            connectivityYX[keyY][keyX] = []
-        connectivityXY[keyX][keyY].append(segment)
-        connectivityYX[keyY][keyX].append(segment)
-      segment += 1
+    x[0] -= boxX[0]                                           # make relative to origin of bounding box
+    x[1] -= boxX[0]
+    y[0] -= boxY[0]
+    y[1] -= boxY[0]
+    grainNeighbors.append(map(int,line.split()[12:14]))     # remember right and left grain per segment
+    for i in range(2):                                      # store segment to both points
+      match = False                                         # check whether point is already known (within a small range)
+      for posX in connectivityXY.keys():
+        if (abs(float(posX)-x[i])<dX*tolerance):
+          for posY in connectivityXY[posX].keys():
+            if (abs(float(posY)-y[i])<dY*tolerance):
+              keyX = posX
+              keyY = posY
+              match = True
+              break
+          break
+      if (not match):
+      # force to boundary if inside tolerance to it
+        if (abs(x[i])<dX*tolerance):
+          x[i] = 0
+        if (abs(dX-x[i])<dX*tolerance):
+          x[i] = dX
+        if (abs(y[i])<dY*tolerance):
+          y[i] = 0
+        if (abs(dY-y[i])<dY*tolerance):
+          y[i] = dY
+        keyX = "%g"%x[i]
+        keyY = "%g"%y[i]
+        if keyX not in connectivityXY:                      # create new hash entry for so far unknown point
+          connectivityXY[keyX] = {}
+        if keyY not in connectivityXY[keyX]:                # create new hash entry for so far unknown point
+          connectivityXY[keyX][keyY] = []
+        if keyY not in connectivityYX:                      # create new hash entry for so far unknown point
+          connectivityYX[keyY] = {}
+        if keyX not in connectivityYX[keyY]:                # create new hash entry for so far unknown point
+          connectivityYX[keyY][keyX] = []
+      connectivityXY[keyX][keyY].append(segment)
+      connectivityYX[keyY][keyX].append(segment)
+    segment += 1
       
 
 # top border
@@ -282,7 +285,7 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
         grains['box'] = grainLegs
     pointId += 1
 
-
+  
 # build overall data structure
 
   rcData = {'dimension':[dX,dY], 'point': [],'segment': [], 'grain': [], 'grainMapping': []}
@@ -295,18 +298,23 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
     rcData['segment'].append(segment)
   print "  built %i segments"%(len(rcData['segment']))
 
-  for grain in grains['legs']:  
-    rcData['grain'].append(grain)
+  for legs in grains['legs']:                                                             # loop over grains
+    rcData['grain'].append(legs)                                                          # store list of boundary segments
     myNeighbors = {}
-    for leg in grain:
-      if leg < len(grainNeighbors):
-        for side in range(2):
-          if grainNeighbors[leg][side] in myNeighbors:
+    for leg in legs:                                                                      # test each boundary segment
+      if leg < len(grainNeighbors):                                                       # a valid segment index?
+        for side in range(2):                                                             # look at both sides of the segment
+          if grainNeighbors[leg][side] in myNeighbors:                                    # count occurrence of grain IDs
             myNeighbors[grainNeighbors[leg][side]] += 1
           else:
             myNeighbors[grainNeighbors[leg][side]] = 1
-    if myNeighbors:   # do I have any neighbors
-      rcData['grainMapping'].append(sorted(myNeighbors.iteritems(), key=lambda (k,v): (v,k), reverse=True)[0][0])   # most frequent grain is me
+    if myNeighbors:                                                                       # do I have any neighbors (i.e., non-bounding box segment)
+      candidateGrains = sorted(myNeighbors.iteritems(), key=lambda (k,v): (v,k), reverse=True)  # sort grain counting
+      if candidateGrains[0][0] not in rcData['grainMapping']:                                   # most frequent one not yet seen?
+        rcData['grainMapping'].append(candidateGrains[0][0])                                    # must be me then
+      else:
+        rcData['grainMapping'].append(candidateGrains[1][0])                                    # special case of bi-crystal situation...
+      
   print "  found %i grains\n"%(len(rcData['grain']))
 
   rcData['box'] = grains['box']
@@ -682,7 +690,7 @@ def image(name,imgsize,marginX,marginY,rcData):
 
     draw.text([offsetX+center[0]*scaleImg,sizeY-(offsetY+center[1]*scaleImg)],'%i -> %i'%(grain,origGrain),fill=(128,32,32))
 
-    img.save(name+'.png',"PNG")
+  img.save(name+'.png',"PNG")
 
 # -------------------------
 def inside(x,y,points):                                                     # tests whether point(x,y) is within polygon described by points
