@@ -51,40 +51,48 @@ def servoLink():
   cmds = []
   base = ['x','y','z']
   box = {'min': {'x': float(sys.maxint),'y': float(sys.maxint),'z': float(sys.maxint)},
-       'max': {'x':-float(sys.maxint),'y':-float(sys.maxint),'z':-float(sys.maxint)},
+         'max': {'x':-float(sys.maxint),'y':-float(sys.maxint),'z':-float(sys.maxint)},
        'delta': {'x':0,'y':0,'z':0},
       }
   Nnodes = py_get_int("nnodes()")
   NodeCoords = [{'x':py_get_float("node_x(%i)"%(node)),
-           'y':py_get_float("node_y(%i)"%(node)),
-           'z':py_get_float("node_z(%i)"%(node)),} for node in range(1,1+Nnodes)]
+                 'y':py_get_float("node_y(%i)"%(node)),
+                 'z':py_get_float("node_z(%i)"%(node)),} for node in xrange(1,1+Nnodes)]
 
-  for node in range(Nnodes):    # find the bounding box
-    for coord in base:          # check each direction in turn
+  for node in xrange(Nnodes):                         # find the bounding box
+    for coord in base:                                # check each direction in turn
       box['min'][coord] = min(box['min'][coord],NodeCoords[node][coord])
       box['max'][coord] = max(box['max'][coord],NodeCoords[node][coord])
 
-  for coord in base:            # calc the dimension of the bounding box
+  for coord in base:                                  # calc the dimension of the bounding box
     box['delta'][coord] = box['max'][coord] - box['min'][coord] 
-  
+    for extremum in ['min','max']:
+      rounded = round(box[extremum][coord]*1e+15/box['delta'][coord]) * \
+                                           1e-15*box['delta'][coord]       # rounding to 1e-15 of dimension
+      box[extremum][coord] = {False: rounded,
+                               True: 0.0}[rounded == 0.0]                  # get rid of -0.0 (negative zeros)
   baseNode = {}
   linkNodes = []
   
-  for node in range(Nnodes):    # loop over all nodes
+  for node in xrange(Nnodes):                         # loop over all nodes
     pos = {}
     key = {}
     maxFlag = {'x': False, 'y': False, 'z': False}
     Nmax = 0
     Nmin = 0
     for coord in base:                                # for each direction
+      rounded = round(NodeCoords[node][coord]*1e+15/box['delta'][coord]) * \
+                                              1e-15*box['delta'][coord]       # rounding to 1e-15 of dimension
+      NodeCoords[node][coord] = {False: rounded,
+                                  True: 0.0}[rounded == 0.0]                  # get rid of -0.0 (negative zeros)
       key[coord] = "%.8e"%NodeCoords[node][coord]     # translate position to string
       if (key[coord] == "%.8e"%box['min'][coord]):    # compare to min of bounding box (i.e. is on outer face?)
         Nmin += 1                                     # count outer (back) face membership
       elif (key[coord] == "%.8e"%box['max'][coord]):  # compare to max of bounding box (i.e. is on outer face?)
-        Nmax += 1                                     # count outer (front) face memebership
+        Nmax += 1                                     # count outer (front) face membership
         maxFlag[coord] = True                         # remember face membership (for linked nodes)
 
-    if Nmin > 0 and Nmin > Nmax:                      # node is on more back than font faces
+    if Nmin > 0 and Nmin > Nmax:                      # node is on more back than front faces
       # prepare for any non-existing entries in the data structure
       if key['x'] not in baseNode.keys():
         baseNode[key['x']] = {}
@@ -100,6 +108,7 @@ def servoLink():
   
 
   baseCorner = baseNode["%.8e"%box['min']['x']]["%.8e"%box['min']['y']]["%.8e"%box['min']['z']]     # detect ultimate base node
+  
   
   for node in linkNodes:                        # loop over all linked nodes
     linkCoord = [node['coord']]                 # start list of control node coords with my coords
