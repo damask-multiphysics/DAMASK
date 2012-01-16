@@ -352,10 +352,7 @@ program DAMASK_spectral
  print '(a)',   '#############################################################'
  print '(a,a)', 'loadcase file:        ',trim(getLoadcaseName())
 
- if (bc(1)%followFormerTrajectory) then
-   call IO_warning(warning_ID = 33_pInt)                 ! cannot guess along trajectory for first inc of first loadcase
-   bc(1)%followFormerTrajectory = .false.
- endif
+ bc(1)%followFormerTrajectory = .false.                ! cannot guess along trajectory for first inc of first loadcase
  
 ! --- consistency checks and output of loadcase
 
@@ -398,7 +395,7 @@ program DAMASK_spectral
              > reshape(spread(rotation_tol,1,9),(/3,3/)))&
              .or. abs(math_det3x3(bc(loadcase)%rotation)) > 1.0_pReal + rotation_tol) &
                                                errorID = 46_pInt                                     ! given rotation matrix contains strain
-   if (bc(loadcase)%time < 0.0_pReal) errorID = 34_pInt                                              ! negative time increment
+   if (bc(loadcase)%time < 0.0_pReal)          errorID = 34_pInt                                     ! negative time increment
    if (bc(loadcase)%incs < 1_pInt)             errorID = 35_pInt                                     ! non-positive incs count
    if (bc(loadcase)%outputfrequency < 1_pInt)  errorID = 36_pInt                                     ! non-positive result frequency
    if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)
@@ -432,25 +429,25 @@ program DAMASK_spectral
    allocate (c_reduced(size_reduced,size_reduced));          c_reduced = 0.0_pReal
    allocate (s_reduced(size_reduced,size_reduced));          s_reduced = 0.0_pReal
 
-   timeinc = bc(loadcase)%time/bc(loadcase)%incs                 ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
+   timeinc = bc(loadcase)%time/bc(loadcase)%incs                 ! only valid for given linear time scale. will be overwritten later in case logarithmic scale is used
 
-   fDot = bc(loadcase)%deformation                                        ! only valid for given fDot. will be overwritten later in case L is given
+   fDot = bc(loadcase)%deformation                               ! only valid for given fDot. will be overwritten later in case L is given
 
 !*************************************************************
 ! loop oper incs defined in input file for current loadcase
    do inc = 1_pInt,  bc(loadcase)%incs
 !*************************************************************
 ! forwarding time
-     if (bc(loadcase)%logscale == 1_pInt) then                                                 ! loglinear scale
-       if (loadcase == 1_pInt) then                                                            ! 1st loadcase of loglinear scale            
-         if (inc == 1_pInt) then                                                               ! 1st inc of 1st loadcase of loglinear scale
+     if (bc(loadcase)%logscale == 1_pInt) then                                                 ! logarithmic scale
+       if (loadcase == 1_pInt) then                                                            ! 1st loadcase of logarithmic scale            
+         if (inc == 1_pInt) then                                                               ! 1st inc of 1st loadcase of logarithmic scale
            timeinc = bc(1)%time*(2.0_pReal**real(     1_pInt-bc(1)%incs ,pReal))               ! assume 1st inc is equal to 2nd 
-         else                                                                                  ! not-1st inc of 1st loadcase of loglinear scale
+         else                                                                                  ! not-1st inc of 1st loadcase of logarithmic scale
            timeinc = bc(1)%time*(2.0_pReal**real(inc-1_pInt-bc(1)%incs ,pReal))
          endif
        else                                                                                    ! not-1st loadcase of logarithmic scale
-           timeinc = time0 *( (1.0_pReal + bc(loadcase)%time/time0 )**real(          inc/bc(loadcase)%incs ,pReal)  &
-                             -(1.0_pReal + bc(loadcase)%time/time0 )**real( (inc-1_pInt)/bc(loadcase)%incs ,pReal) )
+           timeinc = time0 *( (1.0_pReal + bc(loadcase)%time/time0 )**(real(          inc,pReal)/real(bc(loadcase)%incs ,pReal))  &
+                             -(1.0_pReal + bc(loadcase)%time/time0 )**(real( (inc-1_pInt),pReal)/real(bc(loadcase)%incs ,pReal)) )
        endif
      endif
      time = time + timeinc
@@ -558,9 +555,9 @@ program DAMASK_spectral
   !remove the given highest frequencies for calculation of the gamma operator
        cutting_freq = (/0_pInt,0_pInt,0_pInt/)                                                      ! for 0,0,0, just the highest freq. is removed
        do k = 1_pInt ,res(3); do j = 1_pInt ,res(2); do i = 1_pInt, res1_red
-         if((k .gt. res(3)/2_pInt - cutting_freq(3)).and.(k .le. res(3)/2_pInt + 1_pInt + cutting_freq(3))) xi(3,i,j,k)= 0.0_pReal
-         if((j .gt. res(2)/2_pInt - cutting_freq(2)).and.(j .le. res(2)/2_pInt + 1_pInt + cutting_freq(2))) xi(2,i,j,k)= 0.0_pReal
-         if((i .gt. res(1)/2_pInt - cutting_freq(1)).and.(i .le. res(1)/2_pInt + 1_pInt + cutting_freq(1))) xi(1,i,j,k)= 0.0_pReal
+         if((k > res(3)/2_pInt - cutting_freq(3)).and.(k <= res(3)/2_pInt + 1_pInt + cutting_freq(3))) xi(3,i,j,k)= 0.0_pReal
+         if((j > res(2)/2_pInt - cutting_freq(2)).and.(j <= res(2)/2_pInt + 1_pInt + cutting_freq(2))) xi(2,i,j,k)= 0.0_pReal
+         if((i > res(1)/2_pInt - cutting_freq(1)).and.(i <= res(1)/2_pInt + 1_pInt + cutting_freq(1))) xi(1,i,j,k)= 0.0_pReal
        enddo; enddo; enddo
 
        if(memory_efficient) then                            ! allocate just single fourth order tensor
@@ -665,7 +662,7 @@ program DAMASK_spectral
        iter = 0_pInt
        err_div = 2.0_pReal * err_div_tol                                                  ! go into loop 
        
-   !    c_prev = math_rotate_forward3x3x3x3(c_current*wgt,bc(loadcase)%rotation) ToDo: ask Philip           ! calculate stiffness from former inc
+       c_prev = math_rotate_forward3x3x3x3(c_current*wgt,bc(loadcase)%rotation)           ! calculate stiffness from former inc
        if(size_reduced > 0_pInt) then                                                     ! calculate compliance in case stress BC is applied
          c_prev99 = math_Plain3333to99(c_prev)
          k = 0_pInt                                                                       ! build reduced stiffness
@@ -698,7 +695,7 @@ program DAMASK_spectral
        print '(a)', '#############################################################'
        print '(A,I5.5,A,es12.6)', 'Increment ', totalIncsCounter, ' Time ',time
        if (restartWrite ) then
-         print '(A)', 'writing converged results of previous inc for restart'
+         print '(A)', 'writing converged results of previous increment for restart'
          if(IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(defgrad))) then       ! and writing deformation gradient field to file
            write (777,rec=1) defgrad
            close (777)
@@ -715,7 +712,7 @@ program DAMASK_spectral
 
          print '(a)', ''
          print '(a)', '============================================================='
-         print '(5(a,i5.5))', 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,'@Iteration ',iter,'/',itmax
+         print '(5(a,i6.6))', 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,' @ Iteration ',iter,'/',itmax
          do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
            defgrad_av_lab(m,n) = sum(defgrad(1:res(1),1:res(2),1:res(3),m,n)) * wgt
          enddo; enddo
@@ -737,8 +734,8 @@ program DAMASK_spectral
          c_current = 0.0_pReal
          ielem = 0_pInt 
          if (debugFFTW) then
-           row =    (mod(totalIncsCounter+iter+7_pInt,9_pInt))/3_pInt + 1_pInt          ! go through the elements of the tensors, controlled by totalIncsCounter and iter, starting at 1
-           column = (mod(totalIncsCounter+iter+1_pInt,3_pInt))        + 1_pInt
+           row =    (mod(totalIncsCounter+iter-2_pInt,9_pInt))/3_pInt + 1_pInt          ! go through the elements of the tensors, controlled by totalIncsCounter and iter, starting at 1
+           column = (mod(totalIncsCounter+iter-2_pInt,3_pInt))        + 1_pInt
          endif
 
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
@@ -975,8 +972,8 @@ program DAMASK_spectral
    !$OMP CRITICAL (write2out)
    print '(a)', ''
    print '(a)', '#############################################################'
-   print '(a,i5.5,a,i5.5,a)', 'of ', totalIncsCounter - restartReadInc + 1_pInt,   ' calculated increments, ',&
-                                                               notConvergedCounter, ' increments did not converge!'
+   print '(i6.6,a,i6.6,a)', notConvergedCounter, ' out of ', &
+                            totalIncsCounter - restartReadInc + 1_pInt, ' increments did not converge!'
    !$OMP END CRITICAL (write2out)
  close(538)
  call fftw_destroy_plan(fftw_stress); call fftw_destroy_plan(fftw_fluctuation)
