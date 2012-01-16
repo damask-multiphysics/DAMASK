@@ -3,9 +3,7 @@
 
 import os, sys
 import subprocess,shutil
-
 import damask
-import msc_tools
 
 class Test():
     '''
@@ -100,11 +98,10 @@ class Test():
         self.copy_from_ref_list()
         self.copy_files_from_reference_results()
         os.chdir('./current_results')                
-        #m=msc_tools.MSC_TOOLS()
-        #m.submit_job(compile=compile, compiled_dir='../../../code/')
-        damask.solver.Marc().submit_job(compile=compile, compiled_dir='../../../code/')
+        m = damask.solver.Marc()
+        m.submit_job(compile=compile, compiled_dir='../../../code/')
         print('simulation submitted')
-        self.exit_number=m.exit_number_from_outFile(outFile=self.modelname+'_'+self.jobname+'.out')
+        self.exit_number = m.exit_number_from_outFile(outFile=self.modelname+'_'+self.jobname+'.out')
        
         if not self.exit_number==3004:
           print('Job did not exit with No. 3004')
