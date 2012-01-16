@@ -602,7 +602,7 @@ def job(grainNumber,grainMapping,twoD):
   "*add_job_iconds homogenization",
   ["*add_job_iconds grain_%i"%i for i in grainMapping[:grainNumber]],
   "*add_job_iconds rim",
-  "*job_option dimen:%s                     | analysis dimension"%({True:'two',False:'three'}[twoD]),
+  "*job_option dimen:%s                  | analysis dimension"%({True:'two  ',False:'three'}[twoD]),
   "*job_option strain:large                 | finite strains",
   "*job_option large_strn_proc:upd_lagrange | updated Lagrange framework",
   "*job_option plas_proc:multiplicative     | multiplicative decomp of F",
