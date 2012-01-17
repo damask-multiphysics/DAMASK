@@ -2450,11 +2450,11 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(error_ID=44)
  
  forall (n = 0:mesh_Nnodes-1)
-   mesh_node0(1,n+1) = x * dble(mod(n,a)     / (a-1.0_pReal))
-   mesh_node0(2,n+1) = y * dble(mod(n/a,b)   / (b-1.0_pReal))
-   mesh_node0(3,n+1) = z * dble(mod(n/a/b,c) / (c-1.0_pReal))
- end forall
- 
+   mesh_node0(1,n+1) = x * dble(mod(n,a)) / dble(a-1_pInt)
+   mesh_node0(2,n+1) = y * dble(mod(n/a,b)) / dble(b-1_pInt)
+   mesh_node0(3,n+1) = z * dble(mod(n/a/b,c)) / dble(c-1_pInt)
+ end forall 
+
  mesh_node = mesh_node0                                         !why?
 
  endsubroutine
@@ -2640,19 +2640,19 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  do while (e < mesh_NcpElems .and. microstructures(1) > 0_pInt)        ! fill expected number of elements, stop at end of data (or blank line!)
    microstructures = IO_continousIntValues(myUnit,maxIntCount,dummyName,dummySet,0)  ! get affected elements
    do i = 1,microstructures(1)
-     e = e+1                                                 ! valid element entry
-     mesh_element ( 1,e) = e                                 ! FE id
-     mesh_element ( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
-     mesh_element ( 3,e) = homog                             ! homogenization
-     mesh_element ( 4,e) = microstructures(1_pInt+i)         ! microstructure
-     mesh_element ( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1)     ! base node
-     mesh_element ( 6,e) = mesh_element ( 5,e) + 1
-     mesh_element ( 7,e) = mesh_element ( 5,e) + (a+1) + 1
-     mesh_element ( 8,e) = mesh_element ( 5,e) + (a+1)
-     mesh_element ( 9,e) = mesh_element ( 5,e) + (a+1)*(b+1) ! second floor base node
-     mesh_element (10,e) = mesh_element ( 9,e) + 1
-     mesh_element (11,e) = mesh_element ( 9,e) + (a+1) + 1
-     mesh_element (12,e) = mesh_element ( 9,e) + (a+1)
+     e = e+1                                                ! valid element entry
+     mesh_element( 1,e) = e                                 ! FE id
+     mesh_element( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
+     mesh_element( 3,e) = homog                             ! homogenization
+     mesh_element( 4,e) = microstructures(1_pInt+i)         ! microstructure
+     mesh_element( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1)     ! base node
+     mesh_element( 6,e) = mesh_element(5,e) + 1
+     mesh_element( 7,e) = mesh_element(5,e) + a + 1
+     mesh_element( 8,e) = mesh_element(5,e) + a
+     mesh_element( 9,e) = mesh_element(5,e) + a * b         ! second floor base node
+     mesh_element(10,e) = mesh_element(9,e) + 1
+     mesh_element(11,e) = mesh_element(9,e) + a + 1
+     mesh_element(12,e) = mesh_element(9,e) + a
      mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))    !needed for statistics
      mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
    enddo
