@@ -74,7 +74,7 @@ class Marc(Solver):
     if run_marc_path   is None: run_marc_path   = os.path.join(damaskEnv.pathInfo['msc'],self.version(rootRelation),'tools/')
 
     # Define all options [see Marc Installation and Operation Guide, pp 23]
-    run_marc = os.path.jion(run_marc_path,'run_marc')
+    run_marc = os.path.join(run_marc_path,'run_marc')
     jid = ' -jid ' + modelname + '_' + jobname
     compilation=' -u ' + subroutine_dir + subroutine_name + '.f90'+' -save y'
     options=' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
