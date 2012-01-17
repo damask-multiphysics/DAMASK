@@ -456,7 +456,7 @@ endfunction
 !*********************************************************************
 !* This function calculates from state needed variables              *
 !*********************************************************************
-subroutine constitutive_microstructure(Temperature, Fe, ipc, ip, el)
+subroutine constitutive_microstructure(Temperature, Fe, Fp, ipc, ip, el)
 use prec,      only: pReal,pInt
 use material,  only: phase_constitution, &
                      material_phase, &
@@ -477,12 +477,12 @@ use constitutive_nonlocal,      only: constitutive_nonlocal_label, &
 implicit none
 
 !*** input variables ***!
-integer(pInt), intent(in)::               ipc, &        ! component-ID of current integration point
-                                          ip, &         ! current integration point
-                                          el            ! current element
-real(pReal), intent(in) ::                Temperature
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                          Fe            ! elastic deformation gradient
+integer(pInt), intent(in)::                 ipc, &      ! component-ID of current integration point
+                                            ip, &       ! current integration point
+                                            el          ! current element
+real(pReal), intent(in) ::                  Temperature
+real(pReal), dimension(3,3), intent(in) ::  Fe, &       ! elastic deformation gradient
+                                            Fp          ! plastic deformation gradient
 
 !*** output variables ***!
 
@@ -504,7 +504,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
     call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
    
   case (constitutive_nonlocal_label)
-    call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Fe, ipc, ip, el)
+    call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Fe, Fp, ipc, ip, el)
      
 end select
 
@@ -773,7 +773,7 @@ integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integrat
                                 el            ! current element
 real(pReal), intent(in) ::      Temperature, &
                                 dt            ! timestep
-real(pReal), dimension(3,3), intent(in) :: &
+real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                 Fe            ! elastic deformation gradient
 real(pReal), dimension(6), intent(in) :: &
                                 Tstar_v       ! 2nd Piola Kirchhoff stress tensor (Mandel)
@@ -801,7 +801,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
    
   case (constitutive_nonlocal_label)
     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, Fe, Temperature, dt, constitutive_state, &
-                                                                 constitutive_dotstate, ipc, ip, el)
+                                                                 constitutive_dotstate(ipc,ip,el), ipc, ip, el)
 end select
  
 endfunction
