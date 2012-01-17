@@ -69,14 +69,14 @@ class Marc(Solver):
     import shutil
     
     damaskEnv = damask.environment.Environment(rootRelation)
-    if subroutine_dir  is None: subroutine_dir  = damaskEnv.binDir()
+    if subroutine_dir  is None: subroutine_dir  = damaskEnv.relPath('code/')
     if subroutine_name is None: subroutine_name = 'DAMASK_marc' + self.version(rootRelation)
     if run_marc_path   is None: run_marc_path   = os.path.join(damaskEnv.pathInfo['msc'],self.version(rootRelation),'tools/')
 
     # Define all options [see Marc Installation and Operation Guide, pp 23]
     run_marc = os.path.join(run_marc_path,'run_marc')
     jid = ' -jid ' + modelname + '_' + jobname
-    compilation=' -u ' + subroutine_dir + subroutine_name + '.f90'+' -save y'
+    compilation=' -u ' + os.path.join(subroutine_dir,subroutine_name+'.f90') + ' -save y'
     options=' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
     cmd=run_marc+jid+options
           
@@ -84,8 +84,8 @@ class Marc(Solver):
       cmd += compilation
       print 'job submission with compilation.'
     else:
-      shutil.copy2(subroutine_dir+subroutine_name+'.f90','./'+subroutine_name+'.f90')
-      shutil.copy2(compiled_dir+subroutine_name+'.marc','./'+subroutine_name+'.marc')
+      shutil.copy2(os.path.join(subroutine_dir,subroutine_name+'.f90'),os.path.join('.',subroutine_name+'.f90'))
+      shutil.copy2(os.path.join(compiled_dir,subroutine_name+'.marc'),os.path.join('.',subroutine_name+'.marc'))
       prog = ' -prog ' + subroutine_name
       cmd += prog
       print 'Job submission without compilation, using %s'%prog
