@@ -1,7 +1,5 @@
 #!/bin/bash
 
-DEFAULT_INSTALLDIR='/msc'
-DEFAULT_ACMLDIR='/opt/acml4.0.0'
 DEFAULT_VERSION='2011'
 
 WORKINGDIR=`dirname $0`
@@ -18,16 +16,13 @@ echo "MSC version: $VERSION"
 
 INSTALLDIR=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  INSTALLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep msc | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  INSTALLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i msc | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
 fi
 
 while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
 do
-  echo "Input path of MARC/MENTAT installation: [${DEFAULT_INSTALLDIR}]"
+  echo "Input path of MARC/MENTAT installation:"
   read INSTALLDIR
-  if [ -z $INSTALLDIR ]; then
-    INSTALLDIR=${DEFAULT_INSTALLDIR}
-  fi
 done
 
 INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
@@ -35,6 +30,7 @@ echo "MSC installation path: $INSTALLDIR"
 
 BLASDIR=''
 FFTWDIR=''
+BLASTYPE=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
   IKMLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i ikml | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
   ACMLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i acml | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
@@ -56,7 +52,7 @@ while [ ! -d "$BLASDIR" ] || [ -z "$BLASDIR" ]
 do
   echo "Input path of BLAS installation:"
   read BLASDIR
-  echo "Input path of BLAS installation [IKML | ACML | LAPACK]:"
+  echo "Input type of BLAS installation [IKML | ACML | LAPACK]:"
   read BLASTYPE
 done
 
@@ -76,7 +72,7 @@ case $BLASTYPE in
     BLAS=" -L$BLASDIR/ifort64_mp/lib -lacml_mp"
     ;;
     LAPACK | lapack) 
-    BLAS=" -L$BLASDIR/lib -L$BLASDIR/lib64 -llapack"
+    BLAS=" -L$BLASDIR/lib64 -L$BLASDIR/lib -llapack"
     ;;
     *)
     echo "error, BLAS type must be IKML, ACML, or LAPACK"
@@ -84,7 +80,7 @@ case $BLASTYPE in
     ;;
 esac
 
-FFTW=" -lfftw3"
+FFTW=" -L$FFTWDIR/lib -lfftw3"
 
 # tools
 echo ''
