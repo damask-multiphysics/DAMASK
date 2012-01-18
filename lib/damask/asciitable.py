@@ -21,6 +21,7 @@ class ASCIItable():
                    'buffered':buffered,
                    'validReadSize': 0,
                   }
+    self.headerLen = 0
     self.info = []
     self.labels = []
     self.data = []
@@ -54,11 +55,13 @@ class ASCIItable():
     firstline = self.__IO__['in'].readline()
     m = re.search('(\d+)\s*head', firstline.lower())
     if m:
-      self.info     = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
-      self.labels   =  self.__IO__['in'].readline().split()
+      self.info      = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
+      self.labels    =  self.__IO__['in'].readline().split()
+      self.headerLen = int(m.group(1)) + 1
     else:
-      self.info     = []
-      self.labels   = firstline.split()
+      self.info      = []
+      self.labels    = firstline.split()
+      self.headerLen = 1
     self.__IO__['validReadSize'] = len(self.labels)
 
   def head_write(self):
