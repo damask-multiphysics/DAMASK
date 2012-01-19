@@ -2645,7 +2645,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
      mesh_element( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
      mesh_element( 3,e) = homog                             ! homogenization
      mesh_element( 4,e) = microstructures(1_pInt+i)         ! microstructure
-     mesh_element( 5,e) = e + (e-1)/a + (e-1)/a/b*(a+1)     ! base node
+     mesh_element( 5,e) = e + (e-1)/(a-1) + ((e-1)/((a-1)*(b-1)))*a ! base node
      mesh_element( 6,e) = mesh_element(5,e) + 1
      mesh_element( 7,e) = mesh_element(5,e) + a + 1
      mesh_element( 8,e) = mesh_element(5,e) + a
