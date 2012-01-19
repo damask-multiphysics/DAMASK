@@ -105,6 +105,12 @@ def transliterateToFloat(x):
   except:
     return 0.0
 
+
+def unravel(item):
+  if hasattr(item,'__contains__'): return ' '.join(map(unravel,item))
+  else: return str(item)
+
+
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
 def vtk_writeASCII_mesh(mesh,data,res):
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -148,8 +154,8 @@ def vtk_writeASCII_mesh(mesh,data,res):
     for item in data[type]:
       cmds += [\
                '%s %s float'%(type.upper()+plural,item),
-               'LOOKUP_TABLE default',
-               [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
+               {True:'LOOKUP_TABLE default',False:''}[type.lower()[:3]=='sca'],
+               [[['\t'.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
 
   return cmds
@@ -240,8 +246,8 @@ def vtk_writeASCII_points(coordinates,data,res):
     for item in data[type]:
       cmds += [\
                '%s %s float'%(type.upper()+plural,item),
-               'LOOKUP_TABLE default',
-               [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])]
+               {True:'LOOKUP_TABLE default',False:''}[type.lower()[:3]=='sca'],
+               [[['\t'.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
 
   return cmds
@@ -394,7 +400,7 @@ for filename in args:
   grid = [{},{},{}]
   for j in xrange(3):
     for i in xrange(N):
-     grid[j][str(values[i,locol+j])] = True
+      grid[j][str(values[i,locol+j])] = True
 
   res = numpy.array([len(grid[0]),\
                      len(grid[1]),\
@@ -410,6 +416,7 @@ for filename in args:
       dim[2] = min(dim/res)
     else:
       dim[2] = options.unitlength
+
   if options.undeformed:
     defgrad_av = numpy.eye(3)
   else:
@@ -429,9 +436,9 @@ for filename in args:
              'scalar': {},\
             }
   reshape = {\
-             'tensor': (3,3),\
-             'vector': (3),\
-             'scalar': (),\
+             'tensor': [3,3],\
+             'vector': [3],\
+             'scalar': [],\
             }
   length =  {\
              'tensor': 9,\
@@ -445,7 +452,7 @@ for filename in args:
       col = column[datatype][what]
       if col != -1:
         print what,
-        fields[datatype][what] = numpy.reshape(values[:,col:col+length[datatype]],(res[0],res[1],res[2])+reshape[datatype])
+        fields[datatype][what] = numpy.reshape(values[:,col:col+length[datatype]],[res[0],res[1],res[2]]+reshape[datatype])
   print '\n'
 
   out = {}
