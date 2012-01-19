@@ -39,7 +39,7 @@ Sets up the pre and post processing tools of DAMASK
 
 compilers = ['intel','ifort','intel32','gfortran','gnu95']
 
-parser.add_option('--F90',              dest='compiler', type='string', \
+parser.add_option('--F90', '--f90',     dest='compiler', type='string', \
                                         help='name of F90 compiler')
                                         
 (options,filenames) = parser.parse_args()
@@ -120,7 +120,6 @@ compile = { \
 execute = { \
           'postMath' : [ 
                         'make tidy',
-                        'rm %s'%(os.path.join(damaskEnv.relPath('lib/damask'),'core.so')),
                         # The following command is used to compile math.f90 and make the functions defined in DAMASK_math.pyf
                         # available for python in the module DAMASK_math.so
                         # It uses the fortran wrapper f2py that is included in the numpy package to construct the
@@ -133,7 +132,7 @@ execute = { \
                         ' %s'%(os.path.join(codeDir,'math.f90'))+\
                         ' -L%s/lib -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
                         ' %s'%lib_lapack,
-                        'mv %s %s' %(os.path.join(codeDir,'core.so'),damaskEnv.relPath('lib/damask')),
+                        'mv %s `readlink -f %s`' %(os.path.join(codeDir,'core.so'),os.path.join(damaskEnv.relPath('lib/damask'),'core.so')),
                         ]
             }
 
