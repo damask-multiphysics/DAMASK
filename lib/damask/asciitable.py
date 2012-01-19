@@ -20,6 +20,7 @@ class ASCIItable():
                    'output':[],
                    'buffered':buffered,
                    'validReadSize': 0,
+                   'dataStart': 0,
                   }
     self.headerLen = 0
     self.info = []
@@ -63,6 +64,7 @@ class ASCIItable():
       self.labels    = firstline.split()
       self.headerLen = 1
     self.__IO__['validReadSize'] = len(self.labels)
+    self.__IO__['dataStart'] = self.__IO__['in'].tell()
 
   def head_write(self):
     self.output_write (['%i\theader'%(len(self.info)+1),
@@ -81,6 +83,9 @@ class ASCIItable():
       for item in what: self.info_append(item)
     else:               self.info += [str(what)]
 
+  def data_rewind(self):
+    self.__IO__['in'].seek(self.__IO__['dataStart'])
+    
   def data_read(self):
     line = self.__IO__['in'].readline()
     items = line.split()[:self.__IO__['validReadSize']]                             # get next data row
