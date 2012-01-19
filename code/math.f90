@@ -151,6 +151,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  integer :: randSize                                ! gfortran requires a variable length to compile 
  integer, dimension(:), allocatable :: randInit     ! if recalculations of former randomness (with given seed) is necessary
                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
+ character(len=64) :: error_msg
  !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  math init  -+>>>'
@@ -194,28 +195,36 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  axisangle = math_QuaternionToAxisAngle(q);
  q2 = math_AxisAngleToQuaternion(axisangle(1:3),axisangle(4))
  if ( any(abs( q-q2) > tol_math_check) .and. &
-      any(abs(-q-q2) > tol_math_check) ) &
-   call IO_error(670_pInt)
+      any(abs(-q-q2) > tol_math_check) ) then
+   write (error_msg, '(a,e14.6)' ) 'maximum deviation',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   call IO_error(670_pInt,ext_msg=error_msg)
+ endif 
  
  ! +++ q -> R -> q  +++
  R = math_QuaternionToR(q);
  q2 = math_RToQuaternion(R)
  if ( any(abs( q-q2) > tol_math_check) .and. &
-      any(abs(-q-q2) > tol_math_check) ) &
-   call IO_error(671_pInt)
+      any(abs(-q-q2) > tol_math_check) ) then
+   write (error_msg, '(a,e14.6)' ) 'maximum deviation',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   call IO_error(671_pInt,ext_msg=error_msg)
+ endif 
  
  ! +++ q -> euler -> q  +++
  Eulers = math_QuaternionToEuler(q);
  q2 = math_EulerToQuaternion(Eulers)
  if ( any(abs( q-q2) > tol_math_check) .and. &
-      any(abs(-q-q2) > tol_math_check) ) &
-   call IO_error(672_pInt)
- 
+      any(abs(-q-q2) > tol_math_check) ) then
+   write (error_msg, '(a,e14.6)' ) 'maximum deviation',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   call IO_error(672_pInt,ext_msg=error_msg)
+ endif 
+
  ! +++ R -> euler -> R  +++
  Eulers = math_RToEuler(R);
  R2 = math_EulerToR(Eulers)
- if ( any(abs( R-R2) > tol_math_check) ) &
-   call IO_error(673_pInt)
+ if ( any(abs( R-R2) > tol_math_check) ) then
+   write (error_msg, '(a,e14.6)' ) 'maximum deviation',maxval(abs( R-R2))
+   call IO_error(673_pInt,ext_msg=error_msg)
+ endif 
  
  ENDSUBROUTINE math_init
  
@@ -3311,9 +3320,9 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  integer(pInt), intent(in), dimension(3) :: res
  real(pReal), intent(in), dimension(3) :: geomdim
  integer(pInt), intent(in) :: vec_tens
- real(pReal), intent(in),  dimension(res(1),              res(2),res(3),3,vec_tens) :: field
+ real(pReal), intent(in),  dimension(res(1),              res(2),res(3),vec_tens,3) :: field
  ! output variables
- real(pReal), intent(out), dimension(res(1),              res(2),res(3),3,vec_tens) :: curl
+ real(pReal), intent(out), dimension(res(1),              res(2),res(3),vec_tens,3) :: curl
  ! variables with dimension depending on input
  real(pReal),              dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3) :: xi
  ! allocatable arrays for fftw c routines
@@ -3325,23 +3334,26 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  complex(pReal), dimension(:,:,:,:,:), pointer :: curl_complex
  ! other variables
  integer(pInt) i, j, k, l, res1_red
- complex(pReal), parameter :: img =cmplx(0.0_pReal,1.0_pReal)
+ integer(pInt), dimension(3) :: k_s,cutting_freq
+ real(pReal) :: wgt
+ complex(pReal), parameter :: img = cmplx(0.0_pReal,1.0_pReal)
 
  if (debug_verbosity) then
    print*, 'Calculating curl of vector/tensor field'
-   print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)', ' Resolution:', res
+   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
+   print '(a,i5,i5,i5)',          ' Resolution:', res
  endif
 
+ wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102)
  call fftw_set_timelimit(fftw_timelimit)
  field_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
- call c_f_pointer(field_fftw, field_real,   [res(1)+2_pInt,res(2),res(3),3,vec_tens])
- call c_f_pointer(field_fftw, field_complex,[res1_red     ,res(2),res(3),3,vec_tens])
+ call c_f_pointer(field_fftw, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3])
+ call c_f_pointer(field_fftw, field_complex,[res1_red     ,res(2),res(3),vec_tens,3])
  curl_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T))        !C_SIZE_T is of type integer(8)
- call c_f_pointer(curl_fftw, curl_real,     [res(1)+2_pInt,res(2),res(3),3,vec_tens])
- call c_f_pointer(curl_fftw, curl_complex,  [res1_red     ,res(2),res(3),3,vec_tens])
+ call c_f_pointer(curl_fftw, curl_real,     [res(1)+2_pInt,res(2),res(3),vec_tens,3])
+ call c_f_pointer(curl_fftw, curl_complex,  [res1_red     ,res(2),res(3),vec_tens,3])
 
  fftw_forth = fftw_plan_many_dft_r2c(3,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                      ! dimensions , length in each dimension in reversed order
                             field_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
@@ -3357,39 +3369,60 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
 
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   field_real(i,j,k,1:3,1:vec_tens) = field(i,j,k,1:3,1:vec_tens)                                        ! ensure that data is aligned properly (fftw_alloc)
+   field_real(i,j,k,1:vec_tens,1:3) = field(i,j,k,1:vec_tens,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
  call fftw_execute_dft_r2c(fftw_forth, field_real, field_complex)
 
- do k = 0_pInt, res(3)-1_pInt         
-   do j = 0_pInt, res(2)-1_pInt
-     do i = 0_pInt, res(1)/2_pInt
-       xi(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = real((/i,j,k/), pReal)/geomdim
-       if(k==res(3)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,3)= 0.0_pReal ! set highest frequencies to zero
-       if(j==res(2)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,2)= 0.0_pReal
-       if(i==res(1)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,1)= 0.0_pReal
+ do k = 1_pInt, res(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
+   k_s(3) = k - 1_pInt
+   if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
+     do j = 1_pInt, res(2)
+       k_s(2) = j - 1_pInt
+       if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2) 
+         do i = 1, res1_red
+           k_s(1) = i - 1_pInt
+           xi(i,j,k,3) = real(k_s(3), pReal)/geomdim(3)
+           xi(i,j,k,2) = real(k_s(2), pReal)/geomdim(2)
+           xi(i,j,k,1) = real(k_s(1), pReal)/geomdim(1)
  enddo; enddo; enddo
  
+!remove the given highest frequencies for calculation of the gamma operator
+ cutting_freq = (/0_pInt,0_pInt,0_pInt/)                                                      ! for 0,0,0, just the highest freq. is removed
+ xi( res(1)/2_pInt+1_pInt-cutting_freq(1):res1_red , 1:res(2) , 1:res(3) , 1 ) = 0.0_pReal
+ xi(1:res1_red , res(2)/2_pInt+1_pInt-cutting_freq(2):res(2)/2_pInt+1_pInt+cutting_freq(2) , 1:res(3) , 2) = 0.0_pReal
+ xi(1:res1_red , 1:res(2) , res(3)/2_pInt+1_pInt-cutting_freq(3):res(3)/2_pInt+1_pInt+cutting_freq(3) , 3) = 0.0_pReal
+! do k = 1_pInt ,res(3); do j = 1_pInt ,res(2); do i = 1_pInt, res1_red
+!   if((k > res(3)/2_pInt - cutting_freq(3)).and.(k <= res(3)/2_pInt + 1_pInt + cutting_freq(3))) xi(i,j,k,3) = 0.0_pReal
+!   if((j > res(2)/2_pInt - cutting_freq(2)).and.(j <= res(2)/2_pInt + 1_pInt + cutting_freq(2))) xi(i,j,k,2) = 0.0_pReal
+!   if((i > res(1)/2_pInt - cutting_freq(1)).and.(i <= res(1)/2_pInt + 1_pInt + cutting_freq(1))) xi(i,j,k,1) = 0.0_pReal
+! enddo; enddo; enddo
+
+ curl_complex = 0.0_pReal
  do k = 1, res(3)                                       
    do j = 1, res(2)
      do i = 1, res1_red
        do l = 1, vec_tens
-         curl_complex(i,j,k,1,l) =(  field_complex(i,j,k,3,l)*xi(i,j,k,2) - field_complex(i,j,k,2,l)*xi(i,j,k,3))&
-                                    *img*pi*2.0_pReal
-         curl_complex(i,j,k,2,l) =(- field_complex(i,j,k,3,l)*xi(i,j,k,1) + field_complex(i,j,k,1,l)*xi(i,j,k,3))&
-                                    *img*pi*2.0_pReal
-         curl_complex(i,j,k,3,l) =(  field_complex(i,j,k,2,l)*xi(i,j,k,1) - field_complex(i,j,k,1,l)*xi(i,j,k,2))&
-                                    *img*pi*2.0_pReal
+!         curl_complex(i,j,k,l,1) =  field_complex(i,j,k,l,1)
+!         curl_complex(i,j,k,l,2) =  field_complex(i,j,k,l,2)
+!         curl_complex(i,j,k,l,3) =  field_complex(i,j,k,l,3)
+         curl_complex(i,j,k,l,1) = (  field_complex(i,j,k,l,3)*xi(i,j,k,2) - field_complex(i,j,k,l,2)*xi(i,j,k,3) )&
+                                     *img*pi*2.0_pReal
+         curl_complex(i,j,k,l,2) = (- field_complex(i,j,k,l,3)*xi(i,j,k,1) + field_complex(i,j,k,l,1)*xi(i,j,k,3) )&
+                                     *img*pi*2.0_pReal
+         curl_complex(i,j,k,l,3) = (  field_complex(i,j,k,l,2)*xi(i,j,k,1) - field_complex(i,j,k,l,1)*xi(i,j,k,2) )&
+                                     *img*pi*2.0_pReal
        enddo
 
  enddo; enddo; enddo
 
  call fftw_execute_dft_c2r(fftw_back, curl_complex, curl_real)
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   curl(i,j,k,1:3,1:vec_tens) = curl_real(i,j,k,1:3,1:vec_tens)                                        ! ensure that data is aligned properly (fftw_alloc)
+   curl(i,j,k,1:vec_tens,1:3) = curl_real(i,j,k,1:vec_tens,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
+ curl = curl * wgt
+ 
 end subroutine curl_fft
 
  
