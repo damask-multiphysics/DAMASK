@@ -23,17 +23,14 @@ class extendableOption(Option):
 
 def location(idx,res):
   return ( idx  % res[0], \
-         (idx // res[0]) % res[1], \
-         (idx // res[0] // res[1]) % res[2] )
+         ( idx // res[0]) % res[1], \
+         ( idx // res[0] // res[1]) % res[2] )
 
 def index(location,res):
   return ( location[0] % res[0]                   + \
-         (location[1] % res[1]) * res[0]          + \
-         (location[2] % res[2]) * res[0] * res[1]   )
+         ( location[1] % res[1]) * res[0]          + \
+         ( location[2] % res[2]) * res[1] * res[0]   )
 
-def prefixMultiply(what,len):
-  return {True: ['%i_%s'%(i+1,what) for i in range(len)],
-         False:[what]}[len>1]
 
 
 # --------------------------------------------------------------------
@@ -87,121 +84,97 @@ if options.tensor != None:    datainfo['tensor']['label'] += options.tensor
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'handle':sys.stdin})
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'handle':open(name)})
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  print file['name']
+  if file['name'] != 'STDIN': print file['name']
 
-  content = file['handle'].readlines()
-  file['handle'].close()
-  
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
-
-  headerlines = 1
-  m = re.search('(\d+)\s*head', content[0].lower())
-  if m:
-    headerlines = int(m.group(1))
-  passOn  = content[1:headerlines]
-  headers = content[headerlines].split()
-  data    = content[headerlines+1:]
-    
-  regexp = re.compile('1_\d+_')
-  for i,l in enumerate(headers):
-    if regexp.match(l):
-      headers[i] = l[2:]
+  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
+  table.head_read()                                                         # read ASCII header info
+  table.info_append(string.replace('$Id$','\n','\\n') + \
+                    '\t' + ' '.join(sys.argv[1:]))
 
   active = {}
   column = {}
   values = {}
-  curl_field ={}
+  curl   = {}
+
   head = []
 
   for datatype,info in datainfo.items():
     for label in info['label']:
       key = {True :'1_%s',
              False:'%s'   }[info['len']>1]%label
-      if key not in headers:
-        print 'column %s not found...'%key
+      if key not in table.labels:
+        sys.stderr.write('column %s not found...\n'%key)
       else:
         if datatype not in active: active[datatype] = []
         if datatype not in column: column[datatype] = {}
         if datatype not in values: values[datatype] = {}
-        if datatype not in curl_field: curl_field[datatype] = {}
+        if datatype not in curl:     curl[datatype] = {}
         active[datatype].append(label)
-        column[datatype][label] = headers.index(key)
+        column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
         values[datatype][label] = numpy.array([0.0 for i in xrange(datainfo[datatype]['len']*\
-                                          options.res[0]*options.res[1]*options.res[2])]).\
-                                          reshape((options.res[0],options.res[1],options.res[2],\
-							     3,datainfo[datatype]['len']//3))
+                                               options.res[0]*options.res[1]*options.res[2])]).\
+                                               reshape((options.res[0],options.res[1],options.res[2],\
+                                                        datainfo[datatype]['len']//3,3))
+        curl[datatype][label]   = numpy.array([0.0 for i in xrange(datainfo[datatype]['len']*\
+                                               options.res[0]*options.res[1]*options.res[2])]).\
+                                               reshape((options.res[0],options.res[1],options.res[2],\
+                                                        datainfo[datatype]['len']//3,3))
+        table.labels_append(['%i_curlFFT(%s)'%(i+1,label) 
+                             for i in xrange(datainfo[datatype]['len'])])   # extend ASCII header with new labels
 
-        head +=	prefixMultiply('curlfft(%s)'%(label),datainfo[datatype]['len'])
         
 # ------------------------------------------ assemble header ---------------------------------------  
 
-  output = '%i\theader'%(headerlines+1) + '\n' + \
-           ''.join(passOn)                 + \
-           string.replace('$Id$','\n','\\n')+ '\t' + \
-           ' '.join(sys.argv[1:]) + '\n' + \
-           '\t'.join(headers + head) + '\n'                              # build extended header
+  table.head_write()
 
 # ------------------------------------------ read value field ---------------------------------------  
 
   idx = 0
-  for line in data:
-    items = line.split()[:len(headers)]
-    if len(items) < len(headers):                             # skip too short lines (probably comments or invalid)
-      continue
-    locSkip = location(idx,resSkip)
-    if (    locSkip[0] < options.res[0]
-        and locSkip[1] < options.res[1]
-        and locSkip[2] < options.res[2] ):                    # only take values that are not periodic images
-      for datatype,labels in active.items():
-        for label in labels:
-          values[datatype][label][locSkip[0]][locSkip[1]][locSkip[2]]\
-              = numpy.reshape(items[column[datatype][label]:
-                                    column[datatype][label]+datainfo[datatype]['len']],(3,datainfo[datatype]['len']//3))
+  while table.data_read():                                                  # read next data line of ASCII table
+    (x,y,z) = location(idx,options.res)                                     # figure out (x,y,z) position from line count
     idx += 1
-  else:
-    for datatype,labels in active.items():
-      for label in labels:
-        if label not in curl_field[datatype]: curl_field[datatype][label] = {}
-        curl_field[datatype][label] = numpy.array([0.0 for i in range((datainfo[datatype]['len'])*\
-                                                                                  options.res[0]*options.res[1]*options.res[2])]).\
-                                                                                  reshape(options.res[0],options.res[1],options.res[2],\
-                                                                                  3,datainfo[datatype]['len']//3)
-        curl_field[datatype][label] = damask.core.math.curl_fft(options.res,options.dim,datainfo[datatype]['len']//3,values[datatype][label])
-    idx = 0
-    for line in data:
-      items = line.split()[:len(headers)]
-      if len(items) < len(headers):
-        continue
-    
-      output += '\t'.join(items)
-      
-      for datatype,labels in active.items():
-        for label in labels:
-          for i in range(3):    
-            for j in range(datainfo[datatype]['len']//3):    
-              output += '\t%f'%curl_field[datatype][label][location(idx,options.res)[0]][location(idx,options.res)[1]][location(idx,options.res)[2]][i][j]
-      output += '\n'
-      idx += 1
- 
+    for datatype,labels in active.items():                                  # loop over vector,tensor
+      for label in labels:                                                  # loop over all requested curls
+        values[datatype][label][x,y,z] = numpy.array(
+                                           map(float,table.data[column[datatype][label]:
+                                                                column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(datainfo[datatype]['len']//3,3)
+
+# ------------------------------------------ process value field ---------------------------------------  
+
+  for datatype,labels in active.items():                                  # loop over vector,tensor
+    for label in labels:                                                  # loop over all requested curls
+      curl[datatype][label] = damask.core.math.curl_fft(options.res,options.dim,datainfo[datatype]['len']//3,values[datatype][label])
+
+# ------------------------------------------ process data ---------------------------------------  
+
+  table.data_rewind()
+  idx = 0
+  while table.data_read():                                                  # read next data line of ASCII table
+    (x,y,z) = location(idx,options.res)                                     # figure out (x,y,z) position from line count
+    idx += 1
+
+    for datatype,labels in active.items():                                  # loop over vector,tensor
+      for label in labels:                                                  # loop over all requested norms
+        table.data_append(list(curl[datatype][label][x,y,z].reshape(datainfo[datatype]['len'])))
+
+    table.data_write()                                                      # output processed line
+
   
 # ------------------------------------------ output result ---------------------------------------  
 
-  if file['name'] == 'STDIN':
-    print output
-  else:
-    file['handle'] = open(file['name']+'_tmp','w')
-    try:
-      file['handle'].write(output)
-      file['handle'].close()
-      os.rename(file['name']+'_tmp',file['name'])
-    except:
-      print 'error during writing',file['name']+'_tmp'
+  table.output_flush()                                                      # just in case of buffered ASCII table
+
+  file['input'].close()                                                     # close input ASCII table
+  if file['name'] != 'STDIN':
+    file['output'].close                                                    # close output ASCII table
+    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
