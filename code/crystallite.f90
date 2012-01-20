@@ -276,7 +276,7 @@ do i = 1,material_Ncrystallite
         mySize = 4
       case('eulerangles')   ! Bunge (3-1-3) Euler angles
         mySize = 3
-      case('defgrad','f','fe','fp','lp','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
+      case('defgrad','f','fe','fp','lp','e','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
         mySize = 9
       case default
         mySize = 0      
@@ -3210,6 +3210,11 @@ function crystallite_postResults(&
      case ('defgrad','f')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_partionedF(1:3,1:3,g,i,e)),(/mySize/))
+     case ('e')
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = 0.5_pReal * reshape((math_mul33x33( &
+                                               math_transpose3x3(crystallite_partionedF(1:3,1:3,g,i,e)), &
+                                               crystallite_partionedF(1:3,1:3,g,i,e)) - math_I3),(/mySize/))
      case ('fe')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_Fe(1:3,1:3,g,i,e)),(/mySize/))
