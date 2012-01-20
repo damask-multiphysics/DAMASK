@@ -986,7 +986,7 @@ groups.sort(key = sortKeys)                                                     
 
 # ---------------------------   create output dir   --------------------------------
 
-dirname = os.path.abspath(os.path.dirname(filename))+os.sep+options.dir
+dirname = os.path.abspath(os.path.join(os.path.dirname(filename),options.dir))
 if not os.path.isdir(dirname):
   os.mkdir(dirname,0755)
 
