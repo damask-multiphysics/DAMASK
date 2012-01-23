@@ -2912,7 +2912,7 @@ end subroutine
  integer(pInt) i,j,k
  real(pReal) vol_initial
 
- if (debug_verbosity) then
+ if (debug_verbosity > 0) then
    print*, 'Calculating volume mismatch'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -2965,7 +2965,7 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
  real(pReal), dimension(8,3) :: coords_initial
  integer(pInt) i,j,k
 
- if (debug_verbosity) then
+ if (debug_verbosity > 0) then
    print*, 'Calculating shape mismatch'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3053,7 +3053,7 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
                                      0_pInt, 1_pInt, 1_pInt  &
                                     /), &
                                     (/3,8/))
- if (debug_verbosity) then
+ if (debug_verbosity > 0) then
    print*, 'Meshing cubes around centroids' 
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3145,7 +3145,7 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
                                                 /), &
                                              (/3,6/))
 
- if (debug_verbosity) then
+ if (debug_verbosity > 0) then
    print*, 'Restore geometry using linear integration'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3234,7 +3234,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  complex(pReal), parameter   :: integration_factor = cmplx(0.0_pReal,pi*2.0_pReal)
  real(pReal), dimension(3)   :: step, offset_coords
  
- if (debug_verbosity) then
+ if (debug_verbosity > 0) then
    print*, 'Restore geometry using FFT-based integration'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3338,7 +3338,7 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  real(pReal) :: wgt
  complex(pReal), parameter :: img = cmplx(0.0_pReal,1.0_pReal)
 
- if (debug_verbosity) then
+ if (debug_verbosity > 0) then
    print*, 'Calculating curl of vector/tensor field'
    print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
    print '(a,i5,i5,i5)',          ' Resolution:', res
@@ -3455,7 +3455,7 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  integer(pInt) :: i, j, k, res1_red
  complex(pReal), parameter :: img = cmplx(0.0_pReal,1.0_pReal)
 
- if (debug_verbosity) then 
+ if (debug_verbosity > 0) then 
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3565,7 +3565,7 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
                     4.0_pReal/5.0_pReal,-1.0_pReal/ 5.0_pReal,4.0_pReal/105.0_pReal,-1.0_pReal/280.0_pReal/),&
                                (/4,4/))
                                
- if (debug_verbosity) then
+ if (debug_verbosity > 0) then
    print*, 'Calculating divergence of tensor/vector field using FDM'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
