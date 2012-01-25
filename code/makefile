@@ -6,11 +6,6 @@
 # Uses OpenMP to parallelize the material subroutines (set number of threads with "export DAMASK_NUM_THREADS=n" to n)
 #
 # Install fftw3 (v3.3 is tested):
-# + patch api/f77funcs.h, line 92 in the FFTW source with:
-#  FFTW_VOIDFUNC F77(set_timelimit,SET_TIMELIMIT)(double *t)
-#  {
-#      X(set_timelimit)(*t);
-#  }
 # + run
 #   ./configure --enable-threads --enable-sse2 --enable-shared [-enable-float]
 #   make
@@ -130,7 +125,7 @@ OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-l
 
 
 COMPILE_OPTIONS_ifort    := -fpp -diag-disable 8291,8290
-COMPILE_OPTIONS_gfortran := -xf95-cpp-input -fno-range-check
+COMPILE_OPTIONS_gfortran := -xf95-cpp-input -ffixed-line-length-132 -fno-range-check
 
 COMPILE         = $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) -c
 COMPILE_MAXOPTI = $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) -c
