@@ -1253,11 +1253,11 @@ endfunction
  case (234)
    msg = 'error in shear banding input'   
  case (235)
-   msg = 'material parameter in nonlocal constitutive phase out of bounds:'
+   msg = 'material parameter for nonlocal constitutive phase out of bounds:'
  case (236)
-   msg = 'unknown material parameter in nonlocal constitutive phase:'
+   msg = 'unknown material parameter for nonlocal constitutive phase:'
  case (237)
-   msg = 'singularity in internal stress calculation'
+   msg = 'unknown constitutive output for nonlocal constitution:'
  case (240)
    msg = 'non-positive Taylor factor'
  case (241)
