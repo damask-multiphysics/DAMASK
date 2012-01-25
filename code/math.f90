@@ -563,7 +563,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3),   intent(in) ::  B
  real(pReal), dimension(3) ::  math_mul33x3
 
- forall (i=1_pInt:3_pInt) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
+ !forall (i=1_pInt:3_pInt) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
+ forall (i=1_pInt:3_pInt) math_mul33x3(i) = sum(A(i,1:3)*B(1:3))
 
  endfunction math_mul33x3
  
@@ -579,7 +580,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal),    dimension(3),   intent(in) ::  B
  complex(pReal), dimension(3) ::  math_mul33x3_complex
 
- forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
+ forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = sum(A(i,1:3)*B(1:3))
 
  endfunction math_mul33x3_complex
 
@@ -1048,7 +1049,21 @@ pure function math_transpose3x3(A)
 
  endfunction math_symmetric6x6
  
+!********************************************************************
+! skew part of a 3x3 matrix
+!********************************************************************
+ function math_skew3x3(m)
 
+ implicit none
+
+ real(pReal), dimension(3,3) :: math_skew3x3
+ real(pReal), dimension(3,3), intent(in) :: m
+ integer(pInt) :: i,j
+ 
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_skew3x3(i,j) = m(i,j) - 0.5_pReal * (m(i,j) + m(j,i))
+
+ endfunction math_skew3x3
+ 
 !********************************************************************
 ! equivalent scalar quantity of a full strain tensor
 !********************************************************************
@@ -2912,7 +2927,7 @@ end subroutine
  integer(pInt) i,j,k
  real(pReal) vol_initial
 
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    print*, 'Calculating volume mismatch'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -2965,7 +2980,7 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
  real(pReal), dimension(8,3) :: coords_initial
  integer(pInt) i,j,k
 
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    print*, 'Calculating shape mismatch'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3053,7 +3068,8 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
                                      0_pInt, 1_pInt, 1_pInt  &
                                     /), &
                                     (/3,8/))
- if (debug_verbosity > 0) then
+
+ if (debug_verbosity > 0_pInt) then
    print*, 'Meshing cubes around centroids' 
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3145,7 +3161,7 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
                                                 /), &
                                              (/3,6/))
 
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    print*, 'Restore geometry using linear integration'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3234,7 +3250,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  complex(pReal), parameter   :: integration_factor = cmplx(0.0_pReal,pi*2.0_pReal)
  real(pReal), dimension(3)   :: step, offset_coords
  
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    print*, 'Restore geometry using FFT-based integration'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
@@ -3336,9 +3352,9 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  integer(pInt) i, j, k, l, res1_red
  integer(pInt), dimension(3) :: k_s,cutting_freq
  real(pReal) :: wgt
- complex(pReal), parameter :: img = cmplx(0.0_pReal,1.0_pReal)
+ complex(pReal), parameter :: differentation_factor = cmplx(0.0_pReal,1.0_pReal)*2.0_pReal*pi       ! cmplx(0.0_pReal, 2.0_pReal*pi) gets huge rounding error (casting to single prec?)
 
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    print*, 'Calculating curl of vector/tensor field'
    print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
    print '(a,i5,i5,i5)',          ' Resolution:', res
@@ -3346,6 +3362,7 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
 
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
+
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102)
  call fftw_set_timelimit(fftw_timelimit)
  field_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
@@ -3382,38 +3399,23 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
        if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2) 
          do i = 1, res1_red
            k_s(1) = i - 1_pInt
-           xi(i,j,k,3) = real(k_s(3), pReal)/geomdim(3)
-           xi(i,j,k,2) = real(k_s(2), pReal)/geomdim(2)
-           xi(i,j,k,1) = real(k_s(1), pReal)/geomdim(1)
+           xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
  enddo; enddo; enddo
- 
-!remove the given highest frequencies for calculation of the gamma operator
+!remove the given highest frequencies
  cutting_freq = (/0_pInt,0_pInt,0_pInt/)                                                      ! for 0,0,0, just the highest freq. is removed
  xi( res(1)/2_pInt+1_pInt-cutting_freq(1):res1_red , 1:res(2) , 1:res(3) , 1 ) = 0.0_pReal
  xi(1:res1_red , res(2)/2_pInt+1_pInt-cutting_freq(2):res(2)/2_pInt+1_pInt+cutting_freq(2) , 1:res(3) , 2) = 0.0_pReal
  xi(1:res1_red , 1:res(2) , res(3)/2_pInt+1_pInt-cutting_freq(3):res(3)/2_pInt+1_pInt+cutting_freq(3) , 3) = 0.0_pReal
-! do k = 1_pInt ,res(3); do j = 1_pInt ,res(2); do i = 1_pInt, res1_red
-!   if((k > res(3)/2_pInt - cutting_freq(3)).and.(k <= res(3)/2_pInt + 1_pInt + cutting_freq(3))) xi(i,j,k,3) = 0.0_pReal
-!   if((j > res(2)/2_pInt - cutting_freq(2)).and.(j <= res(2)/2_pInt + 1_pInt + cutting_freq(2))) xi(i,j,k,2) = 0.0_pReal
-!   if((i > res(1)/2_pInt - cutting_freq(1)).and.(i <= res(1)/2_pInt + 1_pInt + cutting_freq(1))) xi(i,j,k,1) = 0.0_pReal
-! enddo; enddo; enddo
 
- curl_complex = 0.0_pReal
- do k = 1, res(3)                                       
-   do j = 1, res(2)
-     do i = 1, res1_red
-       do l = 1, vec_tens
-!         curl_complex(i,j,k,l,1) =  field_complex(i,j,k,l,1)
-!         curl_complex(i,j,k,l,2) =  field_complex(i,j,k,l,2)
-!         curl_complex(i,j,k,l,3) =  field_complex(i,j,k,l,3)
-         curl_complex(i,j,k,l,1) = (  field_complex(i,j,k,l,3)*xi(i,j,k,2) - field_complex(i,j,k,l,2)*xi(i,j,k,3) )&
-                                     *img*pi*2.0_pReal
-         curl_complex(i,j,k,l,2) = (- field_complex(i,j,k,l,3)*xi(i,j,k,1) + field_complex(i,j,k,l,1)*xi(i,j,k,3) )&
-                                     *img*pi*2.0_pReal
-         curl_complex(i,j,k,l,3) = (  field_complex(i,j,k,l,2)*xi(i,j,k,1) - field_complex(i,j,k,l,1)*xi(i,j,k,2) )&
-                                     *img*pi*2.0_pReal
-       enddo
-
+ do k = 1, res(3); do j = 1, res(2);do i = 1, res1_red
+   do l = 1, vec_tens
+     curl_complex(i,j,k,l,1) = ( field_complex(i,j,k,l,3)*xi(i,j,k,2)&
+                                -field_complex(i,j,k,l,2)*xi(i,j,k,3) )*differentation_factor
+     curl_complex(i,j,k,l,2) = (-field_complex(i,j,k,l,3)*xi(i,j,k,1)&
+                                +field_complex(i,j,k,l,1)*xi(i,j,k,3) )*differentation_factor
+     curl_complex(i,j,k,l,3) = ( field_complex(i,j,k,l,2)*xi(i,j,k,1)&
+                                -field_complex(i,j,k,l,1)*xi(i,j,k,2) )*differentation_factor
+   enddo
  enddo; enddo; enddo
 
  call fftw_execute_dft_c2r(fftw_back, curl_complex, curl_real)
@@ -3452,28 +3454,32 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  real(pReal),    dimension(:,:,:,:),   pointer :: divergence_real
  complex(pReal), dimension(:,:,:,:),   pointer :: divergence_complex
  ! other variables
- integer(pInt) :: i, j, k, res1_red
- complex(pReal), parameter :: img = cmplx(0.0_pReal,1.0_pReal)
+ integer(pInt) :: i, j, k, l, res1_red
+ real(pReal) :: wgt
+ integer(pInt), dimension(3) :: k_s,cutting_freq
+ complex(pReal), parameter :: differentation_factor = cmplx(0.0_pReal,1.0_pReal)*2.0_pReal*pi       ! cmplx(0.0_pReal, 2.0_pReal*pi) gets huge rounding error (casting to single prec?)
 
- if (debug_verbosity > 0) then 
+ if (debug_verbosity > 0_pInt) then 
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)', ' Resolution:', res
+   print '(a,/,i5,i5,i5)',          ' Resolution:', res
  endif
 
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
+ wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
+
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102)
  call fftw_set_timelimit(fftw_timelimit)
- field_fftw =                   fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
- call c_f_pointer(field_fftw, field_real,             [res(1)+2_pInt,res(2),res(3),3,vec_tens])
- call c_f_pointer(field_fftw, field_complex,          [res1_red     ,res(2),res(3),3,vec_tens])
- divergence_fftw =              fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens,C_SIZE_T))        !C_SIZE_T is of type integer(8)
+ field_fftw = fftw_alloc_complex(int(res1_red*res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T))              !C_SIZE_T is of type integer(8)
+ call c_f_pointer(field_fftw, field_real,             [res(1)+2_pInt,res(2),res(3),vec_tens,3])
+ call c_f_pointer(field_fftw, field_complex,          [res1_red     ,res(2),res(3),vec_tens,3])
+ divergence_fftw = fftw_alloc_complex(int(res1_red*res(2)*res(3)*vec_tens,C_SIZE_T))
  call c_f_pointer(divergence_fftw, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
  call c_f_pointer(divergence_fftw, divergence_complex,[res1_red     ,res(2),res(3),vec_tens])
 
- fftw_forth = fftw_plan_many_dft_r2c(3,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                      ! dimensions , length in each dimension in reversed order
-                            field_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
-                                     1,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
+ fftw_forth = fftw_plan_many_dft_r2c(3,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                  ! dimensions , length in each dimension in reversed order
+                            field_real,(/res(3),res(2) ,res(1)+2_pInt/),&                           ! input data , physical length in each dimension in reversed order
+                                     1,  res(3)*res(2)*(res(1)+2_pInt),&                            ! striding   , product of physical lenght in the 3 dimensions
                          field_complex,(/res(3),res(2) ,res1_red/),&
                                      1,  res(3)*res(2)* res1_red,fftw_planner_flag)   
 
@@ -3482,61 +3488,42 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
                                      1,  res(3)*res(2)* res1_red,&
                        divergence_real,(/res(3),res(2) ,res(1)+2_pInt/),&
                                      1,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
-
+ field_real = 0.0_pReal                                                                             ! padding 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   field_real(i,j,k,1:3,1:vec_tens) = field(i,j,k,1:3,1:vec_tens)                                        ! ensure that data is aligned properly (fftw_alloc)
+   field_real(i,j,k,1:vec_tens,1:3) = field(i,j,k,1:vec_tens,1:3)                                   ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
-
+ 
  call fftw_execute_dft_r2c(fftw_forth, field_real, field_complex)
-
-! Alternative calculation of discrete frequencies k_s, ordered as in FFTW (wrap around) 
-! do k = 0,res(3)/2 -1                                       
-  ! do j = 0,res(2)/2 -1
-     ! do i = 0,res(1)/2 -1
-         ! xi(1+mod(res(1)-i,res(1)),1+mod(res(2)-j,res(2)),1+mod(res(3)-k,res(3)),:) = (/-i,-j,-k/)/geomdim
-         ! xi(1+i,                 1+mod(res(2)-j,res(2)),1+mod(res(3)-k,res(3)),:) = (/ i,-j,-k/)/geomdim
-         ! xi(1+mod(res(1)-i,res(1)),1+j,                 1+mod(res(3)-k,res(3)),:) = (/-i, j,-k/)/geomdim
-         ! xi(1+i,                 1+j,                 1+mod(res(3)-k,res(3)),:) = (/ i, j,-k/)/geomdim
-         ! xi(1+mod(res(1)-i,res(1)),1+mod(res(2)-j,res(2)),1+k,                 :) = (/-i,-j, k/)/geomdim
-         ! xi(1+i,                 1+mod(res(2)-j,res(2)),1+k,                 :) = (/ i,-j, k/)/geomdim
-         ! xi(1+mod(res(1)-i,res(1)),1+j,                 1+k,                 :) = (/-i, j, k/)/geomdim
-         ! xi(1+i,                 1+j,                 1+k,                 :) = (/ i, j, k/)/geomdim
-         ! xi(1+i,                 1+j,                 1+k,                 :) = (/ i, j, k/)/geomdim
-         ! xi(1+mod(res(1)-i,res(1)),1+j,                 1+k,                 :) = (/-i, j, k/)/geomdim
-         ! xi(1+i,                 1+mod(res(2)-j,res(2)),1+k,                 :) = (/ i,-j, k/)/geomdim
-         ! xi(1+mod(res(1)-i,res(1)),1+mod(res(2)-j,res(2)),1+k,                 :) = (/-i,-j, k/)/geomdim
-         ! xi(1+i,                 1+j,                 1+mod(res(3)-k,res(3)),:) = (/ i, j,-k/)/geomdim
-         ! xi(1+mod(res(1)-i,res(1)),1+j,                 1+mod(res(3)-k,res(3)),:) = (/-i, j,-k/)/geomdim
-         ! xi(1+i,                 1+mod(res(2)-j,res(2)),1+mod(res(3)-k,res(3)),:) = (/ i,-j,-k/)/geomdim
-         ! xi(1+mod(res(1)-i,res(1)),1+mod(res(2)-j,res(2)),1+mod(res(3)-k,res(3)),:) = (/-i,-j,-k/)/geomdim
-  ! enddo; enddo; enddo
-  
- do k = 0_pInt, res(3)-1_pInt         
-   do j = 0_pInt, res(2)-1_pInt
-     do i = 0_pInt, res(1)/2_pInt
-       xi(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = (/real(i,pReal),real(j,pReal),real(k,pReal)/)/geomdim
-       if(k==res(3)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,3)= 0.0_pReal ! set highest frequencies to zero
-       if(j==res(2)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,2)= 0.0_pReal
-       if(i==res(1)/2_pInt) xi(i+1_pInt,j+1_pInt,k+1_pInt,1)= 0.0_pReal
+ do k = 1_pInt, res(3)                                                                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
+   k_s(3) = k - 1_pInt
+   if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
+     do j = 1_pInt, res(2)
+       k_s(2) = j - 1_pInt
+       if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2) 
+         do i = 1, res1_red
+           k_s(1) = i - 1_pInt
+           xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
  enddo; enddo; enddo
- do k = 1_pInt, res(3)                                       
-   do j = 1_pInt, res(2)
-     do i = 1_pInt, res1_red
-       divergence_complex(i,j,k,1) = sum(field_complex(i,j,k,1:3,1)*xi(i,j,k,1:3))  !ToDo: check formula!!!
-       if(vec_tens == 3_pInt) then
-       divergence_complex(i,j,k,2) = sum(field_complex(i,j,k,1:3,2)*xi(i,j,k,1:3))
-       divergence_complex(i,j,k,3) = sum(field_complex(i,j,k,1:3,3)*xi(i,j,k,1:3))
-       endif
+ 
+!remove the given highest frequencies
+ cutting_freq = 0_pInt                                                                              ! for 0,0,0, just the highest freq. is removed
+ xi( res(1)/2_pInt+1_pInt-cutting_freq(1):res1_red , 1:res(2) , 1:res(3) , 1 ) = 0.0_pReal
+ xi(1:res1_red , res(2)/2_pInt+1_pInt-cutting_freq(2):res(2)/2_pInt+1_pInt+cutting_freq(2) , 1:res(3) , 2) = 0.0_pReal
+ xi(1:res1_red , 1:res(2) , res(3)/2_pInt+1_pInt-cutting_freq(3):res(3)/2_pInt+1_pInt+cutting_freq(3) , 3) = 0.0_pReal
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
+   do l = 1_pInt, vec_tens
+     divergence_complex(i,j,k,l) = sum(field_complex(i,j,k,l,1:3)*xi(i,j,k,1:3))&
+                                   *differentation_factor
+   enddo
  enddo; enddo; enddo
- divergence_complex = divergence_complex*img*2.0_pReal*pi
-
  call fftw_execute_dft_c2r(fftw_back, divergence_complex, divergence_real)
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    divergence(i,j,k,1:vec_tens) = divergence_real(i,j,k,1:vec_tens)                                        ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
- ! why not weighting the divergence field?
 
+ divergence = divergence * wgt
+ 
  end subroutine divergence_fft
 
           
@@ -3565,7 +3552,7 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
                     4.0_pReal/5.0_pReal,-1.0_pReal/ 5.0_pReal,4.0_pReal/105.0_pReal,-1.0_pReal/280.0_pReal/),&
                                (/4,4/))
                                
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    print*, 'Calculating divergence of tensor/vector field using FDM'
    print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
    print '(a,/,i5,i5,i5)', ' Resolution:', res
