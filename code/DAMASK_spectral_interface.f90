@@ -47,11 +47,7 @@ subroutine DAMASK_interface_init()
    if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
  enddo
 
- start = index(commandLine,'-h',.true.) + 3_pInt                   ! search for '-h' and jump to first char of geometry
- if (index(commandLine,'--help',.true.)>0) then                    ! if '--help' is found, use that (contains '-g')
-   start = index(commandLine,'--geom',.true.) + 7_pInt
- endif
- if(start/=3_pInt) then
+ if(index(commandLine,' -h ',.true.)>0_pInt .or. index(commandLine,' --help ',.true.)>0_pInt) then   ! search for ' -h ' or '--help'
    print '(a)',  '#############################################################'
    print '(a)',  'DAMASK spectral:'
    print '(a)',  'The spectral method boundary value problem solver for'
@@ -75,10 +71,12 @@ subroutine DAMASK_interface_init()
    print '(a)',  ' '
    print '(a)',  'Optional Argument:'
    print '(a)',  '  --restart XX'
-   print '(a)',  '       Restarts at total step No. XX and overwrites existing'
-   print '(a)',  '           results file "NameOfGeom_NameOfLoadFile_spectral.out".'
-   print '(a)',  '       Works only if the restart information for total step No. XX'
-   print '(a)',  '            is available.'
+   print '(a)',  '       Reads in total increment No. XX-1 and continous to'
+   print '(a)',  '           calculate total increment No. XX.'
+   print '(a)',  '       Attention: Overwrites existing results file '
+   print '(a)',  '           "NameOfGeom_NameOfLoadFile_spectralOut".'
+   print '(a)',  '       Works only if the restart information for total increment'
+   print '(a)',  '            No. XX-1 is available in the working directory.'
    print '(a)',  'Help:'
    print '(a)',  '  --help'
    print '(a)',  '       Prints this message and exits'
