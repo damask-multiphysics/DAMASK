@@ -24,13 +24,16 @@ class Test():
 
     self.clean()
     for variant in variants:
-      self.prepare(variant)
-      self.run(variant)
-      self.postprocess(variant)
-      if variant in update:
-        self.update(variant)
-      elif not self.compare(variant):
-        return variant
+      try:
+        self.prepare(variant)
+        self.run(variant)
+        self.postprocess(variant)
+        if variant in update:
+          self.update(variant)
+        elif not self.compare(variant):
+          return variant
+      except:
+        return 1
     return -1
 
 
