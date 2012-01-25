@@ -1166,6 +1166,8 @@ endfunction
    msg = 'incomplete information in spectral mesh header'
  case (46)
    msg = 'not a rotation defined for loadcase rotation'
+ case (47)
+   msg = 'updating of gamma operator not possible if it is pre calculated'
  case (50)
    msg = 'writing constitutive output description'
  case (100)
