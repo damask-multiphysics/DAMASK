@@ -73,7 +73,10 @@ real(pReal) ::                  relevantStrain, &                       ! strain
 character(len=64) ::            fftw_planner_string                     ! reads the planing-rigor flag, see manual on www.fftw.org
 integer(pInt) ::                fftw_planner_flag                       ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
 logical ::                      memory_efficient,&                      ! for fast execution (pre calculation of gamma_hat)
-                                divergence_correction                   ! correct divergence calculation in fourier space
+                                divergence_correction,&                 ! correct divergence calculation in fourier space
+                                update_gamma,&                          ! update gamma operator with current stiffness  
+                                simplified_algorithm                    ! use short algorithm without fluctuation field
+real(pReal) ::                  cut_off_value                           ! percentage of frequencies to cut away
 integer(pInt) ::                itmax , &                               ! maximum number of iterations
 
 
@@ -174,7 +177,11 @@ subroutine numerics_init()
   fftw_timelimit          = -1.0_pReal   ! no timelimit of plan creation for FFTW
   fftw_planner_string     ='FFTW_PATIENT'
   rotation_tol            = 1.0e-12 
-  divergence_correction   = .true.
+  divergence_correction   = .true.       ! correct divergence by empirical factor
+  simplified_algorithm    = .true.       ! use algorithm without fluctuation field
+  update_gamma            = .false.      ! do not update gamma operator with current stiffness
+  cut_off_value           = 0.0_pReal    ! use all frequencies
+
 !* Random seeding parameters
   fixedSeed               = 0_pInt
 
@@ -294,6 +301,12 @@ subroutine numerics_init()
               rotation_tol = IO_floatValue(line,positions,2)
         case ('divergence_correction')
               divergence_correction = IO_intValue(line,positions,2)  > 0_pInt
+        case ('update_gamma')
+              update_gamma = IO_intValue(line,positions,2)  > 0_pInt
+        case ('simplified_algorithm')
+              simplified_algorithm = IO_intValue(line,positions,2)  > 0_pInt
+        case ('cut_off_value')
+              cut_off_value = IO_floatValue(line,positions,2)
 
 !* Random seeding parameters
         case ('fixed_seed')
@@ -370,7 +383,7 @@ subroutine numerics_init()
     write(6,'(a24,x,e8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
     write(6,'(a24,x,i8)')     ' itmax:                  ',itmax
     write(6,'(a24,x,L8)')     ' memory_efficient:       ',memory_efficient
-    if(fftw_timelimit<0) then
+    if(fftw_timelimit<0.0_pReal) then
       write(6,'(a24,x,L8)')   ' fftw_timelimit:         ',.false.
     else    
       write(6,'(a24,x,e8.1)') ' fftw_timelimit:         ',fftw_timelimit
@@ -379,7 +392,9 @@ subroutine numerics_init()
     write(6,'(a24,x,i8)')     ' fftw_planner_flag:      ',fftw_planner_flag
     write(6,'(a24,x,e8.1)')   ' rotation_tol:           ',rotation_tol
     write(6,'(a24,x,L8,/)')   ' divergence_correction:  ',divergence_correction
-
+    write(6,'(a24,x,L8,/)')   ' update_gamma:           ',update_gamma
+    write(6,'(a24,x,L8,/)')   ' simplified_algorithm:   ',simplified_algorithm
+    write(6,'(a24,x,e8.1)')   ' cut_off_value:          ',cut_off_value
 !* Random seeding parameters
     write(6,'(a24,x,i16,/)')   ' fixed_seed:             ',fixedSeed
   !$OMP END CRITICAL (write2out)
