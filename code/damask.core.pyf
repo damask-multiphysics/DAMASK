@@ -89,22 +89,22 @@ python module core ! in
             integer, dimension(3),                                     intent(in)                                          :: res
             real*8,  dimension(3),                                     intent(in)                                          :: geomdim
             integer,                                                   intent(in)                                          :: vec_tens
-            real*8,  dimension(res[0],  res[1],  res[2],  3,vec_tens), intent(in),  depend(res[0],res[1],res[2],vec_tens)  :: field
+            real*8,  dimension(res[0],  res[1],  res[2],  vec_tens,3), intent(in),  depend(res[0],res[1],res[2],vec_tens)  :: field
             ! output variables
             real*8,  dimension(res[0],  res[1],  res[2],  vec_tens),   intent(out), depend(res[0],res[1],res[2],vec_tens)  :: divergence
             ! variables with dimension depending on input   
             real*8,     dimension(res[0]/2+1,res[1],res[2],3),                      depend(res[0],res[1],res[2],3)         :: xi       
         end subroutine divergence_fft
 
-        subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence_field) ! in :math:math.f90
+        subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence) ! in :math:math.f90
             ! input variables
             integer dimension(3),                                     intent(in)                                          :: res
             real*8  dimension(3),                                     intent(in)                                          :: geomdim
             integer                                                   intent(in)                                          :: vec_tens
             integer,                                                  intent(in)                                          :: order
-            real*8  dimension(res[0],  res[1],  res[2],  3,vec_tens), intent(in),  depend(res[0],res[1],res[2],vec_tens)  :: field
+            real*8  dimension(res[0],  res[1],  res[2],  vec_tens,3), intent(in),  depend(res[0],res[1],res[2],vec_tens)  :: field
             ! output variables
-            real*8  dimension(res[0],  res[1],  res[2],  vec_tens),   intent(out), depend(res[0],res[1],res[2],vec_tens)  :: divergence_field
+            real*8  dimension(res[0],  res[1],  res[2],  vec_tens),   intent(out), depend(res[0],res[1],res[2],vec_tens)  :: divergence
         end subroutine divergence_fdm
 
         subroutine tensor_avg(res,tensor,avg) ! in :math:math.f90

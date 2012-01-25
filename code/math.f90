@@ -563,8 +563,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3),   intent(in) ::  B
  real(pReal), dimension(3) ::  math_mul33x3
 
- !forall (i=1_pInt:3_pInt) math_mul33x3(i) = A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3)
- forall (i=1_pInt:3_pInt) math_mul33x3(i) = sum(A(i,1:3)*B(1:3))
+ forall (i=1_pInt:3_pInt) math_mul33x3(i) = sum(A(i,1:3)*B)
 
  endfunction math_mul33x3
  
@@ -580,7 +579,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal),    dimension(3),   intent(in) ::  B
  complex(pReal), dimension(3) ::  math_mul33x3_complex
 
- forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = sum(A(i,1:3)*B(1:3))
+ forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = sum(A(i,1:3)*B)
 
  endfunction math_mul33x3_complex
 
