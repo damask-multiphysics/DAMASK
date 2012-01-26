@@ -944,8 +944,8 @@ use constitutive, only: constitutive_sizeDotState, &
 
 implicit none
 
-real(pReal), dimension(4), parameter ::       timeStepFraction = (/0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal/) ! weight of slope used for Runge Kutta integration
-real(pReal), dimension(4), parameter ::       weight = (/1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal/)           ! factor giving the fraction of the original timestep used for Runge Kutta Integration
+real(pReal), dimension(4), parameter ::       timeStepFraction = (/0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal/) ! factor giving the fraction of the original timestep used for Runge Kutta Integration
+real(pReal), dimension(4), parameter ::       weight = (/1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal/)           ! weight of slope used for Runge Kutta integration
 
 !*** input variables ***!
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
@@ -2575,7 +2575,7 @@ function crystallite_integrateStress(&
      g,&          ! grain number
      i,&          ! integration point number
      e,&          ! element number
-     fraction &
+     timeFraction &
      )
      
 
@@ -2623,7 +2623,7 @@ implicit none
 integer(pInt), intent(in)::         e, &                          ! element index
                                     i, &                          ! integration point index
                                     g                             ! grain index
-real(pReal), optional, intent(in) :: fraction                      ! fraction of timestep
+real(pReal), optional, intent(in) :: timeFraction                 ! fraction of timestep
 
 !*** output variables ***!
 logical                             crystallite_integrateStress   ! flag indicating if integration suceeded
@@ -2689,9 +2689,9 @@ endif
 
 !* only integrate over fraction of timestep?
 
-if (present(fraction)) then
-  dt = crystallite_subdt(g,i,e) * fraction
-  Fg_new = crystallite_subF0(1:3,1:3,g,i,e) + (crystallite_subF(1:3,1:3,g,i,e) - crystallite_subF0(1:3,1:3,g,i,e)) * fraction
+if (present(timeFraction)) then
+  dt = crystallite_subdt(g,i,e) * timeFraction
+  Fg_new = crystallite_subF0(1:3,1:3,g,i,e) + (crystallite_subF(1:3,1:3,g,i,e) - crystallite_subF0(1:3,1:3,g,i,e)) * timeFraction
 else     
   dt = crystallite_subdt(g,i,e)
   Fg_new = crystallite_subF(1:3,1:3,g,i,e)
