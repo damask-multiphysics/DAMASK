@@ -401,16 +401,16 @@ do                                                                              
         constitutive_nonlocal_aTolRho(i) = IO_floatValue(line,positions,2)
       case ('interaction_slipslip')
         forall (it = 1:lattice_maxNinteraction) constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1+it)
-      case('peierlstressedge')
+      case('peierlsstressedge')
         forall (f = 1:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,1,i) = IO_floatValue(line,positions,1+f)
-      case('peierlstressscrew')
+      case('peierlsstressscrew')
         forall (f = 1:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) = IO_floatValue(line,positions,1+f)
-      case('peierlenergyedge')
+      case('peierlsenergyedge')
         forall (f = 1:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsEnergyPerSlipFamily(f,1,i) = IO_floatValue(line,positions,1+f)
-      case('peierlenergyscrew')
+      case('peierlsenergyscrew')
         forall (f = 1:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsEnergyPerSlipFamily(f,2,i) = IO_floatValue(line,positions,1+f)
       case('solidsolutionstrength')
@@ -634,8 +634,8 @@ do i = 1,maxNinstance
             'fluxdensity_screw_neg_x', &
             'fluxdensity_screw_neg_y', &
             'fluxdensity_screw_neg_z', &
-            'maximumDipoleHeight_edge', &
-            'maximumDipoleHeight_screw', &
+            'maximumdipoleheight_edge', &
+            'maximumdipoleheight_screw', &
             'accumulatedshear' )
         mySize = constitutive_nonlocal_totalNslip(i)
       case('dislocationstress')
