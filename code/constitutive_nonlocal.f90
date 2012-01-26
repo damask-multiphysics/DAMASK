@@ -618,8 +618,10 @@ do i = 1,maxNinstance
             'rho_dot_flux', &
             'rho_dot_flux_edge', &
             'rho_dot_flux_screw', &
-            'velocity_edge', &
-            'velocity_screw', &
+            'velocity_edge_pos', &
+            'velocity_edge_neg', &
+            'velocity_screw_pos', &
+            'velocity_screw_neg', &
             'fluxdensity_edge_pos_x', &
             'fluxdensity_edge_pos_y', &
             'fluxdensity_edge_pos_z', &
@@ -1438,11 +1440,20 @@ enddo
 
 !*** get dislocation velocity and its tangent and store the velocity in the state array
 
-do t = 1,4
-  c = (t-1)/2+1
-  call constitutive_nonlocal_kinetics(v(1:ns,t), tau, c, Temperature, state, g, ip, el, dv_dtau(1:ns,t))
-  state%p((12+t)*ns+1:(13+t)*ns) = v(1:ns,t)
-enddo
+if (myStructure == 1_pInt) then   ! for fcc all velcities are equal
+  call constitutive_nonlocal_kinetics(v(1:ns,1), tau, 1, Temperature, state, g, ip, el, dv_dtau(1:ns,1))
+  do t = 1,4
+    v(1:ns,t) = v(1:ns,1)
+    dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
+    state%p((12+t)*ns+1:(13+t)*ns) = v(1:ns,1)
+  enddo
+else                              ! for all other lattice structures the velcities may vary with character and sign
+  do t = 1,4
+    c = (t-1)/2+1
+    call constitutive_nonlocal_kinetics(v(1:ns,t), tau, c, Temperature, state, g, ip, el, dv_dtau(1:ns,t))
+    state%p((12+t)*ns+1:(13+t)*ns) = v(1:ns,t)
+  enddo
+endif
 
 
 !*** Bauschinger effect
@@ -1654,10 +1665,8 @@ forall (s = 1:ns, c = 1:2) &
 rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
 tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 tauBack = state(g,ip,el)%p(12*ns+1:13*ns)
-v(1:ns,1) = state(g,ip,el)%p(13*ns+1:14*ns)
-v(1:ns,2) = state(g,ip,el)%p(13*ns+1:14*ns)
-v(1:ns,3) = state(g,ip,el)%p(14*ns+1:15*ns)
-v(1:ns,4) = state(g,ip,el)%p(14*ns+1:15*ns)
+forall (t = 1:4) &
+  v(1:ns,t) = state(g,ip,el)%p((12+t)*ns+1:(13+t)*ns)
 
 
 !*** sanity check for timestep
@@ -1813,14 +1822,9 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     endif
     
     if (considerEnteringFlux) then
-      neighboring_fluxdensity(1:ns,1) = state(g,neighboring_ip,neighboring_el)%p(1:ns) &
-                                      * state(g,neighboring_ip,neighboring_el)%p(13*ns+1:14*ns)
-      neighboring_fluxdensity(1:ns,2) = state(g,neighboring_ip,neighboring_el)%p(ns+1:2*ns) &
-                                      * state(g,neighboring_ip,neighboring_el)%p(13*ns+1:14*ns)
-      neighboring_fluxdensity(1:ns,3) = state(g,neighboring_ip,neighboring_el)%p(2*ns+1:3*ns) &
-                                      * state(g,neighboring_ip,neighboring_el)%p(14*ns+1:15*ns)
-      neighboring_fluxdensity(1:ns,4) = state(g,neighboring_ip,neighboring_el)%p(3*ns+1:4*ns) &
-                                      * state(g,neighboring_ip,neighboring_el)%p(14*ns+1:15*ns)
+      forall (t = 1:4) &
+        neighboring_fluxdensity(1:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+1:t*ns) &
+                                        * state(g,neighboring_ip,neighboring_el)%p((12+t)*ns+1:(13+t)*ns)
       normal_neighbor2me_defConf = math_det3x3(Favg) &
                   * math_mul33x3(math_inv3x3(transpose(Favg)), mesh_ipAreaNormal(1:3,neighboring_n,neighboring_ip,neighboring_el))  ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
       normal_neighbor2me = math_mul33x3(transpose(neighboring_Fe), normal_neighbor2me_defConf) / math_det3x3(neighboring_Fe)        ! interface normal in the lattice configuration of my neighbor
@@ -2631,7 +2635,7 @@ tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
 tauBack = state(g,ip,el)%p(12*ns+1:13*ns)
 forall (t = 1:8) rhoDotSgl(1:ns,t) = dotState%p((t-1)*ns+1:t*ns)
 forall (c = 1:2) rhoDotDip(1:ns,c) = dotState%p((7+c)*ns+1:(8+c)*ns)
-forall (t = 1:4) v(1:ns,t) = state(g,ip,el)%p((13+(t-1)/2)*ns+1:(14+(t-1)/2)*ns)
+forall (t = 1:4) v(1:ns,t) = state(g,ip,el)%p((12+t)*ns+1:(13+t)*ns)
 
 
 !* Calculate shear rate
@@ -2917,12 +2921,20 @@ do o = 1,phase_Noutput(material_phase(g,ip,el))
                                                       + sum(abs(constitutive_nonlocal_rhoDotFlux(1:ns,7:8,g,ip,el)),2)
       cs = cs + ns
             
-    case ('velocity_edge')
+    case ('velocity_edge_pos')
       constitutive_nonlocal_postResults(cs+1:cs+ns) = v(1:ns,1)
       cs = cs + ns
     
-    case ('velocity_screw')
+    case ('velocity_edge_neg')
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = v(1:ns,2)
+      cs = cs + ns
+    
+    case ('velocity_screw_pos')
       constitutive_nonlocal_postResults(cs+1:cs+ns) = v(1:ns,3)
+      cs = cs + ns
+    
+    case ('velocity_screw_neg')
+      constitutive_nonlocal_postResults(cs+1:cs+ns) = v(1:ns,4)
       cs = cs + ns
     
     case ('fluxdensity_edge_pos_x')
