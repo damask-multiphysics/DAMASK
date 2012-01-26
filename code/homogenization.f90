@@ -257,8 +257,7 @@ subroutine materialpoint_stressAndItsTangent(&
                           stepIncreaseHomog, &
                           nHomog, &
                           nMPstate
- use math, only:          math_det3x3, &
-                          math_transpose3x3
+ use math, only:          math_transpose33
  use FEsolving, only:     FEsolving_execElem, &
                           FEsolving_execIP, &
                           terminallyIll
@@ -313,8 +312,8 @@ subroutine materialpoint_stressAndItsTangent(&
      write (6,*)
      write (6,'(a,i5,x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
      write (6,'(a,/,12(x),f14.9)') '<< HOMOG >> Temp0', materialpoint_Temperature(debug_i,debug_e)
-     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< HOMOG >> F0', math_transpose3x3(materialpoint_F0(1:3,1:3,debug_i,debug_e))
-     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< HOMOG >> F', math_transpose3x3(materialpoint_F(1:3,1:3,debug_i,debug_e))
+     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< HOMOG >> F0', math_transpose33(materialpoint_F0(1:3,1:3,debug_i,debug_e))
+     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< HOMOG >> F', math_transpose33(materialpoint_F(1:3,1:3,debug_i,debug_e))
    !$OMP END CRITICAL (write2out)
  endif
 
