@@ -932,7 +932,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
 !*********************************************************************
 use prec,     only: pReal,pInt,p_vec
 use math,     only: math_Plain3333to99, math_Mandel6to33, math_Mandel33to6, &
-                    math_spectralDecompositionSym3x3, math_tensorproduct, math_symmetric3x3,math_mul33x3
+                    math_spectralDecompositionSym33, math_tensorproduct, math_symmetric33,math_mul33x3
 use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
 use lattice,  only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v,lattice_maxNslipFamily,lattice_maxNtwinFamily, &
@@ -1040,12 +1040,12 @@ enddo
 if(constitutive_dislotwin_sbVelocity(myInstance) /= 0.0_pReal) then
   gdot_sb = 0.0_pReal
   dgdot_dtausb = 0.0_pReal
-  call math_spectralDecompositionSym3x3(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
+  call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
   do j = 1,6
     sb_s = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_sComposition(1:3,j))
     sb_m = 0.5_pReal*sqrt(2.0_pReal)*math_mul33x3(eigVectors,sb_mComposition(1:3,j))
     sb_Smatrix = math_tensorproduct(sb_s,sb_m)
-    constitutive_dislotwin_sbSv(1:6,j,g,ip,el) = math_Mandel33to6(math_symmetric3x3(sb_Smatrix))
+    constitutive_dislotwin_sbSv(1:6,j,g,ip,el) = math_Mandel33to6(math_symmetric33(sb_Smatrix))
   
     !* Calculation of Lp
     !* Resolved shear stress on shear banding system
@@ -1353,7 +1353,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,state,g,ip,el
 !*  - el              : current element                              *
 !*********************************************************************
 use prec,     only: pReal,pInt,p_vec
-use math,     only: pi,math_Mandel6to33, math_spectralDecompositionSym3x3
+use math,     only: pi,math_Mandel6to33, math_spectralDecompositionSym33
 use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
 use lattice,  only: lattice_Sslip_v,lattice_Stwin_v,lattice_maxNslipFamily,lattice_maxNtwinFamily, &
@@ -1387,7 +1387,7 @@ c = 0_pInt
 constitutive_dislotwin_postResults = 0.0_pReal
 
 !* Spectral decomposition of stress
-call math_spectralDecompositionSym3x3(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
+call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
 
 do o = 1,phase_Noutput(material_phase(g,ip,el))
    select case(constitutive_dislotwin_output(o,myInstance))

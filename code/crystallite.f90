@@ -112,8 +112,8 @@ use numerics, only:   subStepSizeCryst, &
                       stepIncreaseCryst
 use math, only:       math_I3, &
                       math_EulerToR, &
-                      math_inv3x3, &
-                      math_transpose3x3, &
+                      math_inv33, &
+                      math_transpose33, &
                       math_mul33xx33, &
                       math_mul33x33
 use FEsolving, only:  FEsolving_execElem, &
@@ -322,7 +322,7 @@ close(file)
         crystallite_F0(1:3,1:3,g,i,e)  = math_I3
         crystallite_localConstitution(g,i,e) = phase_localConstitution(material_phase(g,i,e))
         !$OMP FLUSH(crystallite_Fp0)
-        crystallite_Fe(1:3,1:3,g,i,e)  = math_transpose3x3(crystallite_Fp0(1:3,1:3,g,i,e))
+        crystallite_Fe(1:3,1:3,g,i,e)  = math_transpose33(crystallite_Fp0(1:3,1:3,g,i,e))
       enddo
     enddo
   enddo
@@ -467,13 +467,12 @@ use debug, only:                                      debug_verbosity, &
                                                       debug_g, &
                                                       debug_CrystalliteLoopDistribution
 use IO, only:                                         IO_warning
-use math, only:                                       math_inv3x3, &
-                                                      math_transpose3x3, &
+use math, only:                                       math_inv33, &
+                                                      math_transpose33, &
                                                       math_mul33x33, &
                                                       math_mul66x6, &
                                                       math_Mandel6to33, &
                                                       math_Mandel33to6, &
-                                                      math_transpose3x3, &
                                                       math_I3
 use FEsolving, only:                                  FEsolving_execElem, & 
                                                       FEsolving_execIP
@@ -542,11 +541,11 @@ if (debug_verbosity > 4 .and. debug_e > 0 .and. debug_e <= mesh_NcpElems &
     write (6,'(a,i8,x,i2,x,i3)') '<< CRYST >> crystallite start at el ip g ', debug_e, debug_i, debug_g
     write (6,'(a,/,12(x),f14.9)') '<< CRYST >> Temp0', crystallite_partionedTemperature0(debug_g,debug_i,debug_e)
     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> F0 ', &
-                                          math_transpose3x3(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
+                                          math_transpose33(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> Fp0', &
-                                          math_transpose3x3(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
+                                          math_transpose33(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> Lp0', &
-                                          math_transpose3x3(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
+                                          math_transpose33(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
   !$OMP END CRITICAL (write2out)
 endif
 
@@ -566,7 +565,7 @@ crystallite_subStep = 0.0_pReal
           crystallite_subF0(1:3,1:3,g,i,e) = crystallite_partionedF0(1:3,1:3,g,i,e)                     ! ...def grad
           crystallite_subTstar0_v(1:6,g,i,e) = crystallite_partionedTstar0_v(1:6,g,i,e)                 !...2nd PK stress
           crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF0(1:3,1:3,g,i,e), &
-                                                            math_inv3x3(crystallite_subFp0(1:3,1:3,g,i,e)))  ! only needed later on for stiffness calculation
+                                                            math_inv33(crystallite_subFp0(1:3,1:3,g,i,e)))  ! only needed later on for stiffness calculation
 
           crystallite_subFrac(g,i,e) = 0.0_pReal
           crystallite_subStep(g,i,e) = 1.0_pReal/subStepSizeCryst
@@ -633,7 +632,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
             crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                  ! cut step in half and restore...
             crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e)                         ! ...temperature
             crystallite_Fp(1:3,1:3,g,i,e) = crystallite_subFp0(1:3,1:3,g,i,e)                           ! ...plastic def grad
-            crystallite_invFp(1:3,1:3,g,i,e) = math_inv3x3(crystallite_Fp(1:3,1:3,g,i,e))
+            crystallite_invFp(1:3,1:3,g,i,e) = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
             crystallite_Lp(1:3,1:3,g,i,e) = crystallite_subLp0(1:3,1:3,g,i,e)                           ! ...plastic velocity grad
             constitutive_state(g,i,e)%p = constitutive_subState0(g,i,e)%p                               ! ...microstructure
             crystallite_Tstar_v(1:6,g,i,e) = crystallite_subTstar0_v(1:6,g,i,e)                         ! ...2nd PK stress
@@ -698,7 +697,7 @@ enddo                                                                           
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
       do g = 1,myNgrains
         if (.not. crystallite_converged(g,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
-          invFp = math_inv3x3(crystallite_partionedFp0(1:3,1:3,g,i,e))
+          invFp = math_inv33(crystallite_partionedFp0(1:3,1:3,g,i,e))
           Fe_guess = math_mul33x33(crystallite_partionedF(1:3,1:3,g,i,e), invFp)
           Tstar = math_Mandel6to33( math_mul66x6( 0.5_pReal*constitutive_homogenizedC(g,i,e), &
                                                   math_Mandel33to6( math_mul33x33(transpose(Fe_guess),Fe_guess) - math_I3 ) ) )
@@ -709,9 +708,9 @@ enddo                                                                           
             .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
           write (6,'(a,i8,x,i2,x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip g ',e,i,g
           write (6,*) 
-          write (6,'(a,/,3(12(x),3(f12.4,x)/))') '<< CRYST >> P / MPa', math_transpose3x3(crystallite_P(1:3,1:3,g,i,e)) / 1e6
-          write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> Fp', math_transpose3x3(crystallite_Fp(1:3,1:3,g,i,e))
-          write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> Lp', math_transpose3x3(crystallite_Lp(1:3,1:3,g,i,e))
+          write (6,'(a,/,3(12(x),3(f12.4,x)/))') '<< CRYST >> P / MPa', math_transpose33(crystallite_P(1:3,1:3,g,i,e)) / 1e6
+          write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> Fp', math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
+          write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< CRYST >> Lp', math_transpose33(crystallite_Lp(1:3,1:3,g,i,e))
           write (6,*) 
         endif
 #endif
@@ -2605,11 +2604,11 @@ use math, only:         math_mul33x33, &
                         math_mul33xx33, &
                         math_mul66x6, &
                         math_mul99x99, &
-                        math_transpose3x3, &
-                        math_inv3x3, &
-                        math_invert3x3, &
+                        math_transpose33, &
+                        math_inv33, &
+                        math_invert33, &
                         math_invert, &
-                        math_det3x3, &
+                        math_det33, &
                         math_norm33, &
                         math_I3, &
                         math_identity2nd, &
@@ -2707,14 +2706,14 @@ Lpguess =      crystallite_Lp(1:3,1:3,g,i,e)                       ! ... and tak
 
 !* inversion of Fp_current...
 
-invFp_current = math_inv3x3(Fp_current)                            
+invFp_current = math_inv33(Fp_current)                            
 if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
 #ifndef _OPENMP
   if (debug_verbosity > 4) then
     write(6,'(a,i8,x,i2,x,i3)') '<< CRYST >> integrateStress failed on invFp_current inversion at el ip g ',e,i,g
     if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
       write(6,*)
-      write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> invFp_new',math_transpose3x3(invFp_new(1:3,1:3))
+      write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> invFp_new',math_transpose33(invFp_new(1:3,1:3))
     endif
   endif
 #endif
@@ -2754,7 +2753,7 @@ LpLoop: do
   endif
    
   B = math_I3 - dt*Lpguess
-  BT = math_transpose3x3(B)
+  BT = math_transpose33(B)
   AB = math_mul33x33(A,B)
   BTA = math_mul33x33(BT,A)
    
@@ -2787,8 +2786,8 @@ LpLoop: do
       .and. numerics_integrationMode == 1_pInt) then
     write(6,'(a,i3)') '<< CRYST >> iteration ', NiterationStress
     write(6,*)
-    write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lp_constitutive', math_transpose3x3(Lp_constitutive)
-    write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lpguess', math_transpose3x3(Lpguess)
+    write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lp_constitutive', math_transpose33(Lp_constitutive)
+    write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lpguess', math_transpose33(Lpguess)
   endif
 #endif
 
@@ -2903,10 +2902,10 @@ LpLoop: do
           write(6,'(a,/,9(12(x),9(e15.3,x)/))') '<< CRYST >> dR_dLp',transpose(dR_dLp)
           write(6,'(a,/,9(12(x),9(e15.3,x)/))') '<< CRYST >> dT_dLp',transpose(dT_dLp)
           write(6,'(a,/,9(12(x),9(e15.3,x)/))') '<< CRYST >> dLp_dT_constitutive',transpose(dLp_dT_constitutive)
-          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> AB',math_transpose3x3(AB)
-          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> BTA',math_transpose3x3(BTA)
-          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lp_constitutive',math_transpose3x3(Lp_constitutive)
-          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lpguess',math_transpose3x3(Lpguess)
+          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> AB',math_transpose33(AB)
+          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> BTA',math_transpose33(BTA)
+          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lp_constitutive',math_transpose33(Lp_constitutive)
+          write(6,'(a,/,3(12(x),3(e20.7,x)/))') '<< CRYST >> Lpguess',math_transpose33(Lpguess)
         endif
       endif
 #endif
@@ -2936,8 +2935,8 @@ enddo LpLoop
 !* calculate new plastic and elastic deformation gradient
 
 invFp_new = math_mul33x33(invFp_current,B)
-invFp_new = invFp_new/math_det3x3(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
-call math_invert3x3(invFp_new,Fp_new,det,error)
+invFp_new = invFp_new/math_det33(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
+call math_invert33(invFp_new,Fp_new,det,error)
 if (error) then
 #ifndef _OPENMP
   if (debug_verbosity > 4) then
@@ -2945,7 +2944,7 @@ if (error) then
                                          ' ; iteration ', NiterationStress
     if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
       write(6,*)
-      write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> invFp_new',math_transpose3x3(invFp_new)
+      write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> invFp_new',math_transpose33(invFp_new)
     endif
   endif
 #endif
@@ -2957,7 +2956,7 @@ Fe_new = math_mul33x33(Fg_new,invFp_new)                             ! calc resu
 !* add volumetric component to 2nd Piola-Kirchhoff stress and calculate 1st Piola-Kirchhoff stress
 
 forall (n=1:3) Tstar_v(n) = Tstar_v(n) + p_hydro
-crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(Fe_new, math_mul33x33(math_Mandel6to33(Tstar_v), math_transpose3x3(invFp_new)))
+crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(Fe_new, math_mul33x33(math_Mandel6to33(Tstar_v), math_transpose33(invFp_new)))
  
 
 !* store local values in global variables
@@ -2975,12 +2974,12 @@ crystallite_integrateStress = .true.
 #ifndef _OPENMP
 if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger) &
     .and. numerics_integrationMode == 1_pInt) then 
-  write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> P / MPa',math_transpose3x3(crystallite_P(1:3,1:3,g,i,e))/1e6
+  write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,g,i,e))/1e6
   write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> Cauchy / MPa', &
-                              math_mul33x33(crystallite_P(1:3,1:3,g,i,e), math_transpose3x3(Fg_new)) / 1e6 / math_det3x3(Fg_new)
+                              math_mul33x33(crystallite_P(1:3,1:3,g,i,e), math_transpose33(Fg_new)) / 1e6 / math_det33(Fg_new)
   write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> Fe Lp Fe^-1', &
-                      math_transpose3x3(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), math_inv3x3(Fe_new))))    ! transpose to get correct print out order
-  write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> Fp',math_transpose3x3(crystallite_Fp(1:3,1:3,g,i,e))
+                      math_transpose33(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), math_inv33(Fe_new))))    ! transpose to get correct print out order
+  write(6,'(a,/,3(12(x),3(f12.7,x)/))') '<< CRYST >> Fp',math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
 endif
 #endif
 
@@ -3141,8 +3140,8 @@ function crystallite_postResults(&
  use math, only:                      math_QuaternionToEuler, &
                                       math_QuaternionToAxisAngle, &
                                       math_mul33x33, &
-                                      math_transpose3x3, &
-                                      math_det3x3, &
+                                      math_transpose33, &
+                                      math_det33, &
                                       math_I3, &
                                       inDeg, &
                                       math_Mandel6to33
@@ -3191,7 +3190,7 @@ function crystallite_postResults(&
        crystallite_postResults(c+1) = material_texture(g,i,e)                   ! textureID of grain
      case ('volume')
        mySize = 1_pInt
-       detF = math_det3x3(crystallite_partionedF(1:3,1:3,g,i,e))                ! V_current = det(F) * V_reference
+       detF = math_det33(crystallite_partionedF(1:3,1:3,g,i,e))                 ! V_current = det(F) * V_reference
        crystallite_postResults(c+1) = detF * mesh_ipVolume(i,e) / homogenization_Ngrains(mesh_element(3,e)) ! grain volume (not fraction but absolute)
      case ('orientation')
        mySize = 4_pInt
@@ -3209,28 +3208,28 @@ function crystallite_postResults(&
   
      case ('defgrad','f')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_partionedF(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_partionedF(1:3,1:3,g,i,e)),(/mySize/))
      case ('e')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = 0.5_pReal * reshape((math_mul33x33( &
-                                               math_transpose3x3(crystallite_partionedF(1:3,1:3,g,i,e)), &
+                                               math_transpose33(crystallite_partionedF(1:3,1:3,g,i,e)), &
                                                crystallite_partionedF(1:3,1:3,g,i,e)) - math_I3),(/mySize/))
      case ('fe')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_Fe(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)),(/mySize/))
      case ('ee')
-       Ee = 0.5_pReal * (math_mul33x33(math_transpose3x3(crystallite_Fe(1:3,1:3,g,i,e)), crystallite_Fe(1:3,1:3,g,i,e)) - math_I3)
+       Ee = 0.5_pReal * (math_mul33x33(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)), crystallite_Fe(1:3,1:3,g,i,e)) - math_I3)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(Ee,(/mySize/))
      case ('fp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_Fp(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fp(1:3,1:3,g,i,e)),(/mySize/))
      case ('lp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_Lp(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Lp(1:3,1:3,g,i,e)),(/mySize/))
      case ('p','firstpiola','1stpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose3x3(crystallite_P(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_P(1:3,1:3,g,i,e)),(/mySize/))
      case ('s','tstar','secondpiola','2ndpiola')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)),(/mySize/))

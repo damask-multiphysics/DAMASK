@@ -259,8 +259,8 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                                                       restartWrite
   use math, only:                                     math_identity2nd, &
                                                       math_mul33x33, &
-                                                      math_det3x3, &
-                                                      math_transpose3x3, &
+                                                      math_det33, &
+                                                      math_transpose33, &
                                                       math_I3, &
                                                       math_Mandel3333to66, &
                                                       math_Mandel66to3333, &
@@ -493,8 +493,8 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,x,i8,x,i2)') '<< CPFEM >> OUTDATED at element ip',cp_en,IP
-              write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 old:',math_transpose3x3(materialpoint_F(1:3,1:3,IP,cp_en))
-              write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 now:',math_transpose3x3(ffn1)
+              write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 old:',math_transpose33(materialpoint_F(1:3,1:3,IP,cp_en))
+              write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 now:',math_transpose33(ffn1)
             !$OMP END CRITICAL (write2out)
           endif
           outdatedFFN1 = .true.
@@ -569,8 +569,8 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
         else  
           ! translate from P to CS
-          Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,IP, cp_en), math_transpose3x3(materialpoint_F(1:3,1:3,IP,cp_en)))
-          J_inverse  = 1.0_pReal / math_det3x3(materialpoint_F(1:3,1:3,IP,cp_en))
+          Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,IP, cp_en), math_transpose33(materialpoint_F(1:3,1:3,IP,cp_en)))
+          J_inverse  = 1.0_pReal / math_det33(materialpoint_F(1:3,1:3,IP,cp_en))
           CPFEM_cs(1:6,IP,cp_en) = math_Mandel33to6(J_inverse * Kirchhoff)
 
         !  translate from dP/dF to dCS/dE

@@ -411,13 +411,13 @@ program DAMASK_spectral
    else
      print '(a)','deformation gradient rate:'
    endif
-   print '(3(3(f12.6,x)/)$)', merge(math_transpose3x3(bc(loadcase)%deformation),&
+   print '(3(3(f12.6,x)/)$)', merge(math_transpose33(bc(loadcase)%deformation),&
                   reshape(spread(DAMASK_NaN,1,9),(/3,3/)),transpose(bc(loadcase)%maskDeformation))
-   print '(a,/,3(3(f12.6,x)/)$)','stress / GPa:',1e-9*merge(math_transpose3x3(bc(loadcase)%stress)&
+   print '(a,/,3(3(f12.6,x)/)$)','stress / GPa:',1e-9*merge(math_transpose33(bc(loadcase)%stress)&
                                                         ,reshape(spread(DAMASK_NaN,1,9),(/3,3/))&
                                                         ,transpose(bc(loadcase)%maskStress))
    if (any(bc(loadcase)%rotation /= math_I3)) &
-     print '(a,3(3(f12.6,x)/)$)','rotation of loadframe:',math_transpose3x3(bc(loadcase)%rotation)
+     print '(a,3(3(f12.6,x)/)$)','rotation of loadframe:',math_transpose33(bc(loadcase)%rotation)
    print '(a,f12.6)','temperature:',bc(loadcase)%temperature
    print '(a,f12.6)','time:       ',bc(loadcase)%time
    print '(a,i5)'   ,'increments: ',bc(loadcase)%incs
@@ -428,9 +428,9 @@ program DAMASK_spectral
    if (any(bc(loadcase)%maskStress .and. transpose(bc(loadcase)%maskStress) .and. &
      reshape((/.false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false./),(/3,3/)))) &
                                                errorID = 38_pInt                                    ! no rotation is allowed by stress BC
-   if (any(abs(math_mul33x33(bc(loadcase)%rotation,math_transpose3x3(bc(loadcase)%rotation))&
+   if (any(abs(math_mul33x33(bc(loadcase)%rotation,math_transpose33(bc(loadcase)%rotation))&
                                       -math_I3) > reshape(spread(rotation_tol,1,9),(/3,3/)))&
-                    .or. abs(math_det3x3(bc(loadcase)%rotation)) > 1.0_pReal + rotation_tol)&
+                    .or. abs(math_det33(bc(loadcase)%rotation)) > 1.0_pReal + rotation_tol)&
                                                errorID = 46_pInt                                    ! given rotation matrix contains strain
    if (bc(loadcase)%time < 0.0_pReal)          errorID = 34_pInt                                    ! negative time increment
    if (bc(loadcase)%incs < 1_pInt)             errorID = 35_pInt                                    ! non-positive incs count
@@ -634,7 +634,7 @@ program DAMASK_spectral
              do l = 1_pInt ,3_pInt; do m = 1_pInt,3_pInt
                xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
              enddo; enddo
-             temp33_Real = math_inv3x3(math_mul3333xx33(c0_reference, xiDyad)) 
+             temp33_Real = math_inv33(math_mul3333xx33(c0_reference, xiDyad)) 
            else
              
              xiDyad  = 0.0_pReal
@@ -704,10 +704,10 @@ program DAMASK_spectral
            temp33_Real = defgrad(i,j,k,1:3,1:3)
            if (bc(loadcase)%velGradApplied) &                                                       ! use velocity gradient to calculate new deformation gradient (if not guessing)
                            fDot = math_mul33x33(bc(loadcase)%deformation,&
-                           math_rotate_forward3x3(defgradold(i,j,k,1:3,1:3),bc(loadcase)%rotation))
+                           math_rotate_forward33(defgradold(i,j,k,1:3,1:3),bc(loadcase)%rotation))
              defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) &                                      ! decide if guessing along former trajectory or apply homogeneous addon
                                 + guessmode * (defgrad(i,j,k,1:3,1:3) - defgradold(i,j,k,1:3,1:3))& ! guessing... 
-                                + math_rotate_backward3x3((1.0_pReal-guessmode) * mask_defgrad * fDot,&
+                                + math_rotate_backward33((1.0_pReal-guessmode) * mask_defgrad * fDot,&
                                            bc(loadcase)%rotation) *timeinc                          ! apply the prescribed value where deformation is given if not guessing
              defgradold(i,j,k,1:3,1:3) = temp33_Real 
          enddo; enddo; enddo
@@ -725,7 +725,7 @@ program DAMASK_spectral
        
 !--------------------------------------------------------------------------------------------------
 ! calculate reduced compliance
-       c_prev = math_rotate_forward3x3x3x3(c_current*wgt,bc(loadcase)%rotation)                     ! calculate stiffness from former inc
+       c_prev = math_rotate_forward3333(c_current*wgt,bc(loadcase)%rotation)                        ! calculate stiffness from former inc
        if(size_reduced > 0_pInt) then                                                               ! calculate compliance in case stress BC is applied
          c_prev99 = math_Plain3333to99(c_prev)
          k = 0_pInt                                                                                 ! build reduced stiffness
@@ -788,7 +788,7 @@ program DAMASK_spectral
            defgrad_av_lab(m,n) = sum(defgrad(1:res(1),1:res(2),1:res(3),m,n)) * wgt
          enddo; enddo
          print '(a,/,3(3(f12.7,x)/)$)', 'deformation gradient:',&
-                                        math_transpose3x3(math_rotate_forward3x3(defgrad_av_lab,bc(loadcase)%rotation))
+                                        math_transpose33(math_rotate_forward33(defgrad_av_lab,bc(loadcase)%rotation))
          print '(a)', ''
          print '(a)', '... update stress field P(F) ................................'
 
@@ -874,8 +874,8 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
-         p_hat_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(real(tensorField_complex(1,1,1,1:3,1:3)),&       ! L_2 norm of average stress (freq 0,0,0) in fourier space,  
-                                                  math_transpose3x3(real(tensorField_complex(1,1,1,1:3,1:3)))))))    ! ignore imaginary part as it is always zero for real only input
+         p_hat_avg = sqrt(maxval (math_eigenvalues33(math_mul33x33(real(tensorField_complex(1,1,1,1:3,1:3)),&       ! L_2 norm of average stress (freq 0,0,0) in fourier space,  
+                                                  math_transpose33(real(tensorField_complex(1,1,1,1:3,1:3)))))))    ! ignore imaginary part as it is always zero for real only input
          err_div_RMS = 0.0_pReal
          do k = 1_pInt, res(3); do j = 1_pInt, res(2)
            do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
@@ -914,8 +914,8 @@ program DAMASK_spectral
              err_real_div_RMS = err_real_div_RMS    +      sum(divergence_real(i,j,k,1:3)**2.0_pReal)        ! avg of L_2 norm of div(stress) in real space
              err_real_div_max = max(err_real_div_max, sqrt(sum(divergence_real(i,j,k,1:3)**2.0_pReal)))      ! maximum of L two norm of div(stress) in real space
            enddo; enddo; enddo
-           p_real_avg = sqrt(maxval (math_eigenvalues3x3(math_mul33x33(pstress_av_lab,&                      ! L_2 norm of average stress in real space,  
-                                                     math_transpose3x3(pstress_av_lab)))))                   
+           p_real_avg = sqrt(maxval (math_eigenvalues33(math_mul33x33(pstress_av_lab,&                      ! L_2 norm of average stress in real space,  
+                                                     math_transpose33(pstress_av_lab)))))                   
            err_real_div_RMS = sqrt(wgt*err_real_div_RMS)*correctionFactor                                    ! RMS in real space
            err_real_div_max =          err_real_div_max *correctionFactor 
            err_div_max      =               err_div_max *correctionFactor
@@ -943,7 +943,7 @@ program DAMASK_spectral
                do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
                  xiDyad(l,m) = xi(l,i,j,k)*xi(m,i,j,k)
                enddo; enddo
-               temp33_Real = math_inv3x3(math_mul3333xx33(c0_reference, xiDyad)) 
+               temp33_Real = math_inv33(math_mul3333xx33(c0_reference, xiDyad)) 
              else
                xiDyad = 0.0_pReal
                temp33_Real = 0.0_pReal
@@ -996,9 +996,9 @@ program DAMASK_spectral
            temp33_Real = 0.0_pReal
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
              maxCorrectionSym  = max(maxCorrectionSym,&
-                                     maxval(math_symmetric3x3(tensorField_real(i,j,k,1:3,1:3))))
+                                     maxval(math_symmetric33(tensorField_real(i,j,k,1:3,1:3))))
              maxCorrectionSkew = max(maxCorrectionSkew,&
-                                     maxval(math_skew3x3(tensorField_real(i,j,k,1:3,1:3))))
+                                     maxval(math_skew33(tensorField_real(i,j,k,1:3,1:3))))
              temp33_Real = temp33_Real + tensorField_real(i,j,k,1:3,1:3)
            enddo; enddo; enddo
            print '(a,x,es10.4)'       , 'max symmetrix correction of deformation:',&
@@ -1006,8 +1006,8 @@ program DAMASK_spectral
            print '(a,x,es10.4)'       , 'max skew      correction of deformation:',&
                                          maxCorrectionSkew*wgt
            print '(a,x,es10.4)'       , 'max sym/skew of avg correction:         ',&
-                                         maxval(math_symmetric3x3(temp33_real))/&
-                                         maxval(math_skew3x3(temp33_real))
+                                         maxval(math_symmetric33(temp33_real))/&
+                                         maxval(math_skew33(temp33_real))
          endif
 
 !--------------------------------------------------------------------------------------------------
@@ -1028,8 +1028,8 @@ program DAMASK_spectral
          
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-         pstress_av = math_rotate_forward3x3(pstress_av_lab,bc(loadcase)%rotation)
-         print '(a,/,3(3(f12.7,x)/)$)', 'Piola-Kirchhoff stress / MPa: ',math_transpose3x3(pstress_av)/1.e6
+         pstress_av = math_rotate_forward33(pstress_av_lab,bc(loadcase)%rotation)
+         print '(a,/,3(3(f12.7,x)/)$)', 'Piola-Kirchhoff stress / MPa: ',math_transpose33(pstress_av)/1.e6
 
          if(size_reduced > 0_pInt) then                                                                       ! calculate stress BC if applied
            err_stress = maxval(abs(mask_stress * (pstress_av - bc(loadcase)%stress)))                         ! maximum deviaton (tensor norm not applicable)
@@ -1039,14 +1039,14 @@ program DAMASK_spectral
            print '(a,es10.4,a,f6.2)', 'error stress = ',err_stress, ', ', err_stress/err_stress_tol
            defgradAimCorr = - math_mul3333xx33(s_prev, ((pstress_av - bc(loadcase)%stress)))                  ! residual on given stress components
            defgradAim = defgradAim + defgradAimCorr
-           print '(a,/,3(3(f12.7,x)/)$)', 'new deformation aim:     ', math_transpose3x3(defgradAim)
-           print '(a,x,es10.4)'         , 'with determinant:        ', math_det3x3(defgradAim)
+           print '(a,/,3(3(f12.7,x)/)$)', 'new deformation aim:     ', math_transpose33(defgradAim)
+           print '(a,x,es10.4)'         , 'with determinant:        ', math_det33(defgradAim)
          else
            err_stress_tol = 0.0_pReal
          endif
 
   ! homogeneous correction towards avg deformation gradient -------------
-         defgradAim_lab = math_rotate_backward3x3(defgradAim,bc(loadcase)%rotation)                           ! boundary conditions from load frame into lab (Fourier) frame
+         defgradAim_lab = math_rotate_backward33(defgradAim,bc(loadcase)%rotation)                           ! boundary conditions from load frame into lab (Fourier) frame
          do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt 
            defgrad(1:res(1),1:res(2),1:res(3),m,n) = &
            defgrad(1:res(1),1:res(2),1:res(3),m,n) + (defgradAim_lab(m,n) - defgrad_av_lab(m,n))              ! anticipated target minus current state
@@ -1058,7 +1058,7 @@ program DAMASK_spectral
            defgradDetMax = -huge(1.0_pReal)
            defgradDetMin = +huge(1.0_pReal)
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-             defgradDet = math_det3x3(defgrad(i,j,k,1:3,1:3))
+             defgradDet = math_det33(defgrad(i,j,k,1:3,1:3))
              defgradDetMax = max(defgradDetMax,defgradDet)
              defgradDetMin = min(defgradDetMin,defgradDet) 
            enddo; enddo; enddo

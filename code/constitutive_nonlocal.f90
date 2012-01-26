@@ -144,7 +144,7 @@ use prec,     only: pInt, pReal
 use math,     only: math_Mandel3333to66, & 
                     math_Voigt66to3333, & 
                     math_mul3x3, &
-                    math_transpose3x3
+                    math_transpose33
 use IO,       only: IO_lc, &
                     IO_getTag, &
                     IO_isBlank, &
@@ -720,9 +720,9 @@ do i = 1,maxNinstance
     !*** rotation matrix from lattice configuration to slip system
 
     constitutive_nonlocal_lattice2slip(1:3,1:3,s1,i) &
-        = math_transpose3x3( reshape((/ lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
-                                       -lattice_st(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
-                                        lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure)/), (/3,3/)))
+        = math_transpose33( reshape((/ lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
+                                      -lattice_st(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
+                                       lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure)/), (/3,3/)))
   enddo
   
 enddo
@@ -886,9 +886,9 @@ use math,     only: math_Mandel33to6, &
                     math_mul33x3, &
                     math_mul3x3, &
                     math_norm3, &
-                    math_inv3x3, &
-                    math_invert3x3, &
-                    math_transpose3x3, &
+                    math_inv33, &
+                    math_invert33, &
+                    math_transpose33, &
                     pi
 use debug,    only: debug_verbosity, &
                     debug_selectiveDebugger, &
@@ -1034,8 +1034,8 @@ forall (s = 1:ns) &
 tauBack = 0.0_pReal
 
 if (.not. phase_localConstitution(phase)) then
-  call math_invert3x3(Fe, invFe, detFe, inversionError)
-  call math_invert3x3(Fp, invFp, detFp, inversionError)
+  call math_invert33(Fe, invFe, detFe, inversionError)
+  call math_invert33(Fp, invFp, detFp, inversionError)
   ipCoords = mesh_ipCenterOfGravity(1:3,ip,el)
   rhoExcess(1,1:ns) = rhoSgl(1:ns,1) - rhoSgl(1:ns,2)
   rhoExcess(2,1:ns) = rhoSgl(1:ns,3) - rhoSgl(1:ns,4)
@@ -1048,7 +1048,7 @@ if (.not. phase_localConstitution(phase)) then
   do n = 1,FE_NipNeighbors(mesh_element(2,el))
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
     neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
-    areaNormal_latticeConf(1:3,n) = detFp * math_mul33x3(math_transpose3x3(invFp), mesh_ipAreaNormal(1:3,n,ip,el))  ! calculate the normal of the interface in lattice configuration
+    areaNormal_latticeConf(1:3,n) = detFp * math_mul33x3(math_transpose33(invFp), mesh_ipAreaNormal(1:3,n,ip,el))  ! calculate the normal of the interface in lattice configuration
     areaNormal_latticeConf(1:3,n) = areaNormal_latticeConf(1:3,n) / math_norm3(areaNormal_latticeConf(1:3,n))       ! normalize the surface normal to unit length
     if (neighboring_el > 0 .and. neighboring_ip > 0) then
       neighboring_phase = material_phase(g,neighboring_ip,neighboring_el)
@@ -1143,7 +1143,7 @@ if (.not. phase_localConstitution(phase)) then
       sampledPoint(1:3,1) = + gradientDistanceInter(1) * m(1:3,s,c)
       sampledPoint(1:3,2) = - gradientDistanceInter(2) * m(1:3,s,c)
       do side = 1,2
-        rhoExcessAtSampledPoint(side) = math_mul3x3(math_mul33x3(math_inv3x3(connections(1:3,1:3,side)), &
+        rhoExcessAtSampledPoint(side) = math_mul3x3(math_mul33x3(math_inv33(connections(1:3,1:3,side)), &
                                                                  rhoExcessDifferences(1:3,side)), &
                                                     sampledPoint(1:3,side)) &
                                       + rhoExcess(c,s)
@@ -1207,8 +1207,6 @@ subroutine constitutive_nonlocal_kinetics(v, tau, c, Temperature, state, g, ip, 
 use prec,     only: pReal, &
                     pInt, &
                     p_vec
-use math,     only: math_mul6x6, &
-                    math_Mandel6to33
 use debug,    only: debug_verbosity, &
                     debug_selectiveDebugger, &
                     debug_g, &
@@ -1358,8 +1356,7 @@ use prec,     only: pReal, &
                     pInt, &
                     p_vec
 use math,     only: math_Plain3333to99, &
-                    math_mul6x6, &
-                    math_Mandel6to33
+                    math_mul6x6
 use debug,    only: debug_verbosity, &
                     debug_selectiveDebugger, &
                     debug_g, &
@@ -1515,11 +1512,9 @@ use math,     only: math_norm3, &
                     math_mul3x3, &
                     math_mul33x3, &
                     math_mul33x33, &
-                    math_inv3x3, &
-                    math_det3x3, &
-                    math_Mandel6to33, &
-                    math_QuaternionDisorientation, &
-                    math_qRot, &
+                    math_inv33, &
+                    math_det33, &
+                    math_transpose33, &  
                     pi                
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
@@ -1825,9 +1820,9 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
       forall (t = 1:4) &
         neighboring_fluxdensity(1:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1)*ns+1:t*ns) &
                                         * state(g,neighboring_ip,neighboring_el)%p((12+t)*ns+1:(13+t)*ns)
-      normal_neighbor2me_defConf = math_det3x3(Favg) &
-                  * math_mul33x3(math_inv3x3(transpose(Favg)), mesh_ipAreaNormal(1:3,neighboring_n,neighboring_ip,neighboring_el))  ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
-      normal_neighbor2me = math_mul33x3(transpose(neighboring_Fe), normal_neighbor2me_defConf) / math_det3x3(neighboring_Fe)        ! interface normal in the lattice configuration of my neighbor
+      normal_neighbor2me_defConf = math_det33(Favg) &
+                  * math_mul33x3(math_inv33(transpose(Favg)), mesh_ipAreaNormal(1:3,neighboring_n,neighboring_ip,neighboring_el))   ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
+      normal_neighbor2me = math_mul33x3(transpose(neighboring_Fe), normal_neighbor2me_defConf) / math_det33(neighboring_Fe)         ! interface normal in the lattice configuration of my neighbor
       area = mesh_ipArea(neighboring_n,neighboring_ip,neighboring_el) * math_norm3(normal_neighbor2me)
       normal_neighbor2me = normal_neighbor2me / math_norm3(normal_neighbor2me)                                                      ! normalize the surface normal to unit length
       do s = 1,ns
@@ -1864,8 +1859,8 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     endif
 
     if (considerLeavingFlux) then
-      normal_me2neighbor_defConf = math_det3x3(Favg) * math_mul33x3(math_inv3x3(transpose(Favg)), mesh_ipAreaNormal(1:3,n,ip,el))   ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
-      normal_me2neighbor = math_mul33x3(transpose(my_Fe), normal_me2neighbor_defConf) / math_det3x3(my_Fe)                          ! interface normal in my lattice configuration
+      normal_me2neighbor_defConf = math_det33(Favg) * math_mul33x3(math_inv33(math_transpose33(Favg)), mesh_ipAreaNormal(1:3,n,ip,el))     ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
+      normal_me2neighbor = math_mul33x3(math_transpose33(my_Fe), normal_me2neighbor_defConf) / math_det33(my_Fe)                          ! interface normal in my lattice configuration
       area = mesh_ipArea(n,ip,el) * math_norm3(normal_me2neighbor)
       normal_me2neighbor = normal_me2neighbor / math_norm3(normal_me2neighbor)                                                      ! normalize the surface normal to unit length    
       do s = 1,ns
@@ -2187,8 +2182,8 @@ use prec,     only: pReal, &
                     p_vec
 use math,     only: math_mul33x33, &
                     math_mul33x3, &
-                    math_invert3x3, &
-                    math_transpose3x3, &
+                    math_invert33, &
+                    math_transpose33, &
                     pi
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
@@ -2296,7 +2291,7 @@ forall (t = 5:8) &
 constitutive_nonlocal_dislocationstress = 0.0_pReal
 
 if (.not. phase_localConstitution(phase)) then
-  call math_invert3x3(Fe(1:3,1:3,1,ip,el), invFe, detFe, inversionError)
+  call math_invert33(Fe(1:3,1:3,1,ip,el), invFe, detFe, inversionError)
 !  if (inversionError) then
 !    return
 !  endif
@@ -2330,7 +2325,7 @@ ipLoop: do neighboring_ip = 1,FE_Nips(mesh_element(2,neighboring_el))
       neighboring_instance = phase_constitutionInstance(neighboring_phase)
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
-      call math_invert3x3(Fe(1:3,1:3,1,neighboring_ip,neighboring_el), neighboring_invFe, detFe, inversionError)
+      call math_invert33(Fe(1:3,1:3,1,neighboring_ip,neighboring_el), neighboring_invFe, detFe, inversionError)
 !      if (inversionError) then
 !        return
 !      endif
@@ -2479,7 +2474,7 @@ ipLoop: do neighboring_ip = 1,FE_Nips(mesh_element(2,neighboring_el))
                               / (4.0_pReal * pi * (1.0_pReal - nu)) &
                               * mesh_ipVolume(neighboring_ip,neighboring_el) / segmentLength      ! reference volume is used here (according to the segment length calculation)
                 Tdislo_neighboringLattice = Tdislo_neighboringLattice &
-                      + math_mul33x33(math_transpose3x3(constitutive_nonlocal_lattice2slip(1:3,1:3,s,neighboring_instance)), &
+                      + math_mul33x33(math_transpose33(constitutive_nonlocal_lattice2slip(1:3,1:3,s,neighboring_instance)), &
                         math_mul33x33(sigma, constitutive_nonlocal_lattice2slip(1:3,1:3,s,neighboring_instance)))
                                             
               enddo ! slip system loop
@@ -2506,7 +2501,7 @@ ipLoop: do neighboring_ip = 1,FE_Nips(mesh_element(2,neighboring_el))
                 sigma(3,1) = sigma(1,3)
                 
                 Tdislo_neighboringLattice = Tdislo_neighboringLattice &
-                                      + math_mul33x33(math_transpose3x3(constitutive_nonlocal_lattice2slip(1:3,1:3,s,instance)), &
+                                      + math_mul33x33(math_transpose33(constitutive_nonlocal_lattice2slip(1:3,1:3,s,instance)), &
                                                       math_mul33x33(sigma, constitutive_nonlocal_lattice2slip(1:3,1:3,s,instance)))
                                             
               enddo ! slip system loop
@@ -2525,7 +2520,7 @@ ipLoop: do neighboring_ip = 1,FE_Nips(mesh_element(2,neighboring_el))
       constitutive_nonlocal_dislocationstress = constitutive_nonlocal_dislocationstress &
                                               + math_mul33x33(neighboringLattice2myLattice, &
                                                 math_mul33x33(Tdislo_neighboringLattice, &
-                                                math_transpose3x3(neighboringLattice2myLattice)))
+                                                math_transpose33(neighboringLattice2myLattice)))
                         
     enddo ipLoop
   enddo ! element loop
@@ -2543,15 +2538,9 @@ function constitutive_nonlocal_postResults(Tstar_v, Fe, Temperature, dt, state, 
 use prec,     only: pReal, &
                     pInt, &
                     p_vec
-use math,     only: math_norm3, &
-                    math_mul6x6, &
-                    math_mul3x3, &
+use math,     only: math_mul6x6, &
                     math_mul33x3, &
                     math_mul33x33, &
-                    math_inv3x3, &
-                    math_det3x3, &
-                    math_Mandel6to33, &
-                    math_transpose3x3, &
                     pi
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &

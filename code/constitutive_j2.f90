@@ -326,8 +326,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
                       p_vec
   use math,     only: math_mul6x6, &
                       math_Mandel6to33, &
-                      math_Plain3333to99, &
-                      math_spectral1
+                      math_Plain3333to99
   use lattice,  only: lattice_Sslip, &
                       lattice_Sslip_v
   use mesh,     only: mesh_NcpElems, &

@@ -927,14 +927,14 @@ function lattice_initializeStructure(struct,CoverA)
      lattice_st(1:3,i,myStructure) = st(1:3,i)
      lattice_sn(1:3,i,myStructure) = sn(1:3,i)
      lattice_Sslip(1:3,1:3,i,myStructure) = math_tensorproduct(sd(1:3,i),sn(1:3,i))
-     lattice_Sslip_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Sslip(1:3,1:3,i,myStructure)))
+     lattice_Sslip_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,i,myStructure)))
    enddo
    do i = 1,myNtwin                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
      lattice_td(1:3,i,myStructure) = td(1:3,i)
      lattice_tt(1:3,i,myStructure) = tt(1:3,i)
      lattice_tn(1:3,i,myStructure) = tn(1:3,i)
      lattice_Stwin(1:3,1:3,i,myStructure) = math_tensorproduct(td(1:3,i),tn(1:3,i))
-     lattice_Stwin_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric3x3(lattice_Stwin(1:3,1:3,i,myStructure)))
+     lattice_Stwin_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric33(lattice_Stwin(1:3,1:3,i,myStructure)))
      lattice_Qtwin(1:3,1:3,i,myStructure) = math_AxisAngleToR(tn(1:3,i),180.0_pReal*inRad)
      lattice_shearTwin(i,myStructure) = ts(i)
    enddo

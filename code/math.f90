@@ -495,7 +495,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
 
 !**************************************************************************
-! matrix multiplication 33x33 = 3x3
+! matrix multiplication 33x33 = 33
 !**************************************************************************
  pure function math_mul33x33(A,B)  
 
@@ -512,7 +512,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
 
 !**************************************************************************
-! matrix multiplication 66x66 = 6x6
+! matrix multiplication 66x66 = 66
 !**************************************************************************
  pure function math_mul66x66(A,B)  
 
@@ -530,7 +530,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  
 !**************************************************************************
-! matrix multiplication 99x99 = 9x9
+! matrix multiplication 99x99 = 99
 !**************************************************************************
  pure function math_mul99x99(A,B)  
 
@@ -735,25 +735,25 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  
 !**************************************************************************
-! transposition of a 3x3 matrix
+! transposition of a 33 matrix
 !**************************************************************************
-pure function math_transpose3x3(A)
+pure function math_transpose33(A)
 
  implicit none
 
  real(pReal),dimension(3,3),intent(in)  :: A
- real(pReal),dimension(3,3) :: math_transpose3x3
+ real(pReal),dimension(3,3) :: math_transpose33
  integer(pInt) :: i,j
  
- forall(i=1_pInt:3_pInt, j=1_pInt:3_pInt) math_transpose3x3(i,j) = A(j,i)
+ forall(i=1_pInt:3_pInt, j=1_pInt:3_pInt) math_transpose33(i,j) = A(j,i)
 
- endfunction math_transpose3x3
+ endfunction math_transpose33
  
 
 !**************************************************************************
-! Cramer inversion of 3x3 matrix (function)
+! Cramer inversion of 33 matrix (function)
 !**************************************************************************
- pure function math_inv3x3(A)
+ pure function math_inv33(A)
 
 !   direct Cramer inversion of matrix A.
 !   returns all zeroes if not possible, i.e. if det close to zero
@@ -762,37 +762,37 @@ pure function math_transpose3x3(A)
 
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal) :: DetA
- real(pReal),dimension(3,3) :: math_inv3x3
+ real(pReal),dimension(3,3) :: math_inv33
  
- math_inv3x3 = 0.0_pReal
+ math_inv33 = 0.0_pReal
 
  DetA =   A(1,1) * (A(2,2) * A(3,3) - A(2,3) * A(3,2))&
         - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
         + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
 
  if (abs(DetA) > tiny(abs(DetA))) then
-   math_inv3x3(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
-   math_inv3x3(2,1) = (-A(2,1) * A(3,3) + A(2,3) * A(3,1)) / DetA
-   math_inv3x3(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1)) / DetA
+   math_inv33(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
+   math_inv33(2,1) = (-A(2,1) * A(3,3) + A(2,3) * A(3,1)) / DetA
+   math_inv33(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1)) / DetA
 
-   math_inv3x3(1,2) = (-A(1,2) * A(3,3) + A(1,3) * A(3,2)) / DetA
-   math_inv3x3(2,2) = ( A(1,1) * A(3,3) - A(1,3) * A(3,1)) / DetA
-   math_inv3x3(3,2) = (-A(1,1) * A(3,2) + A(1,2) * A(3,1)) / DetA
+   math_inv33(1,2) = (-A(1,2) * A(3,3) + A(1,3) * A(3,2)) / DetA
+   math_inv33(2,2) = ( A(1,1) * A(3,3) - A(1,3) * A(3,1)) / DetA
+   math_inv33(3,2) = (-A(1,1) * A(3,2) + A(1,2) * A(3,1)) / DetA
 
-   math_inv3x3(1,3) = ( A(1,2) * A(2,3) - A(1,3) * A(2,2)) / DetA
-   math_inv3x3(2,3) = (-A(1,1) * A(2,3) + A(1,3) * A(2,1)) / DetA
-   math_inv3x3(3,3) = ( A(1,1) * A(2,2) - A(1,2) * A(2,1)) / DetA
+   math_inv33(1,3) = ( A(1,2) * A(2,3) - A(1,3) * A(2,2)) / DetA
+   math_inv33(2,3) = (-A(1,1) * A(2,3) + A(1,3) * A(2,1)) / DetA
+   math_inv33(3,3) = ( A(1,1) * A(2,2) - A(1,2) * A(2,1)) / DetA
  endif
 
- endfunction math_inv3x3
+ endfunction math_inv33
 
 
 !**************************************************************************
-! Cramer inversion of 3x3 matrix (subroutine)
+! Cramer inversion of 33 matrix (subroutine)
 !**************************************************************************
- PURE SUBROUTINE math_invert3x3(A, InvA, DetA, error)
+ PURE SUBROUTINE math_invert33(A, InvA, DetA, error)
 
-!   Bestimmung der Determinanten und Inversen einer 3x3-Matrix
+!   Bestimmung der Determinanten und Inversen einer 33-Matrix
 !   A      = Matrix A
 !   InvA   = Inverse of A
 !   DetA   = Determinant of A
@@ -827,7 +827,7 @@ pure function math_transpose3x3(A)
    error = .false.
  endif
 
- ENDSUBROUTINE math_invert3x3
+ ENDSUBROUTINE math_invert33
 
 
 !**************************************************************************
@@ -1018,51 +1018,72 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! symmetrize a 3x3 matrix
+! symmetrize a 33 matrix
 !********************************************************************
- function math_symmetric3x3(m)
+ function math_symmetric33(m)
 
  implicit none
 
- real(pReal), dimension(3,3) :: math_symmetric3x3
+ real(pReal), dimension(3,3) :: math_symmetric33
  real(pReal), dimension(3,3), intent(in) :: m
  integer(pInt) :: i,j
  
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetric3x3(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetric33(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- endfunction math_symmetric3x3
+ endfunction math_symmetric33
  
 
 !********************************************************************
-! symmetrize a 6x6 matrix
+! symmetrize a 66 matrix
 !********************************************************************
- pure function math_symmetric6x6(m)
+ pure function math_symmetric66(m)
 
  implicit none
 
  integer(pInt) :: i,j
  real(pReal), dimension(6,6), intent(in) :: m
- real(pReal), dimension(6,6) :: math_symmetric6x6
+ real(pReal), dimension(6,6) :: math_symmetric66
  
- forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_symmetric6x6(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
+ forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_symmetric66(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- endfunction math_symmetric6x6
+ endfunction math_symmetric66
+
  
 !********************************************************************
-! skew part of a 3x3 matrix
+! skew part of a 33 matrix
 !********************************************************************
- function math_skew3x3(m)
+ function math_skew33(m)
 
  implicit none
 
- real(pReal), dimension(3,3) :: math_skew3x3
+ real(pReal), dimension(3,3) :: math_skew33
  real(pReal), dimension(3,3), intent(in) :: m
  integer(pInt) :: i,j
  
- forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_skew3x3(i,j) = m(i,j) - 0.5_pReal * (m(i,j) + m(j,i))
+ forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_skew33(i,j) = m(i,j) - 0.5_pReal * (m(i,j) + m(j,i))
 
- endfunction math_skew3x3
+ endfunction math_skew33
+
  
+!********************************************************************
+! deviatoric part of a 33 matrix
+!********************************************************************
+function math_deviatoric33(m)
+
+implicit none
+
+real(pReal), dimension(3,3) :: math_deviatoric33
+real(pReal), dimension(3,3), intent(in) :: m
+integer(pInt) :: i
+real(pReal) :: hydrostatic
+
+hydrostatic = (m(1,1) + m(2,2) + m(3,3)) / 3.0_pReal
+math_deviatoric33 = m
+forall (i=1_pInt:3_pInt) math_deviatoric33(i,i) = m(i,i) - hydrostatic
+
+endfunction math_deviatoric33
+
+
 !********************************************************************
 ! equivalent scalar quantity of a full strain tensor
 !********************************************************************
@@ -1119,24 +1140,24 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! determinant of a 3x3 matrix
+! determinant of a 33 matrix
 !********************************************************************
- pure function math_det3x3(m)
+ pure function math_det33(m)
 
  implicit none
 
  real(pReal), dimension(3,3), intent(in) :: m
- real(pReal) :: math_det3x3
+ real(pReal) :: math_det33
 
- math_det3x3 = m(1,1)*(m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
+ math_det33 = m(1,1)*(m(2,2)*m(3,3)-m(2,3)*m(3,2)) &
               -m(1,2)*(m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
               +m(1,3)*(m(2,1)*m(3,2)-m(2,2)*m(3,1))
 
- endfunction math_det3x3
+ endfunction math_det33
 
  
 !********************************************************************
-! norm of a 3x3 matrix
+! norm of a 33 matrix
 !********************************************************************
  pure function math_norm33(m)
 
@@ -1151,7 +1172,7 @@ pure function math_transpose3x3(A)
 
  
 !********************************************************************
-! euclidic norm of a 3x1 vector
+! euclidic norm of a 3 vector
 !********************************************************************
  pure function math_norm3(v)
 
@@ -1166,7 +1187,7 @@ pure function math_transpose3x3(A)
 
  
 !********************************************************************
-! convert 3x3 matrix into vector 9x1
+! convert 33 matrix into vector 9
 !********************************************************************
  pure function math_Plain33to9(m33)
 
@@ -1182,7 +1203,7 @@ pure function math_transpose3x3(A)
  
  
 !********************************************************************
-! convert Plain 9x1 back to 3x3 matrix
+! convert Plain 9 back to 33 matrix
 !********************************************************************
  pure function math_Plain9to33(v9)
 
@@ -1198,7 +1219,7 @@ pure function math_transpose3x3(A)
  
 
 !********************************************************************
-! convert symmetric 3x3 matrix into Mandel vector 6x1
+! convert symmetric 33 matrix into Mandel vector 6
 !********************************************************************
  pure function math_Mandel33to6(m33)
 
@@ -1214,7 +1235,7 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! convert Mandel 6x1 back to symmetric 3x3 matrix
+! convert Mandel 6 back to symmetric 33 matrix
 !********************************************************************
  pure function math_Mandel6to33(v6)
 
@@ -1233,7 +1254,7 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! convert 3x3x3x3 tensor into plain matrix 9x9
+! convert 3333 tensor into plain matrix 99
 !********************************************************************
  pure function math_Plain3333to99(m3333)
 
@@ -1249,7 +1270,7 @@ pure function math_transpose3x3(A)
  endfunction math_Plain3333to99
  
 !********************************************************************
-! plain matrix 9x9 into 3x3x3x3 tensor
+! plain matrix 99 into 3333 tensor
 !********************************************************************
  pure function math_Plain99to3333(m99)
 
@@ -1266,7 +1287,7 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! convert Mandel matrix 6x6 into Plain matrix 6x6
+! convert Mandel matrix 66 into Plain matrix 66
 !********************************************************************
  pure function math_Mandel66toPlain66(m66)
 
@@ -1284,7 +1305,7 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! convert Plain matrix 6x6 into Mandel matrix 6x6
+! convert Plain matrix 66 into Mandel matrix 66
 !********************************************************************
  pure function math_Plain66toMandel66(m66)
 
@@ -1302,7 +1323,7 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! convert symmetric 3x3x3x3 tensor into Mandel matrix 6x6
+! convert symmetric 3333 tensor into Mandel matrix 66
 !********************************************************************
  pure function math_Mandel3333to66(m3333)
 
@@ -1319,7 +1340,7 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! convert Mandel matrix 6x6 back to symmetric 3x3x3x3 tensor
+! convert Mandel matrix 66 back to symmetric 3333 tensor
 !********************************************************************
  pure function math_Mandel66to3333(m66)
 
@@ -1340,7 +1361,7 @@ pure function math_transpose3x3(A)
 
 
 !********************************************************************
-! convert Voigt matrix 6x6 back to symmetric 3x3x3x3 tensor
+! convert Voigt matrix 66 back to symmetric 3333 tensor
 !********************************************************************
  pure function math_Voigt66to3333(m66)
 
@@ -2015,7 +2036,7 @@ endfunction math_sampleGaussVar
 
 
 !****************************************************************
-subroutine math_spectralDecompositionSym3x3(M,values,vectors,error)
+subroutine math_spectralDecompositionSym33(M,values,vectors,error)
 !****************************************************************
  implicit none
 
@@ -2048,11 +2069,11 @@ end subroutine
  real(pReal) :: EW1, EW2, EW3, det
 
  error = .false.
- ce = math_mul33x33(math_transpose3x3(FE),FE)
+ ce = math_mul33x33(math_transpose33(FE),FE)
 
  CALL math_spectral1(CE,EW1,EW2,EW3,EB1,EB2,EB3)
  U=sqrt(EW1)*EB1+sqrt(EW2)*EB2+sqrt(EW3)*EB3
- call math_invert3x3(U,UI,det,error)
+ call math_invert33(U,UI,det,error)
  if (.not. error) R = math_mul33x33(FE,UI)
 
  ENDSUBROUTINE math_pDecomposition
@@ -2157,14 +2178,14 @@ end subroutine
 
 
 !**********************************************************************
- function math_eigenvalues3x3(M)
+ function math_eigenvalues33(M)
 !**** Eigenvalues of symmetric 3X3 matrix M
 
  implicit none
 
  real(pReal), intent(in), dimension(3,3) :: M
  real(pReal), dimension(3,3) :: EB1 = 0.0_pReal, EB2 = 0.0_pReal, EB3 = 0.0_pReal
- real(pReal), dimension(3) :: math_eigenvalues3x3
+ real(pReal), dimension(3) :: math_eigenvalues33
  real(pReal) :: HI1M, HI2M, HI3M, R, S, T, P, Q, RHO, PHI, Y1, Y2, Y3, arg
  real(pReal), parameter :: TOL=1.e-14_pReal
 
@@ -2177,9 +2198,9 @@ end subroutine
  
  if((abs(P) < TOL) .and. (abs(Q) < TOL)) THEN
 ! three equivalent eigenvalues
-   math_eigenvalues3x3(1) = HI1M/3.0_pReal
-   math_eigenvalues3x3(2)=math_eigenvalues3x3(1)
-   math_eigenvalues3x3(3)=math_eigenvalues3x3(1)
+   math_eigenvalues33(1) = HI1M/3.0_pReal
+   math_eigenvalues33(2)=math_eigenvalues33(1)
+   math_eigenvalues33(3)=math_eigenvalues33(1)
 !   this is not really correct, but this way U is calculated
 !   correctly in PDECOMPOSITION (correct is EB?=I)
    EB1(1,1)=1.0_pReal
@@ -2194,11 +2215,11 @@ end subroutine
    Y1=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal)
    Y2=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+2.0_pReal/3.0_pReal*PI)
    Y3=2*RHO**(1.0_pReal/3.0_pReal)*cos(PHI/3.0_pReal+4.0_pReal/3.0_pReal*PI)
-   math_eigenvalues3x3(1) = Y1-R/3.0_pReal
-   math_eigenvalues3x3(2) = Y2-R/3.0_pReal
-   math_eigenvalues3x3(3) = Y3-R/3.0_pReal
+   math_eigenvalues33(1) = Y1-R/3.0_pReal
+   math_eigenvalues33(2) = Y2-R/3.0_pReal
+   math_eigenvalues33(3) = Y3-R/3.0_pReal
  endif
- endfunction  math_eigenvalues3x3
+ endfunction  math_eigenvalues33
 
 
 !********************************************************************** 
@@ -2214,7 +2235,7 @@ end subroutine
  HI1M=M(1,1)+M(2,2)+M(3,3)
  HI2M=HI1M**2.0_pReal/2.0_pReal-  (M(1,1)**2.0_pReal+M(2,2)**2.0_pReal+M(3,3)**2.0_pReal)&
                                      /2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
- HI3M=math_det3x3(M)
+ HI3M=math_det33(M)
 ! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
 
  ENDSUBROUTINE math_hi
@@ -2810,65 +2831,65 @@ end subroutine
  m(1:3,2) = v2-v3
  m(1:3,3) = v3-v4
 
- math_volTetrahedron = math_det3x3(m)/6.0_pReal 
+ math_volTetrahedron = math_det33(m)/6.0_pReal 
 
  endfunction math_volTetrahedron
 
 
 !**************************************************************************
-! rotate 3x3 tensor forward
+! rotate 33 tensor forward
 !**************************************************************************
- pure function math_rotate_forward3x3(tensor,rot_tensor)
+ pure function math_rotate_forward33(tensor,rot_tensor)
 
  implicit none
 
- real(pReal), dimension(3,3) ::  math_rotate_forward3x3
+ real(pReal), dimension(3,3) ::  math_rotate_forward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
  
- math_rotate_forward3x3 = math_mul33x33(rot_tensor,&
-                          math_mul33x33(tensor,math_transpose3x3(rot_tensor)))
+ math_rotate_forward33 = math_mul33x33(rot_tensor,&
+                         math_mul33x33(tensor,math_transpose33(rot_tensor)))
  
- endfunction math_rotate_forward3x3
+ endfunction math_rotate_forward33
 
 
 !**************************************************************************
-! rotate 3x3 tensor backward
+! rotate 33 tensor backward
 !**************************************************************************
- pure function math_rotate_backward3x3(tensor,rot_tensor)
+ pure function math_rotate_backward33(tensor,rot_tensor)
 
  implicit none
 
- real(pReal), dimension(3,3) ::  math_rotate_backward3x3
+ real(pReal), dimension(3,3) ::  math_rotate_backward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
  
- math_rotate_backward3x3 = math_mul33x33(math_transpose3x3(rot_tensor),&
+ math_rotate_backward33 = math_mul33x33(math_transpose33(rot_tensor),&
                            math_mul33x33(tensor,rot_tensor))
  
- endfunction math_rotate_backward3x3
+ endfunction math_rotate_backward33
 
 
 !**************************************************************************
-! rotate 3x3x3x3 tensor
+! rotate 3333 tensor
 ! C'_ijkl=g_im*g_jn*g_ko*g_lp*C_mnop
 !**************************************************************************
- pure function math_rotate_forward3x3x3x3(tensor,rot_tensor)
+ pure function math_rotate_forward3333(tensor,rot_tensor)
 
  implicit none
 
- real(pReal), dimension(3,3,3,3) ::  math_rotate_forward3x3x3x3
+ real(pReal), dimension(3,3,3,3) ::  math_rotate_forward3333
  real(pReal), dimension(3,3), intent(in) :: rot_tensor
  real(pReal), dimension(3,3,3,3), intent(in) :: tensor
  integer(pInt) :: i,j,k,l,m,n,o,p
  
- math_rotate_forward3x3x3x3= 0.0_pReal
+ math_rotate_forward3333= 0.0_pReal
 
  do i = 1_pInt,3_pInt; do j = 1_pInt,3_pInt; do k = 1_pInt,3_pInt; do l = 1_pInt,3_pInt
    do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt; do p = 1_pInt,3_pInt
-     math_rotate_forward3x3x3x3(i,j,k,l) = tensor(i,j,k,l)+rot_tensor(m,i)*rot_tensor(n,j)*&
+     math_rotate_forward3333(i,j,k,l) = tensor(i,j,k,l)+rot_tensor(m,i)*rot_tensor(n,j)*&
                                                            rot_tensor(o,k)*rot_tensor(p,l)*tensor(m,n,o,p)
  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
  
- endfunction math_rotate_forward3x3x3x3
+ endfunction math_rotate_forward3333
 
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2950,7 +2971,7 @@ end subroutine
                               + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(3,1:3),coords(2,1:3))) &
                               + abs(math_volTetrahedron(coords(7,1:3),coords(5,1:3),coords(2,1:3),coords(6,1:3))) &
                               + abs(math_volTetrahedron(coords(7,1:3),coords(5,1:3),coords(2,1:3),coords(1,1:3)))
-       volume_mismatch(i,j,k) = volume_mismatch(i,j,k)/math_det3x3(defgrad(i,j,k,1:3,1:3))
+       volume_mismatch(i,j,k) = volume_mismatch(i,j,k)/math_det33(defgrad(i,j,k,1:3,1:3))
  enddo; enddo; enddo
  volume_mismatch = volume_mismatch/vol_initial
 
@@ -3630,7 +3651,7 @@ subroutine logstrain_spat(res,defgrad,logstrain_field)
  
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    call math_pDecomposition(defgrad(i,j,k,1:3,1:3),temp33_Real2,temp33_Real,errmatinv)  !store R in temp33_Real
-   temp33_Real2 = math_inv3x3(temp33_Real)
+   temp33_Real2 = math_inv33(temp33_Real)
    temp33_Real = math_mul33x33(defgrad(i,j,k,1:3,1:3),temp33_Real2)       ! v = F o inv(R), store in temp33_Real2
    call math_spectral1(temp33_Real,eigenvalue(1),              eigenvalue(2),              eigenvalue(3),&
                                    eigenvectorbasis(1,1:3,1:3),eigenvectorbasis(2,1:3,1:3),eigenvectorbasis(3,1:3,1:3))
@@ -3690,7 +3711,7 @@ subroutine calculate_cauchy(res,defgrad,p_stress,c_stress)
 
  c_stress = 0.0_pInt
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   jacobi = math_det3x3(defgrad(i,j,k,1:3,1:3))
+   jacobi = math_det33(defgrad(i,j,k,1:3,1:3))
    c_stress(i,j,k,1:3,1:3) = matmul(p_stress(i,j,k,1:3,1:3),transpose(defgrad(i,j,k,1:3,1:3)))/jacobi
  enddo; enddo; enddo
 

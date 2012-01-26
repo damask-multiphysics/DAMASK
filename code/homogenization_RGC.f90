@@ -922,7 +922,7 @@ subroutine homogenization_RGC_stressPenalty(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use constitutive, only: constitutive_homogenizedC
- use math, only: math_civita,math_invert3x3
+ use math, only: math_civita,math_invert33
  use material, only: homogenization_maxNgrains,homogenization_Ngrains
  use numerics, only: xSmoo_RGC
  implicit none
@@ -1054,7 +1054,7 @@ subroutine homogenization_RGC_volumePenalty(&
   )
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
- use math, only: math_det3x3,math_inv3x3
+ use math, only: math_det33,math_inv33
  use material, only: homogenization_maxNgrains,homogenization_Ngrains
  use numerics, only: maxVolDiscr_RGC,volDiscrMod_RGC,volDiscrPow_RGC
 
@@ -1072,9 +1072,9 @@ subroutine homogenization_RGC_volumePenalty(&
  nGrain = homogenization_Ngrains(mesh_element(3,el))
 
 !* Compute the volumes of grains and of cluster
- vDiscrep = math_det3x3(fAvg)                                           ! compute the volume of the cluster
+ vDiscrep = math_det33(fAvg)                                           ! compute the volume of the cluster
  do iGrain = 1,nGrain
-   gVol(iGrain) = math_det3x3(fDef(:,:,iGrain))                         ! compute the volume of individual grains
+   gVol(iGrain) = math_det33(fDef(:,:,iGrain))                         ! compute the volume of individual grains
    vDiscrep     = vDiscrep - gVol(iGrain)/dble(nGrain)                  ! calculate the difference/dicrepancy between
                                                                         ! the volume of the cluster and the the total volume of grains
  enddo
@@ -1084,7 +1084,7 @@ subroutine homogenization_RGC_volumePenalty(&
  do iGrain = 1,nGrain
    vPen(:,:,iGrain) = -1.0_pReal/dble(nGrain)*volDiscrMod_RGC*volDiscrPow_RGC/maxVolDiscr_RGC* &
                       sign((abs(vDiscrep)/maxVolDiscr_RGC)**(volDiscrPow_RGC - 1.0),vDiscrep)* &
-                      gVol(iGrain)*transpose(math_inv3x3(fDef(:,:,iGrain)))
+                      gVol(iGrain)*transpose(math_inv33(fDef(:,:,iGrain)))
 
 !* Debugging the stress-like penalty of volume discrepancy
 !    if (ip == 1 .and. el == 1) then
@@ -1108,7 +1108,7 @@ function homogenization_RGC_surfaceCorrection(&
   )
 
  use prec, only: pReal,pInt,p_vec
- use math, only: math_invert3x3,math_mul33x33
+ use math, only: math_invert33,math_mul33x33
  implicit none
 
 !* Definition of variables
@@ -1126,7 +1126,7 @@ function homogenization_RGC_surfaceCorrection(&
  avgC = 0.0_pReal
  avgC = math_mul33x33(transpose(avgF),avgF)
  invC = 0.0_pReal
- call math_invert3x3(avgC,invC,detF,error)
+ call math_invert33(avgC,invC,detF,error)
  homogenization_RGC_surfaceCorrection = 0.0_pReal
  do iBase = 1,3
    intFace = (/iBase,1_pInt,1_pInt,1_pInt/)
