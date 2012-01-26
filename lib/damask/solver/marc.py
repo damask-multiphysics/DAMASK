@@ -96,9 +96,11 @@ class Marc(Solver):
     else:       cmd += ' -prog ' + user
 
     print 'job submission with%s compilation: %s'%({False:'out',True:''}[compile],user)
-
+    if logfile:
+      log = open(logfile, 'w')
     print(cmd)
-    self.p = subprocess.Popen(shlex.split(cmd),stdout = logfile,stderr = subprocess.STDOUT)
+    self.p = subprocess.Popen(shlex.split(cmd),stdout = log,stderr = subprocess.STDOUT)
+    log.close()
     self.p.wait()
       
 #--------------------------

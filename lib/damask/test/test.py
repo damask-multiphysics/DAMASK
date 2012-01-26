@@ -33,8 +33,18 @@ class Test():
         elif not self.compare(variant):
           return variant
       except:
-        return 1
+        return variant
     return -1
+    # for variant in variants:
+      # self.prepare(variant)
+      # self.run(variant)
+      # self.postprocess(variant)
+      # if variant in update:
+        # self.update(variant)
+      # elif not self.compare(variant):
+        # return variant
+    # return -1
+    
 
 
   def clean(self):
