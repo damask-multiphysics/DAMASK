@@ -23,28 +23,27 @@ class Test():
     if len(variants) == 0: variants = xrange(len(self.variants))       # iterate over all variants
 
     self.clean()
+  #  for variant in variants:
+  #    try:
+  #      self.prepare(variant)
+  #      self.run(variant)
+  #      self.postprocess(variant)
+  #      if variant in update:
+  #        self.update(variant)
+  #      elif not self.compare(variant):
+  #        return variant
+  #    except:
+  #      return variant
+  #  return -1
     for variant in variants:
-      try:
-        self.prepare(variant)
-        self.run(variant)
-        self.postprocess(variant)
-        if variant in update:
-          self.update(variant)
-        elif not self.compare(variant):
-          return variant
-      except:
+      self.prepare(variant)
+      self.run(variant)
+      self.postprocess(variant)
+      if variant in update:
+        self.update(variant)
+      elif not self.compare(variant):
         return variant
     return -1
-    # for variant in variants:
-      # self.prepare(variant)
-      # self.run(variant)
-      # self.postprocess(variant)
-      # if variant in update:
-        # self.update(variant)
-      # elif not self.compare(variant):
-        # return variant
-    # return -1
-    
 
 
   def clean(self):
@@ -131,3 +130,31 @@ class Test():
     for file in files:
       shutil.copy2(self.fileInCurrent(file[0]),self.fileInCurrent(file[1]))  
 
+  def execute_inCurrentDir(self,cmd):
+    os.chdir(self.dirCurrent())
+    print cmd
+    os.system(cmd)
+
+  def compare_Array(self,ref,cur):
+    import numpy
+    refName = self.fileInReference (ref)
+    curName = self.fileInCurrent(cur)
+
+    refFile = open(refName)
+    table = damask.ASCIItable(refFile)
+    table.head_read()
+    refFile.close()
+    refArray = numpy.loadtxt(refName,skiprows = table.headerLen)
+    curArray = numpy.loadtxt(curName,skiprows = table.headerLen)
+
+    err = abs((refArray/curArray)-1.)                                     # relative tolerance
+    max_err = numpy.max(err)
+    print 'maximum relative error',max_err
+    return max_err
+
+  def reportSuccess(self,culprit):
+    if culprit < 0:
+      print '%s passed.'%({False: 'The test',
+                         True: 'All %i tests'%(len(theTest.variants))}[len(theTest.variants) > 1])
+    else:
+     print 'Test %i failed...'%(culprit+1)
