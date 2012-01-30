@@ -156,7 +156,8 @@ program DAMASK_spectral
  real(pReal),    dimension(3,3) ::          temp33_Real
  integer(pInt) :: i, j, k, l, m, n, p, errorID
  integer(pInt) :: N_Loadcases, loadcase, inc, iter, ielem, CPFEM_mode, &
-                  ierr, notConvergedCounter = 0_pInt, totalIncsCounter = 0_pInt
+                  ierr, notConvergedCounter = 0_pInt, totalIncsCounter = 0_pInt,&
+                  writtenRestart = 0_pInt
  logical :: errmatinv
  real(pReal) :: defgradDet, correctionFactor
 
@@ -766,6 +767,7 @@ program DAMASK_spectral
            write (777,rec=1) defgrad
            close (777)
          endif
+         writtenRestart=totalIncsCounter-1_pInt
        endif 
 
        guessmode = 1.0_pReal                                                                        ! keep guessing along former trajectory during same loadcase
@@ -897,8 +899,8 @@ program DAMASK_spectral
                       + sum(aimag(math_mul33x3_complex(tensorField_complex(res1_red,j,k,1:3,1:3),&
                                        xi(1:3,res1_red,j,k))*differentationFactor)**2.0_pReal)
          enddo; enddo
-         err_div_RMS = sqrt (err_div_RMS*wgt)* correctionFactor                                     ! weighting by and taking square root (RMS). abs(...) because result is a complex number and multiplying with correction factor
-         err_div = err_div_RMS/p_hat_avg                                                            ! criterion to stop iterations
+         err_div_RMS = sqrt(err_div_RMS)*wgt                                      ! RMS in real space calculated with Parsevals theorem from Fourier space
+         err_div = err_div_RMS/p_hat_avg/wgt * correctionFactor                                                       ! criterion to stop iterations
 
 !--------------------------------------------------------------------------------------------------
 ! calculate additional divergence criteria and report
@@ -924,21 +926,20 @@ program DAMASK_spectral
            enddo; enddo; enddo
            p_real_avg = sqrt(maxval (math_eigenvalues33(math_mul33x33(pstress_av_lab,&                      ! L_2 norm of average stress in real space,  
                                                      math_transpose33(pstress_av_lab)))))                   
-           err_real_div_RMS = sqrt(wgt*err_real_div_RMS)*correctionFactor                                    ! RMS in real space
-           err_real_div_max =          err_real_div_max *correctionFactor 
-           err_div_max      =               err_div_max *correctionFactor
-
-           print '(a,es10.4,a,f6.2)', 'error divergence  FT  RMS = ',err_div_RMS/p_hat_avg,    ', ', err_div/err_div_tol
-           print '(a,es10.4)',        'error divergence  FT  max = ',err_div_max/p_hat_avg
-           print '(a,es10.4)',        'error divergence Real RMS = ',err_real_div_RMS/p_real_avg
-           print '(a,es10.4)',        'error divergence Real max = ',err_real_div_max/p_real_avg
+           err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                   ! RMS in real space
+           err_div_max      = err_div_max*sqrt(wgt) 
+           
+           print '(a,es10.4)',        'error divergence  FT  RMS = ',err_div_RMS
+           print '(a,es10.4)',        'error divergence  FT  max = ',err_div_max
+           print '(a,es10.4)',        'error divergence Real RMS = ',err_real_div_RMS
+           print '(a,es10.4)',        'error divergence Real max = ',err_real_div_max
            print '(a,es10.4)',        'divergence RMS FT/real    = ',err_div_RMS/err_real_div_RMS
            print '(a,es10.4)',        'divergence max FT/real    = ',err_div_max/err_real_div_max
-           print '(a,es10.4)',        'avg stress     FT/real    = ',p_hat_avg/p_real_avg
-           print '(a,es10.4)',        'max deviation from postProc= ',max_div_error
-         else
-           print '(a,es10.4,a,f6.2)', 'error divergence = ',err_div,    ', ', err_div/err_div_tol
+           print '(a,es10.4)',        'avg stress     FT/real    = ',p_hat_avg*wgt/p_real_avg
+           print '(a,es10.4)',        'max deviat. from postProc = ',max_div_error
          endif
+         print '(a,es10.4,a,f6.2)', 'error divergence = ',err_div,    ', rel. error = ', err_div/err_div_tol
+         
 !--------------------------------------------------------------------------------------------------
 ! divergence is calculated from FT(stress), depending on algorithm use field for spectral method
          if (.not. simplified_algorithm) tensorField_complex = tau_complex
@@ -1037,14 +1038,14 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
          pstress_av = math_rotate_forward33(pstress_av_lab,bc(loadcase)%rotation)
-         print '(a,/,3(3(f12.7,x)/)$)', 'Piola-Kirchhoff stress / MPa: ',math_transpose33(pstress_av)/1.e6
+         print '(a,/,3(3(f12.7,x)/)$)', 'Piola-Kirchhoff stress / MPa:',math_transpose33(pstress_av)/1.e6
 
          if(size_reduced > 0_pInt) then                                                                       ! calculate stress BC if applied
            err_stress = maxval(abs(mask_stress * (pstress_av - bc(loadcase)%stress)))                         ! maximum deviaton (tensor norm not applicable)
            err_stress_tol = maxval(abs(pstress_av)) * err_stress_tolrel                                       ! don't use any tensor norm because the comparison should be coherent
            print '(a)', '' 
            print '(a)', '... correcting deformation gradient to fulfill BCs ..........'
-           print '(a,es10.4,a,f6.2)', 'error stress = ',err_stress, ', ', err_stress/err_stress_tol
+           print '(a,es10.4,a,f6.2)', 'error stress = ',err_stress,  ', rel. error = ', err_stress/err_stress_tol
            defgradAimCorr = - math_mul3333xx33(s_prev, ((pstress_av - bc(loadcase)%stress)))                  ! residual on given stress components
            defgradAim = defgradAim + defgradAimCorr
            print '(a,/,3(3(f12.7,x)/)$)', 'new deformation aim:     ', math_transpose33(defgradAim)
@@ -1052,17 +1053,19 @@ program DAMASK_spectral
          else
            err_stress_tol = 0.0_pReal
          endif
-
-  ! homogeneous correction towards avg deformation gradient -------------
-         defgradAim_lab = math_rotate_backward33(defgradAim,bc(loadcase)%rotation)                           ! boundary conditions from load frame into lab (Fourier) frame
+                                            
+         defgradAim_lab = math_rotate_backward33(defgradAim,bc(loadcase)%rotation)                            ! boundary conditions from load frame into lab (Fourier) frame
          do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt 
            defgrad(1:res(1),1:res(2),1:res(3),m,n) = &
            defgrad(1:res(1),1:res(2),1:res(3),m,n) + (defgradAim_lab(m,n) - defgrad_av_lab(m,n))              ! anticipated target minus current state
          enddo; enddo
-
+         if(debugGeneral) then 
+           print '(a,/,3(3(f12.7,x)/)$)', 'average deformation gradient correction:',&
+                                             math_transpose33(defgradAim_lab- defgrad_av_lab)
+                                                    
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report
-         if(debugGeneral) then 
+         
            defgradDetMax = -huge(1.0_pReal)
            defgradDetMin = +huge(1.0_pReal)
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
@@ -1115,6 +1118,7 @@ program DAMASK_spectral
    call fftw_destroy_plan(plan_scalarField_forth)
    call fftw_destroy_plan(plan_scalarField_back)
  endif
+ stop 0
 end program DAMASK_spectral
 
 !********************************************************************
