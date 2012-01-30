@@ -1859,8 +1859,9 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     endif
 
     if (considerLeavingFlux) then
-      normal_me2neighbor_defConf = math_det33(Favg) * math_mul33x3(math_inv33(math_transpose33(Favg)), mesh_ipAreaNormal(1:3,n,ip,el))     ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
-      normal_me2neighbor = math_mul33x3(math_transpose33(my_Fe), normal_me2neighbor_defConf) / math_det33(my_Fe)                          ! interface normal in my lattice configuration
+      normal_me2neighbor_defConf = math_det33(Favg) * math_mul33x3(math_inv33(math_transpose33(Favg)),&
+                                                          mesh_ipAreaNormal(1:3,n,ip,el))                                           ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
+      normal_me2neighbor = math_mul33x3(math_transpose33(my_Fe), normal_me2neighbor_defConf) / math_det33(my_Fe)                    ! interface normal in my lattice configuration
       area = mesh_ipArea(n,ip,el) * math_norm3(normal_me2neighbor)
       normal_me2neighbor = normal_me2neighbor / math_norm3(normal_me2neighbor)                                                      ! normalize the surface normal to unit length    
       do s = 1,ns

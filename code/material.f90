@@ -234,7 +234,7 @@ subroutine material_parseHomogenization(file,myPart)
  allocate(homogenization_Noutput(Nsections)); homogenization_Noutput = 0_pInt
  allocate(homogenization_active(Nsections));  homogenization_active = .false.
 
- forall (s = 1:Nsections) homogenization_active(s) = any(mesh_element(3,:) == s)    ! current homogenization used in model?
+ forall (s = 1:Nsections) homogenization_active(s) = any(mesh_element(3,:) == s)    ! current homogenization used in model? Homogenization view, maximum operations depend on maximum number of homog schemes
  homogenization_Noutput = IO_countTagInPart(file,myPart,'(output)',Nsections)
  
  rewind(file)
@@ -280,14 +280,14 @@ subroutine material_parseMicrostructure(file,myPart)
 
  use prec, only: pInt
  use IO
- use mesh, only: mesh_element
+ use mesh, only: mesh_element, mesh_NcpElems
  implicit none
 
  character(len=*), intent(in) :: myPart
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 7
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) Nsections, section, constituent, i
+ integer(pInt) Nsections, section, constituent, e, i
  character(len=64) tag
  character(len=1024) line
 
@@ -301,7 +301,7 @@ subroutine material_parseMicrostructure(file,myPart)
  allocate(microstructure_active(Nsections))
  allocate(microstructure_elemhomo(Nsections))
 
- forall (i = 1:Nsections) microstructure_active(i) = any(mesh_element(4,:) == i)    ! current microstructure used in model?
+ forall (e = 1:mesh_NcpElems) microstructure_active(mesh_element(4,e)) = .true.       ! current microstructure used in model? Elementwise view, maximum N operations for N elements
   
  microstructure_Nconstituents = IO_countTagInPart(file,myPart,'(constituent)',Nsections)
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)

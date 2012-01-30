@@ -1418,6 +1418,8 @@ endfunction
  select case (warning_ID)
  case (34)
    msg = 'invalid restart increment given'
+ case (35)
+   msg = 'could not get $DAMASK_NUM_THREADS'
  case (47_pInt)
    msg = 'No valid parameter for FFTW given, using FFTW_PATIENT'
  case (101_pInt)

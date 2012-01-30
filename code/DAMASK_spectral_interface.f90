@@ -38,11 +38,11 @@ subroutine DAMASK_interface_init()
 
  implicit none
 
- character(len=1024) commandLine
+ character(len=1024) commandLine, hostName, userName
  integer(pInt):: i, start = 0_pInt, length=0_pInt
-
+ integer, dimension(8) ::  date_and_time_values                    ! type default integer
  call get_command(commandLine)
-
+ call DATE_AND_TIME(VALUES=date_and_time_values)
  do i=1,len(commandLine)                                           ! remove capitals
    if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
  enddo
@@ -117,15 +117,31 @@ subroutine DAMASK_interface_init()
  loadcaseParameter = ''                                            ! should be empty
  loadcaseParameter(1:length)=commandLine(start:start+length)
  
- !$OMP CRITICAL (write2out)
+ start = index(commandLine,'-r',.true.) + 3_pInt                   ! search for '-r' and jump forward iby 3 to given name
+ if (index(commandLine,'--restart',.true.)>0) then                 ! if '--restart' is found, use that (contains '-l')
+   start = index(commandLine,'--restart',.true.) + 7_pInt
+ endif 
+ length = index(commandLine(start:len(commandLine)),' ',.false.)
+
+ call GET_ENVIRONMENT_VARIABLE('HOST',hostName)
+ call GET_ENVIRONMENT_VARIABLE('USER',userName)
+
  write(6,*)
  write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,*) '$Id$'
  write(6,*)
+ write(6,'(a,2(i2.2,a),i4.4)'), ' Date:               ',date_and_time_values(3),'/',&
+                                                        date_and_time_values(2),'/',&
+                                                        date_and_time_values(1) 
+ write(6,'(a,2(i2.2,a),i2.2)'), ' Time:               ',date_and_time_values(5),':',&
+                                                        date_and_time_values(6),':',&
+                                                        date_and_time_values(7)  
+ write(6,*) 'Host Name:          ', trim(hostName)
+ write(6,*) 'User Name:          ', trim(userName)
+ write(6,*) 'Command line call:  ', trim(commandLine)
  write(6,*) 'Geometry Parameter: ', trim(geometryParameter)
  write(6,*) 'Loadcase Parameter: ', trim(loadcaseParameter)
- write(6,*)
- !$OMP END CRITICAL (write2out)
+ if (start/=3_pInt) write(6,*) 'Restart Parameter:  ', trim(commandLine(start:start+length))
 
 endsubroutine DAMASK_interface_init
 

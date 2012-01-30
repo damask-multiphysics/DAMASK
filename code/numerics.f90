@@ -113,8 +113,9 @@ subroutine numerics_init()
   !*** output variables ***!
   
   !*** local variables ***!
-  integer(pInt), parameter ::                 fileunit = 300  
-  integer(pInt), parameter ::                 maxNchunks = 2
+  integer(pInt), parameter ::                 fileunit = 300_pInt
+  integer(pInt), parameter ::                 maxNchunks = 2_pInt
+  integer(pInt) ::                            gotDAMASK_NUM_THREADS = 1_pInt
   integer(pInt), dimension(1+2*maxNchunks) :: positions
   character(len=64)                           tag
   character(len=1024)                         line
@@ -135,48 +136,48 @@ subroutine numerics_init()
   iJacoStiffness          = 1_pInt
   iJacoLpresiduum         = 1_pInt
   pert_Fg                 = 1.0e-7_pReal
-  pert_method             = 1
+  pert_method             = 1_pInt
   nHomog                  = 20_pInt
   subStepMinHomog         = 1.0e-3_pReal
-  subStepSizeHomog        = 0.25
-  stepIncreaseHomog       = 1.5
+  subStepSizeHomog        = 0.25_pReal
+  stepIncreaseHomog       = 1.5_pReal
   nMPstate                = 10_pInt
   nCryst                  = 20_pInt
   subStepMinCryst         = 1.0e-3_pReal
-  subStepsizeCryst        = 0.25
-  stepIncreaseCryst       = 1.5
+  subStepsizeCryst        = 0.25_pReal
+  stepIncreaseCryst       = 1.5_pReal
   nState                  = 10_pInt
   nStress                 = 40_pInt
   rTol_crystalliteState   = 1.0e-6_pReal
   rTol_crystalliteTemperature = 1.0e-6_pReal
   rTol_crystalliteStress  = 1.0e-6_pReal
-  aTol_crystalliteStress  = 1.0e-8_pReal            ! residuum is in Lp (hence strain on the order of 1e-8 here)
-  numerics_integrator(1)  = 1                       ! fix-point iteration
-  numerics_integrator(2)  = 1                       ! fix-point iteration
+  aTol_crystalliteStress  = 1.0e-8_pReal                 ! residuum is in Lp (hence strain on the order of 1e-8 here)
+  numerics_integrator(1)  = 1_pInt                       ! fix-point iteration
+  numerics_integrator(2)  = 1_pInt                       ! fix-point iteration
   
 !* RGC parameters: added <<<updated 17.12.2009>>> with moderate setting
-  absTol_RGC              = 1.0e+4
-  relTol_RGC              = 1.0e-3
-  absMax_RGC              = 1.0e+10
-  relMax_RGC              = 1.0e+2
-  pPert_RGC               = 1.0e-7
-  xSmoo_RGC               = 1.0e-5
-  viscPower_RGC           = 1.0e+0  ! Newton viscosity (linear model)
-  viscModus_RGC           = 0.0e+0  ! No viscosity is applied
-  refRelaxRate_RGC        = 1.0e-3
-  maxdRelax_RGC           = 1.0e+0
-  maxVolDiscr_RGC         = 1.0e-5  ! tolerance for volume discrepancy allowed
-  volDiscrMod_RGC         = 1.0e+12
-  volDiscrPow_RGC         = 5.0
+  absTol_RGC              = 1.0e+4_pReal
+  relTol_RGC              = 1.0e-3_pReal
+  absMax_RGC              = 1.0e+10_pReal
+  relMax_RGC              = 1.0e+2_pReal
+  pPert_RGC               = 1.0e-7_pReal
+  xSmoo_RGC               = 1.0e-5_pReal
+  viscPower_RGC           = 1.0e+0_pReal  ! Newton viscosity (linear model)
+  viscModus_RGC           = 0.0e+0_pReal  ! No viscosity is applied
+  refRelaxRate_RGC        = 1.0e-3_pReal
+  maxdRelax_RGC           = 1.0e+0_pReal
+  maxVolDiscr_RGC         = 1.0e-5_pReal  ! tolerance for volume discrepancy allowed
+  volDiscrMod_RGC         = 1.0e+12_pReal
+  volDiscrPow_RGC         = 5.0_pReal
 
 !* spectral parameters:  
-  err_div_tol             = 1.0e-4       ! 1.0e-4 proposed by Suquet
-  err_stress_tolrel       = 0.01         ! relative tolerance for fullfillment of stress BC (1% of maximum stress)
+  err_div_tol             = 1.0e-4_pReal       ! 1.0e-4 proposed by Suquet
+  err_stress_tolrel       = 0.01_pReal         ! relative tolerance for fullfillment of stress BC (1% of maximum stress)
   itmax                   = 20_pInt      ! Maximum iteration number
   memory_efficient        = .true.       ! Precalculate Gamma-operator (81 double per point)
   fftw_timelimit          = -1.0_pReal   ! no timelimit of plan creation for FFTW
   fftw_planner_string     ='FFTW_PATIENT'
-  rotation_tol            = 1.0e-12 
+  rotation_tol            = 1.0e-12_pReal
   divergence_correction   = .true.       ! correct divergence by empirical factor
   simplified_algorithm    = .true.       ! use algorithm without fluctuation field
   update_gamma            = .false.      ! do not update gamma operator with current stiffness
@@ -188,10 +189,11 @@ subroutine numerics_init()
 
 !* determin number of threads from environment variable DAMASK_NUM_THREADS
   DAMASK_NumThreadsInt = 0_pInt
-!$ call GetEnv('DAMASK_NUM_THREADS',DAMASK_NumThreadsString)                   ! get environment variable DAMASK_NUM_THREADS...
-!$ read(DAMASK_NumThreadsString,'(i4)') DAMASK_NumThreadsInt                   ! ...convert it to integer...
-!$ if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                      ! ...ensure that its at least one...
-!$ call omp_set_num_threads(DAMASK_NumThreadsInt)                              ! ...and use it as number of threads for parallel execution
+!$ call GET_ENVIRONMENT_VARIABLE('DAMASK_NUM_THREADS',DAMASK_NumThreadsString,4_pInt,gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
+!$ if(gotDAMASK_NUM_THREADS /= 0_pInt) call IO_warning(47,ext_msg=DAMASK_NumThreadsString)
+!$ read(DAMASK_NumThreadsString,'(i4)') DAMASK_NumThreadsInt                                        ! ...convert it to integer...
+!$ if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                           ! ...ensure that its at least one...
+!$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution
 
   ! try to open the config file
   if(IO_open_file(fileunit,numerics_configFile)) then 

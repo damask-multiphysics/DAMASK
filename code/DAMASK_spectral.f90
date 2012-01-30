@@ -181,7 +181,8 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! variables for debugging fft using a scalar field
- type(C_PTR) :: scalarField, plan_scalarField_forth, plan_scalarField_back
+ type(C_PTR) :: scalarField_realPointer, scalarField_complexPointer,&
+                plan_scalarField_forth, plan_scalarField_back
  real(pReal),    dimension(:,:,:), pointer :: scalarField_real
  complex(pReal), dimension(:,:,:), pointer :: scalarField_complex
  integer(pInt) :: row, column
@@ -199,7 +200,6 @@ program DAMASK_spectral
  print '(a,a)', ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
  print '(a,a)', ' Solver Job Name:      ',trim(getSolverJobName())
  print '(a)', ''
-
 !--------------------------------------------------------------------------------------------------
 ! reading the load case file and allocate data structure containing load cases
  path = getLoadcaseName()
@@ -387,7 +387,7 @@ program DAMASK_spectral
  print '(a,3(i12  ))','resolution a b c:', res
  print '(a,3(f12.5))','dimension  x y z:', geomdim
  print '(a,i5)','homogenization:       ',homog
- if(any(cutting_freq/=0_pInt)) print '(a,3(i4),a)', 'cutting away ', cutting_freq, 'frequencies'
+ if(cut_off_value/=0.0_pReal) print '(a,3(i4),a)', 'cutting away ', cutting_freq, 'frequencies'
  print '(a)',   '#############################################################'
  print '(a,a)', 'loadcase file:        ',trim(getLoadcaseName())
 
@@ -557,12 +557,13 @@ program DAMASK_spectral
        endif
 
        if (debugFFTW) then
-         scalarField = fftw_alloc_complex(int(res1_red*res(2)*res(3),C_SIZE_T))
-         call c_f_pointer(scalarField, scalarField_real,    [ res(1)+2_pInt,res(2),res(3)])
-         call c_f_pointer(scalarField, scalarField_complex, [ res1_red,     res(2),res(3)])
-         plan_scalarField_forth = fftw_plan_dft_r2c_3d(res(3),res(2),res(1),&                       !reversed order
+         scalarField_realPointer    = fftw_alloc_complex(int(res(1)  *res(2)*res(3),C_SIZE_T))      ! do not do an inplace transform  
+         scalarField_complexPointer = fftw_alloc_complex(int(res1_red*res(2)*res(3),C_SIZE_T))
+         call c_f_pointer(scalarField_realPointer,    scalarField_real,    [res(1),  res(2),res(3)])
+         call c_f_pointer(scalarField_complexPointer, scalarField_complex, [res1_red,res(2),res(3)])
+         plan_scalarField_forth = fftw_plan_dft_r2c_3d(res(3),res(2),res(1),&                        !reversed order
                                             scalarField_real,scalarField_complex,fftw_planner_flag)
-         plan_scalarField_back  = fftw_plan_dft_c2r_3d(res(3),res(2),res(1),&                       !reversed order
+         plan_scalarField_back  = fftw_plan_dft_c2r_3d(res(3),res(2),res(1),&                        !reversed order
                                             scalarField_complex,scalarField_real,fftw_planner_flag)
        endif 
 
@@ -682,6 +683,7 @@ program DAMASK_spectral
        write(538), 'eoh'                                                                            ! end of header
        write(538), materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)         ! initial (non-deformed or read-in) results
      endif
+     if (debugGeneral) print '(a)' , 'Header of result file written out'
 
      if(totalIncsCounter > restartReadInc) then                                                     ! Do calculations (otherwise just forwarding)         
        if(bc(loadcase)%restartFrequency>0_pInt) &
@@ -739,7 +741,7 @@ program DAMASK_spectral
                  c_reduced(k,j) = c_prev99(n,m)
          endif; enddo; endif; enddo
          call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                         ! invert reduced stiffness
-         if(errmatinv) call IO_error(error_ID=800)
+         if(errmatinv) call IO_error(error_ID=799)
          s_prev99 = 0.0_pReal                                                                       ! build full compliance
          k = 0_pInt
          do n = 1_pInt,9_pInt
@@ -880,13 +882,19 @@ program DAMASK_spectral
          do k = 1_pInt, res(3); do j = 1_pInt, res(2)
            do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
              err_div_RMS = err_div_RMS &
-                      + 2.0_pReal*sum(abs(math_mul33x3_complex(tensorField_complex(i,j,k,1:3,1:3),& ! sum of squared absolute values of complex divergence. do not take square root and square again
-                                                   xi(1:3,i,j,k))*differentationFactor)**2.0_pReal) ! --> sum squared L_2 norm of vector
+                   + 2.0_pReal*(sum (real(math_mul33x3_complex(tensorField_complex(i,j,k,1:3,1:3),& ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
+                                                   xi(1:3,i,j,k))*differentationFactor)**2.0_pReal)&! --> sum squared L_2 norm of vector 
+                               +sum(aimag(math_mul33x3_complex(tensorField_complex(i,j,k,1:3,1:3),& 
+                                                   xi(1:3,i,j,k))*differentationFactor)**2.0_pReal))           
            enddo
            err_div_RMS = err_div_RMS &                                                              ! Those two layers do not have a conjugate complex counterpart
-                      + sum(abs(math_mul33x3_complex(tensorField_complex(1       ,j,k,1:3,1:3),&
+                      + sum(real(math_mul33x3_complex(tensorField_complex(1       ,j,k,1:3,1:3),&
                                        xi(1:3,1       ,j,k))*differentationFactor)**2.0_pReal)&
-                      + sum(abs(math_mul33x3_complex(tensorField_complex(res1_red,j,k,1:3,1:3),&
+                      + sum(aimag(math_mul33x3_complex(tensorField_complex(1       ,j,k,1:3,1:3),&
+                                       xi(1:3,1       ,j,k))*differentationFactor)**2.0_pReal)&
+                      + sum(real(math_mul33x3_complex(tensorField_complex(res1_red,j,k,1:3,1:3),&
+                                       xi(1:3,res1_red,j,k))*differentationFactor)**2.0_pReal)&
+                      + sum(aimag(math_mul33x3_complex(tensorField_complex(res1_red,j,k,1:3,1:3),&
                                        xi(1:3,res1_red,j,k))*differentationFactor)**2.0_pReal)
          enddo; enddo
          err_div_RMS = sqrt (err_div_RMS*wgt)* correctionFactor                                     ! weighting by and taking square root (RMS). abs(...) because result is a complex number and multiplying with correction factor

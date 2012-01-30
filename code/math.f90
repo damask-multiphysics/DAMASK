@@ -3267,7 +3267,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  ! other variables
  integer(pInt) :: i, j, k, res1_red
  integer(pInt), dimension(3) :: k_s
- complex(pReal), parameter   :: integration_factor = cmplx(0.0_pReal,pi*2.0_pReal)
+ complex(pReal), parameter   :: integration_factor = cmplx(0.0_pReal,1.0_pReal)*pi*2.0_pReal
  real(pReal), dimension(3)   :: step, offset_coords
  
  if (debug_verbosity > 0_pInt) then
