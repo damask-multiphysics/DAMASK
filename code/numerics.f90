@@ -26,64 +26,63 @@ use prec, only: pInt, pReal
 use IO, only: IO_warning
 implicit none
 
-character(len=64), parameter :: numerics_configFile = 'numerics.config' ! name of configuration file
-integer(pInt) ::                iJacoStiffness, &                       ! frequency of stiffness update
-                                iJacoLpresiduum, &                      ! frequency of Jacobian update of residuum in Lp
-                                nHomog, &                               ! homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
-                                nMPstate, &                             ! materialpoint state loop limit
-                                nCryst, &                               ! crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
-                                nState, &                               ! state loop limit
-                                nStress, &                              ! stress loop limit
-                                pert_method, &                          ! method used in perturbation technique for tangent
-                                numerics_integrationMode                ! integration mode 1 = central solution ; integration mode 2 = perturbation
-integer(pInt), dimension(2) ::  numerics_integrator                     ! method used for state integration (central & perturbed state)
-real(pReal) ::                  relevantStrain, &                       ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
-                                defgradTolerance, &                     ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
-                                pert_Fg, &                              ! strain perturbation for FEM Jacobi
-                                subStepMinCryst, &                      ! minimum (relative) size of sub-step allowed during cutback in crystallite
-                                subStepMinHomog, &                      ! minimum (relative) size of sub-step allowed during cutback in homogenization
-                                subStepSizeCryst, &                     ! size of first substep when cutback in crystallite
-                                subStepSizeHomog, &                     ! size of first substep when cutback in homogenization
-                                stepIncreaseCryst, &                    ! increase of next substep size when previous substep converged in crystallite
-                                stepIncreaseHomog, &                    ! increase of next substep size when previous substep converged in homogenization
-                                rTol_crystalliteState, &                ! relative tolerance in crystallite state loop 
-                                rTol_crystalliteTemperature, &          ! relative tolerance in crystallite temperature loop 
-                                rTol_crystalliteStress, &               ! relative tolerance in crystallite stress loop
-                                aTol_crystalliteStress, &               ! absolute tolerance in crystallite stress loop
+character(len=64), parameter :: numerics_configFile        = 'numerics.config'               ! name of configuration file
+integer(pInt) ::                iJacoStiffness             =  1_pInt, &                      ! frequency of stiffness update
+                                iJacoLpresiduum            =  1_pInt, &                      ! frequency of Jacobian update of residuum in Lp
+                                nHomog                     = 20_pInt, &                      ! homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
+                                nMPstate                   = 10_pInt, &                      ! materialpoint state loop limit
+                                nCryst                     = 20_pInt, &                      ! crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
+                                nState                     = 10_pInt, &                      ! state loop limit
+                                nStress                    = 40_pInt, &                      ! stress loop limit
+                                pert_method                =  1_pInt, &                      ! method used in perturbation technique for tangent
+                                numerics_integrationMode   =  0_pInt                         ! integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
+integer(pInt), dimension(2) ::  numerics_integrator        =  1_pInt                         ! method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
+real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &                ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
+                                defgradTolerance           =  1.0e-7_pReal, &                ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
+                                pert_Fg                    =  1.0e-7_pReal, &                ! strain perturbation for FEM Jacobi
+                                subStepMinCryst            =  1.0e-3_pReal, &                ! minimum (relative) size of sub-step allowed during cutback in crystallite
+                                subStepMinHomog            =  1.0e-3_pReal, &                ! minimum (relative) size of sub-step allowed during cutback in homogenization
+                                subStepSizeCryst           =  0.25_pReal, &                  ! size of first substep when cutback in crystallite
+                                subStepSizeHomog           =  0.25_pReal, &                  ! size of first substep when cutback in homogenization
+                                stepIncreaseCryst          =  1.5_pReal, &                   ! increase of next substep size when previous substep converged in crystallite
+                                stepIncreaseHomog          =  1.5_pReal, &                   ! increase of next substep size when previous substep converged in homogenization
+                                rTol_crystalliteState      =  1.0e-6_pReal, &                ! relative tolerance in crystallite state loop 
+                                rTol_crystalliteTemperature=  1.0e-6_pReal, &                ! relative tolerance in crystallite temperature loop 
+                                rTol_crystalliteStress     =  1.0e-6_pReal, &                ! relative tolerance in crystallite stress loop
+                                aTol_crystalliteStress     =  1.0e-8_pReal, &                ! absolute tolerance in crystallite stress loop, Default 1.0e-8: residuum is in Lp and hence strain is on this order
 
-!* RGC parameters: added <<<updated 17.12.2009>>>
-                                absTol_RGC, &                           ! absolute tolerance of RGC residuum
-                                relTol_RGC, &                           ! relative tolerance of RGC residuum
-                                absMax_RGC, &                           ! absolute maximum of RGC residuum
-                                relMax_RGC, &                           ! relative maximum of RGC residuum
-                                pPert_RGC, &                            ! perturbation for computing RGC penalty tangent
-                                xSmoo_RGC, &                            ! RGC penalty smoothing parameter (hyperbolic tangent)
-                                viscPower_RGC, &                        ! power (sensitivity rate) of numerical viscosity in RGC scheme
-                                viscModus_RGC, &                        ! stress modulus of RGC numerical viscosity
-                                refRelaxRate_RGC, &                     ! reference relaxation rate in RGC viscosity
-                                maxdRelax_RGC, &                        ! threshold of maximum relaxation vector increment (if exceed this then cutback)
-                                maxVolDiscr_RGC, &                      ! threshold of maximum volume discrepancy allowed
-                                volDiscrMod_RGC, &                      ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
-                                volDiscrPow_RGC, &                      ! powerlaw penalty for volume discrepancy
+                                absTol_RGC                 =  1.0e+4_pReal, &                ! absolute tolerance of RGC residuum
+                                relTol_RGC                 =  1.0e-3_pReal, &                ! relative tolerance of RGC residuum
+                                absMax_RGC                 =  1.0e+10_pReal, &               ! absolute maximum of RGC residuum
+                                relMax_RGC                 =  1.0e+2_pReal, &                ! relative maximum of RGC residuum
+                                pPert_RGC                  =  1.0e-7_pReal, &                ! perturbation for computing RGC penalty tangent
+                                xSmoo_RGC                  =  1.0e-5_pReal, &                ! RGC penalty smoothing parameter (hyperbolic tangent)
+                                viscPower_RGC              =  1.0e+0_pReal, &                ! power (sensitivity rate) of numerical viscosity in RGC scheme, Default 1.0e0: Newton viscosity (linear model)
+                                viscModus_RGC              =  0.0e+0_pReal, &                ! stress modulus of RGC numerical viscosity, Default 0.0e0: No viscosity is applied
+                                refRelaxRate_RGC           =  1.0e-3_pReal, &                ! reference relaxation rate in RGC viscosity
+                                maxdRelax_RGC              =  1.0e+0_pReal, &                ! threshold of maximum relaxation vector increment (if exceed this then cutback)
+                                maxVolDiscr_RGC            =  1.0e-5_pReal, &                ! threshold of maximum volume discrepancy allowed
+                                volDiscrMod_RGC            =  1.0e+12_pReal, &               ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
+                                volDiscrPow_RGC            =  5.0_pReal, &                   ! powerlaw penalty for volume discrepancy
 !* spectral parameters:
-                                err_div_tol, &                          ! error of divergence in fourier space
-                                err_stress_tolrel, &                    ! factor to multiply with highest stress to get err_stress_tol
-                                fftw_timelimit, &                       ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org
-                                rotation_tol                            ! tolerance of rotation specified in loadcase
-character(len=64) ::            fftw_planner_string                     ! reads the planing-rigor flag, see manual on www.fftw.org
-integer(pInt) ::                fftw_planner_flag                       ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
-logical ::                      memory_efficient,&                      ! for fast execution (pre calculation of gamma_hat)
-                                divergence_correction,&                 ! correct divergence calculation in fourier space
-                                update_gamma,&                          ! update gamma operator with current stiffness  
-                                simplified_algorithm                    ! use short algorithm without fluctuation field
-real(pReal) ::                  cut_off_value                           ! percentage of frequencies to cut away
-integer(pInt) ::                itmax , &                               ! maximum number of iterations
+                                err_div_tol                =  1.0e-4_pReal, &                ! error of divergence in fourier space, Default 1.0e-4: proposed by Suquet
+                                err_stress_tolrel          =  0.01_pReal , &                 ! relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
+                                fftw_timelimit             = -1.0_pReal, &                   ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
+                                rotation_tol               =  1.0e-12_pReal                  ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
+character(len=64) ::            fftw_planner_string        = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patiant planner flag
+integer(pInt) ::                fftw_planner_flag          =  0_pInt                         ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
+logical ::                      memory_efficient           = .true. ,&                       ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
+                                divergence_correction      = .false.     ,&                  ! correct divergence calculation in fourier space, Default .false.: no correction
+                                update_gamma               = .false.,&                       ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
+                                simplified_algorithm       = .true.                          ! use short algorithm without fluctuation field, Default .true.: use simplified algorithm
+real(pReal) ::                  cut_off_value              =  0.0_pReal                      ! percentage of frequencies to cut away, Default 0.0: use all frequencies
+integer(pInt) ::                itmax                      = 20_pInt , &                     ! maximum number of iterations
 
 
 !* Random seeding parameters
-                                fixedSeed                               ! fixed seeding for pseudo-random number generator
+                                fixedSeed                  = 0_pInt                          ! fixed seeding for pseudo-random number generator, Default 0: use random seed
 !* OpenMP variable
-integer(pInt)                   DAMASK_NumThreadsInt                    ! value stored in environment variable DAMASK_NUM_THREADS
+integer(pInt) ::                DAMASK_NumThreadsInt       = 0_pInt                          ! value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
 
 CONTAINS
@@ -107,91 +106,28 @@ subroutine numerics_init()
 !$ use OMP_LIB                                                                ! the openMP function library
   
   implicit none
-
-  !*** input variables ***!
-  
-  !*** output variables ***!
   
   !*** local variables ***!
   integer(pInt), parameter ::                 fileunit = 300_pInt
   integer(pInt), parameter ::                 maxNchunks = 2_pInt
   integer(pInt) ::                            gotDAMASK_NUM_THREADS = 1_pInt
   integer(pInt), dimension(1+2*maxNchunks) :: positions
-  character(len=64)                           tag
-  character(len=1024)                         line
+  character(len=64) ::                        tag
+  character(len=1024) ::                      line
   
 ! OpenMP variable
-!$ character(len=4) DAMASK_NumThreadsString                               !environment variable DAMASK_NUM_THREADS
+!$ character(len=6) DAMASK_NumThreadsString                               !environment variable DAMASK_NUM_THREADS
 
-  !$OMP CRITICAL (write2out)
-    write(6,*)
-    write(6,*) '<<<+-  numerics init  -+>>>'
-    write(6,*) '$Id$'
-    write(6,*)
-  !$OMP END CRITICAL (write2out)
-  
-  ! initialize all parameters with standard values
-  relevantStrain          = 1.0e-7_pReal
-  defgradTolerance        = 1.0e-7_pReal
-  iJacoStiffness          = 1_pInt
-  iJacoLpresiduum         = 1_pInt
-  pert_Fg                 = 1.0e-7_pReal
-  pert_method             = 1_pInt
-  nHomog                  = 20_pInt
-  subStepMinHomog         = 1.0e-3_pReal
-  subStepSizeHomog        = 0.25_pReal
-  stepIncreaseHomog       = 1.5_pReal
-  nMPstate                = 10_pInt
-  nCryst                  = 20_pInt
-  subStepMinCryst         = 1.0e-3_pReal
-  subStepsizeCryst        = 0.25_pReal
-  stepIncreaseCryst       = 1.5_pReal
-  nState                  = 10_pInt
-  nStress                 = 40_pInt
-  rTol_crystalliteState   = 1.0e-6_pReal
-  rTol_crystalliteTemperature = 1.0e-6_pReal
-  rTol_crystalliteStress  = 1.0e-6_pReal
-  aTol_crystalliteStress  = 1.0e-8_pReal                 ! residuum is in Lp (hence strain on the order of 1e-8 here)
-  numerics_integrator(1)  = 1_pInt                       ! fix-point iteration
-  numerics_integrator(2)  = 1_pInt                       ! fix-point iteration
-  
-!* RGC parameters: added <<<updated 17.12.2009>>> with moderate setting
-  absTol_RGC              = 1.0e+4_pReal
-  relTol_RGC              = 1.0e-3_pReal
-  absMax_RGC              = 1.0e+10_pReal
-  relMax_RGC              = 1.0e+2_pReal
-  pPert_RGC               = 1.0e-7_pReal
-  xSmoo_RGC               = 1.0e-5_pReal
-  viscPower_RGC           = 1.0e+0_pReal  ! Newton viscosity (linear model)
-  viscModus_RGC           = 0.0e+0_pReal  ! No viscosity is applied
-  refRelaxRate_RGC        = 1.0e-3_pReal
-  maxdRelax_RGC           = 1.0e+0_pReal
-  maxVolDiscr_RGC         = 1.0e-5_pReal  ! tolerance for volume discrepancy allowed
-  volDiscrMod_RGC         = 1.0e+12_pReal
-  volDiscrPow_RGC         = 5.0_pReal
+!$OMP CRITICAL (write2out)
+  write(6,*)
+  write(6,*) '<<<+-  numerics init  -+>>>'
+  write(6,*) '$Id$'
+  write(6,*)
+!$OMP END CRITICAL (write2out)
 
-!* spectral parameters:  
-  err_div_tol             = 1.0e-4_pReal       ! 1.0e-4 proposed by Suquet
-  err_stress_tolrel       = 0.01_pReal         ! relative tolerance for fullfillment of stress BC (1% of maximum stress)
-  itmax                   = 20_pInt      ! Maximum iteration number
-  memory_efficient        = .true.       ! Precalculate Gamma-operator (81 double per point)
-  fftw_timelimit          = -1.0_pReal   ! no timelimit of plan creation for FFTW
-  fftw_planner_string     ='FFTW_PATIENT'
-  rotation_tol            = 1.0e-12_pReal
-  divergence_correction   = .true.       ! correct divergence by empirical factor
-  simplified_algorithm    = .true.       ! use algorithm without fluctuation field
-  update_gamma            = .false.      ! do not update gamma operator with current stiffness
-  cut_off_value           = 0.0_pReal    ! use all frequencies
-
-!* Random seeding parameters
-  fixedSeed               = 0_pInt
-
-
-!* determin number of threads from environment variable DAMASK_NUM_THREADS
-  DAMASK_NumThreadsInt = 0_pInt
-!$ call GET_ENVIRONMENT_VARIABLE('DAMASK_NUM_THREADS',DAMASK_NumThreadsString,4_pInt,gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
+!$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0_pInt) call IO_warning(47,ext_msg=DAMASK_NumThreadsString)
-!$ read(DAMASK_NumThreadsString,'(i4)') DAMASK_NumThreadsInt                                        ! ...convert it to integer...
+!$ read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                        ! ...convert it to integer...
 !$ if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                           ! ...ensure that its at least one...
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution
 
