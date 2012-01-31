@@ -23,27 +23,27 @@ class Test():
     if len(variants) == 0: variants = xrange(len(self.variants))       # iterate over all variants
 
     self.clean()
-  #  for variant in variants:
-  #    try:
-  #      self.prepare(variant)
-  #      self.run(variant)
-  #      self.postprocess(variant)
-  #      if variant in update:
-  #        self.update(variant)
-  #      elif not self.compare(variant):
-  #        return variant
-  #    except:
-  #      return variant
-  #  return -1
     for variant in variants:
-      self.prepare(variant)
-      self.run(variant)
-      self.postprocess(variant)
-      if variant in update:
-        self.update(variant)
-      elif not self.compare(variant):
+      try:
+        self.prepare(variant)
+        self.run(variant)
+        self.postprocess(variant)
+        if variant in update:
+          self.update(variant)
+        elif not self.compare(variant):
+          return variant
+      except:
         return variant
     return -1
+    # for variant in variants:
+      # self.prepare(variant)
+      # self.run(variant)
+      # self.postprocess(variant)
+      # if variant in update:
+        # self.update(variant)
+      # elif not self.compare(variant):
+        # return variant
+    # return -1
 
 
   def clean(self):
@@ -152,9 +152,9 @@ class Test():
     print 'maximum relative error',max_err
     return max_err
 
-  def reportSuccess(self,culprit):
+  def report_Success(self,culprit):
     if culprit < 0:
       print '%s passed.'%({False: 'The test',
-                         True: 'All %i tests'%(len(theTest.variants))}[len(theTest.variants) > 1])
+                         True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1])
     else:
      print 'Test %i failed...'%(culprit+1)
