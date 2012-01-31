@@ -54,7 +54,7 @@ subroutine IO_init ()
   write(6,*)
   write(6,*) '<<<+-  IO init  -+>>>'
   write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
   call flush(6)
   !$OMP END CRITICAL (write2out)
  
@@ -1042,7 +1042,7 @@ endfunction
      do
        read(unit,'(A65536)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
-       if (verify(IO_stringValue(line,pos,1),"0123456789") > 0) then     ! a non-int, i.e. set name
+       if (verify(IO_stringValue(line,pos,1),'0123456789') > 0) then     ! a non-int, i.e. set name
          do i = 1,lookupMaxN                                             ! loop over known set names
            if (IO_stringValue(line,pos,1) == lookupName(i)) then         ! found matching name
              IO_continousIntValues = lookupMap(:,i)                      ! return resp. entity list
@@ -1087,7 +1087,7 @@ endfunction
      do l = 1,count
        read(unit,'(A65536)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
-       if (verify(IO_stringValue(line,pos,1),"0123456789") > 0) then     ! a non-int, i.e. set names follow on this line
+       if (verify(IO_stringValue(line,pos,1),'0123456789') > 0) then     ! a non-int, i.e. set names follow on this line
          do i = 1,pos(1)                                                 ! loop over set names in line
            do j = 1,lookupMaxN                                           ! look thru known set names
              if (IO_stringValue(line,pos,i) == lookupName(j)) then       ! found matching name
@@ -1447,12 +1447,12 @@ endfunction
  if (present(e)) then
    if (present(i)) then
      if (present(g)) then
-       write(6,'(a12,x,i6,x,a2,x,i2,x,a5,x,i4,a2)') '+ at element',e,'IP',i,'grain',g,' +'
+       write(6,'(a12,1x,i6,1x,a2,1x,i2,1x,a5,1x,i4,a2)') '+ at element',e,'IP',i,'grain',g,' +'
      else
-       write(6,'(a12,x,i6,x,a2,x,i2,a13)') '+ at element',e,'IP',i,'            +'
+       write(6,'(a12,1x,i6,1x,a2,1x,i2,a13)') '+ at element',e,'IP',i,'            +'
      endif
    else
-     write(6,'(a12,x,i6,a19)') '+ at element',e,'             +'
+     write(6,'(a12,1x,i6,a19)') '+ at element',e,'             +'
    endif
  endif
  write(6,'(a38)') '+------------------------------------+'

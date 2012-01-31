@@ -208,7 +208,7 @@ character(len=1024)                         line
   write(6,*)
   write(6,*) '<<<+-  constitutive_',trim(constitutive_nonlocal_label),' init  -+>>>'
   write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 
 maxNinstance = count(phase_constitution == constitutive_nonlocal_label)
@@ -216,7 +216,7 @@ if (maxNinstance == 0) return                                                   
 
 if (debug_verbosity > 0) then
   !$OMP CRITICAL (write2out)
-    write(6,'(a16,x,i5)') '# instances:',maxNinstance
+    write(6,'(a16,1x,i5)') '# instances:',maxNinstance
   !$OMP END CRITICAL (write2out)
 endif
 

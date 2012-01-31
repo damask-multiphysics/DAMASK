@@ -49,7 +49,7 @@ subroutine DAMASK_interface_init()
 
  if(index(commandLine,' -h ',.true.)>0_pInt .or. index(commandLine,' --help ',.true.)>0_pInt) then   ! search for ' -h ' or '--help'
    write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
    print '(a)',  '#############################################################'
    print '(a)',  'DAMASK spectral:'
    print '(a)',  'The spectral method boundary value problem solver for'
@@ -131,13 +131,13 @@ subroutine DAMASK_interface_init()
  write(6,*)
  write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,*) '$Id$'
-#include  "compilation_info.f90"
- write(6,'(a,2(i2.2,a),i4.4)'), ' Date:               ',date_and_time_values(3),'/',&
-                                                        date_and_time_values(2),'/',&
-                                                        date_and_time_values(1) 
- write(6,'(a,2(i2.2,a),i2.2)'), ' Time:               ',date_and_time_values(5),':',&
-                                                        date_and_time_values(6),':',&
-                                                        date_and_time_values(7)  
+#include "compilation_info.f90"
+ write(6,'(a,2(i2.2,a),i4.4)') ' Date:               ',date_and_time_values(3),'/',&
+                                                       date_and_time_values(2),'/',&
+                                                       date_and_time_values(1) 
+ write(6,'(a,2(i2.2,a),i2.2)') ' Time:               ',date_and_time_values(5),':',&
+                                                       date_and_time_values(6),':',&
+                                                       date_and_time_values(7)  
  write(6,*) 'Host Name:          ', trim(hostName)
  write(6,*) 'User Name:          ', trim(userName)
  write(6,*) 'Command line call:  ', trim(commandLine)

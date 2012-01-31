@@ -341,21 +341,21 @@ constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
   write(6,*)
   write(6,*) '<<<+-  constitutive init  -+>>>'
   write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
   if (debug_verbosity > 0) then
-    write(6,'(a32,x,7(i8,x))') 'constitutive_state0:          ', shape(constitutive_state0)
-    write(6,'(a32,x,7(i8,x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
-    write(6,'(a32,x,7(i8,x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
-    write(6,'(a32,x,7(i8,x))') 'constitutive_state:           ', shape(constitutive_state)
-    write(6,'(a32,x,7(i8,x))') 'constitutive_aTolState:       ', shape(constitutive_aTolState)
-    write(6,'(a32,x,7(i8,x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
-    write(6,'(a32,x,7(i8,x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
-    write(6,'(a32,x,7(i8,x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
-    write(6,'(a32,x,7(i8,x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_state0:          ', shape(constitutive_state0)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_state:           ', shape(constitutive_state)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_aTolState:       ', shape(constitutive_aTolState)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
     write(6,*)
-    write(6,'(a32,x,7(i8,x))') 'maxSizeState:       ', constitutive_maxSizeState
-    write(6,'(a32,x,7(i8,x))') 'maxSizeDotState:    ', constitutive_maxSizeDotState
-    write(6,'(a32,x,7(i8,x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
+    write(6,'(a32,1x,7(i8,1x))') 'maxSizeState:       ', constitutive_maxSizeState
+    write(6,'(a32,1x,7(i8,1x))') 'maxSizeDotState:    ', constitutive_maxSizeDotState
+    write(6,'(a32,1x,7(i8,1x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
   endif
   call flush(6)
 !$OMP END CRITICAL (write2out)

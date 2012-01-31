@@ -119,7 +119,7 @@ subroutine material_init()
    write(6,*)
    write(6,*) '<<<+-  material init  -+>>>'
    write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
  if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
@@ -178,20 +178,20 @@ subroutine material_init()
      write (6,*)
      write (6,*) 'MATERIAL configuration'
      write (6,*)
-     write (6,'(a32,x,a16,x,a6)') 'homogenization                  ','type            ','grains'
+     write (6,'(a32,1x,a16,1x,a6)') 'homogenization                  ','type            ','grains'
      do i = 1,material_Nhomogenization
-       write (6,'(x,a32,x,a16,x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
+       write (6,'(1x,a32,1x,a16,1x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
      enddo
      write (6,*)
-     write (6,'(a32,x,a11,x,a12,x,a13)') 'microstructure                  ','crystallite','constituents','homogeneous'
+     write (6,'(a32,1x,a11,1x,a12,1x,a13)') 'microstructure                  ','crystallite','constituents','homogeneous'
      do i = 1,material_Nmicrostructure
-       write (6,'(a32,4x,i4,8x,i4,8x,l)') microstructure_name(i), &
+       write (6,'(a32,4x,i4,8x,i4,8x,l1)') microstructure_name(i), &
                                     microstructure_crystallite(i), &
                                     microstructure_Nconstituents(i), &
                                     microstructure_elemhomo(i)
        if (microstructure_Nconstituents(i) > 0_pInt) then
          do j = 1,microstructure_Nconstituents(i)
-           write (6,'(a1,x,a32,x,a32,x,f6.4)') '>',phase_name(microstructure_phase(j,i)),&
+           write (6,'(a1,1x,a32,1x,a32,1x,f6.4)') '>',phase_name(microstructure_phase(j,i)),&
                                                    texture_name(microstructure_texture(j,i)),&
                                                    microstructure_fraction(j,i)
          enddo
@@ -667,7 +667,7 @@ subroutine material_populateGrains()
      write (6,*)
      write (6,*) 'MATERIAL grain population'
      write (6,*)
-     write (6,'(a32,x,a32,x,a6)') 'homogenization_name','microstructure_name','grain#'
+     write (6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
    !$OMP END CRITICAL (write2out)
  endif
  do homog = 1,material_Nhomogenization              ! loop over homogenizations
@@ -678,7 +678,7 @@ subroutine material_populateGrains()
        if (debug_verbosity > 0) then
          !$OMP CRITICAL (write2out)
            write (6,*)
-           write (6,'(a32,x,a32,x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
+           write (6,'(a32,1x,a32,1x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
          !$OMP END CRITICAL (write2out)
        endif
      

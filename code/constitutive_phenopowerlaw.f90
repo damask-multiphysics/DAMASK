@@ -174,7 +174,7 @@ subroutine constitutive_phenopowerlaw_init(file)
    write(6,*)
    write(6,*) '<<<+-  constitutive_',trim(constitutive_phenopowerlaw_label),' init  -+>>>'
    write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
  maxNinstance = count(phase_constitution == constitutive_phenopowerlaw_label)
@@ -182,7 +182,7 @@ subroutine constitutive_phenopowerlaw_init(file)
 
  if (debug_verbosity > 0) then
    !$OMP CRITICAL (write2out)
-     write(6,'(a16,x,i5)') '# instances:',maxNinstance
+     write(6,'(a16,1x,i5)') '# instances:',maxNinstance
      write(6,*)
    !$OMP END CRITICAL (write2out)
  endif

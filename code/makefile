@@ -20,17 +20,18 @@
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
-# F90          = ifort (gfortran): compiler, choose Intel or GNU
-# COMPILERNAME = overwrite name of Compiler, e.g. using mpich-g90 instead of ifort
-# PORTABLE     = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
-# OPTIMIZATION = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
-# OPENMP       = TRUE (FALSE): OpenMP multiprocessor support
-# FFTWROOT     = pathinfo:FFTW   (will be adjusted by setup_code.py - required in pathinfo)
-# IKMLROOT     = pathinfo:IKML   (will be adjusted by setup_code.py if present in pathinfo)
-# ACMLROOT     = pathinfo:ACML   (will be adjusted by setup_code.py if present in pathinfo)
-# LAPACKROOT   = pathinfo:LAPACK (will be adjusted by setup_code.py if present in pathinfo)
-# PREFIX       = arbitrary prefix
-# SUFFIX       = arbitrary suffix
+# F90            = ifort (gfortran): compiler, choose Intel or GNU
+# COMPILERNAME   = overwrite name of Compiler, e.g. using mpich-g90 instead of ifort
+# PORTABLE       = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
+# OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
+# OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
+# FFTWROOT       = pathinfo:FFTW   (will be adjusted by setup_code.py - required in pathinfo)
+# IKMLROOT       = pathinfo:IKML   (will be adjusted by setup_code.py if present in pathinfo)
+# ACMLROOT       = pathinfo:ACML   (will be adjusted by setup_code.py if present in pathinfo)
+# LAPACKROOT     = pathinfo:LAPACK (will be adjusted by setup_code.py if present in pathinfo)
+# PREFIX         = arbitrary prefix
+# SUFFIX         = arbitrary suffix
+# STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 # Here are some useful debugging switches. Switch on by uncommenting the #SUFFIX line at the end of this section:
 # information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
@@ -45,9 +46,6 @@ DEBUG3 =-fp-stack-check -g -traceback -gen-interfaces -warn interfaces
 
 #should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
 DEBUG4 =-heap-arrays
-
-#checks for standard
-DEBUG5 =-stand std03/std95
 
 #SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3)
 ########################################################################################
@@ -115,20 +113,29 @@ endif
 endif
 endif
 
+ifdef STANDARD_CHECK
+STANDARD_CHECK_ifort = $(STANDARD_CHECK)
+STANDARD_CHECK_gfortran = $(STANDARD_CHECK)
+endif
+STANDARD_CHECK_ifort ?= -stand f08
+STANDARD_CHECK_gfortran ?=-std=f2008
+
 
 OPTIMIZATION_OFF_ifort           :=-O0
 OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
 OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
-OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div
+OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div -xO
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 
-COMPILE_OPTIONS_ifort    := -fpp -diag-disable 8291,8290
-COMPILE_OPTIONS_gfortran := -xf95-cpp-input -ffixed-line-length-132 -fno-range-check
+COMPILE_OPTIONS_ifort    := -fpp -diag-disable 8291,8290,5268
+#warning ID 9291,8290:
+#warning ID 5268: Extension to standard: The text exceeds right hand column allowed on the line (we have only comments there)
+COMPILE_OPTIONS_gfortran := -xf95-cpp-input -ffree-line-length-132 -fno-range-check
 
-COMPILE         = $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) -c
-COMPILE_MAXOPTI = $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) -c
+COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) -c
+COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) -c
 
 
 

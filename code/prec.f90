@@ -34,7 +34,7 @@ real(pReal), parameter :: tol_gravityNodePos = 1.0e-100_pReal
 ! NaN is precision dependent 
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy can be found in documentation/Code/Fortran
-real(pReal), parameter :: DAMASK_NaN = Z'7FF0000000000001'
+real(pReal), parameter :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
 type :: p_vec
   real(pReal), dimension(:), pointer :: p
 end type p_vec
@@ -48,12 +48,12 @@ implicit none
   write(6,*)
   write(6,*) '<<<+-  prec init  -+>>>'
   write(6,*) '$Id$'
-#include  "compilation_info.f90"
-  write(6,'(a,i3)'),   ' Bytes for pReal:    ',pReal
-  write(6,'(a,i3)'),   ' Bytes for pInt:     ',pInt
-  write(6,'(a,i3)'),   ' Bytes for pLongInt: ',pLongInt
-  write(6,'(a,e3.3)'), ' NaN:                ',DAMASK_NAN
-  write(6,'(a,l3)'),   ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
+#include "compilation_info.f90"
+  write(6,'(a,i3)')   ' Bytes for pReal:    ',pReal
+  write(6,'(a,i3)')   ' Bytes for pInt:     ',pInt
+  write(6,'(a,i3)')   ' Bytes for pLongInt: ',pLongInt
+  write(6,'(a,e3.3)') ' NaN:                ',DAMASK_NAN
+  write(6,'(a,l3)')   ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
   write(6,*)
 !$OMP END CRITICAL (write2out)
 

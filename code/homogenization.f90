@@ -207,32 +207,32 @@ allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpEl
   write(6,*)
   write(6,*) '<<<+-  homogenization init  -+>>>'
   write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
   if (debug_verbosity > 0) then
-    write(6,'(a32,x,7(i8,x))') 'homogenization_state0:          ', shape(homogenization_state0)
-    write(6,'(a32,x,7(i8,x))') 'homogenization_subState0:       ', shape(homogenization_subState0)
-    write(6,'(a32,x,7(i8,x))') 'homogenization_state:           ', shape(homogenization_state)
-    write(6,'(a32,x,7(i8,x))') 'homogenization_sizeState:       ', shape(homogenization_sizeState)
-    write(6,'(a32,x,7(i8,x))') 'homogenization_sizePostResults: ', shape(homogenization_sizePostResults)
+    write(6,'(a32,1x,7(i8,1x))') 'homogenization_state0:          ', shape(homogenization_state0)
+    write(6,'(a32,1x,7(i8,1x))') 'homogenization_subState0:       ', shape(homogenization_subState0)
+    write(6,'(a32,1x,7(i8,1x))') 'homogenization_state:           ', shape(homogenization_state)
+    write(6,'(a32,1x,7(i8,1x))') 'homogenization_sizeState:       ', shape(homogenization_sizeState)
+    write(6,'(a32,1x,7(i8,1x))') 'homogenization_sizePostResults: ', shape(homogenization_sizePostResults)
     write(6,*)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_F0:               ', shape(materialpoint_F0)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_F:                ', shape(materialpoint_F)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_subF0:            ', shape(materialpoint_subF0)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_subF:             ', shape(materialpoint_subF)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_P:                ', shape(materialpoint_P)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_Temperature:      ', shape(materialpoint_Temperature)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_subFrac:          ', shape(materialpoint_subFrac)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_subStep:          ', shape(materialpoint_subStep)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_subdt:            ', shape(materialpoint_subdt)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_requested:        ', shape(materialpoint_requested)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_converged:        ', shape(materialpoint_converged)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_F0:               ', shape(materialpoint_F0)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_F:                ', shape(materialpoint_F)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subF0:            ', shape(materialpoint_subF0)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subF:             ', shape(materialpoint_subF)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_P:                ', shape(materialpoint_P)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_Temperature:      ', shape(materialpoint_Temperature)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subFrac:          ', shape(materialpoint_subFrac)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subStep:          ', shape(materialpoint_subStep)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subdt:            ', shape(materialpoint_subdt)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_requested:        ', shape(materialpoint_requested)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_converged:        ', shape(materialpoint_converged)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
     write(6,*)
-    write(6,'(a32,x,7(i8,x))') 'materialpoint_results:          ', shape(materialpoint_results)
+    write(6,'(a32,1x,7(i8,1x))') 'materialpoint_results:          ', shape(materialpoint_results)
     write(6,*)
-    write(6,'(a32,x,7(i8,x))') 'maxSizeState:       ', homogenization_maxSizeState
-    write(6,'(a32,x,7(i8,x))') 'maxSizePostResults: ', homogenization_maxSizePostResults
+    write(6,'(a32,1x,7(i8,1x))') 'maxSizeState:       ', homogenization_maxSizeState
+    write(6,'(a32,1x,7(i8,1x))') 'maxSizePostResults: ', homogenization_maxSizePostResults
   endif
   call flush(6)
 !$OMP END CRITICAL (write2out)
@@ -310,10 +310,10 @@ subroutine materialpoint_stressAndItsTangent(&
  if (debug_verbosity > 2 .and. debug_e > 0 .and. debug_e <= mesh_NcpElems .and. debug_i > 0 .and. debug_i <= mesh_maxNips) then
    !$OMP CRITICAL (write2out)
      write (6,*)
-     write (6,'(a,i5,x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
-     write (6,'(a,/,12(x),f14.9)') '<< HOMOG >> Temp0', materialpoint_Temperature(debug_i,debug_e)
-     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< HOMOG >> F0', math_transpose33(materialpoint_F0(1:3,1:3,debug_i,debug_e))
-     write (6,'(a,/,3(12(x),3(f14.9,x)/))') '<< HOMOG >> F', math_transpose33(materialpoint_F(1:3,1:3,debug_i,debug_e))
+     write (6,'(a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
+     write (6,'(a,/,12x,f14.9)') '<< HOMOG >> Temp0', materialpoint_Temperature(debug_i,debug_e)
+     write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', math_transpose33(materialpoint_F0(1:3,1:3,debug_i,debug_e))
+     write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', math_transpose33(materialpoint_F(1:3,1:3,debug_i,debug_e))
    !$OMP END CRITICAL (write2out)
  endif
 
@@ -360,7 +360,7 @@ subroutine materialpoint_stressAndItsTangent(&
        if ( materialpoint_converged(i,e) ) then
 #ifndef _OPENMP
          if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
-           write(6,'(a,x,f10.8,x,a,x,f10.8,x,a,/)') '<< HOMOG >> winding forward from', &
+           write(6,'(a,1x,f10.8,1x,a,1x,f10.8,1x,a,/)') '<< HOMOG >> winding forward from', &
              materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
              materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent'
          endif
@@ -411,7 +411,7 @@ subroutine materialpoint_stressAndItsTangent(&
            
 #ifndef _OPENMP
            if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
-             write(6,'(a,x,f10.8,/)') &
+             write(6,'(a,1x,f10.8,/)') &
                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
                materialpoint_subStep(i,e)
            endif

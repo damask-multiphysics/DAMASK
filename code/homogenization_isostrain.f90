@@ -77,7 +77,7 @@ subroutine homogenization_isostrain_init(&
    write(6,*)
    write(6,*) '<<<+-  homogenization_',trim(homogenization_isostrain_label),' init  -+>>>'
    write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
 
  maxNinstance = count(homogenization_type == homogenization_isostrain_label)

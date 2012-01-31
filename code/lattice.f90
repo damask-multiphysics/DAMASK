@@ -739,7 +739,7 @@ subroutine lattice_init()
    write(6,*)
    write(6,*) '<<<+-  lattice init  -+>>>'
    write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
 
  if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
@@ -752,8 +752,8 @@ subroutine lattice_init()
 
  if (debug_verbosity > 0) then
    !$OMP CRITICAL (write2out)
-     write(6,'(a16,x,i5)') '# phases:',Nsections
-     write(6,'(a16,x,i5)') '# structures:',lattice_Nstructure
+     write(6,'(a16,1x,i5)') '# phases:',Nsections
+     write(6,'(a16,1x,i5)') '# structures:',lattice_Nstructure
      write(6,*)
    !$OMP END CRITICAL (write2out)
  endif

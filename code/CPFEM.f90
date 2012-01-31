@@ -205,11 +205,11 @@ subroutine CPFEM_init()
     write(6,*)
     write(6,*) '<<<+-  cpfem init  -+>>>'
     write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
     if (debug_verbosity > 0) then
-      write(6,'(a32,x,6(i8,x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
-      write(6,'(a32,x,6(i8,x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
-      write(6,'(a32,x,6(i8,x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
+      write(6,'(a32,1x,6(i8,1x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
+      write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
+      write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
       write(6,*)
       write(6,*) 'parallelExecution:    ', parallelExecution
       write(6,*) 'symmetricSolver:      ', symmetricSolver
@@ -367,11 +367,11 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
     !$OMP CRITICAL (write2out)
       write(6,*)
       write(6,'(a)') '#############################################'
-      write(6,'(a1,a22,x,f15.7,a6)') '#','theTime',theTime,'#'
-      write(6,'(a1,a22,x,f15.7,a6)') '#','theDelta',theDelta,'#'
-      write(6,'(a1,a22,x,i8,a13)') '#','theInc',theInc,'#'
-      write(6,'(a1,a22,x,i8,a13)') '#','cycleCounter',cycleCounter,'#'
-      write(6,'(a1,a22,x,i8,a13)') '#','computationMode',mode,'#'
+      write(6,'(a1,a22,1x,f15.7,a6)') '#','theTime',theTime,'#'
+      write(6,'(a1,a22,1x,f15.7,a6)') '#','theDelta',theDelta,'#'
+      write(6,'(a1,a22,1x,i8,a13)') '#','theInc',theInc,'#'
+      write(6,'(a1,a22,1x,i8,a13)') '#','cycleCounter',cycleCounter,'#'
+      write(6,'(a1,a22,1x,i8,a13)') '#','computationMode',mode,'#'
       write(6,'(a)') '#############################################'
       write(6,*)
       call flush (6)
@@ -404,7 +404,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           !$OMP CRITICAL (write2out)
             write(6,'(a)') '<< CPFEM >> Aging states'
             if (debug_e == cp_en .and. debug_i == IP) then
-              write(6,'(a,x,i8,x,i2,x,i4,/,(12(x),6(e20.8,x)))') '<< CPFEM >> AGED state of element ip grain',&
+              write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)))') '<< CPFEM >> AGED state of element ip grain',&
                                                               cp_en, IP, 1, constitutive_state(1,IP,cp_en)%p
               write(6,*)
             endif
@@ -492,9 +492,9 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
-              write(6,'(a,x,i8,x,i2)') '<< CPFEM >> OUTDATED at element ip',cp_en,IP
-              write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 old:',math_transpose33(materialpoint_F(1:3,1:3,IP,cp_en))
-              write(6,'(a,/,3(12(x),3(f10.6,x),/))') '<< CPFEM >> FFN1 now:',math_transpose33(ffn1)
+              write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at element ip',cp_en,IP
+              write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',math_transpose33(materialpoint_F(1:3,1:3,IP,cp_en))
+              write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 now:',math_transpose33(ffn1)
             !$OMP END CRITICAL (write2out)
           endif
           outdatedFFN1 = .true.
@@ -519,7 +519,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           FEsolving_execIP(2,cp_en) = IP
           if (debug_verbosity > 0) then
             !$OMP CRITICAL (write2out)
-              write(6,'(a,i8,x,i2)') '<< CPFEM >> Calculation for element ip ',cp_en,IP
+              write(6,'(a,i8,1x,i2)') '<< CPFEM >> Calculation for element ip ',cp_en,IP
             !$OMP END CRITICAL (write2out)
           endif
           call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent
@@ -645,8 +645,8 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
 
   if (mode < 3 .and. debug_verbosity > 0 .and. ((debug_e == cp_en .and. debug_i == IP) .or. .not. debug_selectiveDebugger)) then
     !$OMP CRITICAL (write2out)
-      write(6,'(a,i8,x,i2,/,12(x),6(f10.3,x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1e6
-      write(6,'(a,i8,x,i2,/,6(12(x),6(f10.3,x)/))') '<< CPFEM >> jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1e9
+      write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1e6
+      write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') '<< CPFEM >> jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1e9
       call flush(6)
     !$OMP END CRITICAL (write2out)
   endif

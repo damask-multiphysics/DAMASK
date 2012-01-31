@@ -221,7 +221,7 @@ character(len=1024) line
 write(6,*)
 write(6,*) '<<<+-  constitutive_',trim(constitutive_titanmod_label),' init  -+>>>'
 write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
 
 maxNinstance = count(phase_constitution == constitutive_titanmod_label)
 if (maxNinstance == 0) return

@@ -31,6 +31,7 @@
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
+ complex(pReal), parameter ::  two_pi_img = (0.0_pReal,2.0_pReal) * pi
 
 ! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
@@ -127,8 +128,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
     -0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
      0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal &
   /),(/4,36/))
-
-  include 'fftw3.f03'
+  
+ include 'fftw3.f03'
 
  CONTAINS
 
@@ -153,10 +154,10 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
  !$OMP CRITICAL (write2out)
- write(6,*)
+ write(6,*) ''
  write(6,*) '<<<+-  math init  -+>>>'
  write(6,*) '$Id$'
-#include  "compilation_info.f90"
+#include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
  call random_seed(size=randSize)
@@ -196,7 +197,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  q2 = math_AxisAngleToQuaternion(axisangle(1:3),axisangle(4))
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) 'maximum deviation',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
    call IO_error(670_pInt,ext_msg=error_msg)
  endif 
  
@@ -205,7 +206,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  q2 = math_RToQuaternion(R)
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) 'maximum deviation',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
    call IO_error(671_pInt,ext_msg=error_msg)
  endif 
  
@@ -214,7 +215,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  q2 = math_EulerToQuaternion(Eulers)
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) 'maximum deviation',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
+   write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
    call IO_error(672_pInt,ext_msg=error_msg)
  endif 
 
@@ -222,7 +223,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  Eulers = math_RToEuler(R);
  R2 = math_EulerToR(Eulers)
  if ( any(abs( R-R2) > tol_math_check) ) then
-   write (error_msg, '(a,e14.6)' ) 'maximum deviation',maxval(abs( R-R2))
+   write (error_msg, '(a,e14.6)' ) 'maximum deviation ',maxval(abs( R-R2))
    call IO_error(673_pInt,ext_msg=error_msg)
  endif 
  
@@ -3267,7 +3268,6 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  ! other variables
  integer(pInt) :: i, j, k, res1_red
  integer(pInt), dimension(3) :: k_s
- complex(pReal), parameter   :: integration_factor = cmplx(0.0_pReal,1.0_pReal)*pi*2.0_pReal
  real(pReal), dimension(3)   :: step, offset_coords
  
  if (debug_verbosity > 0_pInt) then
@@ -3317,11 +3317,11 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
      do i = 1_pInt, res1_red
        k_s(1) = i-1_pInt
        if(i/=1_pInt) coords_complex(i,j,k,1:3) = coords_complex(i,j,k,1:3)&
-                                + defgrad_complex(i,j,k,1:3,1)*geomdim(1)/(real(k_s(1),pReal)*integration_factor)
+                                + defgrad_complex(i,j,k,1:3,1)*geomdim(1)/(real(k_s(1),pReal)*two_pi_img)
        if(j/=1_pInt) coords_complex(i,j,k,1:3) = coords_complex(i,j,k,1:3)&
-                                + defgrad_complex(i,j,k,1:3,2)*geomdim(2)/(real(k_s(2),pReal)*integration_factor)
+                                + defgrad_complex(i,j,k,1:3,2)*geomdim(2)/(real(k_s(2),pReal)*two_pi_img)
        if(k/=1_pInt) coords_complex(i,j,k,1:3) = coords_complex(i,j,k,1:3)&
-                                + defgrad_complex(i,j,k,1:3,3)*geomdim(3)/(real(k_s(3),pReal)*integration_factor)
+                                + defgrad_complex(i,j,k,1:3,3)*geomdim(3)/(real(k_s(3),pReal)*two_pi_img)
  enddo; enddo; enddo
  
  call fftw_execute_dft_c2r(fftw_back,coords_complex,coords_real)
@@ -3372,7 +3372,6 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  integer(pInt) i, j, k, l, res1_red
  integer(pInt), dimension(3) :: k_s,cutting_freq
  real(pReal) :: wgt
- complex(pReal), parameter :: differentation_factor = cmplx(0.0_pReal,1.0_pReal)*2.0_pReal*pi       ! cmplx(0.0_pReal, 2.0_pReal*pi) gets huge rounding error (casting to single prec?)
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Calculating curl of vector/tensor field'
@@ -3430,11 +3429,11 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  do k = 1, res(3); do j = 1, res(2);do i = 1, res1_red
    do l = 1, vec_tens
      curl_complex(i,j,k,l,1) = ( field_complex(i,j,k,l,3)*xi(i,j,k,2)&
-                                -field_complex(i,j,k,l,2)*xi(i,j,k,3) )*differentation_factor
+                                -field_complex(i,j,k,l,2)*xi(i,j,k,3) )*two_pi_img
      curl_complex(i,j,k,l,2) = (-field_complex(i,j,k,l,3)*xi(i,j,k,1)&
-                                +field_complex(i,j,k,l,1)*xi(i,j,k,3) )*differentation_factor
+                                +field_complex(i,j,k,l,1)*xi(i,j,k,3) )*two_pi_img
      curl_complex(i,j,k,l,3) = ( field_complex(i,j,k,l,2)*xi(i,j,k,1)&
-                                -field_complex(i,j,k,l,1)*xi(i,j,k,2) )*differentation_factor
+                                -field_complex(i,j,k,l,1)*xi(i,j,k,2) )*two_pi_img
    enddo
  enddo; enddo; enddo
 
@@ -3477,7 +3476,6 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  integer(pInt) :: i, j, k, l, res1_red
  real(pReal) :: wgt
  integer(pInt), dimension(3) :: k_s,cutting_freq
- complex(pReal), parameter :: differentation_factor = cmplx(0.0_pReal,1.0_pReal)*2.0_pReal*pi       ! cmplx(0.0_pReal, 2.0_pReal*pi) gets huge rounding error (casting to single prec?)
 
  if (debug_verbosity > 0_pInt) then 
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
@@ -3533,7 +3531,7 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
    do l = 1_pInt, vec_tens
      divergence_complex(i,j,k,l) = sum(field_complex(i,j,k,l,1:3)*xi(i,j,k,1:3))&
-                                   *differentation_factor
+                                   *two_pi_img
    enddo
  enddo; enddo; enddo
  call fftw_execute_dft_c2r(fftw_back, divergence_complex, divergence_real)
