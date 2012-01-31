@@ -48,6 +48,8 @@ subroutine DAMASK_interface_init()
  enddo
 
  if(index(commandLine,' -h ',.true.)>0_pInt .or. index(commandLine,' --help ',.true.)>0_pInt) then   ! search for ' -h ' or '--help'
+   write(6,*) '$Id$'
+#include  "compilation_info.f90"
    print '(a)',  '#############################################################'
    print '(a)',  'DAMASK spectral:'
    print '(a)',  'The spectral method boundary value problem solver for'
@@ -129,7 +131,7 @@ subroutine DAMASK_interface_init()
  write(6,*)
  write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,*) '$Id$'
- write(6,*)
+#include  "compilation_info.f90"
  write(6,'(a,2(i2.2,a),i4.4)'), ' Date:               ',date_and_time_values(3),'/',&
                                                         date_and_time_values(2),'/',&
                                                         date_and_time_values(1) 

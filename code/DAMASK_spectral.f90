@@ -197,7 +197,7 @@ program DAMASK_spectral
  print '(a)', ''
  print '(a)', ' <<<+-  DAMASK_spectral init  -+>>>'
  print '(a)', ' $Id$'
- print '(a)', ''
+#include  "compilation_info.f90"
  print '(a,a)', ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
  print '(a,a)', ' Solver Job Name:      ',trim(getSolverJobName())
  print '(a)', ''
@@ -373,7 +373,8 @@ program DAMASK_spectral
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  Npoints = res(1)*res(2)*res(3)
  wgt = 1.0_pReal/real(Npoints, pReal)
- cutting_freq = nint((/cut_off_value,cut_off_value,cut_off_value/)/res,pInt)                        ! for cut_off_value=0.0 just the highest freq. is removed
+ if (cut_off_value <0.0_pReal .or. cut_off_value >0.9_pReal) stop
+ cutting_freq = nint(real(res,pReal)*cut_off_value,pInt)                                            ! for cut_off_value=0.0 just the highest freq. is removed
 
 !--------------------------------------------------------------------------------------------------
 ! output of geometry
@@ -388,7 +389,7 @@ program DAMASK_spectral
  print '(a,3(i12  ))','resolution a b c:', res
  print '(a,3(f12.5))','dimension  x y z:', geomdim
  print '(a,i5)','homogenization:       ',homog
- if(cut_off_value/=0.0_pReal) print '(a,3(i4),a)', 'cutting away ', cutting_freq, 'frequencies'
+ if(cut_off_value/=0.0_pReal) print '(a,3(i12),a)', 'cutting away    ', cutting_freq, ' frequencies'
  print '(a)',   '#############################################################'
  print '(a,a)', 'loadcase file:        ',trim(getLoadcaseName())
 
@@ -787,12 +788,13 @@ program DAMASK_spectral
 ! report begin of new iteration
          print '(a)', ''
          print '(a)', '============================================================='
-         print '(5(a,i6.6))', 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,' @ Iteration ',iter,'/',itmax
+         print '(5(a,i6.6))', 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,&
+                                                                  ' @ Iteration ',iter,'/',itmax
          do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
            defgrad_av_lab(m,n) = sum(defgrad(1:res(1),1:res(2),1:res(3),m,n)) * wgt
          enddo; enddo
          print '(a,/,3(3(f12.7,x)/)$)', 'deformation gradient:',&
-                                        math_transpose33(math_rotate_forward33(defgrad_av_lab,bc(loadcase)%rotation))
+                    math_transpose33(math_rotate_forward33(defgrad_av_lab,bc(loadcase)%rotation))
          print '(a)', ''
          print '(a)', '... update stress field P(F) ................................'
 
@@ -900,7 +902,7 @@ program DAMASK_spectral
                                        xi(1:3,res1_red,j,k))*differentationFactor)**2.0_pReal)
          enddo; enddo
          err_div_RMS = sqrt(err_div_RMS)*wgt                                      ! RMS in real space calculated with Parsevals theorem from Fourier space
-         err_div = err_div_RMS/p_hat_avg/wgt * correctionFactor                                                       ! criterion to stop iterations
+         err_div = err_div_RMS/p_hat_avg/sqrt(wgt) * correctionFactor                                                       ! criterion to stop iterations
 
 !--------------------------------------------------------------------------------------------------
 ! calculate additional divergence criteria and report
@@ -966,7 +968,7 @@ program DAMASK_spectral
              enddo; enddo
              tensorField_complex(i,j,k,1:3,1:3) = temp33_Complex 
            enddo; enddo; enddo
-         else                                                                                                       ! use precalculated gamma-operator
+         else                                                                                       ! use precalculated gamma-operator
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
              do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
                temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) * tensorField_complex(i,j,k,1:3,1:3))
@@ -974,7 +976,7 @@ program DAMASK_spectral
              tensorField_complex(i,j,k,1:3,1:3) = temp33_Complex
            enddo; enddo; enddo
          endif
-         tensorField_complex(1,1,1,1:3,1:3) = defgrad_av_lab                                                              ! assign zero frequency (real part) with average displacement gradient
+         tensorField_complex(1,1,1,1:3,1:3) = defgrad_av_lab !* sqrt(real(Npoints,pReal))            ! assign average deformation gradient to zero frequency (real part)
 
          if (debugFFTW) then
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
@@ -984,7 +986,7 @@ program DAMASK_spectral
     
 !--------------------------------------------------------------------------------------------------
 ! doing the inverse FT
-         call fftw_execute_dft_c2r(plan_correction,tensorField_complex,tensorField_real)                                        ! back transform of fluct deformation gradient
+         call fftw_execute_dft_c2r(plan_correction,tensorField_complex,tensorField_real)            ! back transform of fluct deformation gradient
 
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results

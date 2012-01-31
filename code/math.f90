@@ -156,7 +156,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  write(6,*)
  write(6,*) '<<<+-  math init  -+>>>'
  write(6,*) '$Id$'
- write(6,*)
+#include  "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
  call random_seed(size=randSize)

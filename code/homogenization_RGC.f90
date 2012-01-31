@@ -83,7 +83,7 @@ subroutine homogenization_RGC_init(&
    write(6,*)
    write(6,*) '<<<+-  homogenization_',trim(homogenization_RGC_label),' init  -+>>>'
    write(6,*) '$Id$'
-   write(6,*)
+#include  "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 
  maxNinstance = count(homogenization_type == homogenization_RGC_label)

@@ -119,7 +119,7 @@ subroutine material_init()
    write(6,*)
    write(6,*) '<<<+-  material init  -+>>>'
    write(6,*) '$Id$'
-   write(6,*)
+#include  "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
  if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...

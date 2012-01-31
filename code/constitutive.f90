@@ -341,7 +341,7 @@ constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
   write(6,*)
   write(6,*) '<<<+-  constitutive init  -+>>>'
   write(6,*) '$Id$'
-  write(6,*)
+#include  "compilation_info.f90"
   if (debug_verbosity > 0) then
     write(6,'(a32,x,7(i8,x))') 'constitutive_state0:          ', shape(constitutive_state0)
     write(6,'(a32,x,7(i8,x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)

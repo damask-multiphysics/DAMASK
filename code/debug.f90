@@ -96,7 +96,7 @@ subroutine debug_init()
     write(6,*)
     write(6,*) '<<<+-  debug init  -+>>>'
     write(6,*) '$Id$'
-    write(6,*)
+#include  "compilation_info.f90"
   !$OMP END CRITICAL (write2out)
   
   allocate(debug_StressLoopDistribution(nStress,2)) ;            debug_StressLoopDistribution             = 0_pInt

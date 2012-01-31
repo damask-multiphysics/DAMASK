@@ -54,7 +54,7 @@ subroutine IO_init ()
   write(6,*)
   write(6,*) '<<<+-  IO init  -+>>>'
   write(6,*) '$Id$'
-  write(6,*)
+#include  "compilation_info.f90"
   call flush(6)
   !$OMP END CRITICAL (write2out)
  

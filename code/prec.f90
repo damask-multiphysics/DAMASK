@@ -21,6 +21,7 @@
 !##############################################################
  MODULE prec
 !##############################################################
+use iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
 implicit none
  
@@ -32,9 +33,8 @@ real(pReal), parameter :: tol_math_check = 1.0e-8_pReal
 real(pReal), parameter :: tol_gravityNodePos = 1.0e-100_pReal
 ! NaN is precision dependent 
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
-! copy found in documentation/Code/Fortran
+! copy can be found in documentation/Code/Fortran
 real(pReal), parameter :: DAMASK_NaN = Z'7FF0000000000001'
- 
 type :: p_vec
   real(pReal), dimension(:), pointer :: p
 end type p_vec
@@ -48,7 +48,7 @@ implicit none
   write(6,*)
   write(6,*) '<<<+-  prec init  -+>>>'
   write(6,*) '$Id$'
-  write(6,*) 
+#include  "compilation_info.f90"
   write(6,'(a,i3)'),   ' Bytes for pReal:    ',pReal
   write(6,'(a,i3)'),   ' Bytes for pInt:     ',pInt
   write(6,'(a,i3)'),   ' Bytes for pLongInt: ',pLongInt

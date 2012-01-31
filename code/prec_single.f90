@@ -21,6 +21,7 @@
 !##############################################################
  MODULE prec
 !##############################################################
+use iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
 implicit none
  
@@ -30,11 +31,10 @@ integer, parameter :: pInt  = selected_int_kind(9)           ! up to +- 1e9
 integer, parameter :: pLongInt  = 4                          ! should be 64bit
 real(pReal), parameter :: tol_math_check = 1.0e-5_pReal
 real(pReal), parameter :: tol_gravityNodePos = 1.0e-36_pReal
-! NaN is precistion dependent 
+! NaN is precision dependent 
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy can be found in documentation/Code/Fortran
 real(pReal), parameter :: DAMASK_NaN = Z'7F800001'
-
 type :: p_vec
   real(pReal), dimension(:), pointer :: p
 end type p_vec
@@ -42,13 +42,18 @@ end type p_vec
 CONTAINS
 
 subroutine prec_init
+implicit none
+
 !$OMP CRITICAL (write2out)
   write(6,*)
   write(6,*) '<<<+-  prec_single init  -+>>>'
   write(6,*) '$Id$'
-  write(6,*)
-  write(6,*) 'NaN:        ',DAMASK_NAN
-  write(6,*) 'NaN /= NaN: ',DAMASK_NaN/=DAMASK_NaN
+#include  "compilation_info.f90"
+  write(6,'(a,i3)'),   ' Bytes for pReal:    ',pReal
+  write(6,'(a,i3)'),   ' Bytes for pInt:     ',pInt
+  write(6,'(a,i3)'),   ' Bytes for pLongInt: ',pLongInt
+  write(6,'(a,e3.3)'), ' NaN:                ',DAMASK_NAN
+  write(6,'(a,l3)'),   ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
   write(6,*)
 !$OMP END CRITICAL (write2out)
 

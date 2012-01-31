@@ -205,7 +205,7 @@ subroutine CPFEM_init()
     write(6,*)
     write(6,*) '<<<+-  cpfem init  -+>>>'
     write(6,*) '$Id$'
-    write(6,*)
+#include  "compilation_info.f90"
     if (debug_verbosity > 0) then
       write(6,'(a32,x,6(i8,x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
       write(6,'(a32,x,6(i8,x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)

@@ -149,7 +149,7 @@
  write(6,*)
  write(6,*) '<<<+-  FEsolving init  -+>>>'
  write(6,*) '$Id$'
- write(6,*)
+#include "compilation_info.f90"
  if (debug_verbosity > 0) then
    write(6,*) 'restart writing:    ', restartWrite
    write(6,*) 'restart reading:    ', restartRead

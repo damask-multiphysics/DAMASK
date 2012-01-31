@@ -207,7 +207,7 @@ allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpEl
   write(6,*)
   write(6,*) '<<<+-  homogenization init  -+>>>'
   write(6,*) '$Id$'
-  write(6,*)
+#include  "compilation_info.f90"
   if (debug_verbosity > 0) then
     write(6,'(a32,x,7(i8,x))') 'homogenization_state0:          ', shape(homogenization_state0)
     write(6,'(a32,x,7(i8,x))') 'homogenization_subState0:       ', shape(homogenization_subState0)

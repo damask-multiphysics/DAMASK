@@ -73,7 +73,7 @@ subroutine DAMASK_interface_init()
  write(6,*)
  write(6,*) '<<<+-  DAMASK_marc init  -+>>>'
  write(6,*) '$Id$'
- write(6,*)
+#include  "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
  return
 end subroutine

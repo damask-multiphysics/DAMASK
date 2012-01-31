@@ -174,7 +174,7 @@ character(len=1024)         line
   write(6,*)
   write(6,*) '<<<+-  crystallite init  -+>>>'
   write(6,*) '$Id$'
-  write(6,*)
+#include  "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 
 
