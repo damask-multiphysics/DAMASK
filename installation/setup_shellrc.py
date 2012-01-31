@@ -106,6 +106,12 @@ if theShell == 'bash':
         for var in env_order:
           m = re.search(r'^(.*? %s=)([^;]*)(.*)$'%var,line)
           if m:
+            n = re.search(r'(%s)'%var, line)
+            o = re.search(r'(#)', line)
+            if o:
+              if o.start() < n.start():
+                print 'skipped potential comment line, please check'
+                continue
             match[var] = True
             items = m.group(2).split(':')
             for piece in environment[var]:
