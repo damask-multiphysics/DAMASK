@@ -47,6 +47,15 @@ DEBUG3 =-fp-stack-check -g -traceback -gen-interfaces -warn interfaces
 #should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
 DEBUG4 =-heap-arrays
 
+#additional warnings
+DEBUG5 =-warn all
+# or one or more of those: alignments, declarations,general, ignore_loc, uncalled, unuses, usage
+
+#set precision (check for missing _pInt and _pReal)
+DEBUG6= -real-size 32  -integer-size 16
+#or one of those 16/32/64/128 (= 2,4,8,16 bytes)
+
+
 #SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3)
 ########################################################################################
 
@@ -125,7 +134,7 @@ OPTIMIZATION_OFF_ifort           :=-O0
 OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
 OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
-OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div -xO
+OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 
