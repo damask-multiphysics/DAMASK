@@ -115,7 +115,6 @@ program DAMASK_spectral
 ! stress, stiffness and compliance average etc.
  real(pReal), dimension(3,3) ::           pstress, pstress_av, &
                                           defgradAim = math_I3, defgradAimOld = math_I3,&
-                                          defgradAimCorr= math_I3,&
                                           mask_stress, mask_defgrad, fDot, &
                                           pstress_av_lab, defgradAim_lab, defgrad_av_lab            ! quantities rotated to other coordinate system
  real(pReal), dimension(3,3,3,3) ::       dPdF, c0_reference, c_current = 0.0_pReal, s_prev, c_prev ! stiffness and compliance
@@ -535,6 +534,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! depending on (debug) options, allocate more memory and create additional plans 
        if (.not. simplified_algorithm) then
+         stop 'long algorithm is not working yet'
          tau = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))
          call c_f_pointer(tau, tau_real,    [ res(1)+2_pInt,res(2),res(3),3,3])
          call c_f_pointer(tau, tau_complex, [ res1_red,     res(2),res(3),3,3])
@@ -759,7 +759,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
-       print '(a)', '#############################################################'
+       print '(a)', '##################################################################'
        print '(A,I5.5,A,es12.6)', 'Increment ', totalIncsCounter, ' Time ',time
        if (restartWrite ) then
          print '(A)', 'writing converged results of previous increment for restart'
@@ -786,16 +786,16 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
          print '(a)', ''
-         print '(a)', '============================================================='
+         print '(a)', '=================================================================='
          print '(5(a,i6.6))', 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,&
                                                                   ' @ Iteration ',iter,'/',itmax
          do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
            defgrad_av_lab(m,n) = sum(defgrad(1:res(1),1:res(2),1:res(3),m,n)) * wgt
          enddo; enddo
-         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient:',&
+         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient:',&
                     math_transpose33(math_rotate_forward33(defgrad_av_lab,bc(loadcase)%rotation))
          print '(a)', ''
-         print '(a)', '... update stress field P(F) ................................'
+         print '(a)', '... update stress field P(F) .....................................'
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -824,10 +824,6 @@ program DAMASK_spectral
            c_current = c_current + dPdF
          enddo; enddo; enddo
 
-         do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
-           pstress_av_lab(m,n) = sum(tensorField_real(1:res(1),1:res(2),1:res(3),m,n)) * wgt
-         enddo; enddo
-
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
          if (debugFFTW) then
@@ -837,9 +833,6 @@ program DAMASK_spectral
            scalarField_real(1:res(1),1:res(2),1:res(3)) =&                                          ! store the selected component
                   tensorField_real(1:res(1),1:res(2),1:res(3),row,column)
          endif
-         
-         print '(a)', ''
-         print '(a)', '... calculating equilibrium with spectral method ............'
 
 !--------------------------------------------------------------------------------------------------
 ! build polarization field
@@ -858,11 +851,39 @@ program DAMASK_spectral
          if (debugDivergence) &
               call divergence_fft(res,geomdim,3_pInt,&
               tensorField_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_postProc)             !padding
+              
+!--------------------------------------------------------------------------------------------------
+! doing the FT because it simplifies calculation of average stress in real space also
+         call fftw_execute_dft_r2c(plan_stress,tensorField_real,tensorField_complex)
+         pstress_av_lab = real(tensorField_complex(1,1,1,1:3,1:3),pReal)*wgt
+         pstress_av = math_rotate_forward33(pstress_av_lab,bc(loadcase)%rotation)
+         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa:',&
+                                                          math_transpose33(pstress_av)/1.e6
 
 !--------------------------------------------------------------------------------------------------
-! doing the FT
-         call fftw_execute_dft_r2c(plan_stress,tensorField_real,tensorField_complex)
-      
+! stress BC handling
+         if(size_reduced > 0_pInt) then                                                              ! calculate stress BC if applied
+           err_stress = maxval(abs(mask_stress * (pstress_av - bc(loadcase)%stress)))                ! maximum deviaton (tensor norm not applicable)
+           err_stress_tol = maxval(abs(pstress_av)) * err_stress_tolrel                              ! don't use any tensor norm because the comparison should be coherent
+           print '(a)', '' 
+           print '(a)', '... correcting deformation gradient to fulfill BCs ...............'
+           print '(a,es10.4,a,f6.2)', 'error stress = ',err_stress,  ',      rel. error = ',& 
+                                                            err_stress/err_stress_tol
+           defgradAim = defgradAim - math_mul3333xx33(s_prev, ((pstress_av - bc(loadcase)%stress)))  ! residual on given stress components
+           if(debugGeneral)  write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'new deformation aim:',&
+                                                            math_transpose33(defgradAim)
+           print '(a,1x,es10.4)'         , 'determinant of new deformation: ', math_det33(defgradAim)
+         else
+           err_stress_tol = 0.0_pReal
+         endif
+                                            
+         defgradAim_lab = math_rotate_backward33(defgradAim,bc(loadcase)%rotation)                   ! boundary conditions from load frame into lab (Fourier) frame
+
+!--------------------------------------------------------------------------------------------------
+! actual spectral method         
+         print '(a)', ''
+         print '(a)', '... calculating equilibrium with spectral method .................'
+
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 FT results
          if (debugFFTW) then
@@ -939,7 +960,7 @@ program DAMASK_spectral
            print '(a,es10.4)',        'avg stress     FT/real    = ',p_hat_avg*wgt/p_real_avg
            print '(a,es10.4)',        'max deviat. from postProc = ',max_div_error
          endif
-         print '(a,es10.4,a,f6.2)', 'error divergence = ',err_div,    ', rel. error = ', err_div/err_div_tol
+         print '(a,es10.4,a,f6.2)', 'error divergence = ',err_div,    ',  rel. error = ', err_div/err_div_tol
          
 !--------------------------------------------------------------------------------------------------
 ! divergence is calculated from FT(stress), depending on algorithm use field for spectral method
@@ -975,8 +996,9 @@ program DAMASK_spectral
              tensorField_complex(i,j,k,1:3,1:3) = temp33_Complex
            enddo; enddo; enddo
          endif
-         tensorField_complex(1,1,1,1:3,1:3) = defgrad_av_lab !* sqrt(real(Npoints,pReal))            ! assign average deformation gradient to zero frequency (real part)
 
+         tensorField_complex(1,1,1,1:3,1:3) = (defgradAim_lab - defgrad_av_lab)&                    ! assign average deformation gradient change to zero frequency (real part)
+                                                        * real(Npoints,pReal)
          if (debugFFTW) then
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
               scalarField_complex(i,j,k) = tensorField_complex(i,j,k,row,column)
@@ -1032,43 +1054,10 @@ program DAMASK_spectral
              defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) + defgrad_av_lab
            enddo; enddo; enddo
          endif
-         do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt 
-           defgrad_av_lab(m,n) = sum(defgrad(1:res(1),1:res(2),1:res(3),m,n))*wgt                   ! ToDo: check whether this needs recalculation or is equivalent to former defgrad_av
-         enddo; enddo
-         
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
-         pstress_av = math_rotate_forward33(pstress_av_lab,bc(loadcase)%rotation)
-         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' Piola-Kirchhoff stress / MPa:',&
-                                                          math_transpose33(pstress_av)/1.e6
-
-         if(size_reduced > 0_pInt) then                                                                       ! calculate stress BC if applied
-           err_stress = maxval(abs(mask_stress * (pstress_av - bc(loadcase)%stress)))                         ! maximum deviaton (tensor norm not applicable)
-           err_stress_tol = maxval(abs(pstress_av)) * err_stress_tolrel                                       ! don't use any tensor norm because the comparison should be coherent
-           print '(a)', '' 
-           print '(a)', '... correcting deformation gradient to fulfill BCs ..........'
-           print '(a,es10.4,a,f6.2)', 'error stress = ',err_stress,  ', rel. error = ', err_stress/err_stress_tol
-           defgradAimCorr = - math_mul3333xx33(s_prev, ((pstress_av - bc(loadcase)%stress)))                  ! residual on given stress components
-           defgradAim = defgradAim + defgradAimCorr
-           write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' new deformation aim:     ',&
-                                                            math_transpose33(defgradAim)
-           print '(a,1x,es10.4)'         , 'with determinant:        ', math_det33(defgradAim)
-         else
-           err_stress_tol = 0.0_pReal
-         endif
-                                            
-         defgradAim_lab = math_rotate_backward33(defgradAim,bc(loadcase)%rotation)                            ! boundary conditions from load frame into lab (Fourier) frame
-         do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt 
-           defgrad(1:res(1),1:res(2),1:res(3),m,n) = &
-           defgrad(1:res(1),1:res(2),1:res(3),m,n) + (defgradAim_lab(m,n) - defgrad_av_lab(m,n))              ! anticipated target minus current state
-         enddo; enddo
-         if(debugGeneral) then 
-           write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' average deformation gradient correction:',&
-                                                         math_transpose33(defgradAim_lab- defgrad_av_lab)
                                                     
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report
-         
+         if(debugGeneral) then
            defgradDetMax = -huge(1.0_pReal)
            defgradDetMin = +huge(1.0_pReal)
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
@@ -1084,7 +1073,7 @@ program DAMASK_spectral
        enddo    ! end looping when convergency is achieved 
            
        print '(a)', ''
-       print '(a)', '============================================================='
+       print '(a)', '=================================================================='
        if(err_div > err_div_tol .or. err_stress > err_stress_tol) then
          print '(A,I5.5,A)', 'increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
@@ -1093,7 +1082,7 @@ program DAMASK_spectral
        endif
        if (mod(totalIncsCounter -1_pInt,bc(loadcase)%outputfrequency) == 0_pInt) then                ! at output frequency
          print '(a)', ''
-         print '(a)', '... writing results to file .................................'
+         print '(a)', '... writing results to file ......................................'
          write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)        ! write result to file
        endif
        if (update_gamma) then
@@ -1107,7 +1096,7 @@ program DAMASK_spectral
    deallocate(s_reduced)
    enddo    ! end looping over loadcases
    print '(a)', ''
-   print '(a)', '#############################################################'
+   print '(a)', '##################################################################'
    print '(i6.6,a,i6.6,a)', notConvergedCounter, ' out of ', &
                             totalIncsCounter - restartReadInc, ' increments did not converge!'
  close(538)
