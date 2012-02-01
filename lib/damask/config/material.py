@@ -1,6 +1,99 @@
 # $Id$
+import re
 
+class Section():
+  def __init__(self,data = {'__order__':[]},part = ''):
+    classes = {
+                'homogenization':Homogenization,
+                'microstructure':Microstructure,
+                'crystallite':Crystallite,
+                'phase':Phase,
+                'texture':Texture,
+              }
+    self.parameters = {}
+    for key in data:
+      if type(data[key]) is not list:
+        self.parameters[key] = [data[key]]
+      else:
+        self.parameters[key] = data[key]
+
+    if '__order__' not in self.parameters:
+      self.parameters['__order__'] = self.parameters.keys()
+    if part.lower() in classes:
+      self.__class__ = classes[part.lower()]
+      self.__init__(data)
+
+  def add_multiKey(self,key,data):
+    multiKey = '(%s)'%key
+    if multiKey not in self.parameters: self.parameters[multiKey] = []
+    if multiKey not in self.parameters['__order__']: self.parameters['__order__'] += [multiKey]
+    if type(data) == list: self.parameters[multiKey] += [[item] for item in data]
+    else:                  self.parameters[multiKey] += [[data]]
+      
+  def data(self):
+    return self.parameters
+
+
+class Homogenization(Section):
+  def __init__(self,data = {'__order__':[]}):
+    Section.__init__(self,data)
+
+
+class Crystallite(Section):
+  def __init__(self,data = {'__order__':[]}):
+    Section.__init__(self,data)
+  
+
+class Phase(Section):
+  def __init__(self,data = {'__order__':[]}):
+    Section.__init__(self,data)
+  
+
+class Microstructure(Section):
+  def __init__(self,data = {'__order__':[]}):
+    Section.__init__(self,data)
+  
+  
+class Texture(Section):
+  def __init__(self,data = {'__order__':[]}):
+    Section.__init__(self,data)
+    
+  def add_component(self,theType,properties):
+    
+    if 'scatter' not in map(str.lower,properties.keys()):
+          scatter = 1.0
+    else: scatter = properties['scatter']
+    if 'fraction' not in map(str.lower,properties.keys()):
+          fraction = 1.0
+    else: fraction = properties['fraction']
+
+    multiKey = theType.lower()
+
+    if multiKey == 'gauss':
+      self.add_multiKey(multiKey,'phi1 %g\tPhi %g\tphi2 %g\tscatter %g\tfraction %g'%(
+                                        properties['eulers'][0],
+                                        properties['eulers'][1],
+                                        properties['eulers'][2],
+                                        scatter,
+                                        fraction,
+                                        )
+                        )
+
+    if multiKey == 'fiber':
+      self.add_multiKey(multiKey,'alpha1 %g\talpha2 %g\tbeta1 %g\tbeta2 %g\tscatter %g\tfraction %g'%(
+                                        properties['eulers'][0],
+                                        properties['eulers'][1],
+                                        properties['eulers'][2],
+                                        properties['eulers'][3],
+                                        scatter,
+                                        fraction,
+                                        )
+                        )
+
+ 
+ 
 class Material():
+  
   '''
      Reads, manipulates and writes material.config files
   '''
@@ -48,6 +141,7 @@ class Material():
 
     for line in content:
       line = line.split('#')[0].strip()                   # kill comments and extra whitespace
+      line = line.split('#')[0].strip()                   # kill comments and extra whitespace
       if line:                                            # content survives...
         match_part = re_part.match(line)
         if match_part:                                    # found <part> separator
@@ -73,100 +167,70 @@ class Material():
               self.data[part][name_section][items[0]] = items[1:]
                   
   def read(self,file=None):
-     f=open(file,'r')
-     c=f.readlines()
-     f.close()
-     for p in self.parts:
-       self.parse_data(part=p, content=c)
+    f=open(file,'r')
+    c=f.readlines()
+    f.close()
+    for p in self.parts:
+      self.parse_data(part=p, content=c)
        
   def write(self,file='material.config', overwrite=False):
-     if overwrite is False:
-       if os.path.exists(file):
-         i=1
-         while os.path.exists(file+'_%i'%i):i+=1
-         file+='_%i'%i
-     print('Writing material data to file %s'%file)
-     f=open(file,'w')
-     f.write(str(self))
-     f.close()
-     return file
+    import os
+    i = 0
+    saveFile = file
+    while not overwrite and os.path.exists(saveFile):
+     i += 1
+     saveFile = file+'_%i'%i
 
-  def add_data(self, part=None, section=None, data={}):
-    '''Generic data adding/updating'''
-    if part not in self.parts: raise Exception('invalid part %s'%part)
-    if section not in self.data[part]: self.data[part]['__order__'] += [section]
-    self.data[part][section] = data
+    print('Writing material data to file %s'%saveFile)
+    f=open(saveFile,'w')
+    f.write(str(self))
+    f.close()
+    return saveFile
+
+  def add_section(self, part=None, section=None, object=None, merge = False):
+    '''adding/updating'''
     
-  def add_homogenization(self, label='', type='', Ngrains=None):
-      if type.lower() == 'isostrain':
-          self.add_data(part='homogenization',
-                        section=label,
-                        data={'type':[type],
-                              'Ngrains':[Ngrains],
-                              '__order__':['type','Ngrains']
-                             }
-                       )
-      elif type.lower() == 'rgc':
-          raise Exception('Please implement me')
-      
-  def add_crystallite(self, label='', output=[]):
-      self.add_data(part='crystallite', 
-                    section=label, 
-                    data={'(output)':[[o] for o in output],
-                          '__order__':'(output)'})      
-      
-  def add_texture(self, label='',type='', eulers=[], scatter=0., fraction=1.):
-      ''' Experimental! Needs expansion to multi-component textures...''' 
-      if type == '(gauss)':
-          texture={type:[['phi1','%f'%float(eulers[0]),'Phi','%f'%float(eulers[1]), 'phi2','%f'%float(eulers[2]),'scatter','%f'%float(scatter), 'fraction','%f'%fraction]],'__order__':label}
-          #self.data['texture'][label]=texture
-          #if len(self.data['texture'])>old_len: # added new label
-          # self.data['texture']['__order__'].append(label)
-      else:
-          raise Exception('Please implement me.')      
-      self.add_data(part='texture',section=label, data=texture)      
+    if part not in self.parts: raise Exception('invalid part %s'%part)
 
-  def add_phase(self, file='', label='', newlabel=None, phase=None):
-      ''' USAGE:
-           - read phase "label" from file
-          OR
-           - phase is dict with one key
-      ''' 
-      if file and label and (phase is None):
-        other=MATERIAL_CONFIG()
-        other.read(file=file)
-        phase={label:other.data['phase'][label]}
-        label=None
-        print phase
-      if len(phase)==1 and label is None:
-        if newlabel:
-          label=newlabel
-        else:  
-          label=phase.keys()[0]
-        print('Adding phase %s'%label)
-        self.add_data(part='phase', section=label, data=phase)
-      else: 
-        raise Exception('Wrong arguments')
+    if type(object) is dict: data = object
+    else: data = object.data()
+    
+    if section not in self.data[part]: self.data[part]['__order__'] += [section]
+    if section in self.data[part] and merge:
+      for existing in self.data[part][section]['__order__']:                        # replace existing
+        if existing in data['__order__']:
+          if existing.startswith('(') and existing.endswith(')'):                   # multiple (key)
+            self.data[part][section][existing] += data[existing]                    # add new multiple entries to existing ones
+          else:                                                                     # regular key
+            self.data[part][section][existing] = data[existing]                     # plain replice
+      for new in data['__order__']:                                                 # merge new content
+        if new not in self.data[part][section]['__order__']:
+          self.data[part][section][new] = data[new]
+          self.data[part][section]['__order__'] += [new]
+    else:
+      self.data[part][section] = data
+        
+    
+      
 
-  def add_microstructure(self, label=None,
-                               crystallite=None, # label
-                               phases=None,      # list of labels
-                               textures=None,    # list of labels
-                               fractions=None):  # list of floats
+  def add_microstructure(self, section='',
+                               components={},      # dict of phase,texture, and fraction lists
+                        ):
     ''' Experimental! Needs expansion to multi-constituent microstructures...''' 
-    c=self.data['crystallite']['__order__'].index(crystallite)+1
-    constituent=phases[:]
-    if fractions is None:
-      fractions=[1./len(phases)]*len(phases)
-    for i in range(len(phases)):
-      p=self.data['phase']['__order__'].index(phases[i])+1
-      t=self.data['texture']['__order__'].index(textures[i])+1           
-      f=fractions[i]   
-      constituent[i]=['phase','%i'%p,'texture','%i'%t,'fraction','%f'%f]
-    data={'crystallite':['%i'%c],
-               '(constituent)':constituent,
-               '__order__':['crystallite','(constituent)']}               
-    self.add_data(part='microstructure',section=label,data=data)           
+    
+    microstructure = Microstructure()
+    
+    for property in ['phase','texture','fraction']:
+      if type(components[property]) is not list: components[property] = [components[property]]
+
+    for (phase,texture,fraction) in zip(components['phase'],components['texture'],components['fraction']):
+      microstructure.add_multiKey('constituent','phase %i\ttexture %i\tfraction %g'%(
+                                    self.data['phase']['__order__'].index(phase)+1,
+                                    self.data['texture']['__order__'].index(texture)+1,
+                                    fraction))
+
+    self.add_section('microstructure',section,microstructure)
+
     
   def change_value(self, part=None, 
                          section=None, 
@@ -184,4 +248,18 @@ class Material():
     print('new: %s'%self.data[part][section][key])
     if newlen is not oldlen:
       print('Length of value was changed from %i to %i!'%(oldlen,newlen))
+    
+
+    
+def ex1():
+    mat=Material()
+    p=Phase({'constitution':'lump'})   
+    t=Texture()    
+    t.add_component('gauss',{'eulers':[1,2,3]})
+    mat.add_section('phase','phase1',p)
+    mat.add_section('texture','tex1',t)
+    mat.add_microstructure('mustruct1',{'phase':['phase1']*2,'texture':['tex1']*2,'fraction':[0.2]*2})
+    print mat
+    mat.write(file='poop')
+    mat.write(file='poop',overwrite=True)
     
