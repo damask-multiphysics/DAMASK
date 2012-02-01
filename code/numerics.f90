@@ -70,7 +70,7 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 fftw_timelimit             = -1.0_pReal, &                   ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
                                 rotation_tol               =  1.0e-12_pReal                  ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
 character(len=64) ::            fftw_planner_string        = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patiant planner flag
-integer(pInt) ::                fftw_planner_flag          =  0_pInt                         ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
+integer(pInt) ::                fftw_planner_flag          =  -1_pInt                         ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
 logical ::                      memory_efficient           = .true. ,&                       ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
                                 divergence_correction      = .false.     ,&                  ! correct divergence calculation in fourier space, Default .false.: no correction
                                 update_gamma               = .false.,&                       ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
@@ -264,16 +264,16 @@ subroutine numerics_init()
   endif
   select case(IO_lc(fftw_planner_string))                        ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
     case('estimate','fftw_estimate')                             ! ordered from slow execution (but fast plan creation) to fast execution
-       fftw_planner_flag = 64
+       fftw_planner_flag = 64_pInt
      case('measure','fftw_measure')
-       fftw_planner_flag = 0
+       fftw_planner_flag = 0_pInt
      case('patient','fftw_patient')
-       fftw_planner_flag= 32
+       fftw_planner_flag= 32_pInt
      case('exhaustive','fftw_exhaustive')
-       fftw_planner_flag = 8 
+       fftw_planner_flag = 8_pInt 
      case default
        call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_planner_string)))
-       fftw_planner_flag = 32
+       fftw_planner_flag = 32_pInt
   end select
 
   ! writing parameters to output file

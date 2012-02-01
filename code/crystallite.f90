@@ -763,7 +763,7 @@ if(updateJaco) then                                                             
 #ifndef _OPENMP
         if (debug_verbosity> 5) then
           !$OMP CRITICAL (write2out)
-            write(6,'(a,2(x,i1),1x,a)') '<< CRYST >> [[[[[[ Stiffness perturbation',k,l,']]]]]]'
+            write(6,'(a,2(1x,i1),1x,a)') '<< CRYST >> [[[[[[ Stiffness perturbation',k,l,']]]]]]'
             write(6,*)
           !$OMP END CRITICAL (write2out)
         endif

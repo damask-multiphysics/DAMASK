@@ -288,7 +288,7 @@ subroutine hypela2(&
        lastMode = .false.                                                 ! pretend last step was collection
        calcMode = .false.                                                 ! pretend last step was collection
        !$OMP CRITICAL (write2out)
-         write (6,'(a,i6,x,i2)') '<< HYPELA2 >> start of analysis..! ',n(1),nn
+         write (6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',n(1),nn
          call flush(6)
        !$OMP END CRITICAL (write2out)
      else if (inc - theInc > 1) then                                      ! >> restart of broken analysis <<
@@ -297,7 +297,7 @@ subroutine hypela2(&
        lastMode = .true.                                                  ! pretend last step was calculation
        calcMode = .true.                                                  ! pretend last step was calculation
        !$OMP CRITICAL (write2out)
-         write (6,'(a,i6,x,i2)') '<< HYPELA2 >> restart of analysis..! ',n(1),nn
+         write (6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',n(1),nn
          call flush(6)
        !$OMP END CRITICAL (write2out)
      else                                                                 ! >> just the next inc <<
@@ -306,7 +306,7 @@ subroutine hypela2(&
        lastMode = .true.                                                  ! assure last step was calculation
        calcMode = .true.                                                  ! assure last step was calculation
        !$OMP CRITICAL (write2out)
-         write (6,'(a,i6,x,i2)') '<< HYPELA2 >> new increment..! ',n(1),nn
+         write (6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',n(1),nn
          call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
@@ -315,7 +315,7 @@ subroutine hypela2(&
      cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
      calcMode = .true.                                                    ! pretend last step was calculation
      !$OMP CRITICAL (write2out)
-       write(6,'(a,i6,x,i2)') '<< HYPELA2 >> cutback detected..! ',n(1),nn
+       write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> cutback detected..! ',n(1),nn
        call flush(6)
      !$OMP END CRITICAL (write2out)
    endif                                                                  ! convergence treatment end

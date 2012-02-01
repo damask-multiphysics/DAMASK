@@ -23,9 +23,9 @@
 MODULE prec
  implicit none 
 !    *** Precision of real and integer variables for python interfacing***
- integer, parameter :: pReal = selected_real_kind(8)
- integer, parameter :: pInt  = selected_int_kind(9)           ! up to +- 1e9
- real(pReal), parameter :: DAMASK_NaN = Z'7FF0000000000001'
+ integer, parameter :: pReal = 8
+ integer, parameter :: pInt  = 4
+ real(pReal), parameter :: DAMASK_NaN = real(Z'7FF0000000000001',pReal)
  real(pReal), parameter :: tol_math_check = 1.0e-8_pReal
 END MODULE prec
 
@@ -36,10 +36,10 @@ MODULE debug
 END MODULE debug
 
 MODULE numerics
- use prec, only: pInt
+ use prec, only: pInt, pReal
  implicit none
- real*8, parameter :: fftw_timelimit = -1.0
- integer*8, parameter :: fftw_planner_flag = 32
+ real(pReal), parameter :: fftw_timelimit = -1.0_pReal
+ integer(pInt), parameter :: fftw_planner_flag = 32_pInt
  integer(pInt), parameter :: fixedSeed = 1_pInt
 END MODULE numerics
 

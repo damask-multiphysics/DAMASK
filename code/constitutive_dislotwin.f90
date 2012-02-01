@@ -718,13 +718,13 @@ constitutive_dislotwin_stateInit(6*ns+4*nt+1:6*ns+5*nt) = TwinVolume0
 
 !write(6,*) '#STATEINIT#'
 !write(6,*)
-!write(6,'(a,/,4(3(f30.20,x)/))') 'RhoEdge',rhoEdge0
-!write(6,'(a,/,4(3(f30.20,x)/))') 'RhoEdgedip',rhoEdgeDip0
-!write(6,'(a,/,4(3(f30.20,x)/))') 'invLambdaSlip',invLambdaSlip0
-!write(6,'(a,/,4(3(f30.20,x)/))') 'MeanFreePathSlip',MeanFreePathSlip0
-!write(6,'(a,/,4(3(f30.20,x)/))') 'tauSlipThreshold', tauSlipThreshold0
-!write(6,'(a,/,4(3(f30.20,x)/))') 'MeanFreePathTwin', MeanFreePathTwin0
-!write(6,'(a,/,4(3(f30.20,x)/))') 'TwinVolume', TwinVolume0
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'RhoEdge',rhoEdge0
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'RhoEdgedip',rhoEdgeDip0
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'invLambdaSlip',invLambdaSlip0
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'MeanFreePathSlip',MeanFreePathSlip0
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'tauSlipThreshold', tauSlipThreshold0
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'MeanFreePathTwin', MeanFreePathTwin0
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'TwinVolume', TwinVolume0
 
 return
 end function
@@ -906,9 +906,9 @@ forall (t = 1:nt) &
 !if ((ip==1).and.(el==1)) then
 !   write(6,*) '#MICROSTRUCTURE#'
 ! write(6,*)
-! write(6,'(a,/,4(3(f10.4,x)/))') 'rhoEdge',state(g,ip,el)%p(1:ns)/1e9
-! write(6,'(a,/,4(3(f10.4,x)/))') 'rhoEdgeDip',state(g,ip,el)%p(ns+1:2*ns)/1e9
-! write(6,'(a,/,4(3(f10.4,x)/))') 'Fraction',state(g,ip,el)%p(2*ns+1:2*ns+nt)
+! write(6,'(a,/,4(3(f10.4,1x)/))') 'rhoEdge',state(g,ip,el)%p(1:ns)/1e9
+! write(6,'(a,/,4(3(f10.4,1x)/))') 'rhoEdgeDip',state(g,ip,el)%p(ns+1:2*ns)/1e9
+! write(6,'(a,/,4(3(f10.4,1x)/))') 'Fraction',state(g,ip,el)%p(2*ns+1:2*ns+nt)
 !endif
 
 
@@ -1052,7 +1052,7 @@ if(constitutive_dislotwin_sbVelocity(myInstance) /= 0.0_pReal) then
     tau_sb(j) = dot_product(Tstar_v,constitutive_dislotwin_sbSv(1:6,j,g,ip,el))
   
     ! if (debug_selectiveDebugger .and. g==debug_g .and. ip==debug_i .and. el==debug_e) then
-    !   write(6,'(a,3(i3,x),a,i1,a,e10.3)') '### TAU SHEARBAND at g ip el ',g,ip,el,' on family ',j,' : ',tau
+    !   write(6,'(a,3(i3,1x),a,i1,a,e10.3)') '### TAU SHEARBAND at g ip el ',g,ip,el,' on family ',j,' : ',tau
     ! endif
   
     !* Stress ratios
@@ -1129,9 +1129,9 @@ dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 !   write(6,*)
 !   write(6,*) 'Tstar_v', Tstar_v
 !   write(6,*) 'tau_slip', tau_slip
-!   write(6,'(a10,/,4(3(e20.8,x),/))') 'state',state(1,1,1)%p
-!   write(6,'(a,/,3(3(f10.4,x)/))') 'Lp',Lp
-!   write(6,'(a,/,9(9(f10.4,x)/))') 'dLp_dTstar',dLp_dTstar
+!   write(6,'(a10,/,4(3(e20.8,1x),/))') 'state',state(1,1,1)%p
+!   write(6,'(a,/,3(3(f10.4,1x)/))') 'Lp',Lp
+!   write(6,'(a,/,9(9(f10.4,1x)/))') 'dLp_dTstar',dLp_dTstar
 !endif
 
 return
@@ -1297,15 +1297,15 @@ enddo
 
 !write(6,*) '#DOTSTATE#'
 !write(6,*)
-!write(6,'(a,/,4(3(f30.20,x)/))') 'tau slip',tau_slip
-!write(6,'(a,/,4(3(f30.20,x)/))') 'gamma slip',gdot_slip
-!write(6,'(a,/,4(3(f30.20,x)/))') 'RhoEdge',state(g,ip,el)%p(1:ns)
-!write(6,'(a,/,4(3(f30.20,x)/))') 'Threshold Slip', state(g,ip,el)%p(5*ns+3*nt+1:6*ns+3*nt)
-!write(6,'(a,/,4(3(f30.20,x)/))') 'Multiplication',DotRhoMultiplication
-!write(6,'(a,/,4(3(f30.20,x)/))') 'DipFormation',DotRhoDipFormation
-!write(6,'(a,/,4(3(f30.20,x)/))') 'SingleSingle',DotRhoEdgeEdgeAnnihilation
-!write(6,'(a,/,4(3(f30.20,x)/))') 'SingleDipole',DotRhoEdgeDipAnnihilation
-!write(6,'(a,/,4(3(f30.20,x)/))') 'DipClimb',DotRhoEdgeDipClimb
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'tau slip',tau_slip
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'gamma slip',gdot_slip
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'RhoEdge',state(g,ip,el)%p(1:ns)
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'Threshold Slip', state(g,ip,el)%p(5*ns+3*nt+1:6*ns+3*nt)
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'Multiplication',DotRhoMultiplication
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'DipFormation',DotRhoDipFormation
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'SingleSingle',DotRhoEdgeEdgeAnnihilation
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'SingleDipole',DotRhoEdgeDipAnnihilation
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'DipClimb',DotRhoEdgeDipClimb
 
 return
 end function

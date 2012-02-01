@@ -1558,9 +1558,9 @@ dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 !   write(6,*)
 !   write(6,*) 'Tstar_v', Tstar_v
 !   write(6,*) 'tau_slip', tau_slip
-!   write(6,'(a10,/,4(3(e20.8,x),/))') 'state',state(1,1,1)%p
-!   write(6,'(a,/,3(3(f10.4,x)/))') 'Lp',Lp
-!   write(6,'(a,/,9(9(f10.4,x)/))') 'dLp_dTstar',dLp_dTstar
+!   write(6,'(a10,/,4(3(e20.8,1x),/))') 'state',state(1,1,1)%p
+!   write(6,'(a,/,3(3(f10.4,1x)/))') 'Lp',Lp
+!   write(6,'(a,/,9(9(f10.4,1x)/))') 'dLp_dTstar',dLp_dTstar
 !endif
 
 return
@@ -1707,10 +1707,10 @@ enddo
 
 !write(6,*) '#DOTSTATE#'
 !write(6,*)
-!write(6,'(a,/,4(3(f30.20,x)/))') 'EdgeGeneration',DotRhoEdgeGeneration
-!write(6,'(a,/,4(3(f30.20,x)/))') 'ScrewGeneration',DotRhoScrewGeneration
-!write(6,'(a,/,4(3(f30.20,x)/))') 'EdgeAnnihilation',DotRhoEdgeAnnihilation
-!write(6,'(a,/,4(3(f30.20,x)/))') 'ScrewAnnihilation',DotRhoScrewAnnihilation
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'EdgeGeneration',DotRhoEdgeGeneration
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'ScrewGeneration',DotRhoScrewGeneration
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'EdgeAnnihilation',DotRhoEdgeAnnihilation
+!write(6,'(a,/,4(3(f30.20,1x)/))') 'ScrewAnnihilation',DotRhoScrewAnnihilation
 
 
 return
