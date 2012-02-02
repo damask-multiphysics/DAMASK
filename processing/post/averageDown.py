@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os,re,sys,math,string,numpy
+import os,re,sys,math,string,numpy,damask
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -47,25 +47,30 @@ to resolution/packing. (Requires numpy.)
 """ + string.replace('$Id$','\n','\\n')
 )
 
-
-parser.add_option('-m','--memory',      dest='memory', action='store_true', \
-                                        help='load complete file into memory [%default]')
-parser.add_option('-r','--resolution',  dest='res', type='int', nargs=3, \
-                                        help='resolution in fast, medium, and slow dimension [%default]')
+parser.add_option('-c','--coordinates', dest='coords', type='string',\
+                                        help='column heading for coordinates [%default]')
 parser.add_option('-p','--packing',     dest='packing', type='int', nargs=3, \
-                                        help='number of data points to average down in each dimension [%default]')
+                                        help='dimension of packed group [%default]')
+parser.add_option('-s','--shift',       dest='shift', type='int', nargs=3, \
+                                        help='shift vector of packing stencil [%default]')
 
-parser.set_defaults(memory = False)
-parser.set_defaults(resolution = [32,32,32])
+parser.set_defaults(coords = 'ip')
 parser.set_defaults(packing = [2,2,2])
+parser.set_defaults(shift = [0,0,0])
 
 (options,filenames) = parser.parse_args()
 
-if len(options.resolution) < 3:
-  parser.error('resolution needs three parameters...')
 if len(options.packing) < 3:
   parser.error('packing needs three parameters...')
+if len(options.shift) < 3:
+  parser.error('shift needs three parameters...')
+
 options.packing = numpy.array(options.packing)
+options.shift = numpy.array(options.shift)
+
+prefix = 'averagedDown%ix%ix%i'%(options.packing[0],options.packing[1],options.packing[2])
+if numpy.any(options.shift != 0):
+  prefix += '_shift%+i%+i%+i'%(options.shift[0],options.shift[1],options.shift[2])
 
 # ------------------------------------------ setup file handles ---------------------------------------  
 
@@ -75,74 +80,82 @@ if filenames == []:
 else:
   for name in filenames:
     if os.path.exists(name):
-      (head,tail) = os.path.split(name)
-      files.append({'name':name, 'input':open(name), 'output':open(os.path.join(head,'avgDown_%s'%tail),'w')})
+      files.append({'name':name, 'input':open(name), 'output':open(prefix+'_'+name,'w')})
+
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  print file['name']
+  if file['name'] != 'STDIN': print file['name'],
 
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
+  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
+  table.head_read()                                                         # read ASCII header info
+  table.info_append(string.replace('$Id$','\n','\\n') + \
+                    '\t' + ' '.join(sys.argv[1:]))
 
-  firstline = file['input'].readline()
-  m = re.search('(\d+)\s*head', firstline.lower())
-  if m:
-    headerlines = int(m.group(1))
-    passOn  = [file['input'].readline() for i in range(1,headerlines)]
-    headers = file['input'].readline().split()
-  else:
-    headerlines = 1
-    passOn  = []
-    headers = firstline.split()
+  try:
+    locationCol = table.labels.index('%s.x'%options.coords)                 # columns containing location data
+  except ValueError:
+    print 'no coordinate data found...'
+    continue
+
+  grid = [{},{},{}]
+  while table.data_read():                                                  # read next data line of ASCII table
+    for j in xrange(3):
+      grid[j][str(table.data[locationCol+j])] = True                        # remember coordinate along x,y,z
+  resolution = numpy.array([len(grid[0]),\
+                            len(grid[1]),\
+                            len(grid[2]),],'i')                             # resolution is number of distinct coordinates found
+  dimension = resolution/numpy.maximum(numpy.ones(3,'d'),resolution-1.0)* \
+              numpy.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
+                           max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
+                           max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
+                          ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
+  if resolution[2] == 1:
+    options.packing[2] = 1
+    options.shift[2]   = 0
+    dimension[2]       = min(dimension[:2]/resolution[:2])
+
+  downSized = numpy.maximum(numpy.ones(3,'i'),resolution//options.packing)
+
+  print '\t%s @ %s --> %s'%(dimension,resolution,downSized)
   
-  if options.memory:
-    data = file['input'].readlines()
-  else:
-    data = []
-
 # ------------------------------------------ assemble header ---------------------------------------  
 
-  output = '%i\theader'%(headerlines+1) + '\n' + \
-           ''.join(passOn) + \
-           string.replace('$Id$','\n','\\n')+ '\t' + \
-           ' '.join(sys.argv[1:]) + '\n' + \
-           '\t'.join(headers) + '\n'                              # build extended header
+  table.head_write()
 
-  if not options.memory:
-    file['output'].write(output)
-    output = ''
+# ------------------------------------------ process data ---------------------------------------  
 
-# ------------------------------------------ read file ---------------------------------------  
+  table.data_rewind()
 
-  averagedDown = numpy.zeros([options.res[2]/options.packing[2],
-                              options.res[1]/options.packing[1],
-                              options.res[0]/options.packing[0],
-                              len(headers)])
+  averagedDown = numpy.zeros(downSized.tolist()+[len(table.labels)])
 
-  idx = 0
-  for line in {True  : data,
-               False : file['input']}[options.memory]:
-    items = numpy.array(map(float,line.split()[:len(headers)]))
-    if len(items) < len(headers):
-      continue
-      
-    loc = location(idx,options.res)//options.packing
-    averagedDown[loc[2],loc[1],loc[0],:] += items
-    
-    idx += 1
+  for z in xrange(-options.shift[2],-options.shift[2]+resolution[2]):
+    for y in xrange(-options.shift[1],-options.shift[1]+resolution[1]):
+      for x in xrange(-options.shift[0],-options.shift[0]+resolution[0]):
+        table.data_read()
+        data = numpy.array(table.data_asFloat(),'d')                        # convert to numpy array
+        me = numpy.array((x,y,z),'i')                                       # my location as array
+        data[locationCol:locationCol+3] -= dimension*(me//resolution)       # shift coordinates if periodic image
+        (a,b,c) = (me%resolution)//options.packing                          # bin to condense my location into
+        averagedDown[a,b,c,:] += data                                       # store the (coord-updated) data there
+
+  averagedDown /= options.packing.prod()                                    # normalize data by element count
+
+  for c in xrange(downSized[2]):
+    for b in xrange(downSized[1]):
+      for a in xrange(downSized[0]):
+        table.data = averagedDown[a,b,c,:].tolist()
+        table.data_write()                                                  # output processed line
+
   
-  averagedDown /= options.packing[0]*options.packing[1]*options.packing[2]
-  for z in range(options.res[2]/options.packing[2]):
-    for y in range(options.res[1]/options.packing[1]):
-      for x in range(options.res[0]/options.packing[0]):
-        output += '\t'.join(map(str,averagedDown[z,y,x,:])) + '\n'
-
-  file['input'].close()
-
 # ------------------------------------------ output result ---------------------------------------  
 
-  file['output'].write(output)
+  table.output_flush()                                                      # just in case of buffered ASCII table
 
+# ------------------------------------------ close file handles ---------------------------------------  
+
+for file in files:
+  file['input'].close()                                                     # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close
+    file['output'].close                                                    # close output ASCII table
