@@ -3340,6 +3340,15 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
 
  enddo; enddo; enddo
 
+ call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
+ call c_f_pointer(C_NULL_PTR, defgrad_real,        [res(1)+2_pInt,res(2),res(3),3,3])              ! let all pointers point on NULL-Type
+ call c_f_pointer(C_NULL_PTR, defgrad_complex,     [res1_red     ,res(2),res(3),3,3])
+ call c_f_pointer(C_NULL_PTR, coords_real,   [res(1)+2_pInt,res(2),res(3),3])
+ call c_f_pointer(C_NULL_PTR, coords_complex,[res1_red     ,res(2),res(3),3])
+ if(.not. (c_associated(C_LOC(defgrad_real)) .and. c_associated(C_LOC(defgrad_complex))))&         ! Check if pointers are deassociated and free memory   
+                                                      call fftw_free(defgrad_fftw)                 ! This procedure ensures that optimization do not mix-up lines, because a 
+ if(.not.(c_associated(C_LOC(coords_real)) .and. c_associated(C_LOC(coords_complex))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
+                                                       call fftw_free(coords_fftw)                 ! call c_f_pointer(field_fftw, field_complex, [res1_red ,res(2),res(3),vec_tens,3])
 end subroutine deformed_fft
 
 
@@ -3443,7 +3452,15 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  enddo; enddo; enddo
 
  curl = curl * wgt
- 
+ call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
+ call c_f_pointer(C_NULL_PTR, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3])                       ! let all pointers point on NULL-Type
+ call c_f_pointer(C_NULL_PTR, field_complex,[res1_red     ,res(2),res(3),vec_tens,3])
+ call c_f_pointer(C_NULL_PTR, curl_real,    [res(1)+2_pInt,res(2),res(3),vec_tens,3])
+ call c_f_pointer(C_NULL_PTR, curl_complex, [res1_red     ,res(2),res(3),vec_tens,3])
+ if(.not. (c_associated(C_LOC(field_real)) .and. c_associated(C_LOC(field_complex))))&                     ! Check if pointers are deassociated and free memory   
+                                                      call fftw_free(field_fftw)                           ! This procedure ensures that optimization do not mix-up lines, because a 
+ if(.not.(c_associated(C_LOC(curl_real)) .and. c_associated(C_LOC(curl_complex))))&                        ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
+                                                      call fftw_free(curl_fftw)                            ! call c_f_pointer(field_fftw, field_complex, [res1_red ,res(2),res(3),vec_tens,3])
 end subroutine curl_fft
 
  
@@ -3541,7 +3558,15 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  enddo; enddo; enddo
 
  divergence = divergence * wgt
- 
+ call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
+ call c_f_pointer(C_NULL_PTR, field_real,        [res(1)+2_pInt,res(2),res(3),vec_tens,3])                 ! let all pointers point on NULL-Type
+ call c_f_pointer(C_NULL_PTR, field_complex,     [res1_red     ,res(2),res(3),vec_tens,3])
+ call c_f_pointer(C_NULL_PTR, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
+ call c_f_pointer(C_NULL_PTR, divergence_complex,[res1_red     ,res(2),res(3),vec_tens])
+ if(.not. (c_associated(C_LOC(field_real)) .and. c_associated(C_LOC(field_complex))))&                     ! Check if pointers are deassociated and free memory   
+                                                      call fftw_free(field_fftw)                           ! This procedure ensures that optimization do not mix-up lines, because a 
+ if(.not.(c_associated(C_LOC(divergence_real)) .and. c_associated(C_LOC(divergence_complex))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
+                                                    call fftw_free(divergence_fftw)                        ! call c_f_pointer(field_fftw, field_complex, [res1_red ,res(2),res(3),vec_tens,3])
  end subroutine divergence_fft
 
           
