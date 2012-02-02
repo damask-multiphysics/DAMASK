@@ -86,8 +86,8 @@ recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess
    positions = IO_stringPos(line,maxNchunks)
 
 !   call IO_lcInPlace(line)
-   if (IO_lc(IO_StringValue(line,positions,1))=='*include') then
-     fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
+   if (IO_lc(IO_StringValue(line,positions,1_pInt))=='*include') then
+     fname = trim(getSolverWorkingDirectoryName())//trim(line(9_pInt+scan(line(9_pInt:),'='):))
      inquire(file=fname, exist=fexist)
      if (.not.(fexist)) then
        !$OMP CRITICAL (write2out)
@@ -98,7 +98,7 @@ recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess
        return
      endif
      open(unit2+1,err=200,status='old',file=fname)
-     if (IO_abaqus_assembleInputFile(unit1,unit2+1)) then
+     if (IO_abaqus_assembleInputFile(unit1,unit2+1_pInt)) then
        createSuccess=.true.
        close(unit2+1)
      else
@@ -138,7 +138,7 @@ end function
  do
    read(unit,610,END=620) line
    pos = IO_stringPos(line,maxNchunks)
-   if (IO_lc(IO_stringValue(line,pos,1)) == '*part' ) then
+   if (IO_lc(IO_stringValue(line,pos,1_pInt)) == '*part' ) then
      IO_abaqus_hasNoPart = .false.
      exit
    endif
@@ -374,12 +374,12 @@ end function
  real(pReal), dimension(:,:,:), allocatable :: dV_V
  real(pReal), dimension(3,Nast) :: IO_hybridIA
 
- if (.not. IO_open_file(999,ODFfileName)) goto 100
+ if (.not. IO_open_file(999_pInt,ODFfileName)) goto 100
  
 !--- parse header of ODF file ---
 !--- limits in phi1, Phi, phi2 ---
  read(999,fmt=fileFormat,end=100) line
- pos = IO_stringPos(line,3)
+ pos = IO_stringPos(line,3_pInt)
  if (pos(1).ne.3) goto 100
  do i=1,3
    limits(i) = IO_intValue(line,pos,i)*inRad
@@ -387,7 +387,7 @@ end function
 
 !--- deltas in phi1, Phi, phi2 ---
  read(999,fmt=fileFormat,end=100) line
- pos = IO_stringPos(line,3)
+ pos = IO_stringPos(line,3_pInt)
  if (pos(1).ne.3) goto 100
  do i=1,3
    deltas(i) = IO_intValue(line,pos,i)*inRad
@@ -599,9 +599,9 @@ end function
      section = section + 1
    if (section > 0) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      if (tag == myTag) &                                  ! match
-       counter(section) = counter(section) + 1
+       counter(section) = counter(section) + 1_pInt
    endif   
  enddo
 
@@ -644,7 +644,7 @@ endfunction
      section = section + 1
    if (section > 0) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      if (tag == myTag) &                                  ! match
        IO_spotTagInPart(section) = .true.
    endif   
@@ -944,7 +944,7 @@ endfunction
  do
    read(unit,'(A300)',end=100) line
    pos = IO_stringPos(line,maxNchunks)
-   tmp = IO_lc(IO_stringValue(line,pos,1))
+   tmp = IO_lc(IO_stringValue(line,pos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then  ! found keyword
      exit
    else
@@ -981,11 +981,11 @@ endfunction
      do
        read(unit,'(A300)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
-       if (IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then               ! found range indicator
-         IO_countContinousIntValues = 1 + IO_intValue(line,pos,3) - IO_intValue(line,pos,1)
+       if (IO_lc(IO_stringValue(line,pos,2_pInt)) == 'to' ) then               ! found range indicator
+         IO_countContinousIntValues = 1_pInt + IO_intValue(line,pos,3_pInt) - IO_intValue(line,pos,1_pInt)
          exit                                                             ! only one single range indicator allowed
        else
-         IO_countContinousIntValues = IO_countContinousIntValues+pos(1)-1 ! add line's count when assuming 'c'
+         IO_countContinousIntValues = IO_countContinousIntValues+pos(1)-1_pInt ! add line's count when assuming 'c'
          if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then        ! line finished, read last value
            IO_countContinousIntValues = IO_countContinousIntValues+1
            exit                                                           ! data ended
@@ -1004,7 +1004,7 @@ endfunction
        read(unit,'(A300)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
        IO_countContinousIntValues = IO_countContinousIntValues + 1 + &    ! assuming range generation
-                                    (IO_intValue(line,pos,2)-IO_intValue(line,pos,1))/max(1,IO_intValue(line,pos,3))
+                                    (IO_intValue(line,pos,2_pInt)-IO_intValue(line,pos,1_pInt))/max(1_pInt,IO_intValue(line,pos,3_pInt))
      enddo
  
  endselect
@@ -1042,27 +1042,27 @@ endfunction
      do
        read(unit,'(A65536)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
-       if (verify(IO_stringValue(line,pos,1),'0123456789') > 0) then     ! a non-int, i.e. set name
-         do i = 1,lookupMaxN                                             ! loop over known set names
-           if (IO_stringValue(line,pos,1) == lookupName(i)) then         ! found matching name
+       if (verify(IO_stringValue(line,pos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set name
+         do i = 1_pInt,lookupMaxN                                             ! loop over known set names
+           if (IO_stringValue(line,pos,1_pInt) == lookupName(i)) then         ! found matching name
              IO_continousIntValues = lookupMap(:,i)                      ! return resp. entity list
              exit
            endif
          enddo
          exit
-       else if (pos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,pos,2)) == 'to' ) then         ! found range indicator
-         do i = IO_intValue(line,pos,1),IO_intValue(line,pos,3)
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1
+       else if (pos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,pos,2_pInt)) == 'to' ) then         ! found range indicator
+         do i = IO_intValue(line,pos,1_pInt),IO_intValue(line,pos,3_pInt)
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
            IO_continousIntValues(1+IO_continousIntValues(1)) = i
          enddo
          exit
        else
          do i = 1,pos(1)-1  ! interpret up to second to last value
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
            IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,i)
          enddo
          if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then       ! line finished, read last value
-           IO_continousIntValues(1) = IO_continousIntValues(1)+1
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
            IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,pos(1))
            exit
          endif
@@ -1087,7 +1087,7 @@ endfunction
      do l = 1,count
        read(unit,'(A65536)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
-       if (verify(IO_stringValue(line,pos,1),'0123456789') > 0) then     ! a non-int, i.e. set names follow on this line
+       if (verify(IO_stringValue(line,pos,1_pInt),'0123456789') > 0_pInt) then     ! a non-int, i.e. set names follow on this line
          do i = 1,pos(1)                                                 ! loop over set names in line
            do j = 1,lookupMaxN                                           ! look thru known set names
              if (IO_stringValue(line,pos,i) == lookupName(j)) then       ! found matching name
@@ -1099,7 +1099,7 @@ endfunction
            enddo
          enddo
        else if (rangeGeneration) then                                    ! range generation
-         do i = IO_intValue(line,pos,1),IO_intValue(line,pos,2),max(1,IO_intValue(line,pos,3))
+         do i = IO_intValue(line,pos,1_pInt),IO_intValue(line,pos,2_pInt),max(1_pInt,IO_intValue(line,pos,3_pInt))
            IO_continousIntValues(1) = IO_continousIntValues(1) + 1
            IO_continousIntValues(1+IO_continousIntValues(1)) = i
          enddo
@@ -1134,242 +1134,240 @@ endfunction
  character(len=1024) msg
 
  select case (error_ID)
- case (30)
+ case (30_pInt)
    msg = 'could not open spectral loadcase'
- case (31)
+ case (31_pInt)
    msg = 'mask consistency violated in spectral loadcase'
- case (32)
+ case (32_pInt)
    msg = 'ill-defined L (each line should be either fully or not at all defined) in spectral loadcase'
- case (34)
+ case (34_pInt)
    msg = 'negative time increment in spectral loadcase'
- case (35)
+ case (35_pInt)
    msg = 'non-positive increments in spectral loadcase'
- case (36)
+ case (36_pInt)
    msg = 'non-positive result frequency in spectral loadcase'
- case (37)
+ case (37_pInt)
    msg = 'incomplete loadcase'
- case (38)
+ case (38_pInt)
    msg = 'mixed boundary conditions allow rotation'
- case (39)
+ case (39_pInt)
    msg = 'non-positive restart frequency in spectral loadcase'
- case (40)
+ case (40_pInt)
    msg = 'path rectification error'
- case (41)
+ case (41_pInt)
    msg = 'path too long'
- case (42)
+ case (42_pInt)
    msg = 'missing header info in spectral mesh'
- case (43)
+ case (43_pInt)
    msg = 'resolution in spectral mesh'
- case (44)
+ case (44_pInt)
    msg = 'dimension in spectral mesh'
- case (45)
+ case (45_pInt)
    msg = 'incomplete information in spectral mesh header'
- case (46)
+ case (46_pInt)
    msg = 'not a rotation defined for loadcase rotation'
- case (47)
+ case (47_pInt)
    msg = 'updating of gamma operator not possible if it is pre calculated'
- case (50)
+ case (50_pInt)
    msg = 'writing constitutive output description'
- case (100)
+ case (100_pInt)
    msg = 'opening material configuration'
- case (101)
+ case (101_pInt)
    msg = 'opening input file'
- case (102)
+ case (102_pInt)
    msg = 'precistion not suitable for FFTW'
- case (103)
+ case (103_pInt)
    msg = 'odd resolution given'
- case (104)
+ case (104_pInt)
    msg = 'initializing FFTW'
- case (105)
+ case (105_pInt)
    msg = 'reading from ODF file'
- case (106)
+ case (106_pInt)
    msg = 'reading info on old job'
- case (107)
+ case (107_pInt)
    msg = 'writing spectralOut file'
- case (110)
+ case (110_pInt)
    msg = 'no homogenization specified via State Variable 2'
- case (120)
+ case (120_pInt)
    msg = 'no microstructure specified via State Variable 3'
- case (125)
+ case (125_pInt)
    msg = 'no entries in config part'
- case (130)
+ case (130_pInt)
    msg = 'homogenization index out of bounds'
- case (140)
+ case (140_pInt)
    msg = 'microstructure index out of bounds'
- case (150)
+ case (150_pInt)
    msg = 'crystallite index out of bounds'
- case (155)
+ case (155_pInt)
    msg = 'phase index out of bounds'
- case (160)
+ case (160_pInt)
    msg = 'texture index out of bounds'
- case (170)
+ case (170_pInt)
    msg = 'sum of phase fractions differs from 1'
- case (180)
+ case (180_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
- case (200)
+ case (200_pInt)
    msg = 'unknown constitution specified'
- case (201)
+ case (201_pInt)
    msg = 'unknown homogenization specified'
- case (205)
+ case (205_pInt)
    msg = 'unknown lattice structure encountered'
- case (210)
+ case (210_pInt)
    msg = 'negative initial resistance'
- case (211)
+ case (211_pInt)
    msg = 'non-positive reference shear rate'
- case (212)
+ case (212_pInt)
    msg = 'non-positive stress exponent'
- case (213)
+ case (213_pInt)
    msg = 'non-positive saturation stress'
- case (214)
+ case (214_pInt)
    msg = 'zero hardening exponent'
- case (220)
+ case (220_pInt)
    msg = 'negative initial dislocation density'
- case (221)
+ case (221_pInt)
    msg = 'negative Burgers vector'
- case (222)
+ case (222_pInt)
    msg = 'negative activation energy for edge dislocation glide'
- case (223)
+ case (223_pInt)
    msg = 'zero stackin fault energy'
-! case (224)
-!   msg = 'non-positive diffusion prefactor'
- case (225)
+ case (225_pInt)
    msg = 'no slip systems specified'
- case (226)
+ case (226_pInt)
    msg = 'non-positive prefactor for dislocation velocity'
- case (227)
+ case (227_pInt)
    msg = 'non-positive prefactor for mean free path'
- case (228)
+ case (228_pInt)
    msg = 'non-positive minimum stable dipole distance'
- case (229)
+ case (229_pInt)
    msg = 'non-positive hardening interaction coefficients'
- case (230)
+ case (230_pInt)
    msg = 'non-positive atomic volume'
- case (231)
-   msg = 'non-positive prefactor for self-diffusion coefficient'  ! what is the difference to 224 ??
- case (232)
+ case (231_pInt)
+   msg = 'non-positive prefactor for self-diffusion coefficient'
+ case (232_pInt)
    msg = 'non-positive activation energy for self-diffusion'
- case (233)
+ case (233_pInt)
    msg = 'non-positive relevant dislocation density'   
- case (234)
+ case (234_pInt)
    msg = 'error in shear banding input'   
- case (235)
+ case (235_pInt)
    msg = 'material parameter for nonlocal constitutive phase out of bounds:'
- case (236)
+ case (236_pInt)
    msg = 'unknown material parameter for nonlocal constitutive phase:'
- case (237)
+ case (237_pInt)
    msg = 'unknown constitutive output for nonlocal constitution:'
- case (240)
+ case (240_pInt)
    msg = 'non-positive Taylor factor'
- case (241)
+ case (241_pInt)
    msg = 'non-positive hardening exponent'
- case (242)
+ case (242_pInt)
    msg = 'non-positive relevant slip resistance'   
- case (260)
+ case (260_pInt)
    msg = 'non-positive relevant strain'
- case (261)
+ case (261_pInt)
    msg = 'frequency of stiffness update < 0'
- case (262)
+ case (262_pInt)
    msg = 'frequency of Jacobian update of Lp residuum < 0'
- case (263)
+ case (263_pInt)
    msg = 'non-positive perturbation value'
- case (264)
+ case (264_pInt)
    msg = 'limit for homogenization loop too small'
- case (265)
+ case (265_pInt)
    msg = 'limit for crystallite loop too small'
- case (266)
+ case (266_pInt)
    msg = 'limit for state loop too small'
- case (267)
+ case (267_pInt)
    msg = 'limit for stress loop too small'
- case (268)
+ case (268_pInt)
    msg = 'non-positive minimum substep size'
- case (269)
+ case (269_pInt)
    msg = 'non-positive relative state tolerance'
- case (270)
+ case (270_pInt)
    msg = 'Non-positive relative stress tolerance'
- case (271)
+ case (271_pInt)
    msg = 'Non-positive absolute stress tolerance'
 
 !* Error messages related to RGC numerical parameters <<<updated 31.07.2009>>>
- case (272)
+ case (272_pInt)
    msg = 'non-positive relative tolerance of residual in RGC'
- case (273)
+ case (273_pInt)
    msg = 'non-positive absolute tolerance of residual in RGC'
- case (274)
+ case (274_pInt)
    msg = 'non-positive relative maximum of residual in RGC'
- case (275)
+ case (275_pInt)
    msg = 'non-positive absolute maximum of residual in RGC'
- case (276)
+ case (276_pInt)
    msg = 'non-positive penalty perturbation in RGC'
- case (277)
+ case (277_pInt)
    msg = 'non-positive relevant mismatch in RGC'
- case (278)
+ case (278_pInt)
    msg = 'non-positive definite viscosity model in RGC'
- case (288)
+ case (288_pInt)
    msg = 'non-positive maximum threshold of relaxation change in RGC'
- case (289)
+ case (289_pInt)
    msg = 'non-positive definite volume discrepancy penalty in RGC'
 
- case (294)
+ case (294_pInt)
    msg = 'non-positive tolerance for deformation gradient'
 
- case (298)
+ case (298_pInt)
    msg = 'chosen integration method does not exist'
- case (299)
+ case (299_pInt)
    msg = 'chosen perturbation method does not exist'
 
- case (300)
+ case (300_pInt)
    msg = 'this material can only be used with elements with three direct stress components'
- case (500)
+ case (500_pInt)
    msg = 'unknown lattice type specified'
- case (550)
+ case (550_pInt)
    msg = 'unknown symmetry type specified'
- case (600)
+ case (600_pInt)
    msg = 'convergence not reached'
- case (610)
+ case (610_pInt)
    msg = 'stress loop not converged'
 
- case (666)
+ case (666_pInt)
    msg = 'memory leak detected'
- case (667)
+ case (667_pInt)
    msg = 'invalid materialpoint result requested'
 
- case (670)
+ case (670_pInt)
    msg = 'math_check: quat -> axisAngle -> quat failed'
- case (671)
+ case (671_pInt)
    msg = 'math_check: quat -> R -> quat failed'
- case (672)
+ case (672_pInt)
    msg = 'math_check: quat -> euler -> quat failed'
- case (673)
+ case (673_pInt)
    msg = 'math_check: R -> euler -> R failed'
 
- case (700)
+ case (700_pInt)
    msg = 'singular matrix in stress iteration'
 
- case (800)
+ case (800_pInt)
    msg = 'matrix inversion error'
 
 !    Error messages related to parsing of Abaqus input file
- case (900)
+ case (900_pInt)
    msg = 'PARSE ERROR: Improper definition of nodes in input file (Nnodes < 2)'
- case (901)
+ case (901_pInt)
    msg = 'PARSE ERROR: No Elements defined in input file (Nelems = 0)'
- case (902)
+ case (902_pInt)
    msg = 'PARSE ERROR: No Element sets defined in input file (Atleast one *Elset must exist)'
- case (903)
+ case (903_pInt)
    msg = 'PARSE ERROR: No Materials defined in input file (Look into section assigments)'
- case (904)
+ case (904_pInt)
    msg = 'PARSE ERROR: No elements could be assigned for Elset: '
- case (905)
+ case (905_pInt)
    msg = 'PARSE ERROR: Error in mesh_abaqus_map_materials'
- case (906)
+ case (906_pInt)
    msg = 'PARSE ERROR: Error in mesh_abaqus_count_cpElements'
- case (907)
+ case (907_pInt)
    msg = 'PARSE ERROR: Incorrect size of mesh_mapFEtoCPelem in mesh_abaqus_map_elements; Size cannot be zero'
- case (908)
+ case (908_pInt)
    msg = 'PARSE ERROR: Incorrect size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes; Size cannot be zero'
- case (909)
+ case (909_pInt)
    msg = 'PARSE ERROR: Incorrect size of mesh_node in mesh_abaqus_build_nodes; must be equal to mesh_Nnodes'
- case(910)
+ case (910_pInt)
    msg = 'PARSE ERROR: Incorrect element type mapping in '
  
  
@@ -1416,9 +1414,9 @@ endfunction
  character(len=1024) msg
 
  select case (warning_ID)
- case (34)
+ case (34_pInt)
    msg = 'invalid restart increment given'
- case (35)
+ case (35_pInt)
    msg = 'could not get $DAMASK_NUM_THREADS'
  case (47_pInt)
    msg = 'No valid parameter for FFTW given, using FFTW_PATIENT'
