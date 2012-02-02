@@ -11,6 +11,7 @@ class ASCIItable():
                'data',
               ]
 
+# ------------------------------------------------------------------
   def __init__(self,
                fileIn = sys.stdin,
                fileOut = sys.stdout,
@@ -27,6 +28,15 @@ class ASCIItable():
     self.labels = []
     self.data = []
 
+
+# ------------------------------------------------------------------
+  def _transliterateToFloat(self,x):
+    try:
+      return float(x)
+    except:
+      return 0.0
+
+# ------------------------------------------------------------------
   def output_write(self,
                    what):
     if isinstance(what,list):
@@ -35,14 +45,17 @@ class ASCIItable():
       self.__IO__['output'] += [str(what)]
       self.__IO__['buffered'] or self.output_flush()
 
+# ------------------------------------------------------------------
   def output_flush(self,
                    clear = True):
     self.__IO__['output'] == [] or self.__IO__['out'].write('\n'.join(self.__IO__['output']) + '\n')
     if clear: self.output_clear()
 
+# ------------------------------------------------------------------
   def output_clear(self):
     self.__IO__['output'] = []
 
+# ------------------------------------------------------------------
   def head_read(self):
     '''
        get column labels by either read the first row, or 
@@ -66,41 +79,53 @@ class ASCIItable():
     self.__IO__['validReadSize'] = len(self.labels)
     self.__IO__['dataStart'] = self.__IO__['in'].tell()
 
+# ------------------------------------------------------------------
   def head_write(self):
     self.output_write (['%i\theader'%(len(self.info)+1),
                         self.info,
                         '\t'.join(self.labels)])
 
+# ------------------------------------------------------------------
   def labels_append(self,
                    what):
     if isinstance(what,list):
       for item in what: self.labels_append(item)
     else:               self.labels += [str(what)]
 
+# ------------------------------------------------------------------
   def info_append(self,
                   what):
     if isinstance(what,list):
       for item in what: self.info_append(item)
     else:               self.info += [str(what)]
 
+# ------------------------------------------------------------------
   def data_rewind(self):
     self.__IO__['in'].seek(self.__IO__['dataStart'])
     
+# ------------------------------------------------------------------
   def data_read(self):
     line = self.__IO__['in'].readline()
     items = line.split()[:self.__IO__['validReadSize']]                             # get next data row
     self.data = {False:   [],
                   True: items}[len(items) == self.__IO__['validReadSize']]          # take if correct number of entries
-    return line != ''
+    return self.data != []
 
+# ------------------------------------------------------------------
   def data_write(self):
     if isinstance(self.data[0],list):
       self.output_write (['\t'.join(map(str,items)) for items in self.data])
     else:
       self.output_write ('\t'.join(map(str,self.data)))
 
+# ------------------------------------------------------------------
   def data_append(self,
                   what):
     if isinstance(what,list):
       for item in what: self.data_append(item)
     else:               self.data += [str(what)]
+
+# ------------------------------------------------------------------
+  def data_asFloat(self):
+    return map(self._transliterateToFloat,self.data)
+
