@@ -534,7 +534,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! depending on (debug) options, allocate more memory and create additional plans 
        if (.not. simplified_algorithm) then
-         stop 'long algorithm is not working yet'
+         print*, 'using polarization field based algorithm'
          tau = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))
          call c_f_pointer(tau, tau_real,    [ res(1)+2_pInt,res(2),res(3),3,3])
          call c_f_pointer(tau, tau_complex, [ res1_red,     res(2),res(3),3,3])
@@ -841,7 +841,7 @@ program DAMASK_spectral
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
             tau_real(i,j,k,1:3,1:3)&
                             = tensorField_real(i,j,k,1:3,1:3) &
-                            - math_mul3333xx33(c0_reference,defgrad(i,j,k,1:3,1:3)-math_I3)!-defgrad_av_lab)
+                            - math_mul3333xx33(c0_reference,defgrad(i,j,k,1:3,1:3))
            enddo; enddo; enddo
            call fftw_execute_dft_r2c(plan_tau,tau_real,tau_complex)
          endif
@@ -874,7 +874,7 @@ program DAMASK_spectral
                                                             math_transpose33(defgradAim)
            print '(a,1x,es10.4)'         , 'determinant of new deformation: ', math_det33(defgradAim)
          else
-           err_stress_tol = 0.0_pReal
+           err_stress_tol = +huge(1.0_pReal)
          endif
                                             
          defgradAim_lab = math_rotate_backward33(defgradAim,bc(loadcase)%rotation)                   ! boundary conditions from load frame into lab (Fourier) frame
@@ -922,6 +922,9 @@ program DAMASK_spectral
                                        xi(1:3,res1_red,j,k))*two_pi_img)**2.0_pReal)
          enddo; enddo
          err_div_RMS = sqrt(err_div_RMS)*wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
+         ! if(err_div_RMS/p_hat_avg/sqrt(wgt) * correctionFactor>err_div&
+                                                   ! .and. iter >2_pInt&
+                                             ! .and.err_stress  > err_stress_tol) iter = itmax
          err_div = err_div_RMS/p_hat_avg/sqrt(wgt) * correctionFactor                               ! criterion to stop iterations
 
 !--------------------------------------------------------------------------------------------------
@@ -999,6 +1002,8 @@ program DAMASK_spectral
 
          tensorField_complex(1,1,1,1:3,1:3) = (defgradAim_lab - defgrad_av_lab)&                    ! assign average deformation gradient change to zero frequency (real part)
                                                         * real(Npoints,pReal)
+         if (.not. simplified_algorithm) tensorField_complex(1,1,1,1:3,1:3) = &                     ! assign deformation aim to zero frequency (real part)
+                                                 defgradAim_lab  * real(Npoints,pReal)
          if (debugFFTW) then
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
               scalarField_complex(i,j,k) = tensorField_complex(i,j,k,row,column)
@@ -1050,9 +1055,6 @@ program DAMASK_spectral
 ! updated deformation gradient in case of fluctuation field algorithm
          if (.not.simplified_algorithm) then
            defgrad = tensorField_real(1:res(1),1:res(2),1:res(3),1:3,1:3) * wgt
-           do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-             defgrad(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3) + defgrad_av_lab
-           enddo; enddo; enddo
          endif
                                                     
 !--------------------------------------------------------------------------------------------------
