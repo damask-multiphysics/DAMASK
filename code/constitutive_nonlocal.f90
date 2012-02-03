@@ -83,8 +83,10 @@ real(pReal), dimension(:), allocatable ::                 constitutive_nonlocal_
                                                           constitutive_nonlocal_Qsd, &                          ! activation enthalpy for diffusion
                                                           constitutive_nonlocal_aTolRho, &                      ! absolute tolerance for dislocation density in state integration
                                                           constitutive_nonlocal_R, &                            ! cutoff radius for dislocation stress
-                                                          constitutive_nonlocal_solidSolutionStrength, &        ! solid solution obstacle strength in Pa
-                                                          constitutive_nonlocal_solidSolutionEnergy, &          ! solid solution obstacle strength in Pa
+                                                          constitutive_nonlocal_doublekinkwidth, &              ! width of a doubkle kink in multiples of the burgers vector length b
+                                                          constitutive_nonlocal_solidSolutionEnergy, &          ! activation energy for solid solution in J
+                                                          constitutive_nonlocal_solidSolutionSize, &            ! solid solution obstacle size in multiples of the burgers vector length
+                                                          constitutive_nonlocal_solidSolutionConcentration, &   ! concentration of solid solution in atomic parts
                                                           constitutive_nonlocal_p, &                            ! parameter for kinetic law (Kocks,Argon,Ashby)
                                                           constitutive_nonlocal_q, &                            ! parameter for kinetic law (Kocks,Argon,Ashby)
                                                           constitutive_nonlocal_viscosity, &                    ! viscosity for dislocation glide in Pa s
@@ -107,9 +109,7 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_minimumDipoleHeightPerSlipFamily, & ! minimum stable edge/screw dipole height for each family and instance
                                                           constitutive_nonlocal_minimumDipoleHeight, &          ! minimum stable edge/screw dipole height for each slip system and instance
                                                           constitutive_nonlocal_peierlsStressPerSlipFamily, &   ! Peierls stress (edge and screw) 
-                                                          constitutive_nonlocal_peierlsStress, &                ! Peierls stress (edge and screw) 
-                                                          constitutive_nonlocal_peierlsEnergyPerSlipFamily, &   ! activation energy of peierls barrier (edge and screw)
-                                                          constitutive_nonlocal_peierlsEnergy                   ! activation energy of peierls barrier (edge and screw)
+                                                          constitutive_nonlocal_peierlsStress                   ! Peierls stress (edge and screw) 
 real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_rhoDotFlux                      ! dislocation convection term
 real(pReal), dimension(:,:,:,:,:,:), allocatable ::       constitutive_nonlocal_compatibility                   ! slip system compatibility between me and my neighbors
 real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_forestProjectionEdge, &         ! matrix of forest projections of edge dislocations for each instance
@@ -264,8 +264,10 @@ allocate(constitutive_nonlocal_aTolRho(maxNinstance))
 allocate(constitutive_nonlocal_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_nonlocal_Cslip_3333(3,3,3,3,maxNinstance))
 allocate(constitutive_nonlocal_R(maxNinstance))
-allocate(constitutive_nonlocal_solidSolutionStrength(maxNinstance))
+allocate(constitutive_nonlocal_doublekinkwidth(maxNinstance))
 allocate(constitutive_nonlocal_solidSolutionEnergy(maxNinstance))
+allocate(constitutive_nonlocal_solidSolutionSize(maxNinstance))
+allocate(constitutive_nonlocal_solidSolutionConcentration(maxNinstance))
 allocate(constitutive_nonlocal_p(maxNinstance))
 allocate(constitutive_nonlocal_q(maxNinstance))
 allocate(constitutive_nonlocal_viscosity(maxNinstance))
@@ -287,8 +289,10 @@ constitutive_nonlocal_nu = 0.0_pReal
 constitutive_nonlocal_Cslip_66 = 0.0_pReal
 constitutive_nonlocal_Cslip_3333 = 0.0_pReal
 constitutive_nonlocal_R = -1.0_pReal
-constitutive_nonlocal_solidSolutionStrength = 0.0_pReal
+constitutive_nonlocal_doublekinkwidth = 0.0_pReal
 constitutive_nonlocal_solidSolutionEnergy = 0.0_pReal
+constitutive_nonlocal_solidSolutionSize = 0.0_pReal
+constitutive_nonlocal_solidSolutionConcentration = 0.0_pReal
 constitutive_nonlocal_p = 1.0_pReal
 constitutive_nonlocal_q = 1.0_pReal
 constitutive_nonlocal_viscosity = 0.0_pReal
@@ -316,10 +320,8 @@ constitutive_nonlocal_lambda0PerSlipFamily = 0.0_pReal
 constitutive_nonlocal_interactionSlipSlip = 0.0_pReal
 
 allocate(constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(lattice_maxNslipFamily,2,maxNinstance))
-allocate(constitutive_nonlocal_peierlsEnergyPerSlipFamily(lattice_maxNslipFamily,2,maxNinstance))
 allocate(constitutive_nonlocal_peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstance))
 constitutive_nonlocal_minimumDipoleHeightPerSlipFamily = 0.0_pReal
-constitutive_nonlocal_peierlsEnergyPerSlipFamily = 0.0_pReal
 constitutive_nonlocal_peierlsStressPerSlipFamily = 0.0_pReal
 
 !*** readout data from material.config file
@@ -407,16 +409,14 @@ do                                                                              
       case('peierlsstressscrew')
         forall (f = 1:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) = IO_floatValue(line,positions,1+f)
-      case('peierlsenergyedge')
-        forall (f = 1:lattice_maxNslipFamily) &
-          constitutive_nonlocal_peierlsEnergyPerSlipFamily(f,1,i) = IO_floatValue(line,positions,1+f)
-      case('peierlsenergyscrew')
-        forall (f = 1:lattice_maxNslipFamily) &
-          constitutive_nonlocal_peierlsEnergyPerSlipFamily(f,2,i) = IO_floatValue(line,positions,1+f)
-      case('solidsolutionstrength')
-        constitutive_nonlocal_solidSolutionStrength(i) = IO_floatValue(line,positions,2)
+      case('doublekinkwidth')
+        constitutive_nonlocal_doublekinkwidth(i) = IO_floatValue(line,positions,2)
       case('solidsolutionenergy')
         constitutive_nonlocal_solidSolutionEnergy(i) = IO_floatValue(line,positions,2)
+      case('solidsolutionsize')
+        constitutive_nonlocal_solidSolutionSize(i) = IO_floatValue(line,positions,2)
+      case('solidsolutionconcentration')
+        constitutive_nonlocal_solidSolutionConcentration(i) = IO_floatValue(line,positions,2)
       case('p')
         constitutive_nonlocal_p(i) = IO_floatValue(line,positions,2)
       case('q')
@@ -466,8 +466,6 @@ enddo
                                                                               call IO_error(235,ext_msg='minimumDipoleHeightScrew')
       if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,1,i) <= 0.0_pReal) call IO_error(235,ext_msg='peierlsStressEdge')
       if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) <= 0.0_pReal) call IO_error(235,ext_msg='peierlsStressScrew')
-      if (constitutive_nonlocal_peierlsEnergyPerSlipFamily(f,1,i) <= 0.0_pReal) call IO_error(235,ext_msg='peierlsEnergyEdge')
-      if (constitutive_nonlocal_peierlsEnergyPerSlipFamily(f,2,i) <= 0.0_pReal) call IO_error(235,ext_msg='peierlsEnergyScrew')
     endif
   enddo
   if (any(constitutive_nonlocal_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 0.0_pReal)) &
@@ -477,8 +475,10 @@ enddo
   if (constitutive_nonlocal_Dsd0(i) <= 0.0_pReal)                               call IO_error(235,ext_msg='selfDiffusionPrefactor')
   if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                                call IO_error(235,ext_msg='selfDiffusionEnergy')
   if (constitutive_nonlocal_aTolRho(i) <= 0.0_pReal)                            call IO_error(235,ext_msg='aTol_rho')
-  if (constitutive_nonlocal_solidSolutionStrength(i) <= 0.0_pReal)              call IO_error(235,ext_msg='solidSolutionStrength')
+  if (constitutive_nonlocal_doublekinkwidth(i) <= 0.0_pReal)                    call IO_error(235,ext_msg='doublekinkwidth')
   if (constitutive_nonlocal_solidSolutionEnergy(i) <= 0.0_pReal)                call IO_error(235,ext_msg='solidSolutionEnergy')
+  if (constitutive_nonlocal_solidSolutionSize(i) <= 0.0_pReal)                  call IO_error(235,ext_msg='solidSolutionSize')
+  if (constitutive_nonlocal_solidSolutionConcentration(i) <= 0.0_pReal)         call IO_error(235,ext_msg='solidSolutionConcentration')
   if (constitutive_nonlocal_p(i) <= 0.0_pReal .or. constitutive_nonlocal_p(i) > 1.0_pReal) call IO_error(235,ext_msg='p')
   if (constitutive_nonlocal_q(i) < 1.0_pReal .or. constitutive_nonlocal_q(i) > 2.0_pReal) call IO_error(235,ext_msg='q')
   if (constitutive_nonlocal_viscosity(i) <= 0.0_pReal)                          call IO_error(235,ext_msg='viscosity')
@@ -530,9 +530,6 @@ constitutive_nonlocal_rhoDotFlux = 0.0_pReal
 
 allocate(constitutive_nonlocal_compatibility(2,maxTotalNslip, maxTotalNslip, FE_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_compatibility = 0.0_pReal
-
-allocate(constitutive_nonlocal_peierlsEnergy(maxTotalNslip,2,maxNinstance))
-constitutive_nonlocal_peierlsEnergy = 0.0_pReal
 
 allocate(constitutive_nonlocal_peierlsStress(maxTotalNslip,2,maxNinstance))
 constitutive_nonlocal_peierlsStress = 0.0_pReal
@@ -693,7 +690,6 @@ do i = 1,maxNinstance
     constitutive_nonlocal_lambda0(s1,i) = constitutive_nonlocal_lambda0PerSlipFamily(f,i)
     constitutive_nonlocal_minimumDipoleHeight(s1,1:2,i) = constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1:2,i)
     constitutive_nonlocal_peierlsStress(s1,1:2,i) = constitutive_nonlocal_peierlsStressPerSlipFamily(f,1:2,i)
-    constitutive_nonlocal_peierlsEnergy(s1,1:2,i) = constitutive_nonlocal_peierlsEnergyPerSlipFamily(f,1:2,i)
 
     do s2 = 1,ns
       
@@ -1241,40 +1237,42 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                    intent(out), optional :: dv_dtau                     ! velocity derivative with respect to resolved shear stress
 
 !*** local variables
-integer(pInt)                               myInstance, &               ! current instance of this constitution
-                                            myStructure, &              ! current lattice structure
+integer(pInt)                               instance, &                 ! current instance of this constitution
                                             ns, &                       ! short notation for the total number of active slip systems
                                             s                           ! index of my current slip system
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-                                            tauThreshold, &             ! threshold shear stress
-                                            rhoForest, &                ! forest dislocation density
-                                            meanfreepath, &             ! mean free travel distance for dislocations between two strong obstacles
-                                            sweaptArea, &               ! area that is swept when one strong obstacle is surmounted
-                                            b                           ! shortcut for burgers vector length
-real(pReal)                                 tauRelPeierls, & 
-                                            tauRelSS, &
+                                            tauThreshold                ! threshold shear stress
+real(pReal)                                 tauRel_P, & 
+                                            tauRel_S, &
                                             tPeierls, &                 ! waiting time in front of a peierls barriers
-                                            tSS, &                      ! waiting time in front of a solid solution obstacle
-                                            tViscous, &                 ! travel time for mean freepath in case of viscous glide
+                                            tSolidSolution, &           ! waiting time in front of a solid solution obstacle
+                                            vViscous, &                 ! viscous glide velocity
                                             dtPeierls_dtau, &           ! derivative with respect to resolved shear stress
-                                            dtSS_dtau, &                ! derivative with respect to resolved shear stress
-                                            dtViscous_dtau, &           ! derivative with respect to resolved shear stress
+                                            dtSolidSolution_dtau, &     ! derivative with respect to resolved shear stress
                                             p, &                        ! shortcut to Kocks,Argon,Ashby parameter p
-                                            q                           ! shortcut to Kocks,Argon,Ashby parameter q
+                                            q, &                        ! shortcut to Kocks,Argon,Ashby parameter q
+                                            meanfreepath_S, &           ! mean free travel distance for dislocations between two solid solution obstacles
+                                            meanfreepath_P, &           ! mean free travel distance for dislocations between two Peierls barriers
+                                            jumpWidth_P, &              ! depth of activated area
+                                            jumpWidth_S, &              ! depth of activated area
+                                            activationLength_P, &       ! length of activated dislocation line
+                                            activationLength_S, &       ! length of activated dislocation line
+                                            activationVolume_P, &       ! volume that needs to be activated to overcome barrier
+                                            activationVolume_S, &       ! volume that needs to be activated to overcome barrier
+                                            activationEnergy_P, &       ! energy that is needed to overcome barrier
+                                            activationEnergy_S, &       ! energy that is needed to overcome barrier
+                                            criticalStress_P, &         ! maximum obstacle strength
+                                            criticalStress_S, &         ! maximum obstacle strength
+                                            mobility                    ! dislocation mobility
 
 
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
-myStructure = constitutive_nonlocal_structure(myInstance) 
-ns = constitutive_nonlocal_totalNslip(myInstance)
+instance = phase_constitutionInstance(material_phase(g,ip,el))
+ns = constitutive_nonlocal_totalNslip(instance)
 
-rhoForest = state%p(10*ns+1:11*ns)
 tauThreshold = state%p(11*ns+1:12*ns)
-meanfreepath = 1.0_pReal / sqrt(rhoForest)
-sweaptArea = 1.0_pReal / rhoForest
 
-p = constitutive_nonlocal_p(myInstance)
-q = constitutive_nonlocal_q(myInstance)
-b = constitutive_nonlocal_burgers(1:ns,myInstance)
+p = constitutive_nonlocal_p(instance)
+q = constitutive_nonlocal_q(instance)
 
 v = 0.0_pReal
 if (present(dv_dtau)) dv_dtau = 0.0_pReal
@@ -1286,46 +1284,59 @@ if (Temperature > 0.0_pReal) then
       
       !* Peierls contribution
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
-
-      tauRelPeierls = (abs(tau(s)) - tauThreshold(s)) / constitutive_nonlocal_peierlsStress(s,c,myInstance)
-      tPeierls = constitutive_nonlocal_fattack(myInstance) &
-               * exp(constitutive_nonlocal_peierlsEnergy(s,c,myInstance) / (kB * Temperature) * (1.0_pReal - tauRelPeierls**p)**q )
+      
+      meanfreepath_P = constitutive_nonlocal_burgers(s,instance)
+      jumpWidth_P = constitutive_nonlocal_burgers(s,instance)
+      activationLength_P = constitutive_nonlocal_doublekinkwidth(instance) * constitutive_nonlocal_burgers(s,instance)
+      activationVolume_P = activationLength_P * jumpWidth_P * constitutive_nonlocal_burgers(s,instance)
+      criticalStress_P = constitutive_nonlocal_peierlsStress(s,c,instance)
+      activationEnergy_P = criticalStress_P * activationVolume_P
+      tauRel_P = (abs(tau(s)) - tauThreshold(s)) / criticalStress_P
+      tPeierls = 1.0_pReal / constitutive_nonlocal_fattack(instance) &
+                           * exp(activationEnergy_P / (kB * Temperature) * (1.0_pReal - tauRel_P**p)**q)
       if (present(dv_dtau)) then
-        dtPeierls_dtau = tPeierls * p * q * constitutive_nonlocal_peierlsEnergy(s,c,myInstance) & 
-                       / (kB * Temperature * constitutive_nonlocal_peierlsStress(s,c,myInstance)) &
-                       * (1.0_pReal - tauRelPeierls**p)**(q-1.0_pReal) * tauRelPeierls**(p-1.0_pReal) 
+        dtPeierls_dtau = tPeierls * p * q * activationVolume_P / (kB * Temperature) &
+                                  * (1.0_pReal - tauRel_P**p)**(q-1.0_pReal) * tauRel_P**(p-1.0_pReal) 
       endif
 
 
       !* Contribution from solid solution strengthening
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
 
-      tauRelSS = (abs(tau(s)) - tauThreshold(s)) / constitutive_nonlocal_solidSolutionStrength(myInstance)
-      tSS = constitutive_nonlocal_fattack(myInstance) &
-          * exp(constitutive_nonlocal_solidSolutionEnergy(myInstance) / (kB * Temperature) * (1.0_pReal - tauRelSS**p)**q )
+      meanfreepath_S = constitutive_nonlocal_burgers(s,instance) / sqrt(constitutive_nonlocal_solidSolutionConcentration(instance))
+      jumpWidth_S = constitutive_nonlocal_solidSolutionSize(instance) * constitutive_nonlocal_burgers(s,instance)
+      activationLength_S = constitutive_nonlocal_burgers(s,instance) &
+                         / sqrt(constitutive_nonlocal_solidSolutionConcentration(instance))
+      activationVolume_S = activationLength_S * jumpWidth_S * constitutive_nonlocal_burgers(s,instance)
+      activationEnergy_S = constitutive_nonlocal_solidSolutionEnergy(instance)
+      criticalStress_S = activationEnergy_S / activationVolume_S
+      tauRel_S = (abs(tau(s)) - tauThreshold(s)) / criticalStress_S
+      tSolidSolution = 1.0_pReal / constitutive_nonlocal_fattack(instance) &
+                                 * exp(activationEnergy_S / (kB * Temperature) * (1.0_pReal - tauRel_S**p)**q)
       if (present(dv_dtau)) then
-        dtSS_dtau = tSS * p * q * constitutive_nonlocal_solidSolutionEnergy(myInstance) & 
-                       / (kB * Temperature * constitutive_nonlocal_solidsolutionStrength(myInstance)) &
-                       * (1.0_pReal - tauRelSS**p)**(q-1.0_pReal) * tauRelSS**(p-1.0_pReal) 
+        dtSolidSolution_dtau = tSolidSolution * p * q * activationVolume_S / (kB * Temperature) &
+                                              * (1.0_pReal - tauRel_S**p)**(q-1.0_pReal) * tauRel_S**(p-1.0_pReal) 
       endif
 
 
-      !* Contribution from viscous glide
-      !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
+      !* viscous glide velocity
       
-      tViscous = meanfreepath(s) * constitutive_nonlocal_viscosity(myInstance) / (b(s) * abs(tau(s)))
-      dtViscous_dtau = tViscous / abs(tau(s))
+      mobility = constitutive_nonlocal_burgers(s,instance) / constitutive_nonlocal_viscosity(instance)
+      vViscous = mobility * abs(tau(s))
 
 
-      !* velocity = travel distance over travel time times correction term for backward jumps
+      !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of 
+      !* free flight at glide velocity in between. Backward jumps at low stresses are considered only at peierls barriers,
+      !* since those have the smallest activation volume, thus are decisive.
       
-      v(s) = meanfreepath(s) / (tPeierls + tSS + tViscous) &
-           * (1.0_pReal - exp(-(abs(tau(s)) - tauThreshold(s)) * sweaptArea(s) * b(s) / (kB * Temperature)))
+      v(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
+           * (1.0_pReal - exp(-(abs(tau(s)) - tauThreshold(s)) * activationVolume_P / (kB * Temperature)))
       v(s) = sign(v(s),tau(s))
       if (present(dv_dtau)) then
-        dv_dtau(s) = abs(v(s)) * (dtPeierls_dtau + dtSS_dtau + dtViscous_dtau) / (tPeierls + tSS + tViscous) &
-                   + sweaptArea(s) * b(s) / (kB * Temperature) * meanfreepath(s) / (tPeierls + tSS + tViscous) &
-                                * exp(-(abs(tau(s)) - tauThreshold(s)) * sweaptArea(s) * b(s) / (kB * Temperature))
+        dv_dtau(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
+                   * (abs(v(s)) * (dtPeierls_dtau + dtSolidSolution_dtau + 1.0_pReal / (mobility * tau(s) * tau(s))) &
+                      + activationVolume_P / (kB * Temperature) * exp(-(abs(tau(s)) - tauThreshold(s)) * activationVolume_P &
+                                                                      / (kB * Temperature)))
       endif
 
     endif
@@ -1339,7 +1350,7 @@ endif
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
     write(6,*)
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tau / MPa', tau / 1e6_pReal
-    write(6,'(a,/,4(12x,12(f12.5,1x),/))') '<< CONST >> v / 1e-3m/s', v * 1e3
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> v / 1e-3m/s', v * 1e3
   endif
 #endif
 
@@ -1859,8 +1870,8 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     endif
 
     if (considerLeavingFlux) then
-      normal_me2neighbor_defConf = math_det33(Favg) * math_mul33x3(math_inv33(math_transpose33(Favg)),&
-                                                          mesh_ipAreaNormal(1:3,n,ip,el))                                           ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
+      normal_me2neighbor_defConf = math_det33(Favg) * math_mul33x3(math_inv33(math_transpose33(Favg)), & 
+                                                                   mesh_ipAreaNormal(1:3,n,ip,el))                                  ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
       normal_me2neighbor = math_mul33x3(math_transpose33(my_Fe), normal_me2neighbor_defConf) / math_det33(my_Fe)                    ! interface normal in my lattice configuration
       area = mesh_ipArea(n,ip,el) * math_norm3(normal_me2neighbor)
       normal_me2neighbor = normal_me2neighbor / math_norm3(normal_me2neighbor)                                                      ! normalize the surface normal to unit length    
@@ -2292,7 +2303,7 @@ forall (t = 5:8) &
 constitutive_nonlocal_dislocationstress = 0.0_pReal
 
 if (.not. phase_localConstitution(phase)) then
-  call math_invert33(Fe(1:3,1:3,1,ip,el), invFe, detFe, inversionError)
+  call math_invert33(Fe(1:3,1:3,g,ip,el), invFe, detFe, inversionError)
 !  if (inversionError) then
 !    return
 !  endif
