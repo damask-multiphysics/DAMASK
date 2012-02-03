@@ -283,7 +283,7 @@
 
  if (IO_open_inputFile(fileUnit,FEmodelGeometry)) then                         ! --- parse info from input file...
 
- select case (FEsolver)
+   select case (FEsolver)
      case ('Spectral')
                          call mesh_spectral_count_nodesAndElements(fileUnit)
                          call mesh_spectral_count_cpElements()
@@ -304,7 +304,6 @@
                          call mesh_marc_build_nodes(fileUnit)
                          call mesh_marc_count_cpSizes(fileunit)
                          call mesh_marc_build_elements(fileUnit)
-                         call mesh_marc_get_mpieOptions(fileUnit)
      case ('Abaqus')
                          noPart = IO_abaqus_hasNoPart(fileUnit)
                          call mesh_abaqus_count_nodesAndElements(fileUnit)
@@ -319,6 +318,7 @@
                          call mesh_abaqus_count_cpSizes(fileunit)
                          call mesh_abaqus_build_elements(fileUnit)
    end select
+   call mesh_get_damaskOptions(fileUnit)
    close (fileUnit)
    
    call mesh_build_subNodeCoords()
@@ -1393,12 +1393,13 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
 
 
 !********************************************************************
-! get any additional mpie options from input file (Marc only)
+! get any additional damask options from input file
 !
 ! mesh_periodicSurface
 !********************************************************************
-subroutine mesh_marc_get_mpieOptions(myUnit)
+subroutine mesh_get_damaskOptions(myUnit)
 
+use DAMASK_interface, only: FEsolver
 use prec, only: pInt
 use IO
 implicit none
@@ -1407,33 +1408,61 @@ integer(pInt), intent(in) :: myUnit
 
 integer(pInt), parameter :: maxNchunks = 5
 integer(pInt), dimension (1+2*maxNchunks) :: myPos
-integer(pInt) chunk
+integer(pInt) chunk, Nchunks
 character(len=300) line
+character damaskOption, keyword
 
 mesh_periodicSurface = (/.false., .false., .false./)
 
 610 FORMAT(A300)
 
+select case (FEsolver)
+  case ('Spectral') ! no special keyword needed, the damask option directly goes into the header
+  case ('Marc')
+    keyword = '$damask'
+  case ('Abaqus')
+    keyword = '**damask'
+end select
+
 rewind(myUnit)
 do 
   read (myUnit,610,END=620) line
   myPos = IO_stringPos(line,maxNchunks)
-
-  if (IO_lc(IO_stringValue(line,myPos,1)) == '$mpie') then              ! found keyword for user defined input
-    if (IO_lc(IO_stringValue(line,myPos,2)) == 'periodic' &             ! found keyword 'periodic'
-        .and. myPos(1) > 2) then                                        ! and there is at least one more chunk to read
-      do chunk = 2,myPos(1)                                             ! loop through chunks (skipping the keyword)
-        select case(IO_stringValue(line,myPos,chunk))                   ! chunk matches keyvalues x,y or z?
-          case('x')
-            mesh_periodicSurface(1) = .true.
-          case('y')
-            mesh_periodicSurface(2) = .true.
-          case('z')
-            mesh_periodicSurface(3) = .true.
-        end select
-      enddo
-    endif
-  endif
+  Nchunks = myPos(1)
+  select case (FEsolver)
+    case ('Marc','Abaqus')
+      if (IO_lc(IO_stringValue(line,myPos,1)) == keyword .and. Nchunks > 1) then  ! found keyword for damask option and there is at least one more chunk to read
+        damaskOption = IO_lc(IO_stringValue(line,myPos,2))
+        select case(damaskOption)
+          case('periodic')                                                        ! damask Option that allows to specify periodic fluxes
+            do chunk = 3,Nchunks                                                  ! loop through chunks (skipping the keyword)
+              select case(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
+                case('x')
+                  mesh_periodicSurface(1) = .true.
+                case('y')
+                  mesh_periodicSurface(2) = .true.
+                case('z')
+                  mesh_periodicSurface(3) = .true.
+              end select
+            enddo
+        endselect
+      endif
+    case('Spectral')
+      damaskOption = IO_lc(IO_stringValue(line,myPos,1))
+      select case(damaskOption)
+        case('periodic')                                                        ! damask Option that allows to specify periodic fluxes
+          do chunk = 2,Nchunks                                                  ! loop through chunks (skipping the keyword)
+            select case(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
+              case('x')
+                mesh_periodicSurface(1) = .true.
+              case('y')
+                mesh_periodicSurface(2) = .true.
+              case('z')
+                mesh_periodicSurface(3) = .true.
+            end select
+          enddo
+      endselect
+  endselect
 enddo
 
 620 endsubroutine
