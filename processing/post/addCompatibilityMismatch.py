@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import os,re,sys,math,string,numpy,DAMASK
 from optparse import OptionParser, Option

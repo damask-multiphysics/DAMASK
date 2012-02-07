@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import os,re,sys,math,string,damask
 from optparse import OptionParser, Option
@@ -23,17 +23,12 @@ class extendableOption(Option):
 
 
 
-def L2(object):
-
-  return math.sqrt(sum([x*x for x in object]))
-
-
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing norm of requested column(s) being either vectors or tensors.
+Add column(s) with derived values according to user defined arithmetic operation between column(s).
 
 """ + string.replace('$Id: addNorm.py 1118 2011-11-23 14:54:53Z MPIE\p.eisenlohr $','\n','\\n')
 )
