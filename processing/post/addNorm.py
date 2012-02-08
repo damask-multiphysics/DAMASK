@@ -26,15 +26,15 @@ class extendableOption(Option):
 # definition of element-wise p-norms for matrices
 
 # p = 1
-def absnorm(object):
+def normAbs(object):
   return sum(map(abs, object))
 
 # p = 2
-def frobeniusnorm(object):
+def normFrobenius(object):
   return math.sqrt(sum([x*x for x in object]))
 
 # p = infinity
-def maxnorm(object):
+def normMax(object):
   return max(map(abs, object))
 
 
@@ -48,27 +48,28 @@ Add column(s) containing norm of requested column(s) being either vectors or ten
 """ + string.replace('$Id$','\n','\\n')
 )
 
+normChoices = ['abs','frobenius','max']
 
-parser.add_option('-n','--norm',        dest='norm', action='store', type='choice', choices=('absnorm','frobeniusnorm','maxnorm'), \
-                                        help='used p-norm, choose either absnorm, frobeniusnorm, or maxnorm [DEFAULT=%default]')
+parser.add_option('-n','--norm',        dest='norm', action='store', type='choice', choices=normChoices, \
+                                        help='type of element-wise p-norm (%s) [2]'%(','.join(map(str,normChoices))))
 parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', \
                                         help='heading of columns containing vector field values')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', \
                                         help='heading of columns containing tensor field values')
-parser.add_option('-s','--slipsystem ', dest='slipsystem', action='extend', type='string', \
-                                        help='heading of columns containing values per slipsystem')
-parser.add_option('-i','--nslipsystems',dest='Nslipsystems', action='store', type='int', \
-                                        help='number of slip systems [DEFAULT=%default]')
+parser.add_option('-s','--special',     dest='special', action='extend', type='string', \
+                                        help='heading of columns containing field values of special dimension')
+parser.add_option('-d','--dimension',   dest='N', action='store', type='int', \
+                                        help='dimension of special field values [%default]')
 
-parser.set_defaults(norm = 'frobeniusnorm')
+parser.set_defaults(norm = 'frobenius')
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
-parser.set_defaults(slipsystem = [])
-parser.set_defaults(Nslipsystems = 12)
+parser.set_defaults(special = [])
+parser.set_defaults(N = 12)
 
 (options,filenames) = parser.parse_args()
 
-if len(options.vector) + len(options.tensor) + len(options.slipsystem)== 0:
+if len(options.vector) + len(options.tensor) + len(options.special)== 0:
   parser.error('no data column specified...')
 
 datainfo = {                                                               # list of requested labels per datatype
@@ -76,14 +77,14 @@ datainfo = {                                                               # lis
                             'label':[]},
              'tensor':     {'len':9,
                             'label':[]},
-             'slipsystem': {'len':options.Nslipsystems,
+             'special':    {'len':options.N,
                             'label':[]},
            }
 
 
-if options.vector != None:    datainfo['vector']['label'] += options.vector
-if options.tensor != None:    datainfo['tensor']['label'] += options.tensor
-if options.slipsystem != None:datainfo['slipsystem']['label'] += options.slipsystem
+if options.vector  != None:    datainfo['vector']['label']  += options.vector
+if options.tensor  != None:    datainfo['tensor']['label']  += options.tensor
+if options.special != None:    datainfo['special']['label'] += options.special
 
 
 # ------------------------------------------ setup file handles ---------------------------------------  
@@ -106,6 +107,7 @@ for file in files:
   table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
+# --------------- figure out columns to process
   active = {}
   column = {}
   head = []
@@ -121,7 +123,7 @@ for file in files:
         if datatype not in column: column[datatype] = {}
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
-        table.labels_append('%s(%s)'%(options.norm,label))                  # extend ASCII header with new labels
+        table.labels_append('norm%s(%s)'%(options.norm.capitalize(),label)) # extend ASCII header with new labels
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
@@ -133,7 +135,7 @@ for file in files:
     
     for datatype,labels in active.items():                                  # loop over vector,tensor
       for label in labels:                                                  # loop over all requested norms
-        eval("table.data_append(%s(map(float,table.data[column[datatype][label]:column[datatype][label]+datainfo[datatype]['len']])))"%options.norm)
+        eval("table.data_append(norm%s(map(float,table.data[column[datatype][label]:column[datatype][label]+datainfo[datatype]['len']])))"%options.norm.capitalize())
     
     table.data_write()                                                      # output processed line
 
