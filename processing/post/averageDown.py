@@ -50,9 +50,9 @@ to resolution/packing. (Requires numpy.)
 parser.add_option('-c','--coordinates', dest='coords', type='string',\
                                         help='column heading for coordinates [%default]')
 parser.add_option('-p','--packing',     dest='packing', type='int', nargs=3, \
-                                        help='dimension of packed group [%default]')
+                                        help='dimension of packed group %default')
 parser.add_option('-s','--shift',       dest='shift', type='int', nargs=3, \
-                                        help='shift vector of packing stencil [%default]')
+                                        help='shift vector of packing stencil %default')
 
 parser.set_defaults(coords = 'ip')
 parser.set_defaults(packing = [2,2,2])
