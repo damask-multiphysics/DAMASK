@@ -49,32 +49,25 @@ Deals with both vector- and tensor-valued fields.
 parser.add_option('--fdm',              dest='accuracy', action='extend', type='string', \
                                         help='degree of central difference accuracy')
 parser.add_option('--fft',              dest='fft', action='store_true', \
-                                        help='calculate divergence in Fourier space [%default]')
+                                        help='calculate divergence in Fourier space')
+parser.add_option('-c','--coordinates', dest='coords', type='string',\
+                                        help='column heading for coordinates [%default]')
 parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', \
                                         help='heading of columns containing vector field values')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', \
                                         help='heading of columns containing tensor field values')
-parser.add_option('-d','--dimension',   dest='dim', type='float', nargs=3, \
-                                        help='physical dimension of data set in x (fast) y z (slow) [%default]')
-parser.add_option('-r','--resolution',  dest='res', type='int', nargs=3, \
-                                        help='resolution of data set in x (fast) y z (slow)')
 
-
+parser.set_defaults(coords = 'ip')
 parser.set_defaults(accuracy = [])
 parser.set_defaults(fft = False)
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
-parser.set_defaults(dim = [])
 accuracyChoices = [2,4,6,8]
 
 (options,filenames) = parser.parse_args()
 
 if len(options.vector) + len(options.tensor) == 0:
   parser.error('no data column specified...')
-if len(options.dim) < 3:
-  parser.error('improper dimension specification...')
-if not options.res or len(options.res) < 3:
-  parser.error('improper resolution specification...')
   
 for choice in options.accuracy:
   if int(choice) not in accuracyChoices:
@@ -107,13 +100,40 @@ else:
 # ------------------------------------------ loop over input files ---------------------------------------   
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': print file['name'],
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
   table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
+# --------------- figure out dimension and resolution 
+  try:
+    locationCol = table.labels.index('%s.x'%options.coords)                 # columns containing location data
+  except ValueError:
+    print 'no coordinate data found...'
+    continue
+
+  grid = [{},{},{}]
+  while table.data_read():                                                  # read next data line of ASCII table
+    for j in xrange(3):
+      grid[j][str(table.data[locationCol+j])] = True                        # remember coordinate along x,y,z
+  resolution = numpy.array([len(grid[0]),\
+                            len(grid[1]),\
+                            len(grid[2]),],'i')                             # resolution is number of distinct coordinates found
+  dimension = resolution/numpy.maximum(numpy.ones(3,'d'),resolution-1.0)* \
+              numpy.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
+                           max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
+                           max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
+                          ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
+  if resolution[2] == 1:
+    dimension[2] = min(dimension[:2]/resolution[:2])
+
+  N = resolution.prod()
+  print '\t%s @ %s'%(dimension,resolution)
+
+  
+# --------------- figure out columns to process
   active = {}
   column = {}
   values = {}
@@ -135,15 +155,11 @@ for file in files:
         if label not in divergence[datatype]: divergence[datatype][label] = {}
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
-        values[datatype][label] = numpy.array([0.0 for i in xrange(datainfo[datatype]['len']*\
-                                               options.res[0]*options.res[1]*options.res[2])]).\
-                                               reshape((options.res[0],options.res[1],options.res[2],\
-                                                        datainfo[datatype]['len']//3,3))
+        values[datatype][label] = numpy.array([0.0 for i in xrange(N*datainfo[datatype]['len'])]).\
+                                           reshape(list(resolution)+[datainfo[datatype]['len']//3,3])
         for accuracy in options.accuracy:
-          divergence[datatype][label][accuracy] = numpy.array([0.0 for i in xrange(datainfo[datatype]['len']//3*\
-                                               options.res[0]*options.res[1]*options.res[2])]).\
-                                               reshape((options.res[0],options.res[1],options.res[2],\
-                                                        datainfo[datatype]['len']//3))
+          divergence[datatype][label][accuracy] = numpy.array([0.0 for i in xrange(N*datainfo[datatype]['len']//3)]).\
+                                                           reshape(list(resolution)+[datainfo[datatype]['len']//3])
           table.labels_append(['%i_div%s(%s)'%(i+1,accuracy,label) 
                              for i in xrange(datainfo[datatype]['len']//3)])   # extend ASCII header with new labels
 
@@ -154,9 +170,11 @@ for file in files:
 
 # ------------------------------------------ read value field ---------------------------------------  
 
+  table.data_rewind()
+
   idx = 0
   while table.data_read():                                                  # read next data line of ASCII table
-    (x,y,z) = location(idx,options.res)                                     # figure out (x,y,z) position from line count
+    (x,y,z) = location(idx,resolution)                                     # figure out (x,y,z) position from line count
     idx += 1
     for datatype,labels in active.items():                                  # loop over vector,tensor
       for label in labels:                                                  # loop over all requested curls
@@ -169,15 +187,15 @@ for file in files:
     for label in labels:                                                  # loop over all requested divergencies
       for accuracy in options.accuracy:
         if accuracy == 'FFT':
-          divergence[datatype][label][accuracy] = damask.core.math.divergence_fft(options.res,options.dim,datainfo[datatype]['len']//3,values[datatype][label])
+          divergence[datatype][label][accuracy] = damask.core.math.divergence_fft(resolution,dimension,datainfo[datatype]['len']//3,values[datatype][label])
         else:
-          divergence[datatype][label][accuracy] = damask.core.math.divergence_fdm(options.res,options.dim,datainfo[datatype]['len']//3,eval(accuracy)//2-1,values[datatype][label])
+          divergence[datatype][label][accuracy] = damask.core.math.divergence_fdm(resolution,dimension,datainfo[datatype]['len']//3,eval(accuracy)//2-1,values[datatype][label])
 # ------------------------------------------ process data ---------------------------------------  
 
   table.data_rewind()
   idx = 0
   while table.data_read():                                                  # read next data line of ASCII table
-    (x,y,z) = location(idx,options.res)                                     # figure out (x,y,z) position from line count
+    (x,y,z) = location(idx,resolution)                                     # figure out (x,y,z) position from line count
     idx += 1
 
     for datatype,labels in active.items():                                  # loop over vector,tensor
