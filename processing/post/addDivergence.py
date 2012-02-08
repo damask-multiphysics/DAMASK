@@ -45,9 +45,10 @@ Deals with both vector- and tensor-valued fields.
 """ + string.replace('$Id$','\n','\\n')
 )
 
+accuracyChoices = ['2','4','6','8']
 
 parser.add_option('--fdm',              dest='accuracy', action='extend', type='string', \
-                                        help='degree of central difference accuracy')
+                                        help='degree of central difference accuracy (%s)'%(','.join(accuracyChoices)))
 parser.add_option('--fft',              dest='fft', action='store_true', \
                                         help='calculate divergence in Fourier space')
 parser.add_option('-c','--coordinates', dest='coords', type='string',\
@@ -62,7 +63,6 @@ parser.set_defaults(accuracy = [])
 parser.set_defaults(fft = False)
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
-accuracyChoices = [2,4,6,8]
 
 (options,filenames) = parser.parse_args()
 
@@ -70,7 +70,7 @@ if len(options.vector) + len(options.tensor) == 0:
   parser.error('no data column specified...')
   
 for choice in options.accuracy:
-  if int(choice) not in accuracyChoices:
+  if choice not in accuracyChoices:
     parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
 if options.fft: options.accuracy.append('FFT')
 if not options.accuracy:
