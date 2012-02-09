@@ -20,8 +20,8 @@ module kdtree2_priority_queue_module
   !
   type kdtree2_result
       ! a pair of distances, indexes
-      real(pReal)    :: dis        !=0.0
-      integer(pInt) :: idx         !=-1   Initializers cause some bugs in compilers.
+      real(pReal)    :: dis = 0.0_pReal
+      integer(pInt) :: idx = -1_pInt    !Initializers cause some bugs in compilers.
   end type kdtree2_result
   !
   ! A heap-based priority queue lets one efficiently implement the following
@@ -267,8 +267,8 @@ bigloop:  do
        ! move last element to first
        !
        a%elems(1) = a%elems(a%heap_size) 
-       a%heap_size = a%heap_size-1
-       call heapify(a,1)
+       a%heap_size = a%heap_size-1_pInt
+       call heapify(a,1_pInt)
        return
     else
        write (*,*) 'PQ_EXTRACT_MAX: error, attempted to pop non-positive PQ'
@@ -682,7 +682,7 @@ contains
       forall (j=1:tp%n)
          tp%ind(j) = j
       end forall
-      tp%root => build_tree_for_range(tp,1,tp%n, dummy)
+      tp%root => build_tree_for_range(tp,1_pInt,tp%n, dummy)
     end subroutine build_tree
 
     recursive function build_tree_for_range(tp,l,u,parent) result (res)
@@ -733,7 +733,7 @@ contains
             call spread_in_coordinate(tp,i,l,u,res%box(i))
          end do
          res%cut_dim = 0
-         res%cut_val = 0.0
+         res%cut_val = 0.0_pReal
          res%l = l
          res%u = u
          res%left =>null()
@@ -749,7 +749,7 @@ contains
          ! has only a very small difference.  This box is not used
          ! for searching but only for deciding which coordinate to split on.
          !
-         do i=1,dimen
+         do i=1_pInt,dimen
             recompute=.true.
             if (associated(parent)) then
                if (i .ne. parent%cut_dim) then
@@ -771,7 +771,7 @@ contains
          
          if (.false.) then
             ! select exact median to have fully balanced tree.
-            m = (l+u)/2
+            m = (l+u)/2_pInt
             call select_on_coordinate(tp%the_data,tp%ind,c,m,l,u)
          else
             !
@@ -781,9 +781,9 @@ contains
             !
             if (.true.) then
                ! actually compute average
-               average = sum(tp%the_data(c,tp%ind(l:u))) / real(u-l+1,pReal)
+               average = sum(tp%the_data(c,tp%ind(l:u))) / real(u-l+1_pInt,pReal)
             else
-               average = (res%box(c)%upper + res%box(c)%lower)/2.0
+               average = (res%box(c)%upper + res%box(c)%lower)/2.0_pReal
             endif
                
             res%cut_val = average
@@ -797,7 +797,7 @@ contains
 !         res%cut_val = tp%the_data(c,tp%ind(m))
 
          res%left => build_tree_for_range(tp,l,m,res)
-         res%right => build_tree_for_range(tp,m+1,u,res)
+         res%right => build_tree_for_range(tp,m+1_pInt,u,res)
 
          if (associated(res%right) .eqv. .false.) then
             res%box = res%left%box
@@ -1019,7 +1019,7 @@ contains
     type(kdtree2_result), target :: results(:)
 
 
-    sr%ballsize = huge(1.0)
+    sr%ballsize = huge(1.0_pReal)
     sr%qv => qv
     sr%nn = nn
     sr%nfound = 0
@@ -1062,7 +1062,7 @@ contains
 
     allocate (sr%qv(tp%dimen))
     sr%qv = tp%the_data(:,idxin) ! copy the vector
-    sr%ballsize = huge(1.0)       ! the largest real(pReal) number
+    sr%ballsize = huge(1.0_pReal)       ! the largest real(pReal) number
     sr%centeridx = idxin
     sr%correltime = correltime
 
@@ -1438,7 +1438,7 @@ contains
           res = (amin-x)**2;
           return
        else
-          res = 0.0
+          res = 0.0_pReal
           return
        endif
     endif
@@ -1461,9 +1461,9 @@ contains
 
     dimen = sr%dimen
     ballsize = sr%ballsize
-    dis = 0.0
+    dis = 0.0_pReal
     res = .true.
-    do i=1,dimen
+    do i=1_pInt,dimen
        l = node%box(i)%lower
        u = node%box(i)%upper
        dis = dis + (dis2_from_bnd(sr%qv(i),l,u))
@@ -1515,22 +1515,22 @@ contains
 
     mainloop: do i = node%l, node%u
        if (rearrange) then
-          sd = 0.0
-          do k = 1,dimen
-             sd = sd + (data(k,i) - qv(k))**2
+          sd = 0.0_pReal
+          do k = 1_pInt,dimen
+             sd = sd + (data(k,i) - qv(k))**2.0_pReal
              if (sd>ballsize) cycle mainloop
           end do
           indexofi = ind(i)  ! only read it if we have not broken out
        else
           indexofi = ind(i)
-          sd = 0.0
-          do k = 1,dimen
-             sd = sd + (data(k,indexofi) - qv(k))**2
+          sd = 0.0_pReal
+          do k = 1_pInt,dimen
+             sd = sd + (data(k,indexofi) - qv(k))**2.0_pReal
              if (sd>ballsize) cycle mainloop
           end do
        endif
 
-       if (centeridx > 0) then ! doing correlation interval?
+       if (centeridx > 0_pInt) then ! doing correlation interval?
           if (abs(indexofi-centeridx) < correltime) cycle mainloop
        endif
 
@@ -1638,26 +1638,26 @@ contains
        ! which index to the point do we use? 
 
        if (rearrange) then
-          sd = 0.0
-          do k = 1,dimen
-             sd = sd + (data(k,i) - qv(k))**2
+          sd = 0.0_pReal
+          do k = 1_pInt,dimen
+             sd = sd + (data(k,i) - qv(k))**2.0_pReal
              if (sd>ballsize) cycle mainloop
           end do
           indexofi = ind(i)  ! only read it if we have not broken out
        else
           indexofi = ind(i)
-          sd = 0.0
-          do k = 1,dimen
-             sd = sd + (data(k,indexofi) - qv(k))**2
+          sd = 0.0_pReal
+          do k = 1_pInt,dimen
+             sd = sd + (data(k,indexofi) - qv(k))**2.0_pReal
              if (sd>ballsize) cycle mainloop
           end do
        endif
 
-       if (centeridx > 0) then ! doing correlation interval?
+       if (centeridx > 0_pInt) then ! doing correlation interval?
           if (abs(indexofi-centeridx)<correltime) cycle mainloop
        endif
 
-       nfound = nfound+1
+       nfound = nfound+1_pInt
        if (nfound .gt. sr%nalloc) then
           ! oh nuts, we have to add another one to the tree but
           ! there isn't enough room.
@@ -1687,22 +1687,22 @@ contains
     real(pReal), allocatable :: all_distances(:)
     ! ..
     allocate (all_distances(tp%n))
-    do i = 1, tp%n
+    do i = 1_pInt, tp%n
        all_distances(i) = square_distance(tp%dimen,qv,tp%the_data(:,i))
     end do
     ! now find 'n' smallest distances
-    do i = 1, nn
-       results(i)%dis =  huge(1.0)
-       results(i)%idx = -1
+    do i = 1_pInt, nn
+       results(i)%dis =  huge(1.0_pReal)
+       results(i)%idx = -1_pInt
     end do
-    do i = 1, tp%n
+    do i = 1_pInt, tp%n
        if (all_distances(i)<results(nn)%dis) then
           ! insert it somewhere on the list
           do j = 1, nn
              if (all_distances(i)<results(j)%dis) exit
           end do
           ! now we know 'j'
-          do k = nn - 1, j, -1
+          do k = nn - 1_pInt, j, -1_pInt
              results(k+1) = results(k)
           end do
           results(j)%dis = all_distances(i)
