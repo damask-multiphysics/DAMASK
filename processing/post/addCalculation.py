@@ -30,7 +30,7 @@ class extendableOption(Option):
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) with derived values according to user defined arithmetic operation between column(s).
 
-""" + string.replace('$Id: addNorm.py 1118 2011-11-23 14:54:53Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 
@@ -64,7 +64,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id: addNorm.py 1118 2011-11-23 14:54:53Z MPIE\p.eisenlohr $','\n','\\n') + \
+  table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
   column = {}
