@@ -119,12 +119,17 @@ subroutine DAMASK_interface_init()
  loadcaseParameter = ''                                            ! should be empty
  loadcaseParameter(1:length)=commandLine(start:start+length)
  
+ do i=1,len(commandLine)                                           ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) =achar(iachar(commandLine(i:i))+32)
+ enddo
+
  start = index(commandLine,'-r',.true.) + 3_pInt                   ! search for '-r' and jump forward iby 3 to given name
  if (index(commandLine,'--restart',.true.)>0) then                 ! if '--restart' is found, use that (contains '-l')
    start = index(commandLine,'--restart',.true.) + 7_pInt
  endif 
  length = index(commandLine(start:len(commandLine)),' ',.false.)
 
+ call get_command(commandLine)                                     ! may contain capitals
  call GET_ENVIRONMENT_VARIABLE('HOST',hostName)
  call GET_ENVIRONMENT_VARIABLE('USER',userName)
 
