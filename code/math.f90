@@ -2952,8 +2952,8 @@ end subroutine
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Calculating volume mismatch'
-   print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)', ' Resolution:', res
+   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
+   print '(a,i5,i5,i5)',          ' Resolution:', res
  endif
 
  vol_initial = geomdim(1)*geomdim(2)*geomdim(3)/(real(res(1)*res(2)*res(3), pReal))
@@ -3005,8 +3005,8 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Calculating shape mismatch'
-   print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)', ' Resolution:', res
+   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
+   print '(a,i5,i5,i5)',          ' Resolution:', res
  endif
 
  coords_initial(1,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
@@ -3094,8 +3094,8 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Meshing cubes around centroids' 
-   print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)', ' Resolution:', res
+   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
+   print '(a,i5,i5,i5)',          ' Resolution:', res
  endif
 
  nodes = 0.0_pReal
@@ -3186,8 +3186,8 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Restore geometry using linear integration'
-   print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)', ' Resolution:', res
+   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
+   print '(a,i5,i5,i5)',          ' Resolution:', res
  endif
 
  coord_avgOrder = 0.0_pReal
@@ -3274,8 +3274,8 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  
  if (debug_verbosity > 0_pInt) then
    print*, 'Restore geometry using FFT-based integration'
-   print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)', ' Resolution:', res
+   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
+   print '(a,i5,i5,i5)',          ' Resolution:', res
  endif
 
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
@@ -3498,8 +3498,8 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
 
  if (debug_verbosity > 0_pInt) then 
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
-   print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)',          ' Resolution:', res
+   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
+   print '(a,i5,i5,i5)',          ' Resolution:', res
  endif
 
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
@@ -3599,8 +3599,8 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
                                
  if (debug_verbosity > 0_pInt) then
    print*, 'Calculating divergence of tensor/vector field using FDM'
-   print '(a,/,e12.5,e12.5,e12.5)', ' Dimension:', geomdim
-   print '(a,/,i5,i5,i5)', ' Resolution:', res
+   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
+   print '(a,i5,i5,i5)',          ' Resolution:', res
  endif
 
  divergence = 0.0_pReal
