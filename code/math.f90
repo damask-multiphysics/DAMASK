@@ -151,9 +151,9 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3) ::   Eulers
  real(pReal), dimension(4) ::   q,q2,axisangle,randTest
 ! the following variables are system dependend and shound NOT be pInt
- integer :: randSize                                ! gfortran requires a variable length to compile 
- integer, dimension(:), allocatable :: randInit     ! if recalculations of former randomness (with given seed) is necessary
-                                                    ! comment the first random_seed call out, set randSize to 1, and use ifort
+ integer :: randSize                                  ! gfortran requires a variable length to compile 
+ integer(pInt), dimension(:), allocatable :: randInit ! if recalculations of former randomness (with given seed) is necessary
+                                                      ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
  !$OMP CRITICAL (write2out)
  write(6,*) ''
@@ -241,8 +241,9 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  RECURSIVE SUBROUTINE qsort(a, istart, iend)
 
  implicit none
- integer(pInt), dimension(:,:) :: a
- integer(pInt) :: istart,iend,ipivot
+ integer(pInt), dimension(:,:), intent(inout) :: a
+ integer(pInt), intent(in) :: istart,iend
+ integer(pInt) :: ipivot
 
  if (istart < iend) then
    ipivot = math_partition(a,istart, iend)
@@ -259,8 +260,9 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  integer(pInt) function math_partition(a, istart, iend)
 
  implicit none
- integer(pInt), dimension(:,:) :: a
- integer(pInt) :: istart,iend,d,i,j,k,x,tmp
+ integer(pInt), dimension(:,:), intent(inout) :: a
+ integer(pInt), intent(in) :: istart,iend
+ integer(pInt) :: d,i,j,k,x,tmp
 
  d = size(a,1_pInt) ! number of linked data
 ! set the starting and ending points, and the pivot point
@@ -616,7 +618,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(4) :: math_qRnd
  real(pReal), dimension(3) :: rnd
  
- call halton(3,rnd)
+ call halton(3_pInt,rnd)
  math_qRnd(1) = cos(2.0_pReal*pi*rnd(1))*sqrt(rnd(3))
  math_qRnd(2) = sin(2.0_pReal*pi*rnd(2))*sqrt(1.0_pReal-rnd(3))
  math_qRnd(3) = cos(2.0_pReal*pi*rnd(2))*sqrt(1.0_pReal-rnd(3))
@@ -1055,7 +1057,7 @@ pure function math_transpose33(A)
 !********************************************************************
 ! skew part of a 33 matrix
 !********************************************************************
- function math_skew33(m)
+pure function math_skew33(m)
 
  implicit none
 
@@ -1065,24 +1067,24 @@ pure function math_transpose33(A)
  
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_skew33(i,j) = m(i,j) - 0.5_pReal * (m(i,j) + m(j,i))
 
- endfunction math_skew33
+endfunction math_skew33
 
  
 !********************************************************************
 ! deviatoric part of a 33 matrix
 !********************************************************************
-function math_deviatoric33(m)
+pure function math_deviatoric33(m)
 
-implicit none
+ implicit none
 
-real(pReal), dimension(3,3) :: math_deviatoric33
-real(pReal), dimension(3,3), intent(in) :: m
-integer(pInt) :: i
-real(pReal) :: hydrostatic
+ real(pReal), dimension(3,3) :: math_deviatoric33
+ real(pReal), dimension(3,3), intent(in) :: m
+ integer(pInt) :: i
+ real(pReal) :: hydrostatic
 
-hydrostatic = (m(1,1) + m(2,2) + m(3,3)) / 3.0_pReal
-math_deviatoric33 = m
-forall (i=1_pInt:3_pInt) math_deviatoric33(i,i) = m(i,i) - hydrostatic
+ hydrostatic = (m(1,1) + m(2,2) + m(3,3)) / 3.0_pReal
+ math_deviatoric33 = m
+ forall (i=1_pInt:3_pInt) math_deviatoric33(i,i) = m(i,i) - hydrostatic
 
 endfunction math_deviatoric33
 
@@ -3205,20 +3207,20 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
            me(order(2,o)) = j
            me(order(3,o)) = k
            if ( (me(1)==init(1)).and.(me(2)==init(2)).and. (me(3)==init(3)) ) then
-             coord(s+1_pInt,o,me(1),me(2),me(3),1:3) = geomdim * (matmul(defgrad_av,corner(1:3,s+1)) + &
-                                                     matmul(defgrad(me(1),me(2),me(3),1:3,1:3),0.5*step(1:3,s+1_pInt)/res))
+             coord(s+1_pInt,o,me(1),me(2),me(3),1:3) = geomdim * (matmul(defgrad_av,real(corner(1:3,s+1),pReal)) + &
+                           matmul(defgrad(me(1),me(2),me(3),1:3,1:3),0.5_pReal*real(step(1:3,s+1_pInt)/res,pReal)))
 
            else
              myStep = (me-rear)*geomdim/res
              coord(s+1_pInt,o,me(1),me(2),me(3),1:3) = coord(s+1_pInt,o,rear(1),rear(2),rear(3),1:3) + &
-                                             0.5*matmul(defgrad(me(1),me(2),me(3),1:3,1:3) + &
-                                                        defgrad(rear(1),rear(2),rear(3),1:3,1:3),myStep)
+                                           0.5_pReal*matmul(defgrad(me(1),me(2),me(3),1:3,1:3) + &
+                                                   defgrad(rear(1),rear(2),rear(3),1:3,1:3),myStep)
            endif
            rear = me
    enddo; enddo; enddo; enddo
    do i = 1_pInt,6_pInt
      coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) = coord_avgOrder(s+1_pInt,  1:res(1),1:res(2),1:res(3),1:3)&
-                                                                   + coord(s+1_pInt,i,1:res(1),1:res(2),1:res(3),1:3)/6.0
+                                                                   + coord(s+1_pInt,i,1:res(1),1:res(2),1:res(3),1:3)/6.0_pReal
    enddo
  enddo
 
@@ -3237,7 +3239,7 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
                        + coord_avgOrder(5,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*positive(3)&
                        + coord_avgOrder(6,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*positive(3)&
                        + coord_avgOrder(7,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*positive(3)&
-                       + coord_avgOrder(8,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*positive(3))*0.125
+                       + coord_avgOrder(8,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*positive(3))*0.125_pReal
  enddo; enddo; enddo
 
 end subroutine deformed_linear
@@ -3264,9 +3266,9 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  type(C_PTR) :: fftw_forth, fftw_back
  type(C_PTR) :: coords_fftw, defgrad_fftw
  real(pReal),    dimension(:,:,:,:,:), pointer :: defgrad_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: defgrad_complex
+ complex(pReal), dimension(:,:,:,:,:), pointer :: defgrad_fourier
  real(pReal),    dimension(:,:,:,:),   pointer :: coords_real
- complex(pReal), dimension(:,:,:,:),   pointer :: coords_complex
+ complex(pReal), dimension(:,:,:,:),   pointer :: coords_fourier
  ! other variables
  integer(pInt) :: i, j, k, res1_red
  integer(pInt), dimension(3) :: k_s
@@ -3281,35 +3283,46 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
  step = geomdim/real(res, pReal)
 
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102)
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
  call fftw_set_timelimit(fftw_timelimit)
  defgrad_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*9_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
- call c_f_pointer(defgrad_fftw, defgrad_real,   [res(1)+2_pInt,res(2),res(3),3,3])
- call c_f_pointer(defgrad_fftw, defgrad_complex,[res1_red     ,res(2),res(3),3,3])
+ call c_f_pointer(defgrad_fftw, defgrad_real,   [res(1)+2_pInt,res(2),res(3),3_pInt,3_pInt])
+ call c_f_pointer(defgrad_fftw, defgrad_fourier,[res1_red     ,res(2),res(3),3_pInt,3_pInt])
  coords_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*3_pInt,C_SIZE_T))        !C_SIZE_T is of type integer(8)
- call c_f_pointer(coords_fftw, coords_real,     [res(1)+2_pInt,res(2),res(3),3])
- call c_f_pointer(coords_fftw, coords_complex,  [res1_red     ,res(2),res(3),3])
+ call c_f_pointer(coords_fftw, coords_real,     [res(1)+2_pInt,res(2),res(3),3_pInt])
+ call c_f_pointer(coords_fftw, coords_fourier,  [res1_red     ,res(2),res(3),3_pInt])
 
- fftw_forth = fftw_plan_many_dft_r2c(3,(/res(3),res(2) ,res(1)/),9_pInt,&                      ! dimensions , length in each dimension in reversed order
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),9_pInt,&                      ! dimensions , length in each dimension in reversed order
                           defgrad_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
-                                     1,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
-                       defgrad_complex,(/res(3),res(2) ,res1_red/),&
-                                     1,  res(3)*res(2)* res1_red,fftw_planner_flag)   
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
+                       defgrad_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)   
 
- fftw_back  = fftw_plan_many_dft_c2r(3,(/res(3),res(2) ,res(1)/),3_pInt,&
-                        coords_complex,(/res(3),res(2) ,res1_red/),&
-                                     1,  res(3)*res(2)* res1_red,&
+ fftw_back  = fftw_plan_many_dft_c2r(3_pInt,(/res(3),res(2) ,res(1)/),3_pInt,&
+                        coords_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,&
                            coords_real,(/res(3),res(2) ,res(1)+2_pInt/),&
-                                     1,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
 
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    defgrad_real(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
- call fftw_execute_dft_r2c(fftw_forth, defgrad_real, defgrad_complex)
-
- coords_complex = 0.0
+ call fftw_execute_dft_r2c(fftw_forth, defgrad_real, defgrad_fourier)
+ 
+ !remove highest frequency in each direction
+ if(res(1)>1_pInt) &
+   defgrad_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(2)>1_pInt) &
+   defgrad_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(3)>1_pInt) &
+   defgrad_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                               
+ coords_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
  do k = 1_pInt, res(3)
    k_s(3) = k-1_pInt
    if(k > res(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-res(3)
@@ -3318,16 +3331,16 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
      if(j > res(2)/2_pInt+1_pInt) k_s(2) = k_s(2)-res(2)
      do i = 1_pInt, res1_red
        k_s(1) = i-1_pInt
-       if(i/=1_pInt) coords_complex(i,j,k,1:3) = coords_complex(i,j,k,1:3)&
-                                + defgrad_complex(i,j,k,1:3,1)*geomdim(1)/(real(k_s(1),pReal)*two_pi_img)
-       if(j/=1_pInt) coords_complex(i,j,k,1:3) = coords_complex(i,j,k,1:3)&
-                                + defgrad_complex(i,j,k,1:3,2)*geomdim(2)/(real(k_s(2),pReal)*two_pi_img)
-       if(k/=1_pInt) coords_complex(i,j,k,1:3) = coords_complex(i,j,k,1:3)&
-                                + defgrad_complex(i,j,k,1:3,3)*geomdim(3)/(real(k_s(3),pReal)*two_pi_img)
+       if(i/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
+                + defgrad_fourier(i,j,k,1:3,1)*cmplx(geomdim(1)/real(k_s(1),pReal),0.0_pReal,pReal)*two_pi_img
+       if(j/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
+                + defgrad_fourier(i,j,k,1:3,2)*cmplx(geomdim(1)/real(k_s(2),pReal),0.0_pReal,pReal)*two_pi_img
+       if(k/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
+                + defgrad_fourier(i,j,k,1:3,3)*cmplx(geomdim(1)/real(k_s(3),pReal),0.0_pReal,pReal)*two_pi_img
  enddo; enddo; enddo
  
- call fftw_execute_dft_c2r(fftw_back,coords_complex,coords_real)
- coords_real = coords_real/real(res(1)*res(2)*res(3))
+ call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
+ coords_real = coords_real/real(res(1)*res(2)*res(3),pReal)
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    coords(i,j,k,1:3) = coords_real(i,j,k,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
@@ -3343,14 +3356,14 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  enddo; enddo; enddo
 
  call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
- call c_f_pointer(C_NULL_PTR, defgrad_real,        [res(1)+2_pInt,res(2),res(3),3,3])              ! let all pointers point on NULL-Type
- call c_f_pointer(C_NULL_PTR, defgrad_complex,     [res1_red     ,res(2),res(3),3,3])
- call c_f_pointer(C_NULL_PTR, coords_real,   [res(1)+2_pInt,res(2),res(3),3])
- call c_f_pointer(C_NULL_PTR, coords_complex,[res1_red     ,res(2),res(3),3])
- if(.not. (c_associated(C_LOC(defgrad_real)) .and. c_associated(C_LOC(defgrad_complex))))&         ! Check if pointers are deassociated and free memory   
+ call c_f_pointer(C_NULL_PTR, defgrad_real,        [res(1)+2_pInt,res(2),res(3),3_pInt,3_pInt])              ! let all pointers point on NULL-Type
+ call c_f_pointer(C_NULL_PTR, defgrad_fourier,     [res1_red     ,res(2),res(3),3_pInt,3_pInt])
+ call c_f_pointer(C_NULL_PTR, coords_real,   [res(1)+2_pInt,res(2),res(3),3_pInt])
+ call c_f_pointer(C_NULL_PTR, coords_fourier,[res1_red     ,res(2),res(3),3_pInt])
+ if(.not. (c_associated(C_LOC(defgrad_real(1,1,1,1,1))) .and. c_associated(C_LOC(defgrad_fourier(1,1,1,1,1)))))&         ! Check if pointers are deassociated and free memory   
                                                       call fftw_free(defgrad_fftw)                 ! This procedure ensures that optimization do not mix-up lines, because a 
- if(.not.(c_associated(C_LOC(coords_real)) .and. c_associated(C_LOC(coords_complex))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
-                                                       call fftw_free(coords_fftw)                 ! call c_f_pointer(field_fftw, field_complex, [res1_red ,res(2),res(3),vec_tens,3])
+ if(.not.(c_associated(C_LOC(coords_real(1,1,1,1))) .and. c_associated(C_LOC(coords_fourier(1,1,1,1)))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
+                                                       call fftw_free(coords_fftw)                 ! call c_f_pointer(field_fftw, field_fourier, [res1_red ,res(2),res(3),vec_tens,3])
 end subroutine deformed_fft
 
 
@@ -3376,12 +3389,12 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  type(C_PTR) :: fftw_forth, fftw_back
  type(C_PTR) :: field_fftw, curl_fftw
  real(pReal),    dimension(:,:,:,:,:), pointer :: field_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: field_complex
+ complex(pReal), dimension(:,:,:,:,:), pointer :: field_fourier
  real(pReal),    dimension(:,:,:,:,:), pointer :: curl_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: curl_complex
+ complex(pReal), dimension(:,:,:,:,:), pointer :: curl_fourier
  ! other variables
  integer(pInt) i, j, k, l, res1_red
- integer(pInt), dimension(3) :: k_s,cutting_freq
+ integer(pInt), dimension(3) :: k_s
  real(pReal) :: wgt
 
  if (debug_verbosity > 0_pInt) then
@@ -3393,34 +3406,45 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
 
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102)
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
  call fftw_set_timelimit(fftw_timelimit)
  field_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
- call c_f_pointer(field_fftw, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3])
- call c_f_pointer(field_fftw, field_complex,[res1_red     ,res(2),res(3),vec_tens,3])
+ call c_f_pointer(field_fftw, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
+ call c_f_pointer(field_fftw, field_fourier,[res1_red     ,res(2),res(3),vec_tens,3_pInt])
  curl_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T))        !C_SIZE_T is of type integer(8)
- call c_f_pointer(curl_fftw, curl_real,     [res(1)+2_pInt,res(2),res(3),vec_tens,3])
- call c_f_pointer(curl_fftw, curl_complex,  [res1_red     ,res(2),res(3),vec_tens,3])
+ call c_f_pointer(curl_fftw, curl_real,     [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
+ call c_f_pointer(curl_fftw, curl_fourier,  [res1_red     ,res(2),res(3),vec_tens,3_pInt])
 
- fftw_forth = fftw_plan_many_dft_r2c(3,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                      ! dimensions , length in each dimension in reversed order
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                      ! dimensions , length in each dimension in reversed order
                             field_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
-                                     1,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
-                         field_complex,(/res(3),res(2) ,res1_red/),&
-                                     1,  res(3)*res(2)* res1_red,fftw_planner_flag)   
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
+                         field_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)   
 
- fftw_back  = fftw_plan_many_dft_c2r(3,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&
-                          curl_complex,(/res(3),res(2) ,res1_red/),&
-                                     1,  res(3)*res(2)* res1_red,&
+ fftw_back  = fftw_plan_many_dft_c2r(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&
+                          curl_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,&
                              curl_real,(/res(3),res(2) ,res(1)+2_pInt/),&
-                                     1,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
 
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    field_real(i,j,k,1:vec_tens,1:3) = field(i,j,k,1:vec_tens,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
- call fftw_execute_dft_r2c(fftw_forth, field_real, field_complex)
-
+ call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
+ 
+ !remove highest frequency in each direction
+ if(res(1)>1_pInt) &
+   field_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
+                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(2)>1_pInt) &
+   field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
+                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(3)>1_pInt) &
+   field_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
+                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                               
  do k = 1_pInt, res(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
    k_s(3) = k - 1_pInt
    if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
@@ -3431,38 +3455,33 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
            k_s(1) = i - 1_pInt
            xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
  enddo; enddo; enddo
-!remove the given highest frequencies
- cutting_freq = (/0_pInt,0_pInt,0_pInt/)                                                      ! for 0,0,0, just the highest freq. is removed
- xi( res(1)/2_pInt+1_pInt-cutting_freq(1):res1_red , 1:res(2) , 1:res(3) , 1 ) = 0.0_pReal
- xi(1:res1_red , res(2)/2_pInt+1_pInt-cutting_freq(2):res(2)/2_pInt+1_pInt+cutting_freq(2) , 1:res(3) , 2) = 0.0_pReal
- xi(1:res1_red , 1:res(2) , res(3)/2_pInt+1_pInt-cutting_freq(3):res(3)/2_pInt+1_pInt+cutting_freq(3) , 3) = 0.0_pReal
-
+ 
  do k = 1, res(3); do j = 1, res(2);do i = 1, res1_red
    do l = 1, vec_tens
-     curl_complex(i,j,k,l,1) = ( field_complex(i,j,k,l,3)*xi(i,j,k,2)&
-                                -field_complex(i,j,k,l,2)*xi(i,j,k,3) )*two_pi_img
-     curl_complex(i,j,k,l,2) = (-field_complex(i,j,k,l,3)*xi(i,j,k,1)&
-                                +field_complex(i,j,k,l,1)*xi(i,j,k,3) )*two_pi_img
-     curl_complex(i,j,k,l,3) = ( field_complex(i,j,k,l,2)*xi(i,j,k,1)&
-                                -field_complex(i,j,k,l,1)*xi(i,j,k,2) )*two_pi_img
+     curl_fourier(i,j,k,l,1) = ( field_fourier(i,j,k,l,3)*xi(i,j,k,2)&
+                                -field_fourier(i,j,k,l,2)*xi(i,j,k,3) )*two_pi_img
+     curl_fourier(i,j,k,l,2) = (-field_fourier(i,j,k,l,3)*xi(i,j,k,1)&
+                                +field_fourier(i,j,k,l,1)*xi(i,j,k,3) )*two_pi_img
+     curl_fourier(i,j,k,l,3) = ( field_fourier(i,j,k,l,2)*xi(i,j,k,1)&
+                                -field_fourier(i,j,k,l,1)*xi(i,j,k,2) )*two_pi_img
    enddo
  enddo; enddo; enddo
 
- call fftw_execute_dft_c2r(fftw_back, curl_complex, curl_real)
+ call fftw_execute_dft_c2r(fftw_back, curl_fourier, curl_real)
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    curl(i,j,k,1:vec_tens,1:3) = curl_real(i,j,k,1:vec_tens,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
  curl = curl * wgt
  call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
- call c_f_pointer(C_NULL_PTR, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3])                       ! let all pointers point on NULL-Type
- call c_f_pointer(C_NULL_PTR, field_complex,[res1_red     ,res(2),res(3),vec_tens,3])
- call c_f_pointer(C_NULL_PTR, curl_real,    [res(1)+2_pInt,res(2),res(3),vec_tens,3])
- call c_f_pointer(C_NULL_PTR, curl_complex, [res1_red     ,res(2),res(3),vec_tens,3])
- if(.not. (c_associated(C_LOC(field_real)) .and. c_associated(C_LOC(field_complex))))&                     ! Check if pointers are deassociated and free memory   
+ call c_f_pointer(C_NULL_PTR, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])                       ! let all pointers point on NULL-Type
+ call c_f_pointer(C_NULL_PTR, field_fourier,[res1_red     ,res(2),res(3),vec_tens,3_pInt])
+ call c_f_pointer(C_NULL_PTR, curl_real,    [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
+ call c_f_pointer(C_NULL_PTR, curl_fourier, [res1_red     ,res(2),res(3),vec_tens,3_pInt])
+ if(.not. (c_associated(C_LOC(field_real(1,1,1,1,1))) .and. c_associated(C_LOC(field_fourier(1,1,1,1,1)))))&                     ! Check if pointers are deassociated and free memory   
                                                       call fftw_free(field_fftw)                           ! This procedure ensures that optimization do not mix-up lines, because a 
- if(.not.(c_associated(C_LOC(curl_real)) .and. c_associated(C_LOC(curl_complex))))&                        ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
-                                                      call fftw_free(curl_fftw)                            ! call c_f_pointer(field_fftw, field_complex, [res1_red ,res(2),res(3),vec_tens,3])
+ if(.not.(c_associated(C_LOC(curl_real(1,1,1,1,1))) .and. c_associated(C_LOC(curl_fourier(1,1,1,1,1)))))&                        ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
+                                                      call fftw_free(curl_fftw)                            ! call c_f_pointer(field_fftw, field_fourier, [res1_red ,res(2),res(3),vec_tens,3])
 end subroutine curl_fft
 
  
@@ -3488,13 +3507,13 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  type(C_PTR) :: fftw_forth, fftw_back
  type(C_PTR) :: field_fftw, divergence_fftw
  real(pReal),    dimension(:,:,:,:,:), pointer :: field_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: field_complex
+ complex(pReal), dimension(:,:,:,:,:), pointer :: field_fourier
  real(pReal),    dimension(:,:,:,:),   pointer :: divergence_real
- complex(pReal), dimension(:,:,:,:),   pointer :: divergence_complex
+ complex(pReal), dimension(:,:,:,:),   pointer :: divergence_fourier
  ! other variables
  integer(pInt) :: i, j, k, l, res1_red
  real(pReal) :: wgt
- integer(pInt), dimension(3) :: k_s,cutting_freq
+ integer(pInt), dimension(3) :: k_s
 
  if (debug_verbosity > 0_pInt) then 
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
@@ -3505,32 +3524,31 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
 
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102)
+if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
  call fftw_set_timelimit(fftw_timelimit)
  field_fftw = fftw_alloc_complex(int(res1_red*res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T))              !C_SIZE_T is of type integer(8)
- call c_f_pointer(field_fftw, field_real,             [res(1)+2_pInt,res(2),res(3),vec_tens,3])
- call c_f_pointer(field_fftw, field_complex,          [res1_red     ,res(2),res(3),vec_tens,3])
+ call c_f_pointer(field_fftw, field_real,             [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
+ call c_f_pointer(field_fftw, field_fourier,          [res1_red     ,res(2),res(3),vec_tens,3_pInt])
  divergence_fftw = fftw_alloc_complex(int(res1_red*res(2)*res(3)*vec_tens,C_SIZE_T))
  call c_f_pointer(divergence_fftw, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
- call c_f_pointer(divergence_fftw, divergence_complex,[res1_red     ,res(2),res(3),vec_tens])
+ call c_f_pointer(divergence_fftw, divergence_fourier,[res1_red     ,res(2),res(3),vec_tens])
 
- fftw_forth = fftw_plan_many_dft_r2c(3,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                  ! dimensions , length in each dimension in reversed order
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                  ! dimensions , length in each dimension in reversed order
                             field_real,(/res(3),res(2) ,res(1)+2_pInt/),&                           ! input data , physical length in each dimension in reversed order
-                                     1,  res(3)*res(2)*(res(1)+2_pInt),&                            ! striding   , product of physical lenght in the 3 dimensions
-                         field_complex,(/res(3),res(2) ,res1_red/),&
-                                     1,  res(3)*res(2)* res1_red,fftw_planner_flag)   
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                            ! striding   , product of physical lenght in the 3 dimensions
+                         field_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)   
 
- fftw_back  = fftw_plan_many_dft_c2r(3,(/res(3),res(2) ,res(1)/),vec_tens,&
-                    divergence_complex,(/res(3),res(2) ,res1_red/),&
-                                     1,  res(3)*res(2)* res1_red,&
+ fftw_back  = fftw_plan_many_dft_c2r(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens,&
+                    divergence_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,&
                        divergence_real,(/res(3),res(2) ,res(1)+2_pInt/),&
-                                     1,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
- field_real = 0.0_pReal                                                                             ! padding 
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)                                                     ! padding 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    field_real(i,j,k,1:vec_tens,1:3) = field(i,j,k,1:vec_tens,1:3)                                   ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
  
- call fftw_execute_dft_r2c(fftw_forth, field_real, field_complex)
+ call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
  do k = 1_pInt, res(3)                                                                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
    k_s(3) = k - 1_pInt
    if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
@@ -3542,18 +3560,24 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
            xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
  enddo; enddo; enddo
  
-!remove the given highest frequencies
- cutting_freq = 0_pInt                                                                              ! for 0,0,0, just the highest freq. is removed
- xi( res(1)/2_pInt+1_pInt-cutting_freq(1):res1_red , 1:res(2) , 1:res(3) , 1 ) = 0.0_pReal
- xi(1:res1_red , res(2)/2_pInt+1_pInt-cutting_freq(2):res(2)/2_pInt+1_pInt+cutting_freq(2) , 1:res(3) , 2) = 0.0_pReal
- xi(1:res1_red , 1:res(2) , res(3)/2_pInt+1_pInt-cutting_freq(3):res(3)/2_pInt+1_pInt+cutting_freq(3) , 3) = 0.0_pReal
+ !remove highest frequency in each direction
+ if(res(1)>1_pInt) &
+   field_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
+                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(2)>1_pInt) &
+   field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
+                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(3)>1_pInt) &
+   field_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
+                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                               
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
    do l = 1_pInt, vec_tens
-     divergence_complex(i,j,k,l) = sum(field_complex(i,j,k,l,1:3)*xi(i,j,k,1:3))&
+     divergence_fourier(i,j,k,l) = sum(field_fourier(i,j,k,l,1:3)*xi(i,j,k,1:3))&
                                    *two_pi_img
    enddo
  enddo; enddo; enddo
- call fftw_execute_dft_c2r(fftw_back, divergence_complex, divergence_real)
+ call fftw_execute_dft_c2r(fftw_back, divergence_fourier, divergence_real)
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    divergence(i,j,k,1:vec_tens) = divergence_real(i,j,k,1:vec_tens)                                        ! ensure that data is aligned properly (fftw_alloc)
@@ -3561,14 +3585,14 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
 
  divergence = divergence * wgt
  call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
- call c_f_pointer(C_NULL_PTR, field_real,        [res(1)+2_pInt,res(2),res(3),vec_tens,3])                 ! let all pointers point on NULL-Type
- call c_f_pointer(C_NULL_PTR, field_complex,     [res1_red     ,res(2),res(3),vec_tens,3])
+ call c_f_pointer(C_NULL_PTR, field_real,        [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])                 ! let all pointers point on NULL-Type
+ call c_f_pointer(C_NULL_PTR, field_fourier,     [res1_red     ,res(2),res(3),vec_tens,3_pInt])
  call c_f_pointer(C_NULL_PTR, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
- call c_f_pointer(C_NULL_PTR, divergence_complex,[res1_red     ,res(2),res(3),vec_tens])
- if(.not. (c_associated(C_LOC(field_real)) .and. c_associated(C_LOC(field_complex))))&                     ! Check if pointers are deassociated and free memory   
+ call c_f_pointer(C_NULL_PTR, divergence_fourier,[res1_red     ,res(2),res(3),vec_tens])
+ if(.not. (c_associated(C_LOC(field_real(1,1,1,1,1))) .and. c_associated(C_LOC(field_fourier(1,1,1,1,1)))))&                     ! Check if pointers are deassociated and free memory   
                                                       call fftw_free(field_fftw)                           ! This procedure ensures that optimization do not mix-up lines, because a 
- if(.not.(c_associated(C_LOC(divergence_real)) .and. c_associated(C_LOC(divergence_complex))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
-                                                    call fftw_free(divergence_fftw)                        ! call c_f_pointer(field_fftw, field_complex, [res1_red ,res(2),res(3),vec_tens,3])
+ if(.not.(c_associated(C_LOC(divergence_real(1,1,1,1))) .and. c_associated(C_LOC(divergence_fourier(1,1,1,1)))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
+                                                    call fftw_free(divergence_fftw)                        ! call c_f_pointer(field_fftw, field_fourier, [res1_red ,res(2),res(3),vec_tens,3])
  end subroutine divergence_fft
 
           
@@ -3734,7 +3758,7 @@ subroutine calculate_cauchy(res,defgrad,p_stress,c_stress)
  real(pReal) :: jacobi
  integer(pInt) :: i, j, k
 
- c_stress = 0.0_pInt
+ c_stress = 0.0_pReal
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    jacobi = math_det33(defgrad(i,j,k,1:3,1:3))
    c_stress(i,j,k,1:3,1:3) = matmul(p_stress(i,j,k,1:3,1:3),transpose(defgrad(i,j,k,1:3,1:3)))/jacobi
