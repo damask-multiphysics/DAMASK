@@ -30,6 +30,7 @@ class extendableOption(Option):
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) with derived values according to user defined arithmetic operation between column(s).
 
+Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + #ip.z#**2 )"
 """ + string.replace('$Id$','\n','\\n')
 )
 
@@ -72,17 +73,17 @@ for file in files:
   for label,formula in zip(options.labels,options.formulas):
     table.labels_append(label)
     interpolator = []
-    operands = re.findall(r'\$(.+?)\$',formula)
+    operands = re.findall(r'#(.+?)#',formula)
     for operand in operands:
       if not operand in column:
         try:
           column[operand] = table.labels.index(operand)
         except:
           parser.error('column %s not found...\n'%operand)
-        interpolator += ['float(table.data[%i])'%column[operand]]
+      interpolator += ['float(table.data[%i])'%column[operand]]
     for operand in operands:
-      formula = formula.replace('$'+operand+'$','%e')
-    evaluator[label] = "'" + formula + "'%(" + ','.join(interpolator) + ")" 
+      formula = formula.replace('#'+operand+'#','%e')
+    evaluator[label] = "'" + formula + "'%(" + ','.join(interpolator) + ")"
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
