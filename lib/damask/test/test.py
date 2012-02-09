@@ -17,11 +17,11 @@ class Test():
     self.dirBase = os.path.dirname(os.path.realpath(sys.argv[0]))
   
   def execute(self,variants = [],update = []):
+
     '''
     Run all variants and report first failure.
     '''
     if len(variants) == 0: variants = xrange(len(self.variants))       # iterate over all variants
-
     self.clean()
     for variant in variants:
       try:
@@ -35,11 +35,11 @@ class Test():
       except:
         return variant
     return -1
-    # for variant in variants:
+    # for self.current_variant_index,variant in enumerate(variants):
       # self.prepare(variant)
       # self.run(variant)
       # self.postprocess(variant)
-      # if variant in update:
+      # if self.current_variant_index in update:
         # self.update(variant)
       # elif not self.compare(variant):
         # return variant
@@ -144,10 +144,13 @@ class Test():
     table = damask.ASCIItable(refFile)
     table.head_read()
     refFile.close()
-    refArray = numpy.loadtxt(refName,skiprows = table.headerLen)
-    curArray = numpy.loadtxt(curName,skiprows = table.headerLen)
-
+    refArray = numpy.genfromtxt(refName,missing_values='n/a',skip_header = table.headerLen)
+    curArray = numpy.genfromtxt(curName,missing_values='n/a',skip_header = table.headerLen)
     err = abs((refArray/curArray)-1.)                                     # relative tolerance
+    refNaN=len(numpy.isnan(refArray))
+    curNaN=len(numpy.isnan(curArray))
+    if curNaN == refNaN:
+      err[numpy.isnan(err)]=0.0
     max_err = numpy.max(err)
     print 'maximum relative error',max_err
     return max_err
