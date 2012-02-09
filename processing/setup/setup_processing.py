@@ -48,11 +48,11 @@ if options.compiler not in compilers:
   parser.error('compiler switch "--F90" has to be one out of: %s'%(', '.join(compilers)))
 
 f2py_compiler = {
-                  'gfortran': 'gnu95  --f90flags="-fno-range-check"',
-                  'gnu95':    'gnu95  --f90flags="-fno-range-check"',
-                  'intel32':  'intel',
-                  'intel':    'intelem',
-                  'ifort':    'intelem',
+                  'gfortran': 'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008"',
+                  'gnu95':    'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008"',
+                  'intel32':  'intel   --f90flags="-fpp -stand f03"',
+                  'intel':    'intelem --f90flags="-fpp -stand f03"',
+                  'ifort':    'intelem --f90flags="-fpp -stand f03"',
                 }[options.compiler]
 compiler = {
                   'gfortran': 'gfortran',
