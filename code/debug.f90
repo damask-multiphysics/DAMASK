@@ -36,9 +36,9 @@ integer(pInt), dimension(:,:), allocatable :: debug_StateLoopDistribution
 integer(pInt), dimension(:), allocatable ::   debug_CrystalliteLoopDistribution
 integer(pInt), dimension(:), allocatable ::   debug_MaterialpointStateLoopDistribution
 integer(pInt), dimension(:), allocatable ::   debug_MaterialpointLoopDistribution
-integer(pLongInt) :: debug_cumLpTicks             = 0_pInt
-integer(pLongInt) :: debug_cumDotStateTicks       = 0_pInt
-integer(pLongInt) :: debug_cumDotTemperatureTicks = 0_pInt
+integer(pLongInt) :: debug_cumLpTicks             = 0_pLongInt
+integer(pLongInt) :: debug_cumDotStateTicks       = 0_pLongInt
+integer(pLongInt) :: debug_cumDotTemperatureTicks = 0_pLongInt
 integer(pInt) :: debug_cumLpCalls             = 0_pInt
 integer(pInt) :: debug_cumDotStateCalls       = 0_pInt
 integer(pInt) :: debug_cumDotTemperatureCalls = 0_pInt
@@ -65,6 +65,7 @@ CONTAINS
 !********************************************************************
 subroutine debug_init()
   
+  use, intrinsic :: iso_fortran_env  
   use prec,     only: pInt  
   use numerics, only: nStress, &
                       nState, &
@@ -115,27 +116,27 @@ subroutine debug_init()
       read(fileunit,'(a1024)',END=100) line
       if (IO_isBlank(line)) cycle                           ! skip empty lines
       positions = IO_stringPos(line,maxNchunks)
-      tag = IO_lc(IO_stringValue(line,positions,1))         ! extract key
+      tag = IO_lc(IO_stringValue(line,positions,1_pInt))         ! extract key
       select case(tag)
         case ('element','e','el')
-              debug_e = IO_intValue(line,positions,2)
+              debug_e = IO_intValue(line,positions,2_pInt)
         case ('integrationpoint','i','ip')
-              debug_i = IO_intValue(line,positions,2)
+              debug_i = IO_intValue(line,positions,2_pInt)
         case ('grain','g','gr')
-              debug_g = IO_intValue(line,positions,2)
+              debug_g = IO_intValue(line,positions,2_pInt)
         case ('selective')
-              debug_selectiveDebugger = IO_intValue(line,positions,2) > 0_pInt
+              debug_selectiveDebugger = IO_intValue(line,positions,2_pInt) > 0_pInt
         case ('verbosity')
-              debug_verbosity = IO_intValue(line,positions,2)
+              debug_verbosity = IO_intValue(line,positions,2_pInt)
         case ('(spectral)')
-            select case(IO_lc(IO_stringValue(line,positions,2)))
+            select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
               case('general')
                    debug_spectral = ior(debug_spectral, debug_spectralGeneral)
               case('divergence')
                    debug_spectral = ior(debug_spectral, debug_spectralDivergence)
               case('restart')
                    debug_spectral = ior(debug_spectral, debug_spectralRestart)
-              case('fftw')
+              case('fftw', 'fft')
                    debug_spectral = ior(debug_spectral, debug_spectralFFTW)
             endselect
       endselect
@@ -203,9 +204,9 @@ subroutine debug_reset()
   debug_CrystalliteLoopDistribution         = 0_pInt
   debug_MaterialpointStateLoopDistribution  = 0_pInt
   debug_MaterialpointLoopDistribution       = 0_pInt
-  debug_cumLpTicks             = 0_pInt
-  debug_cumDotStateTicks       = 0_pInt
-  debug_cumDotTemperatureTicks = 0_pInt
+  debug_cumLpTicks             = 0_pLongInt
+  debug_cumDotStateTicks       = 0_pLongInt
+  debug_cumDotTemperatureTicks = 0_pLongInt
   debug_cumLpCalls             = 0_pInt
   debug_cumDotStateCalls       = 0_pInt
   debug_cumDotTemperatureCalls = 0_pInt
@@ -247,23 +248,28 @@ subroutine debug_info()
       write(6,*)
       write(6,'(a33,1x,i12)')      'total calls to LpAndItsTangent  :',debug_cumLpCalls
       if (debug_cumLpCalls > 0_pInt) then
-        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',dble(debug_cumLpTicks)/tickrate
+        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumLpTicks,pReal)&
+                                                                             /real(tickrate,pReal)
         write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-          dble(debug_cumLpTicks)*1.0e6_pReal/tickrate/debug_cumLpCalls
+          real(debug_cumLpTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)/real(debug_cumLpCalls,pReal)
       endif
       write(6,*)
       write(6,'(a33,1x,i12)')      'total calls to collectDotState  :',debug_cumDotStateCalls
       if (debug_cumdotStateCalls > 0_pInt) then
-        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',dble(debug_cumDotStateTicks)/tickrate
+        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotStateTicks,pReal)&
+                                                                             /real(tickrate,pReal)
         write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-          dble(debug_cumDotStateTicks)*1.0e6_pReal/tickrate/debug_cumDotStateCalls
+          real(debug_cumDotStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
+                                                                      /real(debug_cumDotStateCalls,pReal)
       endif
       write(6,*)
       write(6,'(a33,1x,i12)')      'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
       if (debug_cumdotTemperatureCalls > 0_pInt) then
-        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :', dble(debug_cumDotTemperatureTicks)/tickrate
+        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotTemperatureTicks,pReal)&
+                                                                             /real(tickrate,pReal)
         write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-          dble(debug_cumDotTemperatureTicks)*1.0e6_pReal/tickrate/debug_cumDotTemperatureCalls
+          real(debug_cumDotTemperatureTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
+                                                                  /real(debug_cumDotTemperatureCalls,pReal)
       endif
     
       integral = 0_pInt

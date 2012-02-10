@@ -21,7 +21,7 @@
 !##############################################################
  MODULE IO   
 !##############################################################
-
+ 
  CONTAINS
 !---------------------------
 ! function IO_abaqus_assembleInputFile
@@ -50,6 +50,7 @@
 !********************************************************************
 subroutine IO_init ()
 
+use, intrinsic :: iso_fortran_env
   !$OMP CRITICAL (write2out)
   write(6,*)
   write(6,*) '<<<+-  IO init  -+>>>'
@@ -156,9 +157,8 @@ end function
 
  use prec, only: pInt
  use DAMASK_interface
+ 
  implicit none
-
- character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
  character(len=*) relPath
  integer(pInt) unit
 
@@ -193,8 +193,8 @@ end function
                     trim(model)//InputFileExtension)
    open(unit,err=100,file=trim(getSolverWorkingDirectoryName())//&
                           trim(model)//InputFileExtension//'_assembly')
-   IO_open_inputFile = IO_abaqus_assembleInputFile(unit,unit+1)          ! strip comments and concatenate any "include"s
-   close(unit+1) 
+   IO_open_inputFile = IO_abaqus_assembleInputFile(unit,unit+1_pInt)          ! strip comments and concatenate any "include"s
+   close(unit+1_pInt) 
  else
    open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
                                        trim(model)//InputFileExtension)
@@ -382,7 +382,7 @@ end function
  pos = IO_stringPos(line,3_pInt)
  if (pos(1).ne.3) goto 100
  do i=1,3
-   limits(i) = IO_intValue(line,pos,i)*inRad
+   limits(i) = IO_floatValue(line,pos,i)*inRad
  enddo
 
 !--- deltas in phi1, Phi, phi2 ---
@@ -390,7 +390,7 @@ end function
  pos = IO_stringPos(line,3_pInt)
  if (pos(1).ne.3) goto 100
  do i=1,3
-   deltas(i) = IO_intValue(line,pos,i)*inRad
+   deltas(i) = IO_floatValue(line,pos,i)*inRad
  enddo
  steps = nint(limits/deltas,pInt)
  allocate(dV_V(steps(3),steps(2),steps(1)))
@@ -455,7 +455,7 @@ end function
  enddo
 
  allocate(binSet(Nreps))
- bin = 0 ! bin counter
+ bin = 0_pInt ! bin counter
  i = 1 ! set counter
  do phi1=1,steps(1)
    do Phi=1,steps(2)
@@ -476,16 +476,16 @@ end function
      j = i
    endif
    bin = binSet(j)
-   IO_hybridIA(1,i) = deltas(1)*(mod(bin/(steps(3)*steps(2)),steps(1))+center)  ! phi1
-   IO_hybridIA(2,i) = deltas(2)*(mod(bin/ steps(3)          ,steps(2))+center)  ! Phi
-   IO_hybridIA(3,i) = deltas(3)*(mod(bin                    ,steps(3))+center)  ! phi2
+   IO_hybridIA(1,i) = deltas(1)*(real(mod(bin/(steps(3)*steps(2)),steps(1)),pReal)+center)  ! phi1
+   IO_hybridIA(2,i) = deltas(2)*(real(mod(bin/ steps(3)          ,steps(2)),pReal)+center)  ! Phi
+   IO_hybridIA(3,i) = deltas(3)*(real(mod(bin                    ,steps(3)),pReal)+center)  ! phi2
    binSet(j) = binSet(i)
  enddo
  close(999)
  return
 
 ! on error
-100 IO_hybridIA = -1
+100 IO_hybridIA = -1.0_pReal
  close(999)
  
  endfunction 
@@ -1004,7 +1004,8 @@ endfunction
        read(unit,'(A300)',end=100) line
        pos = IO_stringPos(line,maxNchunks)
        IO_countContinousIntValues = IO_countContinousIntValues + 1 + &    ! assuming range generation
-                                    (IO_intValue(line,pos,2_pInt)-IO_intValue(line,pos,1_pInt))/max(1_pInt,IO_intValue(line,pos,3_pInt))
+                                    (IO_intValue(line,pos,2_pInt)-IO_intValue(line,pos,1_pInt))/&
+                                                         max(1_pInt,IO_intValue(line,pos,3_pInt))
      enddo
  
  endselect
@@ -1175,17 +1176,19 @@ endfunction
  case (101_pInt)
    msg = 'opening input file'
  case (102_pInt)
-   msg = 'precistion not suitable for FFTW'
+   msg = 'non-positive dimension'
  case (103_pInt)
    msg = 'odd resolution given'
- case (104_pInt)
-   msg = 'initializing FFTW'
  case (105_pInt)
    msg = 'reading from ODF file'
  case (106_pInt)
    msg = 'reading info on old job'
  case (107_pInt)
    msg = 'writing spectralOut file'
+ case (108_pInt)
+   msg = 'precistion not suitable for FFTW'
+ case (109_pInt)
+   msg = 'initializing FFTW'
  case (110_pInt)
    msg = 'no homogenization specified via State Variable 2'
  case (120_pInt)
@@ -1392,7 +1395,7 @@ endfunction
  endif
  write(6,'(a38)') '+------------------------------------+'
  call flush(6)
- call quit(9000+error_ID)
+ call quit(9000_pInt+error_ID)
  !$OMP END CRITICAL (write2out)
 
 ! ABAQUS returns in some cases

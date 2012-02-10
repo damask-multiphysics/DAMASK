@@ -584,7 +584,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal),    dimension(3),   intent(in) ::  B
  complex(pReal), dimension(3) ::  math_mul33x3_complex
 
- forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = sum(A(i,1:3)*B)
+ forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = sum(A(i,1:3)*cmplx(B,0.0_pReal,pReal))
 
  endfunction math_mul33x3_complex
 
@@ -2954,8 +2954,8 @@ end subroutine
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Calculating volume mismatch'
-   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
-   print '(a,i5,i5,i5)',          ' Resolution:', res
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
 
  vol_initial = geomdim(1)*geomdim(2)*geomdim(3)/(real(res(1)*res(2)*res(3), pReal))
@@ -3007,8 +3007,8 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Calculating shape mismatch'
-   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
-   print '(a,i5,i5,i5)',          ' Resolution:', res
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
 
  coords_initial(1,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
@@ -3096,8 +3096,8 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Meshing cubes around centroids' 
-   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
-   print '(a,i5,i5,i5)',          ' Resolution:', res
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
 
  nodes = 0.0_pReal
@@ -3188,8 +3188,8 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Restore geometry using linear integration'
-   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
-   print '(a,i5,i5,i5)',          ' Resolution:', res
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
 
  coord_avgOrder = 0.0_pReal
@@ -3276,8 +3276,8 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  
  if (debug_verbosity > 0_pInt) then
    print*, 'Restore geometry using FFT-based integration'
-   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
-   print '(a,i5,i5,i5)',          ' Resolution:', res
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
 
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
@@ -3399,8 +3399,8 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
 
  if (debug_verbosity > 0_pInt) then
    print*, 'Calculating curl of vector/tensor field'
-   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
-   print '(a,i5,i5,i5)',          ' Resolution:', res
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
 
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
@@ -3437,13 +3437,13 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  !remove highest frequency in each direction
  if(res(1)>1_pInt) &
    field_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
-                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
  if(res(2)>1_pInt) &
    field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
-                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
  if(res(3)>1_pInt) &
    field_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
-                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
                                                
  do k = 1_pInt, res(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
    k_s(3) = k - 1_pInt
@@ -3517,8 +3517,8 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
 
  if (debug_verbosity > 0_pInt) then 
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
-   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
-   print '(a,i5,i5,i5)',          ' Resolution:', res
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
 
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
@@ -3563,17 +3563,17 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
  !remove highest frequency in each direction
  if(res(1)>1_pInt) &
    field_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
-                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
  if(res(2)>1_pInt) &
    field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
-                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
  if(res(3)>1_pInt) &
    field_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
-                                       1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+                                1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
                                                
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
    do l = 1_pInt, vec_tens
-     divergence_fourier(i,j,k,l) = sum(field_fourier(i,j,k,l,1:3)*xi(i,j,k,1:3))&
+     divergence_fourier(i,j,k,l)=sum(field_fourier(i,j,k,l,1:3)*cmplx(xi(i,j,k,1:3),0.0_pReal,pReal))&
                                    *two_pi_img
    enddo
  enddo; enddo; enddo
@@ -3623,8 +3623,8 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
                                
  if (debug_verbosity > 0_pInt) then
    print*, 'Calculating divergence of tensor/vector field using FDM'
-   print '(a,e12.5,e12.5,e12.5)', ' Dimension: ', geomdim
-   print '(a,i5,i5,i5)',          ' Resolution:', res
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
 
  divergence = 0.0_pReal
