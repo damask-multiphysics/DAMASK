@@ -220,7 +220,7 @@ program DAMASK_spectral
        select case (IO_lc(IO_stringValue(line,positions,i)))
             case('l','velocitygrad','velgrad','velocitygradient')
                  N_l = N_l + 1_pInt
-            case('fdot')
+            case('fdot','dotf')
                  N_Fdot = N_Fdot + 1_pInt
             case('t','time','delta')
                  N_t = N_t + 1_pInt
