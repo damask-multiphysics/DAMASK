@@ -445,47 +445,47 @@ enddo
   
   !*** sanity checks
   
-  if (myStructure < 1 .or. myStructure > 3)                               call IO_error(205)
-  if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0_pInt)                    call IO_error(235,ext_msg='Nslip')
+  if (myStructure < 1 .or. myStructure > 3)                             call IO_error(205_pInt)
+  if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0_pInt)                  call IO_error(235_pInt,ext_msg='Nslip')
   do o = 1,maxval(phase_Noutput)
-    if(len(constitutive_nonlocal_output(o,i)) > 64)                       call IO_error(666)
+    if(len(constitutive_nonlocal_output(o,i)) > 64)                     call IO_error(666_pInt)
   enddo
   do f = 1,lattice_maxNslipFamily
     if (constitutive_nonlocal_Nslip(f,i) > 0_pInt) then
-      if (constitutive_nonlocal_rhoSglEdgePos0(f,i) < 0.0_pReal)          call IO_error(235,ext_msg='rhoSglEdgePos0')
-      if (constitutive_nonlocal_rhoSglEdgeNeg0(f,i) < 0.0_pReal)          call IO_error(235,ext_msg='rhoSglEdgeNeg0')
-      if (constitutive_nonlocal_rhoSglScrewPos0(f,i) < 0.0_pReal)         call IO_error(235,ext_msg='rhoSglScrewPos0')
-      if (constitutive_nonlocal_rhoSglScrewNeg0(f,i) < 0.0_pReal)         call IO_error(235,ext_msg='rhoSglScrewNeg0')
-      if (constitutive_nonlocal_rhoDipEdge0(f,i) < 0.0_pReal)             call IO_error(235,ext_msg='rhoDipEdge0')
-      if (constitutive_nonlocal_rhoDipScrew0(f,i) < 0.0_pReal)            call IO_error(235,ext_msg='rhoDipScrew0')
-      if (constitutive_nonlocal_burgersPerSlipFamily(f,i) <= 0.0_pReal)   call IO_error(235,ext_msg='burgers')
-      if (constitutive_nonlocal_lambda0PerSlipFamily(f,i) <= 0.0_pReal)   call IO_error(235,ext_msg='lambda0')
+      if (constitutive_nonlocal_rhoSglEdgePos0(f,i) < 0.0_pReal)        call IO_error(235_pInt,ext_msg='rhoSglEdgePos0')
+      if (constitutive_nonlocal_rhoSglEdgeNeg0(f,i) < 0.0_pReal)        call IO_error(235_pInt,ext_msg='rhoSglEdgeNeg0')
+      if (constitutive_nonlocal_rhoSglScrewPos0(f,i) < 0.0_pReal)       call IO_error(235_pInt,ext_msg='rhoSglScrewPos0')
+      if (constitutive_nonlocal_rhoSglScrewNeg0(f,i) < 0.0_pReal)       call IO_error(235_pInt,ext_msg='rhoSglScrewNeg0')
+      if (constitutive_nonlocal_rhoDipEdge0(f,i) < 0.0_pReal)           call IO_error(235_pInt,ext_msg='rhoDipEdge0')
+      if (constitutive_nonlocal_rhoDipScrew0(f,i) < 0.0_pReal)          call IO_error(235_pInt,ext_msg='rhoDipScrew0')
+      if (constitutive_nonlocal_burgersPerSlipFamily(f,i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='burgers')
+      if (constitutive_nonlocal_lambda0PerSlipFamily(f,i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='lambda0')
       if (constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1,i) <= 0.0_pReal) &
-                                                                          call IO_error(235,ext_msg='minimumDipoleHeightEdge')
+                                                                        call IO_error(235_pInt,ext_msg='minimumDipoleHeightEdge')
       if (constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2,i) <= 0.0_pReal) &
-                                                                          call IO_error(235,ext_msg='minimumDipoleHeightScrew')
-      if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,1,i) <= 0.0_pReal) call IO_error(235,ext_msg='peierlsStressEdge')
-      if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) <= 0.0_pReal) call IO_error(235,ext_msg='peierlsStressScrew')
+                                                                        call IO_error(235_pInt,ext_msg='minimumDipoleHeightScrew')
+      if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,1,i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='peierlsStressEdge')
+      if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='peierlsStressScrew')
     endif
   enddo
   if (any(constitutive_nonlocal_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 0.0_pReal)) &
-                                                                          call IO_error(235,ext_msg='interaction_SlipSlip')
-  if (constitutive_nonlocal_R(i) < 0.0_pReal)                             call IO_error(235,ext_msg='r')
-  if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)                 call IO_error(235,ext_msg='atomicVolume')
-  if (constitutive_nonlocal_Dsd0(i) <= 0.0_pReal)                         call IO_error(235,ext_msg='selfDiffusionPrefactor')
-  if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                          call IO_error(235,ext_msg='selfDiffusionEnergy')
-  if (constitutive_nonlocal_aTolRho(i) <= 0.0_pReal)                      call IO_error(235,ext_msg='aTol_rho')
-  if (constitutive_nonlocal_doublekinkwidth(i) <= 0.0_pReal)              call IO_error(235,ext_msg='doublekinkwidth')
-  if (constitutive_nonlocal_solidSolutionEnergy(i) <= 0.0_pReal)          call IO_error(235,ext_msg='solidSolutionEnergy')
-  if (constitutive_nonlocal_solidSolutionSize(i) <= 0.0_pReal)            call IO_error(235,ext_msg='solidSolutionSize')
-  if (constitutive_nonlocal_solidSolutionConcentration(i) <= 0.0_pReal)   call IO_error(235,ext_msg='solidSolutionConcentration')
-  if (constitutive_nonlocal_p(i) <= 0.0_pReal .or. constitutive_nonlocal_p(i) > 1.0_pReal) call IO_error(235,ext_msg='p')
-  if (constitutive_nonlocal_q(i) < 1.0_pReal .or. constitutive_nonlocal_q(i) > 2.0_pReal) call IO_error(235,ext_msg='q')
-  if (constitutive_nonlocal_viscosity(i) <= 0.0_pReal)                    call IO_error(235,ext_msg='viscosity')
-  if (constitutive_nonlocal_fattack(i) <= 0.0_pReal)                      call IO_error(235,ext_msg='attackFrequency')
-  if (constitutive_nonlocal_rhoSglScatter(i) < 0.0_pReal)                 call IO_error(235,ext_msg='rhoSglScatter')
+                                                                        call IO_error(235_pInt,ext_msg='interaction_SlipSlip')
+  if (constitutive_nonlocal_R(i) < 0.0_pReal)                           call IO_error(235_pInt,ext_msg='r')
+  if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)               call IO_error(235_pInt,ext_msg='atomicVolume')
+  if (constitutive_nonlocal_Dsd0(i) <= 0.0_pReal)                       call IO_error(235_pInt,ext_msg='selfDiffusionPrefactor')
+  if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                        call IO_error(235_pInt,ext_msg='selfDiffusionEnergy')
+  if (constitutive_nonlocal_aTolRho(i) <= 0.0_pReal)                    call IO_error(235_pInt,ext_msg='aTol_rho')
+  if (constitutive_nonlocal_doublekinkwidth(i) <= 0.0_pReal)            call IO_error(235_pInt,ext_msg='doublekinkwidth')
+  if (constitutive_nonlocal_solidSolutionEnergy(i) <= 0.0_pReal)        call IO_error(235_pInt,ext_msg='solidSolutionEnergy')
+  if (constitutive_nonlocal_solidSolutionSize(i) <= 0.0_pReal)          call IO_error(235_pInt,ext_msg='solidSolutionSize')
+  if (constitutive_nonlocal_solidSolutionConcentration(i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='solidSolutionConcentration')
+  if (constitutive_nonlocal_p(i) <= 0.0_pReal .or. constitutive_nonlocal_p(i) > 1.0_pReal) call IO_error(235_pInt,ext_msg='p')
+  if (constitutive_nonlocal_q(i) < 1.0_pReal .or. constitutive_nonlocal_q(i) > 2.0_pReal) call IO_error(235_pInt,ext_msg='q')
+  if (constitutive_nonlocal_viscosity(i) <= 0.0_pReal)                  call IO_error(235_pInt,ext_msg='viscosity')
+  if (constitutive_nonlocal_fattack(i) <= 0.0_pReal)                    call IO_error(235_pInt,ext_msg='attackFrequency')
+  if (constitutive_nonlocal_rhoSglScatter(i) < 0.0_pReal)               call IO_error(235_pInt,ext_msg='rhoSglScatter')
   if (constitutive_nonlocal_surfaceTransmissivity(i) < 0.0_pReal &
-      .or. constitutive_nonlocal_surfaceTransmissivity(i) > 1.0_pReal)    call IO_error(235,ext_msg='surfaceTransmissivity')
+      .or. constitutive_nonlocal_surfaceTransmissivity(i) > 1.0_pReal)  call IO_error(235_pInt,ext_msg='surfaceTransmissivity')
   
   
   !*** determine total number of active slip systems
