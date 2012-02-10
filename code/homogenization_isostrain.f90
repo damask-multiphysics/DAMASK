@@ -61,7 +61,7 @@ CONTAINS
 subroutine homogenization_isostrain_init(&
    file  &    ! file pointer to material configuration
   )
-
+ use, intrinsic :: iso_fortran_env
  use prec, only: pInt, pReal
  use math, only: math_Mandel3333to66, math_Voigt66to3333
  use IO
@@ -328,7 +328,7 @@ pure function homogenization_isostrain_postResults(&
  do o = 1,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_isostrain_output(o,homID))
      case ('ngrains')
-       homogenization_isostrain_postResults(c+1) = homogenization_isostrain_Ngrains(homID)
+       homogenization_isostrain_postResults(c+1) = real(homogenization_isostrain_Ngrains(homID),pReal)
        c = c + 1
    end select
  enddo

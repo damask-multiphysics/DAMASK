@@ -332,12 +332,12 @@
 
    parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))      ! plus potential killer from non-local constitutive
  else
-   call IO_error(error_ID=101) ! cannot open input file
+   call IO_error(error_ID=101_pInt) ! cannot open input file
  endif
  
- FEsolving_execElem = (/1,mesh_NcpElems/)
+ FEsolving_execElem = [ 1_pInt,mesh_NcpElems]
  allocate(FEsolving_execIP(2,mesh_NcpElems)); FEsolving_execIP = 1_pInt
- forall (e = 1:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(mesh_element(2,e))
+ forall (e = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(mesh_element(2,e))
  
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                       ! pretend to have collected what first call is asking (F = I)
@@ -362,37 +362,37 @@
  select case (IO_lc(what))
     case (  '7', &
             'c3d8')
-      FE_mapElemtype = 1            ! Three-dimensional Arbitrarily Distorted Brick
+      FE_mapElemtype = 1_pInt            ! Three-dimensional Arbitrarily Distorted Brick
     case ('134', &
           'c3d4')
-      FE_mapElemtype = 2            ! Three-dimensional Four-node Tetrahedron
+      FE_mapElemtype = 2_pInt            ! Three-dimensional Four-node Tetrahedron
     case ( '11', &
            'cpe4')
-      FE_mapElemtype = 3            ! Arbitrary Quadrilateral Plane-strain
+      FE_mapElemtype = 3_pInt            ! Arbitrary Quadrilateral Plane-strain
     case ( '27', &
            'cpe8')
-      FE_mapElemtype = 4            ! Plane Strain, Eight-node Distorted Quadrilateral
+      FE_mapElemtype = 4_pInt           ! Plane Strain, Eight-node Distorted Quadrilateral
     case ('157')
-      FE_mapElemtype = 5            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
+      FE_mapElemtype = 5_pInt            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
     case ('136', &
           'c3d6')
-      FE_mapElemtype = 6            ! Three-dimensional Arbitrarily Distorted Pentahedral
+      FE_mapElemtype = 6_pInt            ! Three-dimensional Arbitrarily Distorted Pentahedral
     case ( '21', &
            'c3d20')
-      FE_mapElemtype = 7            ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
+      FE_mapElemtype = 7_pInt            ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
     case ( '117', &
            '123', &
            'c3d8r')
-      FE_mapElemtype = 8            ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
+      FE_mapElemtype = 8_pInt            ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
     case ( '57', &
            'c3d20r')
-      FE_mapElemtype = 9            ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
+      FE_mapElemtype = 9_pInt            ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
     case ( '155', &
            '125', &
            '128')
-      FE_mapElemtype = 10           ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
+      FE_mapElemtype = 10_pInt           ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
     case default 
-      FE_mapElemtype = 0            ! unknown element --> should raise an error upstream..!
+      FE_mapElemtype = 0_pInt            ! unknown element --> should raise an error upstream..!
  endselect
 
  endfunction
@@ -426,7 +426,7 @@
  endselect
  
  lower = 1_pInt
- upper = size(lookupMap,2)
+ upper = int(size(lookupMap,2_pInt),pInt)
  
  ! check at bounds QUESTION is it valid to extend bounds by 1 and just do binary search w/o init check at bounds?
  if (lookupMap(1,lower) == id) then
@@ -1382,9 +1382,9 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == 'table' .and. myPos(1) .GT. 5) then
-     initialcondTableStyle = IO_intValue(line,myPos,4)
-     hypoelasticTableStyle = IO_intValue(line,myPos,5)
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'table' .and. myPos(1_pInt) .GT. 5) then
+     initialcondTableStyle = IO_intValue(line,myPos,4_pInt)
+     hypoelasticTableStyle = IO_intValue(line,myPos,5_pInt)
      exit
    endif
  enddo
@@ -1409,8 +1409,7 @@ integer(pInt), intent(in) :: myUnit
 integer(pInt), parameter :: maxNchunks = 5
 integer(pInt), dimension (1+2*maxNchunks) :: myPos
 integer(pInt) chunk, Nchunks
-character(len=300) line
-character damaskOption, keyword
+character(len=300) line, keyword, damaskOption, v
 
 mesh_periodicSurface = (/.false., .false., .false./)
 
@@ -1431,35 +1430,27 @@ do
   Nchunks = myPos(1)
   select case (FEsolver)
     case ('Marc','Abaqus')
-      if (IO_lc(IO_stringValue(line,myPos,1)) == keyword .and. Nchunks > 1) then  ! found keyword for damask option and there is at least one more chunk to read
-        damaskOption = IO_lc(IO_stringValue(line,myPos,2))
+      if (IO_lc(IO_stringValue(line,myPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then  ! found keyword for damask option and there is at least one more chunk to read
+        damaskOption = IO_lc(IO_stringValue(line,myPos,2_pInt))
         select case(damaskOption)
           case('periodic')                                                        ! damask Option that allows to specify periodic fluxes
-            do chunk = 3,Nchunks                                                  ! loop through chunks (skipping the keyword)
-              select case(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
-                case('x')
-                  mesh_periodicSurface(1) = .true.
-                case('y')
-                  mesh_periodicSurface(2) = .true.
-                case('z')
-                  mesh_periodicSurface(3) = .true.
-              end select
+            do chunk = 3_pInt,Nchunks                                                  ! loop through chunks (skipping the keyword)
+              v = IO_lc(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
+              mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
+              mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
+              mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'
             enddo
         endselect
       endif
     case('Spectral')
-      damaskOption = IO_lc(IO_stringValue(line,myPos,1))
+      damaskOption = IO_lc(IO_stringValue(line,myPos,1_pInt))
       select case(damaskOption)
         case('periodic')                                                        ! damask Option that allows to specify periodic fluxes
-          do chunk = 2,Nchunks                                                  ! loop through chunks (skipping the keyword)
-            select case(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
-              case('x')
-                mesh_periodicSurface(1) = .true.
-              case('y')
-                mesh_periodicSurface(2) = .true.
-              case('z')
-                mesh_periodicSurface(3) = .true.
-            end select
+          do chunk = 2_pInt,Nchunks                                                  ! loop through chunks (skipping the keyword)
+            v = IO_lc(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
+            mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
+            mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
+            mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'
           enddo
       endselect
   endselect
@@ -1491,27 +1482,27 @@ enddo
  
  rewind(myUnit)
  read(myUnit,'(a1024)') line
- myPos = IO_stringPos(line,2)
- keyword = IO_lc(IO_StringValue(line,myPos,2))
+ myPos = IO_stringPos(line,2_pInt)
+ keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
  if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,myPos,1) + 1_pInt 
+   headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt 
  else
-   call IO_error(error_ID=42)
+   call IO_error(error_ID=42_pInt)
  endif
  
  rewind(myUnit)
  do i = 1, headerLength
    read(myUnit,'(a1024)') line
    myPos = IO_stringPos(line,maxNchunks)             
-   if ( IO_lc(IO_StringValue(line,myPos,1)) == 'resolution') then
+   if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'resolution') then
      do j = 2,6,2
        select case (IO_lc(IO_stringValue(line,myPos,j)))
          case('a')
-           a = IO_intValue(line,myPos,j+1)
+           a = IO_intValue(line,myPos,j+1_pInt)
          case('b')
-           b = IO_intValue(line,myPos,j+1)
+           b = IO_intValue(line,myPos,j+1_pInt)
          case('c')
-           c = IO_intValue(line,myPos,j+1)
+           c = IO_intValue(line,myPos,j+1_pInt)
        end select
      enddo
      mesh_Nelems = a * b * c
@@ -1548,9 +1539,9 @@ enddo
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_StringValue(line,myPos,1)) == 'sizing') then
-       mesh_Nelems = IO_IntValue (line,myPos,3)
-       mesh_Nnodes = IO_IntValue (line,myPos,4)
+   if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'sizing') then
+       mesh_Nelems = IO_IntValue (line,myPos,3_pInt)
+       mesh_Nnodes = IO_IntValue (line,myPos,4_pInt)
      exit
    endif
  enddo
@@ -1585,25 +1576,25 @@ enddo
  do 
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
    
    if (inPart .or. noPart) then
-     select case ( IO_lc(IO_stringValue(line,myPos,1)))
+     select case ( IO_lc(IO_stringValue(line,myPos,1_pInt)))
        case('*node')
           if( &
-              IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
-              IO_lc(IO_stringValue(line,myPos,2)) /= 'print'    .and. &
-              IO_lc(IO_stringValue(line,myPos,2)) /= 'file'     .and. &
-              IO_lc(IO_stringValue(line,myPos,2)) /= 'response' &
+              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
+              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'print'    .and. &
+              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'file'     .and. &
+              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' &
              ) &
             mesh_Nnodes = mesh_Nnodes + IO_countDataLines(myUnit)
        case('*element')
           if( &
-              IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
-              IO_lc(IO_stringValue(line,myPos,2)) /= 'matrix'   .and. &
-              IO_lc(IO_stringValue(line,myPos,2)) /= 'response' &
+              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
+              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'matrix'   .and. &
+              IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' &
              ) then
             mesh_Nelems = mesh_Nelems + IO_countDataLines(myUnit)
           endif
@@ -1611,8 +1602,8 @@ enddo
    endif
  enddo
  
-620 if (mesh_Nnodes < 2)  call IO_error(error_ID=900)
- if (mesh_Nelems == 0) call IO_error(error_ID=901)
+620 if (mesh_Nnodes < 2)  call IO_error(error_ID=900_pInt)
+ if (mesh_Nelems == 0) call IO_error(error_ID=901_pInt)
  
  endsubroutine
 
@@ -1644,8 +1635,8 @@ enddo
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_StringValue(line,myPos,1)) == 'define' .and. &
-        IO_lc(IO_StringValue(line,myPos,2)) == 'element' ) then
+   if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'define' .and. &
+        IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'element' ) then
      mesh_NelemSets = mesh_NelemSets + 1_pInt
      mesh_maxNelemInSet = max(mesh_maxNelemInSet, &
                               IO_countContinousIntValues(myUnit))
@@ -1683,16 +1674,16 @@ enddo
  do 
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
    
-   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1)) == '*elset' ) &
+   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*elset' ) &
      mesh_NelemSets = mesh_NelemSets + 1_pInt
  enddo
 
 620 continue
- if (mesh_NelemSets == 0) call IO_error(error_ID=902)
+ if (mesh_NelemSets == 0) call IO_error(error_ID=902_pInt)
 
  endsubroutine
 
@@ -1724,17 +1715,17 @@ enddo
  do 
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
 
    if ( (inPart .or. noPart) .and. &
-        IO_lc(IO_StringValue(line,myPos,1)) == '*solid' .and. &
-        IO_lc(IO_StringValue(line,myPos,2)) == 'section' ) &
+        IO_lc(IO_StringValue(line,myPos,1_pInt)) == '*solid' .and. &
+        IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'section' ) &
      mesh_Nmaterials = mesh_Nmaterials + 1_pInt
  enddo
 
-620 if (mesh_Nmaterials == 0) call IO_error(error_ID=903)
+620 if (mesh_Nmaterials == 0) call IO_error(error_ID=903_pInt)
  
  endsubroutine
 
@@ -1780,7 +1771,7 @@ enddo
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == 'hypoelastic') then
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'hypoelastic') then
        do i=1,3+hypoelasticTableStyle  ! Skip 3 or 4 lines
          read (myUnit,610,END=620) line
        enddo
@@ -1819,12 +1810,12 @@ enddo
  do 
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
-   select case ( IO_lc(IO_stringValue(line,myPos,1)) )
+   select case ( IO_lc(IO_stringValue(line,myPos,1_pInt)) )
      case('*material')
-       materialName = IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'name')     ! extract name=value
+       materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'name'))     ! extract name=value
        materialFound = materialName /= ''                                           ! valid name?
      case('*user')
-       if (IO_lc(IO_StringValue(line,myPos,2)) == 'material' .and. materialFound) then
+       if (IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'material' .and. materialFound) then
          do i = 1,mesh_Nmaterials                                                   ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                           ! found one
              elemSetName = mesh_mapMaterial(i)                                      ! take corresponding elemSet
@@ -1839,7 +1830,7 @@ enddo
    endselect
  enddo
  
-620 if (mesh_NcpElems == 0) call IO_error(error_ID=906)
+620 if (mesh_NcpElems == 0) call IO_error(error_ID=906_pInt)
 
  endsubroutine
 
@@ -1863,7 +1854,7 @@ enddo
  integer(pInt) myUnit,elemSet
 
  allocate (mesh_nameElemSet(mesh_NelemSets))                     ; mesh_nameElemSet = ''
- allocate (mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
+ allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
 
 610 FORMAT(A300)
 
@@ -1872,10 +1863,10 @@ enddo
  do
    read (myUnit,610,END=640) line
    myPos = IO_stringPos(line,maxNchunks)
-   if( (IO_lc(IO_stringValue(line,myPos,1)) == 'define' ) .and. &
-       (IO_lc(IO_stringValue(line,myPos,2)) == 'element' ) ) then
+   if( (IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'define' ) .and. &
+       (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'element' ) ) then
       elemSet = elemSet+1
-      mesh_nameElemSet(elemSet) = IO_stringValue(line,myPos,4)
+      mesh_nameElemSet(elemSet) = trim(IO_stringValue(line,myPos,4_pInt))
       mesh_mapElemSet(:,elemSet) = IO_continousIntValues(myUnit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
    endif
  enddo
@@ -1895,15 +1886,15 @@ enddo
 
  implicit none
 
- integer(pInt), parameter :: maxNchunks = 4
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: maxNchunks = 4_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
  character(len=300) line
 
  integer(pInt) myUnit,elemSet,i
  logical inPart
 
  allocate (mesh_nameElemSet(mesh_NelemSets))                     ; mesh_nameElemSet = ''
- allocate (mesh_mapElemSet(1+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
+ allocate (mesh_mapElemSet(1_pInt+mesh_maxNelemInSet,mesh_NelemSets)) ; mesh_mapElemSet = 0_pInt
 
 610 FORMAT(A300)
 
@@ -1913,21 +1904,22 @@ enddo
  do
    read (myUnit,610,END=640) line
    myPos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
    
-   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1)) == '*elset' ) then
+   if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*elset' ) then
      elemSet = elemSet + 1_pInt
-     mesh_nameElemSet(elemSet)  = IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'elset')
-     mesh_mapElemSet(:,elemSet) = IO_continousIntValues(myUnit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,elemSet-1)
+     mesh_nameElemSet(elemSet)  = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'elset'))
+     mesh_mapElemSet(:,elemSet) = IO_continousIntValues(myUnit,mesh_Nelems,mesh_nameElemSet,&
+                                          mesh_mapElemSet,elemSet-1_pInt)
    endif
  enddo
 
-640 do i = 1,elemSet
+640 do i = 1_pInt,elemSet
 !   write(6,*)'elemSetName: ',mesh_nameElemSet(i)
 !   write(6,*)'elems in Elset',mesh_mapElemSet(:,i)
-   if (mesh_mapElemSet(1,i) == 0) call IO_error(error_ID=904,ext_msg=mesh_nameElemSet(i))
+   if (mesh_mapElemSet(1,i) == 0_pInt) call IO_error(error_ID=904_pInt,ext_msg=mesh_nameElemSet(i))
  enddo
 
  endsubroutine
@@ -1963,22 +1955,22 @@ enddo
  do 
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
 
    if ( (inPart .or. noPart) .and. &
-        IO_lc(IO_StringValue(line,myPos,1)) == '*solid' .and. &
-        IO_lc(IO_StringValue(line,myPos,2)) == 'section' ) then
+        IO_lc(IO_StringValue(line,myPos,1_pInt)) == '*solid' .and. &
+        IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'section' ) then
 
      elemSetName = ''
      materialName = ''
 
-     do i = 3,myPos(1)
+     do i = 3,myPos(1_pInt)
        if (IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'elset') /= '') &
-         elemSetName = IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'elset')
+         elemSetName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'elset'))
        if (IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'material') /= '') &
-         materialName = IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'material')
+         materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,i)),'material'))
      enddo
 
      if (elemSetName /= '' .and. materialName /= '') then
@@ -1989,11 +1981,11 @@ enddo
    endif
  enddo
 
-620 if (count==0) call IO_error(error_ID=905)
+620 if (count==0) call IO_error(error_ID=905_pInt)
  do i=1,count
 !   write(6,*)'name of materials: ',i,mesh_nameMaterial(i)
 !   write(6,*)'name of elemSets:  ',i,mesh_mapMaterial(i)
-   if (mesh_nameMaterial(i)=='' .or. mesh_mapMaterial(i)=='') call IO_error(error_ID=905)
+   if (mesh_nameMaterial(i)=='' .or. mesh_mapMaterial(i)=='') call IO_error(error_ID=905_pInt)
  enddo
 
  endsubroutine
@@ -2012,7 +2004,7 @@ enddo
  implicit none
  integer(pInt) i
 
- allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
+ allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
 
  forall (i = 1:mesh_Nnodes) &
    mesh_mapFEtoCPnode(1:2,i) = i
@@ -2034,14 +2026,14 @@ enddo
 
  implicit none
 
- integer(pInt), parameter :: maxNchunks = 1
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt), parameter :: maxNchunks = 1_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
  character(len=300) line
 
  integer(pInt), dimension (mesh_Nnodes) :: node_count
  integer(pInt) myUnit,i
 
- allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
+ allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
 
 610 FORMAT(A300)
 
@@ -2051,18 +2043,18 @@ enddo
  do
    read (myUnit,610,END=650) line
    myPos = IO_stringPos(line,maxNchunks)
-   if( IO_lc(IO_stringValue(line,myPos,1)) == 'coordinates' ) then
+   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'coordinates' ) then
      read (myUnit,610,END=650) line                                         ! skip crap line
      do i = 1,mesh_Nnodes
        read (myUnit,610,END=650) line
-       mesh_mapFEtoCPnode(1,i) = IO_fixedIntValue (line,(/0,10/),1)
-       mesh_mapFEtoCPnode(2,i) = i
+       mesh_mapFEtoCPnode(1_pInt,i) = IO_fixedIntValue (line,[ 0_pInt,10_pInt],1_pInt)
+       mesh_mapFEtoCPnode(2_pInt,i) = i
      enddo
      exit
    endif
  enddo
 
-650 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
+650 call qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
  
  endsubroutine
 
@@ -2088,7 +2080,7 @@ enddo
  integer(pInt) myUnit,i,count,cpNode
  logical inPart
 
- allocate (mesh_mapFEtoCPnode(2,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
+ allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
 
 610 FORMAT(A300)
 
@@ -2098,16 +2090,16 @@ enddo
  do
    read (myUnit,610,END=650) line
    myPos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,myPos,1)) == '*node' .and. &
-       ( IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'print'    .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'file'     .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*node' .and. &
+       ( IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'print'    .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'file'     .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
    ) then
      count = IO_countDataLines(myUnit)
      do i = 1,count
@@ -2117,15 +2109,15 @@ enddo
        read (myUnit,610,END=650) line
        myPos = IO_stringPos(line,maxNchunks)
        cpNode = cpNode + 1_pInt
-       mesh_mapFEtoCPnode(1,cpNode) = IO_intValue(line,myPos,1)
-       mesh_mapFEtoCPnode(2,cpNode) = cpNode
+       mesh_mapFEtoCPnode(1_pInt,cpNode) = IO_intValue(line,myPos,1_pInt)
+       mesh_mapFEtoCPnode(2_pInt,cpNode) = cpNode
      enddo
    endif
  enddo
 
-650 call qsort(mesh_mapFEtoCPnode,1,size(mesh_mapFEtoCPnode,2))
+650 call qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
 
- if (size(mesh_mapFEtoCPnode) == 0) call IO_error(error_ID=908)
+ if (int(size(mesh_mapFEtoCPnode),pInt) == 0_pInt) call IO_error(error_ID=908_pInt)
 
  endsubroutine
 
@@ -2142,7 +2134,7 @@ enddo
  implicit none
  integer(pInt) i
 
- allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
+ allocate (mesh_mapFEtoCPelem(2_pInt,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
 
  forall (i = 1:mesh_NcpElems) &
    mesh_mapFEtoCPelem(1:2,i) = i
@@ -2180,7 +2172,7 @@ enddo
  do
    read (myUnit,610,END=660) line
    myPos = IO_stringPos(line,maxNchunks)
-   if( IO_lc(IO_stringValue(line,myPos,1)) == 'hypoelastic' ) then
+   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'hypoelastic' ) then
      do i=1,3+hypoelasticTableStyle                                       ! skip three (or four if new table style!) lines
        read (myUnit,610,END=660) line 
      enddo
@@ -2193,7 +2185,7 @@ enddo
    endif
  enddo
 
-660 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))           ! should be mesh_NcpElems
+660 call qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))           ! should be mesh_NcpElems
 
  endsubroutine
 
@@ -2217,7 +2209,7 @@ enddo
 
  integer(pInt) myUnit,i,j,k,cpElem
  logical materialFound
- character (len=64) materialName,elemSetName
+ character (len=64) materialName,elemSetName ! why limited to 64? ABAQUS?
 
  allocate (mesh_mapFEtoCPelem(2,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
 
@@ -2228,12 +2220,12 @@ enddo
  do 
    read (myUnit,610,END=660) line
    myPos = IO_stringPos(line,maxNchunks)
-   select case ( IO_lc(IO_stringValue(line,myPos,1)) )
+   select case ( IO_lc(IO_stringValue(line,myPos,1_pInt)) )
      case('*material')
-       materialName = IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'name')     ! extract name=value
+       materialName = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'name'))     ! extract name=value
        materialFound = materialName /= ''                                           ! valid name?
      case('*user')
-       if (IO_lc(IO_stringValue(line,myPos,2)) == 'material' .and. materialFound) then
+       if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'material' .and. materialFound) then
          do i = 1,mesh_Nmaterials                                                   ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                           ! found one
              elemSetName = mesh_mapMaterial(i)                                      ! take corresponding elemSet
@@ -2253,9 +2245,9 @@ enddo
    endselect
  enddo
 
-660 call qsort(mesh_mapFEtoCPelem,1,size(mesh_mapFEtoCPelem,2))             ! should be mesh_NcpElems
+660 call qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))            ! should be mesh_NcpElems
 
- if (size(mesh_mapFEtoCPelem) < 2) call IO_error(error_ID=907)
+ if (int(size(mesh_mapFEtoCPelem),pInt) < 2_pInt) call IO_error(error_ID=907_pInt)
 
  endsubroutine
 
@@ -2311,19 +2303,19 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  do
    read (myUnit,610,END=630) line
    myPos = IO_stringPos(line,maxNchunks)
-   if( IO_lc(IO_stringValue(line,myPos,1)) == 'connectivity' ) then
+   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'connectivity' ) then
      read (myUnit,610,END=630) line  ! Garbage line
      do i=1,mesh_Nelems            ! read all elements
        read (myUnit,610,END=630) line
        myPos = IO_stringPos(line,maxNchunks)  ! limit to id and type
-       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1))
+       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0) then
-         t = FE_mapElemtype(IO_stringValue(line,myPos,2))
+         t = FE_mapElemtype(IO_stringValue(line,myPos,2_pInt))
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
          mesh_maxNsubNodes =    max(mesh_maxNsubNodes,FE_NsubNodes(t))
-         call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
+         call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1_pInt)-2_pInt))        ! read on if FE_Nnodes exceeds node count present on current line
        endif
      enddo
      exit
@@ -2364,18 +2356,18 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  do
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,myPos,1)) == '*element' .and. &
-       ( IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'matrix'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*element' .and. &
+       ( IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'matrix'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'type'))  ! remember elem type
-     if (t==0) call IO_error(error_ID=910,ext_msg='mesh_abaqus_count_cpSizes')
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'type'))  ! remember elem type
+     if (t==0) call IO_error(error_ID=910_pInt,ext_msg='mesh_abaqus_count_cpSizes')
      count = IO_countDataLines(myUnit)
      do i = 1,count
        backspace(myUnit)
@@ -2383,7 +2375,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
      do i = 1,count
        read (myUnit,610,END=620) line
        myPos = IO_stringPos(line,maxNchunks)                                  ! limit to 64 nodes max
-       if (mesh_FEasCP('elem',IO_intValue(line,myPos,1)) /= 0) then                                                     ! disregard non CP elems
+       if (mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt)) /= 0) then                                                     ! disregard non CP elems
          mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(t))
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(t))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(t))
@@ -2415,7 +2407,6 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  logical gotResolution,gotDimension
 
  integer(pInt) myUnit
- character(len=64) tag
  character(len=1024) line, keyword
 
  allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
@@ -2432,29 +2423,29 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  gotDimension =  .false.
  rewind(myUnit)
  read(myUnit,'(a1024)') line
- myPos = IO_stringPos(line,2)
- keyword = IO_lc(IO_StringValue(line,myPos,2))
+ myPos = IO_stringPos(line,2_pInt)
+ keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
  if (keyword(1:4) == 'head') then 
-   headerLength = IO_intValue(line,myPos,1) + 1_pInt
+   headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=42)
+   call IO_error(error_ID=42_pInt)
  endif
  
  rewind(myUnit)
  do i = 1, headerLength
    read(myUnit,'(a1024)') line
    myPos = IO_stringPos(line,maxNchunks)             
-   select case ( IO_lc(IO_StringValue(line,myPos,1)) )
+   select case ( IO_lc(IO_StringValue(line,myPos,1_pInt)) )
      case ('dimension')
        gotDimension = .true.
        do j = 2,6,2
          select case (IO_lc(IO_stringValue(line,myPos,j)))
            case('x')
-              x = IO_floatValue(line,myPos,j+1)
+              x = IO_floatValue(line,myPos,j+1_pInt)
            case('y')
-              y = IO_floatValue(line,myPos,j+1)
+              y = IO_floatValue(line,myPos,j+1_pInt)
            case('z')
-              z = IO_floatValue(line,myPos,j+1)
+              z = IO_floatValue(line,myPos,j+1_pInt)
          end select
        enddo
      case ('resolution')
@@ -2462,11 +2453,11 @@ subroutine mesh_marc_count_cpSizes (myUnit)
        do j = 2,6,2
          select case (IO_lc(IO_stringValue(line,myPos,j)))
            case('a')
-             a = 1_pInt + IO_intValue(line,myPos,j+1)
+             a = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
            case('b')
-             b = 1_pInt + IO_intValue(line,myPos,j+1)
+             b = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
            case('c')
-             c = 1_pInt + IO_intValue(line,myPos,j+1)
+             c = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
          end select
        enddo
    end select
@@ -2474,9 +2465,9 @@ subroutine mesh_marc_count_cpSizes (myUnit)
 
 ! --- sanity checks ---
 
- if ((.not. gotDimension) .or. (.not. gotResolution)) call IO_error(error_ID=42)
- if ((a < 1) .or. (b < 1) .or. (c < 0)) call IO_error(error_ID=43)           ! 1_pInt is already added
- if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(error_ID=44)
+ if ((.not. gotDimension) .or. (.not. gotResolution)) call IO_error(error_ID=42_pInt)
+ if ((a < 1) .or. (b < 1) .or. (c < 0)) call IO_error(error_ID=43_pInt)           ! 1_pInt is already added
+ if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(error_ID=44_pInt)
  
  forall (n = 0:mesh_Nnodes-1)
    mesh_node0(1,n+1) = x * dble(mod(n,a)) / dble(a-1_pInt)
@@ -2517,12 +2508,12 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  do
    read (myUnit,610,END=670) line
    myPos = IO_stringPos(line,maxNchunks)
-   if( IO_lc(IO_stringValue(line,myPos,1)) == 'coordinates' ) then
+   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'coordinates' ) then
      read (myUnit,610,END=670) line                                         ! skip crap line
      do i=1,mesh_Nnodes
        read (myUnit,610,END=670) line
-       m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1))
-       forall (j = 1:3) mesh_node0(j,m) = IO_fixedNoEFloatValue(line,node_ends,j+1)
+       m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1_pInt))
+       forall (j = 1_pInt:3_pInt) mesh_node0(j,m) = IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
      enddo
      exit
    endif
@@ -2562,16 +2553,16 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  do
    read (myUnit,610,END=670) line
    myPos = IO_stringPos(line,maxNchunks)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,myPos,1)) == '*node' .and. &
-       ( IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'print'    .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'file'     .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*node' .and. &
+       ( IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'print'    .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'file'     .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
    ) then
      count = IO_countDataLines(myUnit)                          ! how many nodes are defined here?
      do i = 1,count
@@ -2580,13 +2571,13 @@ subroutine mesh_marc_count_cpSizes (myUnit)
      do i = 1,count
        read (myUnit,610,END=670) line
        myPos = IO_stringPos(line,maxNchunks)
-       m = mesh_FEasCP('node',IO_intValue(line,myPos,1))
-       forall (j=1:3) mesh_node0(j,m) = IO_floatValue(line,myPos,j+1)
+       m = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt))
+       forall (j=1:3) mesh_node0(j,m) = IO_floatValue(line,myPos,j+1_pInt)
      enddo
    endif
  enddo
 
-670 if (size(mesh_node0,2) /= mesh_Nnodes) call IO_error(error_ID=909)
+670 if (int(size(mesh_node0,2_pInt),pInt) /= mesh_Nnodes) call IO_error(error_ID=909_pInt)
  mesh_node = mesh_node0
 
  endsubroutine
@@ -2620,32 +2611,32 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  
  rewind(myUnit)
  read(myUnit,'(a65536)') line
- myPos = IO_stringPos(line,2)
- keyword = IO_lc(IO_StringValue(line,myPos,2))
+ myPos = IO_stringPos(line,2_pInt)
+ keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
  if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,myPos,1) + 1_pInt
+   headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=42)
+   call IO_error(error_ID=42_pInt)
  endif
  
  rewind(myUnit)
  do i = 1, headerLength
    read(myUnit,'(a65536)') line
    myPos = IO_stringPos(line,maxNchunks)             
-   select case ( IO_lc(IO_StringValue(line,myPos,1)) )
+   select case ( IO_lc(IO_StringValue(line,myPos,1_pInt)) )
      case ('resolution')
        do j = 2,6,2
          select case (IO_lc(IO_stringValue(line,myPos,j)))
            case('a')
-             a = 1_pInt + IO_intValue(line,myPos,j+1)
+             a = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
            case('b')
-             b = 1_pInt + IO_intValue(line,myPos,j+1)
+             b = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
            case('c')
-             c = 1_pInt + IO_intValue(line,myPos,j+1)
+             c = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
          end select
        enddo
      case ('homogenization')
-       homog = IO_intValue(line,myPos,2)
+       homog = IO_intValue(line,myPos,2_pInt)
    end select
  enddo
 
@@ -2667,20 +2658,20 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  
  e = 0_pInt
  do while (e < mesh_NcpElems .and. microstructures(1) > 0_pInt)        ! fill expected number of elements, stop at end of data (or blank line!)
-   microstructures = IO_continousIntValues(myUnit,maxIntCount,dummyName,dummySet,0)  ! get affected elements
-   do i = 1,microstructures(1)
+   microstructures = IO_continousIntValues(myUnit,maxIntCount,dummyName,dummySet,0_pInt)  ! get affected elements
+   do i = 1,microstructures(1_pInt)
      e = e+1                                                ! valid element entry
      mesh_element( 1,e) = e                                 ! FE id
      mesh_element( 2,e) = FE_mapElemtype('C3D8R')           ! elem type
      mesh_element( 3,e) = homog                             ! homogenization
      mesh_element( 4,e) = microstructures(1_pInt+i)         ! microstructure
-     mesh_element( 5,e) = e + (e-1)/(a-1) + ((e-1)/((a-1)*(b-1)))*a ! base node
-     mesh_element( 6,e) = mesh_element(5,e) + 1
-     mesh_element( 7,e) = mesh_element(5,e) + a + 1
+     mesh_element( 5,e) = e + (e-1_pInt)/(a-1_pInt) + ((e-1_pInt)/((a-1_pInt)*(b-1_pInt)))*a ! base node
+     mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
+     mesh_element( 7,e) = mesh_element(5,e) + a + 1_pInt
      mesh_element( 8,e) = mesh_element(5,e) + a
      mesh_element( 9,e) = mesh_element(5,e) + a * b         ! second floor base node
-     mesh_element(10,e) = mesh_element(9,e) + 1
-     mesh_element(11,e) = mesh_element(9,e) + a + 1
+     mesh_element(10,e) = mesh_element(9,e) + 1_pInt
+     mesh_element(11,e) = mesh_element(9,e) + a + 1_pInt
      mesh_element(12,e) = mesh_element(9,e) + a
      mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))    !needed for statistics
      mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
@@ -2688,7 +2679,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  enddo
 
 110 deallocate(microstructures)
- if (e /= mesh_NcpElems) call IO_error(180,e)
+ if (e /= mesh_NcpElems) call IO_error(180_pInt,e)
 
  endsubroutine
 
@@ -2720,19 +2711,19 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  rewind(myUnit)
  do
    read (myUnit,610,END=620) line
-   myPos(1:1+2*1) = IO_stringPos(line,1)
-   if( IO_lc(IO_stringValue(line,myPos,1)) == 'connectivity' ) then
+   myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
+   if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'connectivity' ) then
      read (myUnit,610,END=620) line  ! Garbage line
      do i = 1,mesh_Nelems
        read (myUnit,610,END=620) line
        myPos = IO_stringPos(line,maxNchunks)  ! limit to 64 nodes max (plus ID, type)
-       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1))
+       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0) then       ! disregard non CP elems
-         mesh_element(1,e) = IO_IntValue (line,myPos,1)                     ! FE id
-         mesh_element(2,e) = FE_mapElemtype(IO_StringValue(line,myPos,2))   ! elem type
+         mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                     ! FE id
+         mesh_element(2,e) = FE_mapElemtype(IO_StringValue(line,myPos,2_pInt))   ! elem type
            forall (j = 1:FE_Nnodes(mesh_element(2,e))) &
-             mesh_element(j+4,e) = IO_IntValue(line,myPos,j+2)              ! copy FE ids of nodes
-           call IO_skipChunks(myUnit,FE_NoriginalNodes(mesh_element(2,e))-(myPos(1)-2))        ! read on if FE_Nnodes exceeds node count present on current line
+             mesh_element(j+4,e) = IO_IntValue(line,myPos,j+2_pInt)              ! copy FE ids of nodes
+           call IO_skipChunks(myUnit,FE_NoriginalNodes(mesh_element(2_pInt,e))-(myPos(1_pInt)-2_pInt))        ! read on if FE_Nnodes exceeds node count present on current line
        endif
      enddo
      exit
@@ -2742,31 +2733,31 @@ subroutine mesh_marc_count_cpSizes (myUnit)
 620 rewind(myUnit)                                     ! just in case "initial state" apears before "connectivity"
  read (myUnit,610,END=620) line
  do
-   myPos(1:1+2*2) = IO_stringPos(line,2)
-   if( (IO_lc(IO_stringValue(line,myPos,1)) == 'initial') .and. &
-       (IO_lc(IO_stringValue(line,myPos,2)) == 'state') ) then
-     if (initialcondTableStyle == 2) read (myUnit,610,END=620) line          ! read extra line for new style     
+   myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
+   if( (IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'initial') .and. &
+       (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'state') ) then
+     if (initialcondTableStyle == 2_pInt) read (myUnit,610,END=620) line          ! read extra line for new style     
      read (myUnit,610,END=630) line                                          ! read line with index of state var
-     myPos(1:1+2*1) = IO_stringPos(line,1)
-     sv = IO_IntValue(line,myPos,1)                                          ! figure state variable index
-     if( (sv == 2).or.(sv == 3) ) then                                     ! only state vars 2 and 3 of interest
+     myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
+     sv = IO_IntValue(line,myPos,1_pInt)                                          ! figure state variable index
+     if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                     ! only state vars 2 and 3 of interest
        read (myUnit,610,END=620) line                                        ! read line with value of state var
-       myPos(1:1+2*1) = IO_stringPos(line,1)
-       do while (scan(IO_stringValue(line,myPos,1),'+-',back=.true.)>1)      ! is noEfloat value?
-         val = NINT(IO_fixedNoEFloatValue(line,(/0,20/),1))                ! state var's value
-         mesh_maxValStateVar(sv-1) = max(val,mesh_maxValStateVar(sv-1))    ! remember max val of homogenization and microstructure index
+       myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
+       do while (scan(IO_stringValue(line,myPos,1_pInt),'+-',back=.true.)>1_pInt)      ! is noEfloat value?
+         val = NINT(IO_fixedNoEFloatValue(line,(/0_pInt,20_pInt/),1_pInt))                ! state var's value
+         mesh_maxValStateVar(sv-1) = max(val,mesh_maxValStateVar(sv-1_pInt))    ! remember max val of homogenization and microstructure index
          if (initialcondTableStyle == 2) then
            read (myUnit,610,END=630) line                                    ! read extra line     
            read (myUnit,610,END=630) line                                    ! read extra line     
          endif
          contInts = IO_continousIntValues(myUnit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)  ! get affected elements
          do i = 1,contInts(1)
-           e = mesh_FEasCP('elem',contInts(1+i))
-           mesh_element(1+sv,e) = val
+           e = mesh_FEasCP('elem',contInts(1_pInt+i))
+           mesh_element(1_pInt+sv,e) = val
          enddo
          if (initialcondTableStyle == 0) read (myUnit,610,END=620) line      ! ignore IP range for old table style
          read (myUnit,610,END=630) line
-         myPos(1:1+2*1) = IO_stringPos(line,1)
+         myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
        enddo
      endif
    else   
@@ -2775,8 +2766,6 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  enddo
 
 630 endsubroutine
-
-
 
 !********************************************************************
 ! store FEid, type, mat, tex, and node list per element
@@ -2806,19 +2795,19 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  rewind(myUnit)
  do
    read (myUnit,610,END=620) line
-   myPos(1:1+2*2) = IO_stringPos(line,2)
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*part' ) inPart = .true.
-   if ( IO_lc(IO_stringValue(line,myPos,1)) == '*end' .and. &
-        IO_lc(IO_stringValue(line,myPos,2)) == 'part' ) inPart = .false.
+   myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) inPart = .true.
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*end' .and. &
+        IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'part' ) inPart = .false.
 
    if( (inPart .or. noPart) .and. &
-       IO_lc(IO_stringValue(line,myPos,1)) == '*element' .and. &
-       ( IO_lc(IO_stringValue(line,myPos,2)) /= 'output'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'matrix'   .and. &
-         IO_lc(IO_stringValue(line,myPos,2)) /= 'response' ) &
+       IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*element' .and. &
+       ( IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'output'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'matrix'   .and. &
+         IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
      ) then
-     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2)),'type'))  ! remember elem type
-     if (t==0) call IO_error(error_ID=910,ext_msg='mesh_abaqus_build_elements')
+     t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'type'))  ! remember elem type
+     if (t==0) call IO_error(error_ID=910_pInt,ext_msg='mesh_abaqus_build_elements')
      count = IO_countDataLines(myUnit)
      do i = 1,count
        backspace(myUnit)
@@ -2826,13 +2815,13 @@ subroutine mesh_marc_count_cpSizes (myUnit)
      do i = 1,count
        read (myUnit,610,END=620) line
        myPos = IO_stringPos(line,maxNchunks)                                  ! limit to 64 nodes max
-       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1))
+       e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0) then                                                     ! disregard non CP elems
-         mesh_element(1,e) = IO_intValue(line,myPos,1)                        ! FE id
+         mesh_element(1,e) = IO_intValue(line,myPos,1_pInt)                        ! FE id
          mesh_element(2,e) = t                                              ! elem type
          forall (j=1:FE_Nnodes(t)) &
-           mesh_element(4+j,e) = IO_intValue(line,myPos,1+j)                  ! copy FE ids of nodes to position 5:
-         call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1)-1))           ! read on (even multiple lines) if FE_NoriginalNodes exceeds required node count
+           mesh_element(4_pInt+j,e) = IO_intValue(line,myPos,1_pInt+j)                  ! copy FE ids of nodes to position 5:
+         call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1_pInt)-1_pInt))           ! read on (even multiple lines) if FE_NoriginalNodes exceeds required node count
        endif
      enddo
    endif
@@ -2845,17 +2834,17 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  do 
    read (myUnit,610,END=630) line
    myPos = IO_stringPos(line,maxNchunks)
-   select case ( IO_lc(IO_StringValue(line,myPos,1)))
+   select case ( IO_lc(IO_StringValue(line,myPos,1_pInt)))
      case('*material')
-       materialName = IO_extractValue(IO_lc(IO_StringValue(line,myPos,2)),'name')    ! extract name=value
+       materialName = trim(IO_extractValue(IO_lc(IO_StringValue(line,myPos,2_pInt)),'name'))    ! extract name=value
        materialFound = materialName /= ''                                          ! valid name?
      case('*user')
-       if ( IO_lc(IO_StringValue(line,myPos,2)) == 'material' .and. &
+       if ( IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'material' .and. &
             materialFound ) then
          read (myUnit,610,END=630) line                                              ! read homogenization and microstructure
-         myPos(1:1+2*2) = IO_stringPos(line,2)
-         homog = NINT(IO_floatValue(line,myPos,1))
-         micro = NINT(IO_floatValue(line,myPos,2))
+         myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
+         homog = NINT(IO_floatValue(line,myPos,1_pInt))
+         micro = NINT(IO_floatValue(line,myPos,2_pInt))
          do i = 1,mesh_Nmaterials                                                  ! look thru material names
            if (materialName == mesh_nameMaterial(i)) then                          ! found one
              elemSetName = mesh_mapMaterial(i)                                     ! take corresponding elemSet
@@ -3135,7 +3124,7 @@ endsubroutine
                                                  + mesh_node(1:3,mesh_FEasCP('node',mesh_element(4+FE_subNodeParent(p,n,t),e))) ! add up parents
      enddo
      mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e) = mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e) &
-                                             / count(FE_subNodeParent(:,n,t) > 0)
+                                             /real(count(FE_subNodeParent(:,n,t) > 0),pReal)
    enddo
  enddo 
  
@@ -3185,7 +3174,7 @@ endsubroutine
          enddo
        endif
      enddo
-     centerOfGravity = sum(gravityNodePos,2)/count(gravityNode)
+     centerOfGravity = sum(gravityNodePos,2)/real(count(gravityNode),pReal)
      mesh_ipCenterOfGravity(:,i,e) = centerOfGravity
    enddo
  enddo
@@ -3216,15 +3205,15 @@ endsubroutine
  
  mesh_ipVolume = 0.0_pReal 
  do e = 1,mesh_NcpElems                                    ! loop over cpElems
-   t = mesh_element(2,e)                                   ! get elemType
+   t = mesh_element(2_pInt,e)                                   ! get elemType
    do i = 1,FE_Nips(t)                                     ! loop over IPs of elem
      do f = 1,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
        forall (n = 1:FE_NipFaceNodes) &
          nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
        forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles) &  ! start at each interface node and build valid triangles to cover interface
          volume(j,n) = math_volTetrahedron(nPos(:,n), &    ! calc volume of respective tetrahedron to CoG
-                                           nPos(:,1+mod(n-1 +j  ,FE_NipFaceNodes)), & ! start at offset j
-                                           nPos(:,1+mod(n-1 +j+1,FE_NipFaceNodes)), & ! and take j's neighbor
+                                           nPos(:,1_pInt+mod(n-1_pInt +j  ,FE_NipFaceNodes)), & ! start at offset j
+                                           nPos(:,1+mod(n-1_pInt +j+1_pInt,FE_NipFaceNodes)), & ! and take j's neighbor
                                            mesh_ipCenterOfGravity(:,i,e))
        mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
      enddo
@@ -3254,22 +3243,23 @@ endsubroutine
  real(pReal), dimension(Ntriangles,FE_NipFaceNodes)   :: area
 
  allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ;         mesh_ipArea       = 0.0_pReal
- allocate(mesh_ipAreaNormal(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipAreaNormal = 0.0_pReal
+ allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipAreaNormal = 0.0_pReal
  do e = 1,mesh_NcpElems                                         ! loop over cpElems
    t = mesh_element(2,e)                                        ! get elemType
    do i = 1,FE_Nips(t)                                          ! loop over IPs of elem
      do f = 1,FE_NipNeighbors(t)                                ! loop over interfaces of IP 
        forall (n = 1:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
        forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles)         ! start at each interface node and build valid triangles to cover interface
-         normal(:,j,n) = math_vectorproduct(nPos(:,1+mod(n+j-1,FE_NipFaceNodes)) - nPos(:,n), &    ! calc their normal vectors
-                                            nPos(:,1+mod(n+j-0,FE_NipFaceNodes)) - nPos(:,n))
+         normal(:,j,n) = math_vectorproduct(nPos(:,1_pInt+mod(n+j-1_pInt,FE_NipFaceNodes)) - nPos(:,n), &    ! calc their normal vectors
+                                            nPos(:,1_pInt+mod(n+j-0_pInt,FE_NipFaceNodes)) - nPos(:,n))
          area(j,n) = sqrt(sum(normal(:,j,n)*normal(:,j,n)))                                       ! and area
        end forall
        forall (n = 1:FE_NipFaceNodes, j = 1:Ntriangles, area(j,n) > 0.0_pReal) &
          normal(1:3,j,n) = normal(1:3,j,n) / area(j,n)            ! make myUnit normal
        
        mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)                   ! area of parallelograms instead of triangles
-       mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2) / count(area > 0.0_pReal)  ! average of all valid normals
+       mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2)/&                            ! average of all valid normals
+                                        real(count(area > 0.0_pReal),pReal)
      enddo
    enddo
  enddo
@@ -3375,13 +3365,13 @@ character(len=64) fmt
 
 integer(pInt) i,e,n,f,t
 
-if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=110) ! no homogenization specified
-if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=120) ! no microstructure specified
+if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=110_pInt) ! no homogenization specified
+if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=120_pInt) ! no microstructure specified
  
 allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
 do e = 1,mesh_NcpElems
-  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=110,e=e) ! no homogenization specified
-  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=120,e=e) ! no microstructure specified
+  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=110_pInt,e=e) ! no homogenization specified
+  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=120_pInt,e=e) ! no microstructure specified
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1 ! count combinations of homogenization and microstructure
 enddo
@@ -3501,4 +3491,3 @@ endsubroutine
 
  
 END MODULE mesh
- 

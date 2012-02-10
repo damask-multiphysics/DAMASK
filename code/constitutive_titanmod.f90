@@ -58,7 +58,7 @@ character(len=18), dimension(3), parameter:: constitutive_titanmod_listBasicSlip
 
 character(len=18), dimension(1), parameter:: constitutive_titanmod_listBasicTwinStates = (/'gdot_twin'/)
                                                                                             
-character(len=18), dimension(11), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge       ', &
+character(len=19), dimension(11), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge       ', &
                                                                                                'segment_screw      ', &
                                                                                                'resistance_edge    ', &
                                                                                                'resistance_screw   ', &
@@ -254,8 +254,8 @@ constitutive_titanmod_Nslip             = 0_pInt
 constitutive_titanmod_Ntwin             = 0_pInt
 constitutive_titanmod_slipFamily        = 0_pInt
 constitutive_titanmod_twinFamily        = 0_pInt
-constitutive_titanmod_slipSystemLattice = 0.0_pReal
-constitutive_titanmod_twinSystemLattice = 0.0_pReal
+constitutive_titanmod_slipSystemLattice = 0_pInt
+constitutive_titanmod_twinSystemLattice = 0_pInt
 constitutive_titanmod_totalNslip        = 0_pInt
 constitutive_titanmod_totalNtwin        = 0_pInt
 allocate(constitutive_titanmod_CoverA(maxNinstance))

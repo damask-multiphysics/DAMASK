@@ -941,8 +941,8 @@ subroutine homogenization_RGC_stressPenalty(&
  integer(pInt) homID,iGrain,iGNghb,iFace,i,j,k,l
  real(pReal) muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
 ! 
- integer(pInt), parameter :: nFace = 6
- real(pReal), parameter   :: nDefToler = 1.0e-10
+ integer(pInt), parameter :: nFace = 6_pInt
+ real(pReal), parameter   :: nDefToler = 1.0e-10_pReal
 
  nGDim = homogenization_RGC_Ngrains(:,homID)
 

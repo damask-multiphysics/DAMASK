@@ -31,13 +31,13 @@ MODULE material
 use prec, only: pReal,pInt
 implicit none
 
-character(len=64), parameter :: material_configFile         = 'material.config'
-character(len=64), parameter :: material_localFileExt       = 'materialConfig'
-character(len=32), parameter :: material_partHomogenization = 'homogenization'
-character(len=32), parameter :: material_partMicrostructure = 'microstructure'
-character(len=32), parameter :: material_partCrystallite    = 'crystallite'
-character(len=32), parameter :: material_partPhase          = 'phase'
-character(len=32), parameter :: material_partTexture        = 'texture'
+character(len=64), parameter, public  :: material_configFile         = 'material.config'
+character(len=64), parameter, public  :: material_localFileExt       = 'materialConfig'
+character(len=32), parameter, public  :: material_partHomogenization = 'homogenization'
+character(len=32), parameter, private :: material_partMicrostructure = 'microstructure'
+character(len=32), parameter, public  :: material_partCrystallite    = 'crystallite'
+character(len=32), parameter, public  :: material_partPhase          = 'phase'
+character(len=32), parameter, private :: material_partTexture        = 'texture'
     
 
 !*************************************
@@ -106,6 +106,8 @@ subroutine material_init()
 !*********************************************************************
 !*      Module initialization         *
 !**************************************
+
+ use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: pReal,pInt
  use IO, only: IO_error, IO_open_file, IO_open_jobFile
  use debug, only: debug_verbosity
@@ -123,7 +125,7 @@ subroutine material_init()
  !$OMP END CRITICAL (write2out)
  
  if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
-   if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
+   if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100_pInt) ! ...and cannot open material.config file
  endif
  call material_parseHomogenization(fileunit,material_partHomogenization)
  if (debug_verbosity > 0) then
@@ -159,18 +161,18 @@ subroutine material_init()
 
  do i = 1,material_Nmicrostructure
    if (microstructure_crystallite(i) < 1 .or. &
-       microstructure_crystallite(i) > material_Ncrystallite) call IO_error(150,i)
+       microstructure_crystallite(i) > material_Ncrystallite) call IO_error(150_pInt,i)
    if (minval(microstructure_phase(1:microstructure_Nconstituents(i),i)) < 1 .or. &
-       maxval(microstructure_phase(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(155,i)
+       maxval(microstructure_phase(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(155_pInt,i)
    if (minval(microstructure_texture(1:microstructure_Nconstituents(i),i)) < 1 .or. &
-       maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Ntexture) call IO_error(160,i)
+       maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Ntexture) call IO_error(160_pInt,i)
    if (abs(sum(microstructure_fraction(:,i)) - 1.0_pReal) >= 1.0e-10_pReal) then
      if (debug_verbosity > 0) then
        !$OMP CRITICAL (write2out)
          write(6,*)'sum of microstructure fraction = ',sum(microstructure_fraction(:,i))
        !$OMP END CRITICAL (write2out)
      endif
-     call IO_error(170,i)
+     call IO_error(170_pInt,i)
    endif
  enddo
  if (debug_verbosity > 0) then
@@ -217,7 +219,7 @@ subroutine material_parseHomogenization(file,myPart)
 
  character(len=*), intent(in) :: myPart
  integer(pInt), intent(in) :: file
- integer(pInt), parameter :: maxNchunks = 2
+ integer(pInt), parameter :: maxNchunks = 2_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) Nsections, section, s
  character(len=64) tag
@@ -225,7 +227,7 @@ subroutine material_parseHomogenization(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Nhomogenization = Nsections
- if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
  
  allocate(homogenization_name(Nsections));    homogenization_name = ''
  allocate(homogenization_type(Nsections));    homogenization_type = ''
@@ -253,18 +255,18 @@ subroutine material_parseHomogenization(file,myPart)
      section = section + 1
      homogenization_name(section) = IO_getTag(line,'[',']')
    endif
-   if (section > 0) then
+   if (section > 0_pInt) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
        case ('type')
-         homogenization_type(section) = IO_lc(IO_stringValue(line,positions,2))  ! adding: IO_lc function <<<updated 31.07.2009>>>
-         do s = 1,section
+         homogenization_type(section) = IO_lc(IO_stringValue(line,positions,2_pInt))  ! adding: IO_lc function <<<updated 31.07.2009>>>
+         do s = 1_pInt,section
            if (homogenization_type(s) == homogenization_type(section)) &
-             homogenization_typeInstance(section) = homogenization_typeInstance(section) + 1  ! count instances
+             homogenization_typeInstance(section) = homogenization_typeInstance(section) + 1_pInt  ! count instances
          enddo
        case ('ngrains')
-         homogenization_Ngrains(section) = IO_intValue(line,positions,2)
+         homogenization_Ngrains(section) = IO_intValue(line,positions,2_pInt)
      end select
    endif
  enddo
@@ -285,15 +287,15 @@ subroutine material_parseMicrostructure(file,myPart)
 
  character(len=*), intent(in) :: myPart
  integer(pInt), intent(in) :: file
- integer(pInt), parameter :: maxNchunks = 7
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt), parameter :: maxNchunks = 7_pInt
+ integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  integer(pInt) Nsections, section, constituent, e, i
  character(len=64) tag
  character(len=1024) line
 
  Nsections = IO_countSections(file,myPart)
  material_Nmicrostructure = Nsections
- if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
 
  allocate(microstructure_name(Nsections));            microstructure_name = ''
  allocate(microstructure_crystallite(Nsections));     microstructure_crystallite = 0_pInt
@@ -330,21 +332,21 @@ subroutine material_parseMicrostructure(file,myPart)
    endif
    if (section > 0) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
        case ('crystallite')
-         microstructure_crystallite(section) = IO_intValue(line,positions,2)
+         microstructure_crystallite(section) = IO_intValue(line,positions,2_pInt)
        case ('(constituent)')
          constituent = constituent + 1
          do i=2,6,2
            tag = IO_lc(IO_stringValue(line,positions,i))
            select case (tag)
              case('phase')
-               microstructure_phase(constituent,section) =    IO_intValue(line,positions,i+1)
+               microstructure_phase(constituent,section) =    IO_intValue(line,positions,i+1_pInt)
              case('texture')
-               microstructure_texture(constituent,section) =  IO_intValue(line,positions,i+1)
+               microstructure_texture(constituent,section) =  IO_intValue(line,positions,i+1_pInt)
              case('fraction')
-               microstructure_fraction(constituent,section) = IO_floatValue(line,positions,i+1)
+               microstructure_fraction(constituent,section) = IO_floatValue(line,positions,i+1_pInt)
            end select
          enddo
      end select
@@ -370,7 +372,7 @@ subroutine material_parseCrystallite(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Ncrystallite = Nsections
- if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
 
  allocate(crystallite_name(Nsections));       crystallite_name = ''
  allocate(crystallite_Noutput(Nsections));    crystallite_Noutput = 0_pInt
@@ -416,7 +418,7 @@ subroutine material_parsePhase(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Nphase = Nsections
- if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
 
  allocate(phase_name(Nsections));          phase_name = ''
  allocate(phase_constitution(Nsections));  phase_constitution = ''
@@ -443,12 +445,12 @@ subroutine material_parsePhase(file,myPart)
      section = section + 1
      phase_name(section) = IO_getTag(line,'[',']')
    endif
-   if (section > 0) then
+   if (section > 0_pInt) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
        case ('constitution')
-         phase_constitution(section) = IO_lc(IO_stringValue(line,positions,2))
+         phase_constitution(section) = IO_lc(IO_stringValue(line,positions,2_pInt))
          do s = 1,section
            if (phase_constitution(s) == phase_constitution(section)) &
              phase_constitutionInstance(section) = phase_constitutionInstance(section) + 1  ! count instances
@@ -480,7 +482,7 @@ subroutine material_parseTexture(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Ntexture = Nsections
- if (Nsections < 1_pInt) call IO_error(125,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
 
  allocate(texture_name(Nsections));     texture_name = ''
  allocate(texture_ODFfile(Nsections));  texture_ODFfile = ''
@@ -516,14 +518,14 @@ subroutine material_parseTexture(file,myPart)
    endif
    if (section > 0) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
 
        case ('hybridia')
-         texture_ODFfile(section) = IO_stringValue(line,positions,2)
+         texture_ODFfile(section) = IO_stringValue(line,positions,2_pInt)
 
        case ('symmetry')
-         tag = IO_lc(IO_stringValue(line,positions,2))
+         tag = IO_lc(IO_stringValue(line,positions,2_pInt))
          select case (tag)
            case('orthotropic')
              texture_symmetry(section) = 4
@@ -540,9 +542,9 @@ subroutine material_parseTexture(file,myPart)
            tag = IO_lc(IO_stringValue(line,positions,i))
            select case (tag)
              case('scatter')
-                 texture_Gauss(4,gauss,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Gauss(4,gauss,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('fraction')
-                 texture_Gauss(5,gauss,section) = IO_floatValue(line,positions,i+1)
+                 texture_Gauss(5,gauss,section) = IO_floatValue(line,positions,i+1_pInt)
            end select
          enddo
 
@@ -552,15 +554,15 @@ subroutine material_parseTexture(file,myPart)
            tag = IO_lc(IO_stringValue(line,positions,i))
            select case (tag)
              case('phi1')
-                 texture_Gauss(1,gauss,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Gauss(1,gauss,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('phi')
-                 texture_Gauss(2,gauss,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Gauss(2,gauss,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('phi2')
-                 texture_Gauss(3,gauss,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Gauss(3,gauss,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('scatter')
-                 texture_Gauss(4,gauss,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Gauss(4,gauss,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('fraction')
-                 texture_Gauss(5,gauss,section) = IO_floatValue(line,positions,i+1)
+                 texture_Gauss(5,gauss,section) = IO_floatValue(line,positions,i+1_pInt)
            end select
          enddo
 
@@ -570,17 +572,17 @@ subroutine material_parseTexture(file,myPart)
            tag = IO_lc(IO_stringValue(line,positions,i))
            select case (tag)
              case('alpha1')
-                 texture_Fiber(1,fiber,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Fiber(1,fiber,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('alpha2')
-                 texture_Fiber(2,fiber,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Fiber(2,fiber,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('beta1')
-                 texture_Fiber(3,fiber,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Fiber(3,fiber,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('beta2')
-                 texture_Fiber(4,fiber,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Fiber(4,fiber,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('scatter')
-                 texture_Fiber(5,fiber,section) = IO_floatValue(line,positions,i+1)*inRad
+                 texture_Fiber(5,fiber,section) = IO_floatValue(line,positions,i+1_pInt)*inRad
              case('fraction')
-                 texture_Fiber(6,fiber,section) = IO_floatValue(line,positions,i+1)
+                 texture_Fiber(6,fiber,section) = IO_floatValue(line,positions,i+1_pInt)
            end select
          enddo
 
@@ -643,9 +645,9 @@ subroutine material_populateGrains()
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
    if (homog < 1 .or. homog > material_Nhomogenization) &   ! out of bounds
-     call IO_error(130,e,0,0)
+     call IO_error(130_pInt,e,0_pInt,0_pInt)
    if (micro < 1 .or. micro > material_Nmicrostructure) &   ! out of bounds
-     call IO_error(140,e,0,0)
+     call IO_error(140_pInt,e,0_pInt,0_pInt)
    if (microstructure_elemhomo(micro)) then
      dGrains = homogenization_Ngrains(homog)
    else
@@ -688,7 +690,8 @@ subroutine material_populateGrains()
        do hme = 1_pInt, Nelems(homog,micro)
          e = elemsOfHomogMicro(hme,homog,micro)                               ! my combination of homog and micro, only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
          if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
-           volumeOfGrain(grain+1:grain+dGrains) = sum(mesh_ipVolume(1:FE_Nips(mesh_element(2,e)),e))/dGrains
+           volumeOfGrain(grain+1:grain+dGrains) = sum(mesh_ipVolume(1:FE_Nips(mesh_element(2,e)),e))/&
+                                                                         real(dGrains,pReal)
            grain = grain + dGrains                                            ! wind forward by NgrainsPerIP
          else
            forall (i = 1:FE_Nips(mesh_element(2,e))) &                        ! loop over IPs
@@ -707,8 +710,8 @@ subroutine material_populateGrains()
          extreme = 0.0_pReal
          t = 0_pInt
          do i = 1,microstructure_Nconstituents(micro)                           ! find largest deviator
-           if (sgn*log(NgrainsOfConstituent(i)/myNgrains/microstructure_fraction(i,micro)) > extreme) then
-             extreme = sgn*log(NgrainsOfConstituent(i)/myNgrains/microstructure_fraction(i,micro))
+           if (real(sgn,pReal)*log(NgrainsOfConstituent(i)/myNgrains/microstructure_fraction(i,micro)) > extreme) then
+             extreme = real(sgn,pReal)*log(NgrainsOfConstituent(i)/myNgrains/microstructure_fraction(i,micro))
              t = i
            endif
          enddo
@@ -726,7 +729,8 @@ subroutine material_populateGrains()
          phaseOfGrain(grain+1:grain+NgrainsOfConstituent(i)) = phaseID        ! assign resp. phase
          textureOfGrain(grain+1:grain+NgrainsOfConstituent(i)) = textureID    ! assign resp. texture
 
-         myNorientations = ceiling(float(NgrainsOfConstituent(i))/texture_symmetry(textureID))   ! max number of unique orientations (excl. symmetry)
+         myNorientations = ceiling(real(NgrainsOfConstituent(i),pReal)/&
+                                   real(texture_symmetry(textureID),pReal))   ! max number of unique orientations (excl. symmetry)
 
          constituentGrain = 0_pInt                                            ! constituent grain index
                                                                               ! ---------
@@ -758,7 +762,7 @@ subroutine material_populateGrains()
          else                                                                 ! hybrid IA
                                                                               ! ---------
            orientationOfGrain(:,grain+1:grain+myNorientations) = IO_hybridIA(myNorientations,texture_ODFfile(textureID))
-           if (all(orientationOfGrain(:,grain+1) == -1.0_pReal)) call IO_error(105)  
+           if (all(orientationOfGrain(:,grain+1) == -1.0_pReal)) call IO_error(105_pInt)  
            constituentGrain = constituentGrain + myNorientations
 
          endif

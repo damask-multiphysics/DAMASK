@@ -186,8 +186,8 @@ constitutive_dislotwin_Nslip             = 0_pInt
 constitutive_dislotwin_Ntwin             = 0_pInt
 constitutive_dislotwin_slipFamily        = 0_pInt
 constitutive_dislotwin_twinFamily        = 0_pInt
-constitutive_dislotwin_slipSystemLattice = 0.0_pReal
-constitutive_dislotwin_twinSystemLattice = 0.0_pReal
+constitutive_dislotwin_slipSystemLattice = 0_pInt
+constitutive_dislotwin_twinSystemLattice = 0_pInt
 constitutive_dislotwin_totalNslip        = 0_pInt
 constitutive_dislotwin_totalNtwin        = 0_pInt
 allocate(constitutive_dislotwin_CoverA(maxNinstance))
@@ -959,23 +959,23 @@ real(pReal), dimension(3,3) :: eigVectors, sb_Smatrix
 real(pReal), dimension(3)   :: eigValues, sb_s, sb_m
 real(pReal), dimension(3,6), parameter :: &
   sb_sComposition = &
-    reshape((/&
+    reshape(real([&
        1, 0, 1, &
        1, 0,-1, &
        1, 1, 0, &
        1,-1, 0, &
        0, 1, 1, &
        0, 1,-1  &
-       /),(/3,6/)), &
+       ],pReal),[ 3,6]), &
   sb_mComposition = &
-    reshape((/&
+    reshape(real([&
        1, 0,-1, &
        1, 0,+1, &
        1,-1, 0, &
        1, 1, 0, &
        0, 1,-1, &
        0, 1, 1  &
-       /),(/3,6/))
+       ],pReal),[ 3,6])
 logical error
 
 !* Shortened notation

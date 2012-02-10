@@ -88,7 +88,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  integer(pInt) ::            lattice_fcc_Nstructure = 0_pInt
 
  real(pReal), dimension(3+3,lattice_fcc_Nslip), parameter :: lattice_fcc_systemSlip = &
- reshape((/&
+ reshape(real([&
 ! Slip system <110>{111}  Sorted according to Eisenlohr & Hantcherli
   0, 1,-1,     1, 1, 1, &
  -1, 0, 1,     1, 1, 1, &
@@ -102,10 +102,10 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
   0, 1, 1,    -1, 1,-1, &
   1, 0,-1,    -1, 1,-1, &
  -1,-1, 0,    -1, 1,-1  &
-   /),(/3+3,lattice_fcc_Nslip/))
+   ],pReal),[ 3_pInt + 3_pInt,lattice_fcc_Nslip])
 
  real(pReal), dimension(3+3,lattice_fcc_Ntwin), parameter :: lattice_fcc_systemTwin = &
- reshape((/&
+ reshape(real( [&
 ! Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
  -2, 1, 1,     1, 1, 1, &
   1,-2, 1,     1, 1, 1, &
@@ -119,27 +119,27 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
   2, 1,-1,    -1, 1,-1, &
  -1,-2,-1,    -1, 1,-1, &
  -1, 1, 2,    -1, 1,-1  &
-   /),(/3+3,lattice_fcc_Ntwin/))
+   ],pReal),[ 3_pInt + 3_pInt ,lattice_fcc_Ntwin])
 
  real(pReal), dimension(lattice_fcc_Ntwin), parameter :: lattice_fcc_shearTwin = &
- reshape((/&
+ reshape([&
 ! Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812, &
- 0.7071067812  &
-   /),(/lattice_fcc_Ntwin/))
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal, &
+ 0.7071067812_pReal  &
+   ],[lattice_fcc_Ntwin])
 
  integer(pInt), target, dimension(lattice_fcc_Nslip,lattice_fcc_Nslip) :: lattice_fcc_interactionSlipSlip = &
- reshape((/&
+ reshape(int( [&
 ! Interaction types
 ! 1 --- self interaction
 ! 2 --- coplanar interaction
@@ -159,10 +159,10 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  4,5,6,3,5,5,4,6,5,1,2,2, &
  5,3,5,5,4,6,6,4,5,2,1,2, &
  6,5,4,5,6,4,5,5,3,2,2,1  &
-   /),(/lattice_fcc_Nslip,lattice_fcc_Nslip/))
+   ],pInt),[lattice_fcc_Nslip,lattice_fcc_Nslip])
 
  integer(pInt), target, dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip) :: lattice_fcc_interactionSlipTwin = &
- reshape((/&
+ reshape(int( [&
  1,1,1,2,2,1,1,2,2,2,1,2, &
  1,1,1,2,2,1,1,2,2,2,1,2, &
  1,1,1,2,2,1,1,2,2,2,1,2, &
@@ -175,12 +175,12 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  2,1,2,1,2,2,2,2,1,1,1,1, &
  2,1,2,1,2,2,2,2,1,1,1,1, &
  2,1,2,1,2,2,2,2,1,1,1,1  &
-   /),(/lattice_fcc_Ntwin,lattice_fcc_Nslip/))
+   ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Nslip])
 
- integer(pInt), target, dimension(lattice_fcc_Nslip,lattice_fcc_Ntwin) :: lattice_fcc_interactionTwinSlip = 0
+ integer(pInt), target, dimension(lattice_fcc_Nslip,lattice_fcc_Ntwin) :: lattice_fcc_interactionTwinSlip = 0_pInt
 
  integer(pInt), target, dimension(lattice_fcc_Ntwin,lattice_fcc_Ntwin) :: lattice_fcc_interactionTwinTwin = &
- reshape((/&
+ reshape(int( [&
  1,1,1,2,2,2,2,2,2,2,2,2, &
  1,1,1,2,2,2,2,2,2,2,2,2, &
  1,1,1,2,2,2,2,2,2,2,2,2, &
@@ -193,19 +193,19 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  2,2,2,2,2,2,2,2,2,1,1,1, &
  2,2,2,2,2,2,2,2,2,1,1,1, &
  2,2,2,2,2,2,2,2,2,1,1,1  &
-   /),(/lattice_fcc_Ntwin,lattice_fcc_Ntwin/))
+   ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin])
    
 
 !============================== bcc (2) =================================
 
- integer(pInt), parameter, dimension(lattice_maxNslipFamily) :: lattice_bcc_NslipSystem = (/12,12,24, 0, 0/)
- integer(pInt), parameter, dimension(lattice_maxNtwinFamily) :: lattice_bcc_NtwinSystem = (/12, 0, 0, 0/)
- integer(pInt), parameter :: lattice_bcc_Nslip = 48                                       ! sum(lattice_bcc_NslipSystem)
- integer(pInt), parameter :: lattice_bcc_Ntwin = 12                                       ! sum(lattice_bcc_NtwinSystem)
+ integer(pInt), parameter, dimension(lattice_maxNslipFamily) :: lattice_bcc_NslipSystem = int([ 12,12,24, 0, 0], pInt)
+ integer(pInt), parameter, dimension(lattice_maxNtwinFamily) :: lattice_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)
+ integer(pInt), parameter :: lattice_bcc_Nslip = 48_pInt                                       ! sum(lattice_bcc_NslipSystem)
+ integer(pInt), parameter :: lattice_bcc_Ntwin = 12_pInt                                       ! sum(lattice_bcc_NtwinSystem)
  integer(pInt) ::            lattice_bcc_Nstructure = 0_pInt
 
  real(pReal), dimension(3+3,lattice_bcc_Nslip), parameter :: lattice_bcc_systemSlip = &
- reshape((/&
+ reshape(real([&
 ! Slip system <111>{110}  meaningful sorting?
   1,-1, 1,     0, 1, 1, &
  -1,-1, 1,     0, 1, 1, &
@@ -257,12 +257,12 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
   1, 1, 1,    -3, 2, 1, &
   1, 1,-1,     3,-2, 1, &
   1,-1, 1,     3, 2,-1  &
-   /),(/3+3,lattice_bcc_Nslip/))
+   ],pReal),[ 3_pInt + 3_pInt ,lattice_bcc_Nslip])
 
 ! twin system <111>{112}
 ! MISSING: not implemented yet -- now dummy copy from fcc !!
  real(pReal), dimension(3+3,lattice_bcc_Ntwin), parameter :: lattice_bcc_systemTwin = &
- reshape((/&
+ reshape(real([&
 ! Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
  -2, 1, 1,     1, 1, 1, &
   1,-2, 1,     1, 1, 1, &
@@ -276,28 +276,28 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
   2, 1,-1,    -1, 1,-1, &
  -1,-2,-1,    -1, 1,-1, &
  -1, 1, 2,    -1, 1,-1  &
-   /),(/3+3,lattice_bcc_Ntwin/))
+   ],pReal),[ 3_pInt + 3_pInt,lattice_bcc_Ntwin])
 
  real(pReal), dimension(lattice_bcc_Ntwin), parameter :: lattice_bcc_shearTwin = &
- reshape((/&
+ reshape([&
 ! Twin system {111}<112>  just a dummy
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123, &
- 0.123  &
-   /),(/lattice_bcc_Ntwin/))
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal, &
+ 0.123_pReal  &
+   ],[lattice_bcc_Ntwin])
 
 !*** slip--slip interactions for BCC structures (2) ***
  integer(pInt), target, dimension(lattice_bcc_Nslip,lattice_bcc_Nslip) :: lattice_bcc_interactionSlipSlip = &
- reshape((/&
+ reshape(int( [&
  1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
  2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
  2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
@@ -346,12 +346,12 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,2, &
  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2, &
  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1  &
-   /),(/lattice_bcc_Nslip,lattice_bcc_Nslip/))
+   ],pInt),[lattice_bcc_Nslip,lattice_bcc_Nslip])
 
 !*** slip--twin interactions for BCC structures (2) ***
 ! MISSING: not implemented yet
  integer(pInt), target, dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip) :: lattice_bcc_interactionSlipTwin = &
- reshape((/&
+ reshape(int( [&
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
@@ -400,13 +400,13 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0  &
-   /),(/lattice_bcc_Ntwin,lattice_bcc_Nslip/))
+   ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Nslip])
 
 
 !*** twin--slip interactions for BCC structures (2) ***
 ! MISSING: not implemented yet
  integer(pInt), target, dimension(lattice_bcc_Nslip,lattice_bcc_Ntwin) :: lattice_bcc_interactionTwinSlip = &
- reshape((/&
+ reshape(int( [&
  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
@@ -419,12 +419,12 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0  &
-   /),(/lattice_bcc_Nslip,lattice_bcc_Ntwin/))
+   ],pInt),[lattice_bcc_Nslip,lattice_bcc_Ntwin])
 
 !*** twin-twin interactions for BCC structures (2) ***
 ! MISSING: not implemented yet
  integer(pInt), target, dimension(lattice_bcc_Ntwin,lattice_bcc_Ntwin) :: lattice_bcc_interactionTwinTwin = &
- reshape((/&
+ reshape(int( [&
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
@@ -437,7 +437,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0, &
  0,0,0,0,0,0,0,0,0,0,0,0  &
-   /),(/lattice_bcc_Ntwin,lattice_bcc_Ntwin/))
+   ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Ntwin])
  
 
 !============================== hex (3+) =================================
@@ -450,7 +450,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
 
  !* sorted by A. Alankar & P. Eisenlohr
  real(pReal), dimension(4+4,lattice_hex_Nslip), parameter :: lattice_hex_systemSlip = &
- reshape((/&
+ reshape(real([&
 ! Basal systems <1120>{0001} (independent of c/a-ratio, Bravais notation (4 coordinate base))
   2, -1, -1,  0,     0,  0,  0,  1, &
  -1,  2, -1,  0,     0,  0,  0,  1, &
@@ -486,10 +486,10 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  -2,  1,  1, -3,    -2,  1,  1,  2, &
  -1, -1,  2, -3,    -1, -1,  2,  2, &
   1, -2,  1, -3,     1, -2,  1,  2  &
-   /),(/4+4,lattice_hex_Nslip/))
+   ],pReal),[ 4_pInt + 4_pInt,lattice_hex_Nslip])
 
  real(pReal), dimension(4+4,lattice_hex_Ntwin), parameter :: lattice_hex_systemTwin = &
- reshape((/&
+ reshape(real([&
   0,  1, -1,  1,     0, -1,  1,  2, & ! <-10.1>{10.2} shear = (3-(c/a)^2)/(sqrt(3) c/a)
  -1,  1,  0,  1,     1, -1,  0,  2, &
  -1,  0,  1,  1,     1,  0, -1,  2, & !!
@@ -514,10 +514,10 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
   0, -1,  1, -2,     0, -1,  1,  1, &
   1, -1,  0, -2,     1, -1,  0,  1, &
  -1,  1,  0, -2,    -1,  1,  0,  1  &
-   /),(/4+4,lattice_hex_Ntwin/))                 !* Sort? Numbering of twin system follows Prof. Tom Bieler's scheme (to be consistent with his work); but numbering in data was restarted from 1 &
+   ],pReal),[ 4_pInt + 4_pInt ,lattice_hex_Ntwin])                 !* Sort? Numbering of twin system follows Prof. Tom Bieler's scheme (to be consistent with his work); but numbering in data was restarted from 1 &
 
  integer(pInt), dimension(lattice_hex_Ntwin), parameter :: lattice_hex_shearTwin = &    ! indicator to formula further below
- reshape((/&
+ reshape(int( [&
  1, &  ! {10.2}<-10.1>
  1, &
  1, &
@@ -542,7 +542,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  4, &
  4, &
  4  &
-   /),(/lattice_hex_Ntwin/))
+   ],pInt),[lattice_hex_Ntwin])
 
 !* four different interaction type matrix
  !* 1. slip-slip interaction - 30 types
@@ -551,7 +551,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  !* 4. twin-slip interaction - 16 types
    
  integer(pInt), target, dimension(lattice_hex_Nslip,lattice_hex_Nslip) :: lattice_hex_interactionSlipSlip = &
- reshape((/&
+ reshape(int( [&
   1, 6, 6,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &
   6, 1, 6,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &
   6, 6, 1,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &
@@ -586,11 +586,11 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10, 5,10,10,  &
  30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10,10, 5,10,  &
  30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10,10,10, 5   &
-   /),(/lattice_hex_Nslip,lattice_hex_Nslip/))
+   ],pInt),[lattice_hex_Nslip,lattice_hex_Nslip])
   
 !* isotropic interaction at the moment
  integer(pInt), target, dimension(lattice_hex_Ntwin,lattice_hex_Nslip) :: lattice_hex_interactionSlipTwin = &
- reshape((/&
+ reshape(int( [&
   1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! --> twin
   1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! |
   1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! |
@@ -625,11 +625,11 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
  17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
  17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20  &
-   /),(/lattice_hex_Ntwin,lattice_hex_Nslip/))  
+   ],pInt),[lattice_hex_Ntwin,lattice_hex_Nslip])  
 
  !* isotropic interaction at the moment
  integer(pInt), target, dimension(lattice_hex_Nslip,lattice_hex_Ntwin) :: lattice_hex_interactionTwinSlip = &
- reshape((/&
+ reshape(int( [&
   1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! --> slip
   1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! |
   1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! |
@@ -657,11 +657,11 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
   4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20, &
   4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20, &
   4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20  &
-   /),(/lattice_hex_Nslip,lattice_hex_Ntwin/))  
+   ],pInt),[lattice_hex_Nslip,lattice_hex_Ntwin])  
 
 
  integer(pInt), target, dimension(lattice_hex_Ntwin,lattice_hex_Ntwin) :: lattice_hex_interactionTwinTwin = &
- reshape((/&
+ reshape(int( [&
   1, 5, 5, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
   5, 1, 5, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
   5, 5, 1, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
@@ -689,7 +689,7 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
  20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 4, 8, 8, &
  20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 8, 4, 8, &
  20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 8, 8, 4  &
-   /),(/lattice_hex_Ntwin,lattice_hex_Ntwin/))  
+   ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin])  
 
 
 CONTAINS
@@ -710,9 +710,9 @@ pure function lattice_symmetryType(structID)
  integer(pInt) lattice_symmetryType
 
  select case(structID)
-   case (1,2)
+   case (1_pInt,2_pInt)
      lattice_symmetryType = 1_pInt
-   case (3:)
+   case (3_pInt:)
      lattice_symmetryType = 2_pInt
    case default
      lattice_symmetryType = 0_pInt
@@ -727,6 +727,7 @@ subroutine lattice_init()
 !**************************************
 !*      Module initialization         *
 !**************************************
+ use, intrinsic :: iso_fortran_env
  use IO, only: IO_open_file,IO_open_jobFile,IO_countSections,IO_countTagInPart,IO_error
  use material, only: material_configfile,material_localFileExt,material_partPhase
  use debug, only: debug_verbosity
@@ -742,15 +743,15 @@ subroutine lattice_init()
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
 
- if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
-   if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
+ if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then                  ! no local material configuration present...
+   if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100_pInt) ! ...and cannot open material.config file
  endif
  Nsections = IO_countSections(fileunit,material_partPhase)
  lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
 ! lattice_Nstructure = Nsections + 2_pInt                                                ! most conservative assumption
  close(fileunit)
 
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,1x,i5)') '# phases:',Nsections
      write(6,'(a16,1x,i5)') '# structures:',lattice_Nstructure
@@ -773,8 +774,8 @@ subroutine lattice_init()
 
  allocate(lattice_shearTwin(lattice_maxNtwin,lattice_Nstructure)); lattice_shearTwin = 0.0_pReal
 
- allocate(lattice_NslipSystem(lattice_maxNslipFamily,lattice_Nstructure)); lattice_NslipSystem = 0.0_pReal
- allocate(lattice_NtwinSystem(lattice_maxNtwinFamily,lattice_Nstructure)); lattice_NtwinSystem = 0.0_pReal
+ allocate(lattice_NslipSystem(lattice_maxNslipFamily,lattice_Nstructure)); lattice_NslipSystem = 0_pInt
+ allocate(lattice_NtwinSystem(lattice_maxNtwinFamily,lattice_Nstructure)); lattice_NtwinSystem = 0_pInt
 
  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipSlip = 0_pInt ! other:me
  allocate(lattice_interactionSlipTwin(lattice_maxNtwin,lattice_maxNslip,lattice_Nstructure)); lattice_interactionSlipTwin = 0_pInt ! other:me
@@ -901,13 +902,13 @@ function lattice_initializeStructure(struct,CoverA)
          tt(1:3,i) = math_vectorproduct(td(1:3,i),tn(1:3,i))
 
          select case(lattice_hex_shearTwin(i))                                     ! from Christian & Mahajan 1995 p.29
-           case (1)                                                                ! {10.2}<-10.1>
+           case (1_pInt)                                                                ! {10.2}<-10.1>
                     ts(i) = (3.0_pReal-CoverA*CoverA)/sqrt(3.0_pReal)/CoverA
-           case (2)                                                                ! {11.2}<11.-3>
+           case (2_pInt)                                                                ! {11.2}<11.-3>
                     ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
-           case (3)                                                                ! {11.1}<-1-1.6>
+           case (3_pInt)                                                                ! {11.1}<-1-1.6>
                     ts(i) = 1.0_pReal/CoverA
-           case (4)                                                                ! {10.1}<10.-2>
+           case (4_pInt)                                                                ! {10.1}<10.-2>
                     ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/sqrt(3.0_pReal)/CoverA
          end select
 
@@ -921,7 +922,7 @@ function lattice_initializeStructure(struct,CoverA)
 
  if (processMe) then
    if  (myStructure > lattice_Nstructure) &
-     call IO_error(666,0,0,0,'structure index too large')        ! check for memory leakage
+     call IO_error(666_pint,0_pInt,0_pInt,0_pInt,'structure index too large')        ! check for memory leakage
    do i = 1,myNslip                                              ! store slip system vectors and Schmid matrix for my structure
      lattice_sd(1:3,i,myStructure) = sd(1:3,i)
      lattice_st(1:3,i,myStructure) = st(1:3,i)
