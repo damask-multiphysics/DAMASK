@@ -21,11 +21,10 @@
 !##############################################################
  MODULE FEsolving
 !##############################################################
-
  use prec, only: pInt,pReal
  implicit none
 
- integer(pInt) :: cycleCounter = 0_pInt, theInc = -1_pInt, restartReadInc = 0_pInt
+ integer(pInt) :: cycleCounter = 0_pInt, theInc = -1_pInt, restartInc = 1_pInt
  real(pReal)   :: theTime = 0.0_pReal, theDelta = 0.0_pReal
  logical :: lastIncConverged = .false.,outdatedByNewInc = .false.,outdatedFFN1 = .false.,terminallyIll = .false.
  logical :: symmetricSolver = .false. 
@@ -46,6 +45,7 @@
 !***********************************************************
  subroutine FE_init()
  
+ use, intrinsic :: iso_fortran_env  
  use prec, only: pInt
  use debug, only: debug_verbosity
  use DAMASK_interface
@@ -55,7 +55,7 @@
  integer(pInt), parameter :: fileunit = 222
  integer(pInt), parameter :: maxNchunks = 6
  integer(pInt):: i, start = 0_pInt, length=0_pInt
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  character(len=64) tag
  character(len=1024) line, commandLine
 
@@ -74,27 +74,29 @@
 
      if(start /= 0_pInt) then                                                      ! found something
        length = verify(commandLine(start:len(commandLine)),'0123456789',.false.)   ! where is first non number after argument?
-       read(commandLine(start:start+length),'(I12)') restartReadInc                ! read argument
-       restartReadInc = restartReadInc - 1_pInt                                    ! command line argument is inc to compute
-       restartRead  = max(0_pInt,restartReadInc) > 0_pInt
-       if(restartReadInc < 0_pInt) call IO_warning(warning_ID=34_pInt)
+       read(commandLine(start:start+length),'(I12)') restartInc                    ! read argument
+       restartRead  = restartInc > 0_pInt
+       if(restartInc <= 0_pInt) then
+         call IO_warning(warning_ID=34_pInt)
+         restartInc = 1_pInt
+       endif
      endif
    else
      rewind(fileunit)
      do
        read (fileunit,'(a1024)',END=100) line
        positions = IO_stringPos(line,maxNchunks)
-       tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+       tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
        select case(tag)
          case ('solver')
            read (fileunit,'(a1024)',END=100) line  ! next line
            positions = IO_stringPos(line,maxNchunks)
-           symmetricSolver = (IO_intValue(line,positions,2) /= 1_pInt)
+           symmetricSolver = (IO_intValue(line,positions,2_pInt) /= 1_pInt)
          case ('restart')
            read (fileunit,'(a1024)',END=100) line  ! next line
            positions = IO_stringPos(line,maxNchunks)
-           restartWrite = iand(IO_intValue(line,positions,1),1_pInt) > 0_pInt
-           restartRead  = iand(IO_intValue(line,positions,1),2_pInt) > 0_pInt
+           restartWrite = iand(IO_intValue(line,positions,1_pInt),1_pInt) > 0_pInt
+           restartRead  = iand(IO_intValue(line,positions,1_pInt),2_pInt) > 0_pInt
          case ('*restart')
            do i=2,positions(1)
              restartWrite = (IO_lc(IO_StringValue(line,positions,i)) == 'write') .or. restartWrite
@@ -109,7 +111,7 @@
      enddo
    endif
  else
-   call IO_error(101, ext_msg=FEmodelGeometry) ! cannot open input file
+   call IO_error(101_pInt, ext_msg=FEmodelGeometry) ! cannot open input file
  endif
  100 close(fileunit)
  
@@ -119,27 +121,27 @@
      do
        read (fileunit,'(a1024)',END=200) line
        positions = IO_stringPos(line,maxNchunks)
-       if ( IO_lc(IO_stringValue(line,positions,1)) == 'restart' .and. &
-            IO_lc(IO_stringValue(line,positions,2)) == 'file' .and. &
-            IO_lc(IO_stringValue(line,positions,3)) == 'job' .and. &
-            IO_lc(IO_stringValue(line,positions,4)) == 'id' ) &
-          FEmodelGeometry = IO_StringValue(line,positions,6)
+       if ( IO_lc(IO_stringValue(line,positions,1_pInt)) == 'restart' .and. &
+            IO_lc(IO_stringValue(line,positions,2_pInt)) == 'file' .and. &
+            IO_lc(IO_stringValue(line,positions,3_pInt)) == 'job' .and. &
+            IO_lc(IO_stringValue(line,positions,4_pInt)) == 'id' ) &
+          FEmodelGeometry = IO_StringValue(line,positions,6_pInt)
      enddo
    elseif (FEsolver == 'Abaqus' .and. IO_open_inputFile(fileunit,FEmodelGeometry)) then
      rewind(fileunit)
      do
        read (fileunit,'(a1024)',END=200) line
        positions = IO_stringPos(line,maxNchunks)
-       if ( IO_lc(IO_stringValue(line,positions,1))=='*heading') then
+       if ( IO_lc(IO_stringValue(line,positions,1_pInt))=='*heading') then
          read (fileunit,'(a1024)',END=200) line
          positions = IO_stringPos(line,maxNchunks)
-         FEmodelGeometry = IO_StringValue(line,positions,1)
+         FEmodelGeometry = IO_StringValue(line,positions,1_pInt)
        endif
      enddo
    elseif (FEsolver == 'Spectral') then
    !do nothing
    else
-     call IO_error(106) ! cannot open file for old job info
+     call IO_error(106_pInt) ! cannot open file for old job info
    endif
  endif
 

@@ -33,8 +33,9 @@
 # SUFFIX         = arbitrary suffix
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-# Here are some useful debugging switches. Switch on by uncommenting the #SUFFIX line at the end of this section:
+# Here are some useful debugging switches for ifort. Switch on by uncommenting the #SUFFIX line at the end of this section:
 # information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
+
 # check if an array index is too small (<1) or too large!
 DEBUG1 =-check bounds -g
 
@@ -54,9 +55,12 @@ DEBUG5 =-warn all
 #set precision (check for missing _pInt and _pReal)
 DEBUG6= -real-size 32  -integer-size 16
 #or one of those 16/32/64/128 (= 2,4,8,16 bytes)
+#SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3) $(DEBUG4) $(DEBUG5) $(DEBUG6)
+
+# Here are some useful debugging switches for gfortran
+# fcheck-bounds: eqv to DEBUG1 of ifort
 
 
-#SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3)
 ########################################################################################
 
 #auto values will be set by setup_code.py
@@ -69,6 +73,12 @@ F90 ?= ifort
 COMPILERNAME ?= $(F90)
 OPENMP ?= ON
 OPTIMIZATION ?= DEFENSIVE
+
+ifeq "$(F90)" "ifort"
+ARCHIVE_COMMAND :=xiar
+else
+ARCHIVE_COMMAND :=ar
+endif
 
 ifeq "$(OPTIMIZATION)" "OFF"
 OPTI    := OFF
@@ -93,40 +103,40 @@ MAXOPTI := DEFENSIVE
 endif
 
 ifeq  "$(PORTABLE)" "FALSE"
-PORTABLE_SWITCH = -msse3
+PORTABLE_SWITCH =-msse3
 endif
 
 
 # settings for multicore support
 ifeq "$(OPENMP)" "ON"
-OPENMP_FLAG_ifort = -openmp -openmp-report0 -parallel
-OPENMP_FLAG_gfortran = -fopenmp
+OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
+OPENMP_FLAG_gfortran =-fopenmp
 ACML_ARCH =_mp
-LIBRARIES += -lfftw3_threads -lpthread
+LIBRARIES +=-lfftw3_threads -lpthread
 endif
 
-LIBRARIES += -lfftw3
-LIB_DIRS += -L$(FFTWROOT)/lib
+LIBRARIES +=-lfftw3
+LIB_DIRS +=-L$(FFTWROOT)/lib
 
 ifdef IKMLROOT
-LIBRARIES += -mkl
+LIBRARIES +=-mkl
 else
 ifdef ACMLROOT
-LIB_DIRS += -L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
-LIBRARIES += -lacml$(ACML_ARCH)
+LIB_DIRS +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
+LIBRARIES +=-lacml$(ACML_ARCH)
 else
 ifdef LAPACKROOT
-LIB_DIRS += -L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
-LIBRARIES += -llapack 
+LIB_DIRS +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
+LIBRARIES +=-llapack 
 endif
 endif
 endif
 
 ifdef STANDARD_CHECK
-STANDARD_CHECK_ifort = $(STANDARD_CHECK)
-STANDARD_CHECK_gfortran = $(STANDARD_CHECK)
+STANDARD_CHECK_ifort =$(STANDARD_CHECK)
+STANDARD_CHECK_gfortran =$(STANDARD_CHECK)
 endif
-STANDARD_CHECK_ifort ?= -stand f08
+STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics
 STANDARD_CHECK_gfortran ?=-std=f2008
 
 
@@ -138,14 +148,87 @@ OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ip -static -fp-model 
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 
-COMPILE_OPTIONS_ifort    := -fpp -diag-disable 8291,8290,5268
-#warning ID 9291,8290:
-#warning ID 5268: Extension to standard: The text exceeds right hand column allowed on the line (we have only comments there)
-COMPILE_OPTIONS_gfortran := -xf95-cpp-input -ffree-line-length-132 -fno-range-check
+COMPILE_OPTIONS_ifort    :=-fpp\
+                           -diag-enable sc3\
+                           -diag-disable 8291,8290,5268\
+                           -warn declarations\
+                           -warn general\
+                           -warn usage
+
+#alignments:       Determines whether warnings occur for data that is not naturally aligned.
+#declarations:     Determines whether warnings occur for any undeclared names.
+#errors:           Determines whether warnings are changed to errors.
+#general:          Determines whether warning messages and informational messages are issued by the compiler.
+#ignore_loc:       Determines whether warnings occur when %LOC is stripped from an actual argument.
+#interfaces:       Determines whether the compiler checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks.
+#stderrors:        Determines whether warnings about Fortran standard violations are changed to errors.
+#truncated_source: Determines whether warnings occur when source exceeds the maximum column width in fixed-format files.
+#uncalled:         Determines whether warnings occur when a statement function is never called
+#unused:           Determines whether warnings occur for declared variables that are never used.
+#usage:            Determines whether warnings occur for questionable programming practices.                         
+                           
+#-fpp:                 preprocessor
+#-diag-disable:        disables warnings, where                           
+#   warning ID 9291:
+#   warning ID 8290:
+#   warning ID 5268: The text exceeds right hand column allowed on the line (we have only comments there)
+COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
+                           -ffree-line-length-132\
+                           -fno-range-check\
+                           -fimplicit-none\
+                           -pedantic\
+                           -Warray-bounds\
+                           -Wunused-parameter\
+                           -Wampersand\
+                           -Wno-tabs\
+                           -Wcharacter-truncation\
+                           -Wintrinsic-shadow\
+                           -Waliasing\
+                           -Wconversion\
+                           -Wsurprising\
+                           -Wunused-value\
+                           -Wunderflow
+                            
+#-xf95-cpp-input:         preprocessor
+#-ffree-line-length-132:  restrict line length to the standard 132 characters
+#-fno-range-check:        disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
+#-fimplicit-none:         assume "implicit-none" even if not present in source
+#-pedantic:               more strict on standard, enables some of the warnings below
+#-Warray-bounds:          checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
+#-Wunused-parameter:      find usused variables with "parameter" attribute
+#-Wampersand:             checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
+#-Wno-tabs:               do not allow tabs in source
+#-Wcharacter-truncation:  warn if character expressions (strings) are truncated
+#-Wintrinsic-shadow:      warn if a user-defined procedure or module procedure has the same name as an intrinsic
+#-Waliasing:              warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface. 
+#-Wconversion:            warn about implicit conversions between different type
+#-Wsurprising:            warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made. 
+#-Wunused-value:
+#-Wunderflow:             produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
+
+
+
+#MORE OPTIONS
+   
+# only for gfortran 4.6:
+                            #-Wsuggest-attribute=const
+                            #-Wsuggest-attribute=noreturn
+                            #-Wsuggest-attribute=pure  
+                            
+# too many warnings because we have comments beyond character 132:
+                            #-Wline-truncation
+# warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:
+                            #-Wintrinsic-std
+# warnings because we have many temporary arrays (performance issue?):
+                            #-Warray-temporaries
+                            
+# -Wimplicit-interface
+# -pedantic-errors
+# -fmodule-private
+
 
 COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) -c
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) -c
-
 
 
 DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
@@ -158,7 +241,7 @@ DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o
 
 
 CPFEM.a: CPFEM.o
-	ar rc CPFEM.a homogenization.o homogenization_RGC.o homogenization_isostrain.o crystallite.o CPFEM.o constitutive.o
+	$(ARCHIVE_COMMAND) rc CPFEM.a homogenization.o homogenization_RGC.o homogenization_isostrain.o crystallite.o CPFEM.o constitutive.o
 
 CPFEM.o: CPFEM.f90 homogenization.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) CPFEM.f90 $(SUFFIX)
@@ -178,7 +261,7 @@ crystallite.o: crystallite.f90 constitutive.a
 
 
 constitutive.a: constitutive.o
-	ar rc constitutive.a constitutive.o constitutive_titanmod.o constitutive_nonlocal.o constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o basics.a advanced.a
+	$(ARCHIVE_COMMAND) rc constitutive.a constitutive.o constitutive_titanmod.o constitutive_nonlocal.o constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o basics.a advanced.a
 
 constitutive.o: constitutive.f90 constitutive_titanmod.o constitutive_nonlocal.o constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) constitutive.f90 $(SUFFIX)
@@ -201,7 +284,7 @@ constitutive_phenopowerlaw.o: constitutive_phenopowerlaw.f90 basics.a advanced.a
 
 
 advanced.a: lattice.o
-	ar rc advanced.a FEsolving.o mesh.o material.o lattice.o
+	$(ARCHIVE_COMMAND) rc advanced.a FEsolving.o mesh.o material.o lattice.o
 
 lattice.o: lattice.f90 material.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) lattice.f90 $(SUFFIX)
@@ -218,7 +301,7 @@ FEsolving.o: FEsolving.f90 basics.a
 
 
 basics.a: math.o
-	ar rc basics.a math.o debug.o numerics.o IO.o DAMASK_spectral_interface.o prec.o
+	$(ARCHIVE_COMMAND) rc basics.a math.o debug.o numerics.o IO.o DAMASK_spectral_interface.o prec.o
 
 math.o: math.f90 debug.o
 	$(PREFIX)	$(COMPILERNAME) $(COMPILE) math.f90 $(SUFFIX)
