@@ -140,6 +140,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  SUBROUTINE math_init ()
 
+ use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
  use numerics, only: fixedSeed
  use IO,       only: IO_error
@@ -491,11 +492,8 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(3,3), intent(in) ::  B
  real(pReal), dimension(3,3) :: math_mul3333xx33
 
- do i = 1_pInt,3_pInt
-   do j = 1_pInt,3_pInt
-     math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
- enddo; enddo
-
+ forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt)&
+   math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
  endfunction math_mul3333xx33
 
 
@@ -2555,18 +2553,7 @@ end subroutine
 
  r(1:ndim) = 0.0_pReal
 
- if (any (base(1:ndim) <= 1_pInt)) then
-   !$OMP CRITICAL (write2out)
-   write (*, '(a)') ' '
-   write (*, '(a)') 'I_TO_HALTON - Fatal error!'
-   write (*, '(a)') ' An input base BASE is <= 1!'
-   do i = 1, ndim
-     write (*, '(i6,i6)') i, base(i)
-   enddo
-   call flush(6)
-   !$OMP END CRITICAL (write2out)
-   stop
- end if
+ if (any (base(1:ndim) <= 1_pInt)) call IO_error(error_ID=801_pInt)
 
  base_inv(1:ndim) = 1.0_pReal / real (base(1:ndim), pReal)
 
@@ -2807,16 +2794,8 @@ end subroutine
    prime = 1_pInt
  else if (n <= prime_max) then
    prime = npvec(n)
- else                                 ! why not use io_error here?
-   prime = 0_pInt
-!$OMP CRITICAL (write2out)
-   write (6, '(a)') ' '
-   write (6, '(a)') 'PRIME - Fatal error!'
-   write (6, '(a,i6)') '  Illegal prime index N = ', n
-   write (6, '(a,i6)') '  N must be between 0 and PRIME_MAX = ', prime_max
-   call flush(6)
-!$OMP END CRITICAL (write2out)
-   stop
+ else
+   call IO_error(error_ID=802_pInt)
  end if
  endfunction prime
 

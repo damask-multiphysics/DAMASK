@@ -1348,6 +1348,10 @@ endfunction
 
  case (800_pInt)
    msg = 'matrix inversion error'
+ case (801_pInt)
+   msg = 'I_TO_HALTON-error: An input base BASE is <= 1'
+ case (802_pInt)
+   msg = 'Prime-error: N must be between 0 and PRIME_MAX'
 
 !    Error messages related to parsing of Abaqus input file
  case (900_pInt)

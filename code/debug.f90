@@ -65,7 +65,7 @@ CONTAINS
 !********************************************************************
 subroutine debug_init()
   
-  use, intrinsic :: iso_fortran_env  
+  use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   use prec,     only: pInt  
   use numerics, only: nStress, &
                       nState, &

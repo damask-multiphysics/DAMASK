@@ -92,7 +92,7 @@ CONTAINS
 !*******************************************
 subroutine numerics_init()
   
-use, intrinsic :: iso_fortran_env      
+  use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   !*** variables and functions from other modules ***!
   use prec, only:                             pInt, & 
                                               pReal  

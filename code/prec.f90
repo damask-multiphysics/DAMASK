@@ -21,27 +21,36 @@
 !##############################################################
  MODULE prec
 !##############################################################
-use iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
 implicit none
  
 !    *** Precision of real and integer variables ***
-integer, parameter :: pReal = selected_real_kind(15,300)     ! 15 significant digits, up to 1e+-300
-integer, parameter :: pInt  = selected_int_kind(9)           ! up to +- 1e9
-integer, parameter :: pLongInt  = 8                          ! should be 64bit
-real(pReal), parameter :: tol_math_check = 1.0e-8_pReal
-real(pReal), parameter :: tol_gravityNodePos = 1.0e-100_pReal
+integer, parameter, public :: pReal = selected_real_kind(15,300)     ! 15 significant digits, up to 1e+-300
+integer, parameter, public :: pInt  = selected_int_kind(9)           ! up to +- 1e9
+integer, parameter, public :: pLongInt  = 8                          ! should be 64bit
+real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal
+real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
+
 ! NaN is precision dependent 
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy can be found in documentation/Code/Fortran
-real(pReal), parameter :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
+#ifdef __INTEL_COMPILER
+#if __INTEL_COMPILER<12000
+  real(pReal), parameter, public :: DAMASK_NaN = Z'7FF0000000000001'
+#else
+  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
+#endif
+#else
+real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
+#endif
 type :: p_vec
-  real(pReal), dimension(:), pointer :: p
+  real(pReal), dimension(:), pointer, public :: p
 end type p_vec
 
 CONTAINS
 
 subroutine prec_init
+use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 implicit none
 
 !$OMP CRITICAL (write2out)
@@ -54,6 +63,7 @@ implicit none
   write(6,'(a,i3)')   ' Bytes for pLongInt: ',pLongInt
   write(6,'(a,e3.3)') ' NaN:                ',DAMASK_NAN
   write(6,'(a,l3)')   ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
+  if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
   write(6,*)
 !$OMP END CRITICAL (write2out)
 
