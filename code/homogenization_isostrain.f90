@@ -81,7 +81,7 @@ subroutine homogenization_isostrain_init(&
  !$OMP END CRITICAL (write2out)
 
  maxNinstance = count(homogenization_type == homogenization_isostrain_label)
- if (maxNinstance == 0) return
+ if (maxNinstance == 0_pInt) return
 
  allocate(homogenization_isostrain_sizeState(maxNinstance)) ;      homogenization_isostrain_sizeState = 0_pInt
  allocate(homogenization_isostrain_sizePostResults(maxNinstance)); homogenization_isostrain_sizePostResults = 0_pInt
@@ -93,7 +93,7 @@ subroutine homogenization_isostrain_init(&
  
  rewind(file)
  line = ''
- section = 0
+ section = 0_pInt
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)     ! wind forward to <homogenization>
    read(file,'(a1024)',END=100) line
@@ -104,24 +104,24 @@ subroutine homogenization_isostrain_init(&
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
-     section = section + 1
-     output = 0                                           ! reset output counter
+     section = section + 1_pInt
+     output = 0_pInt                                           ! reset output counter
    endif
    if (section > 0 .and. homogenization_type(section) == homogenization_isostrain_label) then  ! one of my sections
      i = homogenization_typeInstance(section)             ! which instance of my type is present homogenization
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
        case ('(output)')
-         output = output + 1
-         homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2))
+         output = output + 1_pInt
+         homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('ngrains')
-              homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2)
+              homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
      end select
    endif
  enddo
 
-100 do i = 1,maxNinstance                                        ! sanity checks
+100 do i = 1_pInt,maxNinstance                                        ! sanity checks
  enddo
 
  do i = 1,maxNinstance

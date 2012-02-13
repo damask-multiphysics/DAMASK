@@ -140,6 +140,7 @@ CONTAINS
 !**************************************
 subroutine constitutive_nonlocal_init(file)
 
+use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 use prec,     only: pInt, pReal
 use math,     only: math_Mandel3333to66, & 
                     math_Voigt66to3333, & 
@@ -328,7 +329,7 @@ constitutive_nonlocal_peierlsStressPerSlipFamily = 0.0_pReal
 
 rewind(file)
 line = ''
-section = 0
+section = 0_pInt
 
 do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                                ! wind forward to <phase>
   read(file,'(a1024)',END=100) line
@@ -339,98 +340,108 @@ do                                                                              
   if (IO_isBlank(line)) cycle                                                                                                       ! skip empty lines
   if (IO_getTag(line,'<','>') /= '') exit                                                                                           ! stop at next part
   if (IO_getTag(line,'[',']') /= '') then                                                                                           ! next section
-    section = section + 1
-    output = 0                                                                                                                      ! reset output counter
+    section = section + 1_pInt
+    output = 0_pInt                                                                                                                     ! reset output counter
     cycle
   endif
-  if (section > 0 .and. phase_constitution(section) == constitutive_nonlocal_label) then                                            ! one of my sections
+  if (section > 0_pInt .and. phase_constitution(section) == constitutive_nonlocal_label) then                                            ! one of my sections
     i = phase_constitutionInstance(section)                                                                                         ! which instance of my constitution is present phase
     positions = IO_stringPos(line,maxNchunks)
-    tag = IO_lc(IO_stringValue(line,positions,1))                                                                                   ! extract key
+    tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                                   ! extract key
     select case(tag)
       case('constitution','/nonlocal/')
         cycle
       case ('(output)')
-        output = output + 1
-        constitutive_nonlocal_output(output,i) = IO_lc(IO_stringValue(line,positions,2))
+        output = output + 1_pInt
+        constitutive_nonlocal_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
       case ('lattice_structure')
-        constitutive_nonlocal_structureName(i) = IO_lc(IO_stringValue(line,positions,2))
+        constitutive_nonlocal_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
       case ('c/a_ratio','covera_ratio')
-        constitutive_nonlocal_CoverA(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_CoverA(i) = IO_floatValue(line,positions,2_pInt)
       case ('c11')
-        constitutive_nonlocal_C11(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_C11(i) = IO_floatValue(line,positions,2_pInt)
       case ('c12')
-        constitutive_nonlocal_C12(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_C12(i) = IO_floatValue(line,positions,2_pInt)
       case ('c13')
-        constitutive_nonlocal_C13(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_C13(i) = IO_floatValue(line,positions,2_pInt)
       case ('c33')
-        constitutive_nonlocal_C33(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_C33(i) = IO_floatValue(line,positions,2_pInt)
       case ('c44')
-        constitutive_nonlocal_C44(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_C44(i) = IO_floatValue(line,positions,2_pInt)
       case ('nslip')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_Nslip(f,i) = IO_intValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_Nslip(f,i)&
+                                                          = IO_intValue(line,positions,1_pInt+f)
       case ('rhosgledgepos0')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglEdgePos0(f,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglEdgePos0(f,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case ('rhosgledgeneg0')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglEdgeNeg0(f,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglEdgeNeg0(f,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case ('rhosglscrewpos0')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglScrewPos0(f,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglScrewPos0(f,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case ('rhosglscrewneg0')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglScrewNeg0(f,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglScrewNeg0(f,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case ('rhodipedge0')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_rhoDipEdge0(f,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoDipEdge0(f,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case ('rhodipscrew0')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_rhoDipScrew0(f,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoDipScrew0(f,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case ('lambda0')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_lambda0PerSlipFamily(f,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_lambda0PerSlipFamily(f,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case ('burgers')
-        forall (f = 1:lattice_maxNslipFamily) constitutive_nonlocal_burgersPerSlipFamily(f,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_burgersPerSlipFamily(f,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case('cutoffradius','r')
-        constitutive_nonlocal_R(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_R(i) = IO_floatValue(line,positions,2_pInt)
       case('minimumdipoleheightedge','ddipminedge')
-        forall (f = 1:lattice_maxNslipFamily) & 
-          constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1_pInt,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case('minimumdipoleheightscrew','ddipminscrew')
-        forall (f = 1:lattice_maxNslipFamily) & 
-          constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2_pInt,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case('atomicvolume')
-        constitutive_nonlocal_atomicVolume(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_atomicVolume(i) = IO_floatValue(line,positions,2_pInt)
       case('selfdiffusionprefactor','dsd0')
-        constitutive_nonlocal_Dsd0(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_Dsd0(i) = IO_floatValue(line,positions,2_pInt)
       case('selfdiffusionenergy','qsd')
-        constitutive_nonlocal_Qsd(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_Qsd(i) = IO_floatValue(line,positions,2_pInt)
       case('atol_rho')
-        constitutive_nonlocal_aTolRho(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
       case ('interaction_slipslip')
-        forall (it = 1:lattice_maxNinteraction) constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1+it)
+        forall (it = 1_pInt:lattice_maxNinteraction) constitutive_nonlocal_interactionSlipSlip(it,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+it)
       case('peierlsstressedge')
-        forall (f = 1:lattice_maxNslipFamily) &
-          constitutive_nonlocal_peierlsStressPerSlipFamily(f,1,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_peierlsStressPerSlipFamily(f,1_pInt,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case('peierlsstressscrew')
-        forall (f = 1:lattice_maxNslipFamily) &
-          constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) = IO_floatValue(line,positions,1+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_peierlsStressPerSlipFamily(f,2_pInt,i)&
+                                                          = IO_floatValue(line,positions,1_pInt+f)
       case('doublekinkwidth')
-        constitutive_nonlocal_doublekinkwidth(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_doublekinkwidth(i) = IO_floatValue(line,positions,2_pInt)
       case('solidsolutionenergy')
-        constitutive_nonlocal_solidSolutionEnergy(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_solidSolutionEnergy(i) = IO_floatValue(line,positions,2_pInt)
       case('solidsolutionsize')
-        constitutive_nonlocal_solidSolutionSize(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_solidSolutionSize(i) = IO_floatValue(line,positions,2_pInt)
       case('solidsolutionconcentration')
-        constitutive_nonlocal_solidSolutionConcentration(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_solidSolutionConcentration(i) = IO_floatValue(line,positions,2_pInt)
       case('p')
-        constitutive_nonlocal_p(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_p(i) = IO_floatValue(line,positions,2_pInt)
       case('q')
-        constitutive_nonlocal_q(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_q(i) = IO_floatValue(line,positions,2_pInt)
       case('viscosity','glideviscosity')
-        constitutive_nonlocal_viscosity(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_viscosity(i) = IO_floatValue(line,positions,2_pInt)
       case('attackfrequency','fattack')
-        constitutive_nonlocal_fattack(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_fattack(i) = IO_floatValue(line,positions,2_pInt)
       case('rhosglscatter')
-        constitutive_nonlocal_rhoSglScatter(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
       case('surfacetransmissivity')
-        constitutive_nonlocal_surfaceTransmissivity(i) = IO_floatValue(line,positions,2)
+        constitutive_nonlocal_surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
       case default
-        call IO_error(236,ext_msg=tag)
+        call IO_error(236_pInt,ext_msg=tag)
     end select
   endif
 enddo
@@ -651,13 +662,13 @@ do i = 1,maxNinstance
   !*** elasticity matrix and shear modulus according to material.config
   
   select case (myStructure)
-    case(1:2)                                                                                                                       ! cubic(s)
-      forall(k=1:3)
-        forall(j=1:3) constitutive_nonlocal_Cslip_66(k,j,i) = constitutive_nonlocal_C12(i)
+    case(1_pInt:2_pInt)                                                                                                                       ! cubic(s)
+      forall(k=1_pInt:3_pInt)
+        forall(j=1_pInt:3_pInt) constitutive_nonlocal_Cslip_66(k,j,i) = constitutive_nonlocal_C12(i)
         constitutive_nonlocal_Cslip_66(k,k,i) = constitutive_nonlocal_C11(i)
-        constitutive_nonlocal_Cslip_66(k+3,k+3,i) = constitutive_nonlocal_C44(i)
+        constitutive_nonlocal_Cslip_66(k+3_pInt,k+3_pInt,i) = constitutive_nonlocal_C44(i)
       end forall
-    case(3:)                                                                                                                        ! all hex
+    case(3_pInt:)                                                                                                                        ! all hex
       constitutive_nonlocal_Cslip_66(1,1,i) = constitutive_nonlocal_C11(i)
       constitutive_nonlocal_Cslip_66(2,2,i) = constitutive_nonlocal_C11(i)
       constitutive_nonlocal_Cslip_66(3,3,i) = constitutive_nonlocal_C33(i)
@@ -681,7 +692,7 @@ do i = 1,maxNinstance
                                 / ( 4.0_pReal*constitutive_nonlocal_C11(i) + 6.0_pReal*constitutive_nonlocal_C12(i) &
                                     + 2.0_pReal*constitutive_nonlocal_C44(i) )                                                      ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
   
-  do s1 = 1,ns      
+  do s1 = 1_pInt,ns 
     f = constitutive_nonlocal_slipFamily(s1,i)
     
     !*** burgers vector, mean free path prefactor and minimum dipole distance for each slip system
@@ -708,17 +719,16 @@ do i = 1,maxNinstance
       constitutive_nonlocal_interactionMatrixSlipSlip(s1,s2,i) &
           = constitutive_nonlocal_interactionSlipSlip(lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s1,i), &
                                                                                   constitutive_nonlocal_slipSystemLattice(s2,i), &
-                                                                                  myStructure), &
-                                                      i)
+                                                                                  myStructure), i)
   
     enddo
 
     !*** rotation matrix from lattice configuration to slip system
 
     constitutive_nonlocal_lattice2slip(1:3,1:3,s1,i) &
-        = math_transpose33( reshape((/ lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
+        = math_transpose33( reshape([ lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
                                       -lattice_st(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure), &
-                                       lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure)/), (/3,3/)))
+                                       lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(s1,i), myStructure)], [3,3]))
   enddo
   
 enddo
@@ -1058,9 +1068,9 @@ if (.not. phase_localConstitution(phase)) then
         if (neighboring_ns == ns) then
           if (neighboring_el /= el .or. neighboring_ip /= ip) then
             connection_latticeConf(1:3,n) = math_mul33x3(invFe, neighboring_ipCoords - ipCoords)
-            forall (s = 1:ns, c = 1:2) &
-              neighboring_rhoExcess(c,s,n) = state(g,neighboring_ip,neighboring_el)%p((2*c-2)*ns+s) &  ! positive mobiles
-                                           - state(g,neighboring_ip,neighboring_el)%p((2*c-1)*ns+s)    ! negative mobiles
+            forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
+              neighboring_rhoExcess(c,s,n) = state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s) &  ! positive mobiles
+                                           - state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s)    ! negative mobiles
           else
             ! thats myself! probably using periodic images
             connection_latticeConf(1:3,n) = areaNormal_latticeConf(1:3,n) * FVsize
@@ -1068,7 +1078,7 @@ if (.not. phase_localConstitution(phase)) then
           endif
         else
           ! different number of active slip systems
-          call IO_error(-1,ext_msg='different number of active slip systems in neighboring IPs of same crystal structure')
+          call IO_error(-1_pInt,ext_msg='different number of active slip systems in neighboring IPs of same crystal structure')
         endif
       else
         ! local neighbor or different lattice structure or different constitution instance
@@ -1449,15 +1459,15 @@ enddo
 !*** get dislocation velocity and its tangent and store the velocity in the state array
 
 if (myStructure == 1_pInt) then   ! for fcc all velcities are equal
-  call constitutive_nonlocal_kinetics(v(1:ns,1), tau, 1, Temperature, state, g, ip, el, dv_dtau(1:ns,1))
-  do t = 1,4
+  call constitutive_nonlocal_kinetics(v(1:ns,1), tau, 1_pInt, Temperature, state, g, ip, el, dv_dtau(1:ns,1))
+  do t = 1_pInt,4_pInt
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
-    state%p((12+t)*ns+1:(13+t)*ns) = v(1:ns,1)
+    state%p((12_pInt+t)*ns+1:(13_pInt+t)*ns) = v(1:ns,1)
   enddo
 else                              ! for all other lattice structures the velcities may vary with character and sign
-  do t = 1,4
-    c = (t-1)/2+1
+  do t = 1_pInt,4_pInt
+    c = (t-1_pInt)/2_pInt+1_pInt
     call constitutive_nonlocal_kinetics(v(1:ns,t), tau, c, Temperature, state, g, ip, el, dv_dtau(1:ns,t))
     state%p((12+t)*ns+1:(13+t)*ns) = v(1:ns,t)
   enddo
@@ -1466,8 +1476,8 @@ endif
 
 !*** Bauschinger effect
 
-forall (s = 1:ns, t = 5:8, state%p((t-1)*ns+s) * v(s,t-4) < 0.0_pReal) &
-  rhoSgl(s,t-4) = rhoSgl(s,t-4) + abs(state%p((t-1)*ns+s))
+forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, state%p((t-1)*ns+s) * v(s,t-4_pInt) < 0.0_pReal) &
+  rhoSgl(s,t-4_pInt) = rhoSgl(s,t-4_pInt) + abs(state%p((t-1_pInt)*ns+s))
 
 
 !*** Calculation of gdot and its tangent
@@ -1636,7 +1646,7 @@ logical                                     considerEnteringFlux, &
                                             considerLeavingFlux
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
     write(6,*)
@@ -1644,10 +1654,10 @@ logical                                     considerEnteringFlux, &
 #endif
 
 select case(mesh_element(2,el))
-  case (1,6,7,8,9)
+  case (1_pInt,6_pInt,7_pInt,8_pInt,9_pInt)
     ! all fine
   case default
-    call IO_error(-1,el,ip,g,'element type not supported for nonlocal constitution')
+    call IO_error(-1_pInt,el,ip,g,'element type not supported for nonlocal constitution')
 end select
 
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
@@ -1662,17 +1672,17 @@ dUpper = 0.0_pReal
 
 !*** shortcut to state variables 
 
-forall (s = 1:ns, t = 1:4) &
-  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1)*ns+s), 0.0_pReal)
-forall (s = 1:ns, t = 5:8) &
-  rhoSgl(s,t) = state(g,ip,el)%p((t-1)*ns+s)
-forall (s = 1:ns, c = 1:2) &
-  rhoDip(s,c) = max(state(g,ip,el)%p((7+c)*ns+s), 0.0_pReal)
-rhoForest = state(g,ip,el)%p(10*ns+1:11*ns)
-tauThreshold = state(g,ip,el)%p(11*ns+1:12*ns)
-tauBack = state(g,ip,el)%p(12*ns+1:13*ns)
-forall (t = 1:4) &
-  v(1:ns,t) = state(g,ip,el)%p((12+t)*ns+1:(13+t)*ns)
+forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
+  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1_pInt)*ns+s), 0.0_pReal)
+forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
+  rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
+forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
+  rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)
+rhoForest = state(g,ip,el)%p(10_pInt*ns+1:11_pInt*ns)
+tauThreshold = state(g,ip,el)%p(11_pInt*ns+1_pInt:12_pInt*ns)
+tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
+forall (t = 1_pInt:4_pInt) &
+  v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
 
 
 !*** sanity check for timestep
@@ -1687,13 +1697,13 @@ endif
 !****************************************************************************
 !*** Calculate shear rate
 
-forall (t = 1:4) &
-  gdot(1:ns,t) = rhoSgl(1:ns,t) * constitutive_nonlocal_burgers(1:ns,myInstance) * v(1:ns,t)
-forall (s = 1:ns, t = 1:4, rhoSgl(s,t+4) * v(s,t) < 0.0_pReal) &                                                                    ! contribution of used rho for changing sign of v
+forall (t = 1_pInt:4_pInt) &
+  gdot(1_pInt:ns,t) = rhoSgl(1_pInt:ns,t) * constitutive_nonlocal_burgers(1:ns,myInstance) * v(1:ns,t)
+forall (s = 1_pInt:ns, t = 1_pInt:4_pInt, rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pReal) &                                                                    ! contribution of used rho for changing sign of v
   gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgers(s,myInstance) * v(s,t)
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
     write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> gdot / 1/s',gdot
   endif
@@ -1801,7 +1811,7 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
       enddo
     endif
   
-    opposite_n = n + mod(n,2) - mod(n+1,2)
+    opposite_n = n + mod(n,2_pInt) - mod(n+1_pInt,2_pInt)
     opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
     opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
   

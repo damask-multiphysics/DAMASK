@@ -83,14 +83,15 @@ subroutine constitutive_j2_init(file)
 !**************************************
 !*      Module initialization         *
 !**************************************
+ use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: pInt, pReal
  use math, only: math_Mandel3333to66, math_Voigt66to3333
  use IO
  use material
  use debug, only: debug_verbosity
  integer(pInt), intent(in) :: file
- integer(pInt), parameter :: maxNchunks = 7
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt), parameter :: maxNchunks = 7_pInt
+ integer(pInt), dimension(1+2_pInt*maxNchunks) :: positions
  integer(pInt) section, maxNinstance, i,j,k, output, mySize
  character(len=64) tag
  character(len=1024) line
@@ -103,9 +104,9 @@ subroutine constitutive_j2_init(file)
  !$OMP END CRITICAL (write2out)
  
  maxNinstance = count(phase_constitution == constitutive_j2_label)
- if (maxNinstance == 0) return
+ if (maxNinstance == 0_pInt) return
 
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,1x,i5)') '# instances:',maxNinstance
      write(6,*)
@@ -126,12 +127,12 @@ subroutine constitutive_j2_init(file)
  allocate(constitutive_j2_n(maxNinstance)) ;                                    constitutive_j2_n = 0.0_pReal
  allocate(constitutive_j2_h0(maxNinstance)) ;                                   constitutive_j2_h0 = 0.0_pReal
  allocate(constitutive_j2_tausat(maxNinstance)) ;                               constitutive_j2_tausat = 0.0_pReal
- allocate(constitutive_j2_a(maxNinstance)) ;                                   constitutive_j2_a = 0.0_pReal
+ allocate(constitutive_j2_a(maxNinstance)) ;                                    constitutive_j2_a = 0.0_pReal
  allocate(constitutive_j2_aTolResistance(maxNinstance)) ;                       constitutive_j2_aTolResistance = 0.0_pReal
  
  rewind(file)
  line = ''
- section = 0
+ section = 0_pInt
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
    read(file,'(a1024)',END=100) line
@@ -142,53 +143,53 @@ subroutine constitutive_j2_init(file)
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
-     section = section + 1
-     output = 0                                           ! reset output counter
+     section = section + 1_pInt
+     output = 0_pInt                                           ! reset output counter
    endif
-   if (section > 0 .and. phase_constitution(section) == constitutive_j2_label) then  ! one of my sections
+   if (section > 0_pInt .and. phase_constitution(section) == constitutive_j2_label) then  ! one of my sections
      i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
      select case(tag)
        case ('(output)')
-         output = output + 1
-         constitutive_j2_output(output,i) = IO_lc(IO_stringValue(line,positions,2))
+         output = output + 1_pInt
+         constitutive_j2_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('c11')
-              constitutive_j2_C11(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_C11(i) = IO_floatValue(line,positions,2_pInt)
        case ('c12')
-              constitutive_j2_C12(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_C12(i) = IO_floatValue(line,positions,2_pInt)
        case ('tau0')
-              constitutive_j2_tau0(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_tau0(i) = IO_floatValue(line,positions,2_pInt)
        case ('gdot0')
-              constitutive_j2_gdot0(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_gdot0(i) = IO_floatValue(line,positions,2_pInt)
        case ('n')
-              constitutive_j2_n(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_n(i) = IO_floatValue(line,positions,2_pInt)
        case ('h0')
-              constitutive_j2_h0(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_h0(i) = IO_floatValue(line,positions,2_pInt)
        case ('tausat')
-              constitutive_j2_tausat(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_tausat(i) = IO_floatValue(line,positions,2_pInt)
        case ('a', 'w0')
-              constitutive_j2_a(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_a(i) = IO_floatValue(line,positions,2_pInt)
        case ('taylorfactor')
-              constitutive_j2_fTaylor(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_fTaylor(i) = IO_floatValue(line,positions,2_pInt)
        case ('atol_resistance')
-              constitutive_j2_aTolResistance(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_aTolResistance(i) = IO_floatValue(line,positions,2_pInt)
      end select
    endif
  enddo
 
-100 do i = 1,maxNinstance                                        ! sanity checks
-   if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(210)
-   if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211)
-   if (constitutive_j2_n(i) <= 0.0_pReal)                 call IO_error(212)
-   if (constitutive_j2_tausat(i) <= 0.0_pReal)            call IO_error(213)
-   if (constitutive_j2_a(i) <= 0.0_pReal)                call IO_error(241)
-   if (constitutive_j2_fTaylor(i) <= 0.0_pReal)           call IO_error(240)
-   if (constitutive_j2_aTolResistance(i) <= 0.0_pReal)    call IO_error(242)
+100 do i = 1_pInt,maxNinstance                                        ! sanity checks
+   if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(210_pInt)
+   if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211_pInt)
+   if (constitutive_j2_n(i) <= 0.0_pReal)                 call IO_error(212_pInt)
+   if (constitutive_j2_tausat(i) <= 0.0_pReal)            call IO_error(213_pInt)
+   if (constitutive_j2_a(i) <= 0.0_pReal)                 call IO_error(241_pInt)
+   if (constitutive_j2_fTaylor(i) <= 0.0_pReal)           call IO_error(240_pInt)
+   if (constitutive_j2_aTolResistance(i) <= 0.0_pReal)    call IO_error(242_pInt)
  enddo
 
- do i = 1,maxNinstance
-   do j = 1,maxval(phase_Noutput)
+ do i = 1_pInt,maxNinstance
+   do j = 1_pInt,maxval(phase_Noutput)
      select case(constitutive_j2_output(j,i))
        case('flowstress')
        mySize = 1_pInt
@@ -205,21 +206,23 @@ subroutine constitutive_j2_init(file)
      endif
    enddo
 
-   constitutive_j2_sizeDotState(i) = 1
-   constitutive_j2_sizeState(i)    = 1
+   constitutive_j2_sizeDotState(i) = 1_pInt
+   constitutive_j2_sizeState(i)    = 1_pInt
 
-   forall(k=1:3)
-     forall(j=1:3) &
+   forall(k=1_pInt:3_pInt)
+     forall(j=1_pInt:3_pInt) &
        constitutive_j2_Cslip_66(k,j,i) =   constitutive_j2_C12(i)
      constitutive_j2_Cslip_66(k,k,i) =     constitutive_j2_C11(i)
-     constitutive_j2_Cslip_66(k+3,k+3,i) = 0.5_pReal*(constitutive_j2_C11(i)-constitutive_j2_C12(i))
+     constitutive_j2_Cslip_66(k+3_pInt,k+3_pInt,i) = 0.5_pReal*(constitutive_j2_C11(i)-constitutive_j2_C12(i))
    end forall
    constitutive_j2_Cslip_66(1:6,1:6,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(1:6,1:6,i)))
 
+
  enddo
 
  return
+
 
 endsubroutine
 
@@ -241,6 +244,7 @@ pure function constitutive_j2_stateInit(myInstance)
 endfunction
 
 
+
 !*********************************************************************
 !* relevant microstructural state                                    *
 !*********************************************************************
@@ -260,6 +264,7 @@ real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
 !*** local variables
 
 constitutive_j2_aTolState = constitutive_j2_aTolResistance(myInstance)
+
 
 endfunction
 
@@ -288,6 +293,7 @@ function constitutive_j2_homogenizedC(state,ipc,ip,el)
 
  return
 
+
 endfunction
 
 
@@ -309,6 +315,7 @@ subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
  integer(pInt) ipc,ip,el, matID
  real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
+
 
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
 
@@ -334,6 +341,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
   use material, only: homogenization_maxNgrains, &
                       material_phase, &
                       phase_constitutionInstance
+
 
   implicit none
 
@@ -456,6 +464,7 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
   return
 
 endfunction
+
 
 
 !****************************************************************

@@ -132,7 +132,7 @@ program DAMASK_spectral
                              0.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal, 1.0_pReal],&
                                                                             [ 6_pInt, 6_pInt])
  real(pReal), dimension(3,3,3,3) :: temp_3333 = 0.0_pReal
- integer(pInt) ::                         size_reduced = 0.0_pReal                                  ! number of stress BCs
+ integer(pInt) ::                         size_reduced = 0_pInt                                  ! number of stress BCs
 
 !--------------------------------------------------------------------------------------------------
 ! pointwise data 

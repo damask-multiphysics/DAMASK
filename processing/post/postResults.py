@@ -93,7 +93,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.N_loadcases  = self._keyedPackedArray('loadcases',count=1,type='i',default=1)[0]
     self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i',default=1)
     self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
-    self._increments[0] -= 1                                                 # delete zero'th entry
+    #self._increments[0] -= 1                                                 # delete zero'th entry (might be needed for older spectralOuts
     self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d',default=0.0)
     self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i',default=0)
     self.dimension    = self._keyedPackedArray('dimension',count=3,type='d')

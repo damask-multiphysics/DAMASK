@@ -101,7 +101,7 @@ logical knownConstitution
 ! --- PARSE CONSTITUTIONS FROM CONFIG FILE ---
 
 if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
-  if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
+  if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100_pInt) ! ...and cannot open material.config file
 endif
 call constitutive_j2_init(fileunit)
 call constitutive_phenopowerlaw_init(fileunit)
@@ -114,7 +114,7 @@ close(fileunit)
 ! --- WRITE DESCRIPTION FILE FOR CONSTITUTIVE PHASE OUTPUT ---
 
 if(.not. IO_write_jobFile(fileunit,'outputConstitutive')) then ! problems in writing file
-  call IO_error (50) 
+  call IO_error (50_pInt) 
 endif
 do p = 1,material_Nphase
   i = phase_constitutionInstance(p)                     ! which instance of a constitution is present phase
@@ -323,7 +323,7 @@ endif
             constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(myInstance)
             
           case default
-            call IO_error(200,material_phase(g,i,e))      ! unknown constitution
+            call IO_error(200_pInt,material_phase(g,i,e))      ! unknown constitution
            
         end select
         constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p
