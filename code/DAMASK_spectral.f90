@@ -87,7 +87,7 @@ program DAMASK_spectral
                                    stress                 = 0.0_pReal, &                            ! stress BC (if applicable)
                                    rotation               = math_I3                                 ! rotation of BC (if applicable)
    real(pReal) ::                  time                   = 0.0_pReal, &                            ! length of increment
-                                   temperature            = 300_pReal                               ! isothermal starting conditions
+                                   temperature            = 300.0_pReal                             ! isothermal starting conditions
    integer(pInt) ::                incs                   = 0_pInt, &                               ! number of increments
                                    outputfrequency        = 1_pInt, &                               ! frequency of result writes
                                    restartfrequency       = 0_pInt, &                               ! frequency of restart writes
@@ -533,7 +533,7 @@ program DAMASK_spectral
      forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
        xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
      forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-       temp33_Real(l,m) = sum(c0_reference(l,1:3,m,1:3)*xiDyad)
+       temp33_Real(l,m) = sum(c0_reference(l,m,1:3,1:3)*xiDyad)
      temp33_Real = math_inv33(temp33_Real)
      forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
        gamma_hat(i,j,k, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
@@ -838,7 +838,7 @@ program DAMASK_spectral
          if (debugFFTW) then
            call fftw_execute_dft(plan_scalarField_forth,scalarField_real,scalarField_fourier)
            print '(a,i1,1x,i1)', 'checking FT results of compontent ', row, column
-           print '(a,2(es10.4,1x))',  'max FT relative error ',&
+           print '(a,2(es11.4,1x))',  'max FT relative error ',&
              maxval( real((scalarField_fourier(1:res1_red,1:res(2),1:res(3))-& 
                            tensorField_fourier(1:res1_red,1:res(2),1:res(3),row,column))/&
                            scalarField_fourier(1:res1_red,1:res(2),1:res(3)))), &
@@ -864,12 +864,12 @@ program DAMASK_spectral
            err_stress_tol = maxval(abs(pstress_av)) * err_stress_tolrel                              ! don't use any tensor norm because the comparison should be coherent
            print '(a)', '' 
            print '(a)', '... correcting deformation gradient to fulfill BCs ...............'
-           print '(a,f6.2,a,es10.4,a)', 'error stress = ', err_stress/err_stress_tol, &
+           print '(a,f6.2,a,es11.4,a)', 'error stress = ', err_stress/err_stress_tol, &
                                                                             ' (',err_stress,' Pa)'  
            defgradAim = defgradAim - math_mul3333xx33(s_prev, ((pstress_av - bc(loadcase)%stress))) ! residual on given stress components
            if(debugGeneral)  write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'new deformation aim:',&
                                                             math_transpose33(defgradAim)
-           print '(a,1x,es10.4)'         , 'determinant of new deformation: ', math_det33(defgradAim)
+           print '(a,1x,es11.4)'         , 'determinant of new deformation: ', math_det33(defgradAim)
          else
            err_stress_tol = +huge(1.0_pReal)
          endif
@@ -938,15 +938,15 @@ program DAMASK_spectral
            err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                   ! RMS in real space
            err_div_max      = err_div_max*sqrt(wgt) 
            
-           print '(a,es10.4)',        'error divergence  FT  RMS = ',err_div_RMS
-           print '(a,es10.4)',        'error divergence  FT  max = ',err_div_max
-           print '(a,es10.4)',        'error divergence Real RMS = ',err_real_div_RMS
-           print '(a,es10.4)',        'error divergence Real max = ',err_real_div_max
-           print '(a,es10.4)',        'divergence RMS FT/real    = ',err_div_RMS/err_real_div_RMS
-           print '(a,es10.4)',        'divergence max FT/real    = ',err_div_max/err_real_div_max
-           print '(a,es10.4)',        'max deviat. from postProc = ',max_div_error
+           print '(a,es11.4)',        'error divergence  FT  RMS = ',err_div_RMS
+           print '(a,es11.4)',        'error divergence  FT  max = ',err_div_max
+           print '(a,es11.4)',        'error divergence Real RMS = ',err_real_div_RMS
+           print '(a,es11.4)',        'error divergence Real max = ',err_real_div_max
+           print '(a,es11.4)',        'divergence RMS FT/real    = ',err_div_RMS/err_real_div_RMS
+           print '(a,es11.4)',        'divergence max FT/real    = ',err_div_max/err_real_div_max
+           print '(a,es11.4)',        'max deviat. from postProc = ',max_div_error
          endif
-         print '(a,f6.2,a,es10.4,a)', 'error divergence = ', err_div/err_div_tol, ' (',err_div,' 1/m)'    
+         print '(a,f6.2,a,es11.4,a)', 'error divergence = ', err_div/err_div_tol, ' (',err_div,' 1/m)'    
          
 !--------------------------------------------------------------------------------------------------
 ! divergence is calculated from FT(stress), depending on algorithm use field for spectral method
@@ -967,7 +967,7 @@ program DAMASK_spectral
                forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
                  xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
                forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-                 temp33_Real(l,m) = sum(c0_reference(l,1:3,m,1:3)*xiDyad)
+                 temp33_Real(l,m) = sum(c0_reference(l,m,1:3,1:3)*xiDyad)
                temp33_Real = math_inv33(temp33_Real)
                forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
                  gamma_hat(1,1,1, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
@@ -1022,7 +1022,7 @@ program DAMASK_spectral
          if (debugFFTW) then
            print '(a,i1,1x,i1)', 'checking iFT results of compontent ', row, column
            call fftw_execute_dft(plan_scalarField_back,scalarField_fourier,scalarField_real)
-           print '(a,es10.4)', 'max iFT relative error ',&
+           print '(a,es11.4)', 'max iFT relative error ',&
                maxval((real(scalarField_real(1:res(1),1:res(2),1:res(3)))-&
                        tensorField_real(1:res(1),1:res(2),1:res(3),row,column))/&
                        real(scalarField_real(1:res(1),1:res(2),1:res(3))))
@@ -1041,11 +1041,11 @@ program DAMASK_spectral
                                      maxval(math_skew33(tensorField_real(i,j,k,1:3,1:3))))
              temp33_Real = temp33_Real + tensorField_real(i,j,k,1:3,1:3)
            enddo; enddo; enddo
-           print '(a,1x,es10.4)'       , 'max symmetrix correction of deformation:',&
+           print '(a,1x,es11.4)'       , 'max symmetrix correction of deformation:',&
                                          maxCorrectionSym*wgt
-           print '(a,1x,es10.4)'       , 'max skew      correction of deformation:',&
+           print '(a,1x,es11.4)'       , 'max skew      correction of deformation:',&
                                          maxCorrectionSkew*wgt
-           print '(a,1x,es10.4)'       , 'max sym/skew of avg correction:         ',&
+           print '(a,1x,es11.4)'       , 'max sym/skew of avg correction:         ',&
                                          maxval(math_symmetric33(temp33_real))/&
                                          maxval(math_skew33(temp33_real))
          endif
@@ -1071,8 +1071,8 @@ program DAMASK_spectral
              defgradDetMin = min(defgradDetMin,defgradDet) 
            enddo; enddo; enddo
 
-           print '(a,1x,es10.4)'       , 'max determinant of deformation:', defgradDetMax
-           print '(a,1x,es10.4)'       , 'min determinant of deformation:', defgradDetMin
+           print '(a,1x,es11.4)'       , 'max determinant of deformation:', defgradDetMax
+           print '(a,1x,es11.4)'       , 'min determinant of deformation:', defgradDetMin
          endif
          
        enddo    ! end looping when convergency is achieved 
