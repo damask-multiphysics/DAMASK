@@ -161,15 +161,12 @@ end function
  implicit none
  integer(pInt), intent(in) :: unit
  character(len=*), intent(in) :: relPath
- integer stat
- character path
+ character(len=1024) path
+ integer(pInt) stat
  
- IO_open_file_stat = .false. 
  path = trim(getSolverWorkingDirectoryName())//relPath
  open(unit,status='old',iostat=stat,file=path)
- if (stat == 0) then
-   IO_open_file_stat = .true.
- endif
+ IO_open_file_stat = (stat == 0_pInt)
  
  endfunction
 
@@ -186,14 +183,12 @@ end function
  implicit none
  integer(pInt), intent(in) :: unit
  character(len=*), intent(in) :: relPath
- character path
+ character(len=1024) path
  integer(pInt) stat
  
  path = trim(getSolverWorkingDirectoryName())//relPath
  open(unit,status='old',iostat=stat,file=path)
- if (stat /= 0) then
-   call IO_error(100_pInt,ext_msg=path)
- endif
+ if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
  endsubroutine
 
@@ -212,34 +207,28 @@ end function
 
  integer(pInt), intent(in) :: unit
  character(len=*), intent(in) :: model
+ character(len=1024) path
  integer(pInt) stat
- character path
 
  
  if (FEsolver == 'Abaqus') then
+
    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
    open(unit+1,status='old',iostat=stat,file=path)
-   if (stat /= 0) then
-     call IO_error(100_pInt,ext_msg=path)
-   endif
+   if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
    
    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension//'_assembly'
    open(unit,iostat=stat,file=path)
-   if (stat /= 0) then
-     call IO_error(100_pInt,ext_msg=path)
-   endif
-   
-   if (IO_abaqus_assembleInputFile(unit,unit+1_pInt)) then  ! strip comments and concatenate any "include"s
-     call IO_error(103_pInt)
-   endif
+   if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+      if (IO_abaqus_assembleInputFile(unit,unit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
    close(unit+1_pInt) 
  
  else
+
    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
    open(unit,status='old',iostat=stat,file=path)
-   if (stat /= 0) then
-     call IO_error(100_pInt,ext_msg=path)
-   endif
+   if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+
  endif
 
  endsubroutine
@@ -254,15 +243,13 @@ end function
  use DAMASK_interface
  implicit none
 
- character path
- integer(pInt) stat
  integer(pInt), intent(in) :: unit
+ character(len=1024) path
+ integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//LogFileExtension
  open(unit,status='old',iostat=stat,file=path)
- if (stat /= 0) then
-   call IO_error(100_pInt,ext_msg=path)
- endif
+ if (stat /= 0) call IO_error(100_pInt,ext_msg=path)
 
  endsubroutine
 
@@ -278,16 +265,13 @@ end function
  implicit none
 
  integer(pInt), intent(in) :: unit
- character(*), intent(in) :: newExt
- character path
- integer stat
+ character(len=*), intent(in) :: newExt
+ character(len=1024) path
+ integer(pInt) stat
 
- IO_open_jobFile_stat = .false.
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
  open(unit,status='old',iostat=stat,file=path)
- if (stat == 0) then
-   IO_open_jobFile_stat = .true.
- endif
+ IO_open_jobFile_stat = (stat == 0_pInt)
  
  endfunction
 
@@ -303,15 +287,13 @@ end function
  implicit none
 
  integer(pInt), intent(in) :: unit
- character(*), intent(in) :: newExt
- character path
+ character(len=*), intent(in) :: newExt
+ character(len=1024) path
  integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
  open(unit,status='old',iostat=stat,file=path)
- if (stat /= 0) then
-   call IO_error(100_pInt,ext_msg=path)
- endif
+ if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
  endsubroutine
 
@@ -327,15 +309,13 @@ end function
  implicit none
 
  integer(pInt), intent(in) :: unit
- character(*), intent(in) :: newExt
- character path
+ character(len=*), intent(in) :: newExt
+ character(len=1024) path
  integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
  open(unit,status='replace',iostat=stat,file=path)
- if (stat /= 0) then
-   call IO_error(100_pInt,ext_msg=path)
- endif
+ if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
  endsubroutine
 
@@ -352,8 +332,8 @@ end function
 
  integer(pInt), intent(in) :: unit
  integer(pInt), intent(in), optional :: recMultiplier
- character(*), intent(in) :: newExt
- character path
+ character(len=*), intent(in) :: newExt
+ character(len=1024) path
  integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
@@ -362,9 +342,7 @@ end function
  else
    open(unit,status='replace',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
  endif
- if (stat /= 0) then
-   call IO_error(100_pInt,ext_msg=path)
- endif
+ if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
  endsubroutine
 
@@ -381,8 +359,8 @@ end function
 
  integer(pInt), intent(in) :: unit
  integer(pInt), intent(in), optional :: recMultiplier
- character(*), intent(in) :: newExt, jobName
- character path
+ character(len=*), intent(in) :: newExt, jobName
+ character(len=1024) path
  integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(jobName)//'.'//newExt
@@ -1251,38 +1229,28 @@ endfunction
  case (205_pInt)
    msg = 'unknown lattice structure encountered'
 
- case (210_pInt)
-   msg = 'unknown material parameter for j2 constitutive phase:'
  case (211_pInt)
    msg = 'material parameter for j2 constitutive phase out of bounds:'
  case (212_pInt)
    msg = 'unknown constitutive output for j2 constitution:'
 
- case (220_pInt)
-   msg = 'unknown material parameter for phenopowerlaw constitutive phase:'
  case (221_pInt)
    msg = 'material parameter for phenopowerlaw constitutive phase out of bounds:'
  case (222_pInt)
    msg = 'unknown constitutive output for phenopowerlaw constitution:'
 
- case (230_pInt)
-   msg = 'unknown material parameter for titanmod constitutive phase:'
  case (231_pInt)
    msg = 'material parameter for titanmod constitutive phase out of bounds:'
  case (232_pInt)
    msg = 'unknown constitutive output for titanmod constitution:'
 
- case (240_pInt)
-   msg = 'unknown material parameter for dislotwin constitutive phase:'
  case (241_pInt)
    msg = 'material parameter for dislotwin constitutive phase out of bounds:'
  case (242_pInt)
    msg = 'unknown constitutive output for dislotwin constitution:'
  case (243_pInt)
-   msg = 'zero stackin fault energy'
+   msg = 'zero stacking fault energy'
 
- case (250_pInt)
-   msg = 'unknown material parameter for nonlocal constitutive phase:'
  case (251_pInt)
    msg = 'material parameter for nonlocal constitutive phase out of bounds:'
  case (252_pInt)

@@ -331,23 +331,23 @@ rewind(file)
 line = ''
 section = 0_pInt
 
-do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                                ! wind forward to <phase>
+do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                               ! wind forward to <phase>
   read(file,'(a1024)',END=100) line
 enddo
 
-do                                                                                                                                  ! read thru sections of phase part
+do                                                                                                                                 ! read thru sections of phase part
   read(file,'(a1024)',END=100) line
-  if (IO_isBlank(line)) cycle                                                                                                       ! skip empty lines
-  if (IO_getTag(line,'<','>') /= '') exit                                                                                           ! stop at next part
-  if (IO_getTag(line,'[',']') /= '') then                                                                                           ! next section
-    section = section + 1_pInt
-    output = 0_pInt                                                                                                                 ! reset output counter
+  if (IO_isBlank(line)) cycle                                                                                                      ! skip empty lines
+  if (IO_getTag(line,'<','>') /= '') exit                                                                                          ! stop at next part
+  if (IO_getTag(line,'[',']') /= '') then                                                                                          ! next section
+    section = section + 1_pInt                                                                                                     ! advance section counter
+    output = 0_pInt                                                                                                                ! reset output counter
     cycle
   endif
-  if (section > 0_pInt .and. phase_constitution(section) == constitutive_nonlocal_label) then                                       ! one of my sections
-    i = phase_constitutionInstance(section)                                                                                         ! which instance of my constitution is present phase
+  if (section > 0_pInt .and. phase_constitution(section) == constitutive_nonlocal_label) then                                      ! one of my sections
+    i = phase_constitutionInstance(section)                                                                                        ! which instance of my constitution is present phase
     positions = IO_stringPos(line,maxNchunks)
-    tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                              ! extract key
+    tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                             ! extract key
     select case(tag)
       case('constitution','/nonlocal/')
         cycle
@@ -440,8 +440,6 @@ do                                                                              
         constitutive_nonlocal_rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
       case('surfacetransmissivity')
         constitutive_nonlocal_surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
-      case default
-        call IO_error(250_pInt,ext_msg=tag)
     end select
   endif
 enddo

@@ -126,29 +126,30 @@ subroutine constitutive_j2_init(file)
  allocate(constitutive_j2_n(maxNinstance)) ;                                    constitutive_j2_n = 0.0_pReal
  allocate(constitutive_j2_h0(maxNinstance)) ;                                   constitutive_j2_h0 = 0.0_pReal
  allocate(constitutive_j2_tausat(maxNinstance)) ;                               constitutive_j2_tausat = 0.0_pReal
- allocate(constitutive_j2_a(maxNinstance)) ;                                   constitutive_j2_a = 0.0_pReal
+ allocate(constitutive_j2_a(maxNinstance)) ;                                    constitutive_j2_a = 0.0_pReal
  allocate(constitutive_j2_aTolResistance(maxNinstance)) ;                       constitutive_j2_aTolResistance = 0.0_pReal
  
  rewind(file)
  line = ''
  section = 0
  
- do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
+ do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                              ! wind forward to <phase>
    read(file,'(a1024)',END=100) line
  enddo
-
- do                                                       ! read thru sections of phase part
+ 
+ do                                                                                                                                ! read thru sections of phase part
    read(file,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
-   if (IO_getTag(line,'[',']') /= '') then                ! next section
-     section = section + 1
-     output = 0                                           ! reset output counter
+   if (IO_isBlank(line)) cycle                                                                                                     ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                                                                                         ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') then                                                                                         ! next section
+     section = section + 1_pInt                                                                                                    ! advance section counter
+     output = 0_pInt                                                                                                               ! reset output counter
+     cycle
    endif
-   if (section > 0 .and. phase_constitution(section) == constitutive_j2_label) then  ! one of my sections
-     i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
+   if (section > 0_pInt .and. phase_constitution(section) == constitutive_j2_label) then                                           ! one of my sections
+     i = phase_constitutionInstance(section)                                                                                       ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                            ! extract key
      select case(tag)
        case ('(output)')
          output = output + 1
@@ -257,7 +258,7 @@ integer(pInt), intent(in) ::  myInstance                      ! number specifyin
 
 !*** output variables
 real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
-                              constitutive_j2_aTolState   ! relevant state values for the current instance of this constitution
+                              constitutive_j2_aTolState       ! relevant state values for the current instance of this constitution
 
 !*** local variables
 

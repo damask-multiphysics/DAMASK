@@ -384,18 +384,19 @@ do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phas
    read(file,'(a1024)',END=100) line
 enddo
 
-do                                                       ! read thru sections of phase part
+ do                                                       ! read thru sections of phase part
    read(file,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
-     section = section + 1_pInt
-     output = 0_pInt                                           ! reset output counter
+     section = section + 1_pInt                           ! advance section counter
+     output = 0_pInt                                      ! reset output counter
+     cycle                                                ! skip to next line
    endif
    if (section > 0_pInt .and. phase_constitution(section) == constitutive_titanmod_label) then  ! one of my sections
-     i = phase_constitutionInstance(section)     ! which instance of my constitution is present phase
+     i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
        case ('(output)')
          output = output + 1_pInt
@@ -583,8 +584,6 @@ do                                                       ! read thru sections of
               forall (j = 1_pInt:lattice_maxNinteraction) &
                 constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
                 write(6,*) tag
-       case default
-              call IO_error(230_pInt,ext_msg=tag)
      end select
    endif
 enddo

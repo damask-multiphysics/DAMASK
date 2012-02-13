@@ -263,13 +263,14 @@ subroutine constitutive_phenopowerlaw_init(file)
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
-     section = section + 1_pInt
-     output = 0_pInt                                           ! reset output counter
+     section = section + 1_pInt                           ! advance section counter
+     output = 0_pInt                                      ! reset output counter
+     cycle                                                ! skip to next line
    endif
    if (section > 0_pInt .and. phase_constitution(section) == constitutive_phenopowerlaw_label) then  ! one of my sections
      i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
        case ('(output)')
          output = output + 1_pInt
@@ -345,8 +346,6 @@ subroutine constitutive_phenopowerlaw_init(file)
        case ('interaction_twintwin')
               forall (j = 1_pInt:lattice_maxNinteraction) &
                 constitutive_phenopowerlaw_interaction_twintwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-       case default
-              call IO_error(220_pInt,ext_msg=tag)
      end select
    endif
  enddo

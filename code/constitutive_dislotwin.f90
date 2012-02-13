@@ -284,14 +284,15 @@ enddo
 
 do                                                       ! read thru sections of phase part
    read(file,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
-   if (IO_getTag(line,'[',']') /= '') then                ! next section
-     section = section + 1_pInt
-     output = 0_pInt                                           ! reset output counter
+   if (IO_isBlank(line)) cycle                           ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit               ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') then               ! next section
+     section = section + 1_pInt                          ! advance section counter
+     output = 0_pInt                                     ! reset output counter
+     cycle
    endif
    if (section > 0_pInt .and. phase_constitution(section) == constitutive_dislotwin_label) then  ! one of my sections
-     i = phase_constitutionInstance(section)     ! which instance of my constitution is present phase
+     i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
      select case(tag)
@@ -393,8 +394,6 @@ do                                                       ! read thru sections of
               constitutive_dislotwin_sbResistance(i) = IO_floatValue(line,positions,2_pInt)
        case ('shearbandvelocity')
               constitutive_dislotwin_sbVelocity(i) = IO_floatValue(line,positions,2_pInt)
-       case default
-              call IO_error(240_pInt,ext_msg=tag)
      end select
    endif
 enddo
