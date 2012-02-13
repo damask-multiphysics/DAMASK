@@ -222,7 +222,8 @@ allocate(crystallite_orientation(4,gMax,iMax,eMax));                   crystalli
 allocate(crystallite_orientation0(4,gMax,iMax,eMax));                 crystallite_orientation0 = 0.0_pReal
 allocate(crystallite_rotation(4,gMax,iMax,eMax));                         crystallite_rotation = 0.0_pReal
 allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax));        crystallite_disorientation = 0.0_pReal
-allocate(crystallite_symmetryID(gMax,iMax,eMax));                       crystallite_symmetryID = 0_pIntallocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
+allocate(crystallite_symmetryID(gMax,iMax,eMax));                       crystallite_symmetryID = 0_pInt
+allocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
 allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
 allocate(crystallite_todo(gMax,iMax,eMax));                                   crystallite_todo = .false.
 allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
