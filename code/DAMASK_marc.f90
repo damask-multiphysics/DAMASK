@@ -400,7 +400,7 @@ subroutine plotv(&
  real(pReal) v, t(*)
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
 
- if (jpltcd > materialpoint_sizeResults) call IO_error(667,jpltcd)                  ! complain about out of bounds error
+ if (jpltcd > materialpoint_sizeResults) call IO_error(700_pInt,jpltcd)                  ! complain about out of bounds error
 
  v = materialpoint_results(jpltcd,nn,mesh_FEasCP('elem', m))
  return

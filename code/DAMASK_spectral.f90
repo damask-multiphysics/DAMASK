@@ -210,7 +210,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! reading the load case file and allocate data structure containing load cases
  path = getLoadcaseName()
- if (.not. IO_open_file(myUnit,path)) call IO_error(error_ID = 30_pInt,ext_msg = trim(path))
+ call IO_open_file(myUnit,path)
  rewind(myUnit)
  do
    read(myUnit,'(a1024)',END = 100) line
@@ -232,7 +232,7 @@ program DAMASK_spectral
 
 100 N_Loadcases = N_n
  if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &                                                     ! sanity check
-   call IO_error(error_ID=37_pInt,ext_msg = trim(path))                                             ! error message for incomplete loadcase
+   call IO_error(error_ID=837_pInt,ext_msg = trim(path))                                            ! error message for incomplete loadcase
 
  allocate (bc(N_Loadcases))
 
@@ -310,14 +310,13 @@ program DAMASK_spectral
 !-------------------------------------------------------------------------------------------------- ToDo: if temperature at CPFEM is treated properly, move this up immediately after interface init
 ! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
  call CPFEM_initAll(bc(1)%temperature,1_pInt,1_pInt)
- if (update_gamma .and. .not. memory_efficient) call IO_error(error_ID = 47_pInt)
+ if (update_gamma .and. .not. memory_efficient) call IO_error(error_ID = 847_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! read header of geom file to get size information. complete geom file is intepretated by mesh.f90
  path = getModelName()
 
- if (.not. IO_open_file(myUnit,trim(path)//InputFileExtension))&
-        call IO_error(error_ID=101_pInt,ext_msg = trim(path)//InputFileExtension)
+ call IO_open_file(myUnit,trim(path)//InputFileExtension)
  rewind(myUnit)
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,2_pInt)
@@ -325,7 +324,7 @@ program DAMASK_spectral
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=42_pInt)
+   call IO_error(error_ID=842_pInt)
  endif
  
  rewind(myUnit)
@@ -367,12 +366,12 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! sanity checks of geometry parameters
  if (.not.(gotDimension .and. gotHomogenization .and. gotResolution))&
-                                                                call IO_error(error_ID = 45_pInt)
- if (any(geomdim<=0.0_pReal)) call IO_error(error_ID = 102_pInt)
+                                                                call IO_error(error_ID = 845_pInt)
+ if (any(geomdim<=0.0_pReal)) call IO_error(error_ID = 802_pInt)
  if(mod(res(1),2_pInt)/=0_pInt .or.&
     mod(res(2),2_pInt)/=0_pInt .or.&
    (mod(res(3),2_pInt)/=0_pInt .and. res(3)/= 1_pInt))&
-                                                                call IO_error(error_ID = 103_pInt)
+                                                                call IO_error(error_ID = 803_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! variables derived from resolution
@@ -413,7 +412,7 @@ program DAMASK_spectral
    if (bc(loadcase)%velGradApplied) then
      do j = 1_pInt, 3_pInt
        if (any(bc(loadcase)%maskDeformation(j,1:3) .eqv. .true.) .and. &
-           any(bc(loadcase)%maskDeformation(j,1:3) .eqv. .false.)) errorID = 32_pInt                ! each row should be either fully or not at all defined
+           any(bc(loadcase)%maskDeformation(j,1:3) .eqv. .false.)) errorID = 832_pInt               ! each row should be either fully or not at all defined
      enddo
      print '(a)','velocity gradient:'
    else
@@ -433,17 +432,17 @@ program DAMASK_spectral
    print '(a,i5)','output  frequency:  ',bc(loadcase)%outputfrequency
    print '(a,i5)','restart frequency:  ',bc(loadcase)%restartfrequency
 
-   if (any(bc(loadcase)%maskStress .eqv. bc(loadcase)%maskDeformation)) errorID = 31                ! exclusive or masking only
+   if (any(bc(loadcase)%maskStress .eqv. bc(loadcase)%maskDeformation)) errorID = 831_pInt          ! exclusive or masking only
    if (any(bc(loadcase)%maskStress .and. transpose(bc(loadcase)%maskStress) .and. &
      reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
-                                               errorID = 38_pInt                                    ! no rotation is allowed by stress BC
+                                               errorID = 838_pInt                                   ! no rotation is allowed by stress BC
    if (any(abs(math_mul33x33(bc(loadcase)%rotation,math_transpose33(bc(loadcase)%rotation))&
                                       -math_I3) > reshape(spread(rotation_tol,1,9),[ 3,3]))&
                     .or. abs(math_det33(bc(loadcase)%rotation)) > 1.0_pReal + rotation_tol)&
-                                               errorID = 46_pInt                                    ! given rotation matrix contains strain
-   if (bc(loadcase)%time < 0.0_pReal)          errorID = 34_pInt                                    ! negative time increment
-   if (bc(loadcase)%incs < 1_pInt)             errorID = 35_pInt                                    ! non-positive incs count
-   if (bc(loadcase)%outputfrequency < 1_pInt)  errorID = 36_pInt                                    ! non-positive result frequency
+                                               errorID = 846_pInt                                    ! given rotation matrix contains strain
+   if (bc(loadcase)%time < 0.0_pReal)          errorID = 834_pInt                                    ! negative time increment
+   if (bc(loadcase)%incs < 1_pInt)             errorID = 835_pInt                                    ! non-positive incs count
+   if (bc(loadcase)%outputfrequency < 1_pInt)  errorID = 836_pInt                                    ! non-positive result frequency
    if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)
  enddo
 
@@ -483,7 +482,7 @@ program DAMASK_spectral
  c0_reference = c_current * wgt                                                              ! linear reference material stiffness
  c0_66 = math_Mandel3333to66(c0_reference)
  call math_invert(6_pInt, c0_66, s0_66, i, errmatinv)                                        ! invert in mandel notation
- if(errmatinv) call IO_error(error_ID=800_pInt)
+ if(errmatinv) call IO_error(error_ID=400_pInt)
  s0_reference = math_Mandel66to3333(s0_66)
 
 !--------------------------------------------------------------------------------------------------
@@ -491,11 +490,10 @@ program DAMASK_spectral
  if (restartInc > 1_pInt) then                                                             ! using old values from file                                                      
    if (debugRestart) print '(a,i6,a)' , 'Reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
-   if (IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
-                                                trim(getSolverJobName()),size(defgrad))) then
-     read (777,rec=1) defgrad
-     close (777)
-   endif
+   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
+                                                trim(getSolverJobName()),size(defgrad))
+   read (777,rec=1) defgrad
+   close (777)
    defgradold = defgrad
    defgradAim = 0.0_pReal
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
@@ -544,11 +542,11 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of fftw (see manual on fftw.org for more details)
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=108_pInt)                     ! check for correct precision in C
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)                     ! check for correct precision in C
 #ifdef _OPENMP
     if(DAMASK_NumThreadsInt > 0_pInt) then
       ierr = fftw_init_threads()
-      if (ierr == 0_pInt) call IO_error(error_ID = 109_pInt)
+      if (ierr == 0_pInt) call IO_error(error_ID = 809_pInt)
       call fftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
     endif
 #endif
@@ -723,7 +721,7 @@ program DAMASK_spectral
                  c_reduced(k,j) = c_prev99(n,m)
          endif; enddo; endif; enddo
          call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                         ! invert reduced stiffness
-         if(errmatinv) call IO_error(error_ID=800_pInt)
+         if(errmatinv) call IO_error(error_ID=400_pInt)
          s_prev99 = 0.0_pReal                                                                       ! build full compliance
          k = 0_pInt
          do n = 1_pInt,9_pInt
@@ -1097,10 +1095,9 @@ program DAMASK_spectral
                       mod(inc - 1_pInt,bc(loadcase)%restartFrequency) == 0_pInt) then                ! at frequency of writing restart information set restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
          restartWrite = .true.
          print '(A)', 'writing converged results for restart'
-         if(IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(defgrad))) then               ! writing deformation gradient field to file
-           write (777,rec=1) defgrad
-           close (777)
-         endif
+         call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(defgrad))                   ! writing deformation gradient field to file
+         write (777,rec=1) defgrad
+         close (777)
          restartInc=totalIncsCounter
        endif 
        
@@ -1111,7 +1108,7 @@ program DAMASK_spectral
  
  !c0_99 = math_Plain3333to99(c0_reference)
  ! call math_invert(9_pInt, s0_99, c0_99, i, errmatinv)                                        ! invert reduced stiffness
- ! if(errmatinv) call IO_error(error_ID=800_pInt)
+ ! if(errmatinv) call IO_error(error_ID=400_pInt)
  ! print*, (c0_reference - math_Plain99to3333(c0_99))/c0_reference
 ! pause
        endif

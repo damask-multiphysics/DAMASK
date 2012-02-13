@@ -281,59 +281,56 @@
 
  call mesh_build_FEdata()                                                      ! --- get properties of the different types of elements
 
- if (IO_open_inputFile(fileUnit,FEmodelGeometry)) then                         ! --- parse info from input file...
+ call IO_open_inputFile(fileUnit,FEmodelGeometry)                              ! --- parse info from input file...
 
-   select case (FEsolver)
-     case ('Spectral')
-                         call mesh_spectral_count_nodesAndElements(fileUnit)
-                         call mesh_spectral_count_cpElements()
-                         call mesh_spectral_map_elements()
-                         call mesh_spectral_map_nodes()
-                         call mesh_spectral_count_cpSizes()
-                         call mesh_spectral_build_nodes(fileUnit)
-                         call mesh_spectral_build_elements(fileUnit)
-     
-     case ('Marc')
-                         call mesh_marc_get_tableStyles(fileUnit)
-                         call mesh_marc_count_nodesAndElements(fileUnit)
-                         call mesh_marc_count_elementSets(fileUnit)
-                         call mesh_marc_map_elementSets(fileUnit)
-                         call mesh_marc_count_cpElements(fileUnit)
-                         call mesh_marc_map_elements(fileUnit)
-                         call mesh_marc_map_nodes(fileUnit)
-                         call mesh_marc_build_nodes(fileUnit)
-                         call mesh_marc_count_cpSizes(fileunit)
-                         call mesh_marc_build_elements(fileUnit)
-     case ('Abaqus')
-                         noPart = IO_abaqus_hasNoPart(fileUnit)
-                         call mesh_abaqus_count_nodesAndElements(fileUnit)
-                         call mesh_abaqus_count_elementSets(fileUnit)
-                         call mesh_abaqus_count_materials(fileUnit)
-                         call mesh_abaqus_map_elementSets(fileUnit)
-                         call mesh_abaqus_map_materials(fileUnit)
-                         call mesh_abaqus_count_cpElements(fileUnit)
-                         call mesh_abaqus_map_elements(fileUnit)
-                         call mesh_abaqus_map_nodes(fileUnit)
-                         call mesh_abaqus_build_nodes(fileUnit)
-                         call mesh_abaqus_count_cpSizes(fileunit)
-                         call mesh_abaqus_build_elements(fileUnit)
-   end select
-   call mesh_get_damaskOptions(fileUnit)
-   close (fileUnit)
+ select case (FEsolver)
+   case ('Spectral')
+                       call mesh_spectral_count_nodesAndElements(fileUnit)
+                       call mesh_spectral_count_cpElements()
+                       call mesh_spectral_map_elements()
+                       call mesh_spectral_map_nodes()
+                       call mesh_spectral_count_cpSizes()
+                       call mesh_spectral_build_nodes(fileUnit)
+                       call mesh_spectral_build_elements(fileUnit)
    
-   call mesh_build_subNodeCoords()
-   call mesh_build_ipCoordinates()
-   call mesh_build_ipVolumes()
-   call mesh_build_ipAreas()
-   call mesh_build_nodeTwins()
-   call mesh_build_sharedElems()
-   call mesh_build_ipNeighborhood()
-   call mesh_tell_statistics()
+   case ('Marc')
+                       call mesh_marc_get_tableStyles(fileUnit)
+                       call mesh_marc_count_nodesAndElements(fileUnit)
+                       call mesh_marc_count_elementSets(fileUnit)
+                       call mesh_marc_map_elementSets(fileUnit)
+                       call mesh_marc_count_cpElements(fileUnit)
+                       call mesh_marc_map_elements(fileUnit)
+                       call mesh_marc_map_nodes(fileUnit)
+                       call mesh_marc_build_nodes(fileUnit)
+                       call mesh_marc_count_cpSizes(fileunit)
+                       call mesh_marc_build_elements(fileUnit)
+   case ('Abaqus')
+                       noPart = IO_abaqus_hasNoPart(fileUnit)
+                       call mesh_abaqus_count_nodesAndElements(fileUnit)
+                       call mesh_abaqus_count_elementSets(fileUnit)
+                       call mesh_abaqus_count_materials(fileUnit)
+                       call mesh_abaqus_map_elementSets(fileUnit)
+                       call mesh_abaqus_map_materials(fileUnit)
+                       call mesh_abaqus_count_cpElements(fileUnit)
+                       call mesh_abaqus_map_elements(fileUnit)
+                       call mesh_abaqus_map_nodes(fileUnit)
+                       call mesh_abaqus_build_nodes(fileUnit)
+                       call mesh_abaqus_count_cpSizes(fileunit)
+                       call mesh_abaqus_build_elements(fileUnit)
+ end select
+ call mesh_get_damaskOptions(fileUnit)
+ close (fileUnit)
+ 
+ call mesh_build_subNodeCoords()
+ call mesh_build_ipCoordinates()
+ call mesh_build_ipVolumes()
+ call mesh_build_ipAreas()
+ call mesh_build_nodeTwins()
+ call mesh_build_sharedElems()
+ call mesh_build_ipNeighborhood()
+ call mesh_tell_statistics()
 
-   parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))      ! plus potential killer from non-local constitutive
- else
-   call IO_error(error_ID=101_pInt) ! cannot open input file
- endif
+ parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))      ! plus potential killer from non-local constitutive
  
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems]
  allocate(FEsolving_execIP(2,mesh_NcpElems)); FEsolving_execIP = 1_pInt
@@ -1487,7 +1484,7 @@ enddo
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt 
  else
-   call IO_error(error_ID=42_pInt)
+   call IO_error(error_ID=842_pInt)
  endif
  
  rewind(myUnit)
@@ -2428,7 +2425,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  if (keyword(1:4) == 'head') then 
    headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=42_pInt)
+   call IO_error(error_ID=842_pInt)
  endif
  
  rewind(myUnit)
@@ -2465,9 +2462,9 @@ subroutine mesh_marc_count_cpSizes (myUnit)
 
 ! --- sanity checks ---
 
- if ((.not. gotDimension) .or. (.not. gotResolution)) call IO_error(error_ID=42_pInt)
- if ((a < 1) .or. (b < 1) .or. (c < 0)) call IO_error(error_ID=43_pInt)           ! 1_pInt is already added
- if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(error_ID=44_pInt)
+ if ((.not. gotDimension) .or. (.not. gotResolution)) call IO_error(error_ID=842_pInt)
+ if ((a < 1) .or. (b < 1) .or. (c < 0)) call IO_error(error_ID=843_pInt)           ! 1_pInt is already added
+ if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(error_ID=844_pInt)
  
  forall (n = 0:mesh_Nnodes-1)
    mesh_node0(1,n+1) = x * dble(mod(n,a)) / dble(a-1_pInt)
@@ -2616,7 +2613,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=42_pInt)
+   call IO_error(error_ID=842_pInt)
  endif
  
  rewind(myUnit)
@@ -2679,7 +2676,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  enddo
 
 110 deallocate(microstructures)
- if (e /= mesh_NcpElems) call IO_error(180_pInt,e)
+ if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
 
  endsubroutine
 
@@ -3365,13 +3362,13 @@ character(len=64) fmt
 
 integer(pInt) i,e,n,f,t
 
-if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=110_pInt) ! no homogenization specified
-if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=120_pInt) ! no microstructure specified
+if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=170_pInt) ! no homogenization specified
+if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=180_pInt) ! no microstructure specified
  
 allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
 do e = 1,mesh_NcpElems
-  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=110_pInt,e=e) ! no homogenization specified
-  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=120_pInt,e=e) ! no microstructure specified
+  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,e=e) ! no homogenization specified
+  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,e=e) ! no microstructure specified
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1 ! count combinations of homogenization and microstructure
 enddo

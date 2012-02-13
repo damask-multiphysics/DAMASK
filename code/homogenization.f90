@@ -75,7 +75,7 @@ subroutine homogenization_init(Temperature)
 use prec, only: pReal,pInt
 use math, only: math_I3
 use debug, only: debug_verbosity
-use IO, only: IO_error, IO_open_file, IO_open_jobFile, IO_write_jobFile
+use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat, IO_write_jobFile
 use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
 use material
 use constitutive, only: constitutive_maxSizePostResults
@@ -95,8 +95,8 @@ logical knownHomogenization
 
 ! --- PARSE HOMOGENIZATIONS FROM CONFIG FILE ---
 
-if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
-  if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100) ! ...and cannot open material.config file
+if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then        ! no local material configuration present...
+  call IO_open_file(fileunit,material_configFile)                           ! ... open material.config file
 endif
 call homogenization_isostrain_init(fileunit)
 call homogenization_RGC_init(fileunit)
@@ -105,9 +105,7 @@ close(fileunit)
 
 ! --- WRITE DESCRIPTION FILE FOR HOMOGENIZATION OUTPUT ---
 
-if(.not. IO_write_jobFile(fileunit,'outputHomogenization')) then     ! problems in writing file
-  call IO_error (50)
-endif
+call IO_write_jobFile(fileunit,'outputHomogenization')
 do p = 1,material_Nhomogenization
   i = homogenization_typeInstance(p)                                ! which instance of this homogenization type
   knownHomogenization = .true.                                      ! assume valid
@@ -189,7 +187,7 @@ end forall
           endif
           homogenization_sizePostResults(i,e) = homogenization_RGC_sizePostResults(myInstance)
         case default
-          call IO_error(201,ext_msg=homogenization_type(mesh_element(3,e)))      ! unknown type 201 is homogenization!
+          call IO_error(500_pInt,ext_msg=homogenization_type(mesh_element(3,e)))      ! unknown homogenization
       end select
     enddo
   enddo

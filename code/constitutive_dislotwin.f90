@@ -393,6 +393,8 @@ do                                                       ! read thru sections of
               constitutive_dislotwin_sbResistance(i) = IO_floatValue(line,positions,2_pInt)
        case ('shearbandvelocity')
               constitutive_dislotwin_sbVelocity(i) = IO_floatValue(line,positions,2_pInt)
+       case default
+              call IO_error(240_pInt,ext_msg=tag)
      end select
    endif
 enddo
@@ -403,32 +405,31 @@ enddo
    myStructure = constitutive_dislotwin_structure(i)
 
    !* Sanity checks
-   if (myStructure < 1_pInt .or. myStructure > 3_pInt)                    call IO_error(205_pInt)
-   if (sum(constitutive_dislotwin_Nslip(:,i)) <= 0_pInt)                  call IO_error(225_pInt)
-   if (sum(constitutive_dislotwin_Ntwin(:,i)) < 0_pInt)                   call IO_error(225_pInt) !***
+   if (myStructure < 1_pInt .or. myStructure > 3_pInt)                      call IO_error(205_pInt,e=i)
+   if (sum(constitutive_dislotwin_Nslip(:,i)) <= 0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='nslip')
+   if (sum(constitutive_dislotwin_Ntwin(:,i)) < 0_pInt)                     call IO_error(241_pInt,e=i,ext_msg='ntwin')
    do f = 1,lattice_maxNslipFamily
      if (constitutive_dislotwin_Nslip(f,i) > 0_pInt) then
-       if (constitutive_dislotwin_rhoEdge0(f,i) < 0.0_pReal)              call IO_error(220_pInt)
-       if (constitutive_dislotwin_rhoEdgeDip0(f,i) < 0.0_pReal)           call IO_error(220_pInt)
-       if (constitutive_dislotwin_burgersPerSlipFamily(f,i) <= 0.0_pReal) call IO_error(221_pInt)
-       if (constitutive_dislotwin_v0PerSlipFamily(f,i) <= 0.0_pReal)      call IO_error(226_pInt)
+       if (constitutive_dislotwin_rhoEdge0(f,i) < 0.0_pReal)                call IO_error(241_pInt,e=i,ext_msg='rhoEdge0')
+       if (constitutive_dislotwin_rhoEdgeDip0(f,i) < 0.0_pReal)             call IO_error(241_pInt,e=i,ext_msg='rhoEdgeDip0')
+       if (constitutive_dislotwin_burgersPerSlipFamily(f,i) <= 0.0_pReal)   call IO_error(241_pInt,e=i,ext_msg='slipburgers')
+       if (constitutive_dislotwin_v0PerSlipFamily(f,i) <= 0.0_pReal)        call IO_error(241_pInt,e=i,ext_msg='v0')
      endif
    enddo
    do f = 1,lattice_maxNtwinFamily
      if (constitutive_dislotwin_Ntwin(f,i) > 0_pInt) then
-       if (constitutive_dislotwin_burgersPerTwinFamily(f,i) <= 0.0_pReal) call IO_error(221_pInt) !***
-       if (constitutive_dislotwin_Ndot0PerTwinFamily(f,i) < 0.0_pReal)    call IO_error(226_pInt) !***
+       if (constitutive_dislotwin_burgersPerTwinFamily(f,i) <= 0.0_pReal)   call IO_error(241_pInt,e=i,ext_msg='twinburgers')
+       if (constitutive_dislotwin_Ndot0PerTwinFamily(f,i) < 0.0_pReal)      call IO_error(241_pInt,e=i,ext_msg='ndot0')
      endif
    enddo
-!   if (any(constitutive_dislotwin_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 1.0_pReal)) call IO_error(229)
-   if (constitutive_dislotwin_CAtomicVolume(i) <= 0.0_pReal)              call IO_error(230_pInt)
-   if (constitutive_dislotwin_D0(i) <= 0.0_pReal)                         call IO_error(231_pInt)
-   if (constitutive_dislotwin_Qsd(i) <= 0.0_pReal)                        call IO_error(232_pInt)
-   if (constitutive_dislotwin_aTolRho(i) <= 0.0_pReal)                    call IO_error(233_pInt)
-   if (constitutive_dislotwin_sbResistance(i) <= 0.0_pReal)               call IO_error(234_pInt)
-   if (constitutive_dislotwin_sbVelocity(i) < 0.0_pReal)                  call IO_error(235_pInt)
-   if (constitutive_dislotwin_SFE_0K(i) == 0.0_pReal .and. &
-       constitutive_dislotwin_dSFE_dT(i) == 0.0_pReal)                    call IO_error(223_pInt)
+   if (constitutive_dislotwin_CAtomicVolume(i) <= 0.0_pReal)                call IO_error(241_pInt,e=i,ext_msg='cAtomicVolume')
+   if (constitutive_dislotwin_D0(i) <= 0.0_pReal)                           call IO_error(241_pInt,e=i,ext_msg='D0')
+   if (constitutive_dislotwin_Qsd(i) <= 0.0_pReal)                          call IO_error(241_pInt,e=i,ext_msg='Qsd')
+   if (constitutive_dislotwin_aTolRho(i) <= 0.0_pReal)                      call IO_error(241_pInt,e=i,ext_msg='aTolRho')
+   if (constitutive_dislotwin_sbResistance(i) <= 0.0_pReal)                 call IO_error(241_pInt,e=i,ext_msg='sbResistance')
+   if (constitutive_dislotwin_sbVelocity(i) < 0.0_pReal)                    call IO_error(241_pInt,e=i,ext_msg='sbVelocity')
+   if (constitutive_dislotwin_SFE_0K(i) == 0.0_pReal .AND. &
+       constitutive_dislotwin_dSFE_dT(i) == 0.0_pReal)                      call IO_error(243_pInt,e=i)
 
    !* Determine total number of active slip or twin systems
    constitutive_dislotwin_Nslip(:,i) = min(lattice_NslipSystem(:,myStructure),constitutive_dislotwin_Nslip(:,i))
@@ -534,7 +535,7 @@ do i = 1_pInt,maxNinstance
         case('sb_eigenvectors')
            mySize = 9_pInt  
         case default
-           mySize = 0_pInt
+           call IO_error(242_pInt,ext_msg=constitutive_dislotwin_output(o,i))
       end select
 
        if (mySize > 0_pInt) then  ! any meaningful output found

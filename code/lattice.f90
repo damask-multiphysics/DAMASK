@@ -728,7 +728,7 @@ subroutine lattice_init()
 !*      Module initialization         *
 !**************************************
  use, intrinsic :: iso_fortran_env
- use IO, only: IO_open_file,IO_open_jobFile,IO_countSections,IO_countTagInPart,IO_error
+ use IO, only: IO_open_file,IO_open_jobFile_stat,IO_countSections,IO_countTagInPart,IO_error
  use material, only: material_configfile,material_localFileExt,material_partPhase
  use debug, only: debug_verbosity
  implicit none
@@ -743,8 +743,8 @@ subroutine lattice_init()
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
 
- if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then                  ! no local material configuration present...
-   if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100_pInt) ! ...and cannot open material.config file
+ if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then             ! no local material configuration present...
+   call IO_open_file(fileunit,material_configFile)                                ! ... open material.config file
  endif
  Nsections = IO_countSections(fileunit,material_partPhase)
  lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
@@ -922,7 +922,7 @@ function lattice_initializeStructure(struct,CoverA)
 
  if (processMe) then
    if  (myStructure > lattice_Nstructure) &
-     call IO_error(666_pint,0_pInt,0_pInt,0_pInt,'structure index too large')        ! check for memory leakage
+     call IO_error(666_pInt,0_pInt,0_pInt,0_pInt,'structure index too large')        ! check for memory leakage
    do i = 1,myNslip                                              ! store slip system vectors and Schmid matrix for my structure
      lattice_sd(1:3,i,myStructure) = sd(1:3,i)
      lattice_st(1:3,i,myStructure) = st(1:3,i)

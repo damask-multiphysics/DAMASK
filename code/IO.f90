@@ -25,9 +25,9 @@
  CONTAINS
 !---------------------------
 ! function IO_abaqus_assembleInputFile
-! function IO_open_file(unit,relPath)
-! function IO_open_inputFile(unit, model)
-! function IO_open_logFile(unit)
+! subroutine IO_open_file(unit,relPath)
+! subroutine IO_open_inputFile(unit, model)
+! subroutine IO_open_logFile(unit)
 ! function IO_hybridIA(Nast,ODFfileName)
 ! private function hybridIA_reps(dV_V,steps,C)
 ! function IO_stringPos(line,maxN)
@@ -153,21 +153,49 @@ end function
 ! open existing file to given unit
 ! path to file is relative to working directory
 !********************************************************************
- logical function IO_open_file(unit,relPath)
+ logical function IO_open_file_stat(unit,relPath)
 
  use prec, only: pInt
  use DAMASK_interface
  
  implicit none
- character(len=*) relPath
- integer(pInt) unit
+ integer(pInt), intent(in) :: unit
+ character(len=*), intent(in) :: relPath
+ integer stat
+ character path
+ 
+ IO_open_file_stat = .false. 
+ path = trim(getSolverWorkingDirectoryName())//relPath
+ open(unit,status='old',iostat=stat,file=path)
+ if (stat == 0) then
+   IO_open_file_stat = .true.
+ endif
+ 
+ endfunction
 
- IO_open_file = .false.
+
+!********************************************************************
+! open existing file to given unit
+! path to file is relative to working directory
+!********************************************************************
+ subroutine IO_open_file(unit,relPath)
+
+ use prec, only: pInt
+ use DAMASK_interface
  
- open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//relPath)
- IO_open_file = .true.
+ implicit none
+ integer(pInt), intent(in) :: unit
+ character(len=*), intent(in) :: relPath
+ character path
+ integer(pInt) stat
  
-100 endfunction
+ path = trim(getSolverWorkingDirectoryName())//relPath
+ open(unit,status='old',iostat=stat,file=path)
+ if (stat /= 0) then
+   call IO_error(100_pInt,ext_msg=path)
+ endif
+ 
+ endsubroutine
 
 
 !********************************************************************
@@ -176,59 +204,74 @@ end function
 !   : changed the function to open *.inp_assembly, which is basically 
 !     the input file without comment lines and possibly assembled includes
 !********************************************************************
- logical function IO_open_inputFile(unit,model)
+ subroutine IO_open_inputFile(unit,model)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
  integer(pInt), intent(in) :: unit
- character(len=*) model
+ character(len=*), intent(in) :: model
+ integer(pInt) stat
+ character path
 
- IO_open_inputFile = .false.
  
  if (FEsolver == 'Abaqus') then
-   open(unit+1,status='old',err=100,&
-               file=trim(getSolverWorkingDirectoryName())//&
-                    trim(model)//InputFileExtension)
-   open(unit,err=100,file=trim(getSolverWorkingDirectoryName())//&
-                          trim(model)//InputFileExtension//'_assembly')
-   IO_open_inputFile = IO_abaqus_assembleInputFile(unit,unit+1_pInt)          ! strip comments and concatenate any "include"s
+   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+   open(unit+1,status='old',iostat=stat,file=path)
+   if (stat /= 0) then
+     call IO_error(100_pInt,ext_msg=path)
+   endif
+   
+   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension//'_assembly'
+   open(unit,iostat=stat,file=path)
+   if (stat /= 0) then
+     call IO_error(100_pInt,ext_msg=path)
+   endif
+   
+   if (IO_abaqus_assembleInputFile(unit,unit+1_pInt)) then  ! strip comments and concatenate any "include"s
+     call IO_error(103_pInt)
+   endif
    close(unit+1_pInt) 
+ 
  else
-   open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                       trim(model)//InputFileExtension)
-   IO_open_inputFile = .true.
+   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+   open(unit,status='old',iostat=stat,file=path)
+   if (stat /= 0) then
+     call IO_error(100_pInt,ext_msg=path)
+   endif
  endif
 
-100 endfunction
+ endsubroutine
 
 
 !********************************************************************
 ! open FEM logfile to given unit
 !********************************************************************
- logical function IO_open_logFile(unit)
+ subroutine IO_open_logFile(unit)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
+ character path
+ integer(pInt) stat
  integer(pInt), intent(in) :: unit
 
- IO_open_logFile = .false.
- 
- open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                     trim(getSolverJobName())//LogFileExtension)
- IO_open_logFile = .true.
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//LogFileExtension
+ open(unit,status='old',iostat=stat,file=path)
+ if (stat /= 0) then
+   call IO_error(100_pInt,ext_msg=path)
+ endif
 
-100 endfunction
+ endsubroutine
 
 
 !********************************************************************
 ! open (write) file related to current job
 ! but with different extension to given unit
 !********************************************************************
- logical function IO_open_jobFile(unit,newExt)
+ logical function IO_open_jobFile_stat(unit,newExt)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
@@ -236,21 +279,24 @@ end function
 
  integer(pInt), intent(in) :: unit
  character(*), intent(in) :: newExt
+ character path
+ integer stat
 
- IO_open_jobFile = .false.
+ IO_open_jobFile_stat = .false.
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ open(unit,status='old',iostat=stat,file=path)
+ if (stat == 0) then
+   IO_open_jobFile_stat = .true.
+ endif
  
- open(unit,status='old',err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                     trim(getSolverJobName())//'.'//newExt)
- IO_open_jobFile = .true.
- 
-100 endfunction
+ endfunction
 
 
 !********************************************************************
 ! open (write) file related to current job
 ! but with different extension to given unit
 !********************************************************************
- logical function IO_write_jobFile(unit,newExt)
+ subroutine IO_open_jobFile(unit,newExt)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
@@ -258,21 +304,47 @@ end function
 
  integer(pInt), intent(in) :: unit
  character(*), intent(in) :: newExt
+ character path
+ integer(pInt) stat
 
- IO_write_jobFile = .false.
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ open(unit,status='old',iostat=stat,file=path)
+ if (stat /= 0) then
+   call IO_error(100_pInt,ext_msg=path)
+ endif
  
- open(unit,status='replace',err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                         trim(getSolverJobName())//'.'//newExt)
- IO_write_jobFile = .true.
+ endsubroutine
+
+
+!********************************************************************
+! open (write) file related to current job
+! but with different extension to given unit
+!********************************************************************
+ subroutine IO_write_jobFile(unit,newExt)
+
+ use prec, only: pReal, pInt
+ use DAMASK_interface
+ implicit none
+
+ integer(pInt), intent(in) :: unit
+ character(*), intent(in) :: newExt
+ character path
+ integer(pInt) stat
+
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ open(unit,status='replace',iostat=stat,file=path)
+ if (stat /= 0) then
+   call IO_error(100_pInt,ext_msg=path)
+ endif
  
-100 endfunction
+ endsubroutine
 
 
 !********************************************************************
 ! open (write) binary file related to current job
 ! but with different extension to given unit
 !********************************************************************
- logical function IO_write_jobBinaryFile(unit,newExt,recMultiplier)
+ subroutine IO_write_jobBinaryFile(unit,newExt,recMultiplier)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
@@ -281,27 +353,27 @@ end function
  integer(pInt), intent(in) :: unit
  integer(pInt), intent(in), optional :: recMultiplier
  character(*), intent(in) :: newExt
+ character path
+ integer(pInt) stat
 
- IO_write_jobBinaryFile = .false.
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
  if (present(recMultiplier)) then
-   open(unit,status='replace',form='unformatted',access='direct',recl=pReal*recMultiplier, &
-             err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                       trim(getSolverJobName())//'.'//newExt)
-  else
-   open(unit,status='replace',form='unformatted',access='direct',recl=pReal, &
-             err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                       trim(getSolverJobName())//'.'//newExt)
+   open(unit,status='replace',form='unformatted',access='direct',recl=pReal*recMultiplier,iostat=stat,file=path)
+ else
+   open(unit,status='replace',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
  endif
- IO_write_jobBinaryFile = .true.
+ if (stat /= 0) then
+   call IO_error(100_pInt,ext_msg=path)
+ endif
  
-100 endfunction
+ endsubroutine
 
 
 !********************************************************************
 ! open (read) binary file related to restored job
 ! and with different extension to given unit
 !********************************************************************
- logical function IO_read_jobBinaryFile(unit,newExt,jobName,recMultiplier)
+ subroutine IO_read_jobBinaryFile(unit,newExt,jobName,recMultiplier)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
@@ -310,20 +382,20 @@ end function
  integer(pInt), intent(in) :: unit
  integer(pInt), intent(in), optional :: recMultiplier
  character(*), intent(in) :: newExt, jobName
+ character path
+ integer(pInt) stat
 
- IO_read_jobBinaryFile = .false.
+ path = trim(getSolverWorkingDirectoryName())//trim(jobName)//'.'//newExt
  if (present(recMultiplier)) then
-   open(unit,status='old',form='unformatted',access='direct',recl=pReal*recMultiplier, &
-             err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                                  trim(jobName)//'.'//newExt)
-  else
-   open(unit,status='old',form='unformatted',access='direct',recl=pReal, &
-             err=100,file=trim(getSolverWorkingDirectoryName())//&
-                                                  trim(jobName)//'.'//newExt)
+   open(unit,status='old',form='unformatted',access='direct',recl=pReal*recMultiplier,iostat=stat,file=path)
+ else
+   open(unit,status='old',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
  endif
- IO_read_jobBinaryFile = .true.
+ if (stat /= 0) then
+   call IO_error(100_pInt,ext_msg=path)
+ endif
  
-100 endfunction
+ endsubroutine
 
 
 !********************************************************************
@@ -374,7 +446,7 @@ end function
  real(pReal), dimension(:,:,:), allocatable :: dV_V
  real(pReal), dimension(3,Nast) :: IO_hybridIA
 
- if (.not. IO_open_file(999_pInt,ODFfileName)) goto 100
+ call IO_open_file(999_pInt,ODFfileName)
  
 !--- parse header of ODF file ---
 !--- limits in phi1, Phi, phi2 ---
@@ -1135,225 +1207,172 @@ endfunction
  character(len=1024) msg
 
  select case (error_ID)
- case (30_pInt)
-   msg = 'could not open spectral loadcase'
- case (31_pInt)
-   msg = 'mask consistency violated in spectral loadcase'
- case (32_pInt)
-   msg = 'ill-defined L (each line should be either fully or not at all defined) in spectral loadcase'
- case (34_pInt)
-   msg = 'negative time increment in spectral loadcase'
- case (35_pInt)
-   msg = 'non-positive increments in spectral loadcase'
- case (36_pInt)
-   msg = 'non-positive result frequency in spectral loadcase'
- case (37_pInt)
-   msg = 'incomplete loadcase'
- case (38_pInt)
-   msg = 'mixed boundary conditions allow rotation'
- case (39_pInt)
-   msg = 'non-positive restart frequency in spectral loadcase'
- case (40_pInt)
-   msg = 'path rectification error'
- case (41_pInt)
-   msg = 'path too long'
- case (42_pInt)
-   msg = 'missing header info in spectral mesh'
- case (43_pInt)
-   msg = 'resolution in spectral mesh'
- case (44_pInt)
-   msg = 'dimension in spectral mesh'
- case (45_pInt)
-   msg = 'incomplete information in spectral mesh header'
- case (46_pInt)
-   msg = 'not a rotation defined for loadcase rotation'
- case (47_pInt)
-   msg = 'updating of gamma operator not possible if it is pre calculated'
- case (50_pInt)
-   msg = 'writing constitutive output description'
+
+ !* file handling errors
+ 
  case (100_pInt)
-   msg = 'opening material configuration'
+   msg = 'could not open file:'
  case (101_pInt)
-   msg = 'opening input file'
+   msg = 'write error for file:'
  case (102_pInt)
-   msg = 'non-positive dimension'
+   msg = 'could not read file:'
  case (103_pInt)
-   msg = 'odd resolution given'
- case (105_pInt)
-   msg = 'reading from ODF file'
- case (106_pInt)
-   msg = 'reading info on old job'
- case (107_pInt)
-   msg = 'writing spectralOut file'
- case (108_pInt)
-   msg = 'precistion not suitable for FFTW'
- case (109_pInt)
-   msg = 'initializing FFTW'
- case (110_pInt)
-   msg = 'no homogenization specified via State Variable 2'
- case (120_pInt)
-   msg = 'no microstructure specified via State Variable 3'
- case (125_pInt)
-   msg = 'no entries in config part'
- case (130_pInt)
-   msg = 'homogenization index out of bounds'
- case (140_pInt)
-   msg = 'microstructure index out of bounds'
+   msg = 'could not assemble input files'
+ 
+
+ !* material error messages and related messages in mesh
+ 
  case (150_pInt)
    msg = 'crystallite index out of bounds'
- case (155_pInt)
+ case (151_pInt)
    msg = 'phase index out of bounds'
- case (160_pInt)
+ case (152_pInt)
    msg = 'texture index out of bounds'
- case (170_pInt)
+ case (153_pInt)
    msg = 'sum of phase fractions differs from 1'
+ case (154_pInt)
+   msg = 'homogenization index out of bounds'
+ case (155_pInt)
+   msg = 'microstructure index out of bounds'
+ case (156_pInt)
+   msg = 'reading from ODF file'
+ case (160_pInt)
+   msg = 'no entries in config part'
+ case (170_pInt)
+   msg = 'no homogenization specified via State Variable 2'
  case (180_pInt)
-   msg = 'mismatch of microstructure count and a*b*c in geom file'
+   msg = 'no microstructure specified via State Variable 3'
+
+
+ !* constitutive error messages
+
  case (200_pInt)
    msg = 'unknown constitution specified'
- case (201_pInt)
-   msg = 'unknown homogenization specified'
  case (205_pInt)
    msg = 'unknown lattice structure encountered'
+
  case (210_pInt)
-   msg = 'negative initial resistance'
+   msg = 'unknown material parameter for j2 constitutive phase:'
  case (211_pInt)
-   msg = 'non-positive reference shear rate'
+   msg = 'material parameter for j2 constitutive phase out of bounds:'
  case (212_pInt)
-   msg = 'non-positive stress exponent'
- case (213_pInt)
-   msg = 'non-positive saturation stress'
- case (214_pInt)
-   msg = 'zero hardening exponent'
+   msg = 'unknown constitutive output for j2 constitution:'
+
  case (220_pInt)
-   msg = 'negative initial dislocation density'
+   msg = 'unknown material parameter for phenopowerlaw constitutive phase:'
  case (221_pInt)
-   msg = 'negative Burgers vector'
+   msg = 'material parameter for phenopowerlaw constitutive phase out of bounds:'
  case (222_pInt)
-   msg = 'negative activation energy for edge dislocation glide'
- case (223_pInt)
-   msg = 'zero stackin fault energy'
- case (225_pInt)
-   msg = 'no slip systems specified'
- case (226_pInt)
-   msg = 'non-positive prefactor for dislocation velocity'
- case (227_pInt)
-   msg = 'non-positive prefactor for mean free path'
- case (228_pInt)
-   msg = 'non-positive minimum stable dipole distance'
- case (229_pInt)
-   msg = 'non-positive hardening interaction coefficients'
+   msg = 'unknown constitutive output for phenopowerlaw constitution:'
+
  case (230_pInt)
-   msg = 'non-positive atomic volume'
+   msg = 'unknown material parameter for titanmod constitutive phase:'
  case (231_pInt)
-   msg = 'non-positive prefactor for self-diffusion coefficient'
+   msg = 'material parameter for titanmod constitutive phase out of bounds:'
  case (232_pInt)
-   msg = 'non-positive activation energy for self-diffusion'
- case (233_pInt)
-   msg = 'non-positive relevant dislocation density'   
- case (234_pInt)
-   msg = 'error in shear banding input'   
- case (235_pInt)
-   msg = 'material parameter for nonlocal constitutive phase out of bounds:'
- case (236_pInt)
-   msg = 'unknown material parameter for nonlocal constitutive phase:'
- case (237_pInt)
-   msg = 'unknown constitutive output for nonlocal constitution:'
+   msg = 'unknown constitutive output for titanmod constitution:'
+
  case (240_pInt)
-   msg = 'non-positive Taylor factor'
+   msg = 'unknown material parameter for dislotwin constitutive phase:'
  case (241_pInt)
-   msg = 'non-positive hardening exponent'
+   msg = 'material parameter for dislotwin constitutive phase out of bounds:'
  case (242_pInt)
-   msg = 'non-positive relevant slip resistance'   
- case (260_pInt)
-   msg = 'non-positive relevant strain'
- case (261_pInt)
-   msg = 'frequency of stiffness update < 0'
- case (262_pInt)
-   msg = 'frequency of Jacobian update of Lp residuum < 0'
- case (263_pInt)
-   msg = 'non-positive perturbation value'
- case (264_pInt)
-   msg = 'limit for homogenization loop too small'
- case (265_pInt)
-   msg = 'limit for crystallite loop too small'
- case (266_pInt)
-   msg = 'limit for state loop too small'
- case (267_pInt)
-   msg = 'limit for stress loop too small'
- case (268_pInt)
-   msg = 'non-positive minimum substep size'
- case (269_pInt)
-   msg = 'non-positive relative state tolerance'
- case (270_pInt)
-   msg = 'Non-positive relative stress tolerance'
- case (271_pInt)
-   msg = 'Non-positive absolute stress tolerance'
+   msg = 'unknown constitutive output for dislotwin constitution:'
+ case (243_pInt)
+   msg = 'zero stackin fault energy'
 
-!* Error messages related to RGC numerical parameters <<<updated 31.07.2009>>>
- case (272_pInt)
-   msg = 'non-positive relative tolerance of residual in RGC'
- case (273_pInt)
-   msg = 'non-positive absolute tolerance of residual in RGC'
- case (274_pInt)
-   msg = 'non-positive relative maximum of residual in RGC'
- case (275_pInt)
-   msg = 'non-positive absolute maximum of residual in RGC'
- case (276_pInt)
-   msg = 'non-positive penalty perturbation in RGC'
- case (277_pInt)
-   msg = 'non-positive relevant mismatch in RGC'
- case (278_pInt)
-   msg = 'non-positive definite viscosity model in RGC'
- case (288_pInt)
-   msg = 'non-positive maximum threshold of relaxation change in RGC'
- case (289_pInt)
-   msg = 'non-positive definite volume discrepancy penalty in RGC'
+ case (250_pInt)
+   msg = 'unknown material parameter for nonlocal constitutive phase:'
+ case (251_pInt)
+   msg = 'material parameter for nonlocal constitutive phase out of bounds:'
+ case (252_pInt)
+   msg = 'unknown constitutive output for nonlocal constitution:'
+ case (253_pInt)
+   msg = 'element type not supported for nonlocal constitution'
 
- case (294_pInt)
-   msg = 'non-positive tolerance for deformation gradient'
-
- case (298_pInt)
-   msg = 'chosen integration method does not exist'
- case (299_pInt)
-   msg = 'chosen perturbation method does not exist'
+ 
+ !* numerics error messages 
 
  case (300_pInt)
-   msg = 'this material can only be used with elements with three direct stress components'
- case (500_pInt)
-   msg = 'unknown lattice type specified'
- case (550_pInt)
+   msg = 'unknown numerics parameter:'
+ case (301_pInt)
+   msg = 'numerics parameter out of bounds:'
+ 
+ 
+ !* math errors
+ 
+ case (400_pInt)
+   msg = 'matrix inversion error'
+ case (401_pInt)
+   msg = 'math_check: quat -> axisAngle -> quat failed'
+ case (402_pInt)
+   msg = 'math_check: quat -> R -> quat failed'
+ case (403_pInt)
+   msg = 'math_check: quat -> euler -> quat failed'
+ case (404_pInt)
+   msg = 'math_check: R -> euler -> R failed'
+ case (405_pInt)
+   msg = 'I_TO_HALTON-error: An input base BASE is <= 1'
+ case (406_pInt)
+   msg = 'Prime-error: N must be between 0 and PRIME_MAX'
+ case (450_pInt)
    msg = 'unknown symmetry type specified'
- case (600_pInt)
-   msg = 'convergence not reached'
- case (610_pInt)
-   msg = 'stress loop not converged'
 
- case (666_pInt)
-   msg = 'memory leak detected'
- case (667_pInt)
+
+ !* homogenization errors
+
+ case (500_pInt)
+   msg = 'unknown homogenization specified'
+
+
+ !* DAMASK_marc errors
+ 
+ case (700_pInt)
    msg = 'invalid materialpoint result requested'
 
- case (670_pInt)
-   msg = 'math_check: quat -> axisAngle -> quat failed'
- case (671_pInt)
-   msg = 'math_check: quat -> R -> quat failed'
- case (672_pInt)
-   msg = 'math_check: quat -> euler -> quat failed'
- case (673_pInt)
-   msg = 'math_check: R -> euler -> R failed'
 
- case (700_pInt)
-   msg = 'singular matrix in stress iteration'
+ !* errors related to spectral solver
 
- case (800_pInt)
-   msg = 'matrix inversion error'
- case (801_pInt)
-   msg = 'I_TO_HALTON-error: An input base BASE is <= 1'
  case (802_pInt)
-   msg = 'Prime-error: N must be between 0 and PRIME_MAX'
+   msg = 'non-positive dimension'
+ case (803_pInt)
+   msg = 'odd resolution given'
+ case (808_pInt)
+   msg = 'precision not suitable for FFTW'
+ case (809_pInt)
+   msg = 'initializing FFTW'
+ case (831_pInt)
+   msg = 'mask consistency violated in spectral loadcase'
+ case (832_pInt)
+   msg = 'ill-defined L (each line should be either fully or not at all defined) in spectral loadcase'
+ case (834_pInt)
+   msg = 'negative time increment in spectral loadcase'
+ case (835_pInt)
+   msg = 'non-positive increments in spectral loadcase'
+ case (836_pInt)
+   msg = 'non-positive result frequency in spectral loadcase'
+ case (837_pInt)
+   msg = 'incomplete loadcase'
+ case (838_pInt)
+   msg = 'mixed boundary conditions allow rotation'
+ case (842_pInt)
+   msg = 'missing header info in spectral mesh'
+ case (843_pInt)
+   msg = 'resolution in spectral mesh'
+ case (844_pInt)
+   msg = 'dimension in spectral mesh'
+ case (845_pInt)
+   msg = 'incomplete information in spectral mesh header'
+ case (846_pInt)
+   msg = 'not a rotation defined for loadcase rotation'
+ case (847_pInt)
+   msg = 'updating of gamma operator not possible if it is pre calculated'
+ case (880_pInt)
+   msg = 'mismatch of microstructure count and a*b*c in geom file'
 
-!    Error messages related to parsing of Abaqus input file
+
+ !* Error messages related to parsing of Abaqus input file
+
  case (900_pInt)
    msg = 'PARSE ERROR: Improper definition of nodes in input file (Nnodes < 2)'
  case (901_pInt)
@@ -1378,8 +1397,13 @@ endfunction
    msg = 'PARSE ERROR: Incorrect element type mapping in '
  
  
+ !* general error messages
+ 
+ case (666_pInt)
+   msg = 'memory leak detected'
  case default
    msg = 'Unknown error number...'
+
  end select
  
  !$OMP CRITICAL (write2out)

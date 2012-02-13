@@ -583,6 +583,8 @@ do                                                       ! read thru sections of
               forall (j = 1_pInt:lattice_maxNinteraction) &
                 constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
                 write(6,*) tag
+       case default
+              call IO_error(230_pInt,ext_msg=tag)
      end select
    endif
 enddo
@@ -595,37 +597,38 @@ write(6,*) 'Material Property reading done'
    myStructure = constitutive_titanmod_structure(i)
 
    !* Sanity checks
-   if (myStructure < 1_pInt .or. myStructure > 3_pInt)                     call IO_error(205_pInt)
-   if (sum(constitutive_titanmod_Nslip(:,i)) <= 0_pInt)                    call IO_error(207_pInt)
-   if (sum(constitutive_titanmod_Ntwin(:,i)) < 0_pInt)                     call IO_error(208_pInt) !***
+   if (myStructure < 1_pInt .or. myStructure > 3_pInt)                        call IO_error(205_pInt,e=i)
+   if (sum(constitutive_titanmod_Nslip(:,i)) <= 0_pInt)                       call IO_error(231_pInt,e=i,ext_msg='nslip')
+   if (sum(constitutive_titanmod_Ntwin(:,i)) < 0_pInt)                        call IO_error(231_pInt,e=i,ext_msg='ntwin')
    do f = 1,lattice_maxNslipFamily
      if (constitutive_titanmod_Nslip(f,i) > 0_pInt) then   
-       if (constitutive_titanmod_rho_edge0(f,i) < 0.0_pReal)                 call IO_error(209_pInt)
-       if (constitutive_titanmod_rho_screw0(f,i) < 0.0_pReal)              call IO_error(210_pInt)
-       if (constitutive_titanmod_burgersPerSlipFamily(f,i) <= 0.0_pReal)    call IO_error(211_pInt)
-       if (constitutive_titanmod_f0_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(212_pInt)
-       if (constitutive_titanmod_tau0e_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(229_pInt)
-       if (constitutive_titanmod_tau0s_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(233_pInt)
-       if (constitutive_titanmod_capre_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(234_pInt)
-       if (constitutive_titanmod_caprs_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(235_pInt)
-       if (constitutive_titanmod_v0e_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(226_pInt)
-       if (constitutive_titanmod_v0s_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(226_pInt)
-       if (constitutive_titanmod_kinkcriticallength_PerSlipFamily(f,i) <= 0.0_pReal) call IO_error(238_pInt)
+       if (constitutive_titanmod_rho_edge0(f,i) < 0.0_pReal)                  call IO_error(231_pInt,e=i,ext_msg='rho_edge0')
+       if (constitutive_titanmod_rho_screw0(f,i) < 0.0_pReal)                 call IO_error(231_pInt,e=i,ext_msg='rho_screw0')
+       if (constitutive_titanmod_burgersPerSlipFamily(f,i) <= 0.0_pReal)      call IO_error(231_pInt,e=i,ext_msg='slipburgers')
+       if (constitutive_titanmod_f0_PerSlipFamily(f,i) <= 0.0_pReal)          call IO_error(231_pInt,e=i,ext_msg='f0')
+       if (constitutive_titanmod_tau0e_PerSlipFamily(f,i) <= 0.0_pReal)       call IO_error(231_pInt,e=i,ext_msg='tau0e')
+       if (constitutive_titanmod_tau0s_PerSlipFamily(f,i) <= 0.0_pReal)       call IO_error(231_pInt,e=i,ext_msg='tau0s')
+       if (constitutive_titanmod_capre_PerSlipFamily(f,i) <= 0.0_pReal)       call IO_error(231_pInt,e=i,ext_msg='capre')
+       if (constitutive_titanmod_caprs_PerSlipFamily(f,i) <= 0.0_pReal)       call IO_error(231_pInt,e=i,ext_msg='carrs')
+       if (constitutive_titanmod_v0e_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(231_pInt,e=i,ext_msg='v0e')
+       if (constitutive_titanmod_v0s_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(231_pInt,e=i,ext_msg='v0s')
+       if (constitutive_titanmod_kinkcriticallength_PerSlipFamily(f,i) <= 0.0_pReal) &
+                                                                      call IO_error(231_pInt,e=i,ext_msg='kinkCriticalLength')
      endif
    enddo
    do f = 1,lattice_maxNtwinFamily
      if (constitutive_titanmod_Ntwin(f,i) > 0_pInt) then   
-       if (constitutive_titanmod_burgersPerTwinFamily(f,i) <= 0.0_pReal)    call IO_error(221_pInt) !***
-       if (constitutive_titanmod_twinf0_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(228_pInt)
-       if (constitutive_titanmod_twinshearconstant_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(228_pInt)
-       if (constitutive_titanmod_twintau0_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(229_pInt)
-       if (constitutive_titanmod_twingamma0_PerTwinFamily(f,i) <= 0.0_pReal)         call IO_error(226_pInt)
+       if (constitutive_titanmod_burgersPerTwinFamily(f,i) <= 0.0_pReal)      call IO_error(231_pInt,e=i,ext_msg='twinburgers')
+       if (constitutive_titanmod_twinf0_PerTwinFamily(f,i) <= 0.0_pReal)      call IO_error(231_pInt,e=i,ext_msg='twinf0')
+       if (constitutive_titanmod_twinshearconstant_PerTwinFamily(f,i) <= 0.0_pReal) &
+                                                                        call IO_error(231_pInt,e=i,ext_msg='twinshearconstant')
+       if (constitutive_titanmod_twintau0_PerTwinFamily(f,i) <= 0.0_pReal)    call IO_error(231_pInt,e=i,ext_msg='twintau0')
+       if (constitutive_titanmod_twingamma0_PerTwinFamily(f,i) <= 0.0_pReal)  call IO_error(231_pInt,e=i,ext_msg='twingamma0')
      endif
    enddo
-!   if (any(constitutive_titanmod_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 1.0_pReal)) call IO_error(229)
-   if (constitutive_titanmod_dc(i) <= 0.0_pReal)                            call IO_error(231_pInt)
-   if (constitutive_titanmod_twinhpconstant(i) <= 0.0_pReal)                call IO_error(232_pInt)
-   if (constitutive_titanmod_aTolRho(i) <= 0.0_pReal)                       call IO_error(233_pInt)
+   if (constitutive_titanmod_dc(i) <= 0.0_pReal)                              call IO_error(231_pInt,e=i,ext_msg='dc')
+   if (constitutive_titanmod_twinhpconstant(i) <= 0.0_pReal)                  call IO_error(231_pInt,e=i,ext_msg='twinhpconstant')
+   if (constitutive_titanmod_aTolRho(i) <= 0.0_pReal)                         call IO_error(231_pInt,e=i,ext_msg='aTolRho')
    
    !* Determine total number of active slip or twin systems
    constitutive_titanmod_Nslip(:,i) = min(lattice_NslipSystem(:,myStructure),constitutive_titanmod_Nslip(:,i))
@@ -637,7 +640,7 @@ enddo
    
 !* Allocation of variables whose size depends on the total number of active slip systems
 maxTotalNslip = maxval(constitutive_titanmod_totalNslip)
-maxTotalNtwin = maxval(constitutive_titanmod_totalNtwin)      
+maxTotalNtwin = maxval(constitutive_titanmod_totalNtwin)
 write(6,*) 'maxTotalNslip',maxTotalNslip
 write(6,*) 'maxTotalNtwin',maxTotalNtwin
 allocate(constitutive_titanmod_burgersPerSlipSystem(maxTotalNslip, maxNinstance))
@@ -796,7 +799,7 @@ do i = 1_pInt,maxNinstance
              )
            mySize = 1_pInt
         case default
-           mySize = 0_pInt
+           call IO_error(232_pInt,ext_msg=constitutive_titanmod_output(o,i))
       end select
 
        if (mySize > 0_pInt) then  ! any meaningful output found                               

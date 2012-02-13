@@ -73,7 +73,7 @@ subroutine debug_init()
                       nMPstate, &
                       nHomog
   use IO,       only: IO_error, &
-                      IO_open_file, &
+                      IO_open_file_stat, &
                       IO_isBlank, &
                       IO_stringPos, &
                       IO_stringValue, &
@@ -108,7 +108,7 @@ subroutine debug_init()
   allocate(debug_MaterialpointLoopDistribution(nHomog+1)) ;      debug_MaterialpointLoopDistribution      = 0_pInt
   
   ! try to open the config file
-  if(IO_open_file(fileunit,debug_configFile)) then 
+  if(IO_open_file_stat(fileunit,debug_configFile)) then 
   
     line = ''
     ! read variables from config file and overwrite parameters

@@ -201,7 +201,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(670_pInt,ext_msg=error_msg)
+   call IO_error(401_pInt,ext_msg=error_msg)
  endif 
  
  ! +++ q -> R -> q  +++
@@ -210,7 +210,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(671_pInt,ext_msg=error_msg)
+   call IO_error(402_pInt,ext_msg=error_msg)
  endif 
  
  ! +++ q -> euler -> q  +++
@@ -219,7 +219,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
-   call IO_error(672_pInt,ext_msg=error_msg)
+   call IO_error(403_pInt,ext_msg=error_msg)
  endif 
 
  ! +++ R -> euler -> R  +++
@@ -227,7 +227,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  R2 = math_EulerToR(Eulers)
  if ( any(abs( R-R2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) 'maximum deviation ',maxval(abs( R-R2))
-   call IO_error(673_pInt,ext_msg=error_msg)
+   call IO_error(404_pInt,ext_msg=error_msg)
  endif 
  
  ENDSUBROUTINE math_init
@@ -1820,7 +1820,7 @@ function math_QuaternionDisorientation(Q1, Q2, symmetryType)
       enddo; enddo; enddo
   
     case default
-      call IO_error(550_pInt,symmetryType)                           ! complain about unknown symmetry
+      call IO_error(450_pInt,symmetryType)                           ! complain about unknown symmetry
   end select
   
 endfunction math_QuaternionDisorientation
@@ -2553,7 +2553,7 @@ end subroutine
 
  r(1:ndim) = 0.0_pReal
 
- if (any (base(1:ndim) <= 1_pInt)) call IO_error(error_ID=801_pInt)
+ if (any (base(1:ndim) <= 1_pInt)) call IO_error(error_ID=405_pInt)
 
  base_inv(1:ndim) = 1.0_pReal / real (base(1:ndim), pReal)
 
@@ -2795,7 +2795,7 @@ end subroutine
  else if (n <= prime_max) then
    prime = npvec(n)
  else
-   call IO_error(error_ID=802_pInt)
+   call IO_error(error_ID=406_pInt)
  end if
  endfunction prime
 
@@ -3262,7 +3262,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
  step = geomdim/real(res, pReal)
 
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
  call fftw_set_timelimit(fftw_timelimit)
  defgrad_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*9_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
  call c_f_pointer(defgrad_fftw, defgrad_real,   [res(1)+2_pInt,res(2),res(3),3_pInt,3_pInt])
@@ -3385,7 +3385,7 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
 
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
  call fftw_set_timelimit(fftw_timelimit)
  field_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
  call c_f_pointer(field_fftw, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
@@ -3500,10 +3500,10 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
    print '(a,3(i5))',   ' Resolution:', res
  endif
 
- res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
+ res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
 
-if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
+if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
  call fftw_set_timelimit(fftw_timelimit)
  field_fftw = fftw_alloc_complex(int(res1_red*res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T))              !C_SIZE_T is of type integer(8)
  call c_f_pointer(field_fftw, field_real,             [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
@@ -3512,9 +3512,9 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
  call c_f_pointer(divergence_fftw, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
  call c_f_pointer(divergence_fftw, divergence_fourier,[res1_red     ,res(2),res(3),vec_tens])
 
- fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                  ! dimensions , length in each dimension in reversed order
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&             ! dimensions , length in each dimension in reversed order
                             field_real,(/res(3),res(2) ,res(1)+2_pInt/),&                           ! input data , physical length in each dimension in reversed order
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                            ! striding   , product of physical lenght in the 3 dimensions
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                       ! striding   , product of physical lenght in the 3 dimensions
                          field_fourier,(/res(3),res(2) ,res1_red/),&
                                      1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)   
 
@@ -3522,7 +3522,7 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
                     divergence_fourier,(/res(3),res(2) ,res1_red/),&
                                      1_pInt,  res(3)*res(2)* res1_red,&
                        divergence_real,(/res(3),res(2) ,res(1)+2_pInt/),&
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)                                                     ! padding 
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)      ! padding 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    field_real(i,j,k,1:vec_tens,1:3) = field(i,j,k,1:vec_tens,1:3)                                   ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
@@ -3559,12 +3559,12 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=102_pInt)
  call fftw_execute_dft_c2r(fftw_back, divergence_fourier, divergence_real)
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   divergence(i,j,k,1:vec_tens) = divergence_real(i,j,k,1:vec_tens)                                        ! ensure that data is aligned properly (fftw_alloc)
+   divergence(i,j,k,1:vec_tens) = divergence_real(i,j,k,1:vec_tens)                                 ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
  divergence = divergence * wgt
  call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
- call c_f_pointer(C_NULL_PTR, field_real,        [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])                 ! let all pointers point on NULL-Type
+ call c_f_pointer(C_NULL_PTR, field_real,        [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])     ! let all pointers point on NULL-Type
  call c_f_pointer(C_NULL_PTR, field_fourier,     [res1_red     ,res(2),res(3),vec_tens,3_pInt])
  call c_f_pointer(C_NULL_PTR, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
  call c_f_pointer(C_NULL_PTR, divergence_fourier,[res1_red     ,res(2),res(3),vec_tens])

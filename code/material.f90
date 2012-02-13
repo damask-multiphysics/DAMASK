@@ -109,7 +109,7 @@ subroutine material_init()
 
  use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: pReal,pInt
- use IO, only: IO_error, IO_open_file, IO_open_jobFile
+ use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat
  use debug, only: debug_verbosity
  implicit none
 
@@ -124,8 +124,8 @@ subroutine material_init()
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
- if (.not. IO_open_jobFile(fileunit,material_localFileExt)) then             ! no local material configuration present...
-   if (.not.  IO_open_file(fileunit,material_configFile)) call IO_error(100_pInt) ! ...and cannot open material.config file
+ if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then        ! no local material configuration present...
+   call IO_open_file(fileunit,material_configFile)                           ! ...open material.config file
  endif
  call material_parseHomogenization(fileunit,material_partHomogenization)
  if (debug_verbosity > 0) then
@@ -163,16 +163,16 @@ subroutine material_init()
    if (microstructure_crystallite(i) < 1 .or. &
        microstructure_crystallite(i) > material_Ncrystallite) call IO_error(150_pInt,i)
    if (minval(microstructure_phase(1:microstructure_Nconstituents(i),i)) < 1 .or. &
-       maxval(microstructure_phase(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(155_pInt,i)
+       maxval(microstructure_phase(1:microstructure_Nconstituents(i),i)) > material_Nphase) call IO_error(151_pInt,i)
    if (minval(microstructure_texture(1:microstructure_Nconstituents(i),i)) < 1 .or. &
-       maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Ntexture) call IO_error(160_pInt,i)
+       maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Ntexture) call IO_error(152_pInt,i)
    if (abs(sum(microstructure_fraction(:,i)) - 1.0_pReal) >= 1.0e-10_pReal) then
      if (debug_verbosity > 0) then
        !$OMP CRITICAL (write2out)
          write(6,*)'sum of microstructure fraction = ',sum(microstructure_fraction(:,i))
        !$OMP END CRITICAL (write2out)
      endif
-     call IO_error(170_pInt,i)
+     call IO_error(153_pInt,i)
    endif
  enddo
  if (debug_verbosity > 0) then
@@ -227,7 +227,7 @@ subroutine material_parseHomogenization(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Nhomogenization = Nsections
- if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
  
  allocate(homogenization_name(Nsections));    homogenization_name = ''
  allocate(homogenization_type(Nsections));    homogenization_type = ''
@@ -295,7 +295,7 @@ subroutine material_parseMicrostructure(file,myPart)
 
  Nsections = IO_countSections(file,myPart)
  material_Nmicrostructure = Nsections
- if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
  allocate(microstructure_name(Nsections));            microstructure_name = ''
  allocate(microstructure_crystallite(Nsections));     microstructure_crystallite = 0_pInt
@@ -372,7 +372,7 @@ subroutine material_parseCrystallite(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Ncrystallite = Nsections
- if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
  allocate(crystallite_name(Nsections));       crystallite_name = ''
  allocate(crystallite_Noutput(Nsections));    crystallite_Noutput = 0_pInt
@@ -418,7 +418,7 @@ subroutine material_parsePhase(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Nphase = Nsections
- if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
  allocate(phase_name(Nsections));          phase_name = ''
  allocate(phase_constitution(Nsections));  phase_constitution = ''
@@ -482,7 +482,7 @@ subroutine material_parseTexture(file,myPart)
  
  Nsections = IO_countSections(file,myPart)
  material_Ntexture = Nsections
- if (Nsections < 1_pInt) call IO_error(125_pInt,ext_msg=myPart)
+ if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
  allocate(texture_name(Nsections));     texture_name = ''
  allocate(texture_ODFfile(Nsections));  texture_ODFfile = ''
@@ -645,9 +645,9 @@ subroutine material_populateGrains()
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
    if (homog < 1 .or. homog > material_Nhomogenization) &   ! out of bounds
-     call IO_error(130_pInt,e,0_pInt,0_pInt)
+     call IO_error(154_pInt,e,0_pInt,0_pInt)
    if (micro < 1 .or. micro > material_Nmicrostructure) &   ! out of bounds
-     call IO_error(140_pInt,e,0_pInt,0_pInt)
+     call IO_error(155_pInt,e,0_pInt,0_pInt)
    if (microstructure_elemhomo(micro)) then
      dGrains = homogenization_Ngrains(homog)
    else
@@ -762,7 +762,7 @@ subroutine material_populateGrains()
          else                                                                 ! hybrid IA
                                                                               ! ---------
            orientationOfGrain(:,grain+1:grain+myNorientations) = IO_hybridIA(myNorientations,texture_ODFfile(textureID))
-           if (all(orientationOfGrain(:,grain+1) == -1.0_pReal)) call IO_error(105_pInt)  
+           if (all(orientationOfGrain(:,grain+1) == -1.0_pReal)) call IO_error(156_pInt)  
            constituentGrain = constituentGrain + myNorientations
 
          endif

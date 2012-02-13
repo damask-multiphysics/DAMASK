@@ -341,13 +341,13 @@ do                                                                              
   if (IO_getTag(line,'<','>') /= '') exit                                                                                           ! stop at next part
   if (IO_getTag(line,'[',']') /= '') then                                                                                           ! next section
     section = section + 1_pInt
-    output = 0_pInt                                                                                                                     ! reset output counter
+    output = 0_pInt                                                                                                                 ! reset output counter
     cycle
   endif
-  if (section > 0_pInt .and. phase_constitution(section) == constitutive_nonlocal_label) then                                            ! one of my sections
+  if (section > 0_pInt .and. phase_constitution(section) == constitutive_nonlocal_label) then                                       ! one of my sections
     i = phase_constitutionInstance(section)                                                                                         ! which instance of my constitution is present phase
     positions = IO_stringPos(line,maxNchunks)
-    tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                                   ! extract key
+    tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                              ! extract key
     select case(tag)
       case('constitution','/nonlocal/')
         cycle
@@ -369,40 +369,40 @@ do                                                                              
       case ('c44')
         constitutive_nonlocal_C44(i) = IO_floatValue(line,positions,2_pInt)
       case ('nslip')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_Nslip(f,i)&
-                                                          = IO_intValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_Nslip(f,i) = IO_intValue(line,positions,1_pInt+f)
       case ('rhosgledgepos0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglEdgePos0(f,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_rhoSglEdgePos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case ('rhosgledgeneg0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglEdgeNeg0(f,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_rhoSglEdgeNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case ('rhosglscrewpos0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglScrewPos0(f,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_rhoSglScrewPos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case ('rhosglscrewneg0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoSglScrewNeg0(f,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_rhoSglScrewNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case ('rhodipedge0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoDipEdge0(f,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_rhoDipEdge0(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case ('rhodipscrew0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_rhoDipScrew0(f,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_rhoDipScrew0(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case ('lambda0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_lambda0PerSlipFamily(f,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_lambda0PerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case ('burgers')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_burgersPerSlipFamily(f,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_burgersPerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case('cutoffradius','r')
         constitutive_nonlocal_R(i) = IO_floatValue(line,positions,2_pInt)
       case('minimumdipoleheightedge','ddipminedge')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1_pInt,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
       case('minimumdipoleheightscrew','ddipminscrew')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2_pInt,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
       case('atomicvolume')
         constitutive_nonlocal_atomicVolume(i) = IO_floatValue(line,positions,2_pInt)
       case('selfdiffusionprefactor','dsd0')
@@ -412,14 +412,14 @@ do                                                                              
       case('atol_rho')
         constitutive_nonlocal_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
       case ('interaction_slipslip')
-        forall (it = 1_pInt:lattice_maxNinteraction) constitutive_nonlocal_interactionSlipSlip(it,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+it)
+        forall (it = 1_pInt:lattice_maxNinteraction) &
+          constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
       case('peierlsstressedge')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_peierlsStressPerSlipFamily(f,1_pInt,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_peierlsStressPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
       case('peierlsstressscrew')
-        forall (f = 1_pInt:lattice_maxNslipFamily) constitutive_nonlocal_peierlsStressPerSlipFamily(f,2_pInt,i)&
-                                                          = IO_floatValue(line,positions,1_pInt+f)
+        forall (f = 1_pInt:lattice_maxNslipFamily) &
+          constitutive_nonlocal_peierlsStressPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
       case('doublekinkwidth')
         constitutive_nonlocal_doublekinkwidth(i) = IO_floatValue(line,positions,2_pInt)
       case('solidsolutionenergy')
@@ -441,7 +441,7 @@ do                                                                              
       case('surfacetransmissivity')
         constitutive_nonlocal_surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
       case default
-        call IO_error(236_pInt,ext_msg=tag)
+        call IO_error(250_pInt,ext_msg=tag)
     end select
   endif
 enddo
@@ -457,46 +457,46 @@ enddo
   !*** sanity checks
   
   if (myStructure < 1 .or. myStructure > 3)                             call IO_error(205_pInt)
-  if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0_pInt)                  call IO_error(235_pInt,ext_msg='Nslip')
+  if (sum(constitutive_nonlocal_Nslip(:,i)) <= 0_pInt)                  call IO_error(251_pInt,ext_msg='Nslip')
   do o = 1,maxval(phase_Noutput)
     if(len(constitutive_nonlocal_output(o,i)) > 64)                     call IO_error(666_pInt)
   enddo
   do f = 1,lattice_maxNslipFamily
     if (constitutive_nonlocal_Nslip(f,i) > 0_pInt) then
-      if (constitutive_nonlocal_rhoSglEdgePos0(f,i) < 0.0_pReal)        call IO_error(235_pInt,ext_msg='rhoSglEdgePos0')
-      if (constitutive_nonlocal_rhoSglEdgeNeg0(f,i) < 0.0_pReal)        call IO_error(235_pInt,ext_msg='rhoSglEdgeNeg0')
-      if (constitutive_nonlocal_rhoSglScrewPos0(f,i) < 0.0_pReal)       call IO_error(235_pInt,ext_msg='rhoSglScrewPos0')
-      if (constitutive_nonlocal_rhoSglScrewNeg0(f,i) < 0.0_pReal)       call IO_error(235_pInt,ext_msg='rhoSglScrewNeg0')
-      if (constitutive_nonlocal_rhoDipEdge0(f,i) < 0.0_pReal)           call IO_error(235_pInt,ext_msg='rhoDipEdge0')
-      if (constitutive_nonlocal_rhoDipScrew0(f,i) < 0.0_pReal)          call IO_error(235_pInt,ext_msg='rhoDipScrew0')
-      if (constitutive_nonlocal_burgersPerSlipFamily(f,i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='burgers')
-      if (constitutive_nonlocal_lambda0PerSlipFamily(f,i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='lambda0')
+      if (constitutive_nonlocal_rhoSglEdgePos0(f,i) < 0.0_pReal)        call IO_error(251_pInt,ext_msg='rhoSglEdgePos0')
+      if (constitutive_nonlocal_rhoSglEdgeNeg0(f,i) < 0.0_pReal)        call IO_error(251_pInt,ext_msg='rhoSglEdgeNeg0')
+      if (constitutive_nonlocal_rhoSglScrewPos0(f,i) < 0.0_pReal)       call IO_error(251_pInt,ext_msg='rhoSglScrewPos0')
+      if (constitutive_nonlocal_rhoSglScrewNeg0(f,i) < 0.0_pReal)       call IO_error(251_pInt,ext_msg='rhoSglScrewNeg0')
+      if (constitutive_nonlocal_rhoDipEdge0(f,i) < 0.0_pReal)           call IO_error(251_pInt,ext_msg='rhoDipEdge0')
+      if (constitutive_nonlocal_rhoDipScrew0(f,i) < 0.0_pReal)          call IO_error(251_pInt,ext_msg='rhoDipScrew0')
+      if (constitutive_nonlocal_burgersPerSlipFamily(f,i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='burgers')
+      if (constitutive_nonlocal_lambda0PerSlipFamily(f,i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='lambda0')
       if (constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1,i) <= 0.0_pReal) &
-                                                                        call IO_error(235_pInt,ext_msg='minimumDipoleHeightEdge')
+                                                                        call IO_error(251_pInt,ext_msg='minimumDipoleHeightEdge')
       if (constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2,i) <= 0.0_pReal) &
-                                                                        call IO_error(235_pInt,ext_msg='minimumDipoleHeightScrew')
-      if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,1,i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='peierlsStressEdge')
-      if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='peierlsStressScrew')
+                                                                        call IO_error(251_pInt,ext_msg='minimumDipoleHeightScrew')
+      if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,1,i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='peierlsStressEdge')
+      if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='peierlsStressScrew')
     endif
   enddo
   if (any(constitutive_nonlocal_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 0.0_pReal)) &
-                                                                        call IO_error(235_pInt,ext_msg='interaction_SlipSlip')
-  if (constitutive_nonlocal_R(i) < 0.0_pReal)                           call IO_error(235_pInt,ext_msg='r')
-  if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)               call IO_error(235_pInt,ext_msg='atomicVolume')
-  if (constitutive_nonlocal_Dsd0(i) <= 0.0_pReal)                       call IO_error(235_pInt,ext_msg='selfDiffusionPrefactor')
-  if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                        call IO_error(235_pInt,ext_msg='selfDiffusionEnergy')
-  if (constitutive_nonlocal_aTolRho(i) <= 0.0_pReal)                    call IO_error(235_pInt,ext_msg='aTol_rho')
-  if (constitutive_nonlocal_doublekinkwidth(i) <= 0.0_pReal)            call IO_error(235_pInt,ext_msg='doublekinkwidth')
-  if (constitutive_nonlocal_solidSolutionEnergy(i) <= 0.0_pReal)        call IO_error(235_pInt,ext_msg='solidSolutionEnergy')
-  if (constitutive_nonlocal_solidSolutionSize(i) <= 0.0_pReal)          call IO_error(235_pInt,ext_msg='solidSolutionSize')
-  if (constitutive_nonlocal_solidSolutionConcentration(i) <= 0.0_pReal) call IO_error(235_pInt,ext_msg='solidSolutionConcentration')
-  if (constitutive_nonlocal_p(i) <= 0.0_pReal .or. constitutive_nonlocal_p(i) > 1.0_pReal) call IO_error(235_pInt,ext_msg='p')
-  if (constitutive_nonlocal_q(i) < 1.0_pReal .or. constitutive_nonlocal_q(i) > 2.0_pReal) call IO_error(235_pInt,ext_msg='q')
-  if (constitutive_nonlocal_viscosity(i) <= 0.0_pReal)                  call IO_error(235_pInt,ext_msg='viscosity')
-  if (constitutive_nonlocal_fattack(i) <= 0.0_pReal)                    call IO_error(235_pInt,ext_msg='attackFrequency')
-  if (constitutive_nonlocal_rhoSglScatter(i) < 0.0_pReal)               call IO_error(235_pInt,ext_msg='rhoSglScatter')
+                                                                        call IO_error(251_pInt,ext_msg='interaction_SlipSlip')
+  if (constitutive_nonlocal_R(i) < 0.0_pReal)                           call IO_error(251_pInt,ext_msg='r')
+  if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)               call IO_error(251_pInt,ext_msg='atomicVolume')
+  if (constitutive_nonlocal_Dsd0(i) <= 0.0_pReal)                       call IO_error(251_pInt,ext_msg='selfDiffusionPrefactor')
+  if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                        call IO_error(251_pInt,ext_msg='selfDiffusionEnergy')
+  if (constitutive_nonlocal_aTolRho(i) <= 0.0_pReal)                    call IO_error(251_pInt,ext_msg='aTol_rho')
+  if (constitutive_nonlocal_doublekinkwidth(i) <= 0.0_pReal)            call IO_error(251_pInt,ext_msg='doublekinkwidth')
+  if (constitutive_nonlocal_solidSolutionEnergy(i) <= 0.0_pReal)        call IO_error(251_pInt,ext_msg='solidSolutionEnergy')
+  if (constitutive_nonlocal_solidSolutionSize(i) <= 0.0_pReal)          call IO_error(251_pInt,ext_msg='solidSolutionSize')
+  if (constitutive_nonlocal_solidSolutionConcentration(i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='solidSolutionConcentration')
+  if (constitutive_nonlocal_p(i) <= 0.0_pReal .or. constitutive_nonlocal_p(i) > 1.0_pReal) call IO_error(251_pInt,ext_msg='p')
+  if (constitutive_nonlocal_q(i) < 1.0_pReal .or. constitutive_nonlocal_q(i) > 2.0_pReal) call IO_error(251_pInt,ext_msg='q')
+  if (constitutive_nonlocal_viscosity(i) <= 0.0_pReal)                  call IO_error(251_pInt,ext_msg='viscosity')
+  if (constitutive_nonlocal_fattack(i) <= 0.0_pReal)                    call IO_error(251_pInt,ext_msg='attackFrequency')
+  if (constitutive_nonlocal_rhoSglScatter(i) < 0.0_pReal)               call IO_error(251_pInt,ext_msg='rhoSglScatter')
   if (constitutive_nonlocal_surfaceTransmissivity(i) < 0.0_pReal &
-      .or. constitutive_nonlocal_surfaceTransmissivity(i) > 1.0_pReal)  call IO_error(235_pInt,ext_msg='surfaceTransmissivity')
+      .or. constitutive_nonlocal_surfaceTransmissivity(i) > 1.0_pReal)  call IO_error(251_pInt,ext_msg='surfaceTransmissivity')
   
   
   !*** determine total number of active slip systems
@@ -649,7 +649,7 @@ do i = 1,maxNinstance
       case('dislocationstress')
         mySize = 6_pInt
       case default
-        call IO_error(237,ext_msg=constitutive_nonlocal_output(o,i))
+        call IO_error(252_pInt,ext_msg=constitutive_nonlocal_output(o,i))
     end select
 
     if (mySize > 0_pInt) then                                                                                                       ! any meaningful output found                               
@@ -662,13 +662,13 @@ do i = 1,maxNinstance
   !*** elasticity matrix and shear modulus according to material.config
   
   select case (myStructure)
-    case(1_pInt:2_pInt)                                                                                                                       ! cubic(s)
+    case(1_pInt:2_pInt)                                                                                                             ! cubic(s)
       forall(k=1_pInt:3_pInt)
         forall(j=1_pInt:3_pInt) constitutive_nonlocal_Cslip_66(k,j,i) = constitutive_nonlocal_C12(i)
         constitutive_nonlocal_Cslip_66(k,k,i) = constitutive_nonlocal_C11(i)
         constitutive_nonlocal_Cslip_66(k+3_pInt,k+3_pInt,i) = constitutive_nonlocal_C44(i)
       end forall
-    case(3_pInt:)                                                                                                                        ! all hex
+    case(3_pInt:)                                                                                                                   ! all hex
       constitutive_nonlocal_Cslip_66(1,1,i) = constitutive_nonlocal_C11(i)
       constitutive_nonlocal_Cslip_66(2,2,i) = constitutive_nonlocal_C11(i)
       constitutive_nonlocal_Cslip_66(3,3,i) = constitutive_nonlocal_C33(i)
@@ -1646,7 +1646,8 @@ logical                                     considerEnteringFlux, &
                                             considerLeavingFlux
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) &
+                                      .or. .not. debug_selectiveDebugger)) then
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
     write(6,*)
@@ -1657,7 +1658,7 @@ select case(mesh_element(2,el))
   case (1_pInt,6_pInt,7_pInt,8_pInt,9_pInt)
     ! all fine
   case default
-    call IO_error(-1_pInt,el,ip,g,'element type not supported for nonlocal constitution')
+    call IO_error(253_pInt,el,ip,g)
 end select
 
 myInstance = phase_constitutionInstance(material_phase(g,ip,el))
@@ -1699,11 +1700,12 @@ endif
 
 forall (t = 1_pInt:4_pInt) &
   gdot(1_pInt:ns,t) = rhoSgl(1_pInt:ns,t) * constitutive_nonlocal_burgers(1:ns,myInstance) * v(1:ns,t)
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt, rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pReal) &                                                                    ! contribution of used rho for changing sign of v
+forall (s = 1_pInt:ns, t = 1_pInt:4_pInt, rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pReal) &                                                ! contribution of used rho for changing sign of v
   gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgers(s,myInstance) * v(s,t)
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) &
+                                      .or. .not. debug_selectiveDebugger)) then
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
     write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> gdot / 1/s',gdot
   endif

@@ -97,7 +97,7 @@ subroutine numerics_init()
   use prec, only:                             pInt, & 
                                               pReal  
   use IO, only:                               IO_error, &
-                                              IO_open_file, &
+                                              IO_open_file_stat, &
                                               IO_isBlank, &
                                               IO_stringPos, &
                                               IO_stringValue, &
@@ -133,15 +133,17 @@ subroutine numerics_init()
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution
 
   ! try to open the config file
-  if(IO_open_file(fileunit,numerics_configFile)) then 
+  if(IO_open_file_stat(fileunit,numerics_configFile)) then 
   
     !$OMP CRITICAL (write2out)
       write(6,*) '   ... using values from config file'
       write(6,*)
     !$OMP END CRITICAL (write2out)
     
+    
+    !* read variables from config file and overwrite parameters
+    
     line = ''
-    ! read variables from config file and overwrite parameters
     do
       read(fileunit,'(a1024)',END=100) line
       if (IO_isBlank(line)) cycle                           ! skip empty lines
@@ -195,7 +197,8 @@ subroutine numerics_init()
         case ('integratorstiffness')
               numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
 
-!* RGC parameters: 
+        !* RGC parameters: 
+        
         case ('atol_rgc')
               absTol_RGC = IO_floatValue(line,positions,2_pInt)
         case ('rtol_rgc')
@@ -223,7 +226,8 @@ subroutine numerics_init()
         case ('discrepancypower_rgc')
               volDiscrPow_RGC = IO_floatValue(line,positions,2_pInt)
 
-!* spectral parameters
+        !* spectral parameters
+        
         case ('err_div_tol')
               err_div_tol = IO_floatValue(line,positions,2_pInt)
         case ('err_stress_tolrel')
@@ -247,9 +251,13 @@ subroutine numerics_init()
         case ('cut_off_value')
               cut_off_value = IO_floatValue(line,positions,2_pInt)
 
-!* Random seeding parameters
+        !* Random seeding parameters
+
         case ('fixed_seed')
               fixedSeed = IO_intValue(line,positions,2_pInt)
+        
+        case default 
+              call IO_error(300_pInt,ext_msg=tag)
       endselect
     enddo
     100 close(fileunit)
@@ -263,6 +271,7 @@ subroutine numerics_init()
     !$OMP END CRITICAL (write2out)
     
   endif
+
   select case(IO_lc(fftw_planner_string))                        ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
     case('estimate','fftw_estimate')                             ! ordered from slow execution (but fast plan creation) to fast execution
        fftw_planner_flag = 64_pInt
@@ -277,8 +286,11 @@ subroutine numerics_init()
        fftw_planner_flag = 32_pInt
   end select
 
-  ! writing parameters to output file
+  
+  !* writing parameters to output file
+  
   !$OMP CRITICAL (write2out)
+    
     write(6,'(a24,1x,e8.1)') ' relevantStrain:         ',relevantStrain
     write(6,'(a24,1x,e8.1)') ' defgradTolerance:       ',defgradTolerance
     write(6,'(a24,1x,i8)')   ' iJacoStiffness:         ',iJacoStiffness
@@ -303,7 +315,8 @@ subroutine numerics_init()
     write(6,'(a24,1x,e8.1)') ' stepIncreaseHomog:      ',stepIncreaseHomog
     write(6,'(a24,1x,i8,/)') ' nMPstate:               ',nMPstate
 
-!* RGC parameters
+    !* RGC parameters
+
     write(6,'(a24,1x,e8.1)') ' aTol_RGC:               ',absTol_RGC
     write(6,'(a24,1x,e8.1)') ' rTol_RGC:               ',relTol_RGC
     write(6,'(a24,1x,e8.1)') ' aMax_RGC:               ',absMax_RGC
@@ -317,7 +330,8 @@ subroutine numerics_init()
     write(6,'(a24,1x,e8.1)') ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
     write(6,'(a24,1x,e8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
 
-!* spectral parameters
+    !* spectral parameters
+
     write(6,'(a24,1x,e8.1)')   ' err_div_tol:            ',err_div_tol
     write(6,'(a24,1x,e8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
     write(6,'(a24,1x,i8)')     ' itmax:                  ',itmax
@@ -334,58 +348,66 @@ subroutine numerics_init()
     write(6,'(a24,1x,L8,/)')   ' update_gamma:           ',update_gamma
     write(6,'(a24,1x,L8,/)')   ' simplified_algorithm:   ',simplified_algorithm
     write(6,'(a24,1x,e8.1)')   ' cut_off_value:          ',cut_off_value
-!* Random seeding parameters
+    
+    !* Random seeding parameters
+    
     write(6,'(a24,1x,i16,/)')   ' fixed_seed:             ',fixedSeed
+  
   !$OMP END CRITICAL (write2out)
 
-!* openMP parameter
+  
+  !* openMP parameter
 !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
   
-  ! sanity check  
-  if (relevantStrain <= 0.0_pReal)          call IO_error(260_pInt)
-  if (defgradTolerance <= 0.0_pReal)        call IO_error(294_pInt)
-  if (iJacoStiffness < 1_pInt)              call IO_error(261_pInt)
-  if (iJacoLpresiduum < 1_pInt)             call IO_error(262_pInt)
-  if (pert_Fg <= 0.0_pReal)                 call IO_error(263_pInt)
+  
+  !*  sanity check
+
+  if (relevantStrain <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='relevantStrain')
+  if (defgradTolerance <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='defgradTolerance')
+  if (iJacoStiffness < 1_pInt)              call IO_error(301_pInt,ext_msg='iJacoStiffness')
+  if (iJacoLpresiduum < 1_pInt)             call IO_error(301_pInt,ext_msg='iJacoLpresiduum')
+  if (pert_Fg <= 0.0_pReal)                 call IO_error(301_pInt,ext_msg='pert_Fg')
   if (pert_method <= 0_pInt .or. pert_method >= 4_pInt) &
-                                            call IO_error(299_pInt)
-  if (nHomog < 1_pInt)                      call IO_error(264_pInt)
-  if (nMPstate < 1_pInt)                    call IO_error(279_pInt)  !! missing in IO !!
-  if (nCryst < 1_pInt)                      call IO_error(265_pInt)
-  if (nState < 1_pInt)                      call IO_error(266_pInt)
-  if (nStress < 1_pInt)                     call IO_error(267_pInt)
-  if (subStepMinCryst <= 0.0_pReal)         call IO_error(268_pInt)
-  if (subStepSizeCryst <= 0.0_pReal)        call IO_error(268_pInt)
-  if (stepIncreaseCryst <= 0.0_pReal)       call IO_error(268_pInt)
-  if (subStepMinHomog <= 0.0_pReal)         call IO_error(268_pInt)
-  if (subStepSizeHomog <= 0.0_pReal)        call IO_error(268_pInt)
-  if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(268_pInt)
-  if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(269_pInt)
-  if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(276_pInt) !! oops !!
-  if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(270_pInt)
-  if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(271_pInt)
+                                            call IO_error(301_pInt,ext_msg='pert_method')
+  if (nHomog < 1_pInt)                      call IO_error(301_pInt,ext_msg='nHomog')
+  if (nMPstate < 1_pInt)                    call IO_error(301_pInt,ext_msg='nMPstate')
+  if (nCryst < 1_pInt)                      call IO_error(301_pInt,ext_msg='nCryst')
+  if (nState < 1_pInt)                      call IO_error(301_pInt,ext_msg='nState')
+  if (nStress < 1_pInt)                     call IO_error(301_pInt,ext_msg='nStress')
+  if (subStepMinCryst <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinCryst')
+  if (subStepSizeCryst <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeCryst')
+  if (stepIncreaseCryst <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseCryst')
+  if (subStepMinHomog <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinHomog')
+  if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeHomog')
+  if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseHomog')
+  if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(301_pInt,ext_msg='rTol_crystalliteState')
+  if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(301_pInt,ext_msg='rTol_crystalliteTemperature')
+  if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='rTol_crystalliteStress')
+  if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='aTol_crystalliteStress')
   if (any(numerics_integrator <= 0_pInt) .or. any(numerics_integrator >= 6_pInt)) &
-                                            call IO_error(298_pInt)
+                                            call IO_error(301_pInt,ext_msg='integrator')
 
+  !* RGC parameters
 
-  if (absTol_RGC <= 0.0_pReal)              call IO_error(272_pInt)
-  if (relTol_RGC <= 0.0_pReal)              call IO_error(273_pInt)
-  if (absMax_RGC <= 0.0_pReal)              call IO_error(274_pInt)
-  if (relMax_RGC <= 0.0_pReal)              call IO_error(275_pInt)
-  if (pPert_RGC <= 0.0_pReal)               call IO_error(276_pInt)   !! oops !!
-  if (xSmoo_RGC <= 0.0_pReal)               call IO_error(277_pInt)
-  if (viscPower_RGC < 0.0_pReal)            call IO_error(278_pInt)
-  if (viscModus_RGC < 0.0_pReal)            call IO_error(278_pInt)
-  if (refRelaxRate_RGC <= 0.0_pReal)        call IO_error(278_pInt)
-  if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(288_pInt)
-  if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(289_pInt)
-  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(289_pInt)
-  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(289_pInt)
+  if (absTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absTol_RGC')
+  if (relTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relTol_RGC')
+  if (absMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absMax_RGC')
+  if (relMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relMax_RGC')
+  if (pPert_RGC <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='pPert_RGC')
+  if (xSmoo_RGC <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='xSmoo_RGC')
+  if (viscPower_RGC < 0.0_pReal)            call IO_error(301_pInt,ext_msg='viscPower_RGC')
+  if (viscModus_RGC < 0.0_pReal)            call IO_error(301_pInt,ext_msg='viscModus_RGC')
+  if (refRelaxRate_RGC <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='refRelaxRate_RGC')
+  if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(301_pInt,ext_msg='maxdRelax_RGC')
+  if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='maxVolDiscr_RGC')
+  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
+  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
 
-!* spectral parameters
-  if (err_div_tol <= 0.0_pReal)             call IO_error(49_pInt)
-  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(49_pInt)
-  if (itmax <= 1.0_pInt)                    call IO_error(49_pInt)
+  !* spectral parameters
+  
+  if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
+  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
+  if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
   
   if (fixedSeed <= 0_pInt) then
     !$OMP CRITICAL (write2out)
