@@ -520,39 +520,31 @@ program DAMASK_spectral
  
 !--------------------------------------------------------------------------------------------------
 ! calculate the gamma operator
- if(memory_efficient) then                                                                    ! allocate just single fourth order tensor
+ if(memory_efficient) then                                                                           ! allocate just single fourth order tensor
    allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
- else                                                                                         ! precalculation of gamma_hat field
+ else                                                                                                ! precalculation of gamma_hat field
    allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3)); gamma_hat = 0.0_pReal
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-     if (any(xi(1:3,i,j,k) /= 0.0_pReal)) then
-       do m = 1_pInt ,3_pInt; do p = 1_pInt,3_pInt
-         xiDyad(m,p) = xi(m, i,j,k)*xi(p, i,j,k)
-       enddo; enddo
-       ! do l = 1_pInt,3_pInt
-         ! do n = 1_pInt,3_pInt
-           ! temp33_Real(l,n) = sum(c0_reference(l,1:3,n,1:3)*xiDyad(1:3,1:3))
-       ! enddo; enddo
-       temp33_Real= math_mul3333xx33(c0_reference,xiDyad) 
-       temp33_Real = math_inv33(temp33_Real)
-     else
-       xiDyad  = 0.0_pReal
-       temp33_Real = 0.0_pReal
-     endif 
-     ! if (k==res(3)/2 .or. k==res(3)/2+2 .or.&
-         ! j==res(2)/2 .or. j==res(2)/2+2 .or.&
-         ! i==res(1)/2 .or. i==res(1)/2+2) &
-           ! gamma_hat(1,1,1,1:3,1:3,1:3,1:3) = s0_reference
-     do l=1_pInt,3_pInt; do m=1_pInt,3_pInt; do n=1_pInt,3_pInt; do p=1_pInt,3_pInt
-       gamma_hat(i,j,k, l,m,n,p) = 0.25*(temp33_Real(l,n)+temp33_Real(n,l)) *&
-                                           (xiDyad(m,p)+xiDyad(p,m))
-     enddo; enddo; enddo; enddo
+   ! if(k==res(3)/2 .or. k==res(3)/2+2 .or.&
+   !    j==res(2)/2 .or. j==res(2)/2+2 .or.&
+   !    i==res(1)/2 .or. i==res(1)/2+2) then 
+   !      gamma_hat(i,j,k,1:3,1:3,1:3,1:3) = s0_reference
+   ! else
+     forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+       xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+     forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+       temp33_Real(l,m) = sum(c0_reference(l,1:3,m,1:3)*xiDyad)
+     temp33_Real = math_inv33(temp33_Real)
+     forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
+       gamma_hat(i,j,k, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
+   ! endif  
    enddo; enddo; enddo
+   gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
  endif
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of fftw (see manual on fftw.org for more details)
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=108_pInt)                   ! check for correct precision in C
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=108_pInt)                     ! check for correct precision in C
 #ifdef _OPENMP
     if(DAMASK_NumThreadsInt > 0_pInt) then
       ierr = fftw_init_threads()
@@ -872,8 +864,8 @@ program DAMASK_spectral
            err_stress_tol = maxval(abs(pstress_av)) * err_stress_tolrel                              ! don't use any tensor norm because the comparison should be coherent
            print '(a)', '' 
            print '(a)', '... correcting deformation gradient to fulfill BCs ...............'
-           print '(a,es10.4,a,f6.2)', 'error stress = ',err_stress,  ',      rel. error = ',& 
-                                                            err_stress/err_stress_tol
+           print '(a,f6.2,a,es10.4,a)', 'error stress = ', err_stress/err_stress_tol, &
+                                                                            ' (',err_stress,' Pa)'  
            defgradAim = defgradAim - math_mul3333xx33(s_prev, ((pstress_av - bc(loadcase)%stress))) ! residual on given stress components
            if(debugGeneral)  write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'new deformation aim:',&
                                                             math_transpose33(defgradAim)
@@ -954,7 +946,7 @@ program DAMASK_spectral
            print '(a,es10.4)',        'divergence max FT/real    = ',err_div_max/err_real_div_max
            print '(a,es10.4)',        'max deviat. from postProc = ',max_div_error
          endif
-         print '(a,es10.4,a,f6.2)', 'error divergence = ',err_div,    ',  rel. error = ', err_div/err_div_tol
+         print '(a,f6.2,a,es10.4,a)', 'error divergence = ', err_div/err_div_tol, ' (',err_div,' 1/m)'    
          
 !--------------------------------------------------------------------------------------------------
 ! divergence is calculated from FT(stress), depending on algorithm use field for spectral method
@@ -964,56 +956,44 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)
          if(memory_efficient) then                                                                           ! memory saving version, on-the-fly calculation of gamma_hat
+           
            do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res1_red
-             if (any(xi(1:3,i,j,k) /= 0.0_pReal)) then
-               do m = 1_pInt ,3_pInt; do p = 1_pInt,3_pInt
-                 xiDyad(m,p) = xi(m, i,j,k)*xi(p, i,j,k)
-               enddo; enddo
-              ! do l = 1_pInt,3_pInt
-                ! do n = 1_pInt,3_pInt
-                  ! temp33_Real(l,n) = sum(c0_reference(l,1:3,n,1:3)*xiDyad)
-              ! enddo; enddo
-              temp33_Real= math_mul3333xx33(c0_reference,xiDyad)          
-!               max_diag = max(max_diag,maxval( math_mul33x33(temp33_Real,math_inv33(temp33_Real)),&
-!                reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3])))
-!               max_offdiag = max(max_offdiag,maxval( math_mul33x33(temp33_Real,math_inv33(temp33_Real)),&
-!                reshape([ .true.,.false.,.false.,.false.,.true.,.false.,.false.,.false.,.true.],[ 3,3])))
-!               temp33_Real = math_inv33(temp33_Real)
-             else
-               xiDyad  = 0.0_pReal
-               temp33_Real = 0.0_pReal
-             endif 
-             do l=1_pInt,3_pInt; do m=1_pInt,3_pInt; do n=1_pInt,3_pInt; do p=1_pInt,3_pInt
-               gamma_hat(1,1,1, l,m,n,p) =  0.25*(temp33_Real(l,n)+temp33_Real(n,l)) *&
-                                                 (xiDyad(m,p)+xiDyad(p,m))
-             enddo; enddo; enddo; enddo
-       !      if (k==res(3)/2 .or. k==res(3)/2+2 .or.&
-       !          j==res(2)/2 .or. j==res(2)/2+2 .or.&
-       !          i==res(1)/2 .or. i==res(1)/2+2) then
-       !      print*,'gamma_hat',  gamma_hat(1,1,1,1:3,1:3,1:3,1:3)
-       !      print*, 's0',        s0_reference
-       !      pause
-       !    endif
-             do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
-               temp33_Complex(m,n) = sum(gamma_hat(1,1,1, m,n, 1:3,1:3) * tensorField_fourier(i,j,k,1:3,1:3))
-             enddo; enddo
-             tensorField_fourier(i,j,k,1:3,1:3) = temp33_Complex 
+             ! if(k==res(3)/2 .or. k==res(3)/2+2 .or.&
+                ! j==res(2)/2 .or. j==res(2)/2+2 .or.&
+                ! i==res(1)/2 .or. i==res(1)/2+2) then 
+               ! forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt)&
+                 ! temp33_Complex(m,n) = sum(s0_reference(m,n, 1:3,1:3)* tensorField_fourier(i,j,k,1:3,1:3))
+             ! else
+               forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+                 xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+               forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+                 temp33_Real(l,m) = sum(c0_reference(l,1:3,m,1:3)*xiDyad)
+               temp33_Real = math_inv33(temp33_Real)
+               forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
+                 gamma_hat(1,1,1, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
+               forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+                 temp33_Complex(l,m) = sum(gamma_hat(1,1,1, l,m, 1:3,1:3) * tensorField_fourier(i,j,k,1:3,1:3))
+               tensorField_fourier(i,j,k,1:3,1:3) = temp33_Complex 
+            ! endif             
            enddo; enddo; enddo
-         else                                                                                       ! use precalculated gamma-operator
-           do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-             do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
+   
+         else                                                                                           ! use precalculated gamma-operator
+           
+           do k = 1_pInt, res(3);  do j = 1_pInt, res(2);  do i = 1_pInt,res1_red
+             forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt) &
                temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) * tensorField_fourier(i,j,k,1:3,1:3))
-             enddo; enddo
-             tensorField_fourier(i,j,k,1:3,1:3) = temp33_Complex
+             tensorField_fourier(i,j,k, 1:3,1:3) = temp33_Complex
            enddo; enddo; enddo
+
          endif
 
-         tensorField_fourier(1,1,1,1:3,1:3) = (defgrad_av_lab -defgradAim_lab)&                     ! assign (negative) average deformation gradient change to zero frequency (real part)
-                                                        * real(Npoints,pReal)
-         if (.not. simplified_algorithm) tensorField_fourier(1,1,1,1:3,1:3) = &                     ! assign deformation aim to zero frequency (real part)
-                                                 defgradAim_lab  * real(Npoints,pReal)
-!   print*, 'max off diagonal', max_offdiag 
-!   print*, 'max diagonal', max_diag 
+         if (simplified_algorithm) then                                                               ! do not use the polarization field based algorithm
+           tensorField_fourier(1,1,1,1:3,1:3) = (defgrad_av_lab - defgradAim_lab) &                   ! assign (negative) average deformation gradient change to zero frequency (real part)
+                                                * real(Npoints,pReal)                                 ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+         else
+           tensorField_fourier(1,1,1,1:3,1:3) = defgradAim_lab  * real(Npoints,pReal)                 ! assign deformation aim to zero frequency (real part)
+         endif
+
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
          if (debugFFTW) then
