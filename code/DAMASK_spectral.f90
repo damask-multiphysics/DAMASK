@@ -247,7 +247,7 @@ program DAMASK_spectral
    positions = IO_stringPos(line,maxNchunksLoadcase)
    do j = 1_pInt,maxNchunksLoadcase
      select case (IO_lc(IO_stringValue(line,positions,j)))
-       case('fdot','l','velocitygrad','velgrad','velocitygradient')                                 ! assign values for the deformation BC matrix
+       case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient')                          ! assign values for the deformation BC matrix
          bc(loadcase)%velGradApplied = &
                      (IO_lc(IO_stringValue(line,positions,j)) == 'l'.or. &                          ! in case of given L, set flag to true
                       IO_lc(IO_stringValue(line,positions,j)) == 'velocitygrad'.or.&
