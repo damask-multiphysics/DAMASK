@@ -398,6 +398,8 @@ enddo
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
+       case ('constitution')
+         cycle
        case ('(output)')
          output = output + 1_pInt
          constitutive_titanmod_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -584,6 +586,8 @@ enddo
               forall (j = 1_pInt:lattice_maxNinteraction) &
                 constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
                 write(6,*) tag
+       case default
+              call IO_error(230_pInt,ext_msg=tag)
      end select
    endif
 enddo

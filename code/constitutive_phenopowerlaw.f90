@@ -272,6 +272,8 @@ subroutine constitutive_phenopowerlaw_init(file)
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
+       case ('constitution')
+         cycle
        case ('(output)')
          output = output + 1_pInt
          constitutive_phenopowerlaw_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -346,6 +348,8 @@ subroutine constitutive_phenopowerlaw_init(file)
        case ('interaction_twintwin')
               forall (j = 1_pInt:lattice_maxNinteraction) &
                 constitutive_phenopowerlaw_interaction_twintwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+       case default
+              call IO_error(220_pInt,ext_msg=tag)
      end select
    endif
  enddo

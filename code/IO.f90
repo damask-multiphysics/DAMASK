@@ -1229,21 +1229,29 @@ endfunction
  case (205_pInt)
    msg = 'unknown lattice structure encountered'
 
+ case (210_pInt)
+   msg = 'unknown material parameter for j2 constitutive phase:'
  case (211_pInt)
    msg = 'material parameter for j2 constitutive phase out of bounds:'
  case (212_pInt)
    msg = 'unknown constitutive output for j2 constitution:'
 
+ case (220_pInt)
+   msg = 'unknown material parameter for phenopowerlaw constitutive phase:'
  case (221_pInt)
    msg = 'material parameter for phenopowerlaw constitutive phase out of bounds:'
  case (222_pInt)
    msg = 'unknown constitutive output for phenopowerlaw constitution:'
 
+ case (230_pInt)
+   msg = 'unknown material parameter for titanmod constitutive phase:'
  case (231_pInt)
    msg = 'material parameter for titanmod constitutive phase out of bounds:'
  case (232_pInt)
    msg = 'unknown constitutive output for titanmod constitution:'
 
+ case (240_pInt)
+   msg = 'unknown material parameter for dislotwin constitutive phase:'
  case (241_pInt)
    msg = 'material parameter for dislotwin constitutive phase out of bounds:'
  case (242_pInt)
@@ -1251,6 +1259,8 @@ endfunction
  case (243_pInt)
    msg = 'zero stacking fault energy'
 
+ case (250_pInt)
+   msg = 'unknown material parameter for nonlocal constitutive phase:'
  case (251_pInt)
    msg = 'material parameter for nonlocal constitutive phase out of bounds:'
  case (252_pInt)

@@ -296,6 +296,8 @@ do                                                       ! read thru sections of
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1))        ! extract key
      select case(tag)
+       case ('constitution')
+         cycle
        case ('(output)')
          output = output + 1_pInt
          constitutive_dislotwin_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -394,6 +396,8 @@ do                                                       ! read thru sections of
               constitutive_dislotwin_sbResistance(i) = IO_floatValue(line,positions,2_pInt)
        case ('shearbandvelocity')
               constitutive_dislotwin_sbVelocity(i) = IO_floatValue(line,positions,2_pInt)
+       case default
+              call IO_error(240_pInt,ext_msg=tag)
      end select
    endif
 enddo

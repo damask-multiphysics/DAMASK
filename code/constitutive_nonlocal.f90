@@ -440,6 +440,8 @@ do                                                                              
         constitutive_nonlocal_rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
       case('surfacetransmissivity')
         constitutive_nonlocal_surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
+      case default
+        call IO_error(250_pInt,ext_msg=tag)
     end select
   endif
 enddo
