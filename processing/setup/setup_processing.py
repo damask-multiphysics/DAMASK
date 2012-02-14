@@ -100,6 +100,7 @@ bin_link = { \
                 'addStrainTensors.py',
                 'addCompatibilityMismatch.py',
                 'averageDown.py',
+                'deleteColumn.py',
                 'mentat_colorMap.py',
                 'postResults.py',
                 'spectral_iterationCount.py',

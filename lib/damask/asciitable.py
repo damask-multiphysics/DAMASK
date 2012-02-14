@@ -113,6 +113,7 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def data_write(self):
+    if len(self.data) == 0: return
     if isinstance(self.data[0],list):
       self.output_write (['\t'.join(map(str,items)) for items in self.data])
     else:
