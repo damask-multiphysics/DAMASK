@@ -87,8 +87,8 @@ subroutine debug_init()
   !*** output variables ***!
   
   !*** local variables ***!
-  integer(pInt), parameter ::                 fileunit = 300  
-  integer(pInt), parameter ::                 maxNchunks = 2
+  integer(pInt), parameter ::                 fileunit = 300_pInt  
+  integer(pInt), parameter ::                 maxNchunks = 2_pInt  
   integer(pInt), dimension(1+2*maxNchunks) :: positions
   character(len=64)                           tag
   character(len=1024)                         line
@@ -143,7 +143,7 @@ subroutine debug_init()
     enddo
     100 close(fileunit)
     
-    if (debug_verbosity > 0) then
+    if (debug_verbosity > 0_pInt) then
       !$OMP CRITICAL (write2out)
         write(6,*) '   ... using values from config file'
         write(6,*)
@@ -153,7 +153,7 @@ subroutine debug_init()
   ! no config file, so we use standard values
   else 
 
-    if (debug_verbosity > 0) then
+    if (debug_verbosity > 0_pInt) then
       !$OMP CRITICAL (write2out)
         write(6,*) '   ... using standard values'
         write(6,*)
@@ -276,7 +276,7 @@ subroutine debug_info()
       write(6,*)
       write(6,*)
       write(6,*) 'distribution_StressLoop :    stress  frogbreak  stiffness  frogbreak'
-      do i=1,nStress
+      do i=1_pInt,nStress
         if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt ) .or. &
             any(debug_LeapfrogBreakDistribution(i,:)  /= 0_pInt ) ) then
           integral = integral + i*debug_StressLoopDistribution(i,1) + i*debug_StressLoopDistribution(i,2)
@@ -291,7 +291,7 @@ subroutine debug_info()
       integral = 0_pInt
       write(6,*)
       write(6,*) 'distribution_CrystalliteStateLoop :'
-      do i=1,nState
+      do i=1_pInt,nState
         if (any(debug_StateLoopDistribution(i,:) /= 0)) then
           integral = integral + i*debug_StateLoopDistribution(i,1) + i*debug_StateLoopDistribution(i,2)
           write(6,'(i25,1x,i10,12x,i10)') i,debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
@@ -304,13 +304,13 @@ subroutine debug_info()
       integral = 0_pInt
       write(6,*)
       write(6,*) 'distribution_CrystalliteCutbackLoop :'
-      do i=1,nCryst+1
+      do i=1_pInt,nCryst+1_pInt
         if (debug_CrystalliteLoopDistribution(i) /= 0) then
           integral = integral + i*debug_CrystalliteLoopDistribution(i)
           if (i <= nCryst) then
             write(6,'(i25,1x,i10)') i,debug_CrystalliteLoopDistribution(i)
           else
-            write(6,'(i25,a1,i10)') i-1,'+',debug_CrystalliteLoopDistribution(i)
+            write(6,'(i25,a1,i10)') i-1_pInt,'+',debug_CrystalliteLoopDistribution(i)
           endif
         endif
       enddo
@@ -325,7 +325,7 @@ subroutine debug_info()
       integral = 0_pInt
       write(6,*)
       write(6,*) 'distribution_MaterialpointStateLoop :'
-      do i=1,nMPstate
+      do i=1_pInt,nMPstate
         if (debug_MaterialpointStateLoopDistribution(i) /= 0) then
           integral = integral + i*debug_MaterialpointStateLoopDistribution(i)
           write(6,'(i25,1x,i10)') i,debug_MaterialpointStateLoopDistribution(i)
@@ -336,13 +336,13 @@ subroutine debug_info()
       integral = 0_pInt
       write(6,*)
       write(6,*) 'distribution_MaterialpointCutbackLoop :'
-      do i=1,nHomog+1
+      do i=1_pInt,nHomog+1_pInt
         if (debug_MaterialpointLoopDistribution(i) /= 0) then
           integral = integral + i*debug_MaterialpointLoopDistribution(i)
           if (i <= nHomog) then
             write(6,'(i25,1x,i10)') i,debug_MaterialpointLoopDistribution(i)
           else
-            write(6,'(i25,a1,i10)') i-1,'+',debug_MaterialpointLoopDistribution(i)
+            write(6,'(i25,a1,i10)') i-1_pInt,'+',debug_MaterialpointLoopDistribution(i)
           endif
         endif
       enddo

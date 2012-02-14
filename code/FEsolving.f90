@@ -52,14 +52,16 @@
  use IO
  implicit none
  
- integer(pInt), parameter :: fileunit = 222
- integer(pInt), parameter :: maxNchunks = 6
- integer(pInt):: i, start = 0_pInt, length=0_pInt
-integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
+ integer(pInt), parameter :: fileunit = 222_pInt
+ integer(pInt), parameter :: maxNchunks = 6_pInt
+ integer :: i, start = 0, length=0
+ integer(pInt) :: j
+ integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  character(len=64) tag
  character(len=1024) line, commandLine
 
  FEmodelGeometry = getModelName()
+
  call IO_open_inputFile(fileunit,FEmodelGeometry)
  if (trim(FEsolver) == 'Spectral') then
    call get_command(commandLine)                                                 ! may contain uppercase
@@ -71,7 +73,6 @@ integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
      start = index(commandLine,'-r ',.true.) + 3_pInt                            ! set to position after trailing space
    if (index(commandLine,'--restart ',.true.)>0) &                               ! look for --restart
      start = index(commandLine,'--restart ',.true.) + 10_pInt                    ! set to position after trailing space
-
    if(start /= 0_pInt) then                                                      ! found something
      length = verify(commandLine(start:len(commandLine)),'0123456789',.false.)   ! where is first non number after argument?
      read(commandLine(start:start+length),'(I12)') restartInc                    ! read argument
@@ -103,8 +104,8 @@ integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
            restartRead  = (IO_lc(IO_StringValue(line,positions,i)) == 'read')  .or. restartRead
          enddo
          if(restartWrite) then
-           do i=2,positions(1)
-             restartWrite = (IO_lc(IO_StringValue(line,positions,i)) /= 'frequency=0') .and. restartWrite
+           do j=2,positions(1)
+             restartWrite = (IO_lc(IO_StringValue(line,positions,j)) /= 'frequency=0') .and. restartWrite
            enddo
          endif
      end select

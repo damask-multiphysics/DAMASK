@@ -132,6 +132,7 @@ subroutine constitutive_dislotwin_init(file)
 !**************************************
 !*      Module initialization         *
 !**************************************
+use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 use prec,    only: pInt,pReal
 use math,    only: math_Mandel3333to66,math_Voigt66to3333,math_mul3x3
 use mesh,    only: mesh_maxNips, mesh_NcpElems
