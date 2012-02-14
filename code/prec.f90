@@ -44,7 +44,7 @@ real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
 real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
 #endif
 type :: p_vec
-  real(pReal), dimension(:), pointer, public :: p
+  real(pReal), dimension(:), pointer :: p
 end type p_vec
 
 CONTAINS
@@ -61,7 +61,7 @@ implicit none
   write(6,'(a,i3)')   ' Bytes for pReal:    ',pReal
   write(6,'(a,i3)')   ' Bytes for pInt:     ',pInt
   write(6,'(a,i3)')   ' Bytes for pLongInt: ',pLongInt
-  write(6,'(a,e3.3)') ' NaN:                ',DAMASK_NAN
+  write(6,'(a,e10.3)') ' NaN:         ',DAMASK_NAN
   write(6,'(a,l3)')   ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
   if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
   write(6,*)
