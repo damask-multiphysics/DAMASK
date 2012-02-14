@@ -49,6 +49,7 @@ integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin
                                                           constitutive_dislotwin_sizePostResults                ! cumulative size of post results
 integer(pInt), dimension(:,:), allocatable, target ::     constitutive_dislotwin_sizePostResult                 ! size of each post result output
 character(len=64), dimension(:,:), allocatable, target :: constitutive_dislotwin_output                         ! name of each post result output
+integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin_Noutput                        ! number of outputs per instance of this constitution 
 character(len=32), dimension(:), allocatable ::           constitutive_dislotwin_structureName                  ! name of the lattice structure
 integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin_structure, &                   ! number representing the kind of lattice structure
                                                           constitutive_dislotwin_totalNslip, &                  ! total number of active slip systems for each instance
@@ -145,7 +146,7 @@ integer(pInt), intent(in) :: file
 !* Local variables
 integer(pInt), parameter :: maxNchunks = 21
 integer(pInt), dimension(1+2*maxNchunks) :: positions
-integer(pInt) section,maxNinstance,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t1,t2,ns,nt,output,mySize,myStructure,maxTotalNslip,maxTotalNtwin
+integer(pInt) section,maxNinstance,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t1,t2,ns,nt,mySize,myStructure,maxTotalNslip,maxTotalNtwin
 character(len=64) tag
 character(len=1024) line
 
@@ -165,11 +166,13 @@ allocate(constitutive_dislotwin_sizeState(maxNinstance))
 allocate(constitutive_dislotwin_sizePostResults(maxNinstance))
 allocate(constitutive_dislotwin_sizePostResult(maxval(phase_Noutput),maxNinstance))
 allocate(constitutive_dislotwin_output(maxval(phase_Noutput),maxNinstance))
+allocate(constitutive_dislotwin_Noutput(maxNinstance))
 constitutive_dislotwin_sizeDotState    = 0_pInt
 constitutive_dislotwin_sizeState       = 0_pInt
 constitutive_dislotwin_sizePostResults = 0_pInt
 constitutive_dislotwin_sizePostResult  = 0_pInt
 constitutive_dislotwin_output          = ''
+constitutive_dislotwin_Noutput         = 0_pInt
 
 allocate(constitutive_dislotwin_structureName(maxNinstance))
 allocate(constitutive_dislotwin_structure(maxNinstance))
@@ -289,7 +292,6 @@ do                                                       ! read thru sections of
    if (IO_getTag(line,'<','>') /= '') exit               ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then               ! next section
      section = section + 1_pInt                          ! advance section counter
-     output = 0_pInt                                     ! reset output counter
      cycle
    endif
    if (section > 0_pInt .and. phase_constitution(section) == constitutive_dislotwin_label) then  ! one of my sections
@@ -300,8 +302,8 @@ do                                                       ! read thru sections of
        case ('constitution')
          cycle
        case ('(output)')
-         output = output + 1_pInt
-         constitutive_dislotwin_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         constitutive_dislotwin_Noutput(i) = constitutive_dislotwin_Noutput(i) + 1_pInt
+         constitutive_dislotwin_output(constitutive_dislotwin_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('lattice_structure')
               constitutive_dislotwin_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('covera_ratio')
@@ -509,7 +511,7 @@ do i = 1_pInt,maxNinstance
    size(constitutive_dislotwin_listDependentSlipStates)*ns+size(constitutive_dislotwin_listDependentTwinStates)*nt
 
    !* Determine size of postResults array
-   do o = 1_pInt,maxval(phase_Noutput)
+   do o = 1_pInt,constitutive_dislotwin_Noutput(i)
       select case(constitutive_dislotwin_output(o,i))
         case('edge_density', &
              'dipole_density', &

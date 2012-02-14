@@ -83,7 +83,8 @@ MODULE constitutive_phenopowerlaw
                                                    constitutive_phenopowerlaw_sizePostResults       ! cumulative size of post results
  integer(pInt),   dimension(:,:),   allocatable,target :: constitutive_phenopowerlaw_sizePostResult ! size of each post result output
  character(len=64), dimension(:,:), allocatable,target :: constitutive_phenopowerlaw_output         ! name of each post result output
-
+ integer(pInt), dimension(:), allocatable ::              constitutive_phenopowerlaw_Noutput        ! number of outputs per instance of this constitution 
+ 
  character(len=32), dimension(:),   allocatable :: constitutive_phenopowerlaw_structureName
  integer(pInt),   dimension(:),     allocatable :: constitutive_phenopowerlaw_structure
  integer(pInt),   dimension(:,:),   allocatable :: constitutive_phenopowerlaw_Nslip                 ! active number of slip systems per family
@@ -165,7 +166,7 @@ subroutine constitutive_phenopowerlaw_init(file)
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = lattice_maxNinteraction + 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k, f,o, output, &
+ integer(pInt) section, maxNinstance, i,j,k, f,o, &
                mySize, myStructure, index_myFamily, index_otherFamily
  character(len=64) tag
  character(len=1024) line
@@ -193,6 +194,7 @@ subroutine constitutive_phenopowerlaw_init(file)
                                             maxNinstance)) ;         constitutive_phenopowerlaw_sizePostResult = 0_pInt
  allocate(constitutive_phenopowerlaw_output(maxval(phase_Noutput), &
                                             maxNinstance)) ;         constitutive_phenopowerlaw_output = ''
+ allocate(constitutive_phenopowerlaw_Noutput(maxNinstance)) ;        constitutive_phenopowerlaw_Noutput = 0_pInt
 
  allocate(constitutive_phenopowerlaw_structureName(maxNinstance)) ;  constitutive_phenopowerlaw_structureName = ''
  allocate(constitutive_phenopowerlaw_structure(maxNinstance)) ;      constitutive_phenopowerlaw_structure = 0_pInt
@@ -264,7 +266,6 @@ subroutine constitutive_phenopowerlaw_init(file)
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
      section = section + 1_pInt                           ! advance section counter
-     output = 0_pInt                                      ! reset output counter
      cycle                                                ! skip to next line
    endif
    if (section > 0_pInt .and. phase_constitution(section) == constitutive_phenopowerlaw_label) then  ! one of my sections
@@ -275,8 +276,8 @@ subroutine constitutive_phenopowerlaw_init(file)
        case ('constitution')
          cycle
        case ('(output)')
-         output = output + 1_pInt
-         constitutive_phenopowerlaw_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt
+         constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('lattice_structure')
               constitutive_phenopowerlaw_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('covera_ratio')
@@ -406,7 +407,7 @@ subroutine constitutive_phenopowerlaw_init(file)
 
  
  do i = 1_pInt,maxNinstance
-   do j = 1_pInt,maxval(phase_Noutput)
+   do j = 1_pInt,constitutive_phenopowerlaw_Noutput(i)
      select case(constitutive_phenopowerlaw_output(j,i))
        case('resistance_slip', &
             'shearrate_slip', &

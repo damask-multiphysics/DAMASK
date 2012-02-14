@@ -53,6 +53,7 @@ MODULE constitutive_j2
                                                    constitutive_j2_sizePostResults
  integer(pInt),   dimension(:,:),   allocatable,target :: constitutive_j2_sizePostResult     ! size of each post result output
  character(len=64), dimension(:,:), allocatable,target :: constitutive_j2_output             ! name of each post result output
+ integer(pInt), dimension(:),   allocatable :: constitutive_j2_Noutput
  real(pReal), dimension(:),     allocatable :: constitutive_j2_C11
  real(pReal), dimension(:),     allocatable :: constitutive_j2_C12
  real(pReal), dimension(:,:,:), allocatable :: constitutive_j2_Cslip_66
@@ -91,7 +92,7 @@ subroutine constitutive_j2_init(file)
  integer(pInt), intent(in) :: file
  integer(pInt), parameter :: maxNchunks = 7
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k, output, mySize
+ integer(pInt) section, maxNinstance, i,j,k, mySize
  character(len=64) tag
  character(len=1024) line
 
@@ -117,6 +118,7 @@ subroutine constitutive_j2_init(file)
  allocate(constitutive_j2_sizePostResults(maxNinstance));                       constitutive_j2_sizePostResults = 0_pInt
  allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), maxNinstance)); constitutive_j2_sizePostResult = 0_pInt
  allocate(constitutive_j2_output(maxval(phase_Noutput), maxNinstance)) ;        constitutive_j2_output = ''
+ allocate(constitutive_j2_Noutput(maxNinstance))  ;                             constitutive_j2_Noutput = 0_pInt
  allocate(constitutive_j2_C11(maxNinstance)) ;                                  constitutive_j2_C11 = 0.0_pReal
  allocate(constitutive_j2_C12(maxNinstance)) ;                                  constitutive_j2_C12 = 0.0_pReal
  allocate(constitutive_j2_Cslip_66(6,6,maxNinstance)) ;                         constitutive_j2_Cslip_66 = 0.0_pReal
@@ -143,7 +145,6 @@ subroutine constitutive_j2_init(file)
    if (IO_getTag(line,'<','>') /= '') exit                                                                                         ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                                                         ! next section
      section = section + 1_pInt                                                                                                    ! advance section counter
-     output = 0_pInt                                                                                                               ! reset output counter
      cycle
    endif
    if (section > 0_pInt .and. phase_constitution(section) == constitutive_j2_label) then                                           ! one of my sections
@@ -154,8 +155,8 @@ subroutine constitutive_j2_init(file)
        case ('constitution')
          cycle
        case ('(output)')
-         output = output + 1
-         constitutive_j2_output(output,i) = IO_lc(IO_stringValue(line,positions,2))
+         constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
+         constitutive_j2_output(constitutive_j2_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2))
        case ('c11')
               constitutive_j2_C11(i) = IO_floatValue(line,positions,2)
        case ('c12')
@@ -193,7 +194,7 @@ subroutine constitutive_j2_init(file)
  enddo
 
  do i = 1,maxNinstance
-   do j = 1,maxval(phase_Noutput)
+   do j = 1,constitutive_j2_Noutput(i)
      select case(constitutive_j2_output(j,i))
        case('flowstress')
          mySize = 1_pInt

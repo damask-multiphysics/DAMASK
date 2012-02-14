@@ -81,7 +81,8 @@ integer(pInt), dimension(:), allocatable ::               constitutive_titanmod_
                                                           constitutive_titanmod_sizeState, &                   ! total number of microstructural state variables
                                                           constitutive_titanmod_sizePostResults                ! cumulative size of post results
 integer(pInt), dimension(:,:), allocatable, target ::     constitutive_titanmod_sizePostResult                 ! size of each post result output
-character(len=64), dimension(:,:), allocatable, target :: constitutive_titanmod_output                         ! name of each post result output 
+character(len=64), dimension(:,:), allocatable, target :: constitutive_titanmod_output                         ! name of each post result output
+integer(pInt), dimension(:), allocatable ::               constitutive_titanmod_Noutput                        ! number of outputs per instance of this constitution 
 character(len=32), dimension(:), allocatable ::           constitutive_titanmod_structureName                  ! name of the lattice structure
 integer(pInt), dimension(:), allocatable ::               constitutive_titanmod_structure, &                   ! number representing the kind of lattice structure
                                                           constitutive_titanmod_totalNslip, &                  ! total number of active slip systems for each instance
@@ -214,7 +215,7 @@ integer(pInt), intent(in) :: file
 !* Local variables
 integer(pInt), parameter :: maxNchunks = 21
 integer(pInt), dimension(1+2*maxNchunks) :: positions
-integer(pInt) section,maxNinstance,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,output,mySize,myStructure,maxTotalNslip, &
+integer(pInt) section,maxNinstance,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,mySize,myStructure,maxTotalNslip, &
 maxTotalNtwin
 character(len=64) tag
 character(len=1024) line
@@ -233,11 +234,13 @@ allocate(constitutive_titanmod_sizeState(maxNinstance))
 allocate(constitutive_titanmod_sizePostResults(maxNinstance)) 
 allocate(constitutive_titanmod_sizePostResult(maxval(phase_Noutput),maxNinstance))
 allocate(constitutive_titanmod_output(maxval(phase_Noutput),maxNinstance))
+allocate(constitutive_titanmod_Noutput(maxNinstance))
 constitutive_titanmod_sizeDotState    = 0_pInt
 constitutive_titanmod_sizeState       = 0_pInt
 constitutive_titanmod_sizePostResults = 0_pInt
 constitutive_titanmod_sizePostResult  = 0_pInt
 constitutive_titanmod_output          = ''
+constitutive_titanmod_Noutput         = 0_pInt
 
 allocate(constitutive_titanmod_structureName(maxNinstance)) 
 allocate(constitutive_titanmod_structure(maxNinstance))
@@ -391,7 +394,6 @@ enddo
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
      section = section + 1_pInt                           ! advance section counter
-     output = 0_pInt                                      ! reset output counter
      cycle                                                ! skip to next line
    endif
    if (section > 0_pInt .and. phase_constitution(section) == constitutive_titanmod_label) then  ! one of my sections
@@ -402,9 +404,9 @@ enddo
        case ('constitution')
          cycle
        case ('(output)')
-         output = output + 1_pInt
-         constitutive_titanmod_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-                write(6,*) tag,constitutive_titanmod_output(output,i)
+         constitutive_titanmod_Noutput(i) = constitutive_titanmod_Noutput(i) + 1_pInt
+         constitutive_titanmod_output(constitutive_titanmod_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+                write(6,*) tag,constitutive_titanmod_output(constitutive_titanmod_Noutput(i),i)
        case ('lattice_structure')
               constitutive_titanmod_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
                 write(6,*) tag,constitutive_titanmod_structureName(i)
@@ -763,7 +765,7 @@ do i = 1_pInt,maxNinstance
   write(6,*) 'Determined size of state and dot state' 
    !* Determine size of postResults array  
    
-   do o = 1,maxval(phase_Noutput)
+   do o = 1,constitutive_titanmod_Noutput(i)
       select case(constitutive_titanmod_output(o,i))
         case('rhoedge', &
              'rhoscrew', &

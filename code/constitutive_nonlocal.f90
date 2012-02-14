@@ -62,6 +62,7 @@ integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_
                                                           constitutive_nonlocal_sizePostResults                 ! cumulative size of post results
 integer(pInt), dimension(:,:), allocatable, target ::     constitutive_nonlocal_sizePostResult                  ! size of each post result output
 character(len=64), dimension(:,:), allocatable, target :: constitutive_nonlocal_output                          ! name of each post result output
+integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_Noutput                         ! number of outputs per instance of this constitution 
 
 character(len=32), dimension(:), allocatable ::           constitutive_nonlocal_structureName                   ! name of the lattice structure
 integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_structure, &                    ! number representing the kind of lattice structure
@@ -199,7 +200,6 @@ integer(pInt)                               section, &
                                             s1, &               ! index of my slip system
                                             s2, &               ! index of my slip system
                                             it, &               ! index of my interaction type
-                                            output, &
                                             mySize
 character(len=64)                           tag
 character(len=1024)                         line
@@ -230,12 +230,14 @@ allocate(constitutive_nonlocal_sizeState(maxNinstance))
 allocate(constitutive_nonlocal_sizePostResults(maxNinstance))
 allocate(constitutive_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstance))
 allocate(constitutive_nonlocal_output(maxval(phase_Noutput), maxNinstance))
+allocate(constitutive_nonlocal_Noutput(maxNinstance))
 constitutive_nonlocal_sizeDotState = 0_pInt
 constitutive_nonlocal_sizeDependentState = 0_pInt
 constitutive_nonlocal_sizeState = 0_pInt
 constitutive_nonlocal_sizePostResults = 0_pInt
 constitutive_nonlocal_sizePostResult = 0_pInt
 constitutive_nonlocal_output = ''
+constitutive_nonlocal_Noutput = 0_pInt
 
 allocate(constitutive_nonlocal_structureName(maxNinstance))
 allocate(constitutive_nonlocal_structure(maxNinstance))
@@ -341,7 +343,6 @@ do                                                                              
   if (IO_getTag(line,'<','>') /= '') exit                                                                                          ! stop at next part
   if (IO_getTag(line,'[',']') /= '') then                                                                                          ! next section
     section = section + 1_pInt                                                                                                     ! advance section counter
-    output = 0_pInt                                                                                                                ! reset output counter
     cycle
   endif
   if (section > 0_pInt .and. phase_constitution(section) == constitutive_nonlocal_label) then                                      ! one of my sections
@@ -352,8 +353,8 @@ do                                                                              
       case('constitution','/nonlocal/')
         cycle
       case ('(output)')
-        output = output + 1_pInt
-        constitutive_nonlocal_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+        constitutive_nonlocal_Noutput(i) = constitutive_nonlocal_Noutput(i) + 1_pInt
+        constitutive_nonlocal_output(constitutive_nonlocal_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
       case ('lattice_structure')
         constitutive_nonlocal_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
       case ('c/a_ratio','covera_ratio')
@@ -573,7 +574,7 @@ do i = 1,maxNinstance
   
   !*** determine size of postResults array
   
-  do o = 1,maxval(phase_Noutput)
+  do o = 1,constitutive_nonlocal_Noutput(i)
     select case(constitutive_nonlocal_output(o,i))
       case( 'rho', &
             'delta', &
