@@ -33,7 +33,7 @@
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
- complex(pReal), parameter ::  two_pi_img = (0.0_pReal,2.0_pReal) * pi
+ complex(pReal), parameter ::  two_pi_img = cmplx(0.0_pReal,2.0_pReal* pi, pReal)
 
 ! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
@@ -153,7 +153,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  real(pReal), dimension(4) ::   q,q2,axisangle,randTest
 ! the following variables are system dependend and shound NOT be pInt
  integer :: randSize                                  ! gfortran requires a variable length to compile 
- integer(pInt), dimension(:), allocatable :: randInit ! if recalculations of former randomness (with given seed) is necessary
+ integer, dimension(:), allocatable :: randInit       ! if recalculations of former randomness (with given seed) is necessary
                                                       ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
  !$OMP CRITICAL (write2out)
@@ -165,7 +165,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  call random_seed(size=randSize)
  allocate(randInit(randSize))
- if (fixedSeed > 0_pInt) then
+ if (fixedSeed > 0) then
    randInit(1:randSize) = int(fixedSeed)                      ! fixedSeed is of type pInt, randInit not
    call random_seed(put=randInit)
  else
@@ -182,14 +182,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  ! this critical block did cause trouble at IWM
  write(6,*) 'value of random seed:    ', randInit(1)
  write(6,*) 'size of random seed:     ', randSize
- write(6,'(a,4(/,26x,f16.14))') ' start of random sequence: ', randTest
+ write(6,'(a,4(/,26x,f17.14))') ' start of random sequence: ', randTest
  write(6,*) ''
  !$OMP END CRITICAL (write2out)
   
  call random_seed(put=randInit)
  call random_seed(get=randInit)
 
- call halton_seed_set(randInit(1))
+ call halton_seed_set(int(randInit(1), pInt))
  call halton_ndim_set(3_pInt)
 
  ! --- check rotation dictionary ---
@@ -840,12 +840,11 @@ pure function math_transpose33(A)
 
 !   Invertieren einer dimen x dimen - Matrix
 !   A        = Matrix A
-!   InvA     = Inverse von A
-!   AnzNegEW = Anzahl der negativen Eigenwerte von A
-!   error    = logical
-!              = false: Inversion wurde durchgefuehrt.
-!              = true:  Die Inversion in SymGauss wurde wegen eines verschwindenen
-!                       Pivotelement abgebrochen.
+!   InvA     = Inverse of A
+!   AnzNegEW = Number of negative Eigenvalues of A
+!   error      = false: Inversion done.
+!              = true:  Inversion stopped in SymGauss because of dimishing
+!                       Pivotelement
 
  implicit none
 
@@ -868,25 +867,22 @@ pure function math_transpose33(A)
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  PURE SUBROUTINE Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
 
-!   Loesung eines linearen Gleichungsssystem A * X = B mit Hilfe des
-!   GAUSS-Algorithmus
-!   Zur numerischen Stabilisierung wird eine Zeilen- und Spaltenpivotsuche
-!   durchgefuehrt.
+!   Solves a linear EQS  A * X = B with the GAUSS-Algorithm
+!   For numerical stabilization using a pivot search in rows and columns
 !
-!   Eingabeparameter:
-!   A(dimen,dimen) = Koeffizientenmatrix A
-!   B(dimen,dimen) = rechte Seiten B
+!   input parameters
+!   A(dimen,dimen) = matrix A
+!   B(dimen,dimen) = right side B
 !
-!   Ausgabeparameter:
-!   B(dimen,dimen)    = Matrix der Unbekanntenvektoren X
-!   LogAbsDetA    = 10-Logarithmus des Betrages der Determinanten von A
-!   NegHDK        = Anzahl der negativen Hauptdiagonalkoeffizienten nach der
+!   output parameters
+!   B(dimen,dimen) = Matrix containing unknown vectors X
+!   LogAbsDetA    = 10-Logarithm of absolute value of determinatns of A
+!   NegHDK        = Number of negative Maindiagonal coefficients resulting 
 !                   Vorwaertszerlegung
-!   error         = logical
-!                   = false: Das Gleichungssystem wurde geloest.
-!                   = true : Matrix A ist singulaer.
+!   error           = false: EQS is solved
+!                   = true : Matrix A is singular.
 !
-!   A und B werden veraendert!
+!   A and B will be changed!
 
  implicit none
 
@@ -1447,7 +1443,7 @@ endfunction math_deviatoric33
  real(pReal), dimension (3,3), intent(in) :: R
  real(pReal), dimension(4)   :: absQ, math_RtoQuaternion
  real(pReal) :: max_absQ
- integer(pInt), dimension(1) :: largest
+ integer, dimension(1) :: largest !no pInt, maxloc returns integer default
 
  absQ(1) = 1.0_pReal+R(1,1)+R(2,2)+R(3,3)
  absQ(2) = 1.0_pReal+R(1,1)-R(2,2)-R(3,3)
@@ -1916,7 +1912,7 @@ endif
  angle = -acos(dot_product(fiberInC,fiberInS))
  if(angle /= 0.0_pReal) then
 !   rotation axis between sample and crystal system (cross product)
-   forall(i=1:3) axis(i) = fiberInC(rotMap(1,i))*fiberInS(rotMap(2,i))-fiberInC(rotMap(2,i))*fiberInS(rotMap(1,i))
+   forall(i=1_pInt:3_pInt) axis(i) = fiberInC(rotMap(1,i))*fiberInS(rotMap(2,i))-fiberInC(rotMap(2,i))*fiberInS(rotMap(1,i))
    oRot = math_AxisAngleToR(math_vectorproduct(fiberInC,fiberInS),angle)
  else
    oRot = math_I3
@@ -2544,7 +2540,6 @@ end subroutine
  integer(pInt), intent(in), dimension(ndim) :: base
  real(pReal), dimension(ndim) ::  base_inv
  integer(pInt), dimension(ndim) :: digit
- integer(pInt) :: i
  real(pReal), dimension(ndim), intent(out) ::r
  integer(pInt) :: seed
  integer(pInt), dimension(ndim) :: seed2
@@ -2597,7 +2592,7 @@ end subroutine
  function prime(n)
  implicit none
 
- integer(pInt), parameter :: prime_max = 1500
+ integer(pInt), parameter :: prime_max = 1500_pInt
  integer(pInt), save :: icall = 0_pInt
  integer(pInt), intent(in) :: n
  integer(pInt), save, dimension(prime_max) :: npvec
@@ -2940,7 +2935,7 @@ end subroutine
  vol_initial = geomdim(1)*geomdim(2)*geomdim(3)/(real(res(1)*res(2)*res(3), pReal))
  do k = 1_pInt,res(3)
    do j = 1_pInt,res(2)
-     do i = 1_pInt,res(1) 
+     do i = 1_pInt,res(1)
        coords(1,1:3) = nodes(i,       j,       k       ,1:3)
        coords(2,1:3) = nodes(i+1_pInt,j,       k       ,1:3)
        coords(3,1:3) = nodes(i+1_pInt,j+1_pInt,k       ,1:3)
@@ -3251,7 +3246,9 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  ! other variables
  integer(pInt) :: i, j, k, res1_red
  integer(pInt), dimension(3) :: k_s
- real(pReal), dimension(3)   :: step, offset_coords
+ real(pReal), dimension(3)   :: step, offset_coords, integrator
+ 
+ integrator = geomdim / 2.0_pReal / pi                                                                   ! see notes where it is used
  
  if (debug_verbosity > 0_pInt) then
    print*, 'Restore geometry using FFT-based integration'
@@ -3302,6 +3299,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
                                            1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
                                                
  coords_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ 
  do k = 1_pInt, res(3)
    k_s(3) = k-1_pInt
    if(k > res(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-res(3)
@@ -3310,12 +3308,12 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
      if(j > res(2)/2_pInt+1_pInt) k_s(2) = k_s(2)-res(2)
      do i = 1_pInt, res1_red
        k_s(1) = i-1_pInt
-       if(i/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
-                + defgrad_fourier(i,j,k,1:3,1)*cmplx(geomdim(1)/real(k_s(1),pReal),0.0_pReal,pReal)*two_pi_img
+       if(i/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&                          ! substituting division by (on the fly calculated) xi * 2pi * img by multiplication with reversed img/real part
+                + defgrad_fourier(i,j,k,1:3,1)*cmplx(0.0_pReal,integrator(1)/real(k_s(1),pReal),pReal)
        if(j/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
-                + defgrad_fourier(i,j,k,1:3,2)*cmplx(geomdim(1)/real(k_s(2),pReal),0.0_pReal,pReal)*two_pi_img
+                + defgrad_fourier(i,j,k,1:3,2)*cmplx(0.0_pReal,integrator(2)/real(k_s(2),pReal),pReal)
        if(k/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
-                + defgrad_fourier(i,j,k,1:3,3)*cmplx(geomdim(1)/real(k_s(3),pReal),0.0_pReal,pReal)*two_pi_img
+                + defgrad_fourier(i,j,k,1:3,3)*cmplx(0.0_pReal,integrator(3)/real(k_s(3),pReal),pReal)
  enddo; enddo; enddo
  
  call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
@@ -3430,13 +3428,13 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
      do j = 1_pInt, res(2)
        k_s(2) = j - 1_pInt
        if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2) 
-         do i = 1, res1_red
+         do i = 1_pInt, res1_red
            k_s(1) = i - 1_pInt
            xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
  enddo; enddo; enddo
  
- do k = 1, res(3); do j = 1, res(2);do i = 1, res1_red
-   do l = 1, vec_tens
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2);do i = 1_pInt, res1_red
+   do l = 1_pInt, vec_tens
      curl_fourier(i,j,k,l,1) = ( field_fourier(i,j,k,l,3)*xi(i,j,k,2)&
                                 -field_fourier(i,j,k,l,2)*xi(i,j,k,3) )*two_pi_img
      curl_fourier(i,j,k,l,2) = (-field_fourier(i,j,k,l,3)*xi(i,j,k,1)&
@@ -3534,7 +3532,7 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
      do j = 1_pInt, res(2)
        k_s(2) = j - 1_pInt
        if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2) 
-         do i = 1, res1_red
+         do i = 1_pInt, res1_red
            k_s(1) = i - 1_pInt
            xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
  enddo; enddo; enddo
@@ -3609,7 +3607,7 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
  divergence = 0.0_pReal
  order = order + 1_pInt
  do k = 0_pInt, res(3)-1_pInt; do j = 0_pInt, res(2)-1_pInt; do i = 0_pInt, res(1)-1_pInt
-   do m = 1_pInt, order 
+   do m = 1_pInt, order
      coordinates(1,1:3) = mesh_location(mesh_index((/i+m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
                                                                                           + (/1_pInt,1_pInt,1_pInt/)
      coordinates(2,1:3) = mesh_location(mesh_index((/i-m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
@@ -3771,16 +3769,16 @@ subroutine find_nearest_neighbor(res,geomdim,defgrad_av,spatial_dim,range_dim,do
  ielem_large = 0_pInt 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    ielem_small = ielem_small + 1_pInt
-   do n = -1, 1
-     do m = -1, 1
-       do l = -1, 1
+   do n = -1_pInt, 1_pInt
+     do m = -1_pInt, 1_pInt
+       do l = -1_pInt, 1_pInt
           ielem_large = ielem_large + 1_pInt
           domain_set_large(1:spatial_dim,ielem_large) = domain_set(1:spatial_dim,ielem_small)+ real((/l,m,n/),pReal)* shift
    enddo; enddo; enddo
  enddo; enddo; enddo
  
  tree => kdtree2_create(domain_set_large,sort=.true.,rearrange=.true.)                        ! create a sorted tree
- do i = 1_pInt, range_dim      
+ do i = 1_pInt, range_dim
    call kdtree2_n_nearest(tp=tree, qv=range_set(1:spatial_dim,i), nn=1_pInt, results= map_1range_to_domain)
    map_range_to_domain(i) = map_1range_to_domain(1)%idx
  enddo
