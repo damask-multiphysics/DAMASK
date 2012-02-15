@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys,string,re
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 # -----------------------------
@@ -56,15 +56,11 @@ else:
 
 for file in files:
   print file['name']
-  inc  = 1
-  loadcase = 1
-  step = 1
-  iter = 0
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
   output = '1\theader\n' + \
-           '\t'.join(['inc','iteration']) + '\n'
+           '\t'.join(['loadcase','increment','iterations']) + '\n'
 
   if options.memory:
     data = file['input'].readlines()
@@ -75,26 +71,28 @@ for file in files:
   
 # ------------------------------------------ read file ---------------------------------------  
 
+  pattern = re.compile('Loadcase\s+(\d+)\s+Increment\s+(\d+)/\d+\s+@\s+Iteration\s+(\d+)/\d+.*')
+  lastIteration = 0
+
   for line in {True  : data,
                False : file['input']}[options.memory]:
 
-    items = line.split()
-    if len(items) > 8 and items[1] == 'Loadcase':  # 'magic' line?
-      if int(items[6]) == step and int(items[3]) == loadcase:
-        iter += 1                                                  # next iteration found
-      else:
-        output += '\t'.join(map(str,[inc,iter])) + '\n'
-        loadcase = int(items[2])                                   # store current loadcase count
-        step = int(items[5])                                       # store current step count
-        inc += 1                                                   # is next inc
-        iter = 1                                                   # was first iteration of next step/inc
-
+    m = re.match(pattern, line)
+    if m:
+      thisLoadcase = int(m.group(1))
+      thisIncrement = int(m.group(2))
+      thisIteration = int(m.group(3))
+      if thisIteration <= lastIteration:                                          # indicator for new increment or loadcase
+        output += '\t'.join(map(str,[lastLoadcase,lastIncrement,lastIteration])) + '\n'
         if not options.memory:
           file['output'].write(output)
           output = ''
-
-  output += '\t'.join(map(str,[inc,iter])) + '\n'                 # process last step (for which, of course, no further step can be found)
-
+      lastLoadcase = thisLoadcase
+      lastIncrement = thisIncrement
+      lastIteration = thisIteration
+  
+  output += '\t'.join(map(str,[lastLoadcase,lastIncrement,lastIteration])) + '\n' # process last iteration (for which, of course, no further iteration can be found)
+  
   file['input'].close()
 
 # ------------------------------------------ output result ---------------------------------------  
