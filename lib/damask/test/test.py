@@ -2,8 +2,9 @@
 # $Id$
 
 import os, sys
-import subprocess,shutil
+import subprocess,shutil,string
 import damask
+from optparse import OptionParser
 
 class Test():
   '''
@@ -13,9 +14,20 @@ class Test():
 
   variants = []
   
-  def __init__(self):
+  def __init__(self,test_description):
+    print '\n'+test_description
     self.dirBase = os.path.dirname(os.path.realpath(sys.argv[0]))
+    self.parser = OptionParser(
+    description = 'Using: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $',
+    usage='run_test.py [options]')
   
+    self.parser.add_option("-u", "--update", action="store_true",\
+                                    dest="update",\
+                                    help="use current test results as new reference")
+    self.parser.set_defaults(update = False)
+  
+    (self.options, self.args) = self.parser.parse_args()
+    
   def execute(self,variants = [],update = []):
 
     '''
