@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,re,sys,math,string,numpy,DAMASK
+import os,re,sys,math,string,numpy,damask
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -162,11 +162,11 @@ for file in files:
                                               column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)
         idx += 1                                                   
       print options.res
-      defgrad_av[label] = DAMASK.math.tensor_avg(options.res,defgrad[label])
-      centroids[label] = DAMASK.math.deformed_fft(options.res,options.dim,defgrad_av[label],1.0,defgrad[label])
-      nodes[label] = DAMASK.math.mesh_regular_grid(options.res,options.dim,defgrad_av[label],centroids[label])
-      if options.shape:   shape_mismatch[label] = DAMASK.math.shape_compare( options.res,options.dim,defgrad[label],nodes[label],centroids[label])
-      if options.volume: volume_mismatch[label] = DAMASK.math.volume_compare(options.res,options.dim,defgrad[label],nodes[label])
+      defgrad_av[label] = damask.core.math.tensor_avg(options.res,defgrad[label])
+      centroids[label] = damask.core.math.deformed_fft(options.res,options.dim,defgrad_av[label],1.0,defgrad[label])
+      nodes[label] = damask.core.math.mesh_regular_grid(options.res,options.dim,defgrad_av[label],centroids[label])
+      if options.shape:   shape_mismatch[label] = damask.core.math.shape_compare( options.res,options.dim,defgrad[label],nodes[label],centroids[label])
+      if options.volume: volume_mismatch[label] = damask.core.math.volume_compare(options.res,options.dim,defgrad[label],nodes[label])
 
 # ------------------------------------------ read file ---------------------------------------  
 
