@@ -25,20 +25,20 @@
  CONTAINS
 !---------------------------
 ! function IO_abaqus_assembleInputFile
-! subroutine IO_open_file(unit,relPath)
-! subroutine IO_open_inputFile(unit, model)
-! subroutine IO_open_logFile(unit)
+! subroutine IO_open_file(myUnit,relPath)
+! subroutine IO_open_inputFile(myUnit, model)
+! subroutine IO_open_logFile(myUnit)
 ! function IO_hybridIA(Nast,ODFfileName)
 ! private function hybridIA_reps(dV_V,steps,C)
 ! function IO_stringPos(line,maxN)
-! function IO_stringValue(line,positions,pos)
-! function IO_floatValue(line,positions,pos)
-! function IO_intValue(line,positions,pos)
-! function IO_fixedStringValue(line,ends,pos)
-! function IO_fixedFloatValue(line,ends,pos)
-! function IO_fixedFloatNoEValue(line,ends,pos)
-! function IO_fixedIntValue(line,ends,pos)
-! function IO_continousIntValues(unit,maxN)
+! function IO_stringValue(line,positions,myPos)
+! function IO_floatValue(line,positions,myPos)
+! function IO_intValue(line,positions,myPos)
+! function IO_fixedStringValue(line,ends,myPos)
+! function IO_fixedFloatValue(line,ends,myPos)
+! function IO_fixedFloatNoEValue(line,ends,myPos)
+! function IO_fixedIntValue(line,ends,myPos)
+! function IO_continousIntValues(myUnit,maxN)
 ! function IO_lc(line)
 ! subroutine IO_lcInplace(line)
 ! subroutine IO_error(ID)
@@ -76,7 +76,7 @@ recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess
  character(len=300) line,fname
  integer(pInt), intent(in) :: unit1, unit2
  logical createSuccess,fexist
- integer(pInt), parameter :: maxNchunks = 6
+ integer(pInt), parameter :: maxNchunks = 6_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
 
  
@@ -88,7 +88,7 @@ recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess
 
 !   call IO_lcInPlace(line)
    if (IO_lc(IO_StringValue(line,positions,1_pInt))=='*include') then
-     fname = trim(getSolverWorkingDirectoryName())//trim(line(9_pInt+scan(line(9_pInt:),'='):))
+     fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
      inquire(file=fname, exist=fexist)
      if (.not.(fexist)) then
        !$OMP CRITICAL (write2out)
@@ -121,25 +121,25 @@ end function
 !***********************************************************
 ! check if the input file for Abaqus contains part info
 !***********************************************************
- function IO_abaqus_hasNoPart(unit)
+ function IO_abaqus_hasNoPart(myUnit)
  
  use prec, only: pInt
  implicit none
  
- integer(pInt) unit
- integer(pInt), parameter :: maxNchunks = 1
- integer(pInt), dimension(1+2*maxNchunks) :: pos
+ integer(pInt) myUnit
+ integer(pInt), parameter :: maxNchunks = 1_pInt
+ integer(pInt), dimension(1+2*maxNchunks) :: myPos
  logical IO_abaqus_hasNoPart
  character(len=300) line
  
  IO_abaqus_hasNoPart = .true.
  
 610 FORMAT(A300)
- rewind(unit)
+ rewind(myUnit)
  do
-   read(unit,610,END=620) line
-   pos = IO_stringPos(line,maxNchunks)
-   if (IO_lc(IO_stringValue(line,pos,1_pInt)) == '*part' ) then
+   read(myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if (IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*part' ) then
      IO_abaqus_hasNoPart = .false.
      exit
    endif
@@ -150,22 +150,22 @@ end function
 
 
 !********************************************************************
-! open existing file to given unit
+! open existing file to given myUnit
 ! path to file is relative to working directory
 !********************************************************************
- logical function IO_open_file_stat(unit,relPath)
+ logical function IO_open_file_stat(myUnit,relPath)
 
  use prec, only: pInt
  use DAMASK_interface
  
  implicit none
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) :: myUnit
  character(len=*), intent(in) :: relPath
  character(len=1024) path
  integer(pInt) stat
  
  path = trim(getSolverWorkingDirectoryName())//relPath
- open(unit,status='old',iostat=stat,file=path)
+ open(myUnit,status='old',iostat=stat,file=path)
  IO_open_file_stat = (stat == 0_pInt)
  
  endfunction
@@ -175,37 +175,37 @@ end function
 ! open existing file to given unit
 ! path to file is relative to working directory
 !********************************************************************
- subroutine IO_open_file(unit,relPath)
+ subroutine IO_open_file(myUnit,relPath)
 
  use prec, only: pInt
  use DAMASK_interface
  
  implicit none
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) ::myUnit
  character(len=*), intent(in) :: relPath
  character(len=1024) path
  integer(pInt) stat
  
  path = trim(getSolverWorkingDirectoryName())//relPath
- open(unit,status='old',iostat=stat,file=path)
+ open(myUnit,status='old',iostat=stat,file=path)
  if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
  endsubroutine
 
 
 !********************************************************************
-! open FEM inputfile to given unit
+! open FEM inputfile to given myUnit
 ! AP: 12.07.10 
 !   : changed the function to open *.inp_assembly, which is basically 
 !     the input file without comment lines and possibly assembled includes
 !********************************************************************
- subroutine IO_open_inputFile(unit,model)
+ subroutine IO_open_inputFile(myUnit,model)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) :: myUnit
  character(len=*), intent(in) :: model
  character(len=1024) path
  integer(pInt) stat
@@ -214,19 +214,18 @@ end function
  if (FEsolver == 'Abaqus') then
 
    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
-   open(unit+1,status='old',iostat=stat,file=path)
+   open(myUnit+1,status='old',iostat=stat,file=path)
    if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
    
    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension//'_assembly'
-   open(unit,iostat=stat,file=path)
+   open(myUnit,iostat=stat,file=path)
    if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
-      if (IO_abaqus_assembleInputFile(unit,unit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
-   close(unit+1_pInt) 
+      if (IO_abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
+   close(myUnit+1_pInt) 
  
  else
-
    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
-   open(unit,status='old',iostat=stat,file=path)
+   open(myUnit,status='old',iostat=stat,file=path)
    if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
 
  endif
@@ -235,20 +234,19 @@ end function
 
 
 !********************************************************************
-! open FEM logfile to given unit
+! open FEM logfile to given myUnit
 !********************************************************************
- subroutine IO_open_logFile(unit)
-
+ subroutine IO_open_logFile(myUnit)
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) :: myUnit
  character(len=1024) path
  integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//LogFileExtension
- open(unit,status='old',iostat=stat,file=path)
+ open(myUnit,status='old',iostat=stat,file=path)
  if (stat /= 0) call IO_error(100_pInt,ext_msg=path)
 
  endsubroutine
@@ -256,23 +254,23 @@ end function
 
 !********************************************************************
 ! open (write) file related to current job
-! but with different extension to given unit
+! but with different extension to given myUnit
 !********************************************************************
- logical function IO_open_jobFile_stat(unit,newExt)
+ logical function IO_open_jobFile_stat(myUnit,newExt)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) :: myUnit
  character(len=*), intent(in) :: newExt
  character(len=1024) path
  integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
- open(unit,status='old',iostat=stat,file=path)
+ open(myUnit,status='old',iostat=stat,file=path)
  IO_open_jobFile_stat = (stat == 0_pInt)
- 
+
  endfunction
 
 
@@ -280,19 +278,19 @@ end function
 ! open (write) file related to current job
 ! but with different extension to given unit
 !********************************************************************
- subroutine IO_open_jobFile(unit,newExt)
+ subroutine IO_open_jobFile(myUnit,newExt)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) :: myUnit
  character(len=*), intent(in) :: newExt
  character(len=1024) path
  integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
- open(unit,status='old',iostat=stat,file=path)
+ open(myUnit,status='old',iostat=stat,file=path)
  if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
  endsubroutine
@@ -300,21 +298,21 @@ end function
 
 !********************************************************************
 ! open (write) file related to current job
-! but with different extension to given unit
+! but with different extension to given myUnit
 !********************************************************************
- subroutine IO_write_jobFile(unit,newExt)
+ subroutine IO_write_jobFile(myUnit,newExt)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) :: myUnit
  character(len=*), intent(in) :: newExt
  character(len=1024) path
  integer(pInt) stat
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
- open(unit,status='replace',iostat=stat,file=path)
+ open(myUnit,status='replace',iostat=stat,file=path)
  if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
  endsubroutine
@@ -322,15 +320,15 @@ end function
 
 !********************************************************************
 ! open (write) binary file related to current job
-! but with different extension to given unit
+! but with different extension to given myUnit
 !********************************************************************
- subroutine IO_write_jobBinaryFile(unit,newExt,recMultiplier)
+ subroutine IO_write_jobBinaryFile(myUnit,newExt,recMultiplier)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) :: myUnit
  integer(pInt), intent(in), optional :: recMultiplier
  character(len=*), intent(in) :: newExt
  character(len=1024) path
@@ -338,9 +336,9 @@ end function
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
  if (present(recMultiplier)) then
-   open(unit,status='replace',form='unformatted',access='direct',recl=pReal*recMultiplier,iostat=stat,file=path)
+   open(myUnit,status='replace',form='unformatted',access='direct',recl=pReal*recMultiplier,iostat=stat,file=path)
  else
-   open(unit,status='replace',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
+   open(myUnit,status='replace',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
  endif
  if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
@@ -349,15 +347,15 @@ end function
 
 !********************************************************************
 ! open (read) binary file related to restored job
-! and with different extension to given unit
+! and with different extension to given myUnit
 !********************************************************************
- subroutine IO_read_jobBinaryFile(unit,newExt,jobName,recMultiplier)
+ subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
 
  use prec, only: pReal, pInt
  use DAMASK_interface
  implicit none
 
- integer(pInt), intent(in) :: unit
+ integer(pInt), intent(in) :: myUnit
  integer(pInt), intent(in), optional :: recMultiplier
  character(len=*), intent(in) :: newExt, jobName
  character(len=1024) path
@@ -365,9 +363,9 @@ end function
 
  path = trim(getSolverWorkingDirectoryName())//trim(jobName)//'.'//newExt
  if (present(recMultiplier)) then
-   open(unit,status='old',form='unformatted',access='direct',recl=pReal*recMultiplier,iostat=stat,file=path)
+   open(myUnit,status='old',form='unformatted',access='direct',recl=pReal*recMultiplier,iostat=stat,file=path)
  else
-   open(unit,status='old',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
+   open(myUnit,status='old',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
  endif
  if (stat /= 0) then
    call IO_error(100_pInt,ext_msg=path)
@@ -390,9 +388,9 @@ end function
  real(pReal), intent(in) :: C
  
  hybridIA_reps = 0_pInt
- do phi1=1,steps(1)
-   do Phi =1,steps(2)
-     do phi2=1,steps(3)
+ do phi1=1_pInt,steps(1)
+   do Phi =1_pInt,steps(2)
+     do phi2=1_pInt,steps(3)
        hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
      enddo
    enddo
@@ -416,7 +414,7 @@ end function
  character(len=80) line
  character(len=*), parameter :: fileFormat = '(A80)'
  integer(pInt) i,j,bin,Nast,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
- integer(pInt), dimension(7) :: pos
+ integer(pInt), dimension(7) :: myPos
  integer(pInt), dimension(3) :: steps
  integer(pInt), dimension(:), allocatable :: binSet
  real(pReal) center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
@@ -429,18 +427,18 @@ end function
 !--- parse header of ODF file ---
 !--- limits in phi1, Phi, phi2 ---
  read(999,fmt=fileFormat,end=100) line
- pos = IO_stringPos(line,3_pInt)
- if (pos(1).ne.3) goto 100
- do i=1,3
-   limits(i) = IO_floatValue(line,pos,i)*inRad
+ myPos = IO_stringPos(line,3_pInt)
+ if (myPos(1).ne.3) goto 100
+ do i=1_pInt,3_pInt
+   limits(i) = IO_floatValue(line,myPos,i)*inRad
  enddo
 
 !--- deltas in phi1, Phi, phi2 ---
  read(999,fmt=fileFormat,end=100) line
- pos = IO_stringPos(line,3_pInt)
- if (pos(1).ne.3) goto 100
- do i=1,3
-   deltas(i) = IO_floatValue(line,pos,i)*inRad
+ myPos = IO_stringPos(line,3_pInt)
+ if (myPos(1).ne.3) goto 100
+ do i=1_pInt,3_pInt
+   deltas(i) = IO_floatValue(line,myPos,i)*inRad
  enddo
  steps = nint(limits/deltas,pInt)
  allocate(dV_V(steps(3),steps(2),steps(1)))
@@ -461,12 +459,12 @@ end function
  dg_0 = deltas(1)*deltas(3)*2.0_pReal*sin(deltas(2)/2.0_pReal)
  NnonZero = 0_pInt
  
- do phi1=1,steps(1)
-   do Phi=1,steps(2)
-     do phi2=1,steps(3)
+ do phi1=1_pInt,steps(1)
+   do Phi=1_pInt,steps(2)
+     do phi2=1_pInt,steps(3)
        read(999,fmt=*,end=100) prob
        if (prob > 0.0_pReal) then
-         NnonZero = NnonZero+1
+         NnonZero = NnonZero+1_pInt
          sum_dV_V = sum_dV_V+prob
        else
          prob = 0.0_pReal
@@ -506,19 +504,19 @@ end function
 
  allocate(binSet(Nreps))
  bin = 0_pInt ! bin counter
- i = 1 ! set counter
- do phi1=1,steps(1)
-   do Phi=1,steps(2)
-     do phi2=1,steps(3)
+ i = 1_pInt ! set counter
+ do phi1=1_pInt,steps(1)
+   do Phi=1_pInt,steps(2)
+     do phi2=1_pInt,steps(3)
        reps = nint(C*dV_V(phi2,Phi,phi1), pInt)
        binSet(i:i+reps-1) = bin
-       bin = bin+1 ! advance bin
+       bin = bin+1_pInt ! advance bin
        i = i+reps ! advance set
      enddo
    enddo
  enddo
 
- do i=1,Nast
+ do i=1_pInt,Nast
    if (i < Nast) then
      call random_number(rnd)
      j = nint(rnd*(Nreps-i)+i+0.5_pReal,pInt)
@@ -552,7 +550,7 @@ end function
  character(len=*), intent(in) :: line
  character(len=*), parameter :: blank = achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
  character(len=*), parameter :: comment = achar(35)                               ! comment id '#'
- integer(pInt) posNonBlank, posComment
+ integer :: posNonBlank, posComment !no pInt
  logical IO_isBlank
  
  posNonBlank = verify(line,blank)
@@ -572,7 +570,7 @@ end function
  character(len=*), intent(in) :: line,openChar,closeChar
  character(len=*), parameter :: sep=achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
  character(len=len_trim(line)) IO_getTag
- integer(pInt)  left,right
+ integer :: left,right         !no pInt
 
  IO_getTag = ''
  left = scan(line,openChar)
@@ -596,7 +594,7 @@ end function
  integer(pInt) IO_countSections
  character(len=1024) line
 
- IO_countSections = 0
+ IO_countSections = 0_pInt
  line = ''
  rewind(file)
 
@@ -609,7 +607,7 @@ end function
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
-     IO_countSections = IO_countSections + 1
+     IO_countSections = IO_countSections + 1_pInt
  enddo
 
 100 endfunction
@@ -627,7 +625,7 @@ end function
  integer(pInt), intent(in) :: file, Nsections
  character(len=*), intent(in) :: part, myTag
  integer(pInt), dimension(Nsections) :: IO_countTagInPart, counter
- integer(pInt), parameter :: maxNchunks = 1
+ integer(pInt), parameter :: maxNchunks = 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) section
  character(len=1024) line,tag
@@ -646,7 +644,7 @@ end function
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
-     section = section + 1
+     section = section + 1_pInt
    if (section > 0) then
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
@@ -672,7 +670,7 @@ endfunction
  integer(pInt), intent(in) :: file, Nsections
  character(len=*), intent(in) :: part, myTag
  logical, dimension(Nsections) :: IO_spotTagInPart
- integer(pInt), parameter :: maxNchunks = 1
+ integer(pInt), parameter :: maxNchunks = 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) section
  character(len=1024) line,tag
@@ -691,8 +689,8 @@ endfunction
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
-     section = section + 1
-   if (section > 0) then
+     section = section + 1_pInt
+   if (section > 0_pInt) then
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      if (tag == myTag) &                                  ! match
@@ -716,11 +714,11 @@ endfunction
  character(len=*), intent(in) :: line
  character(len=*), parameter :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13) ! comma and whitespaces
  integer(pInt), intent(in) :: N
- integer(pInt)  left,right
- integer(pInt) IO_stringPos(1+N*2)
+ integer :: left,right                   !no pInt (verify and scan return default integer)
+ integer(pInt) ::  IO_stringPos(1_pInt+N*2_pInt)
 
- IO_stringPos = -1
- IO_stringPos(1) = 0
+ IO_stringPos = -1_pInt
+ IO_stringPos(1) = 0_pInt
  right = 0
 
  do while (verify(line(right+1:),sep)>0)
@@ -730,55 +728,55 @@ endfunction
      exit
    endif
    if ( IO_stringPos(1)<N ) then
-     IO_stringPos(1+IO_stringPos(1)*2+1) = left
-     IO_stringPos(1+IO_stringPos(1)*2+2) = right
+     IO_stringPos(1_pInt+IO_stringPos(1)*2_pInt+1_pInt) = int(left, pInt)
+     IO_stringPos(1_pInt+IO_stringPos(1)*2_pInt+2_pInt) = int(right, pInt)
    endif
-   IO_stringPos(1) = IO_stringPos(1)+1
+   IO_stringPos(1) = IO_stringPos(1)+1_pInt
  enddo
 
 endfunction
 
 
 !********************************************************************
-! read string value at pos from line
+! read string value at myPos from line
 !********************************************************************
- pure function IO_stringValue (line,positions,pos)
+ pure function IO_stringValue (line,positions,myPos)
  
  use prec, only: pReal,pInt
  implicit none
  
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: positions(*),pos
- character(len=1+positions(pos*2+1)-positions(pos*2)) IO_stringValue
+ integer(pInt), intent(in) :: positions(*),myPos
+ character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IO_stringValue
 
- if (positions(1) < pos) then
+ if (positions(1) < myPos) then
    IO_stringValue = ''
  else
-   IO_stringValue = line(positions(pos*2):positions(pos*2+1))
+   IO_stringValue = line(positions(myPos*2):positions(myPos*2+1))
  endif
 
  endfunction
 
 
 !********************************************************************
-! read string value at pos from fixed format line
+! read string value at myPos from fixed format line
 !********************************************************************
- pure function IO_fixedStringValue (line,ends,pos)
+ pure function IO_fixedStringValue (line,ends,myPos)
  
  use prec, only: pReal,pInt
  implicit none
  
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: ends(*),pos
- character(len=ends(pos+1)-ends(pos)) IO_fixedStringValue
+ integer(pInt), intent(in) :: ends(*),myPos
+ character(len=ends(myPos+1)-ends(myPos)) :: IO_fixedStringValue
 
- IO_fixedStringValue = line(ends(pos)+1:ends(pos+1))
+ IO_fixedStringValue = line(ends(myPos)+1:ends(myPos+1))
 
  endfunction
 
 
 !********************************************************************
-! read float value at pos from line
+! read float value at myPos from line
 !********************************************************************
  pure function IO_floatValue (line,positions,myPos)
  
@@ -787,7 +785,7 @@ endfunction
  
  character(len=*), intent(in) :: line
  integer(pInt), intent(in) :: positions(*),myPos
- real(pReal) IO_floatValue
+ real(pReal) :: IO_floatValue
 
  if (positions(1) < myPos) then
    IO_floatValue = 0.0_pReal
@@ -801,18 +799,18 @@ endfunction
 
 
 !********************************************************************
-! read float value at pos from fixed format line
+! read float value at myPos from fixed format line
 !********************************************************************
- pure function IO_fixedFloatValue (line,ends,pos)
+ pure function IO_fixedFloatValue (line,ends,myPos)
  
  use prec, only: pReal,pInt
  implicit none
  
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: ends(*),pos
- real(pReal) IO_fixedFloatValue
+ integer(pInt), intent(in) :: ends(*),myPos
+ real(pReal) :: IO_fixedFloatValue
 
- read(UNIT=line(ends(pos-1)+1:ends(pos)),ERR=100,FMT=*) IO_fixedFloatValue
+ read(UNIT=line(ends(myPos-1)+1:ends(myPos)),ERR=100,FMT=*) IO_fixedFloatValue
  return
 100 IO_fixedFloatValue = huge(1.0_pReal)
 
@@ -820,24 +818,25 @@ endfunction
 
 
 !********************************************************************
-! read float x.y+z value at pos from format line line
+! read float x.y+z value at myPos from format line line
 !********************************************************************
- pure function IO_fixedNoEFloatValue (line,ends,pos)
+ pure function IO_fixedNoEFloatValue (line,ends,myPos)
  
  use prec, only: pReal,pInt
  implicit none
  
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: ends(*),pos
- integer(pInt) pos_exp,expon
+ integer(pInt), intent(in) :: ends(*),myPos
+ integer(pInt) :: expon
+ integer :: pos_exp
  real(pReal) IO_fixedNoEFloatValue,base
  
- pos_exp = scan(line(ends(pos)+1:ends(pos+1)),'+-',back=.true.)
+ pos_exp = scan(line(ends(myPos)+1:ends(myPos+1)),'+-',back=.true.)
  if (pos_exp > 1) then
-   read(UNIT=line(ends(pos)+1:ends(pos)+pos_exp-1),ERR=100,FMT=*) base
-   read(UNIT=line(ends(pos)+pos_exp:ends(pos+1)),ERR=100,FMT=*) expon
+   read(UNIT=line(ends(myPos)+1:ends(myPos)+pos_exp-1),ERR=100,FMT=*) base
+   read(UNIT=line(ends(myPos)+pos_exp:ends(myPos+1)),ERR=100,FMT=*) expon
  else
-   read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT=*) base
+   read(UNIT=line(ends(myPos)+1:ends(myPos+1)),ERR=100,FMT=*) base
    expon = 0_pInt
  endif
  IO_fixedNoEFloatValue = base*10.0_pReal**expon
@@ -848,21 +847,21 @@ endfunction
 
 
 !********************************************************************
-! read int value at pos from line
+! read int value at myPos from line
 !********************************************************************
- pure function IO_intValue (line,positions,pos)
+ pure function IO_intValue (line,positions,myPos)
  
  use prec, only: pReal,pInt
  implicit none
  
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: positions(*),pos
- integer(pInt) IO_intValue
+ integer(pInt), intent(in) :: positions(*),myPos
+ integer(pInt) ::  IO_intValue
 
- if (positions(1) < pos) then
+ if (positions(1) < myPos) then
    IO_intValue = 0_pInt
  else
-   read(UNIT=line(positions(pos*2):positions(pos*2+1)),ERR=100,FMT=*) IO_intValue
+   read(UNIT=line(positions(myPos*2):positions(myPos*2+1)),ERR=100,FMT=*) IO_intValue
  endif
  return
 100 IO_intValue = huge(1_pInt)
@@ -871,18 +870,18 @@ endfunction
 
 
 !********************************************************************
-! read int value at pos from fixed format line
+! read int value at myPos from fixed format line
 !********************************************************************
- pure function IO_fixedIntValue (line,ends,pos)
+ pure function IO_fixedIntValue (line,ends,myPos)
  
  use prec, only: pReal,pInt
  implicit none
  
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: ends(*),pos
+ integer(pInt), intent(in) :: ends(*),myPos
  integer(pInt) IO_fixedIntValue
 
- read(UNIT=line(ends(pos)+1:ends(pos+1)),ERR=100,FMT=*) IO_fixedIntValue
+ read(UNIT=line(ends(myPos)+1:ends(myPos+1)),ERR=100,FMT=*) IO_fixedIntValue
  return
 100 IO_fixedIntValue = huge(1_pInt)
 
@@ -899,7 +898,7 @@ endfunction
 
  character (len=*), intent(in) :: line
  character (len=len(line)) IO_lc
- integer(pInt) i
+ integer :: i                      !no pInt (len returns default integer)
 
  IO_lc = line
  do i=1,len(line)
@@ -919,7 +918,7 @@ endfunction
 
  character (len=*) line
  character (len=len(line)) IO_lc
- integer(pInt) i
+ integer ::  i                   !no pInt (len returns default integer)
 
  IO_lc = line
  do i=1,len(line)
@@ -939,15 +938,15 @@ endfunction
  implicit none
 
  integer(pInt)  remainingChunks,unit,N
- integer(pInt), parameter :: maxNchunks = 64
- integer(pInt), dimension(1+2*maxNchunks) :: pos
+ integer(pInt), parameter :: maxNchunks = 64_pInt
+ integer(pInt), dimension(1+2*maxNchunks) :: myPos
  character(len=300) line
 
  remainingChunks = N
  do while (remainingChunks > 0)
    read(unit,'(A300)',end=100) line
-   pos = IO_stringPos(line,maxNchunks)
-   remainingChunks = remainingChunks - pos(1)
+   myPos = IO_stringPos(line,maxNchunks)
+   remainingChunks = remainingChunks - myPos(1)
  enddo
 100  endsubroutine
 
@@ -957,19 +956,18 @@ endfunction
 !********************************************************************
  pure function IO_extractValue (line,key)
  
- use prec, only: pReal,pInt
  implicit none
 
  character(len=*), intent(in) :: line,key
  character(len=*), parameter :: sep = achar(61)         ! '='
- integer(pInt) pos
+ integer ::  myPos                                          ! no pInt (scan returns default integer)
  character(len=300) IO_extractValue
 
  IO_extractValue = ''
 
- pos = scan(line,sep)
- if (pos > 0 .and. line(:pos-1) == key(:pos-1)) &       ! key matches expected key
-   IO_extractValue = line(pos+1:)                       ! extract value
+ myPos = scan(line,sep)
+ if (myPos > 0 .and. line(:myPos-1) == key(:myPos-1)) &       ! key matches expected key
+   IO_extractValue = line(myPos+1:)                       ! extract value
 
  endfunction
 
@@ -980,28 +978,28 @@ endfunction
 !   : is not changed back to the original version since *.inp_assembly does not
 !   : contain any comment lines (12.07.2010)
 !********************************************************************
- function IO_countDataLines (unit)
+ function IO_countDataLines (myUnit)
 
  use prec, only: pReal,pInt
  implicit none
 
- integer(pInt)  IO_countDataLines,unit
- integer(pInt), parameter :: maxNchunks = 1
- integer(pInt), dimension(1+2*maxNchunks) :: pos
- character(len=300) line,tmp
+ integer(pInt) :: IO_countDataLines,myUnit
+ integer(pInt), parameter :: maxNchunks = 1_pInt
+ integer(pInt), dimension(1+2*maxNchunks) :: myPos
+ character(len=300) :: line,tmp
 
- IO_countDataLines = 0
+ IO_countDataLines = 0_pInt
  do
-   read(unit,'(A300)',end=100) line
-   pos = IO_stringPos(line,maxNchunks)
-   tmp = IO_lc(IO_stringValue(line,pos,1_pInt))
+   read(myUnit,'(A300)',end=100) line
+   myPos = IO_stringPos(line,maxNchunks)
+   tmp = IO_lc(IO_stringValue(line,myPos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then  ! found keyword
      exit
    else
      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
    endif
  enddo
-100 backspace(unit)
+100 backspace(myUnit)
 
  endfunction
 
@@ -1011,16 +1009,16 @@ endfunction
 ! Marc:   ints concatenated by "c" as last char or range of values a "to" b
 ! Abaqus: triplet of start,stop,inc
 !********************************************************************
- function IO_countContinousIntValues (unit)
+ function IO_countContinousIntValues (myUnit)
 
  use DAMASK_interface
  use prec, only: pReal,pInt
  implicit none
 
- integer(pInt)  unit,l,count
- integer(pInt)  IO_countContinousIntValues
- integer(pInt), parameter :: maxNchunks = 8192
- integer(pInt), dimension(1+2*maxNchunks) :: pos
+ integer(pInt) :: myUnit,l,c
+ integer(pInt) :: IO_countContinousIntValues
+ integer(pInt), parameter :: maxNchunks = 8192_pInt
+ integer(pInt), dimension(1+2*maxNchunks) :: myPos
  character(len=65536) line
 
  IO_countContinousIntValues = 0_pInt
@@ -1029,15 +1027,15 @@ endfunction
    case ('Marc','Spectral')
    
      do
-       read(unit,'(A300)',end=100) line
-       pos = IO_stringPos(line,maxNchunks)
-       if (IO_lc(IO_stringValue(line,pos,2_pInt)) == 'to' ) then               ! found range indicator
-         IO_countContinousIntValues = 1_pInt + IO_intValue(line,pos,3_pInt) - IO_intValue(line,pos,1_pInt)
+       read(myUnit,'(A300)',end=100) line
+       myPos = IO_stringPos(line,maxNchunks)
+       if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then               ! found range indicator
+         IO_countContinousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) - IO_intValue(line,myPos,1_pInt)
          exit                                                             ! only one single range indicator allowed
        else
-         IO_countContinousIntValues = IO_countContinousIntValues+pos(1)-1_pInt ! add line's count when assuming 'c'
-         if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then        ! line finished, read last value
-           IO_countContinousIntValues = IO_countContinousIntValues+1
+         IO_countContinousIntValues = IO_countContinousIntValues+myPos(1)-1_pInt ! add line's count when assuming 'c'
+         if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then        ! line finished, read last value
+           IO_countContinousIntValues = IO_countContinousIntValues+1_pInt
            exit                                                           ! data ended
          endif
        endif
@@ -1045,17 +1043,17 @@ endfunction
    
    case('Abaqus')
 
-     count = IO_countDataLines(unit)
-     do l = 1,count
-       backspace(unit)
+     c = IO_countDataLines(myUnit)
+     do l = 1_pInt,c
+       backspace(myUnit)
      enddo
      
-     do l = 1,count
-       read(unit,'(A300)',end=100) line
-       pos = IO_stringPos(line,maxNchunks)
-       IO_countContinousIntValues = IO_countContinousIntValues + 1 + &    ! assuming range generation
-                                    (IO_intValue(line,pos,2_pInt)-IO_intValue(line,pos,1_pInt))/&
-                                                         max(1_pInt,IO_intValue(line,pos,3_pInt))
+     do l = 1_pInt,c
+       read(myUnit,'(A300)',end=100) line
+       myPos = IO_stringPos(line,maxNchunks)
+       IO_countContinousIntValues = IO_countContinousIntValues + 1_pInt + &    ! assuming range generation
+                                    (IO_intValue(line,myPos,2_pInt)-IO_intValue(line,myPos,1_pInt))/&
+                                                         max(1_pInt,IO_intValue(line,myPos,3_pInt))
      enddo
  
  endselect
@@ -1068,53 +1066,53 @@ endfunction
 ! Marc:   ints concatenated by "c" as last char, range of a "to" b, or named set
 ! Abaqus: triplet of start,stop,inc or named set
 !********************************************************************
- function IO_continousIntValues (unit,maxN,lookupName,lookupMap,lookupMaxN)
+ function IO_continousIntValues (myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
  use DAMASK_interface
  use prec, only: pReal,pInt
  implicit none
 
- integer(pInt)  unit,maxN,i,j,l,count,first,last
+ integer(pInt)  myUnit,maxN,i,j,l,c,first,last
  integer(pInt), dimension(1+maxN) :: IO_continousIntValues
  integer(pInt), parameter :: maxNchunks = 8192_pInt
- integer(pInt), dimension(1+2*maxNchunks) :: pos
+ integer(pInt), dimension(1+2*maxNchunks) :: myPos
  character(len=64), dimension(:) :: lookupName
  integer(pInt) :: lookupMaxN
  integer(pInt), dimension(:,:) :: lookupMap
  character(len=65536) line
  logical rangeGeneration
 
- IO_continousIntValues = 0
+ IO_continousIntValues = 0_pInt
  rangeGeneration = .false.
 
  select case (FEsolver)
    case ('Marc','Spectral')
    
      do
-       read(unit,'(A65536)',end=100) line
-       pos = IO_stringPos(line,maxNchunks)
-       if (verify(IO_stringValue(line,pos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set name
-         do i = 1_pInt,lookupMaxN                                             ! loop over known set names
-           if (IO_stringValue(line,pos,1_pInt) == lookupName(i)) then         ! found matching name
+       read(myUnit,'(A65536)',end=100) line
+       myPos = IO_stringPos(line,maxNchunks)
+       if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set name
+         do i = 1_pInt, lookupMaxN                                             ! loop over known set names
+           if (IO_stringValue(line,myPos,1_pInt) == lookupName(i)) then         ! found matching name
              IO_continousIntValues = lookupMap(:,i)                      ! return resp. entity list
              exit
            endif
          enddo
          exit
-       else if (pos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,pos,2_pInt)) == 'to' ) then         ! found range indicator
-         do i = IO_intValue(line,pos,1_pInt),IO_intValue(line,pos,3_pInt)
+       else if (myPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then         ! found range indicator
+         do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,3_pInt)
            IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
            IO_continousIntValues(1+IO_continousIntValues(1)) = i
          enddo
          exit
        else
-         do i = 1,pos(1)-1  ! interpret up to second to last value
+         do i = 1_pInt ,myPos(1)-1_pInt  ! interpret up to second to last value
            IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
-           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,i)
+           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,myPos,i)
          enddo
-         if ( IO_lc(IO_stringValue(line,pos,pos(1))) /= 'c' ) then       ! line finished, read last value
+         if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then       ! line finished, read last value
            IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
-           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,pos(1))
+           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,myPos,myPos(1))
            exit
          endif
        endif
@@ -1122,43 +1120,43 @@ endfunction
    
    case('Abaqus')
 
-     count = IO_countDataLines(unit)
-     do l = 1,count
-       backspace(unit)
+     c = IO_countDataLines(myUnit)
+     do l = 1_pInt,c
+       backspace(myUnit)
      enddo
      
 !      check if the element values in the elset are auto generated
-     backspace(unit)
-     read(unit,'(A65536)',end=100) line
-     pos = IO_stringPos(line,maxNchunks)
-     do i = 1,pos(1)
-       if (IO_lc(IO_stringValue(line,pos,i)) == 'generate') rangeGeneration = .true.
+     backspace(myUnit)
+     read(myUnit,'(A65536)',end=100) line
+     myPos = IO_stringPos(line,maxNchunks)
+     do i = 1_pInt,myPos(1)
+       if (IO_lc(IO_stringValue(line,myPos,i)) == 'generate') rangeGeneration = .true.
      enddo
      
-     do l = 1,count
-       read(unit,'(A65536)',end=100) line
-       pos = IO_stringPos(line,maxNchunks)
-       if (verify(IO_stringValue(line,pos,1_pInt),'0123456789') > 0_pInt) then     ! a non-int, i.e. set names follow on this line
-         do i = 1,pos(1)                                                 ! loop over set names in line
-           do j = 1,lookupMaxN                                           ! look thru known set names
-             if (IO_stringValue(line,pos,i) == lookupName(j)) then       ! found matching name
-               first = 2 + IO_continousIntValues(1)                      ! where to start appending data
-               last  = first + lookupMap(1,j) - 1                        ! up to where to append data
+     do l = 1_pInt,c
+       read(myUnit,'(A65536)',end=100) line
+       myPos = IO_stringPos(line,maxNchunks)
+       if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set names follow on this line
+         do i = 1_pInt,myPos(1)                                                 ! loop over set names in line
+           do j = 1_pInt,lookupMaxN                                      ! look thru known set names
+             if (IO_stringValue(line,myPos,i) == lookupName(j)) then       ! found matching name
+               first = 2_pInt + IO_continousIntValues(1)                      ! where to start appending data
+               last  = first + lookupMap(1,j) - 1_pInt                        ! up to where to append data
                IO_continousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)    ! add resp. entity list
                IO_continousIntValues(1) = IO_continousIntValues(1) + lookupMap(1,j)   ! count them
              endif
            enddo
          enddo
        else if (rangeGeneration) then                                    ! range generation
-         do i = IO_intValue(line,pos,1_pInt),IO_intValue(line,pos,2_pInt),max(1_pInt,IO_intValue(line,pos,3_pInt))
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1
+         do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,2_pInt),max(1_pInt,IO_intValue(line,myPos,3_pInt))
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
            IO_continousIntValues(1+IO_continousIntValues(1)) = i
          enddo
        else                                                              ! read individual elem nums
-         do i = 1,pos(1)
-!            write(*,*)'IO_CIV-int',IO_intValue(line,pos,i)
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1
-           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,pos,i)
+         do i = 1_pInt,myPos(1)
+!            write(*,*)'IO_CIV-int',IO_intValue(line,myPos,i)
+           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
+           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,myPos,i)
          enddo
        endif
      enddo

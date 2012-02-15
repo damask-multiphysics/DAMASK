@@ -53,7 +53,6 @@ program DAMASK_spectral
  use numerics,         only: err_div_tol, err_stress_tolrel, rotation_tol, itmax, &
                              memory_efficient, update_gamma, &
                              simplified_algorithm, divergence_correction, &
-                             cut_off_value, &
                              DAMASK_NumThreadsInt, &
                              fftw_planner_flag, fftw_timelimit
  use homogenization,   only: materialpoint_sizeResults, materialpoint_results
@@ -121,18 +120,9 @@ program DAMASK_spectral
                                           s0_reference
  real(pReal), dimension(6) ::             cstress                                                   ! cauchy stress
  real(pReal), dimension(6,6) ::           dsde, c0_66, s0_66                                        ! small strain stiffness
- real(pReal), dimension(9,9) ::           s_prev99, c_prev99, c0_99, s0_99                          ! compliance and stiffness in matrix notation 
+ real(pReal), dimension(9,9) ::           s_prev99, c_prev99                                        ! compliance and stiffness in matrix notation 
  real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced                                  ! reduced compliance and stiffness (only for stress BC)
- real(pReal), dimension(6,6)   :: mask_inversion = reshape([&
-                             1.0_pReal, 1.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal,&
-                             1.0_pReal, 1.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal,&
-                             1.0_pReal, 1.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal,&
-                             0.0_pReal, 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal,&
-                             0.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal, 1.0_pReal, 0.0_pReal,&
-                             0.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal, 1.0_pReal],&
-                                                                            [ 6_pInt, 6_pInt])
- real(pReal), dimension(3,3,3,3) :: temp_3333 = 0.0_pReal
- integer(pInt) ::                         size_reduced = 0_pInt                                  ! number of stress BCs
+ integer(pInt) ::                         size_reduced = 0_pInt                                     ! number of stress BCs
 
 !--------------------------------------------------------------------------------------------------
 ! pointwise data 
@@ -151,7 +141,7 @@ program DAMASK_spectral
  real(pReal), dimension(3,3) ::                         xiDyad                                      ! product of wave vectors
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                   ! gamma operator (field) for spectral method
  real(pReal), dimension(:,:,:,:), allocatable ::        xi                                          ! wave vector field for divergence and for gamma operator
- integer(pInt), dimension(3) ::                         k_s, cutting_freq
+ integer(pInt), dimension(3) ::                         k_s
 
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
@@ -174,7 +164,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 !variables for additional output due to general debugging
- real(pReal) :: defgradDetMax, defgradDetMin, maxCorrectionSym, maxCorrectionSkew, max_diag, max_offdiag
+ real(pReal) :: defgradDetMax, defgradDetMin, maxCorrectionSym, maxCorrectionSkew
 
 !--------------------------------------------------------------------------------------------------
 ! variables for additional output of divergence calculations
@@ -378,8 +368,6 @@ program DAMASK_spectral
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  Npoints = res(1)*res(2)*res(3)
  wgt = 1.0_pReal/real(Npoints, pReal)
- if (cut_off_value <0.0_pReal .or. cut_off_value >0.9_pReal) stop
- cutting_freq = nint(real(res,pReal)*cut_off_value,pInt)                                            ! for cut_off_value=0.0 just the highest freq. is removed
 
 !--------------------------------------------------------------------------------------------------
 ! output of geometry
@@ -394,7 +382,6 @@ program DAMASK_spectral
  print '(a,3(i12  ))','resolution a b c:', res
  print '(a,3(f12.5))','dimension  x y z:', geomdim
  print '(a,i5)','homogenization:       ',homog
- if(cut_off_value/=0.0_pReal) print '(a,3(i12),a)', 'cutting away    ', cutting_freq, ' frequencies'
  print '(a)',   '#############################################################'
  print '(a,a)', 'loadcase file:        ',trim(getLoadcaseName())
 
@@ -421,8 +408,8 @@ program DAMASK_spectral
    write (*,'(3(3(f12.7,1x)/))',advance='no') merge(math_transpose33(bc(loadcase)%deformation),&
                   reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskDeformation))
    write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' stress / GPa:',&
-        1e-9*merge(math_transpose33(bc(loadcase)%stress),reshape(spread(DAMASK_NaN,1,9),[ 3,3])&
-                                                        ,transpose(bc(loadcase)%maskStress))
+        1e-9_pReal*merge(math_transpose33(bc(loadcase)%stress),&
+                         reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskStress))
    if (any(bc(loadcase)%rotation /= math_I3)) &
      write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' rotation of loadframe:',&
                                                           math_transpose33(bc(loadcase)%rotation)
@@ -473,7 +460,7 @@ program DAMASK_spectral
    ielem = ielem + 1_pInt 
    defgrad(i,j,k,1:3,1:3) = math_I3
    defgradold(i,j,k,1:3,1:3) = math_I3
-   coordinates(i,j,k,1:3) = geomdim/real(res, pReal)*[i,j,k] - geomdim/real(2_pInt*res,pReal)
+   coordinates(i,j,k,1:3) = geomdim/real(res * [i,j,k], pReal) - geomdim/real(2_pInt*res,pReal)
    call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
                                        0.0_pReal,ielem,1_pInt,cstress,dsde,pstress,dPdF)
    c_current = c_current + dPdF
@@ -511,16 +498,16 @@ program DAMASK_spectral
      do j = 1_pInt, res(2)
        k_s(2) = j - 1_pInt
        if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2) 
-         do i = 1, res1_red
+         do i = 1_pInt, res1_red
            k_s(1) = i - 1_pInt
            xi(1:3,i,j,k) = real(k_s, pReal)/geomdim
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
 ! calculate the gamma operator
- if(memory_efficient) then                                                                           ! allocate just single fourth order tensor
+ if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
    allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
- else                                                                                                ! precalculation of gamma_hat field
+ else                                                                                               ! precalculation of gamma_hat field
    allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3)); gamma_hat = 0.0_pReal
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
    ! if(k==res(3)/2 .or. k==res(3)/2+2 .or.&
@@ -528,21 +515,22 @@ program DAMASK_spectral
    !    i==res(1)/2 .or. i==res(1)/2+2) then 
    !      gamma_hat(i,j,k,1:3,1:3,1:3,1:3) = s0_reference
    ! else
-     forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-       xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
-     forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-       temp33_Real(l,m) = sum(c0_reference(l,m,1:3,1:3)*xiDyad)
-     temp33_Real = math_inv33(temp33_Real)
-     forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
-       gamma_hat(i,j,k, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
-   ! endif  
+     if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+         xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+         temp33_Real(l,m) = sum(c0_reference(l,m,1:3,1:3)*xiDyad)
+       temp33_Real = math_inv33(temp33_Real)
+       forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
+         gamma_hat(i,j,k, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
+     endif  
    enddo; enddo; enddo
    gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
  endif
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of fftw (see manual on fftw.org for more details)
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)                     ! check for correct precision in C
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)                         ! check for correct precision in C
 #ifdef _OPENMP
     if(DAMASK_NumThreadsInt > 0_pInt) then
       ierr = fftw_init_threads()
@@ -550,7 +538,7 @@ program DAMASK_spectral
       call fftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
     endif
 #endif
- call fftw_set_timelimit(fftw_timelimit)                                                      ! set timelimit for plan creation
+ call fftw_set_timelimit(fftw_timelimit)                                                            ! set timelimit for plan creation
 
 !--------------------------------------------------------------------------------------------------
 ! creating plans
@@ -739,7 +727,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
        print '(a)', '##################################################################'
-       print '(A,I5.5,A,es12.6)', 'Increment ', totalIncsCounter, ' Time ',time
+       print '(A,I5.5,A,es12.5)', 'Increment ', totalIncsCounter, ' Time ',time
        
        guessmode = 1.0_pReal                                                                        ! keep guessing along former trajectory during same loadcase
        CPFEM_mode = 1_pInt                                                                          ! winding forward
@@ -801,7 +789,7 @@ program DAMASK_spectral
            row =    (mod(totalIncsCounter+iter-2_pInt,9_pInt))/3_pInt + 1_pInt                      ! go through the elements of the tensors, controlled by totalIncsCounter and iter, starting at 1
            column = (mod(totalIncsCounter+iter-2_pInt,3_pInt))        + 1_pInt
            scalarField_real(1:res(1),1:res(2),1:res(3)) =&                                          ! store the selected component
-                  tensorField_real(1:res(1),1:res(2),1:res(3),row,column)
+                  cmplx(tensorField_real(1:res(1),1:res(2),1:res(3),row,column),0.0_pReal,pReal)
          endif
 
 !--------------------------------------------------------------------------------------------------
@@ -829,7 +817,7 @@ program DAMASK_spectral
          pstress_av_lab = real(tensorField_fourier(1,1,1,1:3,1:3),pReal)*wgt
          pstress_av = math_rotate_forward33(pstress_av_lab,bc(loadcase)%rotation)
          write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa:',&
-                                                          math_transpose33(pstress_av)/1.e6
+                                                          math_transpose33(pstress_av)/1.e6_pReal
 
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 FT results
@@ -940,20 +928,17 @@ program DAMASK_spectral
            print '(a,es11.4)',        'error divergence  FT  max = ',err_div_max
            print '(a,es11.4)',        'error divergence Real RMS = ',err_real_div_RMS
            print '(a,es11.4)',        'error divergence Real max = ',err_real_div_max
-           print '(a,es11.4)',        'divergence RMS FT/real    = ',err_div_RMS/err_real_div_RMS
-           print '(a,es11.4)',        'divergence max FT/real    = ',err_div_max/err_real_div_max
            print '(a,es11.4)',        'max deviat. from postProc = ',max_div_error
          endif
-         print '(a,f6.2,a,es11.4,a)', 'error divergence = ', err_div/err_div_tol, ' (',err_div,' 1/m)'    
+         print '(a,f6.2,a,es11.4,3a)','error divergence = ', err_div/err_div_tol, &
+                                                          ' (',err_div_RMS,' N/m',char(179),')'
          
 !--------------------------------------------------------------------------------------------------
 ! divergence is calculated from FT(stress), depending on algorithm use field for spectral method
          if (.not. simplified_algorithm) tensorField_fourier = tau_fourier
- max_diag = tiny(1.0_pReal)
- max_offdiag = tiny(1.0_pReal)
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)
-         if(memory_efficient) then                                                                           ! memory saving version, on-the-fly calculation of gamma_hat
+         if(memory_efficient) then                                                                  ! memory saving version, on-the-fly calculation of gamma_hat
            
            do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res1_red
              ! if(k==res(3)/2 .or. k==res(3)/2+2 .or.&
@@ -962,34 +947,38 @@ program DAMASK_spectral
                ! forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt)&
                  ! temp33_Complex(m,n) = sum(s0_reference(m,n, 1:3,1:3)* tensorField_fourier(i,j,k,1:3,1:3))
              ! else
-               forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-                 xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
-               forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-                 temp33_Real(l,m) = sum(c0_reference(l,m,1:3,1:3)*xiDyad)
-               temp33_Real = math_inv33(temp33_Real)
-               forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
-                 gamma_hat(1,1,1, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
-               forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-                 temp33_Complex(l,m) = sum(gamma_hat(1,1,1, l,m, 1:3,1:3) * tensorField_fourier(i,j,k,1:3,1:3))
-               tensorField_fourier(i,j,k,1:3,1:3) = temp33_Complex 
-            ! endif             
+               if(any([i,j,k] /= 1_pInt)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+                 forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+                   xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+                 forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+                   temp33_Real(l,m) = sum(c0_reference(l,m,1:3,1:3)*xiDyad)
+                 temp33_Real = math_inv33(temp33_Real)
+                 forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
+                   gamma_hat(1,1,1, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
+                 forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+                   temp33_Complex(l,m) = sum(gamma_hat(1,1,1, l,m, 1:3,1:3) *&
+                                                                tensorField_fourier(i,j,k,1:3,1:3))
+                 tensorField_fourier(i,j,k,1:3,1:3) = temp33_Complex 
+             endif             
            enddo; enddo; enddo
    
-         else                                                                                           ! use precalculated gamma-operator
+         else                                                                                       ! use precalculated gamma-operator
            
            do k = 1_pInt, res(3);  do j = 1_pInt, res(2);  do i = 1_pInt,res1_red
              forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt) &
-               temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) * tensorField_fourier(i,j,k,1:3,1:3))
+               temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) *&
+                                                                tensorField_fourier(i,j,k,1:3,1:3))
              tensorField_fourier(i,j,k, 1:3,1:3) = temp33_Complex
            enddo; enddo; enddo
 
          endif
 
-         if (simplified_algorithm) then                                                               ! do not use the polarization field based algorithm
-           tensorField_fourier(1,1,1,1:3,1:3) = (defgrad_av_lab - defgradAim_lab) &                   ! assign (negative) average deformation gradient change to zero frequency (real part)
-                                                * real(Npoints,pReal)                                 ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+         if (simplified_algorithm) then                                                             ! do not use the polarization field based algorithm
+           tensorField_fourier(1,1,1,1:3,1:3) = cmplx((defgrad_av_lab - defgradAim_lab) &           ! assign (negative) average deformation gradient change to zero frequency (real part)
+                                                * real(Npoints,pReal),0.0_pReal,pReal)              ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
          else
-           tensorField_fourier(1,1,1,1:3,1:3) = defgradAim_lab  * real(Npoints,pReal)                 ! assign deformation aim to zero frequency (real part)
+           tensorField_fourier(1,1,1,1:3,1:3) = cmplx(defgradAim_lab*real(Npoints,pReal),&          ! assign deformation aim to zero frequency (real part)
+                                                                                  0.0_pReal,pReal)
          endif
 
 !--------------------------------------------------------------------------------------------------
@@ -998,7 +987,7 @@ program DAMASK_spectral
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
               scalarField_fourier(i,j,k) = tensorField_fourier(i,j,k,row,column)
            enddo; enddo; enddo
-           do i = 0_pInt, res(1)/2_pInt-2_pInt !unpack fft data for conj complex symmetric part. can be directly used in calculation of cstress_field
+           do i = 0_pInt, res(1)/2_pInt-2_pInt                                                      !unpack fft data for conj complex symmetric part
             m = 1_pInt
             do k = 1_pInt, res(3)
               n = 1_pInt
@@ -1136,11 +1125,13 @@ end program DAMASK_spectral
 ! quit subroutine to satisfy IO_error
 !
 !********************************************************************
-subroutine quit(id)
+subroutine quit(stop_id)
  use prec
  implicit none
 
- integer(pInt) id
+ integer(pInt), intent(in) :: stop_id
+ print*, stop_id
 
- stop
+ stop 'abnormal termination of DAMASK_spectral'
+
 end subroutine

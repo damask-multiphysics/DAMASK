@@ -69,18 +69,18 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 err_stress_tolrel          =  0.01_pReal , &                 ! relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 fftw_timelimit             = -1.0_pReal, &                   ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
                                 rotation_tol               =  1.0e-12_pReal                  ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
-character(len=64) ::            fftw_planner_string        = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patiant planner flag
-integer(pInt) ::                fftw_planner_flag          =  -1_pInt                         ! conversion of fftw_planner_string to integer, basically what is usually done in the include file of fftw
-logical ::                      memory_efficient           = .true. ,&                       ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
-                                divergence_correction      = .false.     ,&                  ! correct divergence calculation in fourier space, Default .false.: no correction
-                                update_gamma               = .false.,&                       ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
+character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patiant planner flag
+integer(pInt) ::                fftw_planner_flag          =  -1_pInt, &                     ! conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
+                                itmax                      =  20_pInt                        ! maximum number of iterations
+logical ::                      memory_efficient           = .true., &                       ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
+                                divergence_correction      = .false., &                      ! correct divergence calculation in fourier space, Default .false.: no correction
+                                update_gamma               = .false., &                      ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
                                 simplified_algorithm       = .true.                          ! use short algorithm without fluctuation field, Default .true.: use simplified algorithm
-real(pReal) ::                  cut_off_value              =  0.0_pReal                      ! percentage of frequencies to cut away, Default 0.0: use all frequencies
-integer(pInt) ::                itmax                      = 20_pInt , &                     ! maximum number of iterations
+
 
 
 !* Random seeding parameters
-                                fixedSeed                  = 0_pInt                          ! fixed seeding for pseudo-random number generator, Default 0: use random seed
+integer(pInt) ::                fixedSeed                  = 0_pInt                          ! fixed seeding for pseudo-random number generator, Default 0: use random seed
 !* OpenMP variable
 integer(pInt) ::                DAMASK_NumThreadsInt       = 0_pInt                          ! value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
@@ -111,7 +111,7 @@ subroutine numerics_init()
   !*** local variables ***!
   integer(pInt), parameter ::                 fileunit = 300_pInt
   integer(pInt), parameter ::                 maxNchunks = 2_pInt
-  integer(pInt) ::                            gotDAMASK_NUM_THREADS = 1_pInt
+  integer ::                                  gotDAMASK_NUM_THREADS = 1
   integer(pInt), dimension(1+2*maxNchunks) :: positions
   character(len=64) ::                        tag
   character(len=1024) ::                      line
@@ -127,9 +127,9 @@ subroutine numerics_init()
 !$OMP END CRITICAL (write2out)
 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
-!$ if(gotDAMASK_NUM_THREADS /= 0_pInt) call IO_warning(47_pInt,ext_msg=DAMASK_NumThreadsString)
+!$ if(gotDAMASK_NUM_THREADS /= 0) call IO_warning(47_pInt,ext_msg=DAMASK_NumThreadsString)
 !$ read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                        ! ...convert it to integer...
-!$ if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                           ! ...ensure that its at least one...
+!$ if (DAMASK_NumThreadsInt < 1_pInt) DAMASK_NumThreadsInt = 1_pInt                                 ! ...ensure that its at least one...
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution
 
   ! try to open the config file
@@ -238,8 +238,8 @@ subroutine numerics_init()
               memory_efficient = IO_intValue(line,positions,2_pInt)  > 0_pInt
         case ('fftw_timelimit')
               fftw_timelimit = IO_floatValue(line,positions,2_pInt)
-        case ('fftw_planner_string')
-              fftw_planner_string = IO_stringValue(line,positions,2_pInt)
+        case ('fftw_plan_mode')
+              fftw_plan_mode = IO_stringValue(line,positions,2_pInt)
         case ('rotation_tol')
               rotation_tol = IO_floatValue(line,positions,2_pInt)
         case ('divergence_correction')
@@ -248,8 +248,6 @@ subroutine numerics_init()
               update_gamma = IO_intValue(line,positions,2_pInt)  > 0_pInt
         case ('simplified_algorithm')
               simplified_algorithm = IO_intValue(line,positions,2_pInt)  > 0_pInt
-        case ('cut_off_value')
-              cut_off_value = IO_floatValue(line,positions,2_pInt)
 
         !* Random seeding parameters
 
@@ -272,7 +270,7 @@ subroutine numerics_init()
     
   endif
 
-  select case(IO_lc(fftw_planner_string))                        ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+  select case(IO_lc(fftw_plan_mode))                             ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
     case('estimate','fftw_estimate')                             ! ordered from slow execution (but fast plan creation) to fast execution
        fftw_planner_flag = 64_pInt
      case('measure','fftw_measure')
@@ -282,7 +280,7 @@ subroutine numerics_init()
      case('exhaustive','fftw_exhaustive')
        fftw_planner_flag = 8_pInt 
      case default
-       call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_planner_string)))
+       call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_plan_mode)))
        fftw_planner_flag = 32_pInt
   end select
 
@@ -341,13 +339,12 @@ subroutine numerics_init()
     else    
       write(6,'(a24,1x,e8.1)') ' fftw_timelimit:         ',fftw_timelimit
     endif
-    write(6,'(a24,1x,a)')      ' fftw_planner_string:    ',trim(fftw_planner_string)
+    write(6,'(a24,1x,a)')      ' fftw_plan_mode:         ',trim(fftw_plan_mode)
     write(6,'(a24,1x,i8)')     ' fftw_planner_flag:      ',fftw_planner_flag
     write(6,'(a24,1x,e8.1)')   ' rotation_tol:           ',rotation_tol
     write(6,'(a24,1x,L8,/)')   ' divergence_correction:  ',divergence_correction
     write(6,'(a24,1x,L8,/)')   ' update_gamma:           ',update_gamma
     write(6,'(a24,1x,L8,/)')   ' simplified_algorithm:   ',simplified_algorithm
-    write(6,'(a24,1x,e8.1)')   ' cut_off_value:          ',cut_off_value
     
     !* Random seeding parameters
     
@@ -411,7 +408,7 @@ subroutine numerics_init()
   
   if (fixedSeed <= 0_pInt) then
     !$OMP CRITICAL (write2out)
-      write(6,'(a)') 'Random is random!'
+      write(6,'(a)') ' Random is random!'
     !$OMP END CRITICAL (write2out)
   endif
 endsubroutine

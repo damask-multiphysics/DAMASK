@@ -35,13 +35,13 @@ real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy can be found in documentation/Code/Fortran
 #ifdef __INTEL_COMPILER
-#if __INTEL_COMPILER<12000
-  real(pReal), parameter, public :: DAMASK_NaN = Z'7FF0000000000001'
+#if __INTEL_COMPILER<1200
+    real(pReal), parameter, public :: DAMASK_NaN = Z'7FF0000000000001'
 #else
-  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
+    real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
 #endif
 #else
-real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
+  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
 #endif
 type :: p_vec
   real(pReal), dimension(:), pointer :: p

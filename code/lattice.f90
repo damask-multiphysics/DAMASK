@@ -39,11 +39,11 @@ implicit none
 
 integer(pInt) lattice_Nhexagonal, &                               ! # of hexagonal lattice structure (from tag CoverA_ratio)
               lattice_Nstructure                                  ! # of lattice structures (1: fcc,2: bcc,3+: hexagonal)
-integer(pInt), parameter :: lattice_maxNslipFamily = 5            ! max # of slip system families over lattice structures
-integer(pInt), parameter :: lattice_maxNtwinFamily = 4            ! max # of twin system families over lattice structures
-integer(pInt), parameter :: lattice_maxNslip = 54                 ! max # of slip systems over lattice structures
-integer(pInt), parameter :: lattice_maxNtwin = 24                 ! max # of twin systems over lattice structures
-integer(pInt), parameter :: lattice_maxNinteraction = 30          ! max # of interaction types (in hardening matrix part)
+integer(pInt), parameter :: lattice_maxNslipFamily = 5_pInt            ! max # of slip system families over lattice structures
+integer(pInt), parameter :: lattice_maxNtwinFamily = 4_pInt            ! max # of twin system families over lattice structures
+integer(pInt), parameter :: lattice_maxNslip = 54_pInt                 ! max # of slip systems over lattice structures
+integer(pInt), parameter :: lattice_maxNtwin = 24_pInt                 ! max # of twin systems over lattice structures
+integer(pInt), parameter :: lattice_maxNinteraction = 30_pInt          ! max # of interaction types (in hardening matrix part)
 
 integer(pInt), pointer, dimension(:,:) :: interactionSlipSlip, &
                                           interactionSlipTwin, &
@@ -81,10 +81,10 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
 
 !============================== fcc (1) =================================
 
- integer(pInt), parameter, dimension(lattice_maxNslipFamily) :: lattice_fcc_NslipSystem = (/12, 0, 0, 0, 0/)
- integer(pInt), parameter, dimension(lattice_maxNtwinFamily) :: lattice_fcc_NtwinSystem = (/12, 0, 0, 0/)
- integer(pInt), parameter :: lattice_fcc_Nslip = 12                                       ! sum(lattice_fcc_NslipSystem)
- integer(pInt), parameter :: lattice_fcc_Ntwin = 12                                       ! sum(lattice_fcc_NtwinSystem)
+ integer(pInt), parameter, dimension(lattice_maxNslipFamily) :: lattice_fcc_NslipSystem = int([12, 0, 0, 0, 0],pInt)
+ integer(pInt), parameter, dimension(lattice_maxNtwinFamily) :: lattice_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)
+ integer(pInt), parameter :: lattice_fcc_Nslip = 12_pInt                                       ! sum(lattice_fcc_NslipSystem)
+ integer(pInt), parameter :: lattice_fcc_Ntwin = 12_pInt                                       ! sum(lattice_fcc_NtwinSystem)
  integer(pInt) ::            lattice_fcc_Nstructure = 0_pInt
 
  real(pReal), dimension(3+3,lattice_fcc_Nslip), parameter :: lattice_fcc_systemSlip = &
@@ -442,10 +442,10 @@ integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
 
 !============================== hex (3+) =================================
 
- integer(pInt), parameter, dimension(lattice_maxNslipFamily) :: lattice_hex_NslipSystem = (/ 3, 3, 6,12, 6/)
- integer(pInt), parameter, dimension(lattice_maxNtwinFamily) :: lattice_hex_NtwinSystem = (/ 6, 6, 6, 6/)
- integer(pInt), parameter :: lattice_hex_Nslip = 30                                       ! sum(lattice_hex_NslipSystem)
- integer(pInt), parameter :: lattice_hex_Ntwin = 24                                       ! sum(lattice_hex_NtwinSystem)
+ integer(pInt), parameter, dimension(lattice_maxNslipFamily) :: lattice_hex_NslipSystem = int([ 3, 3, 6,12, 6],pInt)
+ integer(pInt), parameter, dimension(lattice_maxNtwinFamily) :: lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)
+ integer(pInt), parameter :: lattice_hex_Nslip = 30_pInt                                       ! sum(lattice_hex_NslipSystem)
+ integer(pInt), parameter :: lattice_hex_Ntwin = 24_pInt                                       ! sum(lattice_hex_NtwinSystem)
  integer(pInt) ::            lattice_hex_Nstructure = 0_pInt
 
  !* sorted by A. Alankar & P. Eisenlohr
@@ -824,12 +824,12 @@ function lattice_initializeStructure(struct,CoverA)
      lattice_fcc_Nstructure = lattice_fcc_Nstructure + 1_pInt    ! count fcc instances
      if (lattice_fcc_Nstructure == 1_pInt) then    ! me is first fcc structure
        processMe = .true.
-       do i = 1,myNslip                            ! calculate slip system vectors
+       do i = 1_pInt,myNslip                            ! calculate slip system vectors
          sd(1:3,i) = lattice_fcc_systemSlip(1:3,i)/sqrt(math_mul3x3(lattice_fcc_systemSlip(1:3,i),lattice_fcc_systemSlip(1:3,i)))
          sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)/sqrt(math_mul3x3(lattice_fcc_systemSlip(4:6,i),lattice_fcc_systemSlip(4:6,i)))
          st(1:3,i) = math_vectorproduct(sd(1:3,i),sn(1:3,i))
        enddo
-       do i = 1,myNtwin                            ! calculate twin system vectors and (assign) shears
+       do i = 1_pInt,myNtwin                            ! calculate twin system vectors and (assign) shears
          td(1:3,i) = lattice_fcc_systemTwin(1:3,i)/sqrt(math_mul3x3(lattice_fcc_systemTwin(1:3,i),lattice_fcc_systemTwin(1:3,i)))
          tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)/sqrt(math_mul3x3(lattice_fcc_systemTwin(4:6,i),lattice_fcc_systemTwin(4:6,i)))
          tt(1:3,i) = math_vectorproduct(td(1:3,i),tn(1:3,i))
@@ -850,12 +850,12 @@ function lattice_initializeStructure(struct,CoverA)
      lattice_bcc_Nstructure = lattice_bcc_Nstructure + 1_pInt    ! count bcc instances
      if (lattice_bcc_Nstructure == 1_pInt) then    ! me is first bcc structure
        processMe = .true.
-       do i = 1,myNslip                            ! calculate slip system vectors
+       do i = 1_pInt,myNslip                            ! calculate slip system vectors
          sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)/sqrt(math_mul3x3(lattice_bcc_systemSlip(1:3,i),lattice_bcc_systemSlip(1:3,i)))
          sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)/sqrt(math_mul3x3(lattice_bcc_systemSlip(4:6,i),lattice_bcc_systemSlip(4:6,i)))
          st(1:3,i) = math_vectorproduct(sd(1:3,i),sn(1:3,i))
        enddo
-       do i = 1,myNtwin                            ! calculate twin system vectors and (assign) shears
+       do i = 1_pInt,myNtwin                            ! calculate twin system vectors and (assign) shears
          td(1:3,i) = lattice_bcc_systemTwin(1:3,i)/sqrt(math_mul3x3(lattice_bcc_systemTwin(1:3,i),lattice_bcc_systemTwin(1:3,i)))
          tn(1:3,i) = lattice_bcc_systemTwin(4:6,i)/sqrt(math_mul3x3(lattice_bcc_systemTwin(4:6,i),lattice_bcc_systemTwin(4:6,i)))
          tt(1:3,i) = math_vectorproduct(td(1:3,i),tn(1:3,i))
@@ -877,7 +877,7 @@ function lattice_initializeStructure(struct,CoverA)
        myNtwin = lattice_hex_Ntwin                 ! overall number of twin systems
        processMe = .true.
 ! converting from 4 axes coordinate system (a1=a2=a3=c) to ortho-hexgonal system (a, b, c)
-       do i = 1,myNslip
+       do i = 1_pInt,myNslip
          hex_d(1) =  lattice_hex_systemSlip(1,i)*1.5_pReal ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
          hex_d(2) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*(0.5_pReal*sqrt(3.0_pReal))
          hex_d(3) =  lattice_hex_systemSlip(4,i)*CoverA
@@ -889,7 +889,7 @@ function lattice_initializeStructure(struct,CoverA)
          sn(1:3,i) = hex_n/sqrt(math_mul3x3(hex_n,hex_n))
          st(1:3,i) = math_vectorproduct(sd(1:3,i),sn(1:3,i))
        enddo
-       do i = 1,myNtwin
+       do i = 1_pInt,myNtwin
          hex_d(1) =  lattice_hex_systemTwin(1,i)*1.5_pReal
          hex_d(2) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*(0.5_pReal*sqrt(3.0_pReal))
          hex_d(3) =  lattice_hex_systemTwin(4,i)*CoverA
@@ -923,14 +923,14 @@ function lattice_initializeStructure(struct,CoverA)
  if (processMe) then
    if  (myStructure > lattice_Nstructure) &
      call IO_error(666_pInt,0_pInt,0_pInt,0_pInt,'structure index too large')        ! check for memory leakage
-   do i = 1,myNslip                                              ! store slip system vectors and Schmid matrix for my structure
+   do i = 1_pInt,myNslip                                              ! store slip system vectors and Schmid matrix for my structure
      lattice_sd(1:3,i,myStructure) = sd(1:3,i)
      lattice_st(1:3,i,myStructure) = st(1:3,i)
      lattice_sn(1:3,i,myStructure) = sn(1:3,i)
      lattice_Sslip(1:3,1:3,i,myStructure) = math_tensorproduct(sd(1:3,i),sn(1:3,i))
      lattice_Sslip_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,i,myStructure)))
    enddo
-   do i = 1,myNtwin                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
+   do i = 1_pInt,myNtwin                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
      lattice_td(1:3,i,myStructure) = td(1:3,i)
      lattice_tt(1:3,i,myStructure) = tt(1:3,i)
      lattice_tn(1:3,i,myStructure) = tn(1:3,i)

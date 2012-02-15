@@ -70,9 +70,9 @@
        commandLine(i:i) = achar(iachar(commandLine(i:i))+32)                     ! make lowercase
    enddo
    if (index(commandLine,'-r ',.true.)>0) &                                      ! look for -r
-     start = index(commandLine,'-r ',.true.) + 3_pInt                            ! set to position after trailing space
+     start = index(commandLine,'-r ',.true.) + 3                                 ! set to position after trailing space
    if (index(commandLine,'--restart ',.true.)>0) &                               ! look for --restart
-     start = index(commandLine,'--restart ',.true.) + 10_pInt                    ! set to position after trailing space
+     start = index(commandLine,'--restart ',.true.) + 10                         ! set to position after trailing space
    if(start /= 0_pInt) then                                                      ! found something
      length = verify(commandLine(start:len(commandLine)),'0123456789',.false.)   ! where is first non number after argument?
      read(commandLine(start:start+length),'(I12)') restartInc                    ! read argument
@@ -99,12 +99,12 @@
          restartWrite = iand(IO_intValue(line,positions,1_pInt),1_pInt) > 0_pInt
          restartRead  = iand(IO_intValue(line,positions,1_pInt),2_pInt) > 0_pInt
        case ('*restart')
-         do i=2,positions(1)
-           restartWrite = (IO_lc(IO_StringValue(line,positions,i)) == 'write') .or. restartWrite
-           restartRead  = (IO_lc(IO_StringValue(line,positions,i)) == 'read')  .or. restartRead
+         do j=2_pInt,positions(1)
+           restartWrite = (IO_lc(IO_StringValue(line,positions,j)) == 'write') .or. restartWrite
+           restartRead  = (IO_lc(IO_StringValue(line,positions,j)) == 'read')  .or. restartRead
          enddo
          if(restartWrite) then
-           do j=2,positions(1)
+           do j=2_pInt,positions(1)
              restartWrite = (IO_lc(IO_StringValue(line,positions,j)) /= 'frequency=0') .and. restartWrite
            enddo
          endif

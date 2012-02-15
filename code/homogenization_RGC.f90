@@ -281,7 +281,7 @@ subroutine homogenization_RGC_partitionDeformation(&
    write(6,'(1x,a,i3,a,i3,a)')'========== Increment: ',theInc,' Cycle: ',cycleCounter,' =========='
    write(6,'(1x,a32)')'Overall deformation gradient: '
    do i = 1_pInt,3_pInt
-     write(6,'(1x,3(e14.8,1x))')(avgF(i,j), j = 1_pInt,3_pInt)
+     write(6,'(1x,3(e15.8,1x))')(avgF(i,j), j = 1_pInt,3_pInt)
    enddo
    write(6,*)' '
    call flush(6)
@@ -307,7 +307,7 @@ subroutine homogenization_RGC_partitionDeformation(&
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a32,1x,i3)')'Deformation gradient of grain: ',iGrain
      do i = 1_pInt,3_pInt
-       write(6,'(1x,3(e14.8,1x))')(F(i,j,iGrain), j = 1_pInt,3_pInt)
+       write(6,'(1x,3(e15.8,1x))')(F(i,j,iGrain), j = 1_pInt,3_pInt)
      enddo
      write(6,*)' '
      call flush(6)
@@ -394,7 +394,7 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Obtained state: '
    do i = 1,3*nIntFaceTot
-     write(6,'(1x,2(e14.8,1x))')state%p(i)
+     write(6,'(1x,2(e15.8,1x))')state%p(i)
    enddo
    write(6,*)' '
    !$OMP END CRITICAL (write2out)
@@ -410,11 +410,11 @@ function homogenization_RGC_updateState(&
  if (debug_verbosity == 4) then
    !$OMP CRITICAL (write2out)
    do iGrain = 1,nGrain
-     write(6,'(1x,a30,1x,i3,1x,a4,3(1x,e14.8))')'Mismatch magnitude of grain(',iGrain,') :',NN(1,iGrain),NN(2,iGrain),NN(3,iGrain)
+     write(6,'(1x,a30,1x,i3,1x,a4,3(1x,e15.8))')'Mismatch magnitude of grain(',iGrain,') :',NN(1,iGrain),NN(2,iGrain),NN(3,iGrain)
      write(6,*)' '
      write(6,'(1x,a30,1x,i3)')'Stress and penalties of grain: ',iGrain
      do i = 1,3
-       write(6,'(1x,3(e14.8,1x),1x,3(e14.8,1x),1x,3(e14.8,1x))')(P(i,j,iGrain), j = 1,3), &
+       write(6,'(1x,3(e15.8,1x),1x,3(e15.8,1x),1x,3(e15.8,1x))')(P(i,j,iGrain), j = 1,3), &
                                                           (R(i,j,iGrain), j = 1,3), &
                                                           (D(i,j,iGrain), j = 1,3)
      enddo
@@ -459,7 +459,7 @@ function homogenization_RGC_updateState(&
    if (debug_verbosity == 4) then
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a30,1x,i3)')'Traction at interface: ',iNum
-     write(6,'(1x,3(e14.8,1x))')(tract(iNum,j), j = 1,3)
+     write(6,'(1x,3(e15.8,1x))')(tract(iNum,j), j = 1,3)
      write(6,*)' '
      !$OMP END CRITICAL (write2out)
    endif
@@ -478,9 +478,9 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a)')' '
    write(6,'(1x,a,1x,i2,1x,i4)')'RGC residual check ...',ip,el
-   write(6,'(1x,a15,1x,e14.8,1x,a7,i3,1x,a12,i2,i2)')'Max stress: ',stresMax, &
+   write(6,'(1x,a15,1x,e15.8,1x,a7,i3,1x,a12,i2,i2)')'Max stress: ',stresMax, &
               '@ grain',stresLoc(3),'in component',stresLoc(1),stresLoc(2)
-   write(6,'(1x,a15,1x,e14.8,1x,a7,i3,1x,a12,i2)')'Max residual: ',residMax, &
+   write(6,'(1x,a15,1x,e15.8,1x,a7,i3,1x,a12,i2)')'Max residual: ',residMax, &
               '@ iface',residLoc(1),'in direction',residLoc(2)
    call flush(6)
    !$OMP END CRITICAL (write2out)
@@ -523,15 +523,15 @@ function homogenization_RGC_updateState(&
 
    if (debug_verbosity == 4 .and. debug_e == el .and. debug_i == ip) then
      !$OMP CRITICAL (write2out)
-     write(6,'(1x,a30,1x,e14.8)')'Constitutive work: ',constitutiveWork
-     write(6,'(1x,a30,3(1x,e14.8))')'Magnitude mismatch: ',sum(NN(1,:))/dble(nGrain), &
+     write(6,'(1x,a30,1x,e15.8)')'Constitutive work: ',constitutiveWork
+     write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',sum(NN(1,:))/dble(nGrain), &
                                                          sum(NN(2,:))/dble(nGrain), &
                                                          sum(NN(3,:))/dble(nGrain)
-     write(6,'(1x,a30,1x,e14.8)')'Penalty energy: ',penaltyEnergy
-     write(6,'(1x,a30,1x,e14.8)')'Volume discrepancy: ',volDiscrep
+     write(6,'(1x,a30,1x,e15.8)')'Penalty energy: ',penaltyEnergy
+     write(6,'(1x,a30,1x,e15.8)')'Volume discrepancy: ',volDiscrep
      write(6,*)''
-     write(6,'(1x,a30,1x,e14.8)')'Maximum relaxation rate: ',maxval(abs(drelax))/dt
-     write(6,'(1x,a30,1x,e14.8)')'Average relaxation rate: ',sum(abs(drelax))/dt/dble(3*nIntFaceTot)
+     write(6,'(1x,a30,1x,e15.8)')'Maximum relaxation rate: ',maxval(abs(drelax))/dt
+     write(6,'(1x,a30,1x,e15.8)')'Average relaxation rate: ',sum(abs(drelax))/dt/dble(3*nIntFaceTot)
      write(6,*)''
      call flush(6)
      !$OMP END CRITICAL (write2out)
@@ -619,7 +619,7 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian matrix of stress'
    do i = 1,3*nIntFaceTot
-     write(6,'(1x,100(e10.4,1x))')(smatrix(i,j), j = 1,3*nIntFaceTot)
+     write(6,'(1x,100(e11.4,1x))')(smatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
@@ -675,7 +675,7 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian matrix of penalty'
    do i = 1,3*nIntFaceTot
-     write(6,'(1x,100(e10.4,1x))')(pmatrix(i,j), j = 1,3*nIntFaceTot)
+     write(6,'(1x,100(e11.4,1x))')(pmatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
@@ -695,7 +695,7 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian matrix of penalty'
    do i = 1,3*nIntFaceTot
-     write(6,'(1x,100(e10.4,1x))')(rmatrix(i,j), j = 1,3*nIntFaceTot)
+     write(6,'(1x,100(e11.4,1x))')(rmatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
@@ -709,7 +709,7 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian matrix (total)'
    do i = 1,3*nIntFaceTot
-     write(6,'(1x,100(e10.4,1x))')(jmatrix(i,j), j = 1,3*nIntFaceTot)
+     write(6,'(1x,100(e11.4,1x))')(jmatrix(i,j), j = 1,3*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
@@ -728,7 +728,7 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian inverse'
    do i = 1,3*nIntFaceTot
-     write(6,'(1x,100(e10.4,1x))')(jnverse(i,j), j = 1_pInt,3_pInt*nIntFaceTot)
+     write(6,'(1x,100(e11.4,1x))')(jnverse(i,j), j = 1_pInt,3_pInt*nIntFaceTot)
    enddo
    write(6,*)' '
    call flush(6)
@@ -748,7 +748,7 @@ function homogenization_RGC_updateState(&
    homogenization_RGC_updateState = (/.true.,.false./)
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a,1x,i3,1x,a,1x,i3,1x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
-   write(6,'(1x,a,1x,e14.8)')'due to large relaxation change =',maxval(abs(drelax))
+   write(6,'(1x,a,1x,e15.8)')'due to large relaxation change =',maxval(abs(drelax))
    call flush(6)
    !$OMP END CRITICAL (write2out)
  endif
@@ -758,7 +758,7 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Returned state: '
    do i = 1,3*nIntFaceTot
-     write(6,'(1x,2(e14.8,1x))')state%p(i)
+     write(6,'(1x,2(e15.8,1x))')state%p(i)
    enddo
    write(6,*)' '
    call flush(6)
@@ -810,7 +810,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
      dPdF99 = math_Plain3333to99(dPdF(1:3,1:3,1:3,1:3,iGrain))
      write(6,'(1x,a30,1x,i3)')'Stress tangent of grain: ',iGrain
      do i = 1,9
-       write(6,'(1x,(e14.8,1x))') (dPdF99(i,j), j = 1,9)
+       write(6,'(1x,(e15.8,1x))') (dPdF99(i,j), j = 1,9)
      enddo
      write(6,*)' '
    enddo
@@ -955,7 +955,7 @@ subroutine homogenization_RGC_stressPenalty(&
 !* Debugging the surface correction factor
 !  if (ip == 1 .and. el == 1) then
 !    write(6,'(1x,a20,2(1x,i3))')'Correction factor: ',ip,el
-!    write(6,'(1x,3(e10.4,1x))')(surfCorr(i), i = 1,3)
+!    write(6,'(1x,3(e11.4,1x))')(surfCorr(i), i = 1,3)
 !  endif
 
 !* -------------------------------------------------------------------------------------------------------------
@@ -1005,9 +1005,9 @@ subroutine homogenization_RGC_stressPenalty(&
 !      if (ip == 1 .and. el == 1) then
 !        write(6,'(1x,a20,i2,1x,a20,1x,i3)')'Mismatch to face: ',intFace(1),'neighbor grain: ',iGNghb
 !        do i = 1,3
-!          write(6,'(1x,3(e10.4,1x))')(nDef(i,j), j = 1,3)
+!          write(6,'(1x,3(e11.4,1x))')(nDef(i,j), j = 1,3)
 !        enddo
-!        write(6,'(1x,a20,e10.4))')'with magnitude: ',nDefNorm
+!        write(6,'(1x,a20,e11.4))')'with magnitude: ',nDefNorm
 !      endif
 
 !* Compute the stress penalty of all interfaces
@@ -1030,7 +1030,7 @@ subroutine homogenization_RGC_stressPenalty(&
 !    if (ip == 1 .and. el == 1) then
 !      write(6,'(1x,a20,i2)')'Penalty of grain: ',iGrain
 !      do i = 1,3
-!        write(6,'(1x,3(e10.4,1x))')(rPen(i,j,iGrain), j = 1,3)
+!        write(6,'(1x,3(e11.4,1x))')(rPen(i,j,iGrain), j = 1,3)
 !      enddo
 !    endif
 
@@ -1090,7 +1090,7 @@ subroutine homogenization_RGC_volumePenalty(&
 !    if (ip == 1 .and. el == 1) then
 !      write(6,'(1x,a30,i2)')'Volume penalty of grain: ',iGrain
 !      do i = 1,3
-!        write(6,'(1x,3(e10.4,1x))')(vPen(i,j,iGrain), j = 1,3)
+!        write(6,'(1x,3(e11.4,1x))')(vPen(i,j,iGrain), j = 1,3)
 !      enddo
 !    endif
 
@@ -1230,16 +1230,16 @@ function homogenization_RGC_interfaceNormal(&
 
 !* Get the normal of the interface, identified from the value of intFace(1)
  homogenization_RGC_interfaceNormal = 0.0_pReal
- nPos = abs(intFace(1))                                                 ! identify the position of the interface in global state array
- homogenization_RGC_interfaceNormal(nPos) = intFace(1)/abs(intFace(1))  ! get the normal vector w.r.t. cluster axis
+ nPos = abs(intFace(1))                                                                             ! identify the position of the interface in global state array
+ homogenization_RGC_interfaceNormal(nPos) = real(intFace(1)/abs(intFace(1)),pReal)                  ! get the normal vector w.r.t. cluster axis
 
  homogenization_RGC_interfaceNormal = &
    math_mul33x3(homogenization_RGC_orientation(:,:,ip,el),homogenization_RGC_interfaceNormal)
-                                                                        ! map the normal vector into sample coordinate system (basis)
+                                                                                                    ! map the normal vector into sample coordinate system (basis)
 
 !  if (ip == 1 .and. el == 1) then
 !    write(6,'(1x,a32,3(1x,i3))')'Interface normal: ',intFace(1)
-!    write(6,'(1x,3(e14.8,1x))')(nVect(i), i = 1,3)
+!    write(6,'(1x,3(e15.8,1x))')(nVect(i), i = 1,3)
 !    write(6,*)' '
 !    call flush(6)
 !  endif

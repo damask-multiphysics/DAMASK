@@ -33,7 +33,7 @@
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal), parameter :: inDeg = 180.0_pReal/pi
  real(pReal), parameter :: inRad = pi/180.0_pReal
- complex(pReal), parameter ::  two_pi_img = cmplx(0.0_pReal,2.0_pReal* pi, pReal)
+ complex(pReal), parameter ::  two_pi_img = (0.0_pReal,2.0_pReal)* pi
 
 ! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter :: math_I3 = &
@@ -265,7 +265,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  integer(pInt), intent(in) :: istart,iend
  integer(pInt) :: d,i,j,k,x,tmp
 
- d = size(a,1_pInt) ! number of linked data
+ d = int(size(a,1_pInt), pInt) ! number of linked data
 ! set the starting and ending points, and the pivot point
 
  i = istart
@@ -3433,7 +3433,7 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
            xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
  enddo; enddo; enddo
  
- do k = 1_pInt, res(3); do j = 1_pInt, res(2);do i = 1_pInt, res1_red
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
    do l = 1_pInt, vec_tens
      curl_fourier(i,j,k,l,1) = ( field_fourier(i,j,k,l,3)*xi(i,j,k,2)&
                                 -field_fourier(i,j,k,l,2)*xi(i,j,k,3) )*two_pi_img

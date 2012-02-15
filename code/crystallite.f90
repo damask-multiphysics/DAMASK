@@ -3178,7 +3178,7 @@ function crystallite_postResults(&
 
  crystallite_postResults = 0.0_pReal
  c = 0_pInt
- crystallite_postResults(c+1) = crystallite_sizePostResults(crystID)            ! size of results from cryst
+ crystallite_postResults(c+1) = real(crystallite_sizePostResults(crystID),pReal)                    ! size of results from cryst
  c = c + 1_pInt
  
  do o = 1,crystallite_Noutput(crystID)
@@ -3186,10 +3186,10 @@ function crystallite_postResults(&
    select case(crystallite_output(o,crystID))
      case ('phase')
        mySize = 1_pInt
-       crystallite_postResults(c+1) = material_phase(g,i,e)                     ! phaseID of grain
+       crystallite_postResults(c+1) = real(material_phase(g,i,e),pReal)                             ! phaseID of grain
      case ('texture')
        mySize = 1_pInt
-       crystallite_postResults(c+1) = material_texture(g,i,e)                   ! textureID of grain
+       crystallite_postResults(c+1) = real(material_texture(g,i,e),pReal)                           ! textureID of grain
      case ('volume')
        mySize = 1_pInt
        detF = math_det33(crystallite_partionedF(1:3,1:3,g,i,e))                 ! V_current = det(F) * V_reference
@@ -3210,36 +3210,36 @@ function crystallite_postResults(&
   
      case ('defgrad','f')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_partionedF(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_partionedF(1:3,1:3,g,i,e)),[mySize])
      case ('e')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = 0.5_pReal * reshape((math_mul33x33( &
                                                math_transpose33(crystallite_partionedF(1:3,1:3,g,i,e)), &
-                                               crystallite_partionedF(1:3,1:3,g,i,e)) - math_I3),(/mySize/))
+                                               crystallite_partionedF(1:3,1:3,g,i,e)) - math_I3),[mySize])
      case ('fe')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)),[mySize])
      case ('ee')
        Ee = 0.5_pReal * (math_mul33x33(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)), crystallite_Fe(1:3,1:3,g,i,e)) - math_I3)
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(Ee,(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(Ee,[mySize])
      case ('fp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fp(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fp(1:3,1:3,g,i,e)),[mySize])
      case ('lp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Lp(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Lp(1:3,1:3,g,i,e)),[mySize])
      case ('p','firstpiola','1stpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_P(1:3,1:3,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_P(1:3,1:3,g,i,e)),[mySize])
      case ('s','tstar','secondpiola','2ndpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)),[mySize])
    end select
    c = c + mySize
  enddo
 
- crystallite_postResults(c+1) = constitutive_sizePostResults(g,i,e)             ! size of constitutive results
+ crystallite_postResults(c+1) = real(constitutive_sizePostResults(g,i,e),pReal)             ! size of constitutive results
  c = c + 1_pInt
  crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = constitutive_postResults(crystallite_Tstar_v(1:6,g,i,e), &
                                                                                                crystallite_Fe, &

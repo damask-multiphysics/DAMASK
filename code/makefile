@@ -33,41 +33,12 @@
 # SUFFIX         = arbitrary suffix
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-# Here are some useful debugging switches for ifort. Switch on by uncommenting the #SUFFIX line at the end of this section:
-# information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
-
-# check if an array index is too small (<1) or too large!
-DEBUG1 =-check bounds -g
-
-#will cause a lot of warnings because we create a bunch of temporary arrays
-DEBUG2 =-check arg_temp_created
-
-#check from time to time
-DEBUG3 =-fp-stack-check -g -traceback -gen-interfaces -warn interfaces
-
-#should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
-DEBUG4 =-heap-arrays
-
-#additional warnings
-DEBUG5 =-warn all
-# or one or more of those: alignments, declarations,general, ignore_loc, uncalled, unuses, usage
-
-#set precision (check for missing _pInt and _pReal)
-DEBUG6= -real-size 32  -integer-size 16
-#or one of those 16/32/64/128 (= 2,4,8,16 bytes)
-#SUFFIX =$(DEBUG1) $(DEBUG2) $(DEBUG3) $(DEBUG4) $(DEBUG5) $(DEBUG6)
-
-# Here are some useful debugging switches for gfortran
-# fcheck-bounds: eqv to DEBUG1 of ifort
-
-
-########################################################################################
 
 #auto values will be set by setup_code.py
-FFTWROOT := $(DAMASK_ROOT)/lib/fftw
-IKMLROOT :=
-ACMLROOT := /opt/acml4.4.0
-LAPACKROOT :=
+FFTWROOT :=/$(DAMASK_ROOT)/lib/fftw
+IKMLROOT := 
+ACMLROOT :=/opt/acml4.4.0
+#LAPACKROOT := /usr
 
 F90 ?= ifort
 COMPILERNAME ?= $(F90)
@@ -144,38 +115,71 @@ OPTIMIZATION_OFF_ifort           :=-O0
 OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
 OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
-OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ip -static -fp-model fast=2 -no-prec-div
+OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ipo -static -no-prec-div -fp-model fast=2 
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 
 COMPILE_OPTIONS_ifort    :=-fpp\
+                           -implicitnone\
                            -diag-enable sc3\
-                           -diag-disable 8291,8290,5268\
+                           -diag-disable 5268\
                            -warn declarations\
                            -warn general\
-                           -warn usage
+                           -warn usage\
+                           -warn interfaces\
+                           -warn ignore_loc\
+                           -warn alignments\
+                           -warn unused\
+                           -warn errors\
+                           -warn stderrors
 
-#alignments:       Determines whether warnings occur for data that is not naturally aligned.
-#declarations:     Determines whether warnings occur for any undeclared names.
-#errors:           Determines whether warnings are changed to errors.
-#general:          Determines whether warning messages and informational messages are issued by the compiler.
-#ignore_loc:       Determines whether warnings occur when %LOC is stripped from an actual argument.
-#interfaces:       Determines whether the compiler checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks.
-#stderrors:        Determines whether warnings about Fortran standard violations are changed to errors.
-#truncated_source: Determines whether warnings occur when source exceeds the maximum column width in fixed-format files.
-#uncalled:         Determines whether warnings occur when a statement function is never called
-#unused:           Determines whether warnings occur for declared variables that are never used.
-#usage:            Determines whether warnings occur for questionable programming practices.                         
-                           
-#-fpp:                 preprocessor
-#-diag-disable:        disables warnings, where                           
-#   warning ID 9291:
-#   warning ID 8290:
-#   warning ID 5268: The text exceeds right hand column allowed on the line (we have only comments there)
+#-fpp:                     preprocessor
+#-fimplicit-none:          assume "implicit-none" even if not present in source
+#-diag-disable:            disables warnings, where                           
+#   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
+#-warn:                    enables warnings, where
+#   declarations:            any undeclared names
+#   general:                 warning messages and informational messages are issued by the compiler
+#   usage:                   questionable programming practices
+#   interfaces:              checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks
+#   ignore_loc:              %LOC is stripped from an actual argument
+#   alignments:              data that is not naturally aligned
+#   unused:                  declared variables that are never used
+#   errors:                  warnings are changed to errors
+#   stderrors:               warnings about Fortran standard violations are changed to errors
+#
+###################################################################################################
+#MORE OPTIONS FOR DEBUGGING DURING COMPILING
+#-warn:                    enables warnings, where
+#   truncated_source:        Determines whether warnings occur when source exceeds the maximum column width in fixed-format files. (too many warnings because we have comments beyond character 132)
+#   uncalled:                Determines whether warnings occur when a statement function is never called
+#   all:
+#
+#OPTIONS FOR DEGUBBING DURING RUNTIME
+# information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
+#-g:                       Generate symbolic debugging information in the object file
+#-traceback:               Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time.
+#-gen-interfaces:          Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/  
+#-fp-stack-check:          Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state.
+#-check:                   checks at runtime, where  
+#   bounds:                  check if an array index is too small (<1) or too large!
+#   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays
+#   format:                  Checking for the data type of an item being formatted for output.
+#   output_conversion:       Checking for the fit of data items within a designated format descriptor field.
+#   pointers:                Checking for certain disassociated or uninitialized pointers or unallocated allocatable objects.
+#   uninit:                  Checking for uninitialized variables.
+#-heap-arrays:            should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
+#
+#OPTIONS FOR TYPE DEBUGGING
+#-real-size 32:           set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
+#-integer-size 16:        set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
+###################################################################################################
+
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -ffree-line-length-132\
                            -fno-range-check\
                            -fimplicit-none\
+                           -fall-intrinsics\
                            -pedantic\
                            -Warray-bounds\
                            -Wunused-parameter\
@@ -189,47 +193,50 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -Wunused-value\
                            -Wunderflow
                             
-#-xf95-cpp-input:         preprocessor
-#-ffree-line-length-132:  restrict line length to the standard 132 characters
-#-fno-range-check:        disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
-#-fimplicit-none:         assume "implicit-none" even if not present in source
-#-pedantic:               more strict on standard, enables some of the warnings below
-#-Warray-bounds:          checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
-#-Wunused-parameter:      find usused variables with "parameter" attribute
-#-Wampersand:             checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
-#-Wno-tabs:               do not allow tabs in source
-#-Wcharacter-truncation:  warn if character expressions (strings) are truncated
-#-Wintrinsic-shadow:      warn if a user-defined procedure or module procedure has the same name as an intrinsic
-#-Waliasing:              warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface. 
-#-Wconversion:            warn about implicit conversions between different type
-#-Wsurprising:            warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made. 
+#-xf95-cpp-input:          preprocessor
+#-ffree-line-length-132:   restrict line length to the standard 132 characters
+#-fno-range-check:         disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
+#-fimplicit-none:          assume "implicit-none" even if not present in source
+#-fall-intrinsics:        
+#-pedantic:                more strict on standard, enables some of the warnings below
+#-Warray-bounds:           checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
+#-Wunused-parameter:       find usused variables with "parameter" attribute
+#-Wampersand:              checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
+#-Wno-tabs:                do not allow tabs in source
+#-Wcharacter-truncation:   warn if character expressions (strings) are truncated
+#-Wintrinsic-shadow:       warn if a user-defined procedure or module procedure has the same name as an intrinsic
+#-Waliasing:               warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface. 
+#-Wconversion:             warn about implicit conversions between different type
+#-Wsurprising:             warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made. 
 #-Wunused-value:
-#-Wunderflow:             produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
-
-
-
-#MORE OPTIONS
-   
-# only for gfortran 4.6:
-                            #-Wsuggest-attribute=const
-                            #-Wsuggest-attribute=noreturn
-                            #-Wsuggest-attribute=pure  
-                            
-# too many warnings because we have comments beyond character 132:
-                            #-Wline-truncation
-# warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:
-                            #-Wintrinsic-std
-# warnings because we have many temporary arrays (performance issue?):
-                            #-Warray-temporaries
-                            
-# -Wimplicit-interface
-# -pedantic-errors
-# -fmodule-private
-
+#-Wunderflow:              produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
+#
+###################################################################################################
+#OPTIONS FOR GFORTRAN 4.6
+#-Wsuggest-attribute=const:
+#-Wsuggest-attribute=noreturn:
+#-Wsuggest-attribute=pure:  
+#
+#MORE OPTIONS FOR DEBUGGING DURING COMPILING                      
+#-Wline-truncation:        too many warnings because we have comments beyond character 132
+#-Wintrinsic-std:          warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:                        
+#-Warray-temporarieswarnings:
+#                          because we have many temporary arrays (performance issue?):                     
+#-Wimplicit-interface
+#-pedantic-errors
+#-fmodule-private
+#
+#OPTIONS FOR DEGUBBING DURING RUNTIME
+#-fcheck-bounds:           check if an array index is too small (<1) or too large!
+#
+#OPTIONS FOR TYPE DEBUGGING
+#-fdefault-real-8:         set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
+#-fdefault-integer-8:      set precision to 8 bytes for standard integer (=4 for pInt)
+##################################################################################################
 
 COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) -c
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) -c
-
+###################################################################################################
 
 DAMASK_spectral.exe: DAMASK_spectral.o CPFEM.a
 	$(PREFIX)	$(COMPILERNAME) ${OPENMP_FLAG_${F90}} -o DAMASK_spectral.exe DAMASK_spectral.o CPFEM.a \

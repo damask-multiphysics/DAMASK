@@ -562,7 +562,7 @@ subroutine materialpoint_postResults(dt)
        thePos = 0_pInt
        
        theSize = homogenization_sizePostResults(i,e)
-       materialpoint_results(thePos+1,i,e) = theSize                  ! tell size of homogenization results
+       materialpoint_results(thePos+1,i,e) = real(theSize,pReal)                  ! tell size of homogenization results
        thePos = thePos + 1_pInt
 
        if (theSize > 0_pInt) then                                     ! any homogenization results to mention?
@@ -570,7 +570,7 @@ subroutine materialpoint_postResults(dt)
          thePos = thePos + theSize
        endif
        
-       materialpoint_results(thePos+1,i,e) = myNgrains                ! tell number of grains at materialpoint
+       materialpoint_results(thePos+1,i,e) = real(myNgrains,pReal)                ! tell number of grains at materialpoint
        thePos = thePos + 1_pInt
 
        do g = 1,myNgrains                                             ! loop over all grains

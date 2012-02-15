@@ -64,7 +64,7 @@ module kdtree2_priority_queue_module
       ! There are heap_size active elements. 
       ! Assumes the allocation is always sufficient.  Will NOT increase it
       ! to match.
-      integer(pInt) :: heap_size = 0
+      integer(pInt) :: heap_size = 0_pInt
       type(kdtree2_result), pointer :: elems(:) 
   end type pq
 
@@ -97,14 +97,14 @@ contains
     type(pq) :: res
     !
     !
-    integer(pInt) :: nalloc
+    integer :: nalloc
 
     nalloc = size(results_in,1)
     if (nalloc .lt. 1) then
        write (*,*) 'PQ_CREATE: error, input arrays must be allocated.'
     end if
     res%elems => results_in
-    res%heap_size = 0
+    res%heap_size = 0_pInt
     return
   end function pq_create
 
@@ -160,8 +160,8 @@ contains
     i = i_in
 
 bigloop:  do
-       l = 2*i ! left(i)
-       r = l+1 ! right(i)
+       l = 2_pInt*i ! left(i)
+       r = l+1_pInt ! right(i)
        ! 
        ! set 'largest' to the index of either i, l, r
        ! depending on whose priority is largest.
@@ -296,11 +296,11 @@ bigloop:  do
     !       write (*,*) 'PQ_INSERT: error, attempt made to insert element on full PQ'
     !       stop
     !    else
-    a%heap_size = a%heap_size + 1
+    a%heap_size = a%heap_size + 1_pInt
     i = a%heap_size
 
     do while (i .gt. 1)
-       isparent = int(i/2)
+       isparent = int(i/2_pInt, pInt) !needed casting?
        parentdis = a%elems(isparent)%dis
        if (dis .gt. parentdis) then
           ! move what was in i's parent into i.
@@ -339,13 +339,13 @@ bigloop:  do
     e = a%elems(i) 
 
     parent = i
-    child = 2*i
+    child = 2_pInt*i
     N = a%heap_size
     
     do while (child .le. N)
        if (child .lt. N) then
           if (a%elems(child)%dis .lt. a%elems(child+1)%dis) then
-             child = child+1
+             child = child+1_pInt
           endif
        endif
        prichild = a%elems(child)%dis
@@ -355,7 +355,7 @@ bigloop:  do
           ! move child into parent.
           a%elems(parent) = a%elems(child) 
           parent = child
-          child = 2*parent
+          child = 2_pInt*parent
        end if
     end do
     a%elems(parent) = e
@@ -384,8 +384,8 @@ bigloop:  do
     if (.true.) then
        N=a%heap_size
        if (N .ge. 1) then
-          parent =1
-          child=2
+          parent =1_pInt
+          child=2_pInt
 
           loop: do while (child .le. N)
              prichild = a%elems(child)%dis
@@ -396,9 +396,9 @@ bigloop:  do
              !
 
              if (child .lt. N) then
-                prichildp1 = a%elems(child+1)%dis
+                prichildp1 = a%elems(child+1_pInt)%dis
                 if (prichild .lt. prichildp1) then
-                   child = child+1
+                   child = child+1_pInt
                    prichild = prichildp1
                 endif
              endif
@@ -411,7 +411,7 @@ bigloop:  do
                 ! move child into parent.
                 a%elems(parent) = a%elems(child) 
                 parent = child
-                child = 2*parent
+                child = 2_pInt*parent
              end if
           end do loop
           a%elems(parent)%dis = dis
@@ -449,7 +449,7 @@ bigloop:  do
     ! swap the item to be deleted with the last element
     ! and shorten heap by one.
     a%elems(i) = a%elems(a%heap_size) 
-    a%heap_size = a%heap_size - 1
+    a%heap_size = a%heap_size - 1_pInt
 
     call heapify(a,i)
 
@@ -469,10 +469,10 @@ module kdtree2_module
   ! This module is identical to 'kd_tree', except that the order
   ! of subscripts is reversed in the data file.
   ! In otherwords for an embedding of N D-dimensional vectors, the
-  ! data file is here, in natural Fortran order  data(1:D, 1:N)
+  ! data file is here, in natural Fortran order  myData(1:D, 1:N)
   ! because Fortran lays out columns first,
   !
-  ! whereas conventionally (C-style) it is data(1:N,1:D)
+  ! whereas conventionally (C-style) it is myData(1:N,1:D)
   ! as in the original kd_tree module. 
   !
   !-------------DATA TYPE, CREATION, DELETION---------------------
@@ -498,7 +498,7 @@ module kdtree2_module
   !----------------------------------------------------------------
 
 
-  integer(pInt), parameter :: bucket_size = 12
+  integer(pInt), parameter :: bucket_size = 12_pInt
   ! The maximum number of points to keep in a terminal node.
 
   type interval
@@ -525,7 +525,7 @@ module kdtree2_module
 
   type :: kdtree2
       ! Global information about the tree, one per tree
-      integer(pInt) :: dimen=0, n=0
+      integer(pInt) :: dimen=0_pInt, n=0_pInt
       ! dimensionality and total # of points
       real(pReal), pointer :: the_data(:,:) => null()
       ! pointer to the actual data array 
@@ -570,7 +570,7 @@ module kdtree2_module
       integer(pInt)           :: dimen   
       integer(pInt)           :: nn, nfound
       real(pReal)      :: ballsize
-      integer(pInt)           :: centeridx=999, correltime=9999
+      integer(pInt)           :: centeridx=999_pInt, correltime=9999_pInt
       ! exclude points within 'correltime' of 'centeridx', iff centeridx >= 0
       integer(pInt)           :: nalloc  ! how much allocated for results(:)?
       logical           :: rearrange  ! are the data rearranged or original? 
@@ -579,7 +579,7 @@ module kdtree2_module
       real(pReal), pointer :: qv(:)  ! query vector
       type(kdtree2_result), pointer :: results(:) ! results
       type(pq) :: pq
-      real(pReal), pointer :: data(:,:)  ! temp pointer to data
+      real(pReal), pointer :: myData(:,:)  ! temp pointer to data
       integer(pInt), pointer      :: ind(:)     ! temp pointer to indexes
   end type tree_search_record
 
@@ -590,7 +590,7 @@ module kdtree2_module
 
 contains
 
-  function kdtree2_create(input_data,dim,sort,rearrange) result (mr)
+  function kdtree2_create(input_data,myDim,sort,rearrange) result (mr)
     !
     ! create the actual tree structure, given an input array of data.
     !
@@ -598,9 +598,9 @@ contains
     ! THIS IS THE REVERSE OF THE PREVIOUS VERSION OF THIS MODULE.
     ! The reason for it is cache friendliness, improving performance.
     !
-    ! Optional arguments:  If 'dim' is specified, then the tree
-    !                      will only search the first 'dim' components
-    !                      of input_data, otherwise, dim is inferred
+    ! Optional arguments:  If 'myDim' is specified, then the tree
+    !                      will only search the first 'myDim' components
+    !                      of input_data, otherwise, myDim is inferred
     !                      from SIZE(input_data,1).
     !
     !                      if sort .eqv. .true. then output results
@@ -615,7 +615,7 @@ contains
     !
     ! .. Function Return Cut_value ..
     type (kdtree2), pointer :: mr
-    integer(pInt), intent(in), optional      :: dim
+    integer(pInt), intent(in), optional      :: myDim
     logical, intent(in), optional      :: sort
     logical, intent(in), optional      :: rearrange
     ! ..
@@ -628,19 +628,19 @@ contains
     mr%the_data => input_data
     ! pointer assignment
 
-    if (present(dim)) then
-       mr%dimen = dim
+    if (present(myDim)) then
+       mr%dimen = myDim
     else
-       mr%dimen = size(input_data,1)
+       mr%dimen = int(size(input_data,1), pInt) ! size returns default integer
     end if
-    mr%n = size(input_data,2)
+    mr%n = int(size(input_data,2), pInt) ! size returns default integer
 
     if (mr%dimen > mr%n) then
        !  unlikely to be correct
        write (*,*) 'KD_TREE_TRANS: likely user error.'
        write (*,*) 'KD_TREE_TRANS: You passed in matrix with D=',mr%dimen
        write (*,*) 'KD_TREE_TRANS: and N=',mr%n
-       write (*,*) 'KD_TREE_TRANS: note, that new format is data(1:D,1:N)'
+       write (*,*) 'KD_TREE_TRANS: note, that new format is myData(1:D,1:N)'
        write (*,*) 'KD_TREE_TRANS: with usually N >> D.   If N =approx= D, then a k-d tree'
        write (*,*) 'KD_TREE_TRANS: is not an appropriate data structure.'
        stop
@@ -662,7 +662,7 @@ contains
 
     if (mr%rearrange) then
        allocate(mr%rearranged_data(mr%dimen,mr%n))
-       do i=1,mr%n
+       do i=1_pInt,mr%n
           mr%rearranged_data(:,i) = mr%the_data(:, &
            mr%ind(i))
        enddo
@@ -679,7 +679,7 @@ contains
       type(tree_node), pointer :: dummy => null()
       ! ..
       allocate (tp%ind(tp%n))
-      forall (j=1:tp%n)
+      forall (j=1_pInt:tp%n)
          tp%ind(j) = j
       end forall
       tp%root => build_tree_for_range(tp,1_pInt,tp%n, dummy)
@@ -729,10 +729,10 @@ contains
          !
          ! always compute true bounding box for terminal nodes.
          !
-         do i=1,dimen
+         do i=1_pInt,dimen
             call spread_in_coordinate(tp,i,l,u,res%box(i))
          end do
-         res%cut_dim = 0
+         res%cut_dim = 0_pInt
          res%cut_val = 0.0_pReal
          res%l = l
          res%u = u
@@ -764,7 +764,7 @@ contains
          end do
          
 
-         c = maxloc(res%box(1:dimen)%upper-res%box(1:dimen)%lower,1)
+         c = int(maxloc(res%box(1:dimen)%upper-res%box(1:dimen)%lower,1), pInt)
          !
          ! c is the identity of which coordinate has the greatest spread.
          !
@@ -867,11 +867,11 @@ contains
       do while (lb < rb)
          if ( v(c,ind(lb)) <= alpha ) then
             ! it is good where it is.
-            lb = lb+1
+            lb = lb+1_pInt
          else
             ! swap it with rb.
             tmp = ind(lb); ind(lb) = ind(rb); ind(rb) = tmp
-            rb = rb-1
+            rb = rb-1_pInt
          endif
       end do
       
@@ -879,7 +879,7 @@ contains
       if (v(c,ind(lb)) <= alpha) then
          res = lb
       else
-         res = lb-1
+         res = lb-1_pInt
       endif
       
     end function select_on_coordinate_value
@@ -901,9 +901,9 @@ contains
       do while (l<u)
          t = ind(l)
          m = l
-         do i = l + 1, u
+         do i = l + 1_pInt, u
             if (v(c,ind(i))<v(c,t)) then
-               m = m + 1
+               m = m + 1_pInt
                s = ind(m)
                ind(m) = ind(i)
                ind(i) = s
@@ -912,8 +912,8 @@ contains
          s = ind(l)
          ind(l) = ind(m)
          ind(m) = s
-         if (m<=k) l = m + 1
-         if (m>=k) u = m - 1
+         if (m<=k) l = m + 1_pInt
+         if (m>=k) u = m - 1_pInt
       end do
     end subroutine select_on_coordinate
 
@@ -944,8 +944,8 @@ contains
 
       ulocal = u
 
-      do i = l + 2, ulocal, 2
-         lmin = v(c,ind(i-1))
+      do i = l + 2_pInt, ulocal, 2_pInt
+         lmin = v(c,ind(i-1_pInt))
          lmax = v(c,ind(i))
          if (lmin>lmax) then
             t = lmin
@@ -1022,9 +1022,9 @@ contains
     sr%ballsize = huge(1.0_pReal)
     sr%qv => qv
     sr%nn = nn
-    sr%nfound = 0
-    sr%centeridx = -1
-    sr%correltime = 0
+    sr%nfound = 0_pInt
+    sr%centeridx = -1_pInt
+    sr%correltime = 0_pInt
     sr%overflow = .false. 
 
     sr%results => results
@@ -1034,9 +1034,9 @@ contains
     sr%ind => tp%ind
     sr%rearrange = tp%rearrange
     if (tp%rearrange) then
-       sr%Data => tp%rearranged_data
+       sr%myData => tp%rearranged_data
     else
-       sr%Data => tp%the_data
+       sr%myData => tp%the_data
     endif
     sr%dimen = tp%dimen
 
@@ -1067,7 +1067,7 @@ contains
     sr%correltime = correltime
 
     sr%nn = nn
-    sr%nfound = 0
+    sr%nfound = 0_pInt
 
     sr%dimen = tp%dimen
     sr%nalloc = nn
@@ -1078,9 +1078,9 @@ contains
     sr%rearrange = tp%rearrange
 
     if (sr%rearrange) then
-       sr%Data => tp%rearranged_data
+       sr%myData => tp%rearranged_data
     else
-       sr%Data => tp%the_data
+       sr%myData => tp%the_data
     endif
 
     call validate_query_storage(nn)
@@ -1116,10 +1116,10 @@ contains
     !
     sr%qv => qv
     sr%ballsize = r2
-    sr%nn = 0      ! flag for fixed ball search
-    sr%nfound = 0
-    sr%centeridx = -1
-    sr%correltime = 0
+    sr%nn = 0_pInt      ! flag for fixed ball search
+    sr%nfound = 0_pInt
+    sr%centeridx = -1_pInt
+    sr%correltime = 0_pInt
 
     sr%results => results
 
@@ -1130,9 +1130,9 @@ contains
     sr%rearrange= tp%rearrange
 
     if (tp%rearrange) then
-       sr%Data => tp%rearranged_data
+       sr%myData => tp%rearranged_data
     else
-       sr%Data => tp%the_data
+       sr%myData => tp%the_data
     endif
     sr%dimen = tp%dimen
 
@@ -1176,8 +1176,8 @@ contains
     allocate (sr%qv(tp%dimen))
     sr%qv = tp%the_data(:,idxin) ! copy the vector
     sr%ballsize = r2
-    sr%nn = 0    ! flag for fixed r search
-    sr%nfound = 0
+    sr%nn = 0_pInt    ! flag for fixed r search
+    sr%nfound = 0_pInt
     sr%centeridx = idxin
     sr%correltime = correltime
 
@@ -1195,9 +1195,9 @@ contains
     sr%rearrange = tp%rearrange
 
     if (tp%rearrange) then
-       sr%Data => tp%rearranged_data
+       sr%myData => tp%rearranged_data
     else
-       sr%Data => tp%the_data
+       sr%myData => tp%the_data
     endif
     sr%rearrange = tp%rearrange
     sr%dimen = tp%dimen
@@ -1236,21 +1236,21 @@ contains
     sr%qv => qv
     sr%ballsize = r2
 
-    sr%nn = 0       ! flag for fixed r search
-    sr%nfound = 0
-    sr%centeridx = -1
-    sr%correltime = 0
+    sr%nn = 0_pInt       ! flag for fixed r search
+    sr%nfound = 0_pInt
+    sr%centeridx = -1_pInt
+    sr%correltime = 0_pInt
     
     nullify(sr%results) ! for some reason, FTN 95 chokes on '=> null()'
 
-    sr%nalloc = 0            ! we do not allocate any storage but that's OK
+    sr%nalloc = 0_pInt            ! we do not allocate any storage but that's OK
                              ! for counting.
     sr%ind => tp%ind
     sr%rearrange = tp%rearrange
     if (tp%rearrange) then
-       sr%Data => tp%rearranged_data
+       sr%myData => tp%rearranged_data
     else
-       sr%Data => tp%the_data
+       sr%myData => tp%the_data
     endif
     sr%dimen = tp%dimen
 
@@ -1285,22 +1285,22 @@ contains
     sr%qv = tp%the_data(:,idxin)
     sr%ballsize = r2
 
-    sr%nn = 0       ! flag for fixed r search
-    sr%nfound = 0
+    sr%nn = 0_pInt       ! flag for fixed r search
+    sr%nfound = 0_pInt
     sr%centeridx = idxin
     sr%correltime = correltime
     nullify(sr%results)
 
-    sr%nalloc = 0            ! we do not allocate any storage but that's OK
+    sr%nalloc = 0_pInt       ! we do not allocate any storage but that's OK
                              ! for counting.
 
     sr%ind => tp%ind
     sr%rearrange = tp%rearrange
 
     if (sr%rearrange) then
-       sr%Data => tp%rearranged_data
+       sr%myData => tp%rearranged_data
     else
-       sr%Data => tp%the_data
+       sr%myData => tp%the_data
     endif
     sr%dimen = tp%dimen
 
@@ -1324,7 +1324,7 @@ contains
     !
     integer(pInt), intent(in) :: n
 
-    if (size(sr%results,1) .lt. n) then
+    if (int(size(sr%results,1),pInt) .lt. n) then
        write (*,*) 'KD_TREE_TRANS:  you did not provide enough storage for results(1:n)'
        stop
        return
@@ -1408,7 +1408,7 @@ contains
              ! check will also be false. 
              !
              box => node%box(1:)
-             do i=1,sr%dimen
+             do i=1_pInt,sr%dimen
                 if (i .ne. cut_dim) then
                    dis = dis + dis2_from_bnd(qv(i),box(i)%lower,box(i)%upper)
                    if (dis > ballsize) then
@@ -1486,7 +1486,7 @@ contains
     !
     real(pReal), pointer          :: qv(:)
     integer(pInt), pointer       :: ind(:)
-    real(pReal), pointer          :: data(:,:)
+    real(pReal), pointer          :: myData(:,:)
     !
     integer(pInt)                :: dimen, i, indexofi, k, centeridx, correltime
     real(pReal)                   :: ballsize, sd, newpri
@@ -1505,7 +1505,7 @@ contains
     ballsize = sr%ballsize 
     rearrange = sr%rearrange
     ind => sr%ind(1:)
-    data => sr%Data(1:,1:)     
+    myData => sr%myData(1:,1:)     
     centeridx = sr%centeridx
     correltime = sr%correltime
 
@@ -1517,7 +1517,7 @@ contains
        if (rearrange) then
           sd = 0.0_pReal
           do k = 1_pInt,dimen
-             sd = sd + (data(k,i) - qv(k))**2.0_pReal
+             sd = sd + (myData(k,i) - qv(k))**2.0_pReal
              if (sd>ballsize) cycle mainloop
           end do
           indexofi = ind(i)  ! only read it if we have not broken out
@@ -1525,7 +1525,7 @@ contains
           indexofi = ind(i)
           sd = 0.0_pReal
           do k = 1_pInt,dimen
-             sd = sd + (data(k,indexofi) - qv(k))**2.0_pReal
+             sd = sd + (myData(k,indexofi) - qv(k))**2.0_pReal
              if (sd>ballsize) cycle mainloop
           end do
        endif
@@ -1557,7 +1557,7 @@ contains
           !
           ! add this point unconditionally to fill list.
           !
-          sr%nfound = sr%nfound +1 
+          sr%nfound = sr%nfound +1_pInt 
           newpri = pq_insert(pqp,sd,indexofi)
           if (sr%nfound .eq. sr%nn) ballsize = newpri
           ! we have just filled the working list.
@@ -1592,7 +1592,7 @@ contains
     !
     real(pReal), pointer          :: qv(:)
     integer(pInt), pointer       :: ind(:)
-    real(pReal), pointer          :: data(:,:)
+    real(pReal), pointer          :: myData(:,:)
     !
     integer(pInt)                :: nfound
     integer(pInt)                :: dimen, i, indexofi, k
@@ -1608,7 +1608,7 @@ contains
     ballsize = sr%ballsize 
     rearrange = sr%rearrange
     ind => sr%ind(1:)
-    data => sr%Data(1:,1:)
+    myData => sr%myData(1:,1:)
     centeridx = sr%centeridx
     correltime = sr%correltime
     nn = sr%nn ! number to search for
@@ -1640,7 +1640,7 @@ contains
        if (rearrange) then
           sd = 0.0_pReal
           do k = 1_pInt,dimen
-             sd = sd + (data(k,i) - qv(k))**2.0_pReal
+             sd = sd + (myData(k,i) - qv(k))**2.0_pReal
              if (sd>ballsize) cycle mainloop
           end do
           indexofi = ind(i)  ! only read it if we have not broken out
@@ -1648,7 +1648,7 @@ contains
           indexofi = ind(i)
           sd = 0.0_pReal
           do k = 1_pInt,dimen
-             sd = sd + (data(k,indexofi) - qv(k))**2.0_pReal
+             sd = sd + (myData(k,indexofi) - qv(k))**2.0_pReal
              if (sd>ballsize) cycle mainloop
           end do
        endif
@@ -1698,12 +1698,12 @@ contains
     do i = 1_pInt, tp%n
        if (all_distances(i)<results(nn)%dis) then
           ! insert it somewhere on the list
-          do j = 1, nn
+          do j = 1_pInt, nn
              if (all_distances(i)<results(j)%dis) exit
           end do
           ! now we know 'j'
           do k = nn - 1_pInt, j, -1_pInt
-             results(k+1) = results(k)
+             results(k+1_pInt) = results(k)
           end do
           results(j)%dis = all_distances(i)
           results(j)%idx = i
@@ -1724,22 +1724,23 @@ contains
     integer(pInt), intent(out)    :: nfound
     type(kdtree2_result)    :: results(:) 
 
-    integer(pInt) :: i, nalloc
+    integer(pInt) :: i
+    integer :: nalloc
     real(pReal), allocatable :: all_distances(:)
     ! ..
     allocate (all_distances(tp%n))
-    do i = 1, tp%n
+    do i = 1_pInt, tp%n
        all_distances(i) = square_distance(tp%dimen,qv,tp%the_data(:,i))
     end do
     
-    nfound = 0
+    nfound = 0_pInt
     nalloc = size(results,1)
 
-    do i = 1, tp%n
+    do i = 1_pInt, tp%n
        if (all_distances(i)< r2) then
           ! insert it somewhere on the list
           if (nfound .lt. nalloc) then
-             nfound = nfound+1
+             nfound = nfound+1_pInt
              results(nfound)%dis = all_distances(i)
              results(nfound)%idx = i
           endif
@@ -1763,7 +1764,7 @@ contains
     !THIS IS BUGGY WITH INTEL FORTRAN
     !    If (nfound .Gt. 1) Call heapsort(results(1:nfound)%dis,results(1:nfound)%ind,nfound)
     !
-    if (nfound .gt. 1) call heapsort_struct(results,nfound)
+    if (nfound .gt. 1_pInt) call heapsort_struct(results,nfound)
 
     return
   end subroutine kdtree2_sort_results
@@ -1786,7 +1787,7 @@ contains
     integer(pInt)     :: i,j
     integer(pInt)     :: ileft,iright
 
-    ileft=n/2+1
+    ileft=n/2_pInt+1_pInt
     iright=n
 
     !    do i=1,n
@@ -1794,33 +1795,33 @@ contains
     ! Generate initial idum array
     !    end do
 
-    if(n.eq.1) return                  
+    if(n.eq.1_pInt) return                  
 
     do 
-       if(ileft > 1)then
-          ileft=ileft-1
+       if(ileft > 1_pInt)then
+          ileft=ileft-1_pInt
           value=a(ileft); ivalue=ind(ileft)
        else
           value=a(iright); ivalue=ind(iright)
           a(iright)=a(1); ind(iright)=ind(1)
-          iright=iright-1
-          if (iright == 1) then
+          iright=iright-1_pInt
+          if (iright == 1_pInt) then
              a(1)=value;ind(1)=ivalue
              return
           endif
        endif
        i=ileft
-       j=2*ileft
+       j=2_pInt*ileft
        do while (j <= iright) 
           if(j < iright) then
-             if(a(j) < a(j+1)) j=j+1
+             if(a(j) < a(j+1_pInt)) j=j+1_pInt
           endif
           if(value < a(j)) then
              a(i)=a(j); ind(i)=ind(j)
              i=j
              j=j+j
           else
-             j=iright+1
+             j=iright+1_pInt
           endif
        end do
        a(i)=value; ind(i)=ivalue
@@ -1842,7 +1843,7 @@ contains
     integer(pInt)     :: i,j
     integer(pInt)     :: ileft,iright
 
-    ileft=n/2+1
+    ileft=n/2_pInt+1_pInt
     iright=n
 
     !    do i=1,n
@@ -1850,33 +1851,33 @@ contains
     ! Generate initial idum array
     !    end do
 
-    if(n.eq.1) return                  
+    if(n.eq.1_pInt) return                  
 
     do 
-       if(ileft > 1)then
-          ileft=ileft-1
+       if(ileft > 1_pInt)then
+          ileft=ileft-1_pInt
           value=a(ileft)
        else
           value=a(iright)
           a(iright)=a(1)
-          iright=iright-1
-          if (iright == 1) then
+          iright=iright-1_pInt
+          if (iright == 1_pInt) then
              a(1) = value
              return
           endif
        endif
        i=ileft
-       j=2*ileft
+       j=2_pInt*ileft
        do while (j <= iright) 
           if(j < iright) then
-             if(a(j)%dis < a(j+1)%dis) j=j+1
+             if(a(j)%dis < a(j+1_pInt)%dis) j=j+1_pInt
           endif
           if(value%dis < a(j)%dis) then
              a(i)=a(j); 
              i=j
              j=j+j
           else
-             j=iright+1
+             j=iright+1_pInt
           endif
        end do
        a(i)=value
