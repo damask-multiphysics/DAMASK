@@ -127,6 +127,24 @@ class ASCIItable():
     else:               self.data += [str(what)]
 
 # ------------------------------------------------------------------
+  def data_set(self,
+               what,where):
+    idx = -1
+    try:
+      idx = self.labels.index(where)
+      if len(self.data) <= idx:
+        self.data_append(['n/a' for i in xrange(idx+1-len(self.data))])         # grow data if too short
+      self.data[idx] = str(what)
+    except ValueError:
+      pass
+
+    return idx
+    
+# ------------------------------------------------------------------
+  def data_clear(self):
+    self.data = []
+
+# ------------------------------------------------------------------
   def data_asFloat(self):
     return map(self._transliterateToFloat,self.data)
 
