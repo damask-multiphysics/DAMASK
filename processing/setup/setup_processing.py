@@ -105,7 +105,7 @@ bin_link = { \
                 'mentat_colorMap.py',
                 'postResults.py',
                 'spectral_iterationCount.py',
-                'spectral_convergence.py',
+                'spectral_parseLog.py',
                 ],
             }
 
