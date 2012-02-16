@@ -44,7 +44,7 @@ parser.add_option('-c','--condition', dest='condition', type='string', \
 
 parser.set_defaults(whitelist = [])
 parser.set_defaults(blacklist = [])
-parser.set_defaults(condition = '')
+parser.set_defaults(condition = 'True')
 
 (options,filenames) = parser.parse_args()
 
@@ -93,7 +93,7 @@ for file in files:
         parser.error('column %s not found...\n'%operand)
 
   evaluator = "'" + options.condition + "'.format(" + ','.join(interpolator) + ")"
-  
+
 # ------------------------------------------ assemble header ---------------------------------------  
 
   table.labels = labels                                                     # update with new label set
@@ -105,7 +105,7 @@ for file in files:
 
     specials['_row_'] += 1                                                  # count row
     
-    if eval(eval(evaluator)):                                               # valid row ?
+    if options.condition != '' and eval(eval(evaluator)):                   # valid row ?
       table.data = [table.data[position] for position in positions]         # retain filtered columns
       table.data_write()                                                    # output processed line
 
