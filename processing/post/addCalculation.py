@@ -39,15 +39,16 @@ parser.add_option('-l','--label',   dest='labels', action='extend', type='string
                                     help='(list of) new column labels')
 parser.add_option('-f','--formula', dest='formulas', action='extend', type='string', \
                                     help='(list of) formulas corresponding to labels')
-
+parser.add_option('-c','--count',   dest='counter',  action='store_true', \
+                                    help='adds row counter as column "row"')
 parser.set_defaults(labels= [])
 parser.set_defaults(formulas= [])
+parser.set_defaults(counter= False)
 
 (options,filenames) = parser.parse_args()
 
 if len(options.labels) != len(options.formulas):
   parser.error('number of labels (%i) and formulas (%i) do not match'%(len(options.labels),len(options.formulas)))
-
 # ------------------------------------------ setup file handles ---------------------------------------  
 
 files = []
@@ -84,18 +85,20 @@ for file in files:
     for operand in operands:
       formula = formula.replace('#'+operand+'#','%e')
     evaluator[label] = "'" + formula + "'%(" + ','.join(interpolator) + ")"
+  
+  if options.counter: table.labels.append('row')
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------  
-
+  i = 0
   while table.data_read():                                                  # read next data line of ASCII table
-  
     for label in options.labels:
       table.data_append(eval(eval(evaluator[label])))
-
+    i = i + 1
+    if options.counter: table.data_append(i)
     table.data_write()                                                      # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
