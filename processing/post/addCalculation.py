@@ -36,11 +36,10 @@ Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + #ip.z
 
 
 parser.add_option('-l','--label',   dest='labels', action='extend', type='string', \
-                                    help='(list of) new column labels')
+                                    help='(list of) new column labels', metavar='<LIST>')
 parser.add_option('-f','--formula', dest='formulas', action='extend', type='string', \
-                                    help='(list of) formulas corresponding to labels')
-parser.add_option('-c','--count',   dest='counter',  action='store_true', \
-                                    help='adds row counter as column "row"')
+                                    help='(list of) formulas corresponding to labels', metavar='<LIST>')
+
 parser.set_defaults(labels= [])
 parser.set_defaults(formulas= [])
 parser.set_defaults(counter= False)
@@ -64,6 +63,10 @@ else:
 for file in files:
   if file['name'] != 'STDIN': print file['name']
 
+  specials = { \
+               '_row_': 0,
+             }
+
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
   table.info_append(string.replace('$Id$','\n','\\n') + \
@@ -71,34 +74,33 @@ for file in files:
 
   column = {}
   evaluator = {}
+
   for label,formula in zip(options.labels,options.formulas):
     table.labels_append(label)
     interpolator = []
-    operands = re.findall(r'#(.+?)#',formula)
-    for operand in operands:
-      if not operand in column:
+    for position,operand in enumerate(set(re.findall(r'#(.+?)#',formula))):
+      formula = formula.replace('#'+operand+'#','{%i}'%position)
+      if operand in specials:
+        interpolator += ['specials["%s"]'%operand]
+      else:
         try:
-          column[operand] = table.labels.index(operand)
+          interpolator += ['float(table.data[%i])'%table.labels.index(operand)]
         except:
           parser.error('column %s not found...\n'%operand)
-      interpolator += ['float(table.data[%i])'%column[operand]]
-    for operand in operands:
-      formula = formula.replace('#'+operand+'#','%e')
-    evaluator[label] = "'" + formula + "'%(" + ','.join(interpolator) + ")"
   
-  if options.counter: table.labels.append('row')
+    evaluator[label] = "'" + formula + "'.format(" + ','.join(interpolator) + ")"
+  
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------  
-  i = 0
+
   while table.data_read():                                                  # read next data line of ASCII table
-    for label in options.labels:
-      table.data_append(eval(eval(evaluator[label])))
-    i = i + 1
-    if options.counter: table.data_append(i)
+
+    specials['_row_'] += 1                                                  # count row
+    for label in options.labels: table.data_append(eval(eval(evaluator[label])))
     table.data_write()                                                      # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
