@@ -101,6 +101,7 @@ bin_link = { \
                 'addCompatibilityMismatch.py',
                 'averageDown.py',
                 'deleteColumn.py',
+                'filterTable.py',
                 'mentat_colorMap.py',
                 'postResults.py',
                 'spectral_iterationCount.py',
