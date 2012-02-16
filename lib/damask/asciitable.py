@@ -43,14 +43,19 @@ class ASCIItable():
       for item in what: self.output_write(item)
     else:
       self.__IO__['output'] += [str(what)]
-      self.__IO__['buffered'] or self.output_flush()
+      return self.__IO__['buffered'] or self.output_flush()
 
 # ------------------------------------------------------------------
   def output_flush(self,
                    clear = True):
-    self.__IO__['output'] == [] or self.__IO__['out'].write('\n'.join(self.__IO__['output']) + '\n')
+    import sys
+    try:
+      self.__IO__['output'] == [] or self.__IO__['out'].write('\n'.join(self.__IO__['output']) + '\n')
+    except IOError, e:
+      return False
     if clear: self.output_clear()
-
+    return True
+    
 # ------------------------------------------------------------------
   def output_clear(self):
     self.__IO__['output'] = []
@@ -84,9 +89,9 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def head_write(self):
-    self.output_write (['%i\theader'%(len(self.info)+1),
-                        self.info,
-                        '\t'.join(self.labels)])
+    return self.output_write (['%i\theader'%(len(self.info)+1),
+                              self.info,
+                              '\t'.join(self.labels)])
 
 # ------------------------------------------------------------------
   def labels_append(self,
@@ -118,9 +123,9 @@ class ASCIItable():
   def data_write(self):
     if len(self.data) == 0: return
     if isinstance(self.data[0],list):
-      self.output_write (['\t'.join(map(str,items)) for items in self.data])
+      return self.output_write (['\t'.join(map(str,items)) for items in self.data])
     else:
-      self.output_write ('\t'.join(map(str,self.data)))
+      return self.output_write ('\t'.join(map(str,self.data)))
 
 # ------------------------------------------------------------------
   def data_append(self,
