@@ -77,7 +77,10 @@ class ASCIItable():
       self.labels    = firstline.split()
       self.headerLen = 1
     self.__IO__['validReadSize'] = len(self.labels)
-    self.__IO__['dataStart'] = self.__IO__['in'].tell()
+    try:
+      self.__IO__['dataStart'] = self.__IO__['in'].tell()
+    except IOError:
+      pass
 
 # ------------------------------------------------------------------
   def head_write(self):
