@@ -44,7 +44,7 @@ parser.add_option('-c','--condition', dest='condition', type='string', \
 
 parser.set_defaults(whitelist = [])
 parser.set_defaults(blacklist = [])
-parser.set_defaults(condition = 'True')
+parser.set_defaults(condition = '')
 
 (options,filenames) = parser.parse_args()
 
@@ -76,8 +76,8 @@ for file in files:
   labels = []
   positions = []
   for position,label in enumerate(table.labels):
-    if    (options.whitelist != [] and label in options.whitelist) \
-       or (options.blacklist != [] and label not in options.blacklist):     # a label to keep?
+    if    (options.whitelist == [] or label in options.whitelist) \
+      and (options.blacklist == [] or label not in options.blacklist):      # a label to keep?
       labels.append(label)                                                  # remember name...
       positions.append(position)                                            # ...and position
 
@@ -101,19 +101,20 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  while table.data_read():                                                  # read next data line of ASCII table
+  outputAlive = True
+  while outputAlive and table.data_read():                                  # read next data line of ASCII table
 
     specials['_row_'] += 1                                                  # count row
     
-    if options.condition != '' and eval(eval(evaluator)):                   # valid row ?
+    if options.condition == '' or eval(eval(evaluator)):                    # valid row ?
       table.data = [table.data[position] for position in positions]         # retain filtered columns
-      table.data_write()                                                    # output processed line
+      outputAlive = table.data_write()                                      # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
 
-  table.output_flush()                                                      # just in case of buffered ASCII table
+  outputAlive and table.output_flush()                                      # just in case of buffered ASCII table
 
   file['input'].close()                                                     # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close                                                    # close output ASCII table
+    file['output'].close()                                                  # close output ASCII table
     os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
