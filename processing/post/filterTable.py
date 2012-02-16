@@ -31,7 +31,7 @@ parser = OptionParser(option_class=extendableOption, usage='%prog options [file[
 Filter rows according to condition and columns by either white or black listing.
 
 Example: every odd row if x coordinate is positive -- " #ip.x# >= 0.0 and #_row_#%2 == 1 )"
-""" + string.replace('$Id: addCalculation.py 1294 2012-02-09 15:46:25Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 
@@ -70,7 +70,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id: addCalculation.py 1294 2012-02-09 15:46:25Z MPIE\p.eisenlohr $','\n','\\n') + \
+  table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
   labels = []
