@@ -109,7 +109,8 @@ end subroutine
 !*********************************************************
 
 subroutine CPFEM_init()
-
+  
+  use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   use prec, only:                                 pInt
   use debug, only:                                debug_verbosity
   use IO, only:                                   IO_read_jobBinaryFile
@@ -128,9 +129,7 @@ subroutine CPFEM_init()
                                                   crystallite_dPdF0, &
                                                   crystallite_Tstar0_v
   use homogenization, only:                       homogenization_sizeState, &
-                                                  homogenization_state0, &
-                                                  materialpoint_F, &
-                                                  materialpoint_F0
+                                                  homogenization_state0
 
 
   implicit none
@@ -231,12 +230,10 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
   !*** variables and functions from other modules ***!
   use prec, only:                                     pReal, &
                                                       pInt
-  use numerics, only:                                 relevantStrain, &
-                                                      defgradTolerance, &
+  use numerics, only:                                 defgradTolerance, &
                                                       iJacoStiffness
   use debug, only:                                    debug_e, &
                                                       debug_i, &
-                                                      debug_g, &
                                                       debug_selectiveDebugger, &
                                                       debug_verbosity, &
                                                       debug_stressMaxLocation, &
@@ -282,8 +279,8 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                                                       microstructure_elemhomo, &
                                                       material_phase
   use constitutive, only:                             constitutive_state0,constitutive_state
-  use crystallite, only:                              crystallite_F0, &
-                                                      crystallite_partionedF, &
+  use crystallite, only:                              crystallite_partionedF,&
+                                                      crystallite_F0, &
                                                       crystallite_Fp0, &
                                                       crystallite_Fp, &
                                                       crystallite_Lp0, &
@@ -291,8 +288,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                                                       crystallite_dPdF0, &
                                                       crystallite_dPdF, &
                                                       crystallite_Tstar0_v, &
-                                                      crystallite_Tstar_v, &
-                                                      crystallite_localConstitution
+                                                      crystallite_Tstar_v
   use homogenization, only:                           homogenization_sizeState, &
                                                       homogenization_state, &
                                                       homogenization_state0, &

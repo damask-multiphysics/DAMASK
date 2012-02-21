@@ -72,6 +72,7 @@ CONTAINS
 !*      Module initialization         *
 !**************************************
 subroutine homogenization_init(Temperature)
+use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 use prec, only: pReal,pInt
 use math, only: math_I3
 use debug, only: debug_verbosity
@@ -288,10 +289,10 @@ subroutine materialpoint_stressAndItsTangent(&
                           crystallite_converged, &
                           crystallite_stressAndItsTangent, &
                           crystallite_orientations
- use debug, only:         debug_verbosity, &
-                          debug_selectiveDebugger, &
+use debug, only:          debug_verbosity, &
                           debug_e, &
                           debug_i, &
+                          debug_selectiveDebugger, &
                           debug_MaterialpointLoopDistribution, &
                           debug_MaterialpointStateLoopDistribution
  use math, only:          math_pDecomposition
@@ -358,7 +359,7 @@ subroutine materialpoint_stressAndItsTangent(&
        if ( materialpoint_converged(i,e) ) then
 #ifndef _OPENMP
          if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
-           write(6,'(a,1x,f10.8,1x,a,1x,f10.8,1x,a,/)') '<< HOMOG >> winding forward from', &
+           write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,/)') '<< HOMOG >> winding forward from', &
              materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
              materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent'
          endif
@@ -409,7 +410,7 @@ subroutine materialpoint_stressAndItsTangent(&
            
 #ifndef _OPENMP
            if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
-             write(6,'(a,1x,f10.8,/)') &
+             write(6,'(a,1x,f12.8,/)') &
                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
                materialpoint_subStep(i,e)
            endif
@@ -593,7 +594,7 @@ subroutine homogenization_partitionDeformation(&
    el  &            ! element
   )
 
- use prec,        only: pReal,pInt
+ use prec,        only: pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_partionedF0,crystallite_partionedF
@@ -634,7 +635,7 @@ function homogenization_updateState(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,        only: pReal,pInt
+ use prec,        only: pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_P,crystallite_dPdF,crystallite_partionedF,crystallite_partionedF0  ! modified <<<updated 31.07.2009>>>
@@ -682,7 +683,7 @@ subroutine homogenization_averageStressAndItsTangent(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,        only: pReal,pInt
+ use prec,        only: pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_P,crystallite_dPdF
@@ -724,7 +725,7 @@ subroutine homogenization_averageTemperature(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,        only: pReal,pInt
+ use prec,        only: pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_Temperature

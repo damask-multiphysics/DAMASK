@@ -59,17 +59,18 @@ CONTAINS
 !*      Module initialization         *
 !**************************************
 subroutine homogenization_isostrain_init(&
-   file  &    ! file pointer to material configuration
+   myFile  &    ! file pointer to material configuration
   )
- use, intrinsic :: iso_fortran_env
- use prec, only: pInt, pReal
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec, only: pInt
  use math, only: math_Mandel3333to66, math_Voigt66to3333
  use IO
  use material
- integer(pInt), intent(in) :: file
- integer(pInt), parameter :: maxNchunks = 2
- integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j, output, mySize
+ integer(pInt), intent(in) :: myFile
+ integer(pInt), parameter :: maxNchunks = 2_pInt
+ integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
+ integer(pInt) section, i, j, output, mySize
+ integer :: maxNinstance, k                                                                         !no pInt (stores a system dependen value from 'count'
  character(len=64) tag
  character(len=1024) line
  
@@ -81,7 +82,7 @@ subroutine homogenization_isostrain_init(&
  !$OMP END CRITICAL (write2out)
 
  maxNinstance = count(homogenization_type == homogenization_isostrain_label)
- if (maxNinstance == 0_pInt) return
+ if (maxNinstance == 0) return
 
  allocate(homogenization_isostrain_sizeState(maxNinstance)) ;      homogenization_isostrain_sizeState = 0_pInt
  allocate(homogenization_isostrain_sizePostResults(maxNinstance)); homogenization_isostrain_sizePostResults = 0_pInt
@@ -91,16 +92,16 @@ subroutine homogenization_isostrain_init(&
  allocate(homogenization_isostrain_output(maxval(homogenization_Noutput), &
                                           maxNinstance)) ;         homogenization_isostrain_output = ''
  
- rewind(file)
+ rewind(myFile)
  line = ''
  section = 0_pInt
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)     ! wind forward to <homogenization>
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
  enddo
 
  do                                                       ! read thru sections of phase part
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
@@ -121,18 +122,18 @@ subroutine homogenization_isostrain_init(&
    endif
  enddo
 
-100 do i = 1_pInt,maxNinstance                                        ! sanity checks
+100 do k = 1,maxNinstance                                        ! sanity checks
  enddo
 
- do i = 1,maxNinstance
+ do k = 1,maxNinstance
    homogenization_isostrain_sizeState(i)    = 0_pInt
 
-   do j = 1,maxval(homogenization_Noutput)
+   do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_isostrain_output(j,i))
        case('ngrains')
-         mySize = 1
+         mySize = 1_pInt
        case default
-         mySize = 0      
+         mySize = 0_pInt
      end select
 
      if (mySize > 0_pInt) then                               ! any meaningful output found
@@ -180,7 +181,7 @@ subroutine homogenization_isostrain_partitionDeformation(&
    el  &            ! my element
   )
  use prec, only: pReal,pInt,p_vec
- use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
+ use mesh, only: mesh_element
  use material, only: homogenization_maxNgrains,homogenization_Ngrains
  implicit none
 
@@ -193,7 +194,7 @@ subroutine homogenization_isostrain_partitionDeformation(&
  integer(pInt) i
  
 ! homID = homogenization_typeInstance(mesh_element(3,el))
- forall (i = 1:homogenization_Ngrains(mesh_element(3,el))) &
+ forall (i = 1_pInt:homogenization_Ngrains(mesh_element(3,el))) &
    F(1:3,1:3,i)  = avgF
 
  return
@@ -215,7 +216,6 @@ function homogenization_isostrain_updateState(&
   )
 
  use prec, only: pReal,pInt,p_vec
- use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains
  implicit none
 
@@ -249,7 +249,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(&
   )
 
  use prec, only: pReal,pInt,p_vec
- use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
+ use mesh, only: mesh_element
  use material, only: homogenization_maxNgrains, homogenization_Ngrains
  implicit none
 
@@ -263,8 +263,8 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(&
 
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
- avgP = sum(P,3)/dble(Ngrains)
- dAvgPdAvgF = sum(dPdF,5)/dble(Ngrains)
+ avgP = sum(P,3)/real(Ngrains,pReal)
+ dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
 
  return
 
@@ -281,7 +281,7 @@ function homogenization_isostrain_averageTemperature(&
   )
 
  use prec, only: pReal,pInt,p_vec
- use mesh, only: mesh_element,mesh_NcpElems,mesh_maxNips
+ use mesh, only: mesh_element
  use material, only: homogenization_maxNgrains, homogenization_Ngrains
  implicit none
 
@@ -293,7 +293,7 @@ function homogenization_isostrain_averageTemperature(&
 
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
- homogenization_isostrain_averageTemperature = sum(Temperature(1:Ngrains))/dble(Ngrains)
+ homogenization_isostrain_averageTemperature = sum(Temperature(1:Ngrains))/real(Ngrains,pReal)
 
  return
 
@@ -325,11 +325,11 @@ pure function homogenization_isostrain_postResults(&
  c = 0_pInt
  homogenization_isostrain_postResults = 0.0_pReal
  
- do o = 1,homogenization_Noutput(mesh_element(3,el))
+ do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_isostrain_output(o,homID))
      case ('ngrains')
-       homogenization_isostrain_postResults(c+1) = real(homogenization_isostrain_Ngrains(homID),pReal)
-       c = c + 1
+       homogenization_isostrain_postResults(c+1_pInt) = real(homogenization_isostrain_Ngrains(homID),pReal)
+       c = c + 1_pInt
    end select
  enddo
  
