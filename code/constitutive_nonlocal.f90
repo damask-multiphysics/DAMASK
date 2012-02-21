@@ -1715,12 +1715,14 @@ forall (s = 1_pInt:ns, t = 1_pInt:4_pInt, rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pRea
 
 
 !****************************************************************************
-!*** check LFC condition for flux
+!*** check CFL (Courant-Friedrichs-Lewy) condition for flux
 
-if (any(abs(gdot) > 0.0_pReal .and. 2.0_pReal * v * timestep > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then           ! safety factor 2.0 (we use the reference volume and are for simplicity here)
+if (any(abs(gdot) > 0.0_pReal .and. 2.0_pReal * abs(v) * timestep > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then      ! safety factor 2.0 (we use the reference volume and are for simplicity here)
 #ifndef _OPENMP
   if (debug_verbosity > 6) then
-    write(6,'(a,i5,a,i2)') '<< CONST >> LFC condition not fullfilled at el ',el,' ip ',ip
+    write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
+    write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ',maxval(abs(v)),' at a timestep of ',timestep
+    write(6,'(a)') '<< CONST >> enforcing cutback !!!'
   endif
 #endif
   dotState%p = DAMASK_NaN
