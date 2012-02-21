@@ -145,10 +145,11 @@ CONTAINS
 !****************************************
 
 
-subroutine constitutive_phenopowerlaw_init(file)
+subroutine constitutive_phenopowerlaw_init(myFile)
 !**************************************
 !*      Module initialization         *
 !**************************************
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: pInt, pReal
  use math, only: math_Mandel3333to66, math_Voigt66to3333
  use IO
@@ -163,7 +164,7 @@ subroutine constitutive_phenopowerlaw_init(file)
                     lattice_interactionTwinSlip, &
                     lattice_interactionTwinTwin
 
- integer(pInt), intent(in) :: file
+ integer(pInt), intent(in) :: myFile
  integer(pInt), parameter :: maxNchunks = lattice_maxNinteraction + 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) section, maxNinstance, i,j,k, f,o, &
@@ -178,7 +179,7 @@ subroutine constitutive_phenopowerlaw_init(file)
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
- maxNinstance = count(phase_constitution == constitutive_phenopowerlaw_label)
+ maxNinstance = int(count(phase_constitution == constitutive_phenopowerlaw_label),pInt)
  if (maxNinstance == 0) return
 
  if (debug_verbosity > 0) then
@@ -252,16 +253,16 @@ subroutine constitutive_phenopowerlaw_init(file)
  allocate(constitutive_phenopowerlaw_aTolResistance(maxNinstance))
  constitutive_phenopowerlaw_aTolResistance = 0.0_pReal
 
- rewind(file)
+ rewind(myFile)
  line = ''
- section = 0
+ section = 0_pInt
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
  enddo
 
  do                                                       ! read thru sections of phase part
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
@@ -542,14 +543,14 @@ function constitutive_phenopowerlaw_stateInit(myInstance)
 
  constitutive_phenopowerlaw_stateInit = 0.0_pReal
  
- do i = 1,lattice_maxNslipFamily
+ do i = 1_pInt,lattice_maxNslipFamily
    constitutive_phenopowerlaw_stateInit(1+&
                                         sum(constitutive_phenopowerlaw_Nslip(1:i-1,myInstance)) : &
                                         sum(constitutive_phenopowerlaw_Nslip(1:i  ,myInstance))) = &
      constitutive_phenopowerlaw_tau0_slip(i,myInstance)
  enddo
 
- do i = 1,lattice_maxNtwinFamily
+ do i = 1_pInt,lattice_maxNtwinFamily
    constitutive_phenopowerlaw_stateInit(1+sum(constitutive_phenopowerlaw_Nslip(:,myInstance))+&
                                         sum(constitutive_phenopowerlaw_Ntwin(1:i-1,myInstance)) : &
                                           sum(constitutive_phenopowerlaw_Nslip(:,myInstance))+&
@@ -677,17 +678,17 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
  nSlip = constitutive_phenopowerlaw_totalNslip(matID)
  nTwin = constitutive_phenopowerlaw_totalNtwin(matID)
  
- index_Gamma = nSlip + nTwin + 1
- index_F     = nSlip + nTwin + 2
+ index_Gamma = nSlip + nTwin + 1_pInt
+ index_F     = nSlip + nTwin + 2_pInt
 
  Lp = 0.0_pReal
  dLp_dTstar3333 = 0.0_pReal
  dLp_dTstar = 0.0_pReal
 
  j = 0_pInt
- do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
-   index_myFamily = sum(lattice_NslipSystem(1:f-1,structID))                 ! at which index starts my family
-   do i = 1,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
+ do f = 1_pInt,lattice_maxNslipFamily                                             ! loop over all slip families
+   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+   do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
      j = j+1_pInt
 
 !* Calculation of Lp
@@ -702,7 +703,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
 
      if (gdot_slip(j) /= 0.0_pReal) then
        dgdot_dtauslip(j) = gdot_slip(j)*constitutive_phenopowerlaw_n_slip(matID)/tau_slip(j)
-       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
                                    dgdot_dtauslip(j)*lattice_Sslip(k,l,index_myFamily+i,structID)* &
                                                      lattice_Sslip(m,n,index_myFamily+i,structID)
@@ -711,9 +712,9 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
  enddo
 
  j = 0_pInt
- do f = 1,lattice_maxNtwinFamily                                             ! loop over all twin families
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1,structID))                 ! at which index starts my family
-   do i = 1,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
+ do f = 1_pInt,lattice_maxNtwinFamily                                             ! loop over all twin families
+   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+   do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
      j = j+1_pInt
 
 !* Calculation of Lp
@@ -729,7 +730,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
 
      if (gdot_twin(j) /= 0.0_pReal) then
        dgdot_dtautwin(j) = gdot_twin(j)*constitutive_phenopowerlaw_n_twin(matID)/tau_twin(j)
-       forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
                                    dgdot_dtautwin(j)*lattice_Stwin(k,l,index_myFamily+i,structID)* &
                                                      lattice_Stwin(m,n,index_myFamily+i,structID)
@@ -755,7 +756,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 !*  - constitutive_dotState : evolution of state variable            *
 !*********************************************************************
  use prec,     only: pReal,pInt,p_vec
- use lattice,  only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
+ use lattice,  only: lattice_Sslip_v, lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                      lattice_NslipSystem,lattice_NtwinSystem,lattice_shearTwin   
  use mesh,     only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
@@ -780,8 +781,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
  nSlip = constitutive_phenopowerlaw_totalNslip(matID)
  nTwin = constitutive_phenopowerlaw_totalNtwin(matID)
 
- index_Gamma = nSlip + nTwin + 1
- index_F     = nSlip + nTwin + 2
+ index_Gamma = nSlip + nTwin + 1_pInt
+ index_F     = nSlip + nTwin + 2_pInt
 
  constitutive_phenopowerlaw_dotState = 0.0_pReal
 
@@ -800,9 +801,9 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 
  ssat_offset = constitutive_phenopowerlaw_spr(matID)*sqrt(state(ipc,ip,el)%p(index_F))
  j = 0_pInt
- do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
-   index_myFamily = sum(lattice_NslipSystem(1:f-1,structID))                 ! at which index starts my family
-   do i = 1,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
+ do f = 1_pInt,lattice_maxNslipFamily                                             ! loop over all slip families
+   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+   do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
      j = j+1_pInt
      h_slipslip(j) = c_slipslip*(1.0_pReal-state(ipc,ip,el)%p(j) / &         ! system-dependent prefactor for slip--slip interaction
                                  (constitutive_phenopowerlaw_tausat_slip(f,matID)+ssat_offset))** &
@@ -819,9 +820,9 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
   enddo
 
  j = 0_pInt
- do f = 1,lattice_maxNtwinFamily                                             ! loop over all twin families
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1,structID))                 ! at which index starts my family
-   do i = 1,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
+ do f = 1_pInt,lattice_maxNtwinFamily                                             ! loop over all twin families
+   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+   do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
      j = j+1_pInt
      h_twinslip(j) = c_twinslip                                              ! no system-dependent parts
      h_twintwin(j) = c_twintwin
@@ -839,8 +840,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 !-- calculate the overall hardening based on above
 
  j = 0_pInt
- do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
-   do i = 1,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
+ do f = 1_pInt,lattice_maxNslipFamily                                             ! loop over all slip families
+   do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
      j = j+1_pInt
      constitutive_phenopowerlaw_dotState(j) = &                                                                             ! evolution of slip resistance j
        h_slipslip(j) * dot_product(constitutive_phenopowerlaw_hardeningMatrix_slipslip(1:nSlip,j,matID),abs(gdot_slip)) + & ! dot gamma_slip
@@ -851,9 +852,9 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
  enddo
  
  j = 0_pInt
- do f = 1,lattice_maxNtwinFamily                                             ! loop over all twin families
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1,structID))                 ! at which index starts my family
-   do i = 1,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
+ do f = 1_pInt,lattice_maxNtwinFamily                                             ! loop over all twin families
+   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+   do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
      j = j+1_pInt
      constitutive_phenopowerlaw_dotState(j+nSlip) = &                                                                       ! evolution of twin resistance j
        h_twinslip(j) * dot_product(constitutive_phenopowerlaw_hardeningMatrix_twinslip(1:nSlip,j,matID),abs(gdot_slip)) + & ! dot gamma_slip
@@ -875,9 +876,8 @@ pure function constitutive_phenopowerlaw_dotTemperature(Tstar_v,Temperature,stat
 
   !*** variables and functions from other modules ***!
   use prec,     only: pReal,pInt,p_vec
-  use lattice,  only: lattice_Sslip_v
-  use mesh,     only: mesh_NcpElems,mesh_maxNips
-  use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance  
+  use mesh,     only: mesh_NcpElems, mesh_maxNips
+  use material, only: homogenization_maxNgrains
   implicit none
 
   !*** input variables ***!
@@ -932,23 +932,23 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
  nSlip = constitutive_phenopowerlaw_totalNslip(matID)
  nTwin = constitutive_phenopowerlaw_totalNtwin(matID)
 
- index_Gamma = nSlip + nTwin + 1
- index_F     = nSlip + nTwin + 2
+ index_Gamma = nSlip + nTwin + 1_pInt
+ index_F     = nSlip + nTwin + 2_pInt
 
  constitutive_phenopowerlaw_postResults = 0.0_pReal
  c = 0_pInt
 
- do o = 1,phase_Noutput(material_phase(ipc,ip,el))
+ do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
    select case(constitutive_phenopowerlaw_output(o,matID))
      case ('resistance_slip')
-       constitutive_phenopowerlaw_postResults(c+1:c+nSlip) = state(ipc,ip,el)%p(1:nSlip)
+       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(ipc,ip,el)%p(1:nSlip)
        c = c + nSlip
 
      case ('shearrate_slip')
        j = 0_pInt
-       do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
-         index_myFamily = sum(lattice_NslipSystem(1:f-1,structID))                 ! at which index starts my family
-         do i = 1,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
+       do f = 1_pInt,lattice_maxNslipFamily                                             ! loop over all slip families
+         index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+         do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
            j = j + 1_pInt
            tau = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,structID))
            constitutive_phenopowerlaw_postResults(c+j) = constitutive_phenopowerlaw_gdot0_slip(matID)*&
@@ -959,27 +959,27 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
 
      case ('resolvedstress_slip')
        j = 0_pInt
-       do f = 1,lattice_maxNslipFamily                                             ! loop over all slip families
-         index_myFamily = sum(lattice_NslipSystem(1:f-1,structID))                 ! at which index starts my family
-         do i = 1,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
+       do f = 1_pInt,lattice_maxNslipFamily                                             ! loop over all slip families
+         index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+         do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,matID)                        ! process each (active) slip system in family
            j = j + 1_pInt
            constitutive_phenopowerlaw_postResults(c+j) = dot_product(Tstar_v,lattice_Sslip_v(1:6,index_myFamily+i,structID))
        enddo; enddo
        c = c + nSlip
 
      case ('totalshear')
-       constitutive_phenopowerlaw_postResults(c+1) = state(ipc,ip,el)%p(index_Gamma)
-       c = c + 1
+       constitutive_phenopowerlaw_postResults(c+1_pInt) = state(ipc,ip,el)%p(index_Gamma)
+       c = c + 1_pInt
 
      case ('resistance_twin')
-       constitutive_phenopowerlaw_postResults(c+1:c+nTwin) = state(ipc,ip,el)%p(1+nSlip:nTwin+nSlip)
+       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = state(ipc,ip,el)%p(1_pInt+nSlip:nTwin+nSlip)
        c = c + nTwin
 
      case ('shearrate_twin')
        j = 0_pInt
-       do f = 1,lattice_maxNtwinFamily                                             ! loop over all twin families
-         index_myFamily = sum(lattice_NtwinSystem(1:f-1,structID))                 ! at which index starts my family
-         do i = 1,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
+       do f = 1_pInt,lattice_maxNtwinFamily                                             ! loop over all twin families
+         index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+         do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
            j = j + 1_pInt
            tau = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,structID))
            constitutive_phenopowerlaw_postResults(c+j) = (1.0_pReal-state(ipc,ip,el)%p(index_F))*&          ! 1-F
@@ -991,17 +991,17 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
 
      case ('resolvedstress_twin')
        j = 0_pInt
-       do f = 1,lattice_maxNtwinFamily                                             ! loop over all twin families
-         index_myFamily = sum(lattice_NtwinSystem(1:f-1,structID))                 ! at which index starts my family
-         do i = 1,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
+       do f = 1_pInt,lattice_maxNtwinFamily                                             ! loop over all twin families
+         index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,structID))                 ! at which index starts my family
+         do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,matID)                        ! process each (active) twin system in family
            j = j + 1_pInt
            constitutive_phenopowerlaw_postResults(c+j) = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,structID))
        enddo; enddo
        c = c + nTwin
 
      case ('totalvolfrac')
-       constitutive_phenopowerlaw_postResults(c+1) = state(ipc,ip,el)%p(index_F)
-       c = c + 1
+       constitutive_phenopowerlaw_postResults(c+1_pInt) = state(ipc,ip,el)%p(index_F)
+       c = c + 1_pInt
 
    end select
  enddo

@@ -68,8 +68,9 @@ CONTAINS
 !*      Module initialization         *
 !**************************************
 subroutine constitutive_init()
-use prec, only: pReal,pInt
-use debug, only: debug_verbosity, debug_selectiveDebugger, debug_e, debug_i, debug_g
+use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+use prec, only: pInt
+use debug, only: debug_verbosity
 use numerics, only: numerics_integrator
 use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat, IO_write_jobFile
 use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
@@ -82,7 +83,7 @@ use constitutive_nonlocal
 
 implicit none
 
-integer(pInt), parameter :: fileunit = 200
+integer(pInt), parameter :: fileunit = 200_pInt
 integer(pInt)   g, &                          ! grain number
                 i, &                          ! integration point number
                 e, &                          ! element number
@@ -114,7 +115,7 @@ close(fileunit)
 ! --- WRITE DESCRIPTION FILE FOR CONSTITUTIVE PHASE OUTPUT ---
 
 call IO_write_jobFile(fileunit,'outputConstitutive') 
-do p = 1,material_Nphase
+do p = 1_pInt,material_Nphase
   i = phase_constitutionInstance(p)                     ! which instance of a constitution is present phase
   knownConstitution = .true.                            ! assume valid
   select case(phase_constitution(p))                    ! split per constitiution
@@ -141,7 +142,7 @@ do p = 1,material_Nphase
   write(fileunit,*)
   if (knownConstitution) then
     write(fileunit,'(a)') '(constitution)'//char(9)//trim(phase_constitution(p))
-    do e = 1,phase_Noutput(p)
+    do e = 1_pInt,phase_Noutput(p)
       write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
     enddo
   endif
@@ -166,22 +167,22 @@ allocate(constitutive_aTolState(gMax,iMax,eMax))
 allocate(constitutive_sizeDotState(gMax,iMax,eMax)) ;          constitutive_sizeDotState = 0_pInt
 allocate(constitutive_sizeState(gMax,iMax,eMax)) ;                constitutive_sizeState = 0_pInt
 allocate(constitutive_sizePostResults(gMax,iMax,eMax));     constitutive_sizePostResults = 0_pInt
-if (any(numerics_integrator == 1)) then
+if (any(numerics_integrator == 1_pInt)) then
   allocate(constitutive_previousDotState(gMax,iMax,eMax))
   allocate(constitutive_previousDotState2(gMax,iMax,eMax))
 endif
-if (any(numerics_integrator == 4)) then
+if (any(numerics_integrator == 4_pInt)) then
   allocate(constitutive_RK4dotState(gMax,iMax,eMax)) 
 endif
-if (any(numerics_integrator == 5)) then
+if (any(numerics_integrator == 5_pInt)) then
   allocate(constitutive_RKCK45dotState(6,gMax,iMax,eMax))
 endif
 
 !$OMP PARALLEL DO PRIVATE(myNgrains,myInstance)
-  do e = 1,mesh_NcpElems                                  ! loop over elements
+  do e = 1_pInt,mesh_NcpElems                                  ! loop over elements
     myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-    do i = 1,FE_Nips(mesh_element(2,e))                   ! loop over IPs
-      do g = 1,myNgrains                                  ! loop over grains
+    do i = 1_pInt,FE_Nips(mesh_element(2,e))                   ! loop over IPs
+      do g = 1_pInt,myNgrains                                  ! loop over grains
         myInstance = phase_constitutionInstance(material_phase(g,i,e))
         select case(phase_constitution(material_phase(g,i,e)))  
         
@@ -194,15 +195,15 @@ endif
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
-            if (any(numerics_integrator == 1)) then
+            if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
               allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
             endif
-            if (any(numerics_integrator == 4)) then
+            if (any(numerics_integrator == 4_pInt)) then
               allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance))) 
             endif
-            if (any(numerics_integrator == 5)) then
-              do s = 1,6
+            if (any(numerics_integrator == 5_pInt)) then
+              do s = 1_pInt,6_pInt
                 allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_j2_sizeDotState(myInstance))) 
               enddo
             endif
@@ -221,15 +222,15 @@ endif
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
-            if (any(numerics_integrator == 1)) then
+            if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
               allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
             endif
-            if (any(numerics_integrator == 4)) then
+            if (any(numerics_integrator == 4_pInt)) then
               allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance))) 
             endif
-            if (any(numerics_integrator == 5)) then
-              do s = 1,6
+            if (any(numerics_integrator == 5_pInt)) then
+              do s = 1_pInt,6_pInt
                 allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance))) 
               enddo
             endif
@@ -248,15 +249,15 @@ endif
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
-            if (any(numerics_integrator == 1)) then
+            if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
               allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
             endif
-            if (any(numerics_integrator == 4)) then
+            if (any(numerics_integrator == 4_pInt)) then
               allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance))) 
             endif
-            if (any(numerics_integrator == 5)) then
-              do s = 1,6
+            if (any(numerics_integrator == 5_pInt)) then
+              do s = 1_pInt,6_pInt
                 allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance))) 
               enddo
             endif
@@ -275,15 +276,15 @@ endif
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
-            if (any(numerics_integrator == 1)) then
+            if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
               allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
             endif
-            if (any(numerics_integrator == 4)) then
+            if (any(numerics_integrator == 4_pInt)) then
               allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance))) 
             endif
-            if (any(numerics_integrator == 5)) then
-              do s = 1,6
+            if (any(numerics_integrator == 5_pInt)) then
+              do s = 1_pInt,6_pInt
                 allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance))) 
               enddo
             endif
@@ -302,15 +303,15 @@ endif
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
-            if (any(numerics_integrator == 1)) then
+            if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
               allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
             endif
-            if (any(numerics_integrator == 4)) then
+            if (any(numerics_integrator == 4_pInt)) then
               allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance))) 
             endif
-            if (any(numerics_integrator == 5)) then
-              do s = 1,6
+            if (any(numerics_integrator == 5_pInt)) then
+              do s = 1_pInt,6_pInt
                 allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance))) 
               enddo
             endif
@@ -340,7 +341,7 @@ constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
   write(6,*) '<<<+-  constitutive init  -+>>>'
   write(6,*) '$Id$'
 #include "compilation_info.f90"
-  if (debug_verbosity > 0) then
+  if (debug_verbosity > 0_pInt) then
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_state0:          ', shape(constitutive_state0)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
@@ -457,11 +458,7 @@ endfunction
 subroutine constitutive_microstructure(Temperature, Fe, Fp, ipc, ip, el)
 use prec,      only: pReal,pInt
 use material,  only: phase_constitution, &
-                     material_phase, &
-                     homogenization_maxNgrains
-use mesh,      only: mesh_NcpElems, &
-                     mesh_maxNips, &
-                     mesh_maxNipNeighbors
+                     material_phase
 use constitutive_j2,            only: constitutive_j2_label, &
                                       constitutive_j2_microstructure
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
@@ -581,8 +578,7 @@ use debug, only:    debug_cumDotStateCalls, &
                     debug_cumDotStateTicks, &
                     debug_verbosity
 use mesh, only:     mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_maxNipNeighbors
+                    mesh_maxNips
 use material, only: phase_constitution, &
                     material_phase, &
                     homogenization_maxNgrains
@@ -620,7 +616,7 @@ integer(pLongInt)               tick, tock, &
                                 tickrate, &
                                 maxticks
 
-if (debug_verbosity > 0) then
+if (debug_verbosity > 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
@@ -644,7 +640,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
  
 end select
 
-if (debug_verbosity > 6) then
+if (debug_verbosity > 6_pInt) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDotState)
     debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
@@ -699,7 +695,7 @@ integer(pLongInt)               tick, tock, &
                                 maxticks
 
 
-if (debug_verbosity > 0) then
+if (debug_verbosity > 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
@@ -722,7 +718,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
    
 end select
 
-if (debug_verbosity > 6) then
+if (debug_verbosity > 6_pInt) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDotTemperature)
     debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt
@@ -748,8 +744,7 @@ function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
 !*********************************************************************
 use prec, only:     pReal,pInt
 use mesh, only:     mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_maxNipNeighbors
+                    mesh_maxNips
 use material, only: phase_constitution, &
                     material_phase, &
                     homogenization_maxNgrains

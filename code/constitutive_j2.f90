@@ -84,14 +84,15 @@ subroutine constitutive_j2_init(file)
 !**************************************
 !*      Module initialization         *
 !**************************************
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: pInt, pReal
  use math, only: math_Mandel3333to66, math_Voigt66to3333
  use IO
  use material
  use debug, only: debug_verbosity
  integer(pInt), intent(in) :: file
- integer(pInt), parameter :: maxNchunks = 7
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt), parameter :: maxNchunks = 7_pInt
+ integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  integer(pInt) section, maxNinstance, i,j,k, mySize
  character(len=64) tag
  character(len=1024) line
@@ -103,10 +104,10 @@ subroutine constitutive_j2_init(file)
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
- maxNinstance = count(phase_constitution == constitutive_j2_label)
- if (maxNinstance == 0) return
+ maxNinstance = int(count(phase_constitution == constitutive_j2_label),pInt)
+ if (maxNinstance == 0_pInt) return
 
- if (debug_verbosity > 0) then
+ if (debug_verbosity > 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,1x,i5)') '# instances:',maxNinstance
      write(6,*)
@@ -133,7 +134,7 @@ subroutine constitutive_j2_init(file)
  
  rewind(file)
  line = ''
- section = 0
+ section = 0_pInt
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                              ! wind forward to <phase>
    read(file,'(a1024)',END=100) line
@@ -156,34 +157,34 @@ subroutine constitutive_j2_init(file)
          cycle
        case ('(output)')
          constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
-         constitutive_j2_output(constitutive_j2_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2))
+         constitutive_j2_output(constitutive_j2_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('c11')
-              constitutive_j2_C11(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_C11(i) = IO_floatValue(line,positions,2_pInt)
        case ('c12')
-              constitutive_j2_C12(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_C12(i) = IO_floatValue(line,positions,2_pInt)
        case ('tau0')
-              constitutive_j2_tau0(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_tau0(i) = IO_floatValue(line,positions,2_pInt)
        case ('gdot0')
-              constitutive_j2_gdot0(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_gdot0(i) = IO_floatValue(line,positions,2_pInt)
        case ('n')
-              constitutive_j2_n(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_n(i) = IO_floatValue(line,positions,2_pInt)
        case ('h0')
-              constitutive_j2_h0(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_h0(i) = IO_floatValue(line,positions,2_pInt)
        case ('tausat')
-              constitutive_j2_tausat(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_tausat(i) = IO_floatValue(line,positions,2_pInt)
        case ('a', 'w0')
-              constitutive_j2_a(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_a(i) = IO_floatValue(line,positions,2_pInt)
        case ('taylorfactor')
-              constitutive_j2_fTaylor(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_fTaylor(i) = IO_floatValue(line,positions,2_pInt)
        case ('atol_resistance')
-              constitutive_j2_aTolResistance(i) = IO_floatValue(line,positions,2)
+              constitutive_j2_aTolResistance(i) = IO_floatValue(line,positions,2_pInt)
        case default
               call IO_error(210_pInt,ext_msg=tag)
      end select
    endif
  enddo
 
-100 do i = 1,maxNinstance                                        ! sanity checks
+100 do i = 1_pInt,maxNinstance                                        ! sanity checks
    if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(211_pInt,ext_msg='tau0')
    if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211_pInt,ext_msg='gdot0')
    if (constitutive_j2_n(i) <= 0.0_pReal)                 call IO_error(211_pInt,ext_msg='n')
@@ -193,8 +194,8 @@ subroutine constitutive_j2_init(file)
    if (constitutive_j2_aTolResistance(i) <= 0.0_pReal)    call IO_error(211_pInt,ext_msg='aTol_resistance')
  enddo
 
- do i = 1,maxNinstance
-   do j = 1,constitutive_j2_Noutput(i)
+ do i = 1_pInt,maxNinstance
+   do j = 1_pInt,constitutive_j2_Noutput(i)
      select case(constitutive_j2_output(j,i))
        case('flowstress')
          mySize = 1_pInt
@@ -211,13 +212,14 @@ subroutine constitutive_j2_init(file)
      endif
    enddo
 
-   constitutive_j2_sizeDotState(i) = 1
-   constitutive_j2_sizeState(i)    = 1
+   constitutive_j2_sizeDotState(i) = 1_pInt
+   constitutive_j2_sizeState(i)    = 1_pInt
 
-   forall(k=1:3)
-     forall(j=1:3) &
-       constitutive_j2_Cslip_66(k,j,i) =   constitutive_j2_C12(i)
-     constitutive_j2_Cslip_66(k,k,i) =     constitutive_j2_C11(i)
+   forall(k=1_pInt:3_pInt)
+     forall(j=1_pInt:3_pInt) 
+       constitutive_j2_Cslip_66(k,j,i) = constitutive_j2_C12(i)
+     end forall
+     constitutive_j2_Cslip_66(k,k,i) = constitutive_j2_C11(i)
      constitutive_j2_Cslip_66(k+3,k+3,i) = 0.5_pReal*(constitutive_j2_C11(i)-constitutive_j2_C12(i))
    end forall
    constitutive_j2_Cslip_66(1:6,1:6,i) = &
@@ -333,8 +335,6 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
   use math,     only: math_mul6x6, &
                       math_Mandel6to33, &
                       math_Plain3333to99
-  use lattice,  only: lattice_Sslip, &
-                      lattice_Sslip_v
   use mesh,     only: mesh_NcpElems, &
                       mesh_maxNips
   use material, only: homogenization_maxNgrains, &
@@ -379,7 +379,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
   dLp_dTstar_99 = 0.0_pReal
 
   ! for Tstar==0 both Lp and dLp_dTstar are zero (if not n==1)
-  if (norm_Tstar_dev > 0) then
+  if (norm_Tstar_dev > 0_pInt) then
    
     ! Calculation of gamma_dot
     gamma_dot = constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
@@ -390,9 +390,9 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
     Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/constitutive_j2_fTaylor(matID)
 
     !* Calculation of the tangent of Lp
-    forall (k=1:3,l=1:3,m=1:3,n=1:3) &
+    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
       dLp_dTstar_3333(k,l,m,n) = (constitutive_j2_n(matID)-1.0_pReal) * Tstar_dev_33(k,l)*Tstar_dev_33(m,n) / squarenorm_Tstar_dev
-    forall (k=1:3,l=1:3) &
+    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
       dLp_dTstar_3333(k,l,k,l) = dLp_dTstar_3333(k,l,k,l) + 1.0_pReal
     dLp_dTstar_99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(matID) * dLp_dTstar_3333 / norm_Tstar_dev)
   end if
@@ -412,7 +412,6 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
                       pInt, &
                       p_vec
   use math,     only: math_mul6x6
-  use lattice,  only: lattice_Sslip_v
   use mesh,     only: mesh_NcpElems, &
                       mesh_maxNips
   use material, only: homogenization_maxNgrains, &
@@ -471,9 +470,8 @@ pure function constitutive_j2_dotTemperature(Tstar_v, Temperature, state, g, ip,
 
   !*** variables and functions from other modules ***!
   use prec,     only: pReal,pInt,p_vec
-  use lattice,  only: lattice_Sslip_v
   use mesh,     only: mesh_NcpElems,mesh_maxNips
-  use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance  
+  use material, only: homogenization_maxNgrains
   implicit none
 
   !*** input variables ***!
@@ -504,7 +502,6 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
                       pInt, &
                       p_vec
   use math,     only: math_mul6x6
-  use lattice,  only: lattice_Sslip_v
   use mesh,     only: mesh_NcpElems, &
                       mesh_maxNips
   use material, only: homogenization_maxNgrains, &
@@ -550,17 +547,17 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
   c = 0_pInt
   constitutive_j2_postResults = 0.0_pReal
 
-  do o = 1,phase_Noutput(material_phase(g,ip,el))
+  do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
     select case(constitutive_j2_output(o,matID))
       case ('flowstress')
-        constitutive_j2_postResults(c+1) = state(g,ip,el)%p(1)
-        c = c + 1
+        constitutive_j2_postResults(c+1_pInt) = state(g,ip,el)%p(1)
+        c = c + 1_pInt
       case ('strainrate')
-        constitutive_j2_postResults(c+1) = &
+        constitutive_j2_postResults(c+1_pInt) = &
               constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
                                              / &!---------------------------------------------------
                                                (constitutive_j2_fTaylor(matID) * state(g,ip,el)%p(1)) ) ** constitutive_j2_n(matID)
-        c = c + 1
+        c = c + 1_pInt
     end select
   enddo
  
