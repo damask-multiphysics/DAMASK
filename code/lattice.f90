@@ -727,13 +727,13 @@ subroutine lattice_init()
 !**************************************
 !*      Module initialization         *
 !**************************************
- use, intrinsic :: iso_fortran_env
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: IO_open_file,IO_open_jobFile_stat,IO_countSections,IO_countTagInPart,IO_error
  use material, only: material_configfile,material_localFileExt,material_partPhase
  use debug, only: debug_verbosity
  implicit none
  
- integer(pInt), parameter :: fileunit = 200
+ integer(pInt), parameter :: fileunit = 200_pInt
  integer(pInt) Nsections
 
  !$OMP CRITICAL (write2out)

@@ -107,7 +107,7 @@ subroutine material_init()
 !*      Module initialization         *
 !**************************************
 
- use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: pReal,pInt
  use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat
  use debug, only: debug_verbosity
@@ -362,7 +362,6 @@ subroutine material_parseCrystallite(myFile,myPart)
 
  use prec, only: pInt
  use IO
- use mesh, only: mesh_element
  implicit none
 
  character(len=*), intent(in) :: myPart
@@ -598,7 +597,7 @@ subroutine material_populateGrains()
 !*********************************************************************
 
  use prec, only: pInt, pReal
- use math, only: math_sampleRandomOri, math_sampleGaussOri, math_sampleFiberOri, math_symmetricEulers, inDeg
+ use math, only: math_sampleRandomOri, math_sampleGaussOri, math_sampleFiberOri, math_symmetricEulers
  use mesh, only: mesh_element, mesh_maxNips, mesh_NcpElems, mesh_ipVolume, FE_Nips
  use IO,   only: IO_error, IO_hybridIA
  use FEsolving, only: FEsolving_execIP

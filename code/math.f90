@@ -140,11 +140,10 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 !**************************************************************************
  SUBROUTINE math_init ()
 
- use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
  use numerics, only: fixedSeed
  use IO,       only: IO_error
- use debug,    only: debug_verbosity
  implicit none
 
  integer(pInt) :: i

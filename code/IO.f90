@@ -50,7 +50,7 @@
 !********************************************************************
 subroutine IO_init ()
 
-use, intrinsic :: iso_fortran_env
+use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   !$OMP CRITICAL (write2out)
   write(6,*)
   write(6,*) '<<<+-  IO init  -+>>>'
@@ -69,7 +69,7 @@ endsubroutine
 !    by removing all comment lines and including "include"s
 !********************************************************************
 recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
- use prec
+ use prec, only : pInt
  use DAMASK_interface
  implicit none
  
@@ -201,7 +201,7 @@ end function
 !********************************************************************
  subroutine IO_open_inputFile(myUnit,model)
 
- use prec, only: pReal, pInt
+ use prec, only: pInt
  use DAMASK_interface
  implicit none
 
@@ -237,7 +237,7 @@ end function
 ! open FEM logfile to given myUnit
 !********************************************************************
  subroutine IO_open_logFile(myUnit)
- use prec, only: pReal, pInt
+ use prec, only: pInt
  use DAMASK_interface
  implicit none
 
@@ -258,7 +258,7 @@ end function
 !********************************************************************
  logical function IO_open_jobFile_stat(myUnit,newExt)
 
- use prec, only: pReal, pInt
+ use prec, only: pInt
  use DAMASK_interface
  implicit none
 
@@ -280,7 +280,7 @@ end function
 !********************************************************************
  subroutine IO_open_jobFile(myUnit,newExt)
 
- use prec, only: pReal, pInt
+ use prec, only:  pInt
  use DAMASK_interface
  implicit none
 
@@ -302,7 +302,7 @@ end function
 !********************************************************************
  subroutine IO_write_jobFile(myUnit,newExt)
 
- use prec, only: pReal, pInt
+ use prec, only: pInt
  use DAMASK_interface
  implicit none
 
@@ -324,7 +324,7 @@ end function
 !********************************************************************
  subroutine IO_write_jobBinaryFile(myUnit,newExt,recMultiplier)
 
- use prec, only: pReal, pInt
+ use prec, only: pInt, pReal
  use DAMASK_interface
  implicit none
 
@@ -351,7 +351,7 @@ end function
 !********************************************************************
  subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
 
- use prec, only: pReal, pInt
+ use prec, only: pInt, pReal
  use DAMASK_interface
  implicit none
 
@@ -404,7 +404,7 @@ end function
 !********************************************************************
  function IO_hybridIA(Nast,ODFfileName)
 
- use prec, only: pReal, pInt
+ use prec, only: pInt, pReal
  implicit none
  
  real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
@@ -544,7 +544,6 @@ end function
 !********************************************************************
  pure function IO_isBlank (line)
 
- use prec, only: pInt
  implicit none
 
  character(len=*), intent(in) :: line
@@ -564,7 +563,6 @@ end function
 !********************************************************************
  pure function IO_getTag (line,openChar,closeChar)
 
- use prec, only: pInt
  implicit none
 
  character(len=*), intent(in) :: line,openChar,closeChar
@@ -708,7 +706,7 @@ endfunction
 ! pure function IO_stringPos (line,N)
  function IO_stringPos (line,N)
 
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
 
  character(len=*), intent(in) :: line
@@ -742,7 +740,7 @@ endfunction
 !********************************************************************
  pure function IO_stringValue (line,positions,myPos)
  
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
  
  character(len=*), intent(in) :: line
@@ -763,7 +761,7 @@ endfunction
 !********************************************************************
  pure function IO_fixedStringValue (line,ends,myPos)
  
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
  
  character(len=*), intent(in) :: line
@@ -851,7 +849,7 @@ endfunction
 !********************************************************************
  pure function IO_intValue (line,positions,myPos)
  
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
  
  character(len=*), intent(in) :: line
@@ -874,7 +872,7 @@ endfunction
 !********************************************************************
  pure function IO_fixedIntValue (line,ends,myPos)
  
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
  
  character(len=*), intent(in) :: line
@@ -893,7 +891,6 @@ endfunction
 !********************************************************************
  pure function IO_lc (line)
 
- use prec, only: pInt
  implicit none
 
  character (len=*), intent(in) :: line
@@ -913,7 +910,6 @@ endfunction
 !********************************************************************
  subroutine IO_lcInplace (line)
 
- use prec, only: pInt
  implicit none
 
  character (len=*) line
@@ -932,19 +928,19 @@ endfunction
 !********************************************************************
 ! read on in file to skip (at least) N chunks (may be over multiple lines)
 !********************************************************************
- subroutine IO_skipChunks (unit,N)
+ subroutine IO_skipChunks (myUnit,N)
 
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
 
- integer(pInt)  remainingChunks,unit,N
+ integer(pInt)  remainingChunks,myUnit,N
  integer(pInt), parameter :: maxNchunks = 64_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
  character(len=300) line
 
  remainingChunks = N
  do while (remainingChunks > 0)
-   read(unit,'(A300)',end=100) line
+   read(myUnit,'(A300)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
    remainingChunks = remainingChunks - myPos(1)
  enddo
@@ -980,7 +976,7 @@ endfunction
 !********************************************************************
  function IO_countDataLines (myUnit)
 
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
 
  integer(pInt) :: IO_countDataLines,myUnit
@@ -1012,7 +1008,7 @@ endfunction
  function IO_countContinousIntValues (myUnit)
 
  use DAMASK_interface
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
 
  integer(pInt) :: myUnit,l,c
@@ -1069,7 +1065,7 @@ endfunction
  function IO_continousIntValues (myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
  use DAMASK_interface
- use prec, only: pReal,pInt
+ use prec, only: pInt
  implicit none
 
  integer(pInt)  myUnit,maxN,i,j,l,c,first,last
@@ -1106,7 +1102,7 @@ endfunction
          enddo
          exit
        else
-         do i = 1_pInt ,myPos(1)-1_pInt  ! interpret up to second to last value
+         do i = 1_pInt,myPos(1)-1_pInt  ! interpret up to second to last value
            IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
            IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,myPos,i)
          enddo
