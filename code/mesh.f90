@@ -263,7 +263,7 @@
  subroutine mesh_init (ip,element)
 
  use DAMASK_interface
- use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: pInt
  use IO, only: IO_error,IO_open_InputFile,IO_abaqus_hasNoPart
  use FEsolving, only: parallelExecution, FEsolving_execElem, FEsolving_execIP, calcMode, lastMode, FEmodelGeometry
@@ -564,7 +564,7 @@ endsubroutine
  allocate(FE_subNodeOnIPFace(FE_NipFaceNodes,FE_maxNipNeighbors,FE_maxNips,FE_Nelemtypes)) ; FE_subNodeOnIPFace = 0_pInt
  
  ! fill FE_nodesAtIP with data
- FE_nodesAtIP(:,:FE_Nips(1),1) = &  ! element 7
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(1),1:FE_Nips(1),1) = &  ! element 7
     reshape(int([&
     1,  &
     2,  &
@@ -574,19 +574,22 @@ endsubroutine
     6,  &
     8,  &
     7   &
-    ],pInt),(/FE_maxNnodesAtIP(1),FE_Nips(1)/))
- FE_nodesAtIP(:,:FE_Nips(2),2) = &  ! element 134
+    ],pInt),[FE_maxNnodesAtIP(1),FE_Nips(1)])
+
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(2),1:FE_Nips(2),2) = &  ! element 134
     reshape(int([&
     1,2,3,4   &
-    ],pInt),(/FE_maxNnodesAtIP(2),FE_Nips(2)/))
- FE_nodesAtIP(:,:FE_Nips(3),3) = &  ! element 11
+    ],pInt),[FE_maxNnodesAtIP(2),FE_Nips(2)])
+
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(3),1:FE_Nips(3),3) = &  ! element 11
     reshape(int([&
     1,  &
     2,  &
     4,  &
     3   &
-    ],pInt),(/FE_maxNnodesAtIP(3),FE_Nips(3)/))
- FE_nodesAtIP(:,:FE_Nips(4),4) = &  ! element 27
+    ],pInt),[FE_maxNnodesAtIP(3),FE_Nips(3)])
+
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(4),1:FE_Nips(4),4) = &  ! element 27
     reshape(int([&
     1,0,  &
     1,2,  &
@@ -597,15 +600,17 @@ endsubroutine
     4,0,  &
     3,4,  &
     3,0   &
-    ],pInt),(/FE_maxNnodesAtIP(4),FE_Nips(4)/))
- FE_nodesAtIP(:,:FE_Nips(5),5) = &  ! element 157
+    ],pInt),[FE_maxNnodesAtIP(4),FE_Nips(4)])
+
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(5),1:FE_Nips(5),5) = &  ! element 157
     reshape(int([&
     1,  &
     2,  &
     3,  &
     4   &
-    ],pInt),(/FE_maxNnodesAtIP(5),FE_Nips(5)/))
- FE_nodesAtIP(:,:FE_Nips(6),6) = &  ! element 136
+    ],pInt),[FE_maxNnodesAtIP(5),FE_Nips(5)])
+
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(6),1:FE_Nips(6),6) = &  ! element 136
     reshape(int([&
     1,  &
     2,  &
@@ -613,8 +618,9 @@ endsubroutine
     4,  &
     5,  &
     6   &
-    ],pInt),(/FE_maxNnodesAtIP(6),FE_Nips(6)/))
- FE_nodesAtIP(:,:FE_Nips(7),7) = &  ! element 21
+    ],pInt),[FE_maxNnodesAtIP(6),FE_Nips(6)])
+
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(7),1:FE_Nips(7),7) = &  ! element 21
     reshape(int([&
     1,0, 0,0,  &
     1,2, 0,0,  &
@@ -643,12 +649,14 @@ endsubroutine
     8,0, 0,0,  &
     7,8, 0,0,  &
     7,0, 0,0   &
-    ],pInt),(/FE_maxNnodesAtIP(7),FE_Nips(7)/))
+    ],pInt),[FE_maxNnodesAtIP(7),FE_Nips(7)])
+
 ! FE_nodesAtIP(:,:FE_Nips(8),8) = &  ! element 117 (c3d8r --> single IP per element, so no need for this mapping)
 !    reshape((/&
 !    1,2,3,4,5,6,7,8   &
 !    /),(/FE_maxNnodesAtIP(8),FE_Nips(8)/))
- FE_nodesAtIP(:,:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
+
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(9),1:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
     reshape(int([&
     1,  &
     2,  &
@@ -658,13 +666,14 @@ endsubroutine
     6,  &
     8,  &
     7   &
-    ],pInt),(/FE_maxNnodesAtIP(9),FE_Nips(9)/))
- FE_nodesAtIP(:,:FE_Nips(10),10) = &  ! element 155, 125, 128
+    ],pInt),[FE_maxNnodesAtIP(9),FE_Nips(9)])
+
+ FE_nodesAtIP(1:FE_maxNnodesAtIP(10),1:FE_Nips(10),10) = &  ! element 155, 125, 128
     reshape(int([&
     1,  &
     2,  &
     3   &
-    ],pInt),(/FE_maxNnodesAtIP(10),FE_Nips(10)/))
+    ],pInt),[FE_maxNnodesAtIP(10),FE_Nips(10)])
  
  ! *** FE_ipNeighbor ***
  ! is a list of the neighborhood of each IP.
@@ -672,7 +681,7 @@ endsubroutine
  ! Positive integers denote an intra-FE IP identifier.
  ! Negative integers denote the interface behind which the neighboring (extra-FE) IP will be located.
 
- FE_ipNeighbor(:FE_NipNeighbors(1),:FE_Nips(1),1) = &  ! element 7
+ FE_ipNeighbor(1:FE_NipNeighbors(1),1:FE_Nips(1),1) = &  ! element 7
     reshape(int([&
      2,-5, 3,-2, 5,-1,  &
     -3, 1, 4,-2, 6,-1,  &
@@ -682,19 +691,22 @@ endsubroutine
     -3, 5, 8,-2,-6, 2,  &
      8,-5,-4, 5,-6, 3,  &
     -3, 7,-4, 6,-6, 4   &
-    ],pInt),(/FE_NipNeighbors(1),FE_Nips(1)/))
- FE_ipNeighbor(:FE_NipNeighbors(2),:FE_Nips(2),2) = &  ! element 134
+    ],pInt),[FE_NipNeighbors(1),FE_Nips(1)])
+
+ FE_ipNeighbor(1:FE_NipNeighbors(2),1:FE_Nips(2),2) = &  ! element 134
     reshape(int([&
     -1,-2,-3,-4   &
-    ],pInt),(/FE_NipNeighbors(2),FE_Nips(2)/))
- FE_ipNeighbor(:FE_NipNeighbors(3),:FE_Nips(3),3) = &  ! element 11
+    ],pInt),[FE_NipNeighbors(2),FE_Nips(2)])
+
+ FE_ipNeighbor(1:FE_NipNeighbors(3),1:FE_Nips(3),3) = &  ! element 11
     reshape(int([&
      2,-4, 3,-1,  &
     -2, 1, 4,-1,  &
      4,-4,-3, 1,  &
     -2, 3,-3, 2   &
-    ],pInt),(/FE_NipNeighbors(3),FE_Nips(3)/))
- FE_ipNeighbor(:FE_NipNeighbors(4),:FE_Nips(4),4) = &  ! element 27
+    ],pInt),[FE_NipNeighbors(3),FE_Nips(3)])
+
+ FE_ipNeighbor(1:FE_NipNeighbors(4),1:FE_Nips(4),4) = &  ! element 27
     reshape(int([&
      2,-4, 4,-1,  &
      3, 1, 5,-1,  &
@@ -705,15 +717,17 @@ endsubroutine
      8,-4,-3, 4,  &
      9, 7,-3, 5,  &
     -2, 8,-3, 6   &
-    ],pInt),(/FE_NipNeighbors(4),FE_Nips(4)/))
- FE_ipNeighbor(:FE_NipNeighbors(5),:FE_Nips(5),5) = &  ! element 157
+    ],pInt),[FE_NipNeighbors(4),FE_Nips(4)])
+
+ FE_ipNeighbor(1:FE_NipNeighbors(5),1:FE_Nips(5),5) = &  ! element 157
     reshape(int([&
      2,-4, 3,-2, 4,-1,  &
      3,-2, 1,-3, 4,-1,  &
      1,-3, 2,-4, 4,-1,  &
      1,-3, 2,-4, 3,-2   &
-    ],pInt),(/FE_NipNeighbors(5),FE_Nips(5)/))
- FE_ipNeighbor(:FE_NipNeighbors(6),:FE_Nips(6),6) = &  ! element 136
+    ],pInt),[FE_NipNeighbors(5),FE_Nips(5)])
+
+ FE_ipNeighbor(1:FE_NipNeighbors(6),1:FE_Nips(6),6) = &  ! element 136
     reshape(int([&
      2,-4, 3,-2, 4,-1,  &
     -3, 1, 3,-2, 5,-1,  &
@@ -721,8 +735,9 @@ endsubroutine
      5,-4, 6,-2,-5, 1,  &
     -3, 4, 6,-2,-5, 2,  &
      5,-4,-3, 4,-5, 3   &
-    ],pInt),(/FE_NipNeighbors(6),FE_Nips(6)/))
- FE_ipNeighbor(:FE_NipNeighbors(7),:FE_Nips(7),7) = &  ! element 21
+    ],pInt),[FE_NipNeighbors(6),FE_Nips(6)])
+
+ FE_ipNeighbor(1:FE_NipNeighbors(7),1:FE_Nips(7),7) = &  ! element 21
     reshape(int([&
      2,-5, 4,-2,10,-1,  &
      3, 1, 5,-2,11,-1,  &
@@ -751,12 +766,14 @@ endsubroutine
     26,-5,-4,22,-6,16,  &
     27,25,-4,23,-6,17,  &
     -3,26,-4,24,-6,18   &
-    ],pInt),(/FE_NipNeighbors(7),FE_Nips(7)/))
-FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
+    ],pInt),[FE_NipNeighbors(7),FE_Nips(7)])
+
+FE_ipNeighbor(1:FE_NipNeighbors(8),1:FE_Nips(8),8) = &  ! element 117
     reshape(int([&
     -3,-5,-4,-2,-6,-1   &
-    ],pInt),(/FE_NipNeighbors(8),FE_Nips(8)/))
- FE_ipNeighbor(:FE_NipNeighbors(9),:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
+    ],pInt),[FE_NipNeighbors(8),FE_Nips(8)])
+
+ FE_ipNeighbor(1:FE_NipNeighbors(9),1:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
     reshape(int([&
      2,-5, 3,-2, 5,-1,  &
     -3, 1, 4,-2, 6,-1,  &
@@ -766,13 +783,14 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     -3, 5, 8,-2,-6, 2,  &
      8,-5,-4, 5,-6, 3,  &
     -3, 7,-4, 6,-6, 4   &
-    ],pInt),(/FE_NipNeighbors(9),FE_Nips(9)/))
- FE_ipNeighbor(:FE_NipNeighbors(10),:FE_Nips(10),10) = &  ! element 155, 125, 128
+    ],pInt),[FE_NipNeighbors(9),FE_Nips(9)])
+
+ FE_ipNeighbor(1:FE_NipNeighbors(10),1:FE_Nips(10),10) = &  ! element 155, 125, 128
     reshape(int([&
      2,-3, 3,-1,  &
     -2, 1, 3,-1,  &
      2,-3,-2, 1   &
-    ],pInt),(/FE_NipNeighbors(10),FE_Nips(10)/))
+    ],pInt),[FE_NipNeighbors(10),FE_Nips(10)])
  
  ! *** FE_subNodeParent ***
  ! lists the group of nodes for which the center of gravity
@@ -781,7 +799,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
  !          e.g., a 8 IP grid, would be encoded:
  !          1, 2, 3, 4, 0, 0, 0, 0
 
- FE_subNodeParent(:FE_Nips(1),:FE_NsubNodes(1),1) = &  ! element 7
+ FE_subNodeParent(1:FE_Nips(1),1:FE_NsubNodes(1),1) = &  ! element 7
     reshape(int([&
     1, 2, 0, 0, 0, 0, 0, 0,  &
     2, 3, 0, 0, 0, 0, 0, 0,  &
@@ -803,16 +821,19 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     5, 6, 7, 8, 0, 0, 0, 0,  &
     1, 2, 3, 4, 5, 6, 7, 8   & 
     ],pInt),(/FE_Nips(1),FE_NsubNodes(1)/))
+
 !FE_subNodeParent(:FE_Nips(2),:FE_NsubNodes(2),2)      ! element 134 has no subnodes
- FE_subNodeParent(:FE_Nips(3),:FE_NsubNodes(3),3) = &  ! element 11
+
+ FE_subNodeParent(1:FE_Nips(3),1:FE_NsubNodes(3),3) = &  ! element 11
     reshape(int([&
     1, 2, 0, 0,  & 
     2, 3, 0, 0,  & 
     3, 4, 0, 0,  &
     4, 1, 0, 0,  & 
     1, 2, 3, 4   &
-    ],pInt),(/FE_Nips(3),FE_NsubNodes(3)/))
- FE_subNodeParent(:FE_Nips(4),:FE_NsubNodes(4),4) = &  ! element 27
+    ],pInt),[FE_Nips(3),FE_NsubNodes(3)])
+
+ FE_subNodeParent(1:FE_Nips(4),1:FE_NsubNodes(4),4) = &  ! element 27
     reshape(int([&
     1, 1, 2, 0, 0, 0, 0, 0, 0,  &
     1, 2, 2, 0, 0, 0, 0, 0, 0,  & 
@@ -826,12 +847,14 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     2, 2, 2, 2, 1, 1, 3, 3, 4,  & 
     3, 3, 3, 3, 2, 2, 4, 4, 1,  & 
     4, 4, 4, 4, 1, 1, 3, 3, 2   &
-    ],pInt),(/FE_Nips(4),FE_NsubNodes(4)/))
+    ],pInt),[FE_Nips(4),FE_NsubNodes(4)])
+
  !FE_subNodeParent(:FE_Nips(5),:FE_NsubNodes(5),5) = &  ! element 157
  !   reshape((/&
  !   *still to be defined*
  !   ],pInt),(/FE_Nips(5),FE_NsubNodes(5)/))
- FE_subNodeParent(:FE_Nips(6),:FE_NsubNodes(6),6) = &  ! element 136
+
+ FE_subNodeParent(1:FE_Nips(6),1:FE_NsubNodes(6),6) = &  ! element 136
     reshape(int([&
     1, 2, 0, 0, 0, 0,  &
     2, 3, 0, 0, 0, 0,  &
@@ -848,8 +871,9 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     1, 3, 4, 6, 0, 0,  &
     4, 5, 6, 0, 0, 0,  &
     1, 2, 3, 4, 5, 6   &
-    ],pInt),(/FE_Nips(6),FE_NsubNodes(6)/))
- FE_subNodeParent(:FE_Nips(7),:FE_NsubNodes(7),7) = &  ! element 21
+    ],pInt),[FE_Nips(6),FE_NsubNodes(6)])
+
+ FE_subNodeParent(1:FE_Nips(7),1:FE_NsubNodes(7),7) = &  ! element 21
     reshape(int([&
     1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
     1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, & 
@@ -907,9 +931,11 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     6, 6, 6, 6, 6, 6, 6, 6, 2, 2, 2, 2, 5, 5, 5, 5, 7, 7, 7, 7, 1, 1, 3, 3, 8, 8, 4, &
     7, 7, 7, 7, 7, 7, 7, 7, 3, 3, 3, 3, 6, 6, 6, 6, 8, 8, 8, 8, 2, 2, 4, 4, 5, 5, 1, &
     8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 4, 4, 5, 5, 5, 5, 7, 7, 7, 7, 1, 1, 3, 3, 6, 6, 2  & 
-    ],pInt),(/FE_Nips(7),FE_NsubNodes(7)/))
+    ],pInt),[FE_Nips(7),FE_NsubNodes(7)])
+
 !FE_subNodeParent(:FE_Nips(8),:FE_NsubNodes(8),8)      ! element 117 has no subnodes
- FE_subNodeParent(:FE_Nips(9),:FE_NsubNodes(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
+
+ FE_subNodeParent(1:FE_Nips(9),1:FE_NsubNodes(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
     reshape(int([&
     1, 2, 0, 0, 0, 0, 0, 0,  &
     2, 3, 0, 0, 0, 0, 0, 0,  &
@@ -930,14 +956,15 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     1, 4, 8, 5, 0, 0, 0, 0,  &
     5, 6, 7, 8, 0, 0, 0, 0,  &
     1, 2, 3, 4, 5, 6, 7, 8   & 
-    ],pInt),(/FE_Nips(9),FE_NsubNodes(9)/))
- FE_subNodeParent(:FE_Nips(10),:FE_NsubNodes(10),10) = &  ! element 155, 125, 128
+    ],pInt),[FE_Nips(9),FE_NsubNodes(9)])
+
+ FE_subNodeParent(1:FE_Nips(10),1:FE_NsubNodes(10),10) = &  ! element 155, 125, 128
     reshape(int([&
     1, 2, 0,  & 
     2, 3, 0,  & 
     3, 1, 0,  &
     1, 2, 3   &
-    ],pInt),(/FE_Nips(10),FE_NsubNodes(10)/))
+    ],pInt),[FE_Nips(10),FE_NsubNodes(10)])
  
  ! *** FE_subNodeOnIPFace ***
  ! indicates which subnodes make up the interfaces enclosing the IP volume.
@@ -950,7 +977,7 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
  ! detrimental at the moment since non-local constitutive laws are
  ! currently not foreseen in 2D cases.
  
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(1),:FE_Nips(1),1) = &  ! element 7
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(1),1:FE_Nips(1),1) = &  ! element 7
     reshape(int([&
      9,21,27,22, & ! 1
      1,13,25,12, &
@@ -1000,15 +1027,17 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     18,26,27,23, &
      7,19,26,18, &
     15,23,27,24  &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(1),FE_Nips(1)/))
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(2),:FE_Nips(2),2) = &  ! element 134
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(1),FE_Nips(1)])
+
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(2),1:FE_Nips(2),2) = &  ! element 134
     reshape(int([&
      1, 1, 3, 2, & ! 1
      1, 1, 2, 4, &
      2, 2, 3, 4, &
      1, 1, 4, 3  &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(2),FE_Nips(2)/))
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(3),:FE_Nips(3),3) = &  ! element 11
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(2),FE_Nips(2)])
+
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(3),1:FE_Nips(3),3) = &  ! element 11
     reshape(int([&
      5, 9, 9, 5 , & ! 1
      1, 8, 8, 1 , &
@@ -1026,8 +1055,9 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
      4, 8, 8, 4 , &
      4, 7, 7, 4 , &
      8, 9, 9, 8   &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(3),FE_Nips(3)/))
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(4),:FE_Nips(4),4) = &  ! element 27
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(3),FE_Nips(3)])
+
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(4),1:FE_Nips(4),4) = &  ! element 27
     reshape(int([&
      9,17,17, 9 , & ! 1
      1,16,16, 1 , &
@@ -1065,12 +1095,14 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     13,19,19,13 , &
      3,13,13, 3 , &
     12,19,19,12   &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(4),FE_Nips(4)/))
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(4),FE_Nips(4)])
+
  !FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(5),:FE_Nips(5),5) = &  ! element 157
  !   reshape((/&
  !   *still to be defined*
  !   /),(/FE_NipFaceNodes,FE_NipNeighbors(5),FE_Nips(5)/))
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(6),:FE_Nips(6),6) = &  ! element 136
+
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(6),1:FE_Nips(6),6) = &  ! element 136
     reshape(int([&
      7,16,21,17, & ! 1
      1,10,19, 9, &
@@ -1108,8 +1140,9 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     15,19,21,20, &
      6,15,20,14, &
     12,18,21,19  &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(6),FE_Nips(6)/))
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(7),:FE_Nips(7),7) = &  ! element 21
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(6),FE_Nips(6)])
+
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(7),1:FE_Nips(7),7) = &  ! element 21
     reshape(int([&
      9,33,57,37, &  ! 1
      1,17,44,16, &
@@ -1273,8 +1306,9 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     63,48,28,55, &
     55,28, 7,29, &
     63,49,23,48  &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(7),FE_Nips(7)/))
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(7),FE_Nips(7)])
+
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(8),1:FE_Nips(8),8) = &  ! element 117
     reshape(int([&
      2, 3, 7, 6, & ! 1
      1, 5, 8, 4, &
@@ -1282,8 +1316,9 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
      1, 2, 6, 5, &
      5, 6, 7, 8, &
      1, 4, 3, 2  &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(8),FE_Nips(8)/))
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(9),:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(8),FE_Nips(8)])
+
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(9),1:FE_Nips(9),9) = &  ! element 57 (c3d20r == c3d8 --> copy of 7)
     reshape(int([&
      9,21,27,22, & ! 1
      1,13,25,12, &
@@ -1333,8 +1368,9 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
     18,26,27,23, &
      7,19,26,18, &
     15,23,27,24  &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(9),FE_Nips(9)/))
- FE_subNodeOnIPFace(:FE_NipFaceNodes,:FE_NipNeighbors(10),:FE_Nips(10),10) = &  ! element 155, 125, 128
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(9),FE_Nips(9)])
+
+ FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(10),1:FE_Nips(10),10) = &  ! element 155, 125, 128
     reshape(int([&
      4, 7, 7, 4 , & ! 1
      1, 6, 6, 1 , &
@@ -1348,8 +1384,8 @@ FE_ipNeighbor(:FE_NipNeighbors(8),:FE_Nips(8),8) = &  ! element 117
      3, 6, 6, 3 , &
      3, 5, 5, 3 , &
      6, 7, 7, 6   &
-    ],pInt),(/FE_NipFaceNodes,FE_NipNeighbors(10),FE_Nips(10)/))
- 
+    ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(10),FE_Nips(10)])
+
  endsubroutine
 
 
@@ -1735,7 +1771,6 @@ enddo
 !********************************************************************
  subroutine mesh_spectral_count_cpElements ()
 
- use prec, only: pInt
  implicit none
 
  mesh_NcpElems = mesh_Nelems
@@ -2595,7 +2630,8 @@ subroutine mesh_marc_count_cpSizes (myUnit)
 
  integer(pInt), parameter :: maxNchunks = 7_pInt
  integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
- integer(pInt) a,b,c,e,i,j,homog,headerLength,maxIntCount
+ integer(pInt) :: a = 1_pInt, b = 1_pInt, c = 1_pInt
+ integer(pInt) :: e, i, j, homog, headerLength, maxIntCount
  integer(pInt), dimension(:), allocatable :: microstructures
  integer(pInt), dimension(1,1) :: dummySet = 0_pInt
  
@@ -2603,10 +2639,6 @@ subroutine mesh_marc_count_cpSizes (myUnit)
  character(len=65536) line,keyword
  character(len=64), dimension(1) :: dummyName = ''
 
- a = 1_pInt
- b = 1_pInt
- c = 1_pInt
- 
  rewind(myUnit)
  read(myUnit,'(a65536)') line
  myPos = IO_stringPos(line,2_pInt)
@@ -2651,7 +2683,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
    read(myUnit,'(a65536)') line
  enddo
 
-100 allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
+ allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
  allocate (microstructures (1_pInt+maxIntCount))             ; microstructures = 2_pInt
  
  e = 0_pInt
@@ -2676,7 +2708,7 @@ subroutine mesh_marc_count_cpSizes (myUnit)
    enddo
  enddo
 
-110 deallocate(microstructures)
+ deallocate(microstructures)
  if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
 
  endsubroutine
@@ -3188,7 +3220,7 @@ endsubroutine
 !***********************************************************
  subroutine mesh_build_ipVolumes()
  
- use prec, only: pInt, tol_gravityNodePos
+ use prec, only: pInt
  use math, only: math_volTetrahedron
  implicit none
  

@@ -92,7 +92,7 @@ CONTAINS
 !*******************************************
 subroutine numerics_init()
   
-  use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   !*** variables and functions from other modules ***!
   use prec, only:                             pInt, & 
                                               pReal  
@@ -111,7 +111,7 @@ subroutine numerics_init()
   !*** local variables ***!
   integer(pInt), parameter ::                 fileunit = 300_pInt
   integer(pInt), parameter ::                 maxNchunks = 2_pInt
-  integer ::                                  gotDAMASK_NUM_THREADS = 1
+!$ integer ::                                 gotDAMASK_NUM_THREADS = 1
   integer(pInt), dimension(1+2*maxNchunks) :: positions
   character(len=64) ::                        tag
   character(len=1024) ::                      line
