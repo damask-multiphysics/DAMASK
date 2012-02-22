@@ -1516,7 +1516,7 @@ endsubroutine
 !*********************************************************************
 !* rate of change of microstructure                                  *
 !*********************************************************************
-subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, Fe, Fp, Temperature, state, aTolState, timestep, orientation, g,ip,el)
+subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, Fe, Fp, Temperature, state, timestep, orientation, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1579,8 +1579,7 @@ real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)
 real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             orientation               ! crystal lattice orientation
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            state, &                  ! current microstructural state
-                                            aTolState                 ! absolute state tolerance
+                                            state                     ! current microstructural state
 
 !*** input/output variables
 type(p_vec), intent(inout) ::               dotState                  ! evolution of state variables / microstructure
@@ -1972,6 +1971,7 @@ rhoDotThermalAnnihilation(1:ns,10) = 0.0_pReal                                  
 
 !****************************************************************************
 !*** assign the rates of dislocation densities to my dotState
+!*** if evolution rates lead to negative densities, a cutback is enforced
 
 rhoDot = 0.0_pReal
 rhoDot = rhoDotFlux &
@@ -1981,7 +1981,21 @@ rhoDot = rhoDotFlux &
        + rhoDotAthermalAnnihilation &
        + rhoDotThermalAnnihilation 
 
-dotState%p(1:10*ns) = dotState%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
+if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < - constitutive_nonlocal_aTolRho(myInstance)) &
+   .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < - constitutive_nonlocal_aTolRho(myInstance))) then
+#ifndef _OPENMP
+  if (debug_verbosity > 6) then
+    write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
+    write(6,'(a)') '<< CONST >> enforcing cutback !!!'
+  endif
+#endif
+  dotState%p = DAMASK_NaN
+  return
+else
+  dotState%p(1:10*ns) = dotState%p(1:10*ns) + reshape(rhoDot,(/10*ns/))
+endif
+
+
 
 #ifndef _OPENMP
   if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then

@@ -636,7 +636,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
  
   case (constitutive_nonlocal_label)
     call constitutive_nonlocal_dotState(constitutive_dotState(ipc,ip,el), Tstar_v, Fe, Fp, Temperature, constitutive_state, &
-                                        constitutive_aTolState, subdt, orientation, ipc, ip, el)
+                                        subdt, orientation, ipc, ip, el)
  
 end select
 
