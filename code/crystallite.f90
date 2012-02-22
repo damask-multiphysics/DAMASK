@@ -1065,15 +1065,6 @@ if(updateJaco) then                                                             
                                                crystallite_subF(1:3,1:3,g,i,e),Fp_inv_current),&
                                 math_mul33x33(dSdF(1:3,1:3,o,p),math_transpose33(Fp_inv_current)))      ! dP/dF = Fe * dS/dF * Fp^-T         
           enddo; enddo
-!          !$OMP CRITICAL (write2out)
-          if (e == 1_pInt) then
-          print '(a,/,3(12x,3(e10.3,1x),/))', 'dPdF0 * Del F',math_mul3333xx33(crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e), &
-                                                             (crystallite_subF(1:3,1:3,g,i,e) - crystallite_subF0(1:3,1:3,g,i,e)))
-          print '(a,/,3(12x,3(e10.3,1x),/))', 'Del P', crystallite_P(1:3,1:3,g,i,e) - math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
-                         math_mul33x33(math_Mandel6to33(crystallite_subTstar0_v(1:6,g,i,e)), &
-                         math_transpose33(math_inv33(crystallite_subFp0(1:3,1:3,g,i,e)))))
-          endif
-!          !$OMP END CRITICAL (write2out)
     enddo; enddo; enddo
 !  !$OMP END PARALLEL DO
   endif
