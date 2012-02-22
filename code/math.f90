@@ -497,6 +497,28 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
 
 !**************************************************************************
+! matrix multiplication 3333x3333 = 3333 (ijkl *klmn = ijmn)
+!**************************************************************************
+ pure function math_mul3333xx3333(A,B)  
+
+ implicit none
+
+ integer(pInt) :: i,j,k,l
+ real(pReal), dimension(3,3,3,3), intent(in) ::  A
+ real(pReal), dimension(3,3,3,3), intent(in) ::  B
+ real(pReal), dimension(3,3,3,3) :: math_mul3333xx3333
+
+ do i = 1_pInt,3_pInt
+   do j = 1_pInt,3_pInt
+     do k = 1_pInt,3_pInt
+       do l = 1_pInt,3_pInt
+         math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
+ enddo; enddo; enddo; enddo
+
+ endfunction math_mul3333xx3333
+ 
+
+!**************************************************************************
 ! matrix multiplication 33x33 = 33
 !**************************************************************************
  pure function math_mul33x33(A,B)  

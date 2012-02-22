@@ -50,7 +50,8 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 rTol_crystalliteTemperature=  1.0e-6_pReal, &                ! relative tolerance in crystallite temperature loop 
                                 rTol_crystalliteStress     =  1.0e-6_pReal, &                ! relative tolerance in crystallite stress loop
                                 aTol_crystalliteStress     =  1.0e-8_pReal, &                ! absolute tolerance in crystallite stress loop, Default 1.0e-8: residuum is in Lp and hence strain is on this order
-
+                                Lp_frac                    =  0.5_pReal, &                   ! fraction of Lp current and Lp previous step to use when integrating Fp from previous step to current 
+                                
                                 absTol_RGC                 =  1.0e+4_pReal, &                ! absolute tolerance of RGC residuum
                                 relTol_RGC                 =  1.0e-3_pReal, &                ! relative tolerance of RGC residuum
                                 absMax_RGC                 =  1.0e+10_pReal, &               ! absolute maximum of RGC residuum
@@ -75,7 +76,8 @@ integer(pInt) ::                fftw_planner_flag          =  -1_pInt, &        
 logical ::                      memory_efficient           = .true., &                       ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
                                 divergence_correction      = .false., &                      ! correct divergence calculation in fourier space, Default .false.: no correction
                                 update_gamma               = .false., &                      ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
-                                simplified_algorithm       = .true.                          ! use short algorithm without fluctuation field, Default .true.: use simplified algorithm
+                                simplified_algorithm       = .true., &                       ! use short algorithm without fluctuation field, Default .true.: use simplified algorithm
+                                analyticJaco               = .false.                         ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
 
 
 
@@ -196,6 +198,10 @@ subroutine numerics_init()
               numerics_integrator(1) = IO_intValue(line,positions,2_pInt)
         case ('integratorstiffness')
               numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
+        case ('lp_frac')
+              Lp_frac = IO_intValue(line,positions,2_pInt)
+        case ('analyticjaco')
+              analyticJaco = IO_intValue(line,positions,2_pInt) > 0_pInt
 
         !* RGC parameters: 
         
