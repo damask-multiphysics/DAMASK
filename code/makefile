@@ -182,7 +182,6 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -fall-intrinsics\
                            -pedantic\
                            -Warray-bounds\
-                           -Wunused-parameter\
                            -Wampersand\
                            -Wno-tabs\
                            -Wcharacter-truncation\
@@ -190,9 +189,14 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -Waliasing\
                            -Wconversion\
                            -Wsurprising\
-                           -Wunused-value\
-                           -Wunderflow
-                            
+                           -Wunderflow\
+                           -Wswitch\
+                           -Wstrict-overflow\
+                           -Wextra\
+                           -Wattributes\
+                           -Wunsafe-loop-optimizations\
+                           -Wunused
+
 #-xf95-cpp-input:          preprocessor
 #-ffree-line-length-132:   restrict line length to the standard 132 characters
 #-fno-range-check:         disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
@@ -200,7 +204,6 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
 #-fall-intrinsics:        
 #-pedantic:                more strict on standard, enables some of the warnings below
 #-Warray-bounds:           checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
-#-Wunused-parameter:       find usused variables with "parameter" attribute
 #-Wampersand:              checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
 #-Wno-tabs:                do not allow tabs in source
 #-Wcharacter-truncation:   warn if character expressions (strings) are truncated
@@ -209,14 +212,20 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
 #-Wconversion:             warn about implicit conversions between different type
 #-Wsurprising:             warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made. 
 #-Wunused-value:
+#-Wunused-parameter:       find usused variables with "parameter" attribute
 #-Wunderflow:              produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
-#
+#-Wswitch:                 warn whenever a "switch" statement has an index of enumerated type and lacks a "case" for one or more of the named codes of that
+#                          enumeration.  (The presence of a "default" label prevents this warning.)  "case" labels outside the enumeration range also provoke
+#                            warnings when this option is used (even if there is a "default" label)
+#-Wstrict-overflow
+#-Wattributes                Warn about inappropriate attribute usage                              
+# -Wunsafe-loop-optimizations Warn if the loop cannot be optimized due to nontrivial assumptions.
 ###################################################################################################
 #OPTIONS FOR GFORTRAN 4.6
 #-Wsuggest-attribute=const:
 #-Wsuggest-attribute=noreturn:
 #-Wsuggest-attribute=pure:  
-#
+#-Wreal-q-constant:            Warn about real-literal-constants with 'q'  exponent-letter
 #MORE OPTIONS FOR DEBUGGING DURING COMPILING                      
 #-Wline-truncation:        too many warnings because we have comments beyond character 132
 #-Wintrinsic-std:          warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:                        

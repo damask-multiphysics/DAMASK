@@ -42,7 +42,6 @@ parser.add_option('-f','--formula', dest='formulas', action='extend', type='stri
 
 parser.set_defaults(labels= [])
 parser.set_defaults(formulas= [])
-parser.set_defaults(counter= False)
 
 (options,filenames) = parser.parse_args()
 

@@ -592,7 +592,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
 #ifndef _OPENMP
             if (debug_verbosity > 4 &
                 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-              write(6,'(a,f10.8,a,f10.8,a)') '<< CRYST >> winding forward from ', &
+              write(6,'(a,f12.8,a,f12.8,a)') '<< CRYST >> winding forward from ', &
                 crystallite_subFrac(g,i,e),' to current crystallite_subfrac ', &
                 crystallite_subFrac(g,i,e)+crystallite_subStep(g,i,e),' in crystallite_stressAndItsTangent'
               write(6,*)
@@ -637,7 +637,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
 #ifndef _OPENMP
             if (debug_verbosity > 4_pInt &
                 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
-              write(6,'(a,f10.8)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
+              write(6,'(a,f12.8)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
                                      crystallite_subStep(g,i,e)
               write(6,*)
             endif

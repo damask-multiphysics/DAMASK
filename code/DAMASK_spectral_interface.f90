@@ -127,7 +127,6 @@ subroutine DAMASK_interface_init()
  loadcaseParameter = ''                                                                             ! should be empty
  loadcaseParameter(1:length)=commandLine(start:start+length)
  
- print*, loadcaseParameter
  do i=1,len(commandLine)                                                                            ! remove capitals
    if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i)&
                                                                = achar(iachar(commandLine(i:i))+32)
