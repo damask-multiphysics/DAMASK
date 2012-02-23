@@ -29,6 +29,7 @@ class extendableOption(Option):
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) with derived values according to user defined arithmetic operation between column(s).
+Columns can be specified either by label or index.
 
 Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + #ip.z#**2 )"
 """ + string.replace('$Id$','\n','\\n')
@@ -81,6 +82,11 @@ for file in files:
       formula = formula.replace('#'+operand+'#','{%i}'%position)
       if operand in specials:
         interpolator += ['specials["%s"]'%operand]
+      elif operand.isdigit():
+        if len(table.labels) > int(operand):
+          interpolator += ['float(table.data[%i])'%(int(operand))]
+        else:
+          parser.error('column %s not present...\n'%operand)
       else:
         try:
           interpolator += ['float(table.data[%i])'%table.labels.index(operand)]
@@ -96,17 +102,18 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  while table.data_read():                                                  # read next data line of ASCII table
+  outputAlive = True
+  while outputAlive and table.data_read():                                  # read next data line of ASCII table
 
     specials['_row_'] += 1                                                  # count row
     for label in options.labels: table.data_append(eval(eval(evaluator[label])))
-    table.data_write()                                                      # output processed line
+    outputAlive = table.data_write()                                        # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
 
-  table.output_flush()                                                      # just in case of buffered ASCII table
+  outputAlive and table.output_flush()                                      # just in case of buffered ASCII table
 
   file['input'].close()                                                     # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close                                                    # close output ASCII table
+    file['output'].close()                                                  # close output ASCII table
     os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
