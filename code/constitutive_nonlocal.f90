@@ -167,9 +167,7 @@ use lattice,  only: lattice_maxNslipFamily, &
                     lattice_maxNslip, &
                     lattice_maxNinteraction, &
                     lattice_NslipSystem, &
-                    lattice_NtwinSystem, &
                     lattice_initializeStructure, &
-                    lattice_Qtwin, &
                     lattice_sd, &
                     lattice_sn, &
                     lattice_st, &
@@ -1191,7 +1189,8 @@ state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauBack
 
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+                                .or. .not. debug_selectiveDebugger)) then
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,g
     write(6,*)
@@ -1218,13 +1217,8 @@ use debug,    only: debug_verbosity, &
                     debug_g, &
                     debug_i, &
                     debug_e
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips
-use material, only: homogenization_maxNgrains, &
-                    material_phase, &
+use material, only: material_phase, &
                     phase_constitutionInstance
-use lattice,  only: lattice_Sslip, &
-                    lattice_Sslip_v
 
 implicit none
 
@@ -1383,8 +1377,6 @@ use debug,    only: debug_verbosity, &
                     debug_g, &
                     debug_i, &
                     debug_e
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_constitutionInstance
@@ -1499,7 +1491,8 @@ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+                               .or. .not. debug_selectiveDebugger)) then
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_LpandItsTangent at el ip g ',el,ip,g
     write(6,*)
@@ -1539,28 +1532,20 @@ use math,     only: math_norm3, &
                     pi                
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
-                    mesh_maxNipNeighbors, &
                     mesh_element, &
                     FE_NipNeighbors, &
                     mesh_ipNeighborhood, &
                     mesh_ipVolume, &
                     mesh_ipArea, &
-                    mesh_ipAreaNormal, &
-                    mesh_ipCenterOfGravity
+                    mesh_ipAreaNormal
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_constitutionInstance, &
                     phase_localConstitution, &
                     phase_constitution
-use lattice,  only: lattice_Sslip, &
-                    lattice_Sslip_v, &
+use lattice,  only: lattice_Sslip_v, &
                     lattice_sd, &
-                    lattice_sn, &
-                    lattice_st, &
-                    lattice_NslipSystem 
-use FEsolving, only:theInc, &
-                    FEsolving_execElem, & 
-                    FEsolving_execIP
+                    lattice_st
 
 implicit none
 
@@ -1995,7 +1980,8 @@ endif
 
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+                               .or. .not. debug_selectiveDebugger)) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', rhoDotRemobilization(1:ns,1:8) * timestep
     write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> dislocation multiplication', rhoDotMultiplication(1:ns,1:4) * timestep
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation flux', rhoDotFlux(1:ns,1:8) * timestep
@@ -2032,7 +2018,6 @@ use math, only:       math_QuaternionDisorientation, &
                       math_mul3x3, &
                       math_qRot
 use material, only:   material_phase, &
-                      phase_constitution, &
                       phase_localConstitution, &
                       phase_constitutionInstance, &
                       homogenization_maxNgrains
@@ -2042,8 +2027,7 @@ use mesh, only:       mesh_element, &
                       mesh_maxNips, &
                       mesh_NcpElems
 use lattice, only:    lattice_sn, &
-                      lattice_sd, &
-                      lattice_st
+                      lattice_sd
 
 implicit none
 
@@ -2291,7 +2275,6 @@ real(pReal), dimension(3) ::    connection, &                 ! connection vecto
                                 neighboring_ipCoords
 real(pReal), dimension(3,3) ::  sigma, &                      ! dislocation stress for one slip system in neighboring material point's slip system frame
                                 Tdislo_neighboringLattice, &  ! dislocation stress as 2nd Piola-Kirchhoff stress at neighboring material point
-                                Tdislo, &                     ! dislocation stress as 2nd Piola-Kirchhoff stress at my material point
                                 invFe, &                      ! inverse of my elastic deformation gradient
                                 neighboring_invFe, &
                                 neighboringLattice2myLattice  ! mapping from neighboring MPs lattice configuration to my lattice configuration
@@ -2301,9 +2284,6 @@ real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip)) :: &
                                 rhoExcessDead
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),8) :: &
                                 rhoSgl                        ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
-                                rhoForest, &                  ! forest dislocation density
-                                tauThreshold                  ! threshold shear stress
 logical                         inversionError
 
 phase = material_phase(g,ip,el)
@@ -2582,14 +2562,12 @@ use math,     only: math_mul6x6, &
                     math_mul33x33, &
                     pi
 use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_element
+                    mesh_maxNips
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_constitutionInstance, &
                     phase_Noutput
-use lattice,  only: lattice_Sslip, &
-                    lattice_Sslip_v, &
+use lattice,  only: lattice_Sslip_v, &
                     lattice_sd, &
                     lattice_st
 

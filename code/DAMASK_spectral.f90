@@ -38,6 +38,7 @@
 !##################################################################################################
 program DAMASK_spectral
 
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use DAMASK_interface
  use prec,             only: pInt, pReal, DAMASK_NaN
  use IO 
@@ -50,9 +51,8 @@ program DAMASK_spectral
  use kdtree2_module
  use CPFEM,            only: CPFEM_general, CPFEM_initAll
  use FEsolving,        only: restartWrite, restartInc
- use numerics,         only: err_div_tol, err_stress_tolrel, rotation_tol, itmax, &
-                             memory_efficient, update_gamma, &
-                             simplified_algorithm, divergence_correction, &
+ use numerics,         only: err_div_tol, err_stress_tolrel, rotation_tol, itmax, itmin, &
+                             memory_efficient, update_gamma, divergence_correction, &                             
                              DAMASK_NumThreadsInt, &
                              fftw_planner_flag, fftw_timelimit
  use homogenization,   only: materialpoint_sizeResults, materialpoint_results
@@ -81,6 +81,9 @@ program DAMASK_spectral
  logical ::  gotResolution     = .false.,&
              gotDimension      = .false.,&
              gotHomogenization = .false.
+
+!--------------------------------------------------------------------------------------------------
+! variable storing information from load case file
  type bc_type
    real(pReal), dimension (3,3) :: deformation            = 0.0_pReal, &                            ! applied velocity gradient or time derivative of deformation gradient
                                    stress                 = 0.0_pReal, &                            ! stress BC (if applicable)
@@ -99,12 +102,11 @@ program DAMASK_spectral
  end type
  
  type(bc_type), allocatable, dimension(:) ::  bc
- character(len=6) ::                          loadcase_string
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information from geom file
  real(pReal) ::                               wgt
- real(pReal), dimension(3) ::                 geomdim = 0.0_pReal                                   ! physical dimension of volume element per direction
+ real(pReal), dimension(3) ::                 geomdim = 0.0_pReal, virt_dim = 0.0_pReal             ! physical dimension of volume element per direction
  integer(pInt) ::                             Npoints,&                                             ! number of Fourier points
                                               homog                                                 ! homogenization scheme used
  integer(pInt), dimension(3) ::               res = 1_pInt                                          ! resolution (number of Fourier points) in each direction
@@ -115,8 +117,8 @@ program DAMASK_spectral
  real(pReal), dimension(3,3) ::           pstress, pstress_av, &
                                           defgradAim = math_I3, defgradAimOld = math_I3,&
                                           mask_stress, mask_defgrad, deltaF, &
-                                          pstress_av_lab, defgradAim_lab, defgrad_av_lab            ! quantities rotated to other coordinate system
- real(pReal), dimension(3,3,3,3) ::       dPdF, c0_reference, c_current = 0.0_pReal, s_prev, c_prev,& ! stiffness and compliance
+                                          pstress_av_lab, defgradAim_lab, defgradAim_lab_old        ! quantities rotated to other coordinate system
+ real(pReal), dimension(3,3,3,3) ::       dPdF, c0_reference, c_current=0.0_pReal, s_prev, c_prev,& ! stiffness and compliance
                                           s0_reference
  real(pReal), dimension(6) ::             cstress                                                   ! cauchy stress
  real(pReal), dimension(6,6) ::           dsde, c0_66, s0_66                                        ! small strain stiffness
@@ -126,18 +128,16 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! pointwise data 
- type(C_PTR) :: tensorField, tau                                                                    ! fields in real an fourier space
- real(pReal),    dimension(:,:,:,:,:), pointer :: tensorField_real                                  ! fields in real space (pointer)
- real(pReal),    dimension(:,:,:,:,:), pointer :: tau_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: tensorField_fourier                               ! fields in fourier space (pointer)
- complex(pReal), dimension(:,:,:,:,:), pointer :: tau_fourier
+ type(C_PTR) :: tensorField                                                                         ! field in real an fourier space
+ real(pReal),    dimension(:,:,:,:,:), pointer :: tensorField_real                                  ! field in real space (pointer)
+ complex(pReal), dimension(:,:,:,:,:), pointer :: tensorField_fourier                               ! field in fourier space (pointer)
  real(pReal),    dimension(:,:,:,:,:), allocatable ::  defgrad, defgradold
  real(pReal),    dimension(:,:,:,:),   allocatable ::  coordinates
  real(pReal),    dimension(:,:,:),     allocatable ::  temperature
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
- type(C_PTR) ::  plan_stress, plan_correction, plan_tau                                             ! plans for fftw
+ type(C_PTR) ::  plan_stress, plan_correction                                                       ! plans for fftw
  real(pReal), dimension(3,3) ::                         xiDyad                                      ! product of wave vectors
  real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                   ! gamma operator (field) for spectral method
  real(pReal), dimension(:,:,:,:), allocatable ::        xi                                          ! wave vector field for divergence and for gamma operator
@@ -156,7 +156,8 @@ program DAMASK_spectral
                   ierr, totalIncsCounter = 0_pInt,&
                   notConvergedCounter = 0_pInt, convergedCounter = 0_pInt
  logical :: errmatinv
- real(pReal) :: defgradDet, correctionFactor
+ real(pReal) :: defgradDet
+ character(len=6)   :: loadcase_string
 
 !--------------------------------------------------------------------------------------------------
 !variables controlling debugging
@@ -184,10 +185,12 @@ program DAMASK_spectral
  complex(pReal), dimension(:,:,:), pointer :: scalarField_fourier
  integer(pInt) :: row, column
 
+
 !##################################################################################################
 ! reading of information from load case file and geometry file
 !##################################################################################################
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
+ open (output_unit, encoding='UTF-8')  
  call DAMASK_interface_init()
 
  print '(a)', ''
@@ -223,7 +226,6 @@ program DAMASK_spectral
 100 N_Loadcases = N_n
  if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &                                                     ! sanity check
    call IO_error(error_ID=837_pInt,ext_msg = trim(path))                                            ! error message for incomplete loadcase
-
  allocate (bc(N_Loadcases))
 
 !--------------------------------------------------------------------------------------------------
@@ -296,6 +298,7 @@ program DAMASK_spectral
      end select
  enddo; enddo
 101 close(myUnit)
+ if (sum(bc(1:N_Loadcases)%incs)>9000_pInt) stop !discuss with Philip, stop code trouble. suggesting warning
 
 !-------------------------------------------------------------------------------------------------- ToDo: if temperature at CPFEM is treated properly, move this up immediately after interface init
 ! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
@@ -360,8 +363,7 @@ program DAMASK_spectral
  if (any(geomdim<=0.0_pReal)) call IO_error(error_ID = 802_pInt)
  if(mod(res(1),2_pInt)/=0_pInt .or.&
     mod(res(2),2_pInt)/=0_pInt .or.&
-   (mod(res(3),2_pInt)/=0_pInt .and. res(3)/= 1_pInt))&
-                                                                call IO_error(error_ID = 803_pInt)
+   (mod(res(3),2_pInt)/=0_pInt .and. res(3)/= 1_pInt)) call IO_error(error_ID = 803_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! variables derived from resolution
@@ -426,10 +428,10 @@ program DAMASK_spectral
    if (any(abs(math_mul33x33(bc(loadcase)%rotation,math_transpose33(bc(loadcase)%rotation))&
                                       -math_I3) > reshape(spread(rotation_tol,1,9),[ 3,3]))&
                     .or. abs(math_det33(bc(loadcase)%rotation)) > 1.0_pReal + rotation_tol)&
-                                               errorID = 846_pInt                                    ! given rotation matrix contains strain
-   if (bc(loadcase)%time < 0.0_pReal)          errorID = 834_pInt                                    ! negative time increment
-   if (bc(loadcase)%incs < 1_pInt)             errorID = 835_pInt                                    ! non-positive incs count
-   if (bc(loadcase)%outputfrequency < 1_pInt)  errorID = 836_pInt                                    ! non-positive result frequency
+                                               errorID = 846_pInt                                   ! given rotation matrix contains strain
+   if (bc(loadcase)%time < 0.0_pReal)          errorID = 834_pInt                                   ! negative time increment
+   if (bc(loadcase)%incs < 1_pInt)             errorID = 835_pInt                                   ! non-positive incs count
+   if (bc(loadcase)%outputfrequency < 1_pInt)  errorID = 836_pInt                                   ! non-positive result frequency
    if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)
  enddo
 
@@ -444,14 +446,14 @@ program DAMASK_spectral
 ! initialization 
 !##################################################################################################
 
- allocate (defgrad    (  res(1),  res(2),res(3),3,3));  defgrad     = 0.0_pReal
- allocate (defgradold (  res(1),  res(2),res(3),3,3));  defgradold  = 0.0_pReal
- allocate (coordinates(  res(1),  res(2),res(3),3));    coordinates = 0.0_pReal
- allocate (temperature(  res(1),  res(2),res(3)));      temperature = bc(1)%temperature       ! start out isothermally
- allocate (xi         (3,res1_red,res(2),res(3)));  xi          = 0.0_pReal
- tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                ! allocate continous data using a C function, C_SIZE_T is of type integer(8)
- call c_f_pointer(tensorField, tensorField_real,    [ res(1)+2_pInt,res(2),res(3),3,3])       ! place a pointer for the real representation
- call c_f_pointer(tensorField, tensorField_fourier, [ res1_red,     res(2),res(3),3,3])       ! place a pointer for the complex representation
+ allocate (defgrad    (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
+ allocate (defgradold (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
+ allocate (xi         (3,res1_red,res(2),res(3)),      source = 0.0_pReal)
+ allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
+ allocate (temperature(  res(1),  res(2),res(3)),      source = bc(1)%temperature)                  ! start out isothermally
+ tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                      ! allocate continous data using a C function, C_SIZE_T is of type integer(8)
+ call c_f_pointer(tensorField, tensorField_real,    [ res(1)+2_pInt,res(2),res(3),3,3])             ! place a pointer for the real representation
+ call c_f_pointer(tensorField, tensorField_fourier, [ res1_red,     res(2),res(3),3,3])             ! place a pointer for the complex representation
  
 !--------------------------------------------------------------------------------------------------
 ! init fields to no deformation
@@ -466,15 +468,15 @@ program DAMASK_spectral
    c_current = c_current + dPdF
  enddo; enddo; enddo
 
- c0_reference = c_current * wgt                                                              ! linear reference material stiffness
+ c0_reference = c_current * wgt                                                                     ! linear reference material stiffness
  c0_66 = math_Mandel3333to66(c0_reference)
- call math_invert(6_pInt, c0_66, s0_66, i, errmatinv)                                        ! invert in mandel notation
+ call math_invert(6_pInt, c0_66, s0_66, i, errmatinv)                                               ! invert in mandel notation
  if(errmatinv) call IO_error(error_ID=400_pInt)
  s0_reference = math_Mandel66to3333(s0_66)
 
 !--------------------------------------------------------------------------------------------------
 ! possible restore deformation gradient from saved state
- if (restartInc > 1_pInt) then                                                             ! using old values from file                                                      
+ if (restartInc > 1_pInt) then                                                                      ! using old values from file                                                      
    if (debugRestart) print '(a,i6,a)' , 'Reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
    call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
@@ -484,7 +486,7 @@ program DAMASK_spectral
    defgradold = defgrad
    defgradAim = 0.0_pReal
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     defgradAim = defgradAim + defgrad(i,j,k,1:3,1:3)                                         ! calculating old average deformation
+     defgradAim = defgradAim + defgrad(i,j,k,1:3,1:3)                                               ! calculating old average deformation
    enddo; enddo; enddo
    defgradAim = defgradAim * wgt
    defgradAimOld = defgradAim
@@ -492,6 +494,12 @@ program DAMASK_spectral
  
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around) and remove the given highest frequencies
+ if (divergence_correction) then
+   virt_dim = 1.0_pReal
+ else
+   virt_dim = geomdim
+ endif
+
  do k = 1_pInt, res(3)
    k_s(3) = k - 1_pInt
    if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
@@ -500,15 +508,15 @@ program DAMASK_spectral
        if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2) 
          do i = 1_pInt, res1_red
            k_s(1) = i - 1_pInt
-           xi(1:3,i,j,k) = real(k_s, pReal)/geomdim
+           xi(1:3,i,j,k) = real(k_s, pReal)/virt_dim
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
 ! calculate the gamma operator
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
-   allocate (gamma_hat(1,1,1,3,3,3,3)); gamma_hat = 0.0_pReal
+   allocate (gamma_hat(1,1,1,3,3,3,3), source = 0.0_pReal)
  else                                                                                               ! precalculation of gamma_hat field
-   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3)); gamma_hat = 0.0_pReal
+   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source =0.0_pReal)
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
    ! if(k==res(3)/2 .or. k==res(3)/2+2 .or.&
    !    j==res(2)/2 .or. j==res(2)/2+2 .or.&
@@ -542,9 +550,9 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! creating plans
- plan_stress =    fftw_plan_many_dft_r2c(3,[ res(3),res(2) ,res(1)],9,&                     ! dimensions , length in each dimension in reversed order
-                          tensorField_real,[ res(3),res(2) ,res(1)+2_pInt],&                ! input data , physical length in each dimension in reversed order
-                                         1,  res(3)*res(2)*(res(1)+2_pInt),&                 ! striding   , product of physical lenght in the 3 dimensions
+ plan_stress =    fftw_plan_many_dft_r2c(3,[ res(3),res(2) ,res(1)],9,&                             ! dimensions , length in each dimension in reversed order
+                          tensorField_real,[ res(3),res(2) ,res(1)+2_pInt],&                        ! input data , physical length in each dimension in reversed order
+                                         1,  res(3)*res(2)*(res(1)+2_pInt),&                        ! striding   , product of physical lenght in the 3 dimensions
                        tensorField_fourier,[ res(3),res(2) ,res1_red],&
                                          1,  res(3)*res(2)* res1_red,fftw_planner_flag)   
 
@@ -556,18 +564,6 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! depending on (debug) options, allocate more memory and create additional plans 
- if (.not. simplified_algorithm) then
-   print*, 'using polarization field based algorithm'
-   tau = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))
-   call c_f_pointer(tau, tau_real,    [ res(1)+2_pInt,res(2),res(3),3,3])
-   call c_f_pointer(tau, tau_fourier, [ res1_red,     res(2),res(3),3,3])
-   plan_tau         = fftw_plan_many_dft_r2c(3,[ res(3),res(2) ,res(1)],9,&
-                                      tau_real,[ res(3),res(2) ,res(1)+2_pInt],&
-                                             1,  res(3)*res(2)*(res(1)+2_pInt),&
-                                   tau_fourier,[ res(3),res(2) ,res1_red],&
-                                             1,  res(3)*res(2)* res1_red,fftw_planner_flag)   
- endif
-
  if (debugDivergence) then
    divergence = fftw_alloc_complex(int(res1_red*res(2)*res(3)*3_pInt,C_SIZE_T))
    call c_f_pointer(divergence, divergence_real,    [ res(1)+2_pInt,res(2),res(3),3])
@@ -594,10 +590,6 @@ program DAMASK_spectral
  if (debugGeneral) print '(a)' , 'FFTW initialized'
 
 !--------------------------------------------------------------------------------------------------
-! do not correct divergence criterion (usefull to kill dimension and resolution dependenc)
- correctionFactor = 1.0_pReal
-
-!--------------------------------------------------------------------------------------------------
 ! write header of output file
  open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
                                         //'.spectralOut',form='UNFORMATTED',status='REPLACE')
@@ -608,13 +600,13 @@ program DAMASK_spectral
  write(538) 'dimension',  geomdim
  write(538) 'materialpoint_sizeResults', materialpoint_sizeResults
  write(538) 'loadcases',        N_Loadcases
- write(538) 'frequencies', bc(1:N_Loadcases)%outputfrequency                                 ! one entry per loadcase
- write(538) 'times', bc(1:N_Loadcases)%time                                                  ! one entry per loadcase
+ write(538) 'frequencies', bc(1:N_Loadcases)%outputfrequency                                        ! one entry per loadcase
+ write(538) 'times', bc(1:N_Loadcases)%time                                                         ! one entry per loadcase
  write(538) 'logscales',  bc(1:N_Loadcases)%logscale         
- write(538) 'increments', bc(1:N_Loadcases)%incs                                             ! one entry per loadcase
- write(538) 'startingIncrement', restartInc - 1_pInt                                         ! start with writing out the previous inc
- write(538) 'eoh'                                                                            ! end of header
- write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)         ! initial (non-deformed or read-in) results
+ write(538) 'increments', bc(1:N_Loadcases)%incs                                                    ! one entry per loadcase
+ write(538) 'startingIncrement', restartInc - 1_pInt                                                ! start with writing out the previous inc
+ write(538) 'eoh'                                                                                   ! end of header
+ write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)                ! initial (non-deformed or read-in) results
  if (debugGeneral) print '(a)' , 'Header of result file written out'
 
 !##################################################################################################
@@ -634,10 +626,9 @@ program DAMASK_spectral
 ! arrays for mixed boundary conditions
    mask_defgrad = merge(ones,zeroes,bc(loadcase)%maskDeformation)                                   
    mask_stress  = merge(ones,zeroes,bc(loadcase)%maskStress)
-   size_reduced = count(bc(loadcase)%maskStressVector)
-   allocate (c_reduced(size_reduced,size_reduced));          c_reduced = 0.0_pReal
-   allocate (s_reduced(size_reduced,size_reduced));          s_reduced = 0.0_pReal
-
+   size_reduced = int(count(bc(loadcase)%maskStressVector), pInt)
+   allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
+   allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
 
 !##################################################################################################
 ! loop oper incs defined in input file for current loadcase
@@ -692,11 +683,11 @@ program DAMASK_spectral
                                 + (1.0_pReal-guessmode) * deltaF                                    ! if not guessing, use prescribed average deformation where applicable
          defgradold(i,j,k,1:3,1:3) = temp33_Real 
        enddo; enddo; enddo
-
 !--------------------------------------------------------------------------------------------------
 ! calculate reduced compliance
-       c_prev = math_rotate_forward3333(c_current*wgt,bc(loadcase)%rotation)                        ! calculate stiffness from former inc
+
        if(size_reduced > 0_pInt) then                                                               ! calculate compliance in case stress BC is applied
+         c_prev = math_rotate_forward3333(c_current*wgt,bc(loadcase)%rotation)                      ! calculate stiffness from former inc
          c_prev99 = math_Plain3333to99(c_prev)
          k = 0_pInt                                                                                 ! build reduced stiffness
          do n = 1_pInt,9_pInt
@@ -737,9 +728,8 @@ program DAMASK_spectral
 !##################################################################################################
 ! convergence loop (looping over iterations)
 !##################################################################################################
-       do while(iter < itmax .and. &
-               (err_div     > err_div_tol    .or. &
-                err_stress  > err_stress_tol)) 
+       do while((iter < itmax .and. (err_div > err_div_tol .or. err_stress > err_stress_tol))&
+                 .or. iter < itmin)
          iter = iter + 1_pInt
 
 !--------------------------------------------------------------------------------------------------
@@ -748,23 +738,20 @@ program DAMASK_spectral
          print '(a)', '=================================================================='
          print '(5(a,i6.6))', 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,&
                                                                   ' @ Iteration ',iter,'/',itmax
-         do n = 1_pInt,3_pInt; do m = 1_pInt,3_pInt
-           defgrad_av_lab(m,n) = sum(defgrad(1:res(1),1:res(2),1:res(3),m,n)) * wgt
-         enddo; enddo
-         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient:',&
-                    math_transpose33(math_rotate_forward33(defgrad_av_lab,bc(loadcase)%rotation))
+         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
+                                                             math_transpose33(defgradAim)
          print '(a)', ''
          print '(a)', '... update stress field P(F) .....................................'
-
+         defgradAim_lab_old = math_rotate_backward33(defgradAim,bc(loadcase)%rotation)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-         call deformed_fft(res,geomdim,defgrad_av_lab,1.0_pReal,defgrad,coordinates)                ! calculate current coordinates
+         call deformed_fft(res,geomdim,defgradAim_lab_old,1.0_pReal,defgrad,coordinates)            ! calculate current coordinates
          ielem = 0_pInt
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(3_pInt,&                                                              ! collect cycle
-                              coordinates(i,j,k,1:3), defgradold(i,j,k,1:3,1:3), defgrad(i,j,k,1:3,1:3),&
-                              temperature(i,j,k),timeinc,ielem,1_pInt,&
+                              coordinates(i,j,k,1:3), defgradold(i,j,k,1:3,1:3),&
+                              defgrad(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&
                               cstress,dsde, pstress, dPdF)
          enddo; enddo; enddo
 
@@ -793,18 +780,6 @@ program DAMASK_spectral
          endif
 
 !--------------------------------------------------------------------------------------------------
-! build polarization field
-         if (.not. simplified_algorithm) then
-           tau_real = 0.0_pReal                                                                     ! padding
-           do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-            tau_real(i,j,k,1:3,1:3)&
-                            = tensorField_real(i,j,k,1:3,1:3) &
-                            - math_mul3333xx33(c0_reference,defgrad(i,j,k,1:3,1:3))
-           enddo; enddo; enddo
-           call fftw_execute_dft_r2c(plan_tau,tau_real,tau_fourier)
-         endif
-
-!--------------------------------------------------------------------------------------------------
 ! call function to calculate divergence from math (for post processing) to check results
          if (debugDivergence) &
               call divergence_fft(res,geomdim,3_pInt,&
@@ -816,7 +791,7 @@ program DAMASK_spectral
 
          pstress_av_lab = real(tensorField_fourier(1,1,1,1:3,1:3),pReal)*wgt
          pstress_av = math_rotate_forward33(pstress_av_lab,bc(loadcase)%rotation)
-         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa:',&
+         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
                                                           math_transpose33(pstress_av)/1.e6_pReal
 
 !--------------------------------------------------------------------------------------------------
@@ -824,7 +799,7 @@ program DAMASK_spectral
          if (debugFFTW) then
            call fftw_execute_dft(plan_scalarField_forth,scalarField_real,scalarField_fourier)
            print '(a,i1,1x,i1)', 'checking FT results of compontent ', row, column
-           print '(a,2(es11.4,1x))',  'max FT relative error ',&
+           print '(a,2(es11.4,1x))',  'max FT relative error = ',&
              maxval( real((scalarField_fourier(1:res1_red,1:res(2),1:res(3))-& 
                            tensorField_fourier(1:res1_red,1:res(2),1:res(3),row,column))/&
                            scalarField_fourier(1:res1_red,1:res(2),1:res(3)))), &
@@ -853,9 +828,7 @@ program DAMASK_spectral
            print '(a,f6.2,a,es11.4,a)', 'error stress = ', err_stress/err_stress_tol, &
                                                                             ' (',err_stress,' Pa)'  
            defgradAim = defgradAim - math_mul3333xx33(s_prev, ((pstress_av - bc(loadcase)%stress))) ! residual on given stress components
-           if(debugGeneral)  write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'new deformation aim:',&
-                                                            math_transpose33(defgradAim)
-           print '(a,1x,es11.4)'         , 'determinant of new deformation: ', math_det33(defgradAim)
+           print '(a,1x,es11.4)'         ,'determinant of new deformation = ',math_det33(defgradAim)
          else
            err_stress_tol = +huge(1.0_pReal)
          endif
@@ -869,7 +842,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
-         pstress_av_L2 = sqrt(maxval (math_eigenvalues33(math_mul33x33(pstress_av_lab,&                 ! L_2 norm of average stress
+         pstress_av_L2 = sqrt(maxval (math_eigenvalues33(math_mul33x33(pstress_av_lab,&             ! L_2 norm of average stress
                                                   math_transpose33(pstress_av_lab)))))
          err_div_RMS = 0.0_pReal
          do k = 1_pInt, res(3); do j = 1_pInt, res(2)
@@ -891,13 +864,13 @@ program DAMASK_spectral
                                        xi(1:3,res1_red,j,k))*two_pi_img)**2.0_pReal)
          enddo; enddo
          err_div_RMS = sqrt(err_div_RMS)*wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
-         if(err_div_RMS/pstress_av_L2*sqrt(wgt) * correctionFactor>err_div&
+         if(err_div_RMS/pstress_av_L2*sqrt(wgt) >err_div&
                        .and.iter >2_pInt&
                        .and.err_stress  < err_stress_tol) then
            print*, 'Increasing divergence, stopping iterations'
            iter = itmax
          endif
-         err_div = err_div_RMS/pstress_av_L2*sqrt(wgt) * correctionFactor                               ! criterion to stop iterations
+         err_div = err_div_RMS/pstress_av_L2*sqrt(wgt)                                              ! criterion to stop iterations
 
 !--------------------------------------------------------------------------------------------------
 ! calculate additional divergence criteria and report
@@ -918,10 +891,10 @@ program DAMASK_spectral
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
              max_div_error= max(max_div_error,maxval((divergence_real(i,j,k,1:3)&
                         -divergence_postProc(i,j,k,1:3))/divergence_real(i,j,k,1:3)))
-             err_real_div_RMS = err_real_div_RMS    +      sum(divergence_real(i,j,k,1:3)**2.0_pReal)        ! avg of L_2 norm of div(stress) in real space
-             err_real_div_max = max(err_real_div_max, sqrt(sum(divergence_real(i,j,k,1:3)**2.0_pReal)))      ! maximum of L two norm of div(stress) in real space
+             err_real_div_RMS=err_real_div_RMS    +     sum(divergence_real(i,j,k,1:3)**2.0_pReal)  ! avg of L_2 norm of div(stress) in real space
+             err_real_div_max=max(err_real_div_max,sqrt(sum(divergence_real(i,j,k,1:3)**2.0_pReal)))! maximum of L two norm of div(stress) in real space
            enddo; enddo; enddo
-           err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                   ! RMS in real space
+           err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                            ! RMS in real space
            err_div_max      = err_div_max*sqrt(wgt) 
            
            print '(a,es11.4)',        'error divergence  FT  RMS = ',err_div_RMS
@@ -930,12 +903,9 @@ program DAMASK_spectral
            print '(a,es11.4)',        'error divergence Real max = ',err_real_div_max
            print '(a,es11.4)',        'max deviat. from postProc = ',max_div_error
          endif
-         print '(a,f6.2,a,es11.4,3a)','error divergence = ', err_div/err_div_tol, &
-                                                          ' (',err_div_RMS,' N/m',char(179),')'
-         
-!--------------------------------------------------------------------------------------------------
-! divergence is calculated from FT(stress), depending on algorithm use field for spectral method
-         if (.not. simplified_algorithm) tensorField_fourier = tau_fourier
+         print '(a,f6.2,a,es11.4,a)','error divergence = ', err_div/err_div_tol,&
+                                                           ' (',err_div_RMS,' N/m³)'
+
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)
          if(memory_efficient) then                                                                  ! memory saving version, on-the-fly calculation of gamma_hat
@@ -973,13 +943,8 @@ program DAMASK_spectral
 
          endif
 
-         if (simplified_algorithm) then                                                             ! do not use the polarization field based algorithm
-           tensorField_fourier(1,1,1,1:3,1:3) = cmplx((defgrad_av_lab - defgradAim_lab) &           ! assign (negative) average deformation gradient change to zero frequency (real part)
+         tensorField_fourier(1,1,1,1:3,1:3) = cmplx((defgradAim_lab_old - defgradAim_lab) &         ! assign (negative) average deformation gradient change to zero frequency (real part)
                                                 * real(Npoints,pReal),0.0_pReal,pReal)              ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-         else
-           tensorField_fourier(1,1,1,1:3,1:3) = cmplx(defgradAim_lab*real(Npoints,pReal),&          ! assign deformation aim to zero frequency (real part)
-                                                                                  0.0_pReal,pReal)
-         endif
 
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
@@ -1009,7 +974,7 @@ program DAMASK_spectral
          if (debugFFTW) then
            print '(a,i1,1x,i1)', 'checking iFT results of compontent ', row, column
            call fftw_execute_dft(plan_scalarField_back,scalarField_fourier,scalarField_real)
-           print '(a,es11.4)', 'max iFT relative error ',&
+           print '(a,es11.4)', 'max iFT relative error = ',&
                maxval((real(scalarField_real(1:res(1),1:res(2),1:res(3)))-&
                        tensorField_real(1:res(1),1:res(2),1:res(3),row,column))/&
                        real(scalarField_real(1:res(1),1:res(2),1:res(3))))
@@ -1028,11 +993,11 @@ program DAMASK_spectral
                                      maxval(math_skew33(tensorField_real(i,j,k,1:3,1:3))))
              temp33_Real = temp33_Real + tensorField_real(i,j,k,1:3,1:3)
            enddo; enddo; enddo
-           print '(a,1x,es11.4)'       , 'max symmetrix correction of deformation:',&
+           print '(a,1x,es11.4)'       , 'max symmetrix correction of deformation =',&
                                          maxCorrectionSym*wgt
-           print '(a,1x,es11.4)'       , 'max skew      correction of deformation:',&
+           print '(a,1x,es11.4)'       , 'max skew      correction of deformation =',&
                                          maxCorrectionSkew*wgt
-           print '(a,1x,es11.4)'       , 'max sym/skew of avg correction:         ',&
+           print '(a,1x,es11.4)'       , 'max sym/skew of avg correction =         ',&
                                          maxval(math_symmetric33(temp33_real))/&
                                          maxval(math_skew33(temp33_real))
          endif
@@ -1041,12 +1006,6 @@ program DAMASK_spectral
 ! updated deformation gradient
          defgrad = defgrad - tensorField_real(1:res(1),1:res(2),1:res(3),1:3,1:3)*wgt               ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
 
-!--------------------------------------------------------------------------------------------------
-! updated deformation gradient in case of fluctuation field algorithm
-         if (.not.simplified_algorithm) then
-           defgrad = tensorField_real(1:res(1),1:res(2),1:res(3),1:3,1:3) * wgt
-         endif
-                                                    
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report
          if(debugGeneral) then
@@ -1058,8 +1017,8 @@ program DAMASK_spectral
              defgradDetMin = min(defgradDetMin,defgradDet) 
            enddo; enddo; enddo
 
-           print '(a,1x,es11.4)'       , 'max determinant of deformation:', defgradDetMax
-           print '(a,1x,es11.4)'       , 'min determinant of deformation:', defgradDetMin
+           print '(a,1x,es11.4)'       , 'max determinant of deformation =', defgradDetMax
+           print '(a,1x,es11.4)'       , 'min determinant of deformation =', defgradDetMin
          endif
          
        enddo    ! end looping when convergency is achieved 
@@ -1074,17 +1033,17 @@ program DAMASK_spectral
          print '(A,I5.5,A)', 'increment ', totalIncsCounter, ' converged'
        endif
 
-       if (mod(totalIncsCounter -1_pInt,bc(loadcase)%outputfrequency) == 0_pInt) then                ! at output frequency
+       if (mod(inc,bc(loadcase)%outputFrequency) == 0_pInt) then                                    ! at output frequency
          print '(a)', ''
          print '(a)', '... writing results to file ......................................'
-         write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)        ! write result to file
+         write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)       ! write result to file
        endif
        
        if( bc(loadcase)%restartFrequency > 0_pInt .and. &
-                      mod(inc - 1_pInt,bc(loadcase)%restartFrequency) == 0_pInt) then                ! at frequency of writing restart information set restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
+                      mod(inc,bc(loadcase)%restartFrequency) == 0_pInt) then                        ! at frequency of writing restart information set restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
          restartWrite = .true.
          print '(A)', 'writing converged results for restart'
-         call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(defgrad))                   ! writing deformation gradient field to file
+         call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(defgrad))                  ! writing deformation gradient field to file
          write (777,rec=1) defgrad
          close (777)
          restartInc=totalIncsCounter
@@ -1118,7 +1077,7 @@ program DAMASK_spectral
    call fftw_destroy_plan(plan_scalarField_forth)
    call fftw_destroy_plan(plan_scalarField_back)
  endif
- stop 0
+ call quit(0_pInt)
 end program DAMASK_spectral
 
 !********************************************************************
@@ -1126,12 +1085,15 @@ end program DAMASK_spectral
 !
 !********************************************************************
 subroutine quit(stop_id)
- use prec
+ use prec, only: pInt
  implicit none
 
  integer(pInt), intent(in) :: stop_id
- print*, stop_id
-
+ 
+ if (stop_id ==    0_pInt) stop 0                                                              ! normal termination
+ if (stop_id <= 9000_pInt) then                                                                     ! trigger regridding
+   print*, stop_id
+   stop 1
+ endif
  stop 'abnormal termination of DAMASK_spectral'
-
 end subroutine
