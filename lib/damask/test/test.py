@@ -136,11 +136,17 @@ class Test():
 
   def copy_Reference2Current(self,files=[]):
     for file in files:
-      shutil.copy2(self.fileInReference(file),self.fileInCurrent(file))  
+      try:
+        shutil.copy2(self.fileInReference(file),self.fileInCurrent(file))  
+      except:
+        print 'Unable to copy file ', file
 
   def copy_Current2Current(self,files=[]):
     for file in files:
-      shutil.copy2(self.fileInCurrent(file[0]),self.fileInCurrent(file[1]))  
+      try:
+        shutil.copy2(self.fileInCurrent(file[0]),self.fileInCurrent(file[1]))  
+      except:
+        print 'Unable to copy file ', file
 
   def execute_inCurrentDir(self,cmd):
     os.chdir(self.dirCurrent())
@@ -164,7 +170,7 @@ class Test():
     if curNaN == refNaN:
       err[numpy.isnan(err)]=0.0
     max_err = numpy.max(err)
-    print '********\n * maximum relative error',max_err,'\n ********'
+    print ' ********\n * maximum relative error',max_err,'\n ********'
     return max_err
 
   def report_Success(self,culprit):
