@@ -72,11 +72,12 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 rotation_tol               =  1.0e-12_pReal                  ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
 character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patiant planner flag
 integer(pInt) ::                fftw_planner_flag          =  -1_pInt, &                     ! conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
-                                itmax                      =  20_pInt                        ! maximum number of iterations
+                                itmax                      =  20_pInt, &                     ! maximum number of iterations
+                                itmin                      =  2_pInt                         ! minimum number of iterations
 logical ::                      memory_efficient           = .true., &                       ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
                                 divergence_correction      = .false., &                      ! correct divergence calculation in fourier space, Default .false.: no correction
                                 update_gamma               = .false., &                      ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
-                                simplified_algorithm       = .true., &                       ! use short algorithm without fluctuation field, Default .true.: use simplified algorithm
+!* end of spectral parameters:
                                 analyticJaco               = .false.                         ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
 
 
@@ -240,6 +241,8 @@ subroutine numerics_init()
               err_stress_tolrel = IO_floatValue(line,positions,2_pInt)
         case ('itmax')
               itmax = IO_intValue(line,positions,2_pInt)
+        case ('itmin')
+              itmin = IO_intValue(line,positions,2_pInt)
         case ('memory_efficient')
               memory_efficient = IO_intValue(line,positions,2_pInt)  > 0_pInt
         case ('fftw_timelimit')
@@ -252,8 +255,6 @@ subroutine numerics_init()
               divergence_correction = IO_intValue(line,positions,2_pInt)  > 0_pInt
         case ('update_gamma')
               update_gamma = IO_intValue(line,positions,2_pInt)  > 0_pInt
-        case ('simplified_algorithm')
-              simplified_algorithm = IO_intValue(line,positions,2_pInt)  > 0_pInt
 
         !* Random seeding parameters
 
@@ -277,7 +278,7 @@ subroutine numerics_init()
   endif
 
   select case(IO_lc(fftw_plan_mode))                             ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-    case('estimate','fftw_estimate')                             ! ordered from slow execution (but fast plan creation) to fast execution
+     case('estimate','fftw_estimate')                            ! ordered from slow execution (but fast plan creation) to fast execution
        fftw_planner_flag = 64_pInt
      case('measure','fftw_measure')
        fftw_planner_flag = 0_pInt
@@ -339,6 +340,7 @@ subroutine numerics_init()
     write(6,'(a24,1x,e8.1)')   ' err_div_tol:            ',err_div_tol
     write(6,'(a24,1x,e8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
     write(6,'(a24,1x,i8)')     ' itmax:                  ',itmax
+    write(6,'(a24,1x,i8)')     ' itmin:                  ',itmin
     write(6,'(a24,1x,L8)')     ' memory_efficient:       ',memory_efficient
     if(fftw_timelimit<0.0_pReal) then
       write(6,'(a24,1x,L8)')   ' fftw_timelimit:         ',.false.
@@ -350,7 +352,6 @@ subroutine numerics_init()
     write(6,'(a24,1x,e8.1)')   ' rotation_tol:           ',rotation_tol
     write(6,'(a24,1x,L8,/)')   ' divergence_correction:  ',divergence_correction
     write(6,'(a24,1x,L8,/)')   ' update_gamma:           ',update_gamma
-    write(6,'(a24,1x,L8,/)')   ' simplified_algorithm:   ',simplified_algorithm
     
     !* Random seeding parameters
     
@@ -411,6 +412,7 @@ subroutine numerics_init()
   if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
   if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
   if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
+  if (itmin >  itmax)                       call IO_error(301_pInt,ext_msg='itmin')
   
   if (fixedSeed <= 0_pInt) then
     !$OMP CRITICAL (write2out)
