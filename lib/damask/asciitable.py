@@ -76,11 +76,9 @@ class ASCIItable():
     if m:
       self.info      = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
       self.labels    =  self.__IO__['in'].readline().split()
-      self.headerLen = int(m.group(1)) + 1
     else:
       self.info      = []
       self.labels    = firstline.split()
-      self.headerLen = 1
     self.__IO__['validReadSize'] = len(self.labels)
     try:
       self.__IO__['dataStart'] = self.__IO__['in'].tell()
@@ -106,6 +104,10 @@ class ASCIItable():
     if isinstance(what,list):
       for item in what: self.info_append(item)
     else:               self.info += [str(what)]
+
+# ------------------------------------------------------------------
+  def info_clear(self):
+    self.info = []
 
 # ------------------------------------------------------------------
   def data_rewind(self):
