@@ -164,7 +164,7 @@ class Test():
     if curNaN == refNaN:
       err[numpy.isnan(err)]=0.0
     max_err = numpy.max(err)
-    print 'maximum relative error',max_err
+    print '********\n * maximum relative error',max_err,'\n ********'
     return max_err
 
   def report_Success(self,culprit):
