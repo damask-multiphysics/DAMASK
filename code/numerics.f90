@@ -313,6 +313,8 @@ subroutine numerics_init()
     write(6,'(a24,1x,e8.1)') ' rTol_crystalliteStress: ',rTol_crystalliteStress
     write(6,'(a24,1x,e8.1)') ' aTol_crystalliteStress: ',aTol_crystalliteStress
     write(6,'(a24,2(1x,i8),/)')' integrator:             ',numerics_integrator
+    write(6,'(a24,1x,e8.1)') ' Lp_frac:                ',Lp_frac
+    write(6,'(a24,1x,L8)')   ' analytic Jacobian:      ',analyticJaco
   
     write(6,'(a24,1x,i8)')   ' nHomog:                 ',nHomog
     write(6,'(a24,1x,e8.1)') ' subStepMinHomog:        ',subStepMinHomog
