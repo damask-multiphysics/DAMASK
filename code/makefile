@@ -46,7 +46,11 @@ OPENMP ?= ON
 OPTIMIZATION ?= DEFENSIVE
 
 ifeq "$(F90)" "ifort"
+ifeq "$(OPTIMIZATION)" "OFF"
+ARCHIVE_COMMAND :=ar
+else
 ARCHIVE_COMMAND :=xiar
+endif
 else
 ARCHIVE_COMMAND :=ar
 endif
@@ -192,34 +196,34 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -Wunderflow\
                            -Wswitch\
                            -Wstrict-overflow\
-                           -Wextra\
                            -Wattributes\
                            -Wunsafe-loop-optimizations\
-                           -Wunused
+                           -Wunused\
+                           -Wextra
 
-#-xf95-cpp-input:          preprocessor
-#-ffree-line-length-132:   restrict line length to the standard 132 characters
-#-fno-range-check:         disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
-#-fimplicit-none:          assume "implicit-none" even if not present in source
+#-xf95-cpp-input:              preprocessor
+#-ffree-line-length-132:       restrict line length to the standard 132 characters
+#-fno-range-check:             disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
+#-fimplicit-none:              assume "implicit-none" even if not present in source
 #-fall-intrinsics:        
-#-pedantic:                more strict on standard, enables some of the warnings below
-#-Warray-bounds:           checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
-#-Wampersand:              checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
-#-Wno-tabs:                do not allow tabs in source
-#-Wcharacter-truncation:   warn if character expressions (strings) are truncated
-#-Wintrinsic-shadow:       warn if a user-defined procedure or module procedure has the same name as an intrinsic
-#-Waliasing:               warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface. 
-#-Wconversion:             warn about implicit conversions between different type
-#-Wsurprising:             warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made. 
-#-Wunused-value:
-#-Wunused-parameter:       find usused variables with "parameter" attribute
-#-Wunderflow:              produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
-#-Wswitch:                 warn whenever a "switch" statement has an index of enumerated type and lacks a "case" for one or more of the named codes of that
-#                          enumeration.  (The presence of a "default" label prevents this warning.)  "case" labels outside the enumeration range also provoke
-#                            warnings when this option is used (even if there is a "default" label)
-#-Wstrict-overflow
-#-Wattributes                Warn about inappropriate attribute usage                              
-# -Wunsafe-loop-optimizations Warn if the loop cannot be optimized due to nontrivial assumptions.
+#-pedantic:                    more strict on standard, enables some of the warnings below
+#-Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
+#-Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
+#-Wno-tabs:                    do not allow tabs in source
+#-Wcharacter-truncation:       warn if character expressions (strings) are truncated
+#-Wintrinsic-shadow:           warn if a user-defined procedure or module procedure has the same name as an intrinsic
+#-Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface. 
+#-Wconversion:                 warn about implicit conversions between different type
+#-Wsurprising:                 warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made. 
+#-Wunderflow:                  produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
+#-Wswitch:                     warn whenever a "switch" statement has an index of enumerated type and lacks a "case" for one or more of the named codes of that enumeration.  (The presence of a "default" label prevents this warning.) "case" labels outside the enumeration range also provokewarnings when this option is used (even if there is a "default" label)
+#-Wstrict-overflow:
+#-Wattributes:                 warn about inappropriate attribute usage                              
+#-Wunsafe-loop-optimizations:  warn if the loop cannot be optimized due to nontrivial assumptions.
+#-Wunused:   
+#        -value:
+#        -parameter:           find usused variables with "parameter" attribute
+#-Wextra:
 ###################################################################################################
 #OPTIONS FOR GFORTRAN 4.6
 #-Wsuggest-attribute=const:
@@ -227,20 +231,20 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
 #-Wsuggest-attribute=pure:  
 #-Wreal-q-constant:            Warn about real-literal-constants with 'q'  exponent-letter
 #MORE OPTIONS FOR DEBUGGING DURING COMPILING                      
-#-Wline-truncation:        too many warnings because we have comments beyond character 132
-#-Wintrinsic-std:          warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:                        
+#-Wline-truncation:           too many warnings because we have comments beyond character 132
+#-Wintrinsic-std:             warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:                        
 #-Warray-temporarieswarnings:
-#                          because we have many temporary arrays (performance issue?):                     
+#                             because we have many temporary arrays (performance issue?):                     
 #-Wimplicit-interface
 #-pedantic-errors
 #-fmodule-private
 #
 #OPTIONS FOR DEGUBBING DURING RUNTIME
-#-fcheck-bounds:           check if an array index is too small (<1) or too large!
+#-fcheck-bounds:              check if an array index is too small (<1) or too large!
 #
 #OPTIONS FOR TYPE DEBUGGING
-#-fdefault-real-8:         set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
-#-fdefault-integer-8:      set precision to 8 bytes for standard integer (=4 for pInt)
+#-fdefault-real-8:           set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
+#-fdefault-integer-8:        set precision to 8 bytes for standard integer (=4 for pInt)
 ##################################################################################################
 
 COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) -c
