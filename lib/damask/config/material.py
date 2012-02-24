@@ -61,7 +61,7 @@ class Texture(Section):
   def add_component(self,theType,properties):
     
     if 'scatter' not in map(str.lower,properties.keys()):
-          scatter = 1.0
+          scatter = 0.0
     else: scatter = properties['scatter']
     if 'fraction' not in map(str.lower,properties.keys()):
           fraction = 1.0
@@ -183,7 +183,7 @@ class Material():
 
     print('Writing material data to file %s'%saveFile)
     f=open(saveFile,'w')
-    f.write(str(self))
+    f.write(str(self)+'\n')                                          #newline at end
     f.close()
     return saveFile
 

@@ -139,14 +139,14 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(file))  
       except:
-        print 'Unable to copy file ', file
+        print 'Reference2Current: Unable to copy file ', file
 
   def copy_Current2Current(self,files=[]):
     for file in files:
       try:
         shutil.copy2(self.fileInCurrent(file[0]),self.fileInCurrent(file[1]))  
       except:
-        print 'Unable to copy file ', file
+        print 'Current2Current: Unable to copy file ', file
 
   def execute_inCurrentDir(self,cmd):
     os.chdir(self.dirCurrent())
@@ -178,4 +178,4 @@ class Test():
       print '%s passed.'%({False: 'The test',
                          True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1])
     else:
-     print 'Test %i failed...'%(culprit+1)
+     print ' ********\n * Test %i failed...\n ********'%(culprit+1)
