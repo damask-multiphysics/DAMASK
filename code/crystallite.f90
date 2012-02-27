@@ -579,10 +579,10 @@ real(pReal), dimension(9,9) ::   dLp_dT_constitutive, &
                                  dFedF_old99
 real(pReal), dimension(3)::       Eigval
 real(pReal) ::   dt, &
-                 fixedpt_error
-integer(pInt) :: AnzNegEW, &
-                 fixedpt_iter, &
+                 fixedpt_error, &
                  counter
+integer(pInt) :: AnzNegEW, &
+                 fixedpt_iter
 logical :: error
 
 ! --+>> INITIALIZE TO STARTING CONDITION <<+--
@@ -996,7 +996,7 @@ if(updateJaco) then                                                             
           Fpinv_rate = -math_mul33x33(crystallite_subF(1:3,1:3,g,i,e),math_mul33x33(Fp_inv_current,&
           (1.0_pReal-Lp_frac)*crystallite_subLp0(1:3,1:3,g,i,e)+ Lp_frac*crystallite_Lp(1:3,1:3,g,i,e))) ! F * dFp^-1 = F * dFp^-1/dt *dt... dFp may overshoot dF by small ammount as 
           FDot_temp = crystallite_subF(1:3,1:3,g,i,e) - crystallite_F0(1:3,1:3,g,i,e)                    ! dF = dFe + dFp is not strictly enforced (can result in small oscillations in dP/dF)
-          counter = 0_pInt
+          counter = 0.0_pReal
           phi_mat = 0.0_pReal
           do h=1_pInt,3_pInt; do j=1_pInt,3_pInt
             if (Eigval(h) == Eigval(j)) then
@@ -1005,14 +1005,14 @@ if(updateJaco) then                                                             
               phi_mat(h,j) = sinh(Eigval(h) - Eigval(j))/(Eigval(h) - Eigval(j))
             endif
             if (abs(FDot_temp(h,j)) .lt. relevantStrain) then
-              counter = counter + 1_pInt
+              counter = counter + 1.0_pReal
               FDot_temp(h,j) = 0.0_pReal
             else  
               FDot_temp(h,j) = crystallite_dt(g,i,e)/FDot_temp(h,j)
             endif 
           enddo; enddo
-          if (counter .lt. 9_pInt) then
-            FDot_temp = FDot_temp/(9_pInt - counter)
+          if (counter .lt. 9.0_pReal) then
+            FDot_temp = FDot_temp/(9.0_pReal - counter)
           endif
           Tensor1 = 0.0_pReal
           Tensor2 = 0.0_pReal
@@ -1054,14 +1054,20 @@ if(updateJaco) then                                                             
             fixedpt_iter = fixedpt_iter + 1_pInt
           enddo
           dFedF = math_Plain99to3333(dFedF99)
+          Tensor4 = math_mul3333xx3333(Tensor4,dFedF)
           do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
             dFedF(1:3,1:3,o,p) = math_transpose33(dFedF(1:3,1:3,o,p))                                   
           enddo; enddo
           dSdF = math_mul3333xx3333(Tensor3,dFedF)                                                      ! dS/dF = dS/dFe * dFe/dF
           do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-            crystallite_dPdF(1:3,1:3,o,p,g,i,e) = math_mul33x33(math_mul33x33(&
-                                               crystallite_subF(1:3,1:3,g,i,e),Fp_inv_current),&
-                                math_mul33x33(dSdF(1:3,1:3,o,p),math_transpose33(Fp_inv_current)))      ! dP/dF = Fe * dS/dF * Fp^-T         
+            crystallite_dPdF(1:3,1:3,o,p,g,i,e) = math_mul33x33(math_mul33x33(math_transpose33(&
+                   dFedF(1:3,1:3,o,p)),math_Mandel6to33(crystallite_Tstar_v)),math_transpose33(&
+                   Fp_inv_current)) + &                                                                 ! dP/dF = dFe/dF * S * Fp^-T...
+                   math_mul33x33(math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e),&
+                   Fp_inv_current),math_Mandel6to33(crystallite_Tstar_v)),math_mul33x33(math_inv33&
+                   (crystallite_subF(1:3,1:3,g,i,e)),Tensor4(1:3,1:3,o,p))+Fpinv_rate*FDot_temp(o,p))&  ! + Fe * S * dFp^-T/dF...
+                   + math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e),Fp_inv_current),&
+                                math_mul33x33(dSdF(1:3,1:3,o,p),math_transpose33(Fp_inv_current)))      ! + Fe * dS/dF * Fp^-T         
           enddo; enddo
     enddo; enddo; enddo
   !$OMP END PARALLEL DO
