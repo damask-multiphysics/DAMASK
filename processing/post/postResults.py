@@ -842,7 +842,7 @@ if options.info:
   if options.filetype == 'spectral':
     print '\n\n',p
 
-  SummarizePostfile(stat,sys.stderr)
+  SummarizePostfile(stat)
   
   print '\nUser Defined Outputs'
   for what in me:
