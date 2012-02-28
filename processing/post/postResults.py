@@ -649,6 +649,8 @@ parser.add_option('-l','--legacy', action='store_true', dest='legacy', \
                   help='legacy user result block (starts with GrainCount) [%default]')
 parser.add_option(    '--prefix', dest='prefix', \
                   help='prefix to result file name [%default]')
+parser.add_option(    '--suffix', dest='suffix', \
+                  help='suffix to result file name [%default]')
 parser.add_option('-d','--dir', dest='dir', \
                   help='name of subdirectory to hold output [%default]')
 parser.add_option('-s','--split', action='store_true', dest='separateFiles', \
@@ -707,6 +709,7 @@ parser.set_defaults(info = False)
 parser.set_defaults(legacy = False)
 parser.set_defaults(sloppy = False)
 parser.set_defaults(prefix = '')
+parser.set_defaults(suffix = '')
 parser.set_defaults(dir = 'postProc')
 parser.set_defaults(filetype = None)
 parser.set_defaults(func = 'avg')
@@ -1047,9 +1050,9 @@ for incCount,location in enumerate(locations):     # walk through locations
     if fileOpen:
       file.close()
       fileOpen = False
-    outFilename = eval('"'+eval("'%%s_inc%%0%ii.txt'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + options.prefix + os.path.split(filename)[1],increments[incCount])')
+    outFilename = eval('"'+eval("'%%s_inc%%0%ii%%s.txt'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + options.prefix + os.path.split(filename)[1],increments[incCount],options.suffix)')
   else:
-    outFilename = '%s.txt'%(dirname + os.sep + options.prefix + os.path.split(filename)[1])
+    outFilename = '%s.txt'%(dirname + os.sep + options.prefix + os.path.split(filename)[1] + options.suffix)
   
   if not fileOpen:
     file = open(outFilename,'w')
