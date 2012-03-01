@@ -274,6 +274,8 @@ do i = 1_pInt,material_Ncrystallite
         mySize = 3_pInt
       case('defgrad','f','fe','fp','lp','e','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
         mySize = 9_pInt
+      case('elasmatrix')
+        mySize = 36_pInt     
       case default
         mySize = 0_pInt     
     end select
@@ -3300,7 +3302,8 @@ function crystallite_postResults(&
                                       material_texture, &
                                       homogenization_Ngrains
  use constitutive, only:              constitutive_sizePostResults, &
-                                      constitutive_postResults
+                                      constitutive_postResults, &
+                                      constitutive_homogenizedC
  
  implicit none
 
@@ -3380,6 +3383,9 @@ function crystallite_postResults(&
      case ('s','tstar','secondpiola','2ndpiola')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)),[mySize])
+     case ('elasmatrix')
+       mySize = 36_pInt
+       crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(g,i,e),(/mySize/))
    end select
    c = c + mySize
  enddo
