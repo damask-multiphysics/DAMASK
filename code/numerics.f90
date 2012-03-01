@@ -78,7 +78,8 @@ logical ::                      memory_efficient           = .true., &          
                                 divergence_correction      = .false., &                      ! correct divergence calculation in fourier space, Default .false.: no correction
                                 update_gamma               = .false., &                      ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
 !* end of spectral parameters:
-                                analyticJaco               = .false.                         ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+                                analyticJaco               = .false., &                      ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+                                time_sensitive             = .true.                          ! adds time sensitive component to analytic jacobian when .true.
 
 
 
@@ -200,9 +201,11 @@ subroutine numerics_init()
         case ('integratorstiffness')
               numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
         case ('lp_frac')
-              Lp_frac = IO_intValue(line,positions,2_pInt)
+              Lp_frac = IO_floatValue(line,positions,2_pInt)
         case ('analyticjaco')
               analyticJaco = IO_intValue(line,positions,2_pInt) > 0_pInt
+        case ('time_sensitive')
+              time_sensitive = IO_intValue(line,positions,2_pInt) > 0_pInt
 
         !* RGC parameters: 
         
@@ -315,6 +318,7 @@ subroutine numerics_init()
     write(6,'(a24,2(1x,i8),/)')' integrator:             ',numerics_integrator
     write(6,'(a24,1x,e8.1)') ' Lp_frac:                ',Lp_frac
     write(6,'(a24,1x,L8)')   ' analytic Jacobian:      ',analyticJaco
+    write(6,'(a24,1x,L8)')   ' time sensitive:         ',time_sensitive
   
     write(6,'(a24,1x,i8)')   ' nHomog:                 ',nHomog
     write(6,'(a24,1x,e8.1)') ' subStepMinHomog:        ',subStepMinHomog
