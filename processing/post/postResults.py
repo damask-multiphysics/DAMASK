@@ -435,7 +435,7 @@ def mapIncremental(label, mapping, N, base, new):
 
 
 # -----------------------------
-def OpenPostfile(name,type):
+def OpenPostfile(name,type,nodal = False):
 # 
 # open postfile with extrapolation mode "translate"
 # -----------------------------
@@ -444,7 +444,7 @@ def OpenPostfile(name,type):
          'spectral': MPIEspectral_result,\
          'marc':     post_open,\
       }[type](name)
-  p.extrapolation('translate')
+  p.extrapolation({True:'linear',False:'translate'}[nodal])
   p.moveto(1)
   
   return p
@@ -594,7 +594,11 @@ def ParsePostfile(p,filename, outputFormat, legacyFormat):
             label = {False:   '%i_%s'%(grain+1,    name),
                       True:'%i_%i_%s'%(grain+1,i+1,name)}[N > 1]
             stat['IndexOfLabel'][label] = startIndex + offset
-            stat['LabelOfElementalScalar'][startIndex + offset] = label
+            try:
+              stat['LabelOfElementalScalar'][startIndex + offset] = label
+            except IndexError:
+              print 'trying to assign %s at position %i+%i'%(label,startIndex,offset)
+              sys.exit(1)
             offset += 1
   
   return stat
@@ -647,6 +651,8 @@ parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')
 parser.add_option('-l','--legacy', action='store_true', dest='legacy', \
                   help='legacy user result block (starts with GrainCount) [%default]')
+parser.add_option('-n','--nodal', action='store_true', dest='nodal', \
+                  help='data is extrapolated to nodal value [%default]')
 parser.add_option(    '--prefix', dest='prefix', \
                   help='prefix to result file name [%default]')
 parser.add_option(    '--suffix', dest='suffix', \
@@ -659,8 +665,6 @@ parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
                   help='range of positions (or increments) to output (start, end, step) [all]')
 parser.add_option('--increments', action='store_true', dest='getIncrements', \
                   help='switch to increment range [%default]')
-parser.add_option('--sloppy', action='store_true', dest='sloppy', \
-                  help='do not pre-check validity of increment range')
 parser.add_option('-m','--map', dest='func', type='string', \
                   help='data reduction mapping ["%default"] out of min, max, avg, avgabs, sum, sumabs or user-lambda')
 parser.add_option('-p','--type', dest='filetype', type='string', \
@@ -707,7 +711,7 @@ parser.add_option_group(group_special)
 
 parser.set_defaults(info = False)
 parser.set_defaults(legacy = False)
-parser.set_defaults(sloppy = False)
+parser.set_defaults(nodal = False)
 parser.set_defaults(prefix = '')
 parser.set_defaults(suffix = '')
 parser.set_defaults(dir = 'postProc')
@@ -818,7 +822,7 @@ for what in me:
     print '\n'.join(map(lambda x:'  [%s]'%x, outputFormat[what]['specials']['brothers']))
     
 bg.set_message('opening result file...')
-p = OpenPostfile(filename+extension,options.filetype)
+p = OpenPostfile(filename+extension,options.filetype,options.nodal)
 bg.set_message('parsing result file...')
 stat = ParsePostfile(p, filename, outputFormat,options.legacy)
 if options.filetype == 'marc':
@@ -1020,27 +1024,19 @@ if not options.range:
   locations = range(stat['NumberOfIncrements'])    # process all positions
 else:
   options.range = list(options.range)              # convert to list
-  if options.sloppy:
-    locations = range(options.range[0],options.range[1]+1,options.range[2])
+  if options.getIncrements:
+    locations = [positionOfInc[x] for x in range(options.range[0],options.range[1]+1,options.range[2])
+                                   if x in positionOfInc]
   else:
     locations = range( max(0,options.range[0]),
-                       min({False:stat['NumberOfIncrements'],
-                            True :incAtPosition[stat['NumberOfIncrements']-1]+1}[options.getIncrements],
-                           options.range[1]+1),
+                       min(stat['NumberOfIncrements'],options.range[1]+1),
                        options.range[2] )
 
-if options.getIncrements:                          # build list of increments to process
-  increments = locations                             # from increment range 
-else:
-  increments = [incAtPosition[x] for x in locations] # from position range
+increments = [incAtPosition[x] for x in locations] # build list of increments to process
 
 time_start = time.time()
 
-for incCount,location in enumerate(locations):     # walk through locations
-  if options.getIncrements:                        # we talk in increments
-    position = positionOfInc[location]             # map back the actual position in the result file
-  else:                                            # we talk positions anyway
-    position = location                            # just take it then
+for incCount,position in enumerate(locations):     # walk through locations
 
   p.moveto(position+offset_pos)                    # wind to correct position
 
@@ -1074,7 +1070,7 @@ for incCount,location in enumerate(locations):     # walk through locations
       member += 1
       if member%1000 == 0:
         time_delta = ((len(locations)*memberCount)/float(member+incCount*memberCount)-1.0)*(time.time()-time_start)
-        bg.set_message('(%02i:%02i:%02i) processing point %i of %i from %s %i...'%(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,{True:'increment',False:'position'}[options.getIncrements],position))
+        bg.set_message('(%02i:%02i:%02i) processing point %i of %i from increment %i (position %i)...'%(time_delta//3600,time_delta%3600//60,time_delta%60,member,memberCount,increments[incCount],position))
 
       newby = []                                                                   # current member's data
 
