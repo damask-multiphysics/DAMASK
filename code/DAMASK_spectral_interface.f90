@@ -1,7 +1,7 @@
 ! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the Düsseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -16,39 +16,60 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
+!--------------------------------------------------------------------------------------------------
 !* $Id$
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Interfacing between the spectral solver and the material subroutines provided
+!! by DAMASK
+!--------------------------------------------------------------------------------------------------
+module DAMASK_interface
 
-MODULE DAMASK_interface
  implicit none
+ private
+ character(len=64),   parameter, public  :: FEsolver = 'Spectral'                                   !> Keyword for spectral solver
+ character(len=5),    parameter, public  :: inputFileExtension = '.geom'                            !> File extension for geometry description
+ character(len=4),    parameter, public  :: logFileExtension = '.log'                               !> Dummy variable as the spectral solver has no log
+ character(len=1024),            private :: geometryParameter, &
+                                            loadcaseParameter
 
- character(len=64), parameter :: FEsolver = 'Spectral'
- character(len=5),  parameter :: InputFileExtension = '.geom'
- character(len=4),  parameter :: LogFileExtension = '.log'                                          !until now, we don't have a log file. But IO.f90 requires it
- character(len=1024) :: geometryParameter,loadcaseParameter
-CONTAINS
+ public  :: getSolverWorkingDirectoryName, &
+            getSolverJobName, &
+            getLoadCase, &
+            getLoadCaseName, &
+            getModelName, &
+            DAMASK_interface_init 
+ private :: rectifyPath, &
+            makeRelativePath, &
+            getPathSep
 
-!********************************************************************
-! initialize interface module
-!
-!********************************************************************
-subroutine DAMASK_interface_init()
- use, intrinsic :: iso_fortran_env                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use prec, only: pInt
+contains
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Initializes the solver by interpreting the command line arguments. Also writes
+!! information on computation on screen
+!--------------------------------------------------------------------------------------------------
+subroutine DAMASK_interface_init
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec,   only: pInt
+
  implicit none
-
- character(len=1024) commandLine, hostName, userName
- integer :: i, start = 0, length=0
- integer, dimension(8) ::  date_and_time_values                                                     ! type default integer
+ character(len=1024)   :: commandLine, &                                                            !> command line call as string
+                          hostName, &                                                               !> name of computer
+                          userName                                                                  !> name of user calling the executable
+ integer               :: i, &
+                          start = 0,&
+                          length=0
+ integer, dimension(8) :: dateAndTime                                                               ! type default integer
+ 
  call get_command(commandLine)
- call DATE_AND_TIME(VALUES=date_and_time_values)
- do i=1,len(commandLine)                                                                            ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i) = &
-                                                                 achar(iachar(commandLine(i:i))+32)
+ call date_and_time(values = dateAndTime)
+ do i = 1,len(commandLine)                                                                          ! remove capitals
+   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) & 
+                   commandLine(i:i) = achar(iachar(commandLine(i:i))+32)
  enddo
 
- if(index(commandLine,' -h ',.true.)>0 .or. index(commandLine,' --help ',.true.)>0) then            ! search for ' -h ' or '--help'
+ if(index(commandLine,' -h ',.true.) > 0 .or. index(commandLine,' --help ',.true.) > 0) then        ! search for ' -h ' or '--help'
    write(6,*) '$Id$'
 #include "compilation_info.f90"
    print '(a)',  '#############################################################'
@@ -146,12 +167,12 @@ subroutine DAMASK_interface_init()
  write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,*) '$Id$'
 #include "compilation_info.f90"
- write(6,'(a,2(i2.2,a),i4.4)') ' Date:               ',date_and_time_values(3),'/',&
-                                                       date_and_time_values(2),'/',&
-                                                       date_and_time_values(1) 
- write(6,'(a,2(i2.2,a),i2.2)') ' Time:               ',date_and_time_values(5),':',&
-                                                       date_and_time_values(6),':',&
-                                                       date_and_time_values(7)  
+ write(6,'(a,2(i2.2,a),i4.4)') ' Date:               ',dateAndTime(3),'/',&
+                                                       dateAndTime(2),'/',&
+                                                       dateAndTime(1) 
+ write(6,'(a,2(i2.2,a),i2.2)') ' Time:               ',dateAndTime(5),':',&
+                                                       dateAndTime(6),':',&
+                                                       dateAndTime(7)  
  write(6,*) 'Host Name:          ', trim(hostName)
  write(6,*) 'User Name:          ', trim(userName)
  write(6,*) 'Path Separator:     ', getPathSep()
@@ -160,17 +181,15 @@ subroutine DAMASK_interface_init()
  write(6,*) 'Loadcase Parameter: ', trim(loadcaseParameter)
  if (start/=3_pInt) write(6,*) 'Restart Parameter:  ', trim(commandLine(start:start+length))
 
-endsubroutine DAMASK_interface_init
+end subroutine DAMASK_interface_init
 
-!********************************************************************
-! extract working directory from loadcase file
-! possibly based on current working dir
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief  extract working directory from loadcase file possibly based on current working dir
+!--------------------------------------------------------------------------------------------------
 function getSolverWorkingDirectoryName()
 
  implicit none
-
- character(len=1024) cwd,getSolverWorkingDirectoryName
+ character(len=1024) :: cwd, getSolverWorkingDirectoryName
  character :: pathSep
 
  pathSep = getPathSep()
@@ -184,33 +203,29 @@ function getSolverWorkingDirectoryName()
 
  getSolverWorkingDirectoryName = rectifyPath(getSolverWorkingDirectoryName)
  
-endfunction getSolverWorkingDirectoryName
+end function getSolverWorkingDirectoryName
 
-!********************************************************************
-! basename of geometry file from command line arguments
-!
-!********************************************************************
-function getSolverJobName()
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  basename of geometry file from command line arguments
+!--------------------------------------------------------------------------------------------------
+character(len=1024) function getSolverJobName()
 
  implicit none
-
- character(1024) :: getSolverJobName
-
  getSolverJobName = trim(getModelName())//'_'//trim(getLoadCase())
 
-endfunction getSolverJobName
+end function getSolverJobName
 
-!********************************************************************
-! basename of geometry file from command line arguments
-!
-!********************************************************************
-function getModelName()
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  basename of geometry file from command line arguments
+!--------------------------------------------------------------------------------------------------
+character(len=1024) function getModelName()
 
  use prec, only: pInt
 
  implicit none
-
- character(1024) getModelName, cwd
+ character(len=1024) :: cwd
  integer :: posExt,posSep
  character :: pathSep
 
@@ -231,17 +246,15 @@ function getModelName()
  getModelName = makeRelativePath(getSolverWorkingDirectoryName(),&
                                  getModelName)
                                  
-endfunction getModelName
+end function getModelName
 
-!********************************************************************
-! name of load case file exluding extension
-!
-!********************************************************************
-function getLoadCase()
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  name of load case file exluding extension
+!--------------------------------------------------------------------------------------------------
+character(len=1024) function getLoadCase()
 
  implicit none
-
- character(1024) :: getLoadCase
  integer :: posExt,posSep
  character :: pathSep
 
@@ -249,21 +262,19 @@ function getLoadCase()
  posExt = scan(loadcaseParameter,'.',back=.true.)
  posSep = scan(loadcaseParameter,pathSep,back=.true.)
 
- if (posExt <= posSep) posExt = len_trim(loadcaseParameter)+1           ! no extension present
- getLoadCase = loadcaseParameter(posSep+1:posExt-1)                 ! name of load case file exluding extension
+ if (posExt <= posSep) posExt = len_trim(loadcaseParameter)+1                                       ! no extension present
+ getLoadCase = loadcaseParameter(posSep+1:posExt-1)                                                 ! name of load case file exluding extension
 
-endfunction getLoadCase
+end function getLoadCase
 
 
-!********************************************************************
-! relative path of loadcase from command line arguments
-!
-!********************************************************************
-function getLoadcaseName()
+!--------------------------------------------------------------------------------------------------
+!> @brief relative path of loadcase from command line arguments
+!--------------------------------------------------------------------------------------------------
+character(len=1024) function getLoadcaseName()
 
  implicit none
-
- character(len=1024) :: getLoadcaseName,cwd
+ character(len=1024) :: cwd
  integer :: posExt = 0, posSep
  character :: pathSep
 
@@ -272,8 +283,8 @@ function getLoadcaseName()
  posExt = scan(getLoadcaseName,'.',back=.true.)
  posSep = scan(getLoadcaseName,pathSep,back=.true.)
 
- if (posExt <= posSep) getLoadcaseName = trim(getLoadcaseName)//('.load')   ! no extension present
- if (scan(getLoadcaseName,pathSep) /= 1) then          ! relative path given as command line argument
+ if (posExt <= posSep) getLoadcaseName = trim(getLoadcaseName)//('.load')                           ! no extension present
+ if (scan(getLoadcaseName,pathSep) /= 1) then                                                       ! relative path given as command line argument
    call getcwd(cwd)
    getLoadcaseName = rectifyPath(trim(cwd)//pathSep//getLoadcaseName)
  else
@@ -282,17 +293,15 @@ function getLoadcaseName()
 
  getLoadcaseName = makeRelativePath(getSolverWorkingDirectoryName(),&
                                     getLoadcaseName)
-endfunction getLoadcaseName
+end function getLoadcaseName
 
 
-!********************************************************************
-! remove ../ and ./ from path
-!
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief remove ../ and ./ from path
+!--------------------------------------------------------------------------------------------------
 function rectifyPath(path)
 
  implicit none
-
  character(len=*) :: path
  character(len=len_trim(path)) :: rectifyPath
  character :: pathSep
@@ -315,7 +324,7 @@ function rectifyPath(path)
  do while (i > j)
     j = scan(rectifyPath(1:i-2),pathSep,back=.true.)
     rectifyPath(j+1:l) = rectifyPath(i+3:l)//repeat(' ',2+i-j)
-    if (rectifyPath(j+1:j+1) == pathSep) then !search for '//' that appear in case of XXX/../../XXX
+    if (rectifyPath(j+1:j+1) == pathSep) then                                                       !search for '//' that appear in case of XXX/../../XXX
       k = len_trim(rectifyPath)
       rectifyPath(j+1:k-1) = rectifyPath(j+2:k)
       rectifyPath(k:k) = ' '
@@ -324,19 +333,16 @@ function rectifyPath(path)
  enddo
  if(len_trim(rectifyPath) == 0) rectifyPath = pathSep
 
- end function rectifyPath
+end function rectifyPath
 
-
-!********************************************************************
-! relative path from absolute a to absolute b
-!
-!********************************************************************
-function makeRelativePath(a,b)
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief relative path from absolute a to absolute b
+!--------------------------------------------------------------------------------------------------
+character(len=1024) function makeRelativePath(a,b)
 
  implicit none
-
  character (len=*) :: a,b
- character (len=1024) :: makeRelativePath
  character :: pathSep
  integer :: i,posLastCommonSlash,remainingSlashes !no pInt
 
@@ -353,18 +359,18 @@ function makeRelativePath(a,b)
  enddo
  makeRelativePath = repeat('..'//pathSep,remainingSlashes)//b(posLastCommonSlash+1:len_trim(b))
 
-endfunction makeRelativePath
+end function makeRelativePath
 
 
-!********************************************************************
-! counting / and \ in $PATH System variable
-! the character occuring more often is assumed to be the path separator
-!********************************************************************
-function getPathSep()
+!--------------------------------------------------------------------------------------------------
+!> @brief counting / and \ in $PATH System variable the character occuring more often is assumed
+!! to be the path separator
+!--------------------------------------------------------------------------------------------------
+character function getPathSep()
 
  use prec, only: pInt
+
  implicit none
- character :: getPathSep
  character(len=2048) path
  integer(pInt) :: backslash = 0_pInt, slash = 0_pInt
  integer :: i
@@ -383,4 +389,4 @@ function getPathSep()
 
 end function
 
-END MODULE
+end module

@@ -135,8 +135,7 @@ COMPILE_OPTIONS_ifort    :=-fpp\
                            -warn ignore_loc\
                            -warn alignments\
                            -warn unused\
-                           -warn errors\
-                           -warn stderrors
+                           -warn errors
 endif
 
 #-fpp:                     preprocessor
@@ -152,7 +151,7 @@ endif
 #   alignments:              data that is not naturally aligned
 #   unused:                  declared variables that are never used
 #   errors:                  warnings are changed to errors
-#   stderrors:               warnings about Fortran standard violations are changed to errors
+#   stderrors:               warnings about Fortran standard violations are changed to errors (STANDARD_CHECK)
 #
 ###################################################################################################
 #MORE OPTIONS FOR DEBUGGING DURING COMPILING
@@ -182,7 +181,8 @@ endif
 ###################################################################################################
 
 ifeq "$(FASTBUILD)" "YES"
-COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
+COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
+                           -fno-range-check
 else
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -ffree-line-length-132\
@@ -205,7 +205,8 @@ COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -Wunsafe-loop-optimizations\
                            -Wunused\
                            -Wall\
-                           -Wextra
+                           -Wextra\
+                           -Wintrinsics-std
 endif
 
 #-xf95-cpp-input:              preprocessor
@@ -231,20 +232,20 @@ endif
 #        -value:
 #        -parameter:           find usused variables with "parameter" attribute
 #-Wextra:
+#-Wintrinsics-std:             warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:                        
 ###################################################################################################
 #OPTIONS FOR GFORTRAN 4.6
 #-Wsuggest-attribute=const:
 #-Wsuggest-attribute=noreturn:
 #-Wsuggest-attribute=pure:  
 #-Wreal-q-constant:            Warn about real-literal-constants with 'q'  exponent-letter
+#
 #MORE OPTIONS FOR DEBUGGING DURING COMPILING                      
 #-Wline-truncation:           too many warnings because we have comments beyond character 132
-#-Wintrinsic-std:             warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:                        
-#-Warray-temporarieswarnings:
-#                             because we have many temporary arrays (performance issue?):                     
-#-Wimplicit-interface
-#-pedantic-errors
-#-fmodule-private
+#-Warray-temporarieswarnings: because we have many temporary arrays (performance issue?):                     
+#-Wimplicit-interface:
+#-pedantic-errors:
+#-fmodule-private:
 #
 #OPTIONS FOR DEGUBBING DURING RUNTIME
 #-fcheck-bounds:              check if an array index is too small (<1) or too large!
@@ -264,7 +265,7 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math
                  homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o crystallite.o
          
 DAMASK_spectral.exe: DAMASK_spectral.o 
-	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90))$(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
+	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral.o \
   $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
 

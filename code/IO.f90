@@ -19,118 +19,319 @@
 !##############################################################
 !* $Id$
 !##############################################################
- MODULE IO   
+module IO   
 !##############################################################
+ use prec, only: pInt, pReal
  
- CONTAINS
-!---------------------------
-! function IO_abaqus_assembleInputFile
-! subroutine IO_open_file(myUnit,relPath)
-! subroutine IO_open_inputFile(myUnit, model)
-! subroutine IO_open_logFile(myUnit)
-! function IO_hybridIA(Nast,ODFfileName)
-! private function hybridIA_reps(dV_V,steps,C)
-! function IO_stringPos(line,maxN)
-! function IO_stringValue(line,positions,myPos)
-! function IO_floatValue(line,positions,myPos)
-! function IO_intValue(line,positions,myPos)
-! function IO_fixedStringValue(line,ends,myPos)
-! function IO_fixedFloatValue(line,ends,myPos)
-! function IO_fixedFloatNoEValue(line,ends,myPos)
-! function IO_fixedIntValue(line,ends,myPos)
-! function IO_continousIntValues(myUnit,maxN)
-! function IO_lc(line)
-! subroutine IO_lcInplace(line)
-! subroutine IO_error(ID)
-! subroutine IO_warning(ID)
-!---------------------------
+ implicit none
+ private
+ public ::  IO_init, &
+            IO_open_file_stat, &
+            IO_open_jobFile_stat, &
+            IO_open_file, &
+            IO_open_jobFile, &
+            IO_open_inputFile, &
+            IO_open_logFile, &
+            IO_write_jobFile, &
+            IO_write_jobBinaryFile, &
+            IO_read_jobBinaryFile, &
+            IO_abaqus_hasNoPart, &
+            IO_hybridIA, &
+            IO_isBlank, &
+            IO_getTag, &
+            IO_countSections, &
+            IO_countTagInPart, &
+            IO_spotTagInPart, &
+            IO_stringPos, &
+            IO_stringValue, &
+            IO_fixedStringValue ,&
+            IO_floatValue, &
+            IO_fixedNoEFloatValue, &
+            IO_intValue, &
+            IO_fixedIntValue, &
+            IO_lc, &
+            IO_skipChunks, &
+            IO_extractValue, &
+            IO_countDataLines, &
+            IO_countContinousIntValues, &
+            IO_continousIntValues, &
+            IO_error, &
+            IO_warning
+ private :: IO_fixedFloatValue, &
+            IO_lcInplace ,&
+            abaqus_assembleInputFile, &
+            hybridIA_reps
+
+contains
+
 
 !********************************************************************
 ! output version number
 !********************************************************************
-subroutine IO_init ()
+subroutine IO_init
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
-use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   !$OMP CRITICAL (write2out)
   write(6,*)
   write(6,*) '<<<+-  IO init  -+>>>'
   write(6,*) '$Id$'
 #include "compilation_info.f90"
-  call flush(6)
+  flush(6)
   !$OMP END CRITICAL (write2out)
+
+end subroutine IO_init
+
+
+!********************************************************************
+! open existing file to given myUnit
+! path to file is relative to working directory
+!********************************************************************
+logical function IO_open_file_stat(myUnit,relPath)
+
+ use DAMASK_interface, only: getSolverWorkingDirectoryName
  
-endsubroutine
-
-
-
-!********************************************************************
-! AP: 12.07.10
-!    create a new input file for abaqus simulations
-!    by removing all comment lines and including "include"s
-!********************************************************************
-recursive function IO_abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
- use prec, only : pInt
- use DAMASK_interface
  implicit none
- 
- character(len=300) line,fname
- integer(pInt), intent(in) :: unit1, unit2
- logical createSuccess,fexist
- integer(pInt), parameter :: maxNchunks = 6_pInt
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt),      intent(in) :: myUnit
+ character(len=*),   intent(in) :: relPath
 
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
  
- do
-   read(unit2,'(A300)',END=220) line
-!   line = IO_lc(trim(line))
-!  do not change the whole line to lower case, file names in Linux are case sensitive!
-   positions = IO_stringPos(line,maxNchunks)
+ path = trim(getSolverWorkingDirectoryName())//relPath
+ open(myUnit,status='old',iostat=myStat,file=path)
+ IO_open_file_stat = (myStat == 0_pInt)
+ 
+end function IO_open_file_stat
 
-!   call IO_lcInPlace(line)
-   if (IO_lc(IO_StringValue(line,positions,1_pInt))=='*include') then
-     fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
-     inquire(file=fname, exist=fexist)
-     if (.not.(fexist)) then
-       !$OMP CRITICAL (write2out)
-         write(6,*)'ERROR: file does not exist error in IO_abaqus_assembleInputFile'
-         write(6,*)'filename: ', trim(fname)
-       !$OMP END CRITICAL (write2out)
-       createSuccess = .false.
-       return
-     endif
-     open(unit2+1,err=200,status='old',file=fname)
-     if (IO_abaqus_assembleInputFile(unit1,unit2+1_pInt)) then
-       createSuccess=.true.
-       close(unit2+1)
-     else
-       createSuccess=.false.
-       return
-     endif
-   else if (line(1:2) /= '**') then 
-     write(unit1,'(A)') trim(line)
-   endif
- enddo
- 
-220 createSuccess = .true.
- return
- 
-200 createSuccess =.false.
 
-end function
+!********************************************************************
+! open (write) file related to current job
+! but with different extension to given myUnit
+!********************************************************************
+logical function IO_open_jobFile_stat(myUnit,newExt)
+
+ use DAMASK_interface,       only: getSolverWorkingDirectoryName, &
+                                   getSolverJobName
+
+ implicit none
+ integer(pInt),      intent(in) :: myUnit
+ character(len=*),   intent(in) :: newExt
+
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
+
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ open(myUnit,status='old',iostat=myStat,file=path)
+ IO_open_jobFile_stat = (myStat == 0_pInt)
+
+end function IO_open_JobFile_stat
+
+
+!********************************************************************
+! open existing file to given unit
+! path to file is relative to working directory
+!********************************************************************
+subroutine IO_open_file(myUnit,relPath)
+
+ use DAMASK_interface,       only: getSolverWorkingDirectoryName
+ 
+ implicit none
+ integer(pInt),      intent(in) :: myUnit
+ character(len=*),   intent(in) :: relPath
+
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
+ 
+ path = trim(getSolverWorkingDirectoryName())//relPath
+ open(myUnit,status='old',iostat=myStat,file=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ 
+end subroutine IO_open_file
+
+
+!********************************************************************
+! open (write) file related to current job
+! but with different extension to given unit
+!********************************************************************
+subroutine IO_open_jobFile(myUnit,newExt)
+
+ use DAMASK_interface,       only: getSolverWorkingDirectoryName, &
+                                   getSolverJobName
+
+ implicit none
+ integer(pInt),      intent(in) :: myUnit
+ character(len=*),   intent(in) :: newExt
+
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
+
+
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ open(myUnit,status='old',iostat=myStat,file=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ 
+end subroutine IO_open_jobFile
+
+
+!********************************************************************
+! open FEM inputfile to given myUnit
+! AP: 12.07.10 
+!   : changed the function to open *.inp_assembly, which is basically 
+!     the input file without comment lines and possibly assembled includes
+!********************************************************************
+subroutine IO_open_inputFile(myUnit,model)
+
+ use DAMASK_interface,       only: getSolverWorkingDirectoryName,&
+                                   getSolverJobName, &
+                                   inputFileExtension, &
+                                   FEsolver
+
+ implicit none
+ integer(pInt),      intent(in) :: myUnit
+ character(len=*),   intent(in) :: model
+
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
+ 
+ if (FEsolver == 'Abaqus') then
+
+   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+   open(myUnit+1,status='old',iostat=myStat,file=path)
+   if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+   
+   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension//'_assembly'
+   open(myUnit,iostat=myStat,file=path)
+   if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+      if (abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
+   close(myUnit+1_pInt) 
+ 
+ else
+   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+   open(myUnit,status='old',iostat=myStat,file=path)
+   if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+
+ endif
+
+end subroutine IO_open_inputFile
+
+
+!********************************************************************
+! open FEM logfile to given myUnit
+!********************************************************************
+subroutine IO_open_logFile(myUnit)
+
+ use DAMASK_interface,       only: getSolverWorkingDirectoryName, &
+                                   getSolverJobName, &
+                                   LogFileExtension
+
+ implicit none
+ integer(pInt),      intent(in) :: myUnit
+
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
+
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//LogFileExtension
+ open(myUnit,status='old',iostat=myStat,file=path)
+ if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
+
+end subroutine IO_open_logFile
+
+
+!********************************************************************
+! open (write) file related to current job
+! but with different extension to given myUnit
+!********************************************************************
+subroutine IO_write_jobFile(myUnit,newExt)
+
+ use DAMASK_interface,       only: getSolverWorkingDirectoryName,&
+                                   getSolverJobName
+ 
+ implicit none
+ integer(pInt),      intent(in) :: myUnit
+ character(len=*),   intent(in) :: newExt
+
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
+
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ open(myUnit,status='replace',iostat=myStat,file=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ 
+end subroutine IO_write_jobFile
+
+
+!********************************************************************
+! open (write) binary file related to current job
+! but with different extension to given myUnit
+!********************************************************************
+subroutine IO_write_jobBinaryFile(myUnit,newExt,recMultiplier)
+
+ use DAMASK_interface,                 only: getSolverWorkingDirectoryName, &
+                                             getSolverJobName
+ 
+ implicit none
+ integer(pInt),      intent(in)           :: myUnit
+ integer(pInt),      intent(in), optional :: recMultiplier
+ character(len=*),   intent(in)           :: newExt
+
+ integer(pInt)                            :: myStat
+ character(len=1024)                      :: path
+
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ if (present(recMultiplier)) then
+   open(myUnit,status='replace',form='unformatted',access='direct', &
+                                                   recl=pReal*recMultiplier,iostat=myStat,file=path)
+ else
+   open(myUnit,status='replace',form='unformatted',access='direct', &
+                                                   recl=pReal,iostat=myStat,file=path)
+ endif
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ 
+end subroutine IO_write_jobBinaryFile
+
+
+!********************************************************************
+! open (read) binary file related to restored job
+! and with different extension to given myUnit
+!********************************************************************
+subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
+
+ use DAMASK_interface,                 only: getSolverWorkingDirectoryName
+ 
+ implicit none
+ integer(pInt),      intent(in)           :: myUnit
+ integer(pInt),      intent(in), optional :: recMultiplier
+ character(len=*),   intent(in)           :: newExt, jobName
+
+ integer(pInt)                            :: myStat
+ character(len=1024)                      :: path
+
+ path = trim(getSolverWorkingDirectoryName())//trim(jobName)//'.'//newExt
+ if (present(recMultiplier)) then
+   open(myUnit,status='old',form='unformatted',access='direct', & 
+                                               recl=pReal*recMultiplier,iostat=myStat,file=path)
+ else
+   open(myUnit,status='old',form='unformatted',access='direct', &
+                                               recl=pReal,iostat=myStat,file=path)
+ endif
+ if (myStat /= 0) then
+   call IO_error(100_pInt,ext_msg=path)
+ endif
+ 
+end subroutine IO_read_jobBinaryFile
+
 
 !***********************************************************
 ! check if the input file for Abaqus contains part info
 !***********************************************************
- function IO_abaqus_hasNoPart(myUnit)
- 
- use prec, only: pInt
+logical function IO_abaqus_hasNoPart(myUnit)
+
  implicit none
- 
- integer(pInt) myUnit
- integer(pInt), parameter :: maxNchunks = 1_pInt
- integer(pInt), dimension(1+2*maxNchunks) :: myPos
- logical IO_abaqus_hasNoPart
- character(len=300) line
+ integer(pInt),    intent(in)                :: myUnit
+
+ integer(pInt),    parameter                 :: maxNchunks = 1_pInt
+ integer(pInt),    dimension(1+2*maxNchunks) :: myPos
+ character(len=300)                          :: line
  
  IO_abaqus_hasNoPart = .true.
  
@@ -145,283 +346,35 @@ end function
    endif
  enddo
  
-620 endfunction
-
-
-
-!********************************************************************
-! open existing file to given myUnit
-! path to file is relative to working directory
-!********************************************************************
- logical function IO_open_file_stat(myUnit,relPath)
-
- use prec, only: pInt
- use DAMASK_interface
- 
- implicit none
- integer(pInt), intent(in) :: myUnit
- character(len=*), intent(in) :: relPath
- character(len=1024) path
- integer(pInt) stat
- 
- path = trim(getSolverWorkingDirectoryName())//relPath
- open(myUnit,status='old',iostat=stat,file=path)
- IO_open_file_stat = (stat == 0_pInt)
- 
- endfunction
-
-
-!********************************************************************
-! open existing file to given unit
-! path to file is relative to working directory
-!********************************************************************
- subroutine IO_open_file(myUnit,relPath)
-
- use prec, only: pInt
- use DAMASK_interface
- 
- implicit none
- integer(pInt), intent(in) ::myUnit
- character(len=*), intent(in) :: relPath
- character(len=1024) path
- integer(pInt) stat
- 
- path = trim(getSolverWorkingDirectoryName())//relPath
- open(myUnit,status='old',iostat=stat,file=path)
- if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
- 
- endsubroutine
-
-
-!********************************************************************
-! open FEM inputfile to given myUnit
-! AP: 12.07.10 
-!   : changed the function to open *.inp_assembly, which is basically 
-!     the input file without comment lines and possibly assembled includes
-!********************************************************************
- subroutine IO_open_inputFile(myUnit,model)
-
- use prec, only: pInt
- use DAMASK_interface
- implicit none
-
- integer(pInt), intent(in) :: myUnit
- character(len=*), intent(in) :: model
- character(len=1024) path
- integer(pInt) stat
-
- 
- if (FEsolver == 'Abaqus') then
-
-   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
-   open(myUnit+1,status='old',iostat=stat,file=path)
-   if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
-   
-   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension//'_assembly'
-   open(myUnit,iostat=stat,file=path)
-   if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
-      if (IO_abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
-   close(myUnit+1_pInt) 
- 
- else
-   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
-   open(myUnit,status='old',iostat=stat,file=path)
-   if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
-
- endif
-
- endsubroutine
-
-
-!********************************************************************
-! open FEM logfile to given myUnit
-!********************************************************************
- subroutine IO_open_logFile(myUnit)
- use prec, only: pInt
- use DAMASK_interface
- implicit none
-
- integer(pInt), intent(in) :: myUnit
- character(len=1024) path
- integer(pInt) stat
-
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//LogFileExtension
- open(myUnit,status='old',iostat=stat,file=path)
- if (stat /= 0) call IO_error(100_pInt,ext_msg=path)
-
- endsubroutine
-
-
-!********************************************************************
-! open (write) file related to current job
-! but with different extension to given myUnit
-!********************************************************************
- logical function IO_open_jobFile_stat(myUnit,newExt)
-
- use prec, only: pInt
- use DAMASK_interface
- implicit none
-
- integer(pInt), intent(in) :: myUnit
- character(len=*), intent(in) :: newExt
- character(len=1024) path
- integer(pInt) stat
-
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
- open(myUnit,status='old',iostat=stat,file=path)
- IO_open_jobFile_stat = (stat == 0_pInt)
-
- endfunction
-
-
-!********************************************************************
-! open (write) file related to current job
-! but with different extension to given unit
-!********************************************************************
- subroutine IO_open_jobFile(myUnit,newExt)
-
- use prec, only:  pInt
- use DAMASK_interface
- implicit none
-
- integer(pInt), intent(in) :: myUnit
- character(len=*), intent(in) :: newExt
- character(len=1024) path
- integer(pInt) stat
-
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
- open(myUnit,status='old',iostat=stat,file=path)
- if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
- 
- endsubroutine
-
-
-!********************************************************************
-! open (write) file related to current job
-! but with different extension to given myUnit
-!********************************************************************
- subroutine IO_write_jobFile(myUnit,newExt)
-
- use prec, only: pInt
- use DAMASK_interface
- implicit none
-
- integer(pInt), intent(in) :: myUnit
- character(len=*), intent(in) :: newExt
- character(len=1024) path
- integer(pInt) stat
-
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
- open(myUnit,status='replace',iostat=stat,file=path)
- if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
- 
- endsubroutine
-
-
-!********************************************************************
-! open (write) binary file related to current job
-! but with different extension to given myUnit
-!********************************************************************
- subroutine IO_write_jobBinaryFile(myUnit,newExt,recMultiplier)
-
- use prec, only: pInt, pReal
- use DAMASK_interface
- implicit none
-
- integer(pInt), intent(in) :: myUnit
- integer(pInt), intent(in), optional :: recMultiplier
- character(len=*), intent(in) :: newExt
- character(len=1024) path
- integer(pInt) stat
-
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
- if (present(recMultiplier)) then
-   open(myUnit,status='replace',form='unformatted',access='direct',recl=pReal*recMultiplier,iostat=stat,file=path)
- else
-   open(myUnit,status='replace',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
- endif
- if (stat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
- 
- endsubroutine
-
-
-!********************************************************************
-! open (read) binary file related to restored job
-! and with different extension to given myUnit
-!********************************************************************
- subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
-
- use prec, only: pInt, pReal
- use DAMASK_interface
- implicit none
-
- integer(pInt), intent(in) :: myUnit
- integer(pInt), intent(in), optional :: recMultiplier
- character(len=*), intent(in) :: newExt, jobName
- character(len=1024) path
- integer(pInt) stat
-
- path = trim(getSolverWorkingDirectoryName())//trim(jobName)//'.'//newExt
- if (present(recMultiplier)) then
-   open(myUnit,status='old',form='unformatted',access='direct',recl=pReal*recMultiplier,iostat=stat,file=path)
- else
-   open(myUnit,status='old',form='unformatted',access='direct',recl=pReal,iostat=stat,file=path)
- endif
- if (stat /= 0) then
-   call IO_error(100_pInt,ext_msg=path)
- endif
- 
- endsubroutine
-
-
-!********************************************************************
-! hybrid IA repetition counter
-!********************************************************************
- function hybridIA_reps(dV_V,steps,C)
-
- use prec, only: pReal, pInt
- implicit none
- 
- integer(pInt), intent(in), dimension(3) :: steps
- integer(pInt) hybridIA_reps, phi1,Phi,phi2
- real(pReal), intent(in), dimension(steps(3),steps(2),steps(1)) :: dV_V
- real(pReal), intent(in) :: C
- 
- hybridIA_reps = 0_pInt
- do phi1=1_pInt,steps(1)
-   do Phi =1_pInt,steps(2)
-     do phi2=1_pInt,steps(3)
-       hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
-     enddo
-   enddo
- enddo
- 
- endfunction
+620 end function IO_abaqus_hasNoPart
 
 
 !********************************************************************
 ! hybrid IA sampling of ODFfile
 !********************************************************************
- function IO_hybridIA(Nast,ODFfileName)
+function IO_hybridIA(Nast,ODFfileName)
 
- use prec, only: pInt, pReal
  implicit none
- 
- real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
- real(pReal), parameter :: inRad = pi/180.0_pReal
-
- character(len=*) ODFfileName
- character(len=80) line
- character(len=*), parameter :: fileFormat = '(A80)'
- integer(pInt) i,j,bin,Nast,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
- integer(pInt), dimension(7) :: myPos
- integer(pInt), dimension(3) :: steps
- integer(pInt), dimension(:), allocatable :: binSet
- real(pReal) center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
- real(pReal), dimension(3) :: limits,deltas
- real(pReal), dimension(:,:,:), allocatable :: dV_V
+ integer(pInt),    intent(in)   :: Nast
  real(pReal), dimension(3,Nast) :: IO_hybridIA
 
+ character(len=*), intent(in)   :: ODFfileName
+
+ real(pReal),      parameter  :: PI = 3.14159265358979323846264338327950288419716939937510_pReal
+ real(pReal),      parameter  :: INRAD = PI/180.0_pReal
+ character(len=*), parameter  :: fileFormat = '(A80)'
+
+ integer(pInt) :: i,j,bin,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
+ integer(pInt), dimension(7)                :: myPos
+ integer(pInt), dimension(3)                :: steps
+ integer(pInt), dimension(:), allocatable   :: binSet
+ real(pReal) :: center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
+ real(pReal), dimension(3)                  :: limits, &
+                                               deltas
+
+ real(pReal), dimension(:,:,:), allocatable :: dV_V
+ character(len=80) :: line
+ 
  call IO_open_file(999_pInt,ODFfileName)
  
 !--- parse header of ODF file ---
@@ -430,7 +383,7 @@ end function
  myPos = IO_stringPos(line,3_pInt)
  if (myPos(1).ne.3) goto 100
  do i=1_pInt,3_pInt
-   limits(i) = IO_floatValue(line,myPos,i)*inRad
+   limits(i) = IO_floatValue(line,myPos,i)*INRAD
  enddo
 
 !--- deltas in phi1, Phi, phi2 ---
@@ -438,7 +391,7 @@ end function
  myPos = IO_stringPos(line,3_pInt)
  if (myPos(1).ne.3) goto 100
  do i=1_pInt,3_pInt
-   deltas(i) = IO_floatValue(line,myPos,i)*inRad
+   deltas(i) = IO_floatValue(line,myPos,i)*INRAD
  enddo
  steps = nint(limits/deltas,pInt)
  allocate(dV_V(steps(3),steps(2),steps(1)))
@@ -536,39 +489,44 @@ end function
 100 IO_hybridIA = -1.0_pReal
  close(999)
  
- endfunction 
+end function IO_hybridIA
 
 
 !********************************************************************
 ! identifies lines without content
 !********************************************************************
- pure function IO_isBlank (line)
+logical pure function IO_isBlank(line)
 
  implicit none
-
  character(len=*), intent(in) :: line
- character(len=*), parameter :: blank = achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
- character(len=*), parameter :: comment = achar(35)                               ! comment id '#'
- integer :: posNonBlank, posComment !no pInt
- logical IO_isBlank
+
+ character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
+ character(len=*),  parameter :: comment = achar(35)                               ! comment id '#'
+
+ integer :: posNonBlank, posComment                                                ! no pInt
  
- posNonBlank = verify(line,blank)
+ posNonBlank = verify(line,blankChar)
  posComment  = scan(line,comment)
  IO_isBlank = posNonBlank == 0 .or. posNonBlank == posComment
  
- endfunction
+end function IO_isBlank
+
 
 !********************************************************************
 ! get tagged content of line
 !********************************************************************
- pure function IO_getTag (line,openChar,closeChar)
+pure function IO_getTag(line,openChar,closeChar)
 
  implicit none
+ character(len=*), intent(in)  :: line
+ character(len=len_trim(line)) :: IO_getTag
+ 
+ character(len=*), intent(in)  :: openChar, & 
+                                  closeChar
 
- character(len=*), intent(in) :: line,openChar,closeChar
- character(len=*), parameter :: sep=achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
- character(len=len_trim(line)) IO_getTag
- integer :: left,right         !no pInt
+ character(len=*), parameter   :: sep=achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
+
+ integer :: left,right                                                          ! no pInt
 
  IO_getTag = ''
  left = scan(line,openChar)
@@ -577,68 +535,67 @@ end function
  if (left == verify(line,sep) .and. right > left) & ! openChar is first and closeChar occurs
    IO_getTag = line(left+1:right-1)
 
- endfunction
-
+end function IO_getTag
 
 !*********************************************************************
- function IO_countSections(file,part)
+!
 !*********************************************************************
- use prec, only: pInt
+integer(pInt) function IO_countSections(myFile,part)
+
  implicit none
+ integer(pInt),      intent(in) :: myFile
+ character(len=*),   intent(in) :: part
 
-!* Definition of variables
- integer(pInt), intent(in) :: file
- character(len=*), intent(in) :: part
- integer(pInt) IO_countSections
- character(len=1024) line
+ character(len=1024)            :: line = ''
 
  IO_countSections = 0_pInt
- line = ''
- rewind(file)
+ rewind(myFile)
 
  do while (IO_getTag(line,'<','>') /= part)      ! search for part
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
  enddo
 
  do
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
      IO_countSections = IO_countSections + 1_pInt
  enddo
 
-100 endfunction
+100 end function IO_countSections
  
 
 !*********************************************************************
 ! return array of myTag counts within <part> for at most N[sections]
 !*********************************************************************
- function IO_countTagInPart(file,part,myTag,Nsections)
+function IO_countTagInPart(myFile,part,myTag,Nsections)
 
- use prec, only: pInt
  implicit none
+ integer(pInt),   intent(in)                :: Nsections
+ integer(pInt),   dimension(Nsections)      :: IO_countTagInPart
+ 
+ integer(pInt),   intent(in)                :: myFile
+ character(len=*),intent(in)                :: part, &
+                                               myTag
 
-!* Definition of variables
- integer(pInt), intent(in) :: file, Nsections
- character(len=*), intent(in) :: part, myTag
- integer(pInt), dimension(Nsections) :: IO_countTagInPart, counter
- integer(pInt), parameter :: maxNchunks = 1_pInt
- integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section
- character(len=1024) line,tag
+ integer(pInt),   parameter                 :: maxNchunks = 1_pInt
 
+ integer(pInt),   dimension(Nsections)      :: counter
+ integer(pInt),   dimension(1+2*maxNchunks) :: positions
+ integer(pInt)                              :: section = 0_pInt
+ character(len=1024)                        :: line ='', &
+                                               tag
+
+ rewind(myFile)
  counter = 0_pInt
- section = 0_pInt
- line = ''
- rewind(file)
-
+ 
  do while (IO_getTag(line,'<','>') /= part)               ! search for part
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
  enddo
 
  do
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
@@ -653,37 +610,40 @@ end function
 
 100 IO_countTagInPart = counter
 
-endfunction
+end function IO_countTagInPart
 
 
 !*********************************************************************
 ! return array of myTag presence within <part> for at most N[sections]
 !*********************************************************************
- function IO_spotTagInPart(file,part,myTag,Nsections)
+function IO_spotTagInPart(myFile,part,myTag,Nsections)
 
- use prec, only: pInt
  implicit none
-
-!* Definition of variables
- integer(pInt), intent(in) :: file, Nsections
- character(len=*), intent(in) :: part, myTag
+ integer(pInt),    intent(in)  :: Nsections
  logical, dimension(Nsections) :: IO_spotTagInPart
- integer(pInt), parameter :: maxNchunks = 1_pInt
+ 
+ integer(pInt),    intent(in)  :: myFile
+ character(len=*), intent(in)  :: part, &
+                                  myTag
+
+ integer(pInt), parameter     :: maxNchunks = 1_pInt
+
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section
- character(len=1024) line,tag
+ integer(pInt)                            :: section
+ character(len=1024)                      :: line, &
+                                             tag
 
  IO_spotTagInPart = .false.                               ! assume to nowhere spot tag
  section = 0_pInt
  line = ''
- rewind(file)
+ rewind(myFile)
 
  do while (IO_getTag(line,'<','>') /= part)               ! search for part
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
  enddo
 
  do
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
@@ -696,29 +656,31 @@ endfunction
    endif   
  enddo
 
-100 endfunction
+100 end function IO_spotTagInPart
+
 
 !********************************************************************
 ! locate at most N space-separated parts in line
 ! return array containing number of parts in line and
 ! the left/right positions of at most N to be used by IO_xxxVal
 !********************************************************************
-! pure function IO_stringPos (line,N)
- function IO_stringPos (line,N)
+pure function IO_stringPos(line,N)
 
- use prec, only: pInt
  implicit none
-
+ integer(pInt),    intent(in) :: N
+ integer(pInt)                ::  IO_stringPos(1_pInt+N*2_pInt)
+ 
  character(len=*), intent(in) :: line
- character(len=*), parameter :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13) ! comma and whitespaces
- integer(pInt), intent(in) :: N
- integer :: left,right                   !no pInt (verify and scan return default integer)
- integer(pInt) ::  IO_stringPos(1_pInt+N*2_pInt)
+ 
+ character(len=*), parameter  :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13) ! comma and whitespaces
+
+ integer                      :: left, right                      !no pInt (verify and scan return default integer)
+
 
  IO_stringPos = -1_pInt
  IO_stringPos(1) = 0_pInt
  right = 0
-
+ 
  do while (verify(line(right+1:),sep)>0)
    left  = right + verify(line(right+1:),sep)
    right = left + scan(line(left:),sep) - 2
@@ -732,20 +694,22 @@ endfunction
    IO_stringPos(1) = IO_stringPos(1)+1_pInt
  enddo
 
-endfunction
+end function IO_stringPos
 
 
 !********************************************************************
 ! read string value at myPos from line
 !********************************************************************
- pure function IO_stringValue (line,positions,myPos)
+ pure function IO_stringValue(line,positions,myPos)
  
- use prec, only: pInt
  implicit none
- 
- character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: positions(*),myPos
+
+ integer(pInt),                                intent(in) :: positions(*), &
+                                                             myPos
+
  character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IO_stringValue
+
+ character(len=*),                             intent(in) :: line
 
  if (positions(1) < myPos) then
    IO_stringValue = ''
@@ -753,37 +717,37 @@ endfunction
    IO_stringValue = line(positions(myPos*2):positions(myPos*2+1))
  endif
 
- endfunction
+end function IO_stringValue
 
 
 !********************************************************************
 ! read string value at myPos from fixed format line
 !********************************************************************
- pure function IO_fixedStringValue (line,ends,myPos)
+pure function IO_fixedStringValue (line,ends,myPos)
  
- use prec, only: pInt
  implicit none
- 
- character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: ends(*),myPos
+
+ integer(pInt),                intent(in) :: ends(*), &
+                                             myPos
+                                             
  character(len=ends(myPos+1)-ends(myPos)) :: IO_fixedStringValue
+ 
+ character(len=*),             intent(in) :: line
 
  IO_fixedStringValue = line(ends(myPos)+1:ends(myPos+1))
 
- endfunction
+end function IO_fixedStringValue
 
 
 !********************************************************************
 ! read float value at myPos from line
 !********************************************************************
- pure function IO_floatValue (line,positions,myPos)
+real(pReal) pure function IO_floatValue (line,positions,myPos)
  
- use prec, only: pReal,pInt
  implicit none
- 
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: positions(*),myPos
- real(pReal) :: IO_floatValue
+ integer(pInt),    intent(in) :: positions(*), &
+                                 myPos
 
  if (positions(1) < myPos) then
    IO_floatValue = 0.0_pReal
@@ -793,41 +757,39 @@ endfunction
  return
 100 IO_floatValue = huge(1.0_pReal)
 
- endfunction
+end function IO_floatValue
 
 
 !********************************************************************
 ! read float value at myPos from fixed format line
 !********************************************************************
- pure function IO_fixedFloatValue (line,ends,myPos)
+real(pReal) pure function IO_fixedFloatValue (line,ends,myPos)
  
- use prec, only: pReal,pInt
  implicit none
- 
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: ends(*),myPos
- real(pReal) :: IO_fixedFloatValue
+ integer(pInt),    intent(in) :: ends(*), &
+                                 myPos
 
  read(UNIT=line(ends(myPos-1)+1:ends(myPos)),ERR=100,FMT=*) IO_fixedFloatValue
  return
 100 IO_fixedFloatValue = huge(1.0_pReal)
 
- endfunction
+end function IO_fixedFloatValue
 
 
 !********************************************************************
 ! read float x.y+z value at myPos from format line line
 !********************************************************************
- pure function IO_fixedNoEFloatValue (line,ends,myPos)
- 
- use prec, only: pReal,pInt
+real(pReal) pure function IO_fixedNoEFloatValue (line,ends,myPos)
+
  implicit none
- 
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: ends(*),myPos
- integer(pInt) :: expon
- integer :: pos_exp
- real(pReal) IO_fixedNoEFloatValue,base
+ integer(pInt),    intent(in) :: ends(*), &
+                                 myPos
+
+ integer(pInt)                :: expon
+ integer                      :: pos_exp
+ real(pReal)                  :: base
  
  pos_exp = scan(line(ends(myPos)+1:ends(myPos+1)),'+-',back=.true.)
  if (pos_exp > 1) then
@@ -841,20 +803,18 @@ endfunction
  return
 100 IO_fixedNoEFloatValue = huge(1.0_pReal)
 
- endfunction
+end function IO_fixedNoEFloatValue
 
 
 !********************************************************************
 ! read int value at myPos from line
 !********************************************************************
- pure function IO_intValue (line,positions,myPos)
- 
- use prec, only: pInt
+integer(pInt) pure function IO_intValue(line,positions,myPos)
+
  implicit none
- 
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: positions(*),myPos
- integer(pInt) ::  IO_intValue
+ integer(pInt),    intent(in) :: positions(*), &
+                                 myPos
 
  if (positions(1) < myPos) then
    IO_intValue = 0_pInt
@@ -864,57 +824,56 @@ endfunction
  return
 100 IO_intValue = huge(1_pInt)
 
- endfunction
+end function IO_intValue
 
 
 !********************************************************************
 ! read int value at myPos from fixed format line
 !********************************************************************
- pure function IO_fixedIntValue (line,ends,myPos)
+integer(pInt) pure function IO_fixedIntValue(line,ends,myPos)
  
- use prec, only: pInt
  implicit none
- 
  character(len=*), intent(in) :: line
- integer(pInt), intent(in) :: ends(*),myPos
- integer(pInt) IO_fixedIntValue
+ integer(pInt),    intent(in) :: ends(*), &
+                                 myPos
 
  read(UNIT=line(ends(myPos)+1:ends(myPos+1)),ERR=100,FMT=*) IO_fixedIntValue
  return
 100 IO_fixedIntValue = huge(1_pInt)
 
- endfunction
+end function IO_fixedIntValue
 
 
 !********************************************************************
 ! change character in line to lower case
 !********************************************************************
- pure function IO_lc (line)
+pure function IO_lc(line)
 
  implicit none
-
- character (len=*), intent(in) :: line
- character (len=len(line)) IO_lc
- integer :: i                      !no pInt (len returns default integer)
+ character(len=*), intent(in) :: line
+ 
+ character(len=len(line))     :: IO_lc
+ 
+ integer                      :: i                      ! no pInt (len returns default integer)
 
  IO_lc = line
  do i=1,len(line)
     if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
  enddo
 
- endfunction
+end function IO_lc
 
 
 !********************************************************************
 ! in place change of character in line to lower case
 !********************************************************************
- subroutine IO_lcInplace (line)
+subroutine IO_lcInplace(line)
 
  implicit none
+ character(len=*), intent(inout) :: line
 
- character (len=*) line
- character (len=len(line)) IO_lc
- integer ::  i                   !no pInt (len returns default integer)
+ character(len=len(line))        :: IO_lc
+ integer                         ::  i                   ! no pInt (len returns default integer)
 
  IO_lc = line
  do i=1,len(line)
@@ -922,21 +881,22 @@ endfunction
  enddo
  line = IO_lc
 
- endsubroutine
+ end subroutine IO_lcInplace
 
 
 !********************************************************************
 ! read on in file to skip (at least) N chunks (may be over multiple lines)
 !********************************************************************
- subroutine IO_skipChunks (myUnit,N)
+subroutine IO_skipChunks(myUnit,N)
 
- use prec, only: pInt
  implicit none
-
- integer(pInt)  remainingChunks,myUnit,N
- integer(pInt), parameter :: maxNchunks = 64_pInt
+ integer(pInt), intent(in)                :: myUnit, &
+                                             N
+ integer(pInt), parameter                 :: maxNchunks = 64_pInt
+ 
+ integer(pInt)                            :: remainingChunks
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
- character(len=300) line
+ character(len=300)                       :: line
 
  remainingChunks = N
  do while (remainingChunks > 0)
@@ -944,20 +904,21 @@ endfunction
    myPos = IO_stringPos(line,maxNchunks)
    remainingChunks = remainingChunks - myPos(1)
  enddo
-100  endsubroutine
+100  end subroutine IO_skipChunks
 
 
 !********************************************************************
 ! extract value from key=value pair and check whether key matches
 !********************************************************************
- pure function IO_extractValue (line,key)
+character(len=300) pure function IO_extractValue(line,key)
  
  implicit none
+ character(len=*), intent(in) :: line, &
+                                 key
+                                 
+ character(len=*), parameter  :: sep = achar(61)         ! '='
 
- character(len=*), intent(in) :: line,key
- character(len=*), parameter :: sep = achar(61)         ! '='
- integer ::  myPos                                          ! no pInt (scan returns default integer)
- character(len=300) IO_extractValue
+ integer                      :: myPos                                          ! no pInt (scan returns default integer)
 
  IO_extractValue = ''
 
@@ -965,7 +926,7 @@ endfunction
  if (myPos > 0 .and. line(:myPos-1) == key(:myPos-1)) &       ! key matches expected key
    IO_extractValue = line(myPos+1:)                       ! extract value
 
- endfunction
+end function IO_extractValue
 
 
 !********************************************************************
@@ -974,15 +935,16 @@ endfunction
 !   : is not changed back to the original version since *.inp_assembly does not
 !   : contain any comment lines (12.07.2010)
 !********************************************************************
- function IO_countDataLines (myUnit)
+integer(pInt) function IO_countDataLines(myUnit)
 
- use prec, only: pInt
  implicit none
+ integer(pInt), intent(in)                :: myUnit
+ 
+ integer(pInt), parameter                 :: maxNchunks = 1_pInt
 
- integer(pInt) :: IO_countDataLines,myUnit
- integer(pInt), parameter :: maxNchunks = 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
- character(len=300) :: line,tmp
+ character(len=300)                       :: line, &
+                                             tmp
 
  IO_countDataLines = 0_pInt
  do
@@ -997,7 +959,7 @@ endfunction
  enddo
 100 backspace(myUnit)
 
- endfunction
+end function IO_countDataLines
 
  
 !********************************************************************
@@ -1005,17 +967,18 @@ endfunction
 ! Marc:   ints concatenated by "c" as last char or range of values a "to" b
 ! Abaqus: triplet of start,stop,inc
 !********************************************************************
- function IO_countContinousIntValues (myUnit)
+integer(pInt) function IO_countContinousIntValues(myUnit)
 
- use DAMASK_interface
- use prec, only: pInt
+ use DAMASK_interface, only: FEsolver
+
  implicit none
-
- integer(pInt) :: myUnit,l,c
- integer(pInt) :: IO_countContinousIntValues
+ integer(pInt), intent(in) :: myUnit
+ 
  integer(pInt), parameter :: maxNchunks = 8192_pInt
+ 
+ integer(pInt)                            :: l,c
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
- character(len=65536) line
+ character(len=65536)                     :: line
 
  IO_countContinousIntValues = 0_pInt
 
@@ -1052,9 +1015,9 @@ endfunction
                                                          max(1_pInt,IO_intValue(line,myPos,3_pInt))
      enddo
  
- endselect
+ end select
 
-100  endfunction
+100 end function IO_countContinousIntValues
 
 
 !********************************************************************
@@ -1062,19 +1025,23 @@ endfunction
 ! Marc:   ints concatenated by "c" as last char, range of a "to" b, or named set
 ! Abaqus: triplet of start,stop,inc or named set
 !********************************************************************
- function IO_continousIntValues (myUnit,maxN,lookupName,lookupMap,lookupMaxN)
+function IO_continousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
- use DAMASK_interface
- use prec, only: pInt
+ use DAMASK_interface, only: FEsolver
+
  implicit none
-
- integer(pInt)  myUnit,maxN,i,j,l,c,first,last
- integer(pInt), dimension(1+maxN) :: IO_continousIntValues
+ integer(pInt),                     intent(in) :: maxN
+ integer(pInt),     dimension(1+maxN)          :: IO_continousIntValues
+ 
+ integer(pInt),                     intent(in) :: myUnit, &
+                                                  lookupMaxN
+ integer(pInt),     dimension(:,:), intent(in) :: lookupMap
+ character(len=64), dimension(:),   intent(in) :: lookupName
+ 
  integer(pInt), parameter :: maxNchunks = 8192_pInt
+ 
+ integer(pInt) :: i,j,l,c,first,last
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
- character(len=64), dimension(:) :: lookupName
- integer(pInt) :: lookupMaxN
- integer(pInt), dimension(:,:) :: lookupMap
  character(len=65536) line
  logical rangeGeneration
 
@@ -1159,8 +1126,7 @@ endfunction
  
  endselect
 
-100 endfunction
-
+100 end function IO_continousIntValues
 
 
 !********************************************************************
@@ -1168,15 +1134,14 @@ endfunction
 ! and terminate the Marc run with exit #9xxx
 ! in ABAQUS either time step is reduced or execution terminated
 !********************************************************************
- subroutine IO_error(error_ID,e,i,g,ext_msg)
-
- use prec, only: pInt
+subroutine IO_error(error_ID,e,i,g,ext_msg)
+        
  implicit none
-
- integer(pInt), intent(in) :: error_ID
- integer(pInt), optional, intent(in) :: e,i,g
+ integer(pInt),              intent(in) :: error_ID
+ integer(pInt),    optional, intent(in) :: e,i,g
  character(len=*), optional, intent(in) :: ext_msg
- character(len=1024) msg
+ 
+ character(len=1024)                    :: msg
 
  select case (error_ID)
 
@@ -1289,6 +1254,8 @@ endfunction
    msg = 'Prime-error: N must be between 0 and PRIME_MAX'
  case (450_pInt)
    msg = 'unknown symmetry type specified'
+ case (460_pInt)
+   msg = 'kdtree2 error'
 
 
  !* homogenization errors
@@ -1394,27 +1361,26 @@ endfunction
    endif
  endif
  write(6,'(a38)') '+------------------------------------+'
- call flush(6)
+ flush(6)
  call quit(9000_pInt+error_ID)
  !$OMP END CRITICAL (write2out)
 
 ! ABAQUS returns in some cases
 
- endsubroutine
+end subroutine IO_error
 
 
 !********************************************************************
 ! write warning statements to standard out
 !********************************************************************
- subroutine IO_warning(warning_ID,e,i,g,ext_msg)
+subroutine IO_warning(warning_ID,e,i,g,ext_msg)
 
- use prec, only: pInt
  implicit none
-
- integer(pInt), intent(in) :: warning_ID
- integer(pInt), optional, intent(in) :: e,i,g
+ integer(pInt),              intent(in) :: warning_ID
+ integer(pInt),    optional, intent(in) :: e,i,g
  character(len=*), optional, intent(in) :: ext_msg
- character(len=1024) msg
+ 
+ character(len=1024)                    :: msg
 
  select case (warning_ID)
  case (34_pInt)
@@ -1457,9 +1423,94 @@ endfunction
    endif
  endif
  write(6,'(a38)') '+------------------------------------+'
- call flush(6)
+ flush(6)
  !$OMP END CRITICAL (write2out)
 
- endsubroutine
+end subroutine IO_warning
+
+! INTERNAL (HELPER) FUNCTIONS:
+
+!********************************************************************
+! AP: 12.07.10
+!    create a new input file for abaqus simulations
+!    by removing all comment lines and including "include"s
+!********************************************************************
+recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
+
+ use DAMASK_interface, only: getSolverWorkingDirectoryName
+
+ implicit none
+ integer(pInt), intent(in)                :: unit1, &
+                                             unit2
  
- END MODULE IO
+ integer(pInt), parameter                 :: maxNchunks = 6_pInt
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
+ character(len=300)                       :: line,fname
+ logical                                  :: createSuccess,fexist
+
+
+ 
+ do
+   read(unit2,'(A300)',END=220) line
+   positions = IO_stringPos(line,maxNchunks)
+
+!   call IO_lcInPlace(line)
+   if (IO_lc(IO_StringValue(line,positions,1_pInt))=='*include') then
+     fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
+     inquire(file=fname, exist=fexist)
+     if (.not.(fexist)) then
+       !$OMP CRITICAL (write2out)
+         write(6,*)'ERROR: file does not exist error in abaqus_assembleInputFile'
+         write(6,*)'filename: ', trim(fname)
+       !$OMP END CRITICAL (write2out)
+       createSuccess = .false.
+       return
+     endif
+     open(unit2+1,err=200,status='old',file=fname)
+     if (abaqus_assembleInputFile(unit1,unit2+1_pInt)) then
+       createSuccess=.true.
+       close(unit2+1)
+     else
+       createSuccess=.false.
+       return
+     endif
+   else if (line(1:2) /= '**') then 
+     write(unit1,'(A)') trim(line)
+   endif
+ enddo
+ 
+220 createSuccess = .true.
+ return
+ 
+200 createSuccess =.false.
+
+end function abaqus_assembleInputFile
+
+
+!********************************************************************
+! hybrid IA repetition counter
+!********************************************************************
+integer(pInt) function hybridIA_reps(dV_V,steps,C)
+
+ implicit none
+  integer(pInt), intent(in), dimension(3) :: &
+   steps
+ real(pReal),   intent(in), dimension(steps(3),steps(2),steps(1)) :: &
+   dV_V
+ real(pReal),   intent(in) :: &
+   C
+ 
+  integer(pInt) :: phi1,Phi,phi2
+ 
+ hybridIA_reps = 0_pInt
+ do phi1=1_pInt,steps(1)
+   do Phi =1_pInt,steps(2)
+     do phi2=1_pInt,steps(3)
+       hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
+     enddo
+   enddo
+ enddo
+ 
+end function hybridIA_reps
+ 
+end module IO

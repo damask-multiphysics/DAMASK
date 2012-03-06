@@ -19,54 +19,57 @@
 !##############################################################
 !* $Id$
 !##############################################################
- MODULE prec
+module prec
 !##############################################################
 
-implicit none
- 
+ implicit none
+ private 
 !    *** Precision of real and integer variables ***
-integer, parameter, public :: pReal = selected_real_kind(15,300)     ! 15 significant digits, up to 1e+-300
-integer, parameter, public :: pInt  = selected_int_kind(9)           ! up to +- 1e9
-integer, parameter, public :: pLongInt  = 8                          ! should be 64bit
-real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal
-real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
-
+ integer,     parameter, public :: pReal = selected_real_kind(15,300)     ! 15 significant digits, up to 1e+-300
+ integer,     parameter, public :: pInt  = selected_int_kind(9)           ! up to +- 1e9
+ integer,     parameter, public :: pLongInt  = 8                          ! should be 64bit
+ real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal
+ real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
+ 
 ! NaN is precision dependent 
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy can be found in documentation/Code/Fortran
 #ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER<1200
-    real(pReal), parameter, public :: DAMASK_NaN = Z'7FF0000000000001'
+ real(pReal), parameter, public :: DAMASK_NaN = Z'7FF0000000000001'
 #else
-    real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
+ real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
 #endif
 #else
-  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
+ real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF0000000000001', pReal)
 #endif
-type :: p_vec
-  real(pReal), dimension(:), pointer :: p
-end type p_vec
 
-CONTAINS
+ type, public :: p_vec
+   real(pReal), dimension(:), pointer :: p
+ end type p_vec
+
+ public :: prec_init
+ 
+contains
 
 subroutine prec_init
-use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-implicit none
-
+ use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ 
+ implicit none
 !$OMP CRITICAL (write2out)
-  write(6,*)
-  write(6,*) '<<<+-  prec init  -+>>>'
-  write(6,*) '$Id$'
+ write(6,*)
+ write(6,*) '<<<+-  prec init  -+>>>'
+ write(6,*) '$Id$'
 #include "compilation_info.f90"
-  write(6,'(a,i3)')   ' Bytes for pReal:    ',pReal
-  write(6,'(a,i3)')   ' Bytes for pInt:     ',pInt
-  write(6,'(a,i3)')   ' Bytes for pLongInt: ',pLongInt
-  write(6,'(a,e10.3)') ' NaN:         ',DAMASK_NAN
-  write(6,'(a,l3)')   ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
-  if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
-  write(6,*)
+ write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
+ write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
+ write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
+ write(6,'(a,e10.3)') ' NaN:         ',DAMASK_NAN
+ write(6,'(a,l3)')    ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
+ if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
+ write(6,*)
 !$OMP END CRITICAL (write2out)
 
-end subroutine
+end subroutine prec_init
 
-END MODULE prec
+end module prec
