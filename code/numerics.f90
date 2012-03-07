@@ -19,14 +19,15 @@
 !##############################################################
 !* $Id$
 !##############################################################
-MODULE numerics
+module numerics
 !##############################################################
 
 use prec, only: pInt, pReal
-use IO, only: IO_warning
-implicit none
 
-character(len=64), parameter :: numerics_configFile        = 'numerics.config'               ! name of configuration file
+implicit none
+character(len=64), parameter, private ::&
+  numerics_configFile        = 'numerics.config'                                             ! name of configuration file
+
 integer(pInt) ::                iJacoStiffness             =  1_pInt, &                      ! frequency of stiffness update
                                 iJacoLpresiduum            =  1_pInt, &                      ! frequency of Jacobian update of residuum in Lp
                                 nHomog                     = 20_pInt, &                      ! homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
@@ -94,39 +95,33 @@ CONTAINS
 !*******************************************
 !    initialization subroutine
 !*******************************************
-subroutine numerics_init()
+subroutine numerics_init
   
-  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-  !*** variables and functions from other modules ***!
-  use prec, only:                             pInt, & 
-                                              pReal  
-  use IO, only:                               IO_error, &
-                                              IO_open_file_stat, &
-                                              IO_isBlank, &
-                                              IO_stringPos, &
-                                              IO_stringValue, &
-                                              IO_lc, &
-                                              IO_floatValue, &
-                                              IO_intValue
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use IO, only:                               IO_error, &
+                                             IO_open_file_stat, &
+                                             IO_isBlank, &
+                                             IO_stringPos, &
+                                             IO_stringValue, &
+                                             IO_lc, &
+                                             IO_floatValue, &
+                                             IO_intValue, &
+                                             IO_warning
 !$ use OMP_LIB                                                                ! the openMP function library
   
-  implicit none
-  
-  !*** local variables ***!
-  integer(pInt), parameter ::                 fileunit = 300_pInt
-  integer(pInt), parameter ::                 maxNchunks = 2_pInt
-!$ integer ::                                 gotDAMASK_NUM_THREADS = 1
-  integer(pInt), dimension(1+2*maxNchunks) :: positions
-  character(len=64) ::                        tag
-  character(len=1024) ::                      line
-  
-! OpenMP variable
+ implicit none
+ integer(pInt), parameter ::                 fileunit = 300_pInt ,&
+                                             maxNchunks = 2_pInt
+!$ integer ::                                gotDAMASK_NUM_THREADS = 1
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
+ character(len=64) ::                        tag
+ character(len=1024) ::                      line
 !$ character(len=6) DAMASK_NumThreadsString                               !environment variable DAMASK_NUM_THREADS
 
 !$OMP CRITICAL (write2out)
-  write(6,*)
-  write(6,*) '<<<+-  numerics init  -+>>>'
-  write(6,*) '$Id$'
+ write(6,*)
+ write(6,*) '<<<+-  numerics init  -+>>>'
+ write(6,*) '$Id$'
 #include "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 
@@ -137,294 +132,295 @@ subroutine numerics_init()
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution
 
   ! try to open the config file
-  if(IO_open_file_stat(fileunit,numerics_configFile)) then 
+ if(IO_open_file_stat(fileunit,numerics_configFile)) then 
   
-    !$OMP CRITICAL (write2out)
-      write(6,*) '   ... using values from config file'
-      write(6,*)
-    !$OMP END CRITICAL (write2out)
+   !$OMP CRITICAL (write2out)
+     write(6,*) '   ... using values from config file'
+     write(6,*)
+   !$OMP END CRITICAL (write2out)
     
     
-    !* read variables from config file and overwrite parameters
-    
-    line = ''
-    do
-      read(fileunit,'(a1024)',END=100) line
-      if (IO_isBlank(line)) cycle                           ! skip empty lines
-      positions = IO_stringPos(line,maxNchunks)
-      tag = IO_lc(IO_stringValue(line,positions,1_pInt))         ! extract key
-      select case(tag)
-        case ('relevantstrain')
-              relevantStrain = IO_floatValue(line,positions,2_pInt)
-        case ('defgradtolerance')
-              defgradTolerance = IO_floatValue(line,positions,2_pInt)
-        case ('ijacostiffness')
-              iJacoStiffness = IO_intValue(line,positions,2_pInt)
-        case ('ijacolpresiduum')
-              iJacoLpresiduum = IO_intValue(line,positions,2_pInt)
-        case ('pert_fg')
-              pert_Fg = IO_floatValue(line,positions,2_pInt)
-        case ('pert_method')
-              pert_method = IO_intValue(line,positions,2_pInt)
-        case ('nhomog')
-              nHomog = IO_intValue(line,positions,2_pInt)
-        case ('nmpstate')
-              nMPstate = IO_intValue(line,positions,2_pInt)
-        case ('ncryst')
-              nCryst = IO_intValue(line,positions,2_pInt)
-        case ('nstate')
-              nState = IO_intValue(line,positions,2_pInt)
-        case ('nstress')
-              nStress = IO_intValue(line,positions,2_pInt)
-        case ('substepmincryst')
-              subStepMinCryst = IO_floatValue(line,positions,2_pInt)
-        case ('substepsizecryst')
-              subStepSizeCryst = IO_floatValue(line,positions,2_pInt)
-        case ('stepincreasecryst')
-              stepIncreaseCryst = IO_floatValue(line,positions,2_pInt)
-        case ('substepminhomog')
-              subStepMinHomog = IO_floatValue(line,positions,2_pInt)
-        case ('substepsizehomog')
-              subStepSizeHomog = IO_floatValue(line,positions,2_pInt)
-        case ('stepincreasehomog')
-              stepIncreaseHomog = IO_floatValue(line,positions,2_pInt)
-        case ('rtol_crystallitestate')
-              rTol_crystalliteState = IO_floatValue(line,positions,2_pInt)
-        case ('rtol_crystallitetemperature')
-              rTol_crystalliteTemperature = IO_floatValue(line,positions,2_pInt)
-        case ('rtol_crystallitestress')
-              rTol_crystalliteStress = IO_floatValue(line,positions,2_pInt)
-        case ('atol_crystallitestress')
-              aTol_crystalliteStress = IO_floatValue(line,positions,2_pInt)
-        case ('integrator')
-              numerics_integrator(1) = IO_intValue(line,positions,2_pInt)
-        case ('integratorstiffness')
-              numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
-        case ('lp_frac')
-              Lp_frac = IO_floatValue(line,positions,2_pInt)
-        case ('analyticjaco')
-              analyticJaco = IO_intValue(line,positions,2_pInt) > 0_pInt
-        case ('time_sensitive')
-              time_sensitive = IO_intValue(line,positions,2_pInt) > 0_pInt
+   !* read variables from config file and overwrite parameters
+   
+   line = ''
+   do
+     read(fileunit,'(a1024)',END=100) line
+     if (IO_isBlank(line)) cycle                           ! skip empty lines
+     positions = IO_stringPos(line,maxNchunks)
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))         ! extract key
+     select case(tag)
+       case ('relevantstrain')
+             relevantStrain = IO_floatValue(line,positions,2_pInt)
+       case ('defgradtolerance')
+             defgradTolerance = IO_floatValue(line,positions,2_pInt)
+       case ('ijacostiffness')
+             iJacoStiffness = IO_intValue(line,positions,2_pInt)
+       case ('ijacolpresiduum')
+             iJacoLpresiduum = IO_intValue(line,positions,2_pInt)
+       case ('pert_fg')
+             pert_Fg = IO_floatValue(line,positions,2_pInt)
+       case ('pert_method')
+             pert_method = IO_intValue(line,positions,2_pInt)
+       case ('nhomog')
+             nHomog = IO_intValue(line,positions,2_pInt)
+       case ('nmpstate')
+             nMPstate = IO_intValue(line,positions,2_pInt)
+       case ('ncryst')
+             nCryst = IO_intValue(line,positions,2_pInt)
+       case ('nstate')
+             nState = IO_intValue(line,positions,2_pInt)
+       case ('nstress')
+             nStress = IO_intValue(line,positions,2_pInt)
+       case ('substepmincryst')
+             subStepMinCryst = IO_floatValue(line,positions,2_pInt)
+       case ('substepsizecryst')
+             subStepSizeCryst = IO_floatValue(line,positions,2_pInt)
+       case ('stepincreasecryst')
+             stepIncreaseCryst = IO_floatValue(line,positions,2_pInt)
+       case ('substepminhomog')
+             subStepMinHomog = IO_floatValue(line,positions,2_pInt)
+       case ('substepsizehomog')
+             subStepSizeHomog = IO_floatValue(line,positions,2_pInt)
+       case ('stepincreasehomog')
+             stepIncreaseHomog = IO_floatValue(line,positions,2_pInt)
+       case ('rtol_crystallitestate')
+             rTol_crystalliteState = IO_floatValue(line,positions,2_pInt)
+       case ('rtol_crystallitetemperature')
+             rTol_crystalliteTemperature = IO_floatValue(line,positions,2_pInt)
+       case ('rtol_crystallitestress')
+             rTol_crystalliteStress = IO_floatValue(line,positions,2_pInt)
+       case ('atol_crystallitestress')
+             aTol_crystalliteStress = IO_floatValue(line,positions,2_pInt)
+       case ('integrator')
+             numerics_integrator(1) = IO_intValue(line,positions,2_pInt)
+       case ('integratorstiffness')
+             numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
+       case ('lp_frac')
+             Lp_frac = IO_floatValue(line,positions,2_pInt)
+       case ('analyticjaco')
+             analyticJaco = IO_intValue(line,positions,2_pInt) > 0_pInt
+       case ('time_sensitive')
+             time_sensitive = IO_intValue(line,positions,2_pInt) > 0_pInt
 
-        !* RGC parameters: 
-        
-        case ('atol_rgc')
-              absTol_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('rtol_rgc')
-              relTol_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('amax_rgc')
-              absMax_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('rmax_rgc')
-              relMax_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('perturbpenalty_rgc')
-              pPert_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('relevantmismatch_rgc')
-              xSmoo_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('viscositypower_rgc')
-              viscPower_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('viscositymodulus_rgc')
-              viscModus_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('refrelaxationrate_rgc')
-              refRelaxRate_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('maxrelaxation_rgc')
-              maxdRelax_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('maxvoldiscrepancy_rgc')
-              maxVolDiscr_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('voldiscrepancymod_rgc')
-              volDiscrMod_RGC = IO_floatValue(line,positions,2_pInt)
-        case ('discrepancypower_rgc')
-              volDiscrPow_RGC = IO_floatValue(line,positions,2_pInt)
+       !* RGC parameters: 
+       
+       case ('atol_rgc')
+             absTol_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('rtol_rgc')
+             relTol_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('amax_rgc')
+             absMax_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('rmax_rgc')
+             relMax_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('perturbpenalty_rgc')
+             pPert_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('relevantmismatch_rgc')
+             xSmoo_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('viscositypower_rgc')
+             viscPower_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('viscositymodulus_rgc')
+             viscModus_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('refrelaxationrate_rgc')
+             refRelaxRate_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('maxrelaxation_rgc')
+             maxdRelax_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('maxvoldiscrepancy_rgc')
+             maxVolDiscr_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('voldiscrepancymod_rgc')
+             volDiscrMod_RGC = IO_floatValue(line,positions,2_pInt)
+       case ('discrepancypower_rgc')
+             volDiscrPow_RGC = IO_floatValue(line,positions,2_pInt)
 
-        !* spectral parameters
-        
-        case ('err_div_tol')
-              err_div_tol = IO_floatValue(line,positions,2_pInt)
-        case ('err_stress_tolrel')
-              err_stress_tolrel = IO_floatValue(line,positions,2_pInt)
-        case ('itmax')
-              itmax = IO_intValue(line,positions,2_pInt)
-        case ('itmin')
-              itmin = IO_intValue(line,positions,2_pInt)
-        case ('memory_efficient')
-              memory_efficient = IO_intValue(line,positions,2_pInt)  > 0_pInt
-        case ('fftw_timelimit')
-              fftw_timelimit = IO_floatValue(line,positions,2_pInt)
-        case ('fftw_plan_mode')
-              fftw_plan_mode = IO_stringValue(line,positions,2_pInt)
-        case ('rotation_tol')
-              rotation_tol = IO_floatValue(line,positions,2_pInt)
-        case ('divergence_correction')
-              divergence_correction = IO_intValue(line,positions,2_pInt)  > 0_pInt
-        case ('update_gamma')
-              update_gamma = IO_intValue(line,positions,2_pInt)  > 0_pInt
+       !* spectral parameters
+       
+       case ('err_div_tol')
+             err_div_tol = IO_floatValue(line,positions,2_pInt)
+       case ('err_stress_tolrel')
+             err_stress_tolrel = IO_floatValue(line,positions,2_pInt)
+       case ('itmax')
+             itmax = IO_intValue(line,positions,2_pInt)
+       case ('itmin')
+             itmin = IO_intValue(line,positions,2_pInt)
+       case ('memory_efficient')
+             memory_efficient = IO_intValue(line,positions,2_pInt)  > 0_pInt
+       case ('fftw_timelimit')
+             fftw_timelimit = IO_floatValue(line,positions,2_pInt)
+       case ('fftw_plan_mode')
+             fftw_plan_mode = IO_stringValue(line,positions,2_pInt)
+       case ('rotation_tol')
+             rotation_tol = IO_floatValue(line,positions,2_pInt)
+       case ('divergence_correction')
+             divergence_correction = IO_intValue(line,positions,2_pInt)  > 0_pInt
+       case ('update_gamma')
+             update_gamma = IO_intValue(line,positions,2_pInt)  > 0_pInt
 
-        !* Random seeding parameters
+       !* Random seeding parameters
 
-        case ('fixed_seed')
-              fixedSeed = IO_intValue(line,positions,2_pInt)
-        
-        case default 
-              call IO_error(300_pInt,ext_msg=tag)
-      endselect
-    enddo
-    100 close(fileunit)
+       case ('fixed_seed')
+             fixedSeed = IO_intValue(line,positions,2_pInt)
+       
+       case default 
+             call IO_error(300_pInt,ext_msg=tag)
+     endselect
+   enddo
+   100 close(fileunit)
   
   ! no config file, so we use standard values
-  else 
-  
-    !$OMP CRITICAL (write2out)
-      write(6,*) '   ... using standard values'
-      write(6,*)
-    !$OMP END CRITICAL (write2out)
-    
-  endif
+ else 
+ 
+   !$OMP CRITICAL (write2out)
+     write(6,*) '   ... using standard values'
+     write(6,*)
+   !$OMP END CRITICAL (write2out)
+   
+ endif
 
-  select case(IO_lc(fftw_plan_mode))                             ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-     case('estimate','fftw_estimate')                            ! ordered from slow execution (but fast plan creation) to fast execution
-       fftw_planner_flag = 64_pInt
-     case('measure','fftw_measure')
-       fftw_planner_flag = 0_pInt
-     case('patient','fftw_patient')
-       fftw_planner_flag= 32_pInt
-     case('exhaustive','fftw_exhaustive')
-       fftw_planner_flag = 8_pInt 
-     case default
-       call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_plan_mode)))
-       fftw_planner_flag = 32_pInt
-  end select
+ select case(IO_lc(fftw_plan_mode))                             ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+    case('estimate','fftw_estimate')                            ! ordered from slow execution (but fast plan creation) to fast execution
+      fftw_planner_flag = 64_pInt
+    case('measure','fftw_measure')
+      fftw_planner_flag = 0_pInt
+    case('patient','fftw_patient')
+      fftw_planner_flag= 32_pInt
+    case('exhaustive','fftw_exhaustive')
+      fftw_planner_flag = 8_pInt 
+    case default
+      call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_plan_mode)))
+      fftw_planner_flag = 32_pInt
+ end select
 
-  
-  !* writing parameters to output file
-  
-  !$OMP CRITICAL (write2out)
-    
-    write(6,'(a24,1x,e8.1)') ' relevantStrain:         ',relevantStrain
-    write(6,'(a24,1x,e8.1)') ' defgradTolerance:       ',defgradTolerance
-    write(6,'(a24,1x,i8)')   ' iJacoStiffness:         ',iJacoStiffness
-    write(6,'(a24,1x,i8)')   ' iJacoLpresiduum:        ',iJacoLpresiduum
-    write(6,'(a24,1x,e8.1)') ' pert_Fg:                ',pert_Fg
-    write(6,'(a24,1x,i8)')   ' pert_method:            ',pert_method
-    write(6,'(a24,1x,i8)')   ' nCryst:                 ',nCryst
-    write(6,'(a24,1x,e8.1)') ' subStepMinCryst:        ',subStepMinCryst
-    write(6,'(a24,1x,e8.1)') ' subStepSizeCryst:       ',subStepSizeCryst
-    write(6,'(a24,1x,e8.1)') ' stepIncreaseCryst:      ',stepIncreaseCryst
-    write(6,'(a24,1x,i8)')   ' nState:                 ',nState
-    write(6,'(a24,1x,i8)')   ' nStress:                ',nStress
-    write(6,'(a24,1x,e8.1)') ' rTol_crystalliteState:  ',rTol_crystalliteState
-    write(6,'(a24,1x,e8.1)') ' rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
-    write(6,'(a24,1x,e8.1)') ' rTol_crystalliteStress: ',rTol_crystalliteStress
-    write(6,'(a24,1x,e8.1)') ' aTol_crystalliteStress: ',aTol_crystalliteStress
-    write(6,'(a24,2(1x,i8),/)')' integrator:             ',numerics_integrator
-    write(6,'(a24,1x,e8.1)') ' Lp_frac:                ',Lp_frac
-    write(6,'(a24,1x,L8)')   ' analytic Jacobian:      ',analyticJaco
-    write(6,'(a24,1x,L8)')   ' time sensitive:         ',time_sensitive
-  
-    write(6,'(a24,1x,i8)')   ' nHomog:                 ',nHomog
-    write(6,'(a24,1x,e8.1)') ' subStepMinHomog:        ',subStepMinHomog
-    write(6,'(a24,1x,e8.1)') ' subStepSizeHomog:       ',subStepSizeHomog
-    write(6,'(a24,1x,e8.1)') ' stepIncreaseHomog:      ',stepIncreaseHomog
-    write(6,'(a24,1x,i8,/)') ' nMPstate:               ',nMPstate
+ 
+ !* writing parameters to output file
+ 
+ !$OMP CRITICAL (write2out)
+   
+   write(6,'(a24,1x,e8.1)') ' relevantStrain:         ',relevantStrain
+   write(6,'(a24,1x,e8.1)') ' defgradTolerance:       ',defgradTolerance
+   write(6,'(a24,1x,i8)')   ' iJacoStiffness:         ',iJacoStiffness
+   write(6,'(a24,1x,i8)')   ' iJacoLpresiduum:        ',iJacoLpresiduum
+   write(6,'(a24,1x,e8.1)') ' pert_Fg:                ',pert_Fg
+   write(6,'(a24,1x,i8)')   ' pert_method:            ',pert_method
+   write(6,'(a24,1x,i8)')   ' nCryst:                 ',nCryst
+   write(6,'(a24,1x,e8.1)') ' subStepMinCryst:        ',subStepMinCryst
+   write(6,'(a24,1x,e8.1)') ' subStepSizeCryst:       ',subStepSizeCryst
+   write(6,'(a24,1x,e8.1)') ' stepIncreaseCryst:      ',stepIncreaseCryst
+   write(6,'(a24,1x,i8)')   ' nState:                 ',nState
+   write(6,'(a24,1x,i8)')   ' nStress:                ',nStress
+   write(6,'(a24,1x,e8.1)') ' rTol_crystalliteState:  ',rTol_crystalliteState
+   write(6,'(a24,1x,e8.1)') ' rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
+   write(6,'(a24,1x,e8.1)') ' rTol_crystalliteStress: ',rTol_crystalliteStress
+   write(6,'(a24,1x,e8.1)') ' aTol_crystalliteStress: ',aTol_crystalliteStress
+   write(6,'(a24,2(1x,i8),/)')' integrator:             ',numerics_integrator
+   write(6,'(a24,1x,e8.1)') ' Lp_frac:                ',Lp_frac
+   write(6,'(a24,1x,L8)')   ' analytic Jacobian:      ',analyticJaco
+   write(6,'(a24,1x,L8)')   ' time sensitive:         ',time_sensitive
+ 
+   write(6,'(a24,1x,i8)')   ' nHomog:                 ',nHomog
+   write(6,'(a24,1x,e8.1)') ' subStepMinHomog:        ',subStepMinHomog
+   write(6,'(a24,1x,e8.1)') ' subStepSizeHomog:       ',subStepSizeHomog
+   write(6,'(a24,1x,e8.1)') ' stepIncreaseHomog:      ',stepIncreaseHomog
+   write(6,'(a24,1x,i8,/)') ' nMPstate:               ',nMPstate
 
-    !* RGC parameters
+   !* RGC parameters
 
-    write(6,'(a24,1x,e8.1)') ' aTol_RGC:               ',absTol_RGC
-    write(6,'(a24,1x,e8.1)') ' rTol_RGC:               ',relTol_RGC
-    write(6,'(a24,1x,e8.1)') ' aMax_RGC:               ',absMax_RGC
-    write(6,'(a24,1x,e8.1)') ' rMax_RGC:               ',relMax_RGC
-    write(6,'(a24,1x,e8.1)') ' perturbPenalty_RGC:     ',pPert_RGC
-    write(6,'(a24,1x,e8.1)') ' relevantMismatch_RGC:   ',xSmoo_RGC
-    write(6,'(a24,1x,e8.1)') ' viscosityrate_RGC:      ',viscPower_RGC
-    write(6,'(a24,1x,e8.1)') ' viscositymodulus_RGC:   ',viscModus_RGC
-    write(6,'(a24,1x,e8.1)') ' maxrelaxation_RGC:      ',maxdRelax_RGC
-    write(6,'(a24,1x,e8.1)') ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
-    write(6,'(a24,1x,e8.1)') ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
-    write(6,'(a24,1x,e8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
+   write(6,'(a24,1x,e8.1)') ' aTol_RGC:               ',absTol_RGC
+   write(6,'(a24,1x,e8.1)') ' rTol_RGC:               ',relTol_RGC
+   write(6,'(a24,1x,e8.1)') ' aMax_RGC:               ',absMax_RGC
+   write(6,'(a24,1x,e8.1)') ' rMax_RGC:               ',relMax_RGC
+   write(6,'(a24,1x,e8.1)') ' perturbPenalty_RGC:     ',pPert_RGC
+   write(6,'(a24,1x,e8.1)') ' relevantMismatch_RGC:   ',xSmoo_RGC
+   write(6,'(a24,1x,e8.1)') ' viscosityrate_RGC:      ',viscPower_RGC
+   write(6,'(a24,1x,e8.1)') ' viscositymodulus_RGC:   ',viscModus_RGC
+   write(6,'(a24,1x,e8.1)') ' maxrelaxation_RGC:      ',maxdRelax_RGC
+   write(6,'(a24,1x,e8.1)') ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
+   write(6,'(a24,1x,e8.1)') ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
+   write(6,'(a24,1x,e8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
 
-    !* spectral parameters
+   !* spectral parameters
 
-    write(6,'(a24,1x,e8.1)')   ' err_div_tol:            ',err_div_tol
-    write(6,'(a24,1x,e8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
-    write(6,'(a24,1x,i8)')     ' itmax:                  ',itmax
-    write(6,'(a24,1x,i8)')     ' itmin:                  ',itmin
-    write(6,'(a24,1x,L8)')     ' memory_efficient:       ',memory_efficient
-    if(fftw_timelimit<0.0_pReal) then
-      write(6,'(a24,1x,L8)')   ' fftw_timelimit:         ',.false.
-    else    
-      write(6,'(a24,1x,e8.1)') ' fftw_timelimit:         ',fftw_timelimit
-    endif
-    write(6,'(a24,1x,a)')      ' fftw_plan_mode:         ',trim(fftw_plan_mode)
-    write(6,'(a24,1x,i8)')     ' fftw_planner_flag:      ',fftw_planner_flag
-    write(6,'(a24,1x,e8.1)')   ' rotation_tol:           ',rotation_tol
-    write(6,'(a24,1x,L8,/)')   ' divergence_correction:  ',divergence_correction
-    write(6,'(a24,1x,L8,/)')   ' update_gamma:           ',update_gamma
-    
-    !* Random seeding parameters
-    
-    write(6,'(a24,1x,i16,/)')   ' fixed_seed:             ',fixedSeed
-  
-  !$OMP END CRITICAL (write2out)
+   write(6,'(a24,1x,e8.1)')   ' err_div_tol:            ',err_div_tol
+   write(6,'(a24,1x,e8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
+   write(6,'(a24,1x,i8)')     ' itmax:                  ',itmax
+   write(6,'(a24,1x,i8)')     ' itmin:                  ',itmin
+   write(6,'(a24,1x,L8)')     ' memory_efficient:       ',memory_efficient
+   if(fftw_timelimit<0.0_pReal) then
+     write(6,'(a24,1x,L8)')   ' fftw_timelimit:         ',.false.
+   else    
+     write(6,'(a24,1x,e8.1)') ' fftw_timelimit:         ',fftw_timelimit
+   endif
+   write(6,'(a24,1x,a)')      ' fftw_plan_mode:         ',trim(fftw_plan_mode)
+   write(6,'(a24,1x,i8)')     ' fftw_planner_flag:      ',fftw_planner_flag
+   write(6,'(a24,1x,e8.1)')   ' rotation_tol:           ',rotation_tol
+   write(6,'(a24,1x,L8,/)')   ' divergence_correction:  ',divergence_correction
+   write(6,'(a24,1x,L8,/)')   ' update_gamma:           ',update_gamma
+   
+   !* Random seeding parameters
+   
+   write(6,'(a24,1x,i16,/)')   ' fixed_seed:             ',fixedSeed
+ 
+ !$OMP END CRITICAL (write2out)
 
-  
-  !* openMP parameter
+ 
+ !* openMP parameter
 !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
-  
-  
-  !*  sanity check
+ 
+ 
+ !*  sanity check
 
-  if (relevantStrain <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='relevantStrain')
-  if (defgradTolerance <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='defgradTolerance')
-  if (iJacoStiffness < 1_pInt)              call IO_error(301_pInt,ext_msg='iJacoStiffness')
-  if (iJacoLpresiduum < 1_pInt)             call IO_error(301_pInt,ext_msg='iJacoLpresiduum')
-  if (pert_Fg <= 0.0_pReal)                 call IO_error(301_pInt,ext_msg='pert_Fg')
-  if (pert_method <= 0_pInt .or. pert_method >= 4_pInt) &
-                                            call IO_error(301_pInt,ext_msg='pert_method')
-  if (nHomog < 1_pInt)                      call IO_error(301_pInt,ext_msg='nHomog')
-  if (nMPstate < 1_pInt)                    call IO_error(301_pInt,ext_msg='nMPstate')
-  if (nCryst < 1_pInt)                      call IO_error(301_pInt,ext_msg='nCryst')
-  if (nState < 1_pInt)                      call IO_error(301_pInt,ext_msg='nState')
-  if (nStress < 1_pInt)                     call IO_error(301_pInt,ext_msg='nStress')
-  if (subStepMinCryst <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinCryst')
-  if (subStepSizeCryst <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeCryst')
-  if (stepIncreaseCryst <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseCryst')
-  if (subStepMinHomog <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinHomog')
-  if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeHomog')
-  if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseHomog')
-  if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(301_pInt,ext_msg='rTol_crystalliteState')
-  if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(301_pInt,ext_msg='rTol_crystalliteTemperature')
-  if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='rTol_crystalliteStress')
-  if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='aTol_crystalliteStress')
-  if (any(numerics_integrator <= 0_pInt) .or. any(numerics_integrator >= 6_pInt)) &
-                                            call IO_error(301_pInt,ext_msg='integrator')
+ if (relevantStrain <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='relevantStrain')
+ if (defgradTolerance <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='defgradTolerance')
+ if (iJacoStiffness < 1_pInt)              call IO_error(301_pInt,ext_msg='iJacoStiffness')
+ if (iJacoLpresiduum < 1_pInt)             call IO_error(301_pInt,ext_msg='iJacoLpresiduum')
+ if (pert_Fg <= 0.0_pReal)                 call IO_error(301_pInt,ext_msg='pert_Fg')
+ if (pert_method <= 0_pInt .or. pert_method >= 4_pInt) &
+                                           call IO_error(301_pInt,ext_msg='pert_method')
+ if (nHomog < 1_pInt)                      call IO_error(301_pInt,ext_msg='nHomog')
+ if (nMPstate < 1_pInt)                    call IO_error(301_pInt,ext_msg='nMPstate')
+ if (nCryst < 1_pInt)                      call IO_error(301_pInt,ext_msg='nCryst')
+ if (nState < 1_pInt)                      call IO_error(301_pInt,ext_msg='nState')
+ if (nStress < 1_pInt)                     call IO_error(301_pInt,ext_msg='nStress')
+ if (subStepMinCryst <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinCryst')
+ if (subStepSizeCryst <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeCryst')
+ if (stepIncreaseCryst <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseCryst')
+ if (subStepMinHomog <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='subStepMinHomog')
+ if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeHomog')
+ if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseHomog')
+ if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(301_pInt,ext_msg='rTol_crystalliteState')
+ if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(301_pInt,ext_msg='rTol_crystalliteTemperature')
+ if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='rTol_crystalliteStress')
+ if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='aTol_crystalliteStress')
+ if (any(numerics_integrator <= 0_pInt) .or. any(numerics_integrator >= 6_pInt)) &
+                                           call IO_error(301_pInt,ext_msg='integrator')
 
-  !* RGC parameters
+ !* RGC parameters
 
-  if (absTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absTol_RGC')
-  if (relTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relTol_RGC')
-  if (absMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absMax_RGC')
-  if (relMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relMax_RGC')
-  if (pPert_RGC <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='pPert_RGC')
-  if (xSmoo_RGC <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='xSmoo_RGC')
-  if (viscPower_RGC < 0.0_pReal)            call IO_error(301_pInt,ext_msg='viscPower_RGC')
-  if (viscModus_RGC < 0.0_pReal)            call IO_error(301_pInt,ext_msg='viscModus_RGC')
-  if (refRelaxRate_RGC <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='refRelaxRate_RGC')
-  if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(301_pInt,ext_msg='maxdRelax_RGC')
-  if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='maxVolDiscr_RGC')
-  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
-  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
+ if (absTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absTol_RGC')
+ if (relTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relTol_RGC')
+ if (absMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absMax_RGC')
+ if (relMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relMax_RGC')
+ if (pPert_RGC <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='pPert_RGC')
+ if (xSmoo_RGC <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='xSmoo_RGC')
+ if (viscPower_RGC < 0.0_pReal)            call IO_error(301_pInt,ext_msg='viscPower_RGC')
+ if (viscModus_RGC < 0.0_pReal)            call IO_error(301_pInt,ext_msg='viscModus_RGC')
+ if (refRelaxRate_RGC <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='refRelaxRate_RGC')
+ if (maxdRelax_RGC <= 0.0_pReal)           call IO_error(301_pInt,ext_msg='maxdRelax_RGC')
+ if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='maxVolDiscr_RGC')
+ if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
+ if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
 
-  !* spectral parameters
-  
-  if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
-  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
-  if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
-  if (itmin >  itmax)                       call IO_error(301_pInt,ext_msg='itmin')
-  
-  if (fixedSeed <= 0_pInt) then
-    !$OMP CRITICAL (write2out)
-      write(6,'(a)') ' Random is random!'
-    !$OMP END CRITICAL (write2out)
-  endif
-endsubroutine
+ !* spectral parameters
+ 
+ if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
+ if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
+ if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
+ if (itmin >  itmax)                       call IO_error(301_pInt,ext_msg='itmin')
+ 
+ if (fixedSeed <= 0_pInt) then
+   !$OMP CRITICAL (write2out)
+     write(6,'(a)') ' Random is random!'
+   !$OMP END CRITICAL (write2out)
+ endif
 
-END MODULE numerics
+end subroutine numerics_init
+
+end module numerics

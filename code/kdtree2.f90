@@ -585,18 +585,18 @@ module kdtree2_module
      !
      integer(pInt)           :: dimen   
      integer(pInt)           :: nn, nfound
-     real(pReal)      :: ballsize
+     real(pReal)             :: ballsize
      integer(pInt)           :: centeridx=999_pInt, correltime=9999_pInt
      ! exclude points within 'correltime' of 'centeridx', iff centeridx >= 0
      integer(pInt)           :: nalloc  ! how much allocated for results(:)?
-     logical           :: rearrange  ! are the data rearranged or original? 
+     logical                 :: rearrange  ! are the data rearranged or original? 
      ! did the # of points found overflow the storage provided?
-     logical           :: overflow
-     real(pReal), pointer :: qv(:)  ! query vector
+     logical                 :: overflow
+     real(pReal), pointer    :: qv(:)  ! query vector
      type(kdtree2_result), pointer :: results(:) ! results
      type(pq) :: pq
-     real(pReal), pointer :: myData(:,:)  ! temp pointer to data
-     integer(pInt), pointer      :: ind(:)     ! temp pointer to indexes
+     real(pReal), pointer    :: myData(:,:)  ! temp pointer to data
+     integer(pInt), pointer  :: ind(:)     ! temp pointer to indexes
  end type tree_search_record
 
  type(tree_search_record), save, target :: sr   ! A GLOBAL VARIABLE for search
@@ -630,15 +630,15 @@ function kdtree2_create(input_data,myDim,sort,rearrange) result (mr)
  use IO, only: IO_error
  
  implicit none
- type (kdtree2), pointer :: mr
- integer(pInt), intent(in), optional      :: myDim
- logical, intent(in), optional      :: sort
- logical, intent(in), optional      :: rearrange
+ type (kdtree2), pointer              :: mr
+ integer(pInt), intent(in), optional  :: myDim
+ logical, intent(in), optional        :: sort
+ logical, intent(in), optional        :: rearrange
  ! ..
  ! .. Array Arguments ..
- real(pReal), target :: input_data(:,:)
+ real(pReal), target                  :: input_data(:,:)
  !
- integer(pInt) :: i
+ integer(pInt)                        :: i
  ! ..
  allocate (mr)
  mr%the_data => input_data
@@ -1298,9 +1298,11 @@ function kdtree2_r_count_around_point(tp,idxin,correltime,r2) result(nfound)
  ! point 'idxin' with decorrelation time 'correltime'.
  !
  implicit none
- type (kdtree2), pointer :: tp
+ type (kdtree2), pointer       :: tp
+ 
  integer(pInt), intent (In)    :: correltime, idxin
- real(pReal), intent(in)        :: r2
+ real(pReal),   intent(in)     :: r2
+ 
  integer(pInt)                 :: nfound
  ! ..
  ! ..
@@ -1384,16 +1386,16 @@ recursive subroutine search(node)
  ! "box in bounds", whether the sear
  !
  implicit none
- type (Tree_node), pointer          :: node
+ type (Tree_node), pointer      :: node
  ! ..
- type(tree_node),pointer            :: ncloser, nfarther
+ type(tree_node),pointer        :: ncloser, nfarther
  !
- integer(pInt)                            :: cut_dim, i
+ integer(pInt)                  :: cut_dim, i
  ! ..
- real(pReal)                               :: qval, dis
- real(pReal)                               :: ballsize
+ real(pReal)                    :: qval, dis
+ real(pReal)                    :: ballsize
  real(pReal), pointer           :: qv(:)
- type(interval), pointer :: box(:) 
+ type(interval), pointer        :: box(:) 
 
  if ((associated(node%left) .and. associated(node%right)) .eqv. .false.) then
     ! we are on a terminal node
@@ -1481,12 +1483,12 @@ logical function box_in_search_range(node, sr) result(res)
  ! contribute nothing to the distance.
  !
  implicit none
- type (tree_node), pointer :: node
+ type (tree_node), pointer          :: node
  type (tree_search_record), pointer :: sr
 
  integer(pInt) :: dimen, i
- real(pReal)    :: dis, ballsize
- real(pReal)    :: l, u
+ real(pReal)   :: dis, ballsize
+ real(pReal)   :: l, u
 
  dimen = sr%dimen
  ballsize = sr%ballsize
@@ -1512,16 +1514,16 @@ subroutine process_terminal_node(node)
  ! the search results on the sr data structure.
  !
  implicit none
- type (tree_node), pointer          :: node
+ type (tree_node), pointer  :: node
  !
- real(pReal), pointer          :: qv(:)
- integer(pInt), pointer       :: ind(:)
- real(pReal), pointer          :: myData(:,:)
+ real(pReal), pointer       :: qv(:)
+ integer(pInt), pointer     :: ind(:)
+ real(pReal), pointer       :: myData(:,:)
  !
- integer(pInt)                :: dimen, i, indexofi, k, centeridx, correltime
- real(pReal)                   :: ballsize, sd, newpri
- logical                :: rearrange
- type(pq), pointer      :: pqp 
+ integer(pInt)              :: dimen, i, indexofi, k, centeridx, correltime
+ real(pReal)                :: ballsize, sd, newpri
+ logical                    :: rearrange
+ type(pq), pointer          :: pqp 
  !
  ! copy values from sr to local variables
  !
@@ -1619,17 +1621,17 @@ subroutine process_terminal_node_fixedball(node)
  ! save all within a fixed ball.
  !
  implicit none
- type (tree_node), pointer          :: node
+ type (tree_node), pointer   :: node
  !
- real(pReal), pointer          :: qv(:)
- integer(pInt), pointer       :: ind(:)
- real(pReal), pointer          :: myData(:,:)
+ real(pReal), pointer        :: qv(:)
+ integer(pInt), pointer      :: ind(:)
+ real(pReal), pointer        :: myData(:,:)
  !
- integer(pInt)                :: nfound
- integer(pInt)                :: dimen, i, indexofi, k
- integer(pInt)                :: centeridx, correltime, nn
- real(pReal)                   :: ballsize, sd
- logical                :: rearrange
+ integer(pInt)               :: nfound
+ integer(pInt)               :: dimen, i, indexofi, k
+ integer(pInt)               :: centeridx, correltime, nn
+ real(pReal)                 :: ballsize, sd
+ logical                     :: rearrange
 
  !
  ! copy values from sr to local variables
@@ -1710,13 +1712,13 @@ subroutine kdtree2_n_nearest_brute_force(tp,qv,nn,results)
  ! whole point of a k-d tree is to avoid doing what this subroutine
  ! does.
  implicit none
- type (kdtree2), pointer :: tp
- real(pReal), intent (In)       :: qv(:)
- integer(pInt), intent (In)    :: nn
- type(kdtree2_result)    :: results(:) 
+ type (kdtree2), pointer   :: tp
+ real(pReal), intent(in)   :: qv(:)
+ integer(pInt), intent(in) :: nn
+ type(kdtree2_result)      :: results(:) 
 
- integer(pInt) :: i, j, k
- real(pReal), allocatable :: all_distances(:)
+ integer(pInt)             :: i, j, k
+ real(pReal), allocatable  :: all_distances(:)
  ! ..
  allocate (all_distances(tp%n))
  do i = 1_pInt, tp%n
@@ -1751,11 +1753,11 @@ subroutine kdtree2_r_nearest_brute_force(tp,qv,r2,nfound,results)
  ! whole point of a k-d tree is to avoid doing what this subroutine
  ! does.
  implicit none
- type (kdtree2), pointer :: tp
- real(pReal), intent (In)       :: qv(:)
- real(pReal), intent (In)       :: r2
- integer(pInt), intent(out)    :: nfound
- type(kdtree2_result)    :: results(:) 
+ type (kdtree2), pointer    :: tp
+ real(pReal), intent(in)    :: qv(:)
+ real(pReal), intent(in)    :: r2
+ integer(pInt), intent(out) :: nfound
+ type(kdtree2_result)       :: results(:) 
 
  integer(pInt) :: i
  integer :: nalloc
@@ -1810,9 +1812,9 @@ subroutine heapsort(a,ind,n)
  ! If ind(k) = k upon input, then it will give a sort index upon output.
  !
  implicit none
- integer(pInt),intent(in)          :: n
- real(pReal), intent(inout)         :: a(:) 
- integer(pInt), intent(inout)      :: ind(:)
+ integer(pInt),intent(in)       :: n
+ real(pReal), intent(inout)     :: a(:) 
+ integer(pInt), intent(inout)   :: ind(:)
 
  !
  !
@@ -1869,7 +1871,7 @@ subroutine heapsort_struct(a,n)
  ! 
  !
  implicit none
- integer(pInt),intent(in)                 :: n
+ integer(pInt),intent(in)           :: n
  type(kdtree2_result),intent(inout) :: a(:)
 
  !

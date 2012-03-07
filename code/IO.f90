@@ -546,7 +546,7 @@ integer(pInt) function IO_countSections(myFile,part)
  integer(pInt),      intent(in) :: myFile
  character(len=*),   intent(in) :: part
 
- character(len=1024)            :: line = ''
+ character(len=1024)            :: line
 
  IO_countSections = 0_pInt
  rewind(myFile)
@@ -583,12 +583,13 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
 
  integer(pInt),   dimension(Nsections)      :: counter
  integer(pInt),   dimension(1+2*maxNchunks) :: positions
- integer(pInt)                              :: section = 0_pInt
- character(len=1024)                        :: line ='', &
+ integer(pInt)                              :: section
+ character(len=1024)                        :: line, &
                                                tag
 
  rewind(myFile)
  counter = 0_pInt
+ section = 0_pInt
  
  do while (IO_getTag(line,'<','>') /= part)               ! search for part
    read(myFile,'(a1024)',END=100) line
@@ -635,7 +636,6 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
 
  IO_spotTagInPart = .false.                               ! assume to nowhere spot tag
  section = 0_pInt
- line = ''
  rewind(myFile)
 
  do while (IO_getTag(line,'<','>') /= part)               ! search for part
@@ -851,7 +851,6 @@ pure function IO_lc(line)
 
  implicit none
  character(len=*), intent(in) :: line
- 
  character(len=len(line))     :: IO_lc
  
  integer                      :: i                      ! no pInt (len returns default integer)
@@ -871,8 +870,8 @@ subroutine IO_lcInplace(line)
 
  implicit none
  character(len=*), intent(inout) :: line
-
  character(len=len(line))        :: IO_lc
+
  integer                         ::  i                   ! no pInt (len returns default integer)
 
  IO_lc = line
@@ -892,6 +891,7 @@ subroutine IO_skipChunks(myUnit,N)
  implicit none
  integer(pInt), intent(in)                :: myUnit, &
                                              N
+
  integer(pInt), parameter                 :: maxNchunks = 64_pInt
  
  integer(pInt)                            :: remainingChunks
@@ -915,7 +915,7 @@ character(len=300) pure function IO_extractValue(line,key)
  implicit none
  character(len=*), intent(in) :: line, &
                                  key
-                                 
+
  character(len=*), parameter  :: sep = achar(61)         ! '='
 
  integer                      :: myPos                                          ! no pInt (scan returns default integer)
@@ -1444,6 +1444,7 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
                                              unit2
  
  integer(pInt), parameter                 :: maxNchunks = 6_pInt
+
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=300)                       :: line,fname
  logical                                  :: createSuccess,fexist
