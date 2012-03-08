@@ -19,50 +19,81 @@
 !##############################################################
 !* $Id$
 !##############################################################
- MODULE FEsolving
+module FEsolving
 !##############################################################
  use prec, only: pInt,pReal
+ 
  implicit none
+ integer(pInt) :: &
+   cycleCounter =  0_pInt, &
+   theInc       = -1_pInt, &
+   restartInc   =  1_pInt
+   
+ real(pReal) :: &
+   theTime      = 0.0_pReal, &
+   theDelta     = 0.0_pReal
+   
+ logical :: & 
+   lastIncConverged  = .false., &
+   outdatedByNewInc  = .false., &
+   outdatedFFN1      = .false., &
+   terminallyIll     = .false., &
+   symmetricSolver   = .false., &
+   parallelExecution = .true., & 
+   restartWrite      = .false., &
+   restartRead       = .false., &
+   lastMode          = .true., & 
+   cutBack           = .false.
+   
+ integer(pInt), dimension(:,:), allocatable :: &
+   FEsolving_execIP
+   
+ integer(pInt), dimension(2) :: &
+   FEsolving_execElem
+   
+ character(len=1024) :: &
+   FEmodelGeometry
+   
+ logical, dimension(:,:), allocatable :: &
+   calcMode
+   
+ public :: FE_init
 
- integer(pInt) :: cycleCounter = 0_pInt, theInc = -1_pInt, restartInc = 1_pInt
- real(pReal)   :: theTime = 0.0_pReal, theDelta = 0.0_pReal
- logical :: lastIncConverged = .false.,outdatedByNewInc = .false.,outdatedFFN1 = .false.,terminallyIll = .false.
- logical :: symmetricSolver = .false. 
- logical :: parallelExecution = .true. 
- logical :: restartWrite = .false.
- logical :: restartRead  = .false.
- logical :: lastMode = .true., cutBack = .false.
- logical, dimension(:,:), allocatable :: calcMode
- integer(pInt), dimension(:,:), allocatable :: FEsolving_execIP
- integer(pInt), dimension(2) :: FEsolving_execElem
- character(len=1024) FEmodelGeometry
-
- CONTAINS
+contains
 
 !***********************************************************
 ! determine whether a symmetric solver is used
 ! and whether restart is requested
 !***********************************************************
- subroutine FE_init()
+subroutine FE_init
  
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use prec, only: pInt
- use debug, only: debug_verbosity
+ use debug, only: debug_what, &
+                  debug_FEsolving, &
+                  debug_levelBasic
+ use IO,    only: IO_open_inputFile, &
+                  IO_stringPos, &
+                  IO_stringValue, &
+                  IO_intValue, &
+                  IO_lc, &
+                  IO_open_logFile, &
+                  IO_warning
  use DAMASK_interface
- use IO
- implicit none
  
+ implicit none
  integer(pInt), parameter :: fileunit = 222_pInt
  integer(pInt), parameter :: maxNchunks = 6_pInt
- integer :: i, start = 0, length=0
+
+ integer :: i, start = 0, length                                 ! is save for FE_init (only called once)
  integer(pInt) :: j
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
- character(len=64) tag
- character(len=1024) line, commandLine
-
+ character(len=64)   :: tag
+ character(len=1024) :: line, &
+                        commandLine
+ 
  FEmodelGeometry = getModelName()
-
  call IO_open_inputFile(fileunit,FEmodelGeometry)
+
  if (trim(FEsolver) == 'Spectral') then
    call get_command(commandLine)                                                 ! may contain uppercase
    do i=1,len(commandLine)
@@ -73,7 +104,7 @@
      start = index(commandLine,'-r ',.true.) + 3                                 ! set to position after trailing space
    if (index(commandLine,'--restart ',.true.)>0) &                               ! look for --restart
      start = index(commandLine,'--restart ',.true.) + 10                         ! set to position after trailing space
-   if(start /= 0_pInt) then                                                      ! found something
+   if(start /= 0) then                                                           ! found something
      length = verify(commandLine(start:len(commandLine)),'0123456789',.false.)   ! where is first non number after argument?
      read(commandLine(start:start+length),'(I12)') restartInc                    ! read argument
      restartRead  = restartInc > 0_pInt
@@ -148,7 +179,7 @@
  write(6,*) '<<<+-  FEsolving init  -+>>>'
  write(6,*) '$Id$'
 #include "compilation_info.f90"
- if (debug_verbosity > 0) then
+ if (iand(debug_what(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
    write(6,*) 'restart writing:    ', restartWrite
    write(6,*) 'restart reading:    ', restartRead
    if (restartRead) write(6,*) 'restart Job:        ', trim(FEmodelGeometry)
@@ -156,6 +187,6 @@
  endif
 !$OMP END CRITICAL (write2out)
 
- end subroutine
+end subroutine FE_init
 
- END MODULE FEsolving
+end module FEsolving

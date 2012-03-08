@@ -23,8 +23,7 @@ MODULE CPFEM
 !##############################################################
 !    *** CPFEM engine ***
 !
-use prec, only:                                   pReal, &
-                                                  pInt
+use prec, only:                                   pReal
 implicit none
  
 real(pReal), parameter ::                         CPFEM_odd_stress    = 1e15_pReal, &
@@ -47,8 +46,8 @@ CONTAINS
 
 subroutine CPFEM_initAll(Temperature,element,IP)
 
-  use prec, only:                                     pReal, &
-                                                      prec_init
+  use prec, only:                                     prec_init, &
+                                                      pInt
   use numerics, only:                                 numerics_init
   use debug, only:                                    debug_init
   use FEsolving, only:                                FE_init
@@ -61,8 +60,8 @@ subroutine CPFEM_initAll(Temperature,element,IP)
   use homogenization, only:                           homogenization_init
   use IO, only:                                       IO_init
   use DAMASK_interface
-  implicit none
 
+  implicit none
   integer(pInt), intent(in) ::                        element, &          ! FE element number
                                                       IP                  ! FE integration point number
   real(pReal), intent(in) ::                          Temperature         ! temperature
@@ -79,19 +78,19 @@ subroutine CPFEM_initAll(Temperature,element,IP)
     n = n+1_pInt
     if (.not. CPFEM_init_inProgress) then                               ! yes my thread won!
       CPFEM_init_inProgress = .true.
-      call prec_init()
-      call IO_init()
-      call numerics_init()
-      call debug_init()
-      call math_init()
-      call FE_init()
+      call prec_init
+      call IO_init
+      call numerics_init
+      call debug_init
+      call math_init
+      call FE_init
       call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
-      call lattice_init()
-      call material_init()
-      call constitutive_init()
+      call lattice_init
+      call material_init
+      call constitutive_init
       call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
       call homogenization_init(Temperature)
-      call CPFEM_init()
+      call CPFEM_init
       if (trim(FEsolver)/='Spectral') call DAMASK_interface_init() ! Spectral solver is doing initialization earlier
       CPFEM_init_done = .true.
       CPFEM_init_inProgress = .false.
@@ -101,18 +100,20 @@ subroutine CPFEM_initAll(Temperature,element,IP)
     endif
   endif
 
-end subroutine
+end subroutine CPFEM_initAll
 
 !*********************************************************
 !***    allocate the arrays defined in module CPFEM    ***
 !***    and initialize them                            ***
 !*********************************************************
 
-subroutine CPFEM_init()
+subroutine CPFEM_init
   
   use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   use prec, only:                                 pInt
-  use debug, only:                                debug_verbosity
+  use debug, only:                                debug_what, &
+                                                  debug_CPFEM, &
+                                                  debug_levelBasic
   use IO, only:                                   IO_read_jobBinaryFile
   use FEsolving, only:                            parallelExecution, &
                                                   symmetricSolver, &
@@ -133,7 +134,6 @@ subroutine CPFEM_init()
 
 
   implicit none
-
   integer(pInt) i,j,k,l,m
 
   ! initialize stress and jacobian to zero 
@@ -143,7 +143,7 @@ subroutine CPFEM_init()
 
   ! *** restore the last converged values of each essential variable from the binary file
   if (restartRead) then
-    if (debug_verbosity > 0) then
+    if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
       !$OMP CRITICAL (write2out)
        write(6,'(a)') '<< CPFEM >> Restored state variables of last converged step from binary files'
       !$OMP END CRITICAL (write2out)
@@ -205,7 +205,7 @@ subroutine CPFEM_init()
     write(6,*) '<<<+-  cpfem init  -+>>>'
     write(6,*) '$Id$'
 #include "compilation_info.f90"
-    if (debug_verbosity > 0) then
+    if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0) then
       write(6,'(a32,1x,6(i8,1x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
       write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
       write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
@@ -216,7 +216,7 @@ subroutine CPFEM_init()
     call flush(6)
   !$OMP END CRITICAL (write2out)
 
-endsubroutine
+end subroutine CPFEM_init
 
 
 !***********************************************************************
@@ -228,81 +228,82 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
   ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
 
   !*** variables and functions from other modules ***!
-  use prec, only:                                     pReal, &
-                                                      pInt
-  use numerics, only:                                 defgradTolerance, &
-                                                      iJacoStiffness
-  use debug, only:                                    debug_e, &
-                                                      debug_i, &
-                                                      debug_selectiveDebugger, &
-                                                      debug_verbosity, &
-                                                      debug_stressMaxLocation, &
-                                                      debug_stressMinLocation, &
-                                                      debug_jacobianMaxLocation, &
-                                                      debug_jacobianMinLocation, &
-                                                      debug_stressMax, &
-                                                      debug_stressMin, &
-                                                      debug_jacobianMax, &
-                                                      debug_jacobianMin
-  use FEsolving, only:                                parallelExecution, &
-                                                      outdatedFFN1, &
-                                                      terminallyIll, &
-                                                      cycleCounter, &
-                                                      theInc, &
-                                                      theTime, &
-                                                      theDelta, &
-                                                      FEsolving_execElem, &
-                                                      FEsolving_execIP, &
-                                                      restartWrite
-  use math, only:                                     math_identity2nd, &
-                                                      math_mul33x33, &
-                                                      math_det33, &
-                                                      math_transpose33, &
-                                                      math_I3, &
-                                                      math_Mandel3333to66, &
-                                                      math_Mandel66to3333, &
-                                                      math_Mandel33to6, &
-                                                      math_Mandel6to33
-  use mesh, only:                                     mesh_FEasCP, &
-                                                      mesh_NcpElems, &
-                                                      mesh_maxNips, &
-                                                      mesh_element, &
-                                                      mesh_node0, &
-                                                      mesh_node, &
-                                                      mesh_ipCenterOfGravity, &
-                                                      mesh_build_subNodeCoords, &
-                                                      mesh_build_ipVolumes, &
-                                                      mesh_build_ipCoordinates, &
-                                                      FE_Nips, &
-                                                      FE_Nnodes
-  use material, only:                                 homogenization_maxNgrains, &
-                                                      microstructure_elemhomo, &
-                                                      material_phase
-  use constitutive, only:                             constitutive_state0,constitutive_state
-  use crystallite, only:                              crystallite_partionedF,&
-                                                      crystallite_F0, &
-                                                      crystallite_Fp0, &
-                                                      crystallite_Fp, &
-                                                      crystallite_Lp0, &
-                                                      crystallite_Lp, &
-                                                      crystallite_dPdF0, &
-                                                      crystallite_dPdF, &
-                                                      crystallite_Tstar0_v, &
-                                                      crystallite_Tstar_v
-  use homogenization, only:                           homogenization_sizeState, &
-                                                      homogenization_state, &
-                                                      homogenization_state0, &
-                                                      materialpoint_F, &
-                                                      materialpoint_F0, &
-                                                      materialpoint_P, &
-                                                      materialpoint_dPdF, &
-                                                      materialpoint_results, &
-                                                      materialpoint_sizeResults, &
-                                                      materialpoint_Temperature, &
-                                                      materialpoint_stressAndItsTangent, &
-                                                      materialpoint_postResults
-  use IO, only:                                       IO_write_jobBinaryFile, &
-                                                      IO_warning
+  use prec, only:           pInt
+  use numerics, only:       defgradTolerance, &
+                            iJacoStiffness
+  use debug, only:          debug_what, &
+                            debug_CPFEM, &
+                            debug_levelBasic, &
+                            debug_levelSelective, &
+                            debug_e, &
+                            debug_i, &
+                            debug_stressMaxLocation, &
+                            debug_stressMinLocation, &
+                            debug_jacobianMaxLocation, &
+                            debug_jacobianMinLocation, &
+                            debug_stressMax, &
+                            debug_stressMin, &
+                            debug_jacobianMax, &
+                            debug_jacobianMin
+  use FEsolving, only:      parallelExecution, &
+                            outdatedFFN1, &
+                            terminallyIll, &
+                            cycleCounter, &
+                            theInc, &
+                            theTime, &
+                            theDelta, &
+                            FEsolving_execElem, &
+                            FEsolving_execIP, &
+                            restartWrite
+  use math, only:           math_identity2nd, &
+                            math_mul33x33, &
+                            math_det33, &
+                            math_transpose33, &
+                            math_I3, &
+                            math_Mandel3333to66, &
+                            math_Mandel66to3333, &
+                            math_Mandel33to6, &
+                            math_Mandel6to33
+  use mesh, only:           mesh_FEasCP, &
+                            mesh_NcpElems, &
+                            mesh_maxNips, &
+                            mesh_element, &
+                            mesh_node0, &
+                            mesh_node, &
+                            mesh_ipCenterOfGravity, &
+                            mesh_build_subNodeCoords, &
+                            mesh_build_ipVolumes, &
+                            mesh_build_ipCoordinates, &
+                            FE_Nips, &
+                            FE_Nnodes
+  use material, only:       homogenization_maxNgrains, &
+                            microstructure_elemhomo, &
+                            material_phase
+  use constitutive, only:   constitutive_state0,constitutive_state
+  use crystallite, only:    crystallite_partionedF,&
+                            crystallite_F0, &
+                            crystallite_Fp0, &
+                            crystallite_Fp, &
+                            crystallite_Lp0, &
+                            crystallite_Lp, &
+                            crystallite_dPdF0, &
+                            crystallite_dPdF, &
+                            crystallite_Tstar0_v, &
+                            crystallite_Tstar_v
+  use homogenization, only: homogenization_sizeState, &
+                            homogenization_state, &
+                            homogenization_state0, &
+                            materialpoint_F, &
+                            materialpoint_F0, &
+                            materialpoint_P, &
+                            materialpoint_dPdF, &
+                            materialpoint_results, &
+                            materialpoint_sizeResults, &
+                            materialpoint_Temperature, &
+                            materialpoint_stressAndItsTangent, &
+                            materialpoint_postResults
+  use IO, only:             IO_write_jobBinaryFile, &
+                            IO_warning
   use DAMASK_interface
   
   implicit none
@@ -359,7 +360,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
   
   cp_en = mesh_FEasCP('elem',element)
   
-  if (debug_verbosity > 0 .and. cp_en == 1 .and. IP == 1) then
+  if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt .and. cp_en == 1 .and. IP == 1) then
     !$OMP CRITICAL (write2out)
       write(6,*)
       write(6,'(a)') '#############################################'
@@ -396,7 +397,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-        if (debug_verbosity > 0) then
+        if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
           !$OMP CRITICAL (write2out)
             write(6,'(a)') '<< CPFEM >> Aging states'
             if (debug_e == cp_en .and. debug_i == IP) then
@@ -418,7 +419,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
         ! * dump the last converged values of each essential variable to a binary file
         
         if (restartWrite) then 
-          if (debug_verbosity > 0) then
+          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
            !$OMP CRITICAL (write2out)
              write(6,'(a)') '<< CPFEM >> Writing state variables of last converged step to binary files'
            !$OMP END CRITICAL (write2out)
@@ -487,7 +488,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
       
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(1:3,1:3,IP,cp_en)) > defgradTolerance)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
-          if (debug_verbosity > 0) then
+          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at element ip',cp_en,IP
               write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',math_transpose33(materialpoint_F(1:3,1:3,IP,cp_en))
@@ -514,7 +515,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           FEsolving_execElem(2)     = cp_en
           FEsolving_execIP(1,cp_en) = IP
           FEsolving_execIP(2,cp_en) = IP
-          if (debug_verbosity > 0) then
+          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,1x,i2)') '<< CPFEM >> Calculation for element ip ',cp_en,IP
             !$OMP END CRITICAL (write2out)
@@ -525,7 +526,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
         !* parallel computation and calulation not yet done
         
         elseif (.not. CPFEM_calc_done) then
-          if (debug_verbosity > 0) then
+          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
@@ -534,7 +535,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
             call mesh_build_subNodeCoords()                               ! update subnodal coordinates
             call mesh_build_ipCoordinates()                               ! update ip coordinates
           endif
-          if (debug_verbosity > 0) then
+          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Start stress and tangent ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
@@ -640,7 +641,9 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
     Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
   endif
 
-  if (mode < 3 .and. debug_verbosity > 0 .and. ((debug_e == cp_en .and. debug_i == IP) .or. .not. debug_selectiveDebugger)) then
+  if (mode < 3 .and. iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt &
+                     .and. ((debug_e == cp_en .and. debug_i == IP) &
+                             .or. .not. iand(debug_what(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1.0e6_pReal
       write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') '<< CPFEM >> jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1.0e9_pReal
@@ -679,6 +682,6 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
     endif
   endif
   
-end subroutine
+end subroutine CPFEM_general
 
 END MODULE CPFEM

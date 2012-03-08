@@ -70,92 +70,95 @@
 !interaction_twintwin    1 1 1 1 1 1 1 1 10 10 10 10 10 10 10 10 10 10 10 10 
 !relevantResistance      1
 
-MODULE constitutive_phenopowerlaw
+module constitutive_phenopowerlaw
 
-!*** Include other modules ***
  use prec, only: pReal,pInt
+
  implicit none
-
- character (len=*), parameter :: constitutive_phenopowerlaw_label = 'phenopowerlaw'
+ character (len=*), parameter :: &
+   constitutive_phenopowerlaw_label = 'phenopowerlaw'
  
- integer(pInt),   dimension(:),     allocatable :: constitutive_phenopowerlaw_sizeDotState, &
-                                                   constitutive_phenopowerlaw_sizeState, &
-                                                   constitutive_phenopowerlaw_sizePostResults       ! cumulative size of post results
- integer(pInt),   dimension(:,:),   allocatable,target :: constitutive_phenopowerlaw_sizePostResult ! size of each post result output
- character(len=64), dimension(:,:), allocatable,target :: constitutive_phenopowerlaw_output         ! name of each post result output
- integer(pInt), dimension(:), allocatable ::              constitutive_phenopowerlaw_Noutput        ! number of outputs per instance of this constitution 
+ integer(pInt),   dimension(:),     allocatable :: &
+   constitutive_phenopowerlaw_sizeDotState, &
+   constitutive_phenopowerlaw_sizeState, &
+   constitutive_phenopowerlaw_sizePostResults, &                                                    ! cumulative size of post results
+   constitutive_phenopowerlaw_Noutput, &                                                            ! number of outputs per instance of this constitution 
+   constitutive_phenopowerlaw_totalNslip, &                                                         ! no. of slip system used in simulation
+   constitutive_phenopowerlaw_totalNtwin, &                                                         ! no. of twin system used in simulation
+   constitutive_phenopowerlaw_structure
  
- character(len=32), dimension(:),   allocatable :: constitutive_phenopowerlaw_structureName
- integer(pInt),   dimension(:),     allocatable :: constitutive_phenopowerlaw_structure
- integer(pInt),   dimension(:,:),   allocatable :: constitutive_phenopowerlaw_Nslip                 ! active number of slip systems per family
- integer(pInt),   dimension(:,:),   allocatable :: constitutive_phenopowerlaw_Ntwin                 ! active number of twin systems per family
- integer(pInt),   dimension(:),     allocatable :: constitutive_phenopowerlaw_totalNslip            ! no. of slip system used in simulation
- integer(pInt),   dimension(:),     allocatable :: constitutive_phenopowerlaw_totalNtwin            ! no. of twin system used in simulation
+ integer(pInt),   dimension(:,:),   allocatable,target :: &
+   constitutive_phenopowerlaw_sizePostResult                                                        ! size of each post result output
 
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_CoverA
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_C11
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_C12
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_C13
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_C33
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_C44
- real(pReal), dimension(:,:,:), allocatable :: constitutive_phenopowerlaw_Cslip_66
-!* Visco-plastic constitutive_phenomenological parameters
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_gdot0_slip
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_n_slip
- real(pReal), dimension(:,:),   allocatable :: constitutive_phenopowerlaw_tau0_slip
- real(pReal), dimension(:,:),   allocatable :: constitutive_phenopowerlaw_tausat_slip
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_gdot0_twin
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_n_twin
- real(pReal), dimension(:,:),   allocatable :: constitutive_phenopowerlaw_tau0_twin
+ integer(pInt),   dimension(:,:),   allocatable :: &
+   constitutive_phenopowerlaw_Nslip, &                                                              ! active number of slip systems per family
+   constitutive_phenopowerlaw_Ntwin                                                                 ! active number of twin systems per family
 
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_spr
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_twinB
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_twinC
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_twinD
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_twinE
+ character(len=64), dimension(:,:), allocatable,target :: & 
+   constitutive_phenopowerlaw_output                                                                ! name of each post result output
 
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_h0_slipslip
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_h0_sliptwin
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_h0_twinslip
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_h0_twintwin
+ character(len=32), dimension(:),   allocatable :: &
+   constitutive_phenopowerlaw_structureName
 
- real(pReal), dimension(:,:),   allocatable :: constitutive_phenopowerlaw_interaction_slipslip
- real(pReal), dimension(:,:),   allocatable :: constitutive_phenopowerlaw_interaction_sliptwin
- real(pReal), dimension(:,:),   allocatable :: constitutive_phenopowerlaw_interaction_twinslip
- real(pReal), dimension(:,:),   allocatable :: constitutive_phenopowerlaw_interaction_twintwin
+ real(pReal), dimension(:), allocatable :: &
+   constitutive_phenopowerlaw_CoverA, &
+   constitutive_phenopowerlaw_C11, &
+   constitutive_phenopowerlaw_C12, &
+   constitutive_phenopowerlaw_C13, &
+   constitutive_phenopowerlaw_C33, &
+   constitutive_phenopowerlaw_C44, &
+   constitutive_phenopowerlaw_gdot0_slip, &
+   constitutive_phenopowerlaw_n_slip, &
+   constitutive_phenopowerlaw_n_twin, &
+   constitutive_phenopowerlaw_gdot0_twin
 
- real(pReal), dimension(:,:,:), allocatable :: constitutive_phenopowerlaw_hardeningMatrix_slipslip
- real(pReal), dimension(:,:,:), allocatable :: constitutive_phenopowerlaw_hardeningMatrix_sliptwin
- real(pReal), dimension(:,:,:), allocatable :: constitutive_phenopowerlaw_hardeningMatrix_twinslip
- real(pReal), dimension(:,:,:), allocatable :: constitutive_phenopowerlaw_hardeningMatrix_twintwin
+ real(pReal), dimension(:,:), allocatable :: &
+   constitutive_phenopowerlaw_tau0_slip, &
+   constitutive_phenopowerlaw_tausat_slip, &
+   constitutive_phenopowerlaw_tau0_twin
+
+ real(pReal), dimension(:), allocatable :: &
+   constitutive_phenopowerlaw_spr, &
+   constitutive_phenopowerlaw_twinB, &
+   constitutive_phenopowerlaw_twinC, &
+   constitutive_phenopowerlaw_twinD, &
+   constitutive_phenopowerlaw_twinE, &
+   constitutive_phenopowerlaw_h0_slipslip, &
+   constitutive_phenopowerlaw_h0_sliptwin, &
+   constitutive_phenopowerlaw_h0_twinslip, &
+   constitutive_phenopowerlaw_h0_twintwin, &
+   constitutive_phenopowerlaw_a_slip, &
+   constitutive_phenopowerlaw_aTolResistance
+
+ real(pReal), dimension(:,:), allocatable :: &
+   constitutive_phenopowerlaw_interaction_slipslip, &
+   constitutive_phenopowerlaw_interaction_sliptwin, &
+   constitutive_phenopowerlaw_interaction_twinslip, &
+   constitutive_phenopowerlaw_interaction_twintwin
+
+ real(pReal), dimension(:,:,:), allocatable :: &
+   constitutive_phenopowerlaw_hardeningMatrix_slipslip, &
+   constitutive_phenopowerlaw_hardeningMatrix_sliptwin, &
+   constitutive_phenopowerlaw_hardeningMatrix_twinslip, &
+   constitutive_phenopowerlaw_hardeningMatrix_twintwin, &
+   constitutive_phenopowerlaw_Cslip_66
+
+ public  :: constitutive_phenopowerlaw_init  
  
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_a_slip
- 
- real(pReal), dimension(:),     allocatable :: constitutive_phenopowerlaw_aTolResistance
- 
-CONTAINS
-!****************************************
-!* - constitutive_init
-!* - constitutive_stateInit
-!* - constitutive_homogenizedC
-!* - constitutive_microstructure
-!* - constitutive_LpAndItsTangent
-!* - consistutive_dotState
-!* - consistutive_postResults
-!****************************************
-
+contains
 
 subroutine constitutive_phenopowerlaw_init(myFile)
 !**************************************
 !*      Module initialization         *
 !**************************************
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use prec, only: pInt, pReal
- use math, only: math_Mandel3333to66, math_Voigt66to3333
+ use math,    only: math_Mandel3333to66, &
+                    math_Voigt66to3333
  use IO
  use material
- use debug, only: debug_verbosity
-
+ use debug,   only: debug_what,&
+                    debug_constitutive,&
+                    debug_levelBasic
  use lattice, only: lattice_initializeStructure, lattice_symmetryType, &
                     lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                     lattice_maxNinteraction, lattice_NslipSystem, lattice_NtwinSystem, &
@@ -164,13 +167,14 @@ subroutine constitutive_phenopowerlaw_init(myFile)
                     lattice_interactionTwinSlip, &
                     lattice_interactionTwinTwin
 
+ implicit none
  integer(pInt), intent(in) :: myFile
  integer(pInt), parameter :: maxNchunks = lattice_maxNinteraction + 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) section, maxNinstance, i,j,k, f,o, &
                mySize, myStructure, index_myFamily, index_otherFamily
- character(len=64) tag
- character(len=1024) line
+ character(len=64)   :: tag
+ character(len=1024) :: line
 
  !$OMP CRITICAL (write2out)
    write(6,*)
@@ -182,79 +186,96 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  maxNinstance = int(count(phase_constitution == constitutive_phenopowerlaw_label),pInt)
  if (maxNinstance == 0) return
 
- if (debug_verbosity > 0) then
+ if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,1x,i5)') '# instances:',maxNinstance
      write(6,*)
    !$OMP END CRITICAL (write2out)
  endif
- allocate(constitutive_phenopowerlaw_sizeDotState(maxNinstance)) ;   constitutive_phenopowerlaw_sizeDotState = 0_pInt
- allocate(constitutive_phenopowerlaw_sizeState(maxNinstance)) ;      constitutive_phenopowerlaw_sizeState = 0_pInt
- allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance)); constitutive_phenopowerlaw_sizePostResults = 0_pInt
- allocate(constitutive_phenopowerlaw_sizePostResult(maxval(phase_Noutput), &
-                                            maxNinstance)) ;         constitutive_phenopowerlaw_sizePostResult = 0_pInt
- allocate(constitutive_phenopowerlaw_output(maxval(phase_Noutput), &
-                                            maxNinstance)) ;         constitutive_phenopowerlaw_output = ''
- allocate(constitutive_phenopowerlaw_Noutput(maxNinstance)) ;        constitutive_phenopowerlaw_Noutput = 0_pInt
-
- allocate(constitutive_phenopowerlaw_structureName(maxNinstance)) ;  constitutive_phenopowerlaw_structureName = ''
- allocate(constitutive_phenopowerlaw_structure(maxNinstance)) ;      constitutive_phenopowerlaw_structure = 0_pInt
- allocate(constitutive_phenopowerlaw_Nslip(lattice_maxNslipFamily,&
-                                           maxNinstance)) ;          constitutive_phenopowerlaw_Nslip = 0_pInt           
- allocate(constitutive_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,&
-                                           maxNinstance)) ;          constitutive_phenopowerlaw_Ntwin = 0_pInt
- 
- allocate(constitutive_phenopowerlaw_totalNslip(maxNinstance)) ;     constitutive_phenopowerlaw_totalNslip = 0_pInt  !no. of slip system used in simulation (YJ.RO)
- allocate(constitutive_phenopowerlaw_totalNtwin(maxNinstance)) ;     constitutive_phenopowerlaw_totalNtwin = 0_pInt  !no. of twin system used in simulation (YJ.RO)
-
- allocate(constitutive_phenopowerlaw_CoverA(maxNinstance))       ;   constitutive_phenopowerlaw_CoverA = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C11(maxNinstance)) ;            constitutive_phenopowerlaw_C11 = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C12(maxNinstance)) ;            constitutive_phenopowerlaw_C12 = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C13(maxNinstance)) ;            constitutive_phenopowerlaw_C13 = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C33(maxNinstance)) ;            constitutive_phenopowerlaw_C33 = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C44(maxNinstance)) ;            constitutive_phenopowerlaw_C44 = 0.0_pReal
- allocate(constitutive_phenopowerlaw_Cslip_66(6,6,maxNinstance)) ;   constitutive_phenopowerlaw_Cslip_66 = 0.0_pReal
-
- allocate(constitutive_phenopowerlaw_gdot0_slip(maxNinstance)) ;     constitutive_phenopowerlaw_gdot0_slip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_n_slip(maxNinstance)) ;         constitutive_phenopowerlaw_n_slip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_tau0_slip(lattice_maxNslipFamily,&
-                                               maxNinstance)) ;      constitutive_phenopowerlaw_tau0_slip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_tausat_slip(lattice_maxNslipFamily,&
-                                                 maxNinstance)) ;    constitutive_phenopowerlaw_tausat_slip = 0.0_pReal
-
- allocate(constitutive_phenopowerlaw_gdot0_twin(maxNinstance)) ;     constitutive_phenopowerlaw_gdot0_twin = 0.0_pReal
- allocate(constitutive_phenopowerlaw_n_twin(maxNinstance)) ;         constitutive_phenopowerlaw_n_twin = 0.0_pReal
- allocate(constitutive_phenopowerlaw_tau0_twin(lattice_maxNtwinFamily,&
-                                               maxNinstance)) ;      constitutive_phenopowerlaw_tau0_twin = 0.0_pReal
-
- allocate(constitutive_phenopowerlaw_spr(maxNinstance))         ;    constitutive_phenopowerlaw_spr = 0.0_pReal
- allocate(constitutive_phenopowerlaw_twinB(maxNinstance))       ;    constitutive_phenopowerlaw_twinB = 0.0_pReal
- allocate(constitutive_phenopowerlaw_twinC(maxNinstance))       ;    constitutive_phenopowerlaw_twinC = 0.0_pReal
- allocate(constitutive_phenopowerlaw_twinD(maxNinstance))       ;    constitutive_phenopowerlaw_twinD = 0.0_pReal
- allocate(constitutive_phenopowerlaw_twinE(maxNinstance))       ;    constitutive_phenopowerlaw_twinE = 0.0_pReal
- 
- allocate(constitutive_phenopowerlaw_h0_slipslip(maxNinstance)) ;    constitutive_phenopowerlaw_h0_slipslip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_h0_sliptwin(maxNinstance)) ;    constitutive_phenopowerlaw_h0_sliptwin = 0.0_pReal
- allocate(constitutive_phenopowerlaw_h0_twinslip(maxNinstance)) ;    constitutive_phenopowerlaw_h0_twinslip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_h0_twintwin(maxNinstance)) ;    constitutive_phenopowerlaw_h0_twintwin = 0.0_pReal
-
+ allocate(constitutive_phenopowerlaw_sizeDotState(maxNinstance))
+          constitutive_phenopowerlaw_sizeDotState         = 0_pInt
+ allocate(constitutive_phenopowerlaw_sizeState(maxNinstance))
+          constitutive_phenopowerlaw_sizeState            = 0_pInt
+ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance))
+          constitutive_phenopowerlaw_sizePostResults      = 0_pInt
+ allocate(constitutive_phenopowerlaw_sizePostResult(maxval(phase_Noutput),maxNinstance))
+          constitutive_phenopowerlaw_sizePostResult       = 0_pInt
+ allocate(constitutive_phenopowerlaw_output(maxval(phase_Noutput),maxNinstance))
+          constitutive_phenopowerlaw_output               = ''
+ allocate(constitutive_phenopowerlaw_Noutput(maxNinstance))
+          constitutive_phenopowerlaw_Noutput              = 0_pInt
+ allocate(constitutive_phenopowerlaw_structureName(maxNinstance))
+          constitutive_phenopowerlaw_structureName        = ''
+ allocate(constitutive_phenopowerlaw_structure(maxNinstance))
+          constitutive_phenopowerlaw_structure            = 0_pInt
+ allocate(constitutive_phenopowerlaw_Nslip(lattice_maxNslipFamily,maxNinstance))
+          constitutive_phenopowerlaw_Nslip                = 0_pInt           
+ allocate(constitutive_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,maxNinstance)) 
+          constitutive_phenopowerlaw_Ntwin                = 0_pInt
+ allocate(constitutive_phenopowerlaw_totalNslip(maxNinstance))
+          constitutive_phenopowerlaw_totalNslip           = 0_pInt
+ allocate(constitutive_phenopowerlaw_totalNtwin(maxNinstance))
+          constitutive_phenopowerlaw_totalNtwin           = 0_pInt
+ allocate(constitutive_phenopowerlaw_CoverA(maxNinstance)) 
+          constitutive_phenopowerlaw_CoverA               = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_C11(maxNinstance))
+          constitutive_phenopowerlaw_C11                  = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_C12(maxNinstance))
+          constitutive_phenopowerlaw_C12                  = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_C13(maxNinstance))
+          constitutive_phenopowerlaw_C13                  = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_C33(maxNinstance))
+          constitutive_phenopowerlaw_C33                  = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_C44(maxNinstance))
+          constitutive_phenopowerlaw_C44                  = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_Cslip_66(6,6,maxNinstance))
+          constitutive_phenopowerlaw_Cslip_66             = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_gdot0_slip(maxNinstance))
+          constitutive_phenopowerlaw_gdot0_slip           = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_n_slip(maxNinstance))
+          constitutive_phenopowerlaw_n_slip               = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_tau0_slip(lattice_maxNslipFamily,maxNinstance))
+          constitutive_phenopowerlaw_tau0_slip            = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_tausat_slip(lattice_maxNslipFamily,maxNinstance))
+          constitutive_phenopowerlaw_tausat_slip          = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_gdot0_twin(maxNinstance))
+          constitutive_phenopowerlaw_gdot0_twin           = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_n_twin(maxNinstance))
+          constitutive_phenopowerlaw_n_twin               = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_tau0_twin(lattice_maxNtwinFamily,maxNinstance))
+          constitutive_phenopowerlaw_tau0_twin            = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_spr(maxNinstance))
+          constitutive_phenopowerlaw_spr                  = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_twinB(maxNinstance))
+          constitutive_phenopowerlaw_twinB                = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_twinC(maxNinstance))
+          constitutive_phenopowerlaw_twinC                = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_twinD(maxNinstance))
+          constitutive_phenopowerlaw_twinD                = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_twinE(maxNinstance))
+          constitutive_phenopowerlaw_twinE                = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_h0_slipslip(maxNinstance))
+          constitutive_phenopowerlaw_h0_slipslip          = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_h0_sliptwin(maxNinstance))
+          constitutive_phenopowerlaw_h0_sliptwin          = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_h0_twinslip(maxNinstance))  
+          constitutive_phenopowerlaw_h0_twinslip          = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_h0_twintwin(maxNinstance))  
+          constitutive_phenopowerlaw_h0_twintwin          = 0.0_pReal
  allocate(constitutive_phenopowerlaw_interaction_slipslip(lattice_maxNinteraction,maxNinstance))
+          constitutive_phenopowerlaw_interaction_slipslip = 0.0_pReal
  allocate(constitutive_phenopowerlaw_interaction_sliptwin(lattice_maxNinteraction,maxNinstance))
+          constitutive_phenopowerlaw_interaction_sliptwin = 0.0_pReal
  allocate(constitutive_phenopowerlaw_interaction_twinslip(lattice_maxNinteraction,maxNinstance))
+          constitutive_phenopowerlaw_interaction_twinslip = 0.0_pReal
  allocate(constitutive_phenopowerlaw_interaction_twintwin(lattice_maxNinteraction,maxNinstance))
- constitutive_phenopowerlaw_interaction_slipslip = 0.0_pReal
- constitutive_phenopowerlaw_interaction_sliptwin = 0.0_pReal
- constitutive_phenopowerlaw_interaction_twinslip = 0.0_pReal
- constitutive_phenopowerlaw_interaction_twintwin = 0.0_pReal
-
+          constitutive_phenopowerlaw_interaction_twintwin = 0.0_pReal
  allocate(constitutive_phenopowerlaw_a_slip(maxNinstance))
- constitutive_phenopowerlaw_a_slip = 0.0_pReal
- 
+          constitutive_phenopowerlaw_a_slip               = 0.0_pReal
  allocate(constitutive_phenopowerlaw_aTolResistance(maxNinstance))
- constitutive_phenopowerlaw_aTolResistance = 0.0_pReal
+          constitutive_phenopowerlaw_aTolResistance       = 0.0_pReal
 
  rewind(myFile)
- line = ''
  section = 0_pInt
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
@@ -525,20 +546,18 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
  return
 
-endsubroutine
+end subroutine constitutive_phenopowerlaw_init
 
 
 function constitutive_phenopowerlaw_stateInit(myInstance)
 !*********************************************************************
 !* initial microstructural state                                     *
 !*********************************************************************
- use prec,    only: pReal,pInt
  use lattice, only: lattice_maxNslipFamily, lattice_maxNtwinFamily
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt), intent(in) :: myInstance
- integer(pInt) i
+ integer(pInt) :: i
  real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(myInstance)) :: constitutive_phenopowerlaw_stateInit
 
  constitutive_phenopowerlaw_stateInit = 0.0_pReal
@@ -559,7 +578,7 @@ function constitutive_phenopowerlaw_stateInit(myInstance)
  enddo
  return
 
-endfunction
+end function constitutive_phenopowerlaw_stateInit
 
 
 !*********************************************************************
@@ -567,10 +586,7 @@ endfunction
 !*********************************************************************
 pure function constitutive_phenopowerlaw_aTolState(myInstance)
 
-use prec,     only: pReal, &
-                    pInt
 implicit none
-
 !*** input variables
 integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
 
@@ -582,7 +598,7 @@ real(pReal), dimension(constitutive_phenopowerlaw_sizeState(myInstance)) :: &
 
 constitutive_phenopowerlaw_aTolState = constitutive_phenopowerlaw_aTolResistance(myInstance)
 
-endfunction
+end function constitutive_phenopowerlaw_aTolState
 
 
 function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
@@ -594,12 +610,11 @@ function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec, only: pReal,pInt,p_vec
+ use prec, only: p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt), intent(in) :: ipc,ip,el
  integer(pInt) matID
  real(pReal), dimension(6,6) :: constitutive_phenopowerlaw_homogenizedC
@@ -610,7 +625,7 @@ function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
 
  return
 
-endfunction
+end function constitutive_phenopowerlaw_homogenizedC
 
 
 subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el)
@@ -625,16 +640,15 @@ subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt) ipc,ip,el, matID
  real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
 
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
   
-endsubroutine
+end subroutine constitutive_phenopowerlaw_microstructure
 
 
 subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,state,ipc,ip,el)
@@ -649,7 +663,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
 !*  - Lp              : plastic velocity gradient                    *
 !*  - dLp_dTstar      : derivative of Lp (4th-rank tensor)           *
 !*********************************************************************
- use prec, only: pReal,pInt,p_vec
+ use prec, only: p_vec
  use math, only: math_Plain3333to99
  use lattice, only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem
@@ -657,8 +671,6 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
 
  implicit none
-
-!* Definition of variables
  integer(pInt) ipc,ip,el
  integer(pInt) matID,nSlip,nTwin,f,i,j,k,l,m,n, structID,index_Gamma,index_F,index_myFamily
  real(pReal) Temperature
@@ -741,7 +753,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
  dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 
  return
-endsubroutine
+end subroutine constitutive_phenopowerlaw_LpAndItsTangent
 
 
 function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el)
@@ -755,14 +767,13 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 !* OUTPUT:                                                           *
 !*  - constitutive_dotState : evolution of state variable            *
 !*********************************************************************
- use prec,     only: pReal,pInt,p_vec
+ use prec,     only: p_vec
  use lattice,  only: lattice_Sslip_v, lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                      lattice_NslipSystem,lattice_NtwinSystem,lattice_shearTwin   
  use mesh,     only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt) ipc,ip,el
  integer(pInt) matID,nSlip,nTwin,f,i,j, structID,index_Gamma,index_F,index_myFamily 
  real(pReal) Temperature,c_slipslip,c_sliptwin,c_twinslip,c_twintwin, ssat_offset
@@ -864,9 +875,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
    enddo
  enddo
 
- return
-
-endfunction
+end function constitutive_phenopowerlaw_dotState
 
 
 !****************************************************************
@@ -878,8 +887,8 @@ pure function constitutive_phenopowerlaw_dotTemperature(Tstar_v,Temperature,stat
   use prec,     only: pReal,pInt,p_vec
   use mesh,     only: mesh_NcpElems, mesh_maxNips
   use material, only: homogenization_maxNgrains
+  
   implicit none
-
   !*** input variables ***!
   real(pReal), dimension(6), intent(in) ::  Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
   real(pReal), intent(in) ::                Temperature
@@ -894,8 +903,7 @@ pure function constitutive_phenopowerlaw_dotTemperature(Tstar_v,Temperature,stat
   ! calculate dotTemperature
   constitutive_phenopowerlaw_dotTemperature = 0.0_pReal
 
-  return
-endfunction
+end function constitutive_phenopowerlaw_dotTemperature
 
 
 
@@ -914,9 +922,8 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
                     lattice_NslipSystem,lattice_NtwinSystem   
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt), intent(in) :: ipc,ip,el
  real(pReal), intent(in) :: dt,Temperature
  real(pReal), dimension(6), intent(in) :: Tstar_v
@@ -1005,9 +1012,7 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
 
    end select
  enddo
- 
- return
 
-endfunction
+end function constitutive_phenopowerlaw_postResults
 
-END MODULE
+end module constitutive_phenopowerlaw

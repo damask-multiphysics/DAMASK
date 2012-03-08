@@ -29,22 +29,27 @@
 ! Ngrains         6
 !   (output)        Ngrains
 
-MODULE homogenization_isostrain
+module homogenization_isostrain
 
-!*** Include other modules ***
- use prec, only: pReal,pInt
- implicit none
-
- character (len=*), parameter :: homogenization_isostrain_label = 'isostrain'
+ use prec, only: pInt
  
- integer(pInt),     dimension(:),     allocatable :: homogenization_isostrain_sizeState, &
-                                                     homogenization_isostrain_Ngrains
- integer(pInt),     dimension(:),     allocatable :: homogenization_isostrain_sizePostResults
- integer(pInt),     dimension(:,:),   allocatable,target :: homogenization_isostrain_sizePostResult
- character(len=64), dimension(:,:),   allocatable,target :: homogenization_isostrain_output             ! name of each post result output
+ implicit none
+ character (len=*), parameter :: &
+   homogenization_isostrain_label = 'isostrain'
+ 
+ integer(pInt),dimension(:), allocatable :: &
+   homogenization_isostrain_sizeState, &
+   homogenization_isostrain_Ngrains, &
+   homogenization_isostrain_sizePostResults
+ 
+ integer(pInt), dimension(:,:), allocatable, target :: &
+   homogenization_isostrain_sizePostResult
+ 
+ character(len=64), dimension(:,:), allocatable, target :: &
+  homogenization_isostrain_output             ! name of each post result output
 
 
-CONTAINS
+contains
 !****************************************
 !* - homogenization_isostrain_init
 !* - homogenization_isostrain_stateInit
@@ -58,9 +63,7 @@ CONTAINS
 !**************************************
 !*      Module initialization         *
 !**************************************
-subroutine homogenization_isostrain_init(&
-   myFile  &    ! file pointer to material configuration
-  )
+subroutine homogenization_isostrain_init(myFile)                           ! file pointer to material configuration
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: pInt
  use math, only: math_Mandel3333to66, math_Voigt66to3333
@@ -71,8 +74,8 @@ subroutine homogenization_isostrain_init(&
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  integer(pInt) section, i, j, output, mySize
  integer :: maxNinstance, k                                                                         !no pInt (stores a system dependen value from 'count'
- character(len=64) tag
- character(len=1024) line
+ character(len=64)   :: tag
+ character(len=1024) :: line
  
  !$OMP CRITICAL (write2out)
    write(6,*)
@@ -93,7 +96,6 @@ subroutine homogenization_isostrain_init(&
                                           maxNinstance)) ;         homogenization_isostrain_output = ''
  
  rewind(myFile)
- line = ''
  section = 0_pInt
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)     ! wind forward to <homogenization>
@@ -144,9 +146,7 @@ subroutine homogenization_isostrain_init(&
    enddo
  enddo
 
- return
-
-endsubroutine
+end subroutine homogenization_isostrain_init
 
 
 !*********************************************************************
@@ -154,18 +154,15 @@ endsubroutine
 !*********************************************************************
 function homogenization_isostrain_stateInit(myInstance)
  use prec, only: pReal,pInt
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt), intent(in) :: myInstance
  real(pReal), dimension(homogenization_isostrain_sizeState(myInstance)) :: &
               homogenization_isostrain_stateInit
 
  homogenization_isostrain_stateInit = 0.0_pReal
 
- return
- 
-endfunction
+endfunction homogenization_isostrain_stateInit
 
 
 !********************************************************************
@@ -183,9 +180,8 @@ subroutine homogenization_isostrain_partitionDeformation(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use material, only: homogenization_maxNgrains,homogenization_Ngrains
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: F
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: F0
  real(pReal), dimension (3,3), intent(in) :: avgF
@@ -197,9 +193,7 @@ subroutine homogenization_isostrain_partitionDeformation(&
  forall (i = 1_pInt:homogenization_Ngrains(mesh_element(3,el))) &
    F(1:3,1:3,i)  = avgF
 
- return
-
-endsubroutine
+end subroutine homogenization_isostrain_partitionDeformation
 
 
 !********************************************************************
@@ -229,10 +223,8 @@ function homogenization_isostrain_updateState(&
 
 ! homID = homogenization_typeInstance(mesh_element(3,el))
  homogenization_isostrain_updateState = .true.                      ! homogenization at material point converged (done and happy)
-
- return 
  
-endfunction
+end function homogenization_isostrain_updateState
 
 
 !********************************************************************
@@ -251,9 +243,8 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use material, only: homogenization_maxNgrains, homogenization_Ngrains
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (3,3), intent(out) :: avgP
  real(pReal), dimension (3,3,3,3), intent(out) :: dAvgPdAvgF
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in) :: P
@@ -266,9 +257,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(&
  avgP = sum(P,3)/real(Ngrains,pReal)
  dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
 
- return
-
-endsubroutine
+end subroutine homogenization_isostrain_averageStressAndItsTangent
 
 
 !********************************************************************
@@ -283,9 +272,8 @@ function homogenization_isostrain_averageTemperature(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use material, only: homogenization_maxNgrains, homogenization_Ngrains
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (homogenization_maxNgrains), intent(in) :: Temperature
  integer(pInt), intent(in) :: ip,el
  real(pReal) homogenization_isostrain_averageTemperature
@@ -295,9 +283,7 @@ function homogenization_isostrain_averageTemperature(&
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
  homogenization_isostrain_averageTemperature = sum(Temperature(1:Ngrains))/real(Ngrains,pReal)
 
- return
-
-endfunction
+end function homogenization_isostrain_averageTemperature
 
 
 !********************************************************************
@@ -312,17 +298,15 @@ pure function homogenization_isostrain_postResults(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use material, only: homogenization_typeInstance,homogenization_Noutput
+ 
  implicit none
-
-!* Definition of variables
  type(p_vec), intent(in) :: state
  integer(pInt), intent(in) :: ip,el
- integer(pInt) homID,o,c
- real(pReal), dimension(homogenization_isostrain_sizePostResults(homogenization_typeInstance(mesh_element(3,el)))) :: &
-   homogenization_isostrain_postResults
-
- homID = homogenization_typeInstance(mesh_element(3,el))
+ integer(pInt) :: homID,o,c
+ real(pReal), dimension(homogenization_isostrain_sizePostResults&
+        (homogenization_typeInstance(mesh_element(3,el)))) :: homogenization_isostrain_postResults
  c = 0_pInt
+ homID = homogenization_typeInstance(mesh_element(3,el))
  homogenization_isostrain_postResults = 0.0_pReal
  
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
@@ -335,6 +319,6 @@ pure function homogenization_isostrain_postResults(&
  
  return
 
-endfunction
+end function homogenization_isostrain_postResults
 
-END MODULE
+end module homogenization_isostrain

@@ -73,9 +73,8 @@ CONTAINS
 !**************************************
 subroutine homogenization_init(Temperature)
 use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-use prec, only: pReal,pInt
 use math, only: math_I3
-use debug, only: debug_verbosity
+use debug, only: debug_what, debug_homogenization, debug_levelBasic
 use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat, IO_write_jobFile
 use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
 use material
@@ -207,7 +206,7 @@ allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpEl
   write(6,*) '<<<+-  homogenization init  -+>>>'
   write(6,*) '$Id$'
 #include "compilation_info.f90"
-  if (debug_verbosity > 0) then
+  if (iand(debug_what(debug_homogenization), debug_levelBasic) /= 0_pInt) then
     write(6,'(a32,1x,7(i8,1x))') 'homogenization_state0:          ', shape(homogenization_state0)
     write(6,'(a32,1x,7(i8,1x))') 'homogenization_subState0:       ', shape(homogenization_subState0)
     write(6,'(a32,1x,7(i8,1x))') 'homogenization_state:           ', shape(homogenization_state)
@@ -249,8 +248,6 @@ subroutine materialpoint_stressAndItsTangent(&
      dt &             ! time increment
     )
 
- use prec, only:          pInt, &
-                          pReal
  use numerics, only:      subStepMinHomog, &
                           subStepSizeHomog, &
                           stepIncreaseHomog, &
@@ -289,10 +286,12 @@ subroutine materialpoint_stressAndItsTangent(&
                           crystallite_converged, &
                           crystallite_stressAndItsTangent, &
                           crystallite_orientations
-use debug, only:          debug_verbosity, &
+use debug, only:          debug_what, &
+                          debug_homogenization, &
+                          debug_levelBasic, &
+                          debug_levelSelective, &
                           debug_e, &
                           debug_i, &
-                          debug_selectiveDebugger, &
                           debug_MaterialpointLoopDistribution, &
                           debug_MaterialpointStateLoopDistribution
  use math, only:          math_pDecomposition
@@ -306,7 +305,8 @@ use debug, only:          debug_verbosity, &
 
 ! ------ initialize to starting condition ------
 
- if (debug_verbosity > 2 .and. debug_e > 0 .and. debug_e <= mesh_NcpElems .and. debug_i > 0 .and. debug_i <= mesh_maxNips) then
+ if (iand(debug_what(debug_homogenization), debug_levelBasic) /= 0_pInt &
+     .and. debug_e > 0 .and. debug_e <= mesh_NcpElems .and. debug_i > 0 .and. debug_i <= mesh_maxNips) then
    !$OMP CRITICAL (write2out)
      write (6,*)
      write (6,'(a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
@@ -358,7 +358,9 @@ use debug, only:          debug_verbosity, &
               
        if ( materialpoint_converged(i,e) ) then
 #ifndef _OPENMP
-         if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
+         if (iand(debug_what(debug_homogenization), debug_levelBasic) /= 0_pInt &
+            .and. ((e == debug_e .and. i == debug_i) & 
+                   .or. .not. iand(debug_what(debug_homogenization),debug_levelSelective) /= 0_pInt)) then
            write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,/)') '<< HOMOG >> winding forward from', &
              materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
              materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent'
@@ -388,7 +390,7 @@ use debug, only:          debug_verbosity, &
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                             ! ...def grad
            !$OMP FLUSH(materialpoint_subF0)
          elseif (materialpoint_requested(i,e)) then                                                       ! this materialpoint just converged    ! already at final time (??)
-           if (debug_verbosity > 2) then
+           if (iand(debug_what(debug_homogenization), debug_levelBasic) /= 0_pInt) then
              !$OMP CRITICAL (distributionHomog)
                debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
                  debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
@@ -402,6 +404,7 @@ use debug, only:          debug_verbosity, &
               subStepSizeHomog * materialpoint_subStep(i,e) <=  subStepMinHomog ) then                      ! would require too small subStep
                                                                                                             ! cutback makes no sense and...
            !$OMP CRITICAL (setTerminallyIll)
+              write(6,*) 'Integration point ', i,' at element ', e, ' terminally ill'
              terminallyIll = .true.                                                                         ! ...one kills all
            !$OMP END CRITICAL (setTerminallyIll)
          else                                                                                               ! cutback makes sense
@@ -409,7 +412,9 @@ use debug, only:          debug_verbosity, &
            !$OMP FLUSH(materialpoint_subStep)
            
 #ifndef _OPENMP
-           if (debug_verbosity > 2 .and. ((e == debug_e .and. i == debug_i) .or. .not. debug_selectiveDebugger)) then
+           if (iand(debug_what(debug_homogenization), debug_levelBasic) /= 0_pInt &
+              .and. ((e == debug_e .and. i == debug_i) &
+                    .or. .not. iand(debug_what(debug_homogenization), debug_levelSelective) /= 0_pInt)) then
              write(6,'(a,1x,f12.8,/)') &
                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
                materialpoint_subStep(i,e)
@@ -499,7 +504,7 @@ use debug, only:          debug_verbosity, &
            endif
            !$OMP FLUSH(materialpoint_converged)
            if (materialpoint_converged(i,e)) then
-             if (debug_verbosity > 2) then
+             if (iand(debug_what(debug_homogenization), debug_levelBasic) /= 0_pInt) then
                !$OMP CRITICAL (distributionMPState)
                  debug_MaterialpointStateLoopdistribution(NiterationMPstate) = &
                    debug_MaterialpointStateLoopdistribution(NiterationMPstate) + 1
@@ -594,7 +599,6 @@ subroutine homogenization_partitionDeformation(&
    el  &            ! element
   )
 
- use prec,        only: pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_partionedF0,crystallite_partionedF
@@ -635,7 +639,6 @@ function homogenization_updateState(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,        only: pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_P,crystallite_dPdF,crystallite_partionedF,crystallite_partionedF0  ! modified <<<updated 31.07.2009>>>
@@ -683,7 +686,6 @@ subroutine homogenization_averageStressAndItsTangent(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,        only: pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_P,crystallite_dPdF
@@ -725,7 +727,6 @@ subroutine homogenization_averageTemperature(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,        only: pInt
  use mesh,        only: mesh_element
  use material,    only: homogenization_type, homogenization_maxNgrains
  use crystallite, only: crystallite_Temperature
@@ -760,7 +761,6 @@ function homogenization_postResults(&
    ip, &            ! integration point
    el  &            ! element
   )
- use prec,     only: pReal,pInt
  use mesh,     only: mesh_element
  use material, only: homogenization_type
  use homogenization_isostrain

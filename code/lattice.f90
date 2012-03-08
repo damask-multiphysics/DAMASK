@@ -27,56 +27,64 @@
 !* - Schmid matrices calculation    *
 !************************************
 
-MODULE lattice
+module lattice
 
-!*** Include other modules ***
-use prec, only: pReal,pInt
-implicit none
+ use prec, only: pReal,pInt
 
+ implicit none
 !************************************
 !*      Lattice structures          *
 !************************************
 
-integer(pInt) lattice_Nhexagonal, &                               ! # of hexagonal lattice structure (from tag CoverA_ratio)
-              lattice_Nstructure                                  ! # of lattice structures (1: fcc,2: bcc,3+: hexagonal)
-integer(pInt), parameter :: lattice_maxNslipFamily = 5_pInt            ! max # of slip system families over lattice structures
-integer(pInt), parameter :: lattice_maxNtwinFamily = 4_pInt            ! max # of twin system families over lattice structures
-integer(pInt), parameter :: lattice_maxNslip = 54_pInt                 ! max # of slip systems over lattice structures
-integer(pInt), parameter :: lattice_maxNtwin = 24_pInt                 ! max # of twin systems over lattice structures
-integer(pInt), parameter :: lattice_maxNinteraction = 30_pInt          ! max # of interaction types (in hardening matrix part)
+ integer(pInt) :: &
+   lattice_Nhexagonal, &                                                                            !> # of hexagonal lattice structure (from tag CoverA_ratio)
+   lattice_Nstructure                                                                               !> # of lattice structures (1: fcc,2: bcc,3+: hexagonal)
 
-integer(pInt), pointer, dimension(:,:) :: interactionSlipSlip, &
-                                          interactionSlipTwin, &
-                                          interactionTwinSlip, &
-                                          interactionTwinTwin
+ integer(pInt), parameter :: &
+   lattice_maxNslipFamily  =  5_pInt, &                                                             !> max # of slip system families over lattice structures
+   lattice_maxNtwinFamily  =  4_pInt, &                                                             !> max # of twin system families over lattice structures
+   lattice_maxNslip        = 54_pInt, &                                                             !> max # of slip systems over lattice structures
+   lattice_maxNtwin        = 24_pInt, &                                                             !> max # of twin systems over lattice structures
+   lattice_maxNinteraction = 30_pInt                                                                !> max # of interaction types (in hardening matrix part)
 
-! Schmid matrices, normal, shear direction and d x n of slip systems
-real(pReal), allocatable, dimension(:,:,:,:) :: lattice_Sslip
-real(pReal), allocatable, dimension(:,:,:)   :: lattice_Sslip_v
-real(pReal), allocatable, dimension(:,:,:)   :: lattice_sn, &
-                                                lattice_sd, &
-                                                lattice_st
+ integer(pInt), pointer, dimension(:,:) :: &
+   interactionSlipSlip, &
+   interactionSlipTwin, &
+   interactionTwinSlip, &
+   interactionTwinTwin
+
+ real(pReal), allocatable, dimension(:,:,:,:) :: &
+   lattice_Sslip                        ! Schmid matrices, normal, shear direction and d x n of slip systems
+  
+ real(pReal), allocatable, dimension(:,:,:) :: &
+   lattice_Sslip_v, &
+   lattice_sn, &
+   lattice_sd, &
+   lattice_st
 
 ! rotation and Schmid matrices, normal, shear direction and d x n of twin systems
-real(pReal), allocatable, dimension(:,:,:,:) :: lattice_Qtwin
-real(pReal), allocatable, dimension(:,:,:,:) :: lattice_Stwin
-real(pReal), allocatable, dimension(:,:,:)   :: lattice_Stwin_v
-real(pReal), allocatable, dimension(:,:,:)   :: lattice_tn, &
-                                                lattice_td, &
-                                                lattice_tt
+ real(pReal), allocatable, dimension(:,:,:,:) :: &
+   lattice_Qtwin, &
+   lattice_Stwin
 
-! characteristic twin shear
-real(pReal), allocatable, dimension(:,:)     :: lattice_shearTwin
+ real(pReal), allocatable, dimension(:,:,:) :: &
+   lattice_Stwin_v, &
+   lattice_tn, &
+   lattice_td, &
+   lattice_tt
 
-! number of slip and twin systems in each family
-integer(pInt), allocatable, dimension(:,:)   :: lattice_NslipSystem, &
-                                                lattice_NtwinSystem
+ real(pReal), allocatable, dimension(:,:) :: &
+   lattice_shearTwin                                                                                !> characteristic twin shear
 
-! interaction type of slip and twin systems among each other
-integer(pInt), allocatable, dimension(:,:,:) :: lattice_interactionSlipSlip, &
-                                                lattice_interactionSlipTwin, &
-                                                lattice_interactionTwinSlip, &
-                                                lattice_interactionTwinTwin
+ integer(pInt), allocatable, dimension(:,:) :: &
+   lattice_NslipSystem, &                                                                           !> number of slip systems in each family
+   lattice_NtwinSystem                                                                              !> number of twin systems in each family
+
+ integer(pInt), allocatable, dimension(:,:,:) :: &
+   lattice_interactionSlipSlip, &                                                                   !> interaction type between slip/slip
+   lattice_interactionSlipTwin, &                                                                   !> interaction type between slip/twin
+   lattice_interactionTwinSlip, &                                                                   !> interaction type between twin/slip
+   lattice_interactionTwinTwin                                                                      !> interaction type between twin/twin
 
 
 !============================== fcc (1) =================================
@@ -698,16 +706,15 @@ CONTAINS
 !* - lattice_initializeStructure
 !****************************************
 
-pure function lattice_symmetryType(structID)
+integer(pInt) pure function lattice_symmetryType(structID)
 !**************************************
 !*   maps structure to symmetry type  *
 !*   fcc(1) and bcc(2) are cubic(1)   *
 !*   hex(3+) is hexagonal(2)          *
 !**************************************
+
  implicit none
- 
  integer(pInt), intent(in) :: structID
- integer(pInt) lattice_symmetryType
 
  select case(structID)
    case (1_pInt,2_pInt)
@@ -720,21 +727,29 @@ pure function lattice_symmetryType(structID)
 
  return
  
-end function
+end function lattice_symmetryType
 
 
-subroutine lattice_init()
+subroutine lattice_init
 !**************************************
 !*      Module initialization         *
 !**************************************
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use IO, only: IO_open_file,IO_open_jobFile_stat,IO_countSections,IO_countTagInPart,IO_error
- use material, only: material_configfile,material_localFileExt,material_partPhase
- use debug, only: debug_verbosity
+ use IO,       only: IO_open_file,&
+                     IO_open_jobFile_stat, &
+                     IO_countSections, &
+                     IO_countTagInPart, &
+                     IO_error
+ use material, only: material_configfile, &
+                     material_localFileExt, &
+                     material_partPhase
+ use debug,    only: debug_what, &
+                     debug_lattice, &
+                     debug_levelBasic
+
  implicit none
- 
  integer(pInt), parameter :: fileunit = 200_pInt
- integer(pInt) Nsections
+ integer(pInt) :: Nsections
 
  !$OMP CRITICAL (write2out)
    write(6,*)
@@ -751,7 +766,7 @@ subroutine lattice_init()
 ! lattice_Nstructure = Nsections + 2_pInt                                                ! most conservative assumption
  close(fileunit)
 
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_lattice),debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,1x,i5)') '# phases:',Nsections
      write(6,'(a16,1x,i5)') '# structures:',lattice_Nstructure
@@ -782,19 +797,25 @@ subroutine lattice_init()
  allocate(lattice_interactionTwinSlip(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinSlip = 0_pInt ! other:me
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure)); lattice_interactionTwinTwin = 0_pInt ! other:me
 
-end subroutine
+end subroutine lattice_init
 
 
-function lattice_initializeStructure(struct,CoverA)
+integer(pInt) function lattice_initializeStructure(struct,CoverA)
 !**************************************
 !*   Calculation of Schmid            *
 !*   matrices, etc.                   *
 !**************************************
  use prec, only: pReal,pInt
- use math
+ use math, only: math_vectorproduct, &
+                 math_tensorproduct, &
+                 math_mul3x3, &
+                 math_symmetric33, &
+                 math_Mandel33to6, &
+                 math_axisAngleToR, &
+                 INRAD
  use IO, only: IO_error
+ 
  implicit none
-
  character(len=*) struct
  real(pReal) CoverA
  real(pReal), dimension(3,lattice_maxNslip) :: sd = 0.0_pReal, &
@@ -811,7 +832,6 @@ function lattice_initializeStructure(struct,CoverA)
  integer(pInt) :: i,myNslip,myNtwin,myStructure = 0_pInt
  logical :: processMe
 
- integer(pInt) lattice_initializeStructure
  processMe = .false.
 
  select case(struct(1:3))                          ! check first three chars of structure name
@@ -949,7 +969,7 @@ function lattice_initializeStructure(struct,CoverA)
 
  lattice_initializeStructure = myStructure        ! report my structure index back
 
-end function
+end function lattice_initializeStructure
 
 
-END MODULE
+end module lattice

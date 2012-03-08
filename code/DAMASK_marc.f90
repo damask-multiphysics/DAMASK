@@ -58,16 +58,17 @@
 #include "prec.f90"
 
 
-MODULE DAMASK_interface
+module DAMASK_interface
 
-character(len=64), parameter :: FEsolver = 'Marc'
-character(len=4),  parameter :: InputFileExtension = '.dat'
-character(len=4),  parameter :: LogFileExtension = '.log'
+ character(len=64), parameter :: FEsolver = 'Marc'
+ character(len=4),  parameter :: InputFileExtension = '.dat'
+ character(len=4),  parameter :: LogFileExtension = '.log'
 
-CONTAINS
+contains
 
-subroutine DAMASK_interface_init()
+subroutine DAMASK_interface_init
 
+implicit none
 
 !$OMP CRITICAL (write2out)
  write(6,*)
@@ -75,11 +76,14 @@ subroutine DAMASK_interface_init()
  write(6,*) '$Id$'
 #include "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
- return
-end subroutine
+
+end subroutine DAMASK_interface_init
+
 
 function getSolverWorkingDirectoryName()
+
  implicit none
+ 
  character(1024) getSolverWorkingDirectoryName, outName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
 
@@ -88,26 +92,27 @@ function getSolverWorkingDirectoryName()
  inquire(6, name=outName) ! determine outputfile
  getSolverWorkingDirectoryName=outName(1:scan(outName,pathSep,back=.true.))
 ! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
-end function
+
+end function getSolverWorkingDirectoryName
 
 
 function getModelName()
- use prec
  implicit none
-
- character(1024) getModelName
+ character(1024) :: getModelName
  
  getModelName = getSolverJobName()
-end function
+ 
+end function getModelName
 
 
 function getSolverJobName()
- use prec
+ 
+ use prec, only: pInt
  implicit none
 
- character(1024) getSolverJobName, outName
+ character(1024) :: getSolverJobName, outName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
- integer(pInt) extPos
+ integer(pInt) :: extPos
 
  getSolverJobName=''
  outName=''
@@ -115,9 +120,10 @@ function getSolverJobName()
  extPos = len_trim(outName)-4
  getSolverJobName=outName(scan(outName,pathSep,back=.true.)+1:extPos)
 ! write(6,*) 'getSolverJobName', getSolverJobName
-end function
 
-END MODULE
+end function getSolverJobName
+
+end module DAMASK_interface
 
 #include "IO.f90"
 #include "numerics.f90"
@@ -234,8 +240,8 @@ subroutine hypela2(&
  use CPFEM, only:     CPFEM_initAll,CPFEM_general,CPFEM_init_done
 !$ use OMP_LIB                                                                ! the openMP function library
 !$ use numerics, only: DAMASK_NumThreadsInt                                   ! number of threads set by DAMASK_NUM_THREADS
- implicit none
  
+ implicit none 
 !     ** Start of generated type statements **
  real(pReal) coord, d, de, disp, dispt, dt, e, eigvn, eigvn1, ffn, ffn1
  real(pReal) frotn, frotn1, g
@@ -365,7 +371,7 @@ subroutine hypela2(&
  
 !$ call omp_set_num_threads(defaultNumThreadsInt)                               ! reset number of threads to stored default value
 
-end subroutine
+end subroutine hypela2
 
 
 !********************************************************************
@@ -394,8 +400,8 @@ subroutine plotv(&
  use mesh,  only: mesh_FEasCP
  use IO,    only: IO_error
  use homogenization, only: materialpoint_results,materialpoint_sizeResults
+ 
  implicit none
-
  real(pReal) s(*),etot(*),eplas(*),ecreep(*),sp(*)
  real(pReal) v, t(*)
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
@@ -403,6 +409,5 @@ subroutine plotv(&
  if (jpltcd > materialpoint_sizeResults) call IO_error(700_pInt,jpltcd)                  ! complain about out of bounds error
 
  v = materialpoint_results(jpltcd,nn,mesh_FEasCP('elem', m))
- return
 
-end subroutine
+end subroutine plotv

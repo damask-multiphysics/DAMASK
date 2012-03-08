@@ -33,8 +33,15 @@
 MODULE crystallite
 
 use prec, only: pReal, pInt
-implicit none
 
+implicit none
+private :: crystallite_integrateStateFPI, &   
+           crystallite_integrateStateEuler, &
+           crystallite_integrateStateAdaptiveEuler, &
+           crystallite_integrateStateRK4, &
+           crystallite_integrateStateRKCK45, &
+           crystallite_updateTemperature, &
+           crystallite_updateState
 ! ****************************************************************
 ! *** General variables for the crystallite calculation        ***
 ! ****************************************************************
@@ -104,11 +111,11 @@ subroutine crystallite_init(Temperature)
   
 !*** variables and functions from other modules ***!
 use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-use prec, only:       pInt, &
-                      pReal
 use debug, only:      debug_info, &
                       debug_reset, &
-                      debug_verbosity
+                      debug_what, &
+                      debug_crystallite, &
+                      debug_levelBasic
 use math, only:       math_I3, &
                       math_EulerToR, &
                       math_inv33, &
@@ -383,7 +390,7 @@ call crystallite_stressAndItsTangent(.true.)                   ! request elastic
 crystallite_fallbackdPdF = crystallite_dPdF                    ! use initial elastic stiffness as fallback
  
 !    *** Output to MARC output file ***
-if (debug_verbosity > 0) then
+if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
   !$OMP CRITICAL (write2out)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_Temperature:           ', shape(crystallite_Temperature)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_dotTemperature:        ', shape(crystallite_dotTemperature)
@@ -435,10 +442,10 @@ if (debug_verbosity > 0) then
   !$OMP END CRITICAL (write2out)
 endif
 
-call debug_info()
-call debug_reset()
+call debug_info
+call debug_reset
 
-endsubroutine
+end subroutine crystallite_init
 
 
  
@@ -448,102 +455,100 @@ endsubroutine
 subroutine crystallite_stressAndItsTangent(updateJaco)
 
 !*** variables and functions from other modules ***!
-use prec, only:                                       pInt, &
-                                                      pReal
-use numerics, only:                                   subStepMinCryst, &
-                                                      subStepSizeCryst, &
-                                                      stepIncreaseCryst, &
-                                                      pert_Fg, &
-                                                      pert_method, &
-                                                      nCryst, &
-                                                      numerics_integrator, &
-                                                      numerics_integrationMode, &
-                                                      relevantStrain, &
-                                                      Lp_frac, &
-                                                      analyticJaco, &
-                                                      time_sensitive
-use debug, only:                                      debug_verbosity, &
-                                                      debug_selectiveDebugger, &
-                                                      debug_e, &
-                                                      debug_i, &
-                                                      debug_g, &
-                                                      debug_CrystalliteLoopDistribution
-use IO, only:                                         IO_warning
-use math, only:                                       math_inv33, &
-                                                      math_identity2nd, &
-                                                      math_transpose33, &
-                                                      math_mul33x33, &
-                                                      math_mul66x6, &
-                                                      math_Mandel6to33, &
-                                                      math_Mandel33to6, &
-                                                      math_I3, &
-                                                      math_Plain3333to99, &
-                                                      math_Plain99to3333, &
-                                                      math_mul99x99, &
-                                                      math_Mandel66to3333, &
-                                                      math_mul3333xx33, &
-                                                      math_invert, &
-                                                      math_mul3333xx3333, &
-                                                      math_spectralDecompositionSym33
-use FEsolving, only:                                  FEsolving_execElem, & 
-                                                      FEsolving_execIP
-use mesh, only:                                       mesh_element, &
-                                                      mesh_NcpElems, &
-                                                      mesh_maxNips
-use material, only:                                   homogenization_Ngrains, &
-                                                      homogenization_maxNgrains
-use constitutive, only:                               constitutive_sizeState, &
-                                                      constitutive_sizeDotState, &
-                                                      constitutive_state, &
-                                                      constitutive_state_backup, &
-                                                      constitutive_subState0, &
-                                                      constitutive_partionedState0, &
-                                                      constitutive_homogenizedC, &
-                                                      constitutive_dotState, &
-                                                      constitutive_dotState_backup, &
-                                                      constitutive_LpAndItsTangent
+use numerics, only:      subStepMinCryst, &
+                         subStepSizeCryst, &
+                         stepIncreaseCryst, &
+                         pert_Fg, &
+                         pert_method, &
+                         nCryst, &
+                         numerics_integrator, &
+                         numerics_integrationMode, &
+                         relevantStrain, &
+                         Lp_frac, &
+                         analyticJaco, &
+                         time_sensitive
+use debug, only:         debug_what, &
+                         debug_crystallite, &
+                         debug_levelBasic, &
+                         debug_levelExtensive, &
+                         debug_levelSelective, &
+                         debug_e, &
+                         debug_i, &
+                         debug_g, &
+                         debug_CrystalliteLoopDistribution
+use IO, only:            IO_warning
+use math, only:          math_inv33, &
+                         math_identity2nd, &
+                         math_transpose33, &
+                         math_mul33x33, &
+                         math_mul66x6, &
+                         math_Mandel6to33, &
+                         math_Mandel33to6, &
+                         math_I3, &
+                         math_Plain3333to99, &
+                         math_Plain99to3333, &
+                         math_mul99x99, &
+                         math_Mandel66to3333, &
+                         math_mul3333xx33, &
+                         math_invert, &
+                         math_mul3333xx3333, &
+                         math_spectralDecompositionSym33
+use FEsolving, only:     FEsolving_execElem, & 
+                         FEsolving_execIP
+use mesh, only:          mesh_element, &
+                         mesh_NcpElems, &
+                         mesh_maxNips
+use material, only:      homogenization_Ngrains, &
+                         homogenization_maxNgrains
+use constitutive, only:  constitutive_sizeState, &
+                         constitutive_sizeDotState, &
+                         constitutive_state, &
+                         constitutive_state_backup, &
+                         constitutive_subState0, &
+                         constitutive_partionedState0, &
+                         constitutive_homogenizedC, &
+                         constitutive_dotState, &
+                         constitutive_dotState_backup, &
+                         constitutive_LpAndItsTangent
 
 implicit none
-
 !*** input variables ***!
-logical, intent(in) ::                                updateJaco                    ! flag indicating wehther we want to update the Jacobian (stiffness) or not
-
-!*** output variables ***!
+logical, intent(in) ::            updateJaco                    ! flag indicating wehther we want to update the Jacobian (stiffness) or not
 
 !*** local variables ***!
-real(pReal)                                           myPert, &                     ! perturbation with correct sign
-                                                      formerSubStep
-real(pReal), dimension(3,3) ::                        invFp, &                      ! inverse of the plastic deformation gradient
-                                                      Fe_guess, &                   ! guess for elastic deformation gradient
-                                                      Tstar                         ! 2nd Piola-Kirchhoff stress tensor
+real(pReal)                       myPert, &                     ! perturbation with correct sign
+                                  formerSubStep
+real(pReal), dimension(3,3) ::    invFp, &                      ! inverse of the plastic deformation gradient
+                                  Fe_guess, &                   ! guess for elastic deformation gradient
+                                  Tstar                         ! 2nd Piola-Kirchhoff stress tensor
 real(pReal), dimension(3,3,3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                      dPdF_perturbation1, &
-                                                      dPdF_perturbation2
+                                  dPdF_perturbation1, &
+                                  dPdF_perturbation2
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                      F_backup, &
-                                                      Fp_backup, &
-                                                      InvFp_backup, &
-                                                      Fe_backup, &
-                                                      Lp_backup, &
-                                                      P_backup
+                                   F_backup, &
+                                   Fp_backup, &
+                                   InvFp_backup, &
+                                   Fe_backup, &
+                                   Lp_backup, &
+                                   P_backup
 real(pReal), dimension(6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                      Tstar_v_backup
+                                   Tstar_v_backup
 real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-                                                      Temperature_backup
-integer(pInt)                                         NiterationCrystallite, &      ! number of iterations in crystallite loop
-                                                      e, &                          ! element index
-                                                      i, &                          ! integration point index
-                                                      g, &                          ! grain index
-                                                      k, &
-                                                      l, &
-                                                      h, &
-                                                      o, &
-                                                      p, &
-                                                      j, &
-                                                      perturbation , &              ! loop counter for forward,backward perturbation mode
-                                                      myNgrains, &
-                                                      mySizeState, &
-                                                      mySizeDotState
+                                   Temperature_backup
+integer(pInt)                      NiterationCrystallite, &      ! number of iterations in crystallite loop
+                                   e, &                          ! element index
+                                   i, &                          ! integration point index
+                                   g, &                          ! grain index
+                                   k, &
+                                   l, &
+                                   h, &
+                                   o, &
+                                   p, &
+                                   j, &
+                                   perturbation , &              ! loop counter for forward,backward perturbation mode
+                                   myNgrains, &
+                                   mySizeState, &
+                                   mySizeDotState
 logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                       convergenceFlag_backup
 ! local variables used for calculating analytic Jacobian
@@ -590,7 +595,8 @@ logical :: error
 
 ! --+>> INITIALIZE TO STARTING CONDITION <<+--
 
-if (debug_verbosity > 4 .and. debug_e > 0 .and. debug_e <= mesh_NcpElems &
+if(iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt&
+                        .and. debug_e > 0 .and. debug_e <= mesh_NcpElems &
                         .and. debug_i > 0 .and. debug_i <= mesh_maxNips &
                         .and. debug_g > 0 .and. debug_g <= homogenization_maxNgrains) then
   !$OMP CRITICAL (write2out)
@@ -651,8 +657,9 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
           
           if (crystallite_converged(g,i,e)) then
 #ifndef _OPENMP
-            if (debug_verbosity > 4 &
-                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+            if (iand(debug_what(debug_crystallite),debug_levelBasic) /= 0_pInt &
+                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+                       .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
               write(6,'(a,f12.8,a,f12.8,a)') '<< CRYST >> winding forward from ', &
                 crystallite_subFrac(g,i,e),' to current crystallite_subfrac ', &
                 crystallite_subFrac(g,i,e)+crystallite_subStep(g,i,e),' in crystallite_stressAndItsTangent'
@@ -675,7 +682,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
               crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                       ! ...2nd PK stress
               !$OMP FLUSH(crystallite_subF0)
             elseif (formerSubStep > subStepMinCryst) then                                               ! this crystallite just converged
-              if (debug_verbosity > 4_pInt) then
+              if (iand(debug_what(debug_crystallite),debug_levelBasic) /= 0_pInt) then
                 !$OMP CRITICAL (distributionCrystallite)
                   debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
                     debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) + 1_pInt
@@ -696,8 +703,9 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
                                                                                                         ! cant restore dotState here, since not yet calculated in first cutback after initialization
             !$OMP FLUSH(crystallite_invFp)
 #ifndef _OPENMP
-            if (debug_verbosity > 4_pInt &
-                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+            if (iand(debug_what(debug_crystallite),debug_levelBasic) /= 0_pInt &
+                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+                .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
               write(6,'(a,f12.8)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
                                      crystallite_subStep(g,i,e)
               write(6,*)
@@ -761,8 +769,10 @@ enddo                                                                           
           crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(Fe_guess,math_mul33x33(Tstar,transpose(invFp)))
         endif
 #ifndef _OPENMP
-        if (debug_verbosity > 4 &
-            .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+
+        if(iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt &
+            .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+                    .or. .not. iand(debug_what(debug_crystallite),debug_levelSelective) /= 0_pInt)) then
           write (6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip g ',e,i,g
           write (6,*) 
           write (6,'(a,/,3(12x,3(f12.4,1x)/))') '<< CRYST >> P / MPa', math_transpose33(crystallite_P(1:3,1:3,g,i,e))/1.0e6_pReal
@@ -821,7 +831,7 @@ if(updateJaco) then                                                             
       myPert = -pert_Fg * (-1.0_pReal)**perturbation                                                    ! set perturbation step
       do k = 1,3; do l = 1,3                                                                            ! ...alter individual components
 #ifndef _OPENMP
-        if (debug_verbosity> 5) then
+        if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
           !$OMP CRITICAL (write2out)
             write(6,'(a,2(1x,i1),1x,a)') '<< CRYST >> [[[[[[ Stiffness perturbation',k,l,']]]]]]'
             write(6,*)
@@ -1074,7 +1084,7 @@ if(updateJaco) then                                                             
   endif
 endif                                                                                                   ! jacobian calculation
  
-endsubroutine
+end subroutine crystallite_stressAndItsTangent
 
 
 
@@ -1088,8 +1098,11 @@ subroutine crystallite_integrateStateRK4(gg,ii,ee)
 use prec, only:         pInt, &
                         pReal
 use numerics, only:     numerics_integrationMode
-use debug, only:        debug_verbosity, &
-                        debug_selectiveDebugger, &
+use debug, only:        debug_what, &
+                        debug_crystallite, &
+                        debug_levelBasic, &
+                        debug_levelExtensive, &
+                        debug_levelSelective, &
                         debug_e, &
                         debug_i, &
                         debug_g, &
@@ -1248,8 +1261,10 @@ do n = 1_pInt,4_pInt
         if (crystallite_integrateStress(g,i,e,timeStepFraction(n))) then                                  ! fraction of original times step
           if (n == 4) then                                                                                ! final integration step
 #ifndef _OPENMP
-            if (debug_verbosity > 5 &
-                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+
+            if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
+                       .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
               mySizeDotState = constitutive_sizeDotState(g,i,e)
               write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
               write(6,*)
@@ -1261,14 +1276,14 @@ do n = 1_pInt,4_pInt
 #endif
             crystallite_converged(g,i,e) = .true.                                                         ! ... converged per definition
             crystallite_todo(g,i,e) = .false.                                                             ! ... integration done
-            if (debug_verbosity > 4) then
+            if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
               !$OMP CRITICAL (distributionState)
                 debug_StateLoopDistribution(n,numerics_integrationMode) = &
                   debug_StateLoopDistribution(n,numerics_integrationMode) + 1
               !$OMP END CRITICAL (distributionState)
             endif
           endif
-        else                                                                                              ! broken stress integration
+        else                                                                               ! broken stress integration
           if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
               crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
@@ -1329,7 +1344,7 @@ if (.not. singleRun) then                                                       
   endif
 endif
 
-endsubroutine
+end subroutine crystallite_integrateStateRK4
 
 
 
@@ -1341,10 +1356,11 @@ endsubroutine
 subroutine crystallite_integrateStateRKCK45(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
-use prec, only:         pInt, &
-                        pReal
-use debug, only:        debug_verbosity, &
-                        debug_selectiveDebugger, &
+use debug, only:        debug_what, &
+                        debug_crystallite, &
+                        debug_levelBasic, &
+                        debug_levelExtensive, &
+                        debug_levelSelective, &
                         debug_e, &
                         debug_i, &
                         debug_g, &
@@ -1371,15 +1387,10 @@ use constitutive, only: constitutive_sizeDotState, &
                         constitutive_microstructure
 
 implicit none
-
-
 !*** input variables ***!
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
                                               ii, &                     ! integration point index
                                               gg                        ! grain index
-
-!*** output variables ***!
-
 !*** local variables ***!
 integer(pInt)                                 e, &                      ! element index in element loop
                                               i, &                      ! integration point index in ip loop
@@ -1475,7 +1486,7 @@ endif
 
 ! --- FIRST RUNGE KUTTA STEP ---
 #ifndef _OPENMP
-if (debug_verbosity > 5) then
+if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
   write(6,'(a,1x,i1)') '<< CRYST >> RUNGE KUTTA STEP',1
 endif
 #endif
@@ -1611,8 +1622,8 @@ do n = 1_pInt,5_pInt
 
   ! --- dot state and RK dot state---
 #ifndef _OPENMP
-  if (debug_verbosity > 5) then
-    write(6,'(a,1x,i1)') '<< CRYST >> RUNGE KUTTA STEP',n+1
+  if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
+    write(6,'(a,1x,i1)') '<< CRYST >> RUNGE KUTTA STEP',n+1_pInt
   endif
 #endif
   !$OMP DO
@@ -1669,13 +1680,14 @@ relTemperatureResiduum = 0.0_pReal
       ! NEED TO DO THE ADDITION IN THIS LENGTHY WAY BECAUSE OF PARALLELIZATION 
       ! CAN'T USE A REDUCTION CLAUSE ON A POINTER OR USER DEFINED TYPE
       
-      stateResiduum(1:mySizeDotState,g,i,e) = (   db(1) * constitutive_RKCK45dotState(1,g,i,e)%p(1:mySizeDotState) &
-                                                + db(2) * constitutive_RKCK45dotState(2,g,i,e)%p(1:mySizeDotState) &
-                                                + db(3) * constitutive_RKCK45dotState(3,g,i,e)%p(1:mySizeDotState) &
-                                                + db(4) * constitutive_RKCK45dotState(4,g,i,e)%p(1:mySizeDotState) &
-                                                + db(5) * constitutive_RKCK45dotState(5,g,i,e)%p(1:mySizeDotState) &
-                                                + db(6) * constitutive_RKCK45dotState(6,g,i,e)%p(1:mySizeDotState)) &
-                                              * crystallite_subdt(g,i,e)
+      stateResiduum(1:mySizeDotState,g,i,e) = &
+                (   db(1) * constitutive_RKCK45dotState(1,g,i,e)%p(1:mySizeDotState)  &
+                  + db(2) * constitutive_RKCK45dotState(2,g,i,e)%p(1:mySizeDotState)  &
+                  + db(3) * constitutive_RKCK45dotState(3,g,i,e)%p(1:mySizeDotState)  &
+                  + db(4) * constitutive_RKCK45dotState(4,g,i,e)%p(1:mySizeDotState)  &
+                  + db(5) * constitutive_RKCK45dotState(5,g,i,e)%p(1:mySizeDotState)  &
+                  + db(6) * constitutive_RKCK45dotState(6,g,i,e)%p(1:mySizeDotState)) &
+                                   * crystallite_subdt(g,i,e)
       temperatureResiduum(g,i,e) = (  db(1) * RKCK45dotTemperature(1,g,i,e) &
                                     + db(2) * RKCK45dotTemperature(2,g,i,e) &
                                     + db(3) * RKCK45dotTemperature(3,g,i,e) &
@@ -1735,8 +1747,9 @@ relTemperatureResiduum = 0.0_pReal
            .and. abs(relTemperatureResiduum(g,i,e)) < rTol_crystalliteTemperature )
            
 #ifndef _OPENMP
-      if (debug_verbosity > 5_pInt &
-          .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+      if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt&
+          .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
+                 .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
         write(6,'(a,i8,1x,i3,1x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
         write(6,*)
         write(6,'(a,/,(12x,12(f12.1,1x)))') '<< CRYST >> absolute residuum tolerance', &
@@ -1776,7 +1789,7 @@ relTemperatureResiduum = 0.0_pReal
       if (crystallite_integrateStress(g,i,e)) then
         crystallite_converged(g,i,e) = .true.                                                           ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                               ! ... integration done
-        if (debug_verbosity > 4) then
+        if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
           !$OMP CRITICAL (distributionState)
             debug_StateLoopDistribution(6,numerics_integrationMode) =&
                         debug_StateLoopDistribution(6,numerics_integrationMode) + 1_pInt
@@ -1798,7 +1811,7 @@ relTemperatureResiduum = 0.0_pReal
 ! --- nonlocal convergence check ---
 
 #ifndef _OPENMP  
-  if (debug_verbosity > 5) then
+  if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
     write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
     write(6,*)
   endif
@@ -1810,7 +1823,7 @@ if (.not. singleRun) then                                                       
   
 endif
 
-endsubroutine
+end subroutine crystallite_integrateStateRKCK45
 
 
 
@@ -1821,10 +1834,11 @@ endsubroutine
 subroutine crystallite_integrateStateAdaptiveEuler(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
-use prec, only:         pInt, &
-                        pReal
-use debug, only:        debug_verbosity, &
-                        debug_selectiveDebugger, &
+use debug, only:        debug_what, &
+                        debug_crystallite, &
+                        debug_levelBasic, &
+                        debug_levelExtensive, &
+                        debug_levelSelective, &
                         debug_e, &
                         debug_i, &
                         debug_g, &
@@ -1856,9 +1870,6 @@ implicit none
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
                                               ii, &                     ! integration point index
                                               gg                        ! grain index
-
-!*** output variables ***!
-
 !*** local variables ***!
 integer(pInt)                                 e, &                      ! element index in element loop
                                               i, &                      ! integration point index in ip loop
@@ -2046,8 +2057,9 @@ relTemperatureResiduum = 0.0_pReal
       !$OMP FLUSH(relStateResiduum,relTemperatureResiduum)
 
 #ifndef _OPENMP        
-      if (debug_verbosity > 5 &
-          .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+      if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+          .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
+                  .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
         write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
         write(6,*)
         write(6,'(a,/,(12x,12(f12.1,1x)))') '<< CRYST >> absolute residuum tolerance', &
@@ -2062,7 +2074,7 @@ relTemperatureResiduum = 0.0_pReal
         write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
         write(6,*)
       endif
-#endif            
+#endif
       
       ! --- converged ? ---
 
@@ -2071,7 +2083,7 @@ relTemperatureResiduum = 0.0_pReal
           .and. abs(relTemperatureResiduum(g,i,e)) < rTol_crystalliteTemperature ) then        
         crystallite_converged(g,i,e) = .true.                                                             ! ... converged per definitionem
         crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
-        if (debug_verbosity > 4) then
+        if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
           !$OMP CRITICAL (distributionState)
             debug_StateLoopDistribution(2,numerics_integrationMode) = debug_StateLoopDistribution(2,numerics_integrationMode) + 1
           !$OMP END CRITICAL (distributionState)
@@ -2087,7 +2099,7 @@ relTemperatureResiduum = 0.0_pReal
 ! --- NONLOCAL CONVERGENCE CHECK ---
 
 #ifndef _OPENMP  
-  if (debug_verbosity > 5) then
+  if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
     write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
     write(6,*)
   endif
@@ -2098,7 +2110,7 @@ if (.not. singleRun) then                                                       
   endif
 endif
 
-endsubroutine
+end subroutine crystallite_integrateStateAdaptiveEuler
 
 
 
@@ -2109,11 +2121,12 @@ endsubroutine
 subroutine crystallite_integrateStateEuler(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
-use prec, only:         pInt, &
-                        pReal
 use numerics, only:     numerics_integrationMode
-use debug, only:        debug_verbosity, &
-                        debug_selectiveDebugger, &
+use debug, only:        debug_what, &
+                        debug_crystallite, &
+                        debug_levelBasic, &
+                        debug_levelExtensive, &
+                        debug_levelSelective, &
                         debug_e, &
                         debug_i, &
                         debug_g, &
@@ -2132,14 +2145,10 @@ use constitutive, only: constitutive_sizeDotState, &
                         constitutive_microstructure
 
 implicit none
-
 !*** input variables ***!
 integer(pInt), optional, intent(in)::         ee, &                     ! element index
                                               ii, &                     ! integration point index
                                               gg                        ! grain index
-
-!*** output variables ***!
-
 !*** local variables ***!
 integer(pInt)                                 e, &                      ! element index in element loop
                                               i, &                      ! integration point index in ip loop
@@ -2220,8 +2229,10 @@ if (numerics_integrationMode < 2) then
         crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e) &
                                           + crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
 #ifndef _OPENMP
-        if (debug_verbosity > 5 &
-            .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+
+        if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+            .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+                    .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
           write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
           write(6,*)
           write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
@@ -2256,7 +2267,7 @@ endif
     if (crystallite_todo(g,i,e)) then
       if (crystallite_integrateStress(g,i,e)) then
         crystallite_converged(g,i,e) = .true.
-        if (debug_verbosity > 4) then
+        if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
           !$OMP CRITICAL (distributionState)
             debug_StateLoopDistribution(1,numerics_integrationMode) = debug_StateLoopDistribution(1,numerics_integrationMode) + 1
           !$OMP END CRITICAL (distributionState)
@@ -2284,7 +2295,7 @@ if (.not. singleRun) then                                                       
   endif
 endif
 
-endsubroutine
+end subroutine crystallite_integrateStateEuler
 
 
 
@@ -2296,9 +2307,10 @@ endsubroutine
 subroutine crystallite_integrateStateFPI(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
-use prec, only:         pInt, &
-                        pReal
-use debug, only:        debug_verbosity, &
+use debug, only:        debug_what,&
+                        debug_crystallite, &
+                        debug_levelBasic, &
+                        debug_levelExtensive, &
                         debug_StateLoopDistribution
 use numerics, only:     nState, &
                         numerics_integrationMode
@@ -2447,8 +2459,9 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
     enddo; enddo; enddo
   !$OMP ENDDO
 
+
 #ifndef _OPENMP
-  if (debug_verbosity > 5) then
+  if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
     write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo after stress integration'
   endif
 #endif
@@ -2500,7 +2513,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
             crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         elseif (stateConverged .and. temperatureConverged) then                                           ! check (private) logicals "stateConverged" and "temperatureConverged" instead of (shared) "crystallite_converged", so no need to flush the "crystallite_converged" array
-          if (debug_verbosity > 4) then
+          if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
             !$OMP CRITICAL (distributionState)
               debug_StateLoopDistribution(NiterationState,numerics_integrationMode) = &
                 debug_StateLoopDistribution(NiterationState,numerics_integrationMode) + 1_pInt
@@ -2529,7 +2542,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   !$OMP END PARALLEL
 
 #ifndef _OPENMP  
-  if (debug_verbosity > 5) then
+  if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
     write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), &
                               ' grains converged after state integration no. ', NiterationState
     write(6,*)
@@ -2547,7 +2560,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                   ! skip all converged
   
 #ifndef _OPENMP
-  if (debug_verbosity > 5) then
+  if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
     write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_converged(:,:,:)),' grains converged after non-local check'
     write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo after state integration no. ',&
                                 NiterationState
@@ -2557,7 +2570,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   
 enddo                                                                                           ! crystallite convergence loop  
 
-endsubroutine
+end subroutine crystallite_integrateStateFPI
 
 
 
@@ -2568,7 +2581,6 @@ endsubroutine
 subroutine crystallite_updateState(done, converged, g, i, e)
 
 !*** variables and functions from other modules ***!
-use prec, only:           pInt
 use numerics, only:       rTol_crystalliteState
 use constitutive, only:   constitutive_dotState, &
                           constitutive_previousDotState, &
@@ -2577,8 +2589,11 @@ use constitutive, only:   constitutive_dotState, &
                           constitutive_state, &
                           constitutive_aTolState, &
                           constitutive_microstructure
-use debug, only:          debug_verbosity, &
-                          debug_selectiveDebugger, &
+use debug, only:          debug_what, &
+                          debug_crystallite, &
+                          debug_levelBasic, &
+                          debug_levelExtensive, &
+                          debug_levelSelective, &
                           debug_e, &
                           debug_i, &
                           debug_g
@@ -2618,7 +2633,7 @@ residuum = constitutive_state(g,i,e)%p(1:mySize) - constitutive_subState0(g,i,e)
                                                  - dotState(1:mySize) * crystallite_subdt(g,i,e)
 if (any(residuum /= residuum)) then                                   ! if NaN occured then return without changing the state
 #ifndef _OPENMP
-  if (debug_verbosity > 4) then
+  if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> updateState encountered NaN at el ip g ',e,i,g
   endif
 #endif
@@ -2634,7 +2649,9 @@ converged = all(     abs(residuum) < constitutive_aTolState(g,i,e)%p(1:mySize) &
                 .or. abs(residuum) < rTol_crystalliteState * abs(state(1:mySize)) )
 
 #ifndef _OPENMP
-if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+    .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+           .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
   if (converged) then
     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> updateState converged at el ip g ',e,i,g
   else
@@ -2656,7 +2673,7 @@ endif
 constitutive_dotState(g,i,e)%p(1:mySize) = dotState(1:mySize)
 constitutive_state(g,i,e)%p(1:mySize) = state(1:mySize)
 
-endsubroutine
+end subroutine crystallite_updateState
 
 
 
@@ -2664,13 +2681,14 @@ endsubroutine
 ! update the temperature of the grain
 ! and tell whether it has converged
 !********************************************************************
- subroutine crystallite_updateTemperature(done, converged, g, i, e)
+subroutine crystallite_updateTemperature(done, converged, g, i, e)
  
 !*** variables and functions from other modules ***!
-use prec, only:         pInt
 use numerics, only:     rTol_crystalliteTemperature
 use constitutive, only: constitutive_dotTemperature
-use debug, only:        debug_verbosity 
+use debug, only:        debug_what, &
+                        debug_crystallite, &
+                        debug_levelBasic
 !*** input variables ***!
 integer(pInt), intent(in):: e, &                      ! element index
                             i, &                      ! integration point index
@@ -2698,7 +2716,7 @@ residuum = crystallite_Temperature(g,i,e) - crystallite_subTemperature0(g,i,e) &
          * crystallite_subdt(g,i,e)
 if (residuum /= residuum) then
 #ifndef _OPENMP
-  if (debug_verbosity > 4) then
+  if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> updateTemperature encountered NaN at el ip g ',e,i,g
   endif
 #endif
@@ -2714,7 +2732,7 @@ done = .true.
 converged = (      crystallite_Temperature(g,i,e) == 0.0_pReal &
               .or. abs(residuum) < rTol_crystalliteTemperature * crystallite_Temperature(g,i,e))
  
-endsubroutine
+end subroutine crystallite_updateTemperature
 
 
 
@@ -2731,18 +2749,18 @@ function crystallite_integrateStress(&
      )
      
 
-!*** variables and functions from other modules ***!
-use prec, only:         pReal, &
-                        pInt, &
-                        pLongInt
+use prec, only:         pLongInt
 use numerics, only:     nStress, &
                         aTol_crystalliteStress, &
                         rTol_crystalliteStress, &
                         iJacoLpresiduum, &
                         relevantStrain, &
                         numerics_integrationMode
-use debug, only:        debug_verbosity, &
-                        debug_selectiveDebugger, &
+use debug, only:        debug_what, &
+                        debug_crystallite, &
+                        debug_levelBasic, &
+                        debug_levelExtensive, &
+                        debug_levelSelective, &
                         debug_e, &
                         debug_i, &
                         debug_g, &
@@ -2832,7 +2850,9 @@ integer(pLongInt)                   tick, &
 
 crystallite_integrateStress = .false.
 #ifndef _OPENMP
-if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+    .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+           .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
   write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress at el ip g ',e,i,g
 endif
 #endif
@@ -2861,9 +2881,11 @@ Lpguess =      crystallite_Lp(1:3,1:3,g,i,e)                       ! ... and tak
 invFp_current = math_inv33(Fp_current)                            
 if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
 #ifndef _OPENMP
-  if (debug_verbosity > 4) then
+  if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on invFp_current inversion at el ip g ',e,i,g
-    if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+    if (iand(debug_what(debug_crystallite), debug_levelSelective) > 0_pInt &
+        .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+               .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
       write(6,*)
       write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> invFp_new',math_transpose33(invFp_new(1:3,1:3))
     endif
@@ -2896,7 +2918,7 @@ LpLoop: do
   
   if (NiterationStress > nStress) then
 #ifndef _OPENMP
-    if (debug_verbosity > 4_pInt) then 
+    if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then 
       write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress reached loop limit at el ip g ',e,i,g
       write(6,*)
     endif
@@ -2919,11 +2941,11 @@ LpLoop: do
   
   !* calculate plastic velocity gradient and its tangent according to constitutive law
   
-  if (debug_verbosity > 0) then
+  if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
   endif
   call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT_constitutive, Tstar_v, crystallite_Temperature(g,i,e), g, i, e)
-  if (debug_verbosity > 4) then
+  if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
     !$OMP CRITICAL (debugTimingLpTangent)
       debug_cumLpCalls = debug_cumLpCalls + 1_pInt
@@ -2934,7 +2956,9 @@ LpLoop: do
   endif
    
 #ifndef _OPENMP
-  if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger) &
+  if (iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt &
+      .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+             .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt) &
       .and. numerics_integrationMode == 1_pInt) then
     write(6,'(a,i3)') '<< CRYST >> iteration ', NiterationStress
     write(6,*)
@@ -2961,7 +2985,7 @@ LpLoop: do
   !* NaN occured at regular speed  ->  return
   if (steplength >= steplength0 .and. any(residuum /= residuum)) then
 #ifndef _OPENMP
-    if (debug_verbosity > 4) then 
+    if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then 
       write(6,'(a,i8,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el ip g ',e,i,g,&
                                     ' ; iteration ', NiterationStress,&
                                     ' >> returning..!'
@@ -3009,7 +3033,7 @@ LpLoop: do
       !* something went wrong at accelerated speed?  ->  return to regular speed and try again
       else
 #ifndef _OPENMP
-        if (debug_verbosity > 5) then 
+        if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt) then 
           write(6,'(a,i8,1x,i2,1x,i3,1x,a,i3)') '<< CRYST >> integrateStress encountered high-speed crash at el ip g ',e,i,g,&
                                              '; iteration ', NiterationStress
         endif
@@ -3022,7 +3046,7 @@ LpLoop: do
         steplength_max = steplength - 1.0_pReal                       ! limit acceleration
         steplength = steplength0                                      ! grinding halt
         jacoCounter = 0_pInt                                          ! reset counter for Jacobian update (we want to do an update next time!)
-        if (debug_verbosity > 4) then
+        if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
           !$OMP CRITICAL (distributionLeapfrogBreak)
             debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) = &
               debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) + 1_pInt
@@ -3046,10 +3070,11 @@ LpLoop: do
     call math_invert(9_pInt,dR_dLp,inv_dR_dLp,dummy,error)               ! invert dR/dLp --> dLp/dR
     if (error) then
 #ifndef _OPENMP
-      if (debug_verbosity > 4_pInt) then
+      if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
         write(6,'(a,i8,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ',e,i,g
-        if (debug_verbosity > 5_pInt &
-            .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+        if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+            .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
+                   .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
           write(6,*)
           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLp',transpose(dR_dLp)
           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dLp',transpose(dT_dLp)
@@ -3091,10 +3116,12 @@ invFp_new = invFp_new/math_det33(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize
 call math_invert33(invFp_new,Fp_new,det,error)
 if (error) then
 #ifndef _OPENMP
-  if (debug_verbosity > 4) then
+  if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a,i8,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',&
                                                      e,i,g, ' ; iteration ', NiterationStress
-    if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger)) then
+    if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+        .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+               .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
       write(6,*)
       write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> invFp_new',math_transpose33(invFp_new)
     endif
@@ -3124,7 +3151,9 @@ crystallite_invFp(1:3,1:3,g,i,e) = invFp_new
 
 crystallite_integrateStress = .true.
 #ifndef _OPENMP
-if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) .or. .not. debug_selectiveDebugger) &
+if (iand(debug_what(debug_crystallite),debug_levelExtensive) /= 0_pInt &
+    .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+            .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt) &
     .and. numerics_integrationMode == 1_pInt) then 
   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,g,i,e))/1.0e6_pReal
   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Cauchy / MPa', &
@@ -3135,25 +3164,24 @@ if (debug_verbosity > 5 .and. ((e == debug_e .and. i == debug_i .and. g == debug
 endif
 #endif
 
-if (debug_verbosity > 4) then
+if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
   !$OMP CRITICAL (distributionStress)
    debug_StressLoopDistribution(NiterationStress,numerics_integrationMode) = &
      debug_StressLoopDistribution(NiterationStress,numerics_integrationMode) + 1_pInt
   !$OMP END CRITICAL (distributionStress)
 endif
 
-endfunction
+end function crystallite_integrateStress
  
  
  
 !********************************************************************
 ! calculates orientations and disorientations (in case of single grain ips)
 !******************************************************************** 
-subroutine crystallite_orientations()
+subroutine crystallite_orientations
   
 !*** variables and functions from other modules ***!
-use prec, only:                       pInt, &
-                                      pReal
+
 use math, only:                       math_pDecomposition, &
                                       math_RtoQuaternion, &
                                       math_QuaternionDisorientation, &
@@ -3267,7 +3295,7 @@ logical error
   enddo
 !$OMP END PARALLEL DO
 
-endsubroutine
+end subroutine crystallite_orientations
 
 
  
@@ -3282,8 +3310,6 @@ function crystallite_postResults(&
  )
 
  !*** variables and functions from other modules ***!
- use prec, only:                      pInt, &
-                                      pReal
  use math, only:                      math_QuaternionToEuler, &
                                       math_QuaternionToAxisAngle, &
                                       math_mul33x33, &
@@ -3396,7 +3422,7 @@ function crystallite_postResults(&
                                                                                                dt, g, i, e)
  c = c + constitutive_sizePostResults(g,i,e)
 
-endfunction
+end function crystallite_postResults
 
 
 END MODULE

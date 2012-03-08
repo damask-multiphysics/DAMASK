@@ -16,106 +16,129 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
+!--------------------------------------------------------------------------------------------------
 !* $Id$
-!************************************
-!*      Module: MATERIAL            *
-!************************************
-!* contains:                        *
-!* - parsing of material.config     *
-!************************************
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!! Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Parses material.config
+!--------------------------------------------------------------------------------------------------
+module material
 
-MODULE material
+ use prec,  only: pReal, &
+                  pInt
 
-!*** Include other modules ***
-use prec, only: pReal,pInt
-implicit none
+ implicit none
+ private
+ character(len=64), parameter, public  :: &
+   material_configFile         = 'material.config', &
+   material_localFileExt       = 'materialConfig'
+   
+ character(len=32), parameter, public  :: &
+   material_partHomogenization = 'homogenization', &
+   material_partCrystallite    = 'crystallite', &
+   material_partPhase          = 'phase'
+ 
+ character(len=64), dimension(:), allocatable, public :: &
+   phase_constitution, &                                                                            !> constitution of each phase  
+   phase_name, &                                                                                    !> name of each phase
+   homogenization_name, &                                                                           !> name of each homogenization
+   homogenization_type, &                                                                           !> type of each homogenization
+   crystallite_name                                                                                 !> name of each crystallite setting
 
-character(len=64), parameter, public  :: material_configFile         = 'material.config'
-character(len=64), parameter, public  :: material_localFileExt       = 'materialConfig'
-character(len=32), parameter, public  :: material_partHomogenization = 'homogenization'
-character(len=32), parameter, private :: material_partMicrostructure = 'microstructure'
-character(len=32), parameter, public  :: material_partCrystallite    = 'crystallite'
-character(len=32), parameter, public  :: material_partPhase          = 'phase'
-character(len=32), parameter, private :: material_partTexture        = 'texture'
-    
+ integer(pInt), public :: &
+   homogenization_maxNgrains, &                                                                     !> max number of grains in any USED homogenization
+   material_Nphase, &                                                                               !> number of phases
+   material_Nhomogenization, &                                                                      !> number of homogenizations
+   material_Nmicrostructure, &                                                                      !> number of microstructures
+   material_Ncrystallite                                                                            !> number of crystallite settings
+ 
+ integer(pInt), dimension(:), allocatable, public :: &
+   homogenization_Ngrains, &                                                                        !> number of grains in each homogenization
+   homogenization_Noutput, &                                                                        !> number of '(output)' items per homogenization
+   phase_Noutput, &                                                                                 !> number of '(output)' items per phase
+   phase_constitutionInstance, &                                                                    !> instance of particular constitution of each phase
+   crystallite_Noutput, &                                                                           !> number of '(output)' items per crystallite setting
+   homogenization_typeInstance, &                                                                   !> instance of particular type of each homogenization
+   microstructure_crystallite                                                                       !> crystallite setting ID of each microstructure
 
-!*************************************
-!* Definition of material properties *
-!*************************************
-!* Number of materials
-integer(pInt) &
-    material_Nhomogenization, &      ! number of homogenizations
-    material_Nmicrostructure, &      ! number of microstructures
-    material_Ncrystallite, &         ! number of crystallite settings
-    material_Nphase, &               ! number of phases
-    material_Ntexture, &             ! number of textures
-    microstructure_maxNconstituents,&! max number of constituents in any phase
-    homogenization_maxNgrains, &     ! max number of grains in any USED homogenization
-    texture_maxNgauss, &             ! max number of Gauss components in any texture
-    texture_maxNfiber                ! max number of Fiber components in any texture
-character(len=64), dimension(:),       allocatable :: &
-    homogenization_name, &           ! name of each homogenization
-    homogenization_type, &           ! type of each homogenization
-    microstructure_name, &           ! name of each microstructure
-    crystallite_name, &              ! name of each crystallite setting
-    phase_name, &                    ! name of each phase
-    phase_constitution, &            ! constitution of each phase
-    texture_name                     ! name of each texture
-character(len=256),dimension(:),       allocatable :: &
-    texture_ODFfile                  ! name of each ODF file
-integer(pInt),     dimension(:),       allocatable :: &
-    homogenization_Ngrains, &        ! number of grains in each homogenization
-    homogenization_typeInstance, &   ! instance of particular type of each homogenization
-    homogenization_Noutput, &        ! number of '(output)' items per homogenization
-    microstructure_Nconstituents, &  ! number of constituents in each microstructure
-    crystallite_Noutput, &           ! number of '(output)' items per crystallite setting
-    phase_constitutionInstance, &    ! instance of particular constitution of each phase
-    phase_Noutput, &                 ! number of '(output)' items per phase
-    texture_symmetry, &              ! number of symmetric orientations per texture
-    texture_Ngauss, &                ! number of Gauss components per texture
-    texture_Nfiber                   ! number of Fiber components per texture
-logical,           dimension(:),       allocatable :: &
-    homogenization_active, &         !
-    microstructure_active, &         ! 
-    microstructure_elemhomo, &       ! flag to indicate homogeneous microstructure distribution over element's IPs
-    phase_localConstitution          ! flags phases with local constitutive law
-integer(pInt),     dimension(:),       allocatable :: &
-    microstructure_crystallite       ! crystallite setting ID of each microstructure
-integer(pInt),     dimension(:,:),     allocatable :: &
-    microstructure_phase, &          ! phase IDs of each microstructure
-    microstructure_texture           ! texture IDs of each microstructure
-real(pReal),       dimension(:,:),     allocatable :: &
-    microstructure_fraction          ! vol fraction of each constituent in microstructure
-real(pReal),       dimension(:,:,:),   allocatable :: &
-    material_volume                  ! volume of each grain,IP,element
-integer(pInt),     dimension(:,:,:),   allocatable :: &
-    material_phase, &                ! phase   (index) of each grain,IP,element
-    material_texture                 ! texture (index) of each grain,IP,element
-real(pReal),       dimension(:,:,:,:), allocatable :: &
-    material_EulerAngles             ! initial orientation of each grain,IP,element
-real(pReal),       dimension(:,:,:),   allocatable :: &
-    texture_Gauss, &                 ! data of each Gauss component
-    texture_Fiber                    ! data of each Fiber component
+ integer(pInt), dimension(:,:,:), allocatable, public :: &
+   material_phase, &                                                                                !> phase   (index) of each grain,IP,element
+   material_texture                                                                                 !> texture (index) of each grain,IP,element
+ 
+ real(pReal), dimension(:,:,:,:), allocatable, public :: &
+   material_EulerAngles                                                                             !> initial orientation of each grain,IP,element
+ 
+ logical, dimension(:), allocatable, public :: &
+   microstructure_active, & 
+   microstructure_elemhomo, &                                                                       !> flag to indicate homogeneous microstructure distribution over element's IPs
+   phase_localConstitution                                                                          !> flags phases with local constitutive law
 
-CONTAINS
 
+ character(len=32), parameter, private :: &
+   material_partMicrostructure = 'microstructure', &
+   material_partTexture        = 'texture'
+   
+ character(len=64), dimension(:), allocatable, private :: &
+   microstructure_name, &                                                                           !> name of each microstructure
+   texture_name                                                                                     !> name of each texture
+     
+ character(len=256), dimension(:), allocatable, private :: &
+   texture_ODFfile                                                                                  !> name of each ODF file         
+
+ integer(pInt), private :: &
+   material_Ntexture, &                                                                             !> number of textures
+   microstructure_maxNconstituents, &                                                               !> max number of constituents in any phase
+   texture_maxNgauss, &                                                                             !> max number of Gauss components in any texture
+   texture_maxNfiber                                                                                !> max number of Fiber components in any texture
+
+ integer(pInt), dimension(:), allocatable, private :: &
+   microstructure_Nconstituents, &                                                                  !> number of constituents in each microstructure
+   texture_symmetry, &                                                                              !> number of symmetric orientations per texture
+   texture_Ngauss, &                                                                                !> number of Gauss components per texture
+   texture_Nfiber                                                                                   !> number of Fiber components per texture
+ 
+ integer(pInt), dimension(:,:), allocatable, private :: &
+   microstructure_phase, &                                                                          !> phase IDs of each microstructure
+   microstructure_texture                                                                           !> texture IDs of each microstructure
+ 
+ real(pReal), dimension(:,:), allocatable, private :: &
+   microstructure_fraction                                                                          !> vol fraction of each constituent in microstructure
+ 
+ real(pReal), dimension(:,:,:), allocatable :: &
+   material_volume, &                                                                               !> volume of each grain,IP,element
+   texture_Gauss, &                                                                                 !> data of each Gauss component
+   texture_Fiber                                                                                    !> data of each Fiber component
+ 
+ logical, dimension(:), allocatable, private :: &
+   homogenization_active
+
+
+ public  :: material_init  
+ 
+contains
 
 !*********************************************************************
-subroutine material_init()
+subroutine material_init
 !*********************************************************************
 !*      Module initialization         *
 !**************************************
 
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use prec, only: pReal,pInt
- use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat
- use debug, only: debug_verbosity
+ use IO,    only: IO_error, &
+                  IO_open_file, &
+                  IO_open_jobFile_stat
+ use debug, only: debug_what, &
+                  debug_material, &
+                  debug_levelBasic, &
+                  debug_levelExtensive
+ 
  implicit none
-
 !* Definition of variables
  integer(pInt), parameter :: fileunit = 200_pInt
- integer(pInt) i,j
+ integer(pInt)            :: i,j, myDebug
+ 
+ myDebug = debug_what(debug_material)
  
  !$OMP CRITICAL (write2out)
    write(6,*)
@@ -128,31 +151,31 @@ subroutine material_init()
    call IO_open_file(fileunit,material_configFile)                           ! ...open material.config file
  endif
  call material_parseHomogenization(fileunit,material_partHomogenization)
- if (debug_verbosity > 0_pInt) then
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write (6,*) 'Homogenization parsed'
    !$OMP END CRITICAL (write2out)
  endif
  call material_parseMicrostructure(fileunit,material_partMicrostructure)
- if (debug_verbosity > 0_pInt) then
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write (6,*) 'Microstructure parsed'
    !$OMP END CRITICAL (write2out)
  endif
  call material_parseCrystallite(fileunit,material_partCrystallite)
- if (debug_verbosity > 0_pInt) then
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write (6,*) 'Crystallite parsed'
    !$OMP END CRITICAL (write2out)
  endif
  call material_parseTexture(fileunit,material_partTexture)
- if (debug_verbosity > 0_pInt) then
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write (6,*) 'Texture parsed'
    !$OMP END CRITICAL (write2out)
  endif
  call material_parsePhase(fileunit,material_partPhase)
- if (debug_verbosity > 0_pInt) then
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write (6,*) 'Phase parsed'
    !$OMP END CRITICAL (write2out)
@@ -167,7 +190,7 @@ subroutine material_init()
    if (minval(microstructure_texture(1:microstructure_Nconstituents(i),i)) < 1_pInt .or. &
        maxval(microstructure_texture(1:microstructure_Nconstituents(i),i)) > material_Ntexture) call IO_error(152_pInt,i)
    if (abs(sum(microstructure_fraction(:,i)) - 1.0_pReal) >= 1.0e-10_pReal) then
-     if (debug_verbosity > 0_pInt) then
+     if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
        !$OMP CRITICAL (write2out)
          write(6,*)'sum of microstructure fraction = ',sum(microstructure_fraction(:,i))
        !$OMP END CRITICAL (write2out)
@@ -175,7 +198,7 @@ subroutine material_init()
      call IO_error(153_pInt,i)
    endif
  enddo
- if (debug_verbosity > 0_pInt) then
+ if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
      write (6,*)
      write (6,*) 'MATERIAL configuration'
@@ -188,14 +211,14 @@ subroutine material_init()
      write (6,'(a32,1x,a11,1x,a12,1x,a13)') 'microstructure                  ','crystallite','constituents','homogeneous'
      do i = 1_pInt,material_Nmicrostructure
        write (6,'(a32,4x,i4,8x,i4,8x,l1)') microstructure_name(i), &
-                                    microstructure_crystallite(i), &
-                                    microstructure_Nconstituents(i), &
-                                    microstructure_elemhomo(i)
+                                           microstructure_crystallite(i), &
+                                           microstructure_Nconstituents(i), &
+                                           microstructure_elemhomo(i)
        if (microstructure_Nconstituents(i) > 0_pInt) then
          do j = 1_pInt,microstructure_Nconstituents(i)
            write (6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',phase_name(microstructure_phase(j,i)),&
-                                                   texture_name(microstructure_texture(j,i)),&
-                                                   microstructure_fraction(j,i)
+                                                      texture_name(microstructure_texture(j,i)),&
+                                                      microstructure_fraction(j,i)
          enddo
          write (6,*)
        endif
@@ -203,27 +226,28 @@ subroutine material_init()
    !$OMP END CRITICAL (write2out)
  endif
  
- call material_populateGrains()
+ call material_populateGrains
 
-endsubroutine
+end subroutine material_init
 
 
 !*********************************************************************
 subroutine material_parseHomogenization(myFile,myPart)
 !*********************************************************************
 
- use prec, only: pInt
  use IO
  use mesh, only: mesh_element
+ 
  implicit none
-
  character(len=*), intent(in) :: myPart
- integer(pInt), intent(in) :: myFile
- integer(pInt), parameter :: maxNchunks = 2_pInt
+ integer(pInt),    intent(in) :: myFile
+ 
+ integer(pInt),     parameter :: maxNchunks = 2_pInt
+ 
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) Nsections, section, s
- character(len=64) tag
- character(len=1024) line
+ character(len=64)   :: tag
+ character(len=1024) ::line
  
  Nsections = IO_countSections(myFile,myPart)
  material_Nhomogenization = Nsections
@@ -273,25 +297,26 @@ subroutine material_parseHomogenization(myFile,myPart)
 
 100 homogenization_maxNgrains = maxval(homogenization_Ngrains,homogenization_active)
 
- endsubroutine
+ end subroutine material_parseHomogenization
 
 
 !*********************************************************************
 subroutine material_parseMicrostructure(myFile,myPart)
 !*********************************************************************
 
- use prec, only: pInt
  use IO
  use mesh, only: mesh_element, mesh_NcpElems
+ 
  implicit none
-
  character(len=*), intent(in) :: myPart
- integer(pInt), intent(in) :: myFile
+ integer(pInt),    intent(in) :: myFile
+ 
  integer(pInt), parameter :: maxNchunks = 7_pInt
+ 
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
- integer(pInt) Nsections, section, constituent, e, i
- character(len=64) tag
- character(len=1024) line
+ integer(pInt) :: Nsections, section, constituent, e, i
+ character(len=64)   :: tag
+ character(len=1024) :: line
 
  Nsections = IO_countSections(myFile,myPart)
  material_Nmicrostructure = Nsections
@@ -353,21 +378,27 @@ subroutine material_parseMicrostructure(myFile,myPart)
    endif
  enddo
 
-100 endsubroutine
+100 end subroutine material_parseMicrostructure
 
 
 !*********************************************************************
 subroutine material_parseCrystallite(myFile,myPart)
 !*********************************************************************
 
- use prec, only: pInt
- use IO
- implicit none
+ use IO, only: IO_countSections, &
+               IO_error, &
+               IO_countTagInPart, &
+               IO_getTag, &
+               IO_lc, &
+               IO_isBlank
 
+ implicit none
  character(len=*), intent(in) :: myPart
- integer(pInt), intent(in) :: myFile
- integer(pInt) Nsections, section
- character(len=1024) line
+ integer(pInt),    intent(in) :: myFile
+ 
+ integer(pInt)       :: Nsections, &
+                        section
+ character(len=1024) :: line
  
  Nsections = IO_countSections(myFile,myPart)
  material_Ncrystallite = Nsections
@@ -396,24 +427,25 @@ subroutine material_parseCrystallite(myFile,myPart)
    endif
  enddo
 
-100 endsubroutine
+100 end subroutine material_parseCrystallite
 
 
 !*********************************************************************
 subroutine material_parsePhase(myFile,myPart)
 !*********************************************************************
 
- use prec, only: pInt
  use IO
+ 
  implicit none
-
  character(len=*), intent(in) :: myPart
- integer(pInt), intent(in) :: myFile
+ integer(pInt),    intent(in) :: myFile
+ 
  integer(pInt), parameter :: maxNchunks = 2_pInt
+ 
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) Nsections, section, s
- character(len=64) tag
- character(len=1024) line
+ character(len=64)   :: tag
+ character(len=1024) :: line
  
  Nsections = IO_countSections(myFile,myPart)
  material_Nphase = Nsections
@@ -458,25 +490,26 @@ subroutine material_parsePhase(myFile,myPart)
    endif
  enddo
 
-100 endsubroutine
+100 end subroutine material_parsePhase
 
 
 !*********************************************************************
 subroutine material_parseTexture(myFile,myPart)
 !*********************************************************************
 
- use prec, only: pInt, pReal
  use IO
  use math, only: inRad, math_sampleRandomOri
+ 
  implicit none
-
  character(len=*), intent(in) :: myPart
- integer(pInt), intent(in) :: myFile
- integer(pInt), parameter :: maxNchunks = 13_pInt
+ integer(pInt),    intent(in) :: myFile
+ 
+ integer(pInt), parameter     :: maxNchunks = 13_pInt
+ 
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) Nsections, section, gauss, fiber, i
- character(len=64) tag
- character(len=1024) line
+ integer(pInt) :: Nsections, section, gauss, fiber, i
+ character(len=64) :: tag
+ character(len=1024) :: line
  
  
  Nsections = IO_countSections(myFile,myPart)
@@ -589,36 +622,47 @@ subroutine material_parseTexture(myFile,myPart)
    endif
  enddo
 
-100 endsubroutine
+100 end subroutine material_parseTexture
 
 
 !*********************************************************************
-subroutine material_populateGrains()
+subroutine material_populateGrains
 !*********************************************************************
 
- use prec, only: pInt, pReal
- use math, only: math_sampleRandomOri, math_sampleGaussOri, math_sampleFiberOri, math_symmetricEulers
- use mesh, only: mesh_element, mesh_maxNips, mesh_NcpElems, mesh_ipVolume, FE_Nips
- use IO,   only: IO_error, IO_hybridIA
+ use math, only:      math_sampleRandomOri, &
+                      math_sampleGaussOri, &
+                      math_sampleFiberOri, &
+                      math_symmetricEulers
+ use mesh, only:      mesh_element, &
+                      mesh_maxNips, &
+                      mesh_NcpElems, &
+                      mesh_ipVolume, &
+                      FE_Nips
+ use IO, only:        IO_error, &
+                      IO_hybridIA
  use FEsolving, only: FEsolving_execIP
- use debug, only: debug_verbosity
+ use debug, only:     debug_what, &
+                      debug_material, &
+                      debug_levelBasic
+ 
  implicit none
-
  integer(pInt), dimension (:,:), allocatable :: Ngrains
- integer(pInt), dimension (microstructure_maxNconstituents) :: NgrainsOfConstituent
+ integer(pInt), dimension (microstructure_maxNconstituents) &
+                                             :: NgrainsOfConstituent
  real(pReal), dimension (:),     allocatable :: volumeOfGrain
  real(pReal), dimension (:,:),   allocatable :: orientationOfGrain
- real(pReal), dimension (3) :: orientation
- real(pReal), dimension (3,3) :: symOrientation
+ real(pReal), dimension (3)                  :: orientation
+ real(pReal), dimension (3,3)                :: symOrientation
  integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
- integer(pInt) t,e,i,g,j,m,homog,micro,sgn,hme
- integer(pInt) phaseID,textureID,dGrains,myNgrains,myNorientations, &
+ integer(pInt) :: t,e,i,g,j,m,homog,micro,sgn,hme, myDebug
+ integer(pInt) :: phaseID,textureID,dGrains,myNgrains,myNorientations, &
                grain,constituentGrain,symExtension
- real(pReal) extreme,rnd
+ real(pReal) :: extreme,rnd
  integer(pInt), dimension (:,:),   allocatable :: Nelems   ! counts number of elements in homog, micro array
  integer(pInt), dimension (:,:,:), allocatable :: elemsOfHomogMicro    ! lists element number in homog, micro array
 
-
+ myDebug = debug_what(debug_material)
+ 
  allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;        material_volume      = 0.0_pReal
  allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;         material_phase       = 0_pInt
  allocate(material_texture(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;       material_texture     = 0_pInt
@@ -663,7 +707,7 @@ subroutine material_populateGrains()
  allocate(textureOfGrain(maxval(Ngrains)))          ! reserve memory for maximum case
  allocate(orientationOfGrain(3,maxval(Ngrains)))    ! reserve memory for maximum case
  
- if (debug_verbosity > 0_pInt) then
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
      write (6,*)
      write (6,*) 'MATERIAL grain population'
@@ -676,7 +720,7 @@ subroutine material_populateGrains()
    do micro = 1_pInt,material_Nmicrostructure            ! all pairs of homog and micro
      if (Ngrains(homog,micro) > 0_pInt) then             ! an active pair of homog and micro
        myNgrains = Ngrains(homog,micro)             ! assign short name for total number of grains to populate
-       if (debug_verbosity > 0_pInt) then
+       if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
          !$OMP CRITICAL (write2out)
            write (6,*)
            write (6,'(a32,1x,a32,1x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
@@ -837,7 +881,6 @@ subroutine material_populateGrains()
  deallocate(Nelems)
  deallocate(elemsOfHomogMicro)
 
- endsubroutine
+end subroutine material_populateGrains
 
-
-END MODULE
+end module material

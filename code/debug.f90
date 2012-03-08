@@ -19,349 +19,423 @@
 !##############################################################
 !* $Id$
 !##############################################################
-MODULE debug
+module debug
 !##############################################################
-use prec
+ use prec, only: pInt, pReal, pLongInt
 
-implicit none
-character(len=64), parameter :: debug_configFile = 'debug.config' ! name of configuration file
-integer(pInt), parameter :: debug_spectralGeneral    = 1_pInt, &
-                            debug_spectralDivergence = 2_pInt, &
-                            debug_spectralRestart    = 4_pInt, &
-                            debug_spectralFFTW       = 8_pInt
+ implicit none
+ private
+ 
+ integer(pInt), parameter, public :: &
+   debug_levelSelective     = 2_pInt**0_pInt, &
+   debug_levelBasic         = 2_pInt**1_pInt, &
+   debug_levelExtensive     = 2_pInt**2_pInt
+ integer(pInt), parameter, private :: &
+   debug_maxForAll          = debug_levelExtensive
+ integer(pInt), parameter, public :: &
+   debug_spectralRestart    = debug_maxForAll*2_pInt**1_pInt, &
+   debug_spectralFFTW       = debug_maxForAll*2_pInt**2_pInt, &
+   debug_spectralDivergence = debug_maxForAll*2_pInt**3_pInt
 
-integer(pInt), dimension(:,:), allocatable :: debug_StressLoopDistribution
-integer(pInt), dimension(:,:), allocatable :: debug_LeapfrogBreakDistribution
-integer(pInt), dimension(:,:), allocatable :: debug_StateLoopDistribution
-integer(pInt), dimension(:), allocatable ::   debug_CrystalliteLoopDistribution
-integer(pInt), dimension(:), allocatable ::   debug_MaterialpointStateLoopDistribution
-integer(pInt), dimension(:), allocatable ::   debug_MaterialpointLoopDistribution
-integer(pLongInt) :: debug_cumLpTicks             = 0_pLongInt
-integer(pLongInt) :: debug_cumDotStateTicks       = 0_pLongInt
-integer(pLongInt) :: debug_cumDotTemperatureTicks = 0_pLongInt
-integer(pInt) :: debug_cumLpCalls             = 0_pInt
-integer(pInt) :: debug_cumDotStateCalls       = 0_pInt
-integer(pInt) :: debug_cumDotTemperatureCalls = 0_pInt
-integer(pInt) :: debug_e = 1_pInt
-integer(pInt) :: debug_i = 1_pInt
-integer(pInt) :: debug_g = 1_pInt
-integer(pInt), dimension(2) :: debug_stressMaxLocation = 0_pInt
-integer(pInt), dimension(2) :: debug_stressMinLocation = 0_pInt
-integer(pInt), dimension(2) :: debug_jacobianMaxLocation = 0_pInt
-integer(pInt), dimension(2) :: debug_jacobianMinLocation = 0_pInt
-real(pReal) :: debug_stressMax
-real(pReal) :: debug_stressMin
-real(pReal) :: debug_jacobianMax
-real(pReal) :: debug_jacobianMin
-logical :: debug_selectiveDebugger = .true.
-integer(pInt) :: debug_verbosity = 1_pInt
-integer(pInt) :: debug_spectral = 0_pInt
+ integer(pInt), parameter, public :: &
+   debug_debug                   =  1_pInt, &
+   debug_math                    =  2_pInt, &
+   debug_FEsolving               =  3_pInt, &
+   debug_mesh                    =  4_pInt, &                                                       ! stores debug level for mesh part of DAMASK
+   debug_material                =  5_pInt, &                                                       ! stores debug level for material part of DAMASK
+   debug_lattice                 =  6_pInt, &                                                       ! stores debug level for lattice part of DAMASK
+   debug_constitutive            =  7_pInt, &                                                       ! stores debug level for constitutive part of DAMASK
+   debug_crystallite             =  8_pInt, &
+   debug_homogenization          =  9_pInt, &
+   debug_CPFEM                   = 10_pInt, &
+   debug_spectral                = 11_pInt
+   
+ integer(pInt), dimension(11+2),  public :: &                                                       ! 11 for specific, and 2 for "all" and "other"
+   debug_what                    = 0_pInt
 
-CONTAINS
+ integer(pInt), public :: &
+   debug_cumLpCalls              = 0_pInt, &
+   debug_cumDotStateCalls        = 0_pInt, &
+   debug_cumDotTemperatureCalls  = 0_pInt, &
+   debug_e                       = 1_pInt, &
+   debug_i                       = 1_pInt, &
+   debug_g                       = 1_pInt
+
+ integer(pLongInt), public :: &
+   debug_cumLpTicks              = 0_pLongInt, &
+   debug_cumDotStateTicks        = 0_pLongInt, &
+   debug_cumDotTemperatureTicks  = 0_pLongInt
+ 
+ integer(pInt), dimension(2), public :: &
+   debug_stressMaxLocation       = 0_pInt, &
+   debug_stressMinLocation       = 0_pInt, &
+   debug_jacobianMaxLocation     = 0_pInt, &
+   debug_jacobianMinLocation     = 0_pInt
+
+ integer(pInt), dimension(:), allocatable, public :: &
+   debug_CrystalliteLoopDistribution, &
+   debug_MaterialpointStateLoopDistribution, &
+   debug_MaterialpointLoopDistribution
+
+ integer(pInt), dimension(:,:), allocatable, public :: &
+   debug_StressLoopDistribution, &
+   debug_LeapfrogBreakDistribution, &
+   debug_StateLoopDistribution
+ 
+ real(pReal), public :: &
+   debug_stressMax               = -huge(1.0_pReal), &
+   debug_stressMin               =  huge(1.0_pReal), &
+   debug_jacobianMax             = -huge(1.0_pReal), &
+   debug_jacobianMin             =  huge(1.0_pReal)
+ 
+ character(len=64), parameter, private ::  &
+   debug_configFile         = 'debug.config'                                                        ! name of configuration file
+
+ public :: debug_init, &
+           debug_reset, &
+           debug_info
+
+contains
 
 
 !********************************************************************
 ! initialize the debugging capabilities
 !********************************************************************
-subroutine debug_init()
-  
-  use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-  use prec,     only: pInt  
-  use numerics, only: nStress, &
-                      nState, &
-                      nCryst, &
-                      nMPstate, &
-                      nHomog
-  use IO,       only: IO_error, &
-                      IO_open_file_stat, &
-                      IO_isBlank, &
-                      IO_stringPos, &
-                      IO_stringValue, &
-                      IO_lc, &
-                      IO_floatValue, &
-                      IO_intValue
-  implicit none
-  
-  !*** input variables ***!
-  
-  !*** output variables ***!
-  
-  !*** local variables ***!
-  integer(pInt), parameter ::                 fileunit = 300_pInt  
-  integer(pInt), parameter ::                 maxNchunks = 2_pInt  
-  integer(pInt), dimension(1+2*maxNchunks) :: positions
-  character(len=64)                           tag
-  character(len=1024)                         line
-  
-  !$OMP CRITICAL (write2out)
-    write(6,*)
-    write(6,*) '<<<+-  debug init  -+>>>'
-    write(6,*) '$Id$'
+subroutine debug_init
+
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use numerics, only: nStress, &
+                     nState, &
+                     nCryst, &
+                     nMPstate, &
+                     nHomog
+ use IO,       only: IO_error, &
+                     IO_open_file_stat, &
+                     IO_isBlank, &
+                     IO_stringPos, &
+                     IO_stringValue, &
+                     IO_lc, &
+                     IO_floatValue, &
+                     IO_intValue
+
+ implicit none
+ integer(pInt), parameter                 :: fileunit    = 300_pInt  
+ integer(pInt), parameter                 :: maxNchunks  = 6_pInt  
+ 
+ integer(pInt)                            :: i, what
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
+ character(len=64)                        :: tag
+ character(len=1024)                      :: line
+ 
+ !$OMP CRITICAL (write2out)
+   write(6,*)
+   write(6,*) '<<<+-  debug init  -+>>>'
+   write(6,*) '$Id$'
 #include "compilation_info.f90"
-  !$OMP END CRITICAL (write2out)
+ !$OMP END CRITICAL (write2out)
+ 
+ allocate(debug_StressLoopDistribution(nStress,2))
+          debug_StressLoopDistribution             = 0_pInt
+ allocate(debug_LeapfrogBreakDistribution(nStress,2))
+          debug_LeapfrogBreakDistribution          = 0_pInt
+ allocate(debug_StateLoopDistribution(nState,2))
+          debug_StateLoopDistribution              = 0_pInt
+ allocate(debug_CrystalliteLoopDistribution(nCryst+1))
+          debug_CrystalliteLoopDistribution        = 0_pInt
+ allocate(debug_MaterialpointStateLoopDistribution(nMPstate))
+          debug_MaterialpointStateLoopDistribution = 0_pInt
+ allocate(debug_MaterialpointLoopDistribution(nHomog+1))
+          debug_MaterialpointLoopDistribution      = 0_pInt
+ 
+ 
+ ! try to open the config file
+ if(IO_open_file_stat(fileunit,debug_configFile)) then
+ 
+   ! read variables from config file and overwrite parameters
+   do
+     read(fileunit,'(a1024)',END=100) line
+     if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
+     positions = IO_stringPos(line,maxNchunks)
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     select case(tag)
+       case ('element','e','el')
+         debug_e = IO_intValue(line,positions,2_pInt)
+       case ('integrationpoint','i','ip')
+         debug_i = IO_intValue(line,positions,2_pInt)
+       case ('grain','g','gr')
+         debug_g = IO_intValue(line,positions,2_pInt)
+     end select
+     
+     what = 0_pInt
+     select case(tag)
+       case ('debug')
+         what = debug_debug
+       case ('math')
+         what = debug_math
+       case ('fesolving', 'fe')
+         what = debug_FEsolving
+       case ('mesh')
+         what = debug_mesh
+       case ('material')
+         what = debug_material
+       case ('lattice')
+         what = debug_lattice
+       case ('constitutive')
+         what = debug_constitutive
+       case ('crystallite')
+         what = debug_crystallite
+       case ('homogenization')
+         what = debug_homogenization
+       case ('cpfem')
+         what = debug_CPFEM
+       case ('spectral')
+         what = debug_spectral
+       case ('all')
+         what = 12_pInt
+       case ('other')
+         what = 13_pInt
+     end select
+     if(what /= 0) then
+       do i = 2_pInt, maxNchunks
+         select case(IO_lc(IO_stringValue(line,positions,i)))
+           case('basic')
+             debug_what(what) = ior(debug_what(what), debug_levelBasic)
+           case('extensive')
+             debug_what(what) = ior(debug_what(what), debug_levelExtensive)
+           case('selective')
+             debug_what(what) = ior(debug_what(what), debug_levelSelective)
+           case('restart')
+             debug_what(what) = ior(debug_what(what), debug_spectralRestart)
+           case('fft','fftw')
+             debug_what(what) = ior(debug_what(what), debug_spectralFFTW)
+           case('divergence')
+             debug_what(what) = ior(debug_what(what), debug_spectralDivergence)
+         end select
+       enddo
+      endif
+   enddo
+   100 close(fileunit)
+ 
+   do i = 1_pInt, 11_pInt
+     if(debug_what(i) == 0) debug_what(i) = ior(debug_what(i), debug_what(13))
+     debug_what(i) = ior(debug_what(i), debug_what(12))
+   enddo
   
-  allocate(debug_StressLoopDistribution(nStress,2)) ;            debug_StressLoopDistribution             = 0_pInt
-  allocate(debug_LeapfrogBreakDistribution(nStress,2)) ;         debug_LeapfrogBreakDistribution          = 0_pInt
-  allocate(debug_StateLoopDistribution(nState,2)) ;              debug_StateLoopDistribution              = 0_pInt
-  allocate(debug_CrystalliteLoopDistribution(nCryst+1)) ;        debug_CrystalliteLoopDistribution        = 0_pInt
-  allocate(debug_MaterialpointStateLoopDistribution(nMPstate)) ; debug_MaterialpointStateLoopDistribution = 0_pInt
-  allocate(debug_MaterialpointLoopDistribution(nHomog+1)) ;      debug_MaterialpointLoopDistribution      = 0_pInt
-  
-  ! try to open the config file
-  if(IO_open_file_stat(fileunit,debug_configFile)) then 
-  
-    line = ''
-    ! read variables from config file and overwrite parameters
-    do
-      read(fileunit,'(a1024)',END=100) line
-      if (IO_isBlank(line)) cycle                           ! skip empty lines
-      positions = IO_stringPos(line,maxNchunks)
-      tag = IO_lc(IO_stringValue(line,positions,1_pInt))         ! extract key
-      select case(tag)
-        case ('element','e','el')
-              debug_e = IO_intValue(line,positions,2_pInt)
-        case ('integrationpoint','i','ip')
-              debug_i = IO_intValue(line,positions,2_pInt)
-        case ('grain','g','gr')
-              debug_g = IO_intValue(line,positions,2_pInt)
-        case ('selective')
-              debug_selectiveDebugger = IO_intValue(line,positions,2_pInt) > 0_pInt
-        case ('verbosity')
-              debug_verbosity = IO_intValue(line,positions,2_pInt)
-        case ('(spectral)')
-            select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
-              case('general')
-                   debug_spectral = ior(debug_spectral, debug_spectralGeneral)
-              case('divergence')
-                   debug_spectral = ior(debug_spectral, debug_spectralDivergence)
-              case('restart')
-                   debug_spectral = ior(debug_spectral, debug_spectralRestart)
-              case('fftw', 'fft')
-                   debug_spectral = ior(debug_spectral, debug_spectralFFTW)
-            endselect
-      endselect
-    enddo
-    100 close(fileunit)
-    
-    if (debug_verbosity > 0_pInt) then
-      !$OMP CRITICAL (write2out)
-        write(6,*) '   ... using values from config file'
-        write(6,*)
-      !$OMP END CRITICAL (write2out)
-    endif
-    
-  ! no config file, so we use standard values
-  else 
+   if (iand(debug_what(debug_debug),debug_levelBasic) /= 0) then
+     !$OMP CRITICAL (write2out)
+       write(6,*) 'using values from config file'
+       write(6,*)
+     !$OMP END CRITICAL (write2out)
+   endif
 
-    if (debug_verbosity > 0_pInt) then
-      !$OMP CRITICAL (write2out)
-        write(6,*) '   ... using standard values'
-        write(6,*)
-      !$OMP END CRITICAL (write2out)
-    endif
-    
-  endif  
+ ! no config file, so we use standard values
+ else 
+   if (iand(debug_what(debug_debug),debug_levelBasic) /= 0) then
+     !$OMP CRITICAL (write2out)
+       write(6,*) 'using standard values'
+       write(6,*)
+     !$OMP END CRITICAL (write2out)
+   endif
+ endif
 
-  if (debug_verbosity > 0) then
-    !$OMP CRITICAL (write2out)
-      write(6,'(a24,1x,i1)')   'verbose:                ',debug_verbosity
-      write(6,'(a24,1x,l1)')    'selective:              ',debug_selectiveDebugger
-    !$OMP END CRITICAL (write2out)
-  endif
-  if (debug_selectiveDebugger) then
-    if (debug_verbosity > 0) then
-      !$OMP CRITICAL (write2out)
-        write(6,'(a24,1x,i8)') 'element:              ',debug_e
-        write(6,'(a24,1x,i8)') 'ip:                   ',debug_i
-        write(6,'(a24,1x,i8)') 'grain:                ',debug_g
-      !$OMP END CRITICAL (write2out)
-    endif
-  else
-    debug_e = 0_pInt                                                            ! switch off selective debugging
-    debug_i = 0_pInt
-    debug_g = 0_pInt
-  endif
-  !$OMP CRITICAL (write2out)                                                   ! bitwise coded
-  if (iand(debug_spectral,debug_spectralGeneral)    > 0_pInt)  write(6,'(a)') ' spectral general    debugging'
-  if (iand(debug_spectral,debug_spectralDivergence) > 0_pInt)  write(6,'(a)') ' spectral divergence debugging'
-  if (iand(debug_spectral,debug_spectralRestart)    > 0_pInt)  write(6,'(a)') ' spectral restart    debugging'
-  if (iand(debug_spectral,debug_spectralFFTW)       > 0_pInt)  write(6,'(a)') ' spectral FFTW       debugging'
-  !$OMP END CRITICAL (write2out)
+ !output switched on (debug level for debug must be extensive)
+ if (iand(debug_what(debug_debug),debug_levelExtensive) /= 0) then
+   !$OMP CRITICAL (write2out)
+     do i = 1_pInt, 11_pInt
+       if(debug_what(i) /= 0) then 
+         if(i == debug_debug)          write(6,'(a)') 'Debug debugging:'
+         if(i == debug_math)           write(6,'(a)') 'Math debugging:'
+         if(i == debug_FEsolving)      write(6,'(a)') 'FEsolving debugging:'
+         if(i == debug_mesh)           write(6,'(a)') 'Mesh debugging:'
+         if(i == debug_material)       write(6,'(a)') 'Material debugging:'
+         if(i == debug_lattice)        write(6,'(a)') 'Lattice debugging:'
+         if(i == debug_constitutive)   write(6,'(a)') 'Constitutive debugging:'
+         if(i == debug_crystallite)    write(6,'(a)') 'Crystallite debugging:'
+         if(i == debug_homogenization) write(6,'(a)') 'Homogenization debugging:'
+         if(i == debug_CPFEM)          write(6,'(a)') 'CPFEM debugging:'
+         if(i == debug_spectral)       write(6,'(a)') 'Spectral solver debugging:'
 
-endsubroutine
+         if(iand(debug_what(i),debug_levelBasic)        /= 0) write(6,'(a)') ' basic'
+         if(iand(debug_what(i),debug_levelExtensive)    /= 0) write(6,'(a)') ' extensive'
+         if(iand(debug_what(i),debug_levelSelective)    /= 0) then
+           write(6,'(a)') 'selective on:'
+           write(6,'(a24,1x,i8)') 'element:              ',debug_e
+           write(6,'(a24,1x,i8)') 'ip:                   ',debug_i
+           write(6,'(a24,1x,i8)') 'grain:                ',debug_g
+         endif
+         if(iand(debug_what(i),debug_spectralRestart)   /= 0) write(6,'(a)') ' restart'
+         if(iand(debug_what(i),debug_spectralFFTW)      /= 0) write(6,'(a)') ' FFTW'
+         if(iand(debug_what(i),debug_spectralDivergence)/= 0) write(6,'(a)') ' divergence'
+       endif
+     enddo
+   !$OMP END CRITICAL (write2out)
+ endif
+
+end subroutine debug_init
  
 !********************************************************************
 ! reset debug distributions
 !********************************************************************
-subroutine debug_reset()
+subroutine debug_reset
 
-  use prec
-  implicit none
+ implicit none
 
-  debug_StressLoopDistribution              = 0_pInt ! initialize debugging data
-  debug_LeapfrogBreakDistribution           = 0_pInt
-  debug_StateLoopDistribution               = 0_pInt
-  debug_CrystalliteLoopDistribution         = 0_pInt
-  debug_MaterialpointStateLoopDistribution  = 0_pInt
-  debug_MaterialpointLoopDistribution       = 0_pInt
-  debug_cumLpTicks             = 0_pLongInt
-  debug_cumDotStateTicks       = 0_pLongInt
-  debug_cumDotTemperatureTicks = 0_pLongInt
-  debug_cumLpCalls             = 0_pInt
-  debug_cumDotStateCalls       = 0_pInt
-  debug_cumDotTemperatureCalls = 0_pInt
-  debug_stressMaxLocation = 0_pInt
-  debug_stressMinLocation = 0_pInt
-  debug_jacobianMaxLocation = 0_pInt
-  debug_jacobianMinLocation = 0_pInt
-  debug_stressMax = -huge(1.0_pReal)
-  debug_stressMin = huge(1.0_pReal)
-  debug_jacobianMax = -huge(1.0_pReal)
-  debug_jacobianMin = huge(1.0_pReal)
+ debug_StressLoopDistribution              = 0_pInt ! initialize debugging data
+ debug_LeapfrogBreakDistribution           = 0_pInt
+ debug_StateLoopDistribution               = 0_pInt
+ debug_CrystalliteLoopDistribution         = 0_pInt
+ debug_MaterialpointStateLoopDistribution  = 0_pInt
+ debug_MaterialpointLoopDistribution       = 0_pInt
+ debug_cumLpTicks                          = 0_pLongInt
+ debug_cumDotStateTicks                    = 0_pLongInt
+ debug_cumDotTemperatureTicks              = 0_pLongInt
+ debug_cumLpCalls                          = 0_pInt
+ debug_cumDotStateCalls                    = 0_pInt
+ debug_cumDotTemperatureCalls              = 0_pInt
+ debug_stressMaxLocation                   = 0_pInt
+ debug_stressMinLocation                   = 0_pInt
+ debug_jacobianMaxLocation                 = 0_pInt
+ debug_jacobianMinLocation                 = 0_pInt
+ debug_stressMax                           = -huge(1.0_pReal)
+ debug_stressMin                           =  huge(1.0_pReal)
+ debug_jacobianMax                         = -huge(1.0_pReal)
+ debug_jacobianMin                         =  huge(1.0_pReal)
 
-
-endsubroutine
+end subroutine debug_reset
 
 !********************************************************************
 ! write debug statements to standard out
 !********************************************************************
-subroutine debug_info()
+subroutine debug_info
 
-  use prec
-  use numerics, only: nStress, &
-                      nState, &
-                      nCryst, &
-                      nMPstate, &
-                      nHomog
-  implicit none
+ use numerics, only: nStress, &
+                     nState, &
+                     nCryst, &
+                     nMPstate, &
+                     nHomog
 
-  integer(pInt)       i,integral
-  integer(pLongInt)   tickrate
- 
-  call system_clock(count_rate=tickrate)
+ implicit none
+ integer(pInt)     :: i,integral
+ integer(pLongInt) :: tickrate
 
-  if (debug_verbosity > 4) then
-    !$OMP CRITICAL (write2out)
-  
-      write(6,*)
-      write(6,*) 'DEBUG Info (from previous cycle)'
-      write(6,*)
-      write(6,'(a33,1x,i12)')      'total calls to LpAndItsTangent  :',debug_cumLpCalls
-      if (debug_cumLpCalls > 0_pInt) then
-        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumLpTicks,pReal)&
-                                                                             /real(tickrate,pReal)
-        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-          real(debug_cumLpTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)/real(debug_cumLpCalls,pReal)
-      endif
-      write(6,*)
-      write(6,'(a33,1x,i12)')      'total calls to collectDotState  :',debug_cumDotStateCalls
-      if (debug_cumdotStateCalls > 0_pInt) then
-        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotStateTicks,pReal)&
-                                                                             /real(tickrate,pReal)
-        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-          real(debug_cumDotStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
-                                                                      /real(debug_cumDotStateCalls,pReal)
-      endif
-      write(6,*)
-      write(6,'(a33,1x,i12)')      'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
-      if (debug_cumdotTemperatureCalls > 0_pInt) then
-        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotTemperatureTicks,pReal)&
-                                                                             /real(tickrate,pReal)
-        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-          real(debug_cumDotTemperatureTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
-                                                                  /real(debug_cumDotTemperatureCalls,pReal)
-      endif
+ call system_clock(count_rate=tickrate)
+
+ !$OMP CRITICAL (write2out)
+   if (iand(debug_what(debug_crystallite),debug_levelBasic) /= 0) then
+     write(6,*)
+     write(6,*) 'DEBUG Info (from previous cycle)'
+     write(6,*)
+     write(6,'(a33,1x,i12)')      'total calls to LpAndItsTangent  :',debug_cumLpCalls
+     if (debug_cumLpCalls > 0_pInt) then
+       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumLpTicks,pReal)&
+                                                                            /real(tickrate,pReal)
+       write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
+         real(debug_cumLpTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)/real(debug_cumLpCalls,pReal)
+     endif
+     write(6,*)
+     write(6,'(a33,1x,i12)')      'total calls to collectDotState  :',debug_cumDotStateCalls
+     if (debug_cumdotStateCalls > 0_pInt) then
+       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotStateTicks,pReal)&
+                                                                            /real(tickrate,pReal)
+       write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
+         real(debug_cumDotStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
+                                                                     /real(debug_cumDotStateCalls,pReal)
+     endif
+     write(6,*)
+     write(6,'(a33,1x,i12)')      'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
+     if (debug_cumdotTemperatureCalls > 0_pInt) then
+       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotTemperatureTicks,pReal)&
+                                                                            /real(tickrate,pReal)
+       write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
+         real(debug_cumDotTemperatureTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
+                                                                 /real(debug_cumDotTemperatureCalls,pReal)
+     endif
+   
+     integral = 0_pInt
+     write(6,*)
+     write(6,*)
+     write(6,*) 'distribution_StressLoop :    stress  frogbreak  stiffness  frogbreak'
+     do i=1_pInt,nStress
+       if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt ) .or. &
+           any(debug_LeapfrogBreakDistribution(i,:)  /= 0_pInt ) ) then
+         integral = integral + i*debug_StressLoopDistribution(i,1) + i*debug_StressLoopDistribution(i,2)
+         write(6,'(i25,1x,i10,1x,i10,1x,i10,1x,i10)')   i,debug_StressLoopDistribution(i,1),debug_LeapfrogBreakDistribution(i,1), &
+                                                debug_StressLoopDistribution(i,2),debug_LeapfrogBreakDistribution(i,2)
+       endif
+     enddo
+     write(6,'(a15,i10,1x,i10,12x,i10)') '          total',integral,&
+                                                          sum(debug_StressLoopDistribution(:,1)), &
+                                                          sum(debug_StressLoopDistribution(:,2))
+     
+     integral = 0_pInt
+     write(6,*)
+     write(6,*) 'distribution_CrystalliteStateLoop :'
+     do i=1_pInt,nState
+       if (any(debug_StateLoopDistribution(i,:) /= 0)) then
+         integral = integral + i*debug_StateLoopDistribution(i,1) + i*debug_StateLoopDistribution(i,2)
+         write(6,'(i25,1x,i10,12x,i10)') i,debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
+       endif
+     enddo
+     write(6,'(a15,i10,1x,i10,12x,i10)') '          total',integral,&
+                                                        sum(debug_StateLoopDistribution(:,1)), &
+                                                        sum(debug_StateLoopDistribution(:,2))
     
-      integral = 0_pInt
-      write(6,*)
-      write(6,*)
-      write(6,*) 'distribution_StressLoop :    stress  frogbreak  stiffness  frogbreak'
-      do i=1_pInt,nStress
-        if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt ) .or. &
-            any(debug_LeapfrogBreakDistribution(i,:)  /= 0_pInt ) ) then
-          integral = integral + i*debug_StressLoopDistribution(i,1) + i*debug_StressLoopDistribution(i,2)
-          write(6,'(i25,1x,i10,1x,i10,1x,i10,1x,i10)')   i,debug_StressLoopDistribution(i,1),debug_LeapfrogBreakDistribution(i,1), &
-                                                 debug_StressLoopDistribution(i,2),debug_LeapfrogBreakDistribution(i,2)
-        endif
-      enddo
-      write(6,'(a15,i10,1x,i10,12x,i10)') '          total',integral,&
-                                                           sum(debug_StressLoopDistribution(:,1)), &
-                                                           sum(debug_StressLoopDistribution(:,2))
-      
-      integral = 0_pInt
-      write(6,*)
-      write(6,*) 'distribution_CrystalliteStateLoop :'
-      do i=1_pInt,nState
-        if (any(debug_StateLoopDistribution(i,:) /= 0)) then
-          integral = integral + i*debug_StateLoopDistribution(i,1) + i*debug_StateLoopDistribution(i,2)
-          write(6,'(i25,1x,i10,12x,i10)') i,debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
-        endif
-      enddo
-      write(6,'(a15,i10,1x,i10,12x,i10)') '          total',integral,&
-                                                         sum(debug_StateLoopDistribution(:,1)), &
-                                                         sum(debug_StateLoopDistribution(:,2))
+     integral = 0_pInt
+     write(6,*)
+     write(6,*) 'distribution_CrystalliteCutbackLoop :'
+     do i=1_pInt,nCryst+1_pInt
+       if (debug_CrystalliteLoopDistribution(i) /= 0) then
+         integral = integral + i*debug_CrystalliteLoopDistribution(i)
+         if (i <= nCryst) then
+           write(6,'(i25,1x,i10)') i,debug_CrystalliteLoopDistribution(i)
+         else
+           write(6,'(i25,a1,i10)') i-1_pInt,'+',debug_CrystalliteLoopDistribution(i)
+         endif
+       endif
+     enddo
+     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
+   endif
      
-      integral = 0_pInt
-      write(6,*)
-      write(6,*) 'distribution_CrystalliteCutbackLoop :'
-      do i=1_pInt,nCryst+1_pInt
-        if (debug_CrystalliteLoopDistribution(i) /= 0) then
-          integral = integral + i*debug_CrystalliteLoopDistribution(i)
-          if (i <= nCryst) then
-            write(6,'(i25,1x,i10)') i,debug_CrystalliteLoopDistribution(i)
-          else
-            write(6,'(i25,a1,i10)') i-1_pInt,'+',debug_CrystalliteLoopDistribution(i)
-          endif
-        endif
-      enddo
-      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
-
-    !$OMP END CRITICAL (write2out)
-  endif
-      
-  if (debug_verbosity > 2) then
-    !$OMP CRITICAL (write2out)
-  
-      integral = 0_pInt
-      write(6,*)
-      write(6,*) 'distribution_MaterialpointStateLoop :'
-      do i=1_pInt,nMPstate
-        if (debug_MaterialpointStateLoopDistribution(i) /= 0) then
-          integral = integral + i*debug_MaterialpointStateLoopDistribution(i)
-          write(6,'(i25,1x,i10)') i,debug_MaterialpointStateLoopDistribution(i)
-        endif
-      enddo
-      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution) 
+   if (iand(debug_what(debug_homogenization),debug_levelBasic) /= 0) then
+     integral = 0_pInt
+     write(6,*)
+     write(6,*) 'distribution_MaterialpointStateLoop :'
+     do i=1_pInt,nMPstate
+       if (debug_MaterialpointStateLoopDistribution(i) /= 0) then
+         integral = integral + i*debug_MaterialpointStateLoopDistribution(i)
+         write(6,'(i25,1x,i10)') i,debug_MaterialpointStateLoopDistribution(i)
+       endif
+     enddo
+     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution) 
+    
+     integral = 0_pInt
+     write(6,*)
+     write(6,*) 'distribution_MaterialpointCutbackLoop :'
+     do i=1_pInt,nHomog+1_pInt
+       if (debug_MaterialpointLoopDistribution(i) /= 0) then
+         integral = integral + i*debug_MaterialpointLoopDistribution(i)
+         if (i <= nHomog) then
+           write(6,'(i25,1x,i10)') i,debug_MaterialpointLoopDistribution(i)
+         else
+           write(6,'(i25,a1,i10)') i-1_pInt,'+',debug_MaterialpointLoopDistribution(i)
+         endif
+       endif
+     enddo
+     write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
      
-      integral = 0_pInt
-      write(6,*)
-      write(6,*) 'distribution_MaterialpointCutbackLoop :'
-      do i=1_pInt,nHomog+1_pInt
-        if (debug_MaterialpointLoopDistribution(i) /= 0) then
-          integral = integral + i*debug_MaterialpointLoopDistribution(i)
-          if (i <= nHomog) then
-            write(6,'(i25,1x,i10)') i,debug_MaterialpointLoopDistribution(i)
-          else
-            write(6,'(i25,a1,i10)') i-1_pInt,'+',debug_MaterialpointLoopDistribution(i)
-          endif
-        endif
-      enddo
-      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
-      
-      write(6,*)
-      write(6,*)
-      write(6,*) 'Extreme values of returned stress and jacobian'
-      write(6,*)
-      write(6,'(a39)') '                      value     el   ip'
-      write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') 'stress   min :', debug_stressMin, debug_stressMinLocation
-      write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') '         max :', debug_stressMax, debug_stressMaxLocation
-      write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') 'jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
-      write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') '         max :', debug_jacobianMax, debug_jacobianMaxLocation  
-      write(6,*)
-
-    !$OMP END CRITICAL (write2out)
-  endif
-
-endsubroutine
+     write(6,*)
+     write(6,*)
+     write(6,*) 'Extreme values of returned stress and jacobian'
+     write(6,*)
+     write(6,'(a39)')                      '                      value     el   ip'
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') 'stress   min :', debug_stressMin, debug_stressMinLocation
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') '         max :', debug_stressMax, debug_stressMaxLocation
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') 'jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') '         max :', debug_jacobianMax, debug_jacobianMaxLocation  
+     write(6,*)
+   endif
+ !$OMP END CRITICAL (write2out)
  
-END MODULE debug
+end subroutine debug_info
+ 
+end module debug

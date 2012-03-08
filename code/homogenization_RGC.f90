@@ -33,8 +33,8 @@ MODULE homogenization_RGC
 
 !*** Include other modules ***
  use prec, only: pReal,pInt
- implicit none
 
+ implicit none
  character (len=*), parameter :: homogenization_RGC_label = 'rgc'
  
  integer(pInt),     dimension(:),       allocatable :: homogenization_RGC_sizeState, &
@@ -67,12 +67,21 @@ subroutine homogenization_RGC_init(&
   )
 
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use prec,  only: pInt, pReal
- use debug, only: debug_verbosity
- use math,  only: math_Mandel3333to66, math_Voigt66to3333,math_I3,math_sampleRandomOri,math_EulerToR,inRad
+ use debug, only: debug_what, &
+                  debug_homogenization, &
+                  debug_levelBasic, &
+                  debug_levelExtensive
+ use math,  only: math_Mandel3333to66,&
+                  math_Voigt66to3333, &
+                  math_I3, &
+                  math_sampleRandomOri,&
+                  math_EulerToR,&
+                  INRAD
  use mesh,  only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
  use IO
  use material
+
+ implicit none
  integer(pInt), intent(in) :: myFile
  integer(pInt), parameter  :: maxNchunks = 4_pInt
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
@@ -170,7 +179,7 @@ subroutine homogenization_RGC_init(&
    endif
  enddo
 
-100   if (debug_verbosity == 4_pInt) then
+100   if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
   !$OMP CRITICAL (write2out)
    do i = 1_pInt,maxNinstance
      write(6,'(a15,1x,i4)')  'instance:  ', i
@@ -227,9 +236,8 @@ endsubroutine
 !* initial homogenization state                                      *
 !*********************************************************************
 function homogenization_RGC_stateInit(myInstance)
- use prec, only: pReal,pInt
- implicit none
 
+ implicit none
 !* Definition of variables
  integer(pInt), intent(in) :: myInstance
  real(pReal), dimension(homogenization_RGC_sizeState(myInstance)) :: homogenization_RGC_stateInit
@@ -253,8 +261,10 @@ subroutine homogenization_RGC_partitionDeformation(&
    ip, &            ! my integration point
    el  &            ! my element
   )
- use prec,  only: pReal,pInt,p_vec
- use debug, only: debug_verbosity
+ use prec,  only: p_vec
+ use debug, only: debug_what, &
+                  debug_homogenization, &
+                  debug_levelExtensive
  use mesh,  only: mesh_element
  use material,  only: homogenization_maxNgrains,homogenization_Ngrains,homogenization_typeInstance
  use FEsolving, only: theInc,cycleCounter
@@ -277,7 +287,7 @@ subroutine homogenization_RGC_partitionDeformation(&
  
 
 !* Debugging the overall deformation gradient
- if (debug_verbosity == 4_pInt) then
+ if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a,i3,a,i3,a)')'========== Increment: ',theInc,' Cycle: ',cycleCounter,' =========='
    write(6,'(1x,a32)')'Overall deformation gradient: '
@@ -304,7 +314,7 @@ subroutine homogenization_RGC_partitionDeformation(&
    F(:,:,iGrain) = F(:,:,iGrain) + avgF(:,:)                         ! resulting relaxed deformation gradient
 
 !* Debugging the grain deformation gradients
-   if (debug_verbosity == 4_pInt) then
+   if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a32,1x,i3)')'Deformation gradient of grain: ',iGrain
      do i = 1_pInt,3_pInt
@@ -338,7 +348,11 @@ function homogenization_RGC_updateState(&
   )
 
  use prec,  only: pReal,pInt,p_vec
- use debug, only: debug_verbosity, debug_e, debug_i
+ use debug, only: debug_what, &
+                  debug_homogenization,&
+                  debug_levelExtensive, &
+                  debug_e, &
+                  debug_i
  use math,  only: math_invert
  use mesh,  only: mesh_element
  use material, only: homogenization_maxNgrains,homogenization_typeInstance, &
@@ -390,7 +404,7 @@ function homogenization_RGC_updateState(&
    drelax = state%p(1:3_pInt*nIntFaceTot) - state0%p(1:3_pInt*nIntFaceTot)
 
 !* Debugging the obtained state
- if (debug_verbosity == 4_pInt) then
+ if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Obtained state: '
    do i = 1_pInt,3_pInt*nIntFaceTot
@@ -407,7 +421,7 @@ function homogenization_RGC_updateState(&
  call homogenization_RGC_volumePenalty(D,volDiscrep,F,avgF,ip,el,homID)
 
 !* Debugging the mismatch, stress and penalties of grains
- if (debug_verbosity == 4_pInt) then
+ if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    do iGrain = 1_pInt,nGrain
      write(6,'(1x,a30,1x,i3,1x,a4,3(1x,e15.8))')'Mismatch magnitude of grain(',iGrain,') :',NN(1,iGrain),NN(2,iGrain),NN(3,iGrain)
@@ -456,7 +470,7 @@ function homogenization_RGC_updateState(&
    enddo
    
 !* Debugging the residual stress
-   if (debug_verbosity == 4_pInt) then
+   if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a30,1x,i3)')'Traction at interface: ',iNum
      write(6,'(1x,3(e15.8,1x))')(tract(iNum,j), j = 1_pInt,3_pInt)
@@ -474,7 +488,8 @@ function homogenization_RGC_updateState(&
  residLoc = int(maxloc(abs(tract)),pInt)                                          ! get the position of the maximum residual
 
  !* Debugging the convergent criteria
- if (debug_verbosity == 4_pInt .and. debug_e == el .and. debug_i == ip) then
+ if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+     .and. debug_e == el .and. debug_i == ip) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a)')' '
    write(6,'(1x,a,1x,i2,1x,i4)')'RGC residual check ...',ip,el
@@ -491,7 +506,8 @@ function homogenization_RGC_updateState(&
  if (residMax < relTol_RGC*stresMax .or. residMax < absTol_RGC) then 
    homogenization_RGC_updateState = .true.
    
-   if (debug_verbosity == 4 .and. debug_e == el .and. debug_i == ip) then 
+    if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+        .and. debug_e == el .and. debug_i == ip) then 
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a55)')'... done and happy'
      write(6,*)' '
@@ -521,7 +537,8 @@ function homogenization_RGC_updateState(&
    state%p(3*nIntFaceTot+7) = sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)   ! the average rate of relaxation vectors
    state%p(3*nIntFaceTot+8) = maxval(abs(drelax))/dt                    ! the maximum rate of relaxation vectors
 
-   if (debug_verbosity == 4_pInt .and. debug_e == el .and. debug_i == ip) then
+   if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+        .and. debug_e == el .and. debug_i == ip) then
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a30,1x,e15.8)')'Constitutive work: ',constitutiveWork
      write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',sum(NN(1,:))/real(nGrain,pReal), &
@@ -545,7 +562,8 @@ function homogenization_RGC_updateState(&
 !* Try to restart when residual blows up exceeding maximum bound
    homogenization_RGC_updateState = (/.true.,.false./)                  ! with direct cut-back
 
-   if (debug_verbosity == 4 .and. debug_e == el .and. debug_i == ip) then
+   if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+       .and. debug_e == el .and. debug_i == ip) then
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a55)')'... broken'
      write(6,*)' '
@@ -559,7 +577,8 @@ function homogenization_RGC_updateState(&
 !* Otherwise, proceed with computing the Jacobian and state update
  else
 
- if (debug_verbosity == 4 .and. debug_e == el .and. debug_i == ip) then
+   if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt &
+     .and. debug_e == el .and. debug_i == ip) then
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a55)')'... not yet done'
      write(6,*)' '
@@ -615,7 +634,7 @@ function homogenization_RGC_updateState(&
  enddo
  
 !* Debugging the global Jacobian matrix of stress tangent
- if (debug_verbosity == 4_pInt) then
+ if (iand(debug_what(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian matrix of stress'
    do i = 1_pInt,3_pInt*nIntFaceTot
@@ -671,7 +690,7 @@ function homogenization_RGC_updateState(&
  enddo
  
 !* Debugging the global Jacobian matrix of penalty tangent
- if (debug_verbosity == 4) then
+ if (iand(debug_what(debug_homogenization), debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian matrix of penalty'
    do i = 1_pInt,3_pInt*nIntFaceTot
@@ -691,7 +710,7 @@ function homogenization_RGC_updateState(&
                                                                            ! only in the main diagonal term 
 
 !* Debugging the global Jacobian matrix of numerical viscosity tangent
- if (debug_verbosity == 4_pInt) then
+ if (iand(debug_what(debug_homogenization), debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian matrix of penalty'
    do i = 1_pInt,3_pInt*nIntFaceTot
@@ -705,7 +724,7 @@ function homogenization_RGC_updateState(&
 !* The overall Jacobian matrix summarizing contributions of smatrix, pmatrix, rmatrix
  allocate(jmatrix(3*nIntFaceTot,3*nIntFaceTot)); jmatrix = smatrix + pmatrix + rmatrix
  
- if (debug_verbosity == 4) then
+ if (iand(debug_what(debug_homogenization), debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian matrix (total)'
    do i = 1_pInt,3_pInt*nIntFaceTot
@@ -724,7 +743,7 @@ function homogenization_RGC_updateState(&
  call math_invert(3_pInt*nIntFaceTot,jmatrix,jnverse,ival,error)             ! Compute the inverse of the overall Jacobian matrix
  
 !* Debugging the inverse Jacobian matrix
- if (debug_verbosity == 4_pInt) then
+ if (iand(debug_what(debug_homogenization), debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Jacobian inverse'
    do i = 1_pInt,3_pInt*nIntFaceTot
@@ -754,7 +773,7 @@ function homogenization_RGC_updateState(&
  endif
 
  !* Debugging the return state
- if (debug_verbosity == 4_pInt) then
+ if (iand(debug_homogenization, debug_levelExtensive) > 0_pInt) then
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a30)')'Returned state: '
    do i = 1_pInt,3_pInt*nIntFaceTot
@@ -784,13 +803,14 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
   )
 
  use prec,  only: pReal,pInt,p_vec
- use debug, only: debug_verbosity
+ use debug, only: debug_what, &
+                  debug_homogenization,&
+                  debug_levelExtensive
  use mesh,  only: mesh_element
  use material, only: homogenization_maxNgrains,homogenization_Ngrains,homogenization_typeInstance
  use math, only: math_Plain3333to99
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (3,3), intent(out) :: avgP
  real(pReal), dimension (3,3,3,3), intent(out) :: dAvgPdAvgF
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in) :: P
@@ -804,7 +824,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
  
 !* Debugging the grain tangent
- if (debug_verbosity == 4_pInt) then
+ if (iand(debug_what(debug_homogenization), debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
    do iGrain = 1_pInt,Ngrains
      dPdF99 = math_Plain3333to99(dPdF(1:3,1:3,1:3,1:3,iGrain))
@@ -836,9 +856,8 @@ function homogenization_RGC_averageTemperature(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use material, only: homogenization_maxNgrains, homogenization_Ngrains
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (homogenization_maxNgrains), intent(in) :: Temperature
  integer(pInt), intent(in) :: ip,el
  real(pReal) homogenization_RGC_averageTemperature
@@ -862,9 +881,8 @@ pure function homogenization_RGC_postResults(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use material, only: homogenization_typeInstance,homogenization_Noutput
+ 
  implicit none
-
-!* Definition of variables
  type(p_vec), intent(in) :: state
  integer(pInt), intent(in) :: ip,el
 !
@@ -925,9 +943,8 @@ subroutine homogenization_RGC_stressPenalty(&
  use math, only: math_civita,math_invert33
  use material, only: homogenization_maxNgrains,homogenization_Ngrains
  use numerics, only: xSmoo_RGC
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: rPen
  real(pReal), dimension (3,homogenization_maxNgrains), intent(out)   :: nMis
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef
@@ -1059,8 +1076,6 @@ subroutine homogenization_RGC_volumePenalty(&
  use numerics, only: maxVolDiscr_RGC,volDiscrMod_RGC,volDiscrPow_RGC
 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: vPen
  real(pReal), intent(out)                  :: vDiscrep
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef
@@ -1109,9 +1124,8 @@ function homogenization_RGC_surfaceCorrection(&
 
  use prec, only: pReal,pInt,p_vec
  use math, only: math_invert33,math_mul33x33
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension(3,3), intent(in) :: avgF
  real(pReal), dimension(3)               :: homogenization_RGC_surfaceCorrection
  integer(pInt), intent(in)               :: ip,el
@@ -1154,9 +1168,8 @@ function homogenization_RGC_equivalentModuli(&
 
  use prec, only: pReal,pInt,p_vec
  use constitutive, only: constitutive_homogenizedC,constitutive_averageBurgers
- implicit none
 
-!* Definition of variables
+ implicit none
  integer(pInt), intent(in)    :: grainID,ip,el
  real(pReal), dimension (6,6) :: elasTens
  real(pReal), dimension(2)    :: homogenization_RGC_equivalentModuli
@@ -1186,9 +1199,8 @@ function homogenization_RGC_relaxationVector(&
   )
 
  use prec, only: pReal,pInt,p_vec
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (3)               :: homogenization_RGC_relaxationVector
  integer(pInt), dimension (4), intent(in) :: intFace
  type(p_vec), intent(in)      :: state
@@ -1215,9 +1227,8 @@ function homogenization_RGC_interfaceNormal(&
 
  use prec, only: pReal,pInt,p_vec
  use math, only: math_mul33x3
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (3)               :: homogenization_RGC_interfaceNormal
  integer(pInt), dimension (4), intent(in) :: intFace
  integer(pInt), intent(in)                :: ip,el
@@ -1249,9 +1260,8 @@ function homogenization_RGC_getInterface(&
    iGrain3 &        ! grain ID in 3D array
   )
  use prec, only: pReal,pInt,p_vec
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt), dimension (4) :: homogenization_RGC_getInterface
  integer(pInt), dimension (3), intent(in)    :: iGrain3
  integer(pInt), intent(in) :: iFace
@@ -1277,9 +1287,8 @@ function homogenization_RGC_grain1to3(&
   )
 
  use prec, only: pInt,p_vec
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt), dimension (3) :: homogenization_RGC_grain1to3
  integer(pInt), intent(in)    :: grain1,homID
  integer(pInt), dimension (3) :: nGDim
@@ -1301,9 +1310,8 @@ function homogenization_RGC_grain3to1(&
   )
 
  use prec, only: pInt,p_vec
- implicit none
 
-!* Definition of variables
+ implicit none
  integer(pInt), dimension (3), intent(in) :: grain3
  integer(pInt)                :: homogenization_RGC_grain3to1
  integer(pInt), dimension (3) :: nGDim
@@ -1324,9 +1332,8 @@ function homogenization_RGC_interface4to1(&
   )
 
  use prec, only: pInt,p_vec
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt), dimension (4), intent(in) :: iFace4D
  integer(pInt)                :: homogenization_RGC_interface4to1
  integer(pInt), dimension (3) :: nGDim,nIntFace
@@ -1364,9 +1371,8 @@ function homogenization_RGC_interface1to4(&
   )
 
  use prec, only: pReal,pInt,p_vec
+ 
  implicit none
-
-!* Definition of variables
  integer(pInt), dimension (4) :: homogenization_RGC_interface1to4
  integer(pInt), intent(in)    :: iFace1D
  integer(pInt), dimension (3) :: nGDim,nIntFace
@@ -1442,9 +1448,8 @@ subroutine homogenization_RGC_grainDeformation(&
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_element
  use material, only: homogenization_maxNgrains,homogenization_Ngrains,homogenization_typeInstance
+ 
  implicit none
-
-!* Definition of variables
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(out) :: F
  real(pReal), dimension (3,3,homogenization_maxNgrains), intent(in)  :: F0
  real(pReal), dimension (3,3), intent(in) :: avgF

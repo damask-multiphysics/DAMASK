@@ -27,13 +27,13 @@ module DAMASK_interface
 
  implicit none
  private
- character(len=64),   parameter, public  :: FEsolver = 'Spectral'                                   !> Keyword for spectral solver
- character(len=5),    parameter, public  :: inputFileExtension = '.geom'                            !> File extension for geometry description
- character(len=4),    parameter, public  :: logFileExtension = '.log'                               !> Dummy variable as the spectral solver has no log
- character(len=1024),            private :: geometryParameter, &
-                                            loadcaseParameter
+ character(len=64),   parameter, public  :: FEsolver = 'Spectral'                                   !< Keyword for spectral solver
+ character(len=5),    parameter, public  :: inputFileExtension = '.geom'                            !< File extension for geometry description
+ character(len=4),    parameter, public  :: logFileExtension = '.log'                               !< Dummy variable as the spectral solver has no log
+ character(len=1024),            private :: geometryParameter, &                                    !< Interpretated parameter given at command line
+                                            loadcaseParameter                                       !< Interpretated parameter given at command line
 
- public  :: getSolverWorkingDirectoryName, &
+ public  :: getSolverWorkingDirectoryName, & !< Interpretated parameter given at command line
             getSolverJobName, &
             getLoadCase, &
             getLoadCaseName, &
@@ -46,7 +46,7 @@ module DAMASK_interface
 contains
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Initializes the solver by interpreting the command line arguments. Also writes
+!> @brief initializes the solver by interpreting the command line arguments. Also writes
 !! information on computation on screen
 !--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
@@ -54,12 +54,12 @@ subroutine DAMASK_interface_init
  use prec,   only: pInt
 
  implicit none
- character(len=1024)   :: commandLine, &                                                            !> command line call as string
-                          hostName, &                                                               !> name of computer
-                          userName                                                                  !> name of user calling the executable
+ character(len=1024)   :: commandLine, &                                                            !< command line call as string
+                          hostName, &                                                               !< name of computer
+                          userName                                                                  !< name of user calling the executable
  integer               :: i, &
-                          start = 0,&
-                          length=0
+                          start ,&
+                          length
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
  
  call get_command(commandLine)
@@ -186,11 +186,11 @@ end subroutine DAMASK_interface_init
 !--------------------------------------------------------------------------------------------------
 !> @brief  extract working directory from loadcase file possibly based on current working dir
 !--------------------------------------------------------------------------------------------------
-function getSolverWorkingDirectoryName()
+ character(len=1024) function getSolverWorkingDirectoryName()
 
  implicit none
- character(len=1024) :: cwd, getSolverWorkingDirectoryName
- character :: pathSep
+ character(len=1024) :: cwd
+ character           :: pathSep
 
  pathSep = getPathSep()
 

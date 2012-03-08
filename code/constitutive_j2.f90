@@ -40,62 +40,79 @@
 ! tausat                  63e6
 ! a                       2.25
 
-MODULE constitutive_j2
+module constitutive_j2
 
-!*** Include other modules ***
  use prec, only: pReal,pInt
- implicit none
-
- character (len=*), parameter :: constitutive_j2_label = 'j2'
  
- integer(pInt),   dimension(:),     allocatable :: constitutive_j2_sizeDotState, &
-                                                   constitutive_j2_sizeState, &
-                                                   constitutive_j2_sizePostResults
- integer(pInt),   dimension(:,:),   allocatable,target :: constitutive_j2_sizePostResult     ! size of each post result output
- character(len=64), dimension(:,:), allocatable,target :: constitutive_j2_output             ! name of each post result output
- integer(pInt), dimension(:),   allocatable :: constitutive_j2_Noutput
- real(pReal), dimension(:),     allocatable :: constitutive_j2_C11
- real(pReal), dimension(:),     allocatable :: constitutive_j2_C12
- real(pReal), dimension(:,:,:), allocatable :: constitutive_j2_Cslip_66
+ implicit none
+ private
+ character (len=*), parameter, public :: constitutive_j2_label = 'j2'
+ 
+ integer(pInt),   dimension(:), allocatable, public :: &
+   constitutive_j2_sizeDotState, &
+   constitutive_j2_sizeState, &
+   constitutive_j2_sizePostResults
+   
+ integer(pInt), dimension(:,:), allocatable, target, public :: &
+   constitutive_j2_sizePostResult     ! size of each post result output
+   
+ character(len=64), dimension(:,:), allocatable, target, public :: &
+   constitutive_j2_output             ! name of each post result output
+ 
+ integer(pInt), dimension(:),  allocatable, private :: &
+   constitutive_j2_Noutput
+   
+ real(pReal), dimension(:), allocatable, private ::&
+   constitutive_j2_C11, &
+   constitutive_j2_C12
+   
+ real(pReal), dimension(:,:,:), allocatable, private :: &
+   constitutive_j2_Cslip_66
+   
 !* Visco-plastic constitutive_j2 parameters
- real(pReal), dimension(:),     allocatable :: constitutive_j2_fTaylor
- real(pReal), dimension(:),     allocatable :: constitutive_j2_tau0
- real(pReal), dimension(:),     allocatable :: constitutive_j2_gdot0
- real(pReal), dimension(:),     allocatable :: constitutive_j2_n
- real(pReal), dimension(:),     allocatable :: constitutive_j2_h0
- real(pReal), dimension(:),     allocatable :: constitutive_j2_tausat
- real(pReal), dimension(:),     allocatable :: constitutive_j2_a
- real(pReal), dimension(:),     allocatable :: constitutive_j2_aTolResistance
+ real(pReal), dimension(:), allocatable, private :: &
+   constitutive_j2_fTaylor, &
+   constitutive_j2_tau0, &
+   constitutive_j2_gdot0, &
+   constitutive_j2_n, &
+   constitutive_j2_h0, &
+   constitutive_j2_tausat, &
+   constitutive_j2_a, &
+   constitutive_j2_aTolResistance
+ 
+ public  :: constitutive_j2_init, &
+            constitutive_j2_stateInit, &
+            constitutive_j2_aTolState, &
+            constitutive_j2_homogenizedC, &
+            constitutive_j2_microstructure, &
+            constitutive_j2_LpAndItsTangent, &
+            constitutive_j2_dotState, &
+            constitutive_j2_dotTemperature, &
+            constitutive_j2_postResults
 
+contains
 
-CONTAINS
-!****************************************
-!* - constitutive_j2_init
-!* - constitutive_j2_stateInit
-!* - constitutive_j2_homogenizedC
-!* - constitutive_j2_microstructure
-!* - constitutive_j2_LpAndItsTangent
-!* - consistutive_j2_dotState
-!* - consistutive_j2_postResults
-!****************************************
-
-
-subroutine constitutive_j2_init(file)
+subroutine constitutive_j2_init(myFile)
 !**************************************
 !*      Module initialization         *
 !**************************************
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use prec, only: pInt, pReal
  use math, only: math_Mandel3333to66, math_Voigt66to3333
  use IO
  use material
- use debug, only: debug_verbosity
- integer(pInt), intent(in) :: file
+ use debug, only: debug_what, &
+                  debug_constitutive, &
+                  debug_levelBasic
+
+ implicit none
+ integer(pInt), intent(in) :: myFile
+ 
  integer(pInt), parameter :: maxNchunks = 7_pInt
+ 
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k, mySize
- character(len=64) tag
- character(len=1024) line
+ integer(pInt) :: section = 0_pInt, maxNinstance, i,j,k, mySize
+ character(len=64)   :: tag
+ character(len=1024) :: line
 
  !$OMP CRITICAL (write2out)
    write(6,*)
@@ -107,41 +124,56 @@ subroutine constitutive_j2_init(file)
  maxNinstance = int(count(phase_constitution == constitutive_j2_label),pInt)
  if (maxNinstance == 0_pInt) return
 
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,1x,i5)') '# instances:',maxNinstance
      write(6,*)
    !$OMP END CRITICAL (write2out)
  endif
  
- allocate(constitutive_j2_sizeDotState(maxNinstance)) ;                         constitutive_j2_sizeDotState = 0_pInt
- allocate(constitutive_j2_sizeState(maxNinstance)) ;                            constitutive_j2_sizeState = 0_pInt
- allocate(constitutive_j2_sizePostResults(maxNinstance));                       constitutive_j2_sizePostResults = 0_pInt
- allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), maxNinstance)); constitutive_j2_sizePostResult = 0_pInt
- allocate(constitutive_j2_output(maxval(phase_Noutput), maxNinstance)) ;        constitutive_j2_output = ''
- allocate(constitutive_j2_Noutput(maxNinstance))  ;                             constitutive_j2_Noutput = 0_pInt
- allocate(constitutive_j2_C11(maxNinstance)) ;                                  constitutive_j2_C11 = 0.0_pReal
- allocate(constitutive_j2_C12(maxNinstance)) ;                                  constitutive_j2_C12 = 0.0_pReal
- allocate(constitutive_j2_Cslip_66(6,6,maxNinstance)) ;                         constitutive_j2_Cslip_66 = 0.0_pReal
- allocate(constitutive_j2_fTaylor(maxNinstance)) ;                              constitutive_j2_fTaylor = 0.0_pReal
- allocate(constitutive_j2_tau0(maxNinstance)) ;                                 constitutive_j2_tau0 = 0.0_pReal
- allocate(constitutive_j2_gdot0(maxNinstance)) ;                                constitutive_j2_gdot0 = 0.0_pReal
- allocate(constitutive_j2_n(maxNinstance)) ;                                    constitutive_j2_n = 0.0_pReal
- allocate(constitutive_j2_h0(maxNinstance)) ;                                   constitutive_j2_h0 = 0.0_pReal
- allocate(constitutive_j2_tausat(maxNinstance)) ;                               constitutive_j2_tausat = 0.0_pReal
- allocate(constitutive_j2_a(maxNinstance)) ;                                    constitutive_j2_a = 0.0_pReal
- allocate(constitutive_j2_aTolResistance(maxNinstance)) ;                       constitutive_j2_aTolResistance = 0.0_pReal
+ allocate(constitutive_j2_sizeDotState(maxNinstance))
+          constitutive_j2_sizeDotState = 0_pInt
+ allocate(constitutive_j2_sizeState(maxNinstance))
+          constitutive_j2_sizeState = 0_pInt
+ allocate(constitutive_j2_sizePostResults(maxNinstance))
+          constitutive_j2_sizePostResults = 0_pInt
+ allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), maxNinstance))
+          constitutive_j2_sizePostResult = 0_pInt
+ allocate(constitutive_j2_output(maxval(phase_Noutput), maxNinstance))
+          constitutive_j2_output = ''
+ allocate(constitutive_j2_Noutput(maxNinstance))
+          constitutive_j2_Noutput = 0_pInt
+ allocate(constitutive_j2_C11(maxNinstance))
+          constitutive_j2_C11 = 0.0_pReal
+ allocate(constitutive_j2_C12(maxNinstance))
+          constitutive_j2_C12 = 0.0_pReal
+ allocate(constitutive_j2_Cslip_66(6,6,maxNinstance))
+          constitutive_j2_Cslip_66 = 0.0_pReal
+ allocate(constitutive_j2_fTaylor(maxNinstance))
+          constitutive_j2_fTaylor = 0.0_pReal
+ allocate(constitutive_j2_tau0(maxNinstance))
+          constitutive_j2_tau0 = 0.0_pReal
+ allocate(constitutive_j2_gdot0(maxNinstance))
+          constitutive_j2_gdot0 = 0.0_pReal
+ allocate(constitutive_j2_n(maxNinstance))
+          constitutive_j2_n = 0.0_pReal
+ allocate(constitutive_j2_h0(maxNinstance))
+          constitutive_j2_h0 = 0.0_pReal
+ allocate(constitutive_j2_tausat(maxNinstance))
+          constitutive_j2_tausat = 0.0_pReal
+ allocate(constitutive_j2_a(maxNinstance))
+          constitutive_j2_a = 0.0_pReal
+ allocate(constitutive_j2_aTolResistance(maxNinstance))
+          constitutive_j2_aTolResistance = 0.0_pReal
  
- rewind(file)
- line = ''
- section = 0_pInt
+ rewind(myFile)
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                              ! wind forward to <phase>
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
  enddo
  
  do                                                                                                                                ! read thru sections of phase part
-   read(file,'(a1024)',END=100) line
+   read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                                                                                                     ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                                                         ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                                                         ! next section
@@ -227,9 +259,7 @@ subroutine constitutive_j2_init(file)
 
  enddo
 
- return
-
-endsubroutine
+end subroutine constitutive_j2_init
 
 
 !*********************************************************************
@@ -237,16 +267,13 @@ endsubroutine
 !*********************************************************************
 pure function constitutive_j2_stateInit(myInstance)
   
-  use prec, only: pReal,pInt
-  implicit none
+ implicit none
+ integer(pInt), intent(in) :: myInstance
+ real(pReal), dimension(1) :: constitutive_j2_stateInit
   
-  integer(pInt), intent(in) :: myInstance
-  real(pReal), dimension(1) :: constitutive_j2_stateInit
-  
-  constitutive_j2_stateInit = constitutive_j2_tau0(myInstance)
+ constitutive_j2_stateInit = constitutive_j2_tau0(myInstance)
 
-  return
-endfunction
+end function constitutive_j2_stateInit
 
 
 !*********************************************************************
@@ -254,22 +281,17 @@ endfunction
 !*********************************************************************
 pure function constitutive_j2_aTolState(myInstance)
 
-use prec,     only: pReal, &
-                    pInt
-implicit none
+ implicit none
+ !*** input variables
+ integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
 
-!*** input variables
-integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
-
-!*** output variables
-real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
+ !*** output variables
+ real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
                               constitutive_j2_aTolState       ! relevant state values for the current instance of this constitution
 
-!*** local variables
+ constitutive_j2_aTolState = constitutive_j2_aTolResistance(myInstance)
 
-constitutive_j2_aTolState = constitutive_j2_aTolResistance(myInstance)
-
-endfunction
+end function constitutive_j2_aTolState
 
 
 function constitutive_j2_homogenizedC(state,ipc,ip,el)
@@ -281,22 +303,20 @@ function constitutive_j2_homogenizedC(state,ipc,ip,el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec, only: pReal,pInt,p_vec
+ use prec, only: p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ 
  implicit none
-
  integer(pInt), intent(in) :: ipc,ip,el
- integer(pInt) matID
+ integer(pInt) :: matID
  real(pReal), dimension(6,6) :: constitutive_j2_homogenizedC
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
  constitutive_j2_homogenizedC = constitutive_j2_Cslip_66(1:6,1:6,matID)
 
- return
-
-endfunction
+end function constitutive_j2_homogenizedC
 
 
 subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
@@ -308,11 +328,11 @@ subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec, only: pReal,pInt,p_vec
+ use prec, only: p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ 
  implicit none
-
 !* Definition of variables
  integer(pInt) ipc,ip,el, matID
  real(pReal) Temperature
@@ -320,7 +340,7 @@ subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
 
  matID = phase_constitutionInstance(material_phase(ipc,ip,el))
 
-endsubroutine
+end subroutine constitutive_j2_microstructure
 
 
 !****************************************************************
@@ -329,9 +349,7 @@ endsubroutine
 pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, Temperature, state, g, ip, el)
 
   !*** variables and functions from other modules ***!
-  use prec,     only: pReal, &
-                      pInt, &
-                      p_vec
+  use prec,     only: p_vec
   use math,     only: math_mul6x6, &
                       math_Mandel6to33, &
                       math_Plain3333to99
@@ -342,7 +360,6 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
                       phase_constitutionInstance
 
   implicit none
-
   !*** input variables ***!
   real(pReal), dimension(6), intent(in)::       Tstar_dev_v               ! deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
   real(pReal), intent(in)::                     Temperature
@@ -397,9 +414,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
     dLp_dTstar_99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(matID) * dLp_dTstar_3333 / norm_Tstar_dev)
   end if
 
-  return
-
-endsubroutine
+end subroutine constitutive_j2_LpAndItsTangent
 
 
 !****************************************************************
@@ -408,9 +423,7 @@ endsubroutine
 pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
 
   !*** variables and functions from other modules ***!
-  use prec,     only: pReal, &
-                      pInt, &
-                      p_vec
+  use prec,     only: p_vec
   use math,     only: math_mul6x6
   use mesh,     only: mesh_NcpElems, &
                       mesh_maxNips
@@ -419,7 +432,6 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
                       phase_constitutionInstance
   
   implicit none
-
   !*** input variables ***!
   real(pReal), dimension(6), intent(in) ::  Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
   real(pReal), intent(in) ::                Temperature
@@ -458,9 +470,7 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
   ! dotState
   constitutive_j2_dotState =  hardening * gamma_dot
 
-  return
-
-endfunction
+end function constitutive_j2_dotState
 
 
 !****************************************************************
@@ -469,11 +479,11 @@ endfunction
 pure function constitutive_j2_dotTemperature(Tstar_v, Temperature, state, g, ip, el)
 
   !*** variables and functions from other modules ***!
-  use prec,     only: pReal,pInt,p_vec
+  use prec,     only: p_vec
   use mesh,     only: mesh_NcpElems,mesh_maxNips
   use material, only: homogenization_maxNgrains
+  
   implicit none
-
   !*** input variables ***!
   real(pReal), dimension(6), intent(in) ::  Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
   real(pReal), intent(in) ::                Temperature
@@ -488,8 +498,7 @@ pure function constitutive_j2_dotTemperature(Tstar_v, Temperature, state, g, ip,
   ! calculate dotTemperature
   constitutive_j2_dotTemperature = 0.0_pReal
 
-  return
-endfunction
+end function constitutive_j2_dotTemperature
 
 
 !*********************************************************************
@@ -498,9 +507,7 @@ endfunction
 pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip, el)
 
 !*** variables and functions from other modules ***!
-  use prec,     only: pReal, &
-                      pInt, &
-                      p_vec
+  use prec,     only: p_vec
   use math,     only: math_mul6x6
   use mesh,     only: mesh_NcpElems, &
                       mesh_maxNips
@@ -510,7 +517,6 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
                       phase_Noutput
 
   implicit none
-
   !*** input variables ***!
   real(pReal), dimension(6), intent(in)::   Tstar_v                    ! 2nd Piola Kirchhoff stress tensor in Mandel notation
   real(pReal), intent(in)::                 Temperature, &
@@ -560,9 +566,7 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
         c = c + 1_pInt
     end select
   enddo
- 
- return
 
-endfunction
+end function constitutive_j2_postResults
 
-END MODULE
+end module constitutive_j2

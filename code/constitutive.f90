@@ -28,30 +28,36 @@
 
 MODULE constitutive
 
-!*** Include other modules ***
-use prec
+use prec, only: pInt, p_vec
+
 implicit none
+type(p_vec),  dimension(:,:,:), allocatable :: &
+  constitutive_state0, &                              ! pointer array to microstructure at start of FE inc
+  constitutive_partionedState0, &                     ! pointer array to microstructure at start of homogenization inc
+  constitutive_subState0, &                           ! pointer array to microstructure at start of crystallite inc
+  constitutive_state, &                               ! pointer array to current microstructure (end of converged time step)
+  constitutive_state_backup, &                        ! pointer array to backed up microstructure (end of converged time step)
+  constitutive_dotState, &                            ! pointer array to evolution of current microstructure
+  constitutive_previousDotState,&                     ! pointer array to previous evolution of current microstructure
+  constitutive_previousDotState2,&                    ! pointer array to 2nd previous evolution of current microstructure
+  constitutive_dotState_backup, &                     ! pointer array to backed up evolution of current microstructure
+  constitutive_RK4dotState, &                         ! pointer array to evolution of microstructure defined by classical Runge-Kutta method
+  constitutive_aTolState                              ! pointer array to absolute state tolerance
 
-type(p_vec),   dimension(:,:,:), allocatable :: constitutive_state0, &          ! pointer array to microstructure at start of FE inc
-                                               constitutive_partionedState0, & ! pointer array to microstructure at start of homogenization inc
-                                               constitutive_subState0, &       ! pointer array to microstructure at start of crystallite inc
-                                               constitutive_state, &           ! pointer array to current microstructure (end of converged time step)
-                                               constitutive_state_backup, &    ! pointer array to backed up microstructure (end of converged time step)
-                                               constitutive_dotState, &        ! pointer array to evolution of current microstructure
-                                               constitutive_previousDotState,& ! pointer array to previous evolution of current microstructure
-                                               constitutive_previousDotState2,&! pointer array to 2nd previous evolution of current microstructure
-                                               constitutive_dotState_backup, & ! pointer array to backed up evolution of current microstructure
-                                               constitutive_RK4dotState, &     ! pointer array to evolution of microstructure defined by classical Runge-Kutta method
-                                               constitutive_aTolState          ! pointer array to absolute state tolerance
-type(p_vec), dimension(:,:,:,:), allocatable :: constitutive_RKCK45dotState     ! pointer array to evolution of microstructure used by Cash-Karp Runge-Kutta method
-integer(pInt), dimension(:,:,:), allocatable :: constitutive_sizeDotState, &    ! size of dotState array
-                                               constitutive_sizeState, &       ! size of state array per grain
-                                               constitutive_sizePostResults    ! size of postResults array per grain
-integer(pInt)                                  constitutive_maxSizeDotState, &
-                                               constitutive_maxSizeState, &
-                                               constitutive_maxSizePostResults
+ type(p_vec), dimension(:,:,:,:), allocatable :: &
+  constitutive_RKCK45dotState                         ! pointer array to evolution of microstructure used by Cash-Karp Runge-Kutta method
 
-CONTAINS
+ integer(pInt), dimension(:,:,:), allocatable :: &
+  constitutive_sizeDotState, &                        ! size of dotState array
+  constitutive_sizeState, &                           ! size of state array per grain
+  constitutive_sizePostResults                        ! size of postResults array per grain
+
+integer(pInt) :: &
+  constitutive_maxSizeDotState, &
+  constitutive_maxSizeState, &
+  constitutive_maxSizePostResults
+
+contains
 !****************************************
 !* - constitutive_init
 !* - constitutive_homogenizedC
@@ -67,22 +73,36 @@ CONTAINS
 !**************************************
 !*      Module initialization         *
 !**************************************
-subroutine constitutive_init()
-use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-use prec, only: pInt
-use debug, only: debug_verbosity
-use numerics, only: numerics_integrator
-use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat, IO_write_jobFile
-use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
-use material
-use constitutive_j2
-use constitutive_phenopowerlaw
-use constitutive_titanmod
-use constitutive_dislotwin
-use constitutive_nonlocal
+subroutine constitutive_init
+ use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use debug,    only: debug_what, &
+                     debug_constitutive, &
+                     debug_levelBasic
+ use numerics, only: numerics_integrator
+ use IO,       only: IO_error, &
+                     IO_open_file, &
+                     IO_open_jobFile_stat, &
+                     IO_write_jobFile
+ use mesh,     only: mesh_maxNips, &
+                     mesh_NcpElems, &
+                     mesh_element,FE_Nips
+ use material, only: material_phase, &
+                     material_Nphase, &
+                     material_localFileExt, &    
+                     material_configFile, &    
+                     phase_name, &
+                     phase_constitution, &
+                     phase_constitutionInstance, &
+                     phase_Noutput, &
+                     homogenization_Ngrains, &
+                     homogenization_maxNgrains
+ use constitutive_j2
+ use constitutive_phenopowerlaw
+ use constitutive_titanmod
+ use constitutive_dislotwin
+ use constitutive_nonlocal
 
 implicit none
-
 integer(pInt), parameter :: fileunit = 200_pInt
 integer(pInt)   g, &                          ! grain number
                 i, &                          ! integration point number
@@ -96,7 +116,7 @@ integer(pInt)   g, &                          ! grain number
                 myNgrains
 integer(pInt), dimension(:,:), pointer :: thisSize
 character(len=64), dimension(:,:), pointer :: thisOutput
-logical knownConstitution
+logical :: knownConstitution
 
 
 ! --- PARSE CONSTITUTIONS FROM CONFIG FILE ---
@@ -341,7 +361,7 @@ constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
   write(6,*) '<<<+-  constitutive init  -+>>>'
   write(6,*) '$Id$'
 #include "compilation_info.f90"
-  if (debug_verbosity > 0_pInt) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_state0:          ', shape(constitutive_state0)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
@@ -371,17 +391,16 @@ function constitutive_homogenizedC(ipc,ip,el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec, only: pReal,pInt
+ use prec, only: pReal
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
+ 
  implicit none
-
- !* Definition of variables
- integer(pInt) ipc,ip,el
+ integer(pInt) :: ipc,ip,el
  real(pReal), dimension(6,6) :: constitutive_homogenizedC
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
@@ -415,17 +434,16 @@ function constitutive_averageBurgers(ipc,ip,el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
- use prec, only: pReal,pInt
+ use prec, only: pReal
  use material, only: phase_constitution,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_titanmod
  use constitutive_dislotwin
  use constitutive_nonlocal
+ 
  implicit none
-
- !* Definition of variables
- integer(pInt) ipc,ip,el
+ integer(pInt) :: ipc,ip,el
  real(pReal) :: constitutive_averageBurgers
 
  select case (phase_constitution(material_phase(ipc,ip,el)))
@@ -456,7 +474,7 @@ endfunction
 !* This function calculates from state needed variables              *
 !*********************************************************************
 subroutine constitutive_microstructure(Temperature, Fe, Fp, ipc, ip, el)
-use prec,      only: pReal,pInt
+use prec,      only: pReal
 use material,  only: phase_constitution, &
                      material_phase
 use constitutive_j2,            only: constitutive_j2_label, &
@@ -469,8 +487,8 @@ use constitutive_dislotwin,     only: constitutive_dislotwin_label, &
                                       constitutive_dislotwin_microstructure
 use constitutive_nonlocal,      only: constitutive_nonlocal_label, &
                                       constitutive_nonlocal_microstructure
-implicit none
 
+implicit none
 !*** input variables ***!
 integer(pInt), intent(in)::                 ipc, &      ! component-ID of current integration point
                                             ip, &       ! current integration point
@@ -513,7 +531,7 @@ endsubroutine
 !*********************************************************************
 subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ipc, ip, el)
 
-use prec, only: pReal,pInt
+use prec, only: pReal
 use material, only: phase_constitution, &
                     material_phase
 use constitutive_j2,            only: constitutive_j2_label, &
@@ -526,9 +544,8 @@ use constitutive_dislotwin,     only: constitutive_dislotwin_label, &
                                       constitutive_dislotwin_LpAndItsTangent
 use constitutive_nonlocal,      only: constitutive_nonlocal_label, &
                                       constitutive_nonlocal_LpAndItsTangent
+
 implicit none
-
-
 !*** input variables ***!
 integer(pInt), intent(in)::                 ipc, &        ! component-ID of current integration point
                                             ip, &         ! current integration point
@@ -573,10 +590,12 @@ endsubroutine
 !*********************************************************************
 subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, orientation, ipc, ip, el)
 
-use prec, only:     pReal, pInt
+use prec, only:     pReal, pLongInt
 use debug, only:    debug_cumDotStateCalls, &
                     debug_cumDotStateTicks, &
-                    debug_verbosity
+                    debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic
 use mesh, only:     mesh_NcpElems, &
                     mesh_maxNips
 use material, only: phase_constitution, &
@@ -594,7 +613,6 @@ use constitutive_nonlocal, only:      constitutive_nonlocal_dotState, &
                                       constitutive_nonlocal_label
 
 implicit none
-
 !*** input  variables
 integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integration point
                                 ip, &         ! current integration point
@@ -608,15 +626,12 @@ real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), 
                                 orientation   ! crystal orientation (quaternion)
 real(pReal), dimension(6), intent(in) :: &
                                 Tstar_v       ! 2nd Piola Kirchhoff stress tensor (Mandel)
-
-!*** output variables ***!
-
 !*** local variables
 integer(pLongInt)               tick, tock, & 
                                 tickrate, &
                                 maxticks
 
-if (debug_verbosity > 0_pInt) then
+if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
@@ -640,7 +655,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
  
 end select
 
-if (debug_verbosity > 6_pInt) then
+if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDotState)
     debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
@@ -660,10 +675,12 @@ endsubroutine
 !*********************************************************************
 function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
 
-use prec, only:     pReal,pInt
+use prec, only:     pReal, pLongInt
 use debug, only:    debug_cumDotTemperatureCalls, &
                     debug_cumDotTemperatureTicks, &
-                    debug_verbosity
+                    debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic
 use material, only: phase_constitution, &
                     material_phase
 use constitutive_j2, only:            constitutive_j2_dotTemperature, &
@@ -676,8 +693,8 @@ use constitutive_dislotwin, only:     constitutive_dislotwin_dotTemperature, &
                                       constitutive_dislotwin_label
 use constitutive_nonlocal, only:      constitutive_nonlocal_dotTemperature, &
                                       constitutive_nonlocal_label
-implicit none
 
+implicit none
 !*** input  variables
 integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integration point
                                 ip, &         ! current integration point
@@ -695,7 +712,7 @@ integer(pLongInt)               tick, tock, &
                                 maxticks
 
 
-if (debug_verbosity > 0_pInt) then
+if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
@@ -718,7 +735,7 @@ select case (phase_constitution(material_phase(ipc,ip,el)))
    
 end select
 
-if (debug_verbosity > 6_pInt) then
+if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDotTemperature)
     debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt
@@ -742,7 +759,7 @@ function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
-use prec, only:     pReal,pInt
+use prec, only:     pReal
 use mesh, only:     mesh_NcpElems, &
                     mesh_maxNips
 use material, only: phase_constitution, &
@@ -758,8 +775,8 @@ use constitutive_dislotwin, only:     constitutive_dislotwin_postResults, &
                                       constitutive_dislotwin_label
 use constitutive_nonlocal, only:      constitutive_nonlocal_postResults, &
                                       constitutive_nonlocal_label
-implicit none
 
+implicit none
 !*** input  variables
 integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integration point
                                 ip, &         ! current integration point

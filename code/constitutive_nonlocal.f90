@@ -155,7 +155,9 @@ use IO,       only: IO_lc, &
                     IO_floatValue, &
                     IO_intValue, &
                     IO_error
-use debug,    only: debug_verbosity
+use debug,    only: debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     FE_maxNipNeighbors
@@ -212,7 +214,7 @@ character(len=1024)                         line
 maxNinstance = int(count(phase_constitution == constitutive_nonlocal_label),pInt)
 if (maxNinstance == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
 
-if (debug_verbosity > 0) then
+if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
   !$OMP CRITICAL (write2out)
     write(6,'(a16,1x,i5)') '# instances:',maxNinstance
   !$OMP END CRITICAL (write2out)
@@ -894,8 +896,10 @@ use math,     only: math_Mandel33to6, &
                     math_invert33, &
                     math_transpose33, &
                     pi
-use debug,    only: debug_verbosity, &
-                    debug_selectiveDebugger, &
+use debug,    only: debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic, &
+                    debug_levelSelective, &
                     debug_g, &
                     debug_i, &
                     debug_e
@@ -1189,8 +1193,9 @@ state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauBack
 
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
-                                .or. .not. debug_selectiveDebugger)) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,g
     write(6,*)
@@ -1212,8 +1217,10 @@ subroutine constitutive_nonlocal_kinetics(v, tau, c, Temperature, state, g, ip, 
 use prec,     only: pReal, &
                     pInt, &
                     p_vec
-use debug,    only: debug_verbosity, &
-                    debug_selectiveDebugger, &
+use debug,    only: debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic, &
+                    debug_levelSelective, &
                     debug_g, &
                     debug_i, &
                     debug_e
@@ -1349,7 +1356,9 @@ endif
     
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6 .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) .or. .not. debug_selectiveDebugger)) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
     write(6,*)
@@ -1372,8 +1381,10 @@ use prec,     only: pReal, &
                     p_vec
 use math,     only: math_Plain3333to99, &
                     math_mul6x6
-use debug,    only: debug_verbosity, &
-                    debug_selectiveDebugger, &
+use debug,    only: debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic, &
+                    debug_levelSelective, &
                     debug_g, &
                     debug_i, &
                     debug_e
@@ -1491,8 +1502,9 @@ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
-                               .or. .not. debug_selectiveDebugger)) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_LpandItsTangent at el ip g ',el,ip,g
     write(6,*)
@@ -1516,8 +1528,10 @@ use prec,     only: pReal, &
                     DAMASK_NaN
 use numerics, only: numerics_integrationMode
 use IO,       only: IO_error
-use debug,    only: debug_verbosity, &
-                    debug_selectiveDebugger, &
+use debug,    only: debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic, &
+                    debug_levelSelective, &
                     debug_g, &
                     debug_i, &
                     debug_e
@@ -1628,8 +1642,9 @@ logical                                     considerEnteringFlux, &
                                             considerLeavingFlux
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) &
-                                      .or. .not. debug_selectiveDebugger)) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
     write(6,*)
@@ -1686,8 +1701,9 @@ forall (s = 1_pInt:ns, t = 1_pInt:4_pInt, rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pRea
   gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgers(s,myInstance) * v(s,t)
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g) &
-                                      .or. .not. debug_selectiveDebugger)) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> rho / 1/m^2', rhoSgl, rhoDip
     write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> gdot / 1/s',gdot
   endif
@@ -1700,7 +1716,7 @@ forall (s = 1_pInt:ns, t = 1_pInt:4_pInt, rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pRea
 
 if (any(abs(gdot) > 0.0_pReal .and. 2.0_pReal * abs(v) * timestep > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then      ! safety factor 2.0 (we use the reference volume and are for simplicity here)
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
     write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ',maxval(abs(v)),' at a timestep of ',timestep
     write(6,'(a)') '<< CONST >> enforcing cutback !!!'
@@ -1966,7 +1982,7 @@ rhoDot = rhoDotFlux &
 if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < - constitutive_nonlocal_aTolRho(myInstance)) &
    .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < - constitutive_nonlocal_aTolRho(myInstance))) then
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
     write(6,'(a)') '<< CONST >> enforcing cutback !!!'
   endif
@@ -1980,8 +1996,9 @@ endif
 
 
 #ifndef _OPENMP
-  if (debug_verbosity > 6_pInt .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
-                               .or. .not. debug_selectiveDebugger)) then
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', rhoDotRemobilization(1:ns,1:8) * timestep
     write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> dislocation multiplication', rhoDotMultiplication(1:ns,1:4) * timestep
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation flux', rhoDotFlux(1:ns,1:8) * timestep

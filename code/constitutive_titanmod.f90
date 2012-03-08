@@ -48,143 +48,175 @@ MODULE constitutive_titanmod
 
 !* Include other modules
 use prec, only: pReal,pInt
+
 implicit none
-
 !* Lists of states and physical parameters
-character(len=*), parameter :: constitutive_titanmod_label = 'titanmod'
-character(len=18), dimension(3), parameter:: constitutive_titanmod_listBasicSlipStates = (/'rho_edge    ', &
-                                                                                           'rho_screw   ', &
-                                                                                           'shear_system'/)
+character(len=*), parameter :: &
+  constitutive_titanmod_label = 'titanmod'
+character(len=18), dimension(3), parameter :: &
+  constitutive_titanmod_listBasicSlipStates = (/'rho_edge    ', &
+                                                'rho_screw   ', &
+                                                'shear_system'/)
 
-character(len=18), dimension(1), parameter:: constitutive_titanmod_listBasicTwinStates = (/'gdot_twin'/)
+character(len=18), dimension(1), parameter :: &
+  constitutive_titanmod_listBasicTwinStates = (/'gdot_twin'/)
                                                                                             
-character(len=19), dimension(11), parameter:: constitutive_titanmod_listDependentSlipStates =(/'segment_edge       ', &
-                                                                                               'segment_screw      ', &
-                                                                                               'resistance_edge    ', &
-                                                                                               'resistance_screw   ', &
-                                                                                               'tau_slip           ', &
-                                                                                               'velocity_edge      ', &
-                                                                                               'velocity_screw     ', &
-                                                                                               'gdot_slip_edge     ', &
-                                                                                               'gdot_slip_screw    ', &
-                                                                                               'stressratio_edge_p ', &
-                                                                                               'stressratio_screw_p' &
-                                                                                              /)
+character(len=19), dimension(11), parameter :: &
+  constitutive_titanmod_listDependentSlipStates =(/'segment_edge       ', &
+                                                   'segment_screw      ', &
+                                                   'resistance_edge    ', &
+                                                   'resistance_screw   ', &
+                                                   'tau_slip           ', &
+                                                   'velocity_edge      ', &
+                                                   'velocity_screw     ', &
+                                                   'gdot_slip_edge     ', &
+                                                   'gdot_slip_screw    ', &
+                                                   'stressratio_edge_p ', &
+                                                   'stressratio_screw_p' &
+                                                   /)
 
-character(len=18), dimension(2), parameter:: constitutive_titanmod_listDependentTwinStates =(/'twin_fraction', &
-                                                                                              'tau_twin     ' &
-                                                                                              /)
+character(len=18), dimension(2), parameter :: &
+  constitutive_titanmod_listDependentTwinStates =(/'twin_fraction', &
+                                                   'tau_twin     ' &
+                                                  /)
 real(pReal), parameter :: kB = 1.38e-23_pReal ! Boltzmann constant in J/Kelvin
 
 !* Definition of global variables
-integer(pInt), dimension(:), allocatable ::               constitutive_titanmod_sizeDotState, &                ! number of dotStates
-                                                          constitutive_titanmod_sizeState, &                   ! total number of microstructural state variables
-                                                          constitutive_titanmod_sizePostResults                ! cumulative size of post results
-integer(pInt), dimension(:,:), allocatable, target ::     constitutive_titanmod_sizePostResult                 ! size of each post result output
-character(len=64), dimension(:,:), allocatable, target :: constitutive_titanmod_output                         ! name of each post result output
-integer(pInt), dimension(:), allocatable ::               constitutive_titanmod_Noutput                        ! number of outputs per instance of this constitution 
-character(len=32), dimension(:), allocatable ::           constitutive_titanmod_structureName                  ! name of the lattice structure
-integer(pInt), dimension(:), allocatable ::               constitutive_titanmod_structure, &                   ! number representing the kind of lattice structure
-                                                          constitutive_titanmod_totalNslip, &                  ! total number of active slip systems for each instance
-                                                          constitutive_titanmod_totalNtwin                     ! total number of active twin systems for each instance
-integer(pInt), dimension(:,:), allocatable ::             constitutive_titanmod_Nslip, &                       ! number of active slip systems for each family and instance
-                                                          constitutive_titanmod_Ntwin, &                       ! number of active twin systems for each family and instance
-                                                          constitutive_titanmod_slipFamily, &                  ! lookup table relating active slip system to slip family for each instance
-                                                          constitutive_titanmod_twinFamily, &                  ! lookup table relating active twin system to twin family for each instance
-                                                          constitutive_titanmod_slipSystemLattice, &           ! lookup table relating active slip system index to lattice slip system index for each instance
-                                                          constitutive_titanmod_twinSystemLattice              ! lookup table relating active twin system index to lattice twin system index for each instance
-real(pReal), dimension(:), allocatable ::                 constitutive_titanmod_CoverA, &                      ! c/a ratio for hex type lattice
-                                                          constitutive_titanmod_C11, &                         ! C11 element in elasticity matrix
-                                                          constitutive_titanmod_C12, &                         ! C12 element in elasticity matrix
-                                                          constitutive_titanmod_C13, &                         ! C13 element in elasticity matrix
-                                                          constitutive_titanmod_C33, &                         ! C33 element in elasticity matrix
-                                                          constitutive_titanmod_C44, &                         ! C44 element in elasticity matrix
-                                                          constitutive_titanmod_debyefrequency, &              !Debye frequency
-                                                          constitutive_titanmod_kinkf0, &                      !Debye frequency
-                                                          constitutive_titanmod_Gmod, &                        ! shear modulus
-                                                          constitutive_titanmod_CAtomicVolume, &               ! atomic volume in Bugers vector unit
-                                                          constitutive_titanmod_dc, &                          ! prefactor for self-diffusion coefficient
-                                                          constitutive_titanmod_twinhpconstant, &              ! activation energy for dislocation climb
-                                                          constitutive_titanmod_GrainSize, &                   ! grain size - Not being used
-                                                          constitutive_titanmod_MaxTwinFraction, &             ! maximum allowed total twin volume fraction
-                                                          constitutive_titanmod_r, &                           ! r-exponent in twin nucleation rate
-                                                          constitutive_titanmod_CEdgeDipMinDistance, &         ! Not being used
-                                                          constitutive_titanmod_Cmfptwin, &                    ! Not being used
-                                                          constitutive_titanmod_Cthresholdtwin, &              ! Not being used
-                                                          constitutive_titanmod_aTolRho                        ! absolute tolerance for integration of dislocation density
-real(pReal),       dimension(:,:,:),       allocatable :: constitutive_titanmod_Cslip_66                       ! elasticity matrix in Mandel notation for each instance
-real(pReal),       dimension(:,:,:,:),     allocatable :: constitutive_titanmod_Ctwin_66                       ! twin elasticity matrix in Mandel notation for each instance
-real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_titanmod_Cslip_3333                     ! elasticity matrix for each instance
-real(pReal),       dimension(:,:,:,:,:,:), allocatable :: constitutive_titanmod_Ctwin_3333                     ! twin elasticity matrix for each instance
-real(pReal), dimension(:,:), allocatable ::               constitutive_titanmod_rho_edge0, &                   ! initial edge dislocation density per slip system for each family and instance
-                                                          constitutive_titanmod_rho_screw0, &                  ! initial screw dislocation density per slip system for each family and instance
-                                                          constitutive_titanmod_shear_system0, &               ! accumulated shear on each system
-                                                          constitutive_titanmod_burgersPerSlipFamily, &        ! absolute length of burgers vector [m] for each slip family and instance
-                                                          constitutive_titanmod_burgersPerSlipSystem, &        ! absolute length of burgers vector [m] for each slip system and instance
-                                                          constitutive_titanmod_burgersPerTwinFamily, &        ! absolute length of burgers vector [m] for each twin family and instance
-                                                          constitutive_titanmod_burgersPerTwinSystem, &        ! absolute length of burgers vector [m] for each twin system and instance
-                                                          constitutive_titanmod_f0_PerSlipFamily, &            ! activation energy for glide [J] for each slip family and instance
-                                                          constitutive_titanmod_f0_PerSlipSystem, &            ! activation energy for glide [J] for each slip system and instance
-                                                          constitutive_titanmod_twinf0_PerTwinFamily, &        ! activation energy for glide [J] for each twin family and instance
-                                                          constitutive_titanmod_twinf0_PerTwinSystem, &        ! activation energy for glide [J] for each twin system and instance
-                                                          constitutive_titanmod_twinshearconstant_PerTwinFamily, &        ! activation energy for glide [J] for each twin family and instance
-                                                          constitutive_titanmod_twinshearconstant_PerTwinSystem, &        ! activation energy for glide [J] for each twin system and instance
-                                                          constitutive_titanmod_tau0e_PerSlipFamily, &         ! Initial yield stress for edge dislocations per slip family
-                                                          constitutive_titanmod_tau0e_PerSlipSystem, &         ! Initial yield stress for edge dislocations per slip system
-                                                          constitutive_titanmod_tau0s_PerSlipFamily, &         ! Initial yield stress for screw dislocations per slip family
-                                                          constitutive_titanmod_tau0s_PerSlipSystem, &         ! Initial yield stress for screw dislocations per slip system
-                                                          constitutive_titanmod_twintau0_PerTwinFamily, &         ! Initial yield stress for edge dislocations per twin family
-                                                          constitutive_titanmod_twintau0_PerTwinSystem, &         ! Initial yield stress for edge dislocations per twin system
-                                                          constitutive_titanmod_capre_PerSlipFamily, &         ! Capture radii for edge dislocations per slip family
-                                                          constitutive_titanmod_capre_PerSlipSystem, &         ! Capture radii for edge dislocations per slip system
-                                                          constitutive_titanmod_caprs_PerSlipFamily, &         ! Capture radii for screw dislocations per slip family
-                                                          constitutive_titanmod_caprs_PerSlipSystem, &         ! Capture radii for screw dislocations per slip system
-                                                          constitutive_titanmod_pe_PerSlipFamily, &            ! p-exponent in glide velocity
-                                                          constitutive_titanmod_ps_PerSlipFamily, &            ! p-exponent in glide velocity
-                                                          constitutive_titanmod_qe_PerSlipFamily, &            ! q-exponent in glide velocity
-                                                          constitutive_titanmod_qs_PerSlipFamily, &            ! q-exponent in glide velocity
-                                                          constitutive_titanmod_pe_PerSlipSystem, &            ! p-exponent in glide velocity
-                                                          constitutive_titanmod_ps_PerSlipSystem, &            ! p-exponent in glide velocity
-                                                          constitutive_titanmod_qe_PerSlipSystem, &            ! q-exponent in glide velocity
-                                                          constitutive_titanmod_qs_PerSlipSystem, &            ! q-exponent in glide velocity
-                                                          constitutive_titanmod_twinp_PerTwinFamily, &            ! p-exponent in glide velocity
-                                                          constitutive_titanmod_twinq_PerTwinFamily, &            ! q-exponent in glide velocity
-                                                          constitutive_titanmod_twinp_PerTwinSystem, &            ! p-exponent in glide velocity
-                                                          constitutive_titanmod_twinq_PerTwinSystem, &            ! p-exponent in glide velocity
-                                                          constitutive_titanmod_v0e_PerSlipFamily, &           ! edge dislocation velocity prefactor [m/s] for each family and instance
-                                                          constitutive_titanmod_v0e_PerSlipSystem, &           ! screw dislocation velocity prefactor [m/s] for each slip system and instance
-                                                          constitutive_titanmod_v0s_PerSlipFamily, &           ! edge dislocation velocity prefactor [m/s] for each family and instance
-                                                          constitutive_titanmod_v0s_PerSlipSystem, &           ! screw dislocation velocity prefactor [m/s] for each slip system and instance
-                                                          constitutive_titanmod_twingamma0_PerTwinFamily, &           ! edge dislocation velocity prefactor [m/s] for each family and instance
-                                                          constitutive_titanmod_twingamma0_PerTwinSystem, &           ! screw dislocation velocity prefactor [m/s] for each slip system and instance
-                                                          constitutive_titanmod_kinkcriticallength_PerSlipFamily, &  ! screw dislocation mobility prefactor for kink-pairs per slip family
-                                                          constitutive_titanmod_kinkcriticallength_PerSlipSystem, &  ! screw dislocation mobility prefactor for kink-pairs per slip system
-                                                          constitutive_titanmod_twinsizePerTwinFamily, &       ! twin thickness [m] for each twin family and instance
-                                                          constitutive_titanmod_twinsizePerTwinSystem, &       ! twin thickness [m] for each twin system and instance
-                                                          constitutive_titanmod_CeLambdaSlipPerSlipFamily, &   ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
-                                                          constitutive_titanmod_CeLambdaSlipPerSlipSystem, &   ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
-                                                          constitutive_titanmod_CsLambdaSlipPerSlipFamily, &   ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
-                                                          constitutive_titanmod_CsLambdaSlipPerSlipSystem, &   ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
-                                                          constitutive_titanmod_twinLambdaSlipPerTwinFamily, &   ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
-                                                          constitutive_titanmod_twinLambdaSlipPerTwinSystem, &   ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
-                                                          constitutive_titanmod_interactionSlipSlip, &         ! coefficients for slip-slip interaction for each interaction type and instance
-                                                          constitutive_titanmod_interaction_ee, &                    ! coefficients for e-e interaction for each interaction type and instance
-                                                          constitutive_titanmod_interaction_ss, &               ! coefficients for s-s interaction for each interaction type and instance
-                                                          constitutive_titanmod_interaction_es, &               ! coefficients for e-s-twin interaction for each interaction type and instance
-                                                          constitutive_titanmod_interactionSlipTwin, &         ! coefficients for twin-slip interaction for each interaction type and instance
-                                                          constitutive_titanmod_interactionTwinSlip, &         ! coefficients for twin-slip interaction for each interaction type and instance
-                                                          constitutive_titanmod_interactionTwinTwin            ! coefficients for twin-twin interaction for each interaction type and instance
-real(pReal),       dimension(:,:,:),       allocatable :: constitutive_titanmod_interactionMatrixSlipSlip, &   ! interaction matrix of the different slip systems for each instance
-                                                          constitutive_titanmod_interactionMatrix_ee, &         ! interaction matrix of e-e for each instance
-                                                          constitutive_titanmod_interactionMatrix_ss, &         ! interaction matrix of s-s for each instance
-                                                          constitutive_titanmod_interactionMatrix_es, &         ! interaction matrix of e-s for each instance
-                                                          constitutive_titanmod_interactionMatrixSlipTwin, &   ! interaction matrix of slip systems with twin systems for each instance
-                                                          constitutive_titanmod_interactionMatrixTwinSlip, &   ! interaction matrix of twin systems with slip systems for each instance
-                                                          constitutive_titanmod_interactionMatrixTwinTwin, &   ! interaction matrix of the different twin systems for each instance                                                          
-                                                          constitutive_titanmod_forestProjectionEdge, &           ! matrix of forest projections of edge dislocations for each instance  
-                                                          constitutive_titanmod_forestProjectionScrew, &           ! matrix of forest projections of screw dislocations for each instance  
-                                                          constitutive_titanmod_TwinforestProjectionEdge, &     ! matrix of forest projections of edge dislocations in twin system for each instance  
-                                                          constitutive_titanmod_TwinforestProjectionScrew       ! matrix of forest projections of screw dislocations in twin system for each instance  
+integer(pInt), dimension(:), allocatable :: &
+  constitutive_titanmod_sizeDotState, &                ! number of dotStates
+  constitutive_titanmod_sizeState, &                   ! total number of microstructural state variables
+  constitutive_titanmod_sizePostResults                ! cumulative size of post results
+
+integer(pInt), dimension(:,:), allocatable, target :: &
+  constitutive_titanmod_sizePostResult                 ! size of each post result output
+
+character(len=64), dimension(:,:), allocatable, target :: &
+  constitutive_titanmod_output                         ! name of each post result output
+
+integer(pInt), dimension(:), allocatable :: & 
+  constitutive_titanmod_Noutput                        ! number of outputs per instance of this constitution 
+
+character(len=32), dimension(:), allocatable :: &
+  constitutive_titanmod_structureName                  ! name of the lattice structure
+
+integer(pInt), dimension(:), allocatable :: & 
+  constitutive_titanmod_structure, &                   ! number representing the kind of lattice structure
+  constitutive_titanmod_totalNslip, &                  ! total number of active slip systems for each instance
+  constitutive_titanmod_totalNtwin                     ! total number of active twin systems for each instance
+
+integer(pInt), dimension(:,:), allocatable :: &
+  constitutive_titanmod_Nslip, &                                                                    ! number of active slip systems for each family and instance
+  constitutive_titanmod_Ntwin, &                                                                    ! number of active twin systems for each family and instance
+  constitutive_titanmod_slipFamily, &                                                               ! lookup table relating active slip system to slip family for each instance
+  constitutive_titanmod_twinFamily, &                                                               ! lookup table relating active twin system to twin family for each instance
+  constitutive_titanmod_slipSystemLattice, &                                                        ! lookup table relating active slip system index to lattice slip system index for each instance
+  constitutive_titanmod_twinSystemLattice                                                           ! lookup table relating active twin system index to lattice twin system index for each instance
+
+real(pReal), dimension(:), allocatable :: &
+  constitutive_titanmod_CoverA, &                                                                   ! c/a ratio for hex type lattice
+  constitutive_titanmod_C11, &                                                                      ! C11 element in elasticity matrix
+  constitutive_titanmod_C12, &                                                                      ! C12 element in elasticity matrix
+  constitutive_titanmod_C13, &                                                                      ! C13 element in elasticity matrix
+  constitutive_titanmod_C33, &                                                                      ! C33 element in elasticity matrix
+  constitutive_titanmod_C44, &                                                                      ! C44 element in elasticity matrix
+  constitutive_titanmod_debyefrequency, &                                                           !Debye frequency
+  constitutive_titanmod_kinkf0, &                                                                   !Debye frequency
+  constitutive_titanmod_Gmod, &                                                                     ! shear modulus
+  constitutive_titanmod_CAtomicVolume, &                                                            ! atomic volume in Bugers vector unit
+  constitutive_titanmod_dc, &                                                                       ! prefactor for self-diffusion coefficient
+  constitutive_titanmod_twinhpconstant, &                                                           ! activation energy for dislocation climb
+  constitutive_titanmod_GrainSize, &                                                                ! grain size - Not being used
+  constitutive_titanmod_MaxTwinFraction, &                                                          ! maximum allowed total twin volume fraction
+  constitutive_titanmod_r, &                                                                        ! r-exponent in twin nucleation rate
+  constitutive_titanmod_CEdgeDipMinDistance, &                                                      ! Not being used
+  constitutive_titanmod_Cmfptwin, &                                                                 ! Not being used
+  constitutive_titanmod_Cthresholdtwin, &                                                           ! Not being used
+  constitutive_titanmod_aTolRho                                                                     ! absolute tolerance for integration of dislocation density
+
+real(pReal),       dimension(:,:,:),       allocatable :: &
+  constitutive_titanmod_Cslip_66                       ! elasticity matrix in Mandel notation for each instance
+
+real(pReal),       dimension(:,:,:,:),     allocatable :: &
+  constitutive_titanmod_Ctwin_66                       ! twin elasticity matrix in Mandel notation for each instance
+
+real(pReal),       dimension(:,:,:,:,:),   allocatable :: &
+  constitutive_titanmod_Cslip_3333                     ! elasticity matrix for each instance
+
+real(pReal),       dimension(:,:,:,:,:,:), allocatable :: &
+  constitutive_titanmod_Ctwin_3333                     ! twin elasticity matrix for each instance
+
+real(pReal), dimension(:,:), allocatable :: &
+  constitutive_titanmod_rho_edge0, &                                                                ! initial edge dislocation density per slip system for each family and instance
+  constitutive_titanmod_rho_screw0, &                                                               ! initial screw dislocation density per slip system for each family and instance
+  constitutive_titanmod_shear_system0, &                                                            ! accumulated shear on each system
+  constitutive_titanmod_burgersPerSlipFamily, &                                                     ! absolute length of burgers vector [m] for each slip family and instance
+  constitutive_titanmod_burgersPerSlipSystem, &                                                     ! absolute length of burgers vector [m] for each slip system and instance
+  constitutive_titanmod_burgersPerTwinFamily, &                                                     ! absolute length of burgers vector [m] for each twin family and instance
+  constitutive_titanmod_burgersPerTwinSystem, &                                                     ! absolute length of burgers vector [m] for each twin system and instance
+  constitutive_titanmod_f0_PerSlipFamily, &                                                         ! activation energy for glide [J] for each slip family and instance
+  constitutive_titanmod_f0_PerSlipSystem, &                                                         ! activation energy for glide [J] for each slip system and instance
+  constitutive_titanmod_twinf0_PerTwinFamily, &                                                     ! activation energy for glide [J] for each twin family and instance
+  constitutive_titanmod_twinf0_PerTwinSystem, &                                                     ! activation energy for glide [J] for each twin system and instance
+  constitutive_titanmod_twinshearconstant_PerTwinFamily, &                                          ! activation energy for glide [J] for each twin family and instance
+  constitutive_titanmod_twinshearconstant_PerTwinSystem, &                                          ! activation energy for glide [J] for each twin system and instance
+  constitutive_titanmod_tau0e_PerSlipFamily, &                                                      ! Initial yield stress for edge dislocations per slip family
+  constitutive_titanmod_tau0e_PerSlipSystem, &                                                      ! Initial yield stress for edge dislocations per slip system
+  constitutive_titanmod_tau0s_PerSlipFamily, &                                                      ! Initial yield stress for screw dislocations per slip family
+  constitutive_titanmod_tau0s_PerSlipSystem, &                                                      ! Initial yield stress for screw dislocations per slip system
+  constitutive_titanmod_twintau0_PerTwinFamily, &                                                   ! Initial yield stress for edge dislocations per twin family
+  constitutive_titanmod_twintau0_PerTwinSystem, &                                                   ! Initial yield stress for edge dislocations per twin system
+  constitutive_titanmod_capre_PerSlipFamily, &                                                      ! Capture radii for edge dislocations per slip family
+  constitutive_titanmod_capre_PerSlipSystem, &                                                      ! Capture radii for edge dislocations per slip system
+  constitutive_titanmod_caprs_PerSlipFamily, &                                                      ! Capture radii for screw dislocations per slip family
+  constitutive_titanmod_caprs_PerSlipSystem, &                                                      ! Capture radii for screw dislocations per slip system
+  constitutive_titanmod_pe_PerSlipFamily, &                                                         ! p-exponent in glide velocity
+  constitutive_titanmod_ps_PerSlipFamily, &                                                         ! p-exponent in glide velocity
+  constitutive_titanmod_qe_PerSlipFamily, &                                                         ! q-exponent in glide velocity
+  constitutive_titanmod_qs_PerSlipFamily, &                                                         ! q-exponent in glide velocity
+  constitutive_titanmod_pe_PerSlipSystem, &                                                         ! p-exponent in glide velocity
+  constitutive_titanmod_ps_PerSlipSystem, &                                                         ! p-exponent in glide velocity
+  constitutive_titanmod_qe_PerSlipSystem, &                                                         ! q-exponent in glide velocity
+  constitutive_titanmod_qs_PerSlipSystem, &                                                         ! q-exponent in glide velocity
+  constitutive_titanmod_twinp_PerTwinFamily, &                                                      ! p-exponent in glide velocity
+  constitutive_titanmod_twinq_PerTwinFamily, &                                                      ! q-exponent in glide velocity
+  constitutive_titanmod_twinp_PerTwinSystem, &                                                      ! p-exponent in glide velocity
+  constitutive_titanmod_twinq_PerTwinSystem, &                                                      ! p-exponent in glide velocity
+  constitutive_titanmod_v0e_PerSlipFamily, &                                                        ! edge dislocation velocity prefactor [m/s] for each family and instance
+  constitutive_titanmod_v0e_PerSlipSystem, &                                                        ! screw dislocation velocity prefactor [m/s] for each slip system and instance
+  constitutive_titanmod_v0s_PerSlipFamily, &                                                        ! edge dislocation velocity prefactor [m/s] for each family and instance
+  constitutive_titanmod_v0s_PerSlipSystem, &                                                        ! screw dislocation velocity prefactor [m/s] for each slip system and instance
+  constitutive_titanmod_twingamma0_PerTwinFamily, &                                                 ! edge dislocation velocity prefactor [m/s] for each family and instance
+  constitutive_titanmod_twingamma0_PerTwinSystem, &                                                 ! screw dislocation velocity prefactor [m/s] for each slip system and instance
+  constitutive_titanmod_kinkcriticallength_PerSlipFamily, &                                         ! screw dislocation mobility prefactor for kink-pairs per slip family
+  constitutive_titanmod_kinkcriticallength_PerSlipSystem, &                                         ! screw dislocation mobility prefactor for kink-pairs per slip system
+  constitutive_titanmod_twinsizePerTwinFamily, &                                                    ! twin thickness [m] for each twin family and instance
+  constitutive_titanmod_twinsizePerTwinSystem, &                                                    ! twin thickness [m] for each twin system and instance
+  constitutive_titanmod_CeLambdaSlipPerSlipFamily, &                                                ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
+  constitutive_titanmod_CeLambdaSlipPerSlipSystem, &                                                ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+  constitutive_titanmod_CsLambdaSlipPerSlipFamily, &                                                ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
+  constitutive_titanmod_CsLambdaSlipPerSlipSystem, &                                                ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+  constitutive_titanmod_twinLambdaSlipPerTwinFamily, &                                              ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
+  constitutive_titanmod_twinLambdaSlipPerTwinSystem, &                                              ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+  constitutive_titanmod_interactionSlipSlip, &                                                      ! coefficients for slip-slip interaction for each interaction type and instance
+  constitutive_titanmod_interaction_ee, &                                                           ! coefficients for e-e interaction for each interaction type and instance
+  constitutive_titanmod_interaction_ss, &                                                           ! coefficients for s-s interaction for each interaction type and instance
+  constitutive_titanmod_interaction_es, &                                                           ! coefficients for e-s-twin interaction for each interaction type and instance
+  constitutive_titanmod_interactionSlipTwin, &                                                      ! coefficients for twin-slip interaction for each interaction type and instance
+  constitutive_titanmod_interactionTwinSlip, &                                                      ! coefficients for twin-slip interaction for each interaction type and instance
+  constitutive_titanmod_interactionTwinTwin                                                         ! coefficients for twin-twin interaction for each interaction type and instance
+
+real(pReal), dimension(:,:,:),allocatable :: &
+  constitutive_titanmod_interactionMatrixSlipSlip, &    ! interaction matrix of the different slip systems for each instance
+  constitutive_titanmod_interactionMatrix_ee, &         ! interaction matrix of e-e for each instance
+  constitutive_titanmod_interactionMatrix_ss, &         ! interaction matrix of s-s for each instance
+  constitutive_titanmod_interactionMatrix_es, &         ! interaction matrix of e-s for each instance
+  constitutive_titanmod_interactionMatrixSlipTwin, &    ! interaction matrix of slip systems with twin systems for each instance
+  constitutive_titanmod_interactionMatrixTwinSlip, &    ! interaction matrix of twin systems with slip systems for each instance
+  constitutive_titanmod_interactionMatrixTwinTwin, &    ! interaction matrix of the different twin systems for each instance                                                          
+  constitutive_titanmod_forestProjectionEdge, &         ! matrix of forest projections of edge dislocations for each instance  
+  constitutive_titanmod_forestProjectionScrew, &        ! matrix of forest projections of screw dislocations for each instance  
+  constitutive_titanmod_TwinforestProjectionEdge, &     ! matrix of forest projections of edge dislocations in twin system for each instance  
+  constitutive_titanmod_TwinforestProjectionScrew       ! matrix of forest projections of screw dislocations in twin system for each instance  
 CONTAINS
 !****************************************
 !* - constitutive_titanmod_init
@@ -215,11 +247,11 @@ integer(pInt), intent(in) :: file
 !* Local variables
 integer(pInt), parameter :: maxNchunks = 21_pInt
 integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
-integer(pInt) section,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,mySize,myStructure,maxTotalNslip, &
-maxTotalNtwin
+integer(pInt) :: section,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,&
+                 mySize = 0_pInt,myStructure,maxTotalNslip,maxTotalNtwin
 integer :: maxNinstance !no pInt
-character(len=64) tag
-character(len=1024) line
+character(len=64)   :: tag
+character(len=1024) :: line
 
 write(6,*)
 write(6,*) '<<<+-  constitutive_',trim(constitutive_titanmod_label),' init  -+>>>'
@@ -967,7 +999,7 @@ write(6,*) 'Determining elasticity matrix'
 
   enddo
 write(6,*) 'Init All done'
-return
+
 end subroutine
 
 
@@ -977,8 +1009,8 @@ function constitutive_titanmod_stateInit(myInstance)
 !*********************************************************************
 use prec,    only: pReal,pInt
 use lattice, only: lattice_maxNslipFamily,lattice_maxNtwinFamily
-implicit none
 
+implicit none
 !* Input-Output variables
 integer(pInt) :: myInstance
 real(pReal), dimension(constitutive_titanmod_sizeState(myInstance))  :: constitutive_titanmod_stateInit
@@ -1062,7 +1094,6 @@ forall (t = 1_pInt:nt) &
 resistance_twin0(t) = 0.0_pReal
 constitutive_titanmod_stateInit(7_pInt*ns+nt+1_pInt:7_pInt*ns+2_pInt*nt)=resistance_twin0
 
-return
 end function
 
 pure function constitutive_titanmod_aTolState(myInstance)
@@ -1070,15 +1101,14 @@ pure function constitutive_titanmod_aTolState(myInstance)
 !* absolute state tolerance                                          *
 !*********************************************************************
 use prec,     only: pReal, pInt
-implicit none
 
+implicit none
 !* Input-Output variables
 integer(pInt), intent(in) :: myInstance
 real(pReal), dimension(constitutive_titanmod_sizeState(myInstance)) :: constitutive_titanmod_aTolState
 
 constitutive_titanmod_aTolState = constitutive_titanmod_aTolRho(myInstance)
 
-return
 endfunction
 
 pure function constitutive_titanmod_homogenizedC(state,g,ip,el)
@@ -1092,8 +1122,8 @@ pure function constitutive_titanmod_homogenizedC(state,g,ip,el)
 use prec,     only: pReal,pInt,p_vec
 use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
-implicit none
 
+implicit none
 !* Input-Output variables
 integer(pInt), intent(in) :: g,ip,el
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
@@ -1126,7 +1156,6 @@ do i=1_pInt,nt
 
 enddo 
 
-return
 end function
 
 
@@ -1142,9 +1171,8 @@ subroutine constitutive_titanmod_microstructure(Temperature,state,g,ip,el)
 use prec,     only: pReal,pInt,p_vec
 use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
-!use debug,    only: debugger
-implicit none
 
+implicit none
 !* Input-Output variables
 integer(pInt), intent(in) :: g,ip,el
 real(pReal), intent(in) :: Temperature
@@ -1240,8 +1268,6 @@ forall (t = 1_pInt:nt) &
     (dot_product((abs(state(g,ip,el)%p(2_pInt*ns+1_pInt:2_pInt*ns+nt))),&
                          constitutive_titanmod_interactionMatrixTwinTwin(1:nt,t,myInstance)))
 
-
-return
 end subroutine
 
 
@@ -1265,8 +1291,8 @@ use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
 use lattice,  only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin_v,lattice_maxNslipFamily,lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem, lattice_Stwin
-implicit none
 
+implicit none
 !* Input-Output variables
 integer(pInt), intent(in) :: g,ip,el
 real(pReal), intent(in) :: Temperature
@@ -1548,7 +1574,6 @@ dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 !   write(6,'(a,/,9(9(f10.4,1x)/))') 'dLp_dTstar',dLp_dTstar
 !endif
 
-return
 end subroutine
 
 
@@ -1571,8 +1596,8 @@ use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
 use lattice,  only: lattice_maxNslipFamily,lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem, lattice_Stwin_v
-implicit none
 
+implicit none
 !* Input-Output variables
 integer(pInt), intent(in) :: g,ip,el
 real(pReal), intent(in) :: Temperature
@@ -1696,8 +1721,6 @@ enddo
 !write(6,'(a,/,4(3(f30.20,1x)/))') 'EdgeAnnihilation',DotRhoEdgeAnnihilation
 !write(6,'(a,/,4(3(f30.20,1x)/))') 'ScrewAnnihilation',DotRhoScrewAnnihilation
 
-
-return
 end function
 
 
@@ -1716,8 +1739,8 @@ pure function constitutive_titanmod_dotTemperature(Tstar_v,Temperature,state,g,i
 use prec,     only: pReal,pInt,p_vec
 use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains
-implicit none
 
+implicit none
 !* Input-Output variables
 integer(pInt), intent(in) :: g,ip,el
 real(pReal), intent(in) :: Temperature
@@ -1726,8 +1749,7 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal) constitutive_titanmod_dotTemperature
 
 constitutive_titanmod_dotTemperature = 0.0_pReal
-    
-return
+
 end function
 
 
@@ -1745,9 +1767,8 @@ pure function constitutive_titanmod_postResults(Tstar_v,Temperature,dt,state,g,i
 use prec,     only: pReal,pInt,p_vec
 use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
-implicit none
 
-!* Definition of variables
+implicit none
 integer(pInt), intent(in) :: g,ip,el
 real(pReal), intent(in) :: dt,Temperature
 real(pReal), dimension(6), intent(in) :: Tstar_v
@@ -1898,7 +1919,6 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
    end select
 enddo
 
-return
 end function
 
 END MODULE

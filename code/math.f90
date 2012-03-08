@@ -22,21 +22,20 @@
 
 #include "kdtree2.f90"
 
- MODULE math   
+module math   
 !##############################################################
 
  use, intrinsic :: iso_c_binding
  use prec, only: pReal,pInt
- use IO, only: IO_error
+ 
  implicit none
-
- real(pReal), parameter :: pi = 3.14159265358979323846264338327950288419716939937510_pReal
- real(pReal), parameter :: inDeg = 180.0_pReal/pi
- real(pReal), parameter :: inRad = pi/180.0_pReal
- complex(pReal), parameter ::  two_pi_img = (0.0_pReal,2.0_pReal)* pi
+ real(pReal),    parameter, public :: PI = 3.14159265358979323846264338327950288419716939937510_pReal
+ real(pReal),    parameter, public :: INDEG = 180.0_pReal/pi
+ real(pReal),    parameter, public :: INRAD = pi/180.0_pReal
+ complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)* pi
 
 ! *** 3x3 Identity ***
- real(pReal), dimension(3,3), parameter :: math_I3 = &
+ real(pReal), dimension(3,3), parameter, public :: math_I3 = &
  reshape( (/ &
  1.0_pReal,0.0_pReal,0.0_pReal, &
  0.0_pReal,1.0_pReal,0.0_pReal, &
@@ -132,20 +131,22 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
   /),(/4,36/))
   
  include 'fftw3.f03'
-
- CONTAINS
+ 
+ public  :: math_init, &
+            math_range
+contains
  
 !**************************************************************************
 ! initialization of module
 !**************************************************************************
- SUBROUTINE math_init ()
+subroutine math_init
 
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
  use numerics, only: fixedSeed
  use IO,       only: IO_error
+ 
  implicit none
-
  integer(pInt) :: i
  real(pReal), dimension(3,3) :: R,R2
  real(pReal), dimension(3) ::   Eulers
@@ -155,6 +156,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  integer, dimension(:), allocatable :: randInit       ! if recalculations of former randomness (with given seed) is necessary
                                                       ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
+ 
  !$OMP CRITICAL (write2out)
  write(6,*) ''
  write(6,*) '<<<+-  math init  -+>>>'
@@ -164,7 +166,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  call random_seed(size=randSize)
  allocate(randInit(randSize))
- if (fixedSeed > 0) then
+ if (fixedSeed > 0_pInt) then
    randInit(1:randSize) = int(fixedSeed)                      ! fixedSeed is of type pInt, randInit not
    call random_seed(put=randInit)
  else
@@ -229,7 +231,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    call IO_error(404_pInt,ext_msg=error_msg)
  endif 
  
- ENDSUBROUTINE math_init
+end subroutine math_init
  
 
 !**************************************************************************
@@ -238,7 +240,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 ! Sorting is done with respect to array(1,:)
 ! and keeps array(2:N,:) linked to it.
 !**************************************************************************
- RECURSIVE SUBROUTINE qsort(a, istart, iend)
+recursive subroutine qsort(a, istart, iend)
 
  implicit none
  integer(pInt), dimension(:,:), intent(inout) :: a
@@ -251,13 +253,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    call qsort(a, ipivot+1_pInt, iend)
  endif
   
- ENDSUBROUTINE qsort
+end subroutine qsort
 
 
 !**************************************************************************
 ! Partitioning required for quicksort
 !**************************************************************************
- integer(pInt) function math_partition(a, istart, iend)
+integer(pInt) function math_partition(a, istart, iend)
 
  implicit none
  integer(pInt), dimension(:,:), intent(inout) :: a
@@ -297,13 +299,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    endif
  enddo
 
- endfunction math_partition
+end function math_partition
  
 
 !**************************************************************************
 ! range of integers starting at one
 !**************************************************************************
- pure function math_range(N)  
+pure function math_range(N)  
 
  implicit none
 
@@ -313,13 +315,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall (i=1_pInt:N) math_range(i) = i
 
- endfunction math_range
+end function math_range
 
 
 !**************************************************************************
 ! second rank identity tensor of specified dimension
 !**************************************************************************
- pure function math_identity2nd(dimen)  
+pure function math_identity2nd(dimen)  
 
  implicit none
 
@@ -330,7 +332,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_identity2nd = 0.0_pReal 
  forall (i=1_pInt:dimen) math_identity2nd(i,i) = 1.0_pReal 
 
- endfunction math_identity2nd
+end function math_identity2nd
 
 
 !**************************************************************************
@@ -339,7 +341,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 ! e_ijk = -1 if odd permutation of ijk
 ! e_ijk =  0 otherwise
 !**************************************************************************
- pure function math_civita(i,j,k)
+pure function math_civita(i,j,k)
 
  implicit none
 
@@ -354,7 +356,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
      ((i == 2_pInt).and.(j == 1_pInt).and.(k == 3_pInt)) .or. &
      ((i == 3_pInt).and.(j == 2_pInt).and.(k == 1_pInt))) math_civita = -1.0_pReal
 
- endfunction math_civita
+end function math_civita
 
 
 !**************************************************************************
@@ -362,7 +364,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 ! d_ij = 1 if i = j
 ! d_ij = 0 otherwise
 !**************************************************************************
- pure function math_delta(i,j)
+pure function math_delta(i,j)
 
  implicit none
 
@@ -372,13 +374,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_delta = 0.0_pReal
  if (i == j) math_delta = 1.0_pReal
 
- endfunction math_delta
+end function math_delta
 
 
 !**************************************************************************
 ! fourth rank identity tensor of specified dimension
 !**************************************************************************
- pure function math_identity4th(dimen)  
+pure function math_identity4th(dimen)  
 
  implicit none
 
@@ -389,13 +391,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1_pInt:dimen,j=1_pInt:dimen,k=1_pInt:dimen,l=1_pInt:dimen) math_identity4th(i,j,k,l) = &
         0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k)) 
 
- endfunction math_identity4th
+end function math_identity4th
  
 
 !**************************************************************************
 ! vector product a x b
 !**************************************************************************
- pure function math_vectorproduct(A,B)  
+pure function math_vectorproduct(A,B)  
 
  implicit none
 
@@ -406,13 +408,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_vectorproduct(2) = A(3)*B(1)-A(1)*B(3)
  math_vectorproduct(3) = A(1)*B(2)-A(2)*B(1)
 
- endfunction math_vectorproduct
+end function math_vectorproduct
 
 
 !**************************************************************************
 ! tensor product a \otimes b
 !**************************************************************************
- pure function math_tensorproduct(A,B)  
+pure function math_tensorproduct(A,B)  
 
  implicit none
 
@@ -422,13 +424,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_tensorproduct(i,j) = A(i)*B(j)
 
- endfunction math_tensorproduct
+end function math_tensorproduct
 
 
 !**************************************************************************
 ! matrix multiplication 3x3 = 1
 !**************************************************************************
- pure function math_mul3x3(A,B)  
+pure function math_mul3x3(A,B)  
 
  implicit none
 
@@ -440,13 +442,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1_pInt:3_pInt) C(i) = A(i)*B(i)
  math_mul3x3 = sum(C)
 
- endfunction math_mul3x3
+end function math_mul3x3
 
 
 !**************************************************************************
 ! matrix multiplication 6x6 = 1
 !**************************************************************************
- pure function math_mul6x6(A,B)  
+pure function math_mul6x6(A,B)  
 
  implicit none
 
@@ -458,13 +460,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1_pInt:6_pInt) C(i) = A(i)*B(i)
  math_mul6x6 = sum(C)
 
- endfunction math_mul6x6
+end function math_mul6x6
 
  
 !**************************************************************************
 ! matrix multiplication 33x33 = 1 (double contraction --> ij * ij)
 !**************************************************************************
- pure function math_mul33xx33(A,B)  
+pure function math_mul33xx33(A,B)  
 
  implicit none
 
@@ -476,13 +478,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) C(i,j) = A(i,j) * B(i,j)
  math_mul33xx33 = sum(C)
 
- endfunction math_mul33xx33
+end function math_mul33xx33
 
  
 !**************************************************************************
 ! matrix multiplication 3333x33 = 33 (double contraction --> ijkl *kl = ij)
 !**************************************************************************
- pure function math_mul3333xx33(A,B)  
+pure function math_mul3333xx33(A,B)  
 
  implicit none
 
@@ -493,13 +495,14 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall(i = 1_pInt:3_pInt,j = 1_pInt:3_pInt)&
    math_mul3333xx33(i,j) = sum(A(i,j,1:3,1:3)*B(1:3,1:3))
- endfunction math_mul3333xx33
+   
+end function math_mul3333xx33
 
 
 !**************************************************************************
 ! matrix multiplication 3333x3333 = 3333 (ijkl *klmn = ijmn)
 !**************************************************************************
- pure function math_mul3333xx3333(A,B)  
+pure function math_mul3333xx3333(A,B)  
 
  implicit none
 
@@ -515,13 +518,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
          math_mul3333xx3333(i,j,k,l) = sum(A(i,j,1:3,1:3)*B(1:3,1:3,k,l))
  enddo; enddo; enddo; enddo
 
- endfunction math_mul3333xx3333
+end function math_mul3333xx3333
  
 
 !**************************************************************************
 ! matrix multiplication 33x33 = 33
 !**************************************************************************
- pure function math_mul33x33(A,B)  
+pure function math_mul33x33(A,B)  
 
  implicit none
 
@@ -532,13 +535,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_mul33x33(i,j) = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j)
 
- endfunction math_mul33x33
+end function math_mul33x33
 
 
 !**************************************************************************
 ! matrix multiplication 66x66 = 66
 !**************************************************************************
- pure function math_mul66x66(A,B)  
+pure function math_mul66x66(A,B)  
 
  implicit none
 
@@ -550,13 +553,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    A(i,1)*B(1,j) + A(i,2)*B(2,j) + A(i,3)*B(3,j) + &
    A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j)
 
- endfunction math_mul66x66
+end function math_mul66x66
 
  
 !**************************************************************************
 ! matrix multiplication 99x99 = 99
 !**************************************************************************
- pure function math_mul99x99(A,B)  
+pure function math_mul99x99(A,B)  
 
  use prec, only: pReal, pInt
  implicit none
@@ -572,13 +575,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    A(i,4)*B(4,j) + A(i,5)*B(5,j) + A(i,6)*B(6,j) + &
    A(i,7)*B(7,j) + A(i,8)*B(8,j) + A(i,9)*B(9,j)
 
- endfunction math_mul99x99
+end function math_mul99x99
 
  
 !**************************************************************************
 ! matrix multiplication 33x3 = 3
 !**************************************************************************
- pure function math_mul33x3(A,B)  
+pure function math_mul33x3(A,B)  
 
  implicit none
 
@@ -589,12 +592,12 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall (i=1_pInt:3_pInt) math_mul33x3(i) = sum(A(i,1:3)*B)
 
- endfunction math_mul33x3
+end function math_mul33x3
  
  !**************************************************************************
 ! matrix multiplication complex(33) x real(3) = complex(3)
 !**************************************************************************
- pure function math_mul33x3_complex(A,B)  
+pure function math_mul33x3_complex(A,B)  
 
  implicit none
 
@@ -605,13 +608,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  forall (i=1_pInt:3_pInt) math_mul33x3_complex(i) = sum(A(i,1:3)*cmplx(B,0.0_pReal,pReal))
 
- endfunction math_mul33x3_complex
+end function math_mul33x3_complex
 
  
 !**************************************************************************
 ! matrix multiplication 66x6 = 6
 !**************************************************************************
- pure function math_mul66x6(A,B)  
+pure function math_mul66x6(A,B)  
 
  implicit none
 
@@ -624,13 +627,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
    A(i,1)*B(1) + A(i,2)*B(2) + A(i,3)*B(3) + &
    A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
 
- endfunction math_mul66x6
+end function math_mul66x6
 
  
 !**************************************************************************
 ! random quaternion
 !**************************************************************************
- function math_qRnd()  
+function math_qRnd()  
 
  implicit none
 
@@ -643,13 +646,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_qRnd(3) = cos(2.0_pReal*pi*rnd(2))*sqrt(1.0_pReal-rnd(3))
  math_qRnd(4) = sin(2.0_pReal*pi*rnd(1))*sqrt(rnd(3))
 
- endfunction math_qRnd
+end function math_qRnd
 
  
 !**************************************************************************
 ! quaternion multiplication q1xq2 = q12
 !**************************************************************************
- pure function math_qMul(A,B)  
+pure function math_qMul(A,B)  
 
  implicit none
 
@@ -661,13 +664,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_qMul(3) = A(1)*B(3) - A(2)*B(4) + A(3)*B(1) + A(4)*B(2)
  math_qMul(4) = A(1)*B(4) + A(2)*B(3) - A(3)*B(2) + A(4)*B(1)
 
- endfunction math_qMul
+end function math_qMul
 
  
 !**************************************************************************
 ! quaternion dotproduct
 !**************************************************************************
- pure function math_qDot(A,B)  
+pure function math_qDot(A,B)  
 
  implicit none
 
@@ -676,13 +679,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
 
  math_qDot = A(1)*B(1) + A(2)*B(2) + A(3)*B(3) + A(4)*B(4)
 
- endfunction math_qDot
+end function math_qDot
 
  
 !**************************************************************************
 ! quaternion conjugation
 !**************************************************************************
- pure function math_qConj(Q)  
+pure function math_qConj(Q)  
 
  implicit none
 
@@ -692,13 +695,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  math_qConj(1) = Q(1)
  math_qConj(2:4) = -Q(2:4)
 
- endfunction math_qConj
+end function math_qConj
 
  
 !**************************************************************************
 ! quaternion norm
 !**************************************************************************
- pure function math_qNorm(Q)  
+pure function math_qNorm(Q)  
 
  implicit none
 
@@ -707,13 +710,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  math_qNorm = sqrt(max(0.0_pReal, Q(1)*Q(1) + Q(2)*Q(2) + Q(3)*Q(3) + Q(4)*Q(4)))
 
- endfunction math_qNorm
+end function math_qNorm
 
 
 !**************************************************************************
 ! quaternion inversion
 !**************************************************************************
- pure function math_qInv(Q)  
+pure function math_qInv(Q)  
 
  implicit none
 
@@ -727,13 +730,13 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  if (squareNorm > tiny(squareNorm)) &
    math_qInv = math_qConj(Q) / squareNorm
  
- endfunction math_qInv
+end function math_qInv
 
  
 !**************************************************************************
 ! action of a quaternion on a vector (rotate vector v with Q)
 !**************************************************************************
- pure function math_qRot(Q,v)  
+pure function math_qRot(Q,v)  
 
  implicit none
 
@@ -755,7 +758,7 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
  
  math_qRot = 2.0_pReal * math_qRot + v
 
- endfunction math_qRot
+end function math_qRot
 
  
 !**************************************************************************
@@ -771,13 +774,13 @@ pure function math_transpose33(A)
  
  forall(i=1_pInt:3_pInt, j=1_pInt:3_pInt) math_transpose33(i,j) = A(j,i)
 
- endfunction math_transpose33
+end function math_transpose33
  
 
 !**************************************************************************
 ! Cramer inversion of 33 matrix (function)
 !**************************************************************************
- pure function math_inv33(A)
+pure function math_inv33(A)
 
 !   direct Cramer inversion of matrix A.
 !   returns all zeroes if not possible, i.e. if det close to zero
@@ -808,13 +811,13 @@ pure function math_transpose33(A)
    math_inv33(3,3) = ( A(1,1) * A(2,2) - A(1,2) * A(2,1)) / DetA
  endif
 
- endfunction math_inv33
+end function math_inv33
 
 
 !**************************************************************************
 ! Cramer inversion of 33 matrix (subroutine)
 !**************************************************************************
- PURE SUBROUTINE math_invert33(A, InvA, DetA, error)
+pure subroutine math_invert33(A, InvA, DetA, error)
 
 !   Bestimmung der Determinanten und Inversen einer 33-Matrix
 !   A      = Matrix A
@@ -851,13 +854,41 @@ pure function math_transpose33(A)
    error = .false.
  endif
 
- ENDSUBROUTINE math_invert33
+end subroutine math_invert33
 
+
+!**************************************************************************
+! Inversion of symmetriced 3x3x3x3 tensor.
+!**************************************************************************
+function math_invSym3333(A)
+
+ use IO, only: IO_error
+ 
+ implicit none
+ real(pReal),dimension(3,3,3,3)            :: math_invSym3333
+ 
+ real(pReal),dimension(3,3,3,3),intent(in) :: A
+
+ integer(pInt) :: ierr1, ierr2
+ integer(pInt), dimension(6)   :: ipiv6
+ real(pReal),   dimension(6,6) :: temp66_Real
+ real(pReal),   dimension(6)   :: work6
+ 
+ temp66_real = math_Mandel3333to66(A)
+ call dgetrf(6,6,temp66_real,6,ipiv6,ierr1)
+ call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr2)
+ if (ierr1*ierr2 == 0_pInt) then
+   math_invSym3333 = math_Mandel66to3333(temp66_real)
+ else 
+   call IO_error(400_pInt, ext_msg = 'math_invSym3333')
+ endif
+
+end function math_invSym3333
 
 !**************************************************************************
 ! Gauss elimination to invert matrix of arbitrary dimension
 !**************************************************************************
- PURE SUBROUTINE math_invert(dimen,A, InvA, AnzNegEW, error)
+pure subroutine math_invert(dimen,A, InvA, AnzNegEW, error)
 
 !   Invertieren einer dimen x dimen - Matrix
 !   A        = Matrix A
@@ -881,12 +912,12 @@ pure function math_transpose33(A)
  B = A
  CALL Gauss(dimen,B,InvA,LogAbsDetA,AnzNegEW,error)
 
- ENDSUBROUTINE math_invert
+end subroutine math_invert
 
 
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- PURE SUBROUTINE Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
+pure subroutine Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
 
 !   Solves a linear EQS  A * X = B with the GAUSS-Algorithm
 !   For numerical stabilization using a pivot search in rows and columns
@@ -1034,13 +1065,13 @@ pure function math_transpose33(A)
 
  error = .false.
 
- ENDSUBROUTINE Gauss
+end subroutine Gauss
 
 
 !********************************************************************
 ! symmetrize a 33 matrix
 !********************************************************************
- function math_symmetric33(m)
+function math_symmetric33(m)
 
  implicit none
 
@@ -1050,13 +1081,13 @@ pure function math_transpose33(A)
  
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_symmetric33(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- endfunction math_symmetric33
+end function math_symmetric33
  
 
 !********************************************************************
 ! symmetrize a 66 matrix
 !********************************************************************
- pure function math_symmetric66(m)
+pure function math_symmetric66(m)
 
  implicit none
 
@@ -1066,7 +1097,7 @@ pure function math_transpose33(A)
  
  forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_symmetric66(i,j) = 0.5_pReal * (m(i,j) + m(j,i))
 
- endfunction math_symmetric66
+end function math_symmetric66
 
  
 !********************************************************************
@@ -1082,7 +1113,7 @@ pure function math_skew33(m)
  
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt) math_skew33(i,j) = m(i,j) - 0.5_pReal * (m(i,j) + m(j,i))
 
-endfunction math_skew33
+end function math_skew33
 
  
 !********************************************************************
@@ -1101,13 +1132,13 @@ pure function math_deviatoric33(m)
  math_deviatoric33 = m
  forall (i=1_pInt:3_pInt) math_deviatoric33(i,i) = m(i,i) - hydrostatic
 
-endfunction math_deviatoric33
+end function math_deviatoric33
 
 
 !********************************************************************
 ! equivalent scalar quantity of a full strain tensor
 !********************************************************************
- pure function math_equivStrain33(m)
+pure function math_equivStrain33(m)
 
  implicit none
 
@@ -1124,10 +1155,10 @@ endfunction math_deviatoric33
  math_equivStrain33 = 2.0_pReal*(1.50_pReal*(e11**2.0_pReal+e22**2.0_pReal+e33**2.0_pReal) + &
                                  0.75_pReal*(s12**2.0_pReal+s23**2.0_pReal+s31**2.0_pReal))**(0.5_pReal)/3.0_pReal
 
- endfunction math_equivStrain33
+end function math_equivStrain33
 
 !********************************************************************
- subroutine math_equivStrain33_field(res,tensor,vm)
+subroutine math_equivStrain33_field(res,tensor,vm)
 !********************************************************************
 !calculate von Mises equivalent of tensor field
 !
@@ -1156,13 +1187,13 @@ endfunction math_deviatoric33
    vm(i,j,k) = sqrt(3.0_pReal*J_2)
  enddo; enddo; enddo
 
- end subroutine math_equivStrain33_field
+end subroutine math_equivStrain33_field
 
 
 !********************************************************************
 ! determinant of a 33 matrix
 !********************************************************************
- pure function math_det33(m)
+pure function math_det33(m)
 
  implicit none
 
@@ -1173,13 +1204,13 @@ endfunction math_deviatoric33
               -m(1,2)*(m(2,1)*m(3,3)-m(2,3)*m(3,1)) &
               +m(1,3)*(m(2,1)*m(3,2)-m(2,2)*m(3,1))
 
- endfunction math_det33
+end function math_det33
 
  
 !********************************************************************
 ! norm of a 33 matrix
 !********************************************************************
- pure function math_norm33(m)
+pure function math_norm33(m)
 
  implicit none
 
@@ -1188,13 +1219,13 @@ endfunction math_deviatoric33
 
  math_norm33 = sqrt(sum(m**2.0_pReal))
 
- endfunction
+end function
 
  
 !********************************************************************
 ! euclidic norm of a 3 vector
 !********************************************************************
- pure function math_norm3(v)
+pure function math_norm3(v)
 
  implicit none
 
@@ -1203,13 +1234,13 @@ endfunction math_deviatoric33
 
  math_norm3 = sqrt(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
  
- endfunction math_norm3
+end function math_norm3
 
  
 !********************************************************************
 ! convert 33 matrix into vector 9
 !********************************************************************
- pure function math_Plain33to9(m33)
+pure function math_Plain33to9(m33)
 
  implicit none
 
@@ -1219,13 +1250,13 @@ endfunction math_deviatoric33
  
  forall (i=1_pInt:9_pInt) math_Plain33to9(i) = m33(mapPlain(1,i),mapPlain(2,i))
 
- endfunction math_Plain33to9
+end function math_Plain33to9
  
  
 !********************************************************************
 ! convert Plain 9 back to 33 matrix
 !********************************************************************
- pure function math_Plain9to33(v9)
+pure function math_Plain9to33(v9)
 
  implicit none
 
@@ -1235,13 +1266,13 @@ endfunction math_deviatoric33
  
  forall (i=1_pInt:9_pInt) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
 
- endfunction math_Plain9to33
+end function math_Plain9to33
  
 
 !********************************************************************
 ! convert symmetric 33 matrix into Mandel vector 6
 !********************************************************************
- pure function math_Mandel33to6(m33)
+pure function math_Mandel33to6(m33)
 
  implicit none
 
@@ -1251,13 +1282,13 @@ endfunction math_deviatoric33
  
  forall (i=1_pInt:6_pInt) math_Mandel33to6(i) = nrmMandel(i)*m33(mapMandel(1,i),mapMandel(2,i))
 
- endfunction math_Mandel33to6
+end function math_Mandel33to6
 
 
 !********************************************************************
 ! convert Mandel 6 back to symmetric 33 matrix
 !********************************************************************
- pure function math_Mandel6to33(v6)
+pure function math_Mandel6to33(v6)
 
  implicit none
 
@@ -1270,13 +1301,13 @@ endfunction math_deviatoric33
   math_Mandel6to33(mapMandel(2,i),mapMandel(1,i)) = invnrmMandel(i)*v6(i)
  end forall
 
- endfunction math_Mandel6to33
+end function math_Mandel6to33
 
 
 !********************************************************************
 ! convert 3333 tensor into plain matrix 99
 !********************************************************************
- pure function math_Plain3333to99(m3333)
+pure function math_Plain3333to99(m3333)
 
  implicit none
 
@@ -1287,12 +1318,12 @@ endfunction math_deviatoric33
  forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_Plain3333to99(i,j) = &
    m3333(mapPlain(1,i),mapPlain(2,i),mapPlain(1,j),mapPlain(2,j))
 
- endfunction math_Plain3333to99
+end function math_Plain3333to99
  
 !********************************************************************
 ! plain matrix 99 into 3333 tensor
 !********************************************************************
- pure function math_Plain99to3333(m99)
+pure function math_Plain99to3333(m99)
 
  implicit none
 
@@ -1303,13 +1334,13 @@ endfunction math_deviatoric33
  forall (i=1_pInt:9_pInt,j=1_pInt:9_pInt) math_Plain99to3333(mapPlain(1,i),mapPlain(2,i),&
      mapPlain(1,j),mapPlain(2,j)) = m99(i,j)
 
- endfunction math_Plain99to3333
+end function math_Plain99to3333
 
 
 !********************************************************************
 ! convert Mandel matrix 66 into Plain matrix 66
 !********************************************************************
- pure function math_Mandel66toPlain66(m66)
+pure function math_Mandel66toPlain66(m66)
 
  implicit none
 
@@ -1321,13 +1352,13 @@ endfunction math_deviatoric33
    math_Mandel66toPlain66(i,j) = invnrmMandel(i) * invnrmMandel(j) * m66(i,j)
  return
 
- endfunction
+end function
 
 
 !********************************************************************
 ! convert Plain matrix 66 into Mandel matrix 66
 !********************************************************************
- pure function math_Plain66toMandel66(m66)
+pure function math_Plain66toMandel66(m66)
 
  implicit none
 
@@ -1339,13 +1370,13 @@ endfunction math_deviatoric33
    math_Plain66toMandel66(i,j) = nrmMandel(i) * nrmMandel(j) * m66(i,j)
  return
 
- endfunction
+end function
 
 
 !********************************************************************
 ! convert symmetric 3333 tensor into Mandel matrix 66
 !********************************************************************
- pure function math_Mandel3333to66(m3333)
+pure function math_Mandel3333to66(m3333)
 
  implicit none
 
@@ -1356,13 +1387,13 @@ endfunction math_deviatoric33
  forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt) math_Mandel3333to66(i,j) = &
    nrmMandel(i)*nrmMandel(j)*m3333(mapMandel(1,i),mapMandel(2,i),mapMandel(1,j),mapMandel(2,j))
 
- endfunction math_Mandel3333to66
+end function math_Mandel3333to66
 
 
 !********************************************************************
 ! convert Mandel matrix 66 back to symmetric 3333 tensor
 !********************************************************************
- pure function math_Mandel66to3333(m66)
+pure function math_Mandel66to3333(m66)
 
  implicit none
 
@@ -1377,13 +1408,13 @@ endfunction math_deviatoric33
    math_Mandel66to3333(mapMandel(2,i),mapMandel(1,i),mapMandel(2,j),mapMandel(1,j)) = invnrmMandel(i)*invnrmMandel(j)*m66(i,j)
  end forall
 
- endfunction math_Mandel66to3333
+end function math_Mandel66to3333
 
 
 !********************************************************************
 ! convert Voigt matrix 66 back to symmetric 3333 tensor
 !********************************************************************
- pure function math_Voigt66to3333(m66)
+pure function math_Voigt66to3333(m66)
 
  implicit none
 
@@ -1398,66 +1429,66 @@ endfunction math_deviatoric33
    math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(2,j),mapVoigt(1,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
  end forall
 
- endfunction math_Voigt66to3333
+end function math_Voigt66to3333
 
 
 !********************************************************************
 ! Euler angles (in radians) from rotation matrix
 !********************************************************************
- pure function math_RtoEuler(R)
+pure function math_RtoEuler(R)
 
  implicit none
 
  real(pReal), dimension (3,3), intent(in) :: R
  real(pReal), dimension(3) :: math_RtoEuler
- real(pReal) :: sqhkl, squvw, sqhk, val
+ real(pReal) :: sqhkl, squvw, sqhk, myVal
 
  sqhkl=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3)+R(3,3)*R(3,3))
  squvw=sqrt(R(1,1)*R(1,1)+R(2,1)*R(2,1)+R(3,1)*R(3,1))
  sqhk=sqrt(R(1,3)*R(1,3)+R(2,3)*R(2,3))
 ! calculate PHI
- val=R(3,3)/sqhkl
+ myVal=R(3,3)/sqhkl
  
- if(val >  1.0_pReal) val =  1.0_pReal
- if(val < -1.0_pReal) val = -1.0_pReal
+ if(myVal >  1.0_pReal) myVal =  1.0_pReal
+ if(myVal < -1.0_pReal) myVal = -1.0_pReal
      
- math_RtoEuler(2) = acos(val)
+ math_RtoEuler(2) = acos(myVal)
 
  if(math_RtoEuler(2) < 1.0e-8_pReal) then
 ! calculate phi2
      math_RtoEuler(3) = 0.0_pReal
 ! calculate phi1
-     val=R(1,1)/squvw
-     if(val >  1.0_pReal) val =  1.0_pReal
-     if(val < -1.0_pReal) val = -1.0_pReal
+     myVal=R(1,1)/squvw
+     if(myVal >  1.0_pReal) myVal =  1.0_pReal
+     if(myVal < -1.0_pReal) myVal = -1.0_pReal
      
-     math_RtoEuler(1) = acos(val)
+     math_RtoEuler(1) = acos(myVal)
      if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  else
 ! calculate phi2
-     val=R(2,3)/sqhk
-     if(val >  1.0_pReal) val =  1.0_pReal
-     if(val < -1.0_pReal) val = -1.0_pReal
+     myVal=R(2,3)/sqhk
+     if(myVal >  1.0_pReal) myVal =  1.0_pReal
+     if(myVal < -1.0_pReal) myVal = -1.0_pReal
      
-     math_RtoEuler(3) = acos(val)
+     math_RtoEuler(3) = acos(myVal)
      if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
 ! calculate phi1
-     val=-R(3,2)/sin(math_RtoEuler(2))
-     if(val >  1.0_pReal) val =  1.0_pReal
-     if(val < -1.0_pReal) val = -1.0_pReal
+     myVal=-R(3,2)/sin(math_RtoEuler(2))
+     if(myVal >  1.0_pReal) myVal =  1.0_pReal
+     if(myVal < -1.0_pReal) myVal = -1.0_pReal
      
-     math_RtoEuler(1) = acos(val)
+     math_RtoEuler(1) = acos(myVal)
      if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  end if
  
- endfunction math_RtoEuler
+end function math_RtoEuler
 
 
 !********************************************************************
 ! quaternion (w+ix+jy+kz) from orientation matrix
 !********************************************************************
 ! math adopted from http://code.google.com/p/mtex/source/browse/trunk/geometry/geometry_tools/mat2quat.m
- pure function math_RtoQuaternion(R)
+pure function math_RtoQuaternion(R)
 
  implicit none
 
@@ -1505,13 +1536,13 @@ endfunction math_deviatoric33
  math_RtoQuaternion = math_RtoQuaternion*0.25_pReal/max_absQ
  math_RtoQuaternion(largest(1)) = max_absQ
  
- endfunction math_RtoQuaternion
+end function math_RtoQuaternion
 
 
 !****************************************************************
 ! rotation matrix from Euler angles (in radians)
 !****************************************************************
- pure function math_EulerToR(Euler)
+pure function math_EulerToR(Euler)
 
  implicit none
 
@@ -1536,13 +1567,13 @@ endfunction math_deviatoric33
  math_EulerToR(3,2)=-C1*S
  math_EulerToR(3,3)=C
  
- endfunction math_EulerToR
+end function math_EulerToR
  
 
 !********************************************************************
 ! quaternion (w+ix+jy+kz) from 3-1-3 Euler angles (in radians)
 !********************************************************************
- pure function math_EulerToQuaternion(eulerangles)
+pure function math_EulerToQuaternion(eulerangles)
 
  implicit none
 
@@ -1561,13 +1592,13 @@ endfunction math_deviatoric33
  math_EulerToQuaternion(3) = sin(halfangles(1)-halfangles(3)) * s
  math_EulerToQuaternion(4) = sin(halfangles(1)+halfangles(3)) * c
   
- endfunction math_EulerToQuaternion
+end function math_EulerToQuaternion
 
 
 !****************************************************************
 ! rotation matrix from axis and angle (in radians)  
 !****************************************************************
- pure function math_AxisAngleToR(axis,omega)
+pure function math_AxisAngleToR(axis,omega)
 
  implicit none
 
@@ -1605,13 +1636,13 @@ endfunction math_deviatoric33
  endif
  
 
- endfunction math_AxisAngleToR
+end function math_AxisAngleToR
 
 
 !****************************************************************
 ! quaternion (w+ix+jy+kz) from axis and angle (in radians)  
 !****************************************************************
- pure function math_AxisAngleToQuaternion(axis,omega)
+pure function math_AxisAngleToQuaternion(axis,omega)
 
  implicit none
 
@@ -1634,13 +1665,13 @@ endfunction math_deviatoric33
    math_AxisAngleToQuaternion = (/1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal/)   ! no rotation
  endif
 
- endfunction math_AxisAngleToQuaternion
+end function math_AxisAngleToQuaternion
 
 
 !********************************************************************
 ! orientation matrix from quaternion (w+ix+jy+kz)
 !********************************************************************
- pure function math_QuaternionToR(Q)
+pure function math_QuaternionToR(Q)
 
  implicit none
 
@@ -1658,13 +1689,13 @@ endfunction math_deviatoric33
                       2.0_pReal * T - &
                       2.0_pReal * Q(1) * S
 
- endfunction math_QuaternionToR
+end function math_QuaternionToR
 
 
 !********************************************************************
 ! 3-1-3 Euler angles (in radians) from quaternion (w+ix+jy+kz)
 !********************************************************************
- pure function math_QuaternionToEuler(Q)
+pure function math_QuaternionToEuler(Q)
 
  implicit none
 
@@ -1693,13 +1724,13 @@ endfunction math_deviatoric33
  if (math_QuaternionToEuler(2) < 0.0_pReal) &
    math_QuaternionToEuler(2) = math_QuaternionToEuler(2) + pi
 
- endfunction math_QuaternionToEuler
+end function math_QuaternionToEuler
 
 
 !********************************************************************
 ! axis-angle (x, y, z, ang in radians) from quaternion (w+ix+jy+kz)
 !********************************************************************
- pure function math_QuaternionToAxisAngle(Q)
+pure function math_QuaternionToAxisAngle(Q)
 
  implicit none
 
@@ -1717,13 +1748,13 @@ endfunction math_deviatoric33
    math_QuaternionToAxisAngle(4) = halfAngle*2.0_pReal
  endif
 
- endfunction math_QuaternionToAxisAngle
+end function math_QuaternionToAxisAngle
 
 
 !********************************************************************
 ! Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
 !********************************************************************
- pure function math_QuaternionToRodrig(Q)
+pure function math_QuaternionToRodrig(Q)
 
  use prec, only: DAMASK_NaN
  implicit none
@@ -1737,13 +1768,13 @@ endfunction math_deviatoric33
    math_QuaternionToRodrig = DAMASK_NaN                        ! NaN since Rodrig is unbound for 180 deg...
  endif
 
- endfunction math_QuaternionToRodrig
+end function math_QuaternionToRodrig
 
 
 !**************************************************************************
 ! misorientation angle between two sets of Euler angles
 !**************************************************************************
- pure function math_EulerMisorientation(EulerA,EulerB)
+pure function math_EulerMisorientation(EulerA,EulerB)
 
  implicit none
 
@@ -1756,7 +1787,7 @@ endfunction math_deviatoric33
  tr = (r(1,1)+r(2,2)+r(3,3)-1.0_pReal)*0.4999999_pReal
  math_EulerMisorientation = abs(0.5_pReal*pi-asin(tr))
 
- endfunction math_EulerMisorientation
+end function math_EulerMisorientation
 
 
 !**************************************************************************
@@ -1790,7 +1821,7 @@ pure function math_QuaternionInSST(Q, symmetryType)
       math_QuaternionInSST = .true.
   end select
   
-endfunction math_QuaternionInSST
+end function math_QuaternionInSST
 
 
 !**************************************************************************
@@ -1840,13 +1871,13 @@ function math_QuaternionDisorientation(Q1, Q2, symmetryType)
       call IO_error(450_pInt,symmetryType)                           ! complain about unknown symmetry
   end select
   
-endfunction math_QuaternionDisorientation
+end function math_QuaternionDisorientation
 
 
 !********************************************************************
 !   draw a random sample from Euler space
 !********************************************************************
- function math_sampleRandomOri()
+function math_sampleRandomOri()
 
  implicit none
 
@@ -1857,14 +1888,14 @@ endfunction math_QuaternionDisorientation
  math_sampleRandomOri(2) = acos(2.0_pReal*rnd(2)-1.0_pReal)
  math_sampleRandomOri(3) = rnd(3)*2.0_pReal*pi
 
- endfunction math_sampleRandomOri
+end function math_sampleRandomOri
 
 
 !********************************************************************
 !   draw a random sample from Gauss component
 !   with noise (in radians) half-width 
 !********************************************************************
- function math_sampleGaussOri(center,noise)
+function math_sampleGaussOri(center,noise)
 
  implicit none
 
@@ -1895,14 +1926,14 @@ endif
 
  math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
  
- endfunction math_sampleGaussOri
+end function math_sampleGaussOri
  
 
 !********************************************************************
 !   draw a random sample from Fiber component
 !   with noise (in radians)
 !********************************************************************
- function math_sampleFiberOri(alpha,beta,noise)
+function math_sampleFiberOri(alpha,beta,noise)
 
  implicit none
 
@@ -1969,14 +2000,14 @@ endif
 ! ---# apply the three rotations #---
  math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))) 
 
- endfunction math_sampleFiberOri
+end function math_sampleFiberOri
 
 
 !********************************************************************
 !   symmetric Euler angles for given symmetry string
 !   'triclinic' or '', 'monoclinic', 'orthotropic'
 !********************************************************************
- pure function math_symmetricEulers(sym,Euler)
+pure function math_symmetricEulers(sym,Euler)
 
  implicit none
 
@@ -2009,7 +2040,7 @@ endif
      math_symmetricEulers = 0.0_pReal
  end select
 
- endfunction math_symmetricEulers
+end function math_symmetricEulers
 
 
 !********************************************************************
@@ -2052,7 +2083,7 @@ enddo
 
 math_sampleGaussVar = scatter * stddev
 
-endfunction math_sampleGaussVar
+end function math_sampleGaussVar
 
 
 !****************************************************************
@@ -2072,12 +2103,11 @@ subroutine math_spectralDecompositionSym33(M,values,vectors,error)
  call DSYEV('V','U',3,vectors,3,values,work,(64+2)*3,info)
  error = (info == 0_pInt)
  
- return
 end subroutine
 
 
 !****************************************************************
- pure subroutine math_pDecomposition(FE,U,R,error)
+pure subroutine math_pDecomposition(FE,U,R,error)
 !-----FE = R.U 
 !****************************************************************
  implicit none
@@ -2096,11 +2126,11 @@ end subroutine
  call math_invert33(U,UI,det,error)
  if (.not. error) R = math_mul33x33(FE,UI)
 
- ENDSUBROUTINE math_pDecomposition
+end subroutine math_pDecomposition
 
 
 !**********************************************************************
- pure subroutine math_spectral1(M,EW1,EW2,EW3,EB1,EB2,EB3)
+pure subroutine math_spectral1(M,EW1,EW2,EW3,EB1,EB2,EB3)
 !**** EIGENWERTE UND EIGENWERTBASIS DER SYMMETRISCHEN 3X3 MATRIX M
 
  implicit none
@@ -2194,11 +2224,11 @@ end subroutine
    END IF
  END IF
 
- ENDSUBROUTINE math_spectral1
+end subroutine math_spectral1
 
 
 !**********************************************************************
- function math_eigenvalues33(M)
+function math_eigenvalues33(M)
 !**** Eigenvalues of symmetric 3X3 matrix M
 
  implicit none
@@ -2239,13 +2269,13 @@ end subroutine
    math_eigenvalues33(2) = Y2-R/3.0_pReal
    math_eigenvalues33(3) = Y3-R/3.0_pReal
  endif
- endfunction  math_eigenvalues33
+end function  math_eigenvalues33
 
 
 !********************************************************************** 
 !**** HAUPTINVARIANTEN HI1M, HI2M, HI3M DER 3X3 MATRIX M
 
- PURE SUBROUTINE math_hi(M,HI1M,HI2M,HI3M)
+pure subroutine math_hi(M,HI1M,HI2M,HI3M)
  
  implicit none
 
@@ -2258,7 +2288,7 @@ end subroutine
  HI3M=math_det33(M)
 ! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
 
- ENDSUBROUTINE math_hi
+end subroutine math_hi
 
 
 !*******************************************************************************
@@ -2278,7 +2308,7 @@ end subroutine
 !  Modified: 29 April 2005
 !  Author: Franz Roters
 !
- SUBROUTINE get_seed(seed)
+subroutine get_seed(seed)
  implicit none
 
  integer(pInt) :: seed
@@ -2316,7 +2346,7 @@ end subroutine
    seed = seed -1_pInt
  end if
 
- ENDSUBROUTINE get_seed
+end subroutine get_seed
 
 
 !*******************************************************************************
@@ -2332,7 +2362,7 @@ end subroutine
 !  Modified: 29 April 2005
 !  Author: Franz Roters
 !
- subroutine halton(ndim, r)
+subroutine halton(ndim, r)
  implicit none
 
  integer(pInt), intent(in) :: ndim
@@ -2351,7 +2381,7 @@ end subroutine
  value_halton(1) = 1_pInt
  call halton_memory ('INC', 'SEED', 1_pInt, value_halton)
 
- ENDSUBROUTINE halton
+end subroutine halton
 
 
 !*******************************************************************************
@@ -2387,7 +2417,7 @@ end subroutine
 !  Modified: 29 April 2005
 !  Author:  Franz Roters
 
- subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
+subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
  implicit none
 
  character(len = *), intent(in) :: action_halton, name_halton
@@ -2463,7 +2493,7 @@ end subroutine
    end if
  endif
 
- ENDSUBROUTINE halton_memory
+end subroutine halton_memory
 
 
 !*******************************************************************************
@@ -2478,7 +2508,7 @@ end subroutine
 !  Modified: 29 April 2005
 !  Author: Franz Roters
 !
- subroutine halton_ndim_set (ndim)
+subroutine halton_ndim_set (ndim)
  implicit none
 
  integer(pInt), intent(in) :: ndim
@@ -2487,7 +2517,7 @@ end subroutine
  value_halton(1) = ndim
  call halton_memory ('SET', 'NDIM', 1_pInt, value_halton)
 
- ENDSUBROUTINE halton_ndim_set
+end subroutine halton_ndim_set
 
 
 !*******************************************************************************
@@ -2514,7 +2544,7 @@ end subroutine
 !  Modified: 29 April 2005
 !  Author: Franz Roters
 !
- subroutine halton_seed_set (seed)
+subroutine halton_seed_set (seed)
  implicit none
 
  integer(pInt), parameter :: ndim = 1_pInt
@@ -2524,7 +2554,7 @@ end subroutine
  value_halton(1) = seed
  call halton_memory ('SET', 'SEED', ndim, value_halton)
 
- ENDSUBROUTINE halton_seed_set
+end subroutine halton_seed_set
 
 
 !*******************************************************************************
@@ -2554,7 +2584,9 @@ end subroutine
 !  Modified: 29 April 2005
 !  Author: Franz RotersA
 
- subroutine i_to_halton (seed, base, ndim, r)
+subroutine i_to_halton (seed, base, ndim, r)
+
+ use IO, only: IO_error
  implicit none
 
  integer(pInt), intent(in) :: ndim
@@ -2580,7 +2612,7 @@ end subroutine
    seed2(1:ndim) = seed2(1:ndim) / base(1:ndim)
  enddo
 
- ENDSUBROUTINE i_to_halton
+end subroutine i_to_halton
 
 
 !*******************************************************************************
@@ -2610,7 +2642,9 @@ end subroutine
 !  Modified: 29 April 2005
 !  Author: Franz Roters
 !
- function prime(n)
+function prime(n)
+ 
+ use IO, only: IO_error
  implicit none
 
  integer(pInt), parameter :: prime_max = 1500_pInt
@@ -2813,13 +2847,13 @@ end subroutine
  else
    call IO_error(error_ID=406_pInt)
  end if
- endfunction prime
+end function prime
 
 
 !**************************************************************************
 ! volume of tetrahedron given by four vertices
 !**************************************************************************
- pure function math_volTetrahedron(v1,v2,v3,v4)  
+pure function math_volTetrahedron(v1,v2,v3,v4)  
 
  implicit none
 
@@ -2833,13 +2867,13 @@ end subroutine
 
  math_volTetrahedron = math_det33(m)/6.0_pReal 
 
- endfunction math_volTetrahedron
+end function math_volTetrahedron
 
 
 !**************************************************************************
 ! rotate 33 tensor forward
 !**************************************************************************
- pure function math_rotate_forward33(tensor,rot_tensor)
+pure function math_rotate_forward33(tensor,rot_tensor)
 
  implicit none
 
@@ -2849,13 +2883,13 @@ end subroutine
  math_rotate_forward33 = math_mul33x33(rot_tensor,&
                          math_mul33x33(tensor,math_transpose33(rot_tensor)))
  
- endfunction math_rotate_forward33
+end function math_rotate_forward33
 
 
 !**************************************************************************
 ! rotate 33 tensor backward
 !**************************************************************************
- pure function math_rotate_backward33(tensor,rot_tensor)
+pure function math_rotate_backward33(tensor,rot_tensor)
 
  implicit none
 
@@ -2865,14 +2899,14 @@ end subroutine
  math_rotate_backward33 = math_mul33x33(math_transpose33(rot_tensor),&
                            math_mul33x33(tensor,rot_tensor))
  
- endfunction math_rotate_backward33
+end function math_rotate_backward33
 
 
 !**************************************************************************
 ! rotate 3333 tensor
 ! C'_ijkl=g_im*g_jn*g_ko*g_lp*C_mnop
 !**************************************************************************
- pure function math_rotate_forward3333(tensor,rot_tensor)
+pure function math_rotate_forward3333(tensor,rot_tensor)
 
  implicit none
 
@@ -2889,7 +2923,7 @@ end subroutine
                                                            rot_tensor(o,k)*rot_tensor(p,l)*tensor(m,n,o,p)
  enddo; enddo; enddo; enddo; enddo; enddo; enddo; enddo
  
- endfunction math_rotate_forward3333
+end function math_rotate_forward3333
 
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2899,7 +2933,7 @@ end subroutine
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ! put the next two funtions into mesh?
- function mesh_location(idx,resolution)
+function mesh_location(idx,resolution)
  ! small helper functions for indexing
  ! CAREFULL, index and location runs from 0 to N-1 (python style)
 
@@ -2910,7 +2944,7 @@ end subroutine
                      modulo(idx/ resolution(3),                resolution(2)), &
                      modulo(idx,                               resolution(3))/)
 
- end function mesh_location
+end function mesh_location
  
 
  function mesh_index(location,resolution)
@@ -2923,18 +2957,20 @@ end subroutine
                (modulo(location(2), resolution(2)))*resolution(3) +&
                (modulo(location(1), resolution(1)))*resolution(3)*resolution(2)
 
- end function mesh_index
+end function mesh_index
 
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
- subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch)
+subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 ! Routine to calculate the mismatch between volume of reconstructed (compatible
 ! cube and determinant of defgrad at the FP
 
- use debug, only: debug_verbosity
- implicit none
+ use debug, only: debug_math, &
+                  debug_what, &
+                  debug_levelBasic
  
+ implicit none
  ! input variables
  integer(pInt), intent(in), dimension(3) :: res
  real(pReal),   intent(in), dimension(3) :: geomdim
@@ -2947,7 +2983,7 @@ end subroutine
  integer(pInt) i,j,k
  real(pReal) vol_initial
 
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating volume mismatch'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -2985,9 +3021,11 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
 ! the corners of reconstructed (combatible) volume element and the vectors calculated by deforming 
 ! the initial volume element with the  current deformation gradient 
 
- use debug, only: debug_verbosity
+ use debug, only: debug_math, &
+                  debug_what, &
+                  debug_levelBasic
+ 
  implicit none
-
  ! input variables
  integer(pInt), intent(in), dimension(3) :: res
  real(pReal), intent(in), dimension(3)   :: geomdim
@@ -3000,7 +3038,7 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
  real(pReal), dimension(8,3) :: coords_initial
  integer(pInt) i,j,k
 
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating shape mismatch'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3054,7 +3092,7 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
                     - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(8,1:3)))**2.0_pReal))
  enddo; enddo; enddo
 
- end subroutine shape_compare
+end subroutine shape_compare
 
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
@@ -3062,7 +3100,10 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 ! Routine to build mesh of (distoreted) cubes for given coordinates (= center of the cubes)
 !
- use debug, only: debug_verbosity
+ use debug, only: debug_math, &
+                  debug_what, &
+                  debug_levelBasic
+ 
  implicit none
  ! input variables
  integer(pInt), intent(in), dimension(3) :: res
@@ -3089,7 +3130,7 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
                                     /), &
                                     (/3,8/))
 
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Meshing cubes around centroids' 
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3133,7 +3174,10 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
 ! Routine to calculate coordinates in current configuration for given defgrad
 ! using linear interpolation (blurres out high frequency defomation)
 !
- use debug, only: debug_verbosity
+ use debug, only: debug_math, &
+                  debug_what, &
+                  debug_levelBasic
+ 
  implicit none
  ! input variables
  integer(pInt), intent(in), dimension(3) :: res
@@ -3181,7 +3225,7 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
                                                 /), &
                                              (/3,6/))
 
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Restore geometry using linear integration'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3246,8 +3290,12 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
 ! Routine to calculate coordinates in current configuration for given defgrad
 ! using integration in Fourier space (more accurate than deformed(...))
 !
+ use IO, only: IO_error
  use numerics, only: fftw_timelimit, fftw_planner_flag  
- use debug, only: debug_verbosity
+ use debug, only: debug_math, &
+                  debug_what, &
+                  debug_levelBasic
+ 
  implicit none
  ! input variables
  integer(pInt), intent(in), dimension(3) :: res
@@ -3271,7 +3319,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  
  integrator = geomdim / 2.0_pReal / pi                                                                   ! see notes where it is used
  
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Restore geometry using FFT-based integration'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3371,8 +3419,12 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
 ! calculates curl field using differentation in Fourier space
 ! use vec_tens to decide if tensor (3) or vector (1)
 
+ use IO, only: IO_error
  use numerics, only: fftw_timelimit, fftw_planner_flag  
- use debug, only: debug_verbosity
+ use debug, only: debug_math, &
+                  debug_what, &
+                  debug_levelBasic
+ 
  implicit none
  ! input variables
  integer(pInt), intent(in), dimension(3) :: res
@@ -3395,7 +3447,7 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  integer(pInt), dimension(3) :: k_s
  real(pReal) :: wgt
 
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating curl of vector/tensor field'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3457,11 +3509,11 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
    do l = 1_pInt, vec_tens
      curl_fourier(i,j,k,l,1) = ( field_fourier(i,j,k,l,3)*xi(i,j,k,2)&
-                                -field_fourier(i,j,k,l,2)*xi(i,j,k,3) )*two_pi_img
+                                -field_fourier(i,j,k,l,2)*xi(i,j,k,3) )*TWOPIIMG
      curl_fourier(i,j,k,l,2) = (-field_fourier(i,j,k,l,3)*xi(i,j,k,1)&
-                                +field_fourier(i,j,k,l,1)*xi(i,j,k,3) )*two_pi_img
+                                +field_fourier(i,j,k,l,1)*xi(i,j,k,3) )*TWOPIIMG
      curl_fourier(i,j,k,l,3) = ( field_fourier(i,j,k,l,2)*xi(i,j,k,1)&
-                                -field_fourier(i,j,k,l,1)*xi(i,j,k,2) )*two_pi_img
+                                -field_fourier(i,j,k,l,1)*xi(i,j,k,2) )*TWOPIIMG
    enddo
  enddo; enddo; enddo
 
@@ -3488,9 +3540,13 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! calculates divergence field using integration in Fourier space
 ! use vec_tens to decide if tensor (3) or vector (1)
-
+ 
+ use IO, only: IO_error
  use numerics, only: fftw_timelimit, fftw_planner_flag  
- use debug, only: debug_verbosity
+ use debug, only: debug_math, &
+                  debug_what, &
+                  debug_levelBasic
+                  
  implicit none
  ! input variables
  integer(pInt), intent(in), dimension(3) :: res
@@ -3513,7 +3569,7 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  real(pReal) :: wgt
  integer(pInt), dimension(3) :: k_s
 
- if (debug_verbosity > 0_pInt) then 
+ if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3572,7 +3628,7 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
    do l = 1_pInt, vec_tens
      divergence_fourier(i,j,k,l)=sum(field_fourier(i,j,k,l,1:3)*cmplx(xi(i,j,k,1:3),0.0_pReal,pReal))&
-                                   *two_pi_img
+                                   *TWOPIIMG
    enddo
  enddo; enddo; enddo
  call fftw_execute_dft_c2r(fftw_back, divergence_fourier, divergence_real)
@@ -3591,16 +3647,19 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
                                                       call fftw_free(field_fftw)                           ! This procedure ensures that optimization do not mix-up lines, because a 
  if(.not.(c_associated(C_LOC(divergence_real(1,1,1,1))) .and. c_associated(C_LOC(divergence_fourier(1,1,1,1)))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
                                                     call fftw_free(divergence_fftw)                        ! call c_f_pointer(field_fftw, field_fourier, [res1_red ,res(2),res(3),vec_tens,3])
- end subroutine divergence_fft
+end subroutine divergence_fft
 
           
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
- subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
+subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! calculates divergence field using FDM with variable accuracy
 ! use vec_tes to decide if tensor (3) or vector (1)
  
- use debug, only: debug_verbosity
+ use debug, only: debug_math, &
+                  debug_what, &
+                  debug_levelBasic
+ 
  implicit none
  integer(pInt), intent(in), dimension(3) :: res
  integer(pInt), intent(in)               :: vec_tens
@@ -3619,7 +3678,7 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
                     4.0_pReal/5.0_pReal,-1.0_pReal/ 5.0_pReal,4.0_pReal/105.0_pReal,-1.0_pReal/280.0_pReal/),&
                                (/4,4/))
                                
- if (debug_verbosity > 0_pInt) then
+ if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating divergence of tensor/vector field using FDM'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3653,10 +3712,10 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
    enddo
  enddo; enddo; enddo
 
- end subroutine divergence_fdm
+end subroutine divergence_fdm
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
- subroutine tensor_avg(res,tensor,avg)
+subroutine tensor_avg(res,tensor,avg)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !calculate average of tensor field
 !
@@ -3676,7 +3735,7 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
     avg(m,n) = sum(tensor(1:res(1),1:res(2),1:res(3),m,n)) * wgt   
  enddo; enddo
 
- end subroutine tensor_avg
+end subroutine tensor_avg
  
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine logstrain_spat(res,defgrad,logstrain_field)
@@ -3708,7 +3767,7 @@ subroutine logstrain_spat(res,defgrad,logstrain_field)
                                     eigenvalue(3)*eigenvectorbasis(3,1:3,1:3)
  enddo; enddo; enddo
 
- end subroutine logstrain_spat
+end subroutine logstrain_spat
  
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine logstrain_mat(res,defgrad,logstrain_field)
@@ -3738,7 +3797,7 @@ subroutine logstrain_mat(res,defgrad,logstrain_field)
                                     eigenvalue(3)*eigenvectorbasis(3,1:3,1:3)
  enddo; enddo; enddo
 
- end subroutine logstrain_mat
+end subroutine logstrain_mat
  
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine calculate_cauchy(res,defgrad,p_stress,c_stress)
@@ -3804,6 +3863,6 @@ subroutine find_nearest_neighbor(res,geomdim,defgrad_av,spatial_dim,range_dim,do
    map_range_to_domain(i) = map_1range_to_domain(1)%idx
  enddo
  
- end subroutine
+end subroutine
 
-END MODULE math
+end module math
