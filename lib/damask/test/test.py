@@ -162,8 +162,8 @@ class Test():
     table = damask.ASCIItable(refFile)
     table.head_read()
     refFile.close()
-    refArray = numpy.genfromtxt(refName,missing_values='n/a',skip_header = table.headerLen)
-    curArray = numpy.genfromtxt(curName,missing_values='n/a',skip_header = table.headerLen)
+    refArray = numpy.genfromtxt(refName,missing_values='n/a',skip_header = len(table.info)+1)
+    curArray = numpy.genfromtxt(curName,missing_values='n/a',skip_header = len(table.info)+1)
     err = abs((refArray/curArray)-1.)                                     # relative tolerance
     refNaN=len(numpy.isnan(refArray))
     curNaN=len(numpy.isnan(curArray))
