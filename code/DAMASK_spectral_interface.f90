@@ -70,41 +70,41 @@ subroutine DAMASK_interface_init
  enddo
 
  if(index(commandLine,' -h ',.true.) > 0 .or. index(commandLine,' --help ',.true.) > 0) then        ! search for ' -h ' or '--help'
-   write(6,*) '$Id$'
+   write(6,'(a)') '$Id$'
 #include "compilation_info.f90"
-   print '(a)',  '#############################################################'
-   print '(a)',  'DAMASK spectral:'
-   print '(a)',  'The spectral method boundary value problem solver for'
-   print '(a)',  'the Duesseldorf Advanced Material Simulation Kit'
-   print '(a)',  '#############################################################'
-   print '(a)',  'Valid command line switches:'
-   print '(a)',  '   --geom    (-g, --geometry)'
-   print '(a)',  '   --load    (-l, --loadcase)'
-   print '(a)',  '   --restart (-r)'
-   print '(a)',  '   --help    (-h)'
-   print '(a)',  ' '
-   print '(a)',  'Mandatory Arguments:'
-   print '(a)',  '  --load PathToLoadFile/NameOfLoadFile.load'
-   print '(a)',  '       "PathToGeomFile" will be the working directory.'
-   print '(a)',  '       Make sure the file "material.config" exists in the working'
-   print '(a)',  '           directory'   
-   print '(a)',  '       For further configuration place "numerics.config"'
-   print '(a)',  '           and "numerics.config" in that directory.'
-   print '(a)',  ' '
-   print '(a)',  '  --geom PathToGeomFile/NameOfGeom.geom'
-   print '(a)',  ' '
-   print '(a)',  'Optional Argument:'
-   print '(a)',  '  --restart XX'
-   print '(a)',  '       Reads in total increment No. XX-1 and continous to'
-   print '(a)',  '           calculate total increment No. XX.'
-   print '(a)',  '       Attention: Overwrites existing results file '
-   print '(a)',  '           "NameOfGeom_NameOfLoadFile_spectralOut".'
-   print '(a)',  '       Works only if the restart information for total increment'
-   print '(a)',  '            No. XX-1 is available in the working directory.'
-   print '(a)',  'Help:'
-   print '(a)',  '  --help'
-   print '(a)',  '       Prints this message and exits'
-   print '(a)',  ' '
+   write(6,'(a)')  '#############################################################'
+   write(6,'(a)')  'DAMASK spectral:'
+   write(6,'(a)')  'The spectral method boundary value problem solver for'
+   write(6,'(a)')  'the Duesseldorf Advanced Material Simulation Kit'
+   write(6,'(a)')  '#############################################################'
+   write(6,'(a)')  'Valid command line switches:'
+   write(6,'(a)')  '   --geom    (-g, --geometry)'
+   write(6,'(a)')  '   --load    (-l, --loadcase)'
+   write(6,'(a)')  '   --restart (-r)'
+   write(6,'(a)')  '   --help    (-h)'
+   write(6,'(a)')  ' '
+   write(6,'(a)')  'Mandatory Arguments:'
+   write(6,'(a)')  '  --load PathToLoadFile/NameOfLoadFile.load'
+   write(6,'(a)')  '       "PathToGeomFile" will be the working directory.'
+   write(6,'(a)')  '       Make sure the file "material.config" exists in the working'
+   write(6,'(a)')  '           directory'   
+   write(6,'(a)')  '       For further configuration place "numerics.config"'
+   write(6,'(a)')  '           and "numerics.config" in that directory.'
+   write(6,'(a)')  ' '
+   write(6,'(a)')  '  --geom PathToGeomFile/NameOfGeom.geom'
+   write(6,'(a)')  ' '
+   write(6,'(a)')  'Optional Argument:'
+   write(6,'(a)')  '  --restart XX'
+   write(6,'(a)')  '       Reads in total increment No. XX-1 and continous to'
+   write(6,'(a)')  '           calculate total increment No. XX.'
+   write(6,'(a)')  '       Attention: Overwrites existing results file '
+   write(6,'(a)')  '           "NameOfGeom_NameOfLoadFile_spectralOut".'
+   write(6,'(a)')  '       Works only if the restart information for total increment'
+   write(6,'(a)')  '            No. XX-1 is available in the working directory.'
+   write(6,'(a)')  'Help:'
+   write(6,'(a)')  '  --help'
+   write(6,'(a)')  '       Prints this message and exits'
+   write(6,'(a)')  ' '
    call quit(0_pInt)
  endif
  if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) &                         ! check for correct number of given arguments (no --help)
@@ -117,7 +117,7 @@ subroutine DAMASK_interface_init
    start = index(commandLine,'--geometry',.true.) + 11
  endif
  if(start==3_pInt) then                                                                             ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
-   print '(a)', 'No Geometry specified'
+   write(6,'(a)') 'No Geometry specified'
    call quit(9999)
  endif
  length = index(commandLine(start:len(commandLine)),' ',.false.)
@@ -139,7 +139,7 @@ subroutine DAMASK_interface_init
    start = index(commandLine,'--loadcase',.true.) + 11
  endif
  if(start==3_pInt) then                                                                             ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
-   print '(a)', 'No Loadcase specified'
+   write(6,'(a)') 'No Loadcase specified'
    call quit(9999)
  endif
  length = index(commandLine(start:len(commandLine)),' ',.false.)

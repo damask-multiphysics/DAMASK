@@ -548,6 +548,7 @@ integer(pInt) function IO_countSections(myFile,part)
 
  character(len=1024)            :: line
 
+ line = ''
  IO_countSections = 0_pInt
  rewind(myFile)
 
@@ -586,11 +587,11 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
  integer(pInt)                              :: section
  character(len=1024)                        :: line, &
                                                tag
-
- rewind(myFile)
+ line = ''
  counter = 0_pInt
  section = 0_pInt
- 
+
+ rewind(myFile) 
  do while (IO_getTag(line,'<','>') /= part)               ! search for part
    read(myFile,'(a1024)',END=100) line
  enddo
@@ -636,8 +637,9 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
 
  IO_spotTagInPart = .false.                               ! assume to nowhere spot tag
  section = 0_pInt
- rewind(myFile)
+ line =''
 
+ rewind(myFile)
  do while (IO_getTag(line,'<','>') /= part)               ! search for part
    read(myFile,'(a1024)',END=100) line
  enddo
@@ -947,6 +949,7 @@ integer(pInt) function IO_countDataLines(myUnit)
                                              tmp
 
  IO_countDataLines = 0_pInt
+
  do
    read(myUnit,'(A300)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
