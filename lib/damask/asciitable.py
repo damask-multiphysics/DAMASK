@@ -23,7 +23,6 @@ class ASCIItable():
                    'validReadSize': 0,
                    'dataStart': 0,
                   }
-    self.headerLen = 0
     self.info = []
     self.labels = []
     self.data = []
