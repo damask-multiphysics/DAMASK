@@ -27,7 +27,7 @@
 !*****************************************************
 
 ! [Alu]
-! constitution            j2
+! plasticity              j2
 ! (output)                flowstress
 ! (output)                strainrate
 ! c11                     110.9e9    # (3 C11 + 2 C12 + 2 C44) / 5  ... with C44 = C11-C12 !!
@@ -181,11 +181,11 @@ subroutine constitutive_j2_init(myFile)
      cycle
    endif
    if (section > 0_pInt .and. phase_plasticity(section) == constitutive_j2_label) then                                             ! one of my sections
-     i = phase_plasticityInstance(section)                                                                                         ! which instance of my constitution is present phase
+     i = phase_plasticityInstance(section)                                                                                         ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                            ! extract key
      select case(tag)
-       case ('constitution')
+       case ('plasticity')
          cycle
        case ('(output)')
          constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
@@ -283,11 +283,11 @@ pure function constitutive_j2_aTolState(myInstance)
 
  implicit none
  !*** input variables
- integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
+ integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the plasticity
 
  !*** output variables
  real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
-                              constitutive_j2_aTolState       ! relevant state values for the current instance of this constitution
+                              constitutive_j2_aTolState       ! relevant state values for the current instance of this plasticity
 
  constitutive_j2_aTolState = constitutive_j2_aTolResistance(myInstance)
 

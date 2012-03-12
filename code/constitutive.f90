@@ -116,10 +116,10 @@ integer(pInt)   g, &                          ! grain number
                 myNgrains
 integer(pInt), dimension(:,:), pointer :: thisSize
 character(len=64), dimension(:,:), pointer :: thisOutput
-logical :: knownConstitution
+logical :: knownPlasticity
 
 
-! --- PARSE CONSTITUTIONS FROM CONFIG FILE ---
+! --- PARSE PLASTICITIES FROM CONFIG FILE ---
 
 if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then        ! no local material configuration present...
   call IO_open_file(fileunit,material_configFile)                           ! ... open material.config file
@@ -136,8 +136,8 @@ close(fileunit)
 
 call IO_write_jobFile(fileunit,'outputConstitutive') 
 do p = 1_pInt,material_Nphase
-  i = phase_plasticityInstance(p)                       ! which instance of a constitution is present phase
-  knownConstitution = .true.                            ! assume valid
+  i = phase_plasticityInstance(p)                       ! which instance of a plasticity is present phase
+  knownPlasticity = .true.                              ! assume valid
   select case(phase_plasticity(p))                      ! split per constitiution
     case (constitutive_j2_label)
       thisOutput => constitutive_j2_output
@@ -155,13 +155,13 @@ do p = 1_pInt,material_Nphase
       thisOutput => constitutive_nonlocal_output
       thisSize   => constitutive_nonlocal_sizePostResult
     case default
-      knownConstitution = .false.
+      knownPlasticity = .false.
   end select   
   write(fileunit,*)
   write(fileunit,'(a)') '['//trim(phase_name(p))//']'
   write(fileunit,*)
-  if (knownConstitution) then
-    write(fileunit,'(a)') '(constitution)'//char(9)//trim(phase_plasticity(p))
+  if (knownPlasticity) then
+    write(fileunit,'(a)') '(plasticity)'//char(9)//trim(phase_plasticity(p))
     do e = 1_pInt,phase_Noutput(p)
       write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
     enddo
@@ -342,7 +342,7 @@ endif
             constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(myInstance)
             
           case default
-            call IO_error(200_pInt,material_phase(g,i,e))      ! unknown constitution
+            call IO_error(200_pInt,material_phase(g,i,e))      ! unknown plasticity
            
         end select
         constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p

@@ -94,7 +94,7 @@ character(len=64), dimension(:,:), allocatable, target :: &
   constitutive_titanmod_output                         ! name of each post result output
 
 integer(pInt), dimension(:), allocatable :: & 
-  constitutive_titanmod_Noutput                        ! number of outputs per instance of this constitution 
+  constitutive_titanmod_Noutput                        ! number of outputs per instance of this plasticity 
 
 character(len=32), dimension(:), allocatable :: &
   constitutive_titanmod_structureName                  ! name of the lattice structure
@@ -428,11 +428,11 @@ enddo
      cycle                                                ! skip to next line
    endif
    if (section > 0_pInt .and. phase_plasticity(section) == constitutive_titanmod_label) then  ! one of my sections
-     i = phase_plasticityInstance(section)                ! which instance of my constitution is present phase
+     i = phase_plasticityInstance(section)                ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
-       case ('constitution')
+       case ('plasticity')
          cycle
        case ('(output)')
          constitutive_titanmod_Noutput(i) = constitutive_titanmod_Noutput(i) + 1_pInt

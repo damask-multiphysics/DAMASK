@@ -27,7 +27,7 @@
 !*****************************************************
 
 ![Alu]
-!constitution            phenopowerlaw
+!plasticity              phenopowerlaw
 !(output)                resistance_slip
 !(output)                shearrate_slip
 !(output)                resolvedstress_slip
@@ -82,7 +82,7 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_sizeDotState, &
    constitutive_phenopowerlaw_sizeState, &
    constitutive_phenopowerlaw_sizePostResults, &                                                    ! cumulative size of post results
-   constitutive_phenopowerlaw_Noutput, &                                                            ! number of outputs per instance of this constitution 
+   constitutive_phenopowerlaw_Noutput, &                                                            ! number of outputs per instance of this plasticity 
    constitutive_phenopowerlaw_totalNslip, &                                                         ! no. of slip system used in simulation
    constitutive_phenopowerlaw_totalNtwin, &                                                         ! no. of twin system used in simulation
    constitutive_phenopowerlaw_structure
@@ -291,11 +291,11 @@ subroutine constitutive_phenopowerlaw_init(myFile)
      cycle                                                ! skip to next line
    endif
    if (section > 0_pInt .and. phase_plasticity(section) == constitutive_phenopowerlaw_label) then  ! one of my sections
-     i = phase_plasticityInstance(section)                ! which instance of my constitution is present phase
+     i = phase_plasticityInstance(section)                ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
-       case ('constitution')
+       case ('plasticity')
          cycle
        case ('(output)')
          constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt
@@ -588,11 +588,11 @@ pure function constitutive_phenopowerlaw_aTolState(myInstance)
 
 implicit none
 !*** input variables
-integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
+integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the plasticity
 
 !*** output variables
 real(pReal), dimension(constitutive_phenopowerlaw_sizeState(myInstance)) :: &
-                              constitutive_phenopowerlaw_aTolState ! relevant state values for the current instance of this constitution
+                              constitutive_phenopowerlaw_aTolState ! relevant state values for the current instance of this plasticity
 
 !*** local variables
 

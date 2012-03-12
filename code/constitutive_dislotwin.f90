@@ -49,7 +49,7 @@ integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin
                                                           constitutive_dislotwin_sizePostResults                ! cumulative size of post results
 integer(pInt), dimension(:,:), allocatable, target ::     constitutive_dislotwin_sizePostResult                 ! size of each post result output
 character(len=64), dimension(:,:), allocatable, target :: constitutive_dislotwin_output                         ! name of each post result output
-integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin_Noutput                        ! number of outputs per instance of this constitution 
+integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin_Noutput                        ! number of outputs per instance of this plasticity 
 character(len=32), dimension(:), allocatable ::           constitutive_dislotwin_structureName                  ! name of the lattice structure
 integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin_structure, &                   ! number representing the kind of lattice structure
                                                           constitutive_dislotwin_totalNslip, &                  ! total number of active slip systems for each instance
@@ -296,11 +296,11 @@ do                                                       ! read thru sections of
      cycle
    endif
    if (section > 0_pInt .and. phase_plasticity(section) == constitutive_dislotwin_label) then  ! one of my sections
-     i = phase_plasticityInstance(section)               ! which instance of my constitution is present phase
+     i = phase_plasticityInstance(section)               ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
-       case ('constitution')
+       case ('plasticity')
          cycle
        case ('(output)')
          constitutive_dislotwin_Noutput(i) = constitutive_dislotwin_Noutput(i) + 1_pInt
