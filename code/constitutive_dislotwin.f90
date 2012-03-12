@@ -158,7 +158,7 @@ character(len=1024) line
 #include "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 
-maxNinstance = int(count(phase_constitution == constitutive_dislotwin_label),pInt)
+maxNinstance = int(count(phase_plasticity == constitutive_dislotwin_label),pInt)
 if (maxNinstance == 0_pInt) return
 
 !* Space allocation for global variables
@@ -295,8 +295,8 @@ do                                                       ! read thru sections of
      section = section + 1_pInt                          ! advance section counter
      cycle
    endif
-   if (section > 0_pInt .and. phase_constitution(section) == constitutive_dislotwin_label) then  ! one of my sections
-     i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
+   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_dislotwin_label) then  ! one of my sections
+     i = phase_plasticityInstance(section)               ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
@@ -766,7 +766,7 @@ pure function constitutive_dislotwin_homogenizedC(state,g,ip,el)
 !*********************************************************************
 use prec,     only: pReal,pInt,p_vec
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
+use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance
 implicit none
 
 !* Input-Output variables
@@ -778,7 +778,7 @@ integer(pInt) myInstance,ns,nt,i
 real(pReal) sumf
 
 !* Shortened notation
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 ns = constitutive_dislotwin_totalNslip(myInstance)
 nt = constitutive_dislotwin_totalNtwin(myInstance)
 
@@ -808,7 +808,7 @@ subroutine constitutive_dislotwin_microstructure(Temperature,state,g,ip,el)
 use prec,     only: pReal,pInt,p_vec
 use math,     only: pi
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
+use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance
 !use debug,    only: debugger
 implicit none
 
@@ -819,10 +819,10 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 !* Local variables
 integer(pInt) myInstance,myStructure,ns,nt,s,t
 real(pReal) sumf,sfe
-real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: fOverStacksize
+real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(g,ip,el)))) :: fOverStacksize
 
 !* Shortened notation
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_dislotwin_structure(myInstance)
 ns = constitutive_dislotwin_totalNslip(myInstance)
 nt = constitutive_dislotwin_totalNtwin(myInstance)
@@ -942,7 +942,7 @@ use prec,     only: pReal,pInt,p_vec
 use math,     only: math_Plain3333to99, math_Mandel6to33, math_Mandel33to6, &
                     math_spectralDecompositionSym33, math_tensorproduct, math_symmetric33,math_mul33x3
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
+use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance
 use lattice,  only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v,lattice_maxNslipFamily,lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem,lattice_shearTwin
 implicit none
@@ -958,9 +958,9 @@ real(pReal), dimension(9,9), intent(out) :: dLp_dTstar
 integer(pInt) myInstance,myStructure,ns,nt,f,i,j,k,l,m,n,index_myFamily
 real(pReal) sumf,StressRatio_p,StressRatio_pminus1,StressRatio_r,BoltzmannRatio,DotGamma0
 real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
-real(pReal), dimension(constitutive_dislotwin_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_dislotwin_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
    gdot_slip,dgdot_dtauslip,tau_slip
-real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
    gdot_twin,dgdot_dtautwin,tau_twin
 real(pReal), dimension(6) :: gdot_sb,dgdot_dtausb,tau_sb
 real(pReal), dimension(3,3) :: eigVectors, sb_Smatrix
@@ -987,7 +987,7 @@ real(pReal), dimension(3,6), parameter :: &
 logical error
 
 !* Shortened notation
-myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance  = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_dislotwin_structure(myInstance)
 ns = constitutive_dislotwin_totalNslip(myInstance)
 nt = constitutive_dislotwin_totalNtwin(myInstance)
@@ -1163,7 +1163,7 @@ use prec,     only: pReal,pInt,p_vec
 
 use math,     only: pi
 use mesh,     only: mesh_NcpElems, mesh_maxNips
-use material, only: homogenization_maxNgrains, material_phase, phase_constitutionInstance
+use material, only: homogenization_maxNgrains, material_phase, phase_plasticityInstance
 use lattice,  only: lattice_Sslip_v, lattice_Stwin_v, &
                     lattice_maxNslipFamily,lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem
@@ -1174,21 +1174,21 @@ integer(pInt), intent(in) :: g,ip,el
 real(pReal), intent(in) :: Temperature
 real(pReal), dimension(6), intent(in) :: Tstar_v
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
-real(pReal), dimension(constitutive_dislotwin_sizeDotState(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_dislotwin_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
 constitutive_dislotwin_dotState
 !* Local variables
 integer(pInt) MyInstance,MyStructure,ns,nt,f,i,j,index_myFamily
 real(pReal) sumf,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,&
             EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r
-real(pReal), dimension(constitutive_dislotwin_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_dislotwin_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
 gdot_slip,tau_slip,DotRhoMultiplication,EdgeDipDistance,DotRhoEdgeEdgeAnnihilation,DotRhoEdgeDipAnnihilation,&
 
 ClimbVelocity,DotRhoEdgeDipClimb,DotRhoDipFormation
-real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
              tau_twin
 
 !* Shortened notation
-myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance  = phase_plasticityInstance(material_phase(g,ip,el))
 MyStructure = constitutive_dislotwin_structure(myInstance)
 ns = constitutive_dislotwin_totalNslip(myInstance)
 nt = constitutive_dislotwin_totalNtwin(myInstance)
@@ -1363,7 +1363,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,state,g,ip,el
 use prec,     only: pReal,pInt,p_vec
 use math,     only: pi,math_Mandel6to33, math_spectralDecompositionSym33
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
+use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance,phase_Noutput
 use lattice,  only: lattice_Sslip_v,lattice_Stwin_v,lattice_maxNslipFamily,lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem
 implicit none
@@ -1378,11 +1378,11 @@ real(pReal) sumf,tau,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,
 real(pReal), dimension(3,3) :: eigVectors
 real(pReal), dimension (3) :: eigValues
 logical error
-real(pReal), dimension(constitutive_dislotwin_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_dislotwin_sizePostResults(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
 constitutive_dislotwin_postResults
 
 !* Shortened notation
-myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance  = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_dislotwin_structure(myInstance)
 ns = constitutive_dislotwin_totalNslip(myInstance)
 nt = constitutive_dislotwin_totalNtwin(myInstance)

@@ -258,7 +258,7 @@ write(6,*) '<<<+-  constitutive_',trim(constitutive_titanmod_label),' init  -+>>
 write(6,*) '$Id$'
 #include "compilation_info.f90"
 
-maxNinstance = count(phase_constitution == constitutive_titanmod_label)
+maxNinstance = count(phase_plasticity == constitutive_titanmod_label)
 if (maxNinstance == 0) return
 
 !* Space allocation for global variables
@@ -427,8 +427,8 @@ enddo
      section = section + 1_pInt                           ! advance section counter
      cycle                                                ! skip to next line
    endif
-   if (section > 0_pInt .and. phase_constitution(section) == constitutive_titanmod_label) then  ! one of my sections
-     i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
+   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_titanmod_label) then  ! one of my sections
+     i = phase_plasticityInstance(section)                ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
@@ -1121,21 +1121,21 @@ pure function constitutive_titanmod_homogenizedC(state,g,ip,el)
 !*********************************************************************
 use prec,     only: pReal,pInt,p_vec
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
+use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance
 
 implicit none
 !* Input-Output variables
 integer(pInt), intent(in) :: g,ip,el
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
 real(pReal), dimension(6,6) :: constitutive_titanmod_homogenizedC
-real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
    volumefraction_pertwinsystem
 !* Local variables 
 integer(pInt) myInstance,ns,nt,i
 real(pReal) sumf
  
 !* Shortened notation
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)
 
@@ -1170,7 +1170,7 @@ subroutine constitutive_titanmod_microstructure(Temperature,state,g,ip,el)
 !*********************************************************************
 use prec,     only: pReal,pInt,p_vec
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
+use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance
 
 implicit none
 !* Input-Output variables
@@ -1180,11 +1180,11 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 !* Local variables
 integer(pInt) myInstance,myStructure,ns,nt,s,t,i
 real(pReal) sumf,sfe
-real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
              volumefraction_pertwinsystem
  
 !* Shortened notation
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_titanmod_structure(myInstance)
 ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)
@@ -1288,7 +1288,7 @@ subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
 use prec,     only: pReal,pInt,p_vec
 use math,     only: math_Plain3333to99
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance
+use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance
 use lattice,  only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin_v,lattice_maxNslipFamily,lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem, lattice_Stwin
 
@@ -1307,13 +1307,13 @@ real(pReal) sumf,StressRatio_edge_p,minusStressRatio_edge_p,StressRatio_edge_pmi
         screwvelocity_prefactor,twinStressRatio_p,twinminusStressRatio_p,twinStressRatio_pminus1, &
         twinDotGamma0,BoltzmannRatioscrew,BoltzmannRatiotwin,bottomstress_edge,bottomstress_screw
 real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
-real(pReal), dimension(constitutive_titanmod_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_titanmod_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
    gdot_slip,dgdot_dtauslip,tau_slip, edge_velocity, screw_velocity,gdot_slip_edge,gdot_slip_screw
-real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
    gdot_twin,dgdot_dtautwin,tau_twin, volumefraction_pertwinsystem
 
 !* Shortened notation
-myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance  = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_titanmod_structure(myInstance) 
 ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)
@@ -1593,7 +1593,7 @@ function constitutive_titanmod_dotState(Tstar_v,Temperature,state,g,ip,el)
 use prec,     only: pReal,pInt,p_vec
 
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
 use lattice,  only: lattice_maxNslipFamily,lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem, lattice_Stwin_v
 
@@ -1603,21 +1603,21 @@ integer(pInt), intent(in) :: g,ip,el
 real(pReal), intent(in) :: Temperature
 real(pReal), dimension(6), intent(in) :: Tstar_v
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
-real(pReal), dimension(constitutive_titanmod_sizeDotState(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_titanmod_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
 constitutive_titanmod_dotState
 !* Local variables
 integer(pInt) MyInstance,MyStructure,ns,nt,f,i,j,index_myFamily
 real(pReal) sumf,BoltzmannRatio,&
             twinStressRatio_p,twinminusStressRatio_p
-real(pReal), dimension(constitutive_titanmod_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_titanmod_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
 DotRhoEdgeGeneration,DotRhoEdgeAnnihilation,DotRhoScrewAnnihilation,&
 DotRhoScrewGeneration
-real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: gdot_twin, &
+real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_plasticityInstance(material_phase(g,ip,el)))) :: gdot_twin, &
 tau_twin, &
 volumefraction_pertwinsystem
    
 !* Shortened notation
-myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance  = phase_plasticityInstance(material_phase(g,ip,el))
 MyStructure = constitutive_titanmod_structure(myInstance) 
 ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)
@@ -1766,7 +1766,7 @@ pure function constitutive_titanmod_postResults(Tstar_v,Temperature,dt,state,g,i
 !*********************************************************************
 use prec,     only: pReal,pInt,p_vec
 use mesh,     only: mesh_NcpElems,mesh_maxNips
-use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
+use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance,phase_Noutput
 
 implicit none
 integer(pInt), intent(in) :: g,ip,el
@@ -1775,13 +1775,13 @@ real(pReal), dimension(6), intent(in) :: Tstar_v
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
 integer(pInt) myInstance,myStructure,ns,nt,o,i,c
 real(pReal) sumf
-real(pReal), dimension(constitutive_titanmod_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_titanmod_sizePostResults(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
 constitutive_titanmod_postResults
-real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
         volumefraction_pertwinsystem
 
 !* Shortened notation
-myInstance  = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance  = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_titanmod_structure(myInstance) 
 ns = constitutive_titanmod_totalNslip(myInstance)
 nt = constitutive_titanmod_totalNtwin(myInstance)

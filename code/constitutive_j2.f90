@@ -121,7 +121,7 @@ subroutine constitutive_j2_init(myFile)
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
- maxNinstance = int(count(phase_constitution == constitutive_j2_label),pInt)
+ maxNinstance = int(count(phase_plasticity == constitutive_j2_label),pInt)
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
@@ -180,8 +180,8 @@ subroutine constitutive_j2_init(myFile)
      section = section + 1_pInt                                                                                                    ! advance section counter
      cycle
    endif
-   if (section > 0_pInt .and. phase_constitution(section) == constitutive_j2_label) then                                           ! one of my sections
-     i = phase_constitutionInstance(section)                                                                                       ! which instance of my constitution is present phase
+   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_j2_label) then                                             ! one of my sections
+     i = phase_plasticityInstance(section)                                                                                         ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                            ! extract key
      select case(tag)
@@ -305,7 +305,7 @@ function constitutive_j2_homogenizedC(state,ipc,ip,el)
 !*********************************************************************
  use prec, only: p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
  
  implicit none
  integer(pInt), intent(in) :: ipc,ip,el
@@ -313,7 +313,7 @@ function constitutive_j2_homogenizedC(state,ipc,ip,el)
  real(pReal), dimension(6,6) :: constitutive_j2_homogenizedC
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+ matID = phase_plasticityInstance(material_phase(ipc,ip,el))
  constitutive_j2_homogenizedC = constitutive_j2_Cslip_66(1:6,1:6,matID)
 
 end function constitutive_j2_homogenizedC
@@ -330,7 +330,7 @@ subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
 !*********************************************************************
  use prec, only: p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
  
  implicit none
 !* Definition of variables
@@ -338,7 +338,7 @@ subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
  real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
 
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+ matID = phase_plasticityInstance(material_phase(ipc,ip,el))
 
 end subroutine constitutive_j2_microstructure
 
@@ -357,7 +357,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
                       mesh_maxNips
   use material, only: homogenization_maxNgrains, &
                       material_phase, &
-                      phase_constitutionInstance
+                      phase_plasticityInstance
 
   implicit none
   !*** input variables ***!
@@ -384,7 +384,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
                                                 m, &
                                                 n
  
-  matID = phase_constitutionInstance(material_phase(g,ip,el))
+  matID = phase_plasticityInstance(material_phase(g,ip,el))
 
   ! convert Tstar to matrix and calculate euclidean norm
   Tstar_dev_33 = math_Mandel6to33(Tstar_dev_v)
@@ -429,7 +429,7 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
                       mesh_maxNips
   use material, only: homogenization_maxNgrains, &
                       material_phase, &
-                      phase_constitutionInstance
+                      phase_plasticityInstance
   
   implicit none
   !*** input variables ***!
@@ -450,7 +450,7 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
                                             norm_Tstar_dev            ! euclidean norm of Tstar_dev
   integer(pInt)                             matID
 
-  matID = phase_constitutionInstance(material_phase(g,ip,el))
+  matID = phase_plasticityInstance(material_phase(g,ip,el))
 
   ! deviatoric part of 2nd Piola-Kirchhoff stress
   Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
@@ -513,7 +513,7 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
                       mesh_maxNips
   use material, only: homogenization_maxNgrains, &
                       material_phase, &
-                      phase_constitutionInstance, &
+                      phase_plasticityInstance, &
                       phase_Noutput
 
   implicit none
@@ -527,7 +527,7 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
   type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state ! state of the current microstructure
   
   !*** output variables ***!
-  real(pReal), dimension(constitutive_j2_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+  real(pReal), dimension(constitutive_j2_sizePostResults(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             constitutive_j2_postResults
   
   !*** local variables ***!
@@ -543,7 +543,7 @@ pure function constitutive_j2_postResults(Tstar_v, Temperature, dt, state, g, ip
   ! constitutive_j2_n
   
   
-  matID = phase_constitutionInstance(material_phase(g,ip,el))
+  matID = phase_plasticityInstance(material_phase(g,ip,el))
   
   ! calculate deviatoric part of 2nd Piola-Kirchhoff stress and its norm
   Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal

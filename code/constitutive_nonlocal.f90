@@ -62,7 +62,7 @@ integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_
                                                           constitutive_nonlocal_sizePostResults                 ! cumulative size of post results
 integer(pInt), dimension(:,:), allocatable, target ::     constitutive_nonlocal_sizePostResult                  ! size of each post result output
 character(len=64), dimension(:,:), allocatable, target :: constitutive_nonlocal_output                          ! name of each post result output
-integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_Noutput                         ! number of outputs per instance of this constitution 
+integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_Noutput                         ! number of outputs per instance of this plasticity 
 
 character(len=32), dimension(:), allocatable ::           constitutive_nonlocal_structureName                   ! name of the lattice structure
 integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_structure, &                    ! number representing the kind of lattice structure
@@ -162,8 +162,8 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     FE_maxNipNeighbors
 use material, only: homogenization_maxNgrains, &
-                    phase_constitution, &
-                    phase_constitutionInstance, &
+                    phase_plasticity, &
+                    phase_plasticityInstance, &
                     phase_Noutput
 use lattice,  only: lattice_maxNslipFamily, &
                     lattice_maxNslip, &
@@ -189,7 +189,7 @@ integer(pInt)                               section, &
                                             maxTotalNslip, &
                                             myStructure, &
                                             f, &                ! index of my slip family
-                                            i, &                ! index of my instance of this constitution
+                                            i, &                ! index of my instance of this plasticity
                                             j, &
                                             k, &
                                             l, &
@@ -211,7 +211,7 @@ character(len=1024)                         line
 #include "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 
-maxNinstance = int(count(phase_constitution == constitutive_nonlocal_label),pInt)
+maxNinstance = int(count(phase_plasticity == constitutive_nonlocal_label),pInt)
 if (maxNinstance == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
 
 if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
@@ -344,12 +344,12 @@ do                                                                              
     section = section + 1_pInt                                                                                                     ! advance section counter
     cycle
   endif
-  if (section > 0_pInt .and. phase_constitution(section) == constitutive_nonlocal_label) then                                      ! one of my sections
-    i = phase_constitutionInstance(section)                                                                                        ! which instance of my constitution is present phase
+  if (section > 0_pInt .and. phase_plasticity(section) == constitutive_nonlocal_label) then                                        ! one of my sections
+    i = phase_plasticityInstance(section)                                                                                          ! which instance of my plasticity is present phase
     positions = IO_stringPos(line,maxNchunks)
     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                             ! extract key
     select case(tag)
-      case('constitution','/nonlocal/')
+      case('plasticity','/nonlocal/')
         cycle
       case ('(output)')
         constitutive_nonlocal_Noutput(i) = constitutive_nonlocal_Noutput(i) + 1_pInt
@@ -750,7 +750,7 @@ use math,     only: math_sampleGaussVar
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
+integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the plasticity
 
 !*** output variables
 real(pReal), dimension(constitutive_nonlocal_sizeState(myInstance)) :: &
@@ -829,11 +829,11 @@ use prec,     only: pReal, &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the constitution
+integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the plasticity
 
 !*** output variables
 real(pReal), dimension(constitutive_nonlocal_sizeState(myInstance)) :: &
-                              constitutive_nonlocal_aTolState ! absolute state tolerance for the current instance of this constitution
+                              constitutive_nonlocal_aTolState ! absolute state tolerance for the current instance of this plasticity
 
 !*** local variables
 
@@ -855,7 +855,7 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
-                    phase_constitutionInstance
+                    phase_plasticityInstance
 implicit none
 
 !*** input variables
@@ -868,9 +868,9 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal), dimension(6,6) ::  constitutive_nonlocal_homogenizedC  ! homogenized elasticity matrix
 
 !*** local variables
-integer(pInt)                   myInstance                          ! current instance of this constitution
+integer(pInt)                   myInstance                          ! current instance of this plasticity
 
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 
 constitutive_nonlocal_homogenizedC = constitutive_nonlocal_Cslip_66(1:6,1:6,myInstance)
  
@@ -914,8 +914,8 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_ipAreaNormal
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
-                    phase_localConstitution, &
-                    phase_constitutionInstance
+                    phase_localPlasticity, &
+                    phase_plasticityInstance
 use lattice,  only: lattice_sd, &
                     lattice_st
 
@@ -939,8 +939,8 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 !*** local variables
 integer(pInt)                   neighboring_el, &             ! element number of neighboring material point
                                 neighboring_ip, &             ! integration point of neighboring material point
-                                instance, &                   ! my instance of this constitution
-                                neighboring_instance, &       ! instance of this constitution of neighboring material point
+                                instance, &                   ! my instance of this plasticity
+                                neighboring_instance, &       ! instance of this plasticity of neighboring material point
                                 latticeStruct, &              ! my lattice structure
                                 neighboring_latticeStruct, &  ! lattice structure of neighboring material point
                                 phase, &
@@ -973,7 +973,7 @@ real(pReal), dimension(3) ::    ipCoords, &
                                 neighboring_ipCoords
 real(pReal), dimension(FE_maxNipNeighbors) :: &
                                 distance                      ! length of connection vector
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                 rhoForest, &                  ! forest dislocation density
                                 tauBack, &                    ! back stress from pileup on same slip system
                                 tauThreshold                  ! threshold shear stress
@@ -984,22 +984,22 @@ real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elast
 real(pReal), dimension(3,FE_maxNipNeighbors) :: &
                                 connection_latticeConf, &
                                 areaNormal_latticeConf
-real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                 rhoExcess
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),2) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                 rhoDip                        ! dipole dislocation density (edge, screw)
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),8) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                 rhoSgl                        ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
 real(pReal), dimension(3,3,2) :: connections
 real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip),FE_maxNipNeighbors) :: &
                                 neighboring_rhoExcess         ! excess density at neighboring material point
-real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),2) :: &
+real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                 m                             ! direction of dislocation motion
 logical                         inversionError
 
 
 phase = material_phase(g,ip,el)
-instance = phase_constitutionInstance(phase)
+instance = phase_plasticityInstance(phase)
 latticeStruct = constitutive_nonlocal_structure(instance)
 ns = constitutive_nonlocal_totalNslip(instance)
 
@@ -1037,11 +1037,11 @@ forall (s = 1_pInt:ns)
 end forall
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
-!*** zero for material points of local constitution
+!*** zero for material points of local plasticity
 
 tauBack = 0.0_pReal
 
-if (.not. phase_localConstitution(phase)) then
+if (.not. phase_localPlasticity(phase)) then
   call math_invert33(Fe, invFe, detFe, inversionError)
   call math_invert33(Fp, invFp, detFp, inversionError)
   ipCoords = mesh_ipCenterOfGravity(1:3,ip,el)
@@ -1060,11 +1060,11 @@ if (.not. phase_localConstitution(phase)) then
     areaNormal_latticeConf(1:3,n) = areaNormal_latticeConf(1:3,n) / math_norm3(areaNormal_latticeConf(1:3,n))       ! normalize the surface normal to unit length
     if (neighboring_el > 0 .and. neighboring_ip > 0) then
       neighboring_phase = material_phase(g,neighboring_ip,neighboring_el)
-      neighboring_instance = phase_constitutionInstance(neighboring_phase)
+      neighboring_instance = phase_plasticityInstance(neighboring_phase)
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
       neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el)
-      if (.not. phase_localConstitution(neighboring_phase) &
+      if (.not. phase_localPlasticity(neighboring_phase) &
           .and. neighboring_latticeStruct == latticeStruct & 
           .and. neighboring_instance == instance) then
         if (neighboring_ns == ns) then
@@ -1083,7 +1083,7 @@ if (.not. phase_localConstitution(phase)) then
           call IO_error(-1_pInt,ext_msg='different number of active slip systems in neighboring IPs of same crystal structure')
         endif
       else
-        ! local neighbor or different lattice structure or different constitution instance
+        ! local neighbor or different lattice structure or different plasticity instance
         connection_latticeConf(1:3,n) = math_mul33x3(invFe, neighboring_ipCoords - ipCoords)
         neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
       endif
@@ -1225,7 +1225,7 @@ use debug,    only: debug_what, &
                     debug_i, &
                     debug_e
 use material, only: material_phase, &
-                    phase_constitutionInstance
+                    phase_plasticityInstance
 
 implicit none
 
@@ -1235,23 +1235,23 @@ integer(pInt), intent(in) ::                g, &                        ! curren
                                             el, &                       ! current element number
                                             c                           ! dislocation character (1:edge, 2:screw)
 real(pReal), intent(in) ::                  Temperature                 ! temperature
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))), &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
              intent(in) ::                  tau                         ! resolved external shear stress (for bcc this already contains non Schmid effects)
 type(p_vec), intent(in) ::                  state                       ! microstructural state
 
 !*** input/output variables
 
 !*** output variables
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))), &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
                             intent(out) ::  v                           ! velocity
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))), &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
                    intent(out), optional :: dv_dtau                     ! velocity derivative with respect to resolved shear stress
 
 !*** local variables
-integer(pInt)                               instance, &                 ! current instance of this constitution
+integer(pInt)                               instance, &                 ! current instance of this plasticity
                                             ns, &                       ! short notation for the total number of active slip systems
                                             s                           ! index of my current slip system
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             tauThreshold                ! threshold shear stress
 real(pReal)                                 tauRel_P, & 
                                             tauRel_S, &
@@ -1277,7 +1277,7 @@ real(pReal)                                 tauRel_P, &
                                             mobility                    ! dislocation mobility
 
 
-instance = phase_constitutionInstance(material_phase(g,ip,el))
+instance = phase_plasticityInstance(material_phase(g,ip,el))
 ns = constitutive_nonlocal_totalNslip(instance)
 
 tauThreshold = state%p(11_pInt*ns+1:12_pInt*ns)
@@ -1390,7 +1390,7 @@ use debug,    only: debug_what, &
                     debug_e
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
-                    phase_constitutionInstance
+                    phase_plasticityInstance
 use lattice,  only: lattice_Sslip, &
                     lattice_Sslip_v
 
@@ -1411,7 +1411,7 @@ real(pReal), dimension(3,3), intent(out) :: Lp                          ! plasti
 real(pReal), dimension(9,9), intent(out) :: dLp_dTstar99                ! derivative of Lp with respect to Tstar (9x9 matrix)
 
 !*** local variables
-integer(pInt)                               myInstance, &               ! current instance of this constitution
+integer(pInt)                               myInstance, &               ! current instance of this plasticity
                                             myStructure, &              ! current lattice structure
                                             ns, &                       ! short notation for the total number of active slip systems
                                             c, &
@@ -1423,11 +1423,11 @@ integer(pInt)                               myInstance, &               ! curren
                                             s, &                        ! index of my current slip system
                                             sLattice                    ! index of my current slip system according to lattice order
 real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              ! derivative of Lp with respect to Tstar (3x3x3x3 matrix)
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             rhoSgl, &                   ! single dislocation densities (including used) 
                                             v, &                        ! velocity
                                             dv_dtau                     ! velocity derivative with respect to the shear stress
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             tau, &                      ! resolved shear stress including non Schmid and backstress terms
                                             gdotTotal, &                ! shear rate
                                             dgdotTotal_dtau, &          ! derivative of the shear rate with respect to the shear stress
@@ -1439,7 +1439,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
 Lp = 0.0_pReal
 dLp_dTstar3333 = 0.0_pReal
 
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
 ns = constitutive_nonlocal_totalNslip(myInstance)
 
@@ -1554,9 +1554,9 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_ipAreaNormal
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
-                    phase_constitutionInstance, &
-                    phase_localConstitution, &
-                    phase_constitution
+                    phase_plasticityInstance, &
+                    phase_localPlasticity, &
+                    phase_plasticity
 use lattice,  only: lattice_Sslip_v, &
                     lattice_sd, &
                     lattice_st
@@ -1583,7 +1583,7 @@ type(p_vec), intent(inout) ::               dotState                  ! evolutio
 !*** output variables
  
 !*** local variables
-integer(pInt)                               myInstance, &             ! current instance of this constitution
+integer(pInt)                               myInstance, &             ! current instance of this plasticity
                                             myStructure, &            ! current lattice structure
                                             ns, &                     ! short notation for the total number of active slip systems
                                             c, &                      ! character of dislocation
@@ -1598,7 +1598,7 @@ integer(pInt)                               myInstance, &             ! current 
                                             topp, &                   ! type of dislocation with opposite sign to t
                                             s, &                      ! index of my current slip system
                                             sLattice                  ! index of my current slip system according to lattice order
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),10) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),10) :: &
                                             rhoDot, &                     ! density evolution
                                             rhoDotRemobilization, &       ! density evolution by remobilization
                                             rhoDotMultiplication, &       ! density evolution by multiplication
@@ -1606,24 +1606,24 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstan
                                             rhoDotSingle2DipoleGlide, &   ! density evolution by dipole formation (by glide)
                                             rhoDotAthermalAnnihilation, & ! density evolution by athermal annihilation
                                             rhoDotThermalAnnihilation     ! density evolution by thermal annihilation
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),8) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                             rhoSgl                        ! current single dislocation densities (positive/negative screw and edge without dipoles)
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             v, &                          ! dislocation glide velocity
                                             fluxdensity, &                ! flux density at central material point
                                             neighboring_fluxdensity, &    ! flux density at neighboring material point
                                             gdot                          ! shear rates
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &                  ! forest dislocation density
                                             tauThreshold, &               ! threshold shear stress
                                             tau, &                        ! current resolved shear stress
                                             tauBack, &                    ! current back stress from pileups on same slip system
                                             vClimb                        ! climb velocity of edge dipoles
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),2) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                             rhoDip, &                     ! current dipole dislocation densities (screw and edge dipoles)
                                             dLower, &                     ! minimum stable dipole distance for edges and screws
                                             dUpper                        ! current maximum stable dipole distance for edges and screws
-real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
+real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             m                             ! direction of dislocation motion
 real(pReal), dimension(3,3) ::              my_F, &                       ! my total deformation gradient
                                             neighboring_F, &              ! total deformation gradient of my neighbor
@@ -1658,7 +1658,7 @@ select case(mesh_element(2,el))
     call IO_error(253_pInt,el,ip,g)
 end select
 
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
 ns = constitutive_nonlocal_totalNslip(myInstance)
 
@@ -1779,11 +1779,11 @@ where (rhoSgl(1:ns,1:2) > 0.0_pReal) &
 
 
 !****************************************************************************
-!*** calculate dislocation fluxes (only for nonlocal constitution)
+!*** calculate dislocation fluxes (only for nonlocal plasticity)
 
 rhoDotFlux = 0.0_pReal
 
-if (.not. phase_localConstitution(material_phase(g,ip,el))) then                                                                    ! only for nonlocal constitution
+if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                                                                    ! only for nonlocal plasticity
   
   !*** take care of the definition of lattice_st = lattice_sd x lattice_sn !!!
   !*** opposite sign to our p vector in the (s,p,n) triplet !!!
@@ -1827,14 +1827,14 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     
 
     !* FLUX FROM MY NEIGHBOR TO ME
-    !* This is only considered, if I have a neighbor of nonlocal constitution (also nonlocal constitutive law with local properties) that is at least a little bit compatible.
+    !* This is only considered, if I have a neighbor of nonlocal plasticity (also nonlocal constitutive law with local properties) that is at least a little bit compatible.
     !* If it's not at all compatible, no flux is arriving, because everything is dammed in front of my neighbor's interface.
     !* The entering flux from my neighbor will be distributed on my slip systems according to the compatibility
     
     considerEnteringFlux = .false.
     neighboring_fluxdensity = 0.0_pReal   ! needed for check of sign change in flux density below 
     if (neighboring_el > 0_pInt .or. neighboring_ip > 0_pInt) then
-      if (phase_constitution(material_phase(1,neighboring_ip,neighboring_el)) == constitutive_nonlocal_label &
+      if (phase_plasticity(material_phase(1,neighboring_ip,neighboring_el)) == constitutive_nonlocal_label &
           .and. any(constitutive_nonlocal_compatibility(:,:,:,n,ip,el) > 0.0_pReal)) &
         considerEnteringFlux = .true.
     endif
@@ -1877,7 +1877,7 @@ if (.not. phase_localConstitution(material_phase(g,ip,el))) then                
     
     considerLeavingFlux = .true.
     if (opposite_el > 0_pInt .and. opposite_ip > 0_pInt) then
-      if (phase_constitution(material_phase(1,opposite_ip,opposite_el)) /= constitutive_nonlocal_label) &
+      if (phase_plasticity(material_phase(1,opposite_ip,opposite_el)) /= constitutive_nonlocal_label) &
         considerLeavingFlux = .false.
     endif
 
@@ -2035,8 +2035,8 @@ use math, only:       math_QuaternionDisorientation, &
                       math_mul3x3, &
                       math_qRot
 use material, only:   material_phase, &
-                      phase_localConstitution, &
-                      phase_constitutionInstance, &
+                      phase_localPlasticity, &
+                      phase_plasticityInstance, &
                       homogenization_maxNgrains
 use mesh, only:       mesh_element, &
                       mesh_ipNeighborhood, &
@@ -2064,28 +2064,28 @@ integer(pInt)                                   Nneighbors, &                 ! 
                                                 my_phase, &
                                                 neighboring_phase, &
                                                 my_structure, &               ! lattice structure
-                                                my_instance, &                ! instance of constitution
+                                                my_instance, &                ! instance of plasticity
                                                 ns, &                         ! number of active slip systems
                                                 s1, &                         ! slip system index (me)
                                                 s2                            ! slip system index (my neighbor)
 real(pReal), dimension(4) ::                    absoluteMisorientation        ! absolute misorientation (without symmetry) between me and my neighbor
-real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e))),&
-                         constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e))),&
+real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
+                         constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
                          FE_NipNeighbors(mesh_element(2,e))) :: &  
                                                 compatibility                 ! compatibility for current element and ip
-real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e)))) :: &  
+real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) :: &  
                                                 slipNormal, &
                                                 slipDirection
 real(pReal)                                     compatibilitySum, &
                                                 thresholdValue, &
                                                 nThresholdValues
-logical, dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(1,i,e)))) :: & 
+logical, dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) :: & 
                                                 belowThreshold
 
 
 Nneighbors = FE_NipNeighbors(mesh_element(2,e))
 my_phase = material_phase(1,i,e)
-my_instance = phase_constitutionInstance(my_phase)
+my_instance = phase_plasticityInstance(my_phase)
 my_structure = constitutive_nonlocal_structure(my_instance)
 ns = constitutive_nonlocal_totalNslip(my_instance)
 slipNormal(1:3,1:ns) =    lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,my_instance), my_structure)
@@ -2119,12 +2119,12 @@ do n = 1_pInt,Nneighbors
   !* PHASE BOUNDARY
   !* If we encounter a different nonlocal "cpfem" phase at the neighbor, 
   !* we consider this to be a real "physical" phase boundary, so completely incompatible.
-  !* If the neighboring "cpfem" phase has a local constitution, 
+  !* If the neighboring "cpfem" phase has a local plasticity, 
   !* we do not consider this to be a phase boundary, so completely compatible.
   
   neighboring_phase = material_phase(1,neighboring_i,neighboring_e)
   if (neighboring_phase /= my_phase) then
-    if (.not. phase_localConstitution(neighboring_phase)) then
+    if (.not. phase_localPlasticity(neighboring_phase)) then
       forall(s1 = 1_pInt:ns) &
         compatibility(1:2,s1,s1,n) = 0.0_pReal ! = sqrt(0.0)
     endif
@@ -2233,8 +2233,8 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_periodicSurface
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
-                    phase_localConstitution, &
-                    phase_constitutionInstance
+                    phase_localPlasticity, &
+                    phase_plasticityInstance
 
 implicit none
 
@@ -2256,8 +2256,8 @@ real(pReal), dimension(3,3) ::  constitutive_nonlocal_dislocationstress
 !*** local variables
 integer(pInt)                   neighboring_el, &             ! element number of neighboring material point
                                 neighboring_ip, &             ! integration point of neighboring material point
-                                instance, &                   ! my instance of this constitution
-                                neighboring_instance, &       ! instance of this constitution of neighboring material point
+                                instance, &                   ! my instance of this plasticity
+                                neighboring_instance, &       ! instance of this plasticity of neighboring material point
                                 latticeStruct, &              ! my lattice structure
                                 neighboring_latticeStruct, &  ! lattice structure of neighboring material point
                                 phase, &
@@ -2299,12 +2299,12 @@ real(pReal), dimension(2,2,maxval(constitutive_nonlocal_totalNslip)) :: &
                                 neighboring_rhoExcess         ! excess density at neighboring material point (edge/screw,mobile/dead,slipsystem)
 real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip)) :: &
                                 rhoExcessDead
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),8) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                 rhoSgl                        ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
 logical                         inversionError
 
 phase = material_phase(g,ip,el)
-instance = phase_constitutionInstance(phase)
+instance = phase_plasticityInstance(phase)
 latticeStruct = constitutive_nonlocal_structure(instance)
 ns = constitutive_nonlocal_totalNslip(instance)
 
@@ -2320,11 +2320,11 @@ forall (t = 5_pInt:8_pInt) &
 
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
-!*** zero for material points of local constitution
+!*** zero for material points of local plasticity
 
 constitutive_nonlocal_dislocationstress = 0.0_pReal
 
-if (.not. phase_localConstitution(phase)) then
+if (.not. phase_localPlasticity(phase)) then
   call math_invert33(Fe(1:3,1:3,g,ip,el), invFe, detFe, inversionError)
 !  if (inversionError) then
 !    return
@@ -2353,10 +2353,10 @@ if (.not. phase_localConstitution(phase)) then
   do neighboring_el = 1_pInt,mesh_NcpElems
 ipLoop: do neighboring_ip = 1_pInt,FE_Nips(mesh_element(2,neighboring_el))
       neighboring_phase = material_phase(g,neighboring_ip,neighboring_el)
-      if (phase_localConstitution(neighboring_phase)) then
+      if (phase_localPlasticity(neighboring_phase)) then
         cycle
       endif
-      neighboring_instance = phase_constitutionInstance(neighboring_phase)
+      neighboring_instance = phase_plasticityInstance(neighboring_phase)
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
       call math_invert33(Fe(1:3,1:3,1,neighboring_ip,neighboring_el), neighboring_invFe, detFe, inversionError)
@@ -2582,7 +2582,7 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
-                    phase_constitutionInstance, &
+                    phase_plasticityInstance, &
                     phase_Noutput
 use lattice,  only: lattice_Sslip_v, &
                     lattice_sd, &
@@ -2604,11 +2604,11 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 type(p_vec), intent(in) ::                  dotState                  ! evolution rate of microstructural state
 
 !*** output variables
-real(pReal), dimension(constitutive_nonlocal_sizePostResults(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_nonlocal_sizePostResults(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             constitutive_nonlocal_postResults
 
 !*** local variables
-integer(pInt)                               myInstance, &             ! current instance of this constitution
+integer(pInt)                               myInstance, &             ! current instance of this plasticity
                                             myStructure, &            ! current lattice structure
                                             ns, &                     ! short notation for the total number of active slip systems
                                             c, &                      ! character of dislocation
@@ -2617,30 +2617,30 @@ integer(pInt)                               myInstance, &             ! current 
                                             t, &                      ! type of dislocation
                                             s, &                      ! index of my current slip system
                                             sLattice                  ! index of my current slip system according to lattice order
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),8) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                             rhoSgl, &                 ! current single dislocation densities (positive/negative screw and edge without dipoles)
                                             rhoDotSgl                 ! evolution rate of single dislocation densities (positive/negative screw and edge without dipoles)
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),4) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             gdot, &                   ! shear rates
                                             v                         ! velocities
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &              ! forest dislocation density
                                             tauThreshold, &           ! threshold shear stress
                                             tau, &                    ! current resolved shear stress
                                             tauBack, &                ! back stress from pileups on same slip system
                                             vClimb                    ! climb velocity of edge dipoles
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),2) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                             rhoDip, &                 ! current dipole dislocation densities (screw and edge dipoles)
                                             rhoDotDip, &              ! evolution rate of dipole dislocation densities (screw and edge dipoles)
                                             dLower, &                 ! minimum stable dipole distance for edges and screws
                                             dUpper                    ! current maximum stable dipole distance for edges and screws
-real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_constitutionInstance(material_phase(g,ip,el))),2) :: &
+real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                             m, &                      ! direction of dislocation motion for edge and screw (unit vector)
                                             m_currentconf             ! direction of dislocation motion for edge and screw (unit vector) in current configuration
 real(pReal)                                 D                         ! self diffusion
 real(pReal), dimension(3,3) ::              sigma
 
-myInstance = phase_constitutionInstance(material_phase(g,ip,el))
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
 ns = constitutive_nonlocal_totalNslip(myInstance)
 

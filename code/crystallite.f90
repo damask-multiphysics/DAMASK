@@ -96,7 +96,7 @@ real(pReal), dimension (:,:,:,:,:,:,:), allocatable :: &
     crystallite_partioneddPdF0, &        ! individual dPdF per grain at start of homog inc
     crystallite_fallbackdPdF             ! dPdF fallback for non-converged grains (elastic prediction)
 logical, dimension (:,:,:), allocatable :: &
-    crystallite_localConstitution, &     ! indicates this grain to have purely local constitutive law
+    crystallite_localPlasticity, &       ! indicates this grain to have purely local constitutive law
     crystallite_requested, &             ! flag to request crystallite calculation
     crystallite_todo, &                  ! flag to indicate need for further computation
     crystallite_converged                ! convergence flag
@@ -225,7 +225,7 @@ allocate(crystallite_orientation0(4,gMax,iMax,eMax));                 crystallit
 allocate(crystallite_rotation(4,gMax,iMax,eMax));                         crystallite_rotation = 0.0_pReal
 allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax));        crystallite_disorientation = 0.0_pReal
 allocate(crystallite_symmetryID(gMax,iMax,eMax));                       crystallite_symmetryID = 0_pInt
-allocate(crystallite_localConstitution(gMax,iMax,eMax));         crystallite_localConstitution = .true.
+allocate(crystallite_localPlasticity(gMax,iMax,eMax));             crystallite_localPlasticity = .true.
 allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
 allocate(crystallite_todo(gMax,iMax,eMax));                                   crystallite_todo = .false.
 allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
@@ -325,7 +325,7 @@ close(myFile)
       do g = 1_pInt,myNgrains
         crystallite_Fp0(1:3,1:3,g,i,e) = math_EulerToR(material_EulerAngles(1:3,g,i,e))                   ! plastic def gradient reflects init orientation
         crystallite_F0(1:3,1:3,g,i,e)  = math_I3
-        crystallite_localConstitution(g,i,e) = phase_localConstitution(material_phase(g,i,e))
+        crystallite_localPlasticity(g,i,e) = phase_localPlasticity(material_phase(g,i,e))
         !$OMP FLUSH(crystallite_Fp0)
         crystallite_Fe(1:3,1:3,g,i,e)  = math_transpose33(crystallite_Fp0(1:3,1:3,g,i,e))
         crystallite_Fp(1:3,1:3,g,i,e)  = crystallite_Fp0(1:3,1:3,g,i,e)
@@ -348,8 +348,8 @@ crystallite_requested = .true.
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       do g = 1_pInt,myNgrains
         myPhase = material_phase(g,i,e)
-        myMat   = phase_constitutionInstance(myPhase)
-        select case (phase_constitution(myPhase))
+        myMat   = phase_plasticityInstance(myPhase)
+        select case (phase_plasticity(myPhase))
           case (constitutive_phenopowerlaw_label)
             myStructure = constitutive_phenopowerlaw_structure(myMat)
           case (constitutive_titanmod_label)
@@ -430,14 +430,14 @@ if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFrac:               ', shape(crystallite_subFrac)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_subStep:               ', shape(crystallite_subStep)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_stateDamper:           ', shape(crystallite_stateDamper)
-    write(6,'(a35,1x,7(i8,1x))') 'crystallite_localConstitution:     ', shape(crystallite_localConstitution)
+    write(6,'(a35,1x,7(i8,1x))') 'crystallite_localPlasticity:     ', shape(crystallite_localPlasticity)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_requested:             ', shape(crystallite_requested)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_todo:                  ', shape(crystallite_todo)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_converged:             ', shape(crystallite_converged)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_sizePostResults:       ', shape(crystallite_sizePostResults)
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_sizePostResult:        ', shape(crystallite_sizePostResult)
     write(6,*)
-    write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localConstitution)
+    write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localPlasticity)
     call flush(6)
   !$OMP END CRITICAL (write2out)
 endif
@@ -1194,9 +1194,9 @@ RK4dotTemperature = 0.0_pReal                                                   
     if (crystallite_todo(g,i,e)) then
       if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
-        if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
+        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
           !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         else                                                                                              ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
@@ -1284,9 +1284,9 @@ do n = 1_pInt,4_pInt
             endif
           endif
         else                                                                               ! broken stress integration
-          if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
+              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
           else                                                                                            ! if broken local...
             crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
@@ -1317,9 +1317,9 @@ do n = 1_pInt,4_pInt
         if (crystallite_todo(g,i,e)) then
           if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                    ! NaN occured in dotState
                .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then         ! NaN occured in dotTemperature
-            if (.not. crystallite_localConstitution(g,i,e)) then                                          ! if broken non-local...
+            if (.not. crystallite_localPlasticity(g,i,e)) then                                            ! if broken non-local...
               !$OMP CRITICAL (checkTodo)
-                crystallite_todo = crystallite_todo .and. crystallite_localConstitution                   ! ...all non-locals skipped
+                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                     ! ...all non-locals skipped
               !$OMP END CRITICAL (checkTodo)
             else                                                                                          ! if broken local...
               crystallite_todo(g,i,e) = .false.                                                           ! ... skip this one next time
@@ -1339,8 +1339,8 @@ enddo
 
 crystallite_todo = .false.                                                                                ! done with integration
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
-  if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                    ! any non-local not yet converged (or broken)...
-    crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
+  if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) then                      ! any non-local not yet converged (or broken)...
+    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
   endif
 endif
 
@@ -1505,9 +1505,9 @@ endif
     if (crystallite_todo(g,i,e)) then
       if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
-        if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
+        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
           !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         else                                                                                              ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
@@ -1607,9 +1607,9 @@ do n = 1_pInt,5_pInt
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
         if (.not. crystallite_integrateStress(g,i,e,c(n))) then                                           ! fraction of original time step
-          if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
+              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
           else                                                                                            ! if broken local...
             crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
@@ -1642,9 +1642,9 @@ do n = 1_pInt,5_pInt
       if (crystallite_todo(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
-          if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
+              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
           else                                                                                            ! if broken local...
             crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
@@ -1796,9 +1796,9 @@ relTemperatureResiduum = 0.0_pReal
           !$OMP END CRITICAL (distributionState)
         endif
       else
-        if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
+        if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
           !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         endif        
       endif
@@ -1817,8 +1817,8 @@ relTemperatureResiduum = 0.0_pReal
   endif
 #endif
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
-  if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
-    crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
+  if ( any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) then                     ! any non-local not yet converged (or broken)...
+    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
   endif
   
 endif
@@ -1936,9 +1936,9 @@ if (numerics_integrationMode < 2) then
       if (crystallite_todo(g,i,e)) then  
         if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
-          if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
+              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
           else                                                                                              ! if broken local...
             crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
@@ -1987,9 +1987,9 @@ endif
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       if (.not. crystallite_integrateStress(g,i,e)) then
-        if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
+        if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
           !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         else                                                                                            ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
@@ -2017,9 +2017,9 @@ endif
     if (crystallite_todo(g,i,e)) then
       if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                      ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then           ! NaN occured in dotTemperature
-        if (.not. crystallite_localConstitution(g,i,e)) then                                            ! if broken non-local...
+        if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
           !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ...all non-locals skipped
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         else                                                                                            ! if broken local...
           crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
@@ -2105,8 +2105,8 @@ relTemperatureResiduum = 0.0_pReal
   endif
 #endif
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
-  if ( any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                   ! any non-local not yet converged (or broken)...
-    crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
+  if ( any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) then                     ! any non-local not yet converged (or broken)...
+    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
   endif
 endif
 
@@ -2205,9 +2205,9 @@ if (numerics_integrationMode < 2) then
       if (crystallite_todo(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
-          if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
+              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
           else                                                                                              ! if broken local...
             crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
@@ -2273,9 +2273,9 @@ endif
           !$OMP END CRITICAL (distributionState)
         endif
       else                                                                                                ! broken stress integration
-        if (.not. crystallite_localConstitution(g,i,e)) then                                              ! if broken non-local...
+        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
           !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         endif
       endif
@@ -2290,8 +2290,8 @@ endif
 
 crystallite_todo = .false.                                                                                ! done with integration
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
-  if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                    ! any non-local not yet converged (or broken)...
-    crystallite_converged = crystallite_converged .and. crystallite_localConstitution                     ! ...restart all non-local as not converged
+  if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) then                      ! any non-local not yet converged (or broken)...
+    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
   endif
 endif
 
@@ -2406,9 +2406,9 @@ endif
       call crystallite_updateTemperature(temperatureUpdateDone, temperatureConverged, g,i,e)              ! update temperature
       crystallite_todo(g,i,e) = stateUpdateDone .and. temperatureUpdateDone
       if ( (.not. stateUpdateDone .or. .not. temperatureUpdateDone) &
-          .and. .not. crystallite_localConstitution(g,i,e) ) then                                         ! if updateState or updateTemperature signals broken non-local... 
+          .and. .not. crystallite_localPlasticity(g,i,e) ) then                                           ! if updateState or updateTemperature signals broken non-local... 
         !$OMP CRITICAL (checkTodo) 
-          crystallite_todo = crystallite_todo .and. crystallite_localConstitution                         ! ...all non-locals skipped
+          crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
         !$OMP END CRITICAL (checkTodo)
       endif
     endif
@@ -2447,9 +2447,9 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
         if (.not. crystallite_integrateStress(g,i,e)) then                                                ! if broken ...
-          if (.not. crystallite_localConstitution(g,i,e)) then                                            ! ... and non-local... 
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! ... and non-local... 
             !$OMP CRITICAL (checkTodo) 
-              crystallite_todo = crystallite_todo .and. crystallite_localConstitution                     ! ... then all non-locals skipped
+              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ... then all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
           else                                                                                            ! ... and local...
             crystallite_todo(g,i,e) = .false.                                                             ! ... then skip only me
@@ -2508,9 +2508,9 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
         crystallite_todo(g,i,e) = stateUpdateDone .and. temperatureUpdateDone
         crystallite_converged(g,i,e) = stateConverged .and. temperatureConverged
         if ( (.not. stateUpdateDone .or. .not. temperatureUpdateDone) &
-            .and. .not. crystallite_localConstitution(g,i,e) ) then                                       ! if updateState or updateTemperature signals broken non-local... 
+            .and. .not. crystallite_localPlasticity(g,i,e) ) then                                         ! if updateState or updateTemperature signals broken non-local... 
           !$OMP CRITICAL (checkTodo) 
-            crystallite_todo = crystallite_todo .and. crystallite_localConstitution                       ! ...all non-locals skipped
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
         elseif (stateConverged .and. temperatureConverged) then                                           ! check (private) logicals "stateConverged" and "temperatureConverged" instead of (shared) "crystallite_converged", so no need to flush the "crystallite_converged" array
           if (iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
@@ -2553,8 +2553,8 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   ! --- CONVERGENCE CHECK ---
 
   if (.not. singleRun) then                                                                               ! if not requesting Integration of just a single IP   
-    if (any(.not. crystallite_converged .and. .not. crystallite_localConstitution)) then                  ! any non-local not yet converged (or broken)...
-      crystallite_converged = crystallite_converged .and. crystallite_localConstitution                   ! ...restart all non-local as not converged
+    if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) then                    ! any non-local not yet converged (or broken)...
+      crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                     ! ...restart all non-local as not converged
     endif
   endif
   crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                   ! skip all converged
@@ -3191,8 +3191,8 @@ use FEsolving, only:                  FEsolving_execElem, &
 use IO, only:                         IO_warning
 use material, only:                   material_phase, &
                                       homogenization_Ngrains, &
-                                      phase_localConstitution, &
-                                      phase_constitutionInstance
+                                      phase_localPlasticity, &
+                                      phase_plasticityInstance
 use mesh, only:                       mesh_element, &
                                       mesh_ipNeighborhood, &
                                       FE_NipNeighbors
@@ -3214,7 +3214,7 @@ integer(pInt)                   e, &                          ! element index
                                 neighboring_i, &              ! integration point index of my neighbor
                                 myPhase, &                    ! phase
                                 neighboringPhase, &
-                                myInstance, &                 ! instance of constitution
+                                myInstance, &                 ! instance of plasticity
                                 neighboringInstance, &
                                 myStructure, &                ! lattice structure
                                 neighboringStructure
@@ -3254,8 +3254,8 @@ logical error
   do e = FEsolving_execElem(1),FEsolving_execElem(2)
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
       myPhase = material_phase(1,i,e)                                                                     ! get my phase
-      if (.not. phase_localConstitution(myPhase)) then                                                    ! if nonlocal model
-        myInstance = phase_constitutionInstance(myPhase)
+      if (.not. phase_localPlasticity(myPhase)) then                                                      ! if nonlocal model
+        myInstance = phase_plasticityInstance(myPhase)
         myStructure = constitutive_nonlocal_structure(myInstance)                                         ! get my crystal structure
 
         
@@ -3266,8 +3266,8 @@ logical error
           neighboring_i = mesh_ipNeighborhood(2,n,i,e)
           if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                                         ! if neighbor exists
             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                              ! get my neighbor's phase
-            if (.not. phase_localConstitution(neighboringPhase)) then                                     ! neighbor got also nonlocal constitution
-              neighboringInstance = phase_constitutionInstance(neighboringPhase)        
+            if (.not. phase_localPlasticity(neighboringPhase)) then                                       ! neighbor got also nonlocal plasticity
+              neighboringInstance = phase_plasticityInstance(neighboringPhase)        
               neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)                 ! get my neighbor's crystal structure               
               if (myStructure == neighboringStructure) then                                               ! if my neighbor has same crystal structure like me
                 crystallite_disorientation(:,n,1,i,e) = &
@@ -3277,7 +3277,7 @@ logical error
               else                                                                                        ! for neighbor with different phase
                 crystallite_disorientation(:,n,1,i,e) = (/0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal/)    ! 180 degree rotation about 100 axis
               endif
-            else                                                                                          ! for neighbor with local constitution
+            else                                                                                          ! for neighbor with local plasticity
               crystallite_disorientation(:,n,1,i,e) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal/)     ! homomorphic identity
             endif
           else                                                                                            ! no existing neighbor

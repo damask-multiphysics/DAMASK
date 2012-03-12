@@ -183,7 +183,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
- maxNinstance = int(count(phase_constitution == constitutive_phenopowerlaw_label),pInt)
+ maxNinstance = int(count(phase_plasticity == constitutive_phenopowerlaw_label),pInt)
  if (maxNinstance == 0) return
 
  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
@@ -290,8 +290,8 @@ subroutine constitutive_phenopowerlaw_init(myFile)
      section = section + 1_pInt                           ! advance section counter
      cycle                                                ! skip to next line
    endif
-   if (section > 0_pInt .and. phase_constitution(section) == constitutive_phenopowerlaw_label) then  ! one of my sections
-     i = phase_constitutionInstance(section)              ! which instance of my constitution is present phase
+   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_phenopowerlaw_label) then  ! one of my sections
+     i = phase_plasticityInstance(section)                ! which instance of my constitution is present phase
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
@@ -612,7 +612,7 @@ function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
 !*********************************************************************
  use prec, only: p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
  
  implicit none
  integer(pInt), intent(in) :: ipc,ip,el
@@ -620,7 +620,7 @@ function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
  real(pReal), dimension(6,6) :: constitutive_phenopowerlaw_homogenizedC
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+ matID = phase_plasticityInstance(material_phase(ipc,ip,el))
  constitutive_phenopowerlaw_homogenizedC = constitutive_phenopowerlaw_Cslip_66(:,:,matID)
 
  return
@@ -639,14 +639,14 @@ subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el
 !*********************************************************************
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
  
  implicit none
  integer(pInt) ipc,ip,el, matID
  real(pReal) Temperature
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
 
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+ matID = phase_plasticityInstance(material_phase(ipc,ip,el))
   
 end subroutine constitutive_phenopowerlaw_microstructure
 
@@ -668,7 +668,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
  use lattice, only: lattice_Sslip,lattice_Sslip_v,lattice_Stwin,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem
  use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
 
  implicit none
  integer(pInt) ipc,ip,el
@@ -679,12 +679,12 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
  real(pReal), dimension(3,3) :: Lp
  real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
  real(pReal), dimension(9,9) :: dLp_dTstar
- real(pReal), dimension(constitutive_phenopowerlaw_totalNslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(constitutive_phenopowerlaw_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip,dgdot_dtauslip,tau_slip
- real(pReal), dimension(constitutive_phenopowerlaw_totalNtwin(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(constitutive_phenopowerlaw_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_twin,dgdot_dtautwin,tau_twin
 
- matID    = phase_constitutionInstance(material_phase(ipc,ip,el))
+ matID    = phase_plasticityInstance(material_phase(ipc,ip,el))
  structID = constitutive_phenopowerlaw_structure(matID)
 
  nSlip = constitutive_phenopowerlaw_totalNslip(matID)
@@ -771,7 +771,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
  use lattice,  only: lattice_Sslip_v, lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                      lattice_NslipSystem,lattice_NtwinSystem,lattice_shearTwin   
  use mesh,     only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_constitutionInstance
+ use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
  
  implicit none
  integer(pInt) ipc,ip,el
@@ -779,14 +779,14 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
  real(pReal) Temperature,c_slipslip,c_sliptwin,c_twinslip,c_twintwin, ssat_offset
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  real(pReal), dimension(6) :: Tstar_v
- real(pReal), dimension(constitutive_phenopowerlaw_totalNslip(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(constitutive_phenopowerlaw_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip,tau_slip,h_slipslip,h_sliptwin
- real(pReal), dimension(constitutive_phenopowerlaw_totalNtwin(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(constitutive_phenopowerlaw_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_twin,tau_twin,h_twinslip,h_twintwin
- real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_phenopowerlaw_dotState
 
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+ matID = phase_plasticityInstance(material_phase(ipc,ip,el))
  structID = constitutive_phenopowerlaw_structure(matID)
  
  nSlip = constitutive_phenopowerlaw_totalNslip(matID)
@@ -921,7 +921,7 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
  use lattice, only: lattice_Sslip_v,lattice_Stwin_v, lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                     lattice_NslipSystem,lattice_NtwinSystem   
  use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase,phase_constitutionInstance,phase_Noutput
+ use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance,phase_Noutput
  
  implicit none
  integer(pInt), intent(in) :: ipc,ip,el
@@ -930,10 +930,10 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
  integer(pInt) matID,o,f,i,c,nSlip,nTwin,j, structID,index_Gamma,index_F,index_myFamily 
  real(pReal) tau
- real(pReal), dimension(constitutive_phenopowerlaw_sizePostResults(phase_constitutionInstance(material_phase(ipc,ip,el)))) :: &
+ real(pReal), dimension(constitutive_phenopowerlaw_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_phenopowerlaw_postResults
 
- matID = phase_constitutionInstance(material_phase(ipc,ip,el))
+ matID = phase_plasticityInstance(material_phase(ipc,ip,el))
  structID = constitutive_phenopowerlaw_structure(matID)
 
  nSlip = constitutive_phenopowerlaw_totalNslip(matID)

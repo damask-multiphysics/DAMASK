@@ -91,8 +91,8 @@ subroutine constitutive_init
                      material_localFileExt, &    
                      material_configFile, &    
                      phase_name, &
-                     phase_constitution, &
-                     phase_constitutionInstance, &
+                     phase_plasticity, &
+                     phase_plasticityInstance, &
                      phase_Noutput, &
                      homogenization_Ngrains, &
                      homogenization_maxNgrains
@@ -136,9 +136,9 @@ close(fileunit)
 
 call IO_write_jobFile(fileunit,'outputConstitutive') 
 do p = 1_pInt,material_Nphase
-  i = phase_constitutionInstance(p)                     ! which instance of a constitution is present phase
+  i = phase_plasticityInstance(p)                       ! which instance of a constitution is present phase
   knownConstitution = .true.                            ! assume valid
-  select case(phase_constitution(p))                    ! split per constitiution
+  select case(phase_plasticity(p))                      ! split per constitiution
     case (constitutive_j2_label)
       thisOutput => constitutive_j2_output
       thisSize   => constitutive_j2_sizePostResult
@@ -161,7 +161,7 @@ do p = 1_pInt,material_Nphase
   write(fileunit,'(a)') '['//trim(phase_name(p))//']'
   write(fileunit,*)
   if (knownConstitution) then
-    write(fileunit,'(a)') '(constitution)'//char(9)//trim(phase_constitution(p))
+    write(fileunit,'(a)') '(constitution)'//char(9)//trim(phase_plasticity(p))
     do e = 1_pInt,phase_Noutput(p)
       write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
     enddo
@@ -203,8 +203,8 @@ endif
     myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
     do i = 1_pInt,FE_Nips(mesh_element(2,e))                   ! loop over IPs
       do g = 1_pInt,myNgrains                                  ! loop over grains
-        myInstance = phase_constitutionInstance(material_phase(g,i,e))
-        select case(phase_constitution(material_phase(g,i,e)))  
+        myInstance = phase_plasticityInstance(material_phase(g,i,e))
+        select case(phase_plasticity(material_phase(g,i,e)))  
         
           case (constitutive_j2_label)
             allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
@@ -392,7 +392,7 @@ function constitutive_homogenizedC(ipc,ip,el)
 !*  - el              : current element                              *
 !*********************************************************************
  use prec, only: pReal
- use material, only: phase_constitution,material_phase
+ use material, only: phase_plasticity,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_titanmod
@@ -403,7 +403,7 @@ function constitutive_homogenizedC(ipc,ip,el)
  integer(pInt) :: ipc,ip,el
  real(pReal), dimension(6,6) :: constitutive_homogenizedC
 
- select case (phase_constitution(material_phase(ipc,ip,el)))
+ select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (constitutive_j2_label)
      constitutive_homogenizedC = constitutive_j2_homogenizedC(constitutive_state,ipc,ip,el)
@@ -435,7 +435,7 @@ function constitutive_averageBurgers(ipc,ip,el)
 !*  - el              : current element                              *
 !*********************************************************************
  use prec, only: pReal
- use material, only: phase_constitution,material_phase
+ use material, only: phase_plasticity,material_phase
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_titanmod
@@ -446,7 +446,7 @@ function constitutive_averageBurgers(ipc,ip,el)
  integer(pInt) :: ipc,ip,el
  real(pReal) :: constitutive_averageBurgers
 
- select case (phase_constitution(material_phase(ipc,ip,el)))
+ select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (constitutive_j2_label)
      constitutive_averageBurgers = 2.5e-10_pReal !constitutive_j2_averageBurgers(constitutive_state,ipc,ip,el)
@@ -475,7 +475,7 @@ endfunction
 !*********************************************************************
 subroutine constitutive_microstructure(Temperature, Fe, Fp, ipc, ip, el)
 use prec,      only: pReal
-use material,  only: phase_constitution, &
+use material,  only: phase_plasticity, &
                      material_phase
 use constitutive_j2,            only: constitutive_j2_label, &
                                       constitutive_j2_microstructure
@@ -502,7 +502,7 @@ real(pReal), dimension(3,3), intent(in) ::  Fe, &       ! elastic deformation gr
 !*** local variables ***!
 
 
-select case (phase_constitution(material_phase(ipc,ip,el)))
+select case (phase_plasticity(material_phase(ipc,ip,el)))
  
   case (constitutive_j2_label)
     call constitutive_j2_microstructure(Temperature,constitutive_state,ipc,ip,el)
@@ -532,7 +532,7 @@ endsubroutine
 subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ipc, ip, el)
 
 use prec, only: pReal
-use material, only: phase_constitution, &
+use material, only: phase_plasticity, &
                     material_phase
 use constitutive_j2,            only: constitutive_j2_label, &
                                       constitutive_j2_LpAndItsTangent
@@ -561,7 +561,7 @@ real(pReal), dimension(9,9), intent(out) :: dLp_dTstar    ! derivative of Lp wit
 !*** local variables ***!
 
 
-select case (phase_constitution(material_phase(ipc,ip,el)))
+select case (phase_plasticity(material_phase(ipc,ip,el)))
 
   case (constitutive_j2_label)
     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
@@ -598,7 +598,7 @@ use debug, only:    debug_cumDotStateCalls, &
                     debug_levelBasic
 use mesh, only:     mesh_NcpElems, &
                     mesh_maxNips
-use material, only: phase_constitution, &
+use material, only: phase_plasticity, &
                     material_phase, &
                     homogenization_maxNgrains
 use constitutive_j2, only:            constitutive_j2_dotState, &
@@ -635,7 +635,7 @@ if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
-select case (phase_constitution(material_phase(ipc,ip,el)))
+select case (phase_plasticity(material_phase(ipc,ip,el)))
 
   case (constitutive_j2_label)
     constitutive_dotState(ipc,ip,el)%p = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
@@ -681,7 +681,7 @@ use debug, only:    debug_cumDotTemperatureCalls, &
                     debug_what, &
                     debug_constitutive, &
                     debug_levelBasic
-use material, only: phase_constitution, &
+use material, only: phase_plasticity, &
                     material_phase
 use constitutive_j2, only:            constitutive_j2_dotTemperature, &
                                       constitutive_j2_label
@@ -716,7 +716,7 @@ if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
-select case (phase_constitution(material_phase(ipc,ip,el)))
+select case (phase_plasticity(material_phase(ipc,ip,el)))
 
   case (constitutive_j2_label)
     constitutive_dotTemperature = constitutive_j2_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
@@ -762,7 +762,7 @@ function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
 use prec, only:     pReal
 use mesh, only:     mesh_NcpElems, &
                     mesh_maxNips
-use material, only: phase_constitution, &
+use material, only: phase_plasticity, &
                     material_phase, &
                     homogenization_maxNgrains
 use constitutive_j2, only:            constitutive_j2_postResults, &
@@ -795,7 +795,7 @@ real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: constitutive_
 
 
 constitutive_postResults = 0.0_pReal
-select case (phase_constitution(material_phase(ipc,ip,el)))
+select case (phase_plasticity(material_phase(ipc,ip,el)))
 
   case (constitutive_j2_label)
     constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)

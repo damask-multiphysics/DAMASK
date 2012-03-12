@@ -40,7 +40,7 @@ module material
    material_partPhase          = 'phase'
  
  character(len=64), dimension(:), allocatable, public :: &
-   phase_constitution, &                                                                            !> constitution of each phase  
+   phase_plasticity, &                                                                              !> plasticity of each phase  
    phase_name, &                                                                                    !> name of each phase
    homogenization_name, &                                                                           !> name of each homogenization
    homogenization_type, &                                                                           !> type of each homogenization
@@ -57,7 +57,7 @@ module material
    homogenization_Ngrains, &                                                                        !> number of grains in each homogenization
    homogenization_Noutput, &                                                                        !> number of '(output)' items per homogenization
    phase_Noutput, &                                                                                 !> number of '(output)' items per phase
-   phase_constitutionInstance, &                                                                    !> instance of particular constitution of each phase
+   phase_plasticityInstance, &                                                                      !> instance of particular plasticity of each phase
    crystallite_Noutput, &                                                                           !> number of '(output)' items per crystallite setting
    homogenization_typeInstance, &                                                                   !> instance of particular type of each homogenization
    microstructure_crystallite                                                                       !> crystallite setting ID of each microstructure
@@ -72,7 +72,7 @@ module material
  logical, dimension(:), allocatable, public :: &
    microstructure_active, & 
    microstructure_elemhomo, &                                                                       !> flag to indicate homogeneous microstructure distribution over element's IPs
-   phase_localConstitution                                                                          !> flags phases with local constitutive law
+   phase_localPlasticity                                                                            !> flags phases with local constitutive law
 
 
  character(len=32), parameter, private :: &
@@ -452,13 +452,13 @@ subroutine material_parsePhase(myFile,myPart)
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
  allocate(phase_name(Nsections));          phase_name = ''
- allocate(phase_constitution(Nsections));  phase_constitution = ''
- allocate(phase_constitutionInstance(Nsections));  phase_constitutionInstance = 0_pInt
+ allocate(phase_plasticity(Nsections));  phase_plasticity = ''
+ allocate(phase_plasticityInstance(Nsections));  phase_plasticityInstance = 0_pInt
  allocate(phase_Noutput(Nsections))
- allocate(phase_localConstitution(Nsections))
+ allocate(phase_localPlasticity(Nsections))
 
  phase_Noutput = IO_countTagInPart(myFile,myPart,'(output)',Nsections)
- phase_localConstitution = .not. IO_spotTagInPart(myFile,myPart,'/nonlocal/',Nsections)
+ phase_localPlasticity = .not. IO_spotTagInPart(myFile,myPart,'/nonlocal/',Nsections)
  
  rewind(myFile)
  line = ''
@@ -480,11 +480,11 @@ subroutine material_parsePhase(myFile,myPart)
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
-       case ('constitution')
-         phase_constitution(section) = IO_lc(IO_stringValue(line,positions,2_pInt))
+       case ('plasticity')
+         phase_plasticity(section) = IO_lc(IO_stringValue(line,positions,2_pInt))
          do s = 1_pInt,section
-           if (phase_constitution(s) == phase_constitution(section)) &
-             phase_constitutionInstance(section) = phase_constitutionInstance(section) + 1_pInt  ! count instances
+           if (phase_plasticity(s) == phase_plasticity(section)) &
+             phase_plasticityInstance(section) = phase_plasticityInstance(section) + 1_pInt  ! count instances
          enddo
      end select
    endif
