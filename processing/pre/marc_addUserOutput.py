@@ -65,11 +65,15 @@ parser.add_option('--use', dest='useFile', type='string', \
           help='Optionally parse output descriptors from '+
                'different <model_job>.outputZZZ file. Saves the effort '+
                'to start a calculation for each job [%default])')
+parser.add_option('--option', dest='damaskOption', type='string', \
+          help='Add damask option to input file '+
+               'for example: "periodic x z" [%default]')
 parser.set_defaults(number = 0)
 parser.set_defaults(homog = '1')
 parser.set_defaults(cryst = '1')
 parser.set_defaults(phase = '1')
 parser.set_defaults(useFile = '')
+parser.set_defaults(damaskOption = '')
 
 (options, files) = parser.parse_args()
 
@@ -136,6 +140,8 @@ for file in files:
   inFile.close()
   output = open(file,'w')
   thisSection = ''
+  if options.damaskOption:
+    output.write('$damask {0}\n'.format(options.damaskOption))
   for line in input:
     m = re.match('(\w+)\s',line)
     if m:
