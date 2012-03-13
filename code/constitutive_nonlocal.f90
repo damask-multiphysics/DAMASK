@@ -1771,10 +1771,7 @@ where (rhoSgl(1:ns,3:4) > 0.0_pReal) &
   rhoDotMultiplication(1:ns,1:2) = spread(0.5_pReal * sum(abs(gdot(1:ns,3:4)),2) * sqrt(rhoForest)  &
                                                     / constitutive_nonlocal_lambda0(1:ns,myInstance) &
                                                     / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 2)
-where (rhoSgl(1:ns,1:2) > 0.0_pReal) &
-  rhoDotMultiplication(1:ns,3:4) = spread(0.5_pReal * sum(abs(gdot(1:ns,1:2)),2) * sqrt(rhoForest)  &
-                                                    / constitutive_nonlocal_lambda0(1:ns,myInstance) &
-                                                    / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 2)
+rhoDotMultiplication(1:ns,3:4) = rhoDotMultiplication(1:ns,1:2)
 
 
 
