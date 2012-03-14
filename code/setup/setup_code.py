@@ -38,10 +38,10 @@ for arch in architectures:
 
 # changing dirs in makefile
 
-makefile = open(os.path.join(baseDir,'makefile'))
+makefile = open(os.path.join(baseDir,'Makefile'))
 content = makefile.readlines()
 makefile.close()
-makefile = open(os.path.join(baseDir,'makefile'),'w')
+makefile = open(os.path.join(baseDir,'Makefile'),'w')
 for line in content:
   m = re.match(r'(FFTW|IKML|ACML|LAPACK)ROOT\s*:?=',line)
   if m:
