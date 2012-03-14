@@ -66,11 +66,12 @@ def servoLink():
 
   for coord in base:                                  # calc the dimension of the bounding box
     box['delta'][coord] = box['max'][coord] - box['min'][coord] 
-    for extremum in ['min','max']:
-      rounded = round(box[extremum][coord]*1e+15/box['delta'][coord]) * \
-                                           1e-15*box['delta'][coord]       # rounding to 1e-15 of dimension
-      box[extremum][coord] = {False: rounded,
-                               True: 0.0}[rounded == 0.0]                  # get rid of -0.0 (negative zeros)
+    if box['delta'][coord] != 0.0:
+      for extremum in ['min','max']:
+        rounded = round(box[extremum][coord]*1e+15/box['delta'][coord]) * \
+                                             1e-15*box['delta'][coord]       # rounding to 1e-15 of dimension
+        box[extremum][coord] = {False: rounded,
+                                 True: 0.0}[rounded == 0.0]                  # get rid of -0.0 (negative zeros)
   baseNode = {}
   linkNodes = []
   
@@ -81,10 +82,11 @@ def servoLink():
     Nmax = 0
     Nmin = 0
     for coord in base:                                # for each direction
-      rounded = round(NodeCoords[node][coord]*1e+15/box['delta'][coord]) * \
-                                              1e-15*box['delta'][coord]       # rounding to 1e-15 of dimension
-      NodeCoords[node][coord] = {False: rounded,
-                                  True: 0.0}[rounded == 0.0]                  # get rid of -0.0 (negative zeros)
+      if box['delta'][coord] != 0.0:
+        rounded = round(NodeCoords[node][coord]*1e+15/box['delta'][coord]) * \
+                                                1e-15*box['delta'][coord]       # rounding to 1e-15 of dimension
+        NodeCoords[node][coord] = {False: rounded,
+                                    True: 0.0}[rounded == 0.0]                  # get rid of -0.0 (negative zeros)
       key[coord] = "%.8e"%NodeCoords[node][coord]     # translate position to string
       if (key[coord] == "%.8e"%box['min'][coord]):    # compare to min of bounding box (i.e. is on outer face?)
         Nmin += 1                                     # count outer (back) face membership
