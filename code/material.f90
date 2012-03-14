@@ -40,6 +40,7 @@ module material
    material_partPhase          = 'phase'
  
  character(len=64), dimension(:), allocatable, public :: &
+   phase_elasticity, &                                                                              !> elasticity of each phase  
    phase_plasticity, &                                                                              !> plasticity of each phase  
    phase_name, &                                                                                    !> name of each phase
    homogenization_name, &                                                                           !> name of each homogenization
@@ -57,6 +58,7 @@ module material
    homogenization_Ngrains, &                                                                        !> number of grains in each homogenization
    homogenization_Noutput, &                                                                        !> number of '(output)' items per homogenization
    phase_Noutput, &                                                                                 !> number of '(output)' items per phase
+   phase_elasticityInstance, &                                                                      !> instance of particular elasticity of each phase
    phase_plasticityInstance, &                                                                      !> instance of particular plasticity of each phase
    crystallite_Noutput, &                                                                           !> number of '(output)' items per crystallite setting
    homogenization_typeInstance, &                                                                   !> instance of particular type of each homogenization
@@ -452,6 +454,8 @@ subroutine material_parsePhase(myFile,myPart)
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
  allocate(phase_name(Nsections));          phase_name = ''
+ allocate(phase_elasticity(Nsections));  phase_elasticity = ''
+ allocate(phase_elasticityInstance(Nsections));  phase_elasticityInstance = 0_pInt
  allocate(phase_plasticity(Nsections));  phase_plasticity = ''
  allocate(phase_plasticityInstance(Nsections));  phase_plasticityInstance = 0_pInt
  allocate(phase_Noutput(Nsections))
@@ -480,6 +484,12 @@ subroutine material_parsePhase(myFile,myPart)
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
+       case ('elasticity')
+         phase_elasticity(section) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         do s = 1_pInt,section
+           if (phase_elasticity(s) == phase_elasticity(section)) &
+             phase_elasticityInstance(section) = phase_elasticityInstance(section) + 1_pInt  ! count instances
+         enddo
        case ('plasticity')
          phase_plasticity(section) = IO_lc(IO_stringValue(line,positions,2_pInt))
          do s = 1_pInt,section
