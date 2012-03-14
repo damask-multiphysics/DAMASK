@@ -51,7 +51,6 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 rTol_crystalliteTemperature=  1.0e-6_pReal, &                ! relative tolerance in crystallite temperature loop 
                                 rTol_crystalliteStress     =  1.0e-6_pReal, &                ! relative tolerance in crystallite stress loop
                                 aTol_crystalliteStress     =  1.0e-8_pReal, &                ! absolute tolerance in crystallite stress loop, Default 1.0e-8: residuum is in Lp and hence strain is on this order
-                                Lp_frac                    =  0.5_pReal, &                   ! fraction of Lp current and Lp previous step to use when integrating Fp from previous step to current 
                                 
                                 absTol_RGC                 =  1.0e+4_pReal, &                ! absolute tolerance of RGC residuum
                                 relTol_RGC                 =  1.0e-3_pReal, &                ! relative tolerance of RGC residuum
@@ -79,8 +78,7 @@ logical ::                      memory_efficient           = .true., &          
                                 divergence_correction      = .false., &                      ! correct divergence calculation in fourier space, Default .false.: no correction
                                 update_gamma               = .false., &                      ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
 !* end of spectral parameters:
-                                analyticJaco               = .false., &                      ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
-                                time_sensitive             = .true.                          ! adds time sensitive component to analytic jacobian when .true.
+                                analyticJaco               = .false.                         ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
 
 
 
@@ -195,12 +193,8 @@ subroutine numerics_init
              numerics_integrator(1) = IO_intValue(line,positions,2_pInt)
        case ('integratorstiffness')
              numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
-       case ('lp_frac')
-             Lp_frac = IO_floatValue(line,positions,2_pInt)
        case ('analyticjaco')
              analyticJaco = IO_intValue(line,positions,2_pInt) > 0_pInt
-       case ('time_sensitive')
-             time_sensitive = IO_intValue(line,positions,2_pInt) > 0_pInt
 
        !* RGC parameters: 
        
@@ -310,10 +304,8 @@ subroutine numerics_init
    write(6,'(a24,1x,e8.1)') ' rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
    write(6,'(a24,1x,e8.1)') ' rTol_crystalliteStress: ',rTol_crystalliteStress
    write(6,'(a24,1x,e8.1)') ' aTol_crystalliteStress: ',aTol_crystalliteStress
-   write(6,'(a24,2(1x,i8),/)')' integrator:             ',numerics_integrator
-   write(6,'(a24,1x,e8.1)') ' Lp_frac:                ',Lp_frac
-   write(6,'(a24,1x,L8)')   ' analytic Jacobian:      ',analyticJaco
-   write(6,'(a24,1x,L8)')   ' time sensitive:         ',time_sensitive
+   write(6,'(a24,2(1x,i8))')' integrator:             ',numerics_integrator
+   write(6,'(a24,1x,L8,/)') ' analytic Jacobian:      ',analyticJaco
  
    write(6,'(a24,1x,i8)')   ' nHomog:                 ',nHomog
    write(6,'(a24,1x,e8.1)') ' subStepMinHomog:        ',subStepMinHomog

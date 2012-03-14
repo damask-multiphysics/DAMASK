@@ -386,7 +386,7 @@ crystallite_orientation0 = crystallite_orientation             ! Store initial o
   enddo
 !$OMP END PARALLEL DO
 
-call crystallite_stressAndItsTangent(.true.)                   ! request elastic answers
+call crystallite_stressAndItsTangent(.true.,.false.)                   ! request elastic answers
 crystallite_fallbackdPdF = crystallite_dPdF                    ! use initial elastic stiffness as fallback
  
 !    *** Output to MARC output file ***
@@ -452,7 +452,7 @@ end subroutine crystallite_init
 !********************************************************************
 ! calculate stress (P) and tangent (dPdF) for crystallites
 !********************************************************************
-subroutine crystallite_stressAndItsTangent(updateJaco)
+subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
 
 !*** variables and functions from other modules ***!
 use numerics, only:      subStepMinCryst, &
@@ -464,9 +464,7 @@ use numerics, only:      subStepMinCryst, &
                          numerics_integrator, &
                          numerics_integrationMode, &
                          relevantStrain, &
-                         Lp_frac, &
-                         analyticJaco, &
-                         time_sensitive
+                         analyticJaco
 use debug, only:         debug_what, &
                          debug_crystallite, &
                          debug_levelBasic, &
@@ -485,14 +483,8 @@ use math, only:          math_inv33, &
                          math_Mandel6to33, &
                          math_Mandel33to6, &
                          math_I3, &
-                         math_Plain3333to99, &
-                         math_Plain99to3333, &
-                         math_mul99x99, &
                          math_Mandel66to3333, &
-                         math_mul3333xx33, &
-                         math_invert, &
-                         math_mul3333xx3333, &
-                         math_spectralDecompositionSym33
+                         math_mul3333xx3333
 use FEsolving, only:     FEsolving_execElem, & 
                          FEsolving_execIP
 use mesh, only:          mesh_element, &
@@ -508,13 +500,11 @@ use constitutive, only:  constitutive_sizeState, &
                          constitutive_partionedState0, &
                          constitutive_homogenizedC, &
                          constitutive_dotState, &
-                         constitutive_dotState_backup, &
-                         constitutive_LpAndItsTangent
+                         constitutive_dotState_backup
 
 implicit none
 !*** input variables ***!
-logical, intent(in) ::            updateJaco                    ! flag indicating wehther we want to update the Jacobian (stiffness) or not
-
+logical, intent(in) ::            updateJaco, rate_sensitivity  ! flag indicating wehther we want to update the Jacobian (stiffness) or not
 !*** local variables ***!
 real(pReal)                       myPert, &                     ! perturbation with correct sign
                                   formerSubStep
@@ -552,45 +542,16 @@ integer(pInt)                      NiterationCrystallite, &      ! number of ite
 logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                       convergenceFlag_backup
 ! local variables used for calculating analytic Jacobian
-real(pReal), dimension(3,3)::       Fp_exp1, &
-                                    Fp_exp2, &
-                                    Fp_inv_current, &
-                                    dSdFe_mat1, &
-                                    dSdFe_mat2, &
-                                    Lp_constitutive, &
-                                    Eigvec, &
-                                    V_dir, &
-                                    phi_mat, &
-                                    Fpinv_rate, &
-                                    FDot_temp, &
-                                    Rot_mat, &
-                                    Fp0, &
-                                    Fp_inv_0, &
-                                    Lp0, &
-                                    Lp_current, &
-                                    Fe0
+real(pReal), dimension(3,3)::       Fpinv_rate, &
+                                    FDot_inv
 real(pReal), dimension(3,3,3,3) ::   C, & 
                                      dSdFe, &
-                                     dLp_dT, &
-                                     Tensor1, &
-                                     Tensor2, &
-                                     Tensor3, &
-                                     Tensor4, &
-                                     Tensor5, &
                                      dFedF, &
-                                     dSdF
-real(pReal), dimension(9,9) ::   dLp_dT_constitutive, &
-                                 A99, &
-                                 A_inv99, &
-                                 C99, &
-                                 dFedF99, &
-                                 dFedF_old99
-real(pReal), dimension(3)::       Eigval
-real(pReal) ::   dt, &
-                 fixedpt_error, &
-                 counter
-integer(pInt) :: AnzNegEW, &
-                 fixedpt_iter
+                                     dFedFdot, &
+                                     dSdF, &
+                                     dSdFdot, &
+                                     dFp_invdFdot
+real(pReal) ::   counter
 logical :: error
 
 ! --+>> INITIALIZE TO STARTING CONDITION <<+--
@@ -977,109 +938,70 @@ if(updateJaco) then                                                             
 
   ! --- CALCULATE  ANALYTIC dPdF ---
   
-  !$OMP PARALLEL DO PRIVATE(myNgrains,Fp_inv_0,C,Eigval,Eigvec,Fp_exp1,Fp_exp2,Fp_inv_current,&    
-  !$OMP dSdFe_mat1,dSdFe_mat2,Fpinv_rate,FDot_temp,counter,phi_mat,Tensor1,Tensor2,Tensor3,Tensor4,&
-  !$OMP Tensor5,V_dir,dLp_dT_constitutive,dLp_dT,C99,A99,A_inv99,AnzNegEW,error,&
-  !$OMP dFedF99,dFedF_old99,dFedF,fixedpt_iter,fixedpt_error,dSdF)
+  !$OMP PARALLEL DO PRIVATE(dFedF,dSdF,dSdFe,myNgrains,C)
     do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
-        do g = 1_pInt,myNgrains                                                       
-          Fp_inv_0 = math_inv33(crystallite_subFp0(1:3,1:3,g,i,e))                                   
-          C = math_Mandel66to3333(constitutive_homogenizedC(g,i,e))                                    
-          call math_spectralDecompositionSym33(-(1.0_pReal-Lp_frac)*crystallite_subdt(g,i,e)*0.5_pReal&
-                                             *crystallite_subLp0(1:3,1:3,g,i,e),Eigval,Eigvec,error)         
-          Fp_exp1 = 0.0_pReal
-          Fp_exp1(1,1) = exp(Eigval(1))
-          Fp_exp1(2,2) = exp(Eigval(2))
-          Fp_exp1(3,3) = exp(Eigval(3))
-          Fp_exp1 = math_mul33x33(math_mul33x33(Eigvec,Fp_exp1),math_transpose33(Eigvec))               ! exp(-(1-Lp_frac)*Lp old*dt/2)
-          call math_spectralDecompositionSym33(-(Lp_frac)*crystallite_subdt(g,i,e)*0.5_pReal*&
-                                               crystallite_Lp(1:3,1:3,g,i,e),Eigval,Eigvec,error)
-          Fp_exp2 = 0.0_pReal
-          Fp_exp2(1,1) = exp(Eigval(1))
-          Fp_exp2(2,2) = exp(Eigval(2))
-          Fp_exp2(3,3) = exp(Eigval(3))
-          Fp_exp2 = math_mul33x33(math_mul33x33(Eigvec,Fp_exp2),math_transpose33(Eigvec))               ! exp(-(Lp_frac)*Lp current*dt/2)
-          Fp_inv_current = math_mul33x33(math_mul33x33(math_mul33x33(math_mul33x33(Fp_inv_0,  &
-                           Fp_exp1),Fp_exp2),Fp_exp2),Fp_exp1)                                          ! Fp current^-1 = Fp old^-1 * exp(-(1-Lp_frac)*Lp old*dt/2) * exp(-(Lp_frac)*Lp current*dt) * exp(-(1-Lp_frac)*Lp old*dt/2)  
-          dSdFe_mat2 = math_mul33x33(math_mul33x33(Fp_exp1,Fp_exp2),Eigvec)
-          dSdFe_mat1 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e),Fp_inv_0),dSdFe_mat2)
-          dSdFe_mat2 = math_transpose33(dSdFe_mat2)
-          Fpinv_rate = -math_mul33x33(crystallite_subF(1:3,1:3,g,i,e),math_mul33x33(Fp_inv_current,&
-          (1.0_pReal-Lp_frac)*crystallite_subLp0(1:3,1:3,g,i,e)+ Lp_frac*crystallite_Lp(1:3,1:3,g,i,e))) ! F * dFp^-1 = F * dFp^-1/dt *dt... dFp may overshoot dF by small ammount as 
-          FDot_temp = crystallite_subF(1:3,1:3,g,i,e) - crystallite_F0(1:3,1:3,g,i,e)                    ! dF = dFe + dFp is not strictly enforced (can result in small oscillations in dP/dF)
+        do g = 1_pInt,myNgrains
+          C = math_Mandel66to3333(constitutive_homogenizedC(g,i,e))
+          dFedF = 0.0_pReal
+          do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
+            dFedF(p,o,o,1:3) = crystallite_invFp(1:3,p,g,i,e)                                           ! dFe_ij/dF_kl = dF_im/dF_kl * (Fp current^-1)_mj
+            dSdFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), &
+                                   math_transpose33(crystallite_subFe0(1:3,1:3,g,i,e)))                 ! dS_ij/dFe_kl 
+          enddo; enddo 
+          dSdF = math_mul3333xx3333(dSdFe,dFedF)                                                        ! dS/dF = dS/dFe * dFe/dF
+          do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
+            crystallite_dPdF(1:3,1:3,o,p,g,i,e) = math_mul33x33(math_mul33x33(dFedF(1:3,1:3,o,p),&
+                   math_Mandel6to33(crystallite_Tstar_v)),math_transpose33(&
+                   crystallite_invFp(1:3,1:3,g,i,e))) &                                                 ! dP/dF = dFe/dF * S * Fp^-T...
+                   + math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e),&
+                   math_mul33x33(dSdF(1:3,1:3,o,p),math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))) !         + Fe * dS/dF * Fp^-T         
+          enddo; enddo
+    enddo; enddo; enddo 
+  !$OMP END PARALLEL DO
+  endif
+  
+  if (rate_sensitivity) then
+  !$OMP PARALLEL DO PRIVATE(dFedFdot,dSdFdot,dSdFe,Fpinv_rate,FDot_inv,counter,dFp_invdFdot,C,myNgrains)
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
+      myNgrains = homogenization_Ngrains(mesh_element(3,e))
+      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
+        do g = 1_pInt,myNgrains
+          C = math_Mandel66to3333(constitutive_homogenizedC(g,i,e))
+          Fpinv_rate = math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e),crystallite_Lp(1:3,1:3,g,i,e))    ! dFp^-1 = dFp^-1/dt *dt... dFp may overshoot dF by small ammount as 
+          FDot_inv = crystallite_subF(1:3,1:3,g,i,e) - crystallite_F0(1:3,1:3,g,i,e)
           counter = 0.0_pReal
-          phi_mat = 0.0_pReal
-          do h=1_pInt,3_pInt; do j=1_pInt,3_pInt
-            if (Eigval(h) == Eigval(j)) then
-              phi_mat(h,j) = 1.0_pReal
-            else
-              phi_mat(h,j) = sinh(Eigval(h) - Eigval(j))/(Eigval(h) - Eigval(j))
-            endif
-            if (abs(FDot_temp(h,j)) .lt. relevantStrain) then
-              counter = counter + 1.0_pReal
-              FDot_temp(h,j) = 0.0_pReal
+          do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
+            if (abs(FDot_inv(o,p)) .lt. relevantStrain) then
+              FDot_inv(o,p) = 0.0_pReal
             else  
-              FDot_temp(h,j) = crystallite_dt(g,i,e)/FDot_temp(h,j)
+              counter = counter + 1.0_pReal
+              FDot_inv(o,p) = crystallite_dt(g,i,e)/FDot_inv(o,p)
             endif 
           enddo; enddo
-          if (counter .lt. 9.0_pReal) then
-            FDot_temp = FDot_temp/(9.0_pReal - counter)
-          endif
-          Tensor1 = 0.0_pReal
-          Tensor2 = 0.0_pReal
-          Tensor3 = 0.0_pReal
-          Tensor4 = 0.0_pReal
-          do h=1_pInt,3_pInt; do j=1_pInt,3_pInt
-            V_dir = 0.0_pReal
-            V_dir(h,j) = -Lp_frac*crystallite_subdt(g,i,e)
-            V_dir = math_mul33x33(math_mul33x33(math_transpose33(Eigvec),V_dir),Eigvec)
-            if (time_sensitive) then
-            Tensor1(h,j,1:3,1:3) = Fpinv_rate(h,j)*FDot_temp                                            ! assuming dF_old = dF_new... need full-rank Tensor1 otherwise. good only for unidirectional loading
-            endif
-            Tensor1(h,j,h,1:3) = Tensor1(h,j,h,1:3) + Fp_inv_current(1:3,j)                             ! dF_im/dF_kl * (Fp current^-1)_mj + d(Fp current^-1)_ij/dt * dt/Fdot_kl
-            Tensor2(1:3,1:3,h,j) = math_mul33x33(math_mul33x33(dSdFe_mat1,V_dir*phi_mat),dSdFe_mat2)
-            Tensor3(h,j,1:3,1:3) = math_mul33x33(C(h,j,1:3,1:3), &
-                                   math_transpose33(crystallite_subFe0(1:3,1:3,g,i,e)))                 ! dS_ij/dFe_kl 
+          if (counter .gt. 0.0_pReal) FDot_inv = FDot_inv/counter
+          do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
+            dFp_invdFdot(o,p,1:3,1:3) = Fpinv_rate(o,p)*FDot_inv                                          ! dFe_ij/dF_kl = dF_im/dF_kl * (Fp current^-1)_mj
+            dSdFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), &
+                                   math_transpose33(crystallite_subFe0(1:3,1:3,g,i,e)))                    ! dS_ij/dFe_kl 
           enddo; enddo
-          call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT_constitutive, &
-                         crystallite_Tstar_v(1:6,g,i,e), crystallite_Temperature(g,i,e), g, i, e)
-          dLp_dT = math_Plain99to3333(dLp_dT_constitutive)                                               
-          Tensor4 = math_mul3333xx3333(math_mul3333xx3333(Tensor2,dLp_dT),Tensor3)                      ! applying chain rule to get F_im * dFp^-1_mj/dFe_kl  
-          A99 = math_identity2nd(9_pInt) - math_Plain3333to99(Tensor4)
-          C99 = math_Plain3333to99(Tensor1)                                                             ! [I - F_im * dFp^-1_mj/dFe_op]*dFe_op/dF_kl = dF_im/dF_kl * (Fp current^-1)_mj + d(Fp current^-1)_ij/dt * dt/Fdot_kl
-          call math_invert(9_pInt,A99, A_inv99, AnzNegEW, error)
-          dFedF99 = math_mul99x99(A_inv99,C99)                                                          ! solve for dFe_ij/dF_kl
-          fixedpt_iter = 1_pInt
-          fixedpt_error = 1.0_pReal
-          do while ((fixedpt_iter .lt. 10_pInt) .and. (fixedpt_error .gt. 1e-20_pReal))                 ! if solution is not accurate, use as estimate for better solution
-            dFedF_old99 = dFedF99
-            A99 = math_mul99x99(A_inv99,A99)
-            C99 = dFedF_old99
-            call math_invert(9_pInt,A99, A_inv99, AnzNegEW, error)
-            dFedF99 = math_mul99x99(A_inv99,C99)
-            fixedpt_error = maxval(abs(dFedF99 - dFedF_old99))
-            fixedpt_iter = fixedpt_iter + 1_pInt
-          enddo
-          dFedF = math_Plain99to3333(dFedF99)
-          do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-            dFedF(1:3,1:3,o,p) = math_transpose33(dFedF(1:3,1:3,o,p))                                   
+          do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
+            dFedFdot(1:3,1:3,o,p) = math_transpose33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
+                                    dFp_invdFdot(1:3,1:3,o,p)))
           enddo; enddo
-          Tensor4 = math_mul3333xx3333(Tensor4,dFedF)
-          dSdF = math_mul3333xx3333(Tensor3,dFedF)                                                      ! dS/dF = dS/dFe * dFe/dF
-          do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-            crystallite_dPdF(1:3,1:3,o,p,g,i,e) = math_mul33x33(math_mul33x33(math_transpose33(&
-                   dFedF(1:3,1:3,o,p)),math_Mandel6to33(crystallite_Tstar_v)),math_transpose33(&
-                   Fp_inv_current)) + &                                                                 ! dP/dF = dFe/dF * S * Fp^-T...
-                   math_mul33x33(math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e),&
-                   Fp_inv_current),math_Mandel6to33(crystallite_Tstar_v)),math_transpose33( &
-                   math_mul33x33(math_inv33(crystallite_subF(1:3,1:3,g,i,e)),Tensor4(1:3,1:3,o,p) &
-                   + Fpinv_rate*FDot_temp(o,p)))) &                                                     ! + Fe * S * dFp^-T/dF...
-                   + math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e),Fp_inv_current),&
-                                math_mul33x33(dSdF(1:3,1:3,o,p),math_transpose33(Fp_inv_current)))      ! + Fe * dS/dF * Fp^-T         
+          dSdFdot = math_mul3333xx3333(dSdFe,dFedFdot)
+          do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
+            crystallite_dPdF(1:3,1:3,o,p,g,i,e) = crystallite_dPdF(1:3,1:3,o,p,g,i,e) - &
+                   (math_mul33x33(math_mul33x33(dFedFdot(1:3,1:3,o,p), &
+                   math_Mandel6to33(crystallite_Tstar_v)),math_transpose33( &
+                   crystallite_invFp(1:3,1:3,g,i,e))) + &                                                  ! dP/dF = dFe/dFdot * S * Fp^-T...
+                   math_mul33x33(math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
+                   math_Mandel6to33(crystallite_Tstar_v)),math_transpose33(dFp_invdFdot(1:3,1:3,o,p))) &   !         + Fe * S * dFp^-T/dFdot...
+                   + math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
+                   math_mul33x33(dSdFdot(1:3,1:3,o,p),math_transpose33(crystallite_invFp(1:3,1:3,g,i,e))))) !         + Fe * dS/dFdot * Fp^-T         
           enddo; enddo
-    enddo; enddo; enddo
+    enddo; enddo; enddo 
   !$OMP END PARALLEL DO
   endif
 endif                                                                                                   ! jacobian calculation

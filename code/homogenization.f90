@@ -300,6 +300,7 @@ use debug, only:          debug_what, &
  
  real(pReal), intent(in) :: dt
  logical,     intent(in) :: updateJaco
+ logical                 :: rate_sensitivity
  integer(pInt) NiterationHomog,NiterationMPstate
  integer(pInt) g,i,e,myNgrains
 
@@ -485,7 +486,8 @@ use debug, only:          debug_what, &
 !
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
-     call crystallite_stressAndItsTangent(updateJaco)                 ! request stress and tangent calculation for constituent grains
+     rate_sensitivity = .false.                                        ! request rate sensitive contribution to dPdF
+     call crystallite_stressAndItsTangent(updateJaco,rate_sensitivity) ! request stress and tangent calculation for constituent grains
 
      
 ! --+>> state update <<+--
