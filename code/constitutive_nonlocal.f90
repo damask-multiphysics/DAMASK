@@ -951,7 +951,6 @@ integer(pInt)                   neighboring_el, &             ! element number o
                                 s, &                          ! slip system index
                                 t, &                          ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
                                 dir, &
-                                side, &
                                 n
 integer(pInt), dimension(2) ::  neighbor
 real(pReal)                     nu, &                         ! poisson's ratio
@@ -959,28 +958,20 @@ real(pReal)                     nu, &                         ! poisson's ratio
                                 b, &
                                 detFe, &
                                 detFp, &
-                                FVsize, &
-                                rhoExcessGradient
-real(pReal), dimension(2) ::    rhoExcessGradient_over_rho, &
-                                gradient, &
-                                gradientDeads, &
-                                gradientInter, &
-                                gradientDistance, &
-                                gradientDistanceDeads, &
-                                gradientDistanceInter, &
-                                rhoExcessAtSampledPoint
+                                FVsize
+real(pReal), dimension(2) ::    rhoExcessGradient, &
+                                rhoExcessGradient_over_rho, &
+                                rhoTotal
 real(pReal), dimension(3) ::    ipCoords, &
-                                neighboring_ipCoords
-real(pReal), dimension(FE_maxNipNeighbors) :: &
-                                distance                      ! length of connection vector
+                                neighboring_ipCoords, &
+                                rhoExcessDifferences
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                 rhoForest, &                  ! forest dislocation density
                                 tauBack, &                    ! back stress from pileup on same slip system
                                 tauThreshold                  ! threshold shear stress
-real(pReal), dimension(3,2) ::  rhoExcessDifferences, &
-                                sampledPoint
 real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elastic deformation gradient
-                                invFp                         ! inverse of plastic deformation gradient
+                                invFp, &                      ! inverse of plastic deformation gradient
+                                connections
 real(pReal), dimension(3,FE_maxNipNeighbors) :: &
                                 connection_latticeConf, &
                                 areaNormal_latticeConf
@@ -990,7 +981,6 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                 rhoDip                        ! dipole dislocation density (edge, screw)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                 rhoSgl                        ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
-real(pReal), dimension(3,3,2) :: connections
 real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip),FE_maxNipNeighbors) :: &
                                 neighboring_rhoExcess         ! excess density at neighboring material point
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
@@ -1075,7 +1065,7 @@ if (.not. phase_localPlasticity(phase)) then
                                            - state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s)    ! negative mobiles
           else
             ! thats myself! probably using periodic images
-            connection_latticeConf(1:3,n) = areaNormal_latticeConf(1:3,n) * FVsize
+            connection_latticeConf(1:3,n) = 0.0_pReal
             neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
           endif
         else
@@ -1084,100 +1074,55 @@ if (.not. phase_localPlasticity(phase)) then
         endif
       else
         ! local neighbor or different lattice structure or different plasticity instance
-        connection_latticeConf(1:3,n) = math_mul33x3(invFe, neighboring_ipCoords - ipCoords)
+        connection_latticeConf(1:3,n) = 0.0_pReal ! use central values instead
         neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
       endif
     else
       ! free surface
-      connection_latticeConf(1:3,n) = areaNormal_latticeConf(1:3,n) * FVsize
+      connection_latticeConf(1:3,n) = 0.0_pReal ! use central values instead
       neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
     endif
-    distance(n) = math_norm3(connection_latticeConf(1:3,n))
   enddo
   
-  !* loop through the slip systems
-  !* calculate the dislocation gradient in both directions of m with two different methods:
-  !* 1. gradient between central excess density and dead dislocations in central ip
-  !* 2. interpolate gradient from excess density in three neighboring ips
-  !* take the heigher gradient in both directions and do a weighted sum with weights according to the distance
+
+  !* loop through the slip systems and calculate the dislocation gradient by
+  !* 1. interpolation of the excess density in the neighorhood
+  !* 2. interpolation of the dead dislocation density in the central volume
   
   m(1:3,1:ns,1) =  lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,instance), latticeStruct)
   m(1:3,1:ns,2) = -lattice_st(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,instance), latticeStruct)
 
   do s = 1_pInt,ns
-    rhoExcessGradient_over_rho = 0.0_pReal
+    
+    !* gradient from interpolation of neighboring excess density
+
     do c = 1_pInt,2_pInt
-      if (rhoSgl(s,2_pInt*c-1_pInt) + rhoSgl(s,2_pInt*c) < 1.0_pReal) then
-        cycle       ! no siginificant density
-      endif
-    
-      !* gradient from dead dislocations
-      
-      gradientDeads = 0.0_pReal
-      if (rhoSgl(s,2_pInt*c+3_pInt) > 0.0_pReal) then                                         ! positive deads
-        gradientDeads(1) = + 2.0_pReal * rhoSgl(s,2_pInt*c+3_pInt) / FVsize                   ! on positive side
-      else
-        gradientDeads(2) = - 2.0_pReal * rhoSgl(s,2_pInt*c+3_pInt) / FVsize                   ! on negative side
-      endif
-      if (rhoSgl(s,2_pInt*c+4_pInt) > 0.0_pReal) then                                         ! negative deads
-        gradientDeads(2) = gradientDeads(2) + 2.0_pReal * rhoSgl(s,2_pInt*c+4_pInt) / FVsize  ! on negative side
-      else
-        gradientDeads(1) = gradientDeads(1) - 2.0_pReal * rhoSgl(s,2_pInt*c+4_pInt) / FVsize  ! on positive side
-      endif
-      gradientDistanceDeads(1:2) = 0.5_pReal * FVsize
-      
-      !* gradient from interpolation
-
-      gradientInter = 0.0_pReal
-      rhoExcessDifferences = 0.0_pReal
-      connections = 0.0_pReal
-      gradientDistanceInter = 0.0_pReal
       do dir = 1_pInt,3_pInt
-        if (math_mul3x3(areaNormal_latticeConf(1:3,2_pInt*dir-1_pInt),m(1:3,s,c)) > 0.0_pReal) then ! on positive side
-          neighbor(1) = 2_pInt * dir - 1_pInt
-          neighbor(2) = 2_pInt * dir
-        else                                                                              ! on negative side
-          neighbor(1) = 2_pInt * dir
-          neighbor(2) = 2_pInt * dir - 1_pInt
-        endif
-        do side = 1_pInt,2_pInt
-          n = neighbor(side)
-          rhoExcessDifferences(dir,side) = neighboring_rhoExcess(c,s,n) - rhoExcess(c,s)
-          connections(dir,1:3,side) = connection_latticeConf(1:3,n)
-          gradientDistanceInter(side) = gradientDistanceInter(side) &
-                                      + (math_mul3x3(connection_latticeConf(1:3,n),m(1:3,s,c))) ** 2.0_pReal / distance(n)
-        enddo
+        neighbor(1) = 2_pInt * dir - 1_pInt
+        neighbor(2) = 2_pInt * dir
+        connections(dir,1:3) = connection_latticeConf(1:3,neighbor(1)) - connection_latticeConf(1:3,neighbor(2))
+        rhoExcessDifferences(dir) = neighboring_rhoExcess(c,s,neighbor(1)) - neighboring_rhoExcess(c,s,neighbor(2))
       enddo
-      sampledPoint(1:3,1) = + gradientDistanceInter(1) * m(1:3,s,c)
-      sampledPoint(1:3,2) = - gradientDistanceInter(2) * m(1:3,s,c)
-      do side = 1_pInt,2_pInt
-        rhoExcessAtSampledPoint(side) = math_mul3x3(math_mul33x3(math_inv33(connections(1:3,1:3,side)), &
-                                                                 rhoExcessDifferences(1:3,side)), &
-                                                    sampledPoint(1:3,side)) &
-                                      + rhoExcess(c,s)
-      enddo
-      gradientInter(1) = (rhoExcessAtSampledPoint(1) - rhoExcess(c,s)) / gradientDistanceInter(1)
-      gradientInter(2) = (rhoExcess(c,s) - rhoExcessAtSampledPoint(2)) / gradientDistanceInter(2)
-       
-      !* take maximum of both gradients and mix contributions from both sides according to weighted distances
-
-      do dir = 1_pInt,2_pInt
-        if (abs(gradientDeads(dir)) > abs(gradientInter(dir))) then
-          gradient(dir) = gradientDeads(dir)
-          gradientDistance(dir) = gradientDistanceDeads(dir)
-        else
-          gradient(dir) = gradientInter(dir)
-          gradientDistance(dir) = gradientDistanceInter(dir)
-        endif
-      enddo 
-      rhoExcessGradient = (gradient(1) * gradientDistance(2) + gradient(2) * gradientDistance(1)) &
-                        / (gradientDistance(1) + gradientDistance(2))
-      
-      !* excess gradient over density: in case of vanishing central total density we take the distance squared instead!!!
-
-      rhoExcessGradient_over_rho(c) = rhoExcessGradient / (rhoSgl(s,2_pInt*c-1_pInt) + rhoSgl(s,2_pInt*c))
+      rhoExcessGradient(c) = math_mul3x3(math_mul33x3(math_inv33(connections), rhoExcessDifferences), m(1:3,s,c))
     enddo
+      
+    !* plus gradient from deads
     
+    do t = 1_pInt,4_pInt
+      c = (t - 1_pInt) / 2_pInt + 1_pInt
+      rhoExcessGradient(c) = rhoExcessGradient(c) + rhoSgl(s,t+4_pInt) / FVsize
+    enddo
+
+    !* normalized with the total density
+    
+    rhoExcessGradient_over_rho = 0.0_pReal
+    rhoTotal(1_pInt) = sum(abs(rhoSgl(s,[1_pInt,2_pInt,5_pInt,6_pInt]))) + rhoDip(s,1_pInt)
+    rhoTotal(2_pInt) = sum(abs(rhoSgl(s,[3_pInt,4_pInt,7_pInt,8_pInt]))) + rhoDip(s,2_pInt)
+    forall (c = 1_pInt:2_pInt, rhoTotal(c) > 0.0_pReal) &
+      rhoExcessGradient_over_rho(c) = rhoExcessGradient(c) / rhoTotal(c)
+    
+    !* gives the local stress correction when multiplied with a factor
+
     b = constitutive_nonlocal_burgers(s,instance)
     tauBack(s) = - mu * b / (2.0_pReal * pi) * (rhoExcessGradient_over_rho(1) / (1.0_pReal - nu) + rhoExcessGradient_over_rho(2))
 
