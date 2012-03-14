@@ -72,6 +72,8 @@ for file in files:
 # ------------------------------------------ read file ---------------------------------------  
 
   pattern = re.compile('Loadcase\s+(\d+)\s+Increment\s+(\d+)/\d+\s+@\s+Iteration\s+(\d+)/\d+.*')
+  lastLoadcase = 1
+  lastIncrement = 1
   lastIteration = 0
 
   for line in {True  : data,
