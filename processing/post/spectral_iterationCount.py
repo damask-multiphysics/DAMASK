@@ -60,7 +60,7 @@ for file in files:
 # ------------------------------------------ assemble header ---------------------------------------  
 
   output = '1\theader\n' + \
-           '\t'.join(['loadcase','increment','iterations']) + '\n'
+           '\t'.join(['increment','loadcase','step','iterations']) + '\n'
 
   if options.memory:
     data = file['input'].readlines()
@@ -72,28 +72,30 @@ for file in files:
 # ------------------------------------------ read file ---------------------------------------  
 
   pattern = re.compile('Loadcase\s+(\d+)\s+Increment\s+(\d+)/\d+\s+@\s+Iteration\s+(\d+)/\d+.*')
-  lastLoadcase = 1
-  lastIncrement = 1
+  lastLoadcase = 0
+  lastStep = 0
   lastIteration = 0
+  theIncrement = 1
 
   for line in {True  : data,
                False : file['input']}[options.memory]:
 
     m = re.match(pattern, line)
     if m:
-      thisLoadcase = int(m.group(1))
-      thisIncrement = int(m.group(2))
+      thisLoadcase  = int(m.group(1))
+      thisStep      = int(m.group(2))
       thisIteration = int(m.group(3))
       if thisIteration <= lastIteration:                                          # indicator for new increment or loadcase
-        output += '\t'.join(map(str,[lastLoadcase,lastIncrement,lastIteration])) + '\n'
+        output += '\t'.join(map(str,[theIncrement,lastLoadcase,lastStep,lastIteration])) + '\n'
+        theIncrement += 1
         if not options.memory:
           file['output'].write(output)
           output = ''
-      lastLoadcase = thisLoadcase
-      lastIncrement = thisIncrement
+      lastLoadcase  = thisLoadcase
+      lastStep      = thisStep
       lastIteration = thisIteration
   
-  output += '\t'.join(map(str,[lastLoadcase,lastIncrement,lastIteration])) + '\n' # process last iteration (for which, of course, no further iteration can be found)
+  output += '\t'.join(map(str,[theIncrement,lastLoadcase,lastStep,lastIteration])) + '\n' # process last iteration (for which, of course, no further iteration can be found)
   
   file['input'].close()
 
