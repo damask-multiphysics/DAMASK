@@ -1019,22 +1019,22 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
 !*** calculate the forest dislocation density
 !*** (= projection of screw and edge dislocations)
 
-forall (s = 1_pInt:ns)
+forall (s = 1_pInt:ns) &
   rhoForest(s) = dot_product((sum(abs(rhoSgl(1:ns,(/1,2,5,6/))),2) + rhoDip(1:ns,1)), &
                               constitutive_nonlocal_forestProjectionEdge(s,1:ns,instance)) & 
-                + dot_product((sum(abs(rhoSgl(1:ns,(/3,4,7,8/))),2) + rhoDip(1:ns,2)), &
+               + dot_product((sum(abs(rhoSgl(1:ns,(/3,4,7,8/))),2) + rhoDip(1:ns,2)), &
                               constitutive_nonlocal_forestProjectionScrew(s,1:ns,instance))
 
 
 
 !*** calculate the threshold shear stress for dislocation slip 
 
-  tauThreshold(s) =   constitutive_nonlocal_Gmod(instance) * constitutive_nonlocal_burgers(s,instance) &
-                    * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), &
-                                        constitutive_nonlocal_interactionMatrixSlipSlip(s,1:ns,instance)))
+forall (s = 1_pInt:ns) &
+  tauThreshold(s) = constitutive_nonlocal_Gmod(instance) * constitutive_nonlocal_burgers(s,instance) &
+                  * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), &
+                                      constitutive_nonlocal_interactionMatrixSlipSlip(s,1:ns,instance)))
 
 
-end forall
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
 !*** zero for material points of local plasticity
@@ -1252,7 +1252,8 @@ integer(pInt)                               instance, &                 ! curren
                                             ns, &                       ! short notation for the total number of active slip systems
                                             s                           ! index of my current slip system
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            tauThreshold                ! threshold shear stress
+                                            tauThreshold, &             ! threshold shear stress
+                                            tauEff                      ! effective shear stress
 real(pReal)                                 tauRel_P, & 
                                             tauRel_S, &
                                             tPeierls, &                 ! waiting time in front of a peierls barriers
@@ -1281,6 +1282,7 @@ instance = phase_plasticityInstance(material_phase(g,ip,el))
 ns = constitutive_nonlocal_totalNslip(instance)
 
 tauThreshold = state%p(11_pInt*ns+1:12_pInt*ns)
+tauEff = abs(tau) - tauThreshold
 
 p = constitutive_nonlocal_p(instance)
 q = constitutive_nonlocal_q(instance)
@@ -1291,7 +1293,7 @@ if (present(dv_dtau)) dv_dtau = 0.0_pReal
 
 if (Temperature > 0.0_pReal) then
   do s = 1_pInt,ns
-    if (abs(tau(s)) > tauThreshold(s)) then
+    if (tauEff(s) > 0.0_pReal) then
       
       !* Peierls contribution
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
@@ -1302,7 +1304,7 @@ if (Temperature > 0.0_pReal) then
       activationVolume_P = activationLength_P * jumpWidth_P * constitutive_nonlocal_burgers(s,instance)
       criticalStress_P = constitutive_nonlocal_peierlsStress(s,c,instance)
       activationEnergy_P = criticalStress_P * activationVolume_P
-      tauRel_P = (abs(tau(s)) - tauThreshold(s)) / criticalStress_P
+      tauRel_P = tauEff(s) / criticalStress_P
       tPeierls = 1.0_pReal / constitutive_nonlocal_fattack(instance) &
                            * exp(activationEnergy_P / (kB * Temperature) * (1.0_pReal - tauRel_P**p)**q)
       if (present(dv_dtau)) then
@@ -1321,7 +1323,7 @@ if (Temperature > 0.0_pReal) then
       activationVolume_S = activationLength_S * jumpWidth_S * constitutive_nonlocal_burgers(s,instance)
       activationEnergy_S = constitutive_nonlocal_solidSolutionEnergy(instance)
       criticalStress_S = activationEnergy_S / activationVolume_S
-      tauRel_S = (abs(tau(s)) - tauThreshold(s)) / criticalStress_S
+      tauRel_S = tauEff(s) / criticalStress_S
       tSolidSolution = 1.0_pReal / constitutive_nonlocal_fattack(instance) &
                                  * exp(activationEnergy_S / (kB * Temperature) * (1.0_pReal - tauRel_S**p)**q)
       if (present(dv_dtau)) then
@@ -1333,7 +1335,7 @@ if (Temperature > 0.0_pReal) then
       !* viscous glide velocity
       
       mobility = constitutive_nonlocal_burgers(s,instance) / constitutive_nonlocal_viscosity(instance)
-      vViscous = mobility * abs(tau(s))
+      vViscous = mobility * tauEff(s)
 
 
       !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of 
@@ -1341,13 +1343,12 @@ if (Temperature > 0.0_pReal) then
       !* since those have the smallest activation volume, thus are decisive.
       
       v(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
-           * (1.0_pReal - exp(-(abs(tau(s)) - tauThreshold(s)) * activationVolume_P / (kB * Temperature)))
+           * (1.0_pReal - exp(-tauEff(s) * activationVolume_P / (kB * Temperature)))
       v(s) = sign(v(s),tau(s))
       if (present(dv_dtau)) then
         dv_dtau(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
-                   * (abs(v(s)) * (dtPeierls_dtau + dtSolidSolution_dtau + 1.0_pReal / (mobility * tau(s) * tau(s))) &
-                      + activationVolume_P / (kB * Temperature) * exp(-(abs(tau(s)) - tauThreshold(s)) * activationVolume_P &
-                                                                      / (kB * Temperature)))
+                   * (abs(v(s)) * (dtPeierls_dtau + dtSolidSolution_dtau + 1.0_pReal / (mobility * tauEff(s)*tauEff(s))) &
+                      + activationVolume_P / (kB * Temperature) * exp(-tauEff(s) * activationVolume_P / (kB * Temperature)))
       endif
 
     endif
@@ -1363,6 +1364,7 @@ endif
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
     write(6,*)
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tau / MPa', tau / 1e6_pReal
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauEff / MPa', tauEff / 1e6_pReal
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> v / 1e-3m/s', v * 1e3
   endif
 #endif
