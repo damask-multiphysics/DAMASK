@@ -846,7 +846,7 @@ subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  select case (phase_elasticity(material_phase(ipc,ip,el)))
  
    case (constitutive_hooke_label)
-       call constitutive_hooke_TstarAndItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+       call constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
      
  end select
 
