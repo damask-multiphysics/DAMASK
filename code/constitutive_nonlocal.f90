@@ -118,6 +118,7 @@ real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_
                                                           constitutive_nonlocal_interactionMatrixSlipSlip       ! interaction matrix of the different slip systems for each instance
 real(pReal), dimension(:,:,:,:), allocatable ::           constitutive_nonlocal_lattice2slip, &                 ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
                                                           constitutive_nonlocal_accumulatedShear                ! accumulated shear per slip system up to the start of the FE increment
+logical, dimension(:), allocatable ::                     constitutive_nonlocal_shortRangeStressCorrection      ! flag indicating the use of the short range stress correction by a excess density gradient term
 
 
 CONTAINS
@@ -276,6 +277,7 @@ allocate(constitutive_nonlocal_viscosity(maxNinstance))
 allocate(constitutive_nonlocal_fattack(maxNinstance))
 allocate(constitutive_nonlocal_rhoSglScatter(maxNinstance))
 allocate(constitutive_nonlocal_surfaceTransmissivity(maxNinstance))
+allocate(constitutive_nonlocal_shortRangeStressCorrection(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
 constitutive_nonlocal_C12 = 0.0_pReal
@@ -301,6 +303,7 @@ constitutive_nonlocal_viscosity = 0.0_pReal
 constitutive_nonlocal_fattack = 0.0_pReal
 constitutive_nonlocal_rhoSglScatter = 0.0_pReal
 constitutive_nonlocal_surfaceTransmissivity = 1.0_pReal
+constitutive_nonlocal_shortRangeStressCorrection = .true.
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_nonlocal_rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNinstance))
@@ -440,6 +443,8 @@ do                                                                              
         constitutive_nonlocal_rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
       case('surfacetransmissivity')
         constitutive_nonlocal_surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
+      case('shortrangestresscorrection')
+        constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case default
         call IO_error(250_pInt,ext_msg=tag)
     end select
@@ -958,7 +963,8 @@ real(pReal)                     nu, &                         ! poisson's ratio
                                 b, &
                                 detFe, &
                                 detFp, &
-                                FVsize
+                                FVsize, &
+                                temp
 real(pReal), dimension(2) ::    rhoExcessGradient, &
                                 rhoExcessGradient_over_rho, &
                                 rhoTotal
@@ -971,7 +977,8 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                 tauThreshold                  ! threshold shear stress
 real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elastic deformation gradient
                                 invFp, &                      ! inverse of plastic deformation gradient
-                                connections
+                                connections, &
+                                invConnections
 real(pReal), dimension(3,FE_maxNipNeighbors) :: &
                                 connection_latticeConf
 real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
@@ -1030,7 +1037,7 @@ forall (s = 1_pInt:ns) &
 
 tauBack = 0.0_pReal
 
-if (.not. phase_localPlasticity(phase)) then
+if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStressCorrection(instance)) then
   call math_invert33(Fe, invFe, detFe, inversionError)
   call math_invert33(Fp, invFp, detFp, inversionError)
   ipCoords = mesh_ipCenterOfGravity(1:3,ip,el)
@@ -1100,7 +1107,11 @@ if (.not. phase_localPlasticity(phase)) then
         connections(dir,1:3) = connection_latticeConf(1:3,neighbor(1)) - connection_latticeConf(1:3,neighbor(2))
         rhoExcessDifferences(dir) = neighboring_rhoExcess(c,s,neighbor(1)) - neighboring_rhoExcess(c,s,neighbor(2))
       enddo
-      rhoExcessGradient(c) = math_mul3x3(math_mul33x3(math_inv33(connections), rhoExcessDifferences), m(1:3,s,c))
+      call math_invert33(connections,invConnections,temp,inversionError)
+      if (inversionError) then
+        call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
+      endif
+      rhoExcessGradient(c) = math_mul3x3(math_mul33x3(invConnections, rhoExcessDifferences), m(1:3,s,c))
     enddo
       
     !* plus gradient from deads
