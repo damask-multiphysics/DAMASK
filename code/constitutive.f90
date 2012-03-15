@@ -66,11 +66,11 @@ contains
 !* - constitutive_averageBurgers
 !* - constitutive_microstructure
 !* - constitutive_LpAndItsTangent
+!* - constitutive_TandItsTangent
+!* - constitutive_hooke_TandItsTangent
 !* - constitutive_collectDotState
 !* - constitutive_collectDotTemperature
 !* - constitutive_postResults
-!* - constitutive_TandItsTangent
-!* - constitutive_hooke_TandItsTangent
 !****************************************
 
 
@@ -588,6 +588,81 @@ endsubroutine
 
 
 
+!************************************************************************
+!* This subroutine returns the 2nd Piola-Kirchhoff stress tensor and    *
+!* its tangent with respect to the elastic deformation gradient         *
+!* OUTPUT:                                                              *
+!*  - T              : 2nd Piola-Kirchhoff stress tensor                *
+!*  - dT_dFe         : derivative of 2nd Piola-Kirchhoff stress tensor  * 
+!*                     with respect to the elastic deformation gradient *
+!* INPUT:                                                               *
+!* -  Fe             : elastic deformation gradient                     *
+!*  - ipc            : component-ID of current integration point        *
+!*  - ip             : current integration point                        *
+!*  - el             : current element                                  *
+!************************************************************************
+subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+
+ use prec, only: pReal
+ use material, only: phase_elasticity,material_phase
+ 
+ implicit none
+ integer(pInt) :: ipc,ip,el
+ real(pReal), dimension(3,3)     :: T, Fe
+ real(pReal), dimension(3,3,3,3) :: dT_dFe
+
+ select case (phase_elasticity(material_phase(ipc,ip,el)))
+ 
+   case (constitutive_hooke_label)
+       call constitutive_hooke_TAndItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+     
+ end select
+
+return
+
+endsubroutine constitutive_TandItsTangent
+
+
+
+!************************************************************************
+!* This subroutine returns the 2nd Piola-Kirchhoff stress tensor and    *
+!* its tangent with respect to the elastic deformation gradient         *
+!* OUTPUT:                                                              *
+!*  - T              : 2nd Piola-Kirchhoff stress tensor                *
+!*  - dT_dFe         : derivative of 2nd Piola-Kirchhoff stress tensor  * 
+!*                     with respect to the elastic deformation gradient *
+!* INPUT:                                                               *
+!* -  Fe             : elastic deformation gradient                     *
+!*  - ipc            : component-ID of current integration point        *
+!*  - ip             : current integration point                        *
+!*  - el             : current element                                  *
+!************************************************************************
+subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, g, i, e)
+
+ use prec, only: p_vec
+ use math
+ 
+ implicit none
+!* Definition of variables
+ integer(pInt) g, i, e, p, o
+ real(pReal), dimension(3,3)     :: T, Fe
+ real(pReal), dimension(6,6)     :: C_66
+ real(pReal), dimension(3,3,3,3) :: dT_dFe, C
+
+!* get elasticity tensor
+
+C_66 = constitutive_homogenizedC(g,i,e)
+C = math_Mandel66to3333(C_66)
+
+T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+
+do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
+    dT_dFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), math_transpose33(Fe))                 ! dT*_ij/dFe_kl
+enddo; enddo
+
+end subroutine constitutive_hooke_TandItsTangent
+
+
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
@@ -820,74 +895,5 @@ end select
  
 endfunction
 
-
-subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
-!************************************************************************
-!* This subroutine returns the 2nd Piola-Kirchhoff stress tensor and    *
-!* its tangent with respect to the elastic deformation gradient         *
-!* OUTPUT:                                                              *
-!*  - T              : 2nd Piola-Kirchhoff stress tensor                *
-!*  - dT_dFe         : derivative of 2nd Piola-Kirchhoff stress tensor  * 
-!*                     with respect to the elastic deformation gradient *
-!* INPUT:                                                               *
-!* -  Fe             : elastic deformation gradient                     *
-!*  - ipc            : component-ID of current integration point        *
-!*  - ip             : current integration point                        *
-!*  - el             : current element                                  *
-!************************************************************************
- use prec, only: pReal
- use material, only: phase_elasticity,material_phase
- 
- implicit none
- integer(pInt) :: ipc,ip,el
- real(pReal), dimension(3,3)     :: T, Fe
- real(pReal), dimension(3,3,3,3) :: dT_dFe
-
- select case (phase_elasticity(material_phase(ipc,ip,el)))
- 
-   case (constitutive_hooke_label)
-       call constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
-     
- end select
-
-return
-endsubroutine constitutive_TandItsTangent
-
-subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, g, i, e)
-!************************************************************************
-!* This subroutine returns the 2nd Piola-Kirchhoff stress tensor and    *
-!* its tangent with respect to the elastic deformation gradient         *
-!* OUTPUT:                                                              *
-!*  - T              : 2nd Piola-Kirchhoff stress tensor                *
-!*  - dT_dFe         : derivative of 2nd Piola-Kirchhoff stress tensor  * 
-!*                     with respect to the elastic deformation gradient *
-!* INPUT:                                                               *
-!* -  Fe             : elastic deformation gradient                     *
-!*  - ipc            : component-ID of current integration point        *
-!*  - ip             : current integration point                        *
-!*  - el             : current element                                  *
-!************************************************************************
- use prec, only: p_vec
- use math
- 
- implicit none
-!* Definition of variables
- integer(pInt) g, i, e, p, o
- real(pReal), dimension(3,3)     :: T, Fe
- real(pReal), dimension(6,6)     :: C_66
- real(pReal), dimension(3,3,3,3) :: dT_dFe, C
-
-!* get elasticity tensor
-
-C_66 = constitutive_homogenizedC(g,i,e)
-C = math_Mandel66to3333(C_66)
-
-T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
-
-do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
-    dT_dFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), math_transpose33(Fe))                 ! dT*_ij/dFe_kl
-enddo; enddo
-
-end subroutine constitutive_hooke_TandItsTangent
 
 END MODULE
