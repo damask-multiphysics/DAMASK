@@ -349,7 +349,7 @@ do                                                                              
     positions = IO_stringPos(line,maxNchunks)
     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                             ! extract key
     select case(tag)
-      case('plasticity','/nonlocal/')
+      case('plasticity','elasticity','/nonlocal/')
         cycle
       case ('(output)')
         constitutive_nonlocal_Noutput(i) = constitutive_nonlocal_Noutput(i) + 1_pInt

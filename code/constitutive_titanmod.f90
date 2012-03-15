@@ -432,7 +432,7 @@ enddo
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      select case(tag)
-       case ('plasticity')
+       case ('plasticity','elasticity')
          cycle
        case ('(output)')
          constitutive_titanmod_Noutput(i) = constitutive_titanmod_Noutput(i) + 1_pInt
