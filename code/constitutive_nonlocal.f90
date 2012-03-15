@@ -973,8 +973,7 @@ real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elast
                                 invFp, &                      ! inverse of plastic deformation gradient
                                 connections
 real(pReal), dimension(3,FE_maxNipNeighbors) :: &
-                                connection_latticeConf, &
-                                areaNormal_latticeConf
+                                connection_latticeConf
 real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                 rhoExcess
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
@@ -1010,9 +1009,9 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
 !*** (= projection of screw and edge dislocations)
 
 forall (s = 1_pInt:ns) &
-  rhoForest(s) = dot_product((sum(abs(rhoSgl(1:ns,(/1,2,5,6/))),2) + rhoDip(1:ns,1)), &
+  rhoForest(s) = dot_product((sum(abs(rhoSgl(1:ns,[1,2,5,6])),2) + rhoDip(1:ns,1)), &
                               constitutive_nonlocal_forestProjectionEdge(s,1:ns,instance)) & 
-               + dot_product((sum(abs(rhoSgl(1:ns,(/3,4,7,8/))),2) + rhoDip(1:ns,2)), &
+               + dot_product((sum(abs(rhoSgl(1:ns,[3,4,7,8])),2) + rhoDip(1:ns,2)), &
                               constitutive_nonlocal_forestProjectionScrew(s,1:ns,instance))
 
 
@@ -1046,8 +1045,6 @@ if (.not. phase_localPlasticity(phase)) then
   do n = 1_pInt,FE_NipNeighbors(mesh_element(2,el))
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
     neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
-    areaNormal_latticeConf(1:3,n) = detFp * math_mul33x3(math_transpose33(invFp), mesh_ipAreaNormal(1:3,n,ip,el))  ! calculate the normal of the interface in lattice configuration
-    areaNormal_latticeConf(1:3,n) = areaNormal_latticeConf(1:3,n) / math_norm3(areaNormal_latticeConf(1:3,n))       ! normalize the surface normal to unit length
     if (neighboring_el > 0 .and. neighboring_ip > 0) then
       neighboring_phase = material_phase(g,neighboring_ip,neighboring_el)
       neighboring_instance = phase_plasticityInstance(neighboring_phase)
@@ -1061,11 +1058,11 @@ if (.not. phase_localPlasticity(phase)) then
           if (neighboring_el /= el .or. neighboring_ip /= ip) then
             connection_latticeConf(1:3,n) = math_mul33x3(invFe, neighboring_ipCoords - ipCoords)
             forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-              neighboring_rhoExcess(c,s,n) = state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s) &  ! positive mobiles
-                                           - state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s)    ! negative mobiles
+              neighboring_rhoExcess(c,s,n) = state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s) &                     ! positive mobiles
+                                           - state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s)                       ! negative mobiles
           else
-            ! thats myself! probably using periodic images
-            connection_latticeConf(1:3,n) = 0.0_pReal
+            ! thats myself! probably using periodic images -> assume constant excess density
+            connection_latticeConf(1:3,n) = math_mul33x3(math_transpose33(invFp), mesh_ipAreaNormal(1:3,n,ip,el))                   ! direction of area normal
             neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
           endif
         else
@@ -1073,13 +1070,13 @@ if (.not. phase_localPlasticity(phase)) then
           call IO_error(-1_pInt,ext_msg='different number of active slip systems in neighboring IPs of same crystal structure')
         endif
       else
-        ! local neighbor or different lattice structure or different plasticity instance
-        connection_latticeConf(1:3,n) = 0.0_pReal ! use central values instead
+        ! local neighbor or different lattice structure or different constitution instance -> use central values instead
+        connection_latticeConf(1:3,n) = 0.0_pReal
         neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
       endif
     else
-      ! free surface
-      connection_latticeConf(1:3,n) = 0.0_pReal ! use central values instead
+      ! free surface -> use central values instead
+      connection_latticeConf(1:3,n) = 0.0_pReal
       neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
     endif
   enddo
