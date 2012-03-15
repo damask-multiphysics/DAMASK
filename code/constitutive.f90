@@ -826,8 +826,8 @@ subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
 !* This subroutine returns the 2nd Piola-Kirchhoff stress tensor and    *
 !* its tangent with respect to the elastic deformation gradient         *
 !* OUTPUT:                                                              *
-!*  - Tstar          : 2nd Piola-Kirchhoff stress tensor                *
-!*  - dTstar_dFe     : derivative of 2nd Piola-Kirchhoff stress tensor  * 
+!*  - T              : 2nd Piola-Kirchhoff stress tensor                *
+!*  - dT_dFe         : derivative of 2nd Piola-Kirchhoff stress tensor  * 
 !*                     with respect to the elastic deformation gradient *
 !* INPUT:                                                               *
 !* -  Fe             : elastic deformation gradient                     *
@@ -858,8 +858,8 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, g, i, e)
 !* This subroutine returns the 2nd Piola-Kirchhoff stress tensor and    *
 !* its tangent with respect to the elastic deformation gradient         *
 !* OUTPUT:                                                              *
-!*  - Tstar          : 2nd Piola-Kirchhoff stress tensor                *
-!*  - dTstar_dFe     : derivative of 2nd Piola-Kirchhoff stress tensor  * 
+!*  - T              : 2nd Piola-Kirchhoff stress tensor                *
+!*  - dT_dFe         : derivative of 2nd Piola-Kirchhoff stress tensor  * 
 !*                     with respect to the elastic deformation gradient *
 !* INPUT:                                                               *
 !* -  Fe             : elastic deformation gradient                     *
