@@ -235,10 +235,9 @@ program DAMASK_spectral
  type(C_PTR) :: divergence, plan_divergence
  real(pReal),    dimension(:,:,:,:), pointer :: divergence_real
  complex(pReal), dimension(:,:,:,:), pointer :: divergence_fourier
- real(pReal), dimension(:,:,:,:), allocatable  :: divergence_postProc
- real(pReal) :: pstress_av_L2, err_div_RMS, err_real_div_RMS,&
-                err_div_max, err_real_div_max,&
-                max_div_error
+ real(pReal),    dimension(:,:,:,:), allocatable :: divergence_post
+ real(pReal) :: pstress_av_L2, err_div_RMS, err_real_div_RMS, err_post_div_RMS,&
+                err_div_max, err_real_div_max
 
 !--------------------------------------------------------------------------------------------------
 ! variables for debugging fft using a scalar field
@@ -547,7 +546,7 @@ if (sum(bc(1:N_Loadcases)%incs)>9000_pInt) stop !discuss with Philip, stop code 
    divergence = fftw_alloc_complex(int(res1_red*res(2)*res(3)*3_pInt,C_SIZE_T))
    call c_f_pointer(divergence, divergence_real,    [ res(1)+2_pInt,res(2),res(3),3])
    call c_f_pointer(divergence, divergence_fourier, [ res1_red,     res(2),res(3),3])
-   allocate (divergence_postProc(res(1),res(2),res(3),3));  divergence_postProc= 0.0_pReal
+   allocate (divergence_post(res(1),res(2),res(3),3));  divergence_post = 0.0_pReal
    plan_divergence = fftw_plan_many_dft_c2r(3,[ res(3),res(2) ,res(1)],3,&
                            divergence_fourier,[ res(3),res(2) ,res1_red],&
                                             1,  res(3)*res(2)* res1_red,&
@@ -835,8 +834,8 @@ C_ref = C * wgt                                                                 
 !--------------------------------------------------------------------------------------------------
 ! call function to calculate divergence from math (for post processing) to check results
          if (debugDivergence) &
-              call divergence_fft(res,virt_dim,3_pInt,&
-              P_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_postProc)                       !padding
+           call divergence_fft(res,virt_dim,3_pInt,&
+                               P_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_post)      ! padding
               
 !--------------------------------------------------------------------------------------------------
 ! doing the FT because it simplifies calculation of average stress in real space also
@@ -897,8 +896,8 @@ C_ref = C * wgt                                                                 
 
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
-         pstress_av_L2 = sqrt(maxval (math_eigenvalues33(math_mul33x33(P_av_lab,&                   ! L_2 norm of average stress
-                                                  math_transpose33(P_av_lab)))))
+         pstress_av_L2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av_lab,&                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
+                                                     math_transpose33(P_av_lab)))))
          err_div_RMS = 0.0_pReal
          do k = 1_pInt, res(3); do j = 1_pInt, res(2)
            do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
@@ -906,20 +905,22 @@ C_ref = C * wgt                                                                 
                    + 2.0_pReal*(sum (real(math_mul33x3_complex(P_fourier(i,j,k,1:3,1:3),&           ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
                                                    xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&            ! --> sum squared L_2 norm of vector 
                                +sum(aimag(math_mul33x3_complex(P_fourier(i,j,k,1:3,1:3),& 
-                                                   xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))           
+                                                                  xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))
            enddo
            err_div_RMS = err_div_RMS &                                                              ! Those two layers (DC and Nyquist) do not have a conjugate complex counterpart
-                      + sum(real(math_mul33x3_complex(P_fourier(1       ,j,k,1:3,1:3),&
-                                       xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
-                      + sum(aimag(math_mul33x3_complex(P_fourier(1       ,j,k,1:3,1:3),&
-                                       xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
-                      + sum(real(math_mul33x3_complex(P_fourier(res1_red,j,k,1:3,1:3),&
-                                       xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)&
-                      + sum(aimag(math_mul33x3_complex(P_fourier(res1_red,j,k,1:3,1:3),&
-                                       xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
+                         + sum( real(math_mul33x3_complex(P_fourier(1       ,j,k,1:3,1:3),&
+                                                             xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
+                         + sum(aimag(math_mul33x3_complex(P_fourier(1       ,j,k,1:3,1:3),&
+                                                             xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
+                         + sum( real(math_mul33x3_complex(P_fourier(res1_red,j,k,1:3,1:3),&
+                                                             xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)&
+                         + sum(aimag(math_mul33x3_complex(P_fourier(res1_red,j,k,1:3,1:3),&
+                                                             xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
          enddo; enddo
+
          err_div_RMS = sqrt(err_div_RMS)*wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
-         if(err_div_RMS/pstress_av_L2 > err_div&
+
+         if (err_div_RMS/pstress_av_L2 > err_div &
                      .and. err_stress < err_stress_tol) then
            write(6,'(a)') 'Increasing divergence, stopping iterations'
            iter = itmax
@@ -928,33 +929,36 @@ C_ref = C * wgt                                                                 
 
 !--------------------------------------------------------------------------------------------------
 ! calculate additional divergence criteria and report
-         if(debugDivergence) then                                                                   ! calculate divergence again
+         if (debugDivergence) then                                                                  ! calculate divergence again
            err_div_max = 0.0_pReal
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
              temp3_Complex = math_mul33x3_complex(P_fourier(i,j,k,1:3,1:3)*wgt,&                    ! weighting P_fourier
-                                                xi(1:3,i,j,k))*TWOPIIMG
-             err_div_max = max(err_div_max,sqrt(sum(abs(temp3_Complex)**2.0_pReal)))
+                                                     xi(1:3,i,j,k))*TWOPIIMG
+             err_div_max = max(err_div_max,sum(abs(temp3_Complex)**2.0_pReal))
              divergence_fourier(i,j,k,1:3) = temp3_Complex                                          ! need divergence NOT squared
            enddo; enddo; enddo
            
            call fftw_execute_dft_c2r(plan_divergence,divergence_fourier,divergence_real)            ! already weighted
 
            err_real_div_RMS = 0.0_pReal
+           err_post_div_RMS = 0.0_pReal
            err_real_div_max = 0.0_pReal
-           max_div_error = 0.0_pReal
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-             max_div_error= max(max_div_error,maxval((divergence_real(i,j,k,1:3)&
-                        -divergence_postProc(i,j,k,1:3))/divergence_real(i,j,k,1:3)))
-             err_real_div_RMS=err_real_div_RMS    +     sum(divergence_real(i,j,k,1:3)**2.0_pReal)  ! avg of L_2 norm of div(stress) in real space
-             err_real_div_max=max(err_real_div_max,sqrt(sum(divergence_real(i,j,k,1:3)**2.0_pReal)))! maximum of L two norm of div(stress) in real space
+             err_real_div_RMS = err_real_div_RMS +   sum(divergence_real(i,j,k,1:3)**2.0_pReal)     ! avg of squared L_2 norm of div(stress) in real space
+             err_post_div_RMS = err_post_div_RMS +   sum(divergence_post(i,j,k,1:3)**2.0_pReal)     ! avg of squared L_2 norm of div(stress) in real space
+             err_real_div_max = max(err_real_div_max,sum(divergence_real(i,j,k,1:3)**2.0_pReal))    ! max of squared L_2 norm of div(stress) in real space
            enddo; enddo; enddo
+
            err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                            ! RMS in real space
+           err_post_div_RMS = sqrt(wgt*err_post_div_RMS)                                            ! RMS in real space
+           err_real_div_max = sqrt(    err_real_div_max)                                            ! max in real space
+           err_div_max      = sqrt(    err_div_max)                                                 ! max in Fourier space
            
            write(6,'(a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
            write(6,'(a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
+           write(6,'(a,es11.4)')        'error divergence post RMS = ',err_post_div_RMS
            write(6,'(a,es11.4)')        'error divergence  FT  max = ',err_div_max
            write(6,'(a,es11.4)')        'error divergence Real max = ',err_real_div_max
-           write(6,'(a,es11.4)')        'max deviat. from postProc = ',max_div_error
          endif
          write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/err_div_tol,&
                                                            ' (',err_div_RMS,' N/m³)'
@@ -1039,7 +1043,7 @@ C_ref = C * wgt                                                                 
                                      maxval(math_skew33(deltaF_real(i,j,k,1:3,1:3))))
              temp33_Real = temp33_Real + deltaF_real(i,j,k,1:3,1:3)
            enddo; enddo; enddo
-           write(6,'(a,1x,es11.4)') 'max symmetrix correction of deformation =',&
+           write(6,'(a,1x,es11.4)') 'max symmetric correction of deformation =',&
                                          maxCorrectionSym*wgt
            write(6,'(a,1x,es11.4)') 'max skew      correction of deformation =',&
                                          maxCorrectionSkew*wgt
