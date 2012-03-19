@@ -571,7 +571,9 @@ if (sum(bc(1:N_Loadcases)%incs)>9000_pInt) stop !discuss with Philip, stop code 
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
  if (divergence_correction) then
-   virt_dim = 1.0_pReal
+   do i = 1_pInt, 3_pInt
+    if (i /= minloc(geomdim,1) .and. i /= maxloc(geomdim,1)) virt_dim = geomdim/geomdim(i)
+   enddo
  else
    virt_dim = geomdim
  endif
@@ -599,7 +601,7 @@ if (sum(bc(1:N_Loadcases)%incs)>9000_pInt) stop !discuss with Philip, stop code 
                         0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
    C = C + dPdF 
 enddo; enddo; enddo
- C_ref = C * wgt                                                                                ! linear reference material stiffness
+C_ref = C * wgt                                                                                     ! linear reference material stiffness
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the gamma operator
@@ -775,7 +777,7 @@ enddo; enddo; enddo
        guessmode = 1.0_pReal                                                                        ! keep guessing along former trajectory during same loadcase
        CPFEM_mode = 1_pInt                                                                          ! winding forward
        iter = 0_pInt
-       err_div = 2.0_pReal * err_div_tol                                                            ! go into loop 
+       err_div = huge(err_div_tol)                                                                  ! go into loop 
 
 !##################################################################################################
 ! convergence loop (looping over iterations)
@@ -818,7 +820,6 @@ enddo; enddo; enddo
                               temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde, &
                               P_real(i,j,k,1:3,1:3),dPdF)
            CPFEM_mode = 2_pInt
-
            C = C + dPdF
          enddo; enddo; enddo
 
@@ -903,7 +904,7 @@ enddo; enddo; enddo
            do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
              err_div_RMS = err_div_RMS &
                    + 2.0_pReal*(sum (real(math_mul33x3_complex(P_fourier(i,j,k,1:3,1:3),&           ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
-                                                   xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&          ! --> sum squared L_2 norm of vector 
+                                                   xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&            ! --> sum squared L_2 norm of vector 
                                +sum(aimag(math_mul33x3_complex(P_fourier(i,j,k,1:3,1:3),& 
                                                    xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))           
            enddo
@@ -918,27 +919,26 @@ enddo; enddo; enddo
                                        xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
          enddo; enddo
          err_div_RMS = sqrt(err_div_RMS)*wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
-         if(err_div_RMS/pstress_av_L2*sqrt(wgt) >err_div&
-                       .and.iter >2_pInt&
-                       .and.err_stress  < err_stress_tol) then
+         if(err_div_RMS/pstress_av_L2 > err_div&
+                     .and. err_stress < err_stress_tol) then
            write(6,'(a)') 'Increasing divergence, stopping iterations'
            iter = itmax
          endif
-         err_div = err_div_RMS/pstress_av_L2*sqrt(wgt)                                              ! criterion to stop iterations
+         err_div = err_div_RMS/pstress_av_L2                                                        ! criterion to stop iterations
 
 !--------------------------------------------------------------------------------------------------
 ! calculate additional divergence criteria and report
          if(debugDivergence) then                                                                   ! calculate divergence again
            err_div_max = 0.0_pReal
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-             temp3_Complex = math_mul33x3_complex(P_fourier(i,j,k,1:3,1:3),&
+             temp3_Complex = math_mul33x3_complex(P_fourier(i,j,k,1:3,1:3)*wgt,&                    ! weighting P_fourier
                                                 xi(1:3,i,j,k))*TWOPIIMG
              err_div_max = max(err_div_max,sqrt(sum(abs(temp3_Complex)**2.0_pReal)))
              divergence_fourier(i,j,k,1:3) = temp3_Complex                                          ! need divergence NOT squared
            enddo; enddo; enddo
+           
+           call fftw_execute_dft_c2r(plan_divergence,divergence_fourier,divergence_real)            ! already weighted
 
-           call fftw_execute_dft_c2r(plan_divergence,divergence_fourier,divergence_real)
-           divergence_real = divergence_real*wgt
            err_real_div_RMS = 0.0_pReal
            err_real_div_max = 0.0_pReal
            max_div_error = 0.0_pReal
@@ -949,11 +949,10 @@ enddo; enddo; enddo
              err_real_div_max=max(err_real_div_max,sqrt(sum(divergence_real(i,j,k,1:3)**2.0_pReal)))! maximum of L two norm of div(stress) in real space
            enddo; enddo; enddo
            err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                            ! RMS in real space
-           err_div_max      = err_div_max*sqrt(wgt) 
            
            write(6,'(a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
-           write(6,'(a,es11.4)')        'error divergence  FT  max = ',err_div_max
            write(6,'(a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
+           write(6,'(a,es11.4)')        'error divergence  FT  max = ',err_div_max
            write(6,'(a,es11.4)')        'error divergence Real max = ',err_real_div_max
            write(6,'(a,es11.4)')        'max deviat. from postProc = ',max_div_error
          endif
