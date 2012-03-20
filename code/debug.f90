@@ -21,7 +21,10 @@
 !##############################################################
 module debug
 !##############################################################
- use prec, only: pInt, pReal, pLongInt
+ use prec, only: &
+   pInt, &
+   pReal, &
+   pLongInt
 
  implicit none
  private

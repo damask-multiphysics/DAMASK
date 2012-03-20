@@ -121,10 +121,11 @@ OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
 OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ipo -static -no-prec-div -fp-model fast=2 
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
-ifeq "$(FASTBUILD)" "YES"
-COMPILE_OPTIONS_ifort    :=-fpp
-else
+
 COMPILE_OPTIONS_ifort    :=-fpp\
+                           -assume byterecl
+ifneq "$(FASTBUILD)" "YES"
+COMPILE_OPTIONS_ifort    :=$(COMPILE_OPTIONS_ifort)\
                            -implicitnone\
                            -diag-enable sc3\
                            -diag-disable 5268\
@@ -180,11 +181,12 @@ endif
 #-integer-size 16:        set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
 ###################################################################################################
 
-ifeq "$(FASTBUILD)" "YES"
+
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
                            -fno-range-check
-else
-COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
+ifneq "$(FASTBUILD)" "YES"
+COMPILE_OPTIONS_gfortran :=$(COMPILE_OPTIONS_gfortran)\
+                           -xf95-cpp-input\
                            -ffree-line-length-132\
                            -fno-range-check\
                            -fimplicit-none\

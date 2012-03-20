@@ -136,7 +136,7 @@ subroutine material_init
                   debug_levelExtensive
  
  implicit none
-!* Definition of variables
+
  integer(pInt), parameter :: fileunit = 200_pInt
  integer(pInt)            :: i,j, myDebug
  
