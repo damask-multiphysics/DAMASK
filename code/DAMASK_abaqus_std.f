@@ -141,7 +141,9 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  use math, only:      invnrmMandel
  use debug, only:     debug_info, &
                       debug_reset, &
-                      debug_verbosity
+                      debug_levelBasic, &
+                      debug_what, &
+                      debug_abaqus
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
@@ -167,7 +169,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) computationMode, i, cp_en
 
- if (debug_verbosity > 1 .and. noel == 1 .and. npt == 1) then
+ if (iand(debug_what(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
    !$OMP CRITICAL (write2out)
      write(6,*) 'el',noel,'ip',npt
      write(6,*) 'got kinc as',kinc
@@ -255,7 +257,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  theInc   = kinc                                                       ! record current increment number
  lastMode = calcMode(npt,cp_en)                                        ! record calculationMode
 
- if ( debug_verbosity > 1 ) then
+ if (iand(debug_what(debug_abaqus),debug_levelBasic) /= 0) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,x,i2,x,a,i8,a,i8,x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
    !$OMP END CRITICAL (write2out)

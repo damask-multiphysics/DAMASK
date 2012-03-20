@@ -36,7 +36,7 @@
 !##################################################################################################
 ! used modules
 !##################################################################################################
-program DAMASK_spectral
+program DAMASK_spectral_AL
 
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use DAMASK_interface
@@ -83,7 +83,7 @@ program DAMASK_spectral
 ! variable storing information from load case file
  type bc_type
    real(pReal), dimension (3,3) :: deformation            = 0.0_pReal, &                            ! applied velocity gradient or time derivative of deformation gradient
-                                   stress                 = 0.0_pReal, &                            ! stress BC (if applicable)
+                                   P                      = 0.0_pReal, &                            ! stress BC (if applicable)
                                    rotation               = math_I3                                 ! rotation of BC (if applicable)
    real(pReal) ::                  time                   = 0.0_pReal, &                            ! length of increment
                                    temperature            = 300.0_pReal                             ! isothermal starting conditions
@@ -230,10 +230,10 @@ program DAMASK_spectral
                                                           IO_stringValue(line,positions,j+k) /= '*'
          do k = 1_pInt,9_pInt
            if (bc(loadcase)%maskStressVector(k)) temp_valueVector(k) =&
-                                                          IO_floatValue(line,positions,j+k)         ! assign values for the bc(loadcase)%stress matrix
+                                                          IO_floatValue(line,positions,j+k)         ! assign values for the bc(loadcase)%P matrix
          enddo
          bc(loadcase)%maskStress = transpose(reshape(bc(loadcase)%maskStressVector,[ 3,3]))
-         bc(loadcase)%stress = math_plain9to33(temp_valueVector)
+         bc(loadcase)%P = math_plain9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
          bc(loadcase)%time = IO_floatValue(line,positions,j+1_pInt)
        case('temp','temperature')                                                                   ! starting temperature
@@ -379,7 +379,7 @@ program DAMASK_spectral
    write (*,'(3(3(f12.7,1x)/))',advance='no') merge(math_transpose33(bc(loadcase)%deformation),&
                   reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskDeformation))
    write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'stress / GPa:',&
-        1e-9_pReal*merge(math_transpose33(bc(loadcase)%stress),&
+        1e-9_pReal*merge(math_transpose33(bc(loadcase)%P),&
                          reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskStress))
    if (any(bc(loadcase)%rotation /= math_I3)) &
      write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' rotation of loadframe:',&
@@ -672,7 +672,7 @@ program DAMASK_spectral
        guessmode = 1.0_pReal                                                                        ! keep guessing along former trajectory during same loadcase
        CPFEM_mode = 1_pInt                                                                          ! winding forward
        iter = 0_pInt
-       err_crit = 2.0_pReal * err_div_tol                                                            ! go into loop 
+       err_crit = huge(err_div_tol)                                                                 ! go into loop 
 
 !##################################################################################################
 ! convergence loop (looping over iterations)
@@ -691,21 +691,19 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
          if(size_reduced > 0_pInt) then                                                              ! calculate stress BC if applied
-           err_stress = maxval(abs(mask_stress * (P_av - bc(loadcase)%stress)))                ! maximum deviaton (tensor norm not applicable)
+           err_stress = maxval(abs(mask_stress * (P_av - bc(loadcase)%P)))                ! maximum deviaton (tensor norm not applicable)
            write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'stress deviation =',&
-                     math_transpose33(mask_stress * (P_av - bc(loadcase)%stress))/1.0e6_pReal
-           F_aim = F_aim  + math_mul3333xx33(S_lastInc,bc(loadcase)%stress- P_av)
+                     math_transpose33(mask_stress * (P_av - bc(loadcase)%P))/1.0e6_pReal
+           F_aim = F_aim  + math_mul3333xx33(S_lastInc,bc(loadcase)%P- P_av)
            err_stress_tol = maxval(abs(P_av)) * err_stress_tolrel                              ! don't use any tensor norm because the comparison should be coherent
          else
            err_stress_tol = + huge(1.0_pReal)
          endif
          F_aim_lab = math_rotate_backward33(F_aim,bc(loadcase)%rotation)
-         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F =',&
+         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F aim  =',&
                                                 math_transpose33(F_aim)
-         temp33_real = 0.0_pReal                                     
-         do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-           temp33_real = temp33_real + F_star(i,j,k,1:3,1:3)
-         enddo; enddo; enddo
+         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F* =',&
+                                                math_transpose33(F_star_av)
 
 !--------------------------------------------------------------------------------------------------
 ! doing Fourier transform
@@ -750,6 +748,11 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! doing inverse Fourier transform
          call fftw_execute_dft_c2r(plan_correction,F_fourier,F_real)                                ! back transform of fluct deformation gradient
+         ! do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+         ! write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'delta F real =',&
+                                                ! math_transpose33(F_real(i,j,k,1:3,1:3)*wgt)
+         ! enddo; enddo; enddo
+
          F_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = F_real(1:res(1),1:res(2),1:res(3),1:3,1:3) * wgt + &
                                                       F_star(1:res(1),1:res(2),1:res(3),1:3,1:3)
 
@@ -757,18 +760,21 @@ program DAMASK_spectral
 !
          print '(a)', '... update stress field P(F*) .....................................'
          ielem = 0_pInt
+         temp33_Real = 0.0_pReal
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(3_pInt,&                                                              ! collect cycle
                               coordinates(i,j,k,1:3), F_lastInc(i,j,k,1:3,1:3),&
                               F_star(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&
                               sigma,dsde, P, dPdF)
+           temp33_Real = temp33_Real + F_real(i,j,k,1:3,1:3)
          enddo; enddo; enddo
          
+         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F =',&
+                                                math_transpose33(temp33_Real*wgt)
          ielem = 0_pInt
          err_f = 0.0_pReal
          F_star_av = 0.0_pReal
-         P_av =0.0_pReal
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&
@@ -776,9 +782,12 @@ program DAMASK_spectral
                               F_star(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&       
                               sigma,dsde, P,dPdF)
            CPFEM_mode = 2_pInt                                                                  ! winding forward
-           P_av = P_av + P
+
+           if (iter == 1_pInt) lambda(i,j,k,1:3,1:3) = P
            temp33_Real = lambda(i,j,k,1:3,1:3) - P &
                          + math_mul3333xx33(C_inc0,F_real(i,j,k,1:3,1:3)- F_star(i,j,k,1:3,1:3))
+           ! write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F - F* =',&
+                                    ! math_transpose33(F_real(i,j,k,1:3,1:3)- F_star(i,j,k,1:3,1:3))
            F_star(i,j,k,1:3,1:3) =  F_star(i,j,k,1:3,1:3) +  &
                                     math_mul3333xx33(math_invSym3333(C_inc0 + dPdF), temp33_Real)
            lambda(i,j,k,1:3,1:3) = lambda(i,j,k,1:3,1:3) + math_mul3333xx33(C_inc0,F_real(i,j,k,1:3,1:3) &
@@ -787,9 +796,7 @@ program DAMASK_spectral
            temp33_real = F_star(i,j,k,1:3,1:3) - F_real(i,j,k,1:3,1:3)
            err_f = max(err_f, sqrt(math_mul33xx33(temp33_real,temp33_real)))
          enddo; enddo; enddo
-         P_av = math_rotate_forward33(P_av * wgt,bc(loadcase)%rotation)
-         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'P(F*) =',&
-                                              math_transpose33(P_av)/1.e6_pReal
+
          F_star_av = F_star_av *wgt
          write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F* =',&
                                               math_transpose33(F_star_av)
@@ -832,7 +839,7 @@ program DAMASK_spectral
        enddo    ! end looping when convergency is achieved 
        print '(a)', ''
        print '(a)', '=================================================================='
-       if(err_f > err_div_tol .or. err_stress > err_stress_tol) then
+       if(err_crit > err_div_tol .or. err_stress > err_stress_tol) then
          print '(A,I5.5,A)', 'increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
        else
@@ -869,7 +876,7 @@ program DAMASK_spectral
  close(538)
  call fftw_destroy_plan(plan_lambda); call fftw_destroy_plan(plan_correction)
  call quit(0_pInt)
-end program DAMASK_spectral
+end program DAMASK_spectral_AL
 
 !********************************************************************
 ! quit subroutine to satisfy IO_error

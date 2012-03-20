@@ -343,7 +343,7 @@ DAMASK_spectral_interface.o:  DAMASK_spectral_interface.f90 \
 prec.o:                       prec.f90
 
 %.o : %.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c $< $(SUFFIX)
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
 
 tidy: 
 	rm -rf *.o

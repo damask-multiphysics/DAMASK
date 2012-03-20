@@ -51,9 +51,10 @@ module debug
    debug_crystallite             =  8_pInt, &
    debug_homogenization          =  9_pInt, &
    debug_CPFEM                   = 10_pInt, &
-   debug_spectral                = 11_pInt
+   debug_spectral                = 11_pInt, &
+   debug_abaqus                  = 12_pInt
    
- integer(pInt), dimension(11+2),  public :: &                                                       ! 11 for specific, and 2 for "all" and "other"
+ integer(pInt), dimension(12+2),  public :: &                                                       ! 11 for specific, and 2 for "all" and "other"
    debug_what                    = 0_pInt
 
  integer(pInt), public :: &
@@ -193,6 +194,8 @@ subroutine debug_init
          what = debug_CPFEM
        case ('spectral')
          what = debug_spectral
+       case ('abaqus')
+         what = debug_abaqus
        case ('all')
          what = 12_pInt
        case ('other')
@@ -257,6 +260,7 @@ subroutine debug_init
          if(i == debug_homogenization) write(6,'(a)') 'Homogenization debugging:'
          if(i == debug_CPFEM)          write(6,'(a)') 'CPFEM debugging:'
          if(i == debug_spectral)       write(6,'(a)') 'Spectral solver debugging:'
+         if(i == debug_abaqus)         write(6,'(a)') 'ABAQUS FEM solver debugging:'
 
          if(iand(debug_what(i),debug_levelBasic)        /= 0) write(6,'(a)') ' basic'
          if(iand(debug_what(i),debug_levelExtensive)    /= 0) write(6,'(a)') ' extensive'

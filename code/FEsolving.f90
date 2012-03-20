@@ -21,41 +21,46 @@
 !##############################################################
 module FEsolving
 !##############################################################
- use prec, only: pInt,pReal
+ use prec, only: &
+   pInt, &
+   pReal
  
  implicit none
- integer(pInt) :: &
+ private
+ integer(pInt), public :: &
    cycleCounter =  0_pInt, &
    theInc       = -1_pInt, &
    restartInc   =  1_pInt
    
- real(pReal) :: &
+ real(pReal), public :: &
    theTime      = 0.0_pReal, &
    theDelta     = 0.0_pReal
    
- logical :: & 
-   lastIncConverged  = .false., &
-   outdatedByNewInc  = .false., &
+ logical, public :: & 
    outdatedFFN1      = .false., &
-   terminallyIll     = .false., &
    symmetricSolver   = .false., &
-   parallelExecution = .true., & 
    restartWrite      = .false., &
    restartRead       = .false., &
-   lastMode          = .true., & 
-   cutBack           = .false.
-   
- integer(pInt), dimension(:,:), allocatable :: &
+   terminallyIll     = .false., &
+   parallelExecution = .true., & 
+   lastMode          = .true.
+
+ integer(pInt), dimension(:,:), allocatable, public :: &
    FEsolving_execIP
    
- integer(pInt), dimension(2) :: &
+ integer(pInt), dimension(2), public :: &
    FEsolving_execElem
    
- character(len=1024) :: &
+ character(len=1024), public :: &
    FEmodelGeometry
    
- logical, dimension(:,:), allocatable :: &
+ logical, dimension(:,:), allocatable, public :: &
    calcMode
+      
+ logical, private :: & 
+   lastIncConverged  = .false., &
+   outdatedByNewInc  = .false., &
+   cutBack           = .false.
    
  public :: FE_init
 
@@ -68,21 +73,26 @@ contains
 subroutine FE_init
  
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use debug, only: debug_what, &
-                  debug_FEsolving, &
-                  debug_levelBasic
- use IO,    only: IO_open_inputFile, &
-                  IO_stringPos, &
-                  IO_stringValue, &
-                  IO_intValue, &
-                  IO_lc, &
-                  IO_open_logFile, &
-                  IO_warning
+ use debug, only: &
+   debug_what, &
+   debug_FEsolving, &
+   debug_levelBasic
+ 
+ use IO, only: &
+   IO_open_inputFile, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_intValue, &
+   IO_lc, &
+   IO_open_logFile, &
+   IO_warning
+
  use DAMASK_interface
  
  implicit none
- integer(pInt), parameter :: fileunit = 222_pInt
- integer(pInt), parameter :: maxNchunks = 6_pInt
+ integer(pInt), parameter :: &
+   fileunit = 222_pInt, &
+   maxNchunks = 6_pInt
 
  integer :: i, start = 0, length                                 ! is save for FE_init (only called once)
  integer(pInt) :: j
