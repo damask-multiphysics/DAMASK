@@ -1,205 +1,191 @@
 #include <iostream>
+using namespace std;
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
-struct
-{
-	float phi1, Phi, phi2;
-	float ci, iq, fit, avgIQ;
-	int phase, ds;
-} data[3000][3000];
 
-int round2( double x )
+int myRound( double x )
 {
-	double fl, ce;
+  double fl, ce;
 
-	fl = floor( x );
-	ce = ceil( x );
-	if( fabs( fl-x ) < fabs( ce-x ) )
-		return fl;
-	else
-		return ce;
+  fl = floor( x );
+  ce = ceil( x );
+  if( fabs( fl-x ) < fabs( ce-x ) )
+    return fl;
+  else
+    return ce;
 }
 
 char lineBuffer[200];
 
 int ReadFileInfo(FILE *oimStream, int *xmax, int *ymax, double *stepSize )
 {
-	double x, y, dxmax;
-	long count;
-	
-	*stepSize = 0;
-	dxmax = 0;
-	*xmax = 0;
+  double x, y, dxmax;
+  long count;
+  
+  *stepSize = 0.0;
+  dxmax = 0.0;
+  *xmax = 0;
 
-	while( fgets( lineBuffer, 200, oimStream ) != NULL )
-	{
-		if( lineBuffer[0] == '#' )
-		{
-			if( strcmp( lineBuffer, "# GRID: SqrGrid" ) == 0 )
-			{
-				printf("\nThe file is already a square grid file.\nProgram terminated.");
-				return 0;
-			}
-			count = 0;
-			continue;
-		}
-		if( sscanf( lineBuffer, "%*lf %*lf %*lf %lf %lf %*lf %*lf %*i %*i %*lf %*lf", &x, &y ) != 2 )
-			return 0;
-		if( *stepSize == 0 && x != 0 )
-			*stepSize = x;
-		if( x > dxmax )
-		{
-			dxmax = x;
-			(*xmax)++;
-		}
-		count++;
-	}
-	(*xmax)++;
-	*ymax = (int)(count / *xmax );
+  while(fgets(lineBuffer, 200, oimStream ) != NULL)
+  {
+    if( lineBuffer[0] == '#' )
+    {
+      if( strcmp( lineBuffer, "# GRID: SqrGrid" ) == 0 )
+      {
+        printf("The file is already a square grid file.\nProgram terminated.\n");
+        return 0;
+      }
+      count = 0;
+      continue;
+    }
+    if( sscanf( lineBuffer, "%*lf %*lf %*lf %lf %lf %*lf %*lf %*i %*i %*lf", &x, &y ) != 2 )
+        return 0;
+    if( *stepSize == 0.0 && x != 0.0 )
+      *stepSize = x;
+    if( x > dxmax )
+    {
+      dxmax = x;
+      (*xmax)++;
+    }
+    count++;
+  }
+  (*xmax)++;
+  *ymax = (int)(count / *xmax );
 
-	return 1;
+  return 1;
 }
 
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
+{ 
+struct
 {
-	int xx, yy, zz, xlimit, ylimit, zlimit, xlimitOut, xOut;
-	double stepSize;
-	char zFilename[50], zOutFilename[50], filename[50];
-	FILE *inStream, *outStream;
-	int zStartNumber, zEndNumber;
+  float phi1, Phi, phi2;
+  float float1, float2, float3, float4;
+  int int1, int2;
+} data[3000][3000];
+  int xx, yy, xlimit, ylimit, xlimitOut, xOut;
+  double stepSize;
+  char outFilename[50], filename[50];
+  FILE *inStream, *outStream;
+  
+  sprintf( filename, "%s", argv[1]);
 
-	printf( "\nFilenames must have the format ""root_xxx.ang"""
-		"\nwith xxx indicating a 3-digit integer"
-		"\nEnter oim map filename-root, the start integer and the end integer number of the files: " );
+  printf("Hex2Cub\n");
 
-	scanf( "%s %i %i", filename, &zStartNumber, &zEndNumber );
-	zlimit = zEndNumber-zStartNumber+1;
 
-	//read the first data file and get all necessary start data
-	sprintf( zFilename, "%s_%03i.ang", filename, zStartNumber );
-	if( (inStream = fopen( zFilename, "r" )) == NULL )
-	{
-		printf( "\nCan't open %s", zFilename );
-		exit( 1 );
-	}
-	if( ReadFileInfo( inStream, &xlimit, &ylimit, &stepSize ) == 0 )
-	{
-		printf( "\nWrong file format in %s", filename );
-		exit( 1 );
-	}
-	fclose( inStream );
-	
-	for( zz=0; zz<zlimit; zz++ )
-	{
-		printf("\nReading");
-		sprintf( zFilename, "%s_%03i.ang", filename, zz+zStartNumber );
-		sprintf( zOutFilename, "%s_cub_%03i.ang", filename, zz+zStartNumber );
-		if( (inStream = fopen( zFilename, "r" )) != NULL )
-		{
-			outStream = fopen( zOutFilename, "w" );
-			//read file header
-			do
-			{
-				if( fscanf( inStream, "%[^\n]\n", lineBuffer ) == EOF )
-				{
-					printf( "\nEarly end of file encountered in ANG file" ); 
-					exit(1);
-				}
-				//write the file header
-				if( lineBuffer[0] == '#' )
-				{
-					if( strcmp( lineBuffer, "# GRID: HexGrid" ) == 0 )
-						fprintf( outStream, "# GRID: SqrGrid\n" );
-					else
-						fprintf( outStream, "%s\n", lineBuffer );
-				}
+  if( (inStream = fopen(filename, "r" )) == NULL )
+  {
+    printf( "Can't open %s\n", filename );
+    exit( 1 );
+  }
+  printf("Reading %s\n", filename);
+  if( ReadFileInfo( inStream, &xlimit, &ylimit, &stepSize ) == 0 )
+  {
+    printf( "Wrong file format in %s\n", filename);
+    exit( 1 );
+  }
+  fclose( inStream );
+  sprintf( outFilename, "cub_%s", filename);
+  
+  if( (inStream = fopen( filename, "r" )) != NULL )
+  {
+    outStream = fopen( outFilename, "w" );
+    //read file header
+    do
+    {
+      if( fscanf( inStream, "%[^\n]\n", lineBuffer ) == EOF )
+      {
+        printf( "Early end of file encountered in ANG file\n" ); 
+        exit(1);
+      }
+      //write the file header
+      if( lineBuffer[0] == '#' )
+      {
+        if( strcmp( lineBuffer, "# GRID: HexGrid" ) == 0 )
+          fprintf( outStream, "# GRID: SqrGrid\n" );
+        else
+          fprintf( outStream, "%s\n", lineBuffer );
+      }
 
-			}
-			while( lineBuffer[0] == '#' );
+    }
+    while( lineBuffer[0] == '#' );
 
-			for( yy=0; yy<ylimit; yy++)
-			{
-				printf(".");
-				for( xx=0; xx<xlimit; xx++)
-				{
-					//t1: pattern quality, iq: confidence index, avgIQ:  average Image Quality
-					if( sscanf( lineBuffer, "%f %f %f %*f %*f %f %f %i %i %f %f", 
-										&data[xx][yy].phi1, 
-										&data[xx][yy].Phi, 
-										&data[xx][yy].phi2, 
-										&data[xx][yy].iq, 
-										&data[xx][yy].ci, 
-										&data[xx][yy].phase, 
-										&data[xx][yy].ds, 
-										&data[xx][yy].fit, 
-										&data[xx][yy].avgIQ ) != 9 )
-					{
-						printf( "\nWrong file format in %s", filename );
-						exit( 1 );
-					}
+    for( yy=0; yy<ylimit; yy++)
+    {
+      for( xx=0; xx<xlimit; xx++)
+      {
+        if( sscanf( lineBuffer, "%f %f %f %*f %*f %f %f %i %i %f", 
+                  &data[xx][yy].phi1, 
+                  &data[xx][yy].Phi, 
+                  &data[xx][yy].phi2, 
+                  &data[xx][yy].float1, 
+                  &data[xx][yy].float2, 
+                  &data[xx][yy].int1,
+                  &data[xx][yy].int2,
+                  &data[xx][yy].float3) != 8 )
+        {
+          printf( "\nWrong file format in %s \n \n", filename);
+          exit( 1 );
+        }
 
-					//read the next line buffer if there is any.
-					//ylimit%2 only for hexagonal grid data (odd lines are shorter by 1 pixel)
-					if( yy%2 == 1 && xx == xlimit-1 )
-					{
-						data[xx][yy].phi1 = data[xx-1][yy].phi1; 
-						data[xx][yy].Phi = data[xx-1][yy].Phi; 
-						data[xx][yy].phi2 = data[xx-1][yy].phi2; 
-						data[xx][yy].iq = data[xx-1][yy].iq; 
-						data[xx][yy].ci = data[xx-1][yy].ci; 
-						data[xx][yy].phase = data[xx-1][yy].phase; 
-						data[xx][yy].ds = data[xx-1][yy].ds; 
-						data[xx][yy].fit = data[xx-1][yy].fit;
-						data[xx][yy].avgIQ = data[xx-1][yy].avgIQ;
-					}
-					else 
-					{
-						if( fscanf( inStream, "%[^\n]\n", lineBuffer ) == EOF )
-						{
-							printf( "\nEarly end of file encountered in ANG file" ); 
-							exit(1);
-						}
-					}
-				}//end for(x...
-			}//end for(y...
-			fclose( inStream );
-			printf("\nWriting");
-			//the step size in y-direction (=0.866*stepSizeX) 
-			//is the new step size for x and y
-			xlimitOut = round2( (double)xlimit/0.866); 
-			for( yy=0; yy<ylimit; yy++)
-			{
-				printf(".");
-				for( xx=0; xx<xlimitOut; xx++)
-				{
-					xOut = round2( (double)xx * 0.866 );
-					fprintf( outStream, "%f %f %f %f %f %f %f %i %i %f %f\n", 
-										data[xOut][yy].phi1, 
-										data[xOut][yy].Phi, 
-										data[xOut][yy].phi2, 
-										xx * stepSize * 0.866,
-										yy * stepSize * 0.866,
-										data[xOut][yy].iq, 
-										data[xOut][yy].ci, 
-										data[xOut][yy].phase, 
-										data[xOut][yy].ds, 
-										data[xOut][yy].fit, 
-										data[xOut][yy].avgIQ );
-				}//end for( xx...
-			}//end for( yy...
-			fclose( outStream );
-		}
-		else
-		{
-			printf( "\nExpected file %s does not exist", zFilename );
-			exit( 1 );
-		}
-	}
+        //read the next line buffer if there is any.
+        //ylimit%2 only for hexagonal grid data (odd lines are shorter by 1 pixel)
+        if( yy%2 == 1 && xx == xlimit-1 )
+        {
+          data[xx][yy].phi1 = data[xx-1][yy].phi1; 
+          data[xx][yy].Phi = data[xx-1][yy].Phi; 
+          data[xx][yy].phi2 = data[xx-1][yy].phi2; 
+          data[xx][yy].float1 = data[xx-1][yy].float1; 
+          data[xx][yy].float2 = data[xx-1][yy].float2;
+          data[xx][yy].float3 = data[xx-1][yy].float3;
+          data[xx][yy].int1 = data[xx-1][yy].int1;
+          data[xx][yy].int2 = data[xx-1][yy].int2; 
+        }
+        else 
+        {
+          if( fscanf( inStream, "%[^\n]\n", lineBuffer ) == EOF )
+          {
+            printf( "\nEarly end of file encountered in ANG file" ); 
+            exit(1);
+          }
+        }
+      }//end for(x...
+    }//end for(y...
+    fclose( inStream );
+    printf("Writing %s\n", outFilename);
+    //the step size in y-direction (=0.866*stepSizeX) 
+    //is the new step size for x and y
+    xlimitOut = myRound( (double)xlimit/0.866); 
+    for( yy=0; yy<ylimit; yy++)
+    {
+      for( xx=0; xx<xlimitOut; xx++)
+      {
+        xOut = myRound( (double)xx * 0.866 );
+        fprintf( outStream, "%f %f %f %f %f %f %f %i %i %f\n", 
+                  data[xOut][yy].phi1, 
+                  data[xOut][yy].Phi, 
+                  data[xOut][yy].phi2, 
+                  xx * stepSize * 0.866,
+                  yy * stepSize * 0.866,
+                  data[xOut][yy].float1, 
+                  data[xOut][yy].float2, 
+                  data[xOut][yy].int1, 
+                  data[xOut][yy].int2, 
+                  data[xOut][yy].float3 );
+      }//end for( xx...
+    }//end for( yy...
+    fclose( outStream );
+  }
+  else
+  {
+    printf( "\nExpected file %s does not exist", filename );
+    exit( 1 );
+  }
 
-	return 0;
+  return 0;
 }
 
