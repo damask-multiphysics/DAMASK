@@ -531,10 +531,8 @@ integer(pInt)                      NiterationCrystallite, &      ! number of ite
                                    g, &                          ! grain index
                                    k, &
                                    l, &
-                                   h, &
                                    o, &
                                    p, &
-                                   j, &
                                    perturbation , &              ! loop counter for forward,backward perturbation mode
                                    myNgrains, &
                                    mySizeState, &
@@ -552,7 +550,6 @@ real(pReal), dimension(3,3,3,3) ::   C, &
                                      dSdFdot, &
                                      dFp_invdFdot
 real(pReal) ::   counter
-logical :: error
 
 ! --+>> INITIALIZE TO STARTING CONDITION <<+--
 
@@ -2691,6 +2688,7 @@ use debug, only:        debug_what, &
                         debug_StressLoopDistribution, &
                         debug_LeapfrogBreakDistribution
 use constitutive, only: constitutive_LpAndItsTangent, &
+                        constitutive_TandItsTangent, &
                         constitutive_homogenizedC
 use math, only:         math_mul33x33, &
                         math_mul33xx33, &
@@ -2706,7 +2704,8 @@ use math, only:         math_mul33x33, &
                         math_identity2nd, &
                         math_Mandel66to3333, &
                         math_Mandel6to33, &
-                        math_mandel33to6
+                        math_Mandel33to6, &
+                        math_Plain3333to99
 
 implicit none
 
@@ -2733,18 +2732,18 @@ real(pReal), dimension(3,3)::       Fg_new, &                     ! deformation 
                                     residuum_old, &               ! last residuum of plastic velocity gradient
                                     deltaLp, &                    ! direction of next guess
                                     gradientR, &                  ! derivative of the residuum norm
-                                    A, &
+                                    Tstar,&                       ! 2nd Piola-Kirchhoff Stress
+                                    A,&
                                     B, &
-                                    BT, &
-                                    AB, &
-                                    BTA
+                                    Fe                            ! elastic deformation gradient
 real(pReal), dimension(6)::         Tstar_v                       ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
-real(pReal), dimension(9,9)::       dLp_dT_constitutive, &         ! partial derivative of plastic velocity gradient calculated by constitutive law
-                                    dT_dLp, &                      ! partial derivative of 2nd Piola-Kirchhoff stress
-                                    dR_dLp, &                      ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
-                                    inv_dR_dLp                      ! inverse of dRdLp
-real(pReal), dimension(3,3,3,3)::   C                             ! 4th rank elasticity tensor
-real(pReal), dimension(6,6)::       C_66                          ! simplified 2nd rank elasticity tensor 
+real(pReal), dimension(9,9)::       dLp_dT_constitutive, &        ! partial derivative of plastic velocity gradient calculated by constitutive law
+                                    dT_dFe_constitutive, &        ! partial derivative of 2nd Piola-Kirchhoff stress calculated by constitutive law
+                                    dFe_dLp, &                    ! partial derivative of elastic deformation gradient
+                                    dR_dLp, &                     ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
+                                    inv_dR_dLp                    ! inverse of dRdLp
+real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                 ! partial derivative of 2nd Piola-Kirchhoff stress
+                                    dFe_dLp3333                   ! partial derivative of elastic deformation gradient
 real(pReal)                         p_hydro, &                    ! volumetric part of 2nd Piola-Kirchhoff Stress
                                     det, &                        ! determinant
                                     expectedImprovement, &
@@ -2755,12 +2754,12 @@ real(pReal)                         p_hydro, &                    ! volumetric p
 logical                             error                         ! flag indicating an error
 integer(pInt)                       NiterationStress, &           ! number of stress integrations
                                     dummy, &
-                                    h, &
-                                    j, &
                                     k, &
                                     l, &
                                     m, &
                                     n, &
+                                    o, &
+                                    p, &
                                     jacoCounter                   ! counter to check for Jacobian update
 integer(pLongInt)                   tick, &
                                     tock, &
@@ -2817,12 +2816,6 @@ if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
 endif
 A = math_mul33x33(transpose(invFp_current), math_mul33x33(transpose(Fg_new),math_mul33x33(Fg_new,invFp_current)))
  
- 
-!* get elasticity tensor
-
-C_66 = constitutive_homogenizedC(g,i,e)
-C = math_Mandel66to3333(C_66)
-
 
 !* start LpLoop with normal step length
 
@@ -2848,15 +2841,13 @@ LpLoop: do
     return
   endif
    
+  A = math_mul33x33(Fg_new,invFp_current)                                    ! intermediate tensor needed later to calculate dFe_dLp
   B = math_I3 - dt*Lpguess
-  BT = math_transpose33(B)
-  AB = math_mul33x33(A,B)
-  BTA = math_mul33x33(BT,A)
-   
+  Fe = math_mul33x33(A,B)                                                    ! current elastic deformation tensor
   
   !* calculate 2nd Piola-Kirchhoff stress tensor
-  
-  Tstar_v = 0.5_pReal * math_mul66x6(C_66,math_mandel33to6(math_mul33x33(BT,AB) - math_I3))
+  call constitutive_TandItsTangent(Tstar, dT_dFe3333, Fe, g,i,e)             ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
+  Tstar_v = math_Mandel33to6(Tstar)
   p_hydro = sum(Tstar_v(1:3)) / 3.0_pReal
   forall(n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) - p_hydro                  ! get deviatoric stress tensor
    
@@ -2982,12 +2973,15 @@ LpLoop: do
   !* calculate Jacobian for correction term  and remember current residuum and Lpguess
   
   if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
-    dT_dLp = 0.0_pReal
-    do h=1_pInt,3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt; do m=1_pInt,3_pInt
-      dT_dLp(3*(h-1)+j,3*(k-1)+l) = dT_dLp(3*(h-1)+j,3*(k-1)+l) + C(h,j,l,m) * AB(k,m) + C(h,j,m,l) * BTA(m,k)
-    enddo; enddo; enddo; enddo; enddo
-    dT_dLp = -0.5_pReal * dt * dT_dLp
-    dR_dLp = math_identity2nd(9_pInt) - math_mul99x99(dLp_dT_constitutive, dT_dLp)
+    dFe_dLp3333 = 0.0_pReal
+    do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
+      dFe_dLp3333(p,o,1:3,p) = A(o,1:3)                                ! dFe_dLp(i,j,k,l) = -dt * A(i,k) delta(j,l)
+    enddo; enddo
+    dFe_dLp3333 = -dt * dFe_dLp3333
+    dFe_dLp = math_Plain3333to99(dFe_dLp3333)
+    dT_dFe_constitutive = math_Plain3333to99(dT_dFe3333)
+    dR_dLp = math_identity2nd(9_pInt) - &
+             math_mul99x99(dLp_dT_constitutive, math_mul99x99(dT_dFe_constitutive , dFe_dLp))
     inv_dR_dLp = 0.0_pReal
     call math_invert(9_pInt,dR_dLp,inv_dR_dLp,dummy,error)               ! invert dR/dLp --> dLp/dR
     if (error) then
@@ -2999,10 +2993,11 @@ LpLoop: do
                    .or. .not. iand(debug_what(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
           write(6,*)
           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLp',transpose(dR_dLp)
-          write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dLp',transpose(dT_dLp)
+          write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLp',transpose(dFe_dLp)
+          write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFe_constitutive',transpose(dT_dFe_constitutive)
           write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLp_dT_constitutive',transpose(dLp_dT_constitutive)
-          write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> AB',math_transpose33(AB)
-          write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> BTA',math_transpose33(BTA)
+          write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> A',math_transpose33(A)
+          write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> B',math_transpose33(B)
           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lp_constitutive',math_transpose33(Lp_constitutive)
           write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lpguess',math_transpose33(Lpguess)
         endif
