@@ -42,8 +42,11 @@ module FEsolving
    restartWrite      = .false., &
    restartRead       = .false., &
    terminallyIll     = .false., &
-   parallelExecution = .true., & 
-   lastMode          = .true.
+   parallelExecution = .true.,  & 
+   lastMode          = .true.,  &
+   lastIncConverged  = .false., &
+   outdatedByNewInc  = .false., &
+   cutBack           = .false.
 
  integer(pInt), dimension(:,:), allocatable, public :: &
    FEsolving_execIP
@@ -56,12 +59,7 @@ module FEsolving
    
  logical, dimension(:,:), allocatable, public :: &
    calcMode
-      
- logical, public :: & 
-   lastIncConverged  = .false., &
-   outdatedByNewInc  = .false., &
-   cutBack           = .false.
-   
+
  public :: FE_init
 
 contains

@@ -34,7 +34,7 @@ module debug
    debug_levelBasic         = 2_pInt**1_pInt, &
    debug_levelExtensive     = 2_pInt**2_pInt
  integer(pInt), parameter, private :: &
-   debug_maxForAll          = debug_levelExtensive
+   debug_maxForAll          = debug_levelExtensive                                                 ! must be set to the last bitcode used by (potentially) all debug types
  integer(pInt), parameter, public :: &
    debug_spectralRestart    = debug_maxForAll*2_pInt**1_pInt, &
    debug_spectralFFTW       = debug_maxForAll*2_pInt**2_pInt, &
@@ -53,8 +53,10 @@ module debug
    debug_CPFEM                   = 10_pInt, &
    debug_spectral                = 11_pInt, &
    debug_abaqus                  = 12_pInt
+ integer(pInt), parameter, private :: &
+   debug_maxWhat                 = debug_abaqus                                                     ! must be set to the maximum defined debug type
    
- integer(pInt), dimension(12+2),  public :: &                                                       ! 11 for specific, and 2 for "all" and "other"
+ integer(pInt), dimension(debug_maxWhat+2_pInt),  public :: &                                       ! specific ones, and 2 for "all" and "other"
    debug_what                    = 0_pInt
 
  integer(pInt), public :: &
@@ -197,9 +199,9 @@ subroutine debug_init
        case ('abaqus')
          what = debug_abaqus
        case ('all')
-         what = 12_pInt
+         what = debug_maxWhat + 1_pInt
        case ('other')
-         what = 13_pInt
+         what = debug_maxWhat + 2_pInt
      end select
      if(what /= 0) then
        do i = 2_pInt, maxNchunks
@@ -222,9 +224,9 @@ subroutine debug_init
    enddo
    100 close(fileunit)
  
-   do i = 1_pInt, 11_pInt
-     if(debug_what(i) == 0) debug_what(i) = ior(debug_what(i), debug_what(13))
-     debug_what(i) = ior(debug_what(i), debug_what(12))
+   do i = 1_pInt, debug_maxWhat
+     if(debug_what(i) == 0) debug_what(i) = ior(debug_what(i), debug_what(debug_maxWhat + 2_pInt))  ! fill undefined debug types with levels specified by "other" 
+     debug_what(i) = ior(debug_what(i), debug_what(debug_maxWhat + 1_pInt))                         ! fill all debug types with levels specified by "all" 
    enddo
   
    if (iand(debug_what(debug_debug),debug_levelBasic) /= 0) then
