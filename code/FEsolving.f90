@@ -57,7 +57,7 @@ module FEsolving
  logical, dimension(:,:), allocatable, public :: &
    calcMode
       
- logical, private :: & 
+ logical, public :: & 
    lastIncConverged  = .false., &
    outdatedByNewInc  = .false., &
    cutBack           = .false.
