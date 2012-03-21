@@ -483,7 +483,6 @@ use math, only:          math_inv33, &
                          math_Mandel6to33, &
                          math_Mandel33to6, &
                          math_I3, &
-                         math_Mandel66to3333, &
                          math_mul3333xx3333
 use FEsolving, only:     FEsolving_execElem, & 
                          FEsolving_execIP
@@ -500,7 +499,8 @@ use constitutive, only:  constitutive_sizeState, &
                          constitutive_partionedState0, &
                          constitutive_homogenizedC, &
                          constitutive_dotState, &
-                         constitutive_dotState_backup
+                         constitutive_dotState_backup, &
+                         constitutive_TandItsTangent
 
 implicit none
 !*** input variables ***!
@@ -541,9 +541,9 @@ logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                       convergenceFlag_backup
 ! local variables used for calculating analytic Jacobian
 real(pReal), dimension(3,3)::       Fpinv_rate, &
-                                    FDot_inv
-real(pReal), dimension(3,3,3,3) ::   C, & 
-                                     dSdFe, &
+                                    FDot_inv, &
+                                    junk
+real(pReal), dimension(3,3,3,3) ::   dSdFe, &
                                      dFedF, &
                                      dFedFdot, &
                                      dSdF, &
@@ -931,22 +931,20 @@ if(updateJaco) then                                                             
   crystallite_P = P_backup
   crystallite_converged = convergenceFlag_backup
   
-  else                                                                                                 ! Calculate Jacobian using analytical expression
+  else                                                                                                  ! Calculate Jacobian using analytical expression
 
   ! --- CALCULATE  ANALYTIC dPdF ---
   
-  !$OMP PARALLEL DO PRIVATE(dFedF,dSdF,dSdFe,myNgrains,C)
+  !$OMP PARALLEL DO PRIVATE(dFedF,dSdF,dSdFe,myNgrains)
     do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
         do g = 1_pInt,myNgrains
-          C = math_Mandel66to3333(constitutive_homogenizedC(g,i,e))
           dFedF = 0.0_pReal
           do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
-            dFedF(p,o,o,1:3) = crystallite_invFp(1:3,p,g,i,e)                                           ! dFe_ij/dF_kl = dF_im/dF_kl * (Fp current^-1)_mj
-            dSdFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), &
-                                   math_transpose33(crystallite_subFe0(1:3,1:3,g,i,e)))                 ! dS_ij/dFe_kl 
-          enddo; enddo 
+            dFedF(p,o,o,1:3) = crystallite_invFp(1:3,p,g,i,e)                                           ! dFe^T_ij/dF_kl = delta_jk * (Fp current^-1)_li
+          enddo; enddo
+          call constitutive_TandItsTangent(junk,dSdFe,crystallite_subFe0(1:3,1:3,g,i,e),g,i,e)          ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
           dSdF = math_mul3333xx3333(dSdFe,dFedF)                                                        ! dS/dF = dS/dFe * dFe/dF
           do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
             crystallite_dPdF(1:3,1:3,o,p,g,i,e) = math_mul33x33(math_mul33x33(dFedF(1:3,1:3,o,p),&
@@ -960,12 +958,11 @@ if(updateJaco) then                                                             
   endif
   
   if (rate_sensitivity) then
-  !$OMP PARALLEL DO PRIVATE(dFedFdot,dSdFdot,dSdFe,Fpinv_rate,FDot_inv,counter,dFp_invdFdot,C,myNgrains)
+  !$OMP PARALLEL DO PRIVATE(dFedFdot,dSdFdot,dSdFe,Fpinv_rate,FDot_inv,counter,dFp_invdFdot,myNgrains)
     do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
       myNgrains = homogenization_Ngrains(mesh_element(3,e))
       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
         do g = 1_pInt,myNgrains
-          C = math_Mandel66to3333(constitutive_homogenizedC(g,i,e))
           Fpinv_rate = math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e),crystallite_Lp(1:3,1:3,g,i,e))    ! dFp^-1 = dFp^-1/dt *dt... dFp may overshoot dF by small ammount as 
           FDot_inv = crystallite_subF(1:3,1:3,g,i,e) - crystallite_F0(1:3,1:3,g,i,e)
           counter = 0.0_pReal
@@ -979,24 +976,23 @@ if(updateJaco) then                                                             
           enddo; enddo
           if (counter .gt. 0.0_pReal) FDot_inv = FDot_inv/counter
           do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
-            dFp_invdFdot(o,p,1:3,1:3) = Fpinv_rate(o,p)*FDot_inv                                          ! dFe_ij/dF_kl = dF_im/dF_kl * (Fp current^-1)_mj
-            dSdFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), &
-                                   math_transpose33(crystallite_subFe0(1:3,1:3,g,i,e)))                    ! dS_ij/dFe_kl 
+            dFp_invdFdot(o,p,1:3,1:3) = Fpinv_rate(o,p)*FDot_inv
           enddo; enddo
           do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
             dFedFdot(1:3,1:3,o,p) = math_transpose33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
                                     dFp_invdFdot(1:3,1:3,o,p)))
           enddo; enddo
+          call constitutive_TandItsTangent(junk,dSdFe,crystallite_subFe0(1:3,1:3,g,i,e),g,i,e)            ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
           dSdFdot = math_mul3333xx3333(dSdFe,dFedFdot)
           do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
             crystallite_dPdF(1:3,1:3,o,p,g,i,e) = crystallite_dPdF(1:3,1:3,o,p,g,i,e) - &
                    (math_mul33x33(math_mul33x33(dFedFdot(1:3,1:3,o,p), &
                    math_Mandel6to33(crystallite_Tstar_v)),math_transpose33( &
-                   crystallite_invFp(1:3,1:3,g,i,e))) + &                                                  ! dP/dF = dFe/dFdot * S * Fp^-T...
+                   crystallite_invFp(1:3,1:3,g,i,e))) + &                                                  ! dP/dFdot = dFe/dFdot * S * Fp^-T...
                    math_mul33x33(math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
-                   math_Mandel6to33(crystallite_Tstar_v)),math_transpose33(dFp_invdFdot(1:3,1:3,o,p))) &   !         + Fe * S * dFp^-T/dFdot...
+                   math_Mandel6to33(crystallite_Tstar_v)),math_transpose33(dFp_invdFdot(1:3,1:3,o,p))) &   !            + Fe * S * dFp^-T/dFdot...
                    + math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
-                   math_mul33x33(dSdFdot(1:3,1:3,o,p),math_transpose33(crystallite_invFp(1:3,1:3,g,i,e))))) !         + Fe * dS/dFdot * Fp^-T         
+                   math_mul33x33(dSdFdot(1:3,1:3,o,p),math_transpose33(crystallite_invFp(1:3,1:3,g,i,e))))) !           + Fe * dS/dFdot * Fp^-T         
           enddo; enddo
     enddo; enddo; enddo 
   !$OMP END PARALLEL DO
