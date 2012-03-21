@@ -265,7 +265,8 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math
                  constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o \
                  constitutive_titanmod.o constitutive_nonlocal.o constitutive.o \
                  homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o crystallite.o
-         
+
+ifneq "$(SOLVER)" "AL"
 DAMASK_spectral.exe: DAMASK_spectral.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral.o \
@@ -273,7 +274,15 @@ DAMASK_spectral.exe: DAMASK_spectral.o
 
 DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral.f90 $(SUFFIX)
+else
+DAMASK_spectral_AL.exe: DAMASK_spectral_AL.o 
+	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
+  -o DAMASK_spectral_AL.exe DAMASK_spectral_AL.o \
+  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
 
+DAMASK_spectral_AL.o: DAMASK_spectral_AL.f90 CPFEM.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_AL.f90 $(SUFFIX)
+endif
 CPFEM.o:                      CPFEM.f90\
                               homogenization.o
 
