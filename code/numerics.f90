@@ -66,11 +66,11 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 volDiscrMod_RGC            =  1.0e+12_pReal, &               ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
                                 volDiscrPow_RGC            =  5.0_pReal, &                   ! powerlaw penalty for volume discrepancy
 !* spectral parameters:
-                                err_div_tol                =  1.0e-4_pReal, &                ! error of divergence in fourier space, Default 1.0e-4: proposed by Suquet
+                                err_div_tol                =  0.1_pReal, &                   ! Div(P)/avg(P)*meter
                                 err_stress_tolrel          =  0.01_pReal , &                 ! relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 fftw_timelimit             = -1.0_pReal, &                   ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
                                 rotation_tol               =  1.0e-12_pReal                  ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
-character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patiant planner flag
+character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
 integer(pInt) ::                fftw_planner_flag          =  -1_pInt, &                     ! conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
                                 itmax                      =  20_pInt, &                     ! maximum number of iterations
                                 itmin                      =  2_pInt                         ! minimum number of iterations
