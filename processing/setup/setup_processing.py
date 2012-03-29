@@ -50,9 +50,9 @@ if options.compiler not in compilers:
 f2py_compiler = {
                   'gfortran': 'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008"',
                   'gnu95':    'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008"',
-                  'intel32':  'intel   --f90flags="-fpp -stand f03"',
-                  'intel':    'intelem --f90flags="-fpp -stand f03"',
-                  'ifort':    'intelem --f90flags="-fpp -stand f03"',
+                  'intel32':  'intel   --f90flags="-fpp -stand f03 -diag-disable 5268"',
+                  'intel':    'intelem --f90flags="-fpp -stand f03 -diag-disable 5268"',
+                  'ifort':    'intelem --f90flags="-fpp -stand f03 -diag-disable 5268"',
                 }[options.compiler]
 compiler = {
                   'gfortran': 'gfortran',
@@ -85,8 +85,10 @@ bin_link = { \
                 'spectral_geomCrop.py',
                 'spectral_minimalSurface.py',
                 'spectral_vicinityOffset.py',
-                'voronoi_randomSeeding.py',
+                'spectral_ang2geom.py',
+                'spectral_randomSeeding.py',
                 'voronoi_tessellation.exe',
+                'OIMang_hex2cub',
                 ],
         'post' : [
                 '3Dvisualize.py',
@@ -128,11 +130,16 @@ execute = { \
                         # It uses the fortran wrapper f2py that is included in the numpy package to construct the
                         # module postprocessingMath.so out of the fortran code postprocessingMath.f90
                         # for the generation of the pyf file:
-                        #f2py -m DAMASK -h DAMASK.pyf --overwrite-signature ../../code/math.f90 \
+                        # f2py -m DAMASK -h DAMASK.pyf --overwrite-signature ../../code/math.f90 \
                         'f2py %s'%(os.path.join(codeDir,'damask.core.pyf')) +\
                         ' -c --fcompiler=%s'%(f2py_compiler) +\
-                        ' %s'%(os.path.join(codeDir,'core_modules.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'prec.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'DAMASK_python_interface.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'IO.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'numerics.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'debug.f90'))+\
                         ' %s'%(os.path.join(codeDir,'math.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'DAMASK_python.f90'))+\
                         ' -L%s/lib -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
                         ' %s'%lib_lapack,
                         'mv %s `readlink -f %s`' %(os.path.join(codeDir,'core.so'),os.path.join(damaskEnv.relPath('lib/damask'),'core.so')),

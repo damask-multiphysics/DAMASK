@@ -17,7 +17,7 @@
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
 !##################################################################################################
-!* $Id: DAMASK_spectral.f90 1321 2012-02-15 18:58:38Z MPIE\u.diehl $
+!* $Id$
 !##################################################################################################
 ! Material subroutine for BVP solution using spectral method
 !
@@ -111,7 +111,8 @@ program DAMASK_spectral_AL
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
- real(pReal), dimension(3,3) ::           P_av, P, F_aim = math_I3, F_aim_lastInc = math_I3,&
+ real(pReal), dimension(3,3) ::           P_av = 0.0_pReal, P_star_av = 0.0_pReal, P, &
+                                          F_aim = math_I3, F_aim_lastInc = math_I3, lambda_av, &
                                           mask_stress, mask_defgrad, deltaF, F_star_av, &
                                           F_aim_lab                                                 ! quantities rotated to other coordinate system
  real(pReal), dimension(3,3,3,3) ::       dPdF, C_inc0, C=0.0_pReal, S_lastInc, C_lastInc           ! stiffness and compliance
@@ -141,7 +142,7 @@ program DAMASK_spectral_AL
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
  real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc = 1.0_pReal, timeinc_old = 0.0_pReal   ! elapsed time, begin of interval, time interval 
- real(pReal) :: guessmode, err_stress, err_stress_tol, err_f, err_p, err_crit        
+ real(pReal) :: guessmode, err_stress, err_stress_tol, err_f, err_p, err_crit, err_f_point, pstress_av_L2, err_div_rms, err_div     
  real(pReal), dimension(3,3), parameter ::  ones = 1.0_pReal, zeroes = 0.0_pReal
  complex(pReal), dimension(3,3) ::          temp33_Complex
  real(pReal),    dimension(3,3) ::          temp33_Real
@@ -163,8 +164,8 @@ program DAMASK_spectral_AL
  call DAMASK_interface_init
 
  print '(a)', ''
- print '(a)', ' <<<+-  DAMASK_spectral init  -+>>>'
- print '(a)', ' $Id: DAMASK_spectral.f90 1321 2012-02-15 18:58:38Z MPIE\u.diehl $'
+ print '(a)', ' <<<+-  DAMASK_spectral_AL init  -+>>>'
+ print '(a)', ' $Id$'
 #include "compilation_info.f90"
  print '(a,a)', ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
  print '(a,a)', ' Solver Job Name:      ',trim(getSolverJobName())
@@ -344,8 +345,8 @@ program DAMASK_spectral_AL
 ! output of geometry
  print '(a)',  ''
  print '(a)',   '#############################################################'
- print '(a)',   'DAMASK spectral:'
- print '(a)',   'The spectral method boundary value problem solver for'
+ print '(a)',   'DAMASK spectral_AL:'
+ print '(a)',   'The AL spectral method boundary value problem solver for'
  print '(a)',   'the Duesseldorf Advanced Material Simulation Kit'
  print '(a)',   '#############################################################'
  print '(a,a)', 'geometry file:        ',trim(path)//'.geom'
@@ -506,9 +507,8 @@ program DAMASK_spectral_AL
    C = C + dPdF
  enddo; enddo; enddo
  C_inc0 = C * wgt                                                                     ! linear reference material stiffness
- P_av = 0.0_pReal
 
- !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! possible restore deformation gradient from saved state
  if (restartInc > 1_pInt) then                                                                      ! using old values from file                                                      
    if (debugRestart) print '(a,i6,a)' , 'Reading values of increment ',&
@@ -603,8 +603,7 @@ program DAMASK_spectral_AL
 
 !--------------------------------------------------------------------------------------------------
 ! coordinates at beginning of inc
-       call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,bc(loadcase)%rotation),&     ! calculate current coordinates
-                             1.0_pReal,F_real(1:res(1),1:res(2),1:res(3),1:3,1:3),coordinates)
+       !call deformed_fft(res,geomdim,1.0_pReal,F_real(1:res(1),1:res(2),1:res(3),1:3,1:3),coordinates)! calculate current coordinates
 
 !--------------------------------------------------------------------------------------------------
 ! winding forward of deformation aim in loadcase system
@@ -614,6 +613,15 @@ program DAMASK_spectral_AL
                   + deltaF
        F_aim_lastInc = temp33_Real
        F_star_av  = F_aim
+
+!--------------------------------------------------------------------------------------------------
+! Initialize / Update lambda to useful value
+       temp33_real = math_mul3333xx33(C*wgt, F_aim-F_aim_lastInc)
+       P_av = P_av + temp33_real        
+       do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+          lambda(i,j,k,1:3,1:3) = lambda(i,j,k,1:3,1:3) + temp33_real
+       enddo; enddo; enddo
+
 !--------------------------------------------------------------------------------------------------
 ! update local deformation gradient
        deltaF = math_rotate_backward33(deltaF,bc(loadcase)%rotation)
@@ -630,11 +638,9 @@ program DAMASK_spectral_AL
 !--------------------------------------------------------------------------------------------------
 !Initialize pointwise data for AL scheme: ToDo: good choice?
        F_star(1:res(1),1:res(2),1:res(3),1:3,1:3) = F_real(1:res(1),1:res(2),1:res(3),1:3,1:3)
-       lambda = 0.0_pReal
 
 !--------------------------------------------------------------------------------------------------
 ! calculate reduced compliance
-
        if(size_reduced > 0_pInt) then                                                               ! calculate compliance in case stress BC is applied
          C_lastInc = math_rotate_forward3333(C*wgt,bc(loadcase)%rotation)                      ! calculate stiffness from former inc
          c_prev99 = math_Plain3333to99(C_lastInc)
@@ -677,7 +683,7 @@ program DAMASK_spectral_AL
 !##################################################################################################
 ! convergence loop (looping over iterations)
 !##################################################################################################
-       do while((iter < itmax .and. (err_crit > err_div_tol .or. err_stress > err_stress_tol))&
+       do while((iter < itmax .and. (err_div > err_div_tol .or. err_stress > err_stress_tol .or. err_crit > 5.0e-4))&
                 .or. iter < itmin)
          iter = iter + 1_pInt
 
@@ -700,10 +706,8 @@ program DAMASK_spectral_AL
            err_stress_tol = + huge(1.0_pReal)
          endif
          F_aim_lab = math_rotate_backward33(F_aim,bc(loadcase)%rotation)
-         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F aim  =',&
+         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'F aim  =',&
                                                 math_transpose33(F_aim)
-         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F* =',&
-                                                math_transpose33(F_star_av)
 
 !--------------------------------------------------------------------------------------------------
 ! doing Fourier transform
@@ -717,7 +721,32 @@ program DAMASK_spectral_AL
          if(res(3)>1_pInt) &
           lambda_fourier(1:res1_red,1:res(2),                res(3)/2_pInt+1_pInt,1:3,1:3)&
                                                              = cmplx(0.0_pReal,0.0_pReal,pReal)
+!--------------------------------------------------------------------------------------------------
+! calculating RMS divergence criterion in Fourier space
+         pstress_av_L2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(lambda_av,&                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
+                                                     math_transpose33(lambda_av)))))
+         err_div_RMS = 0.0_pReal
+         do k = 1_pInt, res(3); do j = 1_pInt, res(2)
+           do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
+             err_div_RMS = err_div_RMS &
+                   + 2.0_pReal*(sum (real(math_mul33x3_complex(lambda_fourier(i,j,k,1:3,1:3),&           ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
+                                                   xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&            ! --> sum squared L_2 norm of vector 
+                               +sum(aimag(math_mul33x3_complex(lambda_fourier(i,j,k,1:3,1:3),& 
+                                                                  xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))
+           enddo
+           err_div_RMS = err_div_RMS &                                                              ! Those two layers (DC and Nyquist) do not have a conjugate complex counterpart
+                         + sum( real(math_mul33x3_complex(lambda_fourier(1       ,j,k,1:3,1:3),&
+                                                             xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
+                         + sum(aimag(math_mul33x3_complex(lambda_fourier(1       ,j,k,1:3,1:3),&
+                                                             xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
+                         + sum( real(math_mul33x3_complex(lambda_fourier(res1_red,j,k,1:3,1:3),&
+                                                             xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)&
+                         + sum(aimag(math_mul33x3_complex(lambda_fourier(res1_red,j,k,1:3,1:3),&
+                                                             xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
+         enddo; enddo
 
+         err_div_RMS = sqrt(err_div_RMS)*wgt
+         err_div = err_div_RMS/pstress_av_L2
 !--------------------------------------------------------------------------------------------------
 ! using gamma operator to update F 
          if(memory_efficient) then                                                                  ! memory saving version, on-the-fly calculation of gamma_hat
@@ -745,36 +774,31 @@ program DAMASK_spectral_AL
            enddo; enddo; enddo
          endif      
          F_fourier(1,1,1,1:3,1:3) = cmplx((F_aim_lab - F_star_av)*real(Npoints,pReal),0.0_pReal,pReal)
+
 !--------------------------------------------------------------------------------------------------
 ! doing inverse Fourier transform
          call fftw_execute_dft_c2r(plan_correction,F_fourier,F_real)                                ! back transform of fluct deformation gradient
-         ! do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-         ! write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'delta F real =',&
-                                                ! math_transpose33(F_real(i,j,k,1:3,1:3)*wgt)
-         ! enddo; enddo; enddo
-
          F_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = F_real(1:res(1),1:res(2),1:res(3),1:3,1:3) * wgt + &
                                                       F_star(1:res(1),1:res(2),1:res(3),1:3,1:3)
 
 !--------------------------------------------------------------------------------------------------
 !
-         print '(a)', '... update stress field P(F*) .....................................'
+         print '(a)', '... update stress field P(F*) and update F* and λ..........................'
          ielem = 0_pInt
-         temp33_Real = 0.0_pReal
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(3_pInt,&                                                              ! collect cycle
                               coordinates(i,j,k,1:3), F_lastInc(i,j,k,1:3,1:3),&
                               F_star(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&
                               sigma,dsde, P, dPdF)
-           temp33_Real = temp33_Real + F_real(i,j,k,1:3,1:3)
          enddo; enddo; enddo
-         
-         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F =',&
-                                                math_transpose33(temp33_Real*wgt)
+
          ielem = 0_pInt
          err_f = 0.0_pReal
+         err_f_point = 0.0_pReal
          F_star_av = 0.0_pReal
+         P_star_av = 0.0_pReal
+         lambda_av = 0.0_pReal
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&
@@ -782,57 +806,72 @@ program DAMASK_spectral_AL
                               F_star(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&       
                               sigma,dsde, P,dPdF)
            CPFEM_mode = 2_pInt                                                                  ! winding forward
-
-           if (iter == 1_pInt) lambda(i,j,k,1:3,1:3) = P
            temp33_Real = lambda(i,j,k,1:3,1:3) - P &
                          + math_mul3333xx33(C_inc0,F_real(i,j,k,1:3,1:3)- F_star(i,j,k,1:3,1:3))
-           ! write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F - F* =',&
-                                    ! math_transpose33(F_real(i,j,k,1:3,1:3)- F_star(i,j,k,1:3,1:3))
+
            F_star(i,j,k,1:3,1:3) =  F_star(i,j,k,1:3,1:3) +  &
                                     math_mul3333xx33(math_invSym3333(C_inc0 + dPdF), temp33_Real)
            lambda(i,j,k,1:3,1:3) = lambda(i,j,k,1:3,1:3) + math_mul3333xx33(C_inc0,F_real(i,j,k,1:3,1:3) &
                                                                                  - F_star(i,j,k,1:3,1:3))
            F_star_av = F_star_av + F_star(i,j,k,1:3,1:3)
+           lambda_av = lambda_av + lambda(i,j,k,1:3,1:3)
+           P_star_av = P_star_av + P
            temp33_real = F_star(i,j,k,1:3,1:3) - F_real(i,j,k,1:3,1:3)
+           err_f_point = max(err_f_point, maxval(temp33_real))
            err_f = max(err_f, sqrt(math_mul33xx33(temp33_real,temp33_real)))
-         enddo; enddo; enddo
-
-         F_star_av = F_star_av *wgt
-         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'F* =',&
-                                              math_transpose33(F_star_av)
-
-         print '(a)', '... update stress field P(F) .....................................'
-         ielem = 0_pInt
-         do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-           ielem = ielem + 1_pInt
-           call CPFEM_general(3_pInt,&                                                              ! collect cycle
-                              coordinates(i,j,k,1:3), F_lastInc(i,j,k,1:3,1:3),&
-                              F_real(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&
-                              sigma,dsde,P,dPdF)
-         enddo; enddo; enddo
-         
-         ielem = 0_pInt
-         err_p = 0.0_pReal
-         P_av =0.0_pReal
-         do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-           ielem = ielem + 1_pInt
-           call CPFEM_general(2_pInt,&
-                              coordinates(i,j,k,1:3),F_lastInc(i,j,k,1:3,1:3), &
-                              F_real(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&       
-                              sigma,dsde,P,dPdF)
-           P_av = P_av + P
+           
            temp33_real = lambda(i,j,k,1:3,1:3) - P
            err_p = max(err_p, sqrt(math_mul33xx33(temp33_real,temp33_real)))
          enddo; enddo; enddo
-         
-         P_av = math_rotate_forward33(P_av * wgt,bc(loadcase)%rotation)
-         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'P(F) =',&
-                                              math_transpose33(P_av)/1.e6_pReal
 
+         F_star_av = F_star_av *wgt
+         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'F* =',&
+                                              math_transpose33(F_star_av)
+         P_star_av = P_star_av *wgt
+         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'P(F*) / GPa =',&
+                                              math_transpose33(P_star_av) /1.e6_pReal
+         lambda_av = lambda_av *wgt
+         write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'λ / GPa =',&
+                                              math_transpose33(lambda_av) /1.e6_pReal
+         ! print '(a)', '... update stress field P(F) .....................................'
+         ! ielem = 0_pInt
+         ! do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+           ! ielem = ielem + 1_pInt
+           ! call CPFEM_general(3_pInt,&                                                              ! collect cycle
+                              ! coordinates(i,j,k,1:3), F_lastInc(i,j,k,1:3,1:3),&
+                              ! F_real(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&
+                              ! sigma,dsde,P,dPdF)
+         ! enddo; enddo; enddo
+         
+         ! ielem = 0_pInt
+         ! err_p = 0.0_pReal
+         ! P_av =0.0_pReal
+         ! do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+           ! ielem = ielem + 1_pInt
+           ! call CPFEM_general(2_pInt,&
+                              ! coordinates(i,j,k,1:3),F_lastInc(i,j,k,1:3,1:3), &
+                              ! F_real(i,j,k,1:3,1:3),temperature(i,j,k),timeinc,ielem,1_pInt,&       
+                              ! sigma,dsde,P,dPdF)
+           ! P_av = P_av + P
+           ! temp33_real = lambda(i,j,k,1:3,1:3) - P
+           ! err_p = max(err_p, sqrt(math_mul33xx33(temp33_real,temp33_real)))
+         ! enddo; enddo; enddo
+         
+         ! P_av = math_rotate_forward33(P_av * wgt,bc(loadcase)%rotation)
+         ! write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'P(F) / GPa =',&
+                                              ! math_transpose33(P_av)/1.e6_pReal
+         ! write (*,'(a,/,3(3(es14.7,1x)/))',advance='no') 'P(F*) - P(F) =',&
+                                              ! math_transpose33(P_star_av - P_av)
+         P_av = lambda_av
+                                              
          err_f = err_f/sqrt(math_mul33xx33(F_star_av,F_star_av))
          err_p = err_p/sqrt(math_mul33xx33(P_av,P_av))
-         write(6,'(a,es14.7,1x)') 'error f', err_f
-         write(6,'(a,es14.7,1x)') 'error p', err_p
+         write(6,'(a,es14.7,1x)') 'error F', err_f
+         write(6,'(a,es14.7,1x)') 'max abs err F', err_f_point
+         write(6,'(a,es14.7,1x)') 'error P', err_p
+         write(6,'(a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
+         write(6,'(a,es11.4)')        'error div = ',err_div
+         write(6,'(a,es11.4)')        'error stress = ',err_stress/err_stress_tol
          
        err_crit = max(err_p, err_f)
        
@@ -883,11 +922,16 @@ end program DAMASK_spectral_AL
 !
 !********************************************************************
 subroutine quit(stop_id)
- use prec
+ use prec, only: &
+   pInt
+   
  implicit none
-
  integer(pInt), intent(in) :: stop_id
  
- ! if (stop_id ==    0_pInt) stop 0_pInt                                                              ! normal termination
- stop 'abnormal termination of DAMASK_spectral'       
+ if (stop_id ==    0_pInt) stop 0                                                                   ! normal termination
+ if (stop_id <= 9000_pInt) then                                                                     ! trigger regridding
+   write(6,'(i4)') stop_id
+   stop 1
+ endif
+ stop 'abnormal termination of DAMASK_spectral'
 end subroutine

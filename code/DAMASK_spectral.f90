@@ -358,7 +358,7 @@ program DAMASK_spectral
      end select
  enddo; enddo
 101 close(myUnit)
-if (sum(bc(1:N_Loadcases)%incs)>9000_pInt) stop !discuss with Philip, stop code trouble. suggesting warning
+if (sum(bc(1:N_Loadcases)%incs)>9000_pInt) stop 'to many incs' !discuss with Philip, stop code trouble. suggesting warning
 
 !-------------------------------------------------------------------------------------------------- ToDo: if temperature at CPFEM is treated properly, move this up immediately after interface init
 ! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
@@ -961,7 +961,7 @@ C_ref = C * wgt                                                                 
            write(6,'(a,es11.4)')        'error divergence Real max = ',err_real_div_max
          endif
          write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/err_div_tol,&
-                                                           ' (',err_div_RMS,' N/m³)'
+                                                           ' (',err_div,' N/m³)'
 
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)

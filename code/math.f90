@@ -35,63 +35,70 @@ module math
  complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)* pi
 
 ! *** 3x3 Identity ***
- real(pReal), dimension(3,3), parameter, public :: math_I3 = &
- reshape( (/ &
- 1.0_pReal,0.0_pReal,0.0_pReal, &
- 0.0_pReal,1.0_pReal,0.0_pReal, &
- 0.0_pReal,0.0_pReal,1.0_pReal /),(/3,3/))
+ real(pReal), dimension(3,3), parameter, public :: &
+   math_I3 = reshape([&
+     1.0_pReal,0.0_pReal,0.0_pReal, &
+     0.0_pReal,1.0_pReal,0.0_pReal, &
+     0.0_pReal,0.0_pReal,1.0_pReal  &
+     ],[3,3])
 
 ! *** Mandel notation ***
- integer(pInt), dimension (2,6), parameter :: mapMandel = &
- reshape((/&
-  1_pInt,1_pInt, &
-  2_pInt,2_pInt, &
-  3_pInt,3_pInt, &
-  1_pInt,2_pInt, &
-  2_pInt,3_pInt, &
-  1_pInt,3_pInt  &
- /),(/2,6/))
+ integer(pInt), dimension (2,6), parameter, private :: &
+   mapMandel = reshape([&
+     1_pInt,1_pInt, &
+     2_pInt,2_pInt, &
+     3_pInt,3_pInt, &
+     1_pInt,2_pInt, &
+     2_pInt,3_pInt, &
+     1_pInt,3_pInt  &
+     ],[2,6])
 
- real(pReal), dimension(6), parameter :: nrmMandel = &
- (/1.0_pReal,1.0_pReal,1.0_pReal, 1.414213562373095_pReal, 1.414213562373095_pReal, 1.414213562373095_pReal/)
- real(pReal), dimension(6), parameter :: invnrmMandel = &
- (/1.0_pReal,1.0_pReal,1.0_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal,0.7071067811865476_pReal/)
+ real(pReal), dimension(6), parameter, private :: &
+   nrmMandel = [&
+     1.0_pReal,                1.0_pReal,                1.0_pReal,&
+     1.414213562373095_pReal,  1.414213562373095_pReal,  1.414213562373095_pReal]
+     
+ real(pReal), dimension(6), parameter , public :: &
+   invnrmMandel = [&
+     1.0_pReal,                1.0_pReal,                1.0_pReal,&
+     0.7071067811865476_pReal, 0.7071067811865476_pReal, 0.7071067811865476_pReal]
 
 ! *** Voigt notation ***
- integer(pInt), dimension (2,6), parameter :: mapVoigt = &
- reshape((/&
-  1_pInt,1_pInt, &
-  2_pInt,2_pInt, &
-  3_pInt,3_pInt, &
-  2_pInt,3_pInt, &
-  1_pInt,3_pInt, &
-  1_pInt,2_pInt  &
- /),(/2,6/))
+ integer(pInt), dimension (2,6), parameter, private :: &
+   mapVoigt = reshape([&
+     1_pInt,1_pInt, &
+     2_pInt,2_pInt, &
+     3_pInt,3_pInt, &
+     2_pInt,3_pInt, &
+     1_pInt,3_pInt, &
+     1_pInt,2_pInt  &
+     ],[2,6])
 
- real(pReal), dimension(6), parameter :: nrmVoigt = &
- (/1.0_pReal,1.0_pReal,1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal/)
- real(pReal), dimension(6), parameter :: invnrmVoigt = &
- (/1.0_pReal,1.0_pReal,1.0_pReal, 1.0_pReal, 1.0_pReal, 1.0_pReal/)
+ real(pReal), dimension(6), parameter, private :: & 
+   nrmVoigt    = 1.0_pReal, &
+   invnrmVoigt = 1.0_pReal
 
 ! *** Plain notation ***
- integer(pInt), dimension (2,9), parameter :: mapPlain = &
- reshape((/&
-  1_pInt,1_pInt, &
-  1_pInt,2_pInt, &
-  1_pInt,3_pInt, &
-  2_pInt,1_pInt, &
-  2_pInt,2_pInt, &
-  2_pInt,3_pInt, &
-  3_pInt,1_pInt, &
-  3_pInt,2_pInt, &
-  3_pInt,3_pInt  &
- /),(/2,9/))
+ integer(pInt), dimension (2,9), parameter, private :: &
+   mapPlain = reshape([&
+     1_pInt,1_pInt, &
+     1_pInt,2_pInt, &
+     1_pInt,3_pInt, &
+     2_pInt,1_pInt, &
+     2_pInt,2_pInt, &
+     2_pInt,3_pInt, &
+     3_pInt,1_pInt, &
+     3_pInt,2_pInt, &
+     3_pInt,3_pInt  &
+     ],[2,9])
 
 ! Symmetry operations as quaternions
 ! 24 for cubic, 12 for hexagonal = 36
-integer(pInt), dimension(2), parameter :: math_NsymOperations = (/24_pInt,12_pInt/)
-real(pReal), dimension(4,36), parameter :: math_symOperations = &
-  reshape((/&
+integer(pInt), dimension(2), parameter, private :: &
+   math_NsymOperations = [24_pInt,12_pInt]
+   
+real(pReal), dimension(4,36), parameter, private :: &
+  math_symOperations = reshape([&
      1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! cubic symmetry operations
      0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal, &       !     2-fold symmetry
      0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
@@ -128,12 +135,20 @@ real(pReal), dimension(4,36), parameter :: math_symOperations = &
      0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
     -0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
      0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal &
-  /),(/4,36/))
+     ],[4,36])
   
  include 'fftw3.f03'
  
  public  :: math_init, &
-            math_range
+            qsort, &
+            math_range, &
+            math_identity2nd, &
+            math_civita
+            
+ private :: math_partition, &
+            math_delta, &
+            Gauss
+ 
 contains
  
 !**************************************************************************
@@ -308,7 +323,6 @@ end function math_partition
 pure function math_range(N)  
 
  implicit none
-
  integer(pInt), intent(in) :: N
  integer(pInt) :: i
  integer(pInt), dimension(N) :: math_range
@@ -324,7 +338,6 @@ end function math_range
 pure function math_identity2nd(dimen)  
 
  implicit none
-
  integer(pInt), intent(in) :: dimen
  integer(pInt) :: i
  real(pReal), dimension(dimen,dimen) :: math_identity2nd
@@ -344,7 +357,6 @@ end function math_identity2nd
 pure function math_civita(i,j,k)
 
  implicit none
-
  integer(pInt), intent(in) :: i,j,k
  real(pReal) math_civita
 
@@ -367,7 +379,6 @@ end function math_civita
 pure function math_delta(i,j)
 
  implicit none
-
  integer(pInt), intent (in) :: i,j
  real(pReal) :: math_delta
 
@@ -383,7 +394,6 @@ end function math_delta
 pure function math_identity4th(dimen)  
 
  implicit none
-
  integer(pInt), intent(in) :: dimen
  integer(pInt) :: i,j,k,l
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
@@ -400,7 +410,6 @@ end function math_identity4th
 pure function math_vectorproduct(A,B)  
 
  implicit none
-
  real(pReal), dimension(3), intent(in) ::  A,B
  real(pReal), dimension(3) ::  math_vectorproduct
 
@@ -505,7 +514,6 @@ end function math_mul3333xx33
 pure function math_mul3333xx3333(A,B)  
 
  implicit none
-
  integer(pInt) :: i,j,k,l
  real(pReal), dimension(3,3,3,3), intent(in) ::  A
  real(pReal), dimension(3,3,3,3), intent(in) ::  B
@@ -527,7 +535,6 @@ end function math_mul3333xx3333
 pure function math_mul33x33(A,B)  
 
  implicit none
-
  integer(pInt) :: i,j
  real(pReal), dimension(3,3), intent(in) ::  A,B
  real(pReal), dimension(3,3) ::  math_mul33x33
@@ -544,7 +551,6 @@ end function math_mul33x33
 pure function math_mul66x66(A,B)  
 
  implicit none
-
  integer(pInt) :: i,j
  real(pReal), dimension(6,6), intent(in) ::  A,B
  real(pReal), dimension(6,6) ::  math_mul66x66
@@ -562,8 +568,8 @@ end function math_mul66x66
 pure function math_mul99x99(A,B)  
 
  use prec, only: pReal, pInt
- implicit none
 
+ implicit none
  integer(pInt)  i,j
  real(pReal), dimension(9,9), intent(in) ::  A,B
 
@@ -584,7 +590,6 @@ end function math_mul99x99
 pure function math_mul33x3(A,B)  
 
  implicit none
-
  integer(pInt) :: i
  real(pReal), dimension(3,3), intent(in) ::  A
  real(pReal), dimension(3),   intent(in) ::  B
@@ -600,7 +605,6 @@ end function math_mul33x3
 pure function math_mul33x3_complex(A,B)  
 
  implicit none
-
  integer(pInt) :: i
  complex(pReal), dimension(3,3), intent(in) ::  A
  real(pReal),    dimension(3),   intent(in) ::  B
@@ -636,7 +640,6 @@ end function math_mul66x6
 function math_qRnd()  
 
  implicit none
-
  real(pReal), dimension(4) :: math_qRnd
  real(pReal), dimension(3) :: rnd
  
@@ -655,7 +658,6 @@ end function math_qRnd
 pure function math_qMul(A,B)  
 
  implicit none
-
  real(pReal), dimension(4), intent(in) ::  A, B
  real(pReal), dimension(4) ::  math_qMul
 
@@ -673,7 +675,6 @@ end function math_qMul
 pure function math_qDot(A,B)  
 
  implicit none
-
  real(pReal), dimension(4), intent(in) :: A, B
  real(pReal) :: math_qDot
 
@@ -688,7 +689,6 @@ end function math_qDot
 pure function math_qConj(Q)  
 
  implicit none
-
  real(pReal), dimension(4), intent(in) ::  Q
  real(pReal), dimension(4) ::  math_qConj
 
@@ -704,7 +704,6 @@ end function math_qConj
 pure function math_qNorm(Q)  
 
  implicit none
-
  real(pReal), dimension(4), intent(in) ::  Q
  real(pReal) :: math_qNorm
  
@@ -719,7 +718,6 @@ end function math_qNorm
 pure function math_qInv(Q)  
 
  implicit none
-
  real(pReal), dimension(4), intent(in) ::  Q
  real(pReal), dimension(4) ::  math_qInv
  real(pReal) :: squareNorm
@@ -739,7 +737,6 @@ end function math_qInv
 pure function math_qRot(Q,v)  
 
  implicit none
-
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3), intent(in) :: v
  real(pReal), dimension(3) :: math_qRot
@@ -767,7 +764,6 @@ end function math_qRot
 pure function math_transpose33(A)
 
  implicit none
-
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal),dimension(3,3) :: math_transpose33
  integer(pInt) :: i,j
@@ -3098,7 +3094,7 @@ end subroutine shape_compare
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-! Routine to build mesh of (distoreted) cubes for given coordinates (= center of the cubes)
+! Routine to build mesh of (distorted) cubes for given coordinates (= center of the cubes)
 !
  use debug, only: debug_math, &
                   debug_what, &
@@ -3316,7 +3312,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  integer(pInt) :: i, j, k, res1_red
  integer(pInt), dimension(3) :: k_s
  real(pReal), dimension(3)   :: step, offset_coords, integrator
- 
+
  integrator = geomdim / 2.0_pReal / pi                                                                   ! see notes where it is used
  
  if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
@@ -3336,7 +3332,6 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  coords_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*3_pInt,C_SIZE_T))        !C_SIZE_T is of type integer(8)
  call c_f_pointer(coords_fftw, coords_real,     [res(1)+2_pInt,res(2),res(3),3_pInt])
  call c_f_pointer(coords_fftw, coords_fourier,  [res1_red     ,res(2),res(3),3_pInt])
-
  fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),9_pInt,&                      ! dimensions , length in each dimension in reversed order
                           defgrad_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
                                      1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
@@ -3355,7 +3350,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  enddo; enddo; enddo
 
  call fftw_execute_dft_r2c(fftw_forth, defgrad_real, defgrad_fourier)
- 
+
  !remove highest frequency in each direction
  if(res(1)>1_pInt) &
    defgrad_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
@@ -3368,7 +3363,6 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
                                            1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
                                                
  coords_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
- 
  do k = 1_pInt, res(3)
    k_s(3) = k-1_pInt
    if(k > res(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-res(3)
@@ -3384,7 +3378,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
        if(k/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
                 + defgrad_fourier(i,j,k,1:3,3)*cmplx(0.0_pReal,integrator(3)/real(k_s(3),pReal),pReal)
  enddo; enddo; enddo
- 
+
  call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
  coords_real = coords_real/real(res(1)*res(2)*res(3),pReal)
 
