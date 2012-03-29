@@ -85,7 +85,7 @@ bin_link = { \
                 'spectral_geomCrop.py',
                 'spectral_minimalSurface.py',
                 'spectral_vicinityOffset.py',
-                'voronoi_randomSeeding.exe',
+                'voronoi_randomSeeding.py',
                 'voronoi_tessellation.exe',
                 ],
         'post' : [
@@ -113,7 +113,6 @@ bin_link = { \
 
 compile = { \
         'pre' : [
-                'voronoi_randomSeeding.f90',
                 'voronoi_tessellation.f90',
                 ],
         'post' : [
