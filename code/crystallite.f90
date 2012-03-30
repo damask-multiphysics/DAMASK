@@ -720,6 +720,12 @@ enddo                                                                           
     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                  ! iterate over IPs of this element to be processed
       do g = 1,myNgrains
         if (.not. crystallite_converged(g,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
+#ifndef _OPENMP
+          if(iand(debug_what(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+            write (6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> no convergence : respond fully elastic at el ip g ',e,i,g
+            write (6,*) 
+          endif
+#endif
           invFp = math_inv33(crystallite_partionedFp0(1:3,1:3,g,i,e))
           Fe_guess = math_mul33x33(crystallite_partionedF(1:3,1:3,g,i,e), invFp)
           Tstar = math_Mandel6to33( math_mul66x6( 0.5_pReal*constitutive_homogenizedC(g,i,e), &
