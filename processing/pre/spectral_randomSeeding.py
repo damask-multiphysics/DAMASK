@@ -43,16 +43,18 @@ i.e. within the region close to a grain/phase boundary.
 )
 
 parser.add_option('-f', '--file', dest='filename', type="string", \
-                  help='output seed file name')
+                  help='output seed file name [%default]')
 parser.add_option('-s', '--seed', dest='randomSeed', type='int', \
-                  help='seed of random number generator')
+                  help='seed of random number generator [%default]')
 parser.add_option('-n', '--ngrains', dest='N_Seeds', type='int', \
-                  help='seed of random number generator')
+                  help='seed of random number generator[%default]')
 parser.add_option('-r','--res', dest='res', type='int', nargs=3, \
-                  help='Min Fourier points in x, y, z')
+                  help='Min Fourier points in x, y, z [%default]')
 
 parser.set_defaults(filename = 'seeds')
 parser.set_defaults(randomSeed = 0)
+parser.set_defaults(res=[16,16,16])
+parser.set_defaults(N_Seeds=50)
 
 (options, filenames) = parser.parse_args()
 
