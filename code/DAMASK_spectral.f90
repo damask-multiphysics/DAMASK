@@ -69,7 +69,9 @@ program DAMASK_spectral
    debug_levelBasic, &
    debug_spectralDivergence, &
    debug_spectralRestart, &
-   debug_spectralFFTW
+   debug_spectralFFTW, &
+   debug_reset, &
+   debug_info
    
  use math
  
@@ -812,6 +814,7 @@ C_ref = C * wgt                                                                 
          P_real = 0.0_pReal                                                                         ! needed because of the padding for FFTW
          C = 0.0_pReal
          ielem = 0_pInt 
+         call debug_reset()
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&                                                          ! first element in first iteration retains CPFEM_mode 1, 
@@ -821,6 +824,7 @@ C_ref = C * wgt                                                                 
            CPFEM_mode = 2_pInt
            C = C + dPdF
          enddo; enddo; enddo
+         call debug_info()
 
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
