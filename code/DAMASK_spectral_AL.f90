@@ -685,7 +685,7 @@ program DAMASK_spectral_AL
        iter = 0_pInt
        err_crit = huge(1.0_pReal)                                                                   ! go into loop 
        callCPFEM=.true.
-       guessmax = 13
+       guessmax = 2
        guesses = 0
 
 !##################################################################################################
@@ -793,7 +793,8 @@ program DAMASK_spectral_AL
 !--------------------------------------------------------------------------------------------------
 !
          if(callCPFEM) then
-         print '(a)', '... calling CPFEM to update P(F*) and F*.........................'
+           print '(a)', '... calling CPFEM to update P(F*) and F*.........................'
+           F_star_lastIter = F_star
            ielem = 0_pInt
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
              ielem = ielem + 1_pInt
@@ -816,11 +817,9 @@ program DAMASK_spectral_AL
              F_star(i,j,k,1:3,1:3) =  F_star(i,j,k,1:3,1:3) +  math_mul3333xx33(math_invSym3333(&
                                      C_inc0 + dPdF(i,j,k,1:3,1:3,1:3,1:3)), temp33_Real)
            enddo; enddo; enddo
-           F_star_lastIter = F_star
          else
            guesses = guesses +1_pInt
-           print '(a)', '... .linear solution.P(F*) and update F*........................'
-           print*, '... linear approximation ', guesses, ' of ', guessmax, ' for P(F*) and F*'
+           print*, '... linear approximation for P(F*) and F* ', guesses, ' of ', guessmax
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
              temp33_Real = lambda(i,j,k,1:3,1:3) - (P(i,j,k,1:3,1:3)  + math_mul3333xx33(dPdF(i,j,k,1:3,1:3,1:3,1:3),&
                            F_star(i,j,k,1:3,1:3) -F_star_lastIter(i,j,k,1:3,1:3)))&
@@ -886,39 +885,36 @@ program DAMASK_spectral_AL
          if(err_crit < 1.0_pReal .or. guesses >= guessmax) callCPFEM = .true.
          err_crit =huge(1.0_pReal)
        else
-         if(guessmax > 1 .and. iter>2) callCPFEM=.false.
+         if(iter >2 .and. iter< itmax-3) callCPFEM=.false.
          guesses = 0_pInt
-         guessmax = guessmax -1
        endif
        
        enddo    ! end looping when convergency is achieved 
-       print '(a)', ''
-       print '(a)', '=================================================================='
+       write(6,'(a)') '  ' 
+       write(6,'(a)') '=================================================================='
        if(err_crit > 1.0_pReal) then
-         print '(A,I5.5,A)', 'increment ', totalIncsCounter, ' NOT converged'
+         write(6,'(A,I5.5,A)') 'increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
        else
          convergedCounter = convergedCounter + 1_pInt
-         print '(A,I5.5,A)', 'increment ', totalIncsCounter, ' converged'
+         write(6,'(A,I5.5,A)') 'increment ', totalIncsCounter, ' converged'
        endif
 
        if (mod(totalIncsCounter -1_pInt,bc(loadcase)%outputfrequency) == 0_pInt) then               ! at output frequency
-         print '(a)', ''
-         print '(a)', '... writing results to file ......................................'
+         write(6,'(a)') '  ' 
+         write(6,'(a)') '... writing results to file ......................................'
          write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)       ! write result to file
        endif
        
        if( bc(loadcase)%restartFrequency > 0_pInt .and. &
                       mod(inc - 1_pInt,bc(loadcase)%restartFrequency) == 0_pInt) then               ! at frequency of writing restart information set restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
          restartWrite = .true.
-         print '(A)', 'writing converged results for restart'
+         write(6,*) 'writing converged results for restart'
          call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F_star))                  ! writing deformation gradient field to file
          write (777,rec=1) F_star
          close (777)
          restartInc=totalIncsCounter
        endif 
-       
-       
      endif ! end calculation/forwarding
    enddo  ! end looping over incs in current loadcase
    deallocate(c_reduced)
@@ -948,11 +944,11 @@ subroutine quit(stop_id)
  call date_and_time(values = dateAndTime)
  write(6,'(/,a)') 'DAMASK_spectral_AL terminated on:'
  write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
-                                                       dateAndTime(2),'/',&
-                                                       dateAndTime(1) 
+                                                      dateAndTime(2),'/',&
+                                                      dateAndTime(1) 
  write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
-                                                       dateAndTime(6),':',&
-                                                       dateAndTime(7)  
+                                                      dateAndTime(6),':',&
+                                                      dateAndTime(7)  
  write(6,'(/,a)') 'Exit code:'
  if (stop_id == 1_pInt) stop 1                                                                      ! normal termination
  if (stop_id <= 0_pInt) then                                                                        ! trigger regridding
