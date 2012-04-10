@@ -1127,21 +1127,4 @@ C_ref = C * wgt                                                                 
  call quit(0_pInt)
 end program DAMASK_spectral
 
-!********************************************************************
-! quit subroutine to satisfy IO_error
-!
-!********************************************************************
-subroutine quit(stop_id)
- use prec, only: &
-   pInt
-   
- implicit none
- integer(pInt), intent(in) :: stop_id
- 
- if (stop_id ==    0_pInt) stop 0                                                                   ! normal termination
- if (stop_id <= 9000_pInt) then                                                                     ! trigger regridding
-   write(6,'(i4)') stop_id
-   stop 1
- endif
- stop 'abnormal termination of DAMASK_spectral'
-end subroutine
+#include "DAMASK_quit.f90"

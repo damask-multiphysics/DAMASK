@@ -13,6 +13,20 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 python module core ! in 
    interface  ! in :core
+
+      module damask_interface ! in :damask_interface:DAMASK_python_interface.f90
+      
+        function getSolverWorkingDirectoryName()
+            character(len=1024) :: getSolverWorkingDirectoryName()
+        end function getSolverWorkingDirectoryName
+        
+        subroutine damask_interface_init(loadcaseParameterIn,geometryParameterIn) ! in :damask_interface:DAMASK_python_interface.f90
+            character(len=1024), intent(in)   :: loadcaseParameterIn                                      
+            character(len=1024), intent(in)   :: geometryParameterIn
+        end subroutine damask_interface_init            
+
+      end module damask_interface
+      
       module math ! in :math:math.f90
 
         subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch) ! in  :math:math.f90
@@ -147,6 +161,18 @@ python module core ! in
             ! output variables
             real*8, dimension(res[0],res[1],res[2]),intent(out),depend(res[0],res[1],res[2]) :: vm
         end subroutine math_equivStrain33_field
+        
+        subroutine math_nearestNeighborSearch(res_new,Npoints_old,defgrad_av,geomdim,spatial_dim,deformed_set,result_indices) ! in :math:math.f90
+            ! input variables
+            integer, dimension(3),                                    intent(in)                                         :: res_new
+            integer,                                                  intent(in)                                         :: Npoints_old
+            integer,                                                  intent(in)                                         :: spatial_dim
+            real,   dimension(3),                                     intent(in)                                         :: geomdim
+            real,   dimension(3,3),                                   intent(in)                                         :: defgrad_av
+            real,   dimension(spatial_dim,Npoints_old),               intent(in),depend(spatial_dim,Npoints_old)         :: deformed_set
+           ! output variables
+           integer, dimension(res_new[0]*res_new[1]*res_new[2]),      intent(out),depend(res_new[0],res_new[1],res_new[2]) :: result_indices
+        end subroutine math_nearestNeighborSearch
      end module math
    end interface 
 end python module core

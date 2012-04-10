@@ -3820,43 +3820,46 @@ end subroutine calculate_cauchy
 !############################################################################
 ! subroutine to find nearest_neighbor.
 !############################################################################
-
-subroutine find_nearest_neighbor(res,geomdim,defgrad_av,spatial_dim,range_dim,domain_dim,&
-                                            range_set,domain_set, map_range_to_domain)
+subroutine math_nearestNeighborSearch(res_new, Npoints_old, defgrad_av, geomdim, &
+                                    spatial_dim, deformed_set, result_indices)
  use kdtree2_module
- real(pReal), dimension(3), intent(in)   :: geomdim
- real(pReal), dimension(3,3), intent(in) :: defgrad_av
- integer(pInt), dimension(3), intent(in) :: res
- real(pReal), dimension(3) :: shift
- integer(pInt) , intent(in):: range_dim, domain_dim, spatial_dim
- real(pReal), dimension(spatial_dim,range_dim), intent(in) :: range_set
- real(pReal), dimension(spatial_dim,domain_dim), intent(in) :: domain_set
- real(pReal), dimension(spatial_dim,domain_dim*3_pInt**spatial_dim) :: domain_set_large
- integer(pInt):: i, j, k, l, m, n, ielem_large, ielem_small
- integer(pInt), dimension(range_dim), intent(out) :: map_range_to_domain
+ 
+ implicit none
+ integer(pInt), dimension(3),   intent(in) :: res_new
+ integer(pInt),                 intent(in):: spatial_dim, Npoints_old
+ real(pReal),   dimension(3),   intent(in) :: geomdim
+ real(pReal),   dimension(3,3), intent(in) :: defgrad_av
+ real(pReal),   dimension(spatial_dim,Npoints_old),           intent(in) :: deformed_set
+ 
+ integer(pInt), dimension(res_new(1)*res_new(2)*res_new(3)), intent(out) :: result_indices
+ 
+ real(pReal), dimension(spatial_dim,Npoints_old*3_pInt**spatial_dim)     :: deformed_set_large
 
+ integer(pInt):: i, j, k, ielem_small, ielem_large
+ real(pReal), dimension(3) :: shift, query_point
  type(kdtree2), pointer :: tree
- type(kdtree2_result), dimension(1) :: map_1range_to_domain
-
+ type(kdtree2_result), dimension(1) :: Results
+  
  shift = math_mul33x3(defgrad_av,geomdim)
- ielem_small = 0_pInt 
  ielem_large = 0_pInt 
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   ielem_small = ielem_small + 1_pInt
-   do n = -1_pInt, 1_pInt
-     do m = -1_pInt, 1_pInt
-       do l = -1_pInt, 1_pInt
-          ielem_large = ielem_large + 1_pInt
-          domain_set_large(1:spatial_dim,ielem_large) = domain_set(1:spatial_dim,ielem_small)+ real((/l,m,n/),pReal)* shift
-   enddo; enddo; enddo
- enddo; enddo; enddo
  
- tree => kdtree2_create(domain_set_large,sort=.true.,rearrange=.true.)                        ! create a sorted tree
- do i = 1_pInt, range_dim
-   call kdtree2_n_nearest(tp=tree, qv=range_set(1:spatial_dim,i), nn=1_pInt, results= map_1range_to_domain)
-   map_range_to_domain(i) = map_1range_to_domain(1)%idx
- enddo
- 
-end subroutine
+ do ielem_small=1_pInt, Npoints_old                  ! making copies (27 for 3D, 9 for 2D)
+   do k = -1, 1
+     do j = -1, 1
+       do i = -1, 1
+         ielem_large = ielem_large + 1_pInt
+         deformed_set_large(1:spatial_dim,ielem_large) = &
+                      deformed_set(1:spatial_dim,ielem_small) + real([i,j,k],pReal)* shift
+ enddo; enddo; enddo; enddo
+
+ tree => kdtree2_create(deformed_set_large,sort=.true.,rearrange=.true.)
+   
+  do k=1_pInt,res_new(3); do j=1_pInt, res_new(2); do i=1_pInt, res_new(1)
+    query_point = math_mul33x3(defgrad_av,(real([i,j,k],pReal)-0.5_pReal)/geomdim*real(res_new,pReal))
+    call kdtree2_n_nearest(tp=tree, qv=query_point(1_pInt:spatial_dim),nn=1_pInt, results = Results)
+    result_indices(i) = Results(1)%idx
+  enddo; enddo; enddo
+   
+end subroutine math_nearestNeighborSearch
 
 end module math

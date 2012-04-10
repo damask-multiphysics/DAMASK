@@ -139,7 +139,7 @@ execute = { \
                         ' %s'%(os.path.join(codeDir,'numerics.f90'))+\
                         ' %s'%(os.path.join(codeDir,'debug.f90'))+\
                         ' %s'%(os.path.join(codeDir,'math.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'DAMASK_python.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'DAMASK_quit.f90'))+\
                         ' -L%s/lib -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
                         ' %s'%lib_lapack,
                         'mv %s `readlink -f %s`' %(os.path.join(codeDir,'core.so'),os.path.join(damaskEnv.relPath('lib/damask'),'core.so')),
