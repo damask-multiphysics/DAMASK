@@ -60,8 +60,8 @@ subroutine DAMASK_interface_init(loadcaseParameterIn,geometryParameterIn)
  character(len=1024), intent(in)   :: geometryParameterIn                                                                    
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
  
- geometryParameter = loadcaseParameterIn
- loadcaseParameter = geometryParameterIn
+ geometryParameter = geometryParameterIn
+ loadcaseParameter = loadcaseParameterIn
  
  call date_and_time(values = dateAndTime)
 

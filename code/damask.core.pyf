@@ -14,19 +14,17 @@
 python module core ! in 
    interface  ! in :core
 
-      module damask_interface ! in :damask_interface:DAMASK_python_interface.f90
-      
-        function getSolverWorkingDirectoryName()
-            character(len=1024) :: getSolverWorkingDirectoryName()
-        end function getSolverWorkingDirectoryName
-        
+
+     module damask_interface ! in :damask_interface:DAMASK_python_interface.f90
+
         subroutine damask_interface_init(loadcaseParameterIn,geometryParameterIn) ! in :damask_interface:DAMASK_python_interface.f90
             character(len=1024), intent(in)   :: loadcaseParameterIn                                      
             character(len=1024), intent(in)   :: geometryParameterIn
         end subroutine damask_interface_init            
 
       end module damask_interface
-      
+
+
       module math ! in :math:math.f90
 
         subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch) ! in  :math:math.f90
@@ -174,6 +172,19 @@ python module core ! in
            integer, dimension(res_new[0]*res_new[1]*res_new[2]),      intent(out),depend(res_new[0],res_new[1],res_new[2]) :: result_indices
         end subroutine math_nearestNeighborSearch
      end module math
+
+
+     module mesh ! in :mesh:mesh.f90
+
+        subroutine mesh_regrid(res,resNew) ! in :mesh:mesh.f90
+            integer, dimension(3), intent(in)      :: res
+            integer, dimension(3), intent(in,out)      :: resNew
+            real*8, dimension(res[0],res[1],res[2],3,3), depend(res[0],res[1],res[2]) :: F
+
+        end subroutine mesh_regrid            
+
+     end module mesh
+      
    end interface 
 end python module core
 

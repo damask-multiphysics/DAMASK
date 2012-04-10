@@ -260,7 +260,8 @@
             mesh_FEasCP, &
             mesh_build_subNodeCoords, &
             mesh_build_ipVolumes, &
-            mesh_build_ipCoordinates
+            mesh_build_ipCoordinates, &
+            mesh_regrid
  private :: FE_mapElemtype, &
             mesh_faceMatch, &
             mesh_build_FEdata, &
@@ -3626,5 +3627,30 @@ enddo
 deallocate(mesh_HomogMicro)
  
 end subroutine mesh_tell_statistics
+
+subroutine mesh_regrid(res,resNew)           !use new_res=0.0 for automatic determination of new grid
+ use prec, only pInt, pReal
+ use DAMASK_interface, only : getSolverJobName
+ use IO, only : IO_read_jobBinaryFile
+
+ integer(pInt), dimension(3), intent(in) :: res
+ integer(pInt), dimension(3), intent(inout) :: resNew
+ real(pReal), dimension(res(1),res(2),res(3),3,3) :: F
+
+ real(pReal), dimension(:,:,:,:,:),      allocatable  :: crystallite_F0, &
+                                                         CPFEM_dcsdE, &
+                                                         crystallite_Fp0, &
+                                                         crystallite_Lp0
+ real(pReal), dimension (:,:,:,:,:,:,:), allocatable  :: crystallite_dPdF0
+ real(pReal), dimension (:,:,:,:),       allocatable  :: crystallite_Tstar0_v, &
+                                                         convergedStateConst 
+ integer(pInt), dimension (:,:),         allocatable  :: convergedSizeConst 
+
+ call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getSolverJobName()),size(F))
+ read (777,rec=1) F
+ close (777)
+  
+end subroutine mesh_regrid
+
 
 end module mesh

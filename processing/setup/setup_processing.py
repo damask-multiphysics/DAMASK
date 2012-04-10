@@ -139,6 +139,8 @@ execute = { \
                         ' %s'%(os.path.join(codeDir,'numerics.f90'))+\
                         ' %s'%(os.path.join(codeDir,'debug.f90'))+\
                         ' %s'%(os.path.join(codeDir,'math.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'FEsolving.f90'))+\
+                        ' %s'%(os.path.join(codeDir,'mesh.f90'))+\
                         ' %s'%(os.path.join(codeDir,'DAMASK_quit.f90'))+\
                         ' -L%s/lib -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
                         ' %s'%lib_lapack,
