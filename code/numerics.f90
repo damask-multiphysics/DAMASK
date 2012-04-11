@@ -67,7 +67,8 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 volDiscrPow_RGC            =  5.0_pReal, &                   ! powerlaw penalty for volume discrepancy
 !* spectral parameters:
                                 err_div_tol                =  0.1_pReal, &                   ! Div(P)/avg(P)*meter
-                                err_stress_tolrel          =  0.01_pReal , &                 ! relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
+                                err_stress_tolrel          =  0.01_pReal, &                  ! relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
+                                err_stress_tolabs          =  huge(1.0_pReal),  &            ! absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 fftw_timelimit             = -1.0_pReal, &                   ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
                                 rotation_tol               =  1.0e-12_pReal                  ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
 character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
@@ -231,6 +232,8 @@ subroutine numerics_init
              err_div_tol = IO_floatValue(line,positions,2_pInt)
        case ('err_stress_tolrel')
              err_stress_tolrel = IO_floatValue(line,positions,2_pInt)
+       case ('err_stress_tolabs')
+             err_stress_tolabs = IO_floatValue(line,positions,2_pInt)
        case ('itmax')
              itmax = IO_intValue(line,positions,2_pInt)
        case ('itmin')
@@ -332,6 +335,7 @@ subroutine numerics_init
 
    write(6,'(a24,1x,es8.1)')   ' err_div_tol:            ',err_div_tol
    write(6,'(a24,1x,es8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
+   write(6,'(a24,1x,es8.1)')   ' err_stress_tolabs:      ',err_stress_tolabs
    write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
    write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
    write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
@@ -404,6 +408,7 @@ subroutine numerics_init
  
  if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
+ if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolabs')
  if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
  if (itmin >  itmax)                       call IO_error(301_pInt,ext_msg='itmin')
  

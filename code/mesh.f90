@@ -3629,7 +3629,7 @@ deallocate(mesh_HomogMicro)
 end subroutine mesh_tell_statistics
 
 subroutine mesh_regrid(res,resNew)           !use new_res=0.0 for automatic determination of new grid
- use prec, only pInt, pReal
+ use prec, only: pInt, pReal
  use DAMASK_interface, only : getSolverJobName
  use IO, only : IO_read_jobBinaryFile
 
