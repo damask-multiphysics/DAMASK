@@ -38,7 +38,7 @@ module DAMASK_interface
             getLoadCase, &
             getLoadCaseName, &
             getModelName, &
-            DAMASK_interface_init 
+            DAMASK_interface_init
  private :: rectifyPath, &
             makeRelativePath, &
             getPathSep
@@ -49,124 +49,140 @@ contains
 !> @brief initializes the solver by interpreting the command line arguments. Also writes
 !! information on computation on screen
 !--------------------------------------------------------------------------------------------------
-subroutine DAMASK_interface_init
+subroutine DAMASK_interface_init(loadcaseParameterIn,geometryParameterIn)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,   only: pInt
 
  implicit none
- character(len=1024)   :: commandLine, &                                                            !< command line call as string
-                          hostName, &                                                               !< name of computer
-                          userName                                                                  !< name of user calling the executable
- integer               :: i, &
-                          start ,&
-                          length
- integer, dimension(8) :: dateAndTime                                                               ! type default integer
- 
- call get_command(commandLine)
- call date_and_time(values = dateAndTime)
- do i = 1,len(commandLine)                                                                          ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) & 
-                   commandLine(i:i) = achar(iachar(commandLine(i:i))+32)
- enddo
-
- if(index(commandLine,' -h ',.true.) > 0 .or. index(commandLine,' --help ',.true.) > 0) then        ! search for ' -h ' or '--help'
-   write(6,'(a)') '$Id$'
-#include "compilation_info.f90"
-   write(6,'(a)')  '#############################################################'
-   write(6,'(a)')  'DAMASK spectral:'
-   write(6,'(a)')  'The spectral method boundary value problem solver for'
-   write(6,'(a)')  'the Duesseldorf Advanced Material Simulation Kit'
-   write(6,'(a)')  '#############################################################'
-   write(6,'(a)')  'Valid command line switches:'
-   write(6,'(a)')  '   --geom    (-g, --geometry)'
-   write(6,'(a)')  '   --load    (-l, --loadcase)'
-   write(6,'(a)')  '   --restart (-r)'
-   write(6,'(a)')  '   --help    (-h)'
-   write(6,'(a)')  ' '
-   write(6,'(a)')  'Mandatory Arguments:'
-   write(6,'(a)')  '  --load PathToLoadFile/NameOfLoadFile.load'
-   write(6,'(a)')  '       "PathToGeomFile" will be the working directory.'
-   write(6,'(a)')  '       Make sure the file "material.config" exists in the working'
-   write(6,'(a)')  '           directory'   
-   write(6,'(a)')  '       For further configuration place "numerics.config"'
-   write(6,'(a)')  '           and "numerics.config" in that directory.'
-   write(6,'(a)')  ' '
-   write(6,'(a)')  '  --geom PathToGeomFile/NameOfGeom.geom'
-   write(6,'(a)')  ' '
-   write(6,'(a)')  'Optional Argument:'
-   write(6,'(a)')  '  --restart XX'
-   write(6,'(a)')  '       Reads in total increment No. XX-1 and continous to'
-   write(6,'(a)')  '           calculate total increment No. XX.'
-   write(6,'(a)')  '       Attention: Overwrites existing results file '
-   write(6,'(a)')  '           "NameOfGeom_NameOfLoadFile_spectralOut".'
-   write(6,'(a)')  '       Works only if the restart information for total increment'
-   write(6,'(a)')  '            No. XX-1 is available in the working directory.'
-   write(6,'(a)')  'Help:'
-   write(6,'(a)')  '  --help'
-   write(6,'(a)')  '       Prints this message and exits'
-   write(6,'(a)')  ' '
-   call quit(0_pInt)
- endif
- if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) &                         ! check for correct number of given arguments (no --help)
-   stop 'Wrong Nr. of Arguments. Run DAMASK_spectral.exe --help'                                    ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
- start = index(commandLine,'-g',.true.) + 3                                                         ! search for '-g' and jump to first char of geometry
- if (index(commandLine,'--geom',.true.)>0) then                                                     ! if '--geom' is found, use that (contains '-g')
-   start = index(commandLine,'--geom',.true.) + 7
- endif               
- if (index(commandLine,'--geometry',.true.)>0) then                                                 ! again, now searching for --geometry'
-   start = index(commandLine,'--geometry',.true.) + 11
- endif
- if(start==3_pInt) then                                                                             ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
-   write(6,'(a)') 'No Geometry specified'
-   call quit(9999)
- endif
- length = index(commandLine(start:len(commandLine)),' ',.false.)
-
- call get_command(commandLine)                                                                      ! may contain capitals
- geometryParameter = ''                                                                             ! should be empty
- geometryParameter(1:length)=commandLine(start:start+length)
-
- do i=1,len(commandLine)                                                                            ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i)&
-                                                               = achar(iachar(commandLine(i:i))+32)
- enddo
- 
- start = index(commandLine,'-l',.true.) + 3                                                         ! search for '-l' and jump forward iby 3 to given name
- if (index(commandLine,'--load',.true.)>0) then                                                     ! if '--load' is found, use that (contains '-l')
-   start = index(commandLine,'--load',.true.) + 7
- endif               
- if (index(commandLine,'--loadcase',.true.)>0) then                                                 ! again, now searching for --loadcase'
-   start = index(commandLine,'--loadcase',.true.) + 11
- endif
- if(start==3_pInt) then                                                                             ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
-   write(6,'(a)') 'No Loadcase specified'
-   call quit(9999)
- endif
- length = index(commandLine(start:len(commandLine)),' ',.false.)
-
- call get_command(commandLine)                                                                      ! may contain capitals
- loadcaseParameter = ''                                                                             ! should be empty
- loadcaseParameter(1:length)=commandLine(start:start+length)
- 
- do i=1,len(commandLine)                                                                            ! remove capitals
-   if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i)&
-                                                               = achar(iachar(commandLine(i:i))+32)
- enddo
-
- start = index(commandLine,'-r',.true.) + 3                                                         ! search for '-r' and jump forward iby 3 to given name
- if (index(commandLine,'--restart',.true.)>0) then                                                  ! if '--restart' is found, use that (contains '-l')
-   start = index(commandLine,'--restart',.true.) + 7
- endif 
- length = index(commandLine(start:len(commandLine)),' ',.false.)
-
- call get_command(commandLine)                                                                      ! may contain capitals
- call GET_ENVIRONMENT_VARIABLE('HOST',hostName)
- call GET_ENVIRONMENT_VARIABLE('USER',userName)
-
+ character(len=1024), optional, intent(in) :: &
+   loadcaseParameterIn, &                                        
+   geometryParameterIn    
+ character(len=1024) :: &
+   commandLine, &                                                                                   !< command line call as string
+   hostName, &                                                                                      !< name of computer
+   userName                                                                                         !< name of user calling the executable
+ integer :: &
+   i, &
+   start ,&
+   length
+ integer, dimension(8) :: &
+   dateAndTime                                                                                      ! type default integer
  write(6,*)
  write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,*) '$Id$'
 #include "compilation_info.f90"
+ if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
+   geometryParameter = geometryParameterIn
+   loadcaseParameter = loadcaseParameterIn
+   commandLine='n/a'
+   start = 3_pInt
+ else if ( .not.( present(loadcaseParameterIn) .and. present(geometryParameterIn))) then            ! none parameters given in function call, trying to get them from comman line
+   call get_command(commandLine)
+   call date_and_time(values = dateAndTime)
+   do i = 1,len(commandLine)                                                                        ! remove capitals
+     if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) & 
+                     commandLine(i:i) = achar(iachar(commandLine(i:i))+32)
+   enddo
+  
+   if(index(commandLine,' -h ',.true.) > 0 .or. index(commandLine,' --help ',.true.) > 0) then      ! search for ' -h ' or '--help'
+     write(6,'(a)')  '#############################################################'
+     write(6,'(a)')  'DAMASK spectral:'
+     write(6,'(a)')  'The spectral method boundary value problem solver for'
+     write(6,'(a)')  'the Duesseldorf Advanced Material Simulation Kit'
+     write(6,'(a)')  '#############################################################'
+     write(6,'(a)')  'Valid command line switches:'
+     write(6,'(a)')  '   --geom    (-g, --geometry)'
+     write(6,'(a)')  '   --load    (-l, --loadcase)'
+     write(6,'(a)')  '   --restart (-r)'
+     write(6,'(a)')  '   --help    (-h)'
+     write(6,'(a)')  ' '
+     write(6,'(a)')  'Mandatory Arguments:'
+     write(6,'(a)')  '  --load PathToLoadFile/NameOfLoadFile.load'
+     write(6,'(a)')  '       "PathToGeomFile" will be the working directory.'
+     write(6,'(a)')  '       Make sure the file "material.config" exists in the working'
+     write(6,'(a)')  '           directory'   
+     write(6,'(a)')  '       For further configuration place "numerics.config"'
+     write(6,'(a)')  '           and "numerics.config" in that directory.'
+     write(6,'(a)')  ' '
+     write(6,'(a)')  '  --geom PathToGeomFile/NameOfGeom.geom'
+     write(6,'(a)')  ' '
+     write(6,'(a)')  'Optional Argument:'
+     write(6,'(a)')  '  --restart XX'
+     write(6,'(a)')  '       Reads in total increment No. XX-1 and continous to'
+     write(6,'(a)')  '           calculate total increment No. XX.'
+     write(6,'(a)')  '       Attention: Overwrites existing results file '
+     write(6,'(a)')  '           "NameOfGeom_NameOfLoadFile_spectralOut".'
+     write(6,'(a)')  '       Works only if the restart information for total increment'
+     write(6,'(a)')  '            No. XX-1 is available in the working directory.'
+     write(6,'(a)')  'Help:'
+     write(6,'(a)')  '  --help'
+     write(6,'(a)')  '       Prints this message and exits'
+     write(6,'(a)')  ' '
+     call quit(1_pInt)                                                                                ! normal Termination
+   endif
+   if (.not.(command_argument_count()==4 .or. command_argument_count()==6)) then                      ! check for correct number of given arguments (no --help)
+     write(6,'(a)') 'Wrong Nr. of Arguments. Run DAMASK_spectral.exe --help'                          ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
+     call quit(100_pInt)                                                                              ! abnormal termination
+   endif
+   start = index(commandLine,'-g',.true.) + 3                                                         ! search for '-g' and jump to first char of geometry
+   if (index(commandLine,'--geom',.true.)>0) then                                                     ! if '--geom' is found, use that (contains '-g')
+     start = index(commandLine,'--geom',.true.) + 7
+   endif               
+   if (index(commandLine,'--geometry',.true.)>0) then                                                 ! again, now searching for --geometry'
+     start = index(commandLine,'--geometry',.true.) + 11
+   endif
+   if(start==3_pInt) then                                                                             ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
+     write(6,'(a)') 'No Geometry specified'
+     call quit(100_pInt)                                                                              ! abnormal termination
+   endif
+   length = index(commandLine(start:len(commandLine)),' ',.false.)
+  
+   call get_command(commandLine)                                                                      ! may contain capitals
+   geometryParameter = ''                                                                             ! should be empty
+   geometryParameter(1:length)=commandLine(start:start+length)
+  
+   do i=1,len(commandLine)                                                                            ! remove capitals
+     if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i)&
+                                                                 = achar(iachar(commandLine(i:i))+32)
+   enddo
+   
+   start = index(commandLine,'-l',.true.) + 3                                                         ! search for '-l' and jump forward iby 3 to given name
+   if (index(commandLine,'--load',.true.)>0) then                                                     ! if '--load' is found, use that (contains '-l')
+     start = index(commandLine,'--load',.true.) + 7
+   endif               
+   if (index(commandLine,'--loadcase',.true.)>0) then                                                 ! again, now searching for --loadcase'
+     start = index(commandLine,'--loadcase',.true.) + 11
+   endif
+   if(start==3_pInt) then                                                                             ! Could not find valid keyword (position 0 +3). Functions from IO.f90 are not available
+     write(6,'(a)') 'No Loadcase specified'
+     call quit(100_pInt)                                                                              ! abnormal termination
+   endif
+   length = index(commandLine(start:len(commandLine)),' ',.false.)
+  
+   call get_command(commandLine)                                                                      ! may contain capitals
+   loadcaseParameter = ''                                                                             ! should be empty
+   loadcaseParameter(1:length)=commandLine(start:start+length)
+   
+   do i=1,len(commandLine)                                                                            ! remove capitals
+     if(64<iachar(commandLine(i:i)) .and. iachar(commandLine(i:i))<91) commandLine(i:i)&
+                                                                 = achar(iachar(commandLine(i:i))+32)
+   enddo
+  
+   start = index(commandLine,'-r',.true.) + 3                                                         ! search for '-r' and jump forward iby 3 to given name
+   if (index(commandLine,'--restart',.true.)>0) then                                                  ! if '--restart' is found, use that (contains '-l')
+     start = index(commandLine,'--restart',.true.) + 7
+   endif 
+   length = index(commandLine(start:len(commandLine)),' ',.false.)
+  
+   call get_command(commandLine)                                                                      ! may contain capitals
+ else
+    write(6,'(a)') 'Wrong Nr. of Arguments!'                                                          ! Function call with wrong No of arguments
+    call quit(100_pInt)
+ endif
+
+ call GET_ENVIRONMENT_VARIABLE('HOST',hostName)
+ call GET_ENVIRONMENT_VARIABLE('USER',userName)
+
  write(6,'(a,2(i2.2,a),i4.4)') ' Date:               ',dateAndTime(3),'/',&
                                                        dateAndTime(2),'/',&
                                                        dateAndTime(1) 

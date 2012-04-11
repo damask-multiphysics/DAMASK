@@ -411,7 +411,8 @@ subroutine numerics_init
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolabs')
  if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
  if (itmin >  itmax)                       call IO_error(301_pInt,ext_msg='itmin')
- 
+ if (update_gamma .and. &
+                   .not. memory_efficient) call IO_error(error_ID = 847_pInt)
  if (fixedSeed <= 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a)') ' Random is random!'

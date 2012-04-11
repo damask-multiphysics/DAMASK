@@ -34,8 +34,9 @@
 !
 ! MPI fuer Eisenforschung, Duesseldorf
 
-program DAMASK_spectral
+#include "spectral_quit.f90"
 
+program DAMASK_spectral
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  
  use DAMASK_interface, only: &
@@ -75,6 +76,11 @@ program DAMASK_spectral
    
  use math
  
+ use mesh,  only : &
+   mesh_spectral_getResolution, &
+   mesh_spectral_getDimension, &
+   mesh_spectral_getHomogenization
+ 
  use CPFEM, only: &
    CPFEM_general, &
    CPFEM_initAll
@@ -86,6 +92,7 @@ program DAMASK_spectral
  use numerics, only: &
    err_div_tol, &
    err_stress_tolrel, &
+   err_stress_tolabs, &
    rotation_tol, &
    itmax,&
    itmin, &
@@ -102,11 +109,7 @@ program DAMASK_spectral
    
  !$ use OMP_LIB                                                                                     ! the openMP function library
 
- !##################################################################################################
-! variable declaration
-!##################################################################################################
  implicit none
-
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: & 
@@ -121,7 +124,6 @@ program DAMASK_spectral
  integer(pInt), dimension(1_pInt + maxNchunksLoadcase*2_pInt) :: positions                          ! this is longer than needed for geometry parsing
  
  integer(pInt) :: &
-   headerLength, &
    N_l    = 0_pInt, &
    N_t    = 0_pInt, &
    N_n    = 0_pInt, &
@@ -132,12 +134,6 @@ program DAMASK_spectral
  
  character(len=1024) :: &
    line, &
-   keyword
- 
- logical :: &
-   gotResolution     = .false.,&
-   gotDimension      = .false.,&
-   gotHomogenization = .false.
 
  type bc_type
    real(pReal), dimension (3,3) :: deformation            = 0.0_pReal, &                            ! applied velocity gradient or time derivative of deformation gradient
@@ -252,7 +248,6 @@ program DAMASK_spectral
 !##################################################################################################
 ! reading of information from load case file and geometry file
 !##################################################################################################
- !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
  open (6, encoding='UTF-8')  
  call DAMASK_interface_init
  write(6,'(a)') ''
@@ -360,72 +355,16 @@ program DAMASK_spectral
      end select
  enddo; enddo
 101 close(myUnit)
-if (sum(bc(1:N_Loadcases)%incs)>9000_pInt) stop 'to many incs' !discuss with Philip, stop code trouble. suggesting warning
 
 !-------------------------------------------------------------------------------------------------- ToDo: if temperature at CPFEM is treated properly, move this up immediately after interface init
 ! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
  call CPFEM_initAll(bc(1)%temperature,1_pInt,1_pInt)
- if (update_gamma .and. .not. memory_efficient) call IO_error(error_ID = 847_pInt)
-
+ 
 !--------------------------------------------------------------------------------------------------
-! read header of geom file to get size information. complete geom file is intepretated by mesh.f90
- call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
- rewind(myUnit)
- read(myUnit,'(a1024)') line
- positions = IO_stringPos(line,2_pInt)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=842_pInt)
- endif
- rewind(myUnit)
- do i = 1_pInt, headerLength
-   read(myUnit,'(a1024)') line
-   positions = IO_stringPos(line,maxNchunksGeom)             
-   select case ( IO_lc(IO_StringValue(line,positions,1)) )
-     case ('dimension')
-       gotDimension = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,positions,j)))
-           case('x')
-              geomdim(1) = IO_floatValue(line,positions,j+1_pInt)
-           case('y')
-              geomdim(2) = IO_floatValue(line,positions,j+1_pInt)
-           case('z')
-              geomdim(3) = IO_floatValue(line,positions,j+1_pInt)
-         end select
-       enddo
-     case ('homogenization')
-       gotHomogenization = .true.
-       homog = IO_intValue(line,positions,2_pInt)
-     case ('resolution')
-       gotResolution = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,positions,j)))
-           case('a')
-             res(1) = IO_intValue(line,positions,j+1_pInt)
-           case('b')
-             res(2) = IO_intValue(line,positions,j+1_pInt)
-           case('c')
-             res(3) = IO_intValue(line,positions,j+1_pInt)
-         end select
-       enddo
-   end select
- enddo
- close(myUnit)
-
-!--------------------------------------------------------------------------------------------------
-! sanity checks of geometry parameters
- if (.not.(gotDimension .and. gotHomogenization .and. gotResolution))&
-                                                                call IO_error(error_ID = 845_pInt)
- if (any(geomdim<=0.0_pReal)) call IO_error(error_ID = 802_pInt)
- if(mod(res(1),2_pInt)/=0_pInt .or.&
-    mod(res(2),2_pInt)/=0_pInt .or.&
-   (mod(res(3),2_pInt)/=0_pInt .and. res(3)/= 1_pInt)) call IO_error(error_ID = 803_pInt)
-
-!--------------------------------------------------------------------------------------------------
-! variables derived from resolution
+! get resolution, dimension, homogenization and variables derived from resolution
+ res     = mesh_spectral_getResolution(myUnit)
+ geomdim = mesh_spectral_getDimension(myUnit)
+ homog   = mesh_spectral_getHomogenization(myUnit)
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  Npoints = res(1)*res(2)*res(3)
  wgt = 1.0_pReal/real(Npoints, pReal)
@@ -519,13 +458,11 @@ if (sum(bc(1:N_Loadcases)%incs)>9000_pInt) stop 'to many incs' !discuss with Phi
 !--------------------------------------------------------------------------------------------------
 ! general initialization of fftw (see manual on fftw.org for more details)
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)                         ! check for correct precision in C
-#ifdef _OPENMP
-    if(DAMASK_NumThreadsInt > 0_pInt) then
-      ierr = fftw_init_threads()
-      if (ierr == 0_pInt) call IO_error(error_ID = 809_pInt)
-      call fftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
-    endif
-#endif
+!$ if(DAMASK_NumThreadsInt > 0_pInt) then
+!$   ierr = fftw_init_threads()
+!$   if (ierr == 0_pInt) call IO_error(error_ID = 809_pInt)
+!$   call fftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
+!$ endif
  call fftw_set_timelimit(fftw_timelimit)                                                            ! set timelimit for plan creation
 
 !--------------------------------------------------------------------------------------------------
@@ -880,7 +817,7 @@ C_ref = C * wgt                                                                 
 ! stress BC handling
          if(size_reduced > 0_pInt) then                                                             ! calculate stress BC if applied
            err_stress = maxval(abs(mask_stress * (P_av - bc(loadcase)%stress)))                     ! maximum deviaton (tensor norm not applicable)
-           err_stress_tol = maxval(abs(P_av)) * err_stress_tolrel                                   ! don't use any tensor norm because the comparison should be coherent
+           err_stress_tol = min(maxval(abs(P_av)) * err_stress_tolrel,err_stress_tolabs)            ! don't use any tensor norm for the relative criterion because the comparison should be coherent
            write(6,'(a)') '' 
            write(6,'(a)') '... correcting deformation gradient to fulfill BCs ...............'
            write(6,'(a,f6.2,a,es11.4,a)') 'error stress = ', err_stress/err_stress_tol, &
@@ -1124,7 +1061,5 @@ C_ref = C * wgt                                                                 
    call fftw_destroy_plan(plan_scalarField_forth)
    call fftw_destroy_plan(plan_scalarField_back)
  endif
- call quit(0_pInt)
+ call quit(1_pInt)
 end program DAMASK_spectral
-
-#include "DAMASK_quit.f90"

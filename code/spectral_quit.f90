@@ -46,7 +46,7 @@ subroutine quit(stop_id)
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
 
  call date_and_time(values = dateAndTime)
- write(6,'(/,a)') 'Terminated on:'
+ write(6,'(/,a)') 'DAMASK terminated on:'
  write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
                                                       dateAndTime(2),'/',&
                                                       dateAndTime(1) 

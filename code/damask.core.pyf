@@ -15,9 +15,9 @@ python module core ! in
    interface  ! in :core
 
 
-     module damask_interface ! in :damask_interface:DAMASK_python_interface.f90
+     module damask_interface ! in :damask_interface:DAMASK_spectral_interface.f90
 
-        subroutine damask_interface_init(loadcaseParameterIn,geometryParameterIn) ! in :damask_interface:DAMASK_python_interface.f90
+        subroutine damask_interface_init(loadcaseParameterIn,geometryParameterIn) ! in :damask_interface:DAMASK_spectral_interface.f90
             character(len=1024), intent(in)   :: loadcaseParameterIn                                      
             character(len=1024), intent(in)   :: geometryParameterIn
         end subroutine damask_interface_init            

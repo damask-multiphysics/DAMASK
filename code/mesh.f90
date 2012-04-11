@@ -261,7 +261,10 @@
             mesh_build_subNodeCoords, &
             mesh_build_ipVolumes, &
             mesh_build_ipCoordinates, &
-            mesh_regrid
+            mesh_regrid, &
+            mesh_spectral_getResolution, &
+            mesh_spectral_getDimension, &
+            mesh_spectral_getHomogenization
  private :: FE_mapElemtype, &
             mesh_faceMatch, &
             mesh_build_FEdata, &
@@ -1541,57 +1544,13 @@ enddo
 ! mesh_Nelems, mesh_Nnodes
 !********************************************************************
 subroutine mesh_spectral_count_nodesAndElements(myUnit)
-
- use IO,   only: IO_lc, &
-                 IO_intValue, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_error
  
  implicit none
  integer(pInt), intent(in) :: myUnit
- 
- integer(pInt), parameter :: maxNchunks = 7_pInt
- integer(pInt), dimension (1+2*maxNchunks) :: myPos
- integer(pInt) :: a = 0_pInt, &
-                  b = 0_pInt, &
-                  c = 0_pInt, &
-                  headerLength = 0_pInt, &
-                  i,j
- character(len=1024) line,keyword
-
- mesh_Nnodes = 0_pInt
- mesh_Nelems = 0_pInt
- 
- rewind(myUnit)
- read(myUnit,'(a1024)') line
- myPos = IO_stringPos(line,2_pInt)
- keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt 
- else
-   call IO_error(error_ID=842_pInt)
- endif
- 
- rewind(myUnit)
- do i = 1_pInt, headerLength
-   read(myUnit,'(a1024)') line
-   myPos = IO_stringPos(line,maxNchunks)             
-   if ( IO_lc(IO_StringValue(line,myPos,1_pInt)) == 'resolution') then
-     do j = 2_pInt,6_pInt,2_pInt
-       select case (IO_lc(IO_stringValue(line,myPos,j)))
-         case('a')
-           a = IO_intValue(line,myPos,j+1_pInt)
-         case('b')
-           b = IO_intValue(line,myPos,j+1_pInt)
-         case('c')
-           c = IO_intValue(line,myPos,j+1_pInt)
-       end select
-     enddo
-     mesh_Nelems = a * b * c
-     mesh_Nnodes = (1_pInt + a)*(1_pInt + b)*(1_pInt + c)
-   endif
- enddo
+ integer(pInt), dimension(3) :: res
+ res = mesh_spectral_getResolution(myUnit)
+ mesh_Nelems = res(1)*res(2)*res(3)
+ mesh_Nnodes = (1_pInt + res(1))*(1_pInt + res(2))*(1_pInt + res(3))
 
 end subroutine mesh_spectral_count_nodesAndElements
 
@@ -1706,7 +1665,7 @@ end subroutine mesh_abaqus_count_nodesAndElements
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
-                 IO_countContinousIntValues
+                 IO_countContinuousIntValues
                  
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -1729,7 +1688,7 @@ end subroutine mesh_abaqus_count_nodesAndElements
         IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'element' ) then
      mesh_NelemSets = mesh_NelemSets + 1_pInt
      mesh_maxNelemInSet = max(mesh_maxNelemInSet, &
-                              IO_countContinousIntValues(myUnit))
+                              IO_countContinuousIntValues(myUnit))
    endif
  enddo
 
@@ -1848,7 +1807,7 @@ subroutine mesh_marc_count_cpElements(myUnit)
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
-                 IO_countContinousIntValues
+                 IO_countContinuousIntValues
                  
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -1871,7 +1830,7 @@ subroutine mesh_marc_count_cpElements(myUnit)
        do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
          read (myUnit,610,END=620) line
        enddo
-       mesh_NcpElems = mesh_NcpElems + IO_countContinousIntValues(myUnit)
+       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(myUnit)
      exit
    endif
  enddo
@@ -1945,7 +1904,7 @@ subroutine mesh_marc_map_elementSets(myUnit)
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
-                 IO_continousIntValues
+                 IO_continuousIntValues
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -1968,7 +1927,7 @@ subroutine mesh_marc_map_elementSets(myUnit)
        (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'element' ) ) then
       elemSet = elemSet+1_pInt
       mesh_nameElemSet(elemSet) = trim(IO_stringValue(line,myPos,4_pInt))
-      mesh_mapElemSet(:,elemSet) = IO_continousIntValues(myUnit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+      mesh_mapElemSet(:,elemSet) = IO_continuousIntValues(myUnit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
    endif
  enddo
  
@@ -1986,7 +1945,7 @@ subroutine mesh_abaqus_map_elementSets(myUnit)
                  IO_stringValue, &
                  IO_stringPos, &
                  IO_extractValue, &
-                 IO_continousIntValues, &
+                 IO_continuousIntValues, &
                  IO_error
 
  implicit none
@@ -2015,7 +1974,7 @@ subroutine mesh_abaqus_map_elementSets(myUnit)
    if ( (inPart .or. noPart) .and. IO_lc(IO_stringValue(line,myPos,1_pInt)) == '*elset' ) then
      elemSet = elemSet + 1_pInt
      mesh_nameElemSet(elemSet)  = trim(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'elset'))
-     mesh_mapElemSet(:,elemSet) = IO_continousIntValues(myUnit,mesh_Nelems,mesh_nameElemSet,&
+     mesh_mapElemSet(:,elemSet) = IO_continuousIntValues(myUnit,mesh_Nelems,mesh_nameElemSet,&
                                           mesh_mapElemSet,elemSet-1_pInt)
    endif
  enddo
@@ -2263,7 +2222,7 @@ subroutine mesh_marc_map_elements(myUnit)
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
-                 IO_continousIntValues
+                 IO_continuousIntValues
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -2287,7 +2246,7 @@ subroutine mesh_marc_map_elements(myUnit)
      do i=1_pInt,3_pInt+hypoelasticTableStyle                                       ! skip three (or four if new table style!) lines
        read (myUnit,610,END=660) line 
      enddo
-     contInts = IO_continousIntValues(myUnit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+     contInts = IO_continuousIntValues(myUnit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
      do i = 1_pInt,contInts(1)
        cpElem = cpElem+1_pInt
        mesh_mapFEtoCPelem(1,cpElem) = contInts(1_pInt+i)
@@ -2517,83 +2476,33 @@ subroutine mesh_abaqus_count_cpSizes(myUnit)
 !********************************************************************
 subroutine mesh_spectral_build_nodes(myUnit)
 
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_error, &
-                 IO_floatValue, &
-                 IO_intValue
+ use IO,   only: &
+  IO_error
 
  implicit none
  integer(pInt), intent(in) :: myUnit
-
- integer(pInt), parameter :: maxNchunks = 7_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
- integer(pInt) :: a = 1_pInt, &
-                  b = 1_pInt, &
-                  c = 1_pInt, & 
-                  headerLength = 0_pInt,i,j,n
- real(pReal) ::   x = 1.0_pReal, &
-                  y = 1.0_pReal, &
-                  z = 1.0_pReal
- logical ::  gotResolution = .false. ,gotDimension = .false.
- character(len=1024) :: line, keyword
+ integer(pInt) :: n
+ integer(pInt), dimension(3) :: res = 1_pInt
+ real(pReal), dimension(3) :: geomdim = 1.0_pReal
 
  allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
  allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
- 
- rewind(myUnit)
- read(myUnit,'(a1024)') line
- myPos = IO_stringPos(line,2_pInt)
- keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
- if (keyword(1:4) == 'head') then 
-   headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=842_pInt)
- endif
- 
- rewind(myUnit)
- do i = 1_pInt, headerLength
-   read(myUnit,'(a1024)') line
-   myPos = IO_stringPos(line,maxNchunks)             
-   select case ( IO_lc(IO_StringValue(line,myPos,1_pInt)) )
-     case ('dimension')
-       gotDimension = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,myPos,j)))
-           case('x')
-              x = IO_floatValue(line,myPos,j+1_pInt)
-           case('y')
-              y = IO_floatValue(line,myPos,j+1_pInt)
-           case('z')
-              z = IO_floatValue(line,myPos,j+1_pInt)
-         end select
-       enddo
-     case ('resolution')
-       gotResolution = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,myPos,j)))
-           case('a')
-             a = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
-           case('b')
-             b = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
-           case('c')
-             c = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
-         end select
-       enddo
-   end select
- enddo
 
-! --- sanity checks ---
-
- if ((.not. gotDimension) .or. (.not. gotResolution)) call IO_error(error_ID=842_pInt)
- if ((a < 1_pInt) .or. (b < 1_pInt) .or. (c < 0_pInt)) call IO_error(error_ID=843_pInt)           ! 1_pInt is already added
- if ((x <= 0.0_pReal) .or. (y <= 0.0_pReal) .or. (z <= 0.0_pReal)) call IO_error(error_ID=844_pInt)
+ res     = mesh_spectral_getResolution(myUnit) + 1_pInt
+ geomdim = mesh_spectral_getDimension(myUnit)
+ 
+ if ((res(1) < 1_pInt) .or. (res(2) < 1_pInt) .or. (res(3) < 0_pInt)) &
+                                        call IO_error(error_ID=843_pInt)           ! 1_pInt is already added
+ if ((geomdim(1) <= 0.0_pReal) .or. (geomdim(2)  <= 0.0_pReal) .or. (geomdim(3)  <= 0.0_pReal)) &
+                                        call IO_error(error_ID=844_pInt)
  
  forall (n = 0_pInt:mesh_Nnodes-1_pInt)
-   mesh_node0(1,n+1_pInt) = x * real(mod(n,a),pReal) / real(a-1_pInt,pReal)
-   mesh_node0(2,n+1_pInt) = y * real(mod(n/a,b),pReal) / real(b-1_pInt,pReal)
-   mesh_node0(3,n+1_pInt) = z * real(mod(n/a/b,c),pReal) / real(c-1_pInt,pReal)
+   mesh_node0(1,n+1_pInt) = geomdim(1) * real(mod(n,res(1) ),pReal) &
+                                                              / real(res(1) -1_pInt,pReal)
+   mesh_node0(2,n+1_pInt) = geomdim(2) * real(mod(n/res(1) ,res(2)),pReal) &
+                                                              / real(res(2) -1_pInt,pReal)
+   mesh_node0(3,n+1_pInt) = geomdim(3) * real(mod(n/res(1) /res(2),res(3)),pReal) &
+                                                              / real(res(3) -1_pInt,pReal)
  end forall 
 
  mesh_node = mesh_node0                                         !why?
@@ -2724,25 +2633,27 @@ subroutine mesh_spectral_build_elements(myUnit)
 
  use IO,   only: IO_lc, &
                  IO_stringValue, &
-                 IO_floatValue, &
                  IO_stringPos, &
                  IO_error, &
-                 IO_continousIntValues, &
+                 IO_continuousIntValues, &
                  IO_intValue, &
-                 IO_countContinousIntValues
+                 IO_countContinuousIntValues
 
  implicit none
  integer(pInt), intent(in) :: myUnit
 
  integer(pInt), parameter :: maxNchunks = 7_pInt
  integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
- integer(pInt) :: a = 1_pInt, b = 1_pInt, c = 1_pInt
+ integer(pInt), dimension(3) :: res
  integer(pInt) :: e, i, j, homog = 0_pInt, headerLength = 0_pInt, maxIntCount
  integer(pInt), dimension(:), allocatable :: microstructures
  integer(pInt), dimension(1,1) :: dummySet = 0_pInt
  character(len=65536) :: line,keyword
  character(len=64), dimension(1) :: dummyName = ''
 
+ res   = mesh_spectral_getResolution(myUnit)
+ homog = mesh_spectral_getHomogenization(myUnit)
+ 
  rewind(myUnit)
  read(myUnit,'(a65536)') line
  myPos = IO_stringPos(line,2_pInt)
@@ -2756,29 +2667,13 @@ subroutine mesh_spectral_build_elements(myUnit)
  rewind(myUnit)
  do i = 1_pInt, headerLength
    read(myUnit,'(a65536)') line
-   myPos = IO_stringPos(line,maxNchunks)             
-   select case ( IO_lc(IO_StringValue(line,myPos,1_pInt)) )
-     case ('resolution')
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,myPos,j)))
-           case('a')
-             a = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
-           case('b')
-             b = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
-           case('c')
-             c = 1_pInt + IO_intValue(line,myPos,j+1_pInt)
-         end select
-       enddo
-     case ('homogenization')
-       homog = IO_intValue(line,myPos,2_pInt)
-   end select
  enddo
 
  maxIntCount = 0_pInt
  i = 1_pInt
 
  do while (i > 0_pInt)
-   i = IO_countContinousIntValues(myUnit)
+   i = IO_countContinuousIntValues(myUnit)
    maxIntCount = max(maxIntCount, i)
  enddo
 
@@ -2792,21 +2687,22 @@ subroutine mesh_spectral_build_elements(myUnit)
  
  e = 0_pInt
  do while (e < mesh_NcpElems .and. microstructures(1) > 0_pInt)                                     ! fill expected number of elements, stop at end of data (or blank line!)
-   microstructures = IO_continousIntValues(myUnit,maxIntCount,dummyName,dummySet,0_pInt)            ! get affected elements
+   microstructures = IO_continuousIntValues(myUnit,maxIntCount,dummyName,dummySet,0_pInt)            ! get affected elements
    do i = 1_pInt,microstructures(1_pInt)
      e = e+1_pInt                                                                                   ! valid element entry
      mesh_element( 1,e) = e                                                                         ! FE id
      mesh_element( 2,e) = FE_mapElemtype('C3D8R')                                                   ! elem type
      mesh_element( 3,e) = homog                                                                     ! homogenization
      mesh_element( 4,e) = microstructures(1_pInt+i)                                                 ! microstructure
-     mesh_element( 5,e) = e + (e-1_pInt)/(a-1_pInt) + ((e-1_pInt)/((a-1_pInt)*(b-1_pInt)))*a        ! base node
+     mesh_element( 5,e) = e + (e-1_pInt)/(res(1)-1_pInt) + &
+                                       ((e-1_pInt)/((res(1)-1_pInt)*(res(2)-1_pInt)))*res(1)        ! base node
      mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
-     mesh_element( 7,e) = mesh_element(5,e) + a + 1_pInt
-     mesh_element( 8,e) = mesh_element(5,e) + a
-     mesh_element( 9,e) = mesh_element(5,e) + a * b                                                 ! second floor base node
+     mesh_element( 7,e) = mesh_element(5,e) + res(1) + 1_pInt
+     mesh_element( 8,e) = mesh_element(5,e) + res(1)
+     mesh_element( 9,e) = mesh_element(5,e) + res(1) * res(2)                                       ! second floor base node
      mesh_element(10,e) = mesh_element(9,e) + 1_pInt
-     mesh_element(11,e) = mesh_element(9,e) + a + 1_pInt
-     mesh_element(12,e) = mesh_element(9,e) + a
+     mesh_element(11,e) = mesh_element(9,e) + res(1) + 1_pInt
+     mesh_element(12,e) = mesh_element(9,e) + res(1)
      mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                         !needed for statistics
      mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
    enddo
@@ -2832,7 +2728,7 @@ subroutine mesh_marc_build_elements(myUnit)
                  IO_skipChunks, &
                  IO_stringPos, &
                  IO_intValue, &
-                 IO_continousIntValues
+                 IO_continuousIntValues
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -2890,7 +2786,7 @@ subroutine mesh_marc_build_elements(myUnit)
            read (myUnit,610,END=630) line                                                           ! read extra line     
            read (myUnit,610,END=630) line                                                           ! read extra line     
          endif
-         contInts = IO_continousIntValues&                                                          ! get affected elements
+         contInts = IO_continuousIntValues&                                                          ! get affected elements
                    (myUnit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
          do i = 1_pInt,contInts(1)
            e = mesh_FEasCP('elem',contInts(1_pInt+i))
@@ -3629,9 +3525,13 @@ deallocate(mesh_HomogMicro)
 end subroutine mesh_tell_statistics
 
 subroutine mesh_regrid(res,resNew)           !use new_res=0.0 for automatic determination of new grid
- use prec, only: pInt, pReal
- use DAMASK_interface, only : getSolverJobName
- use IO, only : IO_read_jobBinaryFile
+ use prec, only: &
+   pInt, &
+   pReal
+ use DAMASK_interface, only: &
+   getSolverJobName
+ use IO, only: &
+   IO_read_jobBinaryFile
 
  integer(pInt), dimension(3), intent(in) :: res
  integer(pInt), dimension(3), intent(inout) :: resNew
@@ -3652,5 +3552,186 @@ subroutine mesh_regrid(res,resNew)           !use new_res=0.0 for automatic dete
   
 end subroutine mesh_regrid
 
+function mesh_spectral_getDimension(myUnit)
+ use IO, only: &
+   IO_open_file, &
+   IO_stringPos, &
+   IO_lc, &
+   IO_stringValue, &
+   IO_intValue, &
+   IO_floatValue, &
+   IO_error
+ use DAMASK_interface, only: &
+   getModelName, &
+   InputFileExtension
+  
+ implicit none
+ integer(pInt), dimension(1_pInt + 4_pInt*2_pInt) :: positions ! for a,b c
+ integer(pInt), optional :: myUnit
+ integer(pInt)           :: headerLength = 0_pInt
+ real(pReal), dimension(3) :: mesh_spectral_getDimension
+ character(len=1024) :: line, &
+                        keyword
+ integer(pInt) :: i, j 
+ logical :: gotDimension = .false.
+ 
+ if ( .not. present(myUnit)) myUnit = 869
+
+ call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ rewind(myUnit)
+ read(myUnit,'(a1024)') line
+ positions = IO_stringPos(line,2_pInt)
+ keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
+ if (keyword(1:4) == 'head') then
+   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
+ else
+   call IO_error(error_ID=842_pInt)
+ endif
+ rewind(myUnit)
+ do i = 1_pInt, headerLength
+   read(myUnit,'(a1024)') line
+   positions = IO_stringPos(line,7_pInt)             
+   select case ( IO_lc(IO_StringValue(line,positions,1)) )
+     case ('dimension')
+       gotDimension = .true.
+       do j = 2_pInt,6_pInt,2_pInt
+         select case (IO_lc(IO_stringValue(line,positions,j)))
+           case('x')
+              mesh_spectral_getDimension(1) = IO_floatValue(line,positions,j+1_pInt)
+           case('y')
+              mesh_spectral_getDimension(2) = IO_floatValue(line,positions,j+1_pInt)
+           case('z')
+              mesh_spectral_getDimension(3) = IO_floatValue(line,positions,j+1_pInt)
+         end select
+       enddo
+   end select
+ enddo
+ close(myUnit)
+ if (.not. gotDimension) &
+   call IO_error(error_ID = 845_pInt, ext_msg='dimension')
+ if (any(mesh_spectral_getDimension<=0.0_pReal)) &
+   call IO_error(error_ID = 802_pInt, ext_msg='dimension')
+
+end function mesh_spectral_getDimension
+
+
+function mesh_spectral_getResolution(myUnit)
+ use IO, only: &
+   IO_open_file, &
+   IO_stringPos, &
+   IO_lc, &
+   IO_stringValue, &
+   IO_intValue, &
+   IO_floatValue, &
+   IO_error
+ use DAMASK_interface, only: &
+   getModelName, &
+   InputFileExtension
+  
+ implicit none
+ integer(pInt), dimension(1_pInt + 4_pInt*2_pInt) :: positions ! for a,b c
+ integer(pInt), optional :: myUnit
+ integer(pInt)           :: headerLength = 0_pInt
+ integer(pInt), dimension(3) :: mesh_spectral_getResolution
+ character(len=1024) :: line, &
+                        keyword
+ integer(pInt) :: i, j 
+ logical :: gotResolution = .false.
+ 
+ if ( .not. present(myUnit)) myUnit = 869
+
+ call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ rewind(myUnit)
+ read(myUnit,'(a1024)') line
+ positions = IO_stringPos(line,2_pInt)
+ keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
+ if (keyword(1:4) == 'head') then
+   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
+ else
+   call IO_error(error_ID=842_pInt)
+ endif
+ rewind(myUnit)
+ do i = 1_pInt, headerLength
+   read(myUnit,'(a1024)') line
+   positions = IO_stringPos(line,7_pInt)             
+   select case ( IO_lc(IO_StringValue(line,positions,1)) )
+     case ('resolution')
+       gotResolution = .true.
+       do j = 2_pInt,6_pInt,2_pInt
+         select case (IO_lc(IO_stringValue(line,positions,j)))
+           case('a')
+              mesh_spectral_getResolution(1) = IO_intValue(line,positions,j+1_pInt)
+           case('b')
+              mesh_spectral_getResolution(2) = IO_intValue(line,positions,j+1_pInt)
+           case('c')
+              mesh_spectral_getResolution(3) = IO_intValue(line,positions,j+1_pInt)
+         end select
+       enddo
+   end select
+ enddo
+ close(myUnit)
+ 
+ if (.not. gotResolution) &
+   call IO_error(error_ID = 845_pInt, ext_msg='resolution')
+  if(mod(mesh_spectral_getResolution(1),2_pInt)/=0_pInt .or.&
+     mod(mesh_spectral_getResolution(2),2_pInt)/=0_pInt .or.&
+    (mod(mesh_spectral_getResolution(3),2_pInt)/=0_pInt .and. &
+     mesh_spectral_getResolution(3)/= 1_pInt))&
+   call IO_error(error_ID = 802_pInt, ext_msg='resolution')
+
+end function mesh_spectral_getResolution
+
+function mesh_spectral_getHomogenization(myUnit)
+ use IO, only: &
+   IO_open_file, &
+   IO_stringPos, &
+   IO_lc, &
+   IO_stringValue, &
+   IO_intValue, &
+   IO_error
+ use DAMASK_interface, only: &
+   getModelName, &
+   InputFileExtension
+  
+ implicit none
+ integer(pInt), dimension(1_pInt + 2_pInt*2_pInt) :: positions
+ integer(pInt), optional :: myUnit
+ integer(pInt)           :: headerLength = 0_pInt
+ integer(pInt)           :: mesh_spectral_getHomogenization
+ character(len=1024) :: line, &
+                        keyword
+ integer(pInt) :: i, j 
+ logical :: gotHomogenization = .false.
+ 
+ if ( .not. present(myUnit)) myUnit = 869
+
+ call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ rewind(myUnit)
+ read(myUnit,'(a1024)') line
+ positions = IO_stringPos(line,2_pInt)
+ keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
+ if (keyword(1:4) == 'head') then
+   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
+ else
+   call IO_error(error_ID=842_pInt)
+ endif
+ rewind(myUnit)
+ do i = 1_pInt, headerLength
+   read(myUnit,'(a1024)') line
+   positions = IO_stringPos(line,7_pInt)             
+   select case ( IO_lc(IO_StringValue(line,positions,1)) )
+     case ('homogenization')
+       gotHomogenization = .true.
+       mesh_spectral_getHomogenization = IO_intValue(line,positions,2_pInt)
+   end select
+ enddo
+ close(myUnit)
+
+ if (.not. gotHomogenization ) &
+   call IO_error(error_ID = 845_pInt, ext_msg='homogenization')
+ if (mesh_spectral_getHomogenization<1_pInt) &
+   call IO_error(error_ID = 802_pInt, ext_msg='homogenization')
+   
+end function mesh_spectral_getHomogenization
 
 end module mesh

@@ -33,32 +33,82 @@
 !            R. Lebensohn
 !
 ! MPI fuer Eisenforschung, Duesseldorf
-!##################################################################################################
-! used modules
-!##################################################################################################
-program DAMASK_spectral_AL
+#include "spectral_quit.f90"
 
+program DAMASK_spectral_AL
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- use DAMASK_interface
- use prec,             only: pInt, pReal, DAMASK_NaN
- use IO 
- use debug,            only: debug_spectral, &
-                             debug_levelBasic, &
-                             debug_spectralRestart, &
-                             debug_spectralFFTW
- use math
- use CPFEM,            only: CPFEM_general, CPFEM_initAll
- use FEsolving,        only: restartWrite, restartInc
- use numerics,         only: err_div_tol, err_stress_tolrel, rotation_tol, itmax, itmin, &
-                             memory_efficient, update_gamma, DAMASK_NumThreadsInt, &
-                             fftw_planner_flag, fftw_timelimit
- use homogenization,   only: materialpoint_sizeResults, materialpoint_results
- !$ use OMP_LIB                                                                                     ! the openMP function library
-!##################################################################################################
-! variable declaration
-!##################################################################################################
- implicit none
  
+ use DAMASK_interface, only: &
+   DAMASK_interface_init, &
+   getLoadcaseName, &
+   getSolverWorkingDirectoryName, &
+   getSolverJobName, &
+   getModelName, &
+   inputFileExtension
+   
+ use prec, only: &
+   pInt, &
+   pReal, &
+   DAMASK_NaN
+   
+ use IO, only: &
+   IO_isBlank, &
+   IO_open_file, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_floatValue, &
+   IO_intValue, &
+   IO_error, &
+   IO_lc, &
+   IO_read_jobBinaryFile, &
+   IO_write_jobBinaryFile
+   
+ use debug, only: &
+   debug_what, &
+   debug_spectral, &
+   debug_levelBasic, &
+   debug_spectralDivergence, &
+   debug_spectralRestart, &
+   debug_spectralFFTW, &
+   debug_reset, &
+   debug_info
+   
+ use math
+ 
+ use mesh,  only : &
+   mesh_spectral_getResolution, &
+   mesh_spectral_getDimension, &
+   mesh_spectral_getHomogenization
+ 
+ use CPFEM, only: &
+   CPFEM_general, &
+   CPFEM_initAll
+   
+ use FEsolving, only: &
+   restartWrite, &
+   restartInc
+   
+ use numerics, only: &
+   err_div_tol, &
+   err_stress_tolrel, &
+   err_stress_tolabs, &
+   rotation_tol, &
+   itmax,&
+   itmin, &
+   memory_efficient, &
+   update_gamma, &
+   divergence_correction, &                             
+   DAMASK_NumThreadsInt, &
+   fftw_planner_flag, &
+   fftw_timelimit
+   
+ use homogenization, only: &
+   materialpoint_sizeResults, &
+   materialpoint_results
+   
+ !$ use OMP_LIB                                                                                     ! the openMP function library
+
+ implicit none 
 !--------------------------------------------------------------------------------------------------
 ! variables to read from load case and geom file
  real(pReal), dimension(9) :: temp_valueVector                                                      ! stores information temporarily from loadcase file
@@ -69,15 +119,12 @@ program DAMASK_spectral_AL
                               maxNchunksGeom     = 7_pInt, &                                        ! 4 identifiers, 3 values
                               myUnit             = 234_pInt
  integer(pInt), dimension(1_pInt + maxNchunksLoadcase*2_pInt) :: positions                          ! this is longer than needed for geometry parsing
- integer(pInt) :: headerLength,&
-                  N_l    = 0_pInt,&
-                  N_t    = 0_pInt,&
-                  N_n    = 0_pInt,&
-                  N_Fdot = 0_pInt
- character(len=1024) :: path, line, keyword
- logical ::  gotResolution     = .false.,&
-             gotDimension      = .false.,&
-             gotHomogenization = .false.
+ integer(pInt) :: &
+   N_l    = 0_pInt,&
+   N_t    = 0_pInt,&
+   N_n    = 0_pInt,&
+   N_Fdot = 0_pInt
+ character(len=1024) :: line
 
 !--------------------------------------------------------------------------------------------------
 ! variable storing information from load case file
@@ -161,21 +208,19 @@ program DAMASK_spectral_AL
 !##################################################################################################
 ! reading of information from load case file and geometry file
 !##################################################################################################
- !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
  open (6, encoding='UTF-8')  
  call DAMASK_interface_init
 
- print '(a)', ''
- print '(a)', ' <<<+-  DAMASK_spectral_AL init  -+>>>'
- print '(a)', ' $Id$'
+ write(6,'(a)') ''
+ write(6,'(a)') ' <<<+-  DAMASK_spectral_AL init  -+>>>'
+ write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
- print '(a,a)', ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
- print '(a,a)', ' Solver Job Name:      ',trim(getSolverJobName())
- print '(a)', ''
+ write(6,'(a)') ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
+ write(6,'(a)') ' Solver Job Name:      ',trim(getSolverJobName())
+ write(6,'(a)') ''
 !--------------------------------------------------------------------------------------------------
 ! reading the load case file and allocate data structure containing load cases
- path = getLoadcaseName()
- call IO_open_file(myUnit,path)
+ call IO_open_file(myUnit,getLoadcaseName())
  rewind(myUnit)
  do
    read(myUnit,'(a1024)',END = 100) line
@@ -197,7 +242,7 @@ program DAMASK_spectral_AL
 
 100 N_Loadcases = N_n
  if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &                                                     ! sanity check
-   call IO_error(error_ID=837_pInt,ext_msg = trim(path))                                            ! error message for incomplete loadcase
+   call IO_error(error_ID=837_pInt,ext_msg = trim(getLoadcaseName()))                                            ! error message for incomplete loadcase
  allocate (bc(N_Loadcases))
 
 !--------------------------------------------------------------------------------------------------
@@ -274,88 +319,31 @@ program DAMASK_spectral_AL
 !-------------------------------------------------------------------------------------------------- ToDo: if temperature at CPFEM is treated properly, move this up immediately after interface init
 ! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
  call CPFEM_initAll(bc(1)%temperature,1_pInt,1_pInt)
- if (update_gamma .and. .not. memory_efficient) call IO_error(error_ID = 847_pInt)
-
-!--------------------------------------------------------------------------------------------------
-! read header of geom file to get size information. complete geom file is intepretated by mesh.f90
- path = getModelName()
- call IO_open_file(myUnit,trim(path)//InputFileExtension)
- rewind(myUnit)
- read(myUnit,'(a1024)') line
- positions = IO_stringPos(line,2_pInt)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=842_pInt)
- endif
  
- rewind(myUnit)
- do i = 1_pInt, headerLength
-   read(myUnit,'(a1024)') line
-   positions = IO_stringPos(line,maxNchunksGeom)             
-   select case ( IO_lc(IO_StringValue(line,positions,1)) )
-     case ('dimension')
-       gotDimension = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,positions,j)))
-           case('x')
-              geomdim(1) = IO_floatValue(line,positions,j+1_pInt)
-           case('y')
-              geomdim(2) = IO_floatValue(line,positions,j+1_pInt)
-           case('z')
-              geomdim(3) = IO_floatValue(line,positions,j+1_pInt)
-         end select
-       enddo
-     case ('homogenization')
-       gotHomogenization = .true.
-       homog = IO_intValue(line,positions,2_pInt)
-     case ('resolution')
-       gotResolution = .true.
-       do j = 2_pInt,6_pInt,2_pInt
-         select case (IO_lc(IO_stringValue(line,positions,j)))
-           case('a')
-             res(1) = IO_intValue(line,positions,j+1_pInt)
-           case('b')
-             res(2) = IO_intValue(line,positions,j+1_pInt)
-           case('c')
-             res(3) = IO_intValue(line,positions,j+1_pInt)
-         end select
-       enddo
-   end select
- enddo
- close(myUnit)
-
 !--------------------------------------------------------------------------------------------------
-! sanity checks of geometry parameters
- if (.not.(gotDimension .and. gotHomogenization .and. gotResolution))&
-                                                                call IO_error(error_ID = 845_pInt)
- if (any(geomdim<=0.0_pReal)) call IO_error(error_ID = 802_pInt)
- if(mod(res(1),2_pInt)/=0_pInt .or.&
-    mod(res(2),2_pInt)/=0_pInt .or.&
-   (mod(res(3),2_pInt)/=0_pInt .and. res(3)/= 1_pInt)) call IO_error(error_ID = 803_pInt)
-
-!--------------------------------------------------------------------------------------------------
-! variables derived from resolution
+! get resolution, dimension, homogenization and variables derived from resolution
+ res     = mesh_spectral_getResolution(myUnit)
+ geomdim = mesh_spectral_getDimension(myUnit)
+ homog   = mesh_spectral_getHomogenization(myUnit)
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  Npoints = res(1)*res(2)*res(3)
  wgt = 1.0_pReal/real(Npoints, pReal)
-
+ 
 !--------------------------------------------------------------------------------------------------
 ! output of geometry
- print '(a)',  ''
- print '(a)',   '#############################################################'
- print '(a)',   'DAMASK spectral_AL:'
- print '(a)',   'The AL spectral method boundary value problem solver for'
- print '(a)',   'the Duesseldorf Advanced Material Simulation Kit'
- print '(a)',   '#############################################################'
- print '(a,a)', 'geometry file:        ',trim(path)//'.geom'
- print '(a)',   '============================================================='
- print '(a,3(i12  ))','resolution a b c:', res
- print '(a,3(f12.5))','dimension  x y z:', geomdim
- print '(a,i5)','homogenization:       ',homog
- print '(a)',   '#############################################################'
- print '(a,a)', 'loadcase file:        ',trim(getLoadcaseName())
+ write(6,'(a)')          ''
+ write(6,'(a)')          '#############################################################'
+ write(6,'(a)')          'DAMASK spectral_AL:'
+ write(6,'(a)')          'The AL spectral method boundary value problem solver for'
+ write(6,'(a)')          'the Duesseldorf Advanced Material Simulation Kit'
+ write(6,'(a)')          '#############################################################'
+ write(6,'(a)')          'geometry file:        ',trim(getModelName())//InputFileExtension
+ write(6,'(a)')          '============================================================='
+ write(6,'(a,3(i12  ))') 'resolution a b c:', res
+ write(6,'(a,3(f12.5))') 'dimension  x y z:', geomdim
+ write(6,'(a,i5)')       'homogenization:       ',homog
+ write(6,'(a)')          '#############################################################'
+ write(6,'(a)')          'loadcase file:        ',trim(getLoadcaseName())
 
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
@@ -364,32 +352,32 @@ program DAMASK_spectral_AL
  do loadcase = 1_pInt, N_Loadcases
    write (loadcase_string, '(i6)' ) loadcase
 
-   print '(a)', '============================================================='
-   print '(a,i6)', 'loadcase:            ', loadcase
+   write(6,'(a)')    '============================================================='
+   write(6,'(a,i6)') 'loadcase:            ', loadcase
 
-   if (.not. bc(loadcase)%followFormerTrajectory) print '(a)', 'drop guessing along trajectory'
+   if (.not. bc(loadcase)%followFormerTrajectory) write(6,'(a)') 'drop guessing along trajectory'
    if (bc(loadcase)%velGradApplied) then
      do j = 1_pInt, 3_pInt
        if (any(bc(loadcase)%maskDeformation(j,1:3) .eqv. .true.) .and. &
            any(bc(loadcase)%maskDeformation(j,1:3) .eqv. .false.)) errorID = 832_pInt               ! each row should be either fully or not at all defined
      enddo
-     print '(a)','velocity gradient:'
+     write(6,'(a)') 'velocity gradient:'
    else
-     print '(a)','deformation gradient rate:'
+     write(6,'(a)') 'deformation gradient rate:'
    endif
-   write (*,'(3(3(f12.7,1x)/))',advance='no') merge(math_transpose33(bc(loadcase)%deformation),&
+   write (6,'(3(3(f12.7,1x)/))',advance='no') merge(math_transpose33(bc(loadcase)%deformation),&
                   reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskDeformation))
-   write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'stress / GPa:',&
+   write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'stress / GPa:',&
         1e-9_pReal*merge(math_transpose33(bc(loadcase)%P),&
                          reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskStress))
    if (any(bc(loadcase)%rotation /= math_I3)) &
      write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' rotation of loadframe:',&
                                                           math_transpose33(bc(loadcase)%rotation)
-   print '(a,f12.6)','temperature:',bc(loadcase)%temperature
-   print '(a,f12.6)','time:       ',bc(loadcase)%time
-   print '(a,i5)'   ,'increments: ',bc(loadcase)%incs
-   print '(a,i5)','output  frequency:  ',bc(loadcase)%outputfrequency
-   print '(a,i5)','restart frequency:  ',bc(loadcase)%restartfrequency
+   write(6,'(a,f12.6)') 'temperature:',bc(loadcase)%temperature
+   write(6,'(a,f12.6)') 'time:       ',bc(loadcase)%time
+   write(6,'(a,i5)')    'increments: ',bc(loadcase)%incs
+   write(6,'(a,i5)')    'output  frequency:  ',bc(loadcase)%outputfrequency
+   write(6,'(a,i5)')    'restart frequency:  ',bc(loadcase)%restartfrequency
    if (any(bc(loadcase)%maskStress .eqv. bc(loadcase)%maskDeformation)) errorID = 831_pInt          ! exclusive or masking only
    if (any(bc(loadcase)%maskStress .and. transpose(bc(loadcase)%maskStress) .and. &
      reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
@@ -434,13 +422,11 @@ program DAMASK_spectral_AL
 !--------------------------------------------------------------------------------------------------
 ! general initialization of fftw (see manual on fftw.org for more details)
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)                         ! check for correct precision in C
-#ifdef _OPENMP
-    if(DAMASK_NumThreadsInt > 0_pInt) then
-      ierr = fftw_init_threads()
-      if (ierr == 0_pInt) call IO_error(error_ID = 809_pInt)
-      call fftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
-    endif
-#endif
+!$ if(DAMASK_NumThreadsInt > 0_pInt) then
+!$   ierr = fftw_init_threads()
+!$   if (ierr == 0_pInt) call IO_error(error_ID = 809_pInt)
+!$   call fftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
+!$ endif
  call fftw_set_timelimit(fftw_timelimit)                                                            ! set timelimit for plan creation
 
 !--------------------------------------------------------------------------------------------------
@@ -456,7 +442,7 @@ program DAMASK_spectral_AL
                                          1,  res(3)*res(2)* res1_red,&
                                        F_real,[ res(3),res(2) ,res(1)+2_pInt],&
                                          1,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
- if (debugGeneral) print '(a)' , 'FFTW initialized'
+ if (debugGeneral) write(6,'(a)') 'FFTW initialized'
  
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around) and remove the given highest frequencies
@@ -514,7 +500,7 @@ program DAMASK_spectral_AL
 !--------------------------------------------------------------------------------------------------
 ! possible restore deformation gradient from saved state
  if (restartInc > 1_pInt) then                                                                      ! using old values from file                                                      
-   if (debugRestart) print '(a,i6,a)' , 'Reading values of increment ',&
+   if (debugRestart) write(6,'(a,i6,a)')  'Reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
    call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
                                                 trim(getSolverJobName()),size(F_star))
@@ -548,7 +534,7 @@ program DAMASK_spectral_AL
  write(538) 'startingIncrement', restartInc - 1_pInt                                                ! start with writing out the previous inc
  write(538) 'eoh'                                                                                   ! end of header
  write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)                ! initial (non-deformed or read-in) results
- if (debugGeneral) print '(a)' , 'Header of result file written out'
+ if (debugGeneral) write(6,'(a)') 'Header of result file written out'
 
 !##################################################################################################
 ! Loop over loadcases defined in the loadcase file
@@ -677,8 +663,8 @@ program DAMASK_spectral_AL
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
-       print '(a)', '##################################################################'
-       print '(A,I5.5,A,es12.5)', 'Increment ', totalIncsCounter, ' Time ',time
+       write(6,'(a)') '##################################################################'
+       write(6,'(A,I5.5,A,es12.5)') 'Increment ', totalIncsCounter, ' Time ',time
        
        guessmode = 1.0_pReal                                                                        ! keep guessing along former trajectory during same loadcase
        CPFEM_mode = 1_pInt                                                                          ! winding forward
@@ -696,9 +682,9 @@ program DAMASK_spectral_AL
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
-         print '(a)', ''
-         print '(a)', '=================================================================='
-         print '(5(a,i6.6))', 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,&
+         write(6,'(a)') ''
+         write(6,'(a)') '=================================================================='
+         write(6,'(5(a,i6.6))') 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,&
                                                                   ' @ Iteration ',iter,'/',itmax
 
 !--------------------------------------------------------------------------------------------------
@@ -716,7 +702,7 @@ program DAMASK_spectral_AL
 
 !--------------------------------------------------------------------------------------------------
 ! doing Fourier transform
-         print '(a)', '... spectral method ...............................................'
+         write(6,'(a)') '... spectral method ...............................................'
          lambda_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = lambda(1:res(1),1:res(2),1:res(3),1:3,1:3)
          call fftw_execute_dft_r2c(plan_lambda,lambda_real,lambda_fourier)
          lambda_fourier(  res1_red,1:res(2) ,             1:res(3)              ,1:3,1:3)&
@@ -751,10 +737,6 @@ program DAMASK_spectral_AL
          enddo; enddo
 
          err_div_RMS = sqrt(err_div_RMS)*wgt
-       !  if (err_div < err_div_RMS/pstress_av_L2 .and. guessmax<0) then
-       !    print*, 'increasing div, stopping calc'
-       !    iter = huge(1_pInt)
-       !  endif
          err_div = err_div_RMS/pstress_av_L2
 !--------------------------------------------------------------------------------------------------
 ! using gamma operator to update F 
@@ -793,7 +775,7 @@ program DAMASK_spectral_AL
 !--------------------------------------------------------------------------------------------------
 !
          if(callCPFEM) then
-           print '(a)', '... calling CPFEM to update P(F*) and F*.........................'
+           write(6,'(a)') '... calling CPFEM to update P(F*) and F*.........................'
            F_star_lastIter = F_star
            ielem = 0_pInt
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
@@ -819,7 +801,7 @@ program DAMASK_spectral_AL
            enddo; enddo; enddo
          else
            guesses = guesses +1_pInt
-           print*, '... linear approximation for P(F*) and F* ', guesses, ' of ', guessmax
+           write(6,'(a)')' ... linear approximation for P(F*) and F* ', guesses, ' of ', guessmax
            do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
              temp33_Real = lambda(i,j,k,1:3,1:3) - (P(i,j,k,1:3,1:3)  + math_mul3333xx33(dPdF(i,j,k,1:3,1:3,1:3,1:3),&
                            F_star(i,j,k,1:3,1:3) -F_star_lastIter(i,j,k,1:3,1:3)))&
@@ -830,7 +812,7 @@ program DAMASK_spectral_AL
            enddo; enddo; enddo
          endif
 
-         print '(a)', '... update  λ..........................'
+         write(6,'(a)') '... update  λ..........................'
 
          err_f = 0.0_pReal
          err_f_point = 0.0_pReal
@@ -879,7 +861,7 @@ program DAMASK_spectral_AL
          write(6,'(a,es14.7)') 'max abs err F', err_f_point
          write(6,'(a,es14.7)') 'max abs err P', err_p_point
        err_crit = max(err_p/1e-3, err_f/1e-4,err_div/err_div_tol,err_stress/err_stress_tol)
-       print*, 'critical error', err_crit
+       write(6,'(a)') 'critical error', err_crit
 
        if (.not. callCPFEM) then
          if(err_crit < 1.0_pReal .or. guesses >= guessmax) callCPFEM = .true.
@@ -920,13 +902,11 @@ program DAMASK_spectral_AL
    deallocate(c_reduced)
    deallocate(s_reduced)
    enddo    ! end looping over loadcases
-   print '(a)', ''
-   print '(a)', '##################################################################'
-   print '(i6.6,a,i6.6,a)', notConvergedCounter, ' out of ', &
-                            notConvergedCounter + convergedCounter, ' increments did not converge!'
+   write(6,'(a)') ''
+   write(6,'(a)') '##################################################################'
+   write(6,'(i6.6,a,i6.6,a)') notConvergedCounter, ' out of ', &
+                              notConvergedCounter + convergedCounter, ' increments did not converge!'
  close(538)
  call fftw_destroy_plan(plan_lambda); call fftw_destroy_plan(plan_correction)
  call quit(1_pInt)
 end program DAMASK_spectral_AL
-
-#include "DAMASK_quit.f90"
