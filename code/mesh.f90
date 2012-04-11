@@ -3552,7 +3552,7 @@ subroutine mesh_regrid(res,resNew)           !use new_res=0.0 for automatic dete
   
 end subroutine mesh_regrid
 
-function mesh_spectral_getDimension(myUnit)
+function mesh_spectral_getDimension(fileUnit)
  use IO, only: &
    IO_open_file, &
    IO_stringPos, &
@@ -3566,18 +3566,23 @@ function mesh_spectral_getDimension(myUnit)
    InputFileExtension
   
  implicit none
- integer(pInt), dimension(1_pInt + 4_pInt*2_pInt) :: positions ! for a,b c
- integer(pInt), optional :: myUnit
+ integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions ! for a,b c + 3 values + keyword
+ integer(pInt), intent(in), optional :: fileUnit
  integer(pInt)           :: headerLength = 0_pInt
  real(pReal), dimension(3) :: mesh_spectral_getDimension
  character(len=1024) :: line, &
                         keyword
  integer(pInt) :: i, j 
  logical :: gotDimension = .false.
+ integer(pInt) :: myUnit
  
- if ( .not. present(myUnit)) myUnit = 869
-
- call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ if(.not. present(fileUnit)) then
+   myUnit = 289_pInt
+   call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ else
+   myUnit = fileUnit
+ endif
+ 
  rewind(myUnit)
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,2_pInt)
@@ -3606,7 +3611,9 @@ function mesh_spectral_getDimension(myUnit)
        enddo
    end select
  enddo
- close(myUnit)
+ 
+ if(.not. present(fileUnit)) close(myUnit)
+
  if (.not. gotDimension) &
    call IO_error(error_ID = 845_pInt, ext_msg='dimension')
  if (any(mesh_spectral_getDimension<=0.0_pReal)) &
@@ -3615,7 +3622,7 @@ function mesh_spectral_getDimension(myUnit)
 end function mesh_spectral_getDimension
 
 
-function mesh_spectral_getResolution(myUnit)
+function mesh_spectral_getResolution(fileUnit)
  use IO, only: &
    IO_open_file, &
    IO_stringPos, &
@@ -3629,18 +3636,23 @@ function mesh_spectral_getResolution(myUnit)
    InputFileExtension
   
  implicit none
- integer(pInt), dimension(1_pInt + 4_pInt*2_pInt) :: positions ! for a,b c
- integer(pInt), optional :: myUnit
+ integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions ! for a,b c + 3 values + keyword
+ integer(pInt), intent(in), optional :: fileUnit
  integer(pInt)           :: headerLength = 0_pInt
  integer(pInt), dimension(3) :: mesh_spectral_getResolution
  character(len=1024) :: line, &
                         keyword
  integer(pInt) :: i, j 
  logical :: gotResolution = .false.
+ integer(pInt) :: myUnit
  
- if ( .not. present(myUnit)) myUnit = 869
-
- call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ if(.not. present(fileUnit)) then
+   myUnit = 289_pInt
+   call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ else
+   myUnit = fileUnit
+ endif
+ 
  rewind(myUnit)
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,2_pInt)
@@ -3654,7 +3666,7 @@ function mesh_spectral_getResolution(myUnit)
  do i = 1_pInt, headerLength
    read(myUnit,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
-   select case ( IO_lc(IO_StringValue(line,positions,1)) )
+   select case ( IO_lc(IO_StringValue(line,positions,1_pInt)) )
      case ('resolution')
        gotResolution = .true.
        do j = 2_pInt,6_pInt,2_pInt
@@ -3669,7 +3681,8 @@ function mesh_spectral_getResolution(myUnit)
        enddo
    end select
  enddo
- close(myUnit)
+ 
+ if(.not. present(fileUnit)) close(myUnit)
  
  if (.not. gotResolution) &
    call IO_error(error_ID = 845_pInt, ext_msg='resolution')
@@ -3681,7 +3694,7 @@ function mesh_spectral_getResolution(myUnit)
 
 end function mesh_spectral_getResolution
 
-function mesh_spectral_getHomogenization(myUnit)
+function mesh_spectral_getHomogenization(fileUnit)
  use IO, only: &
    IO_open_file, &
    IO_stringPos, &
@@ -3694,18 +3707,23 @@ function mesh_spectral_getHomogenization(myUnit)
    InputFileExtension
   
  implicit none
- integer(pInt), dimension(1_pInt + 2_pInt*2_pInt) :: positions
- integer(pInt), optional :: myUnit
+ integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions ! for a, b,  c + 3 values + keyword
+ integer(pInt), intent(in), optional :: fileUnit
  integer(pInt)           :: headerLength = 0_pInt
  integer(pInt)           :: mesh_spectral_getHomogenization
  character(len=1024) :: line, &
                         keyword
  integer(pInt) :: i, j 
  logical :: gotHomogenization = .false.
+ integer(pInt) :: myUnit
  
- if ( .not. present(myUnit)) myUnit = 869
-
- call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ if(.not. present(fileUnit)) then
+   myUnit = 289_pInt
+   call IO_open_file(myUnit,trim(getModelName())//InputFileExtension)
+ else
+   myUnit = fileUnit
+ endif
+ 
  rewind(myUnit)
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,2_pInt)
@@ -3725,8 +3743,9 @@ function mesh_spectral_getHomogenization(myUnit)
        mesh_spectral_getHomogenization = IO_intValue(line,positions,2_pInt)
    end select
  enddo
- close(myUnit)
-
+ 
+ if(.not. present(fileUnit)) close(myUnit)
+ 
  if (.not. gotHomogenization ) &
    call IO_error(error_ID = 845_pInt, ext_msg='homogenization')
  if (mesh_spectral_getHomogenization<1_pInt) &

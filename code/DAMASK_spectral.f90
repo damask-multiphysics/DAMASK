@@ -133,7 +133,7 @@ program DAMASK_spectral
    res1_red                                                                                         ! to store res(1)/2 +1
  
  character(len=1024) :: &
-   line, &
+   line
 
  type bc_type
    real(pReal), dimension (3,3) :: deformation            = 0.0_pReal, &                            ! applied velocity gradient or time derivative of deformation gradient
