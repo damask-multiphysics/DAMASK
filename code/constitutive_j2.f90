@@ -62,24 +62,30 @@ module constitutive_j2
  integer(pInt), dimension(:),  allocatable, private :: &
    constitutive_j2_Noutput
    
- real(pReal), dimension(:), allocatable, private ::&
-   constitutive_j2_C11, &
-   constitutive_j2_C12
-   
- real(pReal), dimension(:,:,:), allocatable, private :: &
-   constitutive_j2_Cslip_66
-   
-!* Visco-plastic constitutive_j2 parameters
  real(pReal), dimension(:), allocatable, private :: &
+   constitutive_j2_C11, &
+   constitutive_j2_C12, &
+ !* Visco-plastic constitutive_j2 parameters
    constitutive_j2_fTaylor, &
    constitutive_j2_tau0, &
    constitutive_j2_gdot0, &
    constitutive_j2_n, &
+ !* h0 as function of h0 = A + B log (gammadot) 
    constitutive_j2_h0, &
+   constitutive_j2_h0_slopeLnRate, &
    constitutive_j2_tausat, &
    constitutive_j2_a, &
-   constitutive_j2_aTolResistance
- 
+   constitutive_j2_aTolResistance, &
+ !* Parameters of normalized strain rate vs. stress function:
+ !* tausat += (asinh((gammadot / SinhFitA)**(1 / SinhFitD)))**(1 / SinhFitC) / (SinhFitB * (gammadot / gammadot0)**(1/n))
+   constitutive_j2_tausat_SinhFitA, &
+   constitutive_j2_tausat_SinhFitB, &
+   constitutive_j2_tausat_SinhFitC, &
+   constitutive_j2_tausat_SinhFitD
+
+ real(pReal), dimension(:,:,:), allocatable, private :: &
+   constitutive_j2_Cslip_66
+
  public  :: constitutive_j2_init, &
             constitutive_j2_stateInit, &
             constitutive_j2_aTolState, &
@@ -97,12 +103,22 @@ subroutine constitutive_j2_init(myFile)
 !*      Module initialization         *
 !**************************************
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use math, only: math_Mandel3333to66, math_Voigt66to3333
- use IO
+ use math, only: &
+   math_Mandel3333to66, &
+   math_Voigt66to3333
+ use IO, only: &
+   IO_lc, &
+   IO_getTag, &
+   IO_isBlank, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_floatValue, &
+   IO_error
  use material
- use debug, only: debug_what, &
-                  debug_constitutive, &
-                  debug_levelBasic
+ use debug, only: &
+   debug_what, &
+   debug_constitutive, &
+   debug_levelBasic
 
  implicit none
  integer(pInt), intent(in) :: myFile
@@ -165,6 +181,14 @@ subroutine constitutive_j2_init(myFile)
           constitutive_j2_a = 0.0_pReal
  allocate(constitutive_j2_aTolResistance(maxNinstance))
           constitutive_j2_aTolResistance = 0.0_pReal
+ allocate(constitutive_j2__tausat_SinhFitA(maxNinstance))
+          constitutive_j2__tausat_SinhFitA = 0.0_pReal
+ allocate(constitutive_j2__tausat_SinhFitB(maxNinstance))
+          constitutive_j2__tausat_SinhFitB = 0.0_pReal
+ allocate(constitutive_j2__tausat_SinhFitC(maxNinstance))
+          constitutive_j2__tausat_SinhFitC = 0.0_pReal
+ allocate(constitutive_j2__tausat_SinhFitD(maxNinstance))
+          constitutive_j2__tausat_SinhFitD = 0.0_pReal
  
  rewind(myFile)
  
@@ -202,8 +226,18 @@ subroutine constitutive_j2_init(myFile)
               constitutive_j2_n(i) = IO_floatValue(line,positions,2_pInt)
        case ('h0')
               constitutive_j2_h0(i) = IO_floatValue(line,positions,2_pInt)
+       case ('h0_slope','slopeLnRate')
+              constitutive_j2_h0_slopeLnRate(i) = IO_floatValue(line,positions,2)
        case ('tausat')
               constitutive_j2_tausat(i) = IO_floatValue(line,positions,2_pInt)
+       case ('tausat_sinhfita')
+              constitutive_j2_tausat_SinhFitA(i) = IO_floatValue(line,positions,2)
+       case ('tausat_sinhfitb')
+              constitutive_j2_tausat_SinhFitB(i) = IO_floatValue(line,positions,2)
+       case ('tausat_sinhfitc')
+              constitutive_j2_tausat_SinhFitC(i) = IO_floatValue(line,positions,2)
+       case ('tausat_sinhfitd')
+              constitutive_j2_tausat_SinhFitD(i) = IO_floatValue(line,positions,2)
        case ('a', 'w0')
               constitutive_j2_a(i) = IO_floatValue(line,positions,2_pInt)
        case ('taylorfactor')
@@ -422,14 +456,17 @@ end subroutine constitutive_j2_LpAndItsTangent
 !****************************************************************
 pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
 
-  !*** variables and functions from other modules ***!
-  use prec,     only: p_vec
-  use math,     only: math_mul6x6
-  use mesh,     only: mesh_NcpElems, &
-                      mesh_maxNips
-  use material, only: homogenization_maxNgrains, &
-                      material_phase, &
-                      phase_plasticityInstance
+  use prec, only: &
+    p_vec
+  use math, only: &
+    math_mul6x6
+  use mesh, only: &
+    mesh_NcpElems, &
+    mesh_maxNips
+  use material, only: &
+    homogenization_maxNgrains, &
+    material_phase, &
+    phase_plasticityInstance
   
   implicit none
   !*** input variables ***!
@@ -464,8 +501,29 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
                                                (constitutive_j2_fTaylor(matID) * state(g,ip,el)%p(1)) ) ** constitutive_j2_n(matID)
   
   ! hardening coefficient
-  hardening = constitutive_j2_h0(matID) * &
-                  ( 1.0_pReal - state(g,ip,el)%p(1) / constitutive_j2_tausat(matID) ) ** constitutive_j2_a(matID)
+  if (abs(gamma_dot) > 1e-12_pReal) then
+    if (constitutive_j2_tausat_SinhFitA(matID) == 0) then
+      saturation = constitutive_j2_tausat(matID)
+    else
+      saturation = (  constitutive_j2_tausat(matID) &
+                    + ( log(  ( gamma_dot / constitutive_j2_tausat_SinhFitA(matID)&
+                                )**(1.0_pReal / constitutive_j2_tausat_SinhFitD(matID))&
+                             + sqrt(  ( gamma_dot / constitutive_j2_tausat_SinhFitA(matID) &
+                                       )**(2.0_pReal / constitutive_j2_tausat_SinhFitD(matID)) &
+                                    + 1.0_pReal ) &
+                             ) & ! asinh(K) = ln(K + sqrt(K^2 +1))
+                        )**(1.0_pReal / constitutive_j2_tausat_SinhFitC(matID)) &
+                    / (  constitutive_j2_tausat_SinhFitB(matID) &
+                       * (gamma_dot / constitutive_j2_gdot0(matID))**(1.0_pReal / constitutive_j2_n(matID)) &
+                       ) &
+                    )
+    endif
+    hardening = ( constitutive_j2_h0(matID) + constitutive_j2_h0_slopeLnRate(matID) * log(gamma_dot) ) &
+                * abs( 1.0_pReal - state(g,ip,el)%p(1)/saturation )**constitutive_j2_a(matID) &
+                * sign(1.0_pReal, 1.0_pReal - state(g,ip,el)%p(1)/saturation)
+  else
+    hardening = 0.0_pReal
+  endif
   
   ! dotState
   constitutive_j2_dotState =  hardening * gamma_dot

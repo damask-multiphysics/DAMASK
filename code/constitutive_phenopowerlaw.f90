@@ -75,32 +75,35 @@ module constitutive_phenopowerlaw
  use prec, only: pReal,pInt
 
  implicit none
- character (len=*), parameter :: &
+ private
+ character (len=*), parameter, public :: &
    constitutive_phenopowerlaw_label = 'phenopowerlaw'
- 
- integer(pInt),   dimension(:),     allocatable :: &
+    
+ integer(pInt), dimension(:), allocatable, public :: &
    constitutive_phenopowerlaw_sizeDotState, &
    constitutive_phenopowerlaw_sizeState, &
    constitutive_phenopowerlaw_sizePostResults, &                                                    ! cumulative size of post results
-   constitutive_phenopowerlaw_Noutput, &                                                            ! number of outputs per instance of this plasticity 
-   constitutive_phenopowerlaw_totalNslip, &                                                         ! no. of slip system used in simulation
-   constitutive_phenopowerlaw_totalNtwin, &                                                         ! no. of twin system used in simulation
    constitutive_phenopowerlaw_structure
+
+ integer(pInt), dimension(:), allocatable, private :: &
+   constitutive_phenopowerlaw_Noutput, &                                                            ! number of outputs per instance of this constitution 
+   constitutive_phenopowerlaw_totalNslip, &                                                         ! no. of slip system used in simulation
+   constitutive_phenopowerlaw_totalNtwin                                                            ! no. of twin system used in simulation
  
- integer(pInt),   dimension(:,:),   allocatable,target :: &
+ integer(pInt), dimension(:,:), allocatable, target, public :: &
    constitutive_phenopowerlaw_sizePostResult                                                        ! size of each post result output
 
- integer(pInt),   dimension(:,:),   allocatable :: &
+ integer(pInt), dimension(:,:), allocatable, private :: &
    constitutive_phenopowerlaw_Nslip, &                                                              ! active number of slip systems per family
    constitutive_phenopowerlaw_Ntwin                                                                 ! active number of twin systems per family
 
- character(len=64), dimension(:,:), allocatable,target :: & 
+ character(len=64), dimension(:,:), allocatable, target, public :: & 
    constitutive_phenopowerlaw_output                                                                ! name of each post result output
 
- character(len=32), dimension(:),   allocatable :: &
+ character(len=32), dimension(:), allocatable, private :: &
    constitutive_phenopowerlaw_structureName
 
- real(pReal), dimension(:), allocatable :: &
+ real(pReal), dimension(:), allocatable, private :: &
    constitutive_phenopowerlaw_CoverA, &
    constitutive_phenopowerlaw_C11, &
    constitutive_phenopowerlaw_C12, &
@@ -112,12 +115,12 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_n_twin, &
    constitutive_phenopowerlaw_gdot0_twin
 
- real(pReal), dimension(:,:), allocatable :: &
+ real(pReal), dimension(:,:), allocatable, private :: &
    constitutive_phenopowerlaw_tau0_slip, &
    constitutive_phenopowerlaw_tausat_slip, &
    constitutive_phenopowerlaw_tau0_twin
 
- real(pReal), dimension(:), allocatable :: &
+ real(pReal), dimension(:), allocatable, private :: &
    constitutive_phenopowerlaw_spr, &
    constitutive_phenopowerlaw_twinB, &
    constitutive_phenopowerlaw_twinC, &
@@ -130,21 +133,30 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_a_slip, &
    constitutive_phenopowerlaw_aTolResistance
 
- real(pReal), dimension(:,:), allocatable :: &
+ real(pReal), dimension(:,:), allocatable, private :: &
    constitutive_phenopowerlaw_interaction_slipslip, &
    constitutive_phenopowerlaw_interaction_sliptwin, &
    constitutive_phenopowerlaw_interaction_twinslip, &
    constitutive_phenopowerlaw_interaction_twintwin
 
- real(pReal), dimension(:,:,:), allocatable :: &
+ real(pReal), dimension(:,:,:), allocatable, private :: &
    constitutive_phenopowerlaw_hardeningMatrix_slipslip, &
    constitutive_phenopowerlaw_hardeningMatrix_sliptwin, &
    constitutive_phenopowerlaw_hardeningMatrix_twinslip, &
    constitutive_phenopowerlaw_hardeningMatrix_twintwin, &
    constitutive_phenopowerlaw_Cslip_66
 
- public  :: constitutive_phenopowerlaw_init  
- 
+ public :: &
+   constitutive_phenopowerlaw_init, &
+   constitutive_phenopowerlaw_homogenizedC, &
+   constitutive_phenopowerlaw_aTolState, &
+   constitutive_phenopowerlaw_dotState, &
+   constitutive_phenopowerlaw_dotTemperature, &
+   constitutive_phenopowerlaw_microstructure, &
+   constitutive_phenopowerlaw_LpAndItsTangent, &
+   constitutive_phenopowerlaw_postResults, &
+   constitutive_phenopowerlaw_stateInit
+
 contains
 
 subroutine constitutive_phenopowerlaw_init(myFile)
