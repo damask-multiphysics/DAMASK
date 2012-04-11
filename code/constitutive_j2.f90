@@ -181,14 +181,14 @@ subroutine constitutive_j2_init(myFile)
           constitutive_j2_a = 0.0_pReal
  allocate(constitutive_j2_aTolResistance(maxNinstance))
           constitutive_j2_aTolResistance = 0.0_pReal
- allocate(constitutive_j2__tausat_SinhFitA(maxNinstance))
-          constitutive_j2__tausat_SinhFitA = 0.0_pReal
- allocate(constitutive_j2__tausat_SinhFitB(maxNinstance))
-          constitutive_j2__tausat_SinhFitB = 0.0_pReal
- allocate(constitutive_j2__tausat_SinhFitC(maxNinstance))
-          constitutive_j2__tausat_SinhFitC = 0.0_pReal
- allocate(constitutive_j2__tausat_SinhFitD(maxNinstance))
-          constitutive_j2__tausat_SinhFitD = 0.0_pReal
+ allocate(constitutive_j2_tausat_SinhFitA(maxNinstance))
+          constitutive_j2_tausat_SinhFitA = 0.0_pReal
+ allocate(constitutive_j2_tausat_SinhFitB(maxNinstance))
+          constitutive_j2_tausat_SinhFitB = 0.0_pReal
+ allocate(constitutive_j2_tausat_SinhFitC(maxNinstance))
+          constitutive_j2_tausat_SinhFitC = 0.0_pReal
+ allocate(constitutive_j2_tausat_SinhFitD(maxNinstance))
+          constitutive_j2_tausat_SinhFitD = 0.0_pReal
  
  rewind(myFile)
  
@@ -484,6 +484,7 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
   real(pReal), dimension(6) ::              Tstar_dev_v               ! deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
   real(pReal)                               gamma_dot, &              ! strainrate
                                             hardening, &              ! hardening coefficient
+                                            saturation, &             ! saturation resistance
                                             norm_Tstar_dev            ! euclidean norm of Tstar_dev
   integer(pInt)                             matID
 
