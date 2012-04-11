@@ -53,8 +53,8 @@ module IO
             IO_skipChunks, &
             IO_extractValue, &
             IO_countDataLines, &
-            IO_countContinousIntValues, &
-            IO_continousIntValues, &
+            IO_countContinuousIntValues, &
+            IO_continuousIntValues, &
             IO_error, &
             IO_warning
  private :: IO_fixedFloatValue, &
@@ -967,10 +967,11 @@ end function IO_countDataLines
  
 !********************************************************************
 ! count items in consecutive lines
-! Marc:   ints concatenated by "c" as last char or range of values a "to" b
-! Abaqus: triplet of start,stop,inc
+! Marc:      ints concatenated by "c" as last char or range of values a "to" b
+! Abaqus:    triplet of start,stop,inc
+! Spectral:  ints concatenated range of a "to" b, multiple entries with a "times" b
 !********************************************************************
-integer(pInt) function IO_countContinousIntValues(myUnit)
+integer(pInt) function IO_countContinuousIntValues(myUnit)
 
  use DAMASK_interface, only: FEsolver
 
@@ -983,7 +984,7 @@ integer(pInt) function IO_countContinousIntValues(myUnit)
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
  character(len=65536)                     :: line
 
- IO_countContinousIntValues = 0_pInt
+ IO_countContinuousIntValues = 0_pInt
 
  select case (FEsolver)
    case ('Marc','Spectral')
@@ -992,12 +993,15 @@ integer(pInt) function IO_countContinousIntValues(myUnit)
        read(myUnit,'(A300)',end=100) line
        myPos = IO_stringPos(line,maxNchunks)
        if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then               ! found range indicator
-         IO_countContinousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) - IO_intValue(line,myPos,1_pInt)
-         exit                                                             ! only one single range indicator allowed
+         IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) - IO_intValue(line,myPos,1_pInt)
+         exit                                                                       ! only one single range indicator allowed
+       else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'times' ) then          ! found multiple entries indicator
+         IO_countContinuousIntValues = IO_intValue(line,myPos,1_pInt)
+         exit                                                                       ! only one single range indicator allowed
        else
-         IO_countContinousIntValues = IO_countContinousIntValues+myPos(1)-1_pInt ! add line's count when assuming 'c'
+         IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt ! add line's count when assuming 'c'
          if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then        ! line finished, read last value
-           IO_countContinousIntValues = IO_countContinousIntValues+1_pInt
+           IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
            exit                                                           ! data ended
          endif
        endif
@@ -1013,28 +1017,30 @@ integer(pInt) function IO_countContinousIntValues(myUnit)
      do l = 1_pInt,c
        read(myUnit,'(A300)',end=100) line
        myPos = IO_stringPos(line,maxNchunks)
-       IO_countContinousIntValues = IO_countContinousIntValues + 1_pInt + &    ! assuming range generation
+       IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &    ! assuming range generation
                                     (IO_intValue(line,myPos,2_pInt)-IO_intValue(line,myPos,1_pInt))/&
                                                          max(1_pInt,IO_intValue(line,myPos,3_pInt))
      enddo
  
  end select
 
-100 end function IO_countContinousIntValues
+100 end function IO_countContinuousIntValues
 
 
 !********************************************************************
-! return integer list corrsponding to items in consecutive lines
-! Marc:   ints concatenated by "c" as last char, range of a "to" b, or named set
-! Abaqus: triplet of start,stop,inc or named set
+! return integer list corrsponding to items in consecutive lines.
+! First integer in array is counter
+! Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
+! Abaqus:    triplet of start,stop,inc or named set
+! Spectral:  ints concatenated range of a "to" b, multiple entries with a "times" b
 !********************************************************************
-function IO_continousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
+function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
  use DAMASK_interface, only: FEsolver
 
  implicit none
  integer(pInt),                     intent(in) :: maxN
- integer(pInt),     dimension(1+maxN)          :: IO_continousIntValues
+ integer(pInt),     dimension(1+maxN)          :: IO_continuousIntValues
  
  integer(pInt),                     intent(in) :: myUnit, &
                                                   lookupMaxN
@@ -1048,7 +1054,7 @@ function IO_continousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
  character(len=65536) line
  logical rangeGeneration
 
- IO_continousIntValues = 0_pInt
+ IO_continuousIntValues = 0_pInt
  rangeGeneration = .false.
 
  select case (FEsolver)
@@ -1060,25 +1066,29 @@ function IO_continousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
        if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set name
          do i = 1_pInt, lookupMaxN                                             ! loop over known set names
            if (IO_stringValue(line,myPos,1_pInt) == lookupName(i)) then         ! found matching name
-             IO_continousIntValues = lookupMap(:,i)                      ! return resp. entity list
+             IO_continuousIntValues = lookupMap(:,i)                      ! return resp. entity list
              exit
            endif
          enddo
          exit
        else if (myPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then         ! found range indicator
          do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,3_pInt)
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
-           IO_continousIntValues(1+IO_continousIntValues(1)) = i
+           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+           IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
          enddo
+         exit
+       else if (myPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'times' ) then      ! found multiple entries indicator
+         IO_continuousIntValues(1) = IO_intValue(line,myPos,1_pInt)
+         IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,myPos,3_pInt)
          exit
        else
          do i = 1_pInt,myPos(1)-1_pInt  ! interpret up to second to last value
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
-           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,myPos,i)
+           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+           IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
          enddo
          if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then       ! line finished, read last value
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
-           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,myPos,myPos(1))
+           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+           IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,myPos(1))
            exit
          endif
        endif
@@ -1106,30 +1116,30 @@ function IO_continousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
          do i = 1_pInt,myPos(1)                                                 ! loop over set names in line
            do j = 1_pInt,lookupMaxN                                      ! look thru known set names
              if (IO_stringValue(line,myPos,i) == lookupName(j)) then       ! found matching name
-               first = 2_pInt + IO_continousIntValues(1)                      ! where to start appending data
+               first = 2_pInt + IO_continuousIntValues(1)                      ! where to start appending data
                last  = first + lookupMap(1,j) - 1_pInt                        ! up to where to append data
-               IO_continousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)    ! add resp. entity list
-               IO_continousIntValues(1) = IO_continousIntValues(1) + lookupMap(1,j)   ! count them
+               IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)    ! add resp. entity list
+               IO_continuousIntValues(1) = IO_continuousIntValues(1) + lookupMap(1,j)   ! count them
              endif
            enddo
          enddo
        else if (rangeGeneration) then                                    ! range generation
          do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,2_pInt),max(1_pInt,IO_intValue(line,myPos,3_pInt))
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
-           IO_continousIntValues(1+IO_continousIntValues(1)) = i
+           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+           IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
          enddo
        else                                                              ! read individual elem nums
          do i = 1_pInt,myPos(1)
 !            write(*,*)'IO_CIV-int',IO_intValue(line,myPos,i)
-           IO_continousIntValues(1) = IO_continousIntValues(1) + 1_pInt
-           IO_continousIntValues(1+IO_continousIntValues(1)) = IO_intValue(line,myPos,i)
+           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+           IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
          enddo
        endif
      enddo
  
  endselect
 
-100 end function IO_continousIntValues
+100 end function IO_continuousIntValues
 
 
 !********************************************************************
@@ -1138,7 +1148,6 @@ function IO_continousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 ! in ABAQUS either time step is reduced or execution terminated
 !********************************************************************
 subroutine IO_error(error_ID,e,i,g,ext_msg)
-        
  implicit none
  integer(pInt),              intent(in) :: error_ID
  integer(pInt),    optional, intent(in) :: e,i,g
@@ -1276,9 +1285,7 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  !* errors related to spectral solver
 
  case (802_pInt)
-   msg = 'non-positive dimension'
- case (803_pInt)
-   msg = 'odd resolution given'
+   msg = 'invaldid geometry parameter'
  case (808_pInt)
    msg = 'precision not suitable for FFTW'
  case (809_pInt)
