@@ -362,9 +362,9 @@ program DAMASK_spectral
  
 !--------------------------------------------------------------------------------------------------
 ! get resolution, dimension, homogenization and variables derived from resolution
- res     = mesh_spectral_getResolution(myUnit)
- geomdim = mesh_spectral_getDimension(myUnit)
- homog   = mesh_spectral_getHomogenization(myUnit)
+ res     = mesh_spectral_getResolution()
+ geomdim = mesh_spectral_getDimension()
+ homog   = mesh_spectral_getHomogenization()
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  Npoints = res(1)*res(2)*res(3)
  wgt = 1.0_pReal/real(Npoints, pReal)

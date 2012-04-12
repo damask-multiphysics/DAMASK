@@ -322,9 +322,9 @@ program DAMASK_spectral_AL
  
 !--------------------------------------------------------------------------------------------------
 ! get resolution, dimension, homogenization and variables derived from resolution
- res     = mesh_spectral_getResolution(myUnit)
- geomdim = mesh_spectral_getDimension(myUnit)
- homog   = mesh_spectral_getHomogenization(myUnit)
+ res     = mesh_spectral_getResolution()
+ geomdim = mesh_spectral_getDimension()
+ homog   = mesh_spectral_getHomogenization()
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  Npoints = res(1)*res(2)*res(3)
  wgt = 1.0_pReal/real(Npoints, pReal)
@@ -861,7 +861,7 @@ program DAMASK_spectral_AL
          write(6,'(a,es14.7)') 'max abs err F', err_f_point
          write(6,'(a,es14.7)') 'max abs err P', err_p_point
        err_crit = max(err_p/1e-3, err_f/1e-4,err_div/err_div_tol,err_stress/err_stress_tol)
-       write(6,'(a)') 'critical error', err_crit
+       write(6,'(a,es14.7)') 'critical error', err_crit
 
        if (.not. callCPFEM) then
          if(err_crit < 1.0_pReal .or. guesses >= guessmax) callCPFEM = .true.
