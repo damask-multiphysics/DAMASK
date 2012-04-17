@@ -837,6 +837,7 @@ FE_ipNeighbor(1:FE_NipNeighbors(8),1:FE_Nips(8),8) = &  ! element 117
  ! *** FE_subNodeParent ***
  ! lists the group of nodes for which the center of gravity
  ! corresponds to the location of a each subnode.
+ ! fill with 0.
  ! example: face-centered subnode with faceNodes 1,2,3,4 to be used in,
  !          e.g., a 8 IP grid, would be encoded:
  !          1, 2, 3, 4, 0, 0, 0, 0
@@ -3144,7 +3145,7 @@ end subroutine mesh_build_ipNeighborhood
 subroutine mesh_build_subNodeCoords
  
  implicit none
- integer(pInt) e,t,n,p
+ integer(pInt) e,t,n,p,Nparents
  
  if (.not. allocated(mesh_subNodeCoord)) then
    allocate(mesh_subNodeCoord(3,mesh_maxNnodes+mesh_maxNsubNodes,mesh_NcpElems))
@@ -3157,13 +3158,12 @@ subroutine mesh_build_subNodeCoords
      mesh_subNodeCoord(1:3,n,e) = mesh_node(1:3,mesh_FEasCP('node',mesh_element(4_pInt+n,e))) ! loop over nodes of this element type
    enddo
    do n = 1_pInt,FE_NsubNodes(t)               ! now for the true subnodes
-     do p = 1_pInt,FE_Nips(t)                  ! loop through possible parent nodes
-       if (FE_subNodeParent(p,n,t) > 0_pInt) & ! valid parent node
-         mesh_subNodeCoord(1:3,FE_Nnodes(t)+n,e) = mesh_subNodeCoord(1:3,FE_Nnodes(t)+n,e) &
-                                                 + mesh_node(1:3,mesh_FEasCP('node',mesh_element(4_pInt+FE_subNodeParent(p,n,t),e))) ! add up parents
+     Nparents = count(FE_subNodeParent(1_pInt:FE_Nips(t),n,t) > 0_pInt)
+     do p = 1_pInt,Nparents                    ! loop through present parent nodes
+       mesh_subNodeCoord(1:3,FE_Nnodes(t)+n,e) = mesh_subNodeCoord(1:3,FE_Nnodes(t)+n,e) &
+                                               + mesh_node(1:3,mesh_FEasCP('node',mesh_element(4_pInt+FE_subNodeParent(p,n,t),e))) ! add up parents
      enddo
-     mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e) = mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e) &
-                                             /real(count(FE_subNodeParent(:,n,t) > 0_pInt),pReal)
+     mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e) = mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e)/real(Nparents,pReal)
    enddo
  enddo 
  
@@ -3186,15 +3186,13 @@ subroutine mesh_build_ipCoordinates
  real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos   ! coordinates of subnodes determining center of grav
  real(pReal), dimension(3) :: centerOfGravity
 
- if (.not. allocated(mesh_ipCenterOfGravity)) then
-   allocate(mesh_ipCenterOfGravity(3,mesh_maxNips,mesh_NcpElems))
- endif
+ if (.not. allocated(mesh_ipCenterOfGravity)) allocate(mesh_ipCenterOfGravity(3,mesh_maxNips,mesh_NcpElems))
  
  do e = 1_pInt,mesh_NcpElems                                    ! loop over cpElems
-   t = mesh_element(2,e)                                   ! get elemType
+   t = mesh_element(2,e)                                        ! get elemType
    do i = 1_pInt,FE_Nips(t)                                     ! loop over IPs of elem
-     gravityNode = .false.                                 ! reset flagList
-     gravityNodePos = 0.0_pReal                            ! reset coordinates
+     gravityNode = .false.                                      ! reset flagList
+     gravityNodePos = 0.0_pReal                                 ! reset coordinates
      do f = 1_pInt,FE_NipNeighbors(t)                           ! loop over interfaces of IP
        do n = 1_pInt,FE_NipFaceNodes                            ! loop over nodes on interface
          gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = .true.
@@ -3202,13 +3200,13 @@ subroutine mesh_build_ipCoordinates
        enddo
      enddo
      
-     do j = 1_pInt,mesh_maxNnodes+mesh_maxNsubNodes-1_pInt           ! walk through entire flagList except last
-       if (gravityNode(j)) then                            ! valid node index
+     do j = 1_pInt,mesh_maxNnodes+mesh_maxNsubNodes-1_pInt      ! walk through entire flagList except last
+       if (gravityNode(j)) then                                 ! valid node index
          do k = j+1_pInt,mesh_maxNnodes+mesh_maxNsubNodes       ! walk through remainder of list
            if (gravityNode(k) .and. all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < tol_gravityNodePos)) then   ! found duplicate
-             gravityNode(j) = .false.                      ! delete first instance
+             gravityNode(j) = .false.                           ! delete first instance
              gravityNodePos(:,j) = 0.0_pReal
-             exit                                          ! continue with next suspect
+             exit                                               ! continue with next suspect
            endif
          enddo
        endif
@@ -3245,12 +3243,12 @@ subroutine mesh_build_ipVolumes
  do e = 1_pInt,mesh_NcpElems                                    ! loop over cpElems
    t = mesh_element(2_pInt,e)                                   ! get elemType
    do i = 1_pInt,FE_Nips(t)                                     ! loop over IPs of elem
-     do f = 1_pInt,FE_NipNeighbors(t)         ! loop over interfaces of IP and add tetrahedra which connect to CoG
+     do f = 1_pInt,FE_NipNeighbors(t)                           ! loop over interfaces of IP and add tetrahedra which connect to CoG
        forall (n = 1_pInt:FE_NipFaceNodes) &
          nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
        forall (n = 1_pInt:FE_NipFaceNodes, j = 1_pInt:Ntriangles) &  ! start at each interface node and build valid triangles to cover interface
-         volume(j,n) = math_volTetrahedron(nPos(:,n), &    ! calc volume of respective tetrahedron to CoG
-                                           nPos(:,1_pInt+mod(n-1_pInt +j  ,FE_NipFaceNodes)), & ! start at offset j
+         volume(j,n) = math_volTetrahedron(nPos(:,n), &         ! calc volume of respective tetrahedron to CoG
+                                           nPos(:,1_pInt+mod(n-1_pInt +j       ,FE_NipFaceNodes)), & ! start at offset j
                                            nPos(:,1_pInt+mod(n-1_pInt +j+1_pInt,FE_NipFaceNodes)), & ! and take j's neighbor
                                            mesh_ipCenterOfGravity(:,i,e))
        mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)    ! add contribution from this interface
@@ -3275,26 +3273,26 @@ subroutine mesh_build_ipAreas
  implicit none
  integer(pInt) :: e,f,t,i,j,n
  integer(pInt), parameter :: Ntriangles = FE_NipFaceNodes-2_pInt     ! each interface is made up of this many triangles
- real(pReal), dimension (3,FE_NipFaceNodes) :: nPos             ! coordinates of nodes on IP face
+ real(pReal), dimension (3,FE_NipFaceNodes) :: nPos                  ! coordinates of nodes on IP face
  real(pReal), dimension(3,Ntriangles,FE_NipFaceNodes) :: normal
  real(pReal), dimension(Ntriangles,FE_NipFaceNodes)   :: area
 
  allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ;         mesh_ipArea       = 0.0_pReal
  allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipAreaNormal = 0.0_pReal
  do e = 1_pInt,mesh_NcpElems                                         ! loop over cpElems
-   t = mesh_element(2,e)                                        ! get elemType
+   t = mesh_element(2,e)                                             ! get elemType
    do i = 1_pInt,FE_Nips(t)                                          ! loop over IPs of elem
      do f = 1_pInt,FE_NipNeighbors(t)                                ! loop over interfaces of IP 
        forall (n = 1_pInt:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
-       forall (n = 1_pInt:FE_NipFaceNodes, j = 1_pInt:Ntriangles)         ! start at each interface node and build valid triangles to cover interface
+       forall (n = 1_pInt:FE_NipFaceNodes, j = 1_pInt:Ntriangles)    ! start at each interface node and build valid triangles to cover interface
          normal(:,j,n) = math_vectorproduct(nPos(:,1_pInt+mod(n+j-1_pInt,FE_NipFaceNodes)) - nPos(:,n), &    ! calc their normal vectors
                                             nPos(:,1_pInt+mod(n+j-0_pInt,FE_NipFaceNodes)) - nPos(:,n))
-         area(j,n) = sqrt(sum(normal(:,j,n)*normal(:,j,n)))                                       ! and area
+         area(j,n) = sqrt(sum(normal(:,j,n)*normal(:,j,n)))                                                  ! and area
        end forall
        forall (n = 1_pInt:FE_NipFaceNodes, j = 1_pInt:Ntriangles, area(j,n) > 0.0_pReal) &
-         normal(1:3,j,n) = normal(1:3,j,n) / area(j,n)            ! make myUnit normal
+         normal(1:3,j,n) = normal(1:3,j,n) / area(j,n)               ! make myUnit normal
        
-       mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)                   ! area of parallelograms instead of triangles
+       mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)                        ! area of parallelograms instead of triangles
        mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2_pInt)/&                            ! average of all valid normals
                                         real(count(area > 0.0_pReal),pReal)
      enddo
@@ -3331,7 +3329,7 @@ mesh_nodeTwins = 0_pInt
 tolerance = 0.001_pReal * minval(mesh_ipVolume) ** 0.333_pReal
 
 do dir = 1_pInt,3_pInt                                    ! check periodicity in directions of x,y,z
-  if (mesh_periodicSurface(dir)) then           ! only if periodicity is requested
+  if (mesh_periodicSurface(dir)) then                     ! only if periodicity is requested
 
     
     !*** find out which nodes sit on the surface 
