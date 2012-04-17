@@ -969,7 +969,7 @@ end function IO_countDataLines
 ! count items in consecutive lines
 ! Marc:      ints concatenated by "c" as last char or range of values a "to" b
 ! Abaqus:    triplet of start,stop,inc
-! Spectral:  ints concatenated range of a "to" b, multiple entries with a "times" b
+! Spectral:  ints concatenated range of a "to" b, multiple entries with a "copies of" b
 !********************************************************************
 integer(pInt) function IO_countContinuousIntValues(myUnit)
 
@@ -992,17 +992,18 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
      do
        read(myUnit,'(A300)',end=100) line
        myPos = IO_stringPos(line,maxNchunks)
-       if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then               ! found range indicator
+       if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                  ! found range indicator
          IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) - IO_intValue(line,myPos,1_pInt)
          exit                                                                       ! only one single range indicator allowed
-       else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'times' ) then          ! found multiple entries indicator
+       else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' .and.
+                IO_lc(IO_stringValue(line,myPos,3_pInt)) == 'of'           ) then   ! found multiple entries indicator
          IO_countContinuousIntValues = IO_intValue(line,myPos,1_pInt)
-         exit                                                                       ! only one single range indicator allowed
+         exit                                                                       ! only one single multiplier allowed
        else
-         IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt ! add line's count when assuming 'c'
-         if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then        ! line finished, read last value
+         IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt  ! add line's count when assuming 'c'
+         if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then              ! line finished, read last value
            IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
-           exit                                                           ! data ended
+           exit                                                                     ! data ended
          endif
        endif
      enddo
@@ -1032,7 +1033,7 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
 ! First integer in array is counter
 ! Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
 ! Abaqus:    triplet of start,stop,inc or named set
-! Spectral:  ints concatenated range of a "to" b, multiple entries with a "times" b
+! Spectral:  ints concatenated range of a "to" b, multiple entries with a "copies of" b
 !********************************************************************
 function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
@@ -1077,9 +1078,10 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
            IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
          enddo
          exit
-       else if (myPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'times' ) then      ! found multiple entries indicator
+       else if (myPos(1) > 3_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' 
+                                  .and. IO_lc(IO_stringValue(line,myPos,3_pInt)) == 'of' ) then         ! found multiple entries indicator
          IO_continuousIntValues(1) = IO_intValue(line,myPos,1_pInt)
-         IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,myPos,3_pInt)
+         IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,myPos,4_pInt)
          exit
        else
          do i = 1_pInt,myPos(1)-1_pInt  ! interpret up to second to last value
