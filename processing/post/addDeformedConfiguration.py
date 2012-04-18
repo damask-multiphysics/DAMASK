@@ -22,56 +22,37 @@ class extendableOption(Option):
       Option.take_action(self, action, dest, opt, value, values, parser)
 
 def location(idx,res):
-
   return ( idx  % res[0], \
-          (idx // res[0]) % res[1], \
-          (idx // res[0] // res[1]) % res[2] )
+         ( idx // res[0]) % res[1], \
+         ( idx // res[0] // res[1]) % res[2] )
 
 def index(location,res):
+  return ( location[0] % res[0]                   + \
+         ( location[1] % res[1]) * res[0]          + \
+         ( location[2] % res[2]) * res[1] * res[0]   )
 
-  return ( location[0] % res[0]                    + \
-          (location[1] % res[1]) * res[0]          + \
-          (location[2] % res[2]) * res[0] * res[1]   )        
+
+
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options file[s]', description = """
-Add column containing debug information
+parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+Add column(s) containing deformed configuration of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
 
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace('$Id: addDivergence.py 1282 2012-02-08 12:01:38Z MPIE\p.eisenlohr $','\n','\\n')
 )
 
-
-parser.add_option('--no-shape','-s',    dest='noShape', action='store_false', \
-                                        help='do not calcuate shape mismatch [%default]')
-parser.add_option('--no-volume','-v',   dest='noVolume', action='store_false', \
-                                        help='do not calculate volume mismatch [%default]')
 parser.add_option('-c','--coordinates', dest='coords', type='string',\
                                         help='column heading for coordinates [%default]')
-parser.add_option('-f','--deformation', dest='defgrad', action='extend', type='string', \
-                                        help='heading(s) of columns containing deformation tensor values %default')
+parser.add_option('-d','--defgrad',     dest='defgrad', type='string', \
+                                        help='heading of columns containing tensor field values')
 
-parser.set_defaults(noVolume = False)
-parser.set_defaults(noShape = False)
 parser.set_defaults(coords  = 'ip')
-parser.set_defaults(defgrad = 'f')
+parser.set_defaults(defgrad = 'f' )
 
 (options,filenames) = parser.parse_args()
-
-defgrad_av     = {}
-centroids      = {}
-nodes          = {}
-shape_mismatch = {}
-volume_mismatch= {}
-
-datainfo = {                                                               # list of requested labels per datatype
-             'defgrad':     {'len':9,
-                             'label':[]},
-           }
-
-if options.defgrad != None:   datainfo['defgrad']['label'] += options.defgrad
 
 # ------------------------------------------ setup file handles ---------------------------------------  
 
@@ -83,6 +64,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
 
+
 # ------------------------------------------ loop over input files ---------------------------------------   
 
 for file in files:
@@ -90,7 +72,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id$','\n','\\n') + \
+  table.info_append(string.replace('$Id: addDivergence.py 1282 2012-02-08 12:01:38Z MPIE\p.eisenlohr $','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out dimension and resolution 
@@ -113,12 +95,12 @@ for file in files:
                            max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
                           ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
   if res[2] == 1:
-    geomdim[2] = min(geomdim[:2]/res[:2])
+   geomdim[2] = min(geomdim[:2]/res[:2])
 
   N = res.prod()
   print '\t%s @ %s'%(geomdim,res)
 
-
+  
 # --------------- figure out columns to process
 
   key = '1_%s' %options.defgrad
@@ -126,15 +108,14 @@ for file in files:
     sys.stderr.write('column %s not found...\n'%key)
   else:
     defgrad = numpy.array([0.0 for i in xrange(N*9)]).reshape(list(res)+[3,3])
-    if not options.noShape:  table.labels_append(['mismatch_shape(%s)' %options.defgrad])
-    if not options.noVolume: table.labels_append(['mismatch_volume(%s)'%options.defgrad])
+    table.labels_append(['%s_deformed'%(coord) for coord in 'x','y','z'])   # extend ASCII header with new labels
     column = table.labels.index(key)
-
+        
 # ------------------------------------------ assemble header ---------------------------------------  
 
   table.head_write()
 
-# ------------------------------------------ read deformation gradient field -----------------------
+# ------------------------------------------ read value field ---------------------------------------  
 
   table.data_rewind()
 
@@ -142,13 +123,11 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
     (x,y,z) = location(idx,res)                                             # figure out (x,y,z) position from line count
     idx += 1
-    defgrad[x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
-  
+    defgrad[x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
+
+    # ------------------------------------------ process value field ----------------------------
   defgrad_av = damask.core.math.tensor_avg(res,defgrad)
   centroids = damask.core.math.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
-  nodes = damask.core.math.mesh_regular_grid(res,geomdim,defgrad_av,centroids)
-  if not options.noShape:   shape_mismatch = damask.core.math.shape_compare( res,geomdim,defgrad,nodes,centroids)
-  if not options.noVolume: volume_mismatch = damask.core.math.volume_compare(res,geomdim,defgrad,nodes)
 
 # ------------------------------------------ process data ---------------------------------------  
 
@@ -157,11 +136,11 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
     (x,y,z) = location(idx,res)                                             # figure out (x,y,z) position from line count
     idx += 1
-    if not options.noShape:  table.data_append(shape_mismatch[x,y,z])
-    if not options.noVolume: table.data_append(volume_mismatch[x,y,z])
-    
-    table.data_write()                                                      # output processed line 
+    table.data_append(list(centroids[x,y,z]))
 
+    table.data_write()                                                      # output processed line
+
+  
 # ------------------------------------------ output result ---------------------------------------  
 
   table.output_flush()                                                      # just in case of buffered ASCII table
