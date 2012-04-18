@@ -113,13 +113,25 @@ class ASCIItable():
     self.__IO__['in'].seek(self.__IO__['dataStart'])
     
 # ------------------------------------------------------------------
+  def data_skipLines(self,lines):
+    for i in range(lines):
+      self.__IO__['in'].readline()
+
+# ------------------------------------------------------------------
   def data_read(self):
     line = self.__IO__['in'].readline()
     items = line.split()[:self.__IO__['validReadSize']]                             # get next data row
     self.data = {False:   [],
                   True: items}[len(items) == self.__IO__['validReadSize']]          # take if correct number of entries
     return self.data != []
-
+    
+# ------------------------------------------------------------------
+  def data_readLine(self,line):
+    self.__IO__['in'].seek(self.__IO__['dataStart'])
+    for i in range(line-1):
+      self.__IO__['in'].readline()
+    self.data_read()
+    
 # ------------------------------------------------------------------
   def data_write(self):
     if len(self.data) == 0: return

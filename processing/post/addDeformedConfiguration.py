@@ -41,7 +41,7 @@ parser = OptionParser(option_class=extendableOption, usage='%prog options [file[
 Add column(s) containing deformed configuration of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
 
-""" + string.replace('$Id: addDivergence.py 1282 2012-02-08 12:01:38Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-c','--coordinates', dest='coords', type='string',\
@@ -72,7 +72,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id: addDivergence.py 1282 2012-02-08 12:01:38Z MPIE\p.eisenlohr $','\n','\\n') + \
+  table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out dimension and resolution 
@@ -83,9 +83,16 @@ for file in files:
     continue
 
   grid = [{},{},{}]
+
   while table.data_read():                                                  # read next data line of ASCII table
+    if str(table.data[locationCol+1]) in grid[1] and len(grid[1])>1:        # geomdim[1] and res[1] already figured out, skip layers
+      table.data_skipLines(len(grid[1])*len(grid[0])-1)
+    else:
+      if str(table.data[locationCol]) in grid[0]:                           # geomdim[0] and res[0] already figured out, skip lines
+        table.data_skipLines(len(grid[0])-1)
     for j in xrange(3):
       grid[j][str(table.data[locationCol+j])] = True                        # remember coordinate along x,y,z
+
   res = numpy.array([len(grid[0]),\
                      len(grid[1]),\
                      len(grid[2]),],'i')                                    # resolution is number of distinct coordinates found

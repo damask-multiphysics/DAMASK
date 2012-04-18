@@ -28,7 +28,7 @@ class extendedOption(Option):
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Construct continuous Microstructure (e.g. from EBSD) with Layer
-""" + string.replace('$Id: spectral_randomSeeding.py 1423 2012-03-31 12:42:49Z MPIE\m.diehl $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-r','--res', dest='res', type='int', nargs=2, \
