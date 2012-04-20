@@ -195,6 +195,7 @@ program DAMASK_spectral
  real(pReal),    dimension(:,:,:,:,:), allocatable ::  F, F_lastInc
  real(pReal),    dimension(:,:,:,:),   allocatable ::  coordinates
  real(pReal),    dimension(:,:,:),     allocatable ::  temperature
+ real(pReal),    dimension(:,:,:),     allocatable ::  phase_cont                                   ! phase contrast field: C(x)/C_ref
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
@@ -449,6 +450,7 @@ program DAMASK_spectral
  allocate (xi         (3,res1_red,res(2),res(3)),      source = 0.0_pReal)
  allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
  allocate (temperature(  res(1),  res(2),res(3)),      source = bc(1)%temperature)                  ! start out isothermally
+ allocate (phase_cont (  res(1),  res(2),res(3)),      source = 0.0_pReal)
  tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                      ! allocate continous data using a C function, C_SIZE_T is of type integer(8)
  call c_f_pointer(tensorField, P_real,         [ res(1)+2_pInt,res(2),res(3),3,3])                  ! place a pointer for a real representation on tensorField
  call c_f_pointer(tensorField, deltaF_real,    [ res(1)+2_pInt,res(2),res(3),3,3])                  ! place a pointer for a real representation on tensorField
@@ -759,9 +761,11 @@ C_ref = C * wgt                                                                 
                               temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde, &
                               P_real(i,j,k,1:3,1:3),dPdF)
            CPFEM_mode = 2_pInt
+           phase_cont(i,j,k) = maxval(dPdF)/maxval(C_ref)
            C = C + dPdF
          enddo; enddo; enddo
          call debug_info()
+         write(6,'(a,es11.4)')        'Max phase contrast = ',maxval(phase_cont)
 
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
@@ -995,7 +999,11 @@ C_ref = C * wgt                                                                 
 
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient
-         F = F - deltaF_real(1:res(1),1:res(2),1:res(3),1:3,1:3)*wgt                                ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
+         
+         do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+           F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - deltaF_real(i,j,k,1:3,1:3)*wgt/phase_cont(i,j,k)     ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
+         enddo; enddo; enddo                                                                          ! preconditioning: F(x)^(n+1) = F(x)^(n) + correction/phase_contrast(x)
+         
 
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report
