@@ -175,6 +175,8 @@ subroutine constitutive_j2_init(myFile)
           constitutive_j2_n = 0.0_pReal
  allocate(constitutive_j2_h0(maxNinstance))
           constitutive_j2_h0 = 0.0_pReal
+ allocate(constitutive_j2_h0_slopeLnRate(maxNinstance))
+          constitutive_j2_h0_slopeLnRate = 0.0_pReal
  allocate(constitutive_j2_tausat(maxNinstance))
           constitutive_j2_tausat = 0.0_pReal
  allocate(constitutive_j2_a(maxNinstance))
@@ -226,7 +228,7 @@ subroutine constitutive_j2_init(myFile)
               constitutive_j2_n(i) = IO_floatValue(line,positions,2_pInt)
        case ('h0')
               constitutive_j2_h0(i) = IO_floatValue(line,positions,2_pInt)
-       case ('h0_slope','slopeLnRate')
+       case ('h0_slope','slopelnrate')
               constitutive_j2_h0_slopeLnRate(i) = IO_floatValue(line,positions,2)
        case ('tausat')
               constitutive_j2_tausat(i) = IO_floatValue(line,positions,2_pInt)
@@ -503,7 +505,7 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
   
   ! hardening coefficient
   if (abs(gamma_dot) > 1e-12_pReal) then
-    if (constitutive_j2_tausat_SinhFitA(matID) == 0) then
+    if (constitutive_j2_tausat_SinhFitA(matID) == 0.0_pReal) then
       saturation = constitutive_j2_tausat(matID)
     else
       saturation = (  constitutive_j2_tausat(matID) &
