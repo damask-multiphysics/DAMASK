@@ -213,7 +213,7 @@ subroutine CPFEM_init
       write(6,*) 'parallelExecution:    ', parallelExecution
       write(6,*) 'symmetricSolver:      ', symmetricSolver
     endif
-    call flush(6)
+    flush(6)
   !$OMP END CRITICAL (write2out)
 
 end subroutine CPFEM_init

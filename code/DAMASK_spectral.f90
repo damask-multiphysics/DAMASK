@@ -249,7 +249,6 @@ program DAMASK_spectral
 !##################################################################################################
 ! reading of information from load case file and geometry file
 !##################################################################################################
- open (6, encoding='UTF-8')  
  call DAMASK_interface_init
  write(6,'(a)') ''
  write(6,'(a)') ' <<<+-  DAMASK_spectral init  -+>>>'
@@ -788,7 +787,7 @@ C_ref = C * wgt                                                                 
 
          P_av_lab = real(P_fourier(1,1,1,1:3,1:3),pReal)*wgt
          P_av = math_rotate_forward33(P_av_lab,bc(loadcase)%rotation)
-         write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
+         write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
                                                           math_transpose33(P_av)/1.e6_pReal
 
 !--------------------------------------------------------------------------------------------------

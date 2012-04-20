@@ -67,9 +67,10 @@ subroutine DAMASK_interface_init(loadcaseParameterIn,geometryParameterIn)
    length
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
- write(6,*)
- write(6,*) '<<<+-  DAMASK_spectral_interface init  -+>>>'
- write(6,*) '$Id$'
+ open (6, encoding='UTF-8')  
+ write(6,'(a)') ''
+ write(6,'(a)') '<<<+-  DAMASK_spectral_interface init  -+>>>'
+ write(6,'(a)') '$Id$'
 #include "compilation_info.f90"
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
    geometryParameter = geometryParameterIn
@@ -189,12 +190,12 @@ subroutine DAMASK_interface_init(loadcaseParameterIn,geometryParameterIn)
  write(6,'(a,2(i2.2,a),i2.2)') ' Time:               ',dateAndTime(5),':',&
                                                        dateAndTime(6),':',&
                                                        dateAndTime(7)  
- write(6,*) 'Host Name:          ', trim(hostName)
- write(6,*) 'User Name:          ', trim(userName)
- write(6,*) 'Path Separator:     ', getPathSep()
- write(6,*) 'Command line call:  ', trim(commandLine)
- write(6,*) 'Geometry Parameter: ', trim(geometryParameter)
- write(6,*) 'Loadcase Parameter: ', trim(loadcaseParameter)
+ write(6,'(a,a)') 'Host Name:          ', trim(hostName)
+ write(6,'(a,a)') 'User Name:          ', trim(userName)
+ write(6,'(a,a)') 'Path Separator:     ', getPathSep()
+ write(6,'(a,a)') 'Command line call:  ', trim(commandLine)
+ write(6,'(a,a)') 'Geometry Parameter: ', trim(geometryParameter)
+ write(6,'(a,a)') 'Loadcase Parameter: ', trim(loadcaseParameter)
  if (start/=3_pInt) write(6,*) 'Restart Parameter:  ', trim(commandLine(start:start+length))
 
 end subroutine DAMASK_interface_init

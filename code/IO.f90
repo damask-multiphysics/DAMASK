@@ -26,6 +26,7 @@ module IO
  implicit none
  private
  public ::  IO_init, &
+            IO_checkAndRewind, &
             IO_open_file_stat, &
             IO_open_jobFile_stat, &
             IO_open_file, &
@@ -81,6 +82,20 @@ subroutine IO_init
 
 end subroutine IO_init
 
+!********************************************************************
+! checks if myUnit is opened for reading and rewinds
+!********************************************************************
+subroutine IO_checkAndRewind(myUnit)
+ 
+implicit none
+ integer(pInt), intent(in) :: myUnit
+ logical :: fileOpened
+ character(len=15) :: fileRead
+ inquire(unit=myUnit, opened=fileOpened, read = fileRead) 
+ if (fileOpened .neqv. .true. .or. trim(fileRead)/='YES') call IO_error(102_pInt)
+ rewind(myUnit)
+
+end subroutine IO_checkAndRewind
 
 !********************************************************************
 ! open existing file to given myUnit
@@ -314,9 +329,7 @@ subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
    open(myUnit,status='old',form='unformatted',access='direct', &
                                                recl=pReal,iostat=myStat,file=path)
  endif
- if (myStat /= 0) then
-   call IO_error(100_pInt,ext_msg=path)
- endif
+ if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
  
 end subroutine IO_read_jobBinaryFile
 
@@ -995,7 +1008,7 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
        if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                  ! found range indicator
          IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) - IO_intValue(line,myPos,1_pInt)
          exit                                                                       ! only one single range indicator allowed
-       else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' .and.
+       else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' .and. &
                 IO_lc(IO_stringValue(line,myPos,3_pInt)) == 'of'           ) then   ! found multiple entries indicator
          IO_countContinuousIntValues = IO_intValue(line,myPos,1_pInt)
          exit                                                                       ! only one single multiplier allowed
@@ -1078,7 +1091,7 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
            IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
          enddo
          exit
-       else if (myPos(1) > 3_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' 
+       else if (myPos(1) > 3_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' &
                                   .and. IO_lc(IO_stringValue(line,myPos,3_pInt)) == 'of' ) then         ! found multiple entries indicator
          IO_continuousIntValues(1) = IO_intValue(line,myPos,1_pInt)
          IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,myPos,4_pInt)

@@ -1439,10 +1439,11 @@ end subroutine mesh_build_FEdata
 !********************************************************************
 subroutine mesh_marc_get_tableStyles(myUnit)
 
- use IO,   only: IO_lc, &
-                 IO_intValue, &
-                 IO_stringValue, &
-                 IO_stringPos
+ use IO, only: &
+   IO_lc, &
+   IO_intValue, &
+   IO_stringValue, &
+   IO_stringPos
  
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -1491,7 +1492,7 @@ integer(pInt), dimension (1+2*maxNchunks) :: myPos
 integer(pInt) chunk, Nchunks
 character(len=300) line, keyword, damaskOption, v
 
-mesh_periodicSurface = (/.false., .false., .false./)
+mesh_periodicSurface = .false.
 
 610 FORMAT(A300)
 
@@ -2632,13 +2633,15 @@ end subroutine mesh_abaqus_build_nodes
 !********************************************************************
 subroutine mesh_spectral_build_elements(myUnit)
 
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_error, &
-                 IO_continuousIntValues, &
-                 IO_intValue, &
-                 IO_countContinuousIntValues
+ use IO, only: &
+   IO_checkAndRewind, &
+   IO_lc, &
+   IO_stringValue, &
+   IO_stringPos, &
+   IO_error, &
+   IO_continuousIntValues, &
+   IO_intValue, &
+   IO_countContinuousIntValues
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -2655,7 +2658,8 @@ subroutine mesh_spectral_build_elements(myUnit)
  res   = mesh_spectral_getResolution(myUnit)
  homog = mesh_spectral_getHomogenization(myUnit)
  
- rewind(myUnit)
+ call IO_checkAndRewind(myUnit)
+
  read(myUnit,'(a65536)') line
  myPos = IO_stringPos(line,2_pInt)
  keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
@@ -3552,6 +3556,7 @@ end subroutine mesh_regrid
 
 function mesh_spectral_getDimension(fileUnit)
  use IO, only: &
+   IO_checkAndRewind, &
    IO_open_file, &
    IO_stringPos, &
    IO_lc, &
@@ -3581,7 +3586,8 @@ function mesh_spectral_getDimension(fileUnit)
    myUnit = fileUnit
  endif
  
- rewind(myUnit)
+ call IO_checkAndRewind(myUnit)
+
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,2_pInt)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
@@ -3622,6 +3628,7 @@ end function mesh_spectral_getDimension
 
 function mesh_spectral_getResolution(fileUnit)
  use IO, only: &
+   IO_checkAndRewind, &
    IO_open_file, &
    IO_stringPos, &
    IO_lc, &
@@ -3651,7 +3658,8 @@ function mesh_spectral_getResolution(fileUnit)
    myUnit = fileUnit
  endif
  
- rewind(myUnit)
+ call IO_checkAndRewind(myUnit)
+
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,2_pInt)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
@@ -3694,6 +3702,7 @@ end function mesh_spectral_getResolution
 
 function mesh_spectral_getHomogenization(fileUnit)
  use IO, only: &
+   IO_checkAndRewind, &
    IO_open_file, &
    IO_stringPos, &
    IO_lc, &
@@ -3722,7 +3731,8 @@ function mesh_spectral_getHomogenization(fileUnit)
    myUnit = fileUnit
  endif
  
- rewind(myUnit)
+ call IO_checkAndRewind(myUnit)
+
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,2_pInt)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
