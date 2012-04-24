@@ -300,6 +300,7 @@ subroutine IO_write_jobBinaryFile(myUnit,newExt,recMultiplier)
    open(myUnit,status='replace',form='unformatted',access='direct', &
                                                    recl=pReal,iostat=myStat,file=path)
  endif
+
  if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
 end subroutine IO_write_jobBinaryFile

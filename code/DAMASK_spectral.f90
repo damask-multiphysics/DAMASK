@@ -535,12 +535,12 @@ program DAMASK_spectral
    ielem = ielem + 1_pInt 
    F(i,j,k,1:3,1:3) = math_I3
    F_lastInc(i,j,k,1:3,1:3) = math_I3
-   coordinates(i,j,k,1:3) = geomdim/real(res * [i,j,k], pReal) - geomdim/real(2_pInt*res,pReal)
+   coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) - geomdim/real(2_pInt*res,pReal)
    call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
                         0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
    C = C + dPdF 
 enddo; enddo; enddo
-C_ref = C * wgt                                                                                     ! linear reference material stiffness
+C_ref = C * wgt   
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the gamma operator
