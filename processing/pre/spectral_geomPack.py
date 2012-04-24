@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os,re,sys,math,string
-from optparse import OptionParser, Option
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
     
 def writeKey(outType, begin, counter):
   if outType == 'range':
@@ -16,7 +16,7 @@ def writeKey(outType, begin, counter):
     file['output'].write(c)
     
 # -----------------------------
-class extendableOption(Option):
+class extendedOption(Option):
 # -----------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
@@ -39,8 +39,9 @@ class extendableOption(Option):
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
-packing/unpacking geometry file 
+parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+Pack/unpack geometry files by adding or removing range indicator "to" and copy indicator "copies of".
+
 """ + string.replace('$Id$','\n','\\n')
 )
 
@@ -50,12 +51,12 @@ parser.add_option('-p','--pack',       dest='pack', action='store_true', \
 parser.add_option('-u','--unpack',     dest='unpack', action='store_true', \
                                        help='unpack input file [%default]')
 parser.add_option('-l','--linelength', dest='lineLength',type='int', nargs=1, \
-                                       help='length of line [%default]')
+                                       help='length of line, 0 for auto (resolution[0]) [%default]')
                                    
 
 parser.set_defaults(pack = False)
 parser.set_defaults(unpack = False)
-parser.set_defaults(lineLength = 1)
+parser.set_defaults(lineLength = 0)
 
 (options,filenames) = parser.parse_args()
 
@@ -84,7 +85,10 @@ for file in files:
     words=line.split()
     currentLine+=1
     if('head' in line): headNumber=int(words[0])+1   
-    if(currentLine<=headNumber): file['output'].write(line)
+    if(currentLine<=headNumber):
+      if(words[0].lower()=='resolution' and words[1].lower()=='a' and options.lineLength==0):
+        options.lineLength = int(words[2].lower())
+      file['output'].write(line)
     else:
       if options.unpack:                                                                            # unpacking the geometry file
         words = line.split()
@@ -116,5 +120,7 @@ for file in files:
             outType= 'none'
             begin = current
    
-  writeKey(outType, begin, counter)                                                                 # just for packing (last line), outType not defined for unpacking
+  writeKey(outType, begin, counter)                                                                # just for packing (last line), outType not defined for unpacking
+  file['output'].close()
+  file['input'].close()
   os.rename(file['name']+'_tmp',file['name']) 

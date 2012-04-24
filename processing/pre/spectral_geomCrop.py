@@ -37,9 +37,8 @@ mappings = {
 
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-Offset microstructure index for points which see a microstructure different from themselves within a given (cubic) vicinity,
-i.e. within the region close to a grain/phase boundary.
-""" + string.replace('$Id: spectral_geomCheck 994 2011-09-05 13:38:10Z MPIE\p.eisenlohr $','\n','\\n')
+Crops a spectral geometry description at given offset and by given points.
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-r', '--resolution', dest='resolution', type='int', nargs = 3, \
