@@ -112,6 +112,7 @@ bin_link = { \
                 'postResults.py',
                 'spectral_iterationCount.py',
                 'spectral_parseLog.py',
+                'spectral_buildElements.py',
                 'tagLabel.py',
                 ],
             }

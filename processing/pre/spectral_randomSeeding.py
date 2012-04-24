@@ -71,12 +71,9 @@ grainEuler[1,:] = numpy.arccos(2*grainEuler[1,:]-1)*180/math.pi
 grainEuler[2,:] = 360*grainEuler[2,:]
 
 seedpoint = numpy.random.permutation(options.res[0]*options.res[1]*options.res[2])[:options.N_Seeds]
-seeds[0,:]=numpy.mod(seedpoint,options.res[0])/options.res[0]+1
-seeds[1,:]=numpy.mod((seedpoint-seeds[0,:])/options.res[0],options.res[1])+1
-seeds[2,:]=(seedpoint-seeds[0,:]-options.res[1]*seeds[1,:])/(options.res[0]*options.res[1])+1
-seeds[0,:]=(seeds[0,:]+numpy.random.rand(1,options.N_Seeds)-0.5)/options.res[0]
-seeds[1,:]=(seeds[1,:]+numpy.random.rand(1,options.N_Seeds)-0.5)/options.res[1]
-seeds[2,:]=(seeds[2,:]+numpy.random.rand(1,options.N_Seeds)-0.5)/options.res[2]
+seeds[0,:]=(numpy.mod(seedpoint                                 ,options.res[0])+numpy.random.random())/options.res[0]
+seeds[1,:]=(numpy.mod(seedpoint//                options.res[0] ,options.res[1])+numpy.random.random())/options.res[1]
+seeds[2,:]=(numpy.mod(seedpoint//(options.res[1]*options.res[0]),options.res[2])+numpy.random.random())/options.res[2]
 
 f = open(options.filename+'.seeds', 'w')
 
