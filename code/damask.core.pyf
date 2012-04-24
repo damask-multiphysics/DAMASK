@@ -1,7 +1,7 @@
 ! $Id$
 !    -*- f90 -*-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Note: the context of this file is case sensitive.
+! Note: the syntax of this file is case sensitive.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! This file was auto-generated with f2py (version:2_5972).
 ! See http://cens.ioc.ee/projects/f2py2e/
@@ -160,27 +160,22 @@ python module core ! in
             real*8, dimension(res[0],res[1],res[2]),intent(out),depend(res[0],res[1],res[2]) :: vm
         end subroutine math_equivStrain33_field
         
-        subroutine math_nearestNeighborSearch(res_new,Npoints_old,defgrad_av,geomdim,spatial_dim,deformed_set,result_indices) ! in :math:math.f90
+        subroutine math_nearestNeighborSearch(res_new,res_old,defgrad_av,geomdim,deformed_set,result_indices) ! in :math:math.f90
             ! input variables
-            integer, dimension(3),                                    intent(in)                                         :: res_new
-            integer,                                                  intent(in)                                         :: Npoints_old
-            integer,                                                  intent(in)                                         :: spatial_dim
-            real,   dimension(3),                                     intent(in)                                         :: geomdim
-            real,   dimension(3,3),                                   intent(in)                                         :: defgrad_av
-            real,   dimension(spatial_dim,Npoints_old),               intent(in),depend(spatial_dim,Npoints_old)         :: deformed_set
+            integer, dimension(3),                                  intent(in)                                           :: res_new
+            integer, dimension(3),                                  intent(in)                                           :: res_old
+            real, dimension(3,3),                                   intent(in)                                           :: defgrad_av
+            real, dimension(3),                                     intent(in)                                           :: geomdim
+            real, dimension(res_old[0],res_old[1],res_old[2],3),    intent(in), depend(res_old[0],res_old[1],res_old[2]) :: deformed_set
            ! output variables
-           integer, dimension(res_new[0]*res_new[1]*res_new[2]),      intent(out),depend(res_new[0],res_new[1],res_new[2]) :: result_indices
+           integer, dimension(res_new[0]*res_new[1]*res_new[2]),    intent(out), depend(res_new[0],res_new[1],res_new[2]):: result_indices
         end subroutine math_nearestNeighborSearch
      end module math
 
-
      module mesh ! in :mesh:mesh.f90
 
-        subroutine mesh_regrid(res,resNew) ! in :mesh:mesh.f90
-            integer, dimension(3), intent(in)      :: res
-            integer, dimension(3), intent(in,out)      :: resNew
-            real*8, dimension(res[0],res[1],res[2],3,3), depend(res[0],res[1],res[2]) :: F
-
+        subroutine mesh_regrid(resNew) ! in :mesh:mesh.f90
+            integer, dimension(3), intent(in,out), optional      :: resNew
         end subroutine mesh_regrid            
 
      end module mesh

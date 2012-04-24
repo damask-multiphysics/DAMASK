@@ -3526,32 +3526,178 @@ deallocate(mesh_HomogMicro)
  
 end subroutine mesh_tell_statistics
 
-subroutine mesh_regrid(res,resNew)           !use new_res=0.0 for automatic determination of new grid
+
+
+subroutine mesh_regrid(resNew)           !use new_res=[0.0,0.0,0.0] for automatic determination of new grid
  use prec, only: &
    pInt, &
    pReal
  use DAMASK_interface, only: &
    getSolverJobName
  use IO, only: &
-   IO_read_jobBinaryFile
+   IO_read_jobBinaryFile ,&
+   IO_write_jobBinaryFile
+ use math, only: &
+   math_nearestNeighborSearch, &
+   deformed_FFT
 
- integer(pInt), dimension(3), intent(in) :: res
- integer(pInt), dimension(3), intent(inout) :: resNew
- real(pReal), dimension(res(1),res(2),res(3),3,3) :: F
+ integer(pInt), dimension(3), optional, intent(inout)   :: resNew
+ integer(pInt):: maxsize, i, j, k, m, Npoints, NpointsNew
+ integer(pInt), dimension(3)                            :: res
+ integer(pInt), dimension(:),            allocatable    :: indices, outputSize 
+ real(pReal),   dimension(3)                            :: geomdim = 0.0_pReal                                              
+ real(pReal),   dimension(3,3)                          :: Favg 
+ real(pReal),   dimension(:,:,:,:,:),    allocatable :: & 
+   F,                  FNew, &
+   Fp,                FpNew, &
+   Lp,                LpNew, &
+   dcsdE,          dcsdENew
+ real(pReal),   dimension (:,:,:,:,:,:,:),  allocatable :: &
+   dPdF,            dPdFNew
+ real(pReal),   dimension (:,:,:,:),        allocatable :: &
+  coordinates, &
+  Tstar,           TstarNew, &
+  stateConst, stateConstNew, &
+  stateHomog, stateHomogNew
 
- real(pReal), dimension(:,:,:,:,:),      allocatable  :: crystallite_F0, &
-                                                         CPFEM_dcsdE, &
-                                                         crystallite_Fp0, &
-                                                         crystallite_Lp0
- real(pReal), dimension (:,:,:,:,:,:,:), allocatable  :: crystallite_dPdF0
- real(pReal), dimension (:,:,:,:),       allocatable  :: crystallite_Tstar0_v, &
-                                                         convergedStateConst 
- integer(pInt), dimension (:,:),         allocatable  :: convergedSizeConst 
-
+ res     = mesh_spectral_getResolution()
+ geomdim = mesh_spectral_getDimension()
+ 
+ 
+ if (.not. present(resNew)) then
+  resNew=res
+ endif
+ 
+ Npoints = res(1)*res(2)*res(3)
+ NpointsNew = resNew(1)*resNew(2)*resNew(3)
+ 
+ print*, 'resolution    ', res
+ print*, 'new resolution', resNew
+ 
+ allocate(coordinates(res(1),res(2),res(3),3))
+ allocate(indices(Npoints))
+ allocate(F(res(1),res(2),res(3),3,3))                                   
+ 
  call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getSolverJobName()),size(F))
  read (777,rec=1) F
  close (777)
+ 
+! ----Calculate average deformation for remesh--------
+ do i= 1_pInt,3_pInt; do j = 1_pInt,3_pInt
+   Favg(i,j) = sum(F(1:res(1),1:res(2),1:res(3),i,j)) / Npoints
+ enddo; enddo
+ 
+ call deformed_fft(res,geomdim,Favg,1.0_pReal,F,coordinates)
+ 
+!----- Nearest neighbour search -----------------------
+ call math_nearestNeighborSearch(res, res, Favg, geomdim, &
+                                         coordinates, indices)
+ deallocate(F)
+
+! ---------------------------------------------------------------------------
+ allocate(F   (3,3,1,1, Npoints))
+ allocate(FNew(3,3,1,1, NpointsNew))
+ call IO_read_jobBinaryFile(777,'convergedF',trim(getSolverJobName()),size(F))
+ read (777,rec=1) F
+ close (777)
+ call flush(6)
+
+ do i = 1, NpointsNew
+   FNew(1:3,1:3,1,1,i) = F(1:3,1:3,1,1,indices(i))
+ enddo
+ call flush(6)
+
+ call IO_write_jobBinaryFile(777,'convergedF',size(FNew))
+ write (777,rec=1) FNew
+ close (777) 
+ deallocate(F)
+ deallocate(FNew)
+ 
+!--------------------------------------------------------------------- 
+ allocate(Fp   (3,3,1,1,Npoints))
+ allocate(FpNew(3,3,1,1,NpointsNew))  
+ call IO_read_jobBinaryFile(777,'convergedFp',trim(getSolverJobName()),size(Fp))
+ read (777,rec=1) Fp
+ close (777) 
   
+ do i = 1, NpointsNew
+   FpNew(1:3,1:3,1,1,i) = Fp(1:3,1:3,1,1,indices(i))
+  enddo
+ 
+ call IO_write_jobBinaryFile(777,'convergedFp',size(FpNew))
+ write (777,rec=1) FpNew
+ close (777) 
+ deallocate(Fp)
+ deallocate(FpNew)
+ 
+!------------------------------------------------------------------------
+ allocate(Lp   (3,3,1,1,Npoints))
+ allocate(LpNew(3,3,1,1,NpointsNew)) 
+ call IO_read_jobBinaryFile(777,'convergedLp',trim(getSolverJobName()),size(Lp))
+ read (777,rec=1) Lp
+ close (777)
+ 
+ do i = 1, NpointsNew
+   LpNew(1:3,1:3,1,1,i) = Lp(1:3,1:3,1,1,indices(i))
+ enddo
+
+ call IO_write_jobBinaryFile(777,'convergedLp',size(LpNew))
+ write (777,rec=1) LpNew
+ close (777)
+ deallocate(Lp)
+ deallocate(LpNew)
+ 
+ !----------------------------------------------------------------------------
+ allocate(dcsdE   (6,6,1,1,Npoints)) 
+ allocate(dcsdENew(6,6,1,1,NpointsNew)) 
+ call IO_read_jobBinaryFile(777,'convergeddcsdE',trim(getSolverJobName()),size(dcsdE))
+ read (777,rec=1) dcsdE
+ close (777)
+ 
+ do i = 1, NpointsNew
+   dcsdENew(1:6,1:6,1,1,i) = dcsdE(1:6,1:6,1,1,indices(i))
+ enddo
+
+ call IO_write_jobBinaryFile(777,'convergeddcsdE',size(dcsdENew))
+ write (777,rec=1) dcsdENew
+ close (777)
+ deallocate(dcsdE)
+ deallocate(dcsdENew)
+ 
+! ---------------------------------------------------------------------------
+ allocate(dPdF   (3,3,3,3,1,1,Npoints))
+ allocate(dPdFNew(3,3,3,3,1,1,NpointsNew)) 
+ call IO_read_jobBinaryFile(777,'convergeddPdF',trim(getSolverJobName()),size(dPdF))
+ read (777,rec=1) dPdF
+ close (777)
+ 
+ do i = 1, NpointsNew
+   dPdFNew(1:3,1:3,1:3,1:3,1,1,i) = dPdF(1:3,1:3,1:3,1:3,1,1,indices(i))
+ enddo
+
+ call IO_write_jobBinaryFile(777,'convergeddPdF',size(dPdFNew))
+ write (777,rec=1) dPdFNew
+ close (777)
+ deallocate(dPdF)
+ deallocate(dPdFNew)
+ 
+!---------------------------------------------------------------------------
+ allocate(Tstar   (6,1,1,Npoints))
+ allocate(TstarNew(6,1,1,NpointsNew)) 
+ call IO_read_jobBinaryFile(777,'convergedTstar',trim(getSolverJobName()),size(Tstar))
+ read (777,rec=1) Tstar
+ close (777)
+
+ do i = 1, NpointsNew
+   TstarNew(1:6,1,1,i) = Tstar(1:6,1,1,indices(i))
+ enddo
+
+ call IO_write_jobBinaryFile(777,'convergedTstar',size(TstarNew))
+ write (777,rec=1) TstarNew
+ close (777)
+ deallocate(Tstar)
+ deallocate(TstarNew)
+ 
 end subroutine mesh_regrid
 
 function mesh_spectral_getDimension(fileUnit)
