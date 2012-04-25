@@ -78,7 +78,7 @@ for file in files:
   begin = -1
   outType = ''                                                                                        
   current=-1                                                                                        # current material ID
-  charactersWritten=0                                                                               # number of words per line in the output file
+  wordsWritten=0                                                                               # number of words per line in the output file
   currentLine=0                   
   if file['name'] != 'STDIN': print file['name']
   for line in file['input']:
@@ -91,16 +91,14 @@ for file in files:
       file['output'].write(line)
     else:
       if options.unpack:                                                                            # unpacking the geometry file
-        words = line.split()
-        if (words[1].lower()=='to'): line = ''.join(['%d '%i for i in xrange(int(words[0]), int(words[2])+1)])  
-        if (words[1].lower()=='copies' and words[2].lower()=='of'): line=''.join(['%s '%words[3] for i in range(int(words[0]))])           
-        words = line.split() 
-        for i in xrange(len(words)):
-          file['output'].write(words[i]+' ')
-          charactersWritten+=1
-          if(charactersWritten==options.lineLength):        
-            file['output'].write('\n')
-            charactersWritten=0
+        words = map(str.lower,line.split())
+        if len(words) > 1:                                                                          # any packing keywords?
+          if (words[1] == 'to'): line = ' '.join(map(str,range(int(words[0]),int(words[2])+1)))  
+          if (words[1] == 'copies' and words[2] == 'of'): line = ' '.join([words[3]]*int(words[0]))           
+
+        for word in line.split():
+          wordsWritten += 1
+          file['output'].write(word+{True:'\n',False:' '}[wordsWritten%options.lineLength == 0])    # newline every options.linelength words
             
       if options.pack:                                                                              # packing the geometry file
         numbers=line.split()
