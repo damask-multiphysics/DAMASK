@@ -1501,7 +1501,7 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
        createSuccess=.false.
        return
      endif
-   else if (line(1:2) /= '**') then 
+   else
      write(unit1,'(A)') trim(line)
    endif
  enddo
