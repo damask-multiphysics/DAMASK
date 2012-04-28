@@ -67,7 +67,6 @@ subroutine DAMASK_interface_init(loadcaseParameterIn,geometryParameterIn)
    length
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
- open (6, encoding='UTF-8')  
  write(6,'(a)') ''
  write(6,'(a)') '<<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,'(a)') '$Id$'

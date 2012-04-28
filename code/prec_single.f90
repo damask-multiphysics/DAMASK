@@ -19,6 +19,12 @@
 !##############################################################
 !* $Id$
 !##############################################################
+#ifdef __INTEL_COMPILER
+#if __INTEL_COMPILER<1200
+#define LEGACY_COMPILER
+#endif
+#endif
+
 module prec
 !##############################################################
 
@@ -34,12 +40,8 @@ module prec
 ! NaN is precision dependent 
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy can be found in documentation/Code/Fortran
-#ifdef __INTEL_COMPILER
-#if __INTEL_COMPILER<1200
+#ifdef LEGACY_COMPILER
  real(pReal), parameter, public :: DAMASK_NaN = Z'Z'7F800001', pReal'
-#else
- real(pReal), parameter, public :: DAMASK_NaN = real(Z'7F800001', pReal)
-#endif
 #else
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7F800001', pReal)
 #endif
@@ -58,6 +60,10 @@ subroutine prec_init
  implicit none
 
 !$OMP CRITICAL (write2out)
+#ifndef LEGACY_COMPILER
+ open (6, encoding='UTF-8')  
+#endif
+
  write(6,*)
  write(6,*) '<<<+-  prec_single init  -+>>>'
  write(6,*) '$Id$'
