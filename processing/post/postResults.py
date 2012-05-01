@@ -232,22 +232,19 @@ class MPIEspectral_result:    # mimic py_post result object
 
   def element_scalar(self,e,idx):
     fourByteLimit = 2**31 -1 -8
-    incStart =  self.dataOffset\
-             +  self.position*(( 1\
-                               + self.N_elements*self.N_element_scalars\
-                               +(self.N_elements*self.N_element_scalars*8)//fourByteLimit\
-                                )*8) 
-                                # header and footer
+    incStart =  self.dataOffset \
+             +  self.position*8*( 1 + self.N_elements*self.N_element_scalars*8//fourByteLimit \
+                                    + self.N_elements*self.N_element_scalars)
+                                # header & footer + extra header and footer for 4 byte int range (Fortran)
                                 # values
-                                # extra header and footer for 4 byte int range (Fortran)
     where = (e*self.N_element_scalars + idx)*8
     try:
       if where%fourByteLimit + 8 >= fourByteLimit:                                                  # danger of reading into fortran record footer at 4 byte limit
         data=''
         for i in xrange(8):
-          where+= 1
           self.file.seek(incStart+where+(where//fourByteLimit)*8+4)
-          data+=self.file.read(1)
+          data  += self.file.read(1)
+          where += 1
         value = struct.unpack('d',data)[0]
       else: 
         self.file.seek(incStart+where+(where//fourByteLimit)*8+4)
