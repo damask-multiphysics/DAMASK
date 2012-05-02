@@ -15,6 +15,8 @@ def writeKey(outType, begin, counter):
     c=str(begin)+'\n'
     file['output'].write(c)
     
+    
+
 # -----------------------------
 class extendedOption(Option):
 # -----------------------------
@@ -51,7 +53,7 @@ parser.add_option('-p','--pack',       dest='pack', action='store_true', \
 parser.add_option('-u','--unpack',     dest='unpack', action='store_true', \
                                        help='unpack input file [%default]')
 parser.add_option('-l','--linelength', dest='lineLength',type='int', nargs=1, \
-                                       help='length of line, 0 for auto (resolution[0]) [%default]')
+                                       help='length of line, leave blank for auto (FPs in x direction)')
                                    
 
 parser.set_defaults(pack = False)
@@ -74,18 +76,20 @@ else:
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 for file in files:
+  digits=2
   counter = 1
   begin = -1
   outType = ''                                                                                        
   current=-1                                                                                        # current material ID
-  wordsWritten=0                                                                               # number of words per line in the output file
-  currentLine=0                   
+  wordsWritten=0                                                                                    # number of words per line in the output file
+  currentLine=0
   if file['name'] != 'STDIN': print file['name']
   for line in file['input']:
     words=line.split()
     currentLine+=1
-    if('head' in line): headNumber=int(words[0])+1   
+    if('head' in line): headNumber=int(words[0])+1  
     if(currentLine<=headNumber):
+      if('maxgraincount'==words[0].lower()): digits = 1+int(math.log10(int(words[1])))  
       if(words[0].lower()=='resolution' and words[1].lower()=='a' and options.lineLength==0):
         options.lineLength = int(words[2].lower())
       file['output'].write(line)
@@ -98,7 +102,7 @@ for file in files:
 
         for word in line.split():
           wordsWritten += 1
-          file['output'].write(word+{True:'\n',False:' '}[wordsWritten%options.lineLength == 0])    # newline every options.linelength words
+          file['output'].write(word.zfill(digits)+{True:'\n',False:' '}[wordsWritten%options.lineLength == 0])    # newline every options.linelength words
             
       if options.pack:                                                                              # packing the geometry file
         numbers=line.split()
@@ -109,7 +113,7 @@ for file in files:
           if current == last+1 and current==begin+counter:                                  
             counter+=1
             outType = 'range'
-          elif current == begin:
+          elif current == begin and current == last:
             counter+=1
             outType = 'copy'
           else:
@@ -117,8 +121,12 @@ for file in files:
             counter = 1
             outType= 'none'
             begin = current
+          
    
   writeKey(outType, begin, counter)                                                                # just for packing (last line), outType not defined for unpacking
+  
+  
   file['output'].close()
   file['input'].close()
   os.rename(file['name']+'_tmp',file['name']) 
+  
