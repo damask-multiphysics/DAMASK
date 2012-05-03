@@ -11,5 +11,5 @@ from .solver      import Solver           # one class with subclasses
 from .test        import Test
 try:
   from .          import core
-except:
-  sys.stderr.write('Core module (Fortran code) not available, try to run setup_processing.py\n')
+except Exception as e:
+  sys.stderr.write('%s \n Core module (Fortran code) not available, try to run setup_processing.py\n'%e)
