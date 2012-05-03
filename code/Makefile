@@ -111,7 +111,11 @@ endif
 
 ifneq "$(FASTBUILD)" "YES"
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
-STANDARD_CHECK_gfortran ?=-std=f2008
+STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics
+#-fall-intrinsics: all intrinsic procedures (including the GNU-specific extensions) are accepted. This can be useful with -std=f95 to force standard-compliance
+# but get access to the full range of intrinsics available with gfortran. As a consequence, -Wintrinsics-std will be ignored and no user-defined procedure with
+# the same name as any intrinsic will be called except when it is explicitly declared external
+#-Wintrinsics-std:             warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:
 endif
 
 OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
@@ -190,7 +194,6 @@ COMPILE_OPTIONS_gfortran :=$(COMPILE_OPTIONS_gfortran)\
                            -ffree-line-length-132\
                            -fno-range-check\
                            -fimplicit-none\
-                           -fall-intrinsics\
                            -pedantic\
                            -Warray-bounds\
                            -Wampersand\
@@ -208,14 +211,12 @@ COMPILE_OPTIONS_gfortran :=$(COMPILE_OPTIONS_gfortran)\
                            -Wunused\
                            -Wall\
                            -Wextra\
-                           -Wintrinsics-std
 endif
 
 #-xf95-cpp-input:              preprocessor
 #-ffree-line-length-132:       restrict line length to the standard 132 characters
 #-fno-range-check:             disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
 #-fimplicit-none:              assume "implicit-none" even if not present in source
-#-fall-intrinsics:        
 #-pedantic:                    more strict on standard, enables some of the warnings below
 #-Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
 #-Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
@@ -233,8 +234,7 @@ endif
 #-Wunused:   
 #        -value:
 #        -parameter:           find usused variables with "parameter" attribute
-#-Wextra:
-#-Wintrinsics-std:             warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:                        
+#-Wextra:                        
 ###################################################################################################
 #OPTIONS FOR GFORTRAN 4.6
 #-Wsuggest-attribute=const:
