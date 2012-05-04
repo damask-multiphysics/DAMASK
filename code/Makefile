@@ -112,11 +112,11 @@ endif
 ifneq "$(FASTBUILD)" "YES"
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
 STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics
-#-fall-intrinsics: all intrinsic procedures (including the GNU-specific extensions) are accepted. This can be useful with -std=f95 to force standard-compliance
-# but get access to the full range of intrinsics available with gfortran. As a consequence, -Wintrinsics-std will be ignored and no user-defined procedure with
-# the same name as any intrinsic will be called except when it is explicitly declared external
-#-Wintrinsics-std:             warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers:
 endif
+#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. This can be useful with -std=f95 to force standard-compliance
+#                   but get access to the full range of intrinsics available with gfortran. As a consequence, -Wintrinsics-std will be ignored and no user-defined
+#                   procedure with the same name as any intrinsic will be called except when it is explicitly declared external
+#-Wintrinsics-std:  warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers
 
 OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
 OPTIMIZATION_OFF_gfortran        :=-O0
@@ -210,7 +210,7 @@ COMPILE_OPTIONS_gfortran :=$(COMPILE_OPTIONS_gfortran)\
                            -Wunsafe-loop-optimizations\
                            -Wunused\
                            -Wall\
-                           -Wextra\
+                           -Wextra
 endif
 
 #-xf95-cpp-input:              preprocessor
