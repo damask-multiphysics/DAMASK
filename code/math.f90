@@ -1,4 +1,4 @@
-! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
+!  Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
 ! the Düsseldorf Advanced MAterial Simulation Kit.
@@ -3818,62 +3818,61 @@ subroutine calculate_cauchy(res,defgrad,p_stress,c_stress)
 end subroutine calculate_cauchy
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine math_nearestNeighborSearch(res_old, res_new, defgrad_av, geomdim, &
-                                                 deformed_set, result_indices)
+subroutine math_nearestNeighborSearch(res, defgradAv, geomdim, domainPoints, querySet, domainSet, indices)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !Obtain the nearest neighbour 
 !                                                 
  use kdtree2_module
  implicit none
  ! input variables
- integer(pInt), dimension(3),   intent(in) :: res_new, res_old
+ integer(pInt), dimension(3),   intent(in) :: res
+ integer(pInt),                 intent(in) :: domainPoints
  real(pReal),   dimension(3),   intent(in) :: geomdim
- real(pReal),   dimension(3,3), intent(in) :: defgrad_av
- real(pReal),   dimension(  res_old(1),  res_old(2),res_old(3),3), intent(in)  :: deformed_set
-  ! other variables
- integer(pInt), dimension(res_new(1)*res_new(2)*res_new(3)),       intent(out) :: result_indices
-  ! other variables
- real(pReal),   dimension(:,:), allocatable  :: deformed_set_large
+ real(pReal),   dimension(3,3), intent(in) :: defgradAv
+ real(pReal),   dimension(res(1),res(2),res(3),3), intent(in)  :: querySet
+ real(pReal),   dimension(domainPoints,3),         intent(in)  :: domainSet
+ ! output variable
+ integer(pInt), dimension(res(1)*res(2)*res(3)),   intent(out) :: indices
+ ! other variables
+ real(pReal),   dimension(:,:), allocatable  :: querySetLarge
  integer(pInt)                             :: i,j,k, l,m,n, ielem_large, spatial_dim
- real(pReal), dimension(3)                 :: shift, query_point
+ real(pReal), dimension(3)                 :: shift
  type(kdtree2), pointer                    :: tree
  type(kdtree2_result), dimension(1)        :: Results
  
- shift = math_mul33x3(defgrad_av,geomdim)
+ shift = math_mul33x3(defgradAv,geomdim)
  
  ielem_large = 0_pInt 
- if(res_old(3)==1_pInt) then
+ if(res(3) == 1_pInt) then
    spatial_dim = 2_pInt
-   allocate(deformed_set_large(2,(res_new(1)*res_new(2))*9_pInt)) 
-   do j=1_pInt, res_old(2); do i=1_pInt, res_old(1)
+   allocate(querySetLarge(2,(res(1)*res(2))*9_pInt)) 
+   do j=1_pInt, res(2); do i=1_pInt, res(1)
      do l = -1, 1; do m = -1, 1
         ielem_large = ielem_large + 1_pInt
-        deformed_set_large(1:2,ielem_large) =  deformed_set(i,j,1,1:2) + real([l,m],pReal)* shift(1:2)
+        querySetLarge(1:2,ielem_large) =  querySet(i,j,1,1:2) + real([l,m],pReal)* shift(1:2)
      enddo; enddo; 
    enddo; enddo
  else
-   allocate(deformed_set_large(3,(res_new(1)*res_new(2)*res_new(3))*27))
+   allocate(querySetLarge(3,(res(1)*res(2)*res(3))*27))
    spatial_dim = 3_pInt
-   do k=1_pInt,res_old(3); do j=1_pInt, res_old(2); do i=1_pInt, res_old(1)
+   do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
      do l = -1, 1; do m = -1, 1; do n = -1, 1
        ielem_large = ielem_large + 1_pInt
-       deformed_set_large(1:3,ielem_large) = deformed_set(i,j,k,1:3) + real([l,m,n],pReal)* shift
+       querySetLarge(1:3,ielem_large) = querySet(i,j,k,1:3) + real([l,m,n],pReal)* shift
      enddo; enddo; enddo; 
    enddo; enddo; enddo
  endif
  
- tree => kdtree2_create(deformed_set_large,sort=.true.,rearrange=.true.)
+ tree => kdtree2_create(querySetLarge,sort=.true.,rearrange=.true.)
 
  ielem_large = 0_pInt
- do k=1_pInt,res_new(3); do j=1_pInt, res_new(2); do i=1_pInt, res_new(1)
+ do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
    ielem_large = ielem_large + 1_pInt
-   query_point = math_mul33x3(defgrad_av, &
-                 geomdim/real(res_new,pReal)*real([i,j,k],pReal) - geomdim/real(2_pInt*res_new,pReal))
-   call kdtree2_n_nearest(tp=tree, qv=query_point(1:spatial_dim),nn=1_pInt, results = Results)   
-   result_indices(ielem_large) = Results(1)%idx /3_pInt**spatial_dim +1_pInt
+   call kdtree2_n_nearest(tp=tree, qv=domainSet(ielem_large,1:spatial_dim),nn=1_pInt, results = Results)   
+   indices(ielem_large) = Results(1)%idx !/3_pInt**spatial_dim +1_pInt
  enddo; enddo; enddo
   
- deallocate(deformed_set_large)
+ deallocate(querySetLarge)
  
 end subroutine math_nearestNeighborSearch
 

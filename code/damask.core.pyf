@@ -137,7 +137,7 @@ python module core ! in
 
         subroutine logstrain_spat(res,defgrad,logstrain_field) ! in :math:math.f90
             ! input variables
-            integer, dimension(3),                                     intent(in)                                          :: res
+            integer, dimension(3),                             intent(in)                                          :: res
             real*8, dimension(res[0],res[1],res[2],3,3),       intent(in),     depend(res[0],res[1],res[2]) :: defgrad
             ! output variables
             real*8, dimension(res[0],res[1],res[2],3,3),       intent(out),    depend(res[0],res[1],res[2]) :: logstrain_field            
@@ -154,21 +154,22 @@ python module core ! in
 
         subroutine math_equivStrain33_field(res,tensor,vm) ! in :math:math.f90
             ! input variables
-            integer, dimension(3),                                     intent(in)                                          :: res
-            real*8, dimension(res[0],res[1],res[2],3,3),intent(in),depend(res[0],res[1],res[2]) :: tensor
+            integer, dimension(3),                              intent(in)                                          :: res
+            real*8, dimension(res[0],res[1],res[2],3,3),        intent(in),depend(res[0],res[1],res[2]) :: tensor
             ! output variables
             real*8, dimension(res[0],res[1],res[2]),intent(out),depend(res[0],res[1],res[2]) :: vm
         end subroutine math_equivStrain33_field
         
-        subroutine math_nearestNeighborSearch(res_new,res_old,defgrad_av,geomdim,deformed_set,result_indices) ! in :math:math.f90
-            ! input variables
-            integer, dimension(3),                                  intent(in)                                           :: res_new
-            integer, dimension(3),                                  intent(in)                                           :: res_old
-            real, dimension(3,3),                                   intent(in)                                           :: defgrad_av
-            real, dimension(3),                                     intent(in)                                           :: geomdim
-            real, dimension(res_old[0],res_old[1],res_old[2],3),    intent(in), depend(res_old[0],res_old[1],res_old[2]) :: deformed_set
-           ! output variables
-           integer, dimension(res_new[0]*res_new[1]*res_new[2]),    intent(out), depend(res_new[0],res_new[1],res_new[2]):: result_indices
+        subroutine math_nearestNeighborSearch(res,defgradAv,geomdim,,domainPoints,querySet,domainSet,indices) ! in :math:math.f90
+             ! input variables
+             integer, dimension(3),                             intent(in) :: res
+             integer,                                           intent(in) :: domainPoints
+             real*8,  dimension(3),                             intent(in) :: geomdim
+             real*8,  dimension(3,3),                           intent(in) :: defgradAv
+             real*8,  dimension(res[0],res[1],res[2],3),        intent(in), depend(res[0],res[1],res[2])  :: querySet
+             real*8,  dimension(domainPoints,3),                intent(in), depend(domainPoints)  :: domainSet
+             ! output variable
+             integer, dimension(res[0]*res[1]*res[2]),         intent(out), depend(res[0],res[1],res[2]) :: indices
         end subroutine math_nearestNeighborSearch
      end module math
 
