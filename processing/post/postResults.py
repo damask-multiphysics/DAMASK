@@ -1097,7 +1097,7 @@ for incCount,position in enumerate(locations):     # walk through locations
           else:
             length = 1
             content = [ p.node_scalar(p.node_sequence(n),stat['IndexOfLabel'][label]) ]
-          if assembleHeader: header += heading('_',[[component,label] for component in range(int(length>1),length+int(length>1))])
+          if assembleHeader: header += heading('_',[[component,''.join( label.split() )] for component in range(int(length>1),length+int(length>1))])
           newby.append({'label':label,
                         'len':length,
                         'content':content })
@@ -1105,7 +1105,7 @@ for incCount,position in enumerate(locations):     # walk through locations
       if options.elemScalar:
         for label in options.elemScalar:
           if assembleHeader: 
-            header += [label.replace(' ','')]
+            header += [''.join( label.split() )]
           newby.append({'label':label,
                         'len':1,
                         'content':[ p.element_scalar(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local].value ]})
@@ -1113,7 +1113,7 @@ for incCount,position in enumerate(locations):     # walk through locations
       if options.elemTensor:
         for label in options.elemTensor:
           if assembleHeader: 
-            header += heading('.',[[label.replace(' ',''),component] for component in ['intensity','t11','t22','t33','t12','t23','t13']])
+            header += heading('.',[[''.join( label.split() ),component] for component in ['intensity','t11','t22','t33','t12','t23','t13']])
           myTensor = p.element_tensor(p.element_sequence(e),stat['IndexOfLabel'][label])[n_local]
           newby.append({'label':label,
                         'len':7,
@@ -1134,7 +1134,7 @@ for incCount,position in enumerate(locations):     # walk through locations
                                       ):
           outputIndex = list(zip(*outputFormat[resultType]['outputs'])[0]).index(label)       # find the position of this output in the outputFormat
           length = int(outputFormat[resultType]['outputs'][outputIndex][1])
-          thisHead = heading('_',[[component,label] for component in range(int(length>1),length+int(length>1))])
+          thisHead = heading('_',[[component,''.join( label.split() )] for component in range(int(length>1),length+int(length>1))])
           if assembleHeader: header += thisHead
           if resultType != 'Homogenization':
             thisHead = heading('_',[[g,component,label] for component in range(int(length>1),length+int(length>1))])
