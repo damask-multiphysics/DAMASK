@@ -105,6 +105,7 @@ bin_link = { \
                 'addCompatibilityMismatch.py',
                 'addDeformedConfiguration.py',
                 'averageDown.py',
+                'binXY.py',
                 'deleteColumn.py',
                 'deleteInfo.py',
                 'filterTable.py',
