@@ -68,7 +68,9 @@ if filenames == []:
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(os.path.splitext(name)[0]+'_binned'+os.path.splitext(name)[1],'w')})
+      files.append({'name':name, \
+                    'input':open(name), \
+                    'output':open(os.path.splitext(name)[0]+'_binned%i-%i'%(options.data[0],options.data[1])+os.path.splitext(name)[1],'w')})
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
