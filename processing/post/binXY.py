@@ -76,9 +76,7 @@ for file in files:
   if file['name'] != 'STDIN': print file['name']
 
   skip = int(file['input'].readline().split()[0])
-  print skip
   for i in xrange(skip): headers = file['input'].readline().split()
-  print headers
   data = numpy.loadtxt(file['input'],usecols=numpy.array(options.data)-1)
   file['input'].close()                                                   # close input ASCII table
 
