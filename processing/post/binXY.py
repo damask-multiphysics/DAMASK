@@ -29,7 +29,7 @@ class extendableOption(Option):
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional probability density map.
-""" + string.replace('$Id: addCalculation.py 1355 2012-02-23 13:53:12Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 
