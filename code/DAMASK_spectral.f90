@@ -760,7 +760,7 @@ C_ref = C * wgt
                               temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde, &
                               P_real(i,j,k,1:3,1:3),dPdF)
            CPFEM_mode = 2_pInt
-           phase_cont(i,j,k) = maxval(dPdF)/maxval(C_ref)
+           phase_cont(i,j,k) = sqrt(sum(dPdF*dPdF)/sum(C_ref*C_ref))
            C = C + dPdF
          enddo; enddo; enddo
          call debug_info()
