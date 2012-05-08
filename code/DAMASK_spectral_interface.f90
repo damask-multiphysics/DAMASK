@@ -183,12 +183,12 @@ subroutine DAMASK_interface_init(loadcaseParameterIn,geometryParameterIn)
  call GET_ENVIRONMENT_VARIABLE('HOST',hostName)
  call GET_ENVIRONMENT_VARIABLE('USER',userName)
 
- write(6,'(a,2(i2.2,a),i4.4)') ' Date:               ',dateAndTime(3),'/',&
-                                                       dateAndTime(2),'/',&
-                                                       dateAndTime(1) 
- write(6,'(a,2(i2.2,a),i2.2)') ' Time:               ',dateAndTime(5),':',&
-                                                       dateAndTime(6),':',&
-                                                       dateAndTime(7)  
+ write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
+                                                      dateAndTime(2),'/',&
+                                                      dateAndTime(1) 
+ write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
+                                                      dateAndTime(6),':',&
+                                                      dateAndTime(7)  
  write(6,'(a,a)') 'Host Name:          ', trim(hostName)
  write(6,'(a,a)') 'User Name:          ', trim(userName)
  write(6,'(a,a)') 'Path Separator:     ', getPathSep()

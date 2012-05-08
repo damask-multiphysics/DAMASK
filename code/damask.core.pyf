@@ -167,8 +167,8 @@ python module core ! in
              real*8,  dimension(3),                             intent(in) :: geomdim
              integer,                                           intent(in) :: queryPoints
              integer,                                           intent(in) :: domainPoints
-             real*8,  dimension(queryPoints,spatialDim),        intent(in), depend(queryPoints,spatialDim)  :: querySet
-             real*8,  dimension(domainPoints,spatialDim),       intent(in), depend(domainPoints,spatialDim) :: domainSet
+             real*8,  dimension(spatialDim,queryPoints),        intent(in), depend(queryPoints,spatialDim)  :: querySet
+             real*8,  dimension(spatialDim,domainPoints),       intent(in), depend(domainPoints,spatialDim) :: domainSet
              ! output variable
              integer, dimension(queryPoints),                intent(out), depend(queryPoints) :: indices
              ! depending on input
@@ -178,9 +178,10 @@ python module core ! in
 
      module mesh ! in :mesh:mesh.f90
 
-        subroutine mesh_regrid(resNew) ! in :mesh:mesh.f90
-            integer, dimension(3), intent(in,out), optional      :: resNew
-        end subroutine mesh_regrid            
+        function mesh_regrid(resNewInput) ! in :mesh:mesh.f90
+            integer, dimension(3)                                :: mesh_regrid
+            integer, dimension(3), intent(in), optional          :: resNewInput
+        end function mesh_regrid            
 
      end module mesh
       

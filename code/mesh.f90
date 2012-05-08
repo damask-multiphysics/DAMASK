@@ -3528,7 +3528,7 @@ end subroutine mesh_tell_statistics
 
 
 
-subroutine mesh_regrid(resNew)           !use new_res=[0.0,0.0,0.0] for automatic determination of new grid
+function mesh_regrid(resNewInput)           !use new_res=[0.0,0.0,0.0] for automatic determination of new grid
  use prec, only: &
    pInt, &
    pReal
@@ -3542,86 +3542,122 @@ subroutine mesh_regrid(resNew)           !use new_res=[0.0,0.0,0.0] for automati
    deformed_FFT, &
    math_mul33x3
 
- integer(pInt), dimension(3), optional, intent(inout)   :: resNew
- integer(pInt):: maxsize, i, j, k, ielem, Npoints, NpointsNew 
- integer(pInt), dimension(3)                            :: res
- integer(pInt), dimension(:),            allocatable    :: indices, outputSize 
- real(pReal),   dimension(3)                            :: geomdim = 0.0_pReal                                              
+ integer(pInt), dimension(3)                            :: mesh_regrid
+ integer(pInt), dimension(3), optional, intent(in)      :: resNewInput
+ integer(pInt):: maxsize, i, j, k, ielem, Npoints, NpointsNew, spatialDim
+ integer(pInt), dimension(3)                            :: res, resNew
+ integer(pInt), dimension(:),            allocatable    :: indices
+ real(pReal),   dimension(3)                            :: geomdim                                              
  real(pReal),   dimension(3,3)                          :: Favg 
  real(pReal),   dimension(:,:),    allocatable :: & 
-   coordinatesNew
+   coordinatesNew, &
+   coordinatesLinear
+   
+ real(pReal),   dimension(:,:,:),    allocatable :: & 
+   material_phase, material_phaseNew
+   
  real(pReal),   dimension(:,:,:,:,:),    allocatable :: & 
    F,                  FNew, &
    Fp,                FpNew, &
    Lp,                LpNew, &
    dcsdE,          dcsdENew
+
  real(pReal),   dimension (:,:,:,:,:,:,:),  allocatable :: &
    dPdF,            dPdFNew
  real(pReal),   dimension (:,:,:,:),        allocatable :: &
-  coordinates, &
-  Tstar,           TstarNew, &
-  stateConst, stateConstNew, &
-  stateHomog, stateHomogNew
- integer(pInt), dimension (:,:),            allocatable :: SizeConst 
+   coordinates, &
+   Tstar,           TstarNew, &
+   stateHomog, &
+   stateConst 
+ integer(pInt), dimension(:,:), allocatable :: &
+   sizeStateConst,  sizeStateHomog
+ 
  res     = mesh_spectral_getResolution()
  geomdim = mesh_spectral_getDimension()
- 
- 
- if (.not. present(resNew)) then
-  resNew=res
- endif
- 
  Npoints = res(1)*res(2)*res(3)
- NpointsNew = resNew(1)*resNew(2)*resNew(3)
  
- print*, 'resolution    ', res
- print*, 'new resolution', resNew
+
  
- allocate(coordinates(res(1),res(2),res(3),3))
- allocate(coordinatesNew(resNew(1)*resNew(2)*resNew(3),3))
- allocate(indices(Npoints))
  allocate(F(res(1),res(2),res(3),3,3))
-                                    
- 
  call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getSolverJobName()),size(F))
  read (777,rec=1) F
  close (777)
  
-! ----Calculate average deformation for remesh--------
+! ----Calculate deformed configuration and average--------
  do i= 1_pInt,3_pInt; do j = 1_pInt,3_pInt
    Favg(i,j) = sum(F(1:res(1),1:res(2),1:res(3),i,j)) / Npoints
  enddo; enddo
- 
+ allocate(coordinates(res(1),res(2),res(3),3))
  call deformed_fft(res,geomdim,Favg,1.0_pReal,F,coordinates)
+ deallocate(F)
  
+! ----Store coordinates into a linear list--------
+ allocate(coordinatesLinear(3,Npoints))
+ ielem = 0_pInt
+ do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
+   ielem = ielem + 1_pInt
+   coordinatesLinear(1:3,ielem) = coordinates(i,j,k,1:3)
+ enddo; enddo; enddo
+ deallocate(coordinates)
+ 
+ ! ----For 2D /3D case----------------------------------                            
+ if (res(3)== 1_pInt) then
+   spatialDim = 2_pInt
+ else
+   spatialDim = 3_pInt
+ endif
+ 
+! ----determine/calculate new resolution--------------
+ if (.not. present(resNewInput)) then
+  resNew=res
+ elseif(all(resNewInput==0.0_pReal)) then
+ !do automatic determination
+ else
+  resNew=resNewInput
+ endif 
+ NpointsNew = resNew(1)*resNew(2)*resNew(3)
+
+! ----Calculate regular new coordinates------------
+ allocate(coordinatesNew(3,NpointsNew))
  ielem = 0_pInt
  do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
    ielem = ielem + 1_pInt
-   coordinatesNew(ielem,1:3) = math_mul33x3(Favg,  geomdim/real(resNew,pReal)*real([i,j,k],pReal) &
+   coordinatesNew(1:3,ielem) = math_mul33x3(Favg,  geomdim/real(resNew,pReal)*real([i,j,k],pReal) &
                                                     - geomdim/real(2_pInt*resNew,pReal))
  enddo; enddo; enddo
 
 !----- Nearest neighbour search -----------------------
- call math_nearestNeighborSearch(res, Favg, geomdim, NpointsNew, &
-                                 coordinates, coordinatesNew, indices)
- indices = indices /3_pInt**3_pInt +1_pInt ! adjust it for 2D case
+ allocate(indices(Npoints))
+ call math_nearestNeighborSearch(spatialDim, Favg, geomdim, NpointsNew, Npoints, &
+                                 coordinatesNew, coordinatesLinear, indices)
+ deallocate(coordinatesNew)                              
+ indices = indices / 3_pInt**spatialDim +1_pInt
  
- deallocate(F)
- deallocate(coordinates)
- deallocate(coordinatesNew)
+!---------------------------------------------------------------------------
+ allocate(material_phase    (1,1, Npoints))
+ allocate(material_phaseNew (1,1, NpointsNew))
+ call IO_read_jobBinaryFile(777,'recordedPhase',trim(getSolverJobName()),size(material_phase))
+ read (777,rec=1) material_phase
+ close (777)
+ do i = 1, NpointsNew
+   material_phaseNew(1,1,i) = material_phase(1,1,indices(i))
+ enddo
 
-! ---------------------------------------------------------------------------
- allocate(F   (3,3,1,1, Npoints))
- allocate(FNew(3,3,1,1, NpointsNew))
+ call IO_write_jobBinaryFile(777,'recordedPhase',size(material_phaseNew))
+ write (777,rec=1) material_phaseNew
+ close (777) 
+ deallocate(material_phase)
+ deallocate(material_phaseNew)
+ 
+!---------------------------------------------------------------------------
+ allocate(F       (3,3,1,1, Npoints))
+ allocate(FNew (3,3,1,1, NpointsNew))
  call IO_read_jobBinaryFile(777,'convergedF',trim(getSolverJobName()),size(F))
  read (777,rec=1) F
  close (777)
- call flush(6)
-
  do i = 1, NpointsNew
    FNew(1:3,1:3,1,1,i) = F(1:3,1:3,1,1,indices(i))
  enddo
- call flush(6)
 
  call IO_write_jobBinaryFile(777,'convergedF',size(FNew))
  write (777,rec=1) FNew
@@ -3630,15 +3666,14 @@ subroutine mesh_regrid(resNew)           !use new_res=[0.0,0.0,0.0] for automati
  deallocate(FNew)
  
 !--------------------------------------------------------------------- 
- allocate(Fp   (3,3,1,1,Npoints))
- allocate(FpNew(3,3,1,1,NpointsNew))  
+ allocate(Fp       (3,3,1,1,Npoints))
+ allocate(FpNew (3,3,1,1,NpointsNew))  
  call IO_read_jobBinaryFile(777,'convergedFp',trim(getSolverJobName()),size(Fp))
  read (777,rec=1) Fp
  close (777) 
-  
  do i = 1, NpointsNew
    FpNew(1:3,1:3,1,1,i) = Fp(1:3,1:3,1,1,indices(i))
-  enddo
+ enddo
  
  call IO_write_jobBinaryFile(777,'convergedFp',size(FpNew))
  write (777,rec=1) FpNew
@@ -3647,50 +3682,44 @@ subroutine mesh_regrid(resNew)           !use new_res=[0.0,0.0,0.0] for automati
  deallocate(FpNew)
  
 !------------------------------------------------------------------------
- allocate(Lp   (3,3,1,1,Npoints))
- allocate(LpNew(3,3,1,1,NpointsNew)) 
+ allocate(Lp       (3,3,1,1,Npoints))
+ allocate(LpNew  (3,3,1,1,NpointsNew)) 
  call IO_read_jobBinaryFile(777,'convergedLp',trim(getSolverJobName()),size(Lp))
  read (777,rec=1) Lp
  close (777)
- 
  do i = 1, NpointsNew
    LpNew(1:3,1:3,1,1,i) = Lp(1:3,1:3,1,1,indices(i))
  enddo
-
  call IO_write_jobBinaryFile(777,'convergedLp',size(LpNew))
  write (777,rec=1) LpNew
  close (777)
  deallocate(Lp)
  deallocate(LpNew)
  
- !----------------------------------------------------------------------------
- allocate(dcsdE   (6,6,1,1,Npoints)) 
- allocate(dcsdENew(6,6,1,1,NpointsNew)) 
+!----------------------------------------------------------------------------
+ allocate(dcsdE       (6,6,1,1,Npoints)) 
+ allocate(dcsdENew (6,6,1,1,NpointsNew)) 
  call IO_read_jobBinaryFile(777,'convergeddcsdE',trim(getSolverJobName()),size(dcsdE))
  read (777,rec=1) dcsdE
  close (777)
- 
  do i = 1, NpointsNew
    dcsdENew(1:6,1:6,1,1,i) = dcsdE(1:6,1:6,1,1,indices(i))
  enddo
-
  call IO_write_jobBinaryFile(777,'convergeddcsdE',size(dcsdENew))
  write (777,rec=1) dcsdENew
  close (777)
  deallocate(dcsdE)
  deallocate(dcsdENew)
  
-! ---------------------------------------------------------------------------
- allocate(dPdF   (3,3,3,3,1,1,Npoints))
- allocate(dPdFNew(3,3,3,3,1,1,NpointsNew)) 
+!---------------------------------------------------------------------------
+ allocate(dPdF       (3,3,3,3,1,1,Npoints))
+ allocate(dPdFNew (3,3,3,3,1,1,NpointsNew)) 
  call IO_read_jobBinaryFile(777,'convergeddPdF',trim(getSolverJobName()),size(dPdF))
  read (777,rec=1) dPdF
  close (777)
- 
  do i = 1, NpointsNew
    dPdFNew(1:3,1:3,1:3,1:3,1,1,i) = dPdF(1:3,1:3,1:3,1:3,1,1,indices(i))
  enddo
-
  call IO_write_jobBinaryFile(777,'convergeddPdF',size(dPdFNew))
  write (777,rec=1) dPdFNew
  close (777)
@@ -3698,66 +3727,85 @@ subroutine mesh_regrid(resNew)           !use new_res=[0.0,0.0,0.0] for automati
  deallocate(dPdFNew)
  
 !---------------------------------------------------------------------------
- allocate(Tstar   (6,1,1,Npoints))
- allocate(TstarNew(6,1,1,NpointsNew)) 
+ allocate(Tstar        (6,1,1,Npoints))
+ allocate(TstarNew  (6,1,1,NpointsNew)) 
  call IO_read_jobBinaryFile(777,'convergedTstar',trim(getSolverJobName()),size(Tstar))
  read (777,rec=1) Tstar
  close (777)
-
  do i = 1, NpointsNew
    TstarNew(1:6,1,1,i) = Tstar(1:6,1,1,indices(i))
  enddo
-
  call IO_write_jobBinaryFile(777,'convergedTstar',size(TstarNew))
  write (777,rec=1) TstarNew
  close (777)
  deallocate(Tstar)
  deallocate(TstarNew)
+ 
 !---------------------------------------------------------------------------- 
-!for homog and state const
- ! allocate(SizeConst   (1,Npoints))
- ! allocate(StateConst   (1,Npoints))
- ! allocate(StateConstNew   (1,Npoints))
- ! call IO_read_jobBinaryFile(777,'SizeConst',trim(getSolverJobName()))
- ! read (777,rec=1) SizeConst
- ! close(777)
-  ! maxsize = maxval(SizeConst)
- ! call IO_read_jobBinaryFile(777,'convergedStateConst',trim(getSolverJobName()))
-   ! do i =1, Npoints
-    ! do l = 1,SizeConst(1,i)
-      ! read(777,rec=i) StateConst(1,1,i,l)
-    ! enddo
-   ! enddo
- ! close(777)
+ allocate(sizeStateConst(1,Npoints))
+ call IO_read_jobBinaryFile(777,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
+ read (777,rec=1) sizeStateConst
+ close (777)
+ maxsize = maxval(sizeStateConst)
+ allocate(StateConst      (1,1,Npoints,maxsize))
+
+ call IO_read_jobBinaryFile(777,'convergedStateConst',trim(getSolverJobName()))
+ k = 0_pInt
+ do i =1, Npoints
+   do j = 1,sizeStateConst(1,i)
+     k = k+1_pInt
+     read(777,rec=k) StateConst(1,1,i,j)
+   enddo
+ enddo
+ close(777)
+
+ call IO_write_jobBinaryFile(777,'convergedStateConst')
+ k = 0_pInt
+ do i = 1,NpointsNew
+   do j = 1,sizeStateConst(1,i)
+     k=k+1_pInt
+     write(777,rec=k) StateConst(1,1,indices(i),j)
+   enddo
+ enddo
+ close (777)
+ deallocate(sizeStateConst)
+ deallocate(StateConst)
+
+!---------------------------------------------------------------------------- 
+ allocate(sizeStateHomog(1,Npoints))
+ call IO_read_jobBinaryFile(777,'sizeStateHomog',trim(getSolverJobName()),size(sizeStateHomog))
+ read (777,rec=1) sizeStateHomog
+ close (777)
+ maxsize = maxval(sizeStateHomog)
+ allocate(stateHomog      (1,1,Npoints,maxsize))
+
+ call IO_read_jobBinaryFile(777,'convergedStateHomog',trim(getSolverJobName()))
+ k = 0_pInt
+ do i =1, Npoints
+   do j = 1,sizeStateHomog(1,i)
+     k = k+1_pInt
+     read(777,rec=k) stateHomog(1,1,i,j)
+   enddo
+ enddo
+ close(777)
+
+ call IO_write_jobBinaryFile(777,'convergedStateHomog')
+ k = 0_pInt
+ do i = 1,NpointsNew
+   do j = 1,sizeStateHomog(1,i)
+     k=k+1_pInt
+     write(777,rec=k) stateHomog(1,1,indices(i),j)
+   enddo
+ enddo
+ close (777)
+ deallocate(sizeStateHomog)
+ deallocate(stateHomog)
  
- ! do i = 1, NpointsNew
-   ! do l = 1,SizeConst(1,i)
-    ! StateConstNew(1,1,i,l) = StateConst(1,1,indices(i),l)
-   ! enddo
- ! enddo
+ deallocate(indices)
  
- ! call IO_write_jobBinaryFile(777,'convergedStateConst',trim(getSolverJobName()))
- ! m = 0_pInt
- ! do i = 1,NpointsNew
-   ! do l = 1,SizeConst(1,i)
-     ! write(777,rec=m) StateConstNew(1,1,i,l)
-   ! enddo
- ! enddo
- ! close (777)
- !---------------------------------------------------------------------------- 
- ! State homog 
- ! call IO_read_jobBinaryFile(777,'convergedStateHomog',FEmodelGeometry)
-    ! m = 0_pInt
-    ! do k = 1,Npoints;
-      ! do l = 1,homogenization_sizeState(j,k)
-         ! m = m+1_pInt
-        ! read(777,rec=m) stateHomog(1,k)%p(l)
-      ! enddo
-    ! enddo; enddo
-    ! close (777)
- 
- 
-end subroutine mesh_regrid
+ mesh_regrid = resNew
+end function mesh_regrid
+
 
 function mesh_spectral_getDimension(fileUnit)
  use IO, only: &

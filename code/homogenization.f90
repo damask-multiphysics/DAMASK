@@ -34,6 +34,7 @@ MODULE homogenization
 
 !*** Include other modules ***
  use prec, only: pInt,pReal,p_vec
+ use   IO, only: IO_write_jobBinaryFile  
  implicit none
 
 ! ****************************************************************
@@ -161,7 +162,7 @@ forall (i = 1:mesh_maxNips,e = 1:mesh_NcpElems)
 end forall
 
 
-! --- ALLOCATE AND INITIALIZE GLOBAL STATE AND POSTRESULTS VARIABLES ---
+! --- ALLOCATE AND INITIALIZE GLOBAL STATE AND POSTRESULTS VARIABLES ----------
 
 !$OMP PARALLEL DO PRIVATE(myInstance)
   do e = 1,mesh_NcpElems                                  ! loop over elements
@@ -192,6 +193,14 @@ end forall
     enddo
   enddo
 !$OMP END PARALLEL DO
+
+!---write state size file out---------------------------------------
+open(777)
+call IO_write_jobBinaryFile(777,'sizeStateHomog',size(homogenization_sizeState))
+write (777,rec=1) homogenization_sizeState
+close(777)
+!--------------------------------------------------------------
+
 homogenization_maxSizeState       = maxval(homogenization_sizeState)
 homogenization_maxSizePostResults = maxval(homogenization_sizePostResults)  
 materialpoint_sizeResults = 1 &                                                                 ! grain count

@@ -29,6 +29,7 @@
 MODULE constitutive
 
 use prec, only: pInt, p_vec
+use   IO, only: IO_write_jobBinaryFile
 
 implicit none
 type(p_vec),  dimension(:,:,:), allocatable :: &
@@ -355,6 +356,13 @@ endif
     enddo
   enddo
 !$OMP END PARALLEL DO
+
+!----- write out state size file----------------
+open(777)
+call IO_write_jobBinaryFile(777,'sizeStateConst', size(constitutive_sizeState))
+write (777,rec=1) constitutive_sizeState
+close(777)
+!-----------------------------------------------
 
 constitutive_maxSizeState       = maxval(constitutive_sizeState)
 constitutive_maxSizeDotState    = maxval(constitutive_sizeDotState)
