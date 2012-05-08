@@ -3609,11 +3609,14 @@ function mesh_regrid(resNewInput)           !use new_res=[0.0,0.0,0.0] for autom
  
 ! ----determine/calculate new resolution--------------
  if (.not. present(resNewInput)) then
-  resNew=res
- elseif(all(resNewInput==0.0_pReal)) then
- !do automatic determination
+   resNew = res
  else
-  resNew=resNewInput
+   if(all(resNewInput==0.0_pReal)) then
+     mesh_regrid =[ 0,0,0]
+     return !no automatic determination right now
+   else
+     resNew = resNewInput
+   endif
  endif 
  NpointsNew = resNew(1)*resNew(2)*resNew(3)
 
