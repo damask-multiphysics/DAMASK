@@ -1690,6 +1690,7 @@ endif
 do s = 1_pInt,ns   ! loop over slip systems
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)  
   tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,sLattice,myStructure)) + tauBack(s)
+  if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 
 dLower = constitutive_nonlocal_minimumDipoleHeight(1:ns,1:2,myInstance)
