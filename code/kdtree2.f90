@@ -236,7 +236,7 @@ subroutine pq_max(a,e)
  if (a%heap_size .gt. 0) then
     e = a%elems(1) 
  else
-    call IO_error (500_pInt, ext_msg='PQ_MAX: heap_size < 1')
+    call IO_error (460_pInt, ext_msg='PQ_MAX: heap_size < 1')
  endif
  return
 end subroutine pq_max
@@ -250,7 +250,7 @@ real(pReal) function pq_maxpri(a)
  if (a%heap_size .gt. 0) then
     pq_maxpri = a%elems(1)%dis
  else
-    call IO_error (500_pInt,ext_msg='PPQ_MAX_PRI: heap_size < 1')
+    call IO_error (460_pInt,ext_msg='PPQ_MAX_PRI: heap_size < 1')
  endif
  return
 end function pq_maxpri
@@ -281,7 +281,7 @@ subroutine pq_extract_max(a,e)
     call heapify(a,1_pInt)
     return
  else
-    call IO_error (500_pInt,ext_msg='PQ_EXTRACT_MAX: attempted to pop non-positive PQ')
+    call IO_error (460_pInt,ext_msg='PQ_EXTRACT_MAX: attempted to pop non-positive PQ')
  end if
 end subroutine pq_extract_max
 
@@ -456,7 +456,7 @@ subroutine pq_delete(a,i)
  integer(pInt)           :: i
 
  if ((i .lt. 1) .or. (i .gt. a%heap_size)) then
-    call IO_error (500_pInt,ext_msg='PQ_DELETE: attempt to remove out of bounds element')
+    call IO_error (460_pInt,ext_msg='PQ_DELETE: attempt to remove out of bounds element')
  endif
 
  ! swap the item to be deleted with the last element
@@ -659,7 +659,7 @@ function kdtree2_create(input_data,myDim,sort,rearrange) result (mr)
     write (*,*) 'KD_TREE_TRANS: note, that new format is myData(1:D,1:N)'
     write (*,*) 'KD_TREE_TRANS: with usually N >> D.   If N =approx= D, then a k-d tree'
     write (*,*) 'KD_TREE_TRANS: is not an appropriate data structure.'
-    call IO_error (500_pInt)
+    call IO_error (460_pInt)
  end if
 
  call build_tree(mr)
@@ -1356,7 +1356,7 @@ subroutine validate_query_storage(n)
  integer(pInt), intent(in) :: n
 
  if (int(size(sr%results,1),pInt) .lt. n) then
-    call IO_error (500_pInt,ext_msg='KD_TREE_TRANS: not enough storage for results(1:n)')
+    call IO_error (460_pInt,ext_msg='KD_TREE_TRANS: not enough storage for results(1:n)')
  endif
 
  return

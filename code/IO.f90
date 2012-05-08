@@ -1280,6 +1280,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'I_TO_HALTON-error: An input base BASE is <= 1'
  case (406_pInt)
    msg = 'Prime-error: N must be between 0 and PRIME_MAX'
+ case (407_pInt)
+   msg = 'Dimension in nearest neigbor search wrong'
  case (450_pInt)
    msg = 'unknown symmetry type specified'
  case (460_pInt)

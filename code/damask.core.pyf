@@ -160,16 +160,19 @@ python module core ! in
             real*8, dimension(res[0],res[1],res[2]),intent(out),depend(res[0],res[1],res[2]) :: vm
         end subroutine math_equivStrain33_field
         
-        subroutine math_nearestNeighborSearch(res,defgradAv,geomdim,,domainPoints,querySet,domainSet,indices) ! in :math:math.f90
+        subroutine math_nearestNeighborSearch(spatialDim,Favg,geomdim,queryPoints,domainPoints,querySet,domainSet,indices) ! in :math:math.f90
              ! input variables
-             integer, dimension(3),                             intent(in) :: res
-             integer,                                           intent(in) :: domainPoints
+             integer,                                           intent(in) :: spatialDim
+             real*8,  dimension(3,3),                           intent(in) :: Favg
              real*8,  dimension(3),                             intent(in) :: geomdim
-             real*8,  dimension(3,3),                           intent(in) :: defgradAv
-             real*8,  dimension(res[0],res[1],res[2],3),        intent(in), depend(res[0],res[1],res[2])  :: querySet
-             real*8,  dimension(domainPoints,3),                intent(in), depend(domainPoints)  :: domainSet
+             integer,                                           intent(in) :: queryPoints
+             integer,                                           intent(in) :: domainPoints
+             real*8,  dimension(queryPoints,spatialDim),        intent(in), depend(queryPoints,spatialDim)  :: querySet
+             real*8,  dimension(domainPoints,spatialDim),       intent(in), depend(domainPoints,spatialDim) :: domainSet
              ! output variable
-             integer, dimension(res[0]*res[1]*res[2]),         intent(out), depend(res[0],res[1],res[2]) :: indices
+             integer, dimension(queryPoints),                intent(out), depend(queryPoints) :: indices
+             ! depending on input
+             real*8,   dimension(3,(3**spatialDim)*domainPoints), depend(domainPoints,spatialDim)          :: domainSetLarge
         end subroutine math_nearestNeighborSearch
      end module math
 

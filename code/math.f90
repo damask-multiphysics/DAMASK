@@ -3818,61 +3818,59 @@ subroutine calculate_cauchy(res,defgrad,p_stress,c_stress)
 end subroutine calculate_cauchy
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine math_nearestNeighborSearch(res, defgradAv, geomdim, domainPoints, querySet, domainSet, indices)
+subroutine math_nearestNeighborSearch(spatialDim, Favg, geomdim, queryPoints, domainPoints, querySet, domainSet, indices)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!Obtain the nearest neighbour 
+! Obtain the nearest neighbor in domain set for all points in querySet
 !                                                 
  use kdtree2_module
+ use IO, only: &
+   IO_error
  implicit none
  ! input variables
- integer(pInt), dimension(3),   intent(in) :: res
- integer(pInt),                 intent(in) :: domainPoints
- real(pReal),   dimension(3),   intent(in) :: geomdim
- real(pReal),   dimension(3,3), intent(in) :: defgradAv
- real(pReal),   dimension(res(1),res(2),res(3),3), intent(in)  :: querySet
- real(pReal),   dimension(domainPoints,3),         intent(in)  :: domainSet
+ integer(pInt),                                             intent(in) :: spatialDim
+ real(pReal),   dimension(3,3),                             intent(in) :: Favg
+ real(pReal),   dimension(3),                               intent(in) :: geomdim
+ integer(pInt),                                             intent(in) :: domainPoints
+ integer(pInt),                                             intent(in) :: queryPoints
+ real(pReal),   dimension(queryPoints,spatialDim),          intent(in) :: querySet
+ real(pReal),   dimension(domainPoints,spatialDim),         intent(in) :: domainSet
  ! output variable
- integer(pInt), dimension(res(1)*res(2)*res(3)),   intent(out) :: indices
+ integer(pInt), dimension(queryPoints),                    intent(out) :: indices
+ ! other variables depending on input
+ real(pReal),   dimension(3,(3_pInt**spatialDim)*domainPoints)          :: domainSetLarge
  ! other variables
- real(pReal),   dimension(:,:), allocatable  :: querySetLarge
- integer(pInt)                             :: i,j,k, l,m,n, ielem_large, spatial_dim
- real(pReal), dimension(3)                 :: shift
+ integer(pInt)                             :: i,j, l,m,n
  type(kdtree2), pointer                    :: tree
  type(kdtree2_result), dimension(1)        :: Results
+   
+ if (size(querySet(1,:))  /= spatialDim)  call IO_error(407_pInt,ext_msg='query set')
+ if (size(domainSet(1,:)) /= spatialDim)  call IO_error(407_pInt,ext_msg='domain set')
  
- shift = math_mul33x3(defgradAv,geomdim)
- 
- ielem_large = 0_pInt 
- if(res(3) == 1_pInt) then
-   spatial_dim = 2_pInt
-   allocate(querySetLarge(2,(res(1)*res(2))*9_pInt)) 
-   do j=1_pInt, res(2); do i=1_pInt, res(1)
-     do l = -1, 1; do m = -1, 1
-        ielem_large = ielem_large + 1_pInt
-        querySetLarge(1:2,ielem_large) =  querySet(i,j,1,1:2) + real([l,m],pReal)* shift(1:2)
-     enddo; enddo; 
-   enddo; enddo
- else
-   allocate(querySetLarge(3,(res(1)*res(2)*res(3))*27))
-   spatial_dim = 3_pInt
-   do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
-     do l = -1, 1; do m = -1, 1; do n = -1, 1
-       ielem_large = ielem_large + 1_pInt
-       querySetLarge(1:3,ielem_large) = querySet(i,j,k,1:3) + real([l,m,n],pReal)* shift
-     enddo; enddo; enddo; 
-   enddo; enddo; enddo
- endif
- 
- tree => kdtree2_create(querySetLarge,sort=.true.,rearrange=.true.)
 
- ielem_large = 0_pInt
- do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
-   ielem_large = ielem_large + 1_pInt
-   call kdtree2_n_nearest(tp=tree, qv=domainSet(ielem_large,1:spatial_dim),nn=1_pInt, results = Results)   
-   indices(ielem_large) = Results(1)%idx !/3_pInt**spatial_dim +1_pInt
- enddo; enddo; enddo
-  
- deallocate(querySetLarge)
+ i = 0_pInt
+ if(spatialDim == 2_pInt) then
+   do j = 1_pInt, domainPoints
+     do l = -1_pInt, 1_pInt; do m = -1_pInt, 1_pInt
+       i = i + 1_pInt
+       domainSetLarge(1:3,i) =  domainSet(j,1:3) + math_mul33x3(Favg,real([l,m,0_pInt],pReal)*geomdim)
+     enddo; enddo
+   enddo
+ else
+   do j = 1_pInt, domainPoints
+     do l = -1_pInt, 1_pInt; do m = -1_pInt, 1_pInt; do n = -1_pInt, 1_pInt
+       i = i + 1_pInt
+       domainSetLarge(1:3,i) = domainSet(j,1:3) + math_mul33x3(Favg,real([l,m,n],pReal)*geomdim)
+     enddo; enddo; enddo
+   enddo
+ endif
+
+ tree => kdtree2_create(domainSetLarge,sort=.true.,rearrange=.true.)
+
+ do j = 1_pInt, queryPoints
+   call kdtree2_n_nearest(tp=tree, qv=querySet(j,1:spatialDim),nn=1_pInt, results = Results)   
+   indices(j) = Results(1)%idx
+ enddo
+
  
 end subroutine math_nearestNeighborSearch
 
