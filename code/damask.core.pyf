@@ -167,12 +167,12 @@ python module core ! in
              real*8,  dimension(3),                             intent(in) :: geomdim
              integer,                                           intent(in) :: queryPoints
              integer,                                           intent(in) :: domainPoints
-             real*8,  dimension(spatialDim,queryPoints),        intent(in), depend(queryPoints,spatialDim)  :: querySet
-             real*8,  dimension(spatialDim,domainPoints),       intent(in), depend(domainPoints,spatialDim) :: domainSet
+             real*8,  dimension(spatialDim,queryPoints),        intent(in), depend(spatialDim,queryPoints)  :: querySet
+             real*8,  dimension(spatialDim,domainPoints),       intent(in), depend(spatialDim,domainPoints) :: domainSet
              ! output variable
              integer, dimension(queryPoints),                intent(out), depend(queryPoints) :: indices
              ! depending on input
-             real*8,   dimension(3,(3**spatialDim)*domainPoints), depend(domainPoints,spatialDim)          :: domainSetLarge
+             real*8,   dimension(spatialDim,(3**spatialDim)*domainPoints), depend(spatialDim,domainPoints)          :: domainSetLarge
         end subroutine math_nearestNeighborSearch
      end module math
 

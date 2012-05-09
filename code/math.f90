@@ -3870,7 +3870,7 @@ subroutine math_nearestNeighborSearch(spatialDim, Favg, geomdim, queryPoints, do
    call kdtree2_n_nearest(tp=tree, qv=querySet(1:spatialDim,j),nn=1_pInt, results = Results)   
    indices(j) = Results(1)%idx
  enddo
-
+ indices = indices -1_pInt                                                                          ! let them run from 0 to domainPoints -1
  
 end subroutine math_nearestNeighborSearch
 
