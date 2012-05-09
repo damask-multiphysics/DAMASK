@@ -3372,11 +3372,11 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
      do i = 1_pInt, res1_red
        k_s(1) = i-1_pInt
        if(i/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&                          ! substituting division by (on the fly calculated) xi * 2pi * img by multiplication with reversed img/real part
-                + defgrad_fourier(i,j,k,1:3,1)*cmplx(0.0_pReal,integrator(1)/real(k_s(1),pReal),pReal)
+                - defgrad_fourier(i,j,k,1:3,1)*cmplx(0.0_pReal,integrator(1)/real(k_s(1),pReal),pReal)
        if(j/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
-                + defgrad_fourier(i,j,k,1:3,2)*cmplx(0.0_pReal,integrator(2)/real(k_s(2),pReal),pReal)
+                - defgrad_fourier(i,j,k,1:3,2)*cmplx(0.0_pReal,integrator(2)/real(k_s(2),pReal),pReal)
        if(k/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
-                + defgrad_fourier(i,j,k,1:3,3)*cmplx(0.0_pReal,integrator(3)/real(k_s(3),pReal),pReal)
+                - defgrad_fourier(i,j,k,1:3,3)*cmplx(0.0_pReal,integrator(3)/real(k_s(3),pReal),pReal)
  enddo; enddo; enddo
 
  call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
