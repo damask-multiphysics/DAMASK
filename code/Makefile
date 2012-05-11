@@ -186,13 +186,10 @@ endif
 ###################################################################################################
 
 
-COMPILE_OPTIONS_gfortran :=-xf95-cpp-input\
-                           -fno-range-check
+COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_gfortran :=$(COMPILE_OPTIONS_gfortran)\
-                           -xf95-cpp-input\
                            -ffree-line-length-132\
-                           -fno-range-check\
                            -fimplicit-none\
                            -pedantic\
                            -Warray-bounds\
@@ -348,8 +345,13 @@ IO.o:                         IO.f90 \
 
 DAMASK_spectral_interface.o:  DAMASK_spectral_interface.f90 \
                               prec.o
-
+ifeq "$(COMPILERNAME)" "gfortran"            # fno-range-check because NaN is defined in prec
 prec.o:                       prec.f90
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -fno-range-check prec.f90 $(SUFFIX)
+else
+prec.o:                       prec.f90
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
+endif
 
 %.o : %.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)

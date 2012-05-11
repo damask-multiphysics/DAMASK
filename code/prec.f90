@@ -71,7 +71,7 @@ subroutine prec_init
  write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
  write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
  write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
- write(6,'(a,e10.3)') ' NaN:                ',DAMASK_NaN
+ write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
  write(6,'(a,l3)')    ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
  if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
  write(6,*)

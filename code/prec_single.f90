@@ -41,7 +41,7 @@ module prec
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy can be found in documentation/Code/Fortran
 #ifdef LEGACY_COMPILER
- real(pReal), parameter, public :: DAMASK_NaN = Z'Z'7F800001', pReal'
+ real(pReal), parameter, public :: DAMASK_NaN = Z'7F800001'
 #else
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7F800001', pReal)
 #endif
@@ -71,7 +71,7 @@ subroutine prec_init
  write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
  write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
  write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
- write(6,'(a,e10.3)') ' NaN:         ',DAMASK_NAN
+ write(6,'(a,e10.3)') ' NaN:          ',      DAMASK_NaN
  write(6,'(a,l3)')    ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
  if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
  write(6,*)
