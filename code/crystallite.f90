@@ -3335,10 +3335,11 @@ function crystallite_postResults(&
 
  crystallite_postResults(c+1) = real(constitutive_sizePostResults(g,i,e),pReal)             ! size of constitutive results
  c = c + 1_pInt
- crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = constitutive_postResults(crystallite_Tstar_v(1:6,g,i,e), &
-                                                                                               crystallite_Fe, &
-                                                                                               crystallite_Temperature(g,i,e), &
-                                                                                               dt, g, i, e)
+ if (constitutive_sizePostResults(g,i,e) > 0_pInt) &
+   crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = constitutive_postResults(crystallite_Tstar_v(1:6,g,i,e), &
+                                                                                                 crystallite_Fe, &
+                                                                                                 crystallite_Temperature(g,i,e), &
+                                                                                                 dt, g, i, e)
  c = c + constitutive_sizePostResults(g,i,e)
 
 end function crystallite_postResults
