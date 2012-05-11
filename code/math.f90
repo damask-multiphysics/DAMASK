@@ -1804,18 +1804,22 @@ pure function math_QuaternionInSST(Q, symmetryType)
   real(pReal), dimension(3) ::                  Rodrig                      ! Rodrigues vector of Q
  
   Rodrig = math_QuaternionToRodrig(Q)
-  select case (symmetryType)
-    case (1_pInt)
-      math_QuaternionInSST = Rodrig(1) > Rodrig(2) .and. &
-                             Rodrig(2) > Rodrig(3) .and. &
-                             Rodrig(3) > 0.0_pReal
-    case (2_pInt)
-      math_QuaternionInSST = Rodrig(1) > sqrt(3.0_pReal)*Rodrig(2) .and. &
-                             Rodrig(2) > 0.0_pReal .and. &
-                             Rodrig(3) > 0.0_pReal
-    case default
-      math_QuaternionInSST = .true.
-  end select
+  if (any(Rodrig/=Rodrig)) then
+    math_QuaternionInSST = .false.
+  else
+    select case (symmetryType)
+      case (1_pInt)
+        math_QuaternionInSST = Rodrig(1) > Rodrig(2) .and. &
+                               Rodrig(2) > Rodrig(3) .and. &
+                               Rodrig(3) > 0.0_pReal
+      case (2_pInt)
+        math_QuaternionInSST = Rodrig(1) > sqrt(3.0_pReal)*Rodrig(2) .and. &
+                               Rodrig(2) > 0.0_pReal .and. &
+                               Rodrig(3) > 0.0_pReal
+      case default
+        math_QuaternionInSST = .true.
+    end select
+  endif
   
 end function math_QuaternionInSST
 
