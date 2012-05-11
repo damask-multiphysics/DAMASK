@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os,sys,math,string,numpy, damask
+import os,sys,math,string,numpy, damask 
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP 
 
 
@@ -89,9 +89,10 @@ for file in files:
       if lineCount==headCount:  # all header info there, allocating arrays
         if resolution[2]==1: spatialDim=2
         validDim    = numpy.zeros(spatialDim)
-        for i in xrange(spatialDim):
-          if(options.dimension[i]>0): validDim[i]= 1
-        for i in xrange(spatialDim):  
+        dimension   = numpy.zeros(3)
+        for i,j in zip (xrange(3),xrange(spatialDim)):
+          if(options.dimension[i]>0): validDim[j]= 1
+        for i in xrange(3):  
           if(any(validDim) and options.dimension[i]==0): 
             dimension[i] = max(numpy.array(options.dimension,dtype='float')/resolution) *resolution[i] 
             print 'rescaling invalid dimension '+str(i+1)           
