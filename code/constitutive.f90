@@ -746,8 +746,8 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
   case (constitutive_nonlocal_label)
-    call constitutive_nonlocal_dotState(constitutive_dotState(ipc,ip,el), Tstar_v, Fe, Fp, Temperature, constitutive_state, &
-                                        subdt, orientation, ipc, ip, el)
+    constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, constitutive_state, &
+                                         subdt, orientation, ipc, ip, el)
  
 end select
 

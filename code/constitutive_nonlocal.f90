@@ -1564,7 +1564,7 @@ endfunction
 !*********************************************************************
 !* rate of change of microstructure                                  *
 !*********************************************************************
-subroutine constitutive_nonlocal_dotState(dotState, Tstar_v, Fe, Fp, Temperature, state, timestep, orientation, g,ip,el)
+function constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, state, timestep, orientation, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1622,9 +1622,10 @@ real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), 
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             state                     ! current microstructural state
 !*** input/output variables
-type(p_vec), intent(inout) ::               dotState                  ! evolution of state variables / microstructure
  
 !*** output variables
+real(pReal), dimension(constitutive_nonlocal_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                            constitutive_nonlocal_dotState ! evolution of state variables / microstructure
  
 !*** local variables
 integer(pInt)                               myInstance, &             ! current instance of this plasticity
@@ -1731,7 +1732,7 @@ forall (t = 1_pInt:4_pInt) &
 !*** sanity check for timestep
 
 if (timestep <= 0.0_pReal) then                                                                                                     ! if illegal timestep...
-  dotState%p = 0.0_pReal                                                                                                            ! ...return without doing anything (-> zero dotState)
+  constitutive_nonlocal_dotState = 0.0_pReal                                                                                        ! ...return without doing anything (-> zero dotState)
   return
 endif
 
@@ -1767,7 +1768,7 @@ if (any(abs(gdot) > 0.0_pReal .and. 2.0_pReal * abs(v) * timestep > mesh_ipVolum
     write(6,'(a)') '<< CONST >> enforcing cutback !!!'
   endif
 #endif
-  dotState%p = DAMASK_NaN
+  constitutive_nonlocal_dotState = DAMASK_NaN
   return
 endif
 
@@ -2041,10 +2042,10 @@ if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < - constitutive_nonl
     write(6,'(a)') '<< CONST >> enforcing cutback !!!'
   endif
 #endif
-  dotState%p = DAMASK_NaN
+  constitutive_nonlocal_dotState = DAMASK_NaN
   return
 else
-  dotState%p(1:10_pInt*ns) = dotState%p(1:10_pInt*ns) + reshape(rhoDot,(/10_pInt*ns/))
+  constitutive_nonlocal_dotState(1:10_pInt*ns) = reshape(rhoDot,(/10_pInt*ns/))
 endif
 
 
@@ -2069,7 +2070,7 @@ endif
   endif
 #endif
 
-endsubroutine
+endfunction
 
 
 

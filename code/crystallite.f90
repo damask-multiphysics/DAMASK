@@ -1085,16 +1085,7 @@ else
 endif
 
 
-! --- RESET DOTSTATE ---
-
 !$OMP PARALLEL PRIVATE(mySizeDotState)
-
-!$OMP DO
-  do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
- enddo; enddo; enddo
-!$OMP ENDDO
-
 
 ! --- FIRST RUNGE KUTTA STEP ---
 
@@ -1214,7 +1205,6 @@ do n = 1_pInt,4_pInt
           endif
         endif
       endif
-      constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
     enddo; enddo; enddo
   !$OMP ENDDO      
 
@@ -1394,16 +1384,7 @@ else
 endif
 
 
-! --- RESET DOTSTATE ---
-
 !$OMP PARALLEL PRIVATE(mySizeDotState)
-
-!$OMP DO
-  do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
-  enddo; enddo; enddo
-!$OMP ENDDO
-
 
 ! --- FIRST RUNGE KUTTA STEP ---
 #ifndef _OPENMP
@@ -1517,7 +1498,6 @@ do n = 1_pInt,5_pInt
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Fe(1:3,1:3,g,i,e), &
                                          crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                           ! update dependent state variables to be consistent with basic states
       endif
-      constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
     enddo; enddo; enddo
   !$OMP ENDDO
 
@@ -1830,15 +1810,6 @@ endif
 
 if (numerics_integrationMode < 2) then
 
-  ! --- RESET DOTSTATE ---
-
-  !$OMP DO
-    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
-   enddo; enddo; enddo
-  !$OMP ENDDO
-
-
   ! --- DOT STATE AND TEMPERATURE (EULER INTEGRATION) ---
 
   stateResiduum = 0.0_pReal
@@ -1895,8 +1866,7 @@ if (numerics_integrationMode < 2) then
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Fe(1:3,1:3,g,i,e), &
                                          crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                             ! update dependent state variables to be consistent with basic states
       endif
-      constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
-   enddo; enddo; enddo
+    enddo; enddo; enddo
   !$OMP ENDDO
 
 endif
@@ -1964,7 +1934,7 @@ relTemperatureResiduum = 0.0_pReal
       ! --- contribution of heun step to absolute residui ---
       
       stateResiduum(1:mySizeDotState,g,i,e) = stateResiduum(1:mySizeDotState,g,i,e) &
-                                          + 0.5_pReal * constitutive_dotState(g,i,e)%p * crystallite_subdt(g,i,e) ! contribution to absolute residuum in state and temperature
+                                            + 0.5_pReal * constitutive_dotState(g,i,e)%p * crystallite_subdt(g,i,e) ! contribution to absolute residuum in state and temperature
       temperatureResiduum(g,i,e) = temperatureResiduum(g,i,e) &
                                  + 0.5_pReal * crystallite_dotTemperature(g,i,e) * crystallite_subdt(g,i,e)
       !$OMP FLUSH(stateResiduum,temperatureResiduum)
@@ -2099,15 +2069,6 @@ endif
 !$OMP PARALLEL PRIVATE(mySizeDotState)
 
 if (numerics_integrationMode < 2) then
-
-  ! --- RESET DOTSTATE ---
-
-  !$OMP DO
-    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
-   enddo; enddo; enddo
-  !$OMP ENDDO
-
 
   ! --- DOT STATE AND TEMPERATURE ---
 
@@ -2290,13 +2251,10 @@ endif
 
 ! --+>> PREGUESS FOR STATE <<+--
 
-! --- RESET DOTSTATE ---
-
 !$OMP PARALLEL
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
     constitutive_previousDotState(g,i,e)%p = 0.0_pReal
     constitutive_previousDotState2(g,i,e)%p = 0.0_pReal
  enddo; enddo; enddo
@@ -2347,7 +2305,6 @@ endif
     endif
     constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p                      ! age previous dotState
     constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p                               ! age previous dotState
-    constitutive_dotState(g,i,e)%p = 0.0_pReal                                                            ! reset dotState to zero
   enddo; enddo; enddo
 !$OMP ENDDO
 !$OMP END PARALLEL
@@ -2456,7 +2413,6 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       endif
       constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p                    ! age previous dotState
       constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p                             ! age previous dotState
-      constitutive_dotState(g,i,e)%p = 0.0_pReal                                                          ! reset dotState to zero
    enddo; enddo; enddo
   !$OMP ENDDO
   
