@@ -61,6 +61,7 @@ module debug
 
  integer(pInt), public :: &
    debug_cumLpCalls              = 0_pInt, &
+   debug_cumDeltaStateCalls      = 0_pInt, &
    debug_cumDotStateCalls        = 0_pInt, &
    debug_cumDotTemperatureCalls  = 0_pInt, &
    debug_e                       = 1_pInt, &
@@ -69,6 +70,7 @@ module debug
 
  integer(pLongInt), public :: &
    debug_cumLpTicks              = 0_pLongInt, &
+   debug_cumDeltaStateTicks      = 0_pLongInt, &
    debug_cumDotStateTicks        = 0_pLongInt, &
    debug_cumDotTemperatureTicks  = 0_pLongInt
  
@@ -296,9 +298,11 @@ subroutine debug_reset
  debug_MaterialpointStateLoopDistribution  = 0_pInt
  debug_MaterialpointLoopDistribution       = 0_pInt
  debug_cumLpTicks                          = 0_pLongInt
+ debug_cumDeltaStateTicks                  = 0_pLongInt
  debug_cumDotStateTicks                    = 0_pLongInt
  debug_cumDotTemperatureTicks              = 0_pLongInt
  debug_cumLpCalls                          = 0_pInt
+ debug_cumDeltaStateCalls                  = 0_pInt
  debug_cumDotStateCalls                    = 0_pInt
  debug_cumDotTemperatureCalls              = 0_pInt
  debug_stressMaxLocation                   = 0_pInt
@@ -349,6 +353,15 @@ subroutine debug_info
        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
          real(debug_cumDotStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
                                                                      /real(debug_cumDotStateCalls,pReal)
+     endif
+     write(6,*)
+     write(6,'(a33,1x,i12)')      'total calls to collectDeltaState:',debug_cumDeltaStateCalls
+     if (debug_cumDeltaStateCalls > 0_pInt) then
+       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDeltaStateTicks,pReal)&
+                                                                            /real(tickrate,pReal)
+       write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
+         real(debug_cumDeltaStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
+                                                                     /real(debug_cumDeltaStateCalls,pReal)
      endif
      write(6,*)
      write(6,'(a33,1x,i12)')      'total calls to dotTemperature   :',debug_cumDotTemperatureCalls

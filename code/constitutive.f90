@@ -39,6 +39,7 @@ type(p_vec),  dimension(:,:,:), allocatable :: &
   constitutive_state, &                               ! pointer array to current microstructure (end of converged time step)
   constitutive_state_backup, &                        ! pointer array to backed up microstructure (end of converged time step)
   constitutive_dotState, &                            ! pointer array to evolution of current microstructure
+  constitutive_deltaState, &                          ! pointer array to incremental change of current microstructure
   constitutive_previousDotState,&                     ! pointer array to previous evolution of current microstructure
   constitutive_previousDotState2,&                    ! pointer array to 2nd previous evolution of current microstructure
   constitutive_dotState_backup, &                     ! pointer array to backed up evolution of current microstructure
@@ -70,6 +71,7 @@ contains
 !* - constitutive_TandItsTangent
 !* - constitutive_hooke_TandItsTangent
 !* - constitutive_collectDotState
+!* - constitutive_collectDeltaState
 !* - constitutive_collectDotTemperature
 !* - constitutive_postResults
 !****************************************
@@ -187,6 +189,7 @@ allocate(constitutive_subState0(gMax,iMax,eMax))
 allocate(constitutive_state(gMax,iMax,eMax))
 allocate(constitutive_state_backup(gMax,iMax,eMax))
 allocate(constitutive_dotState(gMax,iMax,eMax))
+allocate(constitutive_deltaState(gMax,iMax,eMax))
 allocate(constitutive_dotState_backup(gMax,iMax,eMax))
 allocate(constitutive_aTolState(gMax,iMax,eMax))
 allocate(constitutive_sizeDotState(gMax,iMax,eMax)) ;          constitutive_sizeDotState = 0_pInt
@@ -219,6 +222,7 @@ endif
             allocate(constitutive_state_backup(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
+            allocate(constitutive_deltaState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
             if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_j2_sizeDotState(myInstance)))
@@ -246,6 +250,7 @@ endif
             allocate(constitutive_state_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
+            allocate(constitutive_deltaState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
             if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(myInstance)))
@@ -273,6 +278,7 @@ endif
             allocate(constitutive_state_backup(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_titanmod_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
+            allocate(constitutive_deltaState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
             if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_titanmod_sizeDotState(myInstance)))
@@ -300,6 +306,7 @@ endif
             allocate(constitutive_state_backup(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_dislotwin_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
+            allocate(constitutive_deltaState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
             if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(myInstance)))
@@ -327,6 +334,7 @@ endif
             allocate(constitutive_state_backup(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
             allocate(constitutive_aTolState(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
             allocate(constitutive_dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
+            allocate(constitutive_deltaState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
             allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
             if (any(numerics_integrator == 1_pInt)) then
               allocate(constitutive_previousDotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance)))
@@ -380,6 +388,7 @@ constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_state:           ', shape(constitutive_state)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_aTolState:       ', shape(constitutive_aTolState)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
+    write(6,'(a32,1x,7(i8,1x))') 'constitutive_deltaState:      ', shape(constitutive_deltaState)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
@@ -750,6 +759,87 @@ if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
     !$OMP FLUSH (debug_cumDotStateTicks)
     if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
   !$OMP END CRITICAL (debugTimingDotState)
+endif
+
+endsubroutine
+
+
+!*********************************************************************
+!* This subroutine contains the constitutive equation for            *
+!* calculating the incremental change of microstructure based on the *
+!* state at the beginning of the timestep                            * 
+!*********************************************************************
+subroutine constitutive_collectDeltaState(Tstar_v, Fe, Fp, Temperature, ipc, ip, el)
+
+use prec, only:     pReal, pLongInt
+use debug, only:    debug_cumDeltaStateCalls, &
+                    debug_cumDeltaStateTicks, &
+                    debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic
+use mesh, only:     mesh_NcpElems, &
+                    mesh_maxNips
+use material, only: phase_plasticity, &
+                    material_phase, &
+                    homogenization_maxNgrains
+use constitutive_j2, only:            constitutive_j2_deltaState, &
+                                      constitutive_j2_label
+use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_deltaState, &
+                                      constitutive_phenopowerlaw_label
+use constitutive_titanmod, only:      constitutive_titanmod_deltaState, &
+                                      constitutive_titanmod_label
+use constitutive_dislotwin, only:     constitutive_dislotwin_deltaState, &
+                                      constitutive_dislotwin_label
+use constitutive_nonlocal, only:      constitutive_nonlocal_deltaState, &
+                                      constitutive_nonlocal_label
+
+implicit none
+!*** input  variables
+integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integration point
+                                ip, &         ! current integration point
+                                el            ! current element
+real(pReal), intent(in) ::      Temperature
+real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                Fe, &         ! elastic deformation gradient
+                                Fp            ! plastic deformation gradient
+real(pReal), dimension(6), intent(in) :: &
+                                Tstar_v       ! 2nd Piola Kirchhoff stress tensor (Mandel)
+!*** local variables
+integer(pLongInt)               tick, tock, & 
+                                tickrate, &
+                                maxticks
+
+if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
+  call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
+endif
+
+select case (phase_plasticity(material_phase(ipc,ip,el)))
+
+  case (constitutive_j2_label)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_j2_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+ 
+  case (constitutive_phenopowerlaw_label)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_phenopowerlaw_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+
+  case (constitutive_titanmod_label)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_titanmod_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+  
+  case (constitutive_dislotwin_label)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_dislotwin_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+ 
+  case (constitutive_nonlocal_label)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_nonlocal_deltaState(Tstar_v, Fe, Fp, Temperature, constitutive_subState0, ipc, ip, el)
+ 
+end select
+
+if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
+  call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
+  !$OMP CRITICAL (debugTimingDeltaState)
+    debug_cumDeltaStateCalls = debug_cumDeltaStateCalls + 1_pInt
+    debug_cumDeltaStateTicks = debug_cumDeltaStateTicks + tock-tick
+    !$OMP FLUSH (debug_cumDeltaStateTicks)
+    if (tock < tick) debug_cumDeltaStateTicks  = debug_cumDeltaStateTicks + maxticks
+  !$OMP END CRITICAL (debugTimingDeltaState)
 endif
 
 endsubroutine

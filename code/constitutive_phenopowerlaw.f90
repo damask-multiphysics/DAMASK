@@ -151,6 +151,7 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_homogenizedC, &
    constitutive_phenopowerlaw_aTolState, &
    constitutive_phenopowerlaw_dotState, &
+   constitutive_phenopowerlaw_deltaState, &
    constitutive_phenopowerlaw_dotTemperature, &
    constitutive_phenopowerlaw_microstructure, &
    constitutive_phenopowerlaw_LpAndItsTangent, &
@@ -888,6 +889,43 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
  enddo
 
 end function constitutive_phenopowerlaw_dotState
+
+
+!*********************************************************************
+!* (instantaneous) incremental change of microstructure              *
+!*********************************************************************
+function constitutive_phenopowerlaw_deltaState(Tstar_v, Temperature, state, g,ip,el)
+
+use prec,     only: pReal, &
+                    pInt, &
+                    p_vec
+use mesh,     only: mesh_NcpElems, &
+                    mesh_maxNips
+use material, only: homogenization_maxNgrains, &
+                    material_phase, &
+                    phase_plasticityInstance
+
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) ::                g, &                      ! current grain number
+                                            ip, &                     ! current integration point
+                                            el                        ! current element number
+real(pReal), intent(in) ::                  Temperature               ! temperature
+real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
+type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                            state                     ! current microstructural state
+
+!*** output variables
+real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                            constitutive_phenopowerlaw_deltaState ! change of state variables / microstructure
+ 
+!*** local variables
+
+
+constitutive_phenopowerlaw_deltaState = 0.0_pReal
+
+endfunction
 
 
 !****************************************************************

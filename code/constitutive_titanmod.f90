@@ -225,9 +225,10 @@ CONTAINS
 !* - constitutive_titanmod_homogenizedC
 !* - constitutive_titanmod_microstructure
 !* - constitutive_titanmod_LpAndItsTangent
-!* - consistutive_titanmod_dotState
+!* - constitutive_titanmod_dotState
+!* - constitutive_titanmod_deltaState
 !* - constitutive_titanmod_dotTemperature
-!* - consistutive_titanmod_postResults
+!* - constitutive_titanmod_postResults
 !****************************************
 
 
@@ -1722,6 +1723,45 @@ enddo
 !write(6,'(a,/,4(3(f30.20,1x)/))') 'ScrewAnnihilation',DotRhoScrewAnnihilation
 
 end function
+
+
+
+!*********************************************************************
+!* (instantaneous) incremental change of microstructure              *
+!*********************************************************************
+function constitutive_titanmod_deltaState(Tstar_v, Temperature, state, g,ip,el)
+
+use prec,     only: pReal, &
+                    pInt, &
+                    p_vec
+use mesh,     only: mesh_NcpElems, &
+                    mesh_maxNips
+use material, only: homogenization_maxNgrains, &
+                    material_phase, &
+                    phase_plasticityInstance
+
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) ::                g, &                      ! current grain number
+                                            ip, &                     ! current integration point
+                                            el                        ! current element number
+real(pReal), intent(in) ::                  Temperature               ! temperature
+real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
+type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                            state                     ! current microstructural state
+
+!*** output variables
+real(pReal), dimension(constitutive_titanmod_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                            constitutive_titanmod_deltaState ! change of state variables / microstructure
+ 
+!*** local variables
+
+
+constitutive_titanmod_deltaState = 0.0_pReal
+
+endfunction
+
 
 
 pure function constitutive_titanmod_dotTemperature(Tstar_v,Temperature,state,g,ip,el)

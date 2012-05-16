@@ -93,6 +93,7 @@ module constitutive_j2
             constitutive_j2_microstructure, &
             constitutive_j2_LpAndItsTangent, &
             constitutive_j2_dotState, &
+            constitutive_j2_deltaState, &
             constitutive_j2_dotTemperature, &
             constitutive_j2_postResults
 
@@ -532,6 +533,44 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
   constitutive_j2_dotState =  hardening * gamma_dot
 
 end function constitutive_j2_dotState
+
+
+
+!*********************************************************************
+!* (instantaneous) incremental change of microstructure              *
+!*********************************************************************
+function constitutive_j2_deltaState(Tstar_v, Temperature, state, g,ip,el)
+
+use prec,     only: pReal, &
+                    pInt, &
+                    p_vec
+use mesh,     only: mesh_NcpElems, &
+                    mesh_maxNips
+use material, only: homogenization_maxNgrains, &
+                    material_phase, &
+                    phase_plasticityInstance
+
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) ::                g, &                      ! current grain number
+                                            ip, &                     ! current integration point
+                                            el                        ! current element number
+real(pReal), intent(in) ::                  Temperature               ! temperature
+real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
+type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                            state                     ! current microstructural state
+
+!*** output variables
+real(pReal), dimension(constitutive_j2_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                            constitutive_j2_deltaState ! change of state variables / microstructure
+ 
+!*** local variables
+
+
+constitutive_j2_deltaState = 0.0_pReal
+
+endfunction
 
 
 !****************************************************************

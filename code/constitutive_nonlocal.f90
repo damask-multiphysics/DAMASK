@@ -31,111 +31,160 @@ MODULE constitutive_nonlocal
 
 !* Include other modules
 use prec, only: pReal,pInt
+
 implicit none
+private
 
 
 !* Definition of parameters
-character (len=*), parameter :: constitutive_nonlocal_label = 'nonlocal'
-character(len=22), dimension(10), parameter ::    constitutive_nonlocal_listBasicStates = (/'rhoSglEdgePosMobile   ', &
-                                                                                            'rhoSglEdgeNegMobile   ', &
-                                                                                            'rhoSglScrewPosMobile  ', &
-                                                                                            'rhoSglScrewNegMobile  ', &
-                                                                                            'rhoSglEdgePosImmobile ', &
-                                                                                            'rhoSglEdgeNegImmobile ', &
-                                                                                            'rhoSglScrewPosImmobile', &
-                                                                                            'rhoSglScrewNegImmobile', &
-                                                                                            'rhoDipEdge            ', &
-                                                                                            'rhoDipScrew           ' /) ! list of "basic" microstructural state variables that are independent from other state variables
-character(len=16), dimension(3), parameter :: constitutive_nonlocal_listDependentStates = (/'rhoForest       ', &
-                                                                                            'tauThreshold    ', &
-                                                                                            'tauBack         ' /) ! list of microstructural state variables that depend on other state variables
-character(len=16), dimension(4), parameter ::     constitutive_nonlocal_listOtherStates = (/'velocityEdgePos ', &
-                                                                                            'velocityEdgeNeg ', &
-                                                                                            'velocityScrewPos', &
-                                                                                            'velocityScrewNeg' /) ! list of other dependent state variables that are not updated by microstructure
-real(pReal), parameter :: kB = 1.38e-23_pReal                                                                   ! Physical parameter, Boltzmann constant in J/Kelvin
+
+character (len=*), parameter, public :: &
+constitutive_nonlocal_label = 'nonlocal'
+
+character(len=22), dimension(10), parameter, private :: &
+constitutive_nonlocal_listBasicStates = (/'rhoSglEdgePosMobile   ', &
+                                          'rhoSglEdgeNegMobile   ', &
+                                          'rhoSglScrewPosMobile  ', &
+                                          'rhoSglScrewNegMobile  ', &
+                                          'rhoSglEdgePosImmobile ', &
+                                          'rhoSglEdgeNegImmobile ', &
+                                          'rhoSglScrewPosImmobile', &
+                                          'rhoSglScrewNegImmobile', &
+                                          'rhoDipEdge            ', &
+                                          'rhoDipScrew           ' /)! list of "basic" microstructural state variables that are independent from other state variables
+
+character(len=16), dimension(3), parameter, private :: &
+constitutive_nonlocal_listDependentStates = (/'rhoForest       ', &
+                                              'tauThreshold    ', &
+                                              'tauBack         ' /)  ! list of microstructural state variables that depend on other state variables
+
+character(len=16), dimension(4), parameter, private :: &
+constitutive_nonlocal_listOtherStates = (/'velocityEdgePos ', &
+                                          'velocityEdgeNeg ', &
+                                          'velocityScrewPos', &
+                                          'velocityScrewNeg' /)      ! list of other dependent state variables that are not updated by microstructure
+
+real(pReal), parameter, private :: &
+kB = 1.38e-23_pReal                                                  ! Physical parameter, Boltzmann constant in J/Kelvin
+
 
 !* Definition of global variables
-integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_sizeDotState, &                 ! number of dotStates = number of basic state variables
-                                                          constitutive_nonlocal_sizeDependentState, &           ! number of dependent state variables
-                                                          constitutive_nonlocal_sizeState, &                    ! total number of state variables
-                                                          constitutive_nonlocal_sizePostResults                 ! cumulative size of post results
-integer(pInt), dimension(:,:), allocatable, target ::     constitutive_nonlocal_sizePostResult                  ! size of each post result output
-character(len=64), dimension(:,:), allocatable, target :: constitutive_nonlocal_output                          ! name of each post result output
-integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_Noutput                         ! number of outputs per instance of this plasticity 
 
-character(len=32), dimension(:), allocatable ::           constitutive_nonlocal_structureName                   ! name of the lattice structure
-integer(pInt), dimension(:), allocatable ::               constitutive_nonlocal_structure, &                    ! number representing the kind of lattice structure
-                                                          constitutive_nonlocal_totalNslip                      ! total number of active slip systems for each instance
-integer(pInt), dimension(:,:), allocatable ::             constitutive_nonlocal_Nslip, &                        ! number of active slip systems for each family and instance
-                                                          constitutive_nonlocal_slipFamily, &                   ! lookup table relating active slip system to slip family for each instance
-                                                          constitutive_nonlocal_slipSystemLattice               ! lookup table relating active slip system index to lattice slip system index for each instance
+integer(pInt), dimension(:), allocatable, public :: &
+constitutive_nonlocal_sizeDotState, &                                ! number of dotStates = number of basic state variables
+constitutive_nonlocal_sizeDependentState, &                          ! number of dependent state variables
+constitutive_nonlocal_sizeState, &                                   ! total number of state variables
+constitutive_nonlocal_sizePostResults                                ! cumulative size of post results
 
-real(pReal), dimension(:), allocatable ::                 constitutive_nonlocal_CoverA, &                       ! c/a ratio for hex type lattice
-                                                          constitutive_nonlocal_C11, &                          ! C11 element in elasticity matrix
-                                                          constitutive_nonlocal_C12, &                          ! C12 element in elasticity matrix
-                                                          constitutive_nonlocal_C13, &                          ! C13 element in elasticity matrix
-                                                          constitutive_nonlocal_C33, &                          ! C33 element in elasticity matrix
-                                                          constitutive_nonlocal_C44, &                          ! C44 element in elasticity matrix
-                                                          constitutive_nonlocal_Gmod, &                         ! shear modulus
-                                                          constitutive_nonlocal_nu, &                           ! poisson's ratio
-                                                          constitutive_nonlocal_atomicVolume, &                 ! atomic volume
-                                                          constitutive_nonlocal_Dsd0, &                         ! prefactor for self-diffusion coefficient
-                                                          constitutive_nonlocal_Qsd, &                          ! activation enthalpy for diffusion
-                                                          constitutive_nonlocal_aTolRho, &                      ! absolute tolerance for dislocation density in state integration
-                                                          constitutive_nonlocal_R, &                            ! cutoff radius for dislocation stress
-                                                          constitutive_nonlocal_doublekinkwidth, &              ! width of a doubkle kink in multiples of the burgers vector length b
-                                                          constitutive_nonlocal_solidSolutionEnergy, &          ! activation energy for solid solution in J
-                                                          constitutive_nonlocal_solidSolutionSize, &            ! solid solution obstacle size in multiples of the burgers vector length
-                                                          constitutive_nonlocal_solidSolutionConcentration, &   ! concentration of solid solution in atomic parts
-                                                          constitutive_nonlocal_p, &                            ! parameter for kinetic law (Kocks,Argon,Ashby)
-                                                          constitutive_nonlocal_q, &                            ! parameter for kinetic law (Kocks,Argon,Ashby)
-                                                          constitutive_nonlocal_viscosity, &                    ! viscosity for dislocation glide in Pa s
-                                                          constitutive_nonlocal_fattack, &                      ! attack frequency in Hz
-                                                          constitutive_nonlocal_rhoSglScatter, &                ! standard deviation of scatter in initial dislocation density
-                                                          constitutive_nonlocal_surfaceTransmissivity           ! transmissivity at free surface
-real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_Cslip_66                        ! elasticity matrix in Mandel notation for each instance
-real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_Cslip_3333                      ! elasticity matrix for each instance
-real(pReal), dimension(:,:), allocatable ::               constitutive_nonlocal_rhoSglEdgePos0, &               ! initial edge_pos dislocation density per slip system for each family and instance
-                                                          constitutive_nonlocal_rhoSglEdgeNeg0, &               ! initial edge_neg dislocation density per slip system for each family and instance
-                                                          constitutive_nonlocal_rhoSglScrewPos0, &              ! initial screw_pos dislocation density per slip system for each family and instance
-                                                          constitutive_nonlocal_rhoSglScrewNeg0, &              ! initial screw_neg dislocation density per slip system for each family and instance
-                                                          constitutive_nonlocal_rhoDipEdge0, &                  ! initial edge dipole dislocation density per slip system for each family and instance
-                                                          constitutive_nonlocal_rhoDipScrew0, &                 ! initial screw dipole dislocation density per slip system for each family and instance
-                                                          constitutive_nonlocal_lambda0PerSlipFamily, &         ! mean free path prefactor for each family and instance
-                                                          constitutive_nonlocal_lambda0, &                      ! mean free path prefactor for each slip system and instance
-                                                          constitutive_nonlocal_burgersPerSlipFamily, &         ! absolute length of burgers vector [m] for each family and instance
-                                                          constitutive_nonlocal_burgers, &                      ! absolute length of burgers vector [m] for each slip system and instance
-                                                          constitutive_nonlocal_interactionSlipSlip             ! coefficients for slip-slip interaction for each interaction type and instance
-real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_minimumDipoleHeightPerSlipFamily, & ! minimum stable edge/screw dipole height for each family and instance
-                                                          constitutive_nonlocal_minimumDipoleHeight, &          ! minimum stable edge/screw dipole height for each slip system and instance
-                                                          constitutive_nonlocal_peierlsStressPerSlipFamily, &   ! Peierls stress (edge and screw) 
-                                                          constitutive_nonlocal_peierlsStress                   ! Peierls stress (edge and screw) 
-real(pReal), dimension(:,:,:,:,:), allocatable ::         constitutive_nonlocal_rhoDotFlux                      ! dislocation convection term
-real(pReal), dimension(:,:,:,:,:,:), allocatable ::       constitutive_nonlocal_compatibility                   ! slip system compatibility between me and my neighbors
-real(pReal), dimension(:,:,:), allocatable ::             constitutive_nonlocal_forestProjectionEdge, &         ! matrix of forest projections of edge dislocations for each instance
-                                                          constitutive_nonlocal_forestProjectionScrew, &        ! matrix of forest projections of screw dislocations for each instance
-                                                          constitutive_nonlocal_interactionMatrixSlipSlip       ! interaction matrix of the different slip systems for each instance
-real(pReal), dimension(:,:,:,:), allocatable ::           constitutive_nonlocal_lattice2slip, &                 ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
-                                                          constitutive_nonlocal_accumulatedShear                ! accumulated shear per slip system up to the start of the FE increment
-logical, dimension(:), allocatable ::                     constitutive_nonlocal_shortRangeStressCorrection      ! flag indicating the use of the short range stress correction by a excess density gradient term
+integer(pInt), dimension(:,:), allocatable, target, public :: &
+constitutive_nonlocal_sizePostResult                                 ! size of each post result output
+
+character(len=64), dimension(:,:), allocatable, target, public :: &
+constitutive_nonlocal_output                                         ! name of each post result output
+
+integer(pInt), dimension(:), allocatable, private :: &
+constitutive_nonlocal_Noutput                                        ! number of outputs per instance of this plasticity 
+
+character(len=32), dimension(:), allocatable, private :: &
+constitutive_nonlocal_structureName                                  ! name of the lattice structure
+
+integer(pInt), dimension(:), allocatable, public :: &
+constitutive_nonlocal_structure                                      ! number representing the kind of lattice structure
+
+integer(pInt), dimension(:), allocatable, private :: &
+constitutive_nonlocal_totalNslip                                     ! total number of active slip systems for each instance
+
+integer(pInt), dimension(:,:), allocatable, private :: &
+constitutive_nonlocal_Nslip, &                                       ! number of active slip systems for each family and instance
+constitutive_nonlocal_slipFamily, &                                  ! lookup table relating active slip system to slip family for each instance
+constitutive_nonlocal_slipSystemLattice                              ! lookup table relating active slip system index to lattice slip system index for each instance
+
+real(pReal), dimension(:), allocatable, private :: &
+constitutive_nonlocal_CoverA, &                                      ! c/a ratio for hex type lattice
+constitutive_nonlocal_C11, &                                         ! C11 element in elasticity matrix
+constitutive_nonlocal_C12, &                                         ! C12 element in elasticity matrix
+constitutive_nonlocal_C13, &                                         ! C13 element in elasticity matrix
+constitutive_nonlocal_C33, &                                         ! C33 element in elasticity matrix
+constitutive_nonlocal_C44, &                                         ! C44 element in elasticity matrix
+constitutive_nonlocal_Gmod, &                                        ! shear modulus
+constitutive_nonlocal_nu, &                                          ! poisson's ratio
+constitutive_nonlocal_atomicVolume, &                                ! atomic volume
+constitutive_nonlocal_Dsd0, &                                        ! prefactor for self-diffusion coefficient
+constitutive_nonlocal_Qsd, &                                         ! activation enthalpy for diffusion
+constitutive_nonlocal_aTolRho, &                                     ! absolute tolerance for dislocation density in state integration
+constitutive_nonlocal_R, &                                           ! cutoff radius for dislocation stress
+constitutive_nonlocal_doublekinkwidth, &                             ! width of a doubkle kink in multiples of the burgers vector length b
+constitutive_nonlocal_solidSolutionEnergy, &                         ! activation energy for solid solution in J
+constitutive_nonlocal_solidSolutionSize, &                           ! solid solution obstacle size in multiples of the burgers vector length
+constitutive_nonlocal_solidSolutionConcentration, &                  ! concentration of solid solution in atomic parts
+constitutive_nonlocal_p, &                                           ! parameter for kinetic law (Kocks,Argon,Ashby)
+constitutive_nonlocal_q, &                                           ! parameter for kinetic law (Kocks,Argon,Ashby)
+constitutive_nonlocal_viscosity, &                                   ! viscosity for dislocation glide in Pa s
+constitutive_nonlocal_fattack, &                                     ! attack frequency in Hz
+constitutive_nonlocal_rhoSglScatter, &                               ! standard deviation of scatter in initial dislocation density
+constitutive_nonlocal_surfaceTransmissivity                          ! transmissivity at free surface
+
+real(pReal), dimension(:,:,:), allocatable, private :: &
+constitutive_nonlocal_Cslip_66                                       ! elasticity matrix in Mandel notation for each instance
+
+real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
+constitutive_nonlocal_Cslip_3333                                     ! elasticity matrix for each instance
+
+real(pReal), dimension(:,:), allocatable, private :: &
+constitutive_nonlocal_rhoSglEdgePos0, &                              ! initial edge_pos dislocation density per slip system for each family and instance
+constitutive_nonlocal_rhoSglEdgeNeg0, &                              ! initial edge_neg dislocation density per slip system for each family and instance
+constitutive_nonlocal_rhoSglScrewPos0, &                             ! initial screw_pos dislocation density per slip system for each family and instance
+constitutive_nonlocal_rhoSglScrewNeg0, &                             ! initial screw_neg dislocation density per slip system for each family and instance
+constitutive_nonlocal_rhoDipEdge0, &                                 ! initial edge dipole dislocation density per slip system for each family and instance
+constitutive_nonlocal_rhoDipScrew0, &                                ! initial screw dipole dislocation density per slip system for each family and instance
+constitutive_nonlocal_lambda0PerSlipFamily, &                        ! mean free path prefactor for each family and instance
+constitutive_nonlocal_lambda0, &                                     ! mean free path prefactor for each slip system and instance
+constitutive_nonlocal_burgersPerSlipFamily, &                        ! absolute length of burgers vector [m] for each family and instance
+constitutive_nonlocal_burgers, &                                     ! absolute length of burgers vector [m] for each slip system and instance
+constitutive_nonlocal_interactionSlipSlip                            ! coefficients for slip-slip interaction for each interaction type and instance
+
+real(pReal), dimension(:,:,:), allocatable, private :: &
+constitutive_nonlocal_minimumDipoleHeightPerSlipFamily, &            ! minimum stable edge/screw dipole height for each family and instance
+constitutive_nonlocal_minimumDipoleHeight, &                         ! minimum stable edge/screw dipole height for each slip system and instance
+constitutive_nonlocal_peierlsStressPerSlipFamily, &                  ! Peierls stress (edge and screw) 
+constitutive_nonlocal_peierlsStress                                  ! Peierls stress (edge and screw) 
+
+real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
+constitutive_nonlocal_rhoDotFlux                                     ! dislocation convection term
+
+real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
+constitutive_nonlocal_compatibility                                  ! slip system compatibility between me and my neighbors
+
+real(pReal), dimension(:,:,:), allocatable, private :: &
+constitutive_nonlocal_forestProjectionEdge, &                        ! matrix of forest projections of edge dislocations for each instance
+constitutive_nonlocal_forestProjectionScrew, &                       ! matrix of forest projections of screw dislocations for each instance
+constitutive_nonlocal_interactionMatrixSlipSlip                      ! interaction matrix of the different slip systems for each instance
+
+real(pReal), dimension(:,:,:,:), allocatable, private :: &
+constitutive_nonlocal_lattice2slip, &                                ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
+constitutive_nonlocal_accumulatedShear                               ! accumulated shear per slip system up to the start of the FE increment
+
+logical, dimension(:), allocatable, private :: &
+constitutive_nonlocal_shortRangeStressCorrection                     ! flag indicating the use of the short range stress correction by a excess density gradient term
+
+public :: &
+constitutive_nonlocal_init, &
+constitutive_nonlocal_stateInit, &
+constitutive_nonlocal_aTolState, &
+constitutive_nonlocal_homogenizedC, &
+constitutive_nonlocal_microstructure, &
+constitutive_nonlocal_LpAndItsTangent, &
+constitutive_nonlocal_dotState, &
+constitutive_nonlocal_deltaState, &
+constitutive_nonlocal_dotTemperature, &
+constitutive_nonlocal_updateCompatibility, &
+constitutive_nonlocal_postResults
+
+private :: &
+constitutive_nonlocal_kinetics
 
 
 CONTAINS
-!****************************************
-!* - constitutive_nonlocal_init
-!* - constitutive_nonlocal_stateInit
-!* - constitutive_nonlocal_aTolState
-!* - constitutive_nonlocal_homogenizedC
-!* - constitutive_nonlocal_microstructure
-!* - constitutive_nonlocal_kinetics
-!* - constitutive_nonlocal_LpAndItsTangent
-!* - constitutive_nonlocal_dotState
-!* - constitutive_nonlocal_dotTemperature
-!* - constitutive_nonlocal_updateCompatibility
-!* - constitutive_nonlocal_postResults
-!****************************************
-
 
 !**************************************
 !*      Module initialization         *
@@ -1469,6 +1518,46 @@ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 #endif
 
 endsubroutine
+
+
+
+!*********************************************************************
+!* incremental change of microstructure                              *
+!*********************************************************************
+function constitutive_nonlocal_deltaState(Tstar_v, Fe, Fp, Temperature, state, g,ip,el)
+
+use prec,     only: pReal, &
+                    pInt, &
+                    p_vec
+use mesh,     only: mesh_NcpElems, &
+                    mesh_maxNips
+use material, only: homogenization_maxNgrains, &
+                    material_phase, &
+                    phase_plasticityInstance
+
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) ::                g, &                      ! current grain number
+                                            ip, &                     ! current integration point
+                                            el                        ! current element number
+real(pReal), intent(in) ::                  Temperature               ! temperature
+real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
+real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                            Fe, &                     ! elastic deformation gradient
+                                            Fp                        ! plastic deformation gradient
+type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                            state                     ! current microstructural state
+
+!*** output variables
+real(pReal), dimension(constitutive_nonlocal_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                            constitutive_nonlocal_deltaState ! change of state variables / microstructure
+ 
+!*** local variables
+
+constitutive_nonlocal_deltaState = 0.0_pReal
+
+endfunction
 
 
 
