@@ -769,7 +769,7 @@ endsubroutine
 !* calculating the incremental change of microstructure based on the *
 !* state at the beginning of the timestep                            * 
 !*********************************************************************
-subroutine constitutive_collectDeltaState(Tstar_v, Fe, Fp, Temperature, ipc, ip, el)
+subroutine constitutive_collectDeltaState(Tstar_v, Temperature, ipc, ip, el)
 
 use prec, only:     pReal, pLongInt
 use debug, only:    debug_cumDeltaStateCalls, &
@@ -799,9 +799,6 @@ integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integrat
                                 ip, &         ! current integration point
                                 el            ! current element
 real(pReal), intent(in) ::      Temperature
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                Fe, &         ! elastic deformation gradient
-                                Fp            ! plastic deformation gradient
 real(pReal), dimension(6), intent(in) :: &
                                 Tstar_v       ! 2nd Piola Kirchhoff stress tensor (Mandel)
 !*** local variables
@@ -828,7 +825,7 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
     constitutive_deltaState(ipc,ip,el)%p = constitutive_dislotwin_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
  
   case (constitutive_nonlocal_label)
-    constitutive_deltaState(ipc,ip,el)%p = constitutive_nonlocal_deltaState(Tstar_v, Fe, Fp, Temperature, constitutive_subState0, ipc, ip, el)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_nonlocal_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
  
 end select
 

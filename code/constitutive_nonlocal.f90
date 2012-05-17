@@ -1524,7 +1524,7 @@ endsubroutine
 !*********************************************************************
 !* incremental change of microstructure                              *
 !*********************************************************************
-function constitutive_nonlocal_deltaState(Tstar_v, Fe, Fp, Temperature, state, g,ip,el)
+function constitutive_nonlocal_deltaState(Tstar_v, Temperature, state, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1543,9 +1543,6 @@ integer(pInt), intent(in) ::                g, &                      ! current 
                                             el                        ! current element number
 real(pReal), intent(in) ::                  Temperature               ! temperature
 real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
-real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            Fe, &                     ! elastic deformation gradient
-                                            Fp                        ! plastic deformation gradient
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             state                     ! current microstructural state
 
