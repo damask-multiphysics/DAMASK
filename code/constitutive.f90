@@ -767,7 +767,7 @@ endsubroutine
 !*********************************************************************
 !* This subroutine contains the constitutive equation for            *
 !* calculating the incremental change of microstructure based on the *
-!* state at the beginning of the timestep                            * 
+!* current stress and state                                          * 
 !*********************************************************************
 subroutine constitutive_collectDeltaState(Tstar_v, Temperature, ipc, ip, el)
 
@@ -813,19 +813,19 @@ endif
 select case (phase_plasticity(material_phase(ipc,ip,el)))
 
   case (constitutive_j2_label)
-    constitutive_deltaState(ipc,ip,el)%p = constitutive_j2_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_j2_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
   case (constitutive_phenopowerlaw_label)
-    constitutive_deltaState(ipc,ip,el)%p = constitutive_phenopowerlaw_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_phenopowerlaw_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
 
   case (constitutive_titanmod_label)
-    constitutive_deltaState(ipc,ip,el)%p = constitutive_titanmod_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_titanmod_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
   
   case (constitutive_dislotwin_label)
-    constitutive_deltaState(ipc,ip,el)%p = constitutive_dislotwin_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_dislotwin_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
   case (constitutive_nonlocal_label)
-    constitutive_deltaState(ipc,ip,el)%p = constitutive_nonlocal_deltaState(Tstar_v,Temperature,constitutive_subState0,ipc,ip,el)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_nonlocal_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
 end select
 
