@@ -1529,6 +1529,13 @@ function constitutive_nonlocal_deltaState(Tstar_v, Temperature, state, g,ip,el)
 use prec,     only: pReal, &
                     pInt, &
                     p_vec
+use debug,    only: debug_what, &
+                    debug_constitutive, &
+                    debug_levelBasic, &
+                    debug_levelSelective, &
+                    debug_g, &
+                    debug_i, &
+                    debug_e
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
@@ -1551,8 +1558,88 @@ real(pReal), dimension(constitutive_nonlocal_sizeDotState(phase_plasticityInstan
                                             constitutive_nonlocal_deltaState ! change of state variables / microstructure
  
 !*** local variables
+integer(pInt)                               myInstance, &             ! current instance of this plasticity
+                                            myStructure, &            ! current lattice structure
+                                            ns, &                     ! short notation for the total number of active slip systems
+                                            c, &                      ! character of dislocation
+                                            n, &                      ! index of my current neighbor
+                                            t, &                      ! type of dislocation
+                                            s                         ! index of my current slip system
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),10) :: &
+                                            deltaRho, &                     ! density increment
+                                            deltaRhoRemobilization          ! density increment by remobilization
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
+                                            rhoSgl                        ! current single dislocation densities (positive/negative screw and edge without dipoles)
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
+                                            v                             ! dislocation glide velocity
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
+                                            rhoDip                        ! current dipole dislocation densities (screw and edge dipoles)
 
-constitutive_nonlocal_deltaState = 0.0_pReal
+
+#ifndef _OPENMP
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
+    write(6,*)
+    write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
+    write(6,*)
+  endif
+#endif
+
+myInstance = phase_plasticityInstance(material_phase(g,ip,el))
+myStructure = constitutive_nonlocal_structure(myInstance) 
+ns = constitutive_nonlocal_totalNslip(myInstance)
+
+
+!*** shortcut to state variables 
+
+forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
+  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1_pInt)*ns+s), 0.0_pReal)
+forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
+  rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
+forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
+  rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)
+forall (t = 1_pInt:4_pInt) &
+  v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+
+
+
+!****************************************************************************
+!*** dislocation remobilization (bauschinger effect)
+
+deltaRhoRemobilization = 0.0_pReal
+do t = 1_pInt,4_pInt
+  do s = 1_pInt,ns
+    if (rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pReal) then
+      deltaRhoRemobilization(s,t) = abs(rhoSgl(s,t+4_pInt))
+      rhoSgl(s,t) = rhoSgl(s,t) + abs(rhoSgl(s,t+4_pInt))
+      deltaRhoRemobilization(s,t+4_pInt) = - rhoSgl(s,t+4_pInt)
+      rhoSgl(s,t+4_pInt) = 0.0_pReal
+    endif
+  enddo
+enddo
+
+
+
+!****************************************************************************
+!*** assign the rates of dislocation densities to my dotState
+!*** if evolution rates lead to negative densities, a cutback is enforced
+
+deltaRho = 0.0_pReal
+deltaRho = deltaRhoRemobilization
+
+constitutive_nonlocal_deltaState = reshape(deltaRho,(/10_pInt*ns/))
+
+
+
+#ifndef _OPENMP
+  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
+    write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', deltaRhoRemobilization(1:ns,1:8)
+    write(6,*)
+  endif
+#endif
 
 endfunction
 
@@ -1643,7 +1730,6 @@ integer(pInt)                               myInstance, &             ! current 
                                             deads
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),10) :: &
                                             rhoDot, &                     ! density evolution
-                                            rhoDotRemobilization, &       ! density evolution by remobilization
                                             rhoDotMultiplication, &       ! density evolution by multiplication
                                             rhoDotFlux, &                 ! density evolution by flux
                                             rhoDotSingle2DipoleGlide, &   ! density evolution by dipole formation (by glide)
@@ -1734,8 +1820,6 @@ endif
 
 forall (t = 1_pInt:4_pInt) &
   gdot(1_pInt:ns,t) = rhoSgl(1_pInt:ns,t) * constitutive_nonlocal_burgers(1:ns,myInstance) * v(1:ns,t)
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt, rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pReal) &                                                ! contribution of used rho for changing sign of v
-  gdot(s,t) = gdot(s,t) + abs(rhoSgl(s,t+4)) * constitutive_nonlocal_burgers(s,myInstance) * v(s,t)
 
 #ifndef _OPENMP
   if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
@@ -1779,25 +1863,6 @@ dUpper(1:ns,2) = min( 1.0_pReal / sqrt( sum(abs(rhoSgl),2)+sum(rhoDip,2) ), &
                       constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgers(1:ns,myInstance) &
                                                              / ( 8.0_pReal * pi * abs(tau) ) )
 dUpper(1:ns,1) = dUpper(1:ns,2) / ( 1.0_pReal - constitutive_nonlocal_nu(myInstance) )
-
-
-
-!****************************************************************************
-!*** dislocation remobilization (bauschinger effect)
-
-rhoDotRemobilization = 0.0_pReal
-if (timestep > 0.0_pReal) then
-  do t = 1_pInt,4_pInt
-    do s = 1_pInt,ns
-      if (rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pReal) then
-        rhoDotRemobilization(s,t) = abs(rhoSgl(s,t+4_pInt)) / timestep
-        rhoSgl(s,t) = rhoSgl(s,t) + abs(rhoSgl(s,t+4_pInt))
-        rhoDotRemobilization(s,t+4_pInt) = - rhoSgl(s,t+4_pInt) / timestep
-        rhoSgl(s,t+4_pInt) = 0.0_pReal
-      endif
-    enddo
-  enddo
-endif
 
 
 
@@ -1880,10 +1945,6 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
         neighboring_rhoSgl(1_pInt:ns,t) = max(state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
       forall (t = 5_pInt:8_pInt) &
         neighboring_rhoSgl(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
-      forall (s = 1_pInt:ns, t = 1_pInt:4_pInt, neighboring_rhoSgl(s,t+4_pInt)*neighboring_v(s,t) < 0.0_pReal)                      ! remobilization of deads at neighbor
-        neighboring_rhoSgl(s,t) = neighboring_rhoSgl(s,t) + abs(neighboring_rhoSgl(s,t+4_pInt))
-        neighboring_rhoSgl(s,t+4_pInt) = 0.0_pReal
-      endforall
       normal_neighbor2me_defConf = math_det33(Favg) &
                   * math_mul33x3(math_inv33(transpose(Favg)), mesh_ipAreaNormal(1:3,neighboring_n,neighboring_ip,neighboring_el))   ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
       normal_neighbor2me = math_mul33x3(transpose(neighboring_Fe), normal_neighbor2me_defConf) / math_det33(neighboring_Fe)         ! interface normal in the lattice configuration of my neighbor
@@ -2020,7 +2081,6 @@ rhoDotThermalAnnihilation(1:ns,10) = 0.0_pReal                                  
 rhoDot = 0.0_pReal
 rhoDot = rhoDotFlux &
        + rhoDotMultiplication &
-       + rhoDotRemobilization &
        + rhoDotSingle2DipoleGlide &
        + rhoDotAthermalAnnihilation &
        + rhoDotThermalAnnihilation 
@@ -2045,7 +2105,6 @@ endif
   if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
-    write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', rhoDotRemobilization(1:ns,1:8) * timestep
     write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> dislocation multiplication', rhoDotMultiplication(1:ns,1:4) * timestep
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation flux', rhoDotFlux(1:ns,1:8) * timestep
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole formation by glide', rhoDotSingle2DipoleGlide * timestep
