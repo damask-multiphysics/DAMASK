@@ -1694,12 +1694,6 @@ logical                                     considerEnteringFlux, &
   endif
 #endif
 
-select case(mesh_element(2,el))
-  case (1_pInt,6_pInt,7_pInt,8_pInt,9_pInt)
-    ! all fine
-  case default
-    call IO_error(253_pInt,el,ip,g)
-end select
 
 myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 

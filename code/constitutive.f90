@@ -327,6 +327,12 @@ endif
             constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(myInstance)
             
           case (constitutive_nonlocal_label)
+            select case(mesh_element(2,e))
+              case (1_pInt,6_pInt,7_pInt,8_pInt,9_pInt)
+                ! all fine
+              case default
+                call IO_error(253_pInt,e,i,g)
+            end select
             allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
             allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
             allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
