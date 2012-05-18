@@ -831,7 +831,7 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
     constitutive_deltaState(ipc,ip,el)%p = constitutive_dislotwin_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
   case (constitutive_nonlocal_label)
-    constitutive_deltaState(ipc,ip,el)%p = constitutive_nonlocal_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+    call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el),constitutive_state, Tstar_v,Temperature,ipc,ip,el)
  
 end select
 

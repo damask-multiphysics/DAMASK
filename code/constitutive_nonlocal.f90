@@ -58,11 +58,13 @@ constitutive_nonlocal_listDependentStates = (/'rhoForest       ', &
                                               'tauThreshold    ', &
                                               'tauBack         ' /)  ! list of microstructural state variables that depend on other state variables
 
-character(len=16), dimension(4), parameter, private :: &
-constitutive_nonlocal_listOtherStates = (/'velocityEdgePos ', &
-                                          'velocityEdgeNeg ', &
-                                          'velocityScrewPos', &
-                                          'velocityScrewNeg' /)      ! list of other dependent state variables that are not updated by microstructure
+character(len=20), dimension(6), parameter, private :: &
+constitutive_nonlocal_listOtherStates = (/'velocityEdgePos     ', &
+                                          'velocityEdgeNeg     ', &
+                                          'velocityScrewPos    ', &
+                                          'velocityScrewNeg    ', &
+                                          'maxDipoleHeightEdge ', &
+                                          'maxDipoleHeightScrew' /)      ! list of other dependent state variables that are not updated by microstructure
 
 real(pReal), parameter, private :: &
 kB = 1.38e-23_pReal                                                  ! Physical parameter, Boltzmann constant in J/Kelvin
@@ -1524,7 +1526,7 @@ endsubroutine
 !*********************************************************************
 !* incremental change of microstructure                              *
 !*********************************************************************
-function constitutive_nonlocal_deltaState(Tstar_v, Temperature, state, g,ip,el)
+subroutine constitutive_nonlocal_deltaState(deltaState, state, Tstar_v, Temperature, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -1536,6 +1538,9 @@ use debug,    only: debug_what, &
                     debug_g, &
                     debug_i, &
                     debug_e
+use math,     only: pi, &
+                    math_mul6x6
+use lattice,  only: lattice_Sslip_v
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
@@ -1550,12 +1555,13 @@ integer(pInt), intent(in) ::                g, &                      ! current 
                                             el                        ! current element number
 real(pReal), intent(in) ::                  Temperature               ! temperature
 real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
-type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+
+!*** input/output variables
+type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(inout) :: &
                                             state                     ! current microstructural state
 
 !*** output variables
-real(pReal), dimension(constitutive_nonlocal_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            constitutive_nonlocal_deltaState ! change of state variables / microstructure
+type(p_vec), intent(out) ::                 deltaState                ! change of state variables / microstructure
  
 !*** local variables
 integer(pInt)                               myInstance, &             ! current instance of this plasticity
@@ -1564,16 +1570,26 @@ integer(pInt)                               myInstance, &             ! current 
                                             c, &                      ! character of dislocation
                                             n, &                      ! index of my current neighbor
                                             t, &                      ! type of dislocation
-                                            s                         ! index of my current slip system
+                                            s, &                      ! index of my current slip system
+                                            sLattice                  ! index of my current slip system according to lattice order
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),10) :: &
                                             deltaRho, &                     ! density increment
-                                            deltaRhoRemobilization          ! density increment by remobilization
+                                            deltaRhoRemobilization, &       ! density increment by remobilization
+                                            deltaRhoSingle2DipoleStress, &  ! density increment by dipole formation (by stress change)
+                                            deltaRhoDipole2SingleStress     ! density increment by dipole dissociation (by stress change)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                             rhoSgl                        ! current single dislocation densities (positive/negative screw and edge without dipoles)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             v                             ! dislocation glide velocity
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                            tau, &                        ! current resolved shear stress
+                                            tauBack                       ! current back stress from pileups on same slip system
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
-                                            rhoDip                        ! current dipole dislocation densities (screw and edge dipoles)
+                                            rhoDip, &                     ! current dipole dislocation densities (screw and edge dipoles)
+                                            dLower, &                     ! minimum stable dipole distance for edges and screws
+                                            dUpper, &                     ! current maximum stable dipole distance for edges and screws
+                                            dUpperOld, &                  ! old maximum stable dipole distance for edges and screws
+                                            deltaDUpper                   ! change in maximum stable dipole distance for edges and screws
 
 
 #ifndef _OPENMP
@@ -1599,8 +1615,11 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
   rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
   rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)
+tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
 forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+forall (c = 1_pInt:2_pInt) &
+  dUpperOld(1_pInt:ns,c) = state(g,ip,el)%p((16_pInt+c)*ns+1_pInt:(17_pInt+c)*ns)
 
 
 
@@ -1622,13 +1641,75 @@ enddo
 
 
 !****************************************************************************
-!*** assign the rates of dislocation densities to my dotState
-!*** if evolution rates lead to negative densities, a cutback is enforced
+!*** calculate dipole formation and dissociation by stress change
+
+!*** calculate limits for stable dipole height
+
+do s = 1_pInt,ns
+  sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)  
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,sLattice,myStructure)) + tauBack(s)
+  if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
+enddo
+dLower = constitutive_nonlocal_minimumDipoleHeight(1:ns,1:2,myInstance)
+dUpper(1:ns,2) = min(1.0_pReal / sqrt(sum(abs(rhoSgl),2) + sum(rhoDip,2)), &
+                     constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgers(1:ns,myInstance) &
+                                                            / (8.0_pReal * pi * abs(tau))) 
+dUpper(1:ns,1) = dUpper(1:ns,2) / (1.0_pReal - constitutive_nonlocal_nu(myInstance))
+deltaDUpper = dUpper - dUpperOld
+
+
+!*** dissociation by stress increase
+
+deltaRhoDipole2SingleStress = 0.0_pReal
+forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal) &
+  deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) / (dUpper(s,c) - dLower(s,c))
+
+forall (t=1_pInt:4_pInt) &
+  deltaRhoDipole2SingleStress(1_pInt:ns,t) = -0.5_pReal * deltaRhoDipole2SingleStress(1_pInt:ns,(t-1_pInt)/2_pInt+9_pInt)
+
+
+!*** formation by stress decrease
+
+deltaRhoSingle2DipoleStress = 0.0_pReal
+do c = 1,2
+  do s = 1,ns
+    if (deltaDUpper(s,c) > 0.0_pReal) then
+      deltaRhoSingle2DipoleStress(s,2*(c-1)+1) = -4.0_pReal * deltaDUpper(s,c) * dUpper(s,c) * rhoSgl(s,2*(c-1)+1) &
+                                                            * ( rhoSgl(s,2*(c-1)+2) + abs(rhoSgl(s,2*(c-1)+6)) )
+      deltaRhoSingle2DipoleStress(s,2*(c-1)+2) = -4.0_pReal * deltaDUpper(s,c) * dUpper(s,c) * rhoSgl(s,2*(c-1)+2) &
+                                                            * ( rhoSgl(s,2*(c-1)+1) + abs(rhoSgl(s,2*(c-1)+5)) )
+      deltaRhoSingle2DipoleStress(s,2*(c-1)+5) = -4.0_pReal * deltaDUpper(s,c) * dUpper(s,c) * rhoSgl(s,2*(c-1)+5) &
+                                                            * ( rhoSgl(s,2*(c-1)+2) + abs(rhoSgl(s,2*(c-1)+6)) )
+      deltaRhoSingle2DipoleStress(s,2*(c-1)+6) = -4.0_pReal * deltaDUpper(s,c) * dUpper(s,c) * rhoSgl(s,2*(c-1)+6) &
+                                                            * ( rhoSgl(s,2*(c-1)+1) + abs(rhoSgl(s,2*(c-1)+5)) )
+    endif
+  enddo
+enddo
+
+forall (c = 1:2) &
+    deltaRhoSingle2DipoleStress(1:ns,8+c) = abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+1)) &
+                                          + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+2)) &
+                                          + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+5)) &
+                                          + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+6))
+
+
+
+!*** store new maximum dipole height in state
+
+forall (c = 1_pInt:2_pInt) &
+  state(g,ip,el)%p((16_pInt+c)*ns+1_pInt:(17_pInt+c)*ns) = dUpper(1_pInt:ns,c) 
+
+
+
+!****************************************************************************
+!*** assign the rates of dislocation densities to deltaState
 
 deltaRho = 0.0_pReal
-deltaRho = deltaRhoRemobilization
+deltaRho = deltaRhoRemobilization &
+         + deltaRhoDipole2SingleStress &
+         + deltaRhoSingle2DipoleStress
 
-constitutive_nonlocal_deltaState = reshape(deltaRho,(/10_pInt*ns/))
+deltaState%p = reshape(deltaRho,(/10_pInt*ns/))
 
 
 
@@ -1641,7 +1722,7 @@ constitutive_nonlocal_deltaState = reshape(deltaRho,(/10_pInt*ns/))
   endif
 #endif
 
-endfunction
+endsubroutine
 
 
 
