@@ -1771,12 +1771,11 @@ relTemperatureResiduum = 0.0_pReal
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      if (.not. crystallite_integrateStress(g,i,e)) then                                                  ! if broken ...
-        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! ... and non-local...
-          !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-          !$OMP END CRITICAL (checkTodo)
-        endif        
+      crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
+      if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
+        !$OMP CRITICAL (checkTodo)
+          crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
+        !$OMP END CRITICAL (checkTodo)
       endif
     endif
   enddo; enddo; enddo
@@ -2355,16 +2354,15 @@ endif
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      if (.not. crystallite_integrateStress(g,i,e)) then                                                  ! broken stress integration
-        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
-          !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-          !$OMP END CRITICAL (checkTodo)
-        endif
+      crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
+      if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
+        !$OMP CRITICAL (checkTodo)
+          crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
+        !$OMP END CRITICAL (checkTodo)
       endif
     endif
   enddo; enddo; enddo
-!$OMP ENDDO      
+!$OMP ENDDO
 
 
 if (numerics_integrationMode < 2) then                                                                      ! in stiffness calculation mode we do not need to do the state integration again, since this is not influenced by a small perturbation in F
@@ -2607,6 +2605,7 @@ endif
 
 ! --+>> STATE LOOP <<+--
 
+statedamper = 1.0_pReal
 NiterationState = 0_pInt
 do while (any(crystallite_todo) .and. NiterationState < nState )                                          ! convergence loop for crystallite
   NiterationState = NiterationState + 1_pInt
@@ -2657,7 +2656,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
         mySizeDotState = constitutive_sizeDotState(g,i,e)
-        constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
+        constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_state(g,i,e)%p(1:mySizeDotState) &
                                                       + constitutive_deltaState(g,i,e)%p
 #ifndef _OPENMP
         if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
@@ -2740,6 +2739,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
         
         mySizeDotState = constitutive_sizeDotState(g,i,e)
         stateResiduum(1:mySizeDotState) = constitutive_state(g,i,e)%p(1:mySizeDotState) &
+                                - constitutive_deltaState(g,i,e)%p(1:mySizeDotState) &
                                 - constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
                                 - (constitutive_dotState(g,i,e)%p * statedamper &
                                    + constitutive_previousDotState(g,i,e)%p * (1.0_pReal - statedamper)) * crystallite_subdt(g,i,e)
@@ -2750,8 +2750,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
         ! --- correct state and temperature with residuum ---
 
         constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_state(g,i,e)%p(1:mySizeDotState) &
-                                                      - stateResiduum(1:mySizeDotState) &
-                                                      + constitutive_deltaState(g,i,e)%p
+                                                      - stateResiduum(1:mySizeDotState)
         crystallite_Temperature(g,i,e) = crystallite_Temperature(g,i,e) - temperatureResiduum
 #ifndef _OPENMP
         if (iand(debug_what(debug_crystallite), debug_levelExtensive) /= 0_pInt &
