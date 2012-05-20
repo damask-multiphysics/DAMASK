@@ -377,7 +377,7 @@ constitutive_nonlocal_interactionSlipSlip = 0.0_pReal
 
 allocate(constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(lattice_maxNslipFamily,2,maxNinstance))
 allocate(constitutive_nonlocal_peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstance))
-constitutive_nonlocal_minimumDipoleHeightPerSlipFamily = 0.0_pReal
+constitutive_nonlocal_minimumDipoleHeightPerSlipFamily = -1.0_pReal
 constitutive_nonlocal_peierlsStressPerSlipFamily = 0.0_pReal
 
 !*** readout data from material.config file
@@ -527,9 +527,9 @@ enddo
       if (constitutive_nonlocal_rhoDipScrew0(f,i) < 0.0_pReal)          call IO_error(251_pInt,ext_msg='rhoDipScrew0')
       if (constitutive_nonlocal_burgersPerSlipFamily(f,i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='burgers')
       if (constitutive_nonlocal_lambda0PerSlipFamily(f,i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='lambda0')
-      if (constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1,i) <= 0.0_pReal) &
+      if (constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1,i) < 0.0_pReal) &
                                                                         call IO_error(251_pInt,ext_msg='minimumDipoleHeightEdge')
-      if (constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2,i) <= 0.0_pReal) &
+      if (constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2,i) < 0.0_pReal) &
                                                                         call IO_error(251_pInt,ext_msg='minimumDipoleHeightScrew')
       if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,1,i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='peierlsStressEdge')
       if (constitutive_nonlocal_peierlsStressPerSlipFamily(f,2,i) <= 0.0_pReal) call IO_error(251_pInt,ext_msg='peierlsStressScrew')
@@ -575,7 +575,7 @@ allocate(constitutive_nonlocal_lambda0(maxTotalNslip, maxNinstance))
 constitutive_nonlocal_lambda0 = 0.0_pReal
 
 allocate(constitutive_nonlocal_minimumDipoleHeight(maxTotalNslip,2,maxNinstance))
-constitutive_nonlocal_minimumDipoleHeight = 0.0_pReal
+constitutive_nonlocal_minimumDipoleHeight = -1.0_pReal
 
 allocate(constitutive_nonlocal_forestProjectionEdge(maxTotalNslip, maxTotalNslip, maxNinstance))
 constitutive_nonlocal_forestProjectionEdge = 0.0_pReal
@@ -1655,6 +1655,7 @@ dUpper(1:ns,2) = min(1.0_pReal / sqrt(sum(abs(rhoSgl),2) + sum(rhoDip,2)), &
                      constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgers(1:ns,myInstance) &
                                                             / (8.0_pReal * pi * abs(tau))) 
 dUpper(1:ns,1) = dUpper(1:ns,2) / (1.0_pReal - constitutive_nonlocal_nu(myInstance))
+dUpper = max(dUpper,dLower)
 deltaDUpper = dUpper - dUpperOld
 
 
@@ -1691,7 +1692,6 @@ forall (c = 1:2) &
                                           + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+2)) &
                                           + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+5)) &
                                           + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+6))
-
 
 
 !*** store new maximum dipole height in state
@@ -1868,8 +1868,6 @@ ns = constitutive_nonlocal_totalNslip(myInstance)
 
 tau = 0.0_pReal
 gdot = 0.0_pReal
-dLower = 0.0_pReal
-dUpper = 0.0_pReal
 
 
 !*** shortcut to state variables 
@@ -1944,6 +1942,7 @@ dUpper(1:ns,2) = min( 1.0_pReal / sqrt( sum(abs(rhoSgl),2)+sum(rhoDip,2) ), &
                       constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgers(1:ns,myInstance) &
                                                              / ( 8.0_pReal * pi * abs(tau) ) )
 dUpper(1:ns,1) = dUpper(1:ns,2) / ( 1.0_pReal - constitutive_nonlocal_nu(myInstance) )
+dUpper = max(dUpper,dLower)
 
 
 
