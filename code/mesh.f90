@@ -2490,21 +2490,16 @@ subroutine mesh_spectral_build_nodes(myUnit)
  allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
  allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
 
- res     = mesh_spectral_getResolution(myUnit) + 1_pInt
+ res     = mesh_spectral_getResolution(myUnit)
  geomdim = mesh_spectral_getDimension(myUnit)
  
- if ((res(1) < 1_pInt) .or. (res(2) < 1_pInt) .or. (res(3) < 0_pInt)) &
-                                        call IO_error(error_ID=843_pInt)           ! 1_pInt is already added
- if ((geomdim(1) <= 0.0_pReal) .or. (geomdim(2)  <= 0.0_pReal) .or. (geomdim(3)  <= 0.0_pReal)) &
-                                        call IO_error(error_ID=844_pInt)
- 
  forall (n = 0_pInt:mesh_Nnodes-1_pInt)
-   mesh_node0(1,n+1_pInt) = geomdim(1) * real(mod(n,res(1) ),pReal) &
-                                                              / real(res(1) -1_pInt,pReal)
-   mesh_node0(2,n+1_pInt) = geomdim(2) * real(mod(n/res(1) ,res(2)),pReal) &
-                                                              / real(res(2) -1_pInt,pReal)
-   mesh_node0(3,n+1_pInt) = geomdim(3) * real(mod(n/res(1) /res(2),res(3)),pReal) &
-                                                              / real(res(3) -1_pInt,pReal)
+   mesh_node0(1,n+1_pInt) = geomdim(1) * real(mod(n,(res(1)+1_pInt) ),pReal) &
+                                                              / real(res(1),pReal)
+   mesh_node0(2,n+1_pInt) = geomdim(2) * real(mod(n/(res(1)+1_pInt),(res(2)+1_pInt)),pReal) &
+                                                              / real(res(2),pReal)
+   mesh_node0(3,n+1_pInt) = geomdim(3) * real(mod(n/(res(1)+1_pInt)/(res(2)+1_pInt),(res(3)+1_pInt)),pReal) &
+                                                              / real(res(3),pReal)
  end forall 
 
  mesh_node = mesh_node0                                         !why?
@@ -2666,7 +2661,7 @@ subroutine mesh_spectral_build_elements(myUnit)
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=842_pInt)
+   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_build_elements')
  endif
  
  rewind(myUnit)
@@ -2699,15 +2694,15 @@ subroutine mesh_spectral_build_elements(myUnit)
      mesh_element( 2,e) = FE_mapElemtype('C3D8R')                                                   ! elem type
      mesh_element( 3,e) = homog                                                                     ! homogenization
      mesh_element( 4,e) = microstructures(1_pInt+i)                                                 ! microstructure
-     mesh_element( 5,e) = e + (e-1_pInt)/(res(1)-1_pInt) + &
-                                       ((e-1_pInt)/((res(1)-1_pInt)*(res(2)-1_pInt)))*res(1)        ! base node
+     mesh_element( 5,e) = e + (e-1_pInt)/res(1) + &
+                                       ((e-1_pInt)/(res(1)*res(2)))*(res(1)+1_pInt)                 ! base node
      mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
-     mesh_element( 7,e) = mesh_element(5,e) + res(1) + 1_pInt
-     mesh_element( 8,e) = mesh_element(5,e) + res(1)
-     mesh_element( 9,e) = mesh_element(5,e) + res(1) * res(2)                                       ! second floor base node
+     mesh_element( 7,e) = mesh_element(5,e) + res(1) + 2_pInt
+     mesh_element( 8,e) = mesh_element(5,e) + res(1) + 1_pInt
+     mesh_element( 9,e) = mesh_element(5,e) +(res(1) + 1_pInt) * (res(2) + 1_pInt)                 ! second floor base node
      mesh_element(10,e) = mesh_element(9,e) + 1_pInt
-     mesh_element(11,e) = mesh_element(9,e) + res(1) + 1_pInt
-     mesh_element(12,e) = mesh_element(9,e) + res(1)
+     mesh_element(11,e) = mesh_element(9,e) + res(1) + 2_pInt
+     mesh_element(12,e) = mesh_element(9,e) + res(1) + 1_pInt
      mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                         !needed for statistics
      mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
    enddo
@@ -3850,7 +3845,7 @@ function mesh_spectral_getDimension(fileUnit)
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=842_pInt)
+   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getDimension')
  endif
  rewind(myUnit)
  do i = 1_pInt, headerLength
@@ -3877,7 +3872,7 @@ function mesh_spectral_getDimension(fileUnit)
  if (.not. gotDimension) &
    call IO_error(error_ID = 845_pInt, ext_msg='dimension')
  if (any(mesh_spectral_getDimension<=0.0_pReal)) &
-   call IO_error(error_ID = 802_pInt, ext_msg='dimension')
+   call IO_error(error_ID = 844_pInt, ext_msg='mesh_spectral_getDimension')
 
 end function mesh_spectral_getDimension
 
@@ -3922,7 +3917,7 @@ function mesh_spectral_getResolution(fileUnit)
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=842_pInt)
+   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getResolution')
  endif
  rewind(myUnit)
  do i = 1_pInt, headerLength
@@ -3948,11 +3943,14 @@ function mesh_spectral_getResolution(fileUnit)
  
  if (.not. gotResolution) &
    call IO_error(error_ID = 845_pInt, ext_msg='resolution')
-  if(mod(mesh_spectral_getResolution(1),2_pInt)/=0_pInt .or.&
-     mod(mesh_spectral_getResolution(2),2_pInt)/=0_pInt .or.&
-    (mod(mesh_spectral_getResolution(3),2_pInt)/=0_pInt .and. &
-     mesh_spectral_getResolution(3)/= 1_pInt))&
-   call IO_error(error_ID = 802_pInt, ext_msg='resolution')
+  if((mod(mesh_spectral_getResolution(1),2_pInt)/=0_pInt .or.  &                                    ! must be a even number
+          mesh_spectral_getResolution(1) < 2_pInt        .or.  &                                    ! and larger than 1
+      mod(mesh_spectral_getResolution(2),2_pInt)/=0_pInt .or.  &                                    !    -"-
+          mesh_spectral_getResolution(2) < 2_pInt        .or.  &                                    !    -"-
+     (mod(mesh_spectral_getResolution(3),2_pInt)/=0_pInt .and. &
+      mesh_spectral_getResolution(3)/= 1_pInt))          .or.  &                                    ! third res might be 1
+         mesh_spectral_getResolution(3) < 1_pInt)              &
+   call IO_error(error_ID = 843_pInt, ext_msg='mesh_spectral_getResolution')
 
 end function mesh_spectral_getResolution
 
@@ -3995,7 +3993,7 @@ function mesh_spectral_getHomogenization(fileUnit)
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=842_pInt)
+   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getHomogenization')
  endif
  rewind(myUnit)
  do i = 1_pInt, headerLength
@@ -4013,7 +4011,7 @@ function mesh_spectral_getHomogenization(fileUnit)
  if (.not. gotHomogenization ) &
    call IO_error(error_ID = 845_pInt, ext_msg='homogenization')
  if (mesh_spectral_getHomogenization<1_pInt) &
-   call IO_error(error_ID = 802_pInt, ext_msg='homogenization')
+   call IO_error(error_ID = 842_pInt, ext_msg='mesh_spectral_getHomogenization')
    
 end function mesh_spectral_getHomogenization
 

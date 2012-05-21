@@ -1302,8 +1302,6 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
 
  !* errors related to spectral solver
 
- case (802_pInt)
-   msg = 'invaldid geometry parameter'
  case (808_pInt)
    msg = 'precision not suitable for FFTW'
  case (809_pInt)
@@ -1322,8 +1320,10 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'incomplete loadcase'
  case (838_pInt)
    msg = 'mixed boundary conditions allow rotation'
+ case (841_pInt)
+   msg = 'missing header length info in spectral mesh'
  case (842_pInt)
-   msg = 'missing header info in spectral mesh'
+   msg = 'homogenization in spectral mesh'
  case (843_pInt)
    msg = 'resolution in spectral mesh'
  case (844_pInt)
