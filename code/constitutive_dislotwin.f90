@@ -82,6 +82,7 @@ real(pReal), dimension(:), allocatable ::                 constitutive_dislotwin
                                                           constitutive_dislotwin_L0, &                          ! Length of twin nuclei in Burgers vectors
                                                           constitutive_dislotwin_sbResistance, &                ! FIXED (for now) value for shearband resistance (might become an internal state variable at some point)
                                                           constitutive_dislotwin_sbVelocity, &                  ! FIXED (for now) value for shearband velocity_0
+                                                          constitutive_dislotwin_sbQedge, &                     ! FIXED (for now) value for shearband systems Qedge
                                                           constitutive_dislotwin_SFE_0K, &                      ! stacking fault energy at zero K
                                                           constitutive_dislotwin_dSFE_dT, &                     ! temperature dependance of stacking fault energy
                                                           constitutive_dislotwin_aTolRho                        ! absolute tolerance for integration of dislocation density
@@ -246,6 +247,8 @@ allocate(constitutive_dislotwin_sbResistance(maxNinstance))
          constitutive_dislotwin_sbResistance = 0.0_pReal
 allocate(constitutive_dislotwin_sbVelocity(maxNinstance))
          constitutive_dislotwin_sbVelocity = 0.0_pReal
+allocate(constitutive_dislotwin_sbQedge(maxNinstance))
+         constitutive_dislotwin_sbQedge = 0.0_pReal
 allocate(constitutive_dislotwin_SFE_0K(maxNinstance))
          constitutive_dislotwin_SFE_0K = 0.0_pReal
 allocate(constitutive_dislotwin_dSFE_dT(maxNinstance))
@@ -401,6 +404,8 @@ do                                                       ! read thru sections of
               constitutive_dislotwin_sbResistance(i) = IO_floatValue(line,positions,2_pInt)
        case ('shearbandvelocity')
               constitutive_dislotwin_sbVelocity(i) = IO_floatValue(line,positions,2_pInt)
+       case ('qedgepersbsystem')
+              constitutive_dislotwin_sbQedge(i) = IO_floatValue(line,positions,2_pInt)
        case default
               call IO_error(240_pInt,ext_msg=tag)
      end select
@@ -575,6 +580,35 @@ do i = 1_pInt,maxNinstance
      constitutive_dislotwin_Cslip_66(5,5,i) = constitutive_dislotwin_C44(i)
      constitutive_dislotwin_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_dislotwin_C11(i)-constitutive_dislotwin_C12(i))
    end select
+ 
+   write(6,*) constitutive_dislotwin_Cslip_66(1,1,i)
+     write(6,*) constitutive_dislotwin_Cslip_66(2,2,i)
+       write(6,*) constitutive_dislotwin_Cslip_66(3,3,i)
+         write(6,*) constitutive_dislotwin_Cslip_66(1,2,i)
+           write(6,*) constitutive_dislotwin_Cslip_66(1,3,i)
+             write(6,*) constitutive_dislotwin_Cslip_66(2,3,i)
+               write(6,*) constitutive_dislotwin_Cslip_66(4,4,i)
+                 write(6,*) constitutive_dislotwin_Cslip_66(5,5,i)
+                   write(6,*) constitutive_dislotwin_Cslip_66(6,6,i)
+                   
+                   
+    write(6,*) constitutive_dislotwin_C11(i)
+        write(6,*) constitutive_dislotwin_C33(i)
+         write(6,*) constitutive_dislotwin_C12(i)
+           write(6,*) constitutive_dislotwin_C13(i)
+               write(6,*) constitutive_dislotwin_C44(i)
+
+                   
+                   
+
+   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(2,2,1)',  constitutive_dislotwin_Cslip_66(2,2,1)
+   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(3,3,1)',  constitutive_dislotwin_Cslip_66(3,3,1)
+   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(1,2,1)',  constitutive_dislotwin_Cslip_66(1,2,1)
+   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(1,3,1)',  constitutive_dislotwin_Cslip_66(1,3,1)
+   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(2,3,1)',  constitutive_dislotwin_Cslip_66(6,6,1)
+   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(4,4,1)',  constitutive_dislotwin_Cslip_66(4,4,1)
+   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(5,5,1)',  constitutive_dislotwin_Cslip_66(5,5,1)
+   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(6,6,1)',  constitutive_dislotwin_Cslip_66(6,6,1)
    constitutive_dislotwin_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_dislotwin_Cslip_66(:,:,i)))
    constitutive_dislotwin_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_dislotwin_Cslip_66(:,:,i))
    constitutive_dislotwin_Gmod(i) = &
@@ -1069,7 +1103,7 @@ if(constitutive_dislotwin_sbVelocity(myInstance) /= 0.0_pReal) then
     StressRatio_pminus1 = (abs(tau_sb(j))/constitutive_dislotwin_sbResistance(myInstance))&
                                                                          **(constitutive_dislotwin_p(myInstance)-1.0_pReal)
     !* Boltzmann ratio
-    BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(f,myInstance)/(kB*Temperature)
+    BoltzmannRatio = constitutive_dislotwin_sbQedge(myInstance)/(kB*Temperature)
     !* Initial shear rates
     DotGamma0 = constitutive_dislotwin_sbVelocity(myInstance)
 
@@ -1519,7 +1553,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
              StressRatio_pminus1 = (abs(tau)/constitutive_dislotwin_sbResistance(myInstance))&
                                                                            **(constitutive_dislotwin_p(myInstance)-1.0_pReal)
              !* Boltzmann ratio
-             BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(f,myInstance)/(kB*Temperature)
+             BoltzmannRatio = constitutive_dislotwin_sbQedge(myInstance)/(kB*Temperature)
              !* Initial shear rates
              DotGamma0 = constitutive_dislotwin_sbVelocity(myInstance)
 
