@@ -17,7 +17,7 @@
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
 !##################################################################################################
-!* $Id: DAMASK_spectral_AL.f90 1425 2012-04-06 14:23:06Z MPIE\m.diehl $
+!* $Id$
 !##################################################################################################
 ! Material subroutine for BVP solution using spectral method
 !
