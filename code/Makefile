@@ -357,10 +357,10 @@ endif
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
 
 tidy: 
-	rm -rf *.o
-	rm -rf *.mod
+	@rm -rf *.o
+	@rm -rf *.mod
 
 clean: 
-	rm -rf *.o
-	rm -rf *.mod
-	rm -rf *.exe
+	@rm -rf *.o
+	@rm -rf *.mod
+	@rm -rf *.exe
