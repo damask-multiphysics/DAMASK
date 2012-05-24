@@ -418,9 +418,11 @@ enddo
    myStructure = constitutive_dislotwin_structure(i)
 
    !* Sanity checks
-   if (myStructure < 1_pInt .or. myStructure > 3_pInt)                      call IO_error(205_pInt,e=i)
-   if (sum(constitutive_dislotwin_Nslip(:,i)) <= 0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='nslip')
-   if (sum(constitutive_dislotwin_Ntwin(:,i)) < 0_pInt)                     call IO_error(241_pInt,e=i,ext_msg='ntwin')
+   if (myStructure < 1_pInt )                                               call IO_error(205_pInt,e=i)
+   if (sum(constitutive_dislotwin_Nslip(:,i)) <  0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='nslip')
+   if (sum(constitutive_dislotwin_Ntwin(:,i)) <  0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='ntwin')
+   if (sum(constitutive_dislotwin_Nslip(:,i)) == 0_pInt .and. &
+       sum(constitutive_dislotwin_Ntwin(:,i)) >  0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='nslip/ntwin')
    do f = 1_pInt,lattice_maxNslipFamily
      if (constitutive_dislotwin_Nslip(f,i) > 0_pInt) then
        if (constitutive_dislotwin_rhoEdge0(f,i) < 0.0_pReal)                call IO_error(241_pInt,e=i,ext_msg='rhoEdge0')
