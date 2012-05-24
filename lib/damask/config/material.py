@@ -220,14 +220,15 @@ class Material():
     
     microstructure = Microstructure()
     
-    for property in ['phase','texture','fraction']:
+    for property in ['phase','texture','fraction','crystallite']:
       if type(components[property]) is not list: components[property] = [components[property]]
 
-    for (phase,texture,fraction) in zip(components['phase'],components['texture'],components['fraction']):
-      microstructure.add_multiKey('constituent','phase %i\ttexture %i\tfraction %g'%(
+    for (phase,texture,fraction,crystallite) in zip(components['phase'],components['texture'],components['fraction'],components['crystallite']):
+      microstructure.add_multiKey('constituent','phase %i\ttexture %i\tfraction %g\ncrystallite %i'%(
                                     self.data['phase']['__order__'].index(phase)+1,
                                     self.data['texture']['__order__'].index(texture)+1,
-                                    fraction))
+                                    fraction,
+                                    self.data['crystallite']['__order__'].index(crystallite)+1))
 
     self.add_section('microstructure',section,microstructure)
 
