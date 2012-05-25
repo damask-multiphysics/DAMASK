@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # $Id$
 
-import os, sys
+import os, sys, shlex
 import subprocess,shutil,string
 import damask
 from optparse import OptionParser
@@ -29,7 +29,7 @@ class Test():
     (self.options, self.args) = self.parser.parse_args()
     
   def execute(self,variants = [],update = []):
-
+    
     '''
     Run all variants and report first failure.
     '''
@@ -44,19 +44,10 @@ class Test():
           self.update(variant)
         elif not self.compare(variant):
           return variant
-      except:
+      except Exception,e :
+        print '\nWARNING:\n %s\n'%e
         return variant
     return -1
-    # for self.current_variant_index,variant in enumerate(variants):
-      # self.prepare(variant)
-      # self.run(variant)
-      # self.postprocess(variant)
-      # if self.current_variant_index in update:
-        # self.update(variant)
-      # elif not self.compare(variant):
-        # return variant
-    # return -1
-
 
   def clean(self):
     '''
@@ -148,10 +139,14 @@ class Test():
       except:
         print 'Current2Current: Unable to copy file ', file
 
-  def execute_inCurrentDir(self,cmd):
+  def execute_inCurrentDir(self,cmd,outfile='execute_log.txt'):
     os.chdir(self.dirCurrent())
+    file=open(outfile,'a+')
     print cmd
-    os.system(cmd)
+    process = subprocess.Popen(shlex.split(cmd),stdout = file,stderr = subprocess.STDOUT)
+    file.close()
+    process.wait()
+
 
   def compare_Array(self,ref,cur):
     import numpy
