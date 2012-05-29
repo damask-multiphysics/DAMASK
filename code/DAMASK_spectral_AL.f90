@@ -443,7 +443,27 @@ program DAMASK_spectral_AL
                                        F_real,[ res(3),res(2) ,res(1)+2_pInt],&
                                          1,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
  if (debugGeneral) write(6,'(a)') 'FFTW initialized'
- 
+
+!--------------------------------------------------------------------------------------------------
+! init fields to no deformation
+ ielem = 0_pInt
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   ielem = ielem + 1_pInt 
+   F_real(i,j,k,1:3,1:3) = math_I3; F_lastInc(i,j,k,1:3,1:3) = math_I3
+   coordinates(i,j,k,1:3) = geomdim/real(res * [i,j,k], pReal) - geomdim/real(2_pInt*res,pReal)
+   call CPFEM_general(3_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
+                      0.0_pReal,ielem,1_pInt,sigma,dsde,P(i,j,k,1:3,1:3),dPdF(i,j,k,1:3,1:3,1:3,1:3))
+ enddo; enddo; enddo
+
+ ielem = 0_pInt
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   ielem = ielem + 1_pInt 
+   call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
+                      0.0_pReal,ielem,1_pInt,sigma,dsde,P(i,j,k,1:3,1:3),dPdF(i,j,k,1:3,1:3,1:3,1:3))
+   C = C + dPdF(i,j,k,1:3,1:3,1:3,1:3)
+ enddo; enddo; enddo
+ C_inc0 = C * wgt                                                                     ! linear reference material stiffness
+
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around) and remove the given highest frequencies
  do k = 1_pInt, res(3)
@@ -476,26 +496,6 @@ program DAMASK_spectral_AL
    enddo; enddo; enddo
    gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
  endif
-
-!--------------------------------------------------------------------------------------------------
-! init fields to no deformation
- ielem = 0_pInt
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   ielem = ielem + 1_pInt 
-   F_real(i,j,k,1:3,1:3) = math_I3; F_lastInc(i,j,k,1:3,1:3) = math_I3
-   coordinates(i,j,k,1:3) = geomdim/real(res * [i,j,k], pReal) - geomdim/real(2_pInt*res,pReal)
-   call CPFEM_general(3_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
-                      0.0_pReal,ielem,1_pInt,sigma,dsde,temp33_Real ,dPdF(i,j,k,1:3,1:3,1:3,1:3))
- enddo; enddo; enddo
-
- ielem = 0_pInt
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   ielem = ielem + 1_pInt 
-   call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
-                      0.0_pReal,ielem,1_pInt,sigma,dsde,temp33_Real ,dPdF(i,j,k,1:3,1:3,1:3,1:3))
-   C = C + dPdF(i,j,k,1:3,1:3,1:3,1:3)
- enddo; enddo; enddo
- C_inc0 = C * wgt                                                                     ! linear reference material stiffness
 
 !--------------------------------------------------------------------------------------------------
 ! possible restore deformation gradient from saved state
@@ -671,7 +671,7 @@ program DAMASK_spectral_AL
        iter = 0_pInt
        err_crit = huge(1.0_pReal)                                                                   ! go into loop 
        callCPFEM=.true.
-       guessmax = 2
+       guessmax = 3
        guesses = 0
 
 !##################################################################################################
@@ -690,9 +690,9 @@ program DAMASK_spectral_AL
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
          if(size_reduced > 0_pInt) then                                                              ! calculate stress BC if applied
-           err_stress = maxval(abs(mask_stress * (lambda_av - bc(loadcase)%P)))                      ! maximum deviaton (tensor norm not applicable)
-           F_aim = F_aim  + math_mul3333xx33(S_lastInc,bc(loadcase)%P- lambda_av)
-           err_stress_tol = maxval(abs(lambda_av)) * err_stress_tolrel                              ! don't use any tensor norm because the comparison should be coherent
+           err_stress = maxval(abs(mask_stress * (P_star_av - bc(loadcase)%P)))                      ! maximum deviaton (tensor norm not applicable)
+           F_aim = F_aim  + math_mul3333xx33(S_lastInc,bc(loadcase)%P- P_star_av)
+           err_stress_tol = maxval(abs(P_star_av)) * err_stress_tolrel                              ! don't use any tensor norm because the comparison should be coherent
          else
            err_stress_tol = + huge(1.0_pReal)
          endif
