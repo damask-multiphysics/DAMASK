@@ -58,7 +58,7 @@ class Test():
     try:
       shutil.rmtree(self.dirCurrent())
     except:
-      print('removal of directory "%s" failed...'%(self.dirCurrent()))
+      print('removal of directory "%s" not possible...'%(self.dirCurrent()))
       status = status and False
 
     try:
