@@ -1597,7 +1597,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,*)
-    write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_dotState at el ip g ',el,ip,g
+    write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_deltaState at el ip g ',el,ip,g
     write(6,*)
   endif
 #endif
