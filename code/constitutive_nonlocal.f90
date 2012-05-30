@@ -1718,6 +1718,8 @@ deltaState%p = reshape(deltaRho,(/10_pInt*ns/))
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_what(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', deltaRhoRemobilization(1:ns,1:8)
+    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole formation by stress decrease', deltaRhoSingle2DipoleStress
+    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole dissociation by stress increase', deltaRhoDipole2SingleStress
     write(6,*)
   endif
 #endif
