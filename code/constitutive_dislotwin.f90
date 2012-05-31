@@ -418,11 +418,9 @@ enddo
    myStructure = constitutive_dislotwin_structure(i)
 
    !* Sanity checks
-   if (myStructure < 1_pInt )                                               call IO_error(205_pInt,e=i)
-   if (sum(constitutive_dislotwin_Nslip(:,i)) <  0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='nslip')
-   if (sum(constitutive_dislotwin_Ntwin(:,i)) <  0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='ntwin')
-   if (sum(constitutive_dislotwin_Nslip(:,i)) == 0_pInt .and. &
-       sum(constitutive_dislotwin_Ntwin(:,i)) >  0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='nslip/ntwin')
+   if (myStructure < 1_pInt .or. myStructure > 3_pInt)                      call IO_error(205_pInt,e=i)
+   if (sum(constitutive_dislotwin_Nslip(:,i)) <= 0_pInt)                    call IO_error(241_pInt,e=i,ext_msg='nslip')
+   if (sum(constitutive_dislotwin_Ntwin(:,i)) < 0_pInt)                     call IO_error(241_pInt,e=i,ext_msg='ntwin')
    do f = 1_pInt,lattice_maxNslipFamily
      if (constitutive_dislotwin_Nslip(f,i) > 0_pInt) then
        if (constitutive_dislotwin_rhoEdge0(f,i) < 0.0_pReal)                call IO_error(241_pInt,e=i,ext_msg='rhoEdge0')
@@ -582,35 +580,6 @@ do i = 1_pInt,maxNinstance
      constitutive_dislotwin_Cslip_66(5,5,i) = constitutive_dislotwin_C44(i)
      constitutive_dislotwin_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_dislotwin_C11(i)-constitutive_dislotwin_C12(i))
    end select
- 
-   write(6,*) constitutive_dislotwin_Cslip_66(1,1,i)
-     write(6,*) constitutive_dislotwin_Cslip_66(2,2,i)
-       write(6,*) constitutive_dislotwin_Cslip_66(3,3,i)
-         write(6,*) constitutive_dislotwin_Cslip_66(1,2,i)
-           write(6,*) constitutive_dislotwin_Cslip_66(1,3,i)
-             write(6,*) constitutive_dislotwin_Cslip_66(2,3,i)
-               write(6,*) constitutive_dislotwin_Cslip_66(4,4,i)
-                 write(6,*) constitutive_dislotwin_Cslip_66(5,5,i)
-                   write(6,*) constitutive_dislotwin_Cslip_66(6,6,i)
-                   
-                   
-    write(6,*) constitutive_dislotwin_C11(i)
-        write(6,*) constitutive_dislotwin_C33(i)
-         write(6,*) constitutive_dislotwin_C12(i)
-           write(6,*) constitutive_dislotwin_C13(i)
-               write(6,*) constitutive_dislotwin_C44(i)
-
-                   
-                   
-
-   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(2,2,1)',  constitutive_dislotwin_Cslip_66(2,2,1)
-   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(3,3,1)',  constitutive_dislotwin_Cslip_66(3,3,1)
-   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(1,2,1)',  constitutive_dislotwin_Cslip_66(1,2,1)
-   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(1,3,1)',  constitutive_dislotwin_Cslip_66(1,3,1)
-   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(2,3,1)',  constitutive_dislotwin_Cslip_66(6,6,1)
-   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(4,4,1)',  constitutive_dislotwin_Cslip_66(4,4,1)
-   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(5,5,1)',  constitutive_dislotwin_Cslip_66(5,5,1)
-   write(6,'(a,/,f30.20,1x/)') ' constitutive_dislotwin_Cslip_66(6,6,1)',  constitutive_dislotwin_Cslip_66(6,6,1)
    constitutive_dislotwin_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_dislotwin_Cslip_66(:,:,i)))
    constitutive_dislotwin_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_dislotwin_Cslip_66(:,:,i))
    constitutive_dislotwin_Gmod(i) = &
