@@ -98,6 +98,7 @@ subroutine constitutive_init
                      material_localFileExt, &    
                      material_configFile, &    
                      phase_name, &
+                     phase_elasticity, &
                      phase_plasticity, &
                      phase_plasticityInstance, &
                      phase_Noutput, &
@@ -211,6 +212,14 @@ endif
     myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
     do i = 1_pInt,FE_Nips(mesh_element(2,e))                   ! loop over IPs
       do g = 1_pInt,myNgrains                                  ! loop over grains
+        select case(phase_elasticity(material_phase(g,i,e)))  
+
+          case (constitutive_hooke_label)
+                                                               ! valid elasticity but nothing to do             
+          case default
+            call IO_error(200_pInt,ext_msg=trim(phase_elasticity(material_phase(g,i,e))))      ! unknown elasticity
+           
+        end select
         myInstance = phase_plasticityInstance(material_phase(g,i,e))
         select case(phase_plasticity(material_phase(g,i,e)))  
         
@@ -361,7 +370,7 @@ endif
             constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(myInstance)
             
           case default
-            call IO_error(200_pInt,material_phase(g,i,e))      ! unknown plasticity
+            call IO_error(201_pInt,ext_msg=trim(phase_plasticity(material_phase(g,i,e))))      ! unknown plasticity
            
         end select
         constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p

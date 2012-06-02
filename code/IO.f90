@@ -866,14 +866,17 @@ end function IO_fixedIntValue
 pure function IO_lc(line)
 
  implicit none
+ character(26), parameter :: lower = 'abcdefghijklmnopqrstuvwxyz'
+ character(26), parameter :: upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
  character(len=*), intent(in) :: line
  character(len=len(line))     :: IO_lc
  
- integer                      :: i                      ! no pInt (len returns default integer)
+ integer                      :: i,n                      ! no pInt (len returns default integer)
 
  IO_lc = line
  do i=1,len(line)
-    if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
+   n = index(upper,IO_lc(i:i))
+   if (n/=0) IO_lc(i:i) = lower(n:n)
  enddo
 
 end function IO_lc
@@ -885,16 +888,21 @@ end function IO_lc
 subroutine IO_lcInplace(line)
 
  implicit none
+ character(26), parameter :: lower = 'abcdefghijklmnopqrstuvwxyz'
+ character(26), parameter :: upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
  character(len=*), intent(inout) :: line
  character(len=len(line))        :: IO_lc
 
- integer                         ::  i                   ! no pInt (len returns default integer)
+ integer                         :: i,n                   ! no pInt (len returns default integer)
 
- IO_lc = line
  do i=1,len(line)
-    if(64<iachar(line(i:i)) .and. iachar(line(i:i))<91) IO_lc(i:i)=achar(iachar(line(i:i))+32)
+   n = index(upper,line(i:i))
+   if (n/=0) then 
+     IO_lc(i:i) = lower(n:n)
+   else
+     IO_lc(i:i) = line(i:i)
+   endif 
  enddo
- line = IO_lc
 
  end subroutine IO_lcInplace
 
@@ -1212,7 +1220,9 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  !* plasticity error messages
 
  case (200_pInt)
-   msg = 'unknown plasticity specified'
+   msg = 'unknown elasticity specified:' 
+ case (201_pInt)
+   msg = 'unknown plasticity specified:' 
  case (205_pInt)
    msg = 'unknown lattice structure encountered'
 
@@ -1282,11 +1292,12 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'Prime-error: N must be between 0 and PRIME_MAX'
  case (407_pInt)
    msg = 'Dimension in nearest neigbor search wrong'
+ case (408_pInt)
+   msg = 'Polar decomposition error'
  case (450_pInt)
    msg = 'unknown symmetry type specified'
  case (460_pInt)
    msg = 'kdtree2 error'
-
 
  !* homogenization errors
 
