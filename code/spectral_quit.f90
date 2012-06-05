@@ -53,10 +53,10 @@ subroutine quit(stop_id)
  write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
                                                       dateAndTime(6),':',&
                                                       dateAndTime(7)  
- if (stop_id == 1_pInt) stop 1                                                                      ! normal termination
- if (stop_id <= 0_pInt) then                                                                        ! trigger regridding
-   write(6,'(a,i6)') 'restart a', stop_id*(-1_pInt)
+ if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
+ if (stop_id <  0_pInt) then                                                                        ! trigger regridding
+   write(0,'(a,i6)') 'restart a', stop_id*(-1_pInt)
    stop 2
  endif
- stop 0                                                                                             ! error
+ stop 1                                                                                             ! error
 end subroutine

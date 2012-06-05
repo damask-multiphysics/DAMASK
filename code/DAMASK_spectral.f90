@@ -195,7 +195,6 @@ program DAMASK_spectral
  real(pReal),    dimension(:,:,:,:,:), allocatable ::  F, F_lastInc
  real(pReal),    dimension(:,:,:,:),   allocatable ::  coordinates
  real(pReal),    dimension(:,:,:),     allocatable ::  temperature
- real(pReal),    dimension(:,:,:),     allocatable ::  phase_cont                                   ! phase contrast field: C(x)/C_ref
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
@@ -449,7 +448,6 @@ program DAMASK_spectral
  allocate (xi         (3,res1_red,res(2),res(3)),      source = 0.0_pReal)
  allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
  allocate (temperature(  res(1),  res(2),res(3)),      source = bc(1)%temperature)                  ! start out isothermally
- allocate (phase_cont (  res(1),  res(2),res(3)),      source = 0.0_pReal)
  tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                      ! allocate continous data using a C function, C_SIZE_T is of type integer(8)
  call c_f_pointer(tensorField, P_real,         [ res(1)+2_pInt,res(2),res(3),3,3])                  ! place a pointer for a real representation on tensorField
  call c_f_pointer(tensorField, deltaF_real,    [ res(1)+2_pInt,res(2),res(3),3,3])                  ! place a pointer for a real representation on tensorField
@@ -625,30 +623,30 @@ C_ref = C * wgt
 ! loop oper incs defined in input file for current loadcase
 !##################################################################################################
    do inc = 1_pInt,  bc(loadcase)%incs
-     totalIncsCounter = totalIncsCounter + 1_pInt
-     if(totalIncsCounter >= restartInc)  then                                                       ! do calculations (otherwise just forwarding) 
-     
+     totalIncsCounter = totalIncsCounter + 1_pInt                                                 
+
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
-       timeinc_old = timeinc
-       if (bc(loadcase)%logscale == 0_pInt) then                                                    ! linear scale
-         timeinc = bc(loadcase)%time/bc(loadcase)%incs                                              ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
-       else
-         if (loadcase == 1_pInt) then                                                               ! 1st loadcase of logarithmic scale            
-           if (inc == 1_pInt) then                                                                  ! 1st inc of 1st loadcase of logarithmic scale
-             timeinc = bc(1)%time*(2.0_pReal**real(    1_pInt-bc(1)%incs ,pReal))                   ! assume 1st inc is equal to 2nd 
-           else                                                                                     ! not-1st inc of 1st loadcase of logarithmic scale
-             timeinc = bc(1)%time*(2.0_pReal**real(inc-1_pInt-bc(1)%incs ,pReal))
-           endif
-         else                                                                                       ! not-1st loadcase of logarithmic scale
-             timeinc = time0 *( (1.0_pReal + bc(loadcase)%time/time0 )**(real(          inc,pReal)/&
-                                                                    real(bc(loadcase)%incs ,pReal))&
-                               -(1.0_pReal + bc(loadcase)%time/time0 )**(real( (inc-1_pInt),pReal)/&
-                                                                    real(bc(loadcase)%incs ,pReal)) )
+     timeinc_old = timeinc
+     if (bc(loadcase)%logscale == 0_pInt) then                                                      ! linear scale
+       timeinc = bc(loadcase)%time/bc(loadcase)%incs                                                ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
+     else
+       if (loadcase == 1_pInt) then                                                                 ! 1st loadcase of logarithmic scale            
+         if (inc == 1_pInt) then                                                                    ! 1st inc of 1st loadcase of logarithmic scale
+           timeinc = bc(1)%time*(2.0_pReal**real(    1_pInt-bc(1)%incs ,pReal))                     ! assume 1st inc is equal to 2nd 
+         else                                                                                       ! not-1st inc of 1st loadcase of logarithmic scale
+           timeinc = bc(1)%time*(2.0_pReal**real(inc-1_pInt-bc(1)%incs ,pReal))
          endif
+       else                                                                                         ! not-1st loadcase of logarithmic scale
+           timeinc = time0 *( (1.0_pReal + bc(loadcase)%time/time0 )**(real(          inc,pReal)/&
+                                                                  real(bc(loadcase)%incs ,pReal))&
+                             -(1.0_pReal + bc(loadcase)%time/time0 )**(real( (inc-1_pInt),pReal)/&
+                                                                   real(bc(loadcase)%incs ,pReal)) )
        endif
-       time = time + timeinc
+     endif
+     time = time + timeinc
 
+     if(totalIncsCounter >= restartInc)  then                                                       ! do calculations (otherwise just forwarding) 
        if (bc(loadcase)%velGradApplied) then                                                        ! calculate deltaF_aim from given L and current F
          deltaF_aim = timeinc * mask_defgrad * math_mul33x33(bc(loadcase)%deformation, F_aim)
        else                                                                                         ! deltaF_aim = fDot *timeinc where applicable
@@ -729,8 +727,8 @@ C_ref = C * wgt
 ! report begin of new iteration
          write(6,'(a)') ''
          write(6,'(a)') '=================================================================='
-         write(6,'(5(a,i6.6))') 'Loadcase ',loadcase,' Increment ',inc,'/',bc(loadcase)%incs,&
-                                                                  ' @ Iteration ',iter,'/',itmax
+         write(6,'(6(a,i6.6))') 'Loadcase ',loadcase,' Inc. ',inc,'/',bc(loadcase)%incs,&
+                                                     ' @ Iter. ',itmin,' < ',iter,' < ',itmax
          write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
                                                              math_transpose33(F_aim)
          write(6,'(a)') ''
@@ -747,8 +745,6 @@ C_ref = C * wgt
                               P_real(i,j,k,1:3,1:3),dPdF)
          enddo; enddo; enddo
 
-
-
          P_real = 0.0_pReal                                                                         ! needed because of the padding for FFTW
          C = 0.0_pReal
          ielem = 0_pInt 
@@ -760,11 +756,10 @@ C_ref = C * wgt
                               temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde, &
                               P_real(i,j,k,1:3,1:3),dPdF)
            CPFEM_mode = 2_pInt
-           phase_cont(i,j,k) = sqrt(sum(dPdF*dPdF)/sum(C_ref*C_ref))
            C = C + dPdF
          enddo; enddo; enddo
          call debug_info()
-         write(6,'(a,es11.4)')        'Max phase contrast = ',maxval(phase_cont)
+
 
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
@@ -814,8 +809,6 @@ C_ref = C * wgt
           P_fourier (1:res1_red,1:res(2),                res(3)/2_pInt+1_pInt,1:3,1:3)&
                                                              = cmplx(0.0_pReal,0.0_pReal,pReal)
 
-
-
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
          if(size_reduced > 0_pInt) then                                                             ! calculate stress BC if applied
@@ -864,8 +857,9 @@ C_ref = C * wgt
 
          err_div_RMS = sqrt(err_div_RMS)*wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
 
-         if (err_div_RMS/pstress_av_L2 > err_div &
-                     .and. err_stress < err_stress_tol) then
+         if (err_div_RMS/pstress_av_L2 >  err_div &
+                     .and.  err_stress <  err_stress_tol &
+                     .and.        iter >= itmin ) then
            write(6,'(a)') 'Increasing divergence, stopping iterations'
            iter = itmax
          endif
@@ -1000,8 +994,8 @@ C_ref = C * wgt
 ! updated deformation gradient
          
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-           F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - deltaF_real(i,j,k,1:3,1:3)*wgt/phase_cont(i,j,k)     ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
-         enddo; enddo; enddo                                                                          ! preconditioning: F(x)^(n+1) = F(x)^(n) + correction/phase_contrast(x)
+           F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - deltaF_real(i,j,k,1:3,1:3)*wgt                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
+         enddo; enddo; enddo
          
 
 !--------------------------------------------------------------------------------------------------
@@ -1059,8 +1053,11 @@ C_ref = C * wgt
    enddo    ! end looping over loadcases
    write(6,'(a)') ''
    write(6,'(a)') '##################################################################'
-   write(6,'(i6.6,a,i6.6,a)') notConvergedCounter, ' out of ', &
-                            notConvergedCounter + convergedCounter, ' increments did not converge!'
+   write(6,'(i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
+                                     notConvergedCounter + convergedCounter, ' (', &
+                                     real(convergedCounter, pReal)/&
+                                     real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
+                                     ' %) increments converged!'
  close(538)
  call fftw_destroy_plan(plan_stress); call fftw_destroy_plan(plan_correction)
  if (debugDivergence) call fftw_destroy_plan(plan_divergence)
@@ -1068,5 +1065,5 @@ C_ref = C * wgt
    call fftw_destroy_plan(plan_scalarField_forth)
    call fftw_destroy_plan(plan_scalarField_back)
  endif
- call quit(1_pInt)
+ call quit(0_pInt)
 end program DAMASK_spectral
