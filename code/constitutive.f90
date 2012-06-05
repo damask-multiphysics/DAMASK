@@ -381,7 +381,6 @@ endif
 !$OMP END PARALLEL DO
 
 !----- write out state size file----------------
-open(777)
 call IO_write_jobBinaryFile(777,'sizeStateConst', size(constitutive_sizeState))
 write (777,rec=1) constitutive_sizeState
 close(777)

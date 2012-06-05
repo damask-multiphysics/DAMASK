@@ -195,7 +195,6 @@ end forall
 !$OMP END PARALLEL DO
 
 !---write state size file out---------------------------------------
-open(777)
 call IO_write_jobBinaryFile(777,'sizeStateHomog',size(homogenization_sizeState))
 write (777,rec=1) homogenization_sizeState
 close(777)
