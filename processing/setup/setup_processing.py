@@ -90,6 +90,7 @@ bin_link = { \
                 'spectral_layeredGeom.py',
                 'spectral_geomPack.py',
                 'voronoi_tessellation.exe',
+                'spectral_voronoiTessellation.py',
                 'OIMang_hex2cub',
                 ],
         'post' : [
@@ -101,6 +102,7 @@ bin_link = { \
                 'addCurl.py',
                 'addMises.py',
                 'addNorm.py',
+                'addPK2.py',
                 'addStrainTensors.py',
                 'addCompatibilityMismatch.py',
                 'addDeformedConfiguration.py',
