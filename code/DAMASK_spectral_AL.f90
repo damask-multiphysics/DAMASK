@@ -105,8 +105,6 @@ program DAMASK_spectral_AL
    materialpoint_sizeResults, &
    materialpoint_results
    
- !$ use OMP_LIB                                                                                     ! the openMP function library
-
  implicit none 
 !--------------------------------------------------------------------------------------------------
 ! variables to read from load case and geom file

@@ -238,10 +238,10 @@ subroutine hypela2(&
                       debug_reset
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_initAll,CPFEM_general,CPFEM_init_done
-!$ use OMP_LIB                                                                ! the openMP function library
 !$ use numerics, only: DAMASK_NumThreadsInt                                   ! number of threads set by DAMASK_NUM_THREADS
  
- implicit none 
+ implicit none
+ include "omp_lib.h"                                                          ! the openMP function library
 !     ** Start of generated type statements **
  real(pReal) coord, d, de, disp, dispt, dt, e, eigvn, eigvn1, ffn, ffn1
  real(pReal) frotn, frotn1, g

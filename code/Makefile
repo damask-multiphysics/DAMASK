@@ -43,6 +43,7 @@ ACMLROOT :=/opt/acml4.4.0
 
 F90 ?=ifort
 COMPILERNAME ?= $(F90)
+INCLUDE_DIRS +=-I$(DAMASK_ROOT)/lib
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP :=OFF
@@ -105,13 +106,13 @@ endif
 endif
 
 ifdef STANDARD_CHECK
-STANDARD_CHECK_ifort =$(STANDARD_CHECK)
-STANDARD_CHECK_gfortran =$(STANDARD_CHECK)
+STANDARD_CHECK_ifort =$(STANDARD_CHECK) -DSTANDARD_CHECK
+STANDARD_CHECK_gfortran =$(STANDARD_CHECK) -DSTANDARD_CHECK
 endif
 
 ifneq "$(FASTBUILD)" "YES"
-STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
-STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics
+STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors -DSTANDARD_CHECK
+STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics -DSTANDARD_CHECK
 endif
 #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. This can be useful with -std=f95 to force standard-compliance
 #                   but get access to the full range of intrinsics available with gfortran. As a consequence, -Wintrinsics-std will be ignored and no user-defined
@@ -254,8 +255,8 @@ endif
 #-fdefault-integer-8:        set precision to 8 bytes for standard integer (=4 for pInt)
 ##################################################################################################
 
-COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90))
-COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90))
+COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS)
+COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS)
 ###################################################################################################
 COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \

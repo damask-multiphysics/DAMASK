@@ -26,67 +26,67 @@ use prec, only: pInt, pReal
 
 implicit none
 character(len=64), parameter, private ::&
-  numerics_configFile        = 'numerics.config'                                             ! name of configuration file
+  numerics_configFile        = 'numerics.config'                                                   ! name of configuration file
 
-integer(pInt) ::                iJacoStiffness             =  1_pInt, &                      ! frequency of stiffness update
-                                iJacoLpresiduum            =  1_pInt, &                      ! frequency of Jacobian update of residuum in Lp
-                                nHomog                     = 20_pInt, &                      ! homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
-                                nMPstate                   = 10_pInt, &                      ! materialpoint state loop limit
-                                nCryst                     = 20_pInt, &                      ! crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
-                                nState                     = 10_pInt, &                      ! state loop limit
-                                nStress                    = 40_pInt, &                      ! stress loop limit
-                                pert_method                =  1_pInt, &                      ! method used in perturbation technique for tangent
-                                numerics_integrationMode   =  0_pInt                         ! integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
-integer(pInt), dimension(2) ::  numerics_integrator        =  1_pInt                         ! method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
-real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &                ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
-                                defgradTolerance           =  1.0e-7_pReal, &                ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
-                                pert_Fg                    =  1.0e-7_pReal, &                ! strain perturbation for FEM Jacobi
-                                subStepMinCryst            =  1.0e-3_pReal, &                ! minimum (relative) size of sub-step allowed during cutback in crystallite
-                                subStepMinHomog            =  1.0e-3_pReal, &                ! minimum (relative) size of sub-step allowed during cutback in homogenization
-                                subStepSizeCryst           =  0.25_pReal, &                  ! size of first substep when cutback in crystallite
-                                subStepSizeHomog           =  0.25_pReal, &                  ! size of first substep when cutback in homogenization
-                                stepIncreaseCryst          =  1.5_pReal, &                   ! increase of next substep size when previous substep converged in crystallite
-                                stepIncreaseHomog          =  1.5_pReal, &                   ! increase of next substep size when previous substep converged in homogenization
-                                rTol_crystalliteState      =  1.0e-6_pReal, &                ! relative tolerance in crystallite state loop 
-                                rTol_crystalliteTemperature=  1.0e-6_pReal, &                ! relative tolerance in crystallite temperature loop 
-                                rTol_crystalliteStress     =  1.0e-6_pReal, &                ! relative tolerance in crystallite stress loop
-                                aTol_crystalliteStress     =  1.0e-8_pReal, &                ! absolute tolerance in crystallite stress loop, Default 1.0e-8: residuum is in Lp and hence strain is on this order
+integer(pInt) ::                iJacoStiffness             =  1_pInt, &                            ! frequency of stiffness update
+                                iJacoLpresiduum            =  1_pInt, &                            ! frequency of Jacobian update of residuum in Lp
+                                nHomog                     = 20_pInt, &                            ! homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
+                                nMPstate                   = 10_pInt, &                            ! materialpoint state loop limit
+                                nCryst                     = 20_pInt, &                            ! crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
+                                nState                     = 10_pInt, &                            ! state loop limit
+                                nStress                    = 40_pInt, &                            ! stress loop limit
+                                pert_method                =  1_pInt, &                            ! method used in perturbation technique for tangent
+                                numerics_integrationMode   =  0_pInt                               ! integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
+integer(pInt), dimension(2) ::  numerics_integrator        =  1_pInt                               ! method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
+real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &                      ! strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
+                                defgradTolerance           =  1.0e-7_pReal, &                      ! deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
+                                pert_Fg                    =  1.0e-7_pReal, &                      ! strain perturbation for FEM Jacobi
+                                subStepMinCryst            =  1.0e-3_pReal, &                      ! minimum (relative) size of sub-step allowed during cutback in crystallite
+                                subStepMinHomog            =  1.0e-3_pReal, &                      ! minimum (relative) size of sub-step allowed during cutback in homogenization
+                                subStepSizeCryst           =  0.25_pReal, &                        ! size of first substep when cutback in crystallite
+                                subStepSizeHomog           =  0.25_pReal, &                        ! size of first substep when cutback in homogenization
+                                stepIncreaseCryst          =  1.5_pReal, &                         ! increase of next substep size when previous substep converged in crystallite
+                                stepIncreaseHomog          =  1.5_pReal, &                         ! increase of next substep size when previous substep converged in homogenization
+                                rTol_crystalliteState      =  1.0e-6_pReal, &                      ! relative tolerance in crystallite state loop 
+                                rTol_crystalliteTemperature=  1.0e-6_pReal, &                      ! relative tolerance in crystallite temperature loop 
+                                rTol_crystalliteStress     =  1.0e-6_pReal, &                      ! relative tolerance in crystallite stress loop
+                                aTol_crystalliteStress     =  1.0e-8_pReal, &                      ! absolute tolerance in crystallite stress loop, Default 1.0e-8: residuum is in Lp and hence strain is on this order
                                 
-                                absTol_RGC                 =  1.0e+4_pReal, &                ! absolute tolerance of RGC residuum
-                                relTol_RGC                 =  1.0e-3_pReal, &                ! relative tolerance of RGC residuum
-                                absMax_RGC                 =  1.0e+10_pReal, &               ! absolute maximum of RGC residuum
-                                relMax_RGC                 =  1.0e+2_pReal, &                ! relative maximum of RGC residuum
-                                pPert_RGC                  =  1.0e-7_pReal, &                ! perturbation for computing RGC penalty tangent
-                                xSmoo_RGC                  =  1.0e-5_pReal, &                ! RGC penalty smoothing parameter (hyperbolic tangent)
-                                viscPower_RGC              =  1.0e+0_pReal, &                ! power (sensitivity rate) of numerical viscosity in RGC scheme, Default 1.0e0: Newton viscosity (linear model)
-                                viscModus_RGC              =  0.0e+0_pReal, &                ! stress modulus of RGC numerical viscosity, Default 0.0e0: No viscosity is applied
-                                refRelaxRate_RGC           =  1.0e-3_pReal, &                ! reference relaxation rate in RGC viscosity
-                                maxdRelax_RGC              =  1.0e+0_pReal, &                ! threshold of maximum relaxation vector increment (if exceed this then cutback)
-                                maxVolDiscr_RGC            =  1.0e-5_pReal, &                ! threshold of maximum volume discrepancy allowed
-                                volDiscrMod_RGC            =  1.0e+12_pReal, &               ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
-                                volDiscrPow_RGC            =  5.0_pReal, &                   ! powerlaw penalty for volume discrepancy
+                                absTol_RGC                 =  1.0e+4_pReal, &                      ! absolute tolerance of RGC residuum
+                                relTol_RGC                 =  1.0e-3_pReal, &                      ! relative tolerance of RGC residuum
+                                absMax_RGC                 =  1.0e+10_pReal, &                     ! absolute maximum of RGC residuum
+                                relMax_RGC                 =  1.0e+2_pReal, &                      ! relative maximum of RGC residuum
+                                pPert_RGC                  =  1.0e-7_pReal, &                      ! perturbation for computing RGC penalty tangent
+                                xSmoo_RGC                  =  1.0e-5_pReal, &                      ! RGC penalty smoothing parameter (hyperbolic tangent)
+                                viscPower_RGC              =  1.0e+0_pReal, &                      ! power (sensitivity rate) of numerical viscosity in RGC scheme, Default 1.0e0: Newton viscosity (linear model)
+                                viscModus_RGC              =  0.0e+0_pReal, &                      ! stress modulus of RGC numerical viscosity, Default 0.0e0: No viscosity is applied
+                                refRelaxRate_RGC           =  1.0e-3_pReal, &                      ! reference relaxation rate in RGC viscosity
+                                maxdRelax_RGC              =  1.0e+0_pReal, &                      ! threshold of maximum relaxation vector increment (if exceed this then cutback)
+                                maxVolDiscr_RGC            =  1.0e-5_pReal, &                      ! threshold of maximum volume discrepancy allowed
+                                volDiscrMod_RGC            =  1.0e+12_pReal, &                     ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
+                                volDiscrPow_RGC            =  5.0_pReal, &                         ! powerlaw penalty for volume discrepancy
 !* spectral parameters:
-                                err_div_tol                =  0.1_pReal, &                   ! Div(P)/avg(P)*meter
-                                err_stress_tolrel          =  0.01_pReal, &                  ! relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
-                                err_stress_tolabs          =  huge(1.0_pReal),  &            ! absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
-                                fftw_timelimit             = -1.0_pReal, &                   ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
-                                rotation_tol               =  1.0e-12_pReal                  ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
-character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT'                  ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
-integer(pInt) ::                fftw_planner_flag          =  32_pInt, &                     ! conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
-                                itmax                      =  20_pInt, &                     ! maximum number of iterations
-                                itmin                      =  2_pInt                         ! minimum number of iterations
-logical ::                      memory_efficient           = .true., &                       ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
-                                divergence_correction      = .false., &                      ! correct divergence calculation in fourier space, Default .false.: no correction
-                                update_gamma               = .false., &                      ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
+                                err_div_tol                =  0.1_pReal, &                         ! Div(P)/avg(P)*meter
+                                err_stress_tolrel          =  0.01_pReal, &                        ! relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
+                                err_stress_tolabs          =  huge(1.0_pReal),  &                  ! absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
+                                fftw_timelimit             = -1.0_pReal, &                         ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
+                                rotation_tol               =  1.0e-12_pReal                        ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
+character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT'                        ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
+integer(pInt) ::                fftw_planner_flag          =  32_pInt, &                           ! conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
+                                itmax                      =  20_pInt, &                           ! maximum number of iterations
+                                itmin                      =  2_pInt                               ! minimum number of iterations
+logical ::                      memory_efficient           = .true., &                             ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
+                                divergence_correction      = .false., &                            ! correct divergence calculation in fourier space, Default .false.: no correction
+                                update_gamma               = .false., &                            ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
 !* end of spectral parameters:
-                                analyticJaco               = .false.                         ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+                                analyticJaco               = .false.                                ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
 
 
 
 !* Random seeding parameters
-integer(pInt) ::                fixedSeed                  = 0_pInt                          ! fixed seeding for pseudo-random number generator, Default 0: use random seed
+integer(pInt) ::                fixedSeed                  = 0_pInt                                 ! fixed seeding for pseudo-random number generator, Default 0: use random seed
 !* OpenMP variable
-integer(pInt) ::                DAMASK_NumThreadsInt       = 0_pInt                          ! value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
+integer(pInt) ::                DAMASK_NumThreadsInt       = 0_pInt                                 ! value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
 
 CONTAINS
@@ -96,7 +96,7 @@ CONTAINS
 !*******************************************
 subroutine numerics_init
   
- use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only:                               IO_error, &
                                              IO_open_file_stat, &
                                              IO_isBlank, &
@@ -106,16 +106,20 @@ subroutine numerics_init
                                              IO_floatValue, &
                                              IO_intValue, &
                                              IO_warning
-!$ use OMP_LIB                                                                ! the openMP function library
-  
- implicit none
+#ifdef STANDARD_CHECK                                                                               ! If STANDARD_CHECK is defined (as in the makefile for the spectral solver by setting
+!$ use OMP_LIB                                                                                      ! -DSTANDARD_CHECK use the module file for the openMP function library
+#endif                                                                                              ! REASON: module file crashes with Marc but omp_lib.h is not standard conform
+ implicit none                                                                                      ! and ifort will does not compile it (gfortran seems to have an exeption)
+#ifndef STANDARD_CHECK                                                                              ! if STANDARD_CHECK is not defined (e.g. when compiling with Marc or Abaqus)
+!$ include "omp_lib.h"                                                                              ! use this file for the openMP function library
+#endif
  integer(pInt), parameter ::                 fileunit = 300_pInt ,&
                                              maxNchunks = 2_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=64) ::                        tag
  character(len=1024) ::                      line
-!$ character(len=6) DAMASK_NumThreadsString                               !environment variable DAMASK_NUM_THREADS
+!$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
 !$OMP CRITICAL (write2out)
  write(6,*)
@@ -272,8 +276,8 @@ subroutine numerics_init
    
  endif
 
- select case(IO_lc(fftw_plan_mode))                             ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-    case('estimate','fftw_estimate')                            ! ordered from slow execution (but fast plan creation) to fast execution
+ select case(IO_lc(fftw_plan_mode))                                                                ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+    case('estimate','fftw_estimate')                                                               ! ordered from slow execution (but fast plan creation) to fast execution
       fftw_planner_flag = 64_pInt
     case('measure','fftw_measure')
       fftw_planner_flag = 0_pInt
