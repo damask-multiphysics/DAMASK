@@ -6,7 +6,7 @@ import os,sys,string,re,damask
 architectures = { 
                  'marc': { 
                           'parent': 'DAMASK_marc.f90', 
-                          'versions' : ['%%MARCVERSION%%','2007r1','2008r1','2010','2011'],
+                          'versions' : ['%%MARCVERSION%%','2007r1','2008r1','2010','2011','2012'],
                          }, 
                 }
 
