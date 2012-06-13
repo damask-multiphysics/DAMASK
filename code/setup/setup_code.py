@@ -1,7 +1,40 @@
 #!/usr/bin/env python
-# $Id$
-# Writes version specific files for different MARC releases
-import os,sys,string,re,damask
+import os,string,re,damask
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
+# -----------------------------
+class extendedOption(Option):
+# -----------------------------
+# used for definition of new option parser action 'extend', which enables to take multiple option arguments
+# taken from online tutorial http://docs.python.org/library/optparse.html
+    
+    ACTIONS = Option.ACTIONS + ("extend",)
+    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+    def take_action(self, action, dest, opt, value, values, parser):
+        if action == "extend":
+            lvalue = value.split(",")
+            values.ensure_value(dest, []).extend(lvalue)
+        else:
+            Option.take_action(self, action, dest, opt, value, values, parser)
+
+    
+parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
+Writes version specific files for different MARC releases, adjustes the make file for the spectral solver and optionally compiles the spectral solver
+
+""" + string.replace('$Id$','\n','\\n')
+)
+
+parser.add_option('-c', '--compile', dest='spectralCompile', action='store_true', \
+                  help='compiles sthe spectral solver [%default]')
+parser.add_option('-m', '--make', dest='makeOptions', type='string', \
+                  help='options parsed to make file when compiling spectral code [%default]')
+parser.set_defaults(spectralCompile = False)
+parser.set_defaults(makeOptions = 'F90=ifort')
+
+(options, args) = parser.parse_args()
 
 architectures = { 
                  'marc': { 
@@ -37,7 +70,6 @@ for arch in architectures:
 		childFile.close()
 
 # changing dirs in makefile
-
 makefile = open(os.path.join(baseDir,'Makefile'))
 content = makefile.readlines()
 makefile.close()
@@ -54,15 +86,9 @@ for line in content:
 makefile.close()
 
 # compiling spectral code
-compile = raw_input("Do you want to compile the spectral code now? (y/n) ")
-if (compile == 'y' or compile == 'Y'):
-  compiler_switches = raw_input("Please give compiling switches (Enter to use default) ")
+if (options.spectralCompile):
   os.system('make --directory %s clean'%(baseDir))
-  os.system('make --directory %s %s'%(baseDir,compiler_switches))
-
-if '--clean' in [s.lower() for s in sys.argv]:
-  os.system('make --directory %s clean'%baseDir)
-
+  os.system('make --directory %s %s'%(baseDir,options.makeOptions))
 
 for dir in bin_link:
   for file in bin_link[dir]:
