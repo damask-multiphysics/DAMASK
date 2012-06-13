@@ -1,0 +1,11 @@
+#!/bin/sh
+# This script opens a window running an editor. The default window is an
+# xterm, and the default editor is vi. These may be customized.
+
+if [ "`uname`" = "SunOS" ]; then
+ dir=/usr/openwin/bin
+else
+ dir=/usr/bin/X11
+fi
+
+$dir/xterm -T "vi $*" -n "vi $*" -e vi $*
