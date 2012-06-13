@@ -36,10 +36,10 @@ SHELL = /bin/sh
 ########################################################################################
 
 #auto values will be set by setup_code.py
-FFTWROOT :=$(DAMASK_ROOT)/lib/fftw
-#IKMLROOT := 
-ACMLROOT :=/opt/acml4.4.0
-#LAPACKROOT :=/usr
+FFTWROOT   :=$(DAMASK_ROOT)/lib/fftw
+#IKMLROOT  := 
+#ACMLROOT  :=/opt/acml4.4.0
+LAPACKROOT :=/usr
 
 F90 ?=ifort
 COMPILERNAME ?= $(F90)
@@ -255,8 +255,8 @@ endif
 #-fdefault-integer-8:        set precision to 8 bytes for standard integer (=4 for pInt)
 ##################################################################################################
 
-COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS)
-COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS)
+COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) -DSpectral
+COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) -DSpectral
 ###################################################################################################
 COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
