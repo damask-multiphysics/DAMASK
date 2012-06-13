@@ -84,13 +84,13 @@ function getSolverWorkingDirectoryName()
 
  implicit none
  
- character(1024) getSolverWorkingDirectoryName, outName
+ character(1024) getSolverWorkingDirectoryName, inputName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
 
  getSolverWorkingDirectoryName=''
- outName=''
- inquire(6, name=outName) ! determine outputfile
- getSolverWorkingDirectoryName=outName(1:scan(outName,pathSep,back=.true.))
+ inputName=''
+ inquire(5, name=inputName) ! determine inputputfile
+ getSolverWorkingDirectoryName=inputName(1:scan(inputName,pathSep,back=.true.))
 ! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
 
 end function getSolverWorkingDirectoryName
