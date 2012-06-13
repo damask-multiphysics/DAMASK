@@ -110,15 +110,15 @@ function getSolverJobName()
  use prec, only: pInt
  implicit none
 
- character(1024) :: getSolverJobName, outName
+ character(1024) :: getSolverJobName, inputName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
  integer(pInt) :: extPos
 
  getSolverJobName=''
- outName=''
- inquire(6, name=outName) ! determine outputfile
- extPos = len_trim(outName)-4
- getSolverJobName=outName(scan(outName,pathSep,back=.true.)+1:extPos)
+ inputName=''
+ inquire(5, name=inputName) ! determine outputfile
+ extPos = len_trim(inputName)-4
+ getSolverJobName=inputName(scan(inputName,pathSep,back=.true.)+1:extPos)
 ! write(6,*) 'getSolverJobName', getSolverJobName
 
 end function getSolverJobName
