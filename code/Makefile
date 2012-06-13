@@ -37,7 +37,7 @@ SHELL = /bin/sh
 
 #auto values will be set by setup_code.py
 FFTWROOT   :=$(DAMASK_ROOT)/lib/fftw
-#IKMLROOT  := 
+#IKMLROOT  :=/opt/intel/composerxe/mkl 
 #ACMLROOT  :=/opt/acml4.4.0
 LAPACKROOT :=/usr
 
@@ -93,6 +93,7 @@ LIB_DIRS +=-L$(FFTWROOT)/lib
 
 ifdef IKMLROOT
 LIBRARIES +=-mkl
+LIBRARIES +=-L$(IKMLROOT)/lib/intel64
 else
 ifdef ACMLROOT
 LIB_DIRS +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
@@ -123,7 +124,7 @@ OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
 OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
 OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
-OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -ipo -static -no-prec-div -fp-model fast=2 
+OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -no-prec-div -fp-model fast=2 -ipo #-static causes trouble at the moment
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 
