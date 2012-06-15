@@ -44,14 +44,19 @@ LAPACKROOT :=/usr
 F90 ?=ifort
 COMPILERNAME ?= $(F90)
 INCLUDE_DIRS +=-I$(DAMASK_ROOT)/lib
+ifdef PETSC_DIR
+INCLUDE_DIRS +=-I$(PETSC_DIR)/include
+INCLUDE_DIRS +=-I$(PETSC_DIR)/$(PETSC_ARCH)/include
+INCLUDE_DIRS +=-DPETSC           # just for the moment, as long as PETSC is non standard
+endif
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP :=OFF
 OPTIMIZATION :=OFF
-endif
-
+else
 OPENMP ?= ON
 OPTIMIZATION ?= DEFENSIVE
+endif
 
 ifeq "$(OPTIMIZATION)" "OFF"
 OPTI    := OFF
@@ -107,13 +112,13 @@ endif
 endif
 
 ifdef STANDARD_CHECK
-STANDARD_CHECK_ifort =$(STANDARD_CHECK) -DSTANDARD_CHECK
-STANDARD_CHECK_gfortran =$(STANDARD_CHECK) -DSTANDARD_CHECK
+STANDARD_CHECK_ifort =$(STANDARD_CHECK)
+STANDARD_CHECK_gfortran =$(STANDARD_CHECK)
 endif
 
 ifneq "$(FASTBUILD)" "YES"
-STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors -DSTANDARD_CHECK
-STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics -DSTANDARD_CHECK
+STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
+STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics
 endif
 #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. This can be useful with -std=f95 to force standard-compliance
 #                   but get access to the full range of intrinsics available with gfortran. As a consequence, -Wintrinsics-std will be ignored and no user-defined

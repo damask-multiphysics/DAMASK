@@ -35,17 +35,19 @@
 ! MPI fuer Eisenforschung, Duesseldorf
 
 #include "spectral_quit.f90"
+!#ifdef PETSC
+!#include "finclude/petscdef.h"
+!#endif
 
 program DAMASK_spectral
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
-   getLoadcaseName, &
+   loadCaseFile, &
+   geometryFile, &
    getSolverWorkingDirectoryName, &
-   getSolverJobName, &
-   getModelName, &
-   inputFileExtension
+   getSolverJobName
    
  use prec, only: &
    pInt, &
@@ -106,7 +108,7 @@ program DAMASK_spectral
  use homogenization, only: &
    materialpoint_sizeResults, &
    materialpoint_results
-   
+
  implicit none
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
@@ -257,7 +259,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case file and allocate data structure containing load cases
- call IO_open_file(myUnit,trim(getLoadcaseName()))
+ call IO_open_file(myUnit,trim(loadCaseFile))
  rewind(myUnit)
  do
    read(myUnit,'(a1024)',END = 100) line
@@ -279,7 +281,7 @@ program DAMASK_spectral
 
 100 N_Loadcases = N_n
  if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &                                                     ! sanity check
-   call IO_error(error_ID=837_pInt,ext_msg = trim(getLoadcaseName()))                               ! error message for incomplete loadcase
+   call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                               ! error message for incomplete loadcase
  allocate (bc(N_Loadcases))
 
 !--------------------------------------------------------------------------------------------------
@@ -374,13 +376,13 @@ program DAMASK_spectral
  write(6,'(a)')          'The spectral method boundary value problem solver for'
  write(6,'(a)')          'the Duesseldorf Advanced Material Simulation Kit'
  write(6,'(a)')          '#############################################################'
- write(6,'(a)')          'geometry file:        ',trim(getModelName())//InputFileExtension
+ write(6,'(a)')          'geometry file:        ',trim(geometryFile)
  write(6,'(a)')          '============================================================='
  write(6,'(a,3(i12  ))') 'resolution a b c:', res
  write(6,'(a,3(f12.5))') 'dimension  x y z:', geomdim
  write(6,'(a,i5)')       'homogenization:       ',homog
  write(6,'(a)')          '#############################################################'
- write(6,'(a)')          'loadcase file:        ',trim(getLoadcaseName())
+ write(6,'(a)')          'loadcase file:        ',trim(loadCaseFile)
 
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
@@ -580,9 +582,9 @@ C_ref = C * wgt
 ! write header of output file
  open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
                                         //'.spectralOut',form='UNFORMATTED',status='REPLACE')
- write(538) 'load',       trim(getLoadcaseName())
+ write(538) 'load',       trim(loadCaseFile)
  write(538) 'workingdir', trim(getSolverWorkingDirectoryName())
- write(538) 'geometry',   trim(getSolverJobName())//InputFileExtension
+ write(538) 'geometry',   trim(geometryFile)
  write(538) 'resolution', res
  write(538) 'dimension',  geomdim
  write(538) 'materialpoint_sizeResults', materialpoint_sizeResults

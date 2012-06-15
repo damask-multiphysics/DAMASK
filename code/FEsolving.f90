@@ -55,7 +55,7 @@ module FEsolving
    FEsolving_execElem
    
  character(len=1024), public :: &
-   FEmodelGeometry
+   modelName
    
  logical, dimension(:,:), allocatable, public :: &
    calcMode
@@ -77,12 +77,14 @@ subroutine FE_init
    debug_levelBasic
  
  use IO, only: &
-   IO_open_inputFile, &
    IO_stringPos, &
    IO_stringValue, &
    IO_intValue, &
    IO_lc, &
+#ifndef Spectral
+   IO_open_inputFile, &
    IO_open_logFile, &
+#endif
    IO_warning
 
  use DAMASK_interface
@@ -92,96 +94,83 @@ subroutine FE_init
    fileunit = 222_pInt, &
    maxNchunks = 6_pInt
 
- integer :: i, start = 0, length                                 ! is save for FE_init (only called once)
+#ifndef Spectral
  integer(pInt) :: j
- integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  character(len=64)   :: tag
- character(len=1024) :: line, &
-                        commandLine
- 
- FEmodelGeometry = getModelName()
- call IO_open_inputFile(fileunit,FEmodelGeometry)
+ character(len=1024) :: line
+ integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
+#endif
 
- if (trim(FEsolver) == 'Spectral') then
-   call get_command(commandLine)                                                 ! may contain uppercase
-   do i=1,len(commandLine)
-     if(64 < iachar(commandLine(i:i)) .and. iachar(commandLine(i:i)) < 91) &
-       commandLine(i:i) = achar(iachar(commandLine(i:i))+32)                     ! make lowercase
-   enddo
-   if (index(commandLine,'-r ',.true.)>0) &                                      ! look for -r
-     start = index(commandLine,'-r ',.true.) + 3                                 ! set to position after trailing space
-   if (index(commandLine,'--restart ',.true.)>0) &                               ! look for --restart
-     start = index(commandLine,'--restart ',.true.) + 10                         ! set to position after trailing space
-   if(start /= 0) then                                                           ! found something
-     length = verify(commandLine(start:len(commandLine)),'0123456789',.false.)   ! where is first non number after argument?
-     read(commandLine(start:start+length),'(I12)') restartInc                    ! read argument
-     restartRead  = restartInc > 0_pInt
-     if(restartInc <= 0_pInt) then
-       call IO_warning(warning_ID=34_pInt)
-       restartInc = 1_pInt
-     endif
-   endif
- else
+#ifdef Spectral
+ modelName = getSolverJobName()
+ restartInc = spectralRestart
+ if(restartInc <= 0_pInt) then
+   call IO_warning(warning_ID=34_pInt)
+   restartInc = 1_pInt
+ endif
+#else
+ call IO_open_inputFile(fileunit,getSolverJobName())
+ rewind(fileunit)
+ do
+   read (fileunit,'(a1024)',END=100) line
+   positions = IO_stringPos(line,maxNchunks)
+   tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
+   select case(tag)
+     case ('solver')
+       read (fileunit,'(a1024)',END=100) line  ! next line
+       positions = IO_stringPos(line,maxNchunks)
+       symmetricSolver = (IO_intValue(line,positions,2_pInt) /= 1_pInt)
+     case ('restart')
+       read (fileunit,'(a1024)',END=100) line  ! next line
+       positions = IO_stringPos(line,maxNchunks)
+       restartWrite = iand(IO_intValue(line,positions,1_pInt),1_pInt) > 0_pInt
+       restartRead  = iand(IO_intValue(line,positions,1_pInt),2_pInt) > 0_pInt
+     case ('*restart')
+       do j=2_pInt,positions(1)
+         restartWrite = (IO_lc(IO_StringValue(line,positions,j)) == 'write') .or. restartWrite
+         restartRead  = (IO_lc(IO_StringValue(line,positions,j)) == 'read')  .or. restartRead
+       enddo
+       if(restartWrite) then
+         do j=2_pInt,positions(1)
+           restartWrite = (IO_lc(IO_StringValue(line,positions,j)) /= 'frequency=0') .and. restartWrite
+         enddo
+       endif
+   end select
+ enddo
+ 100 close(fileunit)
+
+ if (restartRead) then
+#ifdef Marc
+   call IO_open_logFile(fileunit)
    rewind(fileunit)
    do
-     read (fileunit,'(a1024)',END=100) line
+     read (fileunit,'(a1024)',END=200) line
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
-     select case(tag)
-       case ('solver')
-         read (fileunit,'(a1024)',END=100) line  ! next line
-         positions = IO_stringPos(line,maxNchunks)
-         symmetricSolver = (IO_intValue(line,positions,2_pInt) /= 1_pInt)
-       case ('restart')
-         read (fileunit,'(a1024)',END=100) line  ! next line
-         positions = IO_stringPos(line,maxNchunks)
-         restartWrite = iand(IO_intValue(line,positions,1_pInt),1_pInt) > 0_pInt
-         restartRead  = iand(IO_intValue(line,positions,1_pInt),2_pInt) > 0_pInt
-       case ('*restart')
-         do j=2_pInt,positions(1)
-           restartWrite = (IO_lc(IO_StringValue(line,positions,j)) == 'write') .or. restartWrite
-           restartRead  = (IO_lc(IO_StringValue(line,positions,j)) == 'read')  .or. restartRead
-         enddo
-         if(restartWrite) then
-           do j=2_pInt,positions(1)
-             restartWrite = (IO_lc(IO_StringValue(line,positions,j)) /= 'frequency=0') .and. restartWrite
-           enddo
-         endif
-     end select
+     if ( IO_lc(IO_stringValue(line,positions,1_pInt)) == 'restart' .and. &
+          IO_lc(IO_stringValue(line,positions,2_pInt)) == 'file' .and. &
+          IO_lc(IO_stringValue(line,positions,3_pInt)) == 'job' .and. &
+          IO_lc(IO_stringValue(line,positions,4_pInt)) == 'id' ) &
+        modelName = IO_StringValue(line,positions,6_pInt)
    enddo
- endif
- 100 close(fileunit)
- 
- if (restartRead) then
-   if(FEsolver == 'Marc') then
-     call IO_open_logFile(fileunit)
-     rewind(fileunit)
-     do
+#else
+   call IO_open_inputFile(fileunit,modelName)
+   rewind(fileunit)
+   do
+     read (fileunit,'(a1024)',END=200) line
+     positions = IO_stringPos(line,maxNchunks)
+     if ( IO_lc(IO_stringValue(line,positions,1_pInt))=='*heading') then
        read (fileunit,'(a1024)',END=200) line
        positions = IO_stringPos(line,maxNchunks)
-       if ( IO_lc(IO_stringValue(line,positions,1_pInt)) == 'restart' .and. &
-            IO_lc(IO_stringValue(line,positions,2_pInt)) == 'file' .and. &
-            IO_lc(IO_stringValue(line,positions,3_pInt)) == 'job' .and. &
-            IO_lc(IO_stringValue(line,positions,4_pInt)) == 'id' ) &
-          FEmodelGeometry = IO_StringValue(line,positions,6_pInt)
-     enddo
-   elseif (FEsolver == 'Abaqus') then
-     call IO_open_inputFile(fileunit,FEmodelGeometry)
-     rewind(fileunit)
-     do
-       read (fileunit,'(a1024)',END=200) line
-       positions = IO_stringPos(line,maxNchunks)
-       if ( IO_lc(IO_stringValue(line,positions,1_pInt))=='*heading') then
-         read (fileunit,'(a1024)',END=200) line
-         positions = IO_stringPos(line,maxNchunks)
-         FEmodelGeometry = IO_StringValue(line,positions,1_pInt)
-       endif
-     enddo
-   endif
+       modelName = IO_StringValue(line,positions,1_pInt)
+     endif
+   enddo
+#endif
+ else
+   modelName = getSolverJobName()
  endif
 
 200 close(fileunit)
-
+#endif
 !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  FEsolving init  -+>>>'
@@ -190,7 +179,7 @@ subroutine FE_init
  if (iand(debug_what(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
    write(6,*) 'restart writing:    ', restartWrite
    write(6,*) 'restart reading:    ', restartRead
-   if (restartRead) write(6,*) 'restart Job:        ', trim(FEmodelGeometry)
+   if (restartRead) write(6,*) 'restart Job:        ', trim(modelName)
    write(6,*)
  endif
 !$OMP END CRITICAL (write2out)

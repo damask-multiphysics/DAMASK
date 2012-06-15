@@ -64,9 +64,17 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 maxdRelax_RGC              =  1.0e+0_pReal, &                      ! threshold of maximum relaxation vector increment (if exceed this then cutback)
                                 maxVolDiscr_RGC            =  1.0e-5_pReal, &                      ! threshold of maximum volume discrepancy allowed
                                 volDiscrMod_RGC            =  1.0e+12_pReal, &                     ! stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
-                                volDiscrPow_RGC            =  5.0_pReal, &                         ! powerlaw penalty for volume discrepancy
+                                volDiscrPow_RGC            =  5.0_pReal                            ! powerlaw penalty for volume discrepancy
+logical ::                      analyticJaco               = .false.                                ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+!* Random seeding parameters
+integer(pInt) ::                fixedSeed                  = 0_pInt                                 ! fixed seeding for pseudo-random number generator, Default 0: use random seed
+!* OpenMP variable
+integer(pInt) ::                DAMASK_NumThreadsInt       = 0_pInt                                 ! value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
+
+
 !* spectral parameters:
-                                err_div_tol                =  0.1_pReal, &                         ! Div(P)/avg(P)*meter
+#ifdef Spectral
+real(pReal) ::                  err_div_tol                =  0.1_pReal, &                         ! Div(P)/avg(P)*meter
                                 err_stress_tolrel          =  0.01_pReal, &                        ! relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 err_stress_tolabs          =  huge(1.0_pReal),  &                  ! absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 fftw_timelimit             = -1.0_pReal, &                         ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
@@ -77,16 +85,9 @@ integer(pInt) ::                fftw_planner_flag          =  32_pInt, &        
                                 itmin                      =  2_pInt                               ! minimum number of iterations
 logical ::                      memory_efficient           = .true., &                             ! for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
                                 divergence_correction      = .false., &                            ! correct divergence calculation in fourier space, Default .false.: no correction
-                                update_gamma               = .false., &                            ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
-!* end of spectral parameters:
-                                analyticJaco               = .false.                                ! use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+                                update_gamma               = .false.                               ! update gamma operator with current stiffness, Default .false.: use initial stiffness 
+#endif
 
-
-
-!* Random seeding parameters
-integer(pInt) ::                fixedSeed                  = 0_pInt                                 ! fixed seeding for pseudo-random number generator, Default 0: use random seed
-!* OpenMP variable
-integer(pInt) ::                DAMASK_NumThreadsInt       = 0_pInt                                 ! value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
 
 CONTAINS
@@ -106,12 +107,12 @@ subroutine numerics_init
                                              IO_floatValue, &
                                              IO_intValue, &
                                              IO_warning
-#ifdef STANDARD_CHECK                                                                               ! If STANDARD_CHECK is defined (as in the makefile for the spectral solver by setting
-!$ use OMP_LIB                                                                                      ! -DSTANDARD_CHECK use the module file for the openMP function library
-#endif                                                                                              ! REASON: module file crashes with Marc but omp_lib.h is not standard conform
- implicit none                                                                                      ! and ifort will does not compile it (gfortran seems to have an exeption)
-#ifndef STANDARD_CHECK                                                                              ! if STANDARD_CHECK is not defined (e.g. when compiling with Marc or Abaqus)
-!$ include "omp_lib.h"                                                                              ! use this file for the openMP function library
+#ifndef Marc                                                                                        ! Use the standard conforming module file for omp if not using Marc
+!$ use OMP_LIB, only: omp_set_num_threads
+#endif
+ implicit none
+#ifdef Marc                                                                                         ! use the non F90 standard include file because some versions of Marc crash when using the module
+!$ include "omp_lib.h"
 #endif
  integer(pInt), parameter ::                 fileunit = 300_pInt ,&
                                              maxNchunks = 2_pInt
@@ -121,12 +122,11 @@ subroutine numerics_init
  character(len=1024) ::                      line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
-!$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  numerics init  -+>>>'
  write(6,*) '$Id$'
 #include "compilation_info.f90"
-!$OMP END CRITICAL (write2out)
+
 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) call IO_warning(47_pInt,ext_msg=DAMASK_NumThreadsString)
@@ -136,12 +136,9 @@ subroutine numerics_init
 
   ! try to open the config file
  if(IO_open_file_stat(fileunit,numerics_configFile)) then 
-  
-   !$OMP CRITICAL (write2out)
-     write(6,*) '   ... using values from config file'
-     write(6,*)
-   !$OMP END CRITICAL (write2out)
-    
+
+   write(6,*) '   ... using values from config file'
+   write(6,*)
     
    !* read variables from config file and overwrite parameters
    
@@ -229,9 +226,11 @@ subroutine numerics_init
              volDiscrMod_RGC = IO_floatValue(line,positions,2_pInt)
        case ('discrepancypower_rgc')
              volDiscrPow_RGC = IO_floatValue(line,positions,2_pInt)
-
+       !* Random seeding parameters
+       case ('fixed_seed')
+             fixedSeed = IO_intValue(line,positions,2_pInt)
        !* spectral parameters
-       
+#ifdef Spectral
        case ('err_div_tol')
              err_div_tol = IO_floatValue(line,positions,2_pInt)
        case ('err_stress_tolrel')
@@ -254,12 +253,13 @@ subroutine numerics_init
              divergence_correction = IO_intValue(line,positions,2_pInt)  > 0_pInt
        case ('update_gamma')
              update_gamma = IO_intValue(line,positions,2_pInt)  > 0_pInt
-
-       !* Random seeding parameters
-
-       case ('fixed_seed')
-             fixedSeed = IO_intValue(line,positions,2_pInt)
-       
+#endif
+#ifndef Spectral
+      case ('err_div_tol','err_stress_tolrel','err_stress_tolabs',&
+            'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
+            'rotation_tol','divergence_correction','update_gamma')
+             call IO_warning(40_pInt,ext_msg=tag)
+#endif
        case default 
              call IO_error(300_pInt,ext_msg=tag)
      endselect
@@ -268,14 +268,10 @@ subroutine numerics_init
   
   ! no config file, so we use standard values
  else 
- 
-   !$OMP CRITICAL (write2out)
-     write(6,*) '   ... using standard values'
-     write(6,*)
-   !$OMP END CRITICAL (write2out)
-   
+   write(6,*) '   ... using standard values'
+   write(6,*)
  endif
-
+#ifdef Spectral
  select case(IO_lc(fftw_plan_mode))                                                                ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
     case('estimate','fftw_estimate')                                                               ! ordered from slow execution (but fast plan creation) to fast execution
       fftw_planner_flag = 64_pInt
@@ -289,11 +285,9 @@ subroutine numerics_init
       call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_plan_mode)))
       fftw_planner_flag = 32_pInt
  end select
-
+#endif
  
  !* writing parameters to output file
- 
- !$OMP CRITICAL (write2out)
    
    write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
    write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
@@ -334,9 +328,14 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
    write(6,'(a24,1x,es8.1)')   ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
    write(6,'(a24,1x,es8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
+   !* Random seeding parameters
+   
+   write(6,'(a24,1x,i16,/)')    ' fixed_seed:             ',fixedSeed
+  !* openMP parameter
+  !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
 
-   !* spectral parameters
-
+  !* spectral parameters
+#ifdef Spectral
    write(6,'(a24,1x,es8.1)')   ' err_div_tol:            ',err_div_tol
    write(6,'(a24,1x,es8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
    write(6,'(a24,1x,es8.1)')   ' err_stress_tolabs:      ',err_stress_tolabs
@@ -353,18 +352,8 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' rotation_tol:           ',rotation_tol
    write(6,'(a24,1x,L8,/)')    ' divergence_correction:  ',divergence_correction
    write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
-   
-   !* Random seeding parameters
-   
-   write(6,'(a24,1x,i16,/)')    ' fixed_seed:             ',fixedSeed
- 
- !$OMP END CRITICAL (write2out)
+#endif
 
- 
- !* openMP parameter
-!$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
- 
- 
  !*  sanity check
 
  if (relevantStrain <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='relevantStrain')
@@ -393,7 +382,6 @@ subroutine numerics_init
                                            call IO_error(301_pInt,ext_msg='integrator')
 
  !* RGC parameters
-
  if (absTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absTol_RGC')
  if (relTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relTol_RGC')
  if (absMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absMax_RGC')
@@ -409,7 +397,7 @@ subroutine numerics_init
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
 
  !* spectral parameters
- 
+#ifdef Spectral
  if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolabs')
@@ -417,10 +405,9 @@ subroutine numerics_init
  if (itmin >  itmax)                       call IO_error(301_pInt,ext_msg='itmin')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
+#endif
  if (fixedSeed <= 0_pInt) then
-   !$OMP CRITICAL (write2out)
-     write(6,'(a)') ' Random is random!'
-   !$OMP END CRITICAL (write2out)
+   write(6,'(a)') ' Random is random!'
  endif
 
 end subroutine numerics_init

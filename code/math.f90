@@ -19,8 +19,9 @@
 !##############################################################
 !* $Id$
 !##############################################################
-
+#ifdef Spectral
 #include "kdtree2.f90"
+#endif
 
 module math   
 !##############################################################
@@ -137,8 +138,10 @@ real(pReal), dimension(4,36), parameter, private :: &
      0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal &
      ],[4,36])
   
+#ifdef Spectral
  include 'fftw3.f03'
- 
+#endif 
+
  public  :: math_init, &
             qsort, &
             math_range, &
@@ -3283,7 +3286,7 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
 
 end subroutine deformed_linear
 
-
+#ifdef Spectral
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3716,6 +3719,7 @@ subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
  enddo; enddo; enddo
 
 end subroutine divergence_fdm
+#endif
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine tensor_avg(res,tensor,avg)
@@ -3826,6 +3830,7 @@ subroutine calculate_cauchy(res,defgrad,p_stress,c_stress)
 
 end subroutine calculate_cauchy
 
+#ifdef Spectral
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine math_nearestNeighborSearch(spatialDim, Favg, geomdim, queryPoints, domainPoints, querySet, domainSet, indices)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3882,5 +3887,6 @@ subroutine math_nearestNeighborSearch(spatialDim, Favg, geomdim, queryPoints, do
  indices = indices -1_pInt                                                                          ! let them run from 0 to domainPoints -1
  
 end subroutine math_nearestNeighborSearch
+#endif
 
 end module math

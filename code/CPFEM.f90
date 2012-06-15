@@ -91,7 +91,9 @@ subroutine CPFEM_initAll(Temperature,element,IP)
       call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
       call homogenization_init(Temperature)
       call CPFEM_init
-      if (trim(FEsolver)/='Spectral') call DAMASK_interface_init() ! Spectral solver is doing initialization earlier
+#ifndef Spectral
+      call DAMASK_interface_init() ! Spectral solver is doing initialization earlier
+#endif
       CPFEM_init_done = .true.
       CPFEM_init_inProgress = .false.
     else                                                                ! loser, loser...
@@ -118,7 +120,7 @@ subroutine CPFEM_init
   use FEsolving, only:                            parallelExecution, &
                                                   symmetricSolver, &
                                                   restartRead, &
-                                                  FEmodelGeometry
+                                                  modelName
   use mesh, only:                                 mesh_NcpElems, &
                                                   mesh_maxNips
   use material, only:                             homogenization_maxNgrains, &
@@ -149,31 +151,31 @@ subroutine CPFEM_init
       !$OMP END CRITICAL (write2out)
     endif
 
-    call IO_read_jobBinaryFile(777,'recordedPhase',FEmodelGeometry,size(material_phase))
+    call IO_read_jobBinaryFile(777,'recordedPhase',modelName,size(material_phase))
     read (777,rec=1) material_phase
     close (777)
 
-    call IO_read_jobBinaryFile(777,'convergedF',FEmodelGeometry,size(crystallite_F0))
+    call IO_read_jobBinaryFile(777,'convergedF',modelName,size(crystallite_F0))
     read (777,rec=1) crystallite_F0
     close (777)
 
-    call IO_read_jobBinaryFile(777,'convergedFp',FEmodelGeometry,size(crystallite_Fp0))
+    call IO_read_jobBinaryFile(777,'convergedFp',modelName,size(crystallite_Fp0))
     read (777,rec=1) crystallite_Fp0
     close (777)
 
-    call IO_read_jobBinaryFile(777,'convergedLp',FEmodelGeometry,size(crystallite_Lp0))
+    call IO_read_jobBinaryFile(777,'convergedLp',modelName,size(crystallite_Lp0))
     read (777,rec=1) crystallite_Lp0
     close (777)
 
-    call IO_read_jobBinaryFile(777,'convergeddPdF',FEmodelGeometry,size(crystallite_dPdF0))
+    call IO_read_jobBinaryFile(777,'convergeddPdF',modelName,size(crystallite_dPdF0))
     read (777,rec=1) crystallite_dPdF0
     close (777)
 
-    call IO_read_jobBinaryFile(777,'convergedTstar',FEmodelGeometry,size(crystallite_Tstar0_v))
+    call IO_read_jobBinaryFile(777,'convergedTstar',modelName,size(crystallite_Tstar0_v))
     read (777,rec=1) crystallite_Tstar0_v
     close (777)
 
-    call IO_read_jobBinaryFile(777,'convergedStateConst',FEmodelGeometry)
+    call IO_read_jobBinaryFile(777,'convergedStateConst',modelName)
     m = 0_pInt
     do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
       do l = 1,size(constitutive_state0(i,j,k)%p)
@@ -183,7 +185,7 @@ subroutine CPFEM_init
     enddo; enddo; enddo
     close (777)
 
-    call IO_read_jobBinaryFile(777,'convergedStateHomog',FEmodelGeometry)
+    call IO_read_jobBinaryFile(777,'convergedStateHomog',modelName)
     m = 0_pInt
     do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
       do l = 1,homogenization_sizeState(j,k)
@@ -193,7 +195,7 @@ subroutine CPFEM_init
     enddo; enddo
     close (777)
 
-    call IO_read_jobBinaryFile(777,'convergeddcsdE',FEmodelGeometry,size(CPFEM_dcsdE))
+    call IO_read_jobBinaryFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
     read (777,rec=1) CPFEM_dcsdE
     close (777)
     restartRead = .false.
@@ -346,15 +348,10 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                                                       H, &
                                                       jacobian3333        ! jacobian in Matrix notation
   integer(pInt)                                       cp_en, &            ! crystal plasticity element number
-                                                      i, &
-                                                      j, &
-                                                      k, &
-                                                      l, &
-                                                      m, &
-                                                      n, &
-                                                      e, &
-                                                      node, &
-                                                      FEnodeID
+                                                      i, j, k, l, m, n, e
+#ifdef Marc
+  integer(pInt)::                                     node, FEnodeID
+#endif
   logical                                             updateJaco          ! flag indicating if JAcobian has to be updated
   
   
@@ -520,8 +517,8 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
               write(6,'(a,i8,1x,i2)') '<< CPFEM >> Calculation for element ip ',cp_en,IP
             !$OMP END CRITICAL (write2out)
           endif
-          call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent
-          call materialpoint_postResults(dt)                              ! post results
+          call materialpoint_stressAndItsTangent(updateJaco, dt)                                    ! calculate stress and its tangent
+          call materialpoint_postResults(dt)                                                        ! post results
           
         !* parallel computation and calulation not yet done
         
@@ -531,21 +528,22 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
           endif
-          if (FEsolver == 'Marc') then                                    ! marc returns nodal coordinates, whereas Abaqus and spectral solver return ip coordinates. So for marc we have to calculate the ip coordinates from the nodal coordinates.
-            call mesh_build_subNodeCoords()                               ! update subnodal coordinates
-            call mesh_build_ipCoordinates()                               ! update ip coordinates
-          endif
+#ifdef Marc
+! marc returns nodal coordinates, whereas Abaqus and spectral solver return ip coordinates. So for marc we have to calculate the ip coordinates from the nodal coordinates.
+            call mesh_build_subNodeCoords()                                                         ! update subnodal coordinates
+            call mesh_build_ipCoordinates()                                                         ! update ip coordinates
+#endif
           if (iand(debug_what(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Start stress and tangent ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
           endif
-          call materialpoint_stressAndItsTangent(updateJaco, dt)          ! calculate stress and its tangent (parallel execution inside)
-          call materialpoint_postResults(dt)                              ! post results
+          call materialpoint_stressAndItsTangent(updateJaco, dt)                                    ! calculate stress and its tangent (parallel execution inside)
+          call materialpoint_postResults(dt)                                                        ! post results
           !$OMP PARALLEL DO
-            do e = FEsolving_execElem(1),FEsolving_execElem(2)            ! loop over all parallely processed elements
-              if (microstructure_elemhomo(mesh_element(4,e))) then        ! dealing with homogeneous element?
-                forall (i = 2:FE_Nips(mesh_element(2,e)))                 ! copy results of first IP to all others
+            do e = FEsolving_execElem(1),FEsolving_execElem(2)                                      ! loop over all parallely processed elements
+              if (microstructure_elemhomo(mesh_element(4,e))) then                                  ! dealing with homogeneous element?
+                forall (i = 2:FE_Nips(mesh_element(2,e)))                                           ! copy results of first IP to all others
                   materialpoint_P(1:3,1:3,i,e) = materialpoint_P(1:3,1:3,1,e) 
                   materialpoint_F(1:3,1:3,i,e) = materialpoint_F(1:3,1:3,1,e) 
                   materialpoint_dPdF(1:3,1:3,1:3,1:3,i,e) = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e)
@@ -606,16 +604,14 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
       CPFEM_cs(1:6,IP,cp_en) = rnd * CPFEM_odd_stress
       CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
       CPFEM_calc_done = .false.
-      select case (FEsolver)
-        case ('Abaqus','Spectral')
-          mesh_ipCenterOfGravity(1:3,IP,cp_en) = coords(1:3,1)
-        case ('Marc')
-          do node = 1,FE_Nnodes(mesh_element(2,cp_en))
-            FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
-            mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + coords(1:3,node)
-          enddo
-      end select
-    
+#ifndef Marc
+      mesh_ipCenterOfGravity(1:3,IP,cp_en) = coords(1:3,1)
+#else
+      do node = 1,FE_Nnodes(mesh_element(2,cp_en))
+        FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
+        mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + coords(1:3,node)
+      enddo
+#endif
 
     ! --+>> RECYCLING OF FORMER RESULTS (MARC SPECIALTY) <<+--
 

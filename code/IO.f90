@@ -31,12 +31,9 @@ module IO
             IO_open_jobFile_stat, &
             IO_open_file, &
             IO_open_jobFile, &
-            IO_open_inputFile, &
-            IO_open_logFile, &
             IO_write_jobFile, &
             IO_write_jobBinaryFile, &
             IO_read_jobBinaryFile, &
-            IO_abaqus_hasNoPart, &
             IO_hybridIA, &
             IO_isBlank, &
             IO_getTag, &
@@ -58,10 +55,20 @@ module IO
             IO_continuousIntValues, &
             IO_error, &
             IO_warning
+#ifndef Spectral
+ public ::  IO_open_inputFile, &
+            IO_open_logFile
+#endif
+#ifdef Abaqus  
+ public ::  IO_abaqus_hasNoPart
+#endif
+
  private :: IO_fixedFloatValue, &
             IO_lcInplace ,&
-            abaqus_assembleInputFile, &
             hybridIA_reps
+#ifdef Abaqus 
+ private :: abaqus_assembleInputFile
+#endif
 
 contains
 
@@ -187,7 +194,7 @@ subroutine IO_open_jobFile(myUnit,newExt)
  
 end subroutine IO_open_jobFile
 
-
+#ifndef Spectral
 !********************************************************************
 ! open FEM inputfile to given myUnit
 ! AP: 12.07.10 
@@ -196,10 +203,10 @@ end subroutine IO_open_jobFile
 !********************************************************************
 subroutine IO_open_inputFile(myUnit,model)
 
- use DAMASK_interface,       only: getSolverWorkingDirectoryName,&
-                                   getSolverJobName, &
-                                   inputFileExtension, &
-                                   FEsolver
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName,&
+   getSolverJobName, &
+   inputFileExtension
 
  implicit none
  integer(pInt),      intent(in) :: myUnit
@@ -208,24 +215,22 @@ subroutine IO_open_inputFile(myUnit,model)
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
  
- if (FEsolver == 'Abaqus') then
-
-   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
-   open(myUnit+1,status='old',iostat=myStat,file=path)
-   if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+#ifdef Abaqus
+ path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+ open(myUnit+1,status='old',iostat=myStat,file=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
    
-   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension//'_assembly'
-   open(myUnit,iostat=myStat,file=path)
-   if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
-      if (.not.abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
-   close(myUnit+1_pInt) 
- 
- else
+ path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension//'_assembly'
+ open(myUnit,iostat=myStat,file=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+    if (.not.abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
+ close(myUnit+1_pInt) 
+#endif
+#ifdef Marc
    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
    open(myUnit,status='old',iostat=myStat,file=path)
    if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
-
- endif
+#endif
 
 end subroutine IO_open_inputFile
 
@@ -235,9 +240,10 @@ end subroutine IO_open_inputFile
 !********************************************************************
 subroutine IO_open_logFile(myUnit)
 
- use DAMASK_interface,       only: getSolverWorkingDirectoryName, &
-                                   getSolverJobName, &
-                                   LogFileExtension
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName, &
+   getSolverJobName, &
+   LogFileExtension
 
  implicit none
  integer(pInt),      intent(in) :: myUnit
@@ -250,7 +256,7 @@ subroutine IO_open_logFile(myUnit)
  if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
 
 end subroutine IO_open_logFile
-
+#endif
 
 !********************************************************************
 ! open (write) file related to current job
@@ -334,7 +340,7 @@ subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
  
 end subroutine IO_read_jobBinaryFile
 
-
+#ifdef Abaqus
 !***********************************************************
 ! check if the input file for Abaqus contains part info
 !***********************************************************
@@ -361,7 +367,7 @@ logical function IO_abaqus_hasNoPart(myUnit)
  enddo
  
 620 end function IO_abaqus_hasNoPart
-
+#endif
 
 !********************************************************************
 ! hybrid IA sampling of ODFfile
@@ -995,57 +1001,51 @@ end function IO_countDataLines
 !********************************************************************
 integer(pInt) function IO_countContinuousIntValues(myUnit)
 
- use DAMASK_interface, only: FEsolver
-
  implicit none
  integer(pInt), intent(in) :: myUnit
  
  integer(pInt), parameter :: maxNchunks = 8192_pInt
- 
+#ifdef Abaqus 
  integer(pInt)                            :: l,c
+#endif
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
  character(len=65536)                     :: line
 
  IO_countContinuousIntValues = 0_pInt
 
- select case (FEsolver)
-   case ('Marc','Spectral')
-   
-     do
-       read(myUnit,'(A300)',end=100) line
-       myPos = IO_stringPos(line,maxNchunks)
-       if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                  ! found range indicator
-         IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) - IO_intValue(line,myPos,1_pInt)
-         exit                                                                       ! only one single range indicator allowed
-       else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' .and. &
-                IO_lc(IO_stringValue(line,myPos,3_pInt)) == 'of'           ) then   ! found multiple entries indicator
-         IO_countContinuousIntValues = IO_intValue(line,myPos,1_pInt)
-         exit                                                                       ! only one single multiplier allowed
-       else
-         IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt  ! add line's count when assuming 'c'
-         if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then              ! line finished, read last value
-           IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
-           exit                                                                     ! data ended
-         endif
-       endif
-     enddo
-   
-   case('Abaqus')
-
-     c = IO_countDataLines(myUnit)
-     do l = 1_pInt,c
-       backspace(myUnit)
-     enddo
+#ifndef Abaqus
+ do
+   read(myUnit,'(A300)',end=100) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                  ! found range indicator
+     IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) - IO_intValue(line,myPos,1_pInt)
+     exit                                                                       ! only one single range indicator allowed
+   else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' .and. &
+            IO_lc(IO_stringValue(line,myPos,3_pInt)) == 'of'           ) then   ! found multiple entries indicator
+     IO_countContinuousIntValues = IO_intValue(line,myPos,1_pInt)
+     exit                                                                       ! only one single multiplier allowed
+   else
+     IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt  ! add line's count when assuming 'c'
+     if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then              ! line finished, read last value
+       IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
+       exit                                                                     ! data ended
+     endif
+   endif
+ enddo
+#else
+ c = IO_countDataLines(myUnit)
+ do l = 1_pInt,c
+   backspace(myUnit)
+ enddo
      
-     do l = 1_pInt,c
-       read(myUnit,'(A300)',end=100) line
-       myPos = IO_stringPos(line,maxNchunks)
-       IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &    ! assuming range generation
-                                    (IO_intValue(line,myPos,2_pInt)-IO_intValue(line,myPos,1_pInt))/&
-                                                         max(1_pInt,IO_intValue(line,myPos,3_pInt))
-     enddo
- 
- end select
+ do l = 1_pInt,c
+   read(myUnit,'(A300)',end=100) line
+   myPos = IO_stringPos(line,maxNchunks)
+   IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &    ! assuming range generation
+                                (IO_intValue(line,myPos,2_pInt)-IO_intValue(line,myPos,1_pInt))/&
+                                                     max(1_pInt,IO_intValue(line,myPos,3_pInt))
+ enddo
+#endif
 
 100 end function IO_countContinuousIntValues
 
@@ -1059,8 +1059,6 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
 !********************************************************************
 function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
- use DAMASK_interface, only: FEsolver
-
  implicit none
  integer(pInt),                     intent(in) :: maxN
  integer(pInt),     dimension(1+maxN)          :: IO_continuousIntValues
@@ -1069,10 +1067,12 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
                                                   lookupMaxN
  integer(pInt),     dimension(:,:), intent(in) :: lookupMap
  character(len=64), dimension(:),   intent(in) :: lookupName
- 
  integer(pInt), parameter :: maxNchunks = 8192_pInt
- 
- integer(pInt) :: i,j,l,c,first,last
+ integer(pInt) :: i
+#ifdef Abaqus
+ integer(pInt) :: j,l,c,first,last
+#endif
+
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
  character(len=65536) line
  logical rangeGeneration
@@ -1080,88 +1080,83 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
  IO_continuousIntValues = 0_pInt
  rangeGeneration = .false.
 
- select case (FEsolver)
-   case ('Marc','Spectral')
-   
-     do
-       read(myUnit,'(A65536)',end=100) line
-       myPos = IO_stringPos(line,maxNchunks)
-       if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set name
-         do i = 1_pInt, lookupMaxN                                             ! loop over known set names
-           if (IO_stringValue(line,myPos,1_pInt) == lookupName(i)) then         ! found matching name
-             IO_continuousIntValues = lookupMap(:,i)                      ! return resp. entity list
-             exit
-           endif
-         enddo
+#ifndef Abaqus
+ do
+   read(myUnit,'(A65536)',end=100) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set name
+     do i = 1_pInt, lookupMaxN                                             ! loop over known set names
+       if (IO_stringValue(line,myPos,1_pInt) == lookupName(i)) then         ! found matching name
+         IO_continuousIntValues = lookupMap(:,i)                      ! return resp. entity list
          exit
-       else if (myPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then         ! found range indicator
-         do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,3_pInt)
-           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-           IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
-         enddo
-         exit
-       else if (myPos(1) > 3_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' &
-                                  .and. IO_lc(IO_stringValue(line,myPos,3_pInt)) == 'of' ) then         ! found multiple entries indicator
-         IO_continuousIntValues(1) = IO_intValue(line,myPos,1_pInt)
-         IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,myPos,4_pInt)
-         exit
-       else
-         do i = 1_pInt,myPos(1)-1_pInt  ! interpret up to second to last value
-           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-           IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
-         enddo
-         if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then       ! line finished, read last value
-           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-           IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,myPos(1))
-           exit
-         endif
        endif
      enddo
-   
-   case('Abaqus')
-
-     c = IO_countDataLines(myUnit)
-     do l = 1_pInt,c
-       backspace(myUnit)
+     exit
+   else if (myPos(1) > 2_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then         ! found range indicator
+     do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,3_pInt)
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
-     
-!      check if the element values in the elset are auto generated
-     backspace(myUnit)
-     read(myUnit,'(A65536)',end=100) line
-     myPos = IO_stringPos(line,maxNchunks)
-     do i = 1_pInt,myPos(1)
-       if (IO_lc(IO_stringValue(line,myPos,i)) == 'generate') rangeGeneration = .true.
+     exit
+   else if (myPos(1) > 3_pInt .and. IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'copies' &
+                              .and. IO_lc(IO_stringValue(line,myPos,3_pInt)) == 'of' ) then         ! found multiple entries indicator
+     IO_continuousIntValues(1) = IO_intValue(line,myPos,1_pInt)
+     IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,myPos,4_pInt)
+     exit
+   else
+     do i = 1_pInt,myPos(1)-1_pInt  ! interpret up to second to last value
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
      enddo
-     
-     do l = 1_pInt,c
-       read(myUnit,'(A65536)',end=100) line
-       myPos = IO_stringPos(line,maxNchunks)
-       if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set names follow on this line
-         do i = 1_pInt,myPos(1)                                                 ! loop over set names in line
-           do j = 1_pInt,lookupMaxN                                      ! look thru known set names
-             if (IO_stringValue(line,myPos,i) == lookupName(j)) then       ! found matching name
-               first = 2_pInt + IO_continuousIntValues(1)                      ! where to start appending data
-               last  = first + lookupMap(1,j) - 1_pInt                        ! up to where to append data
-               IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)    ! add resp. entity list
-               IO_continuousIntValues(1) = IO_continuousIntValues(1) + lookupMap(1,j)   ! count them
-             endif
-           enddo
-         enddo
-       else if (rangeGeneration) then                                    ! range generation
-         do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,2_pInt),max(1_pInt,IO_intValue(line,myPos,3_pInt))
-           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-           IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
-         enddo
-       else                                                              ! read individual elem nums
-         do i = 1_pInt,myPos(1)
-!            write(*,*)'IO_CIV-int',IO_intValue(line,myPos,i)
-           IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
-           IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
-         enddo
-       endif
-     enddo
+     if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then       ! line finished, read last value
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,myPos(1))
+       exit
+     endif
+   endif
+ enddo
+#else
+ c = IO_countDataLines(myUnit)
+ do l = 1_pInt,c
+   backspace(myUnit)
+ enddo
  
- endselect
+   !heck if the element values in the elset are auto generated
+ backspace(myUnit)
+ read(myUnit,'(A65536)',end=100) line
+ myPos = IO_stringPos(line,maxNchunks)
+ do i = 1_pInt,myPos(1)
+   if (IO_lc(IO_stringValue(line,myPos,i)) == 'generate') rangeGeneration = .true.
+ enddo
+ 
+ do l = 1_pInt,c
+   read(myUnit,'(A65536)',end=100) line
+   myPos = IO_stringPos(line,maxNchunks)
+   if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set names follow on this line
+     do i = 1_pInt,myPos(1)                                                 ! loop over set names in line
+       do j = 1_pInt,lookupMaxN                                      ! look thru known set names
+         if (IO_stringValue(line,myPos,i) == lookupName(j)) then       ! found matching name
+           first = 2_pInt + IO_continuousIntValues(1)                      ! where to start appending data
+           last  = first + lookupMap(1,j) - 1_pInt                        ! up to where to append data
+           IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)    ! add resp. entity list
+           IO_continuousIntValues(1) = IO_continuousIntValues(1) + lookupMap(1,j)   ! count them
+         endif
+       enddo
+     enddo
+   else if (rangeGeneration) then                                    ! range generation
+     do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,2_pInt),max(1_pInt,IO_intValue(line,myPos,3_pInt))
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
+     enddo
+   else                                                              ! read individual elem nums
+     do i = 1_pInt,myPos(1)
+      !  write(*,*)'IO_CIV-int',IO_intValue(line,myPos,i)
+       IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
+       IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
+     enddo
+   endif
+ enddo
+#endif
 
 100 end function IO_continuousIntValues
 
@@ -1426,6 +1421,8 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
    msg = 'invalid restart increment given'
  case (35_pInt)
    msg = 'could not get $DAMASK_NUM_THREADS'
+ case (40_pInt)
+   msg = 'Found Spectral solver parameter '
  case (47_pInt)
    msg = 'No valid parameter for FFTW given, using FFTW_PATIENT'
  case (101_pInt)
@@ -1467,8 +1464,10 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
 
 end subroutine IO_warning
 
+
 ! INTERNAL (HELPER) FUNCTIONS:
 
+#ifdef Abaqus 
 !********************************************************************
 ! AP: 12.07.10
 !    create a new input file for abaqus simulations
@@ -1525,7 +1524,7 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
 200 createSuccess =.false.
 
 end function abaqus_assembleInputFile
-
+#endif
 
 !********************************************************************
 ! hybrid IA repetition counter

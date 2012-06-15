@@ -38,15 +38,15 @@
 !********************************************************************
 
 #include "prec.f90"
+#define Abaqus
 
+module DAMASK_interface
 
-MODULE DAMASK_interface
-
-character(len=64), parameter :: FEsolver = 'Abaqus'
+implicit none
 character(len=4),  parameter :: InputFileExtension = '.inp'
 character(len=4),  parameter :: LogFileExtension = '.log'
 
-CONTAINS
+contains
 
 !--------------------
 subroutine DAMASK_interface_init()
@@ -55,13 +55,14 @@ subroutine DAMASK_interface_init()
   write(6,*) '<<<+-  DAMASK_abaqus init  -+>>>'
   write(6,*) '$Id$'
   write(6,*)
- return
-end subroutine
+
+end subroutine DAMASK_interface_init
 
 !--------------------
 function getSolverWorkingDirectoryName()
 !--------------------
- use prec
+ use prec, only: pInt
+
  implicit none
  character(1024) getSolverWorkingDirectoryName
  integer(pInt) LENOUTDIR
@@ -69,32 +70,24 @@ function getSolverWorkingDirectoryName()
  getSolverWorkingDirectoryName=''
  CALL VGETOUTDIR( getSolverWorkingDirectoryName, LENOUTDIR )
  getSolverWorkingDirectoryName=trim(getSolverWorkingDirectoryName)//'/'
-end function
-
-
-!--------------------
-function getModelName()
-!--------------------
- character(1024) getModelName
-
- getModelName = getSolverJobName()
-end function
-
+ 
+end function getSolverWorkingDirectoryName
 
 !--------------------
 function getSolverJobName()
 !--------------------
- use prec
+ use prec, only: pInt
+ 
  implicit none
-
  character(1024) getSolverJobName, JOBNAME
  integer(pInt) LENJOBNAME
 
  getSolverJobName=''
  CALL VGETJOBNAME(getSolverJobName , LENJOBNAME )
-end function
+ 
+end function getSolverJobName
 
-END MODULE
+end module DAMASK_interface
 
 #include "IO.f90"
 #include "numerics.f90"
@@ -153,8 +146,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
                     stressNew, stateNew, enerInternNew, enerInelasNew, &
                     jblock(5), jblock(2))
 
- return
- end subroutine
+ end subroutine vumat
 
 
  subroutine vumatXtrArg (nblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
@@ -302,18 +294,17 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
   
  enddo
 
- return
- end subroutine
+ end subroutine vumatXtrArg
 
 !********************************************************************
 !     This subroutine replaces the corresponding Marc subroutine
 !********************************************************************
  subroutine quit(mpie_error)
 
- use prec, only:      pReal, &
-                      pInt
+ use prec, only: pInt
+ 
  implicit none
  integer(pInt) mpie_error
 
  call xit
- end subroutine
+ end subroutine quit

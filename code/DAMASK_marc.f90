@@ -56,13 +56,14 @@
 !********************************************************************
 !
 #include "prec.f90"
-
+#define Marc
 
 module DAMASK_interface
-
- character(len=64), parameter :: FEsolver = 'Marc'
- character(len=4),  parameter :: InputFileExtension = '.dat'
- character(len=4),  parameter :: LogFileExtension = '.log'
+ use prec, only: pInt
+ 
+ implicit none
+ character(len=4), parameter :: InputFileExtension = '.dat'
+ character(len=4), parameter :: LogFileExtension = '.log'
 
 contains
 
@@ -95,19 +96,8 @@ function getSolverWorkingDirectoryName()
 
 end function getSolverWorkingDirectoryName
 
-
-function getModelName()
- implicit none
- character(1024) :: getModelName
- 
- getModelName = getSolverJobName()
- 
-end function getModelName
-
-
 function getSolverJobName()
  
- use prec, only: pInt
  implicit none
 
  character(1024) :: getSolverJobName, inputName
@@ -116,7 +106,7 @@ function getSolverJobName()
 
  getSolverJobName=''
  inputName=''
- inquire(5, name=inputName) ! determine outputfile
+ inquire(5, name=inputName) ! determine inputfile
  extPos = len_trim(inputName)-4
  getSolverJobName=inputName(scan(inputName,pathSep,back=.true.)+1:extPos)
 ! write(6,*) 'getSolverJobName', getSolverJobName
@@ -241,7 +231,7 @@ subroutine hypela2(&
 !$ use numerics, only: DAMASK_NumThreadsInt                                   ! number of threads set by DAMASK_NUM_THREADS
  
  implicit none
- include "omp_lib.h"                                                          ! the openMP function library
+!$ include "omp_lib.h"                                                          ! the openMP function library
 !     ** Start of generated type statements **
  real(pReal) coord, d, de, disp, dispt, dt, e, eigvn, eigvn1, ffn, ffn1
  real(pReal) frotn, frotn1, g

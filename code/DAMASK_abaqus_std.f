@@ -38,15 +38,16 @@
 !********************************************************************
 
 #include "prec.f90"
+#define Abaqus
 
 
-MODULE DAMASK_interface
+module DAMASK_interface
 
-character(len=64), parameter :: FEsolver = 'Abaqus'
+implicit none
 character(len=4),  parameter :: InputFileExtension = '.inp'
 character(len=4),  parameter :: LogFileExtension = '.log'
 
-CONTAINS
+contains
 
 !--------------------
 subroutine DAMASK_interface_init()
@@ -55,13 +56,14 @@ subroutine DAMASK_interface_init()
   write(6,*) '<<<+-  DAMASK_abaqus init  -+>>>'
   write(6,*) '$Id$'
   write(6,*)
- return
-end subroutine
+
+end subroutine DAMASK_interface_init
 
 !--------------------
 function getSolverWorkingDirectoryName()
 !--------------------
  use prec
+
  implicit none
  character(1024) getSolverWorkingDirectoryName
  integer(pInt) LENOUTDIR
@@ -70,33 +72,26 @@ function getSolverWorkingDirectoryName()
  CALL GETOUTDIR( getSolverWorkingDirectoryName, LENOUTDIR )
  getSolverWorkingDirectoryName=trim(getSolverWorkingDirectoryName)//'/'
 ! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
-end function
 
-
-!--------------------
-function getModelName()
-!--------------------
- character(1024) getModelName
- 
- getModelName = getSolverJobName()
-end function
+end function getSolverWorkingDirectoryName
 
 
 !--------------------
 function getSolverJobName()
 !--------------------
  use prec
+ 
  implicit none
-
  character(1024) getSolverJobName, JOBNAME
  integer(pInt) LENJOBNAME
 
  getSolverJobName=''
  CALL GETJOBNAME(getSolverJobName , LENJOBNAME )
 ! write(6,*) 'getSolverJobName', getSolverJobName
-end function
 
-END MODULE
+end function getSolverJobName
+
+end module DAMASK_interface
 
 #include "IO.f90"
 #include "numerics.f90"
@@ -150,7 +145,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
 
  implicit none
- 
  CHARACTER*80 CMNAME
  integer(pInt) ndi, nshr, ntens, nstatv, nprops, noel, npt,&
                kslay, kspt, kstep, kinc
@@ -290,18 +284,17 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  if ( terminallyIll ) pnewdt = 0.5_pReal                               ! force cutback directly ?
 
- return
- end subroutine
+ end subroutine UMAT
 
 !********************************************************************
 !     This subroutine replaces the corresponding Marc subroutine
 !********************************************************************
  subroutine quit(mpie_error)
 
- use prec, only:      pReal, &
-                      pInt
+ use prec, only: pInt
+ 
  implicit none
  integer(pInt) mpie_error
 
  call xit
- end subroutine
+ end subroutine quit
