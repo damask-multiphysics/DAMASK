@@ -48,11 +48,11 @@ if options.compiler not in compilers:
   parser.error('compiler switch "--F90" has to be one out of: %s'%(', '.join(compilers)))
 
 f2py_compiler = {
-                  'gfortran': 'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral"',
-                  'gnu95':    'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral"',
-                  'intel32':  'intel   --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral"',
-                  'intel':    'intelem --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral"',
-                  'ifort':    'intelem --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral"',
+                  'gfortran': 'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral-I${DAMASK_ROOT}/lib"',
+                  'gnu95':    'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral-I${DAMASK_ROOT}/lib"',
+                  'intel32':  'intel   --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral -I${DAMASK_ROOT}/lib"',
+                  'intel':    'intelem --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral -I${DAMASK_ROOT}/lib"',
+                  'ifort':    'intelem --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral -I${DAMASK_ROOT}/lib"',
                 }[options.compiler]
 compiler = {
                   'gfortran': 'gfortran',
