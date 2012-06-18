@@ -546,7 +546,8 @@ real(pReal), dimension(3,3,3,3) ::   dSdFe, &
                                      dFedFdot, &
                                      dSdF, &
                                      dSdFdot, &
-                                     dFp_invdFdot
+                                     dFp_invdFdot, &
+                                     junk2
 real(pReal) ::   counter
 
 ! --+>> INITIALIZE TO STARTING CONDITION <<+--
@@ -726,8 +727,7 @@ enddo                                                                           
 #endif
           invFp = math_inv33(crystallite_partionedFp0(1:3,1:3,g,i,e))
           Fe_guess = math_mul33x33(crystallite_partionedF(1:3,1:3,g,i,e), invFp)
-          Tstar = math_Mandel6to33( math_mul66x6( 0.5_pReal*constitutive_homogenizedC(g,i,e), &
-                                                  math_Mandel33to6( math_mul33x33(transpose(Fe_guess),Fe_guess) - math_I3 ) ) )
+          call constitutive_TandItsTangent(Tstar, junk2, Fe_guess,g,i,e)
           crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(Fe_guess,math_mul33x33(Tstar,transpose(invFp)))
         endif
 #ifndef _OPENMP
