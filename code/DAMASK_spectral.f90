@@ -404,13 +404,13 @@ program DAMASK_spectral
    else
      write(6,'(a)')'deformation gradient rate:'
    endif
-   write (*,'(3(3(f12.7,1x)/))',advance='no') merge(math_transpose33(bc(loadcase)%deformation),&
+   write (6,'(3(3(f12.7,1x)/))',advance='no') merge(math_transpose33(bc(loadcase)%deformation),&
                   reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskDeformation))
-   write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' stress / GPa:',&
+   write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') ' stress / GPa:',&
         1e-9_pReal*merge(math_transpose33(bc(loadcase)%stress),&
                          reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskStress))
    if (any(bc(loadcase)%rotation /= math_I3)) &
-     write (*,'(a,/,3(3(f12.7,1x)/))',advance='no') ' rotation of loadframe:',&
+     write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') ' rotation of loadframe:',&
                                                           math_transpose33(bc(loadcase)%rotation)
    write(6,'(a,f12.6)') 'temperature:', bc(loadcase)%temperature
    write(6,'(a,f12.6)') 'time:       ', bc(loadcase)%time
@@ -527,7 +527,7 @@ program DAMASK_spectral
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
-! get reference material stifness and init fields to no deformation
+! get reference material stiffness and init fields to no deformation
  ielem = 0_pInt
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    ielem = ielem + 1_pInt 

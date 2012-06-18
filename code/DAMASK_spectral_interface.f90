@@ -32,7 +32,7 @@ module DAMASK_interface
  logical,                       public  :: &
    appendToOutFile = .false.                                                                        !< Append to existing spectralOut file (in case of restart, not in case of regridding)
  integer(pInt),                 public  :: &
-   spectralRestart = 1_pInt                                                                         !< Increment at which calculation starts
+   spectralRestartInc = 1_pInt                                                                      !< Increment at which calculation starts
  character(len=1024),           public  :: &
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
@@ -80,8 +80,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    dateAndTime                                                                                      ! type default integer
  logical :: &
    gotLoadCase = .false., &
-   gotGeometry = .false., &
-   gotRestart  = .false.
+   gotGeometry = .false.
  
  write(6,'(a)') ''
  write(6,'(a)') '<<<+-  DAMASK_spectral_interface init  -+>>>'
@@ -91,7 +90,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
    geometryParameter = geometryParameterIn
    loadcaseParameter = loadcaseParameterIn
-   commandLine='n/a'
+   commandLine = 'n/a'
    gotLoadCase = .true.
    gotGeometry = .true.
  else if ( .not.( present(loadcaseParameterIn) .and. present(geometryParameterIn))) then            ! none parameters given in function call, trying to get them from command line
@@ -145,32 +144,17 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
          write(6,'(a)')  ' '
          call quit(0_pInt)                                                                                ! normal Termination
        case ('-l', '--load', '--loadcase')
-         if (gotLoadCase) then
-           write(6,'(a)') 'Got 2nd time loadcase keyword'
-           call quit(1_pInt)
-         endif
          loadcaseParameter = IO_stringValue(commandLine,positions,i+1_pInt)
          gotLoadCase = .true.
        case ('-g', '--geom', '--geometry')
-         if (gotGeometry) then
-           write(6,'(a)') 'Got 2nd time geometry keyword'
-           call quit(1_pInt)
-          endif
          geometryParameter = IO_stringValue(commandLine,positions,i+1_pInt)
          gotGeometry = .true.
        case ('-r', '--rs', '--restart')
-         spectralRestart = IO_IntValue(commandLine,positions,i+1_pInt)
+         spectralRestartInc = IO_IntValue(commandLine,positions,i+1_pInt)
          appendToOutFile = .true.
-         if (gotRestart) then
-           write(6,'(a)') 'Got 2nd time restart/regrid keyword'
-           call quit(1_pInt)
-         endif
        case ('--rg', '--regrid')
-         spectralRestart = IO_IntValue(commandLine,positions,i+1_pInt)
-         if (gotRestart) then
-           write(6,'(a)') 'Got 2nd time restart/regrid keyword'
-           call quit(1_pInt)
-         endif
+         spectralRestartInc = IO_IntValue(commandLine,positions,i+1_pInt)
+         appendToOutFile = .false.
      end select
    enddo
  endif
@@ -199,8 +183,8 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  write(6,'(a,a)')  'Command line call:     ', trim(commandLine)
  write(6,'(a,a)')  'Geometry parameter:    ', trim(geometryParameter)
  write(6,'(a,a)')  'Loadcase parameter:    ', trim(loadcaseParameter)
- if (SpectralRestart > 1) write(6,'(a,i6.6)') &
-                   'Restart at increment:  ', spectralRestart 
+ if (SpectralRestartInc > 1_pInt) write(6,'(a,i6.6)') &
+                   'Restart at increment:  ', spectralRestartInc
  write(6,'(a,l1)') 'Append to result file: ', appendToOutFile
 
 end subroutine DAMASK_interface_init

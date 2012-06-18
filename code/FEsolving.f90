@@ -103,11 +103,12 @@ subroutine FE_init
 
 #ifdef Spectral
  modelName = getSolverJobName()
- restartInc = spectralRestart
+ restartInc = spectralRestartInc
  if(restartInc <= 0_pInt) then
    call IO_warning(warning_ID=34_pInt)
    restartInc = 1_pInt
  endif
+ restartRead = restartInc > 1_pInt                           ! only read in if "true" restart requested
 #else
  call IO_open_inputFile(fileunit,getSolverJobName())
  rewind(fileunit)
