@@ -35,9 +35,6 @@
 ! MPI fuer Eisenforschung, Duesseldorf
 
 #include "spectral_quit.f90"
-!#ifdef PETSC
-!#include "finclude/petscdef.h"
-!#endif
 
 program DAMASK_spectral
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
@@ -47,7 +44,8 @@ program DAMASK_spectral
    loadCaseFile, &
    geometryFile, &
    getSolverWorkingDirectoryName, &
-   getSolverJobName
+   getSolverJobName, &
+   appendToOutFile
    
  use prec, only: &
    pInt, &
@@ -177,7 +175,7 @@ program DAMASK_spectral
    C_ref = 0.0_pReal, &
    C = 0.0_pReal, &
    S_lastInc, &
-   C_lastInc  ! stiffness and compliance
+   C_lastInc                                                                                        ! stiffness and compliance
  
  real(pReal), dimension(6) ::             sigma                                                     ! cauchy stress
  real(pReal), dimension(6,6) ::           dsde
@@ -213,7 +211,7 @@ program DAMASK_spectral
  complex(pReal), dimension(3,3) ::          temp33_Complex
  real(pReal),    dimension(3,3) ::          temp33_Real
  integer(pInt) :: i, j, k, l, m, n, p, errorID
- integer(pInt) :: N_Loadcases, loadcase = 0_pInt, inc, iter, ielem, CPFEM_mode, &
+ integer(pInt) :: N_Loadcases, loadcase = 0_pInt, inc, iter, ielem, CPFEM_mode=1_pInt, &
                   ierr, totalIncsCounter = 0_pInt,&
                   notConvergedCounter = 0_pInt, convergedCounter = 0_pInt
  logical :: errmatinv
@@ -527,18 +525,51 @@ program DAMASK_spectral
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
-! get reference material stiffness and init fields to no deformation
- ielem = 0_pInt
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   ielem = ielem + 1_pInt 
-   F(i,j,k,1:3,1:3) = math_I3
-   F_lastInc(i,j,k,1:3,1:3) = math_I3
-   coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) - geomdim/real(2_pInt*res,pReal)
-   call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
-                        0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
-   C = C + dPdF 
-enddo; enddo; enddo
-C_ref = C * wgt   
+! in case of no restart get reference material stiffness and init fields to no deformation
+ if (restartInc == 1_pInt) then
+   ielem = 0_pInt
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     ielem = ielem + 1_pInt 
+     F(i,j,k,1:3,1:3) = math_I3
+     F_lastInc(i,j,k,1:3,1:3) = math_I3
+     coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) - geomdim/real(2_pInt*res,pReal)
+     call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
+                          0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
+     C = C + dPdF 
+  enddo; enddo; enddo
+  C_ref = C * wgt
+  call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
+  write (777,rec=1) C_ref
+  close(777)
+  call IO_write_jobBinaryFile(777,'C',size(C))
+  write (777,rec=1) C
+  close(777)
+  
+!--------------------------------------------------------------------------------------------------
+! restore deformation gradient and stiffness from saved state
+ elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
+   if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
+                                             restartInc - 1_pInt,' from file' 
+   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
+                                                trim(getSolverJobName()),size(F))
+   read (777,rec=1) F
+   close (777)
+   F_lastInc = F
+   F_aim = 0.0_pReal
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     F_aim = F_aim + F(i,j,k,1:3,1:3)                                                               ! calculating old average deformation
+   enddo; enddo; enddo
+   F_aim = F_aim * wgt
+   F_aim_lastInc = F_aim
+   coordinates = 0.0 ! change it later!!!
+   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C_ref))
+   read (777,rec=1) C_ref
+   close (777)
+   call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
+   read (777,rec=1) C
+   close (777)
+   CPFEM_mode = 2_pInt
+ endif  
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the gamma operator
@@ -561,42 +592,30 @@ C_ref = C * wgt
  endif
 
 !--------------------------------------------------------------------------------------------------
-! possible restore deformation gradient from saved state
- if (restartInc > 1_pInt) then                                                                      ! using old values from file                                                      
-   if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
-                                             restartInc - 1_pInt,' from file' 
-   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
-                                                trim(getSolverJobName()),size(F))
-   read (777,rec=1) F
-   close (777)
-   F_lastInc = F
-   F_aim = 0.0_pReal
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     F_aim = F_aim + F(i,j,k,1:3,1:3)                                                               ! calculating old average deformation
-   enddo; enddo; enddo
-   F_aim = F_aim * wgt
-   F_aim_lastInc = F_aim
- endif
-
-!--------------------------------------------------------------------------------------------------
 ! write header of output file
- open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())&
-                                        //'.spectralOut',form='UNFORMATTED',status='REPLACE')
- write(538) 'load',       trim(loadCaseFile)
- write(538) 'workingdir', trim(getSolverWorkingDirectoryName())
- write(538) 'geometry',   trim(geometryFile)
- write(538) 'resolution', res
- write(538) 'dimension',  geomdim
- write(538) 'materialpoint_sizeResults', materialpoint_sizeResults
- write(538) 'loadcases',        N_Loadcases
- write(538) 'frequencies', bc(1:N_Loadcases)%outputfrequency                                        ! one entry per loadcase
- write(538) 'times', bc(1:N_Loadcases)%time                                                         ! one entry per loadcase
- write(538) 'logscales',  bc(1:N_Loadcases)%logscale         
- write(538) 'increments', bc(1:N_Loadcases)%incs                                                    ! one entry per loadcase
- write(538) 'startingIncrement', restartInc - 1_pInt                                                ! start with writing out the previous inc
- write(538) 'eoh'                                                                                   ! end of header
- write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)                ! initial (non-deformed or read-in) results
- if (debugGeneral) write(6,'(a)') 'Header of result file written out'
+ if (appendToOutFile) then
+   open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',&
+                                   form='UNFORMATTED',status='REPLACE')
+ else
+   open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',&
+                                   form='UNFORMATTED',status='REPLACE',position='APPEND')
+   write(538) 'load',       trim(loadCaseFile)
+   write(538) 'workingdir', trim(getSolverWorkingDirectoryName())
+   write(538) 'geometry',   trim(geometryFile)
+   write(538) 'resolution', res
+   write(538) 'dimension',  geomdim
+   write(538) 'materialpoint_sizeResults', materialpoint_sizeResults
+   write(538) 'loadcases',        N_Loadcases
+   write(538) 'frequencies', bc(1:N_Loadcases)%outputfrequency                                      ! one entry per loadcase
+   write(538) 'times', bc(1:N_Loadcases)%time                                                       ! one entry per loadcase
+   write(538) 'logscales',  bc(1:N_Loadcases)%logscale         
+   write(538) 'increments', bc(1:N_Loadcases)%incs                                                  ! one entry per loadcase
+   write(538) 'startingIncrement', restartInc - 1_pInt                                              ! start with writing out the previous inc
+   write(538) 'eoh'                                                                                 ! end of header
+   write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)              ! initial (non-deformed or read-in) results
+   if (debugGeneral) write(6,'(a)') 'Header of result file written out'
+ endif
+ flush(538)
 
 !##################################################################################################
 ! Loop over loadcases defined in the loadcase file
@@ -712,7 +731,6 @@ C_ref = C * wgt
        write(6,'(A,I5.5,A,es12.5)') 'Increment ', totalIncsCounter, ' Time ',time
        
        guessmode = 1.0_pReal                                                                        ! keep guessing along former trajectory during same loadcase
-       CPFEM_mode = 1_pInt                                                                          ! winding forward
        iter = 0_pInt
        err_div = huge(err_div_tol)                                                                  ! go into loop 
 
@@ -1015,6 +1033,7 @@ C_ref = C * wgt
          
        enddo    ! end looping when convergency is achieved 
            
+       CPFEM_mode = 1_pInt                                                                          ! winding forward
        write(6,'(a)') ''
        write(6,'(a)') '=================================================================='
        if(err_div > err_div_tol .or. err_stress > err_stress_tol) then
@@ -1029,6 +1048,7 @@ C_ref = C * wgt
          write(6,'(a)') ''
          write(6,'(a)') '... writing results to file ......................................'
          write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)       ! write result to file
+         flush(538)
        endif
        
        if( bc(loadcase)%restartFrequency > 0_pInt .and. &
@@ -1065,5 +1085,6 @@ C_ref = C * wgt
    call fftw_destroy_plan(plan_scalarField_forth)
    call fftw_destroy_plan(plan_scalarField_back)
  endif
+ if (notConvergedCounter > 0_pInt) call quit(2_pInt)
  call quit(0_pInt)
 end program DAMASK_spectral

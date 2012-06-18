@@ -73,25 +73,25 @@ module IO
 contains
 
 
-!********************************************************************
-! output version number
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief only output of revision number
+!--------------------------------------------------------------------------------------------------
 subroutine IO_init
- use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
-  !$OMP CRITICAL (write2out)
   write(6,*)
   write(6,*) '<<<+-  IO init  -+>>>'
   write(6,*) '$Id$'
 #include "compilation_info.f90"
   flush(6)
-  !$OMP END CRITICAL (write2out)
 
 end subroutine IO_init
 
-!********************************************************************
-! checks if myUnit is opened for reading and rewinds
-!********************************************************************
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Checks if unit is opened for reading, if true rewinds. Otherwise stops with
+!! error message 102
+!--------------------------------------------------------------------------------------------------
 subroutine IO_checkAndRewind(myUnit)
  
 implicit none
@@ -104,13 +104,13 @@ implicit none
 
 end subroutine IO_checkAndRewind
 
-!********************************************************************
-! open existing file to given myUnit
-! path to file is relative to working directory
-!********************************************************************
-logical function IO_open_file_stat(myUnit,relPath)
 
- use DAMASK_interface, only: getSolverWorkingDirectoryName
+!--------------------------------------------------------------------------------------------------
+!> @brief Open existing file to given unit path to file is relative to working directory
+!--------------------------------------------------------------------------------------------------
+logical function IO_open_file_stat(myUnit,relPath)
+ use DAMASK_interface, &
+   only: getSolverWorkingDirectoryName
  
  implicit none
  integer(pInt),      intent(in) :: myUnit
@@ -126,14 +126,13 @@ logical function IO_open_file_stat(myUnit,relPath)
 end function IO_open_file_stat
 
 
-!********************************************************************
-! open (write) file related to current job
-! but with different extension to given myUnit
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief Open (write) file related to current job but with different extension to given unit
+!--------------------------------------------------------------------------------------------------
 logical function IO_open_jobFile_stat(myUnit,newExt)
-
- use DAMASK_interface,       only: getSolverWorkingDirectoryName, &
-                                   getSolverJobName
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName, &
+   getSolverJobName
 
  implicit none
  integer(pInt),      intent(in) :: myUnit
@@ -149,10 +148,9 @@ logical function IO_open_jobFile_stat(myUnit,newExt)
 end function IO_open_JobFile_stat
 
 
-!********************************************************************
-! open existing file to given unit
-! path to file is relative to working directory
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief Open existing file to given unit path to file is relative to working directory
+!--------------------------------------------------------------------------------------------------
 subroutine IO_open_file(myUnit,relPath)
 
  use DAMASK_interface,       only: getSolverWorkingDirectoryName
@@ -171,10 +169,9 @@ subroutine IO_open_file(myUnit,relPath)
 end subroutine IO_open_file
 
 
-!********************************************************************
-! open (write) file related to current job
-! but with different extension to given unit
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief Open (write) file related to current job but with different extension to given unit
+!--------------------------------------------------------------------------------------------------
 subroutine IO_open_jobFile(myUnit,newExt)
 
  use DAMASK_interface,       only: getSolverWorkingDirectoryName, &
