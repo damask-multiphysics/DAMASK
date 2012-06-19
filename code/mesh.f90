@@ -366,7 +366,6 @@ subroutine mesh_init(ip,element)
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
 #ifdef Spectral
  call IO_open_file(fileUnit,geometryFile)                                                           ! parse info from geometry file...
- 
  call mesh_spectral_count_nodesAndElements(fileUnit)
  call mesh_spectral_count_cpElements
  call mesh_spectral_map_elements
@@ -2572,15 +2571,17 @@ use IO, only: &
   IO_stringValue, &
   IO_stringPos
 
-implicit none
-integer(pInt), intent(in) :: myUnit
+ implicit none
+ integer(pInt), intent(in) :: myUnit
 
-integer(pInt), parameter :: maxNchunks = 5_pInt
-integer(pInt), dimension (1+2*maxNchunks) :: myPos
-integer(pInt) chunk, Nchunks
-character(len=300) line, damaskOption, v
-
-mesh_periodicSurface = .false.
+ integer(pInt), parameter :: maxNchunks = 5_pInt
+ integer(pInt), dimension (1+2*maxNchunks) :: myPos
+ integer(pInt) chunk, Nchunks
+ character(len=300) :: line, damaskOption, v
+#ifndef Spectral
+ character(len=300) :: keyword 
+#endif
+ mesh_periodicSurface = .false.
 
 610 FORMAT(A300)
 
@@ -2591,37 +2592,37 @@ mesh_periodicSurface = .false.
  keyword = '**damask'
 #endif
 
-rewind(myUnit)
-do 
-  read (myUnit,610,END=620) line
-  myPos = IO_stringPos(line,maxNchunks)
-  Nchunks = myPos(1)
+ rewind(myUnit)
+ do 
+   read (myUnit,610,END=620) line
+   myPos = IO_stringPos(line,maxNchunks)
+   Nchunks = myPos(1)
 #ifndef Spectral
-  if (IO_lc(IO_stringValue(line,myPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then  ! found keyword for damask option and there is at least one more chunk to read
-    damaskOption = IO_lc(IO_stringValue(line,myPos,2_pInt))
-    select case(damaskOption)
-      case('periodic')                                                        ! damask Option that allows to specify periodic fluxes
-        do chunk = 3_pInt,Nchunks                                                  ! loop through chunks (skipping the keyword)
+   if (IO_lc(IO_stringValue(line,myPos,1_pInt)) == keyword .and. Nchunks > 1_pInt) then  ! found keyword for damask option and there is at least one more chunk to read
+     damaskOption = IO_lc(IO_stringValue(line,myPos,2_pInt))
+     select case(damaskOption)
+       case('periodic')                                                        ! damask Option that allows to specify periodic fluxes
+         do chunk = 3_pInt,Nchunks                                                  ! loop through chunks (skipping the keyword)
+            v = IO_lc(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
+            mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
+            mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
+            mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'
+         enddo
+     endselect
+   endif
+#else
+   damaskOption = IO_lc(IO_stringValue(line,myPos,1_pInt))
+   select case(damaskOption)
+     case('periodic')                                                        ! damask Option that allows to specify periodic fluxes
+       do chunk = 2_pInt,Nchunks                                                  ! loop through chunks (skipping the keyword)
           v = IO_lc(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
           mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
           mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
           mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'
         enddo
-    endselect
-  endif
-#else
-  damaskOption = IO_lc(IO_stringValue(line,myPos,1_pInt))
-  select case(damaskOption)
-    case('periodic')                                                        ! damask Option that allows to specify periodic fluxes
-      do chunk = 2_pInt,Nchunks                                                  ! loop through chunks (skipping the keyword)
-        v = IO_lc(IO_stringValue(line,myPos,chunk))                       ! chunk matches keyvalues x,y, or z?
-        mesh_periodicSurface(1) = mesh_periodicSurface(1) .or. v == 'x'
-        mesh_periodicSurface(2) = mesh_periodicSurface(2) .or. v == 'y'
-        mesh_periodicSurface(3) = mesh_periodicSurface(3) .or. v == 'z'
-      enddo
-  endselect
+   endselect
 #endif
-enddo
+ enddo
 
 620 end subroutine mesh_get_damaskOptions
 

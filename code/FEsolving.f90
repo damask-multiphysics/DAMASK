@@ -166,11 +166,11 @@ subroutine FE_init
      endif
    enddo
 #endif
+ 200 close(fileunit)
  else
    modelName = getSolverJobName()
  endif
 
-200 close(fileunit)
 #endif
 !$OMP CRITICAL (write2out)
  write(6,*)
