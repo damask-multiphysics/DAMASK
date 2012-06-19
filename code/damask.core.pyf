@@ -14,18 +14,36 @@
 python module core ! in 
    interface  ! in :core
 
+     module prec
+        subroutine prec_init
+        end subroutine prec_init
+     end module prec
 
      module damask_interface ! in :damask_interface:DAMASK_spectral_interface.f90
-
         subroutine damask_interface_init(loadcaseParameterIn,geometryParameterIn) ! in :damask_interface:DAMASK_spectral_interface.f90
             character(len=1024), intent(in)   :: loadcaseParameterIn                                      
             character(len=1024), intent(in)   :: geometryParameterIn
         end subroutine damask_interface_init            
+     end module damask_interface
 
-      end module damask_interface
+     module io
+        subroutine io_init
+        end subroutine io_init
+     end module io  
+     
+     module numerics
+        subroutine numerics_init
+        end subroutine numerics_init
+     end module numerics
 
+     module debug
+        subroutine debug_init
+        end subroutine debug_init
+     end module debug
 
-      module math ! in :math:math.f90
+     module math ! in :math:math.f90
+        subroutine math_init
+        end subroutine math_init
 
         subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch) ! in  :math:math.f90
             ! input variables
@@ -167,24 +185,32 @@ python module core ! in
              real*8,  dimension(3),                             intent(in) :: geomdim
              integer,                                           intent(in) :: queryPoints
              integer,                                           intent(in) :: domainPoints
-             real*8,  dimension(spatialDim,queryPoints),        intent(in), depend(spatialDim,queryPoints)  :: querySet
-             real*8,  dimension(spatialDim,domainPoints),       intent(in), depend(spatialDim,domainPoints) :: domainSet
+             real*8,  dimension(spatialDim,queryPoints),        intent(in),  depend(spatialDim,queryPoints)  :: querySet
+             real*8,  dimension(spatialDim,domainPoints),       intent(in),  depend(spatialDim,domainPoints) :: domainSet
              ! output variable
-             integer, dimension(queryPoints),                intent(out), depend(queryPoints) :: indices
+             integer, dimension(queryPoints),                   intent(out), depend(queryPoints)             :: indices
              ! depending on input
-             real*8,   dimension(spatialDim,(3**spatialDim)*domainPoints), depend(spatialDim,domainPoints)          :: domainSetLarge
+             real*8,   dimension(spatialDim,(3**spatialDim)*domainPoints), depend(spatialDim,domainPoints)   :: domainSetLarge
         end subroutine math_nearestNeighborSearch
      end module math
 
-     module mesh ! in :mesh:mesh.f90
+     module fesolving
+        subroutine fe_init
+        end subroutine fe_init 
+     end module fesolving
 
-        function mesh_regrid(resNewInput) ! in :mesh:mesh.f90
+     module mesh ! in :mesh:mesh.f90
+	    subroutine mesh_init(ip,element)
+ 			 integer, parameter                   ::      ip = 1
+             integer, parameter             :: element = 1
+        end subroutine mesh_init
+		
+        function mesh_regrid(resNewInput,minRes) ! in :mesh:mesh.f90
             integer, dimension(3)                                :: mesh_regrid
             integer, dimension(3), intent(in), optional          :: resNewInput
+            integer, dimension(3), intent(in), optional          :: minRes
         end function mesh_regrid            
-
      end module mesh
-      
    end interface 
 end python module core
 

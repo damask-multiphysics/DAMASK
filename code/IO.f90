@@ -1339,6 +1339,10 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'updating of gamma operator not possible if it is pre calculated'
  case (880_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
+ case (890_pInt)
+   msg = 'invalid input for regridding a 2D model'
+ case (891_pInt)
+   msg = 'invalid input for regridding a 3D model'
 
 
  !* Error messages related to parsing of Abaqus input file
