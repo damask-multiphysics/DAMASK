@@ -1817,9 +1817,8 @@ fi
 #
 # user subroutine used
 #
-# add BLAS and FFTW options for linking
+# add BLAS options for linking
   BLAS="%BLAS%"
-  FFTW="%FFTW%"
 
   
   if test "$user"
@@ -2773,7 +2772,6 @@ then
     $MRCLIBS     \
     $METISLIBS \
     $BLAS   \
-    $FFTW   \
     $SYSLIBS          || \
     {
     echo "$0: link failed for ${user:+$userobj }$objs"
@@ -3065,7 +3063,6 @@ then
   $MRCLIBS     \
   $METISLIBS \
   $BLAS   \
-  $FFTW   \
   $SYSLIBS          || \
   {
     echo "$0: link failed for ${user:+$userobj }$objs"
@@ -3356,7 +3353,6 @@ then
   $MRCLIBS     \
   $METISLIBS \
   $BLAS   \
-  $FFTW   \
   $SYSLIBS          || \
   {
     echo "$0: link failed for ${user:+$userobj }$objs"

@@ -1856,9 +1856,8 @@ fi
 #
 # user subroutine used
 #
-# add BLAS and FFTW options for linking
+# add BLAS options for linking
   BLAS="%BLAS%"
-  FFTW="%FFTW%"
 
   
   if test "$user"
@@ -2837,7 +2836,6 @@ then
     $MRCLIBS     \
     $METISLIBS \
     $BLAS   \
-    $FFTW   \
     $SYSLIBS  \
     $SECLIBS      || \
     {
@@ -3130,7 +3128,6 @@ then
   $MRCLIBS     \
   $METISLIBS \
   $BLAS   \
-  $FFTW   \
   $SYSLIBS  \
   $SECLIBS    || \
   {
@@ -3422,7 +3419,6 @@ then
   $MRCLIBS     \
   $METISLIBS \
   $BLAS   \
-  $FFTW   \
   $SYSLIBS \
   $SECLIBS         || \
   {
