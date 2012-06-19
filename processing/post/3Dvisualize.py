@@ -112,7 +112,7 @@ def unravel(item):
 
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
-def vtk_writeASCII_mesh(mesh,data,res):
+def vtk_writeASCII_mesh(mesh,data,res,sep):
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
   """ function writes data array defined on a hexahedral mesh (geometry) """
   info =  {\
@@ -163,13 +163,13 @@ def vtk_writeASCII_mesh(mesh,data,res):
       cmds += [\
                '%s %s float %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
                {True:'LOOKUP_TABLE default',False:''}[info[type]['name'][:3]=='sca'],
-               [[['\t'.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
+               [[[sep.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
 
   return cmds
   
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
-def gmsh_writeASCII_mesh(mesh,data,res):
+def gmsh_writeASCII_mesh(mesh,data,res,sep):
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
   """ function writes data array defined on a hexahedral mesh (geometry) """
   info =  {\
@@ -232,13 +232,13 @@ def gmsh_writeASCII_mesh(mesh,data,res):
       cmds += [\
                '%s %s float %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
                'LOOKUP_TABLE default',
-               [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
+               [[[sep.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
 
   return cmds
  
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
-def vtk_writeASCII_points(coordinates,data,res):
+def vtk_writeASCII_points(coordinates,data,res,sep):
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
   """ function writes data array defined on a point field """
   N  = res[0]*res[1]*res[2]
@@ -263,7 +263,7 @@ def vtk_writeASCII_points(coordinates,data,res):
       cmds += [\
                '%s %s float'%(type.upper()+plural,item),
                {True:'LOOKUP_TABLE default',False:''}[type.lower()[:3]=='sca'],
-               [[['\t'.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
+               [[[sep.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
 
   return cmds
@@ -338,11 +338,14 @@ parser.add_option('--box', dest='output_box', action='store_true', \
                   help='produce VTK box file')
 parser.add_option('--nobox', dest='output_box', action='store_false', \
                   help='omit VTK box file')
+parser.add_option('--separator', dest='separator', type='string', \
+                  help='data separator [t(ab), n(ewline), s(pace)]')
 parser.add_option('--scaling', dest='scaling', type='float', \
                   help='scaling of fluctuation [%default]')
 parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
                   help='set unit length for 2D model [%default]')
 parser.set_defaults(defgrad = 'f')
+parser.set_defaults(separator = 't')
 parser.set_defaults(scalar = [])
 parser.set_defaults(double = [])
 parser.set_defaults(triple = [])
@@ -357,8 +360,11 @@ parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
 parser.set_defaults(cell = True)
 
+sep = {'n': '\n', 't': '\t', 's': ' '}
+
 (options, args) = parser.parse_args()
 
+options.separator = options.separator.lower()
 for filename in args:
   if not os.path.exists(filename):
     continue
@@ -492,8 +498,8 @@ for filename in args:
   print '\n'
 
   out = {}
-  if options.output_mesh:   out['mesh']   = vtk_writeASCII_mesh(ms,fields,res)
-  if options.output_points: out['points'] = vtk_writeASCII_points(centroids,fields,res)
+  if options.output_mesh:   out['mesh']   = vtk_writeASCII_mesh(ms,fields,res,sep[options.separator])
+  if options.output_points: out['points'] = vtk_writeASCII_points(centroids,fields,res,sep[options.separator])
   if options.output_box:    out['box']    = vtk_writeASCII_box(dim,defgrad_av)
   
   for what in out.keys():
