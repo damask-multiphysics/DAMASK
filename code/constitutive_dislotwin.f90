@@ -456,6 +456,9 @@ enddo
 maxTotalNslip = maxval(constitutive_dislotwin_totalNslip)
 maxTotalNtwin = maxval(constitutive_dislotwin_totalNtwin)
 
+!write(6,*) 'nslip',i,constitutive_dislotwin_totalNslip(i),maxTotalNslip
+!write(6,*) 'ntwin',i,constitutive_dislotwin_totalNtwin(i),maxTotalNtwin
+
 allocate(constitutive_dislotwin_burgersPerSlipSystem(maxTotalNslip, maxNinstance))
          constitutive_dislotwin_burgersPerSlipSystem = 0.0_pReal
 allocate(constitutive_dislotwin_burgersPerTwinSystem(maxTotalNtwin, maxNinstance))
@@ -497,6 +500,7 @@ do i = 1_pInt,maxNinstance
          l = l + 1_pInt
          constitutive_dislotwin_slipFamily(l,i) = f
          constitutive_dislotwin_slipSystemLattice(l,i) = sum(lattice_NslipSystem(1:f-1_pInt,myStructure)) + k
+   !        write(6,*) 'slip system',l,'has family',f,'and is actually',constitutive_dislotwin_slipSystemLattice(l,i)
    enddo; enddo
 
    !* Inverse lookup of my twin system family
@@ -506,13 +510,15 @@ do i = 1_pInt,maxNinstance
          l = l + 1_pInt
          constitutive_dislotwin_twinFamily(l,i) = f
          constitutive_dislotwin_twinSystemLattice(l,i) = sum(lattice_NtwinSystem(1:f-1_pInt,myStructure)) + k
+  !       write(6,*) 'twin system',l,'has family',f,'and is actually',constitutive_dislotwin_twinSystemLattice(l,i)
    enddo; enddo
 
    !* Determine size of state array
    ns = constitutive_dislotwin_totalNslip(i)
    nt = constitutive_dislotwin_totalNtwin(i)
-   constitutive_dislotwin_sizeDotState(i) =int(size(constitutive_dislotwin_listBasicSlipStates),pInt)*ns&
-                                          +int(size(constitutive_dislotwin_listBasicTwinStates),pInt)*nt
+  !  write(6,*) 'instance',i,'has nslip and ntwin',ns,nt
+   constitutive_dislotwin_sizeDotState(i) = int(size(constitutive_dislotwin_listBasicSlipStates),pInt)*ns&
+                                          + int(size(constitutive_dislotwin_listBasicTwinStates),pInt)*nt
    constitutive_dislotwin_sizeState(i) = constitutive_dislotwin_sizeDotState(i)&
                                        + int(size(constitutive_dislotwin_listDependentSlipStates),pInt)*ns&
                                        + int(size(constitutive_dislotwin_listDependentTwinStates),pInt)*nt
@@ -529,14 +535,14 @@ do i = 1_pInt,maxNinstance
              'edge_dipole_distance', &
              'stress_exponent' &
              )
-           mySize = constitutive_dislotwin_totalNslip(i)
+           mySize = ns
         case('twin_fraction', &
              'shear_rate_twin', &
              'mfp_twin', &
              'resolved_stress_twin', &
              'threshold_stress_twin' &
              )
-           mySize = constitutive_dislotwin_totalNtwin(i)
+           mySize = nt
         case('resolved_stress_shearband', &
              'shear_rate_shearband' &
              )
@@ -557,6 +563,7 @@ do i = 1_pInt,maxNinstance
        endif
    enddo
 
+    
    !* Elasticity matrix and shear modulus according to material.config
    select case (myStructure)
    case(1_pInt:2_pInt) ! cubic(s)
@@ -602,7 +609,7 @@ do i = 1_pInt,maxNinstance
         enddo
    enddo
 
-   !* Burgers vector, dislocation velocity prefactor, mean free path prefactor and minimum dipole distance for each slip system
+    !* Burgers vector, dislocation velocity prefactor, mean free path prefactor and minimum dipole distance for each slip system
    do s = 1_pInt,constitutive_dislotwin_totalNslip(i)
       f = constitutive_dislotwin_slipFamily(s,i)
       constitutive_dislotwin_burgersPerSlipSystem(s,i)     = constitutive_dislotwin_burgersPerSlipFamily(f,i)
@@ -619,7 +626,7 @@ do i = 1_pInt,maxNinstance
       constitutive_dislotwin_twinsizePerTwinSystem(s,i) = constitutive_dislotwin_twinsizePerTwinFamily(f,i)
    enddo
 
-   !* Construction of interaction matrices
+    !* Construction of interaction matrices
    do s1 = 1_pInt,constitutive_dislotwin_totalNslip(i)
       do s2 = 1_pInt,constitutive_dislotwin_totalNslip(i)
          constitutive_dislotwin_interactionMatrixSlipSlip(s1,s2,i) = &
@@ -628,23 +635,23 @@ do i = 1_pInt,maxNinstance
                                                                                 myStructure),i)
    enddo; enddo
 
-   do s1 = 1_pInt,constitutive_dislotwin_totalNslip(i)
-      do t2 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
+   do t2 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
+      do s1 = 1_pInt,constitutive_dislotwin_totalNslip(i)
          constitutive_dislotwin_interactionMatrixSlipTwin(s1,t2,i) = &
          constitutive_dislotwin_interactionSlipTwin(&
-              lattice_interactionSlipTwin(constitutive_dislotwin_slipSystemLattice(s1,i), &
-              constitutive_dislotwin_twinSystemLattice(t2,i),myStructure),i)
+              lattice_interactionSlipTwin(constitutive_dislotwin_twinSystemLattice(t2,i), &
+                                          constitutive_dislotwin_slipSystemLattice(s1,i),myStructure),i)
    enddo; enddo
 
-   do t1 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
-      do s2 = 1_pInt,constitutive_dislotwin_totalNslip(i)
+    do s2 = 1_pInt,constitutive_dislotwin_totalNslip(i)
+      do t1 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
          constitutive_dislotwin_interactionMatrixTwinSlip(t1,s2,i) = &
          constitutive_dislotwin_interactionTwinSlip(lattice_interactionTwinSlip(&
-             constitutive_dislotwin_twinSystemLattice(t1,i), &
-             constitutive_dislotwin_slipSystemLattice(s2,i), myStructure),i)
+             constitutive_dislotwin_slipSystemLattice(s2,i), &
+             constitutive_dislotwin_twinSystemLattice(t1,i), myStructure),i)
    enddo; enddo
 
-   do t1 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
+     do t1 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
       do t2 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
          constitutive_dislotwin_interactionMatrixTwinTwin(t1,t2,i) = &
          constitutive_dislotwin_interactionTwinTwin(&
@@ -652,7 +659,7 @@ do i = 1_pInt,maxNinstance
              constitutive_dislotwin_twinSystemLattice(t2,i), myStructure),i)
    enddo; enddo
 
-   !* Calculation of forest projections for edge dislocations
+    !* Calculation of forest projections for edge dislocations
    do s1 = 1_pInt,constitutive_dislotwin_totalNslip(i)
       do s2 = 1_pInt,constitutive_dislotwin_totalNslip(i)
          constitutive_dislotwin_forestProjectionEdge(s1,s2,i) = &
