@@ -115,6 +115,14 @@ def unravel(item):
 def vtk_writeASCII_mesh(mesh,data,res):
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
   """ function writes data array defined on a hexahedral mesh (geometry) """
+  info =  {\
+             'tensor': {'name':'tensor','len':9},\
+             'vector': {'name':'vector','len':3},\
+             'scalar': {'name':'scalar','len':1},\
+             'double': {'name':'scalar','len':2},\
+             'triple': {'name':'scalar','len':3},\
+             'quadruple': {'name':'scalar','len':4},\
+            }
   N1 = (res[0]+1)*(res[1]+1)*(res[2]+1)
   N  = res[0]*res[1]*res[2]
   
@@ -153,8 +161,8 @@ def vtk_writeASCII_mesh(mesh,data,res):
     plural = {True:'',False:'S'}[type.lower().endswith('s')]
     for item in data[type]:
       cmds += [\
-               '%s %s float'%(type.upper()+plural,item),
-               {True:'LOOKUP_TABLE default',False:''}[type.lower()[:3]=='sca'],
+               '%s %s float %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
+               {True:'LOOKUP_TABLE default',False:''}[info[type]['name'][:3]=='sca'],
                [[['\t'.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
 
@@ -164,6 +172,14 @@ def vtk_writeASCII_mesh(mesh,data,res):
 def gmsh_writeASCII_mesh(mesh,data,res):
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++
   """ function writes data array defined on a hexahedral mesh (geometry) """
+  info =  {\
+             'tensor': {'name':'tensor','len':9},\
+             'vector': {'name':'vector','len':3},\
+             'scalar': {'name':'scalar','len':1},\
+             'double': {'name':'scalar','len':2},\
+             'triple': {'name':'scalar','len':3},\
+             'quadruple': {'name':'scalar','len':4},\
+            }
   N1 = (res[0]+1)*(res[1]+1)*(res[2]+1)
   N  = res[0]*res[1]*res[2]
   
@@ -214,7 +230,7 @@ def gmsh_writeASCII_mesh(mesh,data,res):
     plural = {True:'',False:'S'}[type.lower().endswith('s')]
     for item in data[type]:
       cmds += [\
-               '%s %s float'%(type.upper()+plural,item),
+               '%s %s float %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
                'LOOKUP_TABLE default',
                [[['\t'.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
@@ -294,6 +310,12 @@ Produce VTK file from data field. Coordinates are taken from (consecutive) x, y,
 
 parser.add_option('-s', '--scalar', action='extend', dest='scalar', type='string', \
                   help='list of scalars to visualize')
+parser.add_option(      '--double', action='extend', dest='double', type='string', \
+                  help='list of scalars to visualize')
+parser.add_option(      '--triple', action='extend', dest='triple', type='string', \
+                  help='list of scalars to visualize')
+parser.add_option(      '--quadruple', action='extend', dest='quadruple', type='string', \
+                  help='list of scalars to visualize')
 parser.add_option('-v', '--vector', action='extend', dest='vector', type='string', \
                   help='list of vectors to visualize')
 parser.add_option('-d', '--deformation', dest='defgrad', type='string', \
@@ -322,6 +344,9 @@ parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
                   help='set unit length for 2D model [%default]')
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(scalar = [])
+parser.set_defaults(double = [])
+parser.set_defaults(triple = [])
+parser.set_defaults(quadruple = [])
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
 parser.set_defaults(output_mesh = True)
@@ -370,7 +395,7 @@ for filename in args:
         maxcol = max(maxcol,col+9)
         break
       
-  if column['tensor'][options.defgrad] < 0:
+  if not options.undeformed and column['tensor'][options.defgrad] < 0:
     print 'missing deformation gradient "%s"..!'%options.defgrad
     continue
 
@@ -383,14 +408,16 @@ for filename in args:
         maxcol = max(maxcol,col+3)
         break
 
-  column['scalar'] = {}
-  for label in options.scalar:
-    column['scalar'][label] = -1
-    for col,head in enumerate(headings):
-      if head == label:
-        column['scalar'][label] = col
-        maxcol = max(maxcol,col+1)
-        break
+  for length,what in enumerate(['scalar','double','triple','quadruple']):
+    column[what] = {}
+    for label in eval('options.%s'%what):
+      column[what][label] = -1
+      for col,head in enumerate(headings):
+        if head == label or head == '1_%s'%label:
+          column[what][label] = col
+          maxcol = max(maxcol,col+1+length)
+          break
+
 
   values = numpy.array(sorted([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],
                               key=lambda x:(x[locol+0],x[locol+1],x[locol+2])),             # sort with z as fastest and x as slowest index
@@ -434,16 +461,25 @@ for filename in args:
              'tensor': {},\
              'vector': {},\
              'scalar': {},\
+             'double': {},\
+             'triple': {},\
+             'quadruple': {},\
             }
   reshape = {\
              'tensor': [3,3],\
              'vector': [3],\
              'scalar': [],\
+             'double': [2],\
+             'triple': [3],\
+             'quadruple': [4],\
             }
   length =  {\
              'tensor': 9,\
              'vector': 3,\
              'scalar': 1,\
+             'double': 2,\
+             'triple': 3,\
+             'quadruple': 4,\
             }
 
   for datatype in fields.keys():
