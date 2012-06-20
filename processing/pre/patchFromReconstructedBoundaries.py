@@ -112,7 +112,8 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
   dX = boxX[1]-boxX[0]
   dY = boxY[1]-boxY[0]
   
-  scalePatch = size/dX
+  if size > 0.0: scalePatch = size/dX
+  else: scalePatch = 1.0
 
 
 # read segments
@@ -289,6 +290,7 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
 # build overall data structure
 
   rcData = {'dimension':[dX,dY], 'point': [],'segment': [], 'grain': [], 'grainMapping': []}
+  print "  dimension %g x %g"%(dX,dY)
 
   for point in points:
     rcData['point'].append(point['coords'])
@@ -715,7 +717,7 @@ def inside(x,y,points):                                                     # te
  return inside
   
 # -------------------------
-def fftbuild(rcData, height,xframe,yframe,resolution,extrusion):            # build array of grain numbers
+def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):            # build array of grain numbers
 # -------------------------
  maxX = -1.*sys.maxint
  maxY = -1.*sys.maxint
@@ -725,10 +727,10 @@ def fftbuild(rcData, height,xframe,yframe,resolution,extrusion):            # bu
    maxY = max(maxY, y)
  xsize = maxX+2*xframe                                                      # add framsize
  ysize = maxY+2*yframe
- xres=round(resolution/2.0)*2                                               # use only even resolution
- yres=round(xres/xsize*ysize/2.0)*2                                         # calculate other resolutions
- zres = 1
- zsize = min([xsize/xres,ysize/yres])
+ xres = int(round(resolution/2.0)*2)                                        # use only even resolution
+ yres = int(round(xres/xsize*ysize/2.0)*2)                                  # calculate other resolutions
+ zres = extrusion
+ zsize = extrusion*min([xsize/xres,ysize/yres])
  
  fftdata = {'fftpoints':[], \
             'resolution':(xres,yres,zres), \
@@ -884,13 +886,17 @@ if 'spectral' in options.output:
   fftdata = fftbuild(rcData, options.size, options.xmargin, options.ymargin, options.resolution, options.extrusion)
   
   geomFile = open(myName+'_'+str(int(fftdata['resolution'][0]))+'.geom','w')  # open geom file for writing
-  geomFile.write('resolution a %i b %i c %i\n'%(fftdata['resolution']))       # write resolution
-  geomFile.write('dimension x %f y %f z %f\n'%(fftdata['dimension']))         # write size
-  geomFile.write('homogenization 1\n')                                        # write homogenization
-  geomFile.write('\n'.join(map(str,fftdata['fftpoints']))+'\n')              # write grain indexes, one per line
+  geomFile.write('3\theader\n')                                               # write header info
+  geomFile.write('resolution a %i b %i c %i\n'%(fftdata['resolution']))       # resolution
+  geomFile.write('dimension x %f y %f z %f\n'%(fftdata['dimension']))         # size
+  geomFile.write('homogenization 1\n')                                        # homogenization
+  for z in xrange(fftdata['resolution'][2]):                                  # z repetions
+    for y in xrange(fftdata['resolution'][1]):                                # each x-row separately
+      geomFile.write('\t'.join(map(str,fftdata['fftpoints'][ y   *fftdata['resolution'][0]:
+                                                            (y+1)*fftdata['resolution'][0]]))+'\n')  # grain indexes, x-row per line
   geomFile.close()                                                            # close geom file
   
-  print('assigned %i out of %i Fourier points.'%(len(fftdata['fftpoints']), int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
+  print('assigned %i out of %i (2D) Fourier points.'%(len(fftdata['fftpoints']), int(fftdata['resolution'][0])*int(fftdata['resolution'][1])))
   
 
 # ----- write Mentat procedure -----
