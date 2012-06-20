@@ -81,7 +81,7 @@ bin_link = { \
                 'mentat_spectralBox.py',
                 'patchFromReconstructedBoundaries.py',
                 'spectral_geomCheck.py',
-                'spectral_geomScale.py',
+                'spectral_geomMultiply.py',
                 'spectral_geomCrop.py',
                 'spectral_minimalSurface.py',
                 'spectral_vicinityOffset.py',
