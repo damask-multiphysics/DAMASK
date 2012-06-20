@@ -882,7 +882,7 @@ function mesh_regrid(resNewInput,minRes)
  
 ! ----Calculate deformed configuration and average--------
   do i= 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-    Favg(i,j) = sum(F(1:res(1),1:res(2),1:res(3),i,j)) / Npoints
+    Favg(i,j) = sum(F(1:res(1),1:res(2),1:res(3),i,j)) / real(Npoints,pReal)
   enddo; enddo
   allocate(coordinates(res(1),res(2),res(3),3))
   call deformed_fft(res,geomdim,Favg,1.0_pReal,F,coordinates)
@@ -953,7 +953,17 @@ function mesh_regrid(resNewInput,minRes)
  
  mesh_regrid = resNew
  NpointsNew = resNew(1)*resNew(2)*resNew(3)
- 
+
+
+ allocate(F(resNew(1),resNew(2),resNew(3),3,3))
+ do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
+   F(i,j,k,1:3,1:3) = Favg
+ enddo; enddo; enddo
+ call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F))
+ write (777,rec=1) F
+ close (777)
+ deallocate(F)
+
 ! ----Calculate regular new coordinates-----------------------------
  allocate(coordinatesNew(3,NpointsNew))
  ielem = 0_pInt
@@ -964,31 +974,45 @@ function mesh_regrid(resNewInput,minRes)
  enddo; enddo; enddo
 
 !----- Nearest neighbour search ------------------------------------
- allocate(indices(Npoints))
+ allocate(indices(NpointsNew))
  call math_nearestNeighborSearch(spatialDim, Favg, geomdim, NpointsNew, Npoints, &
                                  coordinatesNew, coordinatesLinear, indices)
  deallocate(coordinatesNew)
 
 !----- write out indices--------------------------------------------
- write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(maxval(indices),pReal)),pInt)
+ write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(maxval(indices),pReal)))
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
  call IO_write_jobFile(777,'idx')                                ! make it a general open-write file
  write(777, '(A)') '1 header'
  write(777, '(A)') 'Numbered indices as per the large set'
- do i = 1_pInt, Npoints
+ do i = 1_pInt, NpointsNew
    write(777,trim(formatString),advance='no') indices(i), ' '
-   if(mod(i,res(1)) == 0_pInt) write(777,'(A)') ''
+   if(mod(i,resNew(1)) == 0_pInt) write(777,'(A)') ''
  enddo
  close(777)
  
- do i = 1_pInt, Npoints
+ do i = 1_pInt, NpointsNew
    indices(i) = indices(i) / 3_pInt**spatialDim +1_pInt        ! +1 b'coz index count starts from '0'
  enddo 
 
+!----- write out indices--------------------------------------------
+ write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(maxval(indices),pReal)))
+ N_Digits = adjustl(N_Digits)
+ formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
+
+ call IO_write_jobFile(777,'idx2')                                ! make it a general open-write file
+ write(777, '(A)') '1 header'
+ write(777, '(A)') 'Numbered indices as per the large set'
+ do i = 1_pInt, NpointsNew
+   write(777,trim(formatString),advance='no') indices(i), ' '
+   if(mod(i,resNew(1)) == 0_pInt) write(777,'(A)') ''
+ enddo
+ close(777)
+ 
 !------Adjusting the point-to-grain association---------------------
- write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(NpointsNew,pReal)),pInt)
+ write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(mesh_element(4,1:Npoints),pReal)),pInt)
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
@@ -1117,7 +1141,7 @@ function mesh_regrid(resNewInput,minRes)
  call IO_read_jobBinaryFile(777,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
  read (777,rec=1) sizeStateConst
  close (777)
- maxsize = maxval(sizeStateConst)
+ maxsize = maxval(sizeStateConst(1,1:Npoints))
  allocate(StateConst      (1,1,Npoints,maxsize))
 
  call IO_read_jobBinaryFile(777,'convergedStateConst',trim(getSolverJobName()))
@@ -1129,11 +1153,10 @@ function mesh_regrid(resNewInput,minRes)
    enddo
  enddo
  close(777)
-
  call IO_write_jobBinaryFile(777,'convergedStateConst')
  k = 0_pInt
  do i = 1,NpointsNew
-   do j = 1,sizeStateConst(1,i)
+   do j = 1,sizeStateConst(1,indices(i))
      k=k+1_pInt
      write(777,rec=k) StateConst(1,1,indices(i),j)
    enddo
@@ -1147,7 +1170,7 @@ function mesh_regrid(resNewInput,minRes)
  call IO_read_jobBinaryFile(777,'sizeStateHomog',trim(getSolverJobName()),size(sizeStateHomog))
  read (777,rec=1) sizeStateHomog
  close (777)
- maxsize = maxval(sizeStateHomog)
+ maxsize = maxval(sizeStateHomog(1,1:Npoints))
  allocate(stateHomog      (1,1,Npoints,maxsize))
 
  call IO_read_jobBinaryFile(777,'convergedStateHomog',trim(getSolverJobName()))
@@ -1163,7 +1186,7 @@ function mesh_regrid(resNewInput,minRes)
  call IO_write_jobBinaryFile(777,'convergedStateHomog')
  k = 0_pInt
  do i = 1,NpointsNew
-   do j = 1,sizeStateHomog(1,i)
+   do j = 1,sizeStateHomog(1,indices(i))
      k=k+1_pInt
      write(777,rec=k) stateHomog(1,1,indices(i),j)
    enddo

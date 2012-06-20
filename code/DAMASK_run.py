@@ -47,9 +47,12 @@ exitCode=2
 print 'load case', options.loadcase
 print 'geometry', options.geometry
 f=open('monitor','w')
+#res=numpy.array([6,6,6])
+res=numpy.array([0,0,0])
 while exitCode == 2:
   print 'restart at ', start
   out=subprocess.Popen(['DAMASK_spectral', '-l', '%s'%options.loadcase, '-g', '%s'%options.geometry, '--regrid', '%i'%start],stderr=subprocess.PIPE,stdout=f)
+  #out=subprocess.Popen(['DAMASK_spectral', '-l', '%s'%options.loadcase, '-g', '%s'%options.geometry, '-r', '%i'%start],stderr=subprocess.PIPE,stdout=f)
   stderr = out.communicate()
   stderrLines = string.split(stderr[1],'\n')
   exitCode = int(stderrLines[-2])
@@ -69,4 +72,4 @@ while exitCode == 2:
     damask.core.math.math_init()
     damask.core.fesolving.fe_init()
     damask.core.mesh.mesh_init(1,1)
-    damask.core.mesh.mesh_regrid([0,0,0])
+    damask.core.mesh.mesh_regrid(resNewInput=res)
