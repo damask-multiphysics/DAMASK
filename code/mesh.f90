@@ -826,7 +826,9 @@ function mesh_regrid(resNewInput,minRes)
    pInt, &
    pReal
  use DAMASK_interface, only: &
-   getSolverJobName
+   getSolverWorkingDirectoryName, &
+   getSolverJobName, &
+   GeometryFile
  use IO, only: &
    IO_read_jobBinaryFile ,&
    IO_write_jobBinaryFile, &
@@ -837,7 +839,7 @@ function mesh_regrid(resNewInput,minRes)
    deformed_FFT, &
    math_mul33x3
  character(len=1024):: formatString, N_Digits
- integer(pInt), dimension(3), optional, intent(in)      :: resNewInput
+ integer(pInt), dimension(3), optional, intent(in)      :: resNewInput                              ! f2py cannot handle optional arguments correctly (they are always present)
  integer(pInt), dimension(3), optional, intent(in)      :: minRes
  integer(pInt), dimension(3)                            :: mesh_regrid, ratio
  integer(pInt), dimension(3,2)                          :: possibleResNew
@@ -898,16 +900,18 @@ function mesh_regrid(resNewInput,minRes)
  ! ----For 2D /3D case----------------------------------                            
  if (res(3)== 1_pInt) then
    spatialDim = 2_pInt
-   if (minRes(3) > 1_pInt)  call IO_error(890_pInt)
+   if (minRes(3) > 1_pInt)  call IO_error(890_pInt)                      ! as f2py has problems with present, use pyf file for initialization to -1
+   !check 1 and 2 for odd number, 3 should be even or 1
  else
    spatialDim = 3_pInt
-   if (minRes(3) <= 1_pInt) call IO_error(891_pInt)
+ !  if ( minRes(3) <= 1_pInt) call IO_error(891_pInt)
+!check for odd numbers
  endif
    
  geomdimNew =  math_mul33x3(Favg,geomdim)
 !---- Automatic detection based on current geom -----------------
  
- if (.not. present(resNewInput)) then
+ if (any(resNewInput<0_pInt)) then
    ratio = floor(real(res,pReal) * (geomdimNew/geomdim), pInt)
    possibleResNew = 1_pInt
  
@@ -966,15 +970,15 @@ function mesh_regrid(resNewInput,minRes)
  deallocate(coordinatesNew)
 
 !----- write out indices--------------------------------------------
- write(N_Digits, '(a)') 1_pInt + int(log10(real(maxval(indices),pReal)),pInt)
+ write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(maxval(indices),pReal)),pInt)
  N_Digits = adjustl(N_Digits)
- formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//')'
+ formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
  call IO_write_jobFile(777,'idx')                                ! make it a general open-write file
  write(777, '(A)') '1 header'
  write(777, '(A)') 'Numbered indices as per the large set'
  do i = 1_pInt, Npoints
-   write(777,trim(formatString),advance='no') indices(i)
+   write(777,trim(formatString),advance='no') indices(i), ' '
    if(mod(i,res(1)) == 0_pInt) write(777,'(A)') ''
  enddo
  close(777)
@@ -984,17 +988,18 @@ function mesh_regrid(resNewInput,minRes)
  enddo 
 
 !------Adjusting the point-to-grain association---------------------
- write(N_Digits, '(a)') 1_pInt + int(log10(real(NpointsNew,pReal)),pInt)
+ write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(NpointsNew,pReal)),pInt)
  N_Digits = adjustl(N_Digits)
- formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//')'
+ formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
- call IO_write_jobFile(777,'geom')                                
+ !call IO_write_jobFile(777,'geom')                                
+ open(777,file=trim(getSolverWorkingDirectoryName())//trim(GeometryFile),status='REPLACE')
  write(777, '(A)') '3 header'
  write(777, '(A, I8, A, I8, A, I8)') 'resolution  a ', resNew(1), '  b ', resNew(2), '  c ', resNew(3)
  write(777, '(A, g17.10, A, g17.10, A, g17.10)') 'dimension   x ', geomdim(1), '  y ', geomdim(2), '  z ', geomdim(3)
  write(777, '(A)') 'homogenization  1'
  do i = 1_pInt, NpointsNew
-   write(777,trim(formatString),advance='no') mesh_element(4,indices(i))
+   write(777,trim(formatString),advance='no') mesh_element(4,indices(i)), ' '
    if(mod(i,resNew(1)) == 0_pInt) write(777,'(A)') ''
  enddo
  close(777) 

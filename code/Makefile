@@ -45,11 +45,11 @@ F90 ?=ifort
 COMPILERNAME ?= $(F90)
 
 INCLUDE_DIRS +=-I$(DAMASK_ROOT)/lib
+
 ifdef PETSC_DIR
-INCLUDE_DIRS +=-I$(PETSC_DIR)/include
-INCLUDE_DIRS +=-I$(PETSC_DIR)/$(PETSC_ARCH)/include
-# just for the moment, as long as PETSC is non standard
-INCLUDE_DIRS +=-DPETSC           
+include ${PETSC_DIR}/conf/variables
+INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSC
+LIBRARIES +=${PETSC_WITH_EXTERNAL_LIB}
 endif
 
 ifeq "$(FASTBUILD)" "YES"

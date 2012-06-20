@@ -54,10 +54,10 @@ subroutine quit(stop_id)
                                                       dateAndTime(6),':',&
                                                       dateAndTime(7)  
  if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
- if (stop_id == 2_pInt) stop 2                                                                      ! not all steps converged
  if (stop_id <  0_pInt) then                                                                        ! trigger regridding
-   write(0,'(a,i6)') 'restart a', stop_id*(-1_pInt)
+   write(0,'(a,i6)') 'restart at ', stop_id*(-1_pInt)
    stop 2
  endif
- stop 1                                                                                             ! error
+ if (stop_id == 3_pInt) stop 3                                                                      ! not all steps converged
+ stop 1                                                                                             ! error (message from IO_error)
 end subroutine

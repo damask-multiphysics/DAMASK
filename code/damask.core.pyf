@@ -207,8 +207,8 @@ python module core ! in
 		
         function mesh_regrid(resNewInput,minRes) ! in :mesh:mesh.f90
             integer, dimension(3)                                :: mesh_regrid
-            integer, dimension(3), intent(in), optional          :: resNewInput
-            integer, dimension(3), intent(in), optional          :: minRes
+            integer, dimension(3), intent(in), optional          :: resNewInput = -1
+            integer, dimension(3), intent(in), optional          :: minRes = -1
         end function mesh_regrid            
      end module mesh
    end interface 

@@ -42,23 +42,31 @@ parser.set_defaults(loadcase= '')
 parser.set_defaults(geometry= '')
 
 (options,filenames) = parser.parse_args()
-
-out=subprocess.Popen(['DAMASK_spectral.exe', '-l', '%s'%options.loadcase, '-g', '%s'%options.geometry],stderr=subprocess.PIPE)
-stderr = out.communicate()
-stderrLines = string.split(stderr[1],'\n')
-exitCode = int(stderrLines[-2])
-print 'exit code', exitCode
-if exitCode==2:
-  start = int(re.search('\d',stderrLines[0]).group(0))
+start = 1
+exitCode=2
+print 'load case', options.loadcase
+print 'geometry', options.geometry
+f=open('monitor','w')
+while exitCode == 2:
   print 'restart at ', start
+  out=subprocess.Popen(['DAMASK_spectral', '-l', '%s'%options.loadcase, '-g', '%s'%options.geometry, '--regrid', '%i'%start],stderr=subprocess.PIPE,stdout=f)
+  stderr = out.communicate()
+  stderrLines = string.split(stderr[1],'\n')
+  exitCode = int(stderrLines[-2])
+  print 'exit code', exitCode
+  if exitCode==2:
+    os.system('rm -rf %i'%start)
+    os.system('mkdir %i'%start)
+    os.system('cp * %i/.'%start)
+    start = int(string.split(re.search('restart at\s+\d+',stderr[1]).group(0))[2])
 #------------regridding----------------------------------------------
 #--------------------------------------------------------------------
-damask.core.prec.prec_init()
-damask.core.damask_interface.damask_interface_init(options.loadcase,options.geometry)
-damask.core.io.io_init()
-damask.core.numerics.numerics_init()
-damask.core.debug.debug_init()
-damask.core.math.math_init()
-damask.core.fesolving.fe_init()
-damask.core.mesh.mesh_init(1,1)
-damask.core.mesh.mesh_regrid()
+    damask.core.prec.prec_init()
+    damask.core.damask_interface.damask_interface_init(options.loadcase,options.geometry)
+    damask.core.io.io_init()
+    damask.core.numerics.numerics_init()
+    damask.core.debug.debug_init()
+    damask.core.math.math_init()
+    damask.core.fesolving.fe_init()
+    damask.core.mesh.mesh_init(1,1)
+    damask.core.mesh.mesh_regrid([0,0,0])

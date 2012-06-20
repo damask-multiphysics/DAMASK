@@ -108,6 +108,14 @@ program DAMASK_spectral
    materialpoint_results
 
  implicit none
+
+#ifdef PETSC
+#include <finclude/petscsys.h>
+#include <finclude/petscvec.h>
+#include <finclude/petscsnes.h>
+#include <finclude/petscvec.h90>
+#include <finclude/petscsnes.h90>
+#endif
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: & 
@@ -246,6 +254,10 @@ program DAMASK_spectral
 !##################################################################################################
 ! reading of information from load case file and geometry file
 !##################################################################################################
+#ifdef PETSC
+ integer :: ierr_psc
+ call PetscInitialize(PETSC_NULL_CHARACTER, ierr_psc)
+#endif
  call DAMASK_interface_init
  write(6,'(a)') ''
  write(6,'(a)') ' <<<+-  DAMASK_spectral init  -+>>>'
@@ -595,10 +607,10 @@ program DAMASK_spectral
 ! write header of output file
  if (appendToOutFile) then
    open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',&
-                                   form='UNFORMATTED',status='REPLACE')
+                                   form='UNFORMATTED', position='APPEND', status='OLD')
  else
    open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',&
-                                   form='UNFORMATTED',status='REPLACE',position='APPEND')
+                                   form='UNFORMATTED',status='REPLACE')
    write(538) 'load',       trim(loadCaseFile)
    write(538) 'workingdir', trim(getSolverWorkingDirectoryName())
    write(538) 'geometry',   trim(geometryFile)
@@ -777,7 +789,9 @@ program DAMASK_spectral
            C = C + dPdF
          enddo; enddo; enddo
          call debug_info()
-
+! for test of regridding
+         !if(mod(inc-1,bc(loadcase)%restartFrequency) == 0_pInt .and. restartInc/=inc) &
+          !                                      call quit(-1*(restartInc+1))                        ! trigger exit to regrid
 
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
@@ -1085,6 +1099,6 @@ program DAMASK_spectral
    call fftw_destroy_plan(plan_scalarField_forth)
    call fftw_destroy_plan(plan_scalarField_back)
  endif
- if (notConvergedCounter > 0_pInt) call quit(2_pInt)
+ if (notConvergedCounter > 0_pInt) call quit(3_pInt)
  call quit(0_pInt)
 end program DAMASK_spectral

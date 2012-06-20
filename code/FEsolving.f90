@@ -101,8 +101,9 @@ subroutine FE_init
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
 #endif
 
-#ifdef Spectral
  modelName = getSolverJobName()
+
+#ifdef Spectral
  restartInc = spectralRestartInc
  if(restartInc <= 0_pInt) then
    call IO_warning(warning_ID=34_pInt)
@@ -110,7 +111,7 @@ subroutine FE_init
  endif
  restartRead = restartInc > 1_pInt                           ! only read in if "true" restart requested
 #else
- call IO_open_inputFile(fileunit,getSolverJobName())
+ call IO_open_inputFile(fileunit,modelName)
  rewind(fileunit)
  do
    read (fileunit,'(a1024)',END=100) line
@@ -167,8 +168,6 @@ subroutine FE_init
    enddo
 #endif
  200 close(fileunit)
- else
-   modelName = getSolverJobName()
  endif
 
 #endif
