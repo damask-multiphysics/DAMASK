@@ -83,6 +83,7 @@ bin_link = { \
                 'spectral_geomCheck.py',
                 'spectral_geomMultiply.py',
                 'spectral_geomCrop.py',
+                'spectral_geomCanvas.py',
                 'spectral_minimalSurface.py',
                 'spectral_vicinityOffset.py',
                 'spectral_ang2geom.py',
