@@ -97,7 +97,6 @@ program DAMASK_spectral
    itmax,&
    itmin, &
    memory_efficient, &
-   update_gamma, &
    divergence_correction, &                             
    DAMASK_NumThreadsInt, &
    fftw_planner_flag, &
@@ -549,12 +548,10 @@ program DAMASK_spectral
                           0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
      C = C + dPdF 
   enddo; enddo; enddo
-  C_ref = C * wgt
+  C = C * wgt
+  C_ref = C 
   call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
   write (777,rec=1) C_ref
-  close(777)
-  call IO_write_jobBinaryFile(777,'C',size(C))
-  write (777,rec=1) C
   close(777)
   
 !--------------------------------------------------------------------------------------------------
@@ -624,9 +621,9 @@ program DAMASK_spectral
    write(538) 'increments', bc(1:N_Loadcases)%incs                                                  ! one entry per loadcase
    write(538) 'startingIncrement', restartInc - 1_pInt                                              ! start with writing out the previous inc
    write(538) 'eoh'                                                                                 ! end of header
-   write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)              ! initial (non-deformed or read-in) results
    if (debugGeneral) write(6,'(a)') 'Header of result file written out'
  endif
+ write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)                ! initial (non-deformed or read-in) results
  flush(538)
 
 !##################################################################################################
@@ -709,7 +706,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! calculate reduced compliance
        if(size_reduced > 0_pInt) then                                                               ! calculate compliance in case stress BC is applied
-         C_lastInc = math_rotate_forward3333(C*wgt,bc(loadcase)%rotation)                           ! calculate stiffness from former inc
+         C_lastInc = math_rotate_forward3333(C,bc(loadcase)%rotation)                               ! calculate stiffness from former inc
          temp99_Real = math_Plain3333to99(C_lastInc)
          k = 0_pInt                                                                                 ! build reduced stiffness
          do n = 1_pInt,9_pInt
@@ -790,8 +787,9 @@ program DAMASK_spectral
          enddo; enddo; enddo
          call debug_info()
 ! for test of regridding
-         !if(mod(inc-1,bc(loadcase)%restartFrequency) == 0_pInt .and. restartInc/=inc) &
-          !                                      call quit(-1*(restartInc+1))                        ! trigger exit to regrid
+      !   if( bc(loadcase)%restartFrequency > 0_pInt .and. &
+      !       mod(inc-1,bc(loadcase)%restartFrequency) == 0_pInt .and. &
+      !       restartInc/=inc) call quit(-1*(restartInc+1))                                          ! trigger exit to regrid
 
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
@@ -1024,7 +1022,6 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient
-         
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - deltaF_real(i,j,k,1:3,1:3)*wgt                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
          enddo; enddo; enddo
@@ -1048,6 +1045,7 @@ program DAMASK_spectral
        enddo    ! end looping when convergency is achieved 
            
        CPFEM_mode = 1_pInt                                                                          ! winding forward
+       C = C * wgt
        write(6,'(a)') ''
        write(6,'(a)') '=================================================================='
        if(err_div > err_div_tol .or. err_stress > err_stress_tol) then
@@ -1073,12 +1071,10 @@ program DAMASK_spectral
          write (777,rec=1) F
          close (777)
          restartInc=totalIncsCounter
+         call IO_write_jobBinaryFile(777,'C',size(C))
+         write (777,rec=1) C
+         close(777)
        endif 
-       
-       if (update_gamma) then
-         write(6,'(a)') 'update C_ref '
-         C_ref = C*wgt
-       endif
        
      endif ! end calculation/forwarding
    enddo  ! end looping over incs in current loadcase
