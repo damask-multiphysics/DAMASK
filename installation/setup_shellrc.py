@@ -4,7 +4,7 @@ import os,sys,string,re
 from optparse import OptionParser
 
 validShells = {\
-               'bash':['.bashrc','.bash_profile','.bash_login','.profile'],
+               'bash':['.bashrc','.bash_profile','.bash_login','.profile','new'],
                'csh': ['.cshrc'],
               }
 
@@ -89,6 +89,10 @@ theHome = os.getenv('USERPROFILE') or os.getenv('HOME')
 
 if theShell == 'bash':
   for theRC in validShells[theShell]:
+    if theRC =='new' and not hitSomething:
+      print 'Could not find a file to store bash information, creating .bashrc in home directory'
+      theRC='.bashrc'
+      open(os.path.join(theHome,theRC), 'w').close()
     thePath = os.path.join(theHome,theRC)
     if os.path.exists(thePath):
       print thePath
