@@ -42,14 +42,15 @@ compilers = ['intel','ifort','intel32','gfortran','gnu95']
 parser.add_option('--F90', '--f90',     dest='compiler', type='string', \
                                         help='name of F90 compiler')
                                         
+parser.set_defaults(compiler  = 'ifort')  
 (options,filenames) = parser.parse_args()
 
 if options.compiler not in compilers:
   parser.error('compiler switch "--F90" has to be one out of: %s'%(', '.join(compilers)))
 
 f2py_compiler = {
-                  'gfortran': 'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral-I${DAMASK_ROOT}/lib"',
-                  'gnu95':    'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral-I${DAMASK_ROOT}/lib"',
+                  'gfortran': 'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral -I${DAMASK_ROOT}/lib"',
+                  'gnu95':    'gnu95   --f90flags="-fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral -I${DAMASK_ROOT}/lib"',
                   'intel32':  'intel   --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral -I${DAMASK_ROOT}/lib"',
                   'intel':    'intelem --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral -I${DAMASK_ROOT}/lib"',
                   'ifort':    'intelem --f90flags="-fpp -stand f03 -diag-disable 5268 -assume byterecl -DSpectral -I${DAMASK_ROOT}/lib"',
@@ -136,11 +137,13 @@ execute = { \
                         # The following command is used to compile math.f90 and make the functions defined in DAMASK_math.pyf
                         # available for python in the module DAMASK_math.so
                         # It uses the fortran wrapper f2py that is included in the numpy package to construct the
-                        # module postprocessingMath.so out of the fortran code postprocessingMath.f90
-                        # for the generation of the pyf file:
-                        # f2py -m DAMASK -h DAMASK.pyf --overwrite-signature ../../code/math.f90 \
+                        # module core.so out of the fortran code in the f90 files
+                        # for the generation of the pyf file use the following two lines:
+                        #'f2py -h  %s'%(os.path.join(codeDir,'damask.core.pyf')) +\
+                        #' --overwrite-signature --no-lower prec.f90 math.f90 mesh.f90',
                         'f2py %s'%(os.path.join(codeDir,'damask.core.pyf')) +\
-                        ' -c --fcompiler=%s'%(f2py_compiler) +\
+                        ' --build-dir %s'%(os.path.join(codeDir)) +\
+                        ' -c --no-lower --fcompiler=%s'%(f2py_compiler) +\
                         ' %s'%(os.path.join(codeDir,'prec.f90'))+\
                         ' %s'%(os.path.join(codeDir,'DAMASK_spectral_interface.f90'))+\
                         ' %s'%(os.path.join(codeDir,'IO.f90'))+\
