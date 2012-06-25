@@ -46,22 +46,21 @@ start = 1
 exitCode=2
 print 'load case', options.loadcase
 print 'geometry', options.geometry
-f=open('monitor','w')
-#res=numpy.array([6,6,6])
-res=numpy.array([0,0,0])
+res=numpy.array([24,24,24])
 while exitCode == 2:
   print 'restart at ', start
-  out=subprocess.Popen(['DAMASK_spectral', '-l', '%s'%options.loadcase, '-g', '%s'%options.geometry, '--regrid', '%i'%start],stderr=subprocess.PIPE,stdout=f)
-  #out=subprocess.Popen(['DAMASK_spectral', '-l', '%s'%options.loadcase, '-g', '%s'%options.geometry, '-r', '%i'%start],stderr=subprocess.PIPE,stdout=f)
-  stderr = out.communicate()
-  stderrLines = string.split(stderr[1],'\n')
-  exitCode = int(stderrLines[-2])
-  print 'exit code', exitCode
+  proc=subprocess.Popen(executable='DAMASK_spectral',\
+                        args=['-l', '%s'%options.loadcase, '-g', '%s'%options.geometry, '--regrid', '%i'%start],\
+                        stderr=subprocess.PIPE,stdout=subprocess.PIPE, bufsize=1)
+  while proc.poll() is None:              # while process is running
+    myLine = proc.stdout.readline()
+    if len(myLine)>1: print myLine[0:-1] # print output without extra newline
+  exitCode = proc.returncode
   if exitCode==2:
     os.system('rm -rf %i'%start)
     os.system('mkdir %i'%start)
     os.system('cp * %i/.'%start)
-    start = int(string.split(re.search('restart at\s+\d+',stderr[1]).group(0))[2])
+    start =  int(string.split(re.search('restart at\s+\d+',proc.stderr.readlines()[-2]).group(0))[2]) #restart step is in second last line in stderr, search for restart at xxx
 #------------regridding----------------------------------------------
 #--------------------------------------------------------------------
     damask.core.prec.prec_init()
