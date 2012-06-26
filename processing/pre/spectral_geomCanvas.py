@@ -29,10 +29,13 @@ class extendedOption(Option):
 identifiers = {
         'resolution': ['a','b','c'],
         'dimension':  ['x','y','z'],
+        'origin':     ['x','y','z'],
           }
 mappings = {
         'resolution': lambda x: int(x),
         'dimension':  lambda x: float(x),
+        'origin':     lambda x: float(x),
+        'homogenization': lambda x: int(x),
           }
 
 
@@ -90,49 +93,66 @@ for file in files:
       headitems = header.split()
       if headitems[0] == 'resolution':         # located resolution entry
         for i in xrange(3):
-          options.resolution[i] = mappings['resolution'](headitems[headitems.index(identifiers['resolution'][i])+1])
+          options.resolution[i] = \
+            mappings['resolution'](headitems[headitems.index(identifiers['resolution'][i])+1])
 
-  resolution = [0,0,0]
-  dimension = [0.0,0.0,0.0]
+  info = {'resolution': [0,0,0],
+          'dimension':  [0.0,0.0,0.0],
+          'origin':     [0.0,0.0,0.0],
+          'homogenization': 1,
+         }
+
   new_header = []
   for header in headers:
-    headitems = header.split()
-    if headitems[0] == 'resolution':         # located resolution entry
-      for i in xrange(3):
-        resolution[i] = mappings['resolution'](headitems[headitems.index(identifiers['resolution'][i])+1])
-      header = "resolution\ta %i\tb %i\tc %i\n"%(options.resolution[0],options.resolution[1],options.resolution[2],)
-    if headitems[0] == 'dimension':          # located dimension entry
-      for i in xrange(3):
-        dimension[i] = mappings['dimension'](headitems[headitems.index(identifiers['dimension'][i])+1])
-      header = "dimension\tx %f\ty %f\tz %f\n"%(dimension[0]/resolution[0]*options.resolution[0],
-                                              dimension[1]/resolution[1]*options.resolution[1],
-                                              dimension[2]/resolution[2]*options.resolution[2],)
-    
-    new_header.append(header)
-    
-  if resolution == [0,0,0]:
+    headitems = map(str.lower,header.split())
+    if headitems[0] in mappings.keys():
+      if headitems[0] in identifiers.keys():
+        for i in xrange(len(identifiers[headitems[0]])):
+          info[headitems[0]][i] = \
+            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
+      else:
+        info[headitems[0]] = mappings[headitems[0]](headitems[1])
+
+  if info['resolution'] == [0,0,0]:
     print 'no resolution info found.'
     sys.exit(1)
-  if dimension == [0.0,0.0,0.0]:
+  if info['dimension'] == [0.0,0.0,0.0]:
     print 'no dimension info found.'
     sys.exit(1)
 
   if file['name'] != 'STDIN':
-    print 'resolution: %s'%(' x '.join(map(str,resolution)))
-    print 'dimension:  %s'%(' x '.join(map(str,dimension)))
-    
-  microstructure = numpy.zeros(resolution,'i')
+    print 'resolution: %s'%(' x '.join(map(str,info['resolution'])))
+    print 'dimension:  %s'%(' x '.join(map(str,info['dimension'])))
+    print 'origin:     %s'%(' x '.join(map(str,info['origin'])))
+
+  new_header.append("resolution\ta %i\tb %i\tc %i\n"%( 
+    options.resolution[0],
+    options.resolution[1],
+    options.resolution[2],))
+  new_header.append("dimension\tx %f\ty %f\tz %f\n"%(
+    info['dimension'][0]/info['resolution'][0]*options.resolution[0],
+    info['dimension'][1]/info['resolution'][1]*options.resolution[1],
+    info['dimension'][2]/info['resolution'][2]*options.resolution[2],))
+  new_header.append("origin\tx %f\ty %f\tz %f\n"%(
+    info['origin'][0]+info['dimension'][0]/info['resolution'][0]*options.offset[0],
+    info['origin'][1]+info['dimension'][1]/info['resolution'][1]*options.offset[1],
+    info['origin'][2]+info['dimension'][2]/info['resolution'][2]*options.offset[2],))
+  new_header.append("homogenization\t%i\n"%info['homogenization'])
+
+  microstructure = numpy.zeros(info['resolution'],'i')
   i = 0
   for line in content:  
     for item in map(int,line.split()):
-      microstructure[i%resolution[0],(i/resolution[0])%resolution[1],i/resolution[0]/resolution[1]] = item
+      microstructure[i%info['resolution'][0],
+                    (i/info['resolution'][0])%info['resolution'][1],
+                     i/info['resolution'][0]/info['resolution'][1]] = item
       i += 1
   
   microstructure_cropped = numpy.zeros(options.resolution,'i')
   microstructure_cropped.fill({True:options.fill,False:microstructure.max()+1}[options.fill>0])
-  xindex = list(set(xrange(options.offset[0],options.offset[0]+options.resolution[0])) & set(xrange(resolution[0])))
-  yindex = list(set(xrange(options.offset[1],options.offset[1]+options.resolution[1])) & set(xrange(resolution[1])))
-  zindex = list(set(xrange(options.offset[2],options.offset[2]+options.resolution[2])) & set(xrange(resolution[2])))
+  xindex = list(set(xrange(options.offset[0],options.offset[0]+options.resolution[0])) & set(xrange(info['resolution'][0])))
+  yindex = list(set(xrange(options.offset[1],options.offset[1]+options.resolution[1])) & set(xrange(info['resolution'][1])))
+  zindex = list(set(xrange(options.offset[2],options.offset[2]+options.resolution[2])) & set(xrange(info['resolution'][2])))
   translate_x = [i - options.offset[0] for i in xindex]
   translate_y = [i - options.offset[1] for i in yindex]
   translate_z = [i - options.offset[2] for i in zindex]
@@ -142,7 +162,8 @@ for file in files:
             
 # ------------------------------------------ assemble header ---------------------------------------  
 
-  output = ''.join(new_header)
+  output  = '%i\theader\n'%(len(new_header))
+  output += ''.join(new_header)
 
 # ------------------------------------- regenerate texture information ----------------------------------  
 
