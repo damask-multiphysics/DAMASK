@@ -249,7 +249,10 @@ subroutine material_parseHomogenization(myFile,myPart)
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) Nsections, section, s
  character(len=64)   :: tag
- character(len=1024) ::line
+ character(len=1024) :: line
+ logical             :: echo
+ 
+ echo = IO_globalTagInPart(myFile,myPart,'/echo/')
  
  Nsections = IO_countSections(myFile,myPart)
  material_Nhomogenization = Nsections
@@ -272,11 +275,13 @@ subroutine material_parseHomogenization(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)      ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
+ if (echo) write(6,*) trim(line)                          ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (echo) write(6,*) trim(line)                        ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                ! next section
      section = section + 1_pInt
      homogenization_name(section) = IO_getTag(line,'[',']')
@@ -286,7 +291,7 @@ subroutine material_parseHomogenization(myFile,myPart)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
        case ('type')
-         homogenization_type(section) = IO_lc(IO_stringValue(line,positions,2_pInt))  ! adding: IO_lc function <<<updated 31.07.2009>>>
+         homogenization_type(section) = IO_lc(IO_stringValue(line,positions,2_pInt))               ! adding: IO_lc function
          do s = 1_pInt,section
            if (homogenization_type(s) == homogenization_type(section)) &
              homogenization_typeInstance(section) = homogenization_typeInstance(section) + 1_pInt  ! count instances
@@ -319,6 +324,9 @@ subroutine material_parseMicrostructure(myFile,myPart)
  integer(pInt) :: Nsections, section, constituent, e, i
  character(len=64)   :: tag
  character(len=1024) :: line
+ logical             :: echo
+
+ echo = IO_globalTagInPart(myFile,myPart,'/echo/')
 
  Nsections = IO_countSections(myFile,myPart)
  material_Nmicrostructure = Nsections
@@ -347,11 +355,13 @@ subroutine material_parseMicrostructure(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)      ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
+ if (echo) write(6,*) trim(line)                          ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (echo) write(6,*) trim(line)                        ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                ! next section
      section = section + 1_pInt
      constituent = 0_pInt
@@ -390,6 +400,7 @@ subroutine material_parseCrystallite(myFile,myPart)
  use IO, only: IO_countSections, &
                IO_error, &
                IO_countTagInPart, &
+               IO_globalTagInPart, &
                IO_getTag, &
                IO_lc, &
                IO_isBlank
@@ -401,6 +412,9 @@ subroutine material_parseCrystallite(myFile,myPart)
  integer(pInt)       :: Nsections, &
                         section
  character(len=1024) :: line
+ logical             :: echo
+
+ echo = IO_globalTagInPart(myFile,myPart,'/echo/')
  
  Nsections = IO_countSections(myFile,myPart)
  material_Ncrystallite = Nsections
@@ -418,11 +432,13 @@ subroutine material_parseCrystallite(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)      ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
+ if (echo) write(6,*) trim(line)                          ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (echo) write(6,*) trim(line)                        ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                ! next section
      section = section + 1_pInt
      crystallite_name(section) = IO_getTag(line,'[',']')
@@ -448,6 +464,9 @@ subroutine material_parsePhase(myFile,myPart)
  integer(pInt) Nsections, section, s
  character(len=64)   :: tag
  character(len=1024) :: line
+ logical             :: echo
+
+ echo = IO_globalTagInPart(myFile,myPart,'/echo/')
  
  Nsections = IO_countSections(myFile,myPart)
  material_Nphase = Nsections
@@ -471,11 +490,13 @@ subroutine material_parsePhase(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)      ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
+ if (echo) write(6,*) trim(line)                          ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (echo) write(6,*) trim(line)                        ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                ! next section
      section = section + 1_pInt
      phase_name(section) = IO_getTag(line,'[',']')
@@ -520,7 +541,9 @@ subroutine material_parseTexture(myFile,myPart)
  integer(pInt) :: Nsections, section, gauss, fiber, i
  character(len=64) :: tag
  character(len=1024) :: line
- 
+ logical             :: echo
+
+ echo = IO_globalTagInPart(myFile,myPart,'/echo/')
  
  Nsections = IO_countSections(myFile,myPart)
  material_Ntexture = Nsections
@@ -547,11 +570,13 @@ subroutine material_parseTexture(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)      ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
+ if (echo) write(6,*) trim(line)                          ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (echo) write(6,*) trim(line)                        ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                ! next section
      section = section + 1_pInt
      gauss = 0_pInt

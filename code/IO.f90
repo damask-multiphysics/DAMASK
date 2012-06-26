@@ -40,6 +40,7 @@ module IO
             IO_countSections, &
             IO_countTagInPart, &
             IO_spotTagInPart, &
+            IO_globalTagInPart, &
             IO_stringPos, &
             IO_stringValue, &
             IO_fixedStringValue ,&
@@ -645,7 +646,7 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
  character(len=*), intent(in)  :: part, &
                                   myTag
 
- integer(pInt), parameter     :: maxNchunks = 1_pInt
+ integer(pInt), parameter      :: maxNchunks = 1_pInt
 
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt)                            :: section
@@ -669,13 +670,57 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
      section = section + 1_pInt
    if (section > 0_pInt) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      if (tag == myTag) &                                  ! match
        IO_spotTagInPart(section) = .true.
    endif   
  enddo
 
 100 end function IO_spotTagInPart
+
+
+!*********************************************************************
+! return logical whether myTag is present within <part> before any [sections]
+!*********************************************************************
+logical function IO_globalTagInPart(myFile,part,myTag)
+
+ implicit none
+ 
+ integer(pInt),    intent(in)  :: myFile
+ character(len=*), intent(in)  :: part, &
+                                  myTag
+
+ integer(pInt), parameter      :: maxNchunks = 1_pInt
+
+ integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt)                            :: section
+ character(len=1024)                      :: line, &
+                                             tag
+
+ IO_globalTagInPart = .false.                             ! assume to nowhere spot tag
+ section = 0_pInt
+ line =''
+
+ rewind(myFile)
+ do while (IO_getTag(line,'<','>') /= part)               ! search for part
+   read(myFile,'(a1024)',END=100) line
+ enddo
+
+ do
+   read(myFile,'(a1024)',END=100) line
+   if (IO_isBlank(line)) cycle                            ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
+     section = section + 1_pInt
+   if (section == 0_pInt) then
+     positions = IO_stringPos(line,maxNchunks)
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
+     if (tag == myTag) &                                  ! match
+       IO_globalTagInPart = .true.
+   endif   
+ enddo
+
+100 end function IO_globalTagInPart
 
 
 !********************************************************************
