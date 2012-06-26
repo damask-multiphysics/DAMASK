@@ -93,7 +93,7 @@ bin_link = { \
                 'spectral_geomPack.py',
                 'voronoi_tessellation.exe',
                 'spectral_voronoiTessellation.py',
-                'OIMang_hex2cub',
+                'OIMang_hex2cub.py',
                 ],
         'post' : [
                 '3Dvisualize.py',
