@@ -35,22 +35,19 @@ Can discriminate two phases depending on threshold value
 
 
 parser.add_option('-c','--column',     dest='column', type='int', \
-                                       help='column containgin value to disciminate phase 1 and 2 [%default]')
+                                       help='data column to separate phase 1 and 2 [%default]')
 parser.add_option('-t','--threshold',  dest='threshold', type='float', \
-                                       help='threshold to disciminate phases. if (value < treshold) phase = 1')
-parser.add_option('-l','--long',       dest='useNoRange', action='store_true',\
-                                       help='write number for each point instead of "1 to N" in geom file [%default]')
+                                       help='threshold used to separate phases. value < threshold: phase = 1')
 
 parser.set_defaults(column = 1)
 parser.set_defaults(threshold = sys.maxint)
-parser.set_defaults(useRange = False)
 
 (options,filenames) = parser.parse_args()
 
 # ------------------------------------------ setup file handles ---------------------------------------  
-eulers=numpy.array([0.0,0.0,0.0],'f')
-geomdim=numpy.array([0.0,0.0,0.0],'f')
-res=numpy.array([0,0,1],'i')      
+eulers = numpy.array([0.0,0.0,0.0],'f')
+geomdim = numpy.array([0.0,0.0,0.0],'f')
+res = numpy.array([0,0,1],'i')      
 
 files = []
 if filenames == []:
@@ -107,9 +104,4 @@ for file in files:
   file['geom'].write(
     '3 header\nresolution a %4d b %4d c %1d \ndimension x %5.3f y %5.3f z %5.3f\nhomogenization 1\n'\
                %(res[0],res[1],res[2],geomdim[0],geomdim[1],geomdim[2]))
-  if options.useNoRange:
-    for x in xrange(res[0]*res[1]):
-      file['geom'].write('%08d' %x)
-  else:
-    file['geom'].write('1 to %d\n'%(res[0]*res[1]))
-
+  file['geom'].write('1 to %d\n'%(res[0]*res[1]))
