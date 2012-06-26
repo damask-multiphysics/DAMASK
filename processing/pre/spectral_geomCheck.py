@@ -58,7 +58,7 @@ def output(cmds,locals,dest):
 
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
-def vtk_writeASCII_mesh(dim,res,data):
+def vtk_writeASCII_mesh(dim,res,origin,data):
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
   """ function writes data array defined on a rectilinear grid """
   N  = res[0]*res[1]*res[2]
@@ -70,11 +70,11 @@ def vtk_writeASCII_mesh(dim,res,data):
           'DATASET RECTILINEAR_GRID',
           'DIMENSIONS %i %i %i'%(res[0]+1,res[1]+1,res[2]+1),
           'X_COORDINATES %i float'%(res[0]+1),
-          ' '.join(map(str,[i*dim[0]/res[0] for i in range(res[0]+1)])),
+          ' '.join(map(str,[i*dim[0]/res[0]+origin[0] for i in range(res[0]+1)])),
           'Y_COORDINATES %i float'%(res[1]+1),
-          ' '.join(map(str,[i*dim[1]/res[1] for i in range(res[1]+1)])),
+          ' '.join(map(str,[i*dim[1]/res[1]+origin[1] for i in range(res[1]+1)])),
           'Z_COORDINATES %i float'%(res[2]+1),
-          ' '.join(map(str,[i*dim[2]/res[2] for i in range(res[2]+1)])),
+          ' '.join(map(str,[i*dim[2]/res[2]+origin[2] for i in range(res[2]+1)])),
           'CELL_DATA %i'%N,
          ]
   
@@ -94,10 +94,12 @@ def vtk_writeASCII_mesh(dim,res,data):
 identifiers = {
         'resolution': ['a','b','c'],
         'dimension':  ['x','y','z'],
+        'origin':     ['x','y','z'],
           }
 mappings = {
         'resolution': lambda x: int(x),
         'dimension':  lambda x: float(x),
+        'origin':     lambda x: float(x),
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog [geomfile[s]]', description = """
@@ -136,38 +138,38 @@ for file in files:
 
   content = file['input'].readlines()
   file['input'].close()
-  
-  resolution = [0,0,0]
-  dimension = [0.0,0.0,0.0]
-  for header in headers:
-    headitems = header.split()
-    if headitems[0] == 'resolution':         # located resolution entry
-      for i in xrange(3):
-        resolution[i] = mappings['resolution'](headitems[headitems.index(identifiers['resolution'][i])+1])
-    if headitems[0] == 'dimension':          # located dimension entry
-      for i in xrange(3):
-        dimension[i] = mappings['dimension'](headitems[headitems.index(identifiers['dimension'][i])+1])
 
-  if resolution == [0,0,0]:
+  info = {'resolution': [0,0,0],
+          'dimension':  [0.0,0.0,0.0],
+          'origin':     [0.0,0.0,0.0],
+         }
+  for header in headers:
+    headitems = map(str.lower,header.split())
+    if headitems[0] in identifiers.keys():
+      for i in xrange(len(identifiers[headitems[0]])):
+        info[headitems[0]][i] = mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
+
+  if info['resolution'] == [0,0,0]:
     print 'no resolution info found.'
     sys.exit(1)
-  if dimension == [0.0,0.0,0.0]:
+  if info['dimension'] == [0.0,0.0,0.0]:
     print 'no dimension info found.'
     sys.exit(1)
 
-  print 'resolution: %s'%(' x '.join(map(str,resolution)))
-  print 'dimension:  %s'%(' x '.join(map(str,dimension)))
+  print 'resolution: %s'%(' x '.join(map(str,info['resolution'])))
+  print 'dimension:  %s'%(' x '.join(map(str,info['dimension'])))
+  print 'origin:     %s'%(' : '.join(map(str,info['origin'])))
   
-  data = {'scalar':{'structure':numpy.zeros(resolution,'i')}}
+  data = {'scalar':{'structure':numpy.zeros(info['resolution'],'i')}}
   i = 0
   for line in content:  
     for item in map(int,line.split()):
-      data['scalar']['structure'][i%resolution[0],(i/resolution[0])%resolution[1],i/resolution[0]/resolution[1]] = item
+      data['scalar']['structure'][i%info['resolution'][0],(i/info['resolution'][0])%info['resolution'][1],i/info['resolution'][0]/info['resolution'][1]] = item
       i += 1
 
 
   out = {}
-  out['mesh'] = vtk_writeASCII_mesh(dimension,resolution,data)
+  out['mesh'] = vtk_writeASCII_mesh(info['dimension'],info['resolution'],info['origin'],data)
   
   for what in out.keys():
     if file['name'] == 'STDIN':
