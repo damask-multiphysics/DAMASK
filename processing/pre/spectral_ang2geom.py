@@ -105,7 +105,7 @@ for file in files:
     
   file['material'].write(tempPart2)
   file['geom'].write(
-    'resolution a %4d b %4d c %1d \ndimension %5.3f y %5.3f z %5.3f\nhomogenization 1\n'\
+    '3 header\nresolution a %4d b %4d c %1d \ndimension x %5.3f y %5.3f z %5.3f\nhomogenization 1\n'\
                %(res[0],res[1],res[2],geomdim[0],geomdim[1],geomdim[2]))
   if options.useNoRange:
     for x in xrange(res[0]*res[1]):
