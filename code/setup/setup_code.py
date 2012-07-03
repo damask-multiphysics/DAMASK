@@ -28,11 +28,12 @@ Writes version specific files for different MARC releases, adjustes the make fil
 )
 
 parser.add_option('-c', '--compile', dest='spectralCompile', action='store_true', \
-                  help='compiles sthe spectral solver [%default]')
-parser.add_option('-m', '--make', dest='makeOptions', type='string', \
-                  help='options parsed to make file when compiling spectral code [%default]')
+                  help='compiles the spectral solver [%default]')
+parser.add_option('-m', '--make', dest='makeOptions', action='extend', type='string', \
+                  metavar="KEY=VALUE", \
+                  help='comma-separated list of options passed to Makefile when compiling spectral code %default')
 parser.set_defaults(spectralCompile = False)
-parser.set_defaults(makeOptions = 'F90=ifort')
+parser.set_defaults(makeOptions = ['F90=ifort'])
 
 (options, args) = parser.parse_args()
 
@@ -88,7 +89,7 @@ makefile.close()
 # compiling spectral code
 if (options.spectralCompile):
   os.system('make --directory %s clean'%(baseDir))
-  os.system('make --directory %s %s'%(baseDir,options.makeOptions))
+  os.system('make --directory %s %s'%(baseDir,' '.join(options.makeOptions)))
 
 for dir in bin_link:
   for file in bin_link[dir]:
