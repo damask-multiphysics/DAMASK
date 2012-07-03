@@ -39,10 +39,10 @@ SHELL = /bin/sh
 ########################################################################################
 
 #auto values will be set by setup_code.py
-#FFTWROOT   := auto
-#IMKLROOT   := auto
-#ACMLROOT   := auto
-#LAPACKROOT := auto
+FFTWROOT   := auto
+IMKLROOT   := auto
+ACMLROOT   := auto
+LAPACKROOT := auto
 
 F90 ?= ifort
 COMPILERNAME ?= $(F90)
@@ -112,7 +112,9 @@ LIBRARIES +=-lacml$(ACML_ARCH)
 else
 ifdef LAPACKROOT
 LIB_DIRS  +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
-LIBRARIES +=-llapack -lrefblas -ltmglib
+LIBRARIES +=-llapack
+endif
+endif
 endif
 
 ifdef STANDARD_CHECK
@@ -271,7 +273,7 @@ COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHEC
 COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o \
-                 constitutive_titanmod.o constitutive_nonlocal.o constitutive.o \
+                 constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o \
                  homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o crystallite.o
 
 ifneq "$(SOLVER)" "AL"
@@ -312,7 +314,8 @@ constitutive.o:               constitutive.f90 \
                               constitutive_titanmod.o \
                               constitutive_dislotwin.o \
                               constitutive_phenopowerlaw.o \
-                              constitutive_j2.o
+                              constitutive_j2.o \
+                              constitutive_none.o
 
 constitutive_nonlocal.o:      constitutive_nonlocal.f90 \
                               lattice.o
@@ -327,6 +330,9 @@ constitutive_phenopowerlaw.o: constitutive_phenopowerlaw.f90 \
                               lattice.o
 
 constitutive_j2.o:            constitutive_j2.f90 \
+                              lattice.o
+
+constitutive_none.o:          constitutive_none.f90 \
                               lattice.o
 
 lattice.o:                    lattice.f90 \
