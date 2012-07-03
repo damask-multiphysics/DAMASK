@@ -4,20 +4,23 @@ SHELL = /bin/sh
 ########################################################################################
 # Be sure to remove all files compiled with different options by using "make clean"
 # 
-# Uses OpenMP to parallelize the material subroutines (set number of threads with "export DAMASK_NUM_THREADS=n" to n)
+# Uses OpenMP to parallelize the material subroutines
+# (set number of threads with "export DAMASK_NUM_THREADS=n" to n)
 #
 # Install fftw3 (v3.3 is tested):
-# + run
+# + execute
 #   ./configure --enable-threads --enable-sse2 --enable-shared [-enable-float]
 #   make
 #   make install
 # + specify in the "pathinfo:FFTW" where FFTW was installed.
-#   We essentially look for two library files "lib/libfftw3_threads" and "lib/libfftw3", so you can copy those, for instance,
+#   We essentially look for two library files "lib/libfftw3_threads" and "lib/libfftw3",
+#   so you can copy those, for instance,
 #   into DAMASK_ROOT/lib/fftw/lib/ and specify "./fftw/" as pathinfo:FFTW
 # Use --enable-float in above configure for single precision...
 # Uses linux threads to parallelize fftw3
 #
-# Instead of the AMD Core Math Library a standard "liblapack.a/dylib/etc." can be used by leaving pathinfo:ACML and pathinfo:IKML blank
+# Instead of the AMD Core Math Library a standard "lib(64)/liblapack.a/dylib/etc." can be used.
+# leave pathinfo:ACML and pathinfo:IKML blank, but specify as pathinfo:LAPACK where the library folder is located
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
@@ -27,7 +30,7 @@ SHELL = /bin/sh
 # OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
 # OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
 # FFTWROOT       = pathinfo:FFTW   (will be adjusted by setup_code.py - required in pathinfo)
-# IKMLROOT       = pathinfo:IKML   (will be adjusted by setup_code.py if present in pathinfo)
+# IMKLROOT       = pathinfo:IMKL   (will be adjusted by setup_code.py if present in pathinfo)
 # ACMLROOT       = pathinfo:ACML   (will be adjusted by setup_code.py if present in pathinfo)
 # LAPACKROOT     = pathinfo:LAPACK (will be adjusted by setup_code.py if present in pathinfo)
 # PREFIX         = arbitrary prefix
@@ -36,25 +39,20 @@ SHELL = /bin/sh
 ########################################################################################
 
 #auto values will be set by setup_code.py
-FFTWROOT   :=$(DAMASK_ROOT)/lib/fftw
-#IKMLROOT  :=/opt/intel/composerxe/mkl 
-#ACMLROOT  :=/opt/acml4.4.0
-LAPACKROOT :=/usr
+#FFTWROOT   := auto
+#IMKLROOT   := auto
+#ACMLROOT   := auto
+#LAPACKROOT := auto
 
-F90 ?=ifort
+F90 ?= ifort
 COMPILERNAME ?= $(F90)
 
 INCLUDE_DIRS +=-I$(DAMASK_ROOT)/lib
 
-ifdef PETSC_DIR
-include ${PETSC_DIR}/conf/variables
-INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSC
-LIBRARIES +=${PETSC_WITH_EXTERNAL_LIB}
-endif
 
 ifeq "$(FASTBUILD)" "YES"
-OPENMP :=OFF
-OPTIMIZATION :=OFF
+OPENMP := OFF
+OPTIMIZATION := OFF
 else
 OPENMP ?= ON
 OPTIMIZATION ?= DEFENSIVE
@@ -96,21 +94,25 @@ LIBRARIES +=-lfftw3_threads -lpthread
 endif
 
 LIBRARIES +=-lfftw3
-LIB_DIRS +=-L$(FFTWROOT)/lib
+LIB_DIRS  +=-L$(FFTWROOT)/lib
 
-ifdef IKMLROOT
+#ifdef PETSC_DIR
+#include ${PETSC_DIR}/conf/variables
+#INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSC
+#LIBRARIES    +=${PETSC_WITH_EXTERNAL_LIB}
+#endif
+
+ifdef IMKLROOT
+LIB_DIRS  +=-L$(IMKLROOT)/lib/intel64
 LIBRARIES +=-mkl
-LIBRARIES +=-L$(IKMLROOT)/lib/intel64
 else
 ifdef ACMLROOT
-LIB_DIRS +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
+LIB_DIRS  +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
 else
 ifdef LAPACKROOT
-LIB_DIRS +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
-LIBRARIES +=-llapack 
-endif
-endif
+LIB_DIRS  +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
+LIBRARIES +=-llapack -lrefblas -ltmglib
 endif
 
 ifdef STANDARD_CHECK
