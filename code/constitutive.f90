@@ -104,6 +104,7 @@ subroutine constitutive_init
                      phase_Noutput, &
                      homogenization_Ngrains, &
                      homogenization_maxNgrains
+ use constitutive_none
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_titanmod
@@ -132,6 +133,7 @@ logical :: knownPlasticity
 if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then        ! no local material configuration present...
   call IO_open_file(fileunit,material_configFile)                           ! ... open material.config file
 endif
+call constitutive_none_init(fileunit)
 call constitutive_j2_init(fileunit)
 call constitutive_phenopowerlaw_init(fileunit)
 call constitutive_titanmod_init(fileunit)
@@ -147,6 +149,9 @@ do p = 1_pInt,material_Nphase
   i = phase_plasticityInstance(p)                       ! which instance of a plasticity is present phase
   knownPlasticity = .true.                              ! assume valid
   select case(phase_plasticity(p))                      ! split per constitiution
+    case (constitutive_none_label)
+      thisOutput => NULL() ! constitutive_none_output
+      thisSize   => NULL() ! constitutive_none_sizePostResult
     case (constitutive_j2_label)
       thisOutput => constitutive_j2_output
       thisSize   => constitutive_j2_sizePostResult
@@ -223,6 +228,34 @@ endif
         myInstance = phase_plasticityInstance(material_phase(g,i,e))
         select case(phase_plasticity(material_phase(g,i,e)))  
         
+          case (constitutive_none_label)
+            allocate(constitutive_state0(g,i,e)%p(constitutive_none_sizeState(myInstance)))
+            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_none_sizeState(myInstance)))
+            allocate(constitutive_subState0(g,i,e)%p(constitutive_none_sizeState(myInstance)))
+            allocate(constitutive_state(g,i,e)%p(constitutive_none_sizeState(myInstance)))
+            allocate(constitutive_state_backup(g,i,e)%p(constitutive_none_sizeState(myInstance)))
+            allocate(constitutive_aTolState(g,i,e)%p(constitutive_none_sizeState(myInstance)))
+            allocate(constitutive_dotState(g,i,e)%p(constitutive_none_sizeDotState(myInstance)))
+            allocate(constitutive_deltaState(g,i,e)%p(constitutive_none_sizeDotState(myInstance)))
+            allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_none_sizeDotState(myInstance)))
+            if (any(numerics_integrator == 1_pInt)) then
+              allocate(constitutive_previousDotState(g,i,e)%p(constitutive_none_sizeDotState(myInstance)))
+              allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_none_sizeDotState(myInstance)))
+            endif
+            if (any(numerics_integrator == 4_pInt)) then
+              allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_none_sizeDotState(myInstance))) 
+            endif
+            if (any(numerics_integrator == 5_pInt)) then
+              do s = 1_pInt,6_pInt
+                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_none_sizeDotState(myInstance))) 
+              enddo
+            endif
+            constitutive_state0(g,i,e)%p =           constitutive_none_stateInit(myInstance)
+            constitutive_aTolState(g,i,e)%p =        constitutive_none_aTolState(myInstance)
+            constitutive_sizeState(g,i,e) =          constitutive_none_sizeState(myInstance)
+            constitutive_sizeDotState(g,i,e) =       constitutive_none_sizeDotState(myInstance)
+            constitutive_sizePostResults(g,i,e) =    constitutive_none_sizePostResults(myInstance)
+           
           case (constitutive_j2_label)
             allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
             allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(myInstance)))
@@ -428,6 +461,7 @@ function constitutive_homogenizedC(ipc,ip,el)
 !*********************************************************************
  use prec, only: pReal
  use material, only: phase_plasticity,material_phase
+ use constitutive_none
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_titanmod
@@ -440,6 +474,9 @@ function constitutive_homogenizedC(ipc,ip,el)
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
+   case (constitutive_none_label)
+     constitutive_homogenizedC = constitutive_none_homogenizedC(constitutive_state,ipc,ip,el)
+     
    case (constitutive_j2_label)
      constitutive_homogenizedC = constitutive_j2_homogenizedC(constitutive_state,ipc,ip,el)
      
@@ -471,6 +508,7 @@ function constitutive_averageBurgers(ipc,ip,el)
 !*********************************************************************
  use prec, only: pReal
  use material, only: phase_plasticity,material_phase
+ use constitutive_none
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_titanmod
@@ -483,6 +521,9 @@ function constitutive_averageBurgers(ipc,ip,el)
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
+   case (constitutive_none_label)
+     constitutive_averageBurgers = 2.5e-10_pReal !constitutive_none_averageBurgers(constitutive_state,ipc,ip,el)
+     
    case (constitutive_j2_label)
      constitutive_averageBurgers = 2.5e-10_pReal !constitutive_j2_averageBurgers(constitutive_state,ipc,ip,el)
      
@@ -512,6 +553,8 @@ subroutine constitutive_microstructure(Temperature, Fe, Fp, ipc, ip, el)
 use prec,      only: pReal
 use material,  only: phase_plasticity, &
                      material_phase
+use constitutive_none,          only: constitutive_none_label, &
+                                      constitutive_none_microstructure
 use constitutive_j2,            only: constitutive_j2_label, &
                                       constitutive_j2_microstructure
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
@@ -539,6 +582,9 @@ real(pReal), dimension(3,3), intent(in) ::  Fe, &       ! elastic deformation gr
 
 select case (phase_plasticity(material_phase(ipc,ip,el)))
  
+  case (constitutive_none_label)
+    call constitutive_none_microstructure(Temperature,constitutive_state,ipc,ip,el)
+     
   case (constitutive_j2_label)
     call constitutive_j2_microstructure(Temperature,constitutive_state,ipc,ip,el)
      
@@ -569,6 +615,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
 use prec, only: pReal
 use material, only: phase_plasticity, &
                     material_phase
+use constitutive_none,          only: constitutive_none_label, &
+                                      constitutive_none_LpAndItsTangent
 use constitutive_j2,            only: constitutive_j2_label, &
                                       constitutive_j2_LpAndItsTangent
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
@@ -598,6 +646,9 @@ real(pReal), dimension(9,9), intent(out) :: dLp_dTstar    ! derivative of Lp wit
 
 select case (phase_plasticity(material_phase(ipc,ip,el)))
 
+  case (constitutive_none_label)
+    call constitutive_none_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   
   case (constitutive_j2_label)
     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,constitutive_state,ipc,ip,el)
    
@@ -711,6 +762,8 @@ use mesh, only:     mesh_NcpElems, &
 use material, only: phase_plasticity, &
                     material_phase, &
                     homogenization_maxNgrains
+use constitutive_none, only:          constitutive_none_dotState, &
+                                      constitutive_none_label
 use constitutive_j2, only:            constitutive_j2_dotState, &
                                       constitutive_j2_label
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_dotState, &
@@ -747,6 +800,9 @@ endif
 
 select case (phase_plasticity(material_phase(ipc,ip,el)))
 
+  case (constitutive_none_label)
+    constitutive_dotState(ipc,ip,el)%p = constitutive_none_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+ 
   case (constitutive_j2_label)
     constitutive_dotState(ipc,ip,el)%p = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
@@ -796,6 +852,8 @@ use mesh, only:     mesh_NcpElems, &
 use material, only: phase_plasticity, &
                     material_phase, &
                     homogenization_maxNgrains
+use constitutive_none, only:          constitutive_none_deltaState, &
+                                      constitutive_none_label
 use constitutive_j2, only:            constitutive_j2_deltaState, &
                                       constitutive_j2_label
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_deltaState, &
@@ -826,6 +884,9 @@ endif
 
 select case (phase_plasticity(material_phase(ipc,ip,el)))
 
+  case (constitutive_none_label)
+    constitutive_deltaState(ipc,ip,el)%p = constitutive_none_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+ 
   case (constitutive_j2_label)
     constitutive_deltaState(ipc,ip,el)%p = constitutive_j2_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
  
@@ -871,6 +932,8 @@ use debug, only:    debug_cumDotTemperatureCalls, &
                     debug_levelBasic
 use material, only: phase_plasticity, &
                     material_phase
+use constitutive_none, only:          constitutive_none_dotTemperature, &
+                                      constitutive_none_label
 use constitutive_j2, only:            constitutive_j2_dotTemperature, &
                                       constitutive_j2_label
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_dotTemperature, &
@@ -906,6 +969,9 @@ endif
 
 select case (phase_plasticity(material_phase(ipc,ip,el)))
 
+  case (constitutive_none_label)
+    constitutive_dotTemperature = constitutive_none_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+   
   case (constitutive_j2_label)
     constitutive_dotTemperature = constitutive_j2_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
    
@@ -953,6 +1019,8 @@ use mesh, only:     mesh_NcpElems, &
 use material, only: phase_plasticity, &
                     material_phase, &
                     homogenization_maxNgrains
+use constitutive_none, only:          constitutive_none_postResults, &
+                                      constitutive_none_label
 use constitutive_j2, only:            constitutive_j2_postResults, &
                                       constitutive_j2_label
 use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_postResults, &
@@ -985,6 +1053,9 @@ real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: constitutive_
 constitutive_postResults = 0.0_pReal
 select case (phase_plasticity(material_phase(ipc,ip,el)))
 
+  case (constitutive_none_label)
+    constitutive_postResults = constitutive_none_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
+   
   case (constitutive_j2_label)
     constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
    

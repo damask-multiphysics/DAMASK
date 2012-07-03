@@ -1263,6 +1263,9 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (205_pInt)
    msg = 'unknown lattice structure encountered'
 
+ case (208_pInt)
+   msg = 'unknown material parameter for no plasticity phase:'
+
  case (210_pInt)
    msg = 'unknown material parameter for j2 plasticity phase:'
  case (211_pInt)
