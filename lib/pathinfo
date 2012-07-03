@@ -1,4 +1,4 @@
-# possible options are MSC, FFTW, IKML, ACML, LAPACK
+# possible options are MSC, FFTW, IMKL, ACML, LAPACK
 
 #IMKL    /opt/intel/composerxe/mkl
 #ACML    /opt/acml4.4.0
