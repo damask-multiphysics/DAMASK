@@ -158,4 +158,4 @@ for file in files:
 for file in files:
   file['input'].close()                                                     # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close                                                    # close output ASCII table
+    file['output'].close()                                                  # close output ASCII table
