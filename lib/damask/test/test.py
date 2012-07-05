@@ -148,33 +148,25 @@ class Test():
     process.wait()
 
 
-  def compare_Array(self,File1,File2):
+  def compare_Array(self,ref,cur):
     import numpy
+    refName = self.fileInReference (ref)
+    curName = self.fileInCurrent(cur)
 
-    refFile = open(File1)
+    refFile = open(refName)
     table = damask.ASCIItable(refFile)
     table.head_read()
     refFile.close()
-    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+1))
-    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+1))
-    print len(refArray)
-    print refArray
-    print len(curArray)
-    print curArray
-    refNonZero = refArray[refArray.nonzero()]
-    curNonZero = curArray[curArray.nonzero()]
-    print refNonZero
-    print curNonZero
-    err = abs((refNonZero/curNonZero)-1.)                                     # relative tolerance
-    print err
+    refArray = numpy.genfromtxt(refName,missing_values='n/a',skip_header = len(table.info)+1)
+    curArray = numpy.genfromtxt(curName,missing_values='n/a',skip_header = len(table.info)+1)
+    err = abs((refArray/curArray)-1.)                                     # relative tolerance
+    refNaN=len(numpy.isnan(refArray))
+    curNaN=len(numpy.isnan(curArray))
+    if curNaN == refNaN:
+      err[numpy.isnan(err)]=0.0
     max_err = numpy.max(err)
     print ' ********\n * maximum relative error',max_err,'\n ********'
     return max_err
-    
-  def compare_ArrayRefCur(self,ref,cur):
-    refName = self.fileInReference(ref)
-    curName = self.fileInCurrent(cur)
-    return compare_Array(refName,curName)
 
   def report_Success(self,culprit):
     if culprit < 0:
