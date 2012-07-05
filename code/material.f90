@@ -130,7 +130,7 @@ subroutine material_init
  use IO,    only: IO_error, &
                   IO_open_file, &
                   IO_open_jobFile_stat
- use debug, only: debug_what, &
+ use debug, only: debug_level, &
                   debug_material, &
                   debug_levelBasic, &
                   debug_levelExtensive
@@ -140,7 +140,7 @@ subroutine material_init
  integer(pInt), parameter :: fileunit = 200_pInt
  integer(pInt)            :: i,j, myDebug
  
- myDebug = debug_what(debug_material)
+ myDebug = debug_level(debug_material)
  
  !$OMP CRITICAL (write2out)
    write(6,*)
@@ -676,7 +676,7 @@ subroutine material_populateGrains
  use IO, only:        IO_error, &
                       IO_hybridIA
  use FEsolving, only: FEsolving_execIP
- use debug, only:     debug_what, &
+ use debug, only:     debug_level, &
                       debug_material, &
                       debug_levelBasic
  
@@ -696,7 +696,7 @@ subroutine material_populateGrains
  integer(pInt), dimension (:,:),   allocatable :: Nelems   ! counts number of elements in homog, micro array
  integer(pInt), dimension (:,:,:), allocatable :: elemsOfHomogMicro    ! lists element number in homog, micro array
 
- myDebug = debug_what(debug_material)
+ myDebug = debug_level(debug_material)
  
  allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;        material_volume      = 0.0_pReal
  allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems)) ;         material_phase       = 0_pInt

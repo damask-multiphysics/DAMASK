@@ -72,7 +72,7 @@ subroutine FE_init
  
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
-   debug_what, &
+   debug_level, &
    debug_FEsolving, &
    debug_levelBasic
  
@@ -176,7 +176,7 @@ subroutine FE_init
  write(6,*) '<<<+-  FEsolving init  -+>>>'
  write(6,*) '$Id$'
 #include "compilation_info.f90"
- if (iand(debug_what(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
    write(6,*) 'restart writing:    ', restartWrite
    write(6,*) 'restart reading:    ', restartRead
    if (restartRead) write(6,*) 'restart Job:        ', trim(modelName)

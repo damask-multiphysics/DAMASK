@@ -170,7 +170,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
  use debug, only:     debug_info, &
                       debug_reset, &
                       debug_levelBasic, &
-                      debug_what, &
+                      debug_level, &
                       debug_abaqus
  use mesh, only:      mesh_FEasCP
  use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
@@ -210,7 +210,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
      call CPFEM_initAll(temp,nElement(n),nMatPoint(n))
      outdatedByNewInc = .false.
 
-     if (iand(debug_what(debug_abaqus),debug_levelBasic) /= 0) then
+     if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
          write(6,'(i8,x,i2,x,a)') nElement(n),nMatPoint(n),'first call special case..!'; call flush(6)
        !$OMP END CRITICAL (write2out)
@@ -219,7 +219,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
    else if (theTime < totalTime) then                                  ! reached convergence
      outdatedByNewInc = .true.
 
-     if (iand(debug_what(debug_abaqus),debug_levelBasic) /= 0) then
+     if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
          write (6,'(i8,x,i2,x,a)') nElement(n),nMatPoint(n),'lastIncConverged + outdated'; call flush(6)
        !$OMP END CRITICAL (write2out)
@@ -241,7 +241,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
    theTime  = totalTime                                            ! record current starting time
 
-   if (iand(debug_what(debug_abaqus),debug_levelBasic) /= 0) then
+   if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
      !$OMP CRITICAL (write2out)
        write(6,'(a16,x,i2,x,a,i8,x,i5,a)') 'computationMode',computationMode,'(',nElement(n),nMatPoint(n),')'; call flush(6)
      !$OMP END CRITICAL (write2out)

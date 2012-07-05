@@ -65,7 +65,7 @@ program DAMASK_spectral
    IO_write_jobBinaryFile
    
  use debug, only: &
-   debug_what, &
+   debug_level, &
    debug_spectral, &
    debug_levelBasic, &
    debug_spectralDivergence, &
@@ -282,7 +282,7 @@ program DAMASK_spectral
                  N_Fdot = N_Fdot + 1_pInt
             case('t','time','delta')
                  N_t = N_t + 1_pInt
-            case('n','incs','increments','steps','logincs','logsteps')
+            case('n','incs','increments','steps','logincs','logincrements','logsteps')
                  N_n = N_n + 1_pInt
         end select
    enddo                                                                                            ! count all identifiers to allocate memory and do sanity check
@@ -443,10 +443,10 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! debugging parameters
- debugGeneral    = iand(debug_what(debug_spectral),debug_levelBasic)         /= 0
- debugDivergence = iand(debug_what(debug_spectral),debug_spectralDivergence) /= 0
- debugRestart    = iand(debug_what(debug_spectral),debug_spectralRestart)    /= 0
- debugFFTW       = iand(debug_what(debug_spectral),debug_spectralFFTW)       /= 0
+ debugGeneral    = iand(debug_level(debug_spectral),debug_levelBasic)         /= 0
+ debugDivergence = iand(debug_level(debug_spectral),debug_spectralDivergence) /= 0
+ debugRestart    = iand(debug_level(debug_spectral),debug_spectralRestart)    /= 0
+ debugFFTW       = iand(debug_level(debug_spectral),debug_spectralFFTW)       /= 0
  
 !##################################################################################################
 ! initialization 

@@ -771,7 +771,7 @@ subroutine lattice_init
  use material, only: material_configfile, &
                      material_localFileExt, &
                      material_partPhase
- use debug,    only: debug_what, &
+ use debug,    only: debug_level, &
                      debug_lattice, &
                      debug_levelBasic
 
@@ -794,7 +794,7 @@ subroutine lattice_init
 ! lattice_Nstructure = Nsections + 2_pInt                                                ! most conservative assumption
  close(fileunit)
 
- if (iand(debug_what(debug_lattice),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_lattice),debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,1x,i5)') '# phases:',Nsections
      write(6,'(a16,1x,i5)') '# structures:',lattice_Nstructure

@@ -64,7 +64,7 @@ program DAMASK_spectral_AL
    IO_write_jobBinaryFile
    
  use debug, only: &
-   debug_what, &
+   debug_level, &
    debug_spectral, &
    debug_levelBasic, &
    debug_spectralDivergence, &

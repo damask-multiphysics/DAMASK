@@ -2970,7 +2970,7 @@ subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch)
 ! cube and determinant of defgrad at the FP
 
  use debug, only: debug_math, &
-                  debug_what, &
+                  debug_level, &
                   debug_levelBasic
  
  implicit none
@@ -2986,7 +2986,7 @@ subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch)
  integer(pInt) i,j,k
  real(pReal) vol_initial
 
- if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating volume mismatch'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3025,7 +3025,7 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
 ! the initial volume element with the  current deformation gradient 
 
  use debug, only: debug_math, &
-                  debug_what, &
+                  debug_level, &
                   debug_levelBasic
  
  implicit none
@@ -3041,7 +3041,7 @@ subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
  real(pReal), dimension(8,3) :: coords_initial
  integer(pInt) i,j,k
 
- if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating shape mismatch'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3104,7 +3104,7 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
 ! Routine to build mesh of (distorted) cubes for given coordinates (= center of the cubes)
 !
  use debug, only: debug_math, &
-                  debug_what, &
+                  debug_level, &
                   debug_levelBasic
  
  implicit none
@@ -3133,7 +3133,7 @@ subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
                                     /), &
                                     (/3,8/))
 
- if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Meshing cubes around centroids' 
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3178,7 +3178,7 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
 ! using linear interpolation (blurres out high frequency defomation)
 !
  use debug, only: debug_math, &
-                  debug_what, &
+                  debug_level, &
                   debug_levelBasic
  
  implicit none
@@ -3228,7 +3228,7 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
                                                 /), &
                                              (/3,6/))
 
- if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Restore geometry using linear integration'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3296,7 +3296,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
  use IO, only: IO_error
  use numerics, only: fftw_timelimit, fftw_planner_flag  
  use debug, only: debug_math, &
-                  debug_what, &
+                  debug_level, &
                   debug_levelBasic
  
  implicit none
@@ -3322,7 +3322,7 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
 
  integrator = geomdim / 2.0_pReal / pi                                                                   ! see notes where it is used
  
- if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Restore geometry using FFT-based integration'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3428,7 +3428,7 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  use IO, only: IO_error
  use numerics, only: fftw_timelimit, fftw_planner_flag  
  use debug, only: debug_math, &
-                  debug_what, &
+                  debug_level, &
                   debug_levelBasic
  
  implicit none
@@ -3453,7 +3453,7 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  integer(pInt), dimension(3) :: k_s
  real(pReal) :: wgt
 
- if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating curl of vector/tensor field'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3550,7 +3550,7 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  use IO, only: IO_error
  use numerics, only: fftw_timelimit, fftw_planner_flag  
  use debug, only: debug_math, &
-                  debug_what, &
+                  debug_level, &
                   debug_levelBasic
                   
  implicit none
@@ -3575,7 +3575,7 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  real(pReal) :: wgt
  integer(pInt), dimension(3) :: k_s
 
- if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res
@@ -3663,7 +3663,7 @@ subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
 ! use vec_tes to decide if tensor (3) or vector (1)
  
  use debug, only: debug_math, &
-                  debug_what, &
+                  debug_level, &
                   debug_levelBasic
  
  implicit none
@@ -3684,7 +3684,7 @@ subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
                     4.0_pReal/5.0_pReal,-1.0_pReal/ 5.0_pReal,4.0_pReal/105.0_pReal,-1.0_pReal/280.0_pReal/),&
                                (/4,4/))
                                
- if (iand(debug_what(debug_math),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating divergence of tensor/vector field using FDM'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',   ' Resolution:', res

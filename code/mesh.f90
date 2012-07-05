@@ -3006,7 +3006,7 @@ subroutine mesh_tell_statistics
 
  use math,  only: math_range
  use IO,    only: IO_error
- use debug, only: debug_what, &
+ use debug, only: debug_level, &
                   debug_mesh, &
                   debug_levelBasic, &
                   debug_levelExtensive, &
@@ -3019,7 +3019,7 @@ subroutine mesh_tell_statistics
  character(len=64) :: myFmt
  integer(pInt) :: i,e,n,f,t, myDebug
  
- myDebug = debug_what(debug_mesh)
+ myDebug = debug_level(debug_mesh)
 
  if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=170_pInt) ! no homogenization specified
  if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=180_pInt) ! no microstructure specified

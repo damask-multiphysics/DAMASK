@@ -113,7 +113,7 @@ subroutine CPFEM_init
   
   use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   use prec, only:                                 pInt
-  use debug, only:                                debug_what, &
+  use debug, only:                                debug_level, &
                                                   debug_CPFEM, &
                                                   debug_levelBasic
   use IO, only:                                   IO_read_jobBinaryFile
@@ -145,7 +145,7 @@ subroutine CPFEM_init
 
   ! *** restore the last converged values of each essential variable from the binary file
   if (restartRead) then
-    if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
+    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
       !$OMP CRITICAL (write2out)
        write(6,'(a)') '<< CPFEM >> Restored state variables of last converged step from binary files'
       !$OMP END CRITICAL (write2out)
@@ -207,7 +207,7 @@ subroutine CPFEM_init
     write(6,*) '<<<+-  cpfem init  -+>>>'
     write(6,*) '$Id$'
 #include "compilation_info.f90"
-    if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0) then
+    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
       write(6,'(a32,1x,6(i8,1x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
       write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
       write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
@@ -233,7 +233,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
   use prec, only:           pInt
   use numerics, only:       defgradTolerance, &
                             iJacoStiffness
-  use debug, only:          debug_what, &
+  use debug, only:          debug_level, &
                             debug_CPFEM, &
                             debug_levelBasic, &
                             debug_levelSelective, &
@@ -357,7 +357,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
   
   cp_en = mesh_FEasCP('elem',element)
   
-  if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt .and. cp_en == 1 .and. IP == 1) then
+  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt .and. cp_en == 1 .and. IP == 1) then
     !$OMP CRITICAL (write2out)
       write(6,*)
       write(6,'(a)') '#############################################'
@@ -394,7 +394,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
           constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
-        if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
+        if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
           !$OMP CRITICAL (write2out)
             write(6,'(a)') '<< CPFEM >> Aging states'
             if (debug_e == cp_en .and. debug_i == IP) then
@@ -416,7 +416,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
         ! * dump the last converged values of each essential variable to a binary file
         
         if (restartWrite) then 
-          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
+          if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
            !$OMP CRITICAL (write2out)
              write(6,'(a)') '<< CPFEM >> Writing state variables of last converged step to binary files'
            !$OMP END CRITICAL (write2out)
@@ -485,7 +485,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
       
       if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(1:3,1:3,IP,cp_en)) > defgradTolerance)) then
         if (.not. terminallyIll .and. .not. outdatedFFN1) then 
-          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
+          if (iand(debug_level(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at element ip',cp_en,IP
               write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',math_transpose33(materialpoint_F(1:3,1:3,IP,cp_en))
@@ -512,7 +512,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           FEsolving_execElem(2)     = cp_en
           FEsolving_execIP(1,cp_en) = IP
           FEsolving_execIP(2,cp_en) = IP
-          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
+          if (iand(debug_level(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,1x,i2)') '<< CPFEM >> Calculation for element ip ',cp_en,IP
             !$OMP END CRITICAL (write2out)
@@ -523,7 +523,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
         !* parallel computation and calulation not yet done
         
         elseif (.not. CPFEM_calc_done) then
-          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
+          if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
@@ -533,7 +533,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
             call mesh_build_subNodeCoords()                                                         ! update subnodal coordinates
             call mesh_build_ipCoordinates()                                                         ! update ip coordinates
 #endif
-          if (iand(debug_what(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
+          if (iand(debug_level(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Start stress and tangent ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
@@ -637,9 +637,9 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
     Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
   endif
 
-  if (mode < 3 .and. iand(debug_what(debug_CPFEM), debug_levelBasic) /= 0_pInt &
+  if (mode < 3 .and. iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt &
                      .and. ((debug_e == cp_en .and. debug_i == IP) &
-                             .or. .not. iand(debug_what(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
+                             .or. .not. iand(debug_level(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
     !$OMP CRITICAL (write2out)
       write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1.0e6_pReal
       write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') '<< CPFEM >> jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1.0e9_pReal

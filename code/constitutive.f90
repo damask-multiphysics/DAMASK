@@ -82,7 +82,7 @@ contains
 !**************************************
 subroutine constitutive_init
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use debug,    only: debug_what, &
+ use debug,    only: debug_level, &
                      debug_constitutive, &
                      debug_levelBasic
  use numerics, only: numerics_integrator
@@ -428,7 +428,7 @@ constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
   write(6,*) '<<<+-  constitutive init  -+>>>'
   write(6,*) '$Id$'
 #include "compilation_info.f90"
-  if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
+  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_state0:          ', shape(constitutive_state0)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
     write(6,'(a32,1x,7(i8,1x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
@@ -754,7 +754,7 @@ subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, ori
 use prec, only:     pReal, pLongInt
 use debug, only:    debug_cumDotStateCalls, &
                     debug_cumDotStateTicks, &
-                    debug_what, &
+                    debug_level, &
                     debug_constitutive, &
                     debug_levelBasic
 use mesh, only:     mesh_NcpElems, &
@@ -794,7 +794,7 @@ integer(pLongInt)               tick, tock, &
                                 tickrate, &
                                 maxticks
 
-if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
+if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
@@ -821,7 +821,7 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
  
 end select
 
-if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
+if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDotState)
     debug_cumDotStateCalls = debug_cumDotStateCalls + 1_pInt
@@ -844,7 +844,7 @@ subroutine constitutive_collectDeltaState(Tstar_v, Temperature, ipc, ip, el)
 use prec, only:     pReal, pLongInt
 use debug, only:    debug_cumDeltaStateCalls, &
                     debug_cumDeltaStateTicks, &
-                    debug_what, &
+                    debug_level, &
                     debug_constitutive, &
                     debug_levelBasic
 use mesh, only:     mesh_NcpElems, &
@@ -878,7 +878,7 @@ integer(pLongInt)               tick, tock, &
                                 tickrate, &
                                 maxticks
 
-if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
+if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
@@ -904,7 +904,7 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
  
 end select
 
-if (iand(debug_what(debug_constitutive), debug_levelBasic) /= 0_pInt) then
+if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDeltaState)
     debug_cumDeltaStateCalls = debug_cumDeltaStateCalls + 1_pInt
@@ -927,7 +927,7 @@ function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
 use prec, only:     pReal, pLongInt
 use debug, only:    debug_cumDotTemperatureCalls, &
                     debug_cumDotTemperatureTicks, &
-                    debug_what, &
+                    debug_level, &
                     debug_constitutive, &
                     debug_levelBasic
 use material, only: phase_plasticity, &
@@ -963,7 +963,7 @@ integer(pLongInt)               tick, tock, &
                                 maxticks
 
 
-if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
+if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
 endif
 
@@ -989,7 +989,7 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
    
 end select
 
-if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
+if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
   !$OMP CRITICAL (debugTimingDotTemperature)
     debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt

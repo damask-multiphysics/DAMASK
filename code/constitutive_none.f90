@@ -97,7 +97,7 @@ subroutine constitutive_none_init(myFile)
    IO_error
  use material
  use debug, only: &
-   debug_what, &
+   debug_level, &
    debug_constitutive, &
    debug_levelBasic
  use lattice, only: lattice_initializeStructure, lattice_symmetryType
@@ -121,7 +121,7 @@ subroutine constitutive_none_init(myFile)
  maxNinstance = int(count(phase_plasticity == constitutive_none_label),pInt)
  if (maxNinstance == 0_pInt) return
 
- if (iand(debug_what(debug_constitutive),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
      write(6,'(a16,1x,i5)') '# instances:',maxNinstance
      write(6,*)
