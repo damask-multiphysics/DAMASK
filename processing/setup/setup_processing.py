@@ -132,27 +132,29 @@ compile = { \
             
 
 execute = { \
-          'postMath' : [ 
+          'coreModule' : [ 
                         'make tidy',
-                        # The following command is used to compile math.f90 and make the functions defined in DAMASK_math.pyf
-                        # available for python in the module DAMASK_math.so
+                        # The following command is used to compile the fortran files and make the functions defined
+                        # in damask.core.pyf available for python in the module core.so
                         # It uses the fortran wrapper f2py that is included in the numpy package to construct the
                         # module core.so out of the fortran code in the f90 files
-                        # for the generation of the pyf file use the following two lines:
-                        #'f2py -h  %s'%(os.path.join(codeDir,'damask.core.pyf')) +\
-                        #' --overwrite-signature --no-lower prec.f90 math.f90 mesh.f90',
-                        'f2py %s'%(os.path.join(codeDir,'damask.core.pyf')) +\
-                        ' --build-dir %s'%(os.path.join(codeDir)) +\
+                        # For the generation of the pyf file use the following lines:
+                        ###########################################################################
+                        #'f2py -h damask.core.pyf' +\
+                        #' --overwrite-signature --no-lower prec.f90 DAMASK_spectral_interface.f90 math.f90 mesh.f90',
+                        ###########################################################################
+                        'f2py damask.core.pyf' +\
+                        ' --build-dir processingBuildTemp' +\
                         ' -c --no-lower --fcompiler=%s'%(f2py_compiler) +\
-                        ' %s'%(os.path.join(codeDir,'prec.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'DAMASK_spectral_interface.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'IO.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'numerics.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'debug.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'math.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'FEsolving.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'mesh.f90'))+\
-                        ' %s'%(os.path.join(codeDir,'spectral_quit.f90'))+\
+                        ' %s'%'prec.f90'+\
+                        ' %s'%'DAMASK_spectral_interface.f90'+\
+                        ' %s'%'IO.f90'+\
+                        ' %s'%'numerics.f90'+\
+                        ' %s'%'debug.f90'+\
+                        ' %s'%'math.f90'+\
+                        ' %s'%'FEsolving.f90'+\
+                        ' %s'%'mesh.f90'+\
+                        ' %s'%'spectral_quit.f90'+\
                         ' -L%s/lib -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
                         ' %s'%lib_lapack,
                         'mv %s `readlink -f %s`' %(os.path.join(codeDir,'core.so'),os.path.join(damaskEnv.relPath('lib/damask'),'core.so')),
