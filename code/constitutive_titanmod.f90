@@ -622,7 +622,7 @@ enddo
                 constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
                 write(6,*) tag
        case default
-              call IO_error(230_pInt,ext_msg=tag)
+              call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_titanmod_label//')')
      end select
    endif
 enddo
@@ -635,38 +635,59 @@ write(6,*) 'Material Property reading done'
    myStructure = constitutive_titanmod_structure(i)
 
    !* Sanity checks
-   if (myStructure < 1_pInt .or. myStructure > 3_pInt)                        call IO_error(205_pInt,e=i)
-   if (sum(constitutive_titanmod_Nslip(:,i)) <= 0_pInt)                       call IO_error(231_pInt,e=i,ext_msg='nslip')
-   if (sum(constitutive_titanmod_Ntwin(:,i)) < 0_pInt)                        call IO_error(231_pInt,e=i,ext_msg='ntwin')
+   if (myStructure < 1_pInt)                                                 call IO_error(205_pInt,e=i)
+   if (sum(constitutive_titanmod_Nslip(:,i)) <= 0_pInt)                      call IO_error(211_pInt,e=i,ext_msg='nslip (' &
+                                                                                  //constitutive_titanmod_label//')')
+   if (sum(constitutive_titanmod_Ntwin(:,i)) < 0_pInt)                       call IO_error(211_pInt,e=i,ext_msg='ntwin (' &
+                                                                                  //constitutive_titanmod_label//')')
    do f = 1_pInt,lattice_maxNslipFamily
      if (constitutive_titanmod_Nslip(f,i) > 0_pInt) then   
-       if (constitutive_titanmod_rho_edge0(f,i) < 0.0_pReal)                  call IO_error(231_pInt,e=i,ext_msg='rho_edge0')
-       if (constitutive_titanmod_rho_screw0(f,i) < 0.0_pReal)                 call IO_error(231_pInt,e=i,ext_msg='rho_screw0')
-       if (constitutive_titanmod_burgersPerSlipFamily(f,i) <= 0.0_pReal)      call IO_error(231_pInt,e=i,ext_msg='slipburgers')
-       if (constitutive_titanmod_f0_PerSlipFamily(f,i) <= 0.0_pReal)          call IO_error(231_pInt,e=i,ext_msg='f0')
-       if (constitutive_titanmod_tau0e_PerSlipFamily(f,i) <= 0.0_pReal)       call IO_error(231_pInt,e=i,ext_msg='tau0e')
-       if (constitutive_titanmod_tau0s_PerSlipFamily(f,i) <= 0.0_pReal)       call IO_error(231_pInt,e=i,ext_msg='tau0s')
-       if (constitutive_titanmod_capre_PerSlipFamily(f,i) <= 0.0_pReal)       call IO_error(231_pInt,e=i,ext_msg='capre')
-       if (constitutive_titanmod_caprs_PerSlipFamily(f,i) <= 0.0_pReal)       call IO_error(231_pInt,e=i,ext_msg='carrs')
-       if (constitutive_titanmod_v0e_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(231_pInt,e=i,ext_msg='v0e')
-       if (constitutive_titanmod_v0s_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(231_pInt,e=i,ext_msg='v0s')
+       if (constitutive_titanmod_rho_edge0(f,i) < 0.0_pReal)                 call IO_error(211_pInt,e=i,ext_msg='rho_edge0 (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_rho_screw0(f,i) < 0.0_pReal)                call IO_error(211_pInt,e=i,ext_msg='rho_screw0 (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_burgersPerSlipFamily(f,i) <= 0.0_pReal)     call IO_error(211_pInt,e=i,ext_msg='slipburgers (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_f0_PerSlipFamily(f,i) <= 0.0_pReal)         call IO_error(211_pInt,e=i,ext_msg='f0 (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_tau0e_PerSlipFamily(f,i) <= 0.0_pReal)      call IO_error(211_pInt,e=i,ext_msg='tau0e (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_tau0s_PerSlipFamily(f,i) <= 0.0_pReal)      call IO_error(211_pInt,e=i,ext_msg='tau0s (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_capre_PerSlipFamily(f,i) <= 0.0_pReal)      call IO_error(211_pInt,e=i,ext_msg='capre (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_caprs_PerSlipFamily(f,i) <= 0.0_pReal)      call IO_error(211_pInt,e=i,ext_msg='caprs (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_v0e_PerSlipFamily(f,i) <= 0.0_pReal)        call IO_error(211_pInt,e=i,ext_msg='v0e (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_v0s_PerSlipFamily(f,i) <= 0.0_pReal)        call IO_error(211_pInt,e=i,ext_msg='v0s (' &
+                                                                                  //constitutive_titanmod_label//')')
        if (constitutive_titanmod_kinkcriticallength_PerSlipFamily(f,i) <= 0.0_pReal) &
-                                                                      call IO_error(231_pInt,e=i,ext_msg='kinkCriticalLength')
+                                                                      call IO_error(211_pInt,e=i,ext_msg='kinkCriticalLength (' &
+                                                                                  //constitutive_titanmod_label//')')
      endif
    enddo
    do f = 1_pInt,lattice_maxNtwinFamily
      if (constitutive_titanmod_Ntwin(f,i) > 0_pInt) then   
-       if (constitutive_titanmod_burgersPerTwinFamily(f,i) <= 0.0_pReal)      call IO_error(231_pInt,e=i,ext_msg='twinburgers')
-       if (constitutive_titanmod_twinf0_PerTwinFamily(f,i) <= 0.0_pReal)      call IO_error(231_pInt,e=i,ext_msg='twinf0')
+       if (constitutive_titanmod_burgersPerTwinFamily(f,i) <= 0.0_pReal)     call IO_error(211_pInt,e=i,ext_msg='twinburgers (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_twinf0_PerTwinFamily(f,i) <= 0.0_pReal)     call IO_error(211_pInt,e=i,ext_msg='twinf0 (' &
+                                                                                  //constitutive_titanmod_label//')')
        if (constitutive_titanmod_twinshearconstant_PerTwinFamily(f,i) <= 0.0_pReal) &
-                                                                        call IO_error(231_pInt,e=i,ext_msg='twinshearconstant')
-       if (constitutive_titanmod_twintau0_PerTwinFamily(f,i) <= 0.0_pReal)    call IO_error(231_pInt,e=i,ext_msg='twintau0')
-       if (constitutive_titanmod_twingamma0_PerTwinFamily(f,i) <= 0.0_pReal)  call IO_error(231_pInt,e=i,ext_msg='twingamma0')
+                                                                        call IO_error(211_pInt,e=i,ext_msg='twinshearconstant (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_twintau0_PerTwinFamily(f,i) <= 0.0_pReal)   call IO_error(211_pInt,e=i,ext_msg='twintau0 (' &
+                                                                                  //constitutive_titanmod_label//')')
+       if (constitutive_titanmod_twingamma0_PerTwinFamily(f,i) <= 0.0_pReal) call IO_error(211_pInt,e=i,ext_msg='twingamma0 (' &
+                                                                                  //constitutive_titanmod_label//')')
      endif
    enddo
-   if (constitutive_titanmod_dc(i) <= 0.0_pReal)                              call IO_error(231_pInt,e=i,ext_msg='dc')
-   if (constitutive_titanmod_twinhpconstant(i) <= 0.0_pReal)                  call IO_error(231_pInt,e=i,ext_msg='twinhpconstant')
-   if (constitutive_titanmod_aTolRho(i) <= 0.0_pReal)                         call IO_error(231_pInt,e=i,ext_msg='aTolRho')
+   if (constitutive_titanmod_dc(i) <= 0.0_pReal)                             call IO_error(211_pInt,e=i,ext_msg='dc (' &
+                                                                                  //constitutive_titanmod_label//')')
+   if (constitutive_titanmod_twinhpconstant(i) <= 0.0_pReal)                 call IO_error(211_pInt,e=i,ext_msg='twinhpconstant (' &
+                                                                                  //constitutive_titanmod_label//')')
+   if (constitutive_titanmod_aTolRho(i) <= 0.0_pReal)                        call IO_error(211_pInt,e=i,ext_msg='aTolRho (' &
+                                                                                  //constitutive_titanmod_label//')')
    
    !* Determine total number of active slip or twin systems
    constitutive_titanmod_Nslip(:,i) = min(lattice_NslipSystem(:,myStructure),constitutive_titanmod_Nslip(:,i))
@@ -837,7 +858,7 @@ do i = 1_pInt,maxNinstance
              )
            mySize = 1_pInt
         case default
-           call IO_error(232_pInt,ext_msg=constitutive_titanmod_output(o,i))
+           call IO_error(212_pInt,ext_msg=constitutive_titanmod_output(o,i)//' ('//constitutive_titanmod_label//')')
       end select
 
        if (mySize > 0_pInt) then  ! any meaningful output found                               

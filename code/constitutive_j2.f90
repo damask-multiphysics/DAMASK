@@ -127,7 +127,7 @@ subroutine constitutive_j2_init(myFile)
  integer(pInt), parameter :: maxNchunks = 7_pInt
  
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
- integer(pInt) :: section = 0_pInt, maxNinstance, i,j,k, mySize
+ integer(pInt) :: section = 0_pInt, maxNinstance, i,j,k,o, mySize
  character(len=64)   :: tag
  character(len=1024) :: line
 
@@ -248,30 +248,37 @@ subroutine constitutive_j2_init(myFile)
        case ('atol_resistance')
               constitutive_j2_aTolResistance(i) = IO_floatValue(line,positions,2_pInt)
        case default
-              call IO_error(210_pInt,ext_msg=tag)
+              call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_j2_label//')')
      end select
    endif
  enddo
 
 100 do i = 1_pInt,maxNinstance                                        ! sanity checks
-   if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(211_pInt,ext_msg='tau0')
-   if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211_pInt,ext_msg='gdot0')
-   if (constitutive_j2_n(i) <= 0.0_pReal)                 call IO_error(211_pInt,ext_msg='n')
-   if (constitutive_j2_tausat(i) <= 0.0_pReal)            call IO_error(211_pInt,ext_msg='tausat')
-   if (constitutive_j2_a(i) <= 0.0_pReal)                 call IO_error(211_pInt,ext_msg='a')
-   if (constitutive_j2_fTaylor(i) <= 0.0_pReal)           call IO_error(211_pInt,ext_msg='taylorfactor')
-   if (constitutive_j2_aTolResistance(i) <= 0.0_pReal)    call IO_error(211_pInt,ext_msg='aTol_resistance')
+   if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(211_pInt,ext_msg='tau0 (' &
+                                                               //constitutive_j2_label//')')
+   if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211_pInt,ext_msg='gdot0 (' &
+                                                               //constitutive_j2_label//')')
+   if (constitutive_j2_n(i) <= 0.0_pReal)                 call IO_error(211_pInt,ext_msg='n (' &
+                                                               //constitutive_j2_label//')')
+   if (constitutive_j2_tausat(i) <= 0.0_pReal)            call IO_error(211_pInt,ext_msg='tausat (' &
+                                                               //constitutive_j2_label//')')
+   if (constitutive_j2_a(i) <= 0.0_pReal)                 call IO_error(211_pInt,ext_msg='a (' &
+                                                               //constitutive_j2_label//')')
+   if (constitutive_j2_fTaylor(i) <= 0.0_pReal)           call IO_error(211_pInt,ext_msg='taylorfactor (' &
+                                                               //constitutive_j2_label//')')
+   if (constitutive_j2_aTolResistance(i) <= 0.0_pReal)    call IO_error(211_pInt,ext_msg='aTol_resistance (' &
+                                                               //constitutive_j2_label//')')
  enddo
 
  do i = 1_pInt,maxNinstance
-   do j = 1_pInt,constitutive_j2_Noutput(i)
-     select case(constitutive_j2_output(j,i))
+   do o = 1_pInt,constitutive_j2_Noutput(i)
+     select case(constitutive_j2_output(o,i))
        case('flowstress')
          mySize = 1_pInt
        case('strainrate')
          mySize = 1_pInt
        case default
-         call IO_error(212_pInt,ext_msg=constitutive_j2_output(j,i))
+         call IO_error(212_pInt,ext_msg=constitutive_j2_output(o,i)//' ('//constitutive_j2_label//')')
      end select
   
      if (mySize > 0_pInt) then                               ! any meaningful output found

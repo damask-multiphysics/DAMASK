@@ -1263,45 +1263,13 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (205_pInt)
    msg = 'unknown lattice structure encountered'
 
- case (208_pInt)
-   msg = 'unknown material parameter for no plasticity phase:'
-
  case (210_pInt)
-   msg = 'unknown material parameter for j2 plasticity phase:'
+   msg = 'unknown material parameter:'
  case (211_pInt)
-   msg = 'material parameter for j2 plasticity phase out of bounds:'
+   msg = 'material parameter out of bounds:'
  case (212_pInt)
-   msg = 'unknown plasticity output for j2 plasticity:'
+   msg = 'unknown plasticity output:'
 
- case (220_pInt)
-   msg = 'unknown material parameter for phenopowerlaw plasticity phase:'
- case (221_pInt)
-   msg = 'material parameter for phenopowerlaw plasticity phase out of bounds:'
- case (222_pInt)
-   msg = 'unknown plasticity output for phenopowerlaw plasticity:'
-
- case (230_pInt)
-   msg = 'unknown material parameter for titanmod plasticity phase:'
- case (231_pInt)
-   msg = 'material parameter for titanmod plasticity phase out of bounds:'
- case (232_pInt)
-   msg = 'unknown plasticity output for titanmod plasticity:'
-
- case (240_pInt)
-   msg = 'unknown material parameter for dislotwin plasticity phase:'
- case (241_pInt)
-   msg = 'material parameter for dislotwin plasticity phase out of bounds:'
- case (242_pInt)
-   msg = 'unknown plasticity output for dislotwin plasticity:'
- case (243_pInt)
-   msg = 'zero stacking fault energy'
-
- case (250_pInt)
-   msg = 'unknown material parameter for nonlocal plasticity phase:'
- case (251_pInt)
-   msg = 'material parameter for nonlocal plasticity phase out of bounds:'
- case (252_pInt)
-   msg = 'unknown plasticity output for nonlocal plasticity:'
  case (253_pInt)
    msg = 'element type not supported for nonlocal plasticity'
 

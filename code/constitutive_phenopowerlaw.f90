@@ -385,7 +385,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
               forall (j = 1_pInt:lattice_maxNinteraction) &
                 constitutive_phenopowerlaw_interaction_twintwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
        case default
-              call IO_error(220_pInt,ext_msg=tag)
+              call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_phenopowerlaw_label//')')
      end select
    endif
  enddo
@@ -405,19 +405,27 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
    if (constitutive_phenopowerlaw_structure(i) < 1 )                  call IO_error(205_pInt,e=i)
    if (any(constitutive_phenopowerlaw_tau0_slip(:,i) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(221_pInt,e=i,ext_msg='tau0_slip')
-   if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal)         call IO_error(221_pInt,e=i,ext_msg='gdot0_slip')
-   if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)             call IO_error(221_pInt,e=i,ext_msg='n_slip')
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(211_pInt,e=i,ext_msg='tau0_slip (' &
+                                                                           //constitutive_phenopowerlaw_label//')')
+   if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal)         call IO_error(211_pInt,e=i,ext_msg='gdot0_slip (' &
+                                                                           //constitutive_phenopowerlaw_label//')')
+   if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)             call IO_error(211_pInt,e=i,ext_msg='n_slip (' &
+                                                                           //constitutive_phenopowerlaw_label//')')
    if (any(constitutive_phenopowerlaw_tausat_slip(:,i) <= 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(221_pInt,e=i,ext_msg='tausat_slip')
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(211_pInt,e=i,ext_msg='tausat_slip (' &
+                                                                           //constitutive_phenopowerlaw_label//')')
    if (any(constitutive_phenopowerlaw_a_slip(i) == 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(221_pInt,e=i,ext_msg='a_slip')
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))                call IO_error(211_pInt,e=i,ext_msg='a_slip (' &
+                                                                           //constitutive_phenopowerlaw_label//')')
    if (any(constitutive_phenopowerlaw_tau0_twin(:,i) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(221_pInt,e=i,ext_msg='tau0_twin')
+           constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(211_pInt,e=i,ext_msg='tau0_twin (' &
+                                                                           //constitutive_phenopowerlaw_label//')')
    if (    constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(221_pInt,e=i,ext_msg='gdot0_twin')
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(211_pInt,e=i,ext_msg='gdot0_twin (' &
+                                                                           //constitutive_phenopowerlaw_label//')')
    if (    constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(221_pInt,e=i,ext_msg='n_twin')
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))                call IO_error(211_pInt,e=i,ext_msg='n_twin (' &
+                                                                           //constitutive_phenopowerlaw_label//')')
    if (constitutive_phenopowerlaw_aTolResistance(i) <= 0.0_pReal) &
      constitutive_phenopowerlaw_aTolResistance(i) = 1.0_pReal              ! default absolute tolerance 1 Pa
 
@@ -440,10 +448,9 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  constitutive_phenopowerlaw_hardeningMatrix_twinslip = 0.0_pReal
  constitutive_phenopowerlaw_hardeningMatrix_twintwin = 0.0_pReal
 
- 
  do i = 1_pInt,maxNinstance
-   do j = 1_pInt,constitutive_phenopowerlaw_Noutput(i)
-     select case(constitutive_phenopowerlaw_output(j,i))
+   do o = 1_pInt,constitutive_phenopowerlaw_Noutput(i)
+     select case(constitutive_phenopowerlaw_output(o,i))
        case('resistance_slip', &
             'shearrate_slip', &
             'resolvedstress_slip' &
@@ -459,11 +466,11 @@ subroutine constitutive_phenopowerlaw_init(myFile)
             )
          mySize = 1_pInt
        case default
-         call IO_error(222_pInt,ext_msg=constitutive_phenopowerlaw_output(j,i))
+         call IO_error(212_pInt,ext_msg=constitutive_phenopowerlaw_output(o,i)//' ('//constitutive_phenopowerlaw_label//')')
      end select
 
      if (mySize > 0_pInt) then                               ! any meaningful output found
-       constitutive_phenopowerlaw_sizePostResult(j,i) = mySize
+       constitutive_phenopowerlaw_sizePostResult(o,i) = mySize
        constitutive_phenopowerlaw_sizePostResults(i) = &
        constitutive_phenopowerlaw_sizePostResults(i) + mySize
      endif

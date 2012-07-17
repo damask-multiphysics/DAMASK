@@ -189,7 +189,7 @@ subroutine constitutive_none_init(myFile)
        case ('c44')
               constitutive_none_C44(i) = IO_floatValue(line,positions,2_pInt)
        case default
-              call IO_error(208_pInt,ext_msg=tag)
+              call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_none_label//')')
      end select
    endif
  enddo
@@ -197,35 +197,11 @@ subroutine constitutive_none_init(myFile)
 100 do i = 1_pInt,maxNinstance                                        ! sanity checks
    constitutive_none_structure(i) = lattice_initializeStructure(constitutive_none_structureName(i), &    ! get structure
                                                                          constitutive_none_CoverA(i))
-   if (constitutive_none_structure(i) < 1 )                  call IO_error(205_pInt,e=i)
-!   if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(211_pInt,ext_msg='tau0')
-!   if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211_pInt,ext_msg='gdot0')
-!   if (constitutive_j2_n(i) <= 0.0_pReal)                 call IO_error(211_pInt,ext_msg='n')
-!   if (constitutive_j2_tausat(i) <= 0.0_pReal)            call IO_error(211_pInt,ext_msg='tausat')
-!   if (constitutive_j2_a(i) <= 0.0_pReal)                 call IO_error(211_pInt,ext_msg='a')
-!   if (constitutive_j2_fTaylor(i) <= 0.0_pReal)           call IO_error(211_pInt,ext_msg='taylorfactor')
-!   if (constitutive_j2_aTolResistance(i) <= 0.0_pReal)    call IO_error(211_pInt,ext_msg='aTol_resistance')
+   myStructure = constitutive_none_structure(i)
+   if (myStructure < 1_pInt)                                          call IO_error(205_pInt,e=i)
  enddo
 
  do i = 1_pInt,maxNinstance
-!   do j = 1_pInt,constitutive_j2_Noutput(i)
-!     select case(constitutive_j2_output(j,i))
-!       case('flowstress')
-!         mySize = 1_pInt
-!       case('strainrate')
-!         mySize = 1_pInt
-!       case default
-!         call IO_error(212_pInt,ext_msg=constitutive_j2_output(j,i))
-!     end select
-!  
-!     if (mySize > 0_pInt) then                               ! any meaningful output found
-!       constitutive_j2_sizePostResult(j,i) = mySize
-!       constitutive_j2_sizePostResults(i) = &
-!       constitutive_j2_sizePostResults(i) + mySize
-!     endif
-!   enddo
-
-!   constitutive_none_sizePostResults(i) = 0_pInt
    constitutive_none_sizeDotState(i)    = 1_pInt
    constitutive_none_sizeState(i)       = 1_pInt
 
