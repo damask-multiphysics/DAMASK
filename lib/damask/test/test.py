@@ -15,6 +15,7 @@ class Test():
   variants = []
   
   def __init__(self,test_description):
+    
     print '\n'+test_description
     self.dirBase = os.path.dirname(os.path.realpath(sys.argv[0]))
     self.parser = OptionParser(
@@ -29,7 +30,6 @@ class Test():
     (self.options, self.args) = self.parser.parse_args()
     
   def execute(self,variants = [],update = []):
-    
     '''
     Run all variants and report first failure.
     '''
@@ -125,21 +125,34 @@ class Test():
     '''
     return os.path.join(self.dirCurrent(),file)
 
-  def copy_Reference2Current(self,files=[]):
-    for file in files:
+  def copy_Reference2Current(self,sourcefiles=[],targetfiles=[]):
+    
+    if len(targetfiles) == 0: targetfiles = sourcefiles
+    for i,file in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInReference(file),self.fileInCurrent(file))  
+        shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
         print 'Reference2Current: Unable to copy file ', file
-
-  def copy_Current2Current(self,files=[]):
-    for file in files:
+ 
+  def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
+    
+    if len(targetfiles) == 0: targetfiles = sourcefiles
+    for i,file in enumerate(sourcefiles):
       try:
-        shutil.copy2(self.fileInCurrent(file[0]),self.fileInCurrent(file[1]))  
+        shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))  
+      except:
+        print 'Current2Reference: Unable to copy file ', file
+ 
+  def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
+    
+    for i,file in enumerate(sourcefiles):
+      try:
+        shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
         print 'Current2Current: Unable to copy file ', file
 
   def execute_inCurrentDir(self,cmd,outfile='execute_log.txt'):
+    
     os.chdir(self.dirCurrent())
     file=open(outfile,'a+')
     print cmd
@@ -147,28 +160,31 @@ class Test():
     file.close()
     process.wait()
 
-
-  def compare_Array(self,ref,cur):
+  def compare_Array(self,File1,File2):
     import numpy
-    refName = self.fileInReference (ref)
-    curName = self.fileInCurrent(cur)
 
-    refFile = open(refName)
+    refFile = open(File1)
     table = damask.ASCIItable(refFile)
     table.head_read()
     refFile.close()
-    refArray = numpy.genfromtxt(refName,missing_values='n/a',skip_header = len(table.info)+1)
-    curArray = numpy.genfromtxt(curName,missing_values='n/a',skip_header = len(table.info)+1)
-    err = abs((refArray/curArray)-1.)                                     # relative tolerance
-    refNaN=len(numpy.isnan(refArray))
-    curNaN=len(numpy.isnan(curArray))
-    if curNaN == refNaN:
-      err[numpy.isnan(err)]=0.0
+    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+1))
+    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+1))
+    refNonZero = refArray[refArray.nonzero()]
+    curNonZero = curArray[curArray.nonzero()]
+    err = abs((refNonZero/curNonZero)-1.)                                     # relative tolerance
     max_err = numpy.max(err)
     print ' ********\n * maximum relative error',max_err,'\n ********'
     return max_err
+    
+  def compare_ArrayRefCur(self,ref,cur=''):
+    
+    if cur =='': cur = ref
+    refName = self.fileInReference(ref)
+    curName = self.fileInCurrent(cur)
+    return self.compare_Array(refName,curName)
 
   def report_Success(self,culprit):
+    
     if culprit < 0:
       print '%s passed.'%({False: 'The test',
                          True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1])
