@@ -157,9 +157,9 @@ class Test():
     file=open(outfile,'a+')
     print cmd
     process = subprocess.Popen(shlex.split(cmd),stdout = file,stderr = subprocess.STDOUT)
-    file.close()
     process.wait()
-
+    file.close()
+    
   def compare_Array(self,File1,File2):
     import numpy
 

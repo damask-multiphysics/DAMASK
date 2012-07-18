@@ -39,10 +39,10 @@ SHELL = /bin/sh
 ########################################################################################
 
 #auto values will be set by setup_code.py
-FFTWROOT   := auto
-IMKLROOT   := auto
-ACMLROOT   := auto
-LAPACKROOT := auto
+FFTWROOT := /usr/local
+IMKLROOT := 
+ACMLROOT := 
+LAPACKROOT := /usr
 
 F90 ?= ifort
 COMPILERNAME ?= $(F90)

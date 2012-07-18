@@ -144,7 +144,7 @@ execute = { \
                         #' --overwrite-signature --no-lower prec.f90 DAMASK_spectral_interface.f90 math.f90 mesh.f90',
                         ###########################################################################
                         'f2py damask.core.pyf' +\
-                        ' --build-dir processingBuildTemp' +\
+                        ' --build-dir ./' +\
                         ' -c --no-lower --fcompiler=%s'%(f2py_compiler) +\
                         ' %s'%'prec.f90'+\
                         ' %s'%'DAMASK_spectral_interface.f90'+\
