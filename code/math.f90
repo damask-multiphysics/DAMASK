@@ -16,16 +16,19 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
+!--------------------------------------------------------------------------------------------------
 !* $Id$
-!##############################################################
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Mathematical library, including random number generation and tensor represenations
+!--------------------------------------------------------------------------------------------------
 #ifdef Spectral
 #include "kdtree2.f90"
 #endif
 
 module math   
-!##############################################################
-
  use, intrinsic :: iso_c_binding
  use prec, only: pReal,pInt
  
@@ -35,15 +38,13 @@ module math
  real(pReal),    parameter, public :: INRAD = pi/180.0_pReal
  complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)* pi
 
-! *** 3x3 Identity ***
  real(pReal), dimension(3,3), parameter, public :: &
    math_I3 = reshape([&
      1.0_pReal,0.0_pReal,0.0_pReal, &
      0.0_pReal,1.0_pReal,0.0_pReal, &
      0.0_pReal,0.0_pReal,1.0_pReal  &
-     ],[3,3])
+     ],[3,3])                                                                                       !< 3x3 Identity
 
-! *** Mandel notation ***
  integer(pInt), dimension (2,6), parameter, private :: &
    mapMandel = reshape([&
      1_pInt,1_pInt, &
@@ -52,7 +53,7 @@ module math
      1_pInt,2_pInt, &
      2_pInt,3_pInt, &
      1_pInt,3_pInt  &
-     ],[2,6])
+     ],[2,6])                                                                                       !< Mandel notation
 
  real(pReal), dimension(6), parameter, private :: &
    nrmMandel = [&
@@ -64,7 +65,6 @@ module math
      1.0_pReal,                1.0_pReal,                1.0_pReal,&
      0.7071067811865476_pReal, 0.7071067811865476_pReal, 0.7071067811865476_pReal]
 
-! *** Voigt notation ***
  integer(pInt), dimension (2,6), parameter, private :: &
    mapVoigt = reshape([&
      1_pInt,1_pInt, &
@@ -73,7 +73,7 @@ module math
      2_pInt,3_pInt, &
      1_pInt,3_pInt, &
      1_pInt,2_pInt  &
-     ],[2,6])
+     ],[2,6])                                                                                       !< Voigt notation
 
  real(pReal), dimension(6), parameter, private :: & 
    nrmVoigt    = 1.0_pReal, &
@@ -154,12 +154,12 @@ real(pReal), dimension(4,36), parameter, private :: &
  
 contains
  
-!**************************************************************************
-! initialization of module
-!**************************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief initialization of random seed generator
+!--------------------------------------------------------------------------------------------------
 subroutine math_init
 
- use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
  use numerics, only: fixedSeed
  use IO,       only: IO_error
@@ -170,9 +170,9 @@ subroutine math_init
  real(pReal), dimension(3) ::   Eulers
  real(pReal), dimension(4) ::   q,q2,axisangle,randTest
 ! the following variables are system dependend and shound NOT be pInt
- integer :: randSize                                  ! gfortran requires a variable length to compile 
- integer, dimension(:), allocatable :: randInit       ! if recalculations of former randomness (with given seed) is necessary
-                                                      ! comment the first random_seed call out, set randSize to 1, and use ifort
+ integer :: randSize                                                                                ! gfortran requires a variable length to compile 
+ integer, dimension(:), allocatable :: randInit                                                     ! if recalculations of former randomness (with given seed) is necessary
+                                                                                                    ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
  
  !$OMP CRITICAL (write2out)
@@ -3172,15 +3172,11 @@ end subroutine mesh_regular_grid
  
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
+subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! Routine to calculate coordinates in current configuration for given defgrad
 ! using linear interpolation (blurres out high frequency defomation)
 !
- use debug, only: debug_math, &
-                  debug_level, &
-                  debug_levelBasic
- 
  implicit none
  ! input variables
  integer(pInt), intent(in), dimension(3) :: res
@@ -3188,15 +3184,14 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
  real(pReal), intent(in), dimension(3,3) :: defgrad_av
  real(pReal), intent(in), dimension(     res(1),res(2),res(3),3,3) :: defgrad
  ! output variables
- real(pReal), intent(out), dimension(    res(1),res(2),res(3),3)   :: coord_avgCorner
+ real(pReal), intent(out), dimension(    res(1),res(2),res(3),3)   :: coord
  ! variables with dimension depending on input
- real(pReal),              dimension(8,6,res(1),res(2),res(3),3)   :: coord
  real(pReal),              dimension(  8,res(1),res(2),res(3),3)   :: coord_avgOrder
  ! other variables
- real(pReal), dimension(3) ::  myStep, fones = 1.0_pReal, parameter_coords, negative, positive
+ real(pReal), dimension(3) ::  myStep, fones = 1.0_pReal, parameter_coords, negative, positive, offset_coords
  integer(pInt), dimension(3) :: rear, init, ones = 1_pInt, oppo, me
  integer(pInt) i, j, k, s, o 
- integer(pInt), dimension(3,8) :: corner = reshape((/ &
+ integer(pInt), dimension(3,8) :: corner = reshape([ &
                                               0_pInt, 0_pInt, 0_pInt,&
                                               1_pInt, 0_pInt, 0_pInt,&
                                               1_pInt, 1_pInt, 0_pInt,&
@@ -3205,9 +3200,8 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
                                               0_pInt, 1_pInt, 1_pInt,&
                                               0_pInt, 0_pInt, 1_pInt,&
                                               1_pInt, 0_pInt, 1_pInt &
-                                                  /), &
-                                               (/3,8/))
- integer(pInt), dimension(3,8) :: step = reshape((/ &
+                                                  ],[3,8])
+ integer(pInt), dimension(3,8) :: step = reshape([&
                                             1_pInt, 1_pInt, 1_pInt,&
                                            -1_pInt, 1_pInt, 1_pInt,& 
                                            -1_pInt,-1_pInt, 1_pInt,&
@@ -3216,74 +3210,74 @@ subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner)
                                             1_pInt,-1_pInt,-1_pInt,&
                                             1_pInt, 1_pInt,-1_pInt,&
                                            -1_pInt, 1_pInt,-1_pInt & 
-                                                /), &
-                                             (/3,8/))
- integer(pInt), dimension(3,6) :: order = reshape((/ &
+                                                ], [3,8])
+ integer(pInt), dimension(3,6) :: order = reshape([ &
                                             1_pInt, 2_pInt, 3_pInt,&
                                             1_pInt, 3_pInt, 2_pInt,&
                                             2_pInt, 1_pInt, 3_pInt,&
                                             2_pInt, 3_pInt, 1_pInt,&
                                             3_pInt, 1_pInt, 2_pInt,&
                                             3_pInt, 2_pInt, 1_pInt &
-                                                /), &
-                                             (/3,6/))
-
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   print*, 'Restore geometry using linear integration'
-   print '(a,3(e12.5))', ' Dimension: ', geomdim
-   print '(a,3(i5))',   ' Resolution:', res
- endif
+                                                ], [3,6])
 
  coord_avgOrder = 0.0_pReal
  
  do s = 0_pInt, 7_pInt                               ! corners (from 0 to 7)
    init = corner(:,s+1_pInt)*(res-ones) +ones
    oppo = corner(:,mod((s+4_pInt),8_pInt)+1_pInt)*(res-ones) +ones
+
    do o=1_pInt,6_pInt                                ! orders (from 1 to 6)
+     coord = 0_pReal
      do k = init(order(3,o)), oppo(order(3,o)), step(order(3,o),s+1_pInt)
        rear(order(2,o)) = init(order(2,o))
        do j = init(order(2,o)), oppo(order(2,o)), step(order(2,o),s+1_pInt)
          rear(order(1,o)) = init(order(1,o))
          do i = init(order(1,o)), oppo(order(1,o)), step(order(1,o),s+1_pInt)
-           me(order(1,o)) = i
-           me(order(2,o)) = j
-           me(order(3,o)) = k
-           if ( (me(1)==init(1)).and.(me(2)==init(2)).and. (me(3)==init(3)) ) then
-             coord(s+1_pInt,o,me(1),me(2),me(3),1:3) = geomdim * (matmul(defgrad_av,real(corner(1:3,s+1),pReal)) + &
+           me(order(1:3,o)) = [i,j,k]
+           if ( all(me==init)) then
+             coord(me(1),me(2),me(3),1:3) = geomdim * (matmul(defgrad_av,real(corner(1:3,s+1),pReal)) + &
                            matmul(defgrad(me(1),me(2),me(3),1:3,1:3),0.5_pReal*real(step(1:3,s+1_pInt)/res,pReal)))
-
            else
              myStep = (me-rear)*geomdim/res
-             coord(s+1_pInt,o,me(1),me(2),me(3),1:3) = coord(s+1_pInt,o,rear(1),rear(2),rear(3),1:3) + &
+             coord(me(1),me(2),me(3),1:3) = coord(rear(1),rear(2),rear(3),1:3) + &
                                            0.5_pReal*matmul(defgrad(me(1),me(2),me(3),1:3,1:3) + &
                                                    defgrad(rear(1),rear(2),rear(3),1:3,1:3),myStep)
            endif
            rear = me
-   enddo; enddo; enddo; enddo
-   do i = 1_pInt,6_pInt
-     coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) = coord_avgOrder(s+1_pInt,  1:res(1),1:res(2),1:res(3),1:3)&
-                                                                   + coord(s+1_pInt,i,1:res(1),1:res(2),1:res(3),1:3)/6.0_pReal
+     enddo; enddo; enddo
+     coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) = &
+        coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) + coord/6.0_pReal
    enddo
+   offset_coords = coord_avgOrder(s+1,1,1,1,1:3)
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     coord_avgOrder(s+1,i,j,k,1:3) = coord_avgOrder(s+1,i,j,k,1:3) - offset_coords
+   enddo; enddo; enddo
  enddo
-
+ 
  do k = 0_pInt, res(3)-1_pInt
    do j = 0_pInt, res(2)-1_pInt
      do i = 0_pInt, res(1)-1_pInt
-       parameter_coords = (2.0_pReal*(/real(i,pReal)+0.0_pReal,real(j,pReal)+0.0_pReal,real(k,pReal)+0.0_pReal/)&
-                                      -real(res,pReal)+fones)/(real(res,pReal)-fones)
+       parameter_coords = (2.0_pReal*real([i,j,k]+1,pReal)-real(res,pReal))/(real(res,pReal))
        positive = fones + parameter_coords
        negative = fones - parameter_coords
-       coord_avgCorner(i+1_pInt,j+1_pInt,k+1_pInt,1:3)&
-                       =(coord_avgOrder(1,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*negative(3)&
-                       + coord_avgOrder(2,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*negative(3)&
-                       + coord_avgOrder(3,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*negative(3)&
-                       + coord_avgOrder(4,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*negative(3)&
-                       + coord_avgOrder(5,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*positive(3)&
-                       + coord_avgOrder(6,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*positive(3)&
-                       + coord_avgOrder(7,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*positive(3)&
-                       + coord_avgOrder(8,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*positive(3))*0.125_pReal
- enddo; enddo; enddo
+       coord(i+1_pInt,j+1_pInt,k+1_pInt,1:3)&
+              =(coord_avgOrder(1,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*negative(3)&
+              + coord_avgOrder(2,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*negative(3)&
+              + coord_avgOrder(3,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*negative(3)&
+              + coord_avgOrder(4,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*negative(3)&
+              + coord_avgOrder(5,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*positive(3)&
+              + coord_avgOrder(6,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*positive(3)&
+              + coord_avgOrder(7,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*positive(3)&
+              + coord_avgOrder(8,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*positive(3))*0.125_pReal
+  enddo; enddo; enddo
 
+ offset_coords = matmul(defgrad(1,1,1,1:3,1:3),geomdim/real(res, pReal)/2.0_pReal) - coord(1,1,1,1:3)
+ do k = 1_pInt, res(3)
+   do j = 1_pInt, res(2)
+     do i = 1_pInt, res(1)
+     coord(i,j,k,1:3) = coord(i,j,k,1:3)+ offset_coords
+ enddo; enddo; enddo
+ 
 end subroutine deformed_linear
 
 #ifdef Spectral
@@ -3407,15 +3401,11 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
 
  enddo; enddo; enddo
 
- call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
- call c_f_pointer(C_NULL_PTR, defgrad_real,        [res(1)+2_pInt,res(2),res(3),3_pInt,3_pInt])              ! let all pointers point on NULL-Type
- call c_f_pointer(C_NULL_PTR, defgrad_fourier,     [res1_red     ,res(2),res(3),3_pInt,3_pInt])
- call c_f_pointer(C_NULL_PTR, coords_real,   [res(1)+2_pInt,res(2),res(3),3_pInt])
- call c_f_pointer(C_NULL_PTR, coords_fourier,[res1_red     ,res(2),res(3),3_pInt])
- if(.not. (c_associated(C_LOC(defgrad_real(1,1,1,1,1))) .and. c_associated(C_LOC(defgrad_fourier(1,1,1,1,1)))))&         ! Check if pointers are deassociated and free memory   
-                                                      call fftw_free(defgrad_fftw)                 ! This procedure ensures that optimization do not mix-up lines, because a 
- if(.not.(c_associated(C_LOC(coords_real(1,1,1,1))) .and. c_associated(C_LOC(coords_fourier(1,1,1,1)))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
-                                                       call fftw_free(coords_fftw)                 ! call c_f_pointer(field_fftw, field_fourier, [res1_red ,res(2),res(3),vec_tens,3])
+ call fftw_destroy_plan(fftw_forth)
+ call fftw_destroy_plan(fftw_back)
+ call fftw_free(defgrad_fftw) 
+ call fftw_free(coords_fftw)
+ 
 end subroutine deformed_fft
 
 

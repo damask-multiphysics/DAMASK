@@ -344,6 +344,9 @@ parser.add_option('--scaling', dest='scaling', type='float', \
                   help='scaling of fluctuation [%default]')
 parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
                   help='set unit length for 2D model [%default]')
+parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',\
+                  help='use linear reconstruction of geometry [%default]')
+                  
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(separator = 't')
 parser.set_defaults(scalar = [])
@@ -359,6 +362,7 @@ parser.set_defaults(scaling = 1.0)
 parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
 parser.set_defaults(cell = True)
+parser.set_defaults(linearreconstruction = False)
 
 sep = {'n': '\n', 't': '\t', 's': ' '}
 
@@ -456,12 +460,16 @@ for filename in args:
     defgrad_av = damask.core.math.tensor_avg(res,numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                         column['tensor'][options.defgrad]+9],
                                                                                 (res[0],res[1],res[2],3,3)))
-
-  #centroids = damask.core.math.deformed_linear(res,dim,defgrad_av,
-  centroids = damask.core.math.deformed_fft(res,dim,defgrad_av,options.scaling,
-                                            numpy.reshape(values[:,column['tensor'][options.defgrad]:
-                                                                   column['tensor'][options.defgrad]+9],
-                                                                   (res[0],res[1],res[2],3,3)))
+  if options.linearreconstruction:
+    centroids = damask.core.math.deformed_linear(res,dim,defgrad_av,
+                                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
+                                                                     column['tensor'][options.defgrad]+9],
+                                                                     (res[0],res[1],res[2],3,3)))
+  else:
+    centroids = damask.core.math.deformed_fft(res,dim,defgrad_av,options.scaling,
+                                              numpy.reshape(values[:,column['tensor'][options.defgrad]:
+                                                                     column['tensor'][options.defgrad]+9],
+                                                                     (res[0],res[1],res[2],3,3)))
   ms = damask.core.math.mesh_regular_grid(res,dim,defgrad_av,centroids)
   fields =  {\
              'tensor': {},\
