@@ -621,10 +621,10 @@ program DAMASK_spectral
    write(538) 'increments', bc(1:N_Loadcases)%incs                                                  ! one entry per loadcase
    write(538) 'startingIncrement', restartInc - 1_pInt                                              ! start with writing out the previous inc
    write(538) 'eoh'                                                                                 ! end of header
+   write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)                ! initial (non-deformed or read-in) results
    if (debugGeneral) write(6,'(a)') 'Header of result file written out'
  endif
- write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)                ! initial (non-deformed or read-in) results
- flush(538)
+
 
 !##################################################################################################
 ! Loop over loadcases defined in the loadcase file
@@ -760,6 +760,7 @@ program DAMASK_spectral
                                                              math_transpose33(F_aim)
          write(6,'(a)') ''
          write(6,'(a)') '... update stress field P(F) .....................................'
+         if (restartWrite) write(6,'(a)') 'writing restart info for last increment'
          F_aim_lab_lastIter = math_rotate_backward33(F_aim,bc(loadcase)%rotation)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -1065,12 +1066,12 @@ program DAMASK_spectral
        
        if( bc(loadcase)%restartFrequency > 0_pInt .and. &
                       mod(inc,bc(loadcase)%restartFrequency) == 0_pInt) then                        ! at frequency of writing restart information set restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
+         restartInc=totalIncsCounter
          restartWrite = .true.
          write(6,'(a)') 'writing converged results for restart'
          call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F))                        ! writing deformation gradient field to file
          write (777,rec=1) F
          close (777)
-         restartInc=totalIncsCounter
          call IO_write_jobBinaryFile(777,'C',size(C))
          write (777,rec=1) C
          close(777)
