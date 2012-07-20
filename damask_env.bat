@@ -16,8 +16,7 @@ SET DAMASK_ROOT=%~dp0
 SET PYTHONPATH=%DAMASK_ROOT%\lib;%PYTHONPATH%
 
 echo DAMASK_ROOT: %DAMASK_ROOT%
-
-cd %~dp0  
+echo.
 
 ::python -c "import damask as D" -i
 ipython -c "import damask as D; import os; os.chdir(os.getenv('DAMASK_ROOT')); print('pwd: '+os.getcwd());" -i
