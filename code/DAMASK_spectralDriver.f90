@@ -84,12 +84,27 @@ program DAMASK_spectralDriver
    materialpoint_sizeResults, &
    materialpoint_results
    
- use DAMASK_spectralSolver !, only: &
-   !solution, &
-   !solution_t
+ use DAMASK_spectralSolver
  
  implicit none
  
+ type bc_type
+   real(pReal), dimension (3,3) :: deformation            = 0.0_pReal, &                            ! applied velocity gradient or time derivative of deformation gradient
+                                   stress                 = 0.0_pReal, &                            ! stress BC (if applicable)
+                                   rotation               = math_I3                                 ! rotation of BC (if applicable)
+   real(pReal) ::                  time                   = 0.0_pReal, &                            ! length of increment
+                                   temperature            = 300.0_pReal                             ! isothermal starting conditions
+   integer(pInt) ::                incs                   = 0_pInt, &                               ! number of increments
+                                   outputfrequency        = 1_pInt, &                               ! frequency of result writes
+                                   restartfrequency       = 0_pInt, &                               ! frequency of restart writes
+                                   logscale               = 0_pInt                                  ! linear/logaritmic time inc flag
+   logical ::                      followFormerTrajectory = .true., &                               ! follow trajectory of former loadcase
+                                   velGradApplied         = .false.                                 ! decide wether velocity gradient or fdot is given 
+   logical, dimension(3,3) ::      maskDeformation        = .false., &                              ! mask of deformation boundary conditions
+                                   maskStress             = .false.                                 ! mask of stress boundary conditions
+   logical, dimension(9) ::        maskStressVector       = .false.                                 ! linear mask of boundary conditions    
+ end type
+
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: & 
@@ -107,38 +122,25 @@ program DAMASK_spectralDriver
    N_l    = 0_pInt, &
    N_t    = 0_pInt, &
    N_n    = 0_pInt, &
-   N_Fdot = 0_pInt, &
-   Npoints                                                                                          ! number of Fourier points
+   N_Fdot = 0_pInt                                                                                 ! number of Fourier points
 
  character(len=1024) :: &
    line
 
- 
  type(bc_type), allocatable, dimension(:) ::  bc
- 
  type(solution_t) solres
- type(init) initres
 
-!--------------------------------------------------------------------------------------------------
-! BC related information
- real(pReal), dimension(3,3) :: &
-   F_aim = math_I3, &
-   F_aim_lastInc = math_I3, &
-   mask_stress, &
-   mask_defgrad, &
-   deltaF_aim
            
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
  real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc = 1.0_pReal, timeinc_old = 0.0_pReal   ! elapsed time, begin of interval, time interval 
  real(pReal) :: guessmode             
- real(pReal), dimension(3,3), parameter ::  ones = 1.0_pReal, zeroes = 0.0_pReal
  real(pReal),    dimension(3,3) ::          temp33_Real
- integer(pInt) :: i, j, k, p, errorID
+ integer(pInt) :: i, j, k, q, errorID
  integer(pInt) :: N_Loadcases, loadcase = 0_pInt, inc, &
                   totalIncsCounter = 0_pInt,&
                   notConvergedCounter = 0_pInt, convergedCounter = 0_pInt
- character(len=6)   :: loadcase_string
+ character(len=6)  :: loadcase_string
 
  call DAMASK_interface_init
  write(6,'(a)') ''
@@ -227,17 +229,17 @@ program DAMASK_spectralDriver
        case('guessreset','dropguessing')
          bc(loadcase)%followFormerTrajectory = .false.                                              ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of loadcase given in euler angles
-         p = 0_pInt                                                                                 ! assuming values given in radians
+         q = 0_pInt                                                                                 ! assuming values given in radians
          k = 1_pInt                                                                                 ! assuming keyword indicating degree/radians
          select case (IO_lc(IO_stringValue(line,positions,i+1_pInt)))
            case('deg','degree')
-             p = 1_pInt                                                                             ! for conversion from degree to radian           
+             q = 1_pInt                                                                             ! for conversion from degree to radian           
            case('rad','radian') 
            case default               
              k = 0_pInt                                                                             ! immediately reading in angles, assuming radians
          end select
          forall(j = 1_pInt:3_pInt)  temp33_Real(j,1) = &
-                                        IO_floatValue(line,positions,i+k+j) * real(p,pReal) * inRad
+                                        IO_floatValue(line,positions,i+k+j) * real(q,pReal) * inRad
          bc(loadcase)%rotation = math_EulerToR(temp33_Real(:,1))
        case('rotation','rot')                                                                       ! assign values for the rotation of loadcase matrix
          temp_valueVector = 0.0_pReal
@@ -315,14 +317,6 @@ program DAMASK_spectralDriver
    if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)
  enddo
 
- !!!!!!!!!!!!!!!
- !!!!!!!!!!!!!!!
- !!!!!!!!!!!!!!!
-  initres = solverInit('AL')
-  F_aim = initres%F_init
- !!!!!!!!!!!!!!
- !!!!!!!!!!!!!!
-
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (appendToOutFile) then
@@ -347,6 +341,9 @@ program DAMASK_spectralDriver
    write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)                ! initial (non-deformed or read-in) results
    if (debugGeneral) write(6,'(a)') 'Header of result file written out'
  endif
+
+ call Solver_Init()
+
 !##################################################################################################
 ! Loop over loadcases defined in the loadcase file
 !##################################################################################################
@@ -386,29 +383,21 @@ program DAMASK_spectralDriver
      time = time + timeinc
 
      if(totalIncsCounter >= restartInc)  then                                                       ! do calculations (otherwise just forwarding) 
-       if (bc(loadcase)%velGradApplied) then                                                        ! calculate deltaF_aim from given L and current F
-         deltaF_aim = timeinc * mask_defgrad * math_mul33x33(bc(loadcase)%deformation, F_aim)
-       else                                                                                         ! deltaF_aim = fDot *timeinc where applicable
-         deltaF_aim = timeinc * mask_defgrad * bc(loadcase)%deformation
-       endif
-
-!--------------------------------------------------------------------------------------------------
-! winding forward of deformation aim in loadcase system
-       temp33_Real = F_aim                                            
-       F_aim = F_aim &                                                                         
-                  + guessmode * mask_stress * (F_aim - F_aim_lastInc)*timeinc/timeinc_old &      
-                  + deltaF_aim
-       F_aim_lastInc = temp33_Real
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
        write(6,'(a)') '##################################################################'
        write(6,'(A,I5.5,A,es12.5)') 'Increment ', totalIncsCounter, ' Time ',time
        
+       solres =solution (&
+               guessmode,timeinc,timeinc_old, &
+                P_BC              = bc(loadcase)%stress, &
+                F_BC              = bc(loadcase)%deformation, &
+               ! temperature_bc       = bc(loadcase)%temperature, &
+                mask_stressVector = bc(loadcase)%maskStressVector, &
+                velgrad           = bc(loadcase)%velGradApplied, &
+                rotation_BC       = bc(loadcase)%rotation)
  
-       solres = solution('AL')
-       !converged =  solution(mySolver,ForwardFields(solver,deltaF_aim,timeinc/timeinc_old,guessmode, restartWrite))
-
        write(6,'(a)') ''
        write(6,'(a)') '=================================================================='
        if(solres%converged) then
@@ -443,6 +432,10 @@ program DAMASK_spectralDriver
 
 end program DAMASK_spectralDriver
 
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 subroutine quit(stop_id)
  use prec, only: &
    pInt
