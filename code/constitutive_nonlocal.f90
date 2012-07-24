@@ -1695,36 +1695,12 @@ deltaDUpper = dUpper - dUpperOld
 
 deltaRhoDipole2SingleStress = 0.0_pReal
 forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal) &
-  deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) / (dUpper(s,c) - dLower(s,c))
+  deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) / (dUpperOld(s,c) - dLower(s,c))
 
 forall (t=1_pInt:4_pInt) &
   deltaRhoDipole2SingleStress(1_pInt:ns,t) = -0.5_pReal * deltaRhoDipole2SingleStress(1_pInt:ns,(t-1_pInt)/2_pInt+9_pInt)
 
-
-!*** formation by stress decrease
-
-deltaRhoSingle2DipoleStress = 0.0_pReal
-do c = 1,2
-  do s = 1,ns
-    if (deltaDUpper(s,c) > 0.0_pReal) then
-      deltaRhoSingle2DipoleStress(s,2*(c-1)+1) = -4.0_pReal * deltaDUpper(s,c) * dUpper(s,c) * rhoSgl(s,2*(c-1)+1) &
-                                                            * ( rhoSgl(s,2*(c-1)+2) + abs(rhoSgl(s,2*(c-1)+6)) )
-      deltaRhoSingle2DipoleStress(s,2*(c-1)+2) = -4.0_pReal * deltaDUpper(s,c) * dUpper(s,c) * rhoSgl(s,2*(c-1)+2) &
-                                                            * ( rhoSgl(s,2*(c-1)+1) + abs(rhoSgl(s,2*(c-1)+5)) )
-      deltaRhoSingle2DipoleStress(s,2*(c-1)+5) = -4.0_pReal * deltaDUpper(s,c) * dUpper(s,c) * rhoSgl(s,2*(c-1)+5) &
-                                                            * ( rhoSgl(s,2*(c-1)+2) + abs(rhoSgl(s,2*(c-1)+6)) )
-      deltaRhoSingle2DipoleStress(s,2*(c-1)+6) = -4.0_pReal * deltaDUpper(s,c) * dUpper(s,c) * rhoSgl(s,2*(c-1)+6) &
-                                                            * ( rhoSgl(s,2*(c-1)+1) + abs(rhoSgl(s,2*(c-1)+5)) )
-    endif
-  enddo
-enddo
-
-forall (c = 1:2) &
-    deltaRhoSingle2DipoleStress(1:ns,8+c) = abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+1)) &
-                                          + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+2)) &
-                                          + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+5)) &
-                                          + abs(deltaRhoSingle2DipoleStress(1:ns,2*(c-1)+6))
-
+ 
 
 !*** store new maximum dipole height in state
 
@@ -1738,8 +1714,7 @@ forall (c = 1_pInt:2_pInt) &
 
 deltaRho = 0.0_pReal
 deltaRho = deltaRhoRemobilization &
-         + deltaRhoDipole2SingleStress &
-         + deltaRhoSingle2DipoleStress
+         + deltaRhoDipole2SingleStress
 
 deltaState%p = reshape(deltaRho,(/10_pInt*ns/))
 
@@ -1750,7 +1725,6 @@ deltaState%p = reshape(deltaRho,(/10_pInt*ns/))
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', deltaRhoRemobilization(1:ns,1:8)
-    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole formation by stress decrease', deltaRhoSingle2DipoleStress
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole dissociation by stress increase', deltaRhoDipole2SingleStress
     write(6,*)
   endif
