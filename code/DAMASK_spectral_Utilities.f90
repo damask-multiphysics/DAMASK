@@ -34,40 +34,29 @@
 !
 ! MPI fuer Eisenforschung, Duesseldorf
 
-module DAMASK_spectralSolver
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- use prec, only: pReal, pInt
+module DAMASK_spectral_Utilities
+ 
+ use prec, only: &
+   pReal, &
+   pInt
+
  use math
-  use DAMASK_interface, only: &
-   DAMASK_interface_init, &
-   loadCaseFile, &
-   geometryFile, &
-   getSolverWorkingDirectoryName, &
-   getSolverJobName, &
-   appendToOutFile
-  use debug, only: &
-   debug_level, &
-   debug_spectral, &
-   debug_levelBasic, &
-   debug_spectralRestart, &
-   debug_spectralFFTW
- use IO
-   use CPFEM, only: &
-   CPFEM_general
-   
-   use numerics, only: &
-   memory_efficient
+ 
+ use IO, only: &
+   IO_error
+ 
  implicit none
  
- type solution_t                                 ! mask of stress boundary conditions
+ type solutionState                                 ! mask of stress boundary conditions
    logical ::        converged       = .false.   
    logical ::        regrid          = .false.   
    logical ::        term_ill        = .false.   
- end type solution_t
+ end type solutionState
 
  character(len=5) :: solverType, parameter = 'basic'
-
- real(pReal),    dimension(:,:,:,:,:), allocatable ::  F, F_lastInc,P
+!--------------------------------------------------------------------------------------------------
+! common pointwise data
+ real(pReal),    dimension(:,:,:,:,:), allocatable ::  F, F_lastInc, P
  real(pReal),    dimension(:,:,:,:),   allocatable ::  coordinates
  real(pReal),    dimension(:,:,:),     allocatable ::  temperature
 
@@ -75,11 +64,10 @@ module DAMASK_spectralSolver
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
  type(C_PTR) ::  plan_forward, plan_backward                                                        ! plans for fftw
- real(pReal), dimension(3,3) ::                         xiDyad                                      ! product of wave vectors
- real(pReal), dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                   ! gamma operator (field) for spectral method
- real(pReal), dimension(:,:,:,:), allocatable ::        xi                                          ! wave vector field for divergence and for gamma operator
- real(pReal),    dimension(:,:,:,:,:), pointer :: field_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: field_fourier
+ real(pReal),    dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                   ! gamma operator (field) for spectral method
+ real(pReal),    dimension(:,:,:,:),       allocatable ::  xi                                          ! wave vector field for divergence and for gamma operator
+ real(pReal),    dimension(:,:,:,:,:),     pointer :: field_real
+ complex(pReal), dimension(:,:,:,:,:),     pointer :: field_fourier
 
 !--------------------------------------------------------------------------------------------------
 ! debug fftw 
@@ -98,30 +86,29 @@ module DAMASK_spectralSolver
 !variables controlling debugging
  logical :: debugGeneral, debugDivergence, debugRestart, debugFFTW
 
-
-
-!--------------------------------------------------------------------------------------------------
-! variables storing information for spectral method and FFTW
- type(C_PTR) ::  plan_stress, plan_correction                                                       ! plans for fftw
-
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
  real(pReal), dimension(3,3) :: &
    F_aim = math_I3, &
-   F_aim_lastInc = math_I3
+   F_aim_lastInc = math_I3, &
+   P_av
 
  real(pReal), dimension(3,3,3,3) :: &
    C_ref = 0.0_pReal, &
    C = 0.0_pReal
+   
  real(pReal), dimension(3) ::   geomdim = 0.0_pReal, virt_dim = 0.0_pReal             ! physical dimension of volume element per direction
  integer(pInt), dimension(3) :: res = 1_pInt 
- real(pReal) ::                  wgt
+ real(pReal) ::  wgt
  integer(pInt) :: res1_red, Npoints
 
 contains 
- 
-subroutine Solver_Init()
 
+subroutine Utilities_init(F,P,F_...)
+
+ use DAMASK_interface, only: &
+   getSolverJobName
+   
  use mesh,  only : &
    mesh_spectral_getResolution, &
    mesh_spectral_getDimension
@@ -141,27 +128,27 @@ subroutine Solver_Init()
    debug_spectralFFTW
 
  use FEsolving, only: &
-   restartInc 
-
- implicit none
-    
-!--------------------------------------------------------------------------------------------------
-! loop variables, convergence etc.
-       
- real(pReal), dimension(3,3), parameter ::  ones = 1.0_pReal, zeroes = 0.0_pReal
- real(pReal), dimension(3,3) ::          temp33_Real
- integer(pInt) :: i, j, k, l, m, n, q, ielem
- real(pReal), dimension(3,3,3,3) :: dPdF
+   restartInc
+ use numerics, only: &
+   memory_efficient
  
+ use CPFEM, only: &
+   CPFEM_general
+ 
+ use IO, only: &
+   IO_read_JobBinaryFile, &
+   IO_write_JobBinaryFile
+ 
+ implicit none
+
+ real(pReal), dimension(3,3) :: temp33_Real, xiDyad
+ integer(pInt) :: i, j, k, l, m, n, q, ierr
+ integer(pInt), dimension(3) :: k_s
+  
  type(C_PTR) :: tensorField                                                                         ! field in real and fourier space
  type(C_PTR) :: scalarField_realC, scalarField_fourierC
  type(C_PTR) :: divergence
  
- integer(pInt), dimension(3) :: k_s
- 
- real(pReal), dimension(6) ::  sigma                                                                ! cauchy stress
- real(pReal), dimension(6,6) :: dsde
- integer(pInt) :: ierr
 
  write(6,'(a)') ''
  write(6,'(a)') ' <<<+-  DAMASK_spectralSolver init  -+>>>'
@@ -190,8 +177,8 @@ subroutine Solver_Init()
  allocate (P          (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
  allocate (xi         (3,res1_red,res(2),res(3)),      source = 0.0_pReal)
  allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
- allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)                  ! start out isothermally
- tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                      ! allocate continous data using a C function, C_SIZE_T is of type integer(8)
+ allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)                           ! start out isothermally
+ tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                       ! allocate continous data using a C function, C_SIZE_T is of type integer(8)
  call c_f_pointer(tensorField, field_real,      [ res(1)+2_pInt,res(2),res(3),3,3])                  ! place a pointer for a real representation on tensorField
  call c_f_pointer(tensorField, field_fourier,   [ res1_red,     res(2),res(3),3,3])                  ! place a pointer for a complex representation on tensorField
 
@@ -247,26 +234,14 @@ subroutine Solver_Init()
  if (debugGeneral) write(6,'(a)') 'FFTW initialized'
   
 !--------------------------------------------------------------------------------------------------
-! in case of no restart get reference material stiffness and init fields to no deformation
- if (restartInc == 1_pInt) then
-   ielem = 0_pInt
+! init fields                 
+ if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     ielem = ielem + 1_pInt 
      F(i,j,k,1:3,1:3) = math_I3
      F_lastInc(i,j,k,1:3,1:3) = math_I3
-     coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) - geomdim/real(2_pInt*res,pReal)
-     call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
-                          0.0_pReal,ielem,1_pInt,sigma,dsde,P(i,j,k,1:3,1:3),dPdF)
-     C = C + dPdF 
-  enddo; enddo; enddo
-  C = C * wgt
-  C_ref = C 
-  call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
-  write (777,rec=1) C_ref
-  close(777)
-  
-!--------------------------------------------------------------------------------------------------
-! restore deformation gradient and stiffness from saved state
+     coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) &
+                            - geomdim/real(2_pInt*res,pReal)
+   enddo; enddo; enddo
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
@@ -274,22 +249,21 @@ subroutine Solver_Init()
                                                 trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   F_lastInc = F
-   F_aim = 0.0_pReal
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     F_aim = F_aim + F(i,j,k,1:3,1:3)                                                               ! calculating old average deformation
-   enddo; enddo; enddo
-   F_aim = F_aim * wgt
-   F_aim_lastInc = F_aim
-   coordinates = 0.0 ! change it later!!!
-   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C_ref))
-   read (777,rec=1) C_ref
+   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',&
+                                                trim(getSolverJobName()),size(F_lastInc))
+   read (777,rec=1) F_lastInc
    close (777)
-   call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
-   read (777,rec=1) C
+   call IO_read_jobBinaryFile(777,'F_aim',trim(getSolverJobName()),size(F_aim))
+   read (777,rec=1) F_aim
    close (777)
- endif  
+   call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(F_aim_lastInc))
+   read (777,rec=1) F_aim_lastInc
+   close (777)
 
+   coordinates = 0.0 ! change it later!!!
+ endif
+ call constitutiveResponse(.FALSE.,0.0_pReal)
+ 
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
  if (divergence_correction) then
@@ -310,12 +284,24 @@ subroutine Solver_Init()
            k_s(1) = i - 1_pInt
            xi(1:3,i,j,k) = real(k_s, pReal)/virt_dim
  enddo; enddo; enddo
+
 !--------------------------------------------------------------------------------------------------
 ! calculate the gamma operator
+ if (restartInc == 1_pInt) then
+   C_ref = C 
+   call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
+   write (777,rec=1) C_ref
+   close(777)
+ elseif (restartInc > 1_pInt) then
+   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C_ref))
+   read (777,rec=1) C_ref
+   close (777)
+ endif
+ 
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
    allocate (gamma_hat(1,1,1,3,3,3,3), source = 0.0_pReal)
  else                                                                                               ! precalculation of gamma_hat field
-   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source = 0.0_pReal)
+   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source =0.0_pReal)
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
      if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
@@ -329,292 +315,14 @@ subroutine Solver_Init()
    enddo; enddo; enddo
    gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
  endif
-
- end subroutine Solver_Init
+end subroutine Utilities_init
  
- 
- 
- type(solution_t) function solution(guessmode,timeinc,timeinc_old,P_BC,F_BC,mask_stressVector,velgrad,rotation_BC)
- 
-  use numerics, only: &
-   err_div_tol, &
-   err_stress_tolrel, &
-   err_stress_tolabs, &
-   rotation_tol, &
-   itmax,&
-   itmin, &
-   divergence_correction, &                             
-   DAMASK_NumThreadsInt, &
-   fftw_planner_flag, &
-   fftw_timelimit
- 
- use debug, only: &
-   debug_reset, &
-   debug_info 
-!--------------------------------------------------------------------------------------------------
-! arrays for mixed boundary conditions
-
-
-     real(pReal), dimension(3,3), parameter ::  ones = 1.0_pReal, zeroes = 0.0_pReal    
-
- integer(pInt) ::                         size_reduced = 0_pInt 
- real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced                                  ! reduced compliance and stiffness (only for stress BC)
-    real(pReal), dimension(6) ::             sigma                                                     ! cauchy stress
- real(pReal), dimension(6,6) ::           dsde
- real(pReal), dimension(9,9) ::           temp99_Real                                               ! compliance and stiffness in matrix notation 
- real(pReal), dimension(3,3,3,3) :: &
-   C_lastInc
- integer(pInt) :: iter, ielem 
-
-!--------------------------------------------------------------------------------------------------
-! loop variables, convergence etc.
- real(pReal) :: timeinc, timeinc_old   ! elapsed time, begin of interval, time interval 
- real(pReal) :: guessmode, err_div, err_stress, err_stress_tol        
- real(pReal),    dimension(3,3) ::          temp33_Real
- integer(pInt) :: i, j, k, m, n
- integer(pInt) ::  CPFEM_mode=1_pInt
- logical :: errmatinv, restartWrite
- real(pReal) :: defgradDet
-
-
-
-
-!--------------------------------------------------------------------------------------------------
-! variables for additional output of divergence calculations
-
-
- real(pReal), dimension(3,3) :: &
-   P_av, &
-   mask_stress, &
-   mask_defgrad, &
-   deltaF_aim, &
-   F_aim_lab, &
-   F_aim_lab_lastIter, &
-   P_av_lab
- 
- real(pReal), dimension(3,3,3,3) :: &
-   dPdF, &
-   C = 0.0_pReal, &
-   S_lastInc
-  
-
- logical :: velgrad
-  real(pReal), dimension(3,3) :: P_BC,F_BC,rotation_BC
- logical, dimension(9) :: mask_stressVector
- real(pReal) :: defgradDetMax, defgradDetMin
-   mask_stress = merge(ones,zeroes,reshape(mask_stressVector,[3,3]))                                   
-   mask_defgrad  = merge(zeroes,ones,reshape(mask_stressVector,[3,3]))
-   size_reduced = int(count(mask_stressVector), pInt)
-   allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
-   allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
-
-
-   if (velgrad) then                                                        ! calculate deltaF_aim from given L and current F
-     deltaF_aim = timeinc * mask_defgrad * math_mul33x33(F_BC, F_aim)
-   else                                                                                         ! deltaF_aim = fDot *timeinc where applicable
-     deltaF_aim = timeinc * mask_defgrad * F_BC
-   endif
-
-!--------------------------------------------------------------------------------------------------
-! winding forward of deformation aim in loadcase system
-       temp33_Real = F_aim                                            
-       F_aim = F_aim &                                                                         
-                  + guessmode * mask_stress * (F_aim - F_aim_lastInc)*timeinc/timeinc_old &      
-                  + deltaF_aim
-       F_aim_lastInc = temp33_Real
-!--------------------------------------------------------------------------------------------------
-! winding forward of deformation aim in loadcase system
-       temp33_Real = F_aim                                            
-       F_aim = F_aim &                                                                         
-                  + guessmode * mask_stress * (F_aim - F_aim_lastInc)*timeinc/timeinc_old &      
-                  + deltaF_aim
-       F_aim_lastInc = temp33_Real
-
-!--------------------------------------------------------------------------------------------------
-! update local deformation gradient and coordinates
-       deltaF_aim = math_rotate_backward33(deltaF_aim,rotation_BC)
-       do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-         temp33_Real = F(i,j,k,1:3,1:3)
-         F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) &                                                      ! decide if guessing along former trajectory or apply homogeneous addon
-                                + guessmode * (F(i,j,k,1:3,1:3) - F_lastInc(i,j,k,1:3,1:3))&        ! guessing... 
-                                            *timeinc/timeinc_old &
-                                + (1.0_pReal-guessmode) * deltaF_aim                                ! if not guessing, use prescribed average deformation where applicable
-         F_lastInc(i,j,k,1:3,1:3) = temp33_Real 
-       enddo; enddo; enddo
-       call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),&          ! calculate current coordinates
-                                                          1.0_pReal,F_lastInc,coordinates)
-  
-
-  !--------------------------------------------------------------------------------------------------
-! calculate reduced compliance
-       if(size_reduced > 0_pInt) then                                                               ! calculate compliance in case stress BC is applied
-         C_lastInc = math_rotate_forward3333(C,rotation_BC)                               ! calculate stiffness from former inc
-         temp99_Real = math_Plain3333to99(C_lastInc)
-         k = 0_pInt                                                                                 ! build reduced stiffness
-         do n = 1_pInt,9_pInt
-           if(mask_stressVector(n)) then
-             k = k + 1_pInt
-             j = 0_pInt
-             do m = 1_pInt,9_pInt
-               if(mask_stressVector(m)) then
-                 j = j + 1_pInt
-                 c_reduced(k,j) = temp99_Real(n,m)
-         endif; enddo; endif; enddo
-         call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                         ! invert reduced stiffness
-         if(errmatinv) call IO_error(error_ID=400_pInt)
-         temp99_Real = 0.0_pReal                                                                    ! build full compliance
-         k = 0_pInt
-         do n = 1_pInt,9_pInt
-           if(mask_stressVector(n)) then
-             k = k + 1_pInt
-             j = 0_pInt
-             do m = 1_pInt,9_pInt
-             if(mask_stressVector(m)) then
-                   j = j + 1_pInt
-                   temp99_Real(n,m) = s_reduced(k,j)
-         endif; enddo; endif; enddo
-         S_lastInc = (math_Plain99to3333(temp99_Real))
-       endif
-
-       iter = 0_pInt
-       err_div = huge(err_div_tol)                                                                  ! go into loop 
-
-  !##################################################################################################
-! convergence loop (looping over iterations)
-!##################################################################################################
-
-       do while((iter < itmax .and. (err_div > err_div_tol .or. err_stress > err_stress_tol))&
-                 .or. iter < itmin)
-         iter = iter + 1_pInt
-         
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         P_av = math_rotate_forward33(P_av_lab,rotation_BC)
-         write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
-                                                          math_transpose33(P_av)/1.e6_pReal
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
-         if(size_reduced > 0_pInt) then                                                             ! calculate stress BC if applied
-           err_stress = maxval(abs(mask_stress * (P_av - P_BC)))                     ! maximum deviaton (tensor norm not applicable)
-           err_stress_tol = min(maxval(abs(P_av)) * err_stress_tolrel,err_stress_tolabs)            ! don't use any tensor norm for the relative criterion because the comparison should be coherent
-           write(6,'(a)') '' 
-           write(6,'(a)') '... correcting deformation gradient to fulfill BCs ...............'
-           write(6,'(a,f6.2,a,es11.4,a)') 'error stress = ', err_stress/err_stress_tol, &
-                                                                            ' (',err_stress,' Pa)'  
-           F_aim = F_aim - math_mul3333xx33(S_lastInc, ((P_av - P_BC)))              ! residual on given stress components
-           write(6,'(a,1x,es11.4)')'determinant of new deformation = ',math_det33(F_aim)
-         else
-           err_stress_tol = +huge(1.0_pReal)
-         endif
-                                            
-         F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                            ! boundary conditions from load frame into lab (Fourier) frame
-       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!--------------------------------------------------------------------------------------------------
-! report begin of new iteration
-         write(6,'(a)') ''
-         write(6,'(a)') '=================================================================='
-         write(6,'(3(a,i6.6))') ' @ Iter. ',itmin,' < ',iter,' < ',itmax
-         write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
-                                                             math_transpose33(F_aim)
-         write(6,'(a)') ''
-         write(6,'(a)') '... update stress field P(F) .....................................'
-         if (restartWrite) write(6,'(a)') 'writing restart info for last increment'
-       if(restartWrite) then
-         write(6,'(a)') 'writing converged results for restart'
-         call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F_lastInc))                        ! writing deformation gradient field to file
-         write (777,rec=1) F_LastInc
-         close (777)
-         call IO_write_jobBinaryFile(777,'C',size(C))
-         write (777,rec=1) C
-         close(777)
-       endif 
-         F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
-!--------------------------------------------------------------------------------------------------
-! evaluate constitutive response
-         ielem = 0_pInt
-         do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-           ielem = ielem + 1_pInt
-           call CPFEM_general(3_pInt,&                                                              ! collect cycle
-                              coordinates(i,j,k,1:3), F_lastInc(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3), &
-                              temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,&
-                              P(i,j,k,1:3,1:3),dPdF)
-         enddo; enddo; enddo
-
-         P = 0.0_pReal                                                                         ! needed because of the padding for FFTW
-         C = 0.0_pReal
-         P_av_lab = 0.0_pReal
-         ielem = 0_pInt 
-         call debug_reset()
-         do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-           ielem = ielem + 1_pInt
-           call CPFEM_general(CPFEM_mode,&                                                          ! first element in first iteration retains CPFEM_mode 1, 
-                              coordinates(i,j,k,1:3),F_lastInc(i,j,k,1:3,1:3), F(i,j,k,1:3,1:3), &  ! others get 2 (saves winding forward effort)
-                              temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde, &
-                              P(i,j,k,1:3,1:3),dPdF)
-           CPFEM_mode = 2_pInt
-           C = C + dPdF
-           P_av_lab = P_av_lab + P(i,j,k,1:3,1:3)
-         enddo; enddo; enddo
-         call debug_info()
-        restartWrite = .false.
-        P_av_lab = P_av_lab * wgt
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-         P_av = math_rotate_forward33(P_av_lab,rotation_BC)
-         write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
-                                                          math_transpose33(P_av)/1.e6_pReal
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
-         if(size_reduced > 0_pInt) then                                                             ! calculate stress BC if applied
-           err_stress = maxval(abs(mask_stress * (P_av - P_BC)))                     ! maximum deviaton (tensor norm not applicable)
-           err_stress_tol = min(maxval(abs(P_av)) * err_stress_tolrel,err_stress_tolabs)            ! don't use any tensor norm for the relative criterion because the comparison should be coherent
-           write(6,'(a)') '' 
-           write(6,'(a)') '... correcting deformation gradient to fulfill BCs ...............'
-           write(6,'(a,f6.2,a,es11.4,a)') 'error stress = ', err_stress/err_stress_tol, &
-                                                                            ' (',err_stress,' Pa)'  
-           F_aim = F_aim - math_mul3333xx33(S_lastInc, ((P_av - P_BC)))              ! residual on given stress components
-           write(6,'(a,1x,es11.4)')'determinant of new deformation = ',math_det33(F_aim)
-         else
-           err_stress_tol = +huge(1.0_pReal)
-         endif
-        
-        F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)
-        field_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = P
-        call convolution(.True.,F_aim_lab_lastIter - F_aim_lab)
-
-
-!--------------------------------------------------------------------------------------------------
-! updated deformation gradient
-         do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-           F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)*wgt                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
-         enddo; enddo; enddo
-         
-
-!--------------------------------------------------------------------------------------------------
-! calculate bounds of det(F) and report
-         if(debugGeneral) then
-           defgradDetMax = -huge(1.0_pReal)
-           defgradDetMin = +huge(1.0_pReal)
-           do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-             defgradDet = math_det33(F(i,j,k,1:3,1:3))
-             defgradDetMax = max(defgradDetMax,defgradDet)
-             defgradDetMin = min(defgradDetMin,defgradDet) 
-           enddo; enddo; enddo
-
-           write(6,'(a,1x,es11.4)') 'max determinant of deformation =', defgradDetMax
-           write(6,'(a,1x,es11.4)') 'min determinant of deformation =', defgradDetMin
-         endif
-         
-       enddo    ! end looping when convergency is achieved 
-           
-       CPFEM_mode = 1_pInt                                                                          ! winding forward
-       C = C * wgt
-
-   deallocate(c_reduced)
-   deallocate(s_reduced)
-end function solution
-
-subroutine convolution(calcDivergence, field_aim)
- real(pReal) :: err_div 
+real(pReal) function convolution(calcDivergence, field_aim,)
+ use numerics, only: &
+   memory_efficient, &
+   err_div_tol
+ real(pReal),    dimension(3,3) ::                         xiDyad                                      ! product of wave vectors
+ real(pReal) :: err_div = 0.0_pReal
  real(pReal),    dimension(3,3) ::          temp33_Real
  integer(pInt) :: i, j, k, l, m, n, q
 
@@ -742,8 +450,8 @@ subroutine convolution(calcDivergence, field_aim)
            write(6,'(a,es11.4)')        'error divergence  FT  max = ',err_div_max
            write(6,'(a,es11.4)')        'error divergence Real max = ',err_real_div_max
          endif
-         ! write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/err_div_tol,&
-                                                           ! ' (',err_div,' N/m³)'
+         write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/err_div_tol,&
+                                                            ' (',err_div,' N/m³)'
          end if
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)
@@ -832,8 +540,142 @@ subroutine convolution(calcDivergence, field_aim)
                                          maxval(math_symmetric33(temp33_real))/&
                                          maxval(math_skew33(temp33_real))
          endif
+         field_real = field_real * wgt
+         convolution = err_div/err_div_tol
+end function convolution
 
-end subroutine convolution
+
+function S_lastInc(rot_BC,mask_stressVector1)
+ real(pReal), dimension(3,3,3,3) :: S_lastInc
+ integer(pInt) :: i, j, k, m,n 
+ real(pReal), dimension(3,3), intent(in) :: rot_BC
+ logical, dimension(9), intent(in) :: mask_stressVector1
+ real(pReal), dimension(3,3,3,3) :: C_lastInc
+ real(pReal), dimension(9,9) ::           temp99_Real   
+ integer(pInt) :: size_reduced = 0_pInt 
+ real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced                                  ! reduced compliance and stiffness (only for stress BC)
+ logical :: errmatinv
+ size_reduced = count(mask_stressVector1)
+ if (allocated(c_reduced))        deallocate(c_reduced)
+ if (allocated(c_reduced))        deallocate(c_reduced)
+ allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
+ allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
 
 
-end module DAMASK_spectralSolver
+
+ C_lastInc = math_rotate_forward3333(C,rot_BC)                               ! calculate stiffness from former inc
+ temp99_Real = math_Plain3333to99(C_lastInc)
+ k = 0_pInt                                                                                 ! build reduced stiffness
+ do n = 1_pInt,9_pInt
+   if(mask_stressVector1(n)) then
+     k = k + 1_pInt
+     j = 0_pInt
+     do m = 1_pInt,9_pInt
+       if(mask_stressVector1(m)) then
+         j = j + 1_pInt
+         c_reduced(k,j) = temp99_Real(n,m)
+ endif; enddo; endif; enddo
+ call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                         ! invert reduced stiffness
+ if(errmatinv) call IO_error(error_ID=400_pInt)
+ temp99_Real = 0.0_pReal                                                                    ! build full compliance
+  k = 0_pInt
+  do n = 1_pInt,9_pInt
+    if(mask_stressVector1(n)) then
+      k = k + 1_pInt
+      j = 0_pInt
+      do m = 1_pInt,9_pInt
+        if(mask_stressVector1(m)) then
+          j = j + 1_pInt
+          temp99_Real(n,m) = s_reduced(k,j)
+ endif; enddo; endif; enddo
+ S_lastInc = (math_Plain99to3333(temp99_Real))
+ if (allocated(c_reduced))        deallocate(c_reduced)
+ if (allocated(c_reduced))        deallocate(c_reduced)
+
+end function S_lastInc
+
+
+!--------------------------------------------------------------------------------------------------
+! calculate reduced compliance
+
+real(pReal) function BCcorrection(mask_stressVector,P_BC,S_lastInc)
+use numerics, only: err_stress_tolrel, err_stress_tolabs
+ logical, dimension(9) :: mask_stressVector
+ real(pReal) ::  err_stress, err_stress_tol     
+ real(pReal), dimension(3,3), parameter ::  ones = 1.0_pReal, zeroes = 0.0_pReal   
+       real(pReal), dimension(3,3,3,3) :: S_lastInc
+       real(pReal), dimension(3,3) :: &
+       P_BC , &
+   mask_stress, &
+   mask_defgrad
+        mask_stress = merge(ones,zeroes,reshape(mask_stressVector,[3,3]))                                   
+ mask_defgrad  = merge(zeroes,ones,reshape(mask_stressVector,[3,3]))
+ 
+!--------------------------------------------------------------------------------------------------
+! stress BC handling
+                                                    ! calculate stress BC if applied
+           err_stress = maxval(abs(mask_stress * (P_av - P_BC)))                     ! maximum deviaton (tensor norm not applicable)
+           err_stress_tol = min(maxval(abs(P_av)) * err_stress_tolrel,err_stress_tolabs)            ! don't use any tensor norm for the relative criterion because the comparison should be coherent
+           write(6,'(a)') '' 
+           write(6,'(a)') '... correcting deformation gradient to fulfill BCs ...............'
+           write(6,'(a,f6.2,a,es11.4,a)') 'error stress = ', err_stress/err_stress_tol, &
+                                                                            ' (',err_stress,' Pa)'  
+           F_aim = F_aim - math_mul3333xx33(S_lastInc, ((P_av - P_BC)))              ! residual on given stress components
+           write(6,'(a,1x,es11.4)')'determinant of new deformation = ',math_det33(F_aim)
+          BCcorrection = err_stress/err_stress_tol
+end function BCcorrection
+
+subroutine constitutiveResponse(F,P,ForwardData,timeinc)
+ use debug, only: &
+   debug_reset, &
+   debug_info 
+    use CPFEM, only: &
+   CPFEM_general
+use FEsolving, only: restartWrite
+  real(pReal) :: timeinc
+  logical :: ForwardData
+  integer(pInt) :: i, j, k, ielem
+  integer(pInt) :: CPFEM_mode
+   real(pReal), dimension(3,3,3,3) :: dPdF
+ real(pReal), dimension(6)       :: sigma                                                                ! cauchy stress
+ real(pReal), dimension(6,6)     :: dsde
+ real(pReal), dimension(3,3)     :: P_av_lab, rotation_BC
+  if (ForwardData) then
+    CPFEM_mode = 1_pInt
+   else
+    CPFEM_mode = 2_pInt
+  endif
+   write(6,'(a)') ''
+   write(6,'(a)') '... update stress field P(F) .....................................'
+   ielem = 0_pInt
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     ielem = ielem + 1_pInt
+     call CPFEM_general(3_pInt,&                                                              ! collect cycle
+                        coordinates(i,j,k,1:3), F_lastInc(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3), &
+                        temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(i,j,k,1:3,1:3),dPdF)
+   enddo; enddo; enddo
+
+   P = 0.0_pReal                                                                         ! needed because of the padding for FFTW
+   C = 0.0_pReal
+   P_av_lab = 0.0_pReal
+   ielem = 0_pInt 
+   call debug_reset()
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     ielem = ielem + 1_pInt
+     call CPFEM_general(CPFEM_mode,&                                                          ! first element in first iteration retains CPFEM_mode 1, 
+                        coordinates(i,j,k,1:3),F_lastInc(i,j,k,1:3,1:3), F(i,j,k,1:3,1:3), &  ! others get 2 (saves winding forward effort)
+                        temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(i,j,k,1:3,1:3),dPdF)
+     CPFEM_mode = 2_pInt
+     C = C + dPdF
+     P_av_lab = P_av_lab + P(i,j,k,1:3,1:3)
+  enddo; enddo; enddo
+  call debug_info()
+  restartWrite = .false.
+  P_av_lab = P_av_lab * wgt
+  P_av = math_rotate_forward33(P_av_lab,rotation_BC)
+  write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
+                                                          math_transpose33(P_av)/1.e6_pReal
+  C = C * wgt
+end subroutine constitutiveResponse
+       
+end module DAMASK_spectral_Utilities
