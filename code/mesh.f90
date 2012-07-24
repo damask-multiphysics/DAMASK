@@ -1012,7 +1012,8 @@ function mesh_regrid(resNewInput,minRes)
  close(777)
  
 !------Adjusting the point-to-grain association---------------------
- write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(mesh_element(4,1:Npoints),pReal)),pInt)
+ !write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(mesh_element(4,1:Npoints),pReal)),pInt)
+ write(N_Digits, '(I16.16)') 1_pInt+int(log10(real(maxval(mesh_element(4,1:Npoints)),pReal)),pInt)
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 

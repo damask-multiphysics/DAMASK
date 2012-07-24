@@ -513,6 +513,50 @@ program DAMASK_spectral
  endif 
 
  if (debugGeneral) write(6,'(a)') 'FFTW initialized'
+  
+!--------------------------------------------------------------------------------------------------
+! init fields                 
+ if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     F(i,j,k,1:3,1:3) = math_I3
+     F_lastInc(i,j,k,1:3,1:3) = math_I3
+     coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) &
+                            - geomdim/real(2_pInt*res,pReal)
+   enddo; enddo; enddo
+ elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
+   if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
+                                             restartInc - 1_pInt,' from file' 
+   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
+                                                trim(getSolverJobName()),size(F))
+   read (777,rec=1) F
+   close (777)
+   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',&
+                                                trim(getSolverJobName()),size(F_lastInc))
+   read (777,rec=1) F_lastInc
+   close (777)
+   call IO_read_jobBinaryFile(777,'F_aim',trim(getSolverJobName()),size(F_aim))
+   read (777,rec=1) F_aim
+   close (777)
+   call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(F_aim_lastInc))
+   read (777,rec=1) F_aim_lastInc
+   close (777)
+
+   coordinates = 0.0 ! change it later!!!
+ endif
+ ielem = 0_pInt
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   ielem = ielem + 1_pInt 
+   call CPFEM_general(3_pInt,coordinates(i,j,k,1:3),F(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3),temperature(i,j,k),&                         
+                        0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
+ enddo; enddo; enddo
+ ielem = 0_pInt
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   ielem = ielem + 1_pInt 
+   call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),F(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3),temperature(i,j,k),&
+                        0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
+   C = C + dPdF 
+ enddo; enddo; enddo
+ C = C * wgt
  
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
@@ -534,58 +578,24 @@ program DAMASK_spectral
            k_s(1) = i - 1_pInt
            xi(1:3,i,j,k) = real(k_s, pReal)/virt_dim
  enddo; enddo; enddo
- 
-!--------------------------------------------------------------------------------------------------
-! in case of no restart get reference material stiffness and init fields to no deformation
- if (restartInc == 1_pInt) then
-   ielem = 0_pInt
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     ielem = ielem + 1_pInt 
-     F(i,j,k,1:3,1:3) = math_I3
-     F_lastInc(i,j,k,1:3,1:3) = math_I3
-     coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) - geomdim/real(2_pInt*res,pReal)
-     call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),math_I3,math_I3,temperature(i,j,k),&
-                          0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
-     C = C + dPdF 
-  enddo; enddo; enddo
-  C = C * wgt
-  C_ref = C 
-  call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
-  write (777,rec=1) C_ref
-  close(777)
-  
-!--------------------------------------------------------------------------------------------------
-! restore deformation gradient and stiffness from saved state
- elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
-   if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
-                                             restartInc - 1_pInt,' from file' 
-   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
-                                                trim(getSolverJobName()),size(F))
-   read (777,rec=1) F
-   close (777)
-   F_lastInc = F
-   F_aim = 0.0_pReal
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     F_aim = F_aim + F(i,j,k,1:3,1:3)                                                               ! calculating old average deformation
-   enddo; enddo; enddo
-   F_aim = F_aim * wgt
-   F_aim_lastInc = F_aim
-   coordinates = 0.0 ! change it later!!!
-   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C_ref))
-   read (777,rec=1) C_ref
-   close (777)
-   call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
-   read (777,rec=1) C
-   close (777)
-   CPFEM_mode = 2_pInt
- endif  
 
 !--------------------------------------------------------------------------------------------------
 ! calculate the gamma operator
+ if (restartInc == 1_pInt) then
+   C_ref = C 
+   call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
+   write (777,rec=1) C_ref
+   close(777)
+ elseif (restartInc > 1_pInt) then
+   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C_ref))
+   read (777,rec=1) C_ref
+   close (777)
+ endif
+ 
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
    allocate (gamma_hat(1,1,1,3,3,3,3), source = 0.0_pReal)
  else                                                                                               ! precalculation of gamma_hat field
-   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source = 0.0_pReal)
+   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source =0.0_pReal)
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
      if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
@@ -621,7 +631,7 @@ program DAMASK_spectral
    write(538) 'increments', bc(1:N_Loadcases)%incs                                                  ! one entry per loadcase
    write(538) 'startingIncrement', restartInc - 1_pInt                                              ! start with writing out the previous inc
    write(538) 'eoh'                                                                                 ! end of header
-   write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)                ! initial (non-deformed or read-in) results
+   write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)              ! initial (non-deformed or read-in) results
    if (debugGeneral) write(6,'(a)') 'Header of result file written out'
  endif
 
@@ -630,10 +640,8 @@ program DAMASK_spectral
 ! Loop over loadcases defined in the loadcase file
 !##################################################################################################
  do loadcase = 1_pInt,  N_Loadcases
-   time0 = time                                                                                     ! loadcase start time                
-   if (bc(loadcase)%followFormerTrajectory .and. &
-       (restartInc < totalIncsCounter .or. &
-        restartInc > totalIncsCounter+bc(loadcase)%incs) ) then                                     ! continue to guess along former trajectory where applicable
+   time0 = time
+   if (bc(loadcase)%followFormerTrajectory) then 
      guessmode = 1.0_pReal
    else
      guessmode = 0.0_pReal                                                                          ! change of load case, homogeneous guess for the first inc
@@ -736,10 +744,10 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
+       
        write(6,'(a)') '##################################################################'
        write(6,'(A,I5.5,A,es12.5)') 'Increment ', totalIncsCounter, ' Time ',time
        
-       guessmode = 1.0_pReal                                                                        ! keep guessing along former trajectory during same loadcase
        iter = 0_pInt
        err_div = huge(err_div_tol)                                                                  ! go into loop 
 
@@ -760,7 +768,8 @@ program DAMASK_spectral
                                                              math_transpose33(F_aim)
          write(6,'(a)') ''
          write(6,'(a)') '... update stress field P(F) .....................................'
-         if (restartWrite) write(6,'(a)') 'writing restart info for last increment'
+         if (restartWrite) write(6,'(a)') 'writing CP restart information for last increment'
+         
          F_aim_lab_lastIter = math_rotate_backward33(F_aim,bc(loadcase)%rotation)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -787,6 +796,8 @@ program DAMASK_spectral
            C = C + dPdF
          enddo; enddo; enddo
          call debug_info()
+         restartWrite = .false.
+
 ! for test of regridding
       !   if( bc(loadcase)%restartFrequency > 0_pInt .and. &
       !       mod(inc-1,bc(loadcase)%restartFrequency) == 0_pInt .and. &
@@ -1072,12 +1083,23 @@ program DAMASK_spectral
          call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F))                        ! writing deformation gradient field to file
          write (777,rec=1) F
          close (777)
+         call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastInc))        ! writing F_lastInc field to file
+         write (777,rec=1) F_lastInc
+         close (777)
          call IO_write_jobBinaryFile(777,'C',size(C))
          write (777,rec=1) C
+         close(777)
+         call IO_write_jobBinaryFile(777,'F_aim',size(F_aim))
+         write (777,rec=1) F_aim
+         close(777)
+         call IO_write_jobBinaryFile(777,'F_aim_lastInc',size(F_aim_lastInc))
+         write (777,rec=1) F_aim_lastInc
          close(777)
        endif 
        
      endif ! end calculation/forwarding
+     guessmode = 1.0_pReal                                                                        ! keep guessing along former trajectory during same loadcase
+
    enddo  ! end looping over incs in current loadcase
    deallocate(c_reduced)
    deallocate(s_reduced)
