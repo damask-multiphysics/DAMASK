@@ -79,7 +79,8 @@ real(pReal) ::                  err_div_tol                =  0.1_pReal, &      
                                 err_stress_tolabs          =  huge(1.0_pReal),  &                  ! absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 fftw_timelimit             = -1.0_pReal, &                         ! sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
                                 rotation_tol               =  1.0e-12_pReal                        ! tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
-character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT'                        ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
+character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT', &                     ! reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
+                                myspectralsolver           = 'basic'                               ! spectral solution method 
 integer(pInt) ::                fftw_planner_flag          =  32_pInt, &                           ! conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
                                 itmax                      =  20_pInt, &                           ! maximum number of iterations
                                 itmin                      =  2_pInt                               ! minimum number of iterations
@@ -247,6 +248,8 @@ subroutine numerics_init
              fftw_timelimit = IO_floatValue(line,positions,2_pInt)
        case ('fftw_plan_mode')
              fftw_plan_mode = IO_stringValue(line,positions,2_pInt)
+       case ('myspectralsolver')
+             myspectralsolver = IO_stringValue(line,positions,2_pInt)
        case ('rotation_tol')
              rotation_tol = IO_floatValue(line,positions,2_pInt)
        case ('divergence_correction')
@@ -256,7 +259,7 @@ subroutine numerics_init
 #endif
 #ifndef Spectral
       case ('err_div_tol','err_stress_tolrel','err_stress_tolabs',&
-            'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
+            'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode','myspectralsolver', &
             'rotation_tol','divergence_correction','update_gamma')
              call IO_warning(40_pInt,ext_msg=tag)
 #endif
@@ -348,6 +351,7 @@ subroutine numerics_init
      write(6,'(a24,1x,es8.1)') ' fftw_timelimit:         ',fftw_timelimit
    endif
    write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
+   write(6,'(a24,1x,a)')       ' myspectralsolver:       ',trim(myspectralsolver)
    write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
    write(6,'(a24,1x,es8.1)')   ' rotation_tol:           ',rotation_tol
    write(6,'(a24,1x,L8,/)')    ' divergence_correction:  ',divergence_correction

@@ -78,7 +78,8 @@ program DAMASK_spectral_Driver
    restartInc
    
  use numerics, only: &
-   rotation_tol
+   rotation_tol, &
+   myspectralsolver
    
  use homogenization, only: &
    materialpoint_sizeResults, &
@@ -109,10 +110,8 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
- real(pReal), dimension(9) :: & 
-   temp_valueVector                                                                                 !> temporarily from loadcase file when reading in tensors
- logical,     dimension(9) :: &
-   temp_maskVector                                                                                  !> temporarily from loadcase file when reading in tensors
+ real(pReal), dimension(9) :: temp_valueVector                                                                                 !> temporarily from loadcase file when reading in tensors
+ logical,     dimension(9) :: temp_maskVector                                                                                  !> temporarily from loadcase file when reading in tensors
  integer(pInt), parameter  :: maxNchunksLoadcase = (1_pInt + 9_pInt)*3_pInt +&                      ! deformation, rotation, and stress
                                                    (1_pInt + 1_pInt)*5_pInt +&                      ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                     1_pInt, &                                       ! dropguessing
@@ -147,7 +146,7 @@ program DAMASK_spectral_Driver
  call DAMASK_interface_init
  
  write(6,'(a)') ''
- write(6,'(a)') ' <<<+-  DAMASK_spectral init  -+>>>'
+ write(6,'(a)') ' <<<+-  DAMASK_spectral_Driver init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
  write(6,'(a)') ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
@@ -343,7 +342,15 @@ print*, 'my Unit closed'
    if (debugGeneral) write(6,'(a)') 'Header of result file written out'
  endif
 
- call Basic_init()
+ select case (myspectralsolver)
+ 
+   case (DAMASK_spectral_SolverBasic_label)
+     call basic_init()
+     
+   case (DAMASK_spectral_SolverAL_label)
+     call AL_init()
+     
+ end select 
 
 !##################################################################################################
 ! Loop over loadcases defined in the currentLoadcase file
@@ -390,7 +397,10 @@ print*, 'my Unit closed'
        write(6,'(a)') '##################################################################'
        write(6,'(A,I5.5,A,es12.5)') 'Increment ', totalIncsCounter, ' Time ',time
        
-       solres =basic_solution (&
+       select case (myspectralsolver)
+       
+         case (DAMASK_spectral_SolverBasic_label)
+           solres = basic_solution (&
                guessmode,timeinc,timeinc_old, &
                 P_BC              = bc(currentLoadcase)%stress, &
                 F_BC              = bc(currentLoadcase)%deformation, &
@@ -398,6 +408,18 @@ print*, 'my Unit closed'
                 mask_stressVector = bc(currentLoadcase)%maskStressVector, &
                 velgrad           = bc(currentLoadcase)%velGradApplied, &
                 rotation_BC       = bc(currentLoadcase)%rotation)
+           
+         case (DAMASK_spectral_SolverAL_label)
+           solres = AL_solution (&
+               guessmode,timeinc,timeinc_old, &
+                P_BC              = bc(currentLoadcase)%stress, &
+                F_BC              = bc(currentLoadcase)%deformation, &
+               ! temperature_bc       = bc(currentLoadcase)%temperature, &
+                mask_stressVector = bc(currentLoadcase)%maskStressVector, &
+                velgrad           = bc(currentLoadcase)%velGradApplied, &
+                rotation_BC       = bc(currentLoadcase)%rotation)
+           
+       end select 
  
        write(6,'(a)') ''
        write(6,'(a)') '=================================================================='
@@ -420,6 +442,15 @@ print*, 'my Unit closed'
 
     enddo incLooping
  enddo loadCaseLooping
+ select case (myspectralsolver)
+ 
+   case (DAMASK_spectral_SolverBasic_label)
+     call basic_destroy()
+     
+   case (DAMASK_spectral_SolverAL_label)
+     call AL_destroy()
+     
+ end select 
  write(6,'(a)') ''
  write(6,'(a)') '##################################################################'
  write(6,'(i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
