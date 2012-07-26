@@ -51,6 +51,7 @@ module DAMASK_spectral_Utilities
 ! variables storing information for spectral method and FFTW
  type(C_PTR) ::  plan_forward, plan_backward                                                        ! plans for fftw
  real(pReal),    dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                   ! gamma operator (field) for spectral method
+ real(pReal),    dimension(3,3,3,3) :: C_ref
  real(pReal),    dimension(:,:,:,:),       allocatable ::  xi                                          ! wave vector field for divergence and for gamma operator
  real(pReal),    dimension(:,:,:,:,:),     pointer :: field_real
  complex(pReal), dimension(:,:,:,:,:),     pointer :: field_fourier
@@ -87,7 +88,7 @@ module DAMASK_spectral_Utilities
  end type solutionState
 contains 
 
-subroutine Utilities_init(C_ref)
+subroutine Utilities_init()
    
  use mesh,  only : &
    mesh_spectral_getResolution, &
@@ -106,17 +107,11 @@ subroutine Utilities_init(C_ref)
    debug_spectralDivergence, &
    debug_spectralRestart, &
    debug_spectralFFTW
-   
- use numerics, only: &
-   memory_efficient
  
  implicit none
 
- real(pReal), dimension(3,3) :: temp33_Real, xiDyad
- integer(pInt) :: i, j, k, l, m, n, q, ierr
+ integer(pInt) :: i, j, k, ierr
  integer(pInt), dimension(3) :: k_s
- real(pReal), dimension(3,3,3,3) :: &
-   C_ref
   
  type(C_PTR) :: tensorField                                                                         ! field in real and fourier space
  type(C_PTR) :: scalarField_realC, scalarField_fourierC
@@ -225,69 +220,63 @@ subroutine Utilities_init(C_ref)
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
    allocate (gamma_hat(1,1,1,3,3,3,3), source = 0.0_pReal)
  else                                                                                               ! precalculation of gamma_hat field
-   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source =0.0_pReal)
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-     if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
-       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
-       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
-       temp33_Real = math_inv33(temp33_Real)
-       forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, q=1_pInt:3_pInt)&
-         gamma_hat(i,j,k, l,m,n,q) =  temp33_Real(l,n)*xiDyad(m,q)
-     endif  
-   enddo; enddo; enddo
-   gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source =0.0_pReal)                                                  ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
  endif
 end subroutine Utilities_init
- 
-real(pReal) function convolution(calcDivergence,field_aim,C_ref)
- 
+
+subroutine Utilities_updateGamma(C)
+   
   use numerics, only: &
-    memory_efficient, &
-    err_div_tol
+    memory_efficient
   
-  real(pReal),    dimension(3,3) :: xiDyad                                      ! product of wave vectors
-  real(pReal) :: err_div = 0.0_pReal
-  real(pReal),    dimension(3,3) :: temp33_Real
+  implicit none
+
+  real(pReal), dimension(3,3,3,3) :: C
+  real(pReal), dimension(3,3) :: temp33_Real, xiDyad
   integer(pInt) :: i, j, k, l, m, n, q
-  real(pReal), dimension(3,3,3,3) :: C_ref
- 
-!--------------------------------------------------------------------------------------------------
-!variables for additional output due to general debugging
-  real(pReal) :: maxCorrectionSym, maxCorrectionSkew
-  logical :: calcDivergence
-  real(pReal), dimension(3,3) :: field_avg, field_aim
-  integer(pInt) :: row, column
-  real(pReal) :: field_av_L2, err_div_RMS, err_real_div_RMS, err_post_div_RMS,&
-                 err_div_max, err_real_div_max
-  complex(pReal), dimension(3) ::  temp3_complex
-  complex(pReal), dimension(3,3) ::  temp33_complex
   
-!--------------------------------------------------------------------------------------------------
-! actual spectral method         
-  write(6,'(a)') ''
-  write(6,'(a)') '... doing convolution .................'
+  C_ref = C
+  if(.not. memory_efficient) then                                                   
+    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
+      if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+          xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+          temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
+        temp33_Real = math_inv33(temp33_Real)
+        forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, q=1_pInt:3_pInt)&
+          gamma_hat(i,j,k, l,m,n,q) =  temp33_Real(l,n)*xiDyad(m,q)
+      endif  
+    enddo; enddo; enddo
+    gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+  endif
+
+end subroutine Utilities_updateGamma
+
+subroutine Utilities_forwardFFT()
+
+  implicit none
+  
+  integer(pInt) :: row, column
+  
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
   if (debugFFTW) then
-    row =  3 !  (mod(totalIncsCounter+iter-2_pInt,9_pInt))/3_pInt + 1_pInt                      ! go through the elements of the tensors, controlled by totalIncsCounter and iter, starting at 1
-    column = 3 !(mod(totalIncsCounter+iter-2_pInt,3_pInt))        + 1_pInt
     scalarField_real(1:res(1),1:res(2),1:res(3)) =&                                          ! store the selected component
            cmplx(field_real(1:res(1),1:res(2),1:res(3),row,column),0.0_pReal,pReal)
+    
   endif
-
+  
 !--------------------------------------------------------------------------------------------------
 ! call function to calculate divergence from math (for post processing) to check results
   if (debugDivergence) &
     call divergence_fft(res,virt_dim,3_pInt,&
-                        field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_post)      ! padding
-       
+                        field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_post)
+  
 !--------------------------------------------------------------------------------------------------
 ! doing the FT because it simplifies calculation of average stress in real space also
   call fftw_execute_dft_r2c(plan_forward,field_real,field_fourier)
-
-
+  
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 FT results
   if (debugFFTW) then
@@ -302,115 +291,19 @@ real(pReal) function convolution(calcDivergence,field_aim,C_ref)
                     scalarField_fourier(1:res1_red,1:res(2),1:res(3))))
   endif
 
-!--------------------------------------------------------------------------------------------------
-! removing highest frequencies
-  field_fourier  (  res1_red,1:res(2) ,             1:res(3)              ,1:3,1:3)&
-                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
-  field_fourier  (1:res1_red,  res(2)/2_pInt+1_pInt,1:res(3)              ,1:3,1:3)& 
-                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
-  if(res(3)>1_pInt) &
-   field_fourier (1:res1_red,1:res(2),                res(3)/2_pInt+1_pInt,1:3,1:3)&
-                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
+end subroutine Utilities_forwardFFT
 
+subroutine Utilities_backwardFFT()
 
-!--------------------------------------------------------------------------------------------------
-! calculating RMS divergence criterion in Fourier space
-  if(calcDivergence) then
-    field_avg = real(field_fourier(1,1,1,1:3,1:3),pReal)*wgt
+  implicit none
   
-    field_av_L2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(field_avg,&                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
-                                                math_transpose33(field_avg)))))
-    err_div_RMS = 0.0_pReal
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2)
-      do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
-        err_div_RMS = err_div_RMS &
-              + 2.0_pReal*(sum (real(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),&           ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
-                                              xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&            ! --> sum squared L_2 norm of vector 
-                          +sum(aimag(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),& 
-                                                             xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))
-      enddo
-      err_div_RMS = err_div_RMS &                                                              ! Those two layers (DC and Nyquist) do not have a conjugate complex counterpart
-                    + sum( real(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
-                                                        xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
-                    + sum(aimag(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
-                                                        xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
-                    + sum( real(math_mul33x3_complex(field_fourier(res1_red,j,k,1:3,1:3),&
-                                                        xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)&
-                    + sum(aimag(math_mul33x3_complex(field_fourier(res1_red,j,k,1:3,1:3),&
-                                                        xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
-    enddo; enddo
+  integer(pInt) :: row, column, i, j, k, m, n
   
-    err_div_RMS = sqrt(err_div_RMS)*wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
-    err_div = err_div_RMS/field_av_L2                                                        ! criterion to stop iterations
-  
-  
-!--------------------------------------------------------------------------------------------------
-! calculate additional divergence criteria and report
-    if (debugDivergence) then                                                                  ! calculate divergence again
-      err_div_max = 0.0_pReal
-      do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-        temp3_Complex = math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3)*wgt,&                    ! weighting P_fourier
-                                                xi(1:3,i,j,k))*TWOPIIMG
-        err_div_max = max(err_div_max,sum(abs(temp3_Complex)**2.0_pReal))
-        divergence_fourier(i,j,k,1:3) = temp3_Complex                                          ! need divergence NOT squared
-      enddo; enddo; enddo
-      
-      call fftw_execute_dft_c2r(plan_divergence,divergence_fourier,divergence_real)            ! already weighted
-  
-      err_real_div_RMS = 0.0_pReal
-      err_post_div_RMS = 0.0_pReal
-      err_real_div_max = 0.0_pReal
-      do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-        err_real_div_RMS = err_real_div_RMS +   sum(divergence_real(i,j,k,1:3)**2.0_pReal)     ! avg of squared L_2 norm of div(stress) in real space
-        err_post_div_RMS = err_post_div_RMS +   sum(divergence_post(i,j,k,1:3)**2.0_pReal)     ! avg of squared L_2 norm of div(stress) in real space
-        err_real_div_max = max(err_real_div_max,sum(divergence_real(i,j,k,1:3)**2.0_pReal))    ! max of squared L_2 norm of div(stress) in real space
-      enddo; enddo; enddo
-  
-      err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                            ! RMS in real space
-      err_post_div_RMS = sqrt(wgt*err_post_div_RMS)                                            ! RMS in real space
-      err_real_div_max = sqrt(    err_real_div_max)                                            ! max in real space
-      err_div_max      = sqrt(    err_div_max)                                                 ! max in Fourier space
-      
-      write(6,'(a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
-      write(6,'(a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
-      write(6,'(a,es11.4)')        'error divergence post RMS = ',err_post_div_RMS
-      write(6,'(a,es11.4)')        'error divergence  FT  max = ',err_div_max
-      write(6,'(a,es11.4)')        'error divergence Real max = ',err_real_div_max
-    endif
-    write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/err_div_tol,&
-                                                       ' (',err_div,' N/m³)'
-  end if
-!--------------------------------------------------------------------------------------------------
-! to the actual spectral method calculation (mechanical equilibrium)
-  if(memory_efficient) then                                                                  ! memory saving version, on-the-fly calculation of gamma_hat
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res1_red
-        if(any([i,j,k] /= 1_pInt)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
-          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-            xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
-          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-            temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
-          temp33_Real = math_inv33(temp33_Real)
-          forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, q=1_pInt:3_pInt)&
-            gamma_hat(1,1,1, l,m,n,q) =  temp33_Real(l,n)*xiDyad(m,q)
-          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-            temp33_Complex(l,m) = sum(gamma_hat(1,1,1, l,m, 1:3,1:3) *&
-                                                         field_fourier(i,j,k,1:3,1:3))
-          field_fourier(i,j,k,1:3,1:3) = temp33_Complex 
-      endif             
-    enddo; enddo; enddo
-  else                                                                                       ! use precalculated gamma-operator
-    do k = 1_pInt, res(3);  do j = 1_pInt, res(2);  do i = 1_pInt,res1_red
-      forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt) &
-        temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) *&
-                                                         field_fourier(i,j,k,1:3,1:3))
-      field_fourier(i,j,k, 1:3,1:3) = temp33_Complex
-    enddo; enddo; enddo
-  endif
-  field_fourier(1,1,1,1:3,1:3) = cmplx(field_aim,0.0_pReal,pReal)             ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
-
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
   if (debugFFTW) then
+    row =  3 !  (mod(totalIncsCounter+iter-2_pInt,9_pInt))/3_pInt + 1_pInt                      ! go through the elements of the tensors, controlled by totalIncsCounter and iter, starting at 1
+    column = 3 !(mod(totalIncsCounter+iter-2_pInt,3_pInt))        + 1_pInt
     do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
        scalarField_fourier(i,j,k) = field_fourier(i,j,k,row,column)
     enddo; enddo; enddo
@@ -442,115 +335,192 @@ real(pReal) function convolution(calcDivergence,field_aim,C_ref)
                 real(scalarField_real(1:res(1),1:res(2),1:res(3))))
   endif
 
+end subroutine Utilities_backwardFFT
+
+subroutine Utilities_fourierConvolution(field_aim)
+
+  use numerics, only: &
+    memory_efficient
+    
+  implicit none  
+  
+  real(pReal), dimension(3,3) :: xiDyad, temp33_Real, field_aim
+  integer(pInt) :: i, j, k, l, m, n, q
+  complex(pReal), dimension(3,3) ::  temp33_complex
+
 !--------------------------------------------------------------------------------------------------
-! calculate some additional output
-  if(debugGeneral) then
-    maxCorrectionSkew = 0.0_pReal
-    maxCorrectionSym  = 0.0_pReal
-    temp33_Real = 0.0_pReal
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-      maxCorrectionSym  = max(maxCorrectionSym,&
-                              maxval(math_symmetric33(field_real(i,j,k,1:3,1:3))))
-      maxCorrectionSkew = max(maxCorrectionSkew,&
-                              maxval(math_skew33(field_real(i,j,k,1:3,1:3))))
-      temp33_Real = temp33_Real + field_real(i,j,k,1:3,1:3)
+! actual spectral method         
+  write(6,'(a)') ''
+  write(6,'(a)') '... doing convolution .................'
+  
+!--------------------------------------------------------------------------------------------------
+! removing highest frequencies
+  field_fourier  (  res1_red,1:res(2) ,             1:res(3)              ,1:3,1:3)&
+                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
+  field_fourier  (1:res1_red,  res(2)/2_pInt+1_pInt,1:res(3)              ,1:3,1:3)& 
+                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
+  if(res(3)>1_pInt) &
+   field_fourier (1:res1_red,1:res(2),                res(3)/2_pInt+1_pInt,1:3,1:3)&
+                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
+
+!--------------------------------------------------------------------------------------------------
+! to the actual spectral method calculation (mechanical equilibrium)
+  if(memory_efficient) then                                                                  ! memory saving version, on-the-fly calculation of gamma_hat
+    do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res1_red
+        if(any([i,j,k] /= 1_pInt)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+            xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+            temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
+          temp33_Real = math_inv33(temp33_Real)
+          forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, q=1_pInt:3_pInt)&
+            gamma_hat(1,1,1, l,m,n,q) =  temp33_Real(l,n)*xiDyad(m,q)
+          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+            temp33_Complex(l,m) = sum(gamma_hat(1,1,1, l,m, 1:3,1:3) *&
+                                                         field_fourier(i,j,k,1:3,1:3))
+          field_fourier(i,j,k,1:3,1:3) = temp33_Complex 
+      endif             
     enddo; enddo; enddo
-    write(6,'(a,1x,es11.4)') 'max symmetric correction of deformation =',&
-                                  maxCorrectionSym*wgt
-    write(6,'(a,1x,es11.4)') 'max skew      correction of deformation =',&
-                                  maxCorrectionSkew*wgt
-    write(6,'(a,1x,es11.4)') 'max sym/skew of avg correction =         ',&
-                                  maxval(math_symmetric33(temp33_real))/&
-                                  maxval(math_skew33(temp33_real))
+  else                                                                                       ! use precalculated gamma-operator
+    do k = 1_pInt, res(3);  do j = 1_pInt, res(2);  do i = 1_pInt,res1_red
+      forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt) &
+        temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) *&
+                                                         field_fourier(i,j,k,1:3,1:3))
+      field_fourier(i,j,k, 1:3,1:3) = temp33_Complex
+    enddo; enddo; enddo
   endif
-  field_real = field_real * wgt
-  convolution = err_div/err_div_tol
+  field_fourier(1,1,1,1:3,1:3) = cmplx(field_aim,0.0_pReal,pReal)             ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
 
-end function convolution
-
-
-function S_lastInc(rot_BC,mask_stressVector1,C)
+end subroutine Utilities_fourierConvolution
  
- real(pReal), dimension(3,3,3,3) :: S_lastInc
- real(pReal), dimension(3,3,3,3), intent(in) :: C
- integer(pInt) :: i, j, k, m, n 
- real(pReal), dimension(3,3), intent(in) :: rot_BC
- logical, dimension(9), intent(in) :: mask_stressVector1
- real(pReal), dimension(3,3,3,3) :: C_lastInc
- real(pReal), dimension(9,9) :: temp99_Real   
- integer(pInt) :: size_reduced = 0_pInt 
- real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced                                  ! reduced compliance and stiffness (only for stress BC)
- logical :: errmatinv
- size_reduced = count(mask_stressVector1)
- allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
- allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
+real(pReal) function Utilities_divergenceRMS()
+ 
+  use numerics, only: err_div_tol
+  
+  integer(pInt) :: i, j, k, l, m, n, q
+ 
+!--------------------------------------------------------------------------------------------------
+!variables for additional output due to general debugging
+  real(pReal), dimension(3,3) :: field_avg
+  real(pReal) :: field_av_L2, err_div_RMS, err_real_div_RMS, err_post_div_RMS,&
+                 err_div_max, err_real_div_max
+  complex(pReal), dimension(3) ::  temp3_complex
+  
+!--------------------------------------------------------------------------------------------------
+! actual spectral method         
+  write(6,'(a)') ''
+  write(6,'(a)') '... calculating divergence .................'
 
- C_lastInc = math_rotate_forward3333(C,rot_BC)                               ! calculate stiffness from former inc
- temp99_Real = math_Plain3333to99(C_lastInc)
- k = 0_pInt                                                                                 ! build reduced stiffness
- do n = 1_pInt,9_pInt
-   if(mask_stressVector1(n)) then
-     k = k + 1_pInt
-     j = 0_pInt
-     do m = 1_pInt,9_pInt
-       if(mask_stressVector1(m)) then
-         j = j + 1_pInt
-         c_reduced(k,j) = temp99_Real(n,m)
- endif; enddo; endif; enddo
- call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                         ! invert reduced stiffness
- if(errmatinv) call IO_error(error_ID=400_pInt)
- temp99_Real = 0.0_pReal                                                                    ! build full compliance
-  k = 0_pInt
+!--------------------------------------------------------------------------------------------------
+! calculating RMS divergence criterion in Fourier space
+  
+  err_div_RMS = 0.0_pReal
+  do k = 1_pInt, res(3); do j = 1_pInt, res(2)
+    do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
+      err_div_RMS = err_div_RMS &
+            + 2.0_pReal*(sum (real(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),&           ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
+                                            xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&            ! --> sum squared L_2 norm of vector 
+                        +sum(aimag(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),& 
+                                                           xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))
+    enddo
+    err_div_RMS = err_div_RMS &                                                              ! Those two layers (DC and Nyquist) do not have a conjugate complex counterpart
+                  + sum( real(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
+                                                      xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
+                  + sum(aimag(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
+                                                      xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
+                  + sum( real(math_mul33x3_complex(field_fourier(res1_red,j,k,1:3,1:3),&
+                                                      xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)&
+                  + sum(aimag(math_mul33x3_complex(field_fourier(res1_red,j,k,1:3,1:3),&
+                                                      xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
+  enddo; enddo
+
+  err_div_RMS = sqrt(err_div_RMS)*wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
+  Utilities_divergenceRMS = err_div_RMS                                                      ! criterion to stop iterations
+  
+!--------------------------------------------------------------------------------------------------
+! calculate additional divergence criteria and report
+  if (debugDivergence) then                                                                  ! calculate divergence again
+    err_div_max = 0.0_pReal
+    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
+      temp3_Complex = math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3)*wgt,&                    ! weighting P_fourier
+                                              xi(1:3,i,j,k))*TWOPIIMG
+      err_div_max = max(err_div_max,sum(abs(temp3_Complex)**2.0_pReal))
+      divergence_fourier(i,j,k,1:3) = temp3_Complex                                          ! need divergence NOT squared
+    enddo; enddo; enddo
+    
+    call fftw_execute_dft_c2r(plan_divergence,divergence_fourier,divergence_real)            ! already weighted
+
+    err_real_div_RMS = 0.0_pReal
+    err_post_div_RMS = 0.0_pReal
+    err_real_div_max = 0.0_pReal
+    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+      err_real_div_RMS = err_real_div_RMS +   sum(divergence_real(i,j,k,1:3)**2.0_pReal)     ! avg of squared L_2 norm of div(stress) in real space
+      err_post_div_RMS = err_post_div_RMS +   sum(divergence_post(i,j,k,1:3)**2.0_pReal)     ! avg of squared L_2 norm of div(stress) in real space
+      err_real_div_max = max(err_real_div_max,sum(divergence_real(i,j,k,1:3)**2.0_pReal))    ! max of squared L_2 norm of div(stress) in real space
+    enddo; enddo; enddo
+
+    err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                            ! RMS in real space
+    err_post_div_RMS = sqrt(wgt*err_post_div_RMS)                                            ! RMS in real space
+    err_real_div_max = sqrt(    err_real_div_max)                                            ! max in real space
+    err_div_max      = sqrt(    err_div_max)                                                 ! max in Fourier space
+    
+    write(6,'(a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
+    write(6,'(a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
+    write(6,'(a,es11.4)')        'error divergence post RMS = ',err_post_div_RMS
+    write(6,'(a,es11.4)')        'error divergence  FT  max = ',err_div_max
+    write(6,'(a,es11.4)')        'error divergence Real max = ',err_real_div_max
+  endif
+
+end function Utilities_divergenceRMS
+
+
+function Utilities_stressBC(rot_BC,mask_stressVector,C)
+ 
+  real(pReal), dimension(3,3,3,3) :: Utilities_stressBC
+  real(pReal), dimension(3,3,3,3), intent(in) :: C
+  integer(pInt) :: i, j, k, m, n 
+  real(pReal), dimension(3,3), intent(in) :: rot_BC
+  logical, dimension(9), intent(in) :: mask_stressVector
+  real(pReal), dimension(3,3,3,3) :: C_lastInc
+  real(pReal), dimension(9,9) :: temp99_Real   
+  integer(pInt) :: size_reduced = 0_pInt 
+  real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced                                  ! reduced compliance and stiffness (only for stress BC)
+  logical :: errmatinv
+  
+  size_reduced = count(mask_stressVector)
+  allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
+  allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
+ 
+  C_lastInc = math_rotate_forward3333(C,rot_BC)                               ! calculate stiffness from former inc
+  temp99_Real = math_Plain3333to99(C_lastInc)
+  k = 0_pInt                                                                                 ! build reduced stiffness
   do n = 1_pInt,9_pInt
-    if(mask_stressVector1(n)) then
+    if(mask_stressVector(n)) then
       k = k + 1_pInt
       j = 0_pInt
       do m = 1_pInt,9_pInt
-        if(mask_stressVector1(m)) then
+        if(mask_stressVector(m)) then
           j = j + 1_pInt
-          temp99_Real(n,m) = s_reduced(k,j)
- endif; enddo; endif; enddo
- S_lastInc = math_Plain99to3333(temp99_Real)
+          c_reduced(k,j) = temp99_Real(n,m)
+  endif; enddo; endif; enddo
+  call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                         ! invert reduced stiffness
+  if(errmatinv) call IO_error(error_ID=400_pInt)
+  temp99_Real = 0.0_pReal                                                                    ! build full compliance
+   k = 0_pInt
+   do n = 1_pInt,9_pInt
+     if(mask_stressVector(n)) then
+       k = k + 1_pInt
+       j = 0_pInt
+       do m = 1_pInt,9_pInt
+         if(mask_stressVector(m)) then
+           j = j + 1_pInt
+           temp99_Real(n,m) = s_reduced(k,j)
+  endif; enddo; endif; enddo
+  Utilities_stressBC = math_Plain99to3333(temp99_Real)
 
-end function S_lastInc
+end function Utilities_stressBC
 
-
-!--------------------------------------------------------------------------------------------------
-! calculate reduced compliance
-
- real(pReal) function BCcorrection(mask_stressVector,P_BC,P_av,F_aim,S_lastInc)
- 
-   use numerics, only: err_stress_tolrel, err_stress_tolabs
-   
-   logical, dimension(9) :: mask_stressVector
-   real(pReal) ::  err_stress, err_stress_tol     
-   real(pReal), dimension(3,3), parameter ::  ones = 1.0_pReal, zeroes = 0.0_pReal   
-   real(pReal), dimension(3,3,3,3) :: S_lastInc
-   real(pReal), dimension(3,3) :: &
-                                 P_BC , &
-                                 P_av, &
-                                 F_aim, &
-                                 mask_stress, &
-                                 mask_defgrad
-   mask_stress = merge(ones,zeroes,reshape(mask_stressVector,[3,3]))                                   
-   mask_defgrad  = merge(zeroes,ones,reshape(mask_stressVector,[3,3]))
- 
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
-! calculate stress BC if applied
-   err_stress = maxval(abs(mask_stress * (P_av - P_BC)))                     ! maximum deviaton (tensor norm not applicable)
-   err_stress_tol = min(maxval(abs(P_av)) * err_stress_tolrel,err_stress_tolabs)            ! don't use any tensor norm for the relative criterion because the comparison should be coherent
-   write(6,'(a)') '' 
-   write(6,'(a)') '... correcting deformation gradient to fulfill BCs ...............'
-   write(6,'(a,f6.2,a,es11.4,a)') 'error stress = ', err_stress/err_stress_tol, &
-                                                                    ' (',err_stress,' Pa)'  
-   F_aim = F_aim - math_mul3333xx33(S_lastInc, ((P_av - P_BC)))              ! residual on given stress components
-   write(6,'(a,1x,es11.4)')'determinant of new deformation = ',math_det33(F_aim)
-   BCcorrection = err_stress/err_stress_tol
-   
-end function BCcorrection
-
-subroutine constitutiveResponse(coordinates,F,F_lastInc,temperature,timeinc,&
+subroutine Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,timeinc,&
                                 P,C,P_av,ForwardData,rotation_BC)
   use debug, only: &
     debug_reset, &
@@ -610,23 +580,24 @@ subroutine constitutiveResponse(coordinates,F,F_lastInc,temperature,timeinc,&
   write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
                                                           math_transpose33(P_av)/1.e6_pReal
   C = C * wgt
-end subroutine constitutiveResponse
+  
+end subroutine Utilities_constitutiveResponse
 
-subroutine Utilities_destroy
+subroutine Utilities_destroy()
 
-implicit none
-
-if (debugDivergence) then
-  call fftw_destroy_plan(plan_divergence)
-endif
-
-if (debugFFTW) then
-  call fftw_destroy_plan(plan_scalarField_forth)
-  call fftw_destroy_plan(plan_scalarField_back)
-endif 
-
-call fftw_destroy_plan(plan_forward)
-call fftw_destroy_plan(plan_backward)
+  implicit none
+  
+  if (debugDivergence) then
+    call fftw_destroy_plan(plan_divergence)
+  endif
+  
+  if (debugFFTW) then
+    call fftw_destroy_plan(plan_scalarField_forth)
+    call fftw_destroy_plan(plan_scalarField_back)
+  endif 
+  
+  call fftw_destroy_plan(plan_forward)
+  call fftw_destroy_plan(plan_backward)
 
 end subroutine Utilities_destroy
        

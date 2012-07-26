@@ -12,6 +12,8 @@ module DAMASK_spectral_SolverBasic
  
  implicit none
  
+ real(pReal), dimension(3,3) :: temp33_Real
+ 
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasic_label = 'basic'
 
@@ -25,10 +27,9 @@ module DAMASK_spectral_SolverBasic
 ! stress, stiffness and compliance average etc.
  real(pReal), dimension(3,3) :: &
    F_aim = math_I3, &
-   F_aim_lastInc = math_I3, &
-   P_av
+   F_aim_lastInc = math_I3
+   
  real(pReal), dimension(3,3,3,3) :: &
-   C_ref = 0.0_pReal, &
    C = 0.0_pReal
  
  
@@ -49,8 +50,7 @@ module DAMASK_spectral_SolverBasic
    implicit none
    integer(pInt) :: i,j,k
 
-   res     =   mesh_spectral_getResolution()
-   geomdim = mesh_spectral_getDimension()
+   call Utilities_Init()
    
    allocate (F          (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
    allocate (F_lastInc  (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
@@ -88,31 +88,31 @@ module DAMASK_spectral_SolverBasic
      coordinates = 0.0 ! change it later!!!
    endif
    
-   call constitutiveResponse(coordinates,F,F_lastInc,temperature,0.0_pReal,&
-                                P,C,P_av,.false.,math_I3)
+   call Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,0.0_pReal,&
+                                P,C,temp33_Real,.false.,math_I3)
    
 !--------------------------------------------------------------------------------------------------
 ! reference stiffness
    if (restartInc == 1_pInt) then
-     C_ref = C 
-     call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
-     write (777,rec=1) C_ref
+     call IO_write_jobBinaryFile(777,'C_ref',size(C))
+     write (777,rec=1) C
      close(777)
    elseif (restartInc > 1_pInt) then
-     call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C_ref))
-     read (777,rec=1) C_ref
+     call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C))
+     read (777,rec=1) C
      close (777)
    endif
    
-   call Utilities_Init(C_ref)
+   call Utilities_updateGamma(C)
  
  end subroutine basic_init
  
 type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F_BC,mask_stressVector,velgrad,rotation_BC)
  
  use numerics, only: &
-   itmax,&
-   itmin
+   itmax, &
+   itmin, &
+   update_gamma
 
  use IO, only: &
    IO_write_JobBinaryFile
@@ -141,7 +141,8 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
                                            mask_defgrad, &
                                            deltaF_aim, &
                                            F_aim_lab, &
-                                           F_aim_lab_lastIter
+                                           F_aim_lab_lastIter, &
+                                           P_av
  real(pReal)   :: err_div, err_stress       
  integer(pInt) :: iter
  integer(pInt) :: i, j, k
@@ -192,10 +193,10 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
                                                           1.0_pReal,F_lastInc,coordinates)
 
  iter = 0_pInt
- S = S_lastInc(rotation_BC,mask_stressVector,C)
- 
- convergenceLoop: do while((iter < itmax .and. (any([err_div ,err_stress] > 1.0_pReal)))&
-          .or. iter < itmin)
+ S = Utilities_stressBC(rotation_BC,mask_stressVector,C)
+ if (update_gamma) call Utilities_updateGamma(C)
+   
+ convergenceLoop: do while(.not. basic_convergenced(err_div,P_av,err_stress,P_av,iter))
    
    iter = iter + 1_pInt
 !--------------------------------------------------------------------------------------------------
@@ -209,14 +210,15 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-   call constitutiveResponse(coordinates,F,F_lastInc,temperature,timeinc,&
+   call Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,timeinc,&
                                 P,C,P_av,ForwardData,rotation_BC)
    ForwardData = .False.
    
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
    if(any(mask_stressVector)) then                                                             ! calculate stress BC if applied
-     err_stress = BCcorrection(mask_stressVector,P_BC,P_av,F_aim,S)
+     F_aim = F_aim - math_mul3333xx33(S, ((P_av - P_BC)))
+     err_stress = mask_stress * (P_av - P_BC)))
    else
      err_stress = 0.0_pReal
    endif
@@ -226,11 +228,36 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient
   field_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = P
-  err_div = convolution(.True.,F_aim_lab_lastIter - F_aim_lab, C_ref)
+  call Utilities_forwardFFT()
+  err_div = Utilities_divergenceRMS()
+  call Utilities_fourierConvolution(F_aim_lab_lastIter - F_aim_lab) 
+  call Utilities_backwardFFT()
 
   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
     F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
   enddo; enddo; enddo
+  
+!--------------------------------------------------------------------------------------------------
+! calculate some additional output
+  if(debugGeneral) then
+    maxCorrectionSkew = 0.0_pReal
+    maxCorrectionSym  = 0.0_pReal
+    temp33_Real = 0.0_pReal
+    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+      maxCorrectionSym  = max(maxCorrectionSym,&
+                              maxval(math_symmetric33(field_real(i,j,k,1:3,1:3))))
+      maxCorrectionSkew = max(maxCorrectionSkew,&
+                              maxval(math_skew33(field_real(i,j,k,1:3,1:3))))
+      temp33_Real = temp33_Real + field_real(i,j,k,1:3,1:3)
+    enddo; enddo; enddo
+    write(6,'(a,1x,es11.4)') 'max symmetric correction of deformation =',&
+                                  maxCorrectionSym*wgt
+    write(6,'(a,1x,es11.4)') 'max skew      correction of deformation =',&
+                                  maxCorrectionSkew*wgt
+    write(6,'(a,1x,es11.4)') 'max sym/skew of avg correction =         ',&
+                                  maxval(math_symmetric33(temp33_real))/&
+                                  maxval(math_skew33(temp33_real))
+  endif
 
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report
@@ -246,9 +273,34 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
     write(6,'(a,1x,es11.4)') 'max determinant of deformation =', defgradDetMax
     write(6,'(a,1x,es11.4)') 'min determinant of deformation =', defgradDetMin
   endif
+  
  enddo convergenceLoop
 
 end function basic_solution
+
+logical function basic_convergenced(err_div,P_av,err_stress,P_av,iter)
+
+  use numerics, only: &
+   itmax, &
+   itmin, &
+   err_div_tol, &
+   err_stress_tolrel, &
+   err_stress_tolabs
+    
+  implicit none
+  
+  real(pReal), dimension(3,3) :: P_av
+  real(pReal) :: err_div, err_stress, field_av_L2
+  integer(pInt) :: iter
+  
+  field_av_L2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av,&                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
+                                              math_transpose33(P_av)))))
+  basic_convergenced = (iter < itmax) .and. (iter > itmin) .and. &
+                     (err_div/field_av_L2/err_div_tol < 1.0_pReal) .and. &
+                     (err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs) < 1.0_pReal)
+  
+  
+end function basic_convergenced
 
 subroutine basic_destroy()
 
