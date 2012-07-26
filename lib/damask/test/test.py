@@ -16,7 +16,10 @@ class Test():
   
   def __init__(self,test_description):
     
-    print '\n'+test_description
+    print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n' \
+         +'----------------------------------------------------------------\n' \
+         +'| '+test_description+'\n' \
+         +'----------------------------------------------------------------'
     self.dirBase = os.path.dirname(os.path.realpath(sys.argv[0]))
     self.parser = OptionParser(
     description = 'Using: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $',
@@ -190,3 +193,5 @@ class Test():
                          True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1])
     else:
      print ' ********\n * Test %i failed...\n ********'%(culprit+1)
+
+    print '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
