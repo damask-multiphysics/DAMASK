@@ -133,7 +133,7 @@ for file in files:
   for i in xrange(N_seeds): 
     file['material.config'].write('[Grain'+ str(i+1).zfill(digits)+ ']'+'\n')  
     file['material.config'].write('(gauss)  phi1 '+ str(eulers[i][0])+ '    Phi '+ str(eulers[i][1])+ \
-                                        '    Phi2 '+ str(eulers[i][2])+ '   scatter 0.0   fraction 1.0'+'\n')
+                                       '    phi2 '+ str(eulers[i][2])+ '   scatter 0.0   fraction 1.0'+'\n')
     
                                                                                  
  

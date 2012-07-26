@@ -91,7 +91,6 @@ bin_link = { \
                 'spectral_randomSeeding.py',
                 'spectral_layeredGeom.py',
                 'spectral_geomPack.py',
-                'voronoi_tessellation.exe',
                 'spectral_voronoiTessellation.py',
                 'OIMang_hex2cub.py',
                 ],
@@ -124,7 +123,6 @@ bin_link = { \
 
 compile = { \
         'pre' : [
-                'voronoi_tessellation.f90',
                 ],
         'post' : [
                 ],
