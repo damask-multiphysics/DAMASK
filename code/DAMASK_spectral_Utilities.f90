@@ -1,39 +1,11 @@
-! Copyright 2012 Max-Planck-Institut für Eisenforschung GmbH
-!
-! This file is part of DAMASK,
-! the Düsseldorf Advanced Material Simulation Kit.
-!
-! DAMASK is free software: you can redistribute it and/or modify
-! it under the terms of the GNU General Public License as published by
-! the Free Software Foundation, either version 3 of the License, or
-! (at your option) any later version.
-!
-! DAMASK is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-! GNU General Public License for more details.
-!
-! You should have received a copy of the GNU General Public License
-! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
-!
-!##################################################################################################
+!--------------------------------------------------------------------------------------------------
 !* $Id$
-!##################################################################################################
-! Material subroutine for BVP solution using spectral method
-!
-! Run 'DAMASK_spectral.exe --help' to get usage hints
-!
-! written by P. Eisenlohr,
-!            F. Roters,
-!            L. Hantcherli,
-!            W.A. Counts,
-!            D.D. Tjahjanto,
-!            C. Kords,
-!            M. Diehl,
-!            R. Lebensohn
-!
-! MPI fuer Eisenforschung, Duesseldorf
-
+!--------------------------------------------------------------------------------------------------
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Utilities used by the different spectral solver variants
+!--------------------------------------------------------------------------------------------------
 module DAMASK_spectral_Utilities
  
  use prec, only: &
@@ -49,25 +21,32 @@ module DAMASK_spectral_Utilities
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
- type(C_PTR) ::  plan_forward, plan_backward                                                        ! plans for fftw
- real(pReal),    dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                   ! gamma operator (field) for spectral method
- real(pReal),    dimension(3,3,3,3) :: C_ref
- real(pReal),    dimension(:,:,:,:),       allocatable ::  xi                                          ! wave vector field for divergence and for gamma operator
- real(pReal),    dimension(:,:,:,:,:),     pointer :: field_real
- complex(pReal), dimension(:,:,:,:,:),     pointer :: field_fourier
+ type(C_PTR) ,  private  ::  plan_forward, plan_backward                                                        ! plans for fftw
+ real(pReal),   private, dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                   ! gamma operator (field) for spectral method
+ real(pReal),   private, dimension(3,3,3,3) :: C_ref
+ real(pReal),   private, dimension(:,:,:,:),       allocatable ::  xi                                          ! wave vector field for divergence and for gamma operator
+ real(pReal),   public, dimension(:,:,:,:,:),     pointer :: field_real
+ complex(pReal),private, dimension(:,:,:,:,:),     pointer :: field_fourier
 
 !--------------------------------------------------------------------------------------------------
 ! debug fftw 
- type(C_PTR) :: plan_scalarField_forth, plan_scalarField_back
- complex(pReal), dimension(:,:,:), pointer :: scalarField_real
- complex(pReal), dimension(:,:,:), pointer :: scalarField_fourier
+ type(C_PTR),    private  :: plan_scalarField_forth, plan_scalarField_back
+ complex(pReal),private,  dimension(:,:,:), pointer :: scalarField_real
+ complex(pReal),private,  dimension(:,:,:), pointer :: scalarField_fourier
  
 !--------------------------------------------------------------------------------------------------
 ! debug divergence
- type(C_PTR) :: plan_divergence
- real(pReal),    dimension(:,:,:,:), pointer :: divergence_real
- complex(pReal), dimension(:,:,:,:), pointer :: divergence_fourier
+ type(C_PTR), private :: plan_divergence
+ real(pReal),    private, dimension(:,:,:,:), pointer :: divergence_real
+ complex(pReal), private, dimension(:,:,:,:), pointer :: divergence_fourier
  real(pReal),    dimension(:,:,:,:), allocatable :: divergence_post
+
+ type BC_type
+   real(pReal), dimension(3,3) :: values
+   real(pReal), dimension(3,3) :: maskFloat
+   logical,     dimension(3,3) :: maskLogical
+   character(20) :: myType
+ end type BC_type
 
 !--------------------------------------------------------------------------------------------------
 !variables controlling debugging
@@ -98,7 +77,8 @@ subroutine Utilities_init()
    divergence_correction, &                             
    DAMASK_NumThreadsInt, &
    fftw_planner_flag, &
-   fftw_timelimit
+   fftw_timelimit, &
+   memory_efficient
    
  use debug, only: &
    debug_level, &
@@ -233,7 +213,7 @@ subroutine Utilities_updateGamma(C)
 
   real(pReal), dimension(3,3,3,3) :: C
   real(pReal), dimension(3,3) :: temp33_Real, xiDyad
-  integer(pInt) :: i, j, k, l, m, n, q
+  integer(pInt) :: i, j, k,   l, m, n, o
   
   C_ref = C
   if(.not. memory_efficient) then                                                   
@@ -244,8 +224,8 @@ subroutine Utilities_updateGamma(C)
         forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
           temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
         temp33_Real = math_inv33(temp33_Real)
-        forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, q=1_pInt:3_pInt)&
-          gamma_hat(i,j,k, l,m,n,q) =  temp33_Real(l,n)*xiDyad(m,q)
+        forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
+          gamma_hat(i,j,k, l,m,n,o) =  temp33_Real(l,n)*xiDyad(m,o)
       endif  
     enddo; enddo; enddo
     gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
@@ -290,7 +270,15 @@ subroutine Utilities_forwardFFT()
                           field_fourier(1:res1_red,1:res(2),1:res(3),row,column))/&
                     scalarField_fourier(1:res1_red,1:res(2),1:res(3))))
   endif
-
+!--------------------------------------------------------------------------------------------------
+! removing highest frequencies
+ field_fourier  (  res1_red,1:res(2) ,             1:res(3)              ,1:3,1:3)&
+                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
+ field_fourier  (1:res1_red,  res(2)/2_pInt+1_pInt,1:res(3)              ,1:3,1:3)& 
+                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(3)>1_pInt) &
+  field_fourier (1:res1_red,1:res(2),                res(3)/2_pInt+1_pInt,1:3,1:3)&
+                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
 end subroutine Utilities_forwardFFT
 
 subroutine Utilities_backwardFFT()
@@ -322,8 +310,9 @@ subroutine Utilities_backwardFFT()
   endif
 !--------------------------------------------------------------------------------------------------
 ! doing the inverse FT
+  print*, 'field fourier 111', field_fourier(1,1,1,1:3,1:3)
   call fftw_execute_dft_c2r(plan_backward,field_fourier,field_real)                      ! back transform of fluct deformation gradient
-
+  print*, 'field real 111', field_real(1,1,1,1:3,1:3)
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
   if (debugFFTW) then
@@ -334,96 +323,84 @@ subroutine Utilities_backwardFFT()
                 field_real(1:res(1),1:res(2),1:res(3),row,column))/&
                 real(scalarField_real(1:res(1),1:res(2),1:res(3))))
   endif
-
+  field_real = field_real * wgt
 end subroutine Utilities_backwardFFT
 
-subroutine Utilities_fourierConvolution(field_aim)
 
-  use numerics, only: &
-    memory_efficient
+!--------------------------------------------------------------------------------------------------
+!> @brief doing convolution gamma_hat * field_real with average value given by fieldAim
+!--------------------------------------------------------------------------------------------------
+subroutine Utilities_fourierConvolution(fieldAim)
+
+ use numerics, only: &
+   memory_efficient
     
-  implicit none  
+ implicit none  
   
-  real(pReal), dimension(3,3) :: xiDyad, temp33_Real, field_aim
-  integer(pInt) :: i, j, k, l, m, n, q
-  complex(pReal), dimension(3,3) ::  temp33_complex
+ real(pReal), dimension(3,3), intent(in) :: fieldAim
+ real(pReal), dimension(3,3) :: xiDyad, temp33_Real
+ integer(pInt) :: i, j, k,    l, m, n, o
+ complex(pReal), dimension(3,3) ::  temp33_complex
 
-!--------------------------------------------------------------------------------------------------
-! actual spectral method         
-  write(6,'(a)') ''
-  write(6,'(a)') '... doing convolution .................'
+ write(6,'(a)') ''
+ write(6,'(a)') '... doing convolution .................'
   
-!--------------------------------------------------------------------------------------------------
-! removing highest frequencies
-  field_fourier  (  res1_red,1:res(2) ,             1:res(3)              ,1:3,1:3)&
-                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
-  field_fourier  (1:res1_red,  res(2)/2_pInt+1_pInt,1:res(3)              ,1:3,1:3)& 
-                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
-  if(res(3)>1_pInt) &
-   field_fourier (1:res1_red,1:res(2),                res(3)/2_pInt+1_pInt,1:3,1:3)&
-                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
-
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)
-  if(memory_efficient) then                                                                  ! memory saving version, on-the-fly calculation of gamma_hat
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res1_red
-        if(any([i,j,k] /= 1_pInt)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
-          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-            xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
-          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-            temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
-          temp33_Real = math_inv33(temp33_Real)
-          forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, q=1_pInt:3_pInt)&
-            gamma_hat(1,1,1, l,m,n,q) =  temp33_Real(l,n)*xiDyad(m,q)
-          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-            temp33_Complex(l,m) = sum(gamma_hat(1,1,1, l,m, 1:3,1:3) *&
-                                                         field_fourier(i,j,k,1:3,1:3))
-          field_fourier(i,j,k,1:3,1:3) = temp33_Complex 
-      endif             
-    enddo; enddo; enddo
-  else                                                                                       ! use precalculated gamma-operator
-    do k = 1_pInt, res(3);  do j = 1_pInt, res(2);  do i = 1_pInt,res1_red
-      forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt) &
-        temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) *&
-                                                         field_fourier(i,j,k,1:3,1:3))
-      field_fourier(i,j,k, 1:3,1:3) = temp33_Complex
-    enddo; enddo; enddo
-  endif
-  field_fourier(1,1,1,1:3,1:3) = cmplx(field_aim,0.0_pReal,pReal)             ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
+ if(memory_efficient) then                                                                  ! memory saving version, on-the-fly calculation of gamma_hat
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res1_red
+       if(any([i,j,k] /= 1_pInt)) then                                                      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+         forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+           xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+         forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+           temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
+         temp33_Real = math_inv33(temp33_Real)
+         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
+           gamma_hat(1,1,1, l,m,n,o) =  temp33_Real(l,n)*xiDyad(m,o)
+         forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+           temp33_Complex(l,m) = sum(gamma_hat(1,1,1, l,m, 1:3,1:3) * field_fourier(i,j,k,1:3,1:3))
+         field_fourier(i,j,k,1:3,1:3) = temp33_Complex 
+     endif             
+   enddo; enddo; enddo
+ else                                                                                       ! use precalculated gamma-operator
+   do k = 1_pInt, res(3);  do j = 1_pInt, res(2);  do i = 1_pInt,res1_red
+     forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt) &
+       temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) * field_fourier(i,j,k,1:3,1:3))
+     field_fourier(i,j,k, 1:3,1:3) = temp33_Complex
+   enddo; enddo; enddo
+ endif
+
+ field_fourier(1,1,1,1:3,1:3) = cmplx(fieldAim*real(Npoints,pReal),0.0_pReal,pReal)             ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
 
 end subroutine Utilities_fourierConvolution
  
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate root mean square of divergence of field_fourier
+!--------------------------------------------------------------------------------------------------
 real(pReal) function Utilities_divergenceRMS()
  
-  use numerics, only: err_div_tol
-  
-  integer(pInt) :: i, j, k, l, m, n, q
- 
-!--------------------------------------------------------------------------------------------------
-!variables for additional output due to general debugging
-  real(pReal), dimension(3,3) :: field_avg
-  real(pReal) :: field_av_L2, err_div_RMS, err_real_div_RMS, err_post_div_RMS,&
+  integer(pInt) :: i, j, k 
+  real(pReal) :: err_div_RMS, err_real_div_RMS, err_post_div_RMS,&
                  err_div_max, err_real_div_max
   complex(pReal), dimension(3) ::  temp3_complex
-  
-!--------------------------------------------------------------------------------------------------
-! actual spectral method         
+
   write(6,'(a)') ''
   write(6,'(a)') '... calculating divergence .................'
 
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
   
-  err_div_RMS = 0.0_pReal
+  Utilities_divergenceRMS = 0.0_pReal
   do k = 1_pInt, res(3); do j = 1_pInt, res(2)
     do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
-      err_div_RMS = err_div_RMS &
+      Utilities_divergenceRMS = Utilities_divergenceRMS &
             + 2.0_pReal*(sum (real(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),&           ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
                                             xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&            ! --> sum squared L_2 norm of vector 
                         +sum(aimag(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),& 
                                                            xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))
     enddo
-    err_div_RMS = err_div_RMS &                                                              ! Those two layers (DC and Nyquist) do not have a conjugate complex counterpart
+    Utilities_divergenceRMS = Utilities_divergenceRMS &                                                              ! Those two layers (DC and Nyquist) do not have a conjugate complex counterpart
                   + sum( real(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
                                                       xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
                   + sum(aimag(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
@@ -434,8 +411,7 @@ real(pReal) function Utilities_divergenceRMS()
                                                       xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
   enddo; enddo
 
-  err_div_RMS = sqrt(err_div_RMS)*wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
-  Utilities_divergenceRMS = err_div_RMS                                                      ! criterion to stop iterations
+  Utilities_divergenceRMS = sqrt(Utilities_divergenceRMS) *wgt                                                        ! RMS in real space calculated with Parsevals theorem from Fourier space
   
 !--------------------------------------------------------------------------------------------------
 ! calculate additional divergence criteria and report
@@ -474,39 +450,30 @@ real(pReal) function Utilities_divergenceRMS()
 end function Utilities_divergenceRMS
 
 
-function Utilities_stressBC(rot_BC,mask_stressVector,C)
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates mask compliance
+!--------------------------------------------------------------------------------------------------
+function Utilities_maskedCompliance(rot_BC,mask_stressVector,C)
+
+ real(pReal), dimension(3,3,3,3) :: Utilities_maskedCompliance
+ real(pReal), dimension(3,3,3,3), intent(in) :: C
+ integer(pInt) :: i, j, k, m, n 
+ real(pReal), dimension(3,3), intent(in) :: rot_BC
+ logical, dimension(9), intent(in) :: mask_stressVector
+ real(pReal), dimension(3,3,3,3) :: C_lastInc
+ real(pReal), dimension(9,9) :: temp99_Real   
+ integer(pInt) :: size_reduced = 0_pInt 
+ real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced                                  ! reduced compliance and stiffness (only for stress BC)
+ logical :: errmatinv
  
-  real(pReal), dimension(3,3,3,3) :: Utilities_stressBC
-  real(pReal), dimension(3,3,3,3), intent(in) :: C
-  integer(pInt) :: i, j, k, m, n 
-  real(pReal), dimension(3,3), intent(in) :: rot_BC
-  logical, dimension(9), intent(in) :: mask_stressVector
-  real(pReal), dimension(3,3,3,3) :: C_lastInc
-  real(pReal), dimension(9,9) :: temp99_Real   
-  integer(pInt) :: size_reduced = 0_pInt 
-  real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced                                  ! reduced compliance and stiffness (only for stress BC)
-  logical :: errmatinv
-  
-  size_reduced = count(mask_stressVector)
-  allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
-  allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
- 
-  C_lastInc = math_rotate_forward3333(C,rot_BC)                               ! calculate stiffness from former inc
-  temp99_Real = math_Plain3333to99(C_lastInc)
-  k = 0_pInt                                                                                 ! build reduced stiffness
-  do n = 1_pInt,9_pInt
-    if(mask_stressVector(n)) then
-      k = k + 1_pInt
-      j = 0_pInt
-      do m = 1_pInt,9_pInt
-        if(mask_stressVector(m)) then
-          j = j + 1_pInt
-          c_reduced(k,j) = temp99_Real(n,m)
-  endif; enddo; endif; enddo
-  call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                         ! invert reduced stiffness
-  if(errmatinv) call IO_error(error_ID=400_pInt)
-  temp99_Real = 0.0_pReal                                                                    ! build full compliance
-   k = 0_pInt
+ size_reduced = count(mask_stressVector)
+ if(size_reduced > 0_pInt )then
+   allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
+   allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
+
+   C_lastInc = math_rotate_forward3333(C,rot_BC)                                                    ! calculate stiffness from former inc
+   temp99_Real = math_Plain3333to99(C_lastInc)
+   k = 0_pInt                                                                                       ! build reduced stiffness
    do n = 1_pInt,9_pInt
      if(mask_stressVector(n)) then
        k = k + 1_pInt
@@ -514,13 +481,32 @@ function Utilities_stressBC(rot_BC,mask_stressVector,C)
        do m = 1_pInt,9_pInt
          if(mask_stressVector(m)) then
            j = j + 1_pInt
-           temp99_Real(n,m) = s_reduced(k,j)
-  endif; enddo; endif; enddo
-  Utilities_stressBC = math_Plain99to3333(temp99_Real)
+           c_reduced(k,j) = temp99_Real(n,m)
+   endif; enddo; endif; enddo
+   call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                               ! invert reduced stiffness
+   if(errmatinv) call IO_error(error_ID=400_pInt)
+   temp99_Real = 0.0_pReal                                                                          ! build full compliance
+    k = 0_pInt
+    do n = 1_pInt,9_pInt
+      if(mask_stressVector(n)) then
+        k = k + 1_pInt
+        j = 0_pInt
+        do m = 1_pInt,9_pInt
+          if(mask_stressVector(m)) then
+            j = j + 1_pInt
+            temp99_Real(n,m) = s_reduced(k,j)
+   endif; enddo; endif; enddo
+   deallocate(c_reduced)
+   deallocate(s_reduced)
+ else
+   temp99_real = 0.0_pReal
+ endif
 
-end function Utilities_stressBC
+ Utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
 
-subroutine Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,timeinc,&
+end function Utilities_maskedCompliance 
+
+subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,timeinc,&
                                 P,C,P_av,ForwardData,rotation_BC)
   use debug, only: &
     debug_reset, &
@@ -549,6 +535,7 @@ subroutine Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,ti
    else
     CPFEM_mode = 2_pInt
   endif
+
   write(6,'(a)') ''
   write(6,'(a)') '... update stress field P(F) .....................................'
   ielem = 0_pInt
@@ -582,6 +569,7 @@ subroutine Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,ti
   C = C * wgt
   
 end subroutine Utilities_constitutiveResponse
+
 
 subroutine Utilities_destroy()
 

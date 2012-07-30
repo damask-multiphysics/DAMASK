@@ -1,18 +1,30 @@
+!--------------------------------------------------------------------------------------------------
+!* $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Basic scheme solver
+!--------------------------------------------------------------------------------------------------
 module DAMASK_spectral_SolverBasic
  
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  
  use DAMASK_spectral_Utilities
  
- use math
+ use math, only: &
+   math_I3, &
+   math_mul33x33,
    
  use mesh,  only : &
    mesh_spectral_getResolution, &
-   mesh_spectral_getDimension
+   mesh_spectral_getDimension, &
+   math_rotate_backward33, &
+   math_transpose33,&
+   math_mul3333xx33, &
+   math_eigenvalues33
  
  implicit none
- 
- real(pReal), dimension(3,3) :: temp33_Real
  
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasic_label = 'basic'
@@ -28,7 +40,6 @@ module DAMASK_spectral_SolverBasic
  real(pReal), dimension(3,3) :: &
    F_aim = math_I3, &
    F_aim_lastInc = math_I3
-   
  real(pReal), dimension(3,3,3,3) :: &
    C = 0.0_pReal
  
@@ -50,7 +61,14 @@ module DAMASK_spectral_SolverBasic
    implicit none
    integer(pInt) :: i,j,k
 
-   call Utilities_Init()
+   real(pReal), dimension(3,3) :: temp33_Real
+ 
+   write(6,'(a)') ''
+   write(6,'(a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
+   write(6,'(a)') ' $Id$'
+#include "compilation_info.f90"
+   write(6,'(a)') ''
+     call Utilities_Init()
    
    allocate (F          (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
    allocate (F_lastInc  (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
@@ -193,121 +211,128 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
                                                           1.0_pReal,F_lastInc,coordinates)
 
  iter = 0_pInt
- S = Utilities_stressBC(rotation_BC,mask_stressVector,C)
+ S = Utilities_maskedCompliance(rotation_BC,mask_stressVector,C)
  if (update_gamma) call Utilities_updateGamma(C)
    
- convergenceLoop: do while(.not. basic_convergenced(err_div,P_av,err_stress,P_av,iter))
+ convergenceLoop: do 
    
    iter = iter + 1_pInt
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
    write(6,'(a)') ''
    write(6,'(a)') '=================================================================='
-   write(6,'(3(a,i6.6))') ' @ Iter. ',itmin,' < ',iter,' < ',itmax
+   write(6,'(3(a,i6.6))') ' Iter. ',itmin,' < ',iter,' < ',itmax + 1_pInt
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
                                                              math_transpose33(F_aim)
    F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-   call Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,timeinc,&
+print*, 'FLast 111', F_lastInc(1,1,1,1:3,1:3)
+   call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,timeinc,&
                                 P,C,P_av,ForwardData,rotation_BC)
    ForwardData = .False.
    
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-   if(any(mask_stressVector)) then                                                             ! calculate stress BC if applied
-     F_aim = F_aim - math_mul3333xx33(S, ((P_av - P_BC)))
-     err_stress = mask_stress * (P_av - P_BC)))
-   else
-     err_stress = 0.0_pReal
-   endif
+   F_aim = F_aim - math_mul3333xx33(S, ((P_av - P_BC))) !S = 0.0 for no bc
+   err_stress = maxval(mask_stress * (P_av - P_BC))     ! mask = 0.0 for no bc
+
                                 
   F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                            ! boundary conditions from load frame into lab (Fourier) frame
  
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient
+  field_real = 0.0_pReal
   field_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = P
   call Utilities_forwardFFT()
   err_div = Utilities_divergenceRMS()
   call Utilities_fourierConvolution(F_aim_lab_lastIter - F_aim_lab) 
   call Utilities_backwardFFT()
 
+  temp33_real =0.0_pReal
+
   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
     F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
+    temp33_real = temp33_real + field_real(i,j,k,1:3,1:3)
   enddo; enddo; enddo
-  
-!--------------------------------------------------------------------------------------------------
-! calculate some additional output
-  if(debugGeneral) then
-    maxCorrectionSkew = 0.0_pReal
-    maxCorrectionSym  = 0.0_pReal
-    temp33_Real = 0.0_pReal
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-      maxCorrectionSym  = max(maxCorrectionSym,&
-                              maxval(math_symmetric33(field_real(i,j,k,1:3,1:3))))
-      maxCorrectionSkew = max(maxCorrectionSkew,&
-                              maxval(math_skew33(field_real(i,j,k,1:3,1:3))))
-      temp33_Real = temp33_Real + field_real(i,j,k,1:3,1:3)
-    enddo; enddo; enddo
-    write(6,'(a,1x,es11.4)') 'max symmetric correction of deformation =',&
-                                  maxCorrectionSym*wgt
-    write(6,'(a,1x,es11.4)') 'max skew      correction of deformation =',&
-                                  maxCorrectionSkew*wgt
-    write(6,'(a,1x,es11.4)') 'max sym/skew of avg correction =         ',&
-                                  maxval(math_symmetric33(temp33_real))/&
-                                  maxval(math_skew33(temp33_real))
-  endif
-
-!--------------------------------------------------------------------------------------------------
-! calculate bounds of det(F) and report
-  if(debugGeneral) then
-    defgradDetMax = -huge(1.0_pReal)
-    defgradDetMin = +huge(1.0_pReal)
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-      defgradDet = math_det33(F(i,j,k,1:3,1:3))
-      defgradDetMax = max(defgradDetMax,defgradDet)
-      defgradDetMin = min(defgradDetMin,defgradDet) 
-    enddo; enddo; enddo
-
-    write(6,'(a,1x,es11.4)') 'max determinant of deformation =', defgradDetMax
-    write(6,'(a,1x,es11.4)') 'min determinant of deformation =', defgradDetMin
-  endif
+  if (Convergenced(err_div,P_av,err_stress,P_av,iter)) exit
   
  enddo convergenceLoop
 
 end function basic_solution
 
-logical function basic_convergenced(err_div,P_av,err_stress,P_av,iter)
+logical function Convergenced(err_div,P_av,err_stress,P_av2,iter)
 
-  use numerics, only: &
-   itmax, &
-   itmin, &
-   err_div_tol, &
-   err_stress_tolrel, &
-   err_stress_tolabs
+ use numerics, only: &
+  itmax, &
+  itmin, &
+  err_div_tol, &
+  err_stress_tolrel, &
+  err_stress_tolabs
     
-  implicit none
+ implicit none
   
-  real(pReal), dimension(3,3) :: P_av
-  real(pReal) :: err_div, err_stress, field_av_L2
-  integer(pInt) :: iter
+ real(pReal), dimension(3,3) :: P_av, P_av2
+ real(pReal) :: err_div, err_stress, field_av_L2
+ integer(pInt) :: iter
   
-  field_av_L2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av,&                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
+ field_av_L2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av,&                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
                                               math_transpose33(P_av)))))
-  basic_convergenced = (iter < itmax) .and. (iter > itmin) .and. &
-                     (err_div/field_av_L2/err_div_tol < 1.0_pReal) .and. &
-                     (err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs) < 1.0_pReal)
+ Convergenced = (iter < itmax) .and. (iter > itmin) .and. &
+                 all([err_div/field_av_L2/err_div_tol,&
+                       err_stress/min(maxval(abs(P_av2))*err_stress_tolrel,err_stress_tolabs)] < 1.0_pReal)
   
   
-end function basic_convergenced
+  write(6,'(a,f6.2,a,es11.4,a)') 'error stress = ', err_stress/min(maxval(abs(P_av2))*err_stress_tolrel,err_stress_tolabs), &
+                                                                            ' (',err_stress,' Pa)'  
+  write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/field_av_L2/err_div_tol,&
+                                                           ' (',err_div,' N/m³)'
+end function Convergenced
 
 subroutine basic_destroy()
 
 implicit none
-
 call Utilities_destroy()
 
 end subroutine basic_destroy
 
 end module DAMASK_spectral_SolverBasic
+
+
+!--------------------------------------------------------------------------------------------------
+! calculate some additional output
+ ! if(debugGeneral) then
+ !   maxCorrectionSkew = 0.0_pReal
+ !   maxCorrectionSym  = 0.0_pReal
+ !   temp33_Real = 0.0_pReal
+ !   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+ !     maxCorrectionSym  = max(maxCorrectionSym,&
+ !                             maxval(math_symmetric33(field_real(i,j,k,1:3,1:3))))
+ !     maxCorrectionSkew = max(maxCorrectionSkew,&
+ !                             maxval(math_skew33(field_real(i,j,k,1:3,1:3))))
+ !     temp33_Real = temp33_Real + field_real(i,j,k,1:3,1:3)
+ !   enddo; enddo; enddo
+ !   write(6,'(a,1x,es11.4)') 'max symmetric correction of deformation =',&
+ !                                 maxCorrectionSym*wgt
+ !   write(6,'(a,1x,es11.4)') 'max skew      correction of deformation =',&
+ !                                 maxCorrectionSkew*wgt
+ !   write(6,'(a,1x,es11.4)') 'max sym/skew of avg correction =         ',&
+ !                                 maxval(math_symmetric33(temp33_real))/&
+ !                                 maxval(math_skew33(temp33_real))
+ ! endif
+
+!--------------------------------------------------------------------------------------------------
+! calculate bounds of det(F) and report
+  ! if(debugGeneral) then
+    ! defgradDetMax = -huge(1.0_pReal)
+    ! defgradDetMin = +huge(1.0_pReal)
+    ! do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+      ! defgradDet = math_det33(F(i,j,k,1:3,1:3))
+      ! defgradDetMax = max(defgradDetMax,defgradDet)
+      ! defgradDetMin = min(defgradDetMin,defgradDet) 
+    ! enddo; enddo; enddo
+
+    ! write(6,'(a,1x,es11.4)') 'max determinant of deformation =', defgradDetMax
+    ! write(6,'(a,1x,es11.4)') 'min determinant of deformation =', defgradDetMin
+  ! endif

@@ -1,40 +1,11 @@
-! Copyright 2012 Max-Planck-Institut für Eisenforschung GmbH
-!
-! This file is part of DAMASK,
-! the Düsseldorf Advanced Material Simulation Kit.
-!
-! DAMASK is free software: you can redistribute it and/or modify
-! it under the terms of the GNU General Public License as published by
-! the Free Software Foundation, either version 3 of the License, or
-! (at your option) any later version.
-!
-! DAMASK is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-! GNU General Public License for more details.
-!
-! You should have received a copy of the GNU General Public License
-! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
-!
-!##################################################################################################
+!--------------------------------------------------------------------------------------------------
 !* $Id$
-!##################################################################################################
-! Material subroutine for BVP solution using spectral method
-!
-! Run 'DAMASK_spectral.exe --help' to get usage hints
-!
-! written by P. Eisenlohr,
-!            F. Roters,
-!            L. Hantcherli,
-!            W.A. Counts,
-!            D.D. Tjahjanto,
-!            C. Kords,
-!            M. Diehl,
-!            R. Lebensohn
-!
-! MPI fuer Eisenforschung, Duesseldorf
-
-
+!--------------------------------------------------------------------------------------------------
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Driver controlling inner and outer load case looping of the various spectral solvers
+!--------------------------------------------------------------------------------------------------
 program DAMASK_spectral_Driver
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  
@@ -85,7 +56,7 @@ program DAMASK_spectral_Driver
    materialpoint_sizeResults, &
    materialpoint_results
    
- use DAMASK_spectral_SolverAL
+ !use DAMASK_spectral_SolverAL
  use DAMASK_spectral_SolverBasic
  use DAMASK_spectral_Utilities
  
@@ -110,8 +81,8 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
- real(pReal), dimension(9) :: temp_valueVector                                                                                 !> temporarily from loadcase file when reading in tensors
- logical,     dimension(9) :: temp_maskVector                                                                                  !> temporarily from loadcase file when reading in tensors
+ real(pReal), dimension(9) :: temp_valueVector                                                      !> temporarily from loadcase file when reading in tensors
+ logical,     dimension(9) :: temp_maskVector                                                       !> temporarily from loadcase file when reading in tensors
  integer(pInt), parameter  :: maxNchunksLoadcase = (1_pInt + 9_pInt)*3_pInt +&                      ! deformation, rotation, and stress
                                                    (1_pInt + 1_pInt)*5_pInt +&                      ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                     1_pInt, &                                       ! dropguessing
@@ -130,27 +101,35 @@ program DAMASK_spectral_Driver
 
  type(loadcase), allocatable, dimension(:) ::  bc
  type(solutionState) solres
-
+ type(BC_type) :: stress
            
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
  real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc = 1.0_pReal, timeinc_old = 0.0_pReal   ! elapsed time, begin of interval, time interval 
  real(pReal) :: guessmode             
- real(pReal),    dimension(3,3) ::          temp33_Real
+ real(pReal),    dimension(3,3) :: temp33_Real
  integer(pInt) :: i, j, k, l, errorID
  integer(pInt) :: currentLoadcase = 0_pInt, inc, &
                   totalIncsCounter = 0_pInt,&
                   notConvergedCounter = 0_pInt, convergedCounter = 0_pInt
  character(len=6)  :: loadcase_string
 
- call DAMASK_interface_init
- 
+ call CPFEM_initAll(temperature = 300.0_pReal, element = 1_pInt, IP= 1_pInt)
+
  write(6,'(a)') ''
  write(6,'(a)') ' <<<+-  DAMASK_spectral_Driver init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
- write(6,'(a)') ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
- write(6,'(a)') ' Solver Job Name:      ',trim(getSolverJobName())
+ write(6,'(a,a)') ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
+ write(6,'(a,a)') ' Solver Job Name:      ',trim(getSolverJobName())
+ write(6,'(a)')          ''
+ write(6,'(a,a)')        ' geometry file:        ',trim(geometryFile)
+ write(6,'(a)')          '============================================================='
+ write(6,'(a,3(i12  ))') '  resolution a b c:',      mesh_spectral_getResolution()
+ write(6,'(a,3(f12.5))') '  dimension  x y z:',      mesh_spectral_getDimension()
+ write(6,'(a,i5)')       '  homogenization:       ', mesh_spectral_getHomogenization()
+ write(6,'(a)')          '============================================================='
+ write(6,'(a,a)')          'Loadcase file:        ',trim(loadCaseFile)
  write(6,'(a)') ''
 
 !--------------------------------------------------------------------------------------------------
@@ -248,27 +227,6 @@ program DAMASK_spectral_Driver
      end select
  enddo; enddo
 101 close(myUnit)
-print*, 'my Unit closed'
-!-------------------------------------------------------------------------------------------------- ToDo: if temperature at CPFEM is treated properly, move this up immediately after interface init
-! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
- call CPFEM_initAll(bc(1)%temperature,1_pInt,1_pInt)
- 
-!--------------------------------------------------------------------------------------------------
-! output of geometry information
- write(6,'(a)')          ''
- write(6,'(a)')          '#############################################################'
- write(6,'(a)')          'DAMASK spectral:'
- write(6,'(a)')          'The spectral method boundary value problem solver for'
- write(6,'(a)')          'the Duesseldorf Advanced Material Simulation Kit'
- write(6,'(a)')          '#############################################################'
- write(6,'(a)')          'geometry file:        ',trim(geometryFile)
- write(6,'(a)')          '============================================================='
- write(6,'(a,3(i12  ))') 'resolution a b c:',      mesh_spectral_getResolution()
- write(6,'(a,3(f12.5))') 'dimension  x y z:',      mesh_spectral_getDimension()
- write(6,'(a,i5)')       'homogenization:       ', mesh_spectral_getHomogenization()
- write(6,'(a)')          '#############################################################'
- write(6,'(a)')          'currentLoadcase file:        ',trim(loadCaseFile)
-
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
  bc(1)%followFormerTrajectory = .false.                                                             ! cannot guess along trajectory for first inc of first currentLoadcase
@@ -347,8 +305,8 @@ print*, 'my Unit closed'
    case (DAMASK_spectral_SolverBasic_label)
      call basic_init()
      
-   case (DAMASK_spectral_SolverAL_label)
-     call AL_init()
+   !case (DAMASK_spectral_SolverAL_label)
+    ! call AL_init()
      
  end select 
 
@@ -409,15 +367,15 @@ print*, 'my Unit closed'
                 velgrad           = bc(currentLoadcase)%velGradApplied, &
                 rotation_BC       = bc(currentLoadcase)%rotation)
            
-         case (DAMASK_spectral_SolverAL_label)
-           solres = AL_solution (&
-               guessmode,timeinc,timeinc_old, &
-                P_BC              = bc(currentLoadcase)%stress, &
-                F_BC              = bc(currentLoadcase)%deformation, &
-               ! temperature_bc       = bc(currentLoadcase)%temperature, &
-                mask_stressVector = bc(currentLoadcase)%maskStressVector, &
-                velgrad           = bc(currentLoadcase)%velGradApplied, &
-                rotation_BC       = bc(currentLoadcase)%rotation)
+         ! case (DAMASK_spectral_SolverAL_label)
+           ! solres = AL_solution (&
+               ! guessmode,timeinc,timeinc_old, &
+                ! P_BC              = bc(currentLoadcase)%stress, &
+                ! F_BC              = bc(currentLoadcase)%deformation, &
+               ! ! temperature_bc       = bc(currentLoadcase)%temperature, &
+                ! mask_stressVector = bc(currentLoadcase)%maskStressVector, &
+                ! velgrad           = bc(currentLoadcase)%velGradApplied, &
+                ! rotation_BC       = bc(currentLoadcase)%rotation)
            
        end select 
  
@@ -447,9 +405,9 @@ print*, 'my Unit closed'
    case (DAMASK_spectral_SolverBasic_label)
      call basic_destroy()
      
-   case (DAMASK_spectral_SolverAL_label)
-     call AL_destroy()
-     
+ !  case (DAMASK_spectral_SolverAL_label)
+ !    call AL_destroy()
+ !    
  end select 
  write(6,'(a)') ''
  write(6,'(a)') '##################################################################'
