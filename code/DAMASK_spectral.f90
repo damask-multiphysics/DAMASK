@@ -170,6 +170,7 @@ program DAMASK_spectral
    P_av, &
    F_aim = math_I3, &
    F_aim_lastInc = math_I3, &
+   Favg = 0.0_pReal, &
    mask_stress, &
    mask_defgrad, &
    deltaF_aim, &
@@ -257,7 +258,11 @@ program DAMASK_spectral
  integer :: ierr_psc
  call PetscInitialize(PETSC_NULL_CHARACTER, ierr_psc)
 #endif
- call DAMASK_interface_init
+
+!-------------------------------------------------------------------------------------------------- 
+! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
+ call CPFEM_initAll(temperature = 300.0_pReal, element = 1_pInt, IP= 1_pInt)
+
  write(6,'(a)') ''
  write(6,'(a)') ' <<<+-  DAMASK_spectral init  -+>>>'
  write(6,'(a)') ' $Id$'
@@ -363,10 +368,6 @@ program DAMASK_spectral
      end select
  enddo; enddo
 101 close(myUnit)
-
-!-------------------------------------------------------------------------------------------------- ToDo: if temperature at CPFEM is treated properly, move this up immediately after interface init
-! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
- call CPFEM_initAll(bc(1)%temperature,1_pInt,1_pInt)
  
 !--------------------------------------------------------------------------------------------------
 ! get resolution, dimension, homogenization and variables derived from resolution
@@ -700,6 +701,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! update local deformation gradient and coordinates
        deltaF_aim = math_rotate_backward33(deltaF_aim,bc(loadcase)%rotation)
+       Favg = 0.0_pReal                                            
        do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
          temp33_Real = F(i,j,k,1:3,1:3)
          F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) &                                                      ! decide if guessing along former trajectory or apply homogeneous addon
@@ -707,6 +709,11 @@ program DAMASK_spectral
                                             *timeinc/timeinc_old &
                                 + (1.0_pReal-guessmode) * deltaF_aim                                ! if not guessing, use prescribed average deformation where applicable
          F_lastInc(i,j,k,1:3,1:3) = temp33_Real 
+         Favg = Favg + F(i,j,k,1:3,1:3)
+       enddo; enddo; enddo
+       deltaF_aim =  guessmode *(Favg*wgt -F_aim)                                                   ! average correction in case of guessing to 
+       do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+         F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - deltaF_aim                                           ! correct in case avg of F is not F_aim
        enddo; enddo; enddo
        call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,bc(loadcase)%rotation),&          ! calculate current coordinates
                                                           1.0_pReal,F_lastInc,coordinates)
@@ -1037,7 +1044,6 @@ program DAMASK_spectral
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - deltaF_real(i,j,k,1:3,1:3)*wgt                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
          enddo; enddo; enddo
-         
 
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report

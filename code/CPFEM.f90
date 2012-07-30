@@ -29,13 +29,13 @@ implicit none
 real(pReal), parameter ::                         CPFEM_odd_stress    = 1e15_pReal, &
                                                   CPFEM_odd_jacobian  = 1e50_pReal
 
-real(pReal), dimension (:,:,:),   allocatable ::  CPFEM_cs                            ! Cauchy stress
-real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE                         ! Cauchy stress tangent
-real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE_knownGood               ! known good tangent
+real(pReal), dimension (:,:,:),   allocatable ::  CPFEM_cs                                          ! Cauchy stress
+real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE                                       ! Cauchy stress tangent
+real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE_knownGood                             ! known good tangent
 
-logical ::                                        CPFEM_init_done       = .false., &  ! remember whether init has been done already
-                                                  CPFEM_init_inProgress = .false., &  ! remember whether first IP is currently performing init
-                                                  CPFEM_calc_done       = .false.     ! remember whether first IP has already calced the results
+logical ::                                        CPFEM_init_done       = .false., &                ! remember whether init has been done already
+                                                  CPFEM_init_inProgress = .false., &                ! remember whether first IP is currently performing init
+                                                  CPFEM_calc_done       = .false.                   ! remember whether first IP has already calced the results
  
 
 CONTAINS
@@ -62,9 +62,9 @@ subroutine CPFEM_initAll(Temperature,element,IP)
   use DAMASK_interface
 
   implicit none
-  integer(pInt), intent(in) ::                        element, &          ! FE element number
-                                                      IP                  ! FE integration point number
-  real(pReal), intent(in) ::                          Temperature         ! temperature
+  integer(pInt), intent(in) ::                        element, &                                    ! FE element number
+                                                      IP                                            ! FE integration point number
+  real(pReal), intent(in) ::                          Temperature                                   ! temperature
   real(pReal)   rnd
   integer(pInt) i,n
 
@@ -73,30 +73,33 @@ subroutine CPFEM_initAll(Temperature,element,IP)
   if (.not. CPFEM_init_done) then
     call random_number(rnd)
     do i=1,int(256.0*rnd)
-      n = n+1_pInt                                                      ! wasting random amount of time...
-    enddo                                                               ! ...to break potential race in multithreading
+      n = n+1_pInt                                                                                  ! wasting random amount of time...
+    enddo                                                                                           ! ...to break potential race in multithreading
     n = n+1_pInt
-    if (.not. CPFEM_init_inProgress) then                               ! yes my thread won!
+    if (.not. CPFEM_init_inProgress) then                                                           ! yes my thread won!
       CPFEM_init_inProgress = .true.
+#ifdef Spectral
+      call DAMASK_interface_init()                                                                  ! Spectral solver is interfacing to commandline
+#endif
       call prec_init
       call IO_init
       call numerics_init
       call debug_init
       call math_init
       call FE_init
-      call mesh_init(IP, element)                ! pass on coordinates to alter calcMode of first ip
+      call mesh_init(IP, element)                                                                   ! pass on coordinates to alter calcMode of first ip
       call lattice_init
       call material_init
       call constitutive_init
-      call crystallite_init(Temperature)         ! (have to) use temperature of first IP for whole model
+      call crystallite_init(Temperature)                                                            ! (have to) use temperature of first IP for whole model
       call homogenization_init(Temperature)
       call CPFEM_init
 #ifndef Spectral
-      call DAMASK_interface_init() ! Spectral solver is doing initialization earlier
+      call DAMASK_interface_init()                                                                  ! Spectral solver init is already done
 #endif
       CPFEM_init_done = .true.
       CPFEM_init_inProgress = .false.
-    else                                                                ! loser, loser...
+    else                                                                                            ! loser, loser...
       do while (CPFEM_init_inProgress)
       enddo
     endif
@@ -111,7 +114,7 @@ end subroutine CPFEM_initAll
 
 subroutine CPFEM_init
   
-  use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+  use, intrinsic :: iso_fortran_env                                                                 ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
   use prec, only:                                 pInt
   use debug, only:                                debug_level, &
                                                   debug_CPFEM, &
@@ -315,46 +318,46 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
   
   !*** input variables ***!
   
-  integer(pInt), intent(in) ::                        element, &          ! FE element number
-                                                      IP                  ! FE integration point number
-  real(pReal), intent(inout) ::                       Temperature         ! temperature
-  real(pReal), intent(in) ::                          dt                  ! time increment
-  real(pReal), dimension (3,*), intent(in) ::         coords              ! MARC: displacements for each node of the current element
-                                                                          ! ABAQUS: coordinates of the current material point (IP)
-                                                                          ! SPECTRAL: coordinates of the current material point (IP)
-  real(pReal), dimension (3,3), intent(in) ::         ffn, &              ! deformation gradient for t=t0
-                                                      ffn1                ! deformation gradient for t=t1
-  integer(pInt), intent(in) ::                        mode                ! computation mode  1: regular computation plus aging of results
-                                                                          !                   2: regular computation
-                                                                          !                   3: collection of FEM data
-                                                                          !                   4: backup tangent from former converged inc
-                                                                          !                   5: restore tangent from former converged inc
-                                                                          !                   6: recycling of former results (MARC speciality)
+  integer(pInt), intent(in) ::                        element, &                                    ! FE element number
+                                                      IP                                            ! FE integration point number
+  real(pReal), intent(inout) ::                       Temperature                                   ! temperature
+  real(pReal), intent(in) ::                          dt                                            ! time increment
+  real(pReal), dimension (3,*), intent(in) ::         coords                                        ! MARC: displacements for each node of the current element
+                                                                                                    ! ABAQUS: coordinates of the current material point (IP)
+                                                                                                    ! SPECTRAL: coordinates of the current material point (IP)
+  real(pReal), dimension (3,3), intent(in) ::         ffn, &                                        ! deformation gradient for t=t0
+                                                      ffn1                                          ! deformation gradient for t=t1
+  integer(pInt), intent(in) ::                        mode                                          ! computation mode  1: regular computation plus aging of results
+                                                                                                    !                   2: regular computation
+                                                                                                    !                   3: collection of FEM data
+                                                                                                    !                   4: backup tangent from former converged inc
+                                                                                                    !                   5: restore tangent from former converged inc
+                                                                                                    !                   6: recycling of former results (MARC speciality)
   
   
   !*** output variables ***!
   
-  real(pReal), dimension(6), intent(out) ::           cauchyStress        ! stress vector in Mandel notation
-  real(pReal), dimension(6,6), intent(out) ::         jacobian            ! jacobian in Mandel notation
-  real(pReal), dimension (3,3), intent(out) ::        pstress             ! Piola-Kirchhoff stress in Matrix notation
-  real(pReal), dimension (3,3,3,3), intent(out) ::    dPdF                ! 
+  real(pReal), dimension(6), intent(out) ::           cauchyStress                                  ! stress vector in Mandel notation
+  real(pReal), dimension(6,6), intent(out) ::         jacobian                                      ! jacobian in Mandel notation
+  real(pReal), dimension (3,3), intent(out) ::        pstress                                       ! Piola-Kirchhoff stress in Matrix notation
+  real(pReal), dimension (3,3,3,3), intent(out) ::    dPdF                                          ! 
   
   
   !*** local variables ***!
   
-  real(pReal)                                         J_inverse, &        ! inverse of Jacobian
+  real(pReal)                                         J_inverse, &                                  ! inverse of Jacobian
                                                       rnd
-  real(pReal), dimension (3,3) ::                     Kirchhoff, &        ! Piola-Kirchhoff stress in Matrix notation
-                                                      cauchyStress33      ! stress vector in Matrix notation
+  real(pReal), dimension (3,3) ::                     Kirchhoff, &                                  ! Piola-Kirchhoff stress in Matrix notation
+                                                      cauchyStress33                                ! stress vector in Matrix notation
   real(pReal), dimension (3,3,3,3) ::                 H_sym, &
                                                       H, &
-                                                      jacobian3333        ! jacobian in Matrix notation
-  integer(pInt)                                       cp_en, &            ! crystal plasticity element number
-                                                      i, j, k, l, m, n, e
+                                                      jacobian3333                                  ! jacobian in Matrix notation
+  integer(pInt)                                       cp_en, &                                      ! crystal plasticity element number
+                                                      i, j, k, l, m, n, e                          
 #ifdef Marc
   integer(pInt)::                                     node, FEnodeID
 #endif
-  logical                                             updateJaco          ! flag indicating if JAcobian has to be updated
+  logical                                             updateJaco                                    ! flag indicating if JAcobian has to be updated
   
   
   cp_en = mesh_FEasCP('elem',element)
@@ -387,15 +390,15 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
       !*** age results
     
       if (mode == 1 .or. mode == 8) then
-        crystallite_F0  = crystallite_partionedF                          ! crystallite deformation (_subF is perturbed...)
-        crystallite_Fp0 = crystallite_Fp                                  ! crystallite plastic deformation
-        crystallite_Lp0 = crystallite_Lp                                  ! crystallite plastic velocity
-        crystallite_dPdF0 = crystallite_dPdF                              ! crystallite stiffness
-        crystallite_Tstar0_v = crystallite_Tstar_v                        ! crystallite 2nd Piola Kirchhoff stress 
+        crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
+        crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
+        crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
+        crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
+        crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress 
         forall ( i = 1:homogenization_maxNgrains, &
                  j = 1:mesh_maxNips, &
                  k = 1:mesh_NcpElems ) &
-          constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p      ! microstructure of crystallites
+          constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p                                ! microstructure of crystallites
         if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
           !$OMP CRITICAL (write2out)
             write(6,'(a)') '<< CPFEM >> Aging states'
@@ -410,7 +413,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
           do k = 1,mesh_NcpElems
             do j = 1,mesh_maxNips
               if (homogenization_sizeState(j,k) > 0_pInt) &
-                homogenization_state0(j,k)%p = homogenization_state(j,k)%p  ! internal state of homogenization scheme
+                homogenization_state0(j,k)%p = homogenization_state(j,k)%p                          ! internal state of homogenization scheme
             enddo
           enddo
         !$OMP END PARALLEL DO
@@ -476,7 +479,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
         ! * end of dumping
       endif
 
-      if (mode == 8 .or. mode == 9) then                                  ! Abaqus explicit skips collect
+      if (mode == 8 .or. mode == 9) then                                                            ! Abaqus explicit skips collect
         materialpoint_Temperature(IP,cp_en) = Temperature
         materialpoint_F0(1:3,1:3,IP,cp_en) = ffn
         materialpoint_F(1:3,1:3,IP,cp_en) = ffn1
