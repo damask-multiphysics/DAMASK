@@ -142,18 +142,30 @@ subroutine debug_init
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  
- allocate(debug_StressLoopDistribution(nStress,2))
-          debug_StressLoopDistribution             = 0_pInt
- allocate(debug_LeapfrogBreakDistribution(nStress,2))
-          debug_LeapfrogBreakDistribution          = 0_pInt
- allocate(debug_StateLoopDistribution(nState,2))
-          debug_StateLoopDistribution              = 0_pInt
- allocate(debug_CrystalliteLoopDistribution(nCryst+1))
-          debug_CrystalliteLoopDistribution        = 0_pInt
- allocate(debug_MaterialpointStateLoopDistribution(nMPstate))
-          debug_MaterialpointStateLoopDistribution = 0_pInt
- allocate(debug_MaterialpointLoopDistribution(nHomog+1))
-          debug_MaterialpointLoopDistribution      = 0_pInt
+ if (allocated(debug_StressLoopDistribution)) &
+    deallocate(debug_StressLoopDistribution)
+      allocate(debug_StressLoopDistribution(nStress,2))
+               debug_StressLoopDistribution = 0_pInt
+ if (allocated(debug_LeapfrogBreakDistribution)) &
+    deallocate(debug_LeapfrogBreakDistribution)
+      allocate(debug_LeapfrogBreakDistribution(nStress,2))
+               debug_LeapfrogBreakDistribution = 0_pInt
+ if (allocated(debug_StateLoopDistribution)) &
+    deallocate(debug_StateLoopDistribution)
+      allocate(debug_StateLoopDistribution(nState,2))
+               debug_StateLoopDistribution = 0_pInt
+ if (allocated(debug_CrystalliteLoopDistribution)) &
+    deallocate(debug_CrystalliteLoopDistribution)
+      allocate(debug_CrystalliteLoopDistribution(nCryst+1))
+               debug_CrystalliteLoopDistribution = 0_pInt
+ if (allocated(debug_MaterialpointStateLoopDistribution)) &
+    deallocate(debug_MaterialpointStateLoopDistribution)
+      allocate(debug_MaterialpointStateLoopDistribution(nMPstate))
+               debug_MaterialpointStateLoopDistribution = 0_pInt
+ if (allocated(debug_MaterialpointLoopDistribution)) &
+    deallocate(debug_MaterialpointLoopDistribution)
+      allocate(debug_MaterialpointLoopDistribution(nHomog+1))
+               debug_MaterialpointLoopDistribution = 0_pInt
  
  
  ! try to open the config file
