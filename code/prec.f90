@@ -33,7 +33,7 @@ module prec
 !    *** Precision of real and integer variables ***
  integer,     parameter, public :: pReal = selected_real_kind(15,300)     ! 15 significant digits, up to 1e+-300
  integer,     parameter, public :: pInt  = selected_int_kind(9)           ! up to +- 1e9
- integer,     parameter, public :: pLongInt  = 8                          ! should be 64bit
+ integer,     parameter, public :: pLongInt  = selected_int_kind(12)      ! should be 64bit
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal
  real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
  

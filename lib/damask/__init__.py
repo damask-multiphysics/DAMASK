@@ -13,6 +13,35 @@ from util import *
 
 try:
   from .          import core
+# cleaning up namespace
+###################################################################################################
+# capitalize according to convention
+  core.IO                            = core.io
+  core.FEsolving                     = core.fesolving
+  core.DAMASK_interface              = core.damask_interface
+# remove XXX_
+  core.prec.init                     = core.prec.prec_init
+  core.DAMASK_interface.init         = core.DAMASK_interface.DAMASK_interface_init
+  core.IO.init                       = core.IO.IO_init
+  core.numerics.init                 = core.numerics.numerics_init
+  core.debug.init                    = core.debug.debug_init
+  core.math.init                     = core.math.math_init
+  #core.math.volumeMismatch           = core.math.math_volumeMismatch
+  #core.math.shapeMismatch            = core.math.math_shapeMismatch
+  #core.math.deformedCoordsLin        = core.math.math_deformedCoordsLin
+  #core.math.deformedCoordsFFT        = core.math.math_deformedCoordsFFT
+  #core.math.curlFFT                  = core.math.math_curlFFT
+  #core.math.divergenceFFT            = core.math.math_divergenceFFT
+  #core.math.divergenceFDM            = core.math.math_divergenceFDM
+  #core.math.tensorAvg                = core.math.math_tensorAvg
+  #core.math.logStrainSpat            = core.math.math_logStrainSpat
+  #core.math.logStrainMat             = core.math.math_logStrainMat
+  #core.math.cauchyStress             = core.math.math_cauchyStress
+  #core.math.periodicNearestNeighbor  = core.math.math_periodicNearestNeighbor
+  core.FEsolving.init                = core.FEsolving.FE_init
+  core.mesh.init                     = core.mesh.mesh_init
+  core.mesh.regrid                   = core.mesh.mesh_regrid
+  #core.mesh.nodesAroundCentroids     = core.mesh.mesh_spectral_nodesAroundCentroids
 except ImportError:
   sys.stderr.write('\nWARNING: Core module (Fortran code) not available, try to run setup_processing.py\nError Message when importing core.so: \n\n')
   core = None # from http://www.python.org/dev/peps/pep-0008/

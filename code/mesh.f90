@@ -362,7 +362,25 @@ subroutine mesh_init(ip,element)
    write(6,*) '$Id$'
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
-
+ if (allocated(mesh_mapFEtoCPelem)) deallocate(mesh_mapFEtoCPelem)
+ if (allocated(mesh_mapFEtoCPnode)) deallocate(mesh_mapFEtoCPnode)
+ if (allocated(mesh_node0)) deallocate(mesh_node0)
+ if (allocated(mesh_node)) deallocate(mesh_node)
+ if (allocated(mesh_element)) deallocate(mesh_element)
+ if (allocated(mesh_subNodeCoord)) deallocate(mesh_subNodeCoord)
+ if (allocated(mesh_ipCenterOfGravity)) deallocate(mesh_ipCenterOfGravity)
+ if (allocated(mesh_ipArea)) deallocate(mesh_ipArea)
+ if (allocated(mesh_ipAreaNormal)) deallocate(mesh_ipAreaNormal)
+ if (allocated(mesh_sharedElem)) deallocate(mesh_sharedElem)
+ if (allocated(mesh_ipNeighborhood)) deallocate(mesh_ipNeighborhood)
+ if (allocated(mesh_ipVolume)) deallocate(mesh_ipVolume)
+ if (allocated(mesh_nodeTwins)) deallocate(mesh_nodeTwins)
+ if (allocated(calcMode)) deallocate(calcMode)
+ if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
+ if (allocated(FE_nodesAtIP)) deallocate(FE_nodesAtIP)
+ if (allocated(FE_ipNeighbor))deallocate(FE_ipNeighbor)
+ if (allocated(FE_subNodeParent)) deallocate(FE_subNodeParent)
+ if (allocated(FE_subNodeOnIPFace)) deallocate(FE_subNodeOnIPFace)
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
 #ifdef Spectral
  call IO_open_file(fileUnit,geometryFile)                                                           ! parse info from geometry file...
@@ -418,9 +436,11 @@ subroutine mesh_init(ip,element)
  parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))                       ! plus potential killer from non-local constitutive
  
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems]
+ if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt
  forall (e = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(mesh_element(2,e))
  
+ if (allocated(calcMode)) deallocate(calcMode)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',element)) = .true.                                                  ! first ip,el needs to be already pingponged to "calc"
@@ -821,7 +841,7 @@ end function mesh_spectral_getHomogenization
 !--------------------------------------------------------------------------------------------------
 !> @brief Performes a regridding from saved restart information
 !--------------------------------------------------------------------------------------------------
-function mesh_regrid(resNewInput,minRes)
+function mesh_regrid(adaptive,resNewInput,minRes)
  use prec, only: &
    pInt, &
    pReal
@@ -839,7 +859,8 @@ function mesh_regrid(resNewInput,minRes)
    deformed_FFT, &
    math_mul33x3
  character(len=1024):: formatString, N_Digits
- integer(pInt), dimension(3), optional, intent(in)      :: resNewInput                              ! f2py cannot handle optional arguments correctly (they are always present)
+ logical, intent(in)                                    :: adaptive                                  ! if true, choose adaptive grid based on resNewInput, otherwise keep it constant
+ integer(pInt), dimension(3), optional, intent(in)      :: resNewInput                               ! f2py cannot handle optional arguments correctly (they are always present)
  integer(pInt), dimension(3), optional, intent(in)      :: minRes
  integer(pInt), dimension(3)                            :: mesh_regrid, ratio
  integer(pInt), dimension(3,2)                          :: possibleResNew
@@ -847,7 +868,7 @@ function mesh_regrid(resNewInput,minRes)
  integer(pInt), dimension(3)                            :: res, resNew
  integer(pInt), dimension(:),            allocatable    :: indices
  real(pReal),   dimension(3)                            :: geomdim,geomdimNew                                              
- real(pReal),   dimension(3,3)                          :: Favg 
+ real(pReal),   dimension(3,3)                          :: Favg, Favg_LastInc 
  real(pReal),   dimension(:,:),    allocatable :: & 
    coordinatesNew, &
    coordinatesLinear
@@ -857,6 +878,7 @@ function mesh_regrid(resNewInput,minRes)
    
  real(pReal),   dimension(:,:,:,:,:),    allocatable :: & 
    F,                  FNew, &
+   F_lastInc,  F_lastIncNew, &
    Fp,                FpNew, &
    Lp,                LpNew, &
    dcsdE,          dcsdENew
@@ -874,6 +896,15 @@ function mesh_regrid(resNewInput,minRes)
   res     = mesh_spectral_getResolution()
   geomdim = mesh_spectral_getDimension()
   Npoints = res(1)*res(2)*res(3)
+  
+  if (adaptive) then
+    if (present(resNewInput)) then
+      if (any (resNewInput<1)) call IO_error(890_pInt, ext_msg = 'resNewInput')
+    else
+      call IO_error(890_pInt, ext_msg = 'resNewInput')
+   endif
+  endif
+  
 !---------------------------------------------------------
   allocate(F(res(1),res(2),res(3),3,3))
   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getSolverJobName()),size(F))
@@ -900,19 +931,28 @@ function mesh_regrid(resNewInput,minRes)
  ! ----For 2D /3D case----------------------------------                            
  if (res(3)== 1_pInt) then
    spatialDim = 2_pInt
-   if (minRes(3) > 1_pInt)  call IO_error(890_pInt)                      ! as f2py has problems with present, use pyf file for initialization to -1
-   !check 1 and 2 for odd number, 3 should be even or 1
+   if (present (minRes)) then
+     if (minRes(1) >1_pInt .and. minRes(2) > 1_pInt) then
+        if (minRes(3) /= 1_pInt .or. &
+           mod(minRes(1),2_pInt) /= 0_pInt .or. &
+           mod(minRes(2),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '2D minRes')                      ! as f2py has problems with present, use pyf file for initialization to -1
+   endif; endif
  else
    spatialDim = 3_pInt
- !  if ( minRes(3) <= 1_pInt) call IO_error(891_pInt)
-!check for odd numbers
+   if (present (minRes)) then
+     if (all(minRes >1_pInt)) then
+        if (mod(minRes(1),2_pInt) /= 0_pInt.or. &
+            mod(minRes(2),2_pInt) /= 0_pInt .or. &
+            mod(minRes(3),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '3D minRes')                      ! as f2py has problems with present, use pyf file for initialization to -1
+   endif; endif
  endif
    
  geomdimNew =  math_mul33x3(Favg,geomdim)
 !---- Automatic detection based on current geom -----------------
  
- if (any(resNewInput<0_pInt)) then
-   ratio = floor(real(res,pReal) * (geomdimNew/geomdim), pInt)
+ if (adaptive) then
+   ratio = floor(real(resNewInput,pReal) * (geomdimNew/geomdim), pInt)
+   
    possibleResNew = 1_pInt
  
    do i = 1_pInt, spatialDim
@@ -921,35 +961,36 @@ function mesh_regrid(resNewInput,minRes)
      else
        possibleResNew(i,1:2) = [ratio(i)-1_pInt, ratio(i) + 1_pInt]
      endif
-     if (.not.present(minRes)) then 
+     if (.not.present(minRes)) then                              ! calling from fortran, optional argument not given
        possibleResNew = possibleResNew
-     else
-       do k = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-         possibleResNew(j,k) = max(possibleResNew(j,k), minRes(j))
-       enddo; enddo
+     else                                                        ! optional argument is there
+       if (any(minRes<1_pInt)) then
+         possibleResNew = possibleResNew                     ! f2py calling, but without specification (or choosing invalid values), standard from pyf = -1
+       else                                                        ! given useful values
+         do k = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
+            possibleResNew(j,k) = max(possibleResNew(j,k), minRes(j))
+         enddo; enddo
+       endif
      endif
    enddo
    
-   k = huge(1_pInt)
-   do i = 0_pInt, 2_pInt**spatialDim - 1
-     j = possibleResNew(1,iand(i,1_pInt)/1_pInt + 1_pInt) &
-       * possibleResNew(2,iand(i,2_pInt)/2_pInt + 1_pInt) &
-       * possibleResNew(3,iand(i,4_pInt)/4_pInt + 1_pInt) &
-       - Npoints
-     if (j < k) then 
-       k = j
-       resNew =[ possibleResNew(1,iand(i,1_pInt)/1_pInt + 1_pInt), &
-                 possibleResNew(2,iand(i,2_pInt)/2_pInt + 1_pInt), &
-                 possibleResNew(3,iand(i,4_pInt)/4_pInt + 1_pInt) ] 
-     endif
-   enddo 
+  k = huge(1_pInt)
+  do i = 0_pInt, 2_pInt**spatialDim - 1
+     j = abs( possibleResNew(1,iand(i,1_pInt)/1_pInt + 1_pInt) &
+            * possibleResNew(2,iand(i,2_pInt)/2_pInt + 1_pInt) &
+            * possibleResNew(3,iand(i,4_pInt)/4_pInt + 1_pInt) &
+            - resNewInput(1)*resNewInput(2)*resNewInput(3))
+       
+    if (j < k) then 
+      k = j
+      resNew =[ possibleResNew(1,iand(i,1_pInt)/1_pInt + 1_pInt), &
+                possibleResNew(2,iand(i,2_pInt)/2_pInt + 1_pInt), &
+                possibleResNew(3,iand(i,4_pInt)/4_pInt + 1_pInt) ] 
+    endif
+  enddo 
  else
-   if(all(resNewInput==0_pInt)) then
-     resNew = res
-   else
-     resNew = resNewInput
-   endif
- endif  
+   resNew = res
+ endif
  
  mesh_regrid = resNew
  NpointsNew = resNew(1)*resNew(2)*resNew(3)
@@ -1012,7 +1053,6 @@ function mesh_regrid(resNewInput,minRes)
  close(777)
  
 !------Adjusting the point-to-grain association---------------------
- !write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(mesh_element(4,1:Npoints),pReal)),pInt)
  write(N_Digits, '(I16.16)') 1_pInt+int(log10(real(maxval(mesh_element(4,1:Npoints)),pReal)),pInt)
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
@@ -1027,8 +1067,25 @@ function mesh_regrid(resNewInput,minRes)
    write(777,trim(formatString),advance='no') mesh_element(4,indices(i)), ' '
    if(mod(i,resNew(1)) == 0_pInt) write(777,'(A)') ''
  enddo
- close(777) 
-
+ close(777)
+ 
+!---------------------------------------------------------
+ allocate(F_lastInc(res(1),res(2),res(3),3,3))
+ allocate(F_lastIncNew(resNew(1),resNew(2),resNew(3),3,3))
+ call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',trim(getSolverJobName()),size(F_lastInc))
+ read (777,rec=1) F_lastInc
+ close (777)
+ do i= 1_pInt,3_pInt; do j = 1_pInt,3_pInt
+  Favg_LastInc(i,j) = sum(F_lastInc(1:res(1),1:res(2),1:res(3),i,j)) / real(Npoints,pReal)
+ enddo; enddo
+ do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
+   F_lastIncNew(i,j,k,1:3,1:3) = Favg
+ enddo; enddo; enddo
+ call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastIncNew))
+ write (777,rec=1) F_lastIncNew
+ close (777)
+ deallocate(F_lastInc)
+ deallocate(F_lastIncNew)
 !-------------------------------------------------------------------
  allocate(material_phase    (1,1, Npoints))
  allocate(material_phaseNew (1,1, NpointsNew))
@@ -1060,7 +1117,6 @@ function mesh_regrid(resNewInput,minRes)
  close (777) 
  deallocate(F)
  deallocate(FNew)
- 
 !--------------------------------------------------------------------- 
  allocate(Fp       (3,3,1,1,Npoints))
  allocate(FpNew (3,3,1,1,NpointsNew))  
@@ -4126,6 +4182,13 @@ FE_ipNeighbor(1:FE_NipNeighbors(8),1:FE_Nips(8),8) = &  ! element 117
     ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(10),FE_Nips(10)])
 
 end subroutine mesh_build_FEdata
-
-
 end module mesh
+
+   ! if (allocated(randInit)) deallocate(randInit)
+   ! if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
+   ! if (allocated(calcMode)) deallocate(calcMode)
+   ! if (allocated(FE_nodesAtIP)) deallocate(FE_nodesAtIP)
+   ! if (allocated(FE_ipNeighbor))deallocate(FE_ipNeighbor)
+   ! if (allocated(FE_subNodeParent)) deallocate(FE_subNodeParent)
+   ! if (allocated(FE_subNodeOnIPFace)) deallocate(FE_subNodeOnIPFace)
+

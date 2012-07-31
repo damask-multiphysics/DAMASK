@@ -1356,9 +1356,7 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (880_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
  case (890_pInt)
-   msg = 'invalid input for regridding a 2D model'
- case (891_pInt)
-   msg = 'invalid input for regridding a 3D model'
+   msg = 'invalid input for regridding'
 
 
  !* Error messages related to parsing of Abaqus input file

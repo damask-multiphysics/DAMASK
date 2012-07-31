@@ -46,29 +46,31 @@ start = 1
 exitCode=2
 print 'load case', options.loadcase
 print 'geometry', options.geometry
-res=numpy.array([24,24,24])
+res=numpy.array([32,32,32])
 while exitCode == 2:
   print 'restart at ', start
   proc=subprocess.Popen(executable='DAMASK_spectral',\
                         args=['-l', '%s'%options.loadcase, '-g', '%s'%options.geometry, '--regrid', '%i'%start],\
                         stderr=subprocess.PIPE,stdout=subprocess.PIPE, bufsize=1)
-  while proc.poll() is None:              # while process is running
+  while proc.poll() is None:               # while process is running
     myLine = proc.stdout.readline()
-    if len(myLine)>1: print myLine[0:-1] # print output without extra newline
+    if len(myLine)>1: print myLine[0:-1]   # print output without extra newline
   exitCode = proc.returncode
+  err = proc.stderr.readlines()
   if exitCode==2:
     os.system('rm -rf %i'%start)
     os.system('mkdir %i'%start)
     os.system('cp * %i/.'%start)
-    start =  int(string.split(re.search('restart at\s+\d+',proc.stderr.readlines()[-2]).group(0))[2]) #restart step is in second last line in stderr, search for restart at xxx
+    for i in xrange(len(err)):
+       if re.search('restart at\s+\d+',err[i]): start=int(string.split(err[i])[2])
 #------------regridding----------------------------------------------
 #--------------------------------------------------------------------
-    damask.core.prec.prec_init()
-    damask.core.damask_interface.damask_interface_init(options.loadcase,options.geometry)
-    damask.core.io.io_init()
-    damask.core.numerics.numerics_init()
-    damask.core.debug.debug_init()
-    damask.core.math.math_init()
-    damask.core.fesolving.fe_init()
-    damask.core.mesh.mesh_init(1,1)
-    damask.core.mesh.mesh_regrid(resNewInput=res)
+    damask.core.prec.init()
+    damask.core.DAMASK_interface.init(options.loadcase,options.geometry)
+    damask.core.IO.init()
+    damask.core.numerics.init()
+    damask.core.debug.init()
+    damask.core.math.init()
+    damask.core.FEsolving.init()
+    damask.core.mesh.init(1,1)
+    damask.core.mesh.regrid(adaptive=False,resNewInput=res)

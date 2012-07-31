@@ -20,16 +20,16 @@ python module core ! in
      end module prec
 
      module damask_interface ! in :damask_interface:DAMASK_spectral_interface.f90
-        subroutine damask_interface_init(loadcaseParameterIn,geometryParameterIn) ! in :damask_interface:DAMASK_spectral_interface.f90
+        subroutine DAMASK_interface_init(loadcaseParameterIn,geometryParameterIn) ! in :damask_interface:DAMASK_spectral_interface.f90
             character(len=1024), intent(in)   :: loadcaseParameterIn                                      
             character(len=1024), intent(in)   :: geometryParameterIn
-        end subroutine damask_interface_init            
+        end subroutine DAMASK_interface_init            
      end module damask_interface
 
      module io
-        subroutine io_init
-        end subroutine io_init
-     end module io  
+        subroutine IO_init
+        end subroutine IO_init
+     end module io
      
      module numerics
         subroutine numerics_init
@@ -195,20 +195,21 @@ python module core ! in
      end module math
 
      module fesolving
-        subroutine fe_init
-        end subroutine fe_init 
+        subroutine FE_init
+        end subroutine FE_init 
      end module fesolving
 
      module mesh ! in :mesh:mesh.f90
-	    subroutine mesh_init(ip,element)
- 			 integer, parameter                   ::      ip = 1
+	      subroutine mesh_init(ip,element)
+ 			       integer, parameter                   ::      ip = 1
              integer, parameter             :: element = 1
-        end subroutine mesh_init
+         end subroutine mesh_init
 		
-        function mesh_regrid(resNewInput,minRes) ! in :mesh:mesh.f90
-            integer, dimension(3)                                :: mesh_regrid
-            integer, dimension(3), intent(in), optional          :: resNewInput = -1
-            integer, dimension(3), intent(in), optional          :: minRes = -1
+         function mesh_regrid(adaptive,resNewInput,minRes) ! in :mesh:mesh.f90
+             logical, intent(in)                                  :: adaptive
+             integer, dimension(3)                                :: mesh_regrid
+             integer, dimension(3), intent(in), optional          :: resNewInput = -1
+             integer, dimension(3), intent(in), optional          :: minRes = -1
         end function mesh_regrid            
      end module mesh
    end interface 
