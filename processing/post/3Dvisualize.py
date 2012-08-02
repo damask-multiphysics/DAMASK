@@ -327,7 +327,7 @@ parser.add_option('-c','--cell', dest='cell', action='store_true',\
 parser.add_option('-p','--vertex', dest='cell', action='store_false',\
                   help='data is vertex-centered')
 parser.add_option('--mesh', dest='output_mesh', action='store_true', \
-                  help='produce VTK mesh file')
+                  help='produce VTK mesh file [%default]')
 parser.add_option('--nomesh', dest='output_mesh', action='store_false', \
                   help='omit VTK mesh file')
 parser.add_option('--points', dest='output_points', action='store_true', \
@@ -335,7 +335,7 @@ parser.add_option('--points', dest='output_points', action='store_true', \
 parser.add_option('--nopoints', dest='output_points', action='store_false', \
                   help='omit VTK points file')
 parser.add_option('--box', dest='output_box', action='store_true', \
-                  help='produce VTK box file')
+                  help='produce VTK box file [%default]')
 parser.add_option('--nobox', dest='output_box', action='store_false', \
                   help='omit VTK box file')
 parser.add_option('--separator', dest='separator', type='string', \
