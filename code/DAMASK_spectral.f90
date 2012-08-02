@@ -361,8 +361,6 @@ program DAMASK_spectral
          forall(k = 1_pInt:3_pInt) temp33_Real(k,1) = IO_floatValue(line,positions,j+l+k) 
          if (p==1_pInt) temp33_Real = temp33_Real * inRad
          bc(loadcase)%rotation = math_EulerToR(temp33_Real(:,1))
-         print *,"euler angles", temp33_Real(:,1)
-         print *,"Rotation Matrix", bc(loadcase)%rotation
        case('rotation','rot')                                                                       ! assign values for the rotation of loadcase matrix
          temp_valueVector = 0.0_pReal
          forall (k = 1_pInt:9_pInt) temp_valueVector(k) = IO_floatValue(line,positions,j+k)
