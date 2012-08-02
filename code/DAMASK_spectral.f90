@@ -349,18 +349,20 @@ program DAMASK_spectral
        case('guessreset','dropguessing')
          bc(loadcase)%followFormerTrajectory = .false.                                              ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of loadcase given in euler angles
-         p = 0_pInt                                                                                 ! assuming values given in radians
+         p = 1_pInt                                                                                 ! assuming values given in radians
          l = 1_pInt                                                                                 ! assuming keyword indicating degree/radians
          select case (IO_lc(IO_stringValue(line,positions,j+1_pInt)))
-           case('deg','degree')
-             p = 1_pInt                                                                             ! for conversion from degree to radian           
+           case('deg','degree')                                                                     ! for conversion from degree to radian
            case('rad','radian') 
-           case default               
+             p = 0_pInt
+           case default           
              l = 0_pInt                                                                             ! immediately reading in angles, assuming radians
          end select
-         forall(k = 1_pInt:3_pInt)  temp33_Real(k,1) = &
-                                        IO_floatValue(line,positions,j+l+k) * real(p,pReal) * inRad
+         forall(k = 1_pInt:3_pInt) temp33_Real(k,1) = IO_floatValue(line,positions,j+l+k) 
+         if (p==1_pInt) temp33_Real = temp33_Real * inRad
          bc(loadcase)%rotation = math_EulerToR(temp33_Real(:,1))
+         print *,"euler angles", temp33_Real(:,1)
+         print *,"Rotation Matrix", bc(loadcase)%rotation
        case('rotation','rot')                                                                       ! assign values for the rotation of loadcase matrix
          temp_valueVector = 0.0_pReal
          forall (k = 1_pInt:9_pInt) temp_valueVector(k) = IO_floatValue(line,positions,j+k)
