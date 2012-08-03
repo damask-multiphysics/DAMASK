@@ -124,7 +124,8 @@ constitutive_nonlocal_q, &                                           ! parameter
 constitutive_nonlocal_viscosity, &                                   ! viscosity for dislocation glide in Pa s
 constitutive_nonlocal_fattack, &                                     ! attack frequency in Hz
 constitutive_nonlocal_rhoSglScatter, &                               ! standard deviation of scatter in initial dislocation density
-constitutive_nonlocal_surfaceTransmissivity                          ! transmissivity at free surface
+constitutive_nonlocal_surfaceTransmissivity, &                       ! transmissivity at free surface
+constitutive_nonlocal_grainboundaryTransmissivity                    ! transmissivity at grain boundary (identified by different texture)
 
 real(pReal), dimension(:,:,:), allocatable, private :: &
 constitutive_nonlocal_Cslip_66                                       ! elasticity matrix in Mandel notation for each instance
@@ -328,6 +329,7 @@ allocate(constitutive_nonlocal_viscosity(maxNinstance))
 allocate(constitutive_nonlocal_fattack(maxNinstance))
 allocate(constitutive_nonlocal_rhoSglScatter(maxNinstance))
 allocate(constitutive_nonlocal_surfaceTransmissivity(maxNinstance))
+allocate(constitutive_nonlocal_grainboundaryTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_shortRangeStressCorrection(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
@@ -354,6 +356,7 @@ constitutive_nonlocal_viscosity = 0.0_pReal
 constitutive_nonlocal_fattack = 0.0_pReal
 constitutive_nonlocal_rhoSglScatter = 0.0_pReal
 constitutive_nonlocal_surfaceTransmissivity = 1.0_pReal
+constitutive_nonlocal_grainboundaryTransmissivity = -1.0_pReal
 constitutive_nonlocal_shortRangeStressCorrection = .true.
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
@@ -494,6 +497,8 @@ do                                                                              
         constitutive_nonlocal_rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
       case('surfacetransmissivity')
         constitutive_nonlocal_surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
+      case('grainboundarytransmissivity')
+        constitutive_nonlocal_grainboundaryTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
       case('shortrangestresscorrection')
         constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case default
@@ -585,6 +590,8 @@ enddo
   if (constitutive_nonlocal_surfaceTransmissivity(i) < 0.0_pReal &
       .or. constitutive_nonlocal_surfaceTransmissivity(i) > 1.0_pReal)  call IO_error(211_pInt,ext_msg='surfaceTransmissivity (' &
                                                                              //constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_grainboundaryTransmissivity(i) > 1.0_pReal) call IO_error(211_pInt,&
+                                                         ext_msg='grainboundaryTransmissivity ('//constitutive_nonlocal_label//')')
   
   
   !*** determine total number of active slip systems
@@ -2232,6 +2239,7 @@ use math, only:       math_QuaternionDisorientation, &
                       math_mul3x3, &
                       math_qRot
 use material, only:   material_phase, &
+                      material_texture, &
                       phase_localPlasticity, &
                       phase_plasticityInstance, &
                       homogenization_maxNgrains
@@ -2260,6 +2268,8 @@ integer(pInt)                                   Nneighbors, &                 ! 
                                                 neighboring_i, &              ! integration point index of my neighbor
                                                 my_phase, &
                                                 neighboring_phase, &
+                                                my_texture, &
+                                                neighboring_texture, &
                                                 my_structure, &               ! lattice structure
                                                 my_instance, &                ! instance of plasticity
                                                 ns, &                         ! number of active slip systems
@@ -2282,6 +2292,7 @@ logical, dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(mat
 
 Nneighbors = FE_NipNeighbors(mesh_element(2,e))
 my_phase = material_phase(1,i,e)
+my_texture = material_texture(1,i,e)
 my_instance = phase_plasticityInstance(my_phase)
 my_structure = constitutive_nonlocal_structure(my_instance)
 ns = constitutive_nonlocal_totalNslip(my_instance)
@@ -2329,7 +2340,21 @@ do n = 1_pInt,Nneighbors
   endif
 
     
+  !* GRAIN BOUNDARY !
+  !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
+
+  if (constitutive_nonlocal_grainboundaryTransmissivity(my_instance) >= 0.0_pReal) then
+    neighboring_texture = material_texture(1,neighboring_i,neighboring_e)
+    if (neighboring_texture /= my_texture) then
+      if (.not. phase_localPlasticity(neighboring_phase)) then
+        forall(s1 = 1_pInt:ns) &
+          compatibility(1:2,s1,s1,n) = sqrt(constitutive_nonlocal_grainboundaryTransmissivity(my_instance))
+      endif
+      cycle
+    endif
+  
   !* GRAIN BOUNDARY ?
+  !* Compatibility defined by relative orientation of slip systems:
   !* The compatibility value is defined as the product of the slip normal projection and the slip direction projection.
   !* Its sign is always positive for screws, for edges it has the same sign as the slip normal projection. 
   !* Since the sum for each slip system can easily exceed one (which would result in a transmissivity larger than one), 
@@ -2337,34 +2362,35 @@ do n = 1_pInt,Nneighbors
   !* the number of compatible slip systems is minimized with the sum of the original compatibility values exceeding one. 
   !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one. 
   !* All values below the threshold are set to zero.
-  
-  absoluteMisorientation = math_QuaternionDisorientation(orientation(1:4,1,i,e), &
-                                                         orientation(1:4,1,neighboring_i,neighboring_e), &
-                                                         0_pInt)      ! no symmetry
-                                                         
-  do s1 = 1_pInt,ns    ! my slip systems
-    do s2 = 1_pInt,ns  ! my neighbor's slip systems
-      compatibility(1,s2,s1,n) =     math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
-                               * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
-      compatibility(2,s2,s1,n) = abs(math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2)))) &
-                               * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
-    enddo
-    
-    compatibilitySum = 0.0_pReal
-    belowThreshold = .true.
-    do while (compatibilitySum < 1.0_pReal .and. any(belowThreshold(1:ns)))
-      thresholdValue = maxval(compatibility(2,1:ns,s1,n), belowThreshold(1:ns))              ! screws always positive
-      nThresholdValues = real(count(compatibility(2,1:ns,s1,n) == thresholdValue),pReal)
-      where (compatibility(2,1:ns,s1,n) >= thresholdValue) &
-        belowThreshold(1:ns) = .false.
-      if (compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
-        where (abs(compatibility(1:2,1:ns,s1,n)) == thresholdValue) &
-          compatibility(1:2,1:ns,s1,n) = sign((1.0_pReal - compatibilitySum) / nThresholdValues, compatibility(1:2,1:ns,s1,n))
-      compatibilitySum = compatibilitySum + nThresholdValues * thresholdValue
-    enddo
-    where (belowThreshold(1:ns)) compatibility(1,1:ns,s1,n) = 0.0_pReal
-    where (belowThreshold(1:ns)) compatibility(2,1:ns,s1,n) = 0.0_pReal
-  enddo ! my slip systems cycle
+  else
+    absoluteMisorientation = math_QuaternionDisorientation(orientation(1:4,1,i,e), &
+                                                           orientation(1:4,1,neighboring_i,neighboring_e), &
+                                                           0_pInt)      ! no symmetry
+    do s1 = 1_pInt,ns    ! my slip systems
+      do s2 = 1_pInt,ns  ! my neighbor's slip systems
+        compatibility(1,s2,s1,n) =     math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2))) &
+                                 * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
+        compatibility(2,s2,s1,n) = abs(math_mul3x3(slipNormal(1:3,s1), math_qRot(absoluteMisorientation, slipNormal(1:3,s2)))) &
+                                 * abs(math_mul3x3(slipDirection(1:3,s1), math_qRot(absoluteMisorientation, slipDirection(1:3,s2))))
+      enddo
+      
+      compatibilitySum = 0.0_pReal
+      belowThreshold = .true.
+      do while (compatibilitySum < 1.0_pReal .and. any(belowThreshold(1:ns)))
+        thresholdValue = maxval(compatibility(2,1:ns,s1,n), belowThreshold(1:ns))              ! screws always positive
+        nThresholdValues = real(count(compatibility(2,1:ns,s1,n) == thresholdValue),pReal)
+        where (compatibility(2,1:ns,s1,n) >= thresholdValue) &
+          belowThreshold(1:ns) = .false.
+        if (compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
+          where (abs(compatibility(1:2,1:ns,s1,n)) == thresholdValue) &
+            compatibility(1:2,1:ns,s1,n) = sign((1.0_pReal - compatibilitySum) / nThresholdValues, compatibility(1:2,1:ns,s1,n))
+        compatibilitySum = compatibilitySum + nThresholdValues * thresholdValue
+      enddo
+      where (belowThreshold(1:ns)) compatibility(1,1:ns,s1,n) = 0.0_pReal
+      where (belowThreshold(1:ns)) compatibility(2,1:ns,s1,n) = 0.0_pReal
+    enddo ! my slip systems cycle
+  endif
+
 enddo   ! neighbor cycle
 
 constitutive_nonlocal_compatibility(1:2,1:ns,1:ns,1:Nneighbors,i,e) = compatibility
