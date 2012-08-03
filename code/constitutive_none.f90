@@ -17,7 +17,7 @@
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
 !##############################################################
-!* $Id:$
+!* $Id$
 !*****************************************************
 !*      Module: CONSTITUTIVE_J2                      *
 !*****************************************************
@@ -114,7 +114,7 @@ subroutine constitutive_none_init(myFile)
  !$OMP CRITICAL (write2out)
    write(6,*)
    write(6,*) '<<<+-  constitutive_',trim(constitutive_none_label),' init  -+>>>'
-   write(6,*) '$Id:$'
+   write(6,*) '$Id$'
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
  

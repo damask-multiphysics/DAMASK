@@ -11,7 +11,13 @@ module DAMASK_spectral_Utilities
  use prec, only: &
    pReal, &
    pInt
-
+ use mesh,  only : &
+   res, &
+   res1_red, &
+   geomdim, &
+   mesh_NcpElems, &
+   wgt
+   
  use math
  
  use IO, only: &
@@ -21,16 +27,17 @@ module DAMASK_spectral_Utilities
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
- type(C_PTR) ,  private  ::  plan_forward, plan_backward                                                        ! plans for fftw
- real(pReal),   private, dimension(:,:,:,:,:,:,:), allocatable ::  gamma_hat                                   ! gamma operator (field) for spectral method
- real(pReal),   private, dimension(3,3,3,3) :: C_ref
- real(pReal),   private, dimension(:,:,:,:),       allocatable ::  xi                                          ! wave vector field for divergence and for gamma operator
- real(pReal),   public, dimension(:,:,:,:,:),     pointer :: field_real
- complex(pReal),private, dimension(:,:,:,:,:),     pointer :: field_fourier
+ type(C_PTR),   private                                        :: plan_forward, plan_backward                                                        ! plans for fftw
+ real(pReal),   private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                                   ! gamma operator (field) for spectral method
+ real(pReal),   private, dimension(:,:,:,:),       allocatable :: xi                                          ! wave vector field for divergence and for gamma operator
+ complex(pReal),private, dimension(:,:,:,:,:),     pointer     :: field_fourier
+ real(pReal),   private, dimension(3,3,3,3)                    :: C_ref
+ 
+ real(pReal),   public,  dimension(:,:,:,:,:),     pointer     :: field_real
 
 !--------------------------------------------------------------------------------------------------
 ! debug fftw 
- type(C_PTR),    private  :: plan_scalarField_forth, plan_scalarField_back
+ type(C_PTR),   private  :: plan_scalarField_forth, plan_scalarField_back
  complex(pReal),private,  dimension(:,:,:), pointer :: scalarField_real
  complex(pReal),private,  dimension(:,:,:), pointer :: scalarField_fourier
  
@@ -41,40 +48,33 @@ module DAMASK_spectral_Utilities
  complex(pReal), private, dimension(:,:,:,:), pointer :: divergence_fourier
  real(pReal),    dimension(:,:,:,:), allocatable :: divergence_post
 
- type BC_type
-   real(pReal), dimension(3,3) :: values
-   real(pReal), dimension(3,3) :: maskFloat
-   logical,     dimension(3,3) :: maskLogical
-   character(20) :: myType
- end type BC_type
-
 !--------------------------------------------------------------------------------------------------
 !variables controlling debugging
- logical :: debugGeneral, debugDivergence, debugRestart, debugFFTW
-
-   
- real(pReal), dimension(3) ::   geomdim = 0.0_pReal, virt_dim = 0.0_pReal             ! physical dimension of volume element per direction
- integer(pInt), dimension(3) :: res = 1_pInt 
- real(pReal) ::  wgt
- integer(pInt) :: res1_red, Npoints
+ logical,public :: debugGeneral, debugDivergence, debugRestart, debugFFTW
 
 !--------------------------------------------------------------------------------------------------
-! solution state
+! derived types
  type solutionState 
    logical ::        converged       = .false.   
    logical ::        regrid          = .false.   
    logical ::        term_ill        = .false.   
  end type solutionState
+
+ type boundaryCondition
+   real(pReal), dimension(3,3) :: values = 0.0_pReal
+   real(pReal), dimension(3,3) :: maskFloat = 0.0_pReal
+   logical,     dimension(3,3) :: maskLogical = .false.
+   character(len=64)           :: myType = 'None'
+ end type boundaryCondition
+
 contains 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief allocates all neccessary fields, sets debug flags, create plans for fftw
+!--------------------------------------------------------------------------------------------------
 subroutine Utilities_init()
-   
- use mesh,  only : &
-   mesh_spectral_getResolution, &
-   mesh_spectral_getDimension
- 
- use numerics, only: &
-   divergence_correction, &                             
+
+ use numerics, only: &                        
    DAMASK_NumThreadsInt, &
    fftw_planner_flag, &
    fftw_timelimit, &
@@ -88,11 +88,13 @@ subroutine Utilities_init()
    debug_spectralRestart, &
    debug_spectralFFTW
  
+ use mesh, only : &
+   virt_dim
+ 
  implicit none
-
- integer(pInt) :: i, j, k, ierr
+ integer(pInt) :: i, j, k
  integer(pInt), dimension(3) :: k_s
-  
+ !$ integer(pInt) :: ierr
  type(C_PTR) :: tensorField                                                                         ! field in real and fourier space
  type(C_PTR) :: scalarField_realC, scalarField_fourierC
  type(C_PTR) :: divergence
@@ -111,15 +113,8 @@ subroutine Utilities_init()
  debugRestart    = iand(debug_level(debug_spectral),debug_spectralRestart)    /= 0
  debugFFTW       = iand(debug_level(debug_spectral),debug_spectralFFTW)       /= 0
  
-!##################################################################################################
-! initialization 
-!##################################################################################################
- res     =   mesh_spectral_getResolution()
- geomdim = mesh_spectral_getDimension()
- res1_red = res(1)/2_pInt + 1_pInt
- Npoints = res(1)*res(2)*res(3)
- wgt = 1.0/real(Npoints,pReal)
-
+!--------------------------------------------------------------------------------------------------
+! allocation
  allocate (xi         (3,res1_red,res(2),res(3)),      source = 0.0_pReal)                           ! start out isothermally
  tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                       ! allocate continous data using a C function, C_SIZE_T is of type integer(8)
  call c_f_pointer(tensorField, field_real,      [ res(1)+2_pInt,res(2),res(3),3,3])                  ! place a pointer for a real representation on tensorField
@@ -178,14 +173,6 @@ subroutine Utilities_init()
  
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
- if (divergence_correction) then
-   do i = 1_pInt, 3_pInt
-    if (i /= minloc(geomdim,1) .and. i /= maxloc(geomdim,1)) virt_dim = geomdim/geomdim(i)
-   enddo
- else
-   virt_dim = geomdim
- endif
-
  do k = 1_pInt, res(3)
    k_s(3) = k - 1_pInt
    if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
@@ -202,59 +189,65 @@ subroutine Utilities_init()
  else                                                                                               ! precalculation of gamma_hat field
    allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source =0.0_pReal)                                                  ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
  endif
+
 end subroutine Utilities_init
 
+!--------------------------------------------------------------------------------------------------
+!> @brief updates references stiffness and potentially precalculated gamma operator
+!--------------------------------------------------------------------------------------------------
 subroutine Utilities_updateGamma(C)
    
-  use numerics, only: &
-    memory_efficient
+ use numerics, only: &
+   memory_efficient
   
-  implicit none
+ implicit none
 
-  real(pReal), dimension(3,3,3,3) :: C
-  real(pReal), dimension(3,3) :: temp33_Real, xiDyad
-  integer(pInt) :: i, j, k,   l, m, n, o
+ real(pReal), dimension(3,3,3,3), intent(in) :: C
+ real(pReal), dimension(3,3) :: temp33_Real, xiDyad
+ integer(pInt) :: i, j, k,   l, m, n, o
   
-  C_ref = C
-  if(.not. memory_efficient) then                                                   
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-      if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
-        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-          xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
-        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-          temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
-        temp33_Real = math_inv33(temp33_Real)
-        forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
-          gamma_hat(i,j,k, l,m,n,o) =  temp33_Real(l,n)*xiDyad(m,o)
-      endif  
-    enddo; enddo; enddo
-    gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
-  endif
-
+ C_ref = C
+ if(.not. memory_efficient) then                                                   
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
+     if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+         xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+         temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
+       temp33_Real = math_inv33(temp33_Real)
+       forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
+         gamma_hat(i,j,k, l,m,n,o) =  temp33_Real(l,n)*xiDyad(m,o)
+     endif  
+   enddo; enddo; enddo
+   gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+ endif
 end subroutine Utilities_updateGamma
 
-subroutine Utilities_forwardFFT()
-
-  implicit none
+!--------------------------------------------------------------------------------------------------
+!> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
+!--------------------------------------------------------------------------------------------------
+subroutine Utilities_forwardFFT(row,column)
+ use mesh, only : &
+   virt_dim
   
-  integer(pInt) :: row, column
+  implicit none
+  integer(pInt), intent(in), optional :: row, column
   
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
   if (debugFFTW) then
+    if (.not. present(row) .or. .not. present(column)) stop
     scalarField_real(1:res(1),1:res(2),1:res(3)) =&                                          ! store the selected component
            cmplx(field_real(1:res(1),1:res(2),1:res(3),row,column),0.0_pReal,pReal)
-    
   endif
   
 !--------------------------------------------------------------------------------------------------
 ! call function to calculate divergence from math (for post processing) to check results
   if (debugDivergence) &
-    call divergence_fft(res,virt_dim,3_pInt,&
-                        field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_post)
+    call divergence_fft(res,virt_dim,3_pInt,field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_post)
   
 !--------------------------------------------------------------------------------------------------
-! doing the FT because it simplifies calculation of average stress in real space also
+! doing the FT
   call fftw_execute_dft_r2c(plan_forward,field_real,field_fourier)
   
 !--------------------------------------------------------------------------------------------------
@@ -281,17 +274,16 @@ subroutine Utilities_forwardFFT()
                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
 end subroutine Utilities_forwardFFT
 
-subroutine Utilities_backwardFFT()
+subroutine Utilities_backwardFFT(row,column)
 
   implicit none
   
-  integer(pInt) :: row, column, i, j, k, m, n
+  integer(pInt), intent(in), optional :: row, column
+  integer(pInt) ::  i, j, k, m, n
   
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
   if (debugFFTW) then
-    row =  3 !  (mod(totalIncsCounter+iter-2_pInt,9_pInt))/3_pInt + 1_pInt                      ! go through the elements of the tensors, controlled by totalIncsCounter and iter, starting at 1
-    column = 3 !(mod(totalIncsCounter+iter-2_pInt,3_pInt))        + 1_pInt
     do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
        scalarField_fourier(i,j,k) = field_fourier(i,j,k,row,column)
     enddo; enddo; enddo
@@ -308,11 +300,11 @@ subroutine Utilities_backwardFFT()
       m = m -1_pInt
     enddo; enddo
   endif
+
 !--------------------------------------------------------------------------------------------------
 ! doing the inverse FT
-  print*, 'field fourier 111', field_fourier(1,1,1,1:3,1:3)
   call fftw_execute_dft_c2r(plan_backward,field_fourier,field_real)                      ! back transform of fluct deformation gradient
-  print*, 'field real 111', field_real(1,1,1,1:3,1:3)
+
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
   if (debugFFTW) then
@@ -324,6 +316,7 @@ subroutine Utilities_backwardFFT()
                 real(scalarField_real(1:res(1),1:res(2),1:res(3))))
   endif
   field_real = field_real * wgt
+
 end subroutine Utilities_backwardFFT
 
 
@@ -370,7 +363,7 @@ subroutine Utilities_fourierConvolution(fieldAim)
    enddo; enddo; enddo
  endif
 
- field_fourier(1,1,1,1:3,1:3) = cmplx(fieldAim*real(Npoints,pReal),0.0_pReal,pReal)             ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
+ field_fourier(1,1,1,1:3,1:3) = cmplx(fieldAim*real(mesh_NcpElems,pReal),0.0_pReal,pReal)             ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
 
 end subroutine Utilities_fourierConvolution
  
@@ -390,7 +383,6 @@ real(pReal) function Utilities_divergenceRMS()
 
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
-  
   Utilities_divergenceRMS = 0.0_pReal
   do k = 1_pInt, res(3); do j = 1_pInt, res(2)
     do i = 2_pInt, res1_red -1_pInt                                                          ! Has somewhere a conj. complex counterpart. Therefore count it twice.
@@ -440,11 +432,11 @@ real(pReal) function Utilities_divergenceRMS()
     err_real_div_max = sqrt(    err_real_div_max)                                            ! max in real space
     err_div_max      = sqrt(    err_div_max)                                                 ! max in Fourier space
     
-    write(6,'(a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
-    write(6,'(a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
-    write(6,'(a,es11.4)')        'error divergence post RMS = ',err_post_div_RMS
-    write(6,'(a,es11.4)')        'error divergence  FT  max = ',err_div_max
-    write(6,'(a,es11.4)')        'error divergence Real max = ',err_real_div_max
+    write(6,'(1x,a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
+    write(6,'(1x,a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
+    write(6,'(1x,a,es11.4)')        'error divergence post RMS = ',err_post_div_RMS
+    write(6,'(1x,a,es11.4)')        'error divergence  FT  max = ',err_div_max
+    write(6,'(1x,a,es11.4)')        'error divergence Real max = ',err_real_div_max
   endif
 
 end function Utilities_divergenceRMS
@@ -536,8 +528,6 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
     CPFEM_mode = 2_pInt
   endif
 
-  write(6,'(a)') ''
-  write(6,'(a)') '... update stress field P(F) .....................................'
   ielem = 0_pInt
   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
     ielem = ielem + 1_pInt
@@ -564,12 +554,29 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   restartWrite = .false.
   P_av_lab = P_av_lab * wgt
   P_av = math_rotate_forward33(P_av_lab,rotation_BC)
-  write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
-                                                          math_transpose33(P_av)/1.e6_pReal
+  write (6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') ' Piola-Kirchhoff stress / MPa =',&
+                                                      math_transpose33(P_av)/1.e6_pReal
   C = C * wgt
-  
 end subroutine Utilities_constitutiveResponse
 
+
+subroutine Utilities_forwardField(delta_aim,timeinc,timeinc_old,guessmode,field_lastInc,field)
+ 
+ real(pReal), intent(in), dimension(3,3) :: delta_aim
+
+ real(pReal), intent(in) :: timeinc, timeinc_old, guessmode
+ real(pReal), intent(inout), dimension(res(1),res(2),res(3),3,3) :: field_lastInc,field
+ integer(pInt) :: i,j,k
+ real(pReal), dimension(3,3) :: temp33_real
+ 
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   temp33_Real = Field(i,j,k,1:3,1:3)
+   Field(i,j,k,1:3,1:3) = Field(i,j,k,1:3,1:3) &                                                             ! decide if guessing along former trajectory or apply homogeneous addon
+                   + guessmode * (field(i,j,k,1:3,1:3) - Field_lastInc(i,j,k,1:3,1:3))*timeinc/timeinc_old&  ! guessing... 
+                   + (1.0_pReal-guessmode) * delta_aim                                ! if not guessing, use prescribed average deformation where applicable
+   Field_lastInc(i,j,k,1:3,1:3) = temp33_Real 
+ enddo; enddo; enddo
+ end subroutine Utilities_forwardField
 
 subroutine Utilities_destroy()
 
