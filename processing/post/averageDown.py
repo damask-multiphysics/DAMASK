@@ -80,7 +80,7 @@ if filenames == []:
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(prefix+'_'+name,'w')})
+      files.append({'name':name, 'input':open(name), 'output':open(os.path.dirname(name)+os.sep+prefix+'_'+os.path.basename(name),'w')})
 
 
 # ------------------------------------------ loop over input files ---------------------------------------  
