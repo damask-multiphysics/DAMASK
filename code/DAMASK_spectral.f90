@@ -77,10 +77,14 @@ program DAMASK_spectral
  use math
  
  use mesh,  only : &
-   mesh_spectral_getResolution, &
-   mesh_spectral_getDimension, &
-   mesh_spectral_getHomogenization
- 
+   homog, &
+   res, &
+   res1_red, &
+   mesh_NcpElems, &
+   wgt, &
+   geomdim, &
+   virt_dim
+   
  use CPFEM, only: &
    CPFEM_general, &
    CPFEM_initAll
@@ -96,8 +100,7 @@ program DAMASK_spectral
    rotation_tol, &
    itmax,&
    itmin, &
-   memory_efficient, &
-   divergence_correction, &                             
+   memory_efficient, &                            
    DAMASK_NumThreadsInt, &
    fftw_planner_flag, &
    fftw_timelimit
@@ -132,10 +135,7 @@ program DAMASK_spectral
    N_l    = 0_pInt, &
    N_t    = 0_pInt, &
    N_n    = 0_pInt, &
-   N_Fdot = 0_pInt, &
-   Npoints,&                                                                                        ! number of Fourier points
-   homog, &                                                                                         ! homogenization scheme used
-   res1_red                                                                                         ! to store res(1)/2 +1
+   N_Fdot = 0_pInt
  
  character(len=1024) :: &
    line
@@ -158,11 +158,6 @@ program DAMASK_spectral
  end type
  
  type(bc_type), allocatable, dimension(:) ::  bc
-
-
- real(pReal) ::                               wgt
- real(pReal), dimension(3) ::                 geomdim = 0.0_pReal, virt_dim = 0.0_pReal             ! physical dimension of volume element per direction
- integer(pInt), dimension(3) ::               res = 1_pInt                                          ! resolution (number of Fourier points) in each direction
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -368,15 +363,6 @@ program DAMASK_spectral
      end select
  enddo; enddo
 101 close(myUnit)
- 
-!--------------------------------------------------------------------------------------------------
-! get resolution, dimension, homogenization and variables derived from resolution
- res     = mesh_spectral_getResolution()
- geomdim = mesh_spectral_getDimension()
- homog   = mesh_spectral_getHomogenization()
- res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
- Npoints = res(1)*res(2)*res(3)
- wgt = 1.0_pReal/real(Npoints, pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! output of geometry
@@ -541,8 +527,8 @@ program DAMASK_spectral
    call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(F_aim_lastInc))
    read (777,rec=1) F_aim_lastInc
    close (777)
-
    coordinates = 0.0 ! change it later!!!
+   CPFEM_mode = 2_pInt
  endif
  ielem = 0_pInt
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
@@ -561,13 +547,6 @@ program DAMASK_spectral
  
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
- if (divergence_correction) then
-   do i = 1_pInt, 3_pInt
-    if (i /= minloc(geomdim,1) .and. i /= maxloc(geomdim,1)) virt_dim = geomdim/geomdim(i)
-   enddo
- else
-   virt_dim = geomdim
- endif
 
  do k = 1_pInt, res(3)
    k_s(3) = k - 1_pInt
@@ -632,7 +611,7 @@ program DAMASK_spectral
    write(538) 'increments', bc(1:N_Loadcases)%incs                                                  ! one entry per loadcase
    write(538) 'startingIncrement', restartInc - 1_pInt                                              ! start with writing out the previous inc
    write(538) 'eoh'                                                                                 ! end of header
-   write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)              ! initial (non-deformed or read-in) results
+   write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:mesh_NcpElems)              ! initial (non-deformed or read-in) results
    if (debugGeneral) write(6,'(a)') 'Header of result file written out'
  endif
 
@@ -661,7 +640,7 @@ program DAMASK_spectral
 !##################################################################################################
    do inc = 1_pInt,  bc(loadcase)%incs
      totalIncsCounter = totalIncsCounter + 1_pInt                                                 
-
+     
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
      timeinc_old = timeinc
@@ -711,7 +690,7 @@ program DAMASK_spectral
          F_lastInc(i,j,k,1:3,1:3) = temp33_Real 
          Favg = Favg + F(i,j,k,1:3,1:3)
        enddo; enddo; enddo
-       deltaF_aim =  guessmode *(Favg*wgt -F_aim)                                                   ! average correction in case of guessing to 
+       deltaF_aim =  guessmode *(Favg*wgt -math_rotate_backward33(F_aim,bc(loadcase)%rotation))                                                   ! average correction in case of guessing to 
        do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
          F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - deltaF_aim                                           ! correct in case avg of F is not F_aim
        enddo; enddo; enddo
@@ -806,9 +785,9 @@ program DAMASK_spectral
          restartWrite = .false.
 
 ! for test of regridding
-      !   if( bc(loadcase)%restartFrequency > 0_pInt .and. &
-      !       mod(inc-1,bc(loadcase)%restartFrequency) == 0_pInt .and. &
-      !       restartInc/=inc) call quit(-1*(restartInc+1))                                          ! trigger exit to regrid
+        ! if( bc(loadcase)%restartFrequency > 0_pInt .and. &
+         !    mod(inc-1,bc(loadcase)%restartFrequency) == 0_pInt .and. &
+          !   restartInc/=inc) call quit(-1*(restartInc+1))                                          ! trigger exit to regrid
 
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
@@ -981,7 +960,7 @@ program DAMASK_spectral
 
          endif
          deltaF_fourier(1,1,1,1:3,1:3) = cmplx((F_aim_lab_lastIter - F_aim_lab) &                   ! assign (negative) average deformation gradient change to zero frequency (real part)
-                                                * real(Npoints,pReal),0.0_pReal,pReal)              ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
+                                                * real(mesh_NcpElems,pReal),0.0_pReal,pReal)              ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1
 
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
@@ -1077,7 +1056,7 @@ program DAMASK_spectral
        if (mod(inc,bc(loadcase)%outputFrequency) == 0_pInt) then                                    ! at output frequency
          write(6,'(a)') ''
          write(6,'(a)') '... writing results to file ......................................'
-         write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:Npoints)       ! write result to file
+         write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:mesh_NcpElems)       ! write result to file
          flush(538)
        endif
        
@@ -1092,9 +1071,6 @@ program DAMASK_spectral
          call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastInc))        ! writing F_lastInc field to file
          write (777,rec=1) F_lastInc
          close (777)
-         call IO_write_jobBinaryFile(777,'C',size(C))
-         write (777,rec=1) C
-         close(777)
          call IO_write_jobBinaryFile(777,'F_aim',size(F_aim))
          write (777,rec=1) F_aim
          close(777)

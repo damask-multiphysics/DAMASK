@@ -123,16 +123,6 @@ program DAMASK_spectral_Driver
  write(6,'(a)') ' <<<+-  DAMASK_spectral_Driver init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
- write(6,'(a,a)')        ' Working Directory:    ',trim(getSolverWorkingDirectoryName())
- write(6,'(a,a)')        ' Solver Job Name:      ',trim(getSolverJobName())
- write(6,'(a)')          ''
- write(6,'(a,a)')        ' geometry file:        ',trim(geometryFile)
- write(6,'(a)')          ''
- write(6,'(a,3(i12  ))') '  resolution a b c:',      res
- write(6,'(a,3(f12.5))') '  dimension  x y z:',      geomdim
- write(6,'(a,i5)')       '  homogenization:       ', homog
- write(6,'(a,a)')          '',''
- write(6,'(a,a)')        ' Loadcase file:        ',trim(loadCaseFile)
  write(6,'(a)') ''
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases

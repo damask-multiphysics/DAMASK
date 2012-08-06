@@ -178,15 +178,19 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  write(6,'(a,2(i2.2,a),i2.2)') ' Time:                  ',dateAndTime(5),':',&
                                                           dateAndTime(6),':',&
                                                           dateAndTime(7)  
- write(6,'(a,a)')  ' Host name:             ', trim(hostName)
- write(6,'(a,a)')  ' User name:             ', trim(userName)
- write(6,'(a,a)')  ' Path separator:        ', getPathSep()
- write(6,'(a,a)')  ' Command line call:     ', trim(commandLine)
- write(6,'(a,a)')  ' Geometry parameter:    ', trim(geometryParameter)
- write(6,'(a,a)')  ' Loadcase parameter:    ', trim(loadcaseParameter)
+ write(6,'(a,a)')    ' Host name:             ', trim(hostName)
+ write(6,'(a,a)')    ' User name:             ', trim(userName)
+ write(6,'(a,a)')    ' Path separator:        ', getPathSep()
+ write(6,'(a,a)')    ' Command line call:     ', trim(commandLine)
+ write(6,'(a,a)')    ' Geometry parameter:    ', trim(geometryParameter)
+ write(6,'(a,a)')    ' Loadcase parameter:    ', trim(loadcaseParameter)
+ write(6,'(a,a)')    ' Geometry file:         ', trim(geometryFile)
+ write(6,'(a,a)')    ' Loadcase file:         ', trim(loadCaseFile)
+ write(6,'(a,a)')    ' Working Directory:     ', trim(getSolverWorkingDirectoryName())
+ write(6,'(a,a)')    ' Solver Job Name:       ', trim(getSolverJobName())
  if (SpectralRestartInc > 1_pInt) write(6,'(a,i6.6)') &
-                   ' Restart at increment:  ', spectralRestartInc
- write(6,'(a,l1)') ' Append to result file: ', appendToOutFile
+                     ' Restart at increment:  ', spectralRestartInc
+ write(6,'(a,l1,/)') ' Append to result file: ', appendToOutFile
 
 end subroutine DAMASK_interface_init
 

@@ -100,9 +100,14 @@ subroutine FE_init
  character(len=1024) :: line
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
 #endif
+!$OMP CRITICAL (write2out)
+ write(6,*)
+ write(6,*) '<<<+-  FEsolving init  -+>>>'
+ write(6,*) '$Id$'
+#include "compilation_info.f90"
+!$OMP END CRITICAL (write2out)
 
  modelName = getSolverJobName()
-
 #ifdef Spectral
  restartInc = spectralRestartInc
  if(restartInc <= 0_pInt) then
@@ -169,13 +174,11 @@ subroutine FE_init
 #endif
  200 close(fileunit)
  endif
-
+ ! the following array are allocated by mesh.f90 and need to be deallocated in case of regridding
+ if (allocated(calcMode)) deallocate(calcMode)
+ if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
 #endif
 !$OMP CRITICAL (write2out)
- write(6,*)
- write(6,*) '<<<+-  FEsolving init  -+>>>'
- write(6,*) '$Id$'
-#include "compilation_info.f90"
  if (iand(debug_level(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
    write(6,*) 'restart writing:    ', restartWrite
    write(6,*) 'restart reading:    ', restartRead

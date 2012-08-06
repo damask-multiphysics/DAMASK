@@ -29,7 +29,7 @@
 
 module mesh     
  use prec, only: pReal, pInt
- 
+
  implicit none
  private
  
@@ -94,7 +94,14 @@ module mesh
    mesh_subNodeCoord                                                                                !< coordinates of subnodes per element
  
  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
- 
+
+#ifdef Spectral
+ real(pReal),   dimension(3), public :: geomdim, virt_dim                                           ! physical dimension of volume element per direction
+ integer(pInt), dimension(3), public :: res
+ real(pReal),   public  :: wgt
+ integer(pInt), public  :: res1_red, homog
+ integer(pInt), private :: i
+#endif
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
@@ -272,14 +279,14 @@ module mesh
             mesh_build_ipVolumes, &
             mesh_build_ipCoordinates
 #ifdef Spectral
- public ::  mesh_spectral_getResolution, &
-            mesh_spectral_getDimension, &
-            mesh_spectral_getHomogenization, &
-            mesh_regrid
+ public  :: mesh_regrid
 #endif
 
  private :: &
 #ifdef Spectral
+            mesh_spectral_getResolution, &
+            mesh_spectral_getDimension, &
+            mesh_spectral_getHomogenization, &
             mesh_spectral_count_nodesAndElements, &
             mesh_spectral_count_cpElements, &
             mesh_spectral_map_elements, &
@@ -340,6 +347,8 @@ subroutine mesh_init(ip,element)
 #endif
 #ifdef Spectral
    IO_open_file
+ use numerics, only: &
+   divergence_correction
 #else
    IO_open_InputFile
 #endif
@@ -375,8 +384,6 @@ subroutine mesh_init(ip,element)
  if (allocated(mesh_ipNeighborhood)) deallocate(mesh_ipNeighborhood)
  if (allocated(mesh_ipVolume)) deallocate(mesh_ipVolume)
  if (allocated(mesh_nodeTwins)) deallocate(mesh_nodeTwins)
- if (allocated(calcMode)) deallocate(calcMode)
- if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
  if (allocated(FE_nodesAtIP)) deallocate(FE_nodesAtIP)
  if (allocated(FE_ipNeighbor))deallocate(FE_ipNeighbor)
  if (allocated(FE_subNodeParent)) deallocate(FE_subNodeParent)
@@ -384,12 +391,27 @@ subroutine mesh_init(ip,element)
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
 #ifdef Spectral
  call IO_open_file(fileUnit,geometryFile)                                                           ! parse info from geometry file...
- call mesh_spectral_count_nodesAndElements(fileUnit)
+ res = mesh_spectral_getResolution(fileUnit)
+ res1_red = res(1)/2_pInt + 1_pInt
+ wgt = 1.0/real(res(1)*res(2)*res(3),pReal)
+ geomdim = mesh_spectral_getDimension(fileUnit)
+ homog = mesh_spectral_getHomogenization(fileUnit)
+ if (divergence_correction) then
+   do i = 1_pInt, 3_pInt
+    if (i /= minloc(geomdim,1) .and. i /= maxloc(geomdim,1)) virt_dim = geomdim/geomdim(i)
+   enddo
+ else
+   virt_dim = geomdim
+ endif
+ write(6,'(a,3(i12  ))') ' resolution a b c:',      res
+ write(6,'(a,3(f12.5))') ' dimension  x y z:',      geomdim
+ write(6,'(a,i5,/)')     ' homogenization:       ', homog
+ call mesh_spectral_count_nodesAndElements
  call mesh_spectral_count_cpElements
  call mesh_spectral_map_elements
  call mesh_spectral_map_nodes
  call mesh_spectral_count_cpSizes
- call mesh_spectral_build_nodes(fileUnit)
+ call mesh_spectral_build_nodes
  call mesh_spectral_build_elements(fileUnit)
 #endif
 #ifdef Marc
@@ -864,10 +886,10 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  integer(pInt), dimension(3), optional, intent(in)      :: minRes
  integer(pInt), dimension(3)                            :: mesh_regrid, ratio
  integer(pInt), dimension(3,2)                          :: possibleResNew
- integer(pInt):: maxsize, i, j, k, ielem, Npoints, NpointsNew, spatialDim
- integer(pInt), dimension(3)                            :: res, resNew
+ integer(pInt):: maxsize, i, j, k, ielem, NpointsNew, spatialDim
+ integer(pInt), dimension(3)                            :: resNew
  integer(pInt), dimension(:),            allocatable    :: indices
- real(pReal),   dimension(3)                            :: geomdim,geomdimNew                                              
+ real(pReal),   dimension(3)                            :: geomdimNew                                              
  real(pReal),   dimension(3,3)                          :: Favg, Favg_LastInc 
  real(pReal),   dimension(:,:),    allocatable :: & 
    coordinatesNew, &
@@ -878,10 +900,10 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    
  real(pReal),   dimension(:,:,:,:,:),    allocatable :: & 
    F,                  FNew, &
-   F_lastInc,  F_lastIncNew, &
    Fp,                FpNew, &
    Lp,                LpNew, &
-   dcsdE,          dcsdENew
+   dcsdE,          dcsdENew, &
+   F_lastIncNew
 
  real(pReal),   dimension (:,:,:,:,:,:,:),  allocatable :: &
    dPdF,            dPdFNew
@@ -892,10 +914,6 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    stateConst 
  integer(pInt), dimension(:,:), allocatable :: &
    sizeStateConst,  sizeStateHomog
- 
-  res     = mesh_spectral_getResolution()
-  geomdim = mesh_spectral_getDimension()
-  Npoints = res(1)*res(2)*res(3)
   
   if (adaptive) then
     if (present(resNewInput)) then
@@ -911,16 +929,17 @@ function mesh_regrid(adaptive,resNewInput,minRes)
   read (777,rec=1) F
   close (777)
  
-! ----Calculate deformed configuration and average--------
-  do i= 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-    Favg(i,j) = sum(F(1:res(1),1:res(2),1:res(3),i,j)) / real(Npoints,pReal)
-  enddo; enddo
+! ----read in average deformation--------
+  call IO_read_jobBinaryFile(777,'F_aim',trim(getSolverJobName()),size(Favg))
+  read (777,rec=1) Favg
+  close (777)
+  
   allocate(coordinates(res(1),res(2),res(3),3))
   call deformed_fft(res,geomdim,Favg,1.0_pReal,F,coordinates)
   deallocate(F)
  
 ! ----Store coordinates into a linear list--------
-  allocate(coordinatesLinear(3,Npoints))
+  allocate(coordinatesLinear(3,mesh_NcpElems))
   ielem = 0_pInt
   do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
     ielem = ielem + 1_pInt
@@ -954,7 +973,6 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    ratio = floor(real(resNewInput,pReal) * (geomdimNew/geomdim), pInt)
    
    possibleResNew = 1_pInt
- 
    do i = 1_pInt, spatialDim
      if (mod(ratio(i),2) == 0_pInt) then
        possibleResNew(i,1:2) = [ratio(i),ratio(i) + 2_pInt]
@@ -1016,7 +1034,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 
 !----- Nearest neighbour search ------------------------------------
  allocate(indices(NpointsNew))
- call math_nearestNeighborSearch(spatialDim, Favg, geomdim, NpointsNew, Npoints, &
+ call math_nearestNeighborSearch(spatialDim, Favg, geomdim, NpointsNew, mesh_NcpElems, &
                                  coordinatesNew, coordinatesLinear, indices)
  deallocate(coordinatesNew)
 
@@ -1045,7 +1063,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 
  call IO_write_jobFile(777,'idx2')                                ! make it a general open-write file
  write(777, '(A)') '1 header'
- write(777, '(A)') 'Numbered indices as per the large set'
+ write(777, '(A)') 'Numbered indices as per the small set'
  do i = 1_pInt, NpointsNew
    write(777,trim(formatString),advance='no') indices(i), ' '
    if(mod(i,resNew(1)) == 0_pInt) write(777,'(A)') ''
@@ -1053,7 +1071,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  close(777)
  
 !------Adjusting the point-to-grain association---------------------
- write(N_Digits, '(I16.16)') 1_pInt+int(log10(real(maxval(mesh_element(4,1:Npoints)),pReal)),pInt)
+ write(N_Digits, '(I16.16)') 1_pInt+int(log10(real(maxval(mesh_element(4,1:mesh_NcpElems)),pReal)),pInt)
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
@@ -1069,25 +1087,24 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  enddo
  close(777)
  
-!---------------------------------------------------------
- allocate(F_lastInc(res(1),res(2),res(3),3,3))
- allocate(F_lastIncNew(resNew(1),resNew(2),resNew(3),3,3))
- call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',trim(getSolverJobName()),size(F_lastInc))
- read (777,rec=1) F_lastInc
+!---set F_lastInc to homogeneous deformation------------------------------------------------------
+
+ call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(Favg_LastInc))
+ read (777,rec=1) Favg_LastInc
  close (777)
- do i= 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-  Favg_LastInc(i,j) = sum(F_lastInc(1:res(1),1:res(2),1:res(3),i,j)) / real(Npoints,pReal)
- enddo; enddo
+ 
+ allocate(F_lastIncNew(resNew(1),resNew(2),resNew(3),3,3))
  do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
-   F_lastIncNew(i,j,k,1:3,1:3) = Favg
+   F_lastIncNew(i,j,k,1:3,1:3) = Favg_LastInc
  enddo; enddo; enddo
+ 
  call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastIncNew))
  write (777,rec=1) F_lastIncNew
  close (777)
- deallocate(F_lastInc)
  deallocate(F_lastIncNew)
+
 !-------------------------------------------------------------------
- allocate(material_phase    (1,1, Npoints))
+ allocate(material_phase    (1,1, mesh_NcpElems))
  allocate(material_phaseNew (1,1, NpointsNew))
  call IO_read_jobBinaryFile(777,'recordedPhase',trim(getSolverJobName()),size(material_phase))
  read (777,rec=1) material_phase
@@ -1103,7 +1120,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(material_phaseNew)
  
 !---------------------------------------------------------------------------
- allocate(F       (3,3,1,1, Npoints))
+ allocate(F    (3,3,1,1, mesh_NcpElems))
  allocate(FNew (3,3,1,1, NpointsNew))
  call IO_read_jobBinaryFile(777,'convergedF',trim(getSolverJobName()),size(F))
  read (777,rec=1) F
@@ -1118,7 +1135,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(F)
  deallocate(FNew)
 !--------------------------------------------------------------------- 
- allocate(Fp       (3,3,1,1,Npoints))
+ allocate(Fp       (3,3,1,1,mesh_NcpElems))
  allocate(FpNew (3,3,1,1,NpointsNew))  
  call IO_read_jobBinaryFile(777,'convergedFp',trim(getSolverJobName()),size(Fp))
  read (777,rec=1) Fp
@@ -1134,7 +1151,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(FpNew)
  
 !------------------------------------------------------------------------
- allocate(Lp       (3,3,1,1,Npoints))
+ allocate(Lp       (3,3,1,1,mesh_NcpElems))
  allocate(LpNew  (3,3,1,1,NpointsNew)) 
  call IO_read_jobBinaryFile(777,'convergedLp',trim(getSolverJobName()),size(Lp))
  read (777,rec=1) Lp
@@ -1149,7 +1166,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(LpNew)
  
 !----------------------------------------------------------------------------
- allocate(dcsdE       (6,6,1,1,Npoints)) 
+ allocate(dcsdE       (6,6,1,1,mesh_NcpElems)) 
  allocate(dcsdENew (6,6,1,1,NpointsNew)) 
  call IO_read_jobBinaryFile(777,'convergeddcsdE',trim(getSolverJobName()),size(dcsdE))
  read (777,rec=1) dcsdE
@@ -1164,7 +1181,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(dcsdENew)
  
 !---------------------------------------------------------------------------
- allocate(dPdF       (3,3,3,3,1,1,Npoints))
+ allocate(dPdF       (3,3,3,3,1,1,mesh_NcpElems))
  allocate(dPdFNew (3,3,3,3,1,1,NpointsNew)) 
  call IO_read_jobBinaryFile(777,'convergeddPdF',trim(getSolverJobName()),size(dPdF))
  read (777,rec=1) dPdF
@@ -1179,7 +1196,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(dPdFNew)
  
 !---------------------------------------------------------------------------
- allocate(Tstar        (6,1,1,Npoints))
+ allocate(Tstar        (6,1,1,mesh_NcpElems))
  allocate(TstarNew  (6,1,1,NpointsNew)) 
  call IO_read_jobBinaryFile(777,'convergedTstar',trim(getSolverJobName()),size(Tstar))
  read (777,rec=1) Tstar
@@ -1194,16 +1211,16 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(TstarNew)
  
 !---------------------------------------------------------------------------- 
- allocate(sizeStateConst(1,Npoints))
+ allocate(sizeStateConst(1,mesh_NcpElems))
  call IO_read_jobBinaryFile(777,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
  read (777,rec=1) sizeStateConst
  close (777)
- maxsize = maxval(sizeStateConst(1,1:Npoints))
- allocate(StateConst      (1,1,Npoints,maxsize))
+ maxsize = maxval(sizeStateConst(1,1:mesh_NcpElems))
+ allocate(StateConst      (1,1,mesh_NcpElems,maxsize))
 
  call IO_read_jobBinaryFile(777,'convergedStateConst',trim(getSolverJobName()))
  k = 0_pInt
- do i =1, Npoints
+ do i =1, mesh_NcpElems
    do j = 1,sizeStateConst(1,i)
      k = k+1_pInt
      read(777,rec=k) StateConst(1,1,i,j)
@@ -1223,16 +1240,16 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(StateConst)
 
 !---------------------------------------------------------------------------- 
- allocate(sizeStateHomog(1,Npoints))
+ allocate(sizeStateHomog(1,mesh_NcpElems))
  call IO_read_jobBinaryFile(777,'sizeStateHomog',trim(getSolverJobName()),size(sizeStateHomog))
  read (777,rec=1) sizeStateHomog
  close (777)
- maxsize = maxval(sizeStateHomog(1,1:Npoints))
- allocate(stateHomog      (1,1,Npoints,maxsize))
+ maxsize = maxval(sizeStateHomog(1,1:mesh_NcpElems))
+ allocate(stateHomog      (1,1,mesh_NcpElems,maxsize))
 
  call IO_read_jobBinaryFile(777,'convergedStateHomog',trim(getSolverJobName()))
  k = 0_pInt
- do i =1, Npoints
+ do i =1, mesh_NcpElems
    do j = 1,sizeStateHomog(1,i)
      k = k+1_pInt
      read(777,rec=k) stateHomog(1,1,i,j)
@@ -1261,13 +1278,9 @@ end function mesh_regrid
 !> @brief Count overall number of nodes and elements in mesh and stores them in
 !! 'mesh_Nelems' and 'mesh_Nnodes'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count_nodesAndElements(myUnit)
+subroutine mesh_spectral_count_nodesAndElements()
  
  implicit none
- integer(pInt), intent(in) :: myUnit
- integer(pInt), dimension(3) :: res
- 
- res = mesh_spectral_getResolution(myUnit)
  mesh_Nelems = res(1)*res(2)*res(3)
  mesh_Nnodes = (1_pInt + res(1))*(1_pInt + res(2))*(1_pInt + res(3))
 
@@ -1344,22 +1357,16 @@ end subroutine mesh_spectral_count_cpSizes
 !> @brief Store x,y,z coordinates of all nodes in mesh.
 !! Allocates global arrays 'mesh_node0' and 'mesh_node'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_nodes(myUnit)
+subroutine mesh_spectral_build_nodes()
 
  use IO,   only: &
   IO_error
 
  implicit none
- integer(pInt), intent(in) :: myUnit
  integer(pInt) :: n
- integer(pInt), dimension(3) :: res = 1_pInt
- real(pReal), dimension(3) :: geomdim = 1.0_pReal
 
  allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
  allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
-
- res     = mesh_spectral_getResolution(myUnit)
- geomdim = mesh_spectral_getDimension(myUnit)
  
  forall (n = 0_pInt:mesh_Nnodes-1_pInt)
    mesh_node0(1,n+1_pInt) = &
@@ -1399,16 +1406,12 @@ subroutine mesh_spectral_build_elements(myUnit)
 
  integer(pInt), parameter :: maxNchunks = 7_pInt
  integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
- integer(pInt), dimension(3) :: res
- integer(pInt) :: e, i, homog = 0_pInt, headerLength = 0_pInt, maxIntCount
+ integer(pInt) :: e, i, headerLength = 0_pInt, maxIntCount
  integer(pInt), dimension(:), allocatable :: microstructures
  integer(pInt), dimension(1,1) :: dummySet = 0_pInt
  character(len=65536) :: line,keyword
  character(len=64), dimension(1) :: dummyName = ''
 
- res   = mesh_spectral_getResolution(myUnit)
- homog = mesh_spectral_getHomogenization(myUnit)
- 
  call IO_checkAndRewind(myUnit)
 
  read(myUnit,'(a65536)') line

@@ -39,10 +39,10 @@ SHELL = /bin/sh
 ########################################################################################
 
 #auto values will be set by setup_code.py
-FFTWROOT   := auto
-IMKLROOT   := auto
-ACMLROOT   := auto
-LAPACKROOT := auto
+FFTWROOT := /usr/local
+IMKLROOT := 
+ACMLROOT := 
+LAPACKROOT := /usr
 
 F90 ?= ifort
 COMPILERNAME ?= $(F90)
@@ -96,11 +96,13 @@ endif
 LIBRARIES +=-lfftw3
 LIB_DIRS  +=-L$(FFTWROOT)/lib
 
-#ifdef PETSC_DIR
-#include ${PETSC_DIR}/conf/variables
-#INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSC
-#LIBRARIES    +=${PETSC_WITH_EXTERNAL_LIB}
-#endif
+ifeq "$(SOLVER)" "NEW"
+ifdef PETSC_DIR
+include ${PETSC_DIR}/conf/variables
+INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSC
+LIBRARIES    +=${PETSC_WITH_EXTERNAL_LIB}
+endif
+endif
 
 ifdef IMKLROOT
 LIB_DIRS  +=-L$(IMKLROOT)/lib/intel64
@@ -273,10 +275,29 @@ COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHEC
 COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o \
-                 constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o \
-                 homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o crystallite.o
+                 constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o crystallite.o \
+                 homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o 
 
-ifneq "$(SOLVER)" "AL"
+ifeq "$(SOLVER)" "NEW"
+COMPILED_FILES += DAMASK_spectral_Utilities.o DAMASK_spectral_SolverBasic.o DAMASK_spectral_SolverAL.o
+
+DAMASK_spectral.exe: DAMASK_spectral_Driver.o 
+	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
+  -o DAMASK_spectral.exe DAMASK_spectral_Driver.o \
+  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
+
+DAMASK_spectral_Driver.o: DAMASK_spectral_Driver.f90 DAMASK_spectral_SolverBasic.o DAMASK_spectral_SolverAL.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_Driver.f90 $(SUFFIX)
+
+DAMASK_spectral_SolverAL.o:    DAMASK_spectral_SolverAL.f90\
+                               DAMASK_spectral_Utilities.o
+  
+DAMASK_spectral_SolverBasic.o: DAMASK_spectral_SolverBasic.f90\
+                               DAMASK_spectral_Utilities.o
+
+DAMASK_spectral_Utilities.o:   DAMASK_spectral_Utilities.f90\
+                               CPFEM.o
+else
 DAMASK_spectral.exe: DAMASK_spectral.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral.o \
@@ -284,15 +305,7 @@ DAMASK_spectral.exe: DAMASK_spectral.o
 
 DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral.f90 $(SUFFIX)
-else
-DAMASK_spectral_AL.exe: DAMASK_spectral_AL.o 
-	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
-  -o DAMASK_spectral_AL.exe DAMASK_spectral_AL.o \
-  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
-
-DAMASK_spectral_AL.o: DAMASK_spectral_AL.f90 CPFEM.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_AL.f90 $(SUFFIX)
-endif
+endif                       
 CPFEM.o:                      CPFEM.f90\
                               homogenization.o
 

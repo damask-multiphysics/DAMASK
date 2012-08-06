@@ -419,7 +419,7 @@ subroutine numerics_init
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
 #endif
  if (fixedSeed <= 0_pInt) then
-   write(6,'(a)') ' Random is random!'
+   write(6,'(a,/)') ' Random is random!'
  endif
 
 end subroutine numerics_init
