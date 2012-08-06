@@ -62,7 +62,7 @@ program DAMASK_spectral_Driver
    debugGeneral
  
  use DAMASK_spectral_SolverBasic
-!use DAMASK_spectral_SolverAL
+ use DAMASK_spectral_SolverAL
  
  implicit none
  
@@ -286,8 +286,8 @@ program DAMASK_spectral_Driver
    case (DAMASK_spectral_SolverBasic_label)
      call basic_init()
      
-   !case (DAMASK_spectral_SolverAL_label)
-    ! call AL_init()
+   case (DAMASK_spectral_SolverAL_label)
+     call AL_init()
      
  end select 
 !--------------------------------------------------------------------------------------------------
@@ -369,15 +369,13 @@ program DAMASK_spectral_Driver
                 temperature_bc    = loadCases(currentLoadCase)%temperature, &
                 rotation_BC       = loadCases(currentLoadCase)%rotation)
            
-         ! case (DAMASK_spectral_SolverAL_label)
-           ! solres = AL_solution (&
-               ! guessmode,timeinc,timeinc_old, &
-                ! P_BC              = loadCases(currentLoadCase)%stress, &
-                ! F_BC              = loadCases(currentLoadCase)%deformation, &
-               ! ! temperature_bc       = loadCases(currentLoadCase)%temperature, &
-                ! mask_stressVector = loadCases(currentLoadCase)%maskStressVector, &
-                ! velgrad           = loadCases(currentLoadCase)%velGradApplied, &
-                ! rotation_BC       = loadCases(currentLoadCase)%rotation)
+          case (DAMASK_spectral_SolverAL_label)
+            solres = AL_solution (&
+               guessmode,timeinc,timeinc_old, &
+                P_BC              = loadCases(currentLoadCase)%P, &
+                F_BC              = loadCases(currentLoadCase)%deformation, &
+                temperature_bc    = loadCases(currentLoadCase)%temperature, &
+                rotation_BC       = loadCases(currentLoadCase)%rotation)
            
        end select 
  
@@ -408,9 +406,9 @@ program DAMASK_spectral_Driver
    case (DAMASK_spectral_SolverBasic_label)
      call basic_destroy()
      
- !  case (DAMASK_spectral_SolverAL_label)
- !    call AL_destroy()
- !    
+   case (DAMASK_spectral_SolverAL_label)
+     call AL_destroy()
+     
  end select
  
  write(6,'(a)') ''

@@ -268,7 +268,7 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
      F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
    enddo; enddo; enddo
 
-   basic_solution%converged = basic_Convergeced(err_div,P_av,err_stress,P_av)
+   basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)
    
    if (basic_solution%converged .and. iter > itmin) exit  
  enddo convergenceLoop
@@ -279,7 +279,7 @@ end function basic_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check for basic scheme based on div of P and deviation from stress aim
 !--------------------------------------------------------------------------------------------------
-logical function basic_Convergeced(err_div,pAvgDiv,err_stress,pAvgStress)
+logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
 
  use numerics, only: &
    itmin, &
@@ -311,7 +311,7 @@ logical function basic_Convergeced(err_div,pAvgDiv,err_stress,pAvgStress)
  pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(pAvgDiv,math_transpose33(pAvgDiv)))))                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
  err_stress_tol = min(maxval(abs(pAvgStress))*err_stress_tolrel,err_stress_tolabs)
  
- basic_Convergeced = all([ err_div/pAvgDivL2/err_div_tol,&
+ basic_Converged = all([ err_div/pAvgDivL2/err_div_tol,&
                            err_stress/err_stress_tol    ]  < 1.0_pReal)
   
  write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/pAvgDivL2/err_div_tol,&
@@ -319,7 +319,7 @@ logical function basic_Convergeced(err_div,pAvgDiv,err_stress,pAvgStress)
  write(6,'(a,f6.2,a,es11.4,a)') 'error stress =     ', err_stress/err_stress_tol, &
                                                        ' (',err_stress,' Pa)'  
 
-end function basic_Convergeced
+end function basic_Converged
 
 subroutine basic_destroy()
  
