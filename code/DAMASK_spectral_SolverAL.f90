@@ -56,7 +56,6 @@ module DAMASK_spectral_SolverAL
   PetscInt, private :: xs,xm,gxs,gxm
   PetscInt, private :: ys,ym,gys,gym
   PetscInt, private :: zs,zm,gzs,gzm
-  character(len=1024), private :: PetSc_options = '-snes_type ngmres -snes_ngmres_anderson -snes_monitor -snes_view'
  
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
@@ -104,10 +103,14 @@ module DAMASK_spectral_SolverAL
       Utilities_constitutiveResponse, &
       Utilities_updateGamma, &
       debugrestart
+      
+    use numerics, only: &
+      petsc_options  
          
     use mesh, only: &
       res, &
       geomdim
+      
     use math, only: &
       math_invSym3333
       
@@ -208,7 +211,7 @@ module DAMASK_spectral_SolverAL
     call SNESSetDM(snes,da,ierr_psc)
     call SNESSetFunction(snes,residual,AL_FormRHS,dummy,ierr_psc)
     call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr_psc)
-    call PetscOptionsInsertString(PetSc_options,ierr_psc)
+    call PetscOptionsInsertString(petsc_options,ierr_psc)
     call SNESSetFromOptions(snes,ierr_psc)  
     call DMDAGetCorners(da,xs,ys,zs,xm,ym,zm,ierr_psc)
     call DMDAGetCorners(da,gxs,gys,gzs,gxm,gym,gzm,ierr_psc)
@@ -321,8 +324,9 @@ module DAMASK_spectral_SolverAL
 
  end function AL_solution
 
-! ------------------------------------------------------------------- 
-
+!--------------------------------------------------------------------------------------------------
+!> @brief fills solution vector with forwarded fields
+!--------------------------------------------------------------------------------------------------
  subroutine AL_InitialGuess(xx_psc)
 
    implicit none
@@ -360,6 +364,9 @@ module DAMASK_spectral_SolverAL
    return
  end subroutine AL_InitialGuess
  
+!--------------------------------------------------------------------------------------------------
+!> @brief forms the AL residual vector
+!--------------------------------------------------------------------------------------------------
  subroutine AL_FormRHS(snes_local,X_local,F_local,dummy,ierr_psc)
  
  !  Input/output variables:
@@ -409,18 +416,9 @@ module DAMASK_spectral_SolverAL
  
  end subroutine AL_FormRHS
 
-! ---------------------------------------------------------------------
-!
-!  Input Parameter:
-!  x - local vector data
-!
-!  Output Parameters:
-!  f - local vector data, f(x)
-!  ierr - error code 
-!
-!  Notes:
-!  This routine uses standard Fortran-style computations over a 3-dim array.
-!
+!--------------------------------------------------------------------------------------------------
+!> @brief forms the AL residual vector
+!--------------------------------------------------------------------------------------------------
  subroutine AL_FormRHS_local(x_scal,f_scal,dummy,ierr_psc)
   
    use numerics, only: &
@@ -545,9 +543,9 @@ module DAMASK_spectral_SolverAL
    return
  end subroutine AL_FormRHS_local
 
- ! ---------------------------------------------------------------------
- ! User defined convergence check
- !
+!--------------------------------------------------------------------------------------------------
+!> @brief convergence check
+!--------------------------------------------------------------------------------------------------
  subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr_psc)
   
    use numerics, only: &
@@ -589,6 +587,9 @@ module DAMASK_spectral_SolverAL
 
  end subroutine AL_converged
 
+!--------------------------------------------------------------------------------------------------
+!> @brief destroy routine
+!--------------------------------------------------------------------------------------------------
  subroutine AL_destroy()
  use DAMASK_spectral_Utilities, only: &
    Utilities_destroy
