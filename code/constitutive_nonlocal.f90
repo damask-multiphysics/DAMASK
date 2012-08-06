@@ -339,7 +339,7 @@ constitutive_nonlocal_C33 = 0.0_pReal
 constitutive_nonlocal_C44 = 0.0_pReal
 constitutive_nonlocal_Gmod = 0.0_pReal
 constitutive_nonlocal_atomicVolume = 0.0_pReal
-constitutive_nonlocal_Dsd0 = 0.0_pReal
+constitutive_nonlocal_Dsd0 = -1.0_pReal
 constitutive_nonlocal_Qsd = 0.0_pReal
 constitutive_nonlocal_aTolRho = 0.0_pReal
 constitutive_nonlocal_nu = 0.0_pReal
@@ -562,7 +562,7 @@ enddo
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_atomicVolume(i) <= 0.0_pReal)               call IO_error(211_pInt,ext_msg='atomicVolume (' &
                                                                              //constitutive_nonlocal_label//')')
-  if (constitutive_nonlocal_Dsd0(i) <= 0.0_pReal)                       call IO_error(211_pInt,ext_msg='selfDiffusionPrefactor (' &
+  if (constitutive_nonlocal_Dsd0(i) < 0.0_pReal)                        call IO_error(211_pInt,ext_msg='selfDiffusionPrefactor (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                        call IO_error(211_pInt,ext_msg='selfDiffusionEnergy (' &
                                                                              //constitutive_nonlocal_label//')')
