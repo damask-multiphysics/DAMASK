@@ -50,7 +50,7 @@ module DAMASK_spectral_SolverAL
 ! PETSc data
   SNES, private :: snes
   DM, private :: da
-  Vec, private :: x,residual
+  Vec, private :: solution_vec,residual_vec
   PetscMPIInt, private :: rank
   integer(pInt), private :: iter
   PetscInt, private :: xs,xm,gxs,gxm
@@ -204,17 +204,16 @@ module DAMASK_spectral_SolverAL
               DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
               DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
               18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr_psc)
-    call DMCreateGlobalVector(da,x,ierr_psc)
-    call VecDuplicate(x,residual,ierr_psc)
-    !call DMDASetLocalFunction(da,AL_FormRHS,ierr_psc)
+    call DMCreateGlobalVector(da,solution_vec,ierr_psc)
+    call VecDuplicate(solution_vec,residual_vec,ierr_psc)
+    call DMDASetLocalFunction(da,AL_FormResidual,ierr_psc)
   
     call SNESSetDM(snes,da,ierr_psc)
-    call SNESSetFunction(snes,residual,AL_FormRHS,dummy,ierr_psc)
     call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr_psc)
     call PetscOptionsInsertString(petsc_options,ierr_psc)
     call SNESSetFromOptions(snes,ierr_psc)  
     call DMDAGetCorners(da,xs,ys,zs,xm,ym,zm,ierr_psc)
-    call DMDAGetCorners(da,gxs,gys,gzs,gxm,gym,gzm,ierr_psc)
+    call DMDAGetGhostCorners(da,gxs,gys,gzs,gxm,gym,gzm,ierr_psc)
   
     xs = xs+1; gxs = gxs+1 
     xm = xm-1; gxm = gxm-1 
@@ -314,12 +313,11 @@ module DAMASK_spectral_SolverAL
    params%rotation_BC = rotation_BC
    params%timeinc = timeinc
    
-   call VecGetArrayF90(x,xx_psc,ierr_psc)
+   call VecGetArrayF90(solution_vec,xx_psc,ierr_psc)
    call AL_InitialGuess(xx_psc)
-   call VecRestoreArrayF90(x,xx_psc,ierr_psc) 
-   call SNESSolve(snes,PETSC_NULL_OBJECT,x,ierr_psc)
+   call VecRestoreArrayF90(solution_vec,xx_psc,ierr_psc) 
+   call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr_psc)
    call SNESGetConvergedReason(snes,reason,ierr_psc)
-   print*, 'reason', reason
    if (reason > 0 ) AL_solution%converged = .true.
 
  end function AL_solution
@@ -363,63 +361,11 @@ module DAMASK_spectral_SolverAL
 
    return
  end subroutine AL_InitialGuess
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief forms the AL residual vector
-!--------------------------------------------------------------------------------------------------
- subroutine AL_FormRHS(snes_local,X_local,F_local,dummy,ierr_psc)
- 
- !  Input/output variables:
-      SNES           snes_local
-      Vec            X_local,F_local
-      PetscErrorCode ierr_psc
-      PetscObject dummy
-      DM             da_local
-
-!  Declarations for use with local arrays:
-      PetscScalar,pointer :: lx_v(:),lf_v(:)
-      Vec            localX
-
-!  Scatter ghost points to local vector, using the 2-step process
-!     DMGlobalToLocalBegin(), DMGlobalToLocalEnd().
-!  By placing code between these two statements, computations can
-!  be done while messages are in transition.
-      call SNESGetDM(snes_local,da_local,ierr_psc)
-      call DMGetLocalVector(da_local,localX,ierr_psc)
-      call DMGlobalToLocalBegin(da_local,X_local,INSERT_VALUES,                     &
-     &     localX,ierr_psc)
-      call DMGlobalToLocalEnd(da_local,X_local,INSERT_VALUES,localX,ierr_psc)
-
-!  Get a pointer to vector data.
-!    - For default PETSc vectors, VecGetArray90() returns a pointer to
-!      the data array. Otherwise, the routine is implementation dependent.
-!    - You MUST call VecRestoreArrayF90() when you no longer need access to
-!      the array.
-!    - Note that the interface to VecGetArrayF90() differs from VecGetArray(),
-!      and is useable from Fortran-90 Only.
-
-      call VecGetArrayF90(localX,lx_v,ierr_psc)
-      call VecGetArrayF90(F_local,lf_v,ierr_psc)
-
-!  Compute function over the locally owned part of the grid
-      call AL_FormRHS_local(lx_v,lf_v,dummy,ierr_psc)
-
-!  Restore vectors
-      call VecRestoreArrayF90(localX,lx_v,ierr_psc)
-      call VecRestoreArrayF90(F_local,lf_v,ierr_psc)
-
-!  Insert values into global vector
-
-      call DMRestoreLocalVector(da_local,localX,ierr_psc)
-
-      return 
- 
- end subroutine AL_FormRHS
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the AL residual vector
 !--------------------------------------------------------------------------------------------------
- subroutine AL_FormRHS_local(x_scal,f_scal,dummy,ierr_psc)
+ subroutine AL_FormResidual(info,x_scal,f_scal,dummy,ierr_psc)
   
    use numerics, only: &
      itmax, &
@@ -441,9 +387,11 @@ module DAMASK_spectral_SolverAL
    implicit none
 
    integer(pInt) :: i,j,k
+   real(pReal), dimension (3,3) ::  temp33_real
+   
+   DMDALocalInfo info(DMDA_LOCAL_INFO_SIZE)
    PetscScalar x_scal(0:17,gxs:gxs+gxm,gys:gys+gym,gzs:gzs+gzm)  
    PetscScalar f_scal(0:17,xs:xs+xm,ys:ys+ym,zs:zs+zm)
-   real(pReal), dimension (3,3) ::  temp33_real
    PetscObject dummy
    PetscErrorCode ierr_psc
 
@@ -496,8 +444,6 @@ module DAMASK_spectral_SolverAL
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
      field_real(i,j,k,1:3,1:3) = math_mul3333xx33(C_scale,F_lambda(i,j,k,1:3,1:3)-F(i,j,k,1:3,1:3))
    enddo; enddo; enddo
-   
-
   
    call Utilities_forwardFFT()
    call Utilities_fourierConvolution(math_rotate_backward33(F_aim,params%rotation_BC)) 
@@ -516,7 +462,6 @@ module DAMASK_spectral_SolverAL
    err_f = wgt*sqrt(err_f)
    err_p = wgt*sqrt(err_p)
 
-   
    do k=gzs,gzs+gzm; do j=gys,gys+gym; do i=gxs,gxs+gxm
      temp33_real = math_mul3333xx33(S_scale,P(i,j,k,1:3,1:3)) + math_I3 - F_lambda(i,j,k,1:3,1:3) &
             + F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)
@@ -541,7 +486,7 @@ module DAMASK_spectral_SolverAL
    enddo; enddo; enddo
 
    return
- end subroutine AL_FormRHS_local
+ end subroutine AL_FormResidual
 
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
@@ -558,7 +503,6 @@ module DAMASK_spectral_SolverAL
    
    implicit none
 
- ! Input/output variables:
    SNES snes_local
    PetscInt it
    PetscReal xnorm, snorm, fnorm
@@ -591,17 +535,18 @@ module DAMASK_spectral_SolverAL
 !> @brief destroy routine
 !--------------------------------------------------------------------------------------------------
  subroutine AL_destroy()
- use DAMASK_spectral_Utilities, only: &
-   Utilities_destroy
- implicit none
- PetscErrorCode ierr_psc
-
- call VecDestroy(x,ierr_psc)
- call VecDestroy(residual,ierr_psc)
- call SNESDestroy(snes,ierr_psc)
- call DMDestroy(da,ierr_psc)
- call PetscFinalize(ierr_psc)
- call Utilities_destroy()
+ 
+   use DAMASK_spectral_Utilities, only: &
+     Utilities_destroy
+   implicit none
+   PetscErrorCode ierr_psc
+  
+   call VecDestroy(solution_vec,ierr_psc)
+   call VecDestroy(residual_vec,ierr_psc)
+   call SNESDestroy(snes,ierr_psc)
+   call DMDestroy(da,ierr_psc)
+   call PetscFinalize(ierr_psc)
+   call Utilities_destroy()
 
  end subroutine AL_destroy
 
