@@ -49,13 +49,7 @@ module DAMASK_spectral_SolverAL
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
   SNES, private :: snes
-  DM, private :: da
-  Vec, private :: solution_vec,residual_vec
-  PetscMPIInt, private :: rank
-  integer(pInt), private :: iter
-  PetscInt, private :: xs,xm,gxs,gxm
-  PetscInt, private :: ys,ym,gys,gym
-  PetscInt, private :: zs,zm,gzs,gzm
+  Vec, private :: solution_vec
  
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
@@ -115,9 +109,13 @@ module DAMASK_spectral_SolverAL
       math_invSym3333
       
     implicit none
+    
     integer(pInt) :: i,j,k
-    PetscErrorCode  ierr_psc
-    PetscObject dummy
+    
+    PetscErrorCode :: ierr_psc
+    PetscObject :: dummy
+    PetscMPIInt :: rank
+    DM :: da
     
     call Utilities_init()
     
@@ -205,22 +203,13 @@ module DAMASK_spectral_SolverAL
               DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
               18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr_psc)
     call DMCreateGlobalVector(da,solution_vec,ierr_psc)
-    call VecDuplicate(solution_vec,residual_vec,ierr_psc)
-    call DMDASetLocalFunction(da,AL_FormResidual,ierr_psc)
+    call DMDASetLocalFunction(da,AL_formResidual,ierr_psc)
   
     call SNESSetDM(snes,da,ierr_psc)
     call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr_psc)
     call PetscOptionsInsertString(petsc_options,ierr_psc)
     call SNESSetFromOptions(snes,ierr_psc)  
-    call DMDAGetCorners(da,xs,ys,zs,xm,ym,zm,ierr_psc)
-    call DMDAGetGhostCorners(da,gxs,gys,gzs,gxm,gym,gzm,ierr_psc)
-  
-    xs = xs+1; gxs = gxs+1 
-    xm = xm-1; gxm = gxm-1 
-    ys = ys+1; gys = gys+1 
-    ym = ym-1; gym = gym-1
-    zs = zs+1; gzs = gzs+1 
-    zm = zm-1; gzm = gzm-1
+    call DMDestroy(da,ierr_psc)
  
   end subroutine AL_init
   
@@ -262,6 +251,7 @@ module DAMASK_spectral_SolverAL
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
    real(pReal), dimension(3,3)            :: temp33_Real 
+   integer(pInt) :: ctr, i, j, k
  
 !--------------------------------------------------------------------------------------------------
 ! 
@@ -306,15 +296,19 @@ module DAMASK_spectral_SolverAL
    S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
    if (update_gamma) call Utilities_updateGamma(C)
    
-   iter = 0_pInt
    ForwardData = .True.
    mask_stress = P_BC%maskFloat
    params%P_BC = P_BC%values
    params%rotation_BC = rotation_BC
    params%timeinc = timeinc
    
+   ctr = 1_pInt
    call VecGetArrayF90(solution_vec,xx_psc,ierr_psc)
-   call AL_InitialGuess(xx_psc)
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)    
+     xx_psc(ctr:ctr+8_pInt) = reshape(F(i,j,k,1:3,1:3),[9])
+     xx_psc(ctr+9_pInt:ctr+17_pInt) = reshape(F_lambda(i,j,k,1:3,1:3),[9])
+     ctr = ctr + 18_pInt
+   enddo; enddo; enddo
    call VecRestoreArrayF90(solution_vec,xx_psc,ierr_psc) 
    call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr_psc)
    call SNESGetConvergedReason(snes,reason,ierr_psc)
@@ -323,49 +317,9 @@ module DAMASK_spectral_SolverAL
  end function AL_solution
 
 !--------------------------------------------------------------------------------------------------
-!> @brief fills solution vector with forwarded fields
-!--------------------------------------------------------------------------------------------------
- subroutine AL_InitialGuess(xx_psc)
-
-   implicit none
-
-  
-!  Input/output variables:
-
-   PetscScalar xx_psc(0:17,gxs:(gxs+gxm),gys:(gys+gym),gxs:(gzs+gzm))
-   integer(pInt) :: i, j, k
-
-!  Compute function over the locally owned part of the grid
-
-
-   do k=gzs,gzs+gzm; do j=gys,gys+gym; do i=gxs,gxs+gxm     
-     xx_psc(0,i,j,k) = F(i,j,k,1,1)
-     xx_psc(1,i,j,k) = F(i,j,k,1,2)
-     xx_psc(2,i,j,k) = F(i,j,k,1,3)
-     xx_psc(3,i,j,k) = F(i,j,k,2,1)
-     xx_psc(4,i,j,k) = F(i,j,k,2,2)
-     xx_psc(5,i,j,k) = F(i,j,k,2,3)
-     xx_psc(6,i,j,k) = F(i,j,k,3,1)
-     xx_psc(7,i,j,k) = F(i,j,k,3,2)
-     xx_psc(8,i,j,k) = F(i,j,k,3,3)
-     xx_psc(9,i,j,k) =  F_lambda(i,j,k,1,1)
-     xx_psc(10,i,j,k) = F_lambda(i,j,k,1,2)
-     xx_psc(11,i,j,k) = F_lambda(i,j,k,1,3)
-     xx_psc(12,i,j,k) = F_lambda(i,j,k,2,1)
-     xx_psc(13,i,j,k) = F_lambda(i,j,k,2,2)
-     xx_psc(14,i,j,k) = F_lambda(i,j,k,2,3)
-     xx_psc(15,i,j,k) = F_lambda(i,j,k,3,1)
-     xx_psc(16,i,j,k) = F_lambda(i,j,k,3,2)
-     xx_psc(17,i,j,k) = F_lambda(i,j,k,3,3)
-   enddo; enddo; enddo
-
-   return
- end subroutine AL_InitialGuess
-
-!--------------------------------------------------------------------------------------------------
 !> @brief forms the AL residual vector
 !--------------------------------------------------------------------------------------------------
- subroutine AL_FormResidual(info,x_scal,f_scal,dummy,ierr_psc)
+ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr_psc)
   
    use numerics, only: &
      itmax, &
@@ -389,41 +343,29 @@ module DAMASK_spectral_SolverAL
    integer(pInt) :: i,j,k
    real(pReal), dimension (3,3) ::  temp33_real
    
-   DMDALocalInfo info(DMDA_LOCAL_INFO_SIZE)
-   PetscScalar x_scal(0:17,gxs:gxs+gxm,gys:gys+gym,gzs:gzs+gzm)  
-   PetscScalar f_scal(0:17,xs:xs+xm,ys:ys+ym,zs:zs+zm)
-   PetscObject dummy
-   PetscErrorCode ierr_psc
+   DMDALocalInfo :: in(DMDA_LOCAL_INFO_SIZE)
+   PetscScalar :: x_scal(in(DMDA_LOCAL_INFO_DOF),XG_RANGE,YG_RANGE,ZG_RANGE)  
+   PetscScalar :: f_scal(in(DMDA_LOCAL_INFO_DOF),X_RANGE,Y_RANGE,Z_RANGE) 
+   PetscInt :: iter, nfuncs
+   PetscObject :: dummy
+   PetscErrorCode :: ierr_psc
 
-   iter = iter + 1_pInt
+   call SNESGetNumberFunctionEvals(snes,nfuncs,ierr_psc)
+   call SNESGetIterationNumber(snes,iter,ierr_psc)
   
  !--------------------------------------------------------------------------------------------------
  ! report begin of new iteration
    write(6,'(a)') ''
    write(6,'(a)') '=================================================================='
-   write(6,'(3(a,i6.6))') ' @ Iter. ',itmin,' < ',iter,' < ',itmax
+   write(6,'(4(a,i6.6))') ' @ Iter. ',itmin,' < ',iter,' < ',itmax, ' | # Func. calls = ',nfuncs
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
                                                              math_transpose33(F_aim)
 
-   do k=gzs,gzs+gzm; do j=gys,gys+gym; do i=gxs,gxs+gxm
-     F(i,j,k,1,1) = x_scal(0,i,j,k)
-     F(i,j,k,1,2) = x_scal(1,i,j,k)
-     F(i,j,k,1,3) = x_scal(2,i,j,k)
-     F(i,j,k,2,1) = x_scal(3,i,j,k)
-     F(i,j,k,2,2) = x_scal(4,i,j,k)
-     F(i,j,k,2,3) = x_scal(5,i,j,k)
-     F(i,j,k,3,1) = x_scal(6,i,j,k)
-     F(i,j,k,3,2) = x_scal(7,i,j,k)
-     F(i,j,k,3,3) = x_scal(8,i,j,k)
-     F_lambda(i,j,k,1,1) = x_scal(9,i,j,k)
-     F_lambda(i,j,k,1,2) = x_scal(10,i,j,k)
-     F_lambda(i,j,k,1,3) = x_scal(11,i,j,k)
-     F_lambda(i,j,k,2,1) = x_scal(12,i,j,k)
-     F_lambda(i,j,k,2,2) = x_scal(13,i,j,k)
-     F_lambda(i,j,k,2,3) = x_scal(14,i,j,k)
-     F_lambda(i,j,k,3,1) = x_scal(15,i,j,k)
-     F_lambda(i,j,k,3,2) = x_scal(16,i,j,k)
-     F_lambda(i,j,k,3,3) = x_scal(17,i,j,k)
+   do k=in(DMDA_LOCAL_INFO_ZS)+1,in(DMDA_LOCAL_INFO_ZS)+in(DMDA_LOCAL_INFO_ZM) 
+     do j=in(DMDA_LOCAL_INFO_YS)+1,in(DMDA_LOCAL_INFO_YS)+in(DMDA_LOCAL_INFO_YM) 
+       do i=in(DMDA_LOCAL_INFO_XS)+1,in(DMDA_LOCAL_INFO_XS)+in(DMDA_LOCAL_INFO_XM)
+         F(i,j,k,1:3,1:3) = reshape(x_scal(1:9,i,j,k),[3,3])
+         F_lambda(i,j,k,1:3,1:3) = reshape(x_scal(10:18,i,j,k),[3,3])
    enddo; enddo; enddo
 
  !--------------------------------------------------------------------------------------------------
@@ -434,7 +376,7 @@ module DAMASK_spectral_SolverAL
    
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-   F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC))) !S = 0.0 for no bc
+   F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC))) ! S = 0.0 for no bc
    err_stress = maxval(mask_stress * (P_av - params%P_BC))     ! mask = 0.0 for no bc
 
    
@@ -462,31 +404,17 @@ module DAMASK_spectral_SolverAL
    err_f = wgt*sqrt(err_f)
    err_p = wgt*sqrt(err_p)
 
-   do k=gzs,gzs+gzm; do j=gys,gys+gym; do i=gxs,gxs+gxm
-     temp33_real = math_mul3333xx33(S_scale,P(i,j,k,1:3,1:3)) + math_I3 - F_lambda(i,j,k,1:3,1:3) &
-            + F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)
-     f_scal(0,i,j,k) = temp33_real(1,1)
-     f_scal(1,i,j,k) = temp33_real(1,2)
-     f_scal(2,i,j,k) = temp33_real(1,3)
-     f_scal(3,i,j,k) = temp33_real(2,1)
-     f_scal(4,i,j,k) = temp33_real(2,2)
-     f_scal(5,i,j,k) = temp33_real(2,3)
-     f_scal(6,i,j,k) = temp33_real(3,1)
-     f_scal(7,i,j,k) = temp33_real(3,2)
-     f_scal(8,i,j,k) = temp33_real(3,3)
-     f_scal(9,i,j,k)  = F(i,j,k,1,1) - field_real(i,j,k,1,1)
-     f_scal(10,i,j,k) = F(i,j,k,1,2) - field_real(i,j,k,1,2)
-     f_scal(11,i,j,k) = F(i,j,k,1,3) - field_real(i,j,k,1,3)
-     f_scal(12,i,j,k) = F(i,j,k,2,1) - field_real(i,j,k,2,1)
-     f_scal(13,i,j,k) = F(i,j,k,2,2) - field_real(i,j,k,2,2)
-     f_scal(14,i,j,k) = F(i,j,k,2,3) - field_real(i,j,k,2,3)
-     f_scal(15,i,j,k) = F(i,j,k,3,1) - field_real(i,j,k,3,1)
-     f_scal(16,i,j,k) = F(i,j,k,3,2) - field_real(i,j,k,3,2)
-     f_scal(17,i,j,k) = F(i,j,k,3,3) - field_real(i,j,k,3,3)
+   do k=in(DMDA_LOCAL_INFO_ZS)+1,in(DMDA_LOCAL_INFO_ZS)+in(DMDA_LOCAL_INFO_ZM) 
+     do j=in(DMDA_LOCAL_INFO_YS)+1,in(DMDA_LOCAL_INFO_YS)+in(DMDA_LOCAL_INFO_YM) 
+       do i=in(DMDA_LOCAL_INFO_XS)+1,in(DMDA_LOCAL_INFO_XS)+in(DMDA_LOCAL_INFO_XM)
+         temp33_real = math_mul3333xx33(S_scale,P(i,j,k,1:3,1:3)) + math_I3 - F_lambda(i,j,k,1:3,1:3) &
+                + F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)
+         f_scal(1:9,i,j,k) = reshape(temp33_real,[9])
+         f_scal(10:18,i,j,k) = reshape(F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3),[9])
    enddo; enddo; enddo
 
    return
- end subroutine AL_FormResidual
+ end subroutine AL_formResidual
 
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
@@ -511,14 +439,14 @@ module DAMASK_spectral_SolverAL
    PetscErrorCode ierr_psc
    logical :: Converged
              
-   Converged = (iter > itmin .and. &
+   Converged = (it > itmin .and. &
                  all([ err_f/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_f_tol, &
                        err_p/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_p_tol, &
                        err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)] < 1.0_pReal))
    
    if (Converged) then
      reason = 1
-   elseif (iter > itmax) then
+   elseif (it > itmax) then
      reason = -1
    else  
      reason = 0
@@ -542,9 +470,7 @@ module DAMASK_spectral_SolverAL
    PetscErrorCode ierr_psc
   
    call VecDestroy(solution_vec,ierr_psc)
-   call VecDestroy(residual_vec,ierr_psc)
    call SNESDestroy(snes,ierr_psc)
-   call DMDestroy(da,ierr_psc)
    call PetscFinalize(ierr_psc)
    call Utilities_destroy()
 
