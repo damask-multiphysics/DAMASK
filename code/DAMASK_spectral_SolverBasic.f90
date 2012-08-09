@@ -79,18 +79,18 @@ subroutine basic_init()
  write(6,'(a)') ''
   
    
- allocate (F          (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
- allocate (F_lastInc  (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
- allocate (P          (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
+ allocate (F          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (F_lastInc  (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (P          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
  allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)
    
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
+   F         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                           ! initialize to identity
+   F_lastInc = F
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     F(i,j,k,1:3,1:3) = math_I3
-     F_lastInc(i,j,k,1:3,1:3) = math_I3
      coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) &
                             - geomdim/real(2_pInt*res,pReal)
    enddo; enddo; enddo
@@ -114,7 +114,7 @@ subroutine basic_init()
   
    coordinates = 0.0 ! change it later!!!
  endif
-   
+ !no rotation bc call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates) 
  call Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,0.0_pReal,&
                                      P,C,temp33_Real,.false.,math_I3)
    
@@ -259,17 +259,14 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
    field_real = 0.0_pReal
-   field_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = P
+   field_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = reshape(P,[res(1),res(2),res(3),3,3],&
+                                                               order=[4,5,1,2,3]) ! field real has a different order
    call Utilities_forwardFFT()
    err_div = Utilities_divergenceRMS()
    call Utilities_fourierConvolution(F_aim_lab_lastIter - F_aim_lab) 
    call Utilities_backwardFFT()
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     F(i,j,k,1:3,1:3) = F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
-   enddo; enddo; enddo
-
+   F = F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(F),order=[3,4,5,1,2])                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
    basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)
-   
    if (basic_solution%converged .and. iter > itmin) exit  
  enddo convergenceLoop
 

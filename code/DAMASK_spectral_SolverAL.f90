@@ -31,6 +31,7 @@ module DAMASK_spectral_SolverAL
 #include <finclude/petscpc.h>
 #include <finclude/petscsnes.h>
 #include <finclude/petscvec.h90>
+#include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
 #endif
 
@@ -48,12 +49,13 @@ module DAMASK_spectral_SolverAL
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
+  DM, private :: da
   SNES, private :: snes
   Vec, private :: solution_vec
  
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
-  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F, F_lastInc, F_lambda, F_lambda_lastInc, P
+  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc, F_lambda_lastInc, P
   real(pReal), private, dimension(:,:,:,:),   allocatable ::  coordinates
   real(pReal), private, dimension(:,:,:),     allocatable ::  temperature
  
@@ -72,8 +74,7 @@ module DAMASK_spectral_SolverAL
  
   real(pReal), private :: err_stress, err_f, err_p
   logical, private :: ForwardData
-  real(pReal), private, dimension(3,3) :: &
-    mask_stress = 0.0_pReal
+  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
  
   contains
  
@@ -103,7 +104,8 @@ module DAMASK_spectral_SolverAL
          
     use mesh, only: &
       res, &
-      geomdim
+      geomdim, &
+      mesh_NcpElems
       
     use math, only: &
       math_invSym3333
@@ -115,7 +117,7 @@ module DAMASK_spectral_SolverAL
     PetscErrorCode :: ierr_psc
     PetscObject :: dummy
     PetscMPIInt :: rank
-    DM :: da
+    PetscScalar, pointer :: xx_psc(:,:,:,:)
     
     call Utilities_init()
     
@@ -125,39 +127,61 @@ module DAMASK_spectral_SolverAL
 #include "compilation_info.f90"
     write(6,'(a)') ''
    
-    allocate (F          (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
-    allocate (F_lastInc  (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
-    allocate (F_lambda   (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
-    allocate (F_lambda_lastInc(res(1),res(2),res(3),3,3),  source = 0.0_pReal)
-    allocate (P          (  res(1),  res(2),res(3),3,3),  source = 0.0_pReal)
+    allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+    allocate (F_lambda_lastInc(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+    allocate (P          (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
     allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
     allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)
-   
+    
+ !--------------------------------------------------------------------------------------------------
+ ! PETSc Init
+    call PetscInitialize(PETSC_NULL_CHARACTER,ierr_psc)
+    call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr_psc)
+    call SNESCreate(PETSC_COMM_WORLD,snes,ierr_psc)
+    call DMDACreate3d(PETSC_COMM_WORLD,                               &
+              DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
+              DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
+              18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr_psc)
+
+    call DMCreateGlobalVector(da,solution_vec,ierr_psc)
+    call DMDASetLocalFunction(da,AL_formResidual,ierr_psc)
+    call SNESSetDM(snes,da,ierr_psc)
+    call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr_psc)
+    call PetscOptionsInsertString(petsc_options,ierr_psc)
+    call SNESSetFromOptions(snes,ierr_psc)  
+
  !--------------------------------------------------------------------------------------------------
  ! init fields                 
+    call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr_psc)
+
     if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
+      F_lastInc         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                           ! initialize to identity
+      F_lambda_lastInc = F_lastInc
+
+      xx_psc(0:8,:,:,:) = reshape(F_lastInc,[9,res(1),res(2),res(3)])
+
+      xx_psc(9:17,:,:,:) = xx_psc(0:8,:,:,:)
+
+    call flush(6)
       do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-        F(i,j,k,1:3,1:3) = math_I3
-        F_lastInc(i,j,k,1:3,1:3) = math_I3
-        F_lambda(i,j,k,1:3,1:3) = math_I3
-        F_lambda_lastInc(i,j,k,1:3,1:3) = math_I3
         coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) &
                                - geomdim/real(2_pInt*res,pReal)
       enddo; enddo; enddo
+      print*, 'init done12'
     elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
       if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
                                                 restartInc - 1_pInt,' from file' 
       call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
-                                                   trim(getSolverJobName()),size(F))
-      read (777,rec=1) F
+                                                   trim(getSolverJobName()),size(F_lastInc))
+      read (777,rec=1) xx_psc(0:8,:,:,:)
       close (777)
       call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',&
                                                    trim(getSolverJobName()),size(F_lastInc))
       read (777,rec=1) F_lastInc
       close (777)
       call IO_read_jobBinaryFile(777,'convergedSpectralDefgradLambda',&
-                                                   trim(getSolverJobName()),size(F_lambda))
-      read (777,rec=1) F
+                                                   trim(getSolverJobName()),size(F_lambda_lastInc))
+      read (777,rec=1) xx_psc(9:17,:,:,:)
       close (777)
       call IO_read_jobBinaryFile(777,'convergedSpectralDefgradLambda_lastInc',&
                                                    trim(getSolverJobName()),size(F_lambda_lastInc))
@@ -173,9 +197,12 @@ module DAMASK_spectral_SolverAL
       coordinates = 0.0 ! change it later!!!
     endif
    
-    call Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,0.0_pReal,&
-                                 P,C,P_av,.false.,math_I3)
-   
+    call Utilities_constitutiveResponse(coordinates,reshape(xx_psc(0:8,:,:,:),shape(F_lastInc)),&
+                                                    reshape(xx_psc(0:8,:,:,:),shape(F_lastInc)),&
+                                                    temperature,0.0_pReal,P,C,P_av,.false.,math_I3)
+    print*, 'const response'
+    call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr_psc)
+ print*, 'restored'
  !--------------------------------------------------------------------------------------------------
  ! reference stiffness
     if (restartInc == 1_pInt) then
@@ -191,25 +218,6 @@ module DAMASK_spectral_SolverAL
     call Utilities_updateGamma(C)
     C_scale = C
     S_scale = math_invSym3333(C)
-   
- !--------------------------------------------------------------------------------------------------
- ! PETSc Init
-    call PetscInitialize(PETSC_NULL_CHARACTER,ierr_psc)
-    call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr_psc)
-   
-    call SNESCreate(PETSC_COMM_WORLD,snes,ierr_psc)
-    call DMDACreate3d(PETSC_COMM_WORLD,                               &
-              DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
-              DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
-              18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr_psc)
-    call DMCreateGlobalVector(da,solution_vec,ierr_psc)
-    call DMDASetLocalFunction(da,AL_formResidual,ierr_psc)
-  
-    call SNESSetDM(snes,da,ierr_psc)
-    call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr_psc)
-    call PetscOptionsInsertString(petsc_options,ierr_psc)
-    call SNESSetFromOptions(snes,ierr_psc)  
-    call DMDestroy(da,ierr_psc)
  
   end subroutine AL_init
   
@@ -255,7 +263,7 @@ module DAMASK_spectral_SolverAL
  
 !--------------------------------------------------------------------------------------------------
 ! 
-   PetscScalar, pointer :: xx_psc(:)
+   PetscScalar, pointer :: xx_psc(:,:,:,:)
    PetscErrorCode ierr_psc
    
 !--------------------------------------------------------------------------------------------------
@@ -283,12 +291,16 @@ module DAMASK_spectral_SolverAL
            + deltaF_aim
    F_aim_lastInc = temp33_Real
    F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                            ! boundary conditions from load frame into lab (Fourier) frame
-  
+   
 !--------------------------------------------------------------------------------------------------
 ! update local deformation gradient and coordinates
    deltaF_aim = math_rotate_backward33(deltaF_aim,rotation_BC)
-   call Utilities_forwardField(deltaF_aim,timeinc,timeinc_old,guessmode,F_lastInc,F)
-   call Utilities_forwardField(deltaF_aim,timeinc,timeinc_old,guessmode,F_lambda_lastInc,F_lambda)
+   call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr_psc)
+   call Utilities_forwardField(deltaF_aim,timeinc,timeinc_old,guessmode,F_lastInc, &
+                               xx_psc(1:9,1:res(1),1:res(2),1:res(3)))
+   !call Utilities_forwardField(deltaF_aim,timeinc,timeinc_old,guessmode,F_lambda_lastInc,&
+    !                           reshape(xx_psc(10:18,1:res(1),1:res(2),1:res(3)),shape(F_lambda_lastInc)))
+   call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr_psc)
    call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates)
   
 !--------------------------------------------------------------------------------------------------
@@ -301,15 +313,7 @@ module DAMASK_spectral_SolverAL
    params%P_BC = P_BC%values
    params%rotation_BC = rotation_BC
    params%timeinc = timeinc
-   
-   ctr = 1_pInt
-   call VecGetArrayF90(solution_vec,xx_psc,ierr_psc)
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)    
-     xx_psc(ctr:ctr+8_pInt) = reshape(F(i,j,k,1:3,1:3),[9])
-     xx_psc(ctr+9_pInt:ctr+17_pInt) = reshape(F_lambda(i,j,k,1:3,1:3),[9])
-     ctr = ctr + 18_pInt
-   enddo; enddo; enddo
-   call VecRestoreArrayF90(solution_vec,xx_psc,ierr_psc) 
+
    call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr_psc)
    call SNESGetConvergedReason(snes,reason,ierr_psc)
    if (reason > 0 ) AL_solution%converged = .true.
@@ -340,7 +344,7 @@ module DAMASK_spectral_SolverAL
   
    implicit none
 
-   integer(pInt) :: i,j,k
+   integer(pInt) :: i,j,k,l,  ctr
    real(pReal), dimension (3,3) ::  temp33_real
    
    DMDALocalInfo :: in(DMDA_LOCAL_INFO_SIZE)
@@ -361,16 +365,10 @@ module DAMASK_spectral_SolverAL
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
                                                              math_transpose33(F_aim)
 
-   do k=in(DMDA_LOCAL_INFO_ZS)+1,in(DMDA_LOCAL_INFO_ZS)+in(DMDA_LOCAL_INFO_ZM) 
-     do j=in(DMDA_LOCAL_INFO_YS)+1,in(DMDA_LOCAL_INFO_YS)+in(DMDA_LOCAL_INFO_YM) 
-       do i=in(DMDA_LOCAL_INFO_XS)+1,in(DMDA_LOCAL_INFO_XS)+in(DMDA_LOCAL_INFO_XM)
-         F(i,j,k,1:3,1:3) = reshape(x_scal(1:9,i,j,k),[3,3])
-         F_lambda(i,j,k,1:3,1:3) = reshape(x_scal(10:18,i,j,k),[3,3])
-   enddo; enddo; enddo
-
  !--------------------------------------------------------------------------------------------------
  ! evaluate constitutive response
-   call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,params%timeinc,&
+   call Utilities_constitutiveResponse(coordinates,F_lastInc,reshape(x_scal(1:9,1:res(1),1:res(2),1:res(3)),shape(F_lastInc)),&
+                                temperature,params%timeinc,&
                                  P,C,P_av,ForwardData,params%rotation_BC)
    ForwardData = .False.
    
@@ -383,37 +381,38 @@ module DAMASK_spectral_SolverAL
  !--------------------------------------------------------------------------------------------------
  ! doing Fourier transform
    field_real = 0.0_pReal
+   
+   do j = 1_pInt, 3_pInt; do i = 1_pInt, 3_pInt
+     ctr = 1_pInt
+     do k = 1_pInt, 3_pInt; do l = 1_pInt, 3_pInt
+       field_real(1:res(1),1:res(2),1:res(3),i,j) = field_real(1:res(1),1:res(2),1:res(3),i,j) + &
+                                                    C_scale(i,j,l,k)*(x_scal(9+ctr,1:res(1),1:res(2),1:res(3)) - &
+                                                                      x_scal(ctr,1:res(1),1:res(2),1:res(3)))
+       ! P_temp(i,j,1:res(1),1:res(2),1:res(3)) = P_temp(i,j,1:res(1),1:res(2),1:res(3)) + &
+                                                    ! S_scale(i,j,l,k)*P(l,k,1:res(1),1:res(2),1:res(3))
+       ctr = ctr + 1_pInt                                         
+     enddo; enddo
+   enddo; enddo
+   
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     field_real(i,j,k,1:3,1:3) = math_mul3333xx33(C_scale,F_lambda(i,j,k,1:3,1:3)-F(i,j,k,1:3,1:3))
+     P(1:3,1:3,i,j,k) = math_mul3333xx33(S_scale,P(1:3,1:3,i,j,k)) + math_I3
    enddo; enddo; enddo
   
    call Utilities_forwardFFT()
    call Utilities_fourierConvolution(math_rotate_backward33(F_aim,params%rotation_BC)) 
    call Utilities_backwardFFT()
+                            
+   f_scal(1:9,1:res(1),1:res(2),1:res(3)) = reshape(P,[9,res(1),res(2),res(3)]) - x_scal(10:18,1:res(1),1:res(2),1:res(3)) +& 
+                       x_scal(1:9,1:res(1),1:res(2),1:res(3)) - &
+                       reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),[9,res(1),res(2),res(3)],order=[2,3,4,1])
+   f_scal(10:18,1:res(1),1:res(2),1:res(3)) = x_scal(1:9,1:res(1),1:res(2),1:res(3)) - &
+                                              reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),&
+                                                      [9,res(1),res(2),res(3)],order=[2,3,4,1])
+   
+   err_f = wgt*sqrt(sum(f_scal(10:18,1:res(1),1:res(2),1:res(3))**2.0_pReal))
+   err_p = wgt*sqrt(sum((f_scal( 1:9 ,1:res(1),1:res(2),1:res(3)) &
+                        -f_scal(10:18,1:res(1),1:res(2),1:res(3)))**2.0_pReal))
 
-   err_f = 0.0_pReal
-   err_p = 0.0_pReal
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     temp33_real = field_real(i,j,k,1:3,1:3) - F(i,j,k,1:3,1:3)
-     err_f = err_f + sum(temp33_real*temp33_real)
-    
-     temp33_real = F_lambda(i,j,k,1:3,1:3) - &
-                   (math_mul3333xx33(S_scale,P(i,j,k,1:3,1:3)) + math_I3)
-     err_p = err_p + sum(temp33_real*temp33_real)
-   enddo; enddo; enddo                              
-   err_f = wgt*sqrt(err_f)
-   err_p = wgt*sqrt(err_p)
-
-   do k=in(DMDA_LOCAL_INFO_ZS)+1,in(DMDA_LOCAL_INFO_ZS)+in(DMDA_LOCAL_INFO_ZM) 
-     do j=in(DMDA_LOCAL_INFO_YS)+1,in(DMDA_LOCAL_INFO_YS)+in(DMDA_LOCAL_INFO_YM) 
-       do i=in(DMDA_LOCAL_INFO_XS)+1,in(DMDA_LOCAL_INFO_XS)+in(DMDA_LOCAL_INFO_XM)
-         temp33_real = math_mul3333xx33(S_scale,P(i,j,k,1:3,1:3)) + math_I3 - F_lambda(i,j,k,1:3,1:3) &
-                + F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3)
-         f_scal(1:9,i,j,k) = reshape(temp33_real,[9])
-         f_scal(10:18,i,j,k) = reshape(F(i,j,k,1:3,1:3) - field_real(i,j,k,1:3,1:3),[9])
-   enddo; enddo; enddo
-
-   return
  end subroutine AL_formResidual
 
 !--------------------------------------------------------------------------------------------------

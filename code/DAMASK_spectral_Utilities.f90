@@ -71,6 +71,11 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, sets debug flags, create plans for fftw
+!> @details Sets the debug levels for general, divergence, restart and fftw from the biwise coding 
+!> provided by the debug module to logicals.
+!> Allocates all fields used by FFTW and create the corresponding plans depending on the debug
+!> level chosen.
+!> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
 subroutine Utilities_init()
 
@@ -185,15 +190,19 @@ subroutine Utilities_init()
  enddo; enddo; enddo
  
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
-   allocate (gamma_hat(1,1,1,3,3,3,3), source = 0.0_pReal)
+   allocate (gamma_hat(3,3,3,3,1,1,1), source = 0.0_pReal)
  else                                                                                               ! precalculation of gamma_hat field
-   allocate (gamma_hat(res1_red ,res(2),res(3),3,3,3,3), source =0.0_pReal)                                                  ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+   allocate (gamma_hat(3,3,3,3,res1_red ,res(2),res(3)), source =0.0_pReal)                                                  ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
  endif
 
 end subroutine Utilities_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief updates references stiffness and potentially precalculated gamma operator
+!> @details Sets the current reference stiffness to the stiffness given as an argument.
+!> If the gamma operator is precalculated, it is calculated with this stiffness.
+!> In case of a on-the-fly calculation, only the reference stiffness is updated.
+!> The gamma operator is filtered depening on the filter selected in numerics
 !--------------------------------------------------------------------------------------------------
 subroutine Utilities_updateGamma(C)
    
@@ -218,15 +227,18 @@ subroutine Utilities_updateGamma(C)
        temp33_Real = math_inv33(temp33_Real)
        filter = Utilities_getFilter(xi(1:3,i,j,k))
        forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
-         gamma_hat(i,j,k, l,m,n,o) =  filter*temp33_Real(l,n)*xiDyad(m,o)
+         gamma_hat(l,m,n,o, i,j,k) =  filter*temp33_Real(l,n)*xiDyad(m,o)
      endif  
    enddo; enddo; enddo
-   gamma_hat(1,1,1, 1:3,1:3,1:3,1:3) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+   gamma_hat(1:3,1:3,1:3,1:3, 1,1,1) = 0.0_pReal                                                    ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
  endif
 end subroutine Utilities_updateGamma
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
+!> Does an unweighted FFT transform from real to complex.
+!> In case of debugging the FFT, also one component of the tensor (specified by row and column)
+!> is independetly transformed complex to complex and compared to the whole tensor transform
 !--------------------------------------------------------------------------------------------------
 subroutine Utilities_forwardFFT(row,column)
  use mesh, only : &
@@ -276,6 +288,14 @@ subroutine Utilities_forwardFFT(row,column)
                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
 end subroutine Utilities_forwardFFT
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief backward FFT of data in field_fourier to field_real
+!> Does an inverse FFT transform from complex to real
+!> In case of debugging the FFT, also one component of the tensor (specified by row and column)
+!> is independetly transformed complex to complex and compared to the whole tensor transform
+!> results is weighted by number of points stored in wgt
+!--------------------------------------------------------------------------------------------------
 subroutine Utilities_backwardFFT(row,column)
 
   implicit none
@@ -286,9 +306,7 @@ subroutine Utilities_backwardFFT(row,column)
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
   if (debugFFTW) then
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-       scalarField_fourier(i,j,k) = field_fourier(i,j,k,row,column)
-    enddo; enddo; enddo
+    scalarField_fourier = field_fourier(1:res1_red,1:res(2),1:res(3),row,column)
     do i = 0_pInt, res(1)/2_pInt-2_pInt                                                      ! unpack fft data for conj complex symmetric part
      m = 1_pInt
      do k = 1_pInt, res(3)
@@ -303,8 +321,7 @@ subroutine Utilities_backwardFFT(row,column)
     enddo; enddo
   endif
 
-!--------------------------------------------------------------------------------------------------
-! doing the inverse FT
+
   call fftw_execute_dft_c2r(plan_backward,field_fourier,field_real)                      ! back transform of fluct deformation gradient
 
 !--------------------------------------------------------------------------------------------------
@@ -353,16 +370,16 @@ subroutine Utilities_fourierConvolution(fieldAim)
          temp33_Real = math_inv33(temp33_Real)
          filter = Utilities_getFilter(xi(1:3,i,j,k))
          forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
-           gamma_hat(1,1,1, l,m,n,o) =  filter*temp33_Real(l,n)*xiDyad(m,o)
+           gamma_hat(l,m,n,o, 1,1,1) =  filter*temp33_Real(l,n)*xiDyad(m,o)
          forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-           temp33_Complex(l,m) = sum(gamma_hat(1,1,1, l,m, 1:3,1:3) * field_fourier(i,j,k,1:3,1:3))
+           temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3, 1,1,1) * field_fourier(i,j,k,1:3,1:3))
          field_fourier(i,j,k,1:3,1:3) = temp33_Complex 
      endif             
    enddo; enddo; enddo
  else                                                                                       ! use precalculated gamma-operator
    do k = 1_pInt, res(3);  do j = 1_pInt, res(2);  do i = 1_pInt,res1_red
      forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt) &
-       temp33_Complex(m,n) = sum(gamma_hat(i,j,k, m,n, 1:3,1:3) * field_fourier(i,j,k,1:3,1:3))
+       temp33_Complex(m,n) = sum(gamma_hat(m,n,1:3,1:3, i,j,k) * field_fourier(i,j,k,1:3,1:3))
      field_fourier(i,j,k, 1:3,1:3) = temp33_Complex
    enddo; enddo; enddo
  endif
@@ -422,18 +439,9 @@ real(pReal) function Utilities_divergenceRMS()
     
     call fftw_execute_dft_c2r(plan_divergence,divergence_fourier,divergence_real)            ! already weighted
 
-    err_real_div_RMS = 0.0_pReal
-    err_post_div_RMS = 0.0_pReal
-    err_real_div_max = 0.0_pReal
-    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-      err_real_div_RMS = err_real_div_RMS +   sum(divergence_real(i,j,k,1:3)**2.0_pReal)     ! avg of squared L_2 norm of div(stress) in real space
-      err_post_div_RMS = err_post_div_RMS +   sum(divergence_post(i,j,k,1:3)**2.0_pReal)     ! avg of squared L_2 norm of div(stress) in real space
-      err_real_div_max = max(err_real_div_max,sum(divergence_real(i,j,k,1:3)**2.0_pReal))    ! max of squared L_2 norm of div(stress) in real space
-    enddo; enddo; enddo
-
-    err_real_div_RMS = sqrt(wgt*err_real_div_RMS)                                            ! RMS in real space
-    err_post_div_RMS = sqrt(wgt*err_post_div_RMS)                                            ! RMS in real space
-    err_real_div_max = sqrt(    err_real_div_max)                                            ! max in real space
+    err_real_div_RMS =  sqrt(wgt*sum(divergence_real**2.0_pReal))                            ! RMS in real space
+    err_post_div_RMS =  sqrt(wgt*sum(divergence_post**2.0_pReal))                            ! RMS in real space
+    err_real_div_max =  sqrt(maxval(sum(divergence_real**2.0_pReal,dim=4)))                  ! max in real space                                       
     err_div_max      = sqrt(    err_div_max)                                                 ! max in Fourier space
     
     write(6,'(1x,a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
@@ -516,7 +524,7 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   real(pReal), dimension(res(1),res(2),res(3)) :: temperature
   real(pReal), dimension(res(1),res(2),res(3),3) :: coordinates
   
-  real(pReal), dimension(res(1),res(2),res(3),3,3) :: F,F_lastInc, P
+  real(pReal), dimension(3,3,res(1),res(2),res(3)) :: F,F_lastInc, P
   real(pReal) :: timeinc
   logical :: ForwardData
   integer(pInt) :: i, j, k, ielem
@@ -524,7 +532,7 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   real(pReal), dimension(3,3,3,3) :: dPdF, C
   real(pReal), dimension(6)       :: sigma                                                                ! cauchy stress
   real(pReal), dimension(6,6)     :: dsde
-  real(pReal), dimension(3,3)     :: P_av_lab, P_av, rotation_BC
+  real(pReal), dimension(3,3)     :: P_av, rotation_BC
   
   write(6,'(a)') ''
   write(6,'(a)') '... evaluating constitutive response .................'
@@ -539,28 +547,27 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
     ielem = ielem + 1_pInt
     call CPFEM_general(3_pInt,&                                                              ! collect cycle
-                        coordinates(i,j,k,1:3), F_lastInc(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3), &
-                        temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(i,j,k,1:3,1:3),dPdF)
+                        coordinates(i,j,k,1:3), F_lastInc(1:3,1:3,i,j,k),F(1:3,1:3,i,j,k), &
+                        temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
   enddo; enddo; enddo
 
   P = 0.0_pReal                                                                         ! needed because of the padding for FFTW
   C = 0.0_pReal
-  P_av_lab = 0.0_pReal
   ielem = 0_pInt 
   call debug_reset()
   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
     ielem = ielem + 1_pInt
     call CPFEM_general(CPFEM_mode,&                                                          ! first element in first iteration retains CPFEM_mode 1, 
-                       coordinates(i,j,k,1:3),F_lastInc(i,j,k,1:3,1:3), F(i,j,k,1:3,1:3), &  ! others get 2 (saves winding forward effort)
-                       temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(i,j,k,1:3,1:3),dPdF)
+                       coordinates(i,j,k,1:3),F_lastInc(1:3,1:3,i,j,k), F(1:3,1:3,i,j,k), &  ! others get 2 (saves winding forward effort)
+                       temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
     CPFEM_mode = 2_pInt
     C = C + dPdF
-    P_av_lab = P_av_lab + P(i,j,k,1:3,1:3)
   enddo; enddo; enddo
   call debug_info()
+  
+  P_av = math_rotate_forward33(sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt,rotation_BC)               !average of P rotated
   restartWrite = .false.
-  P_av_lab = P_av_lab * wgt
-  P_av = math_rotate_forward33(P_av_lab,rotation_BC)
+
   
   write (6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') ' Piola-Kirchhoff stress / MPa =',&
                                                       math_transpose33(P_av)/1.e6_pReal
@@ -574,18 +581,17 @@ subroutine Utilities_forwardField(delta_aim,timeinc,timeinc_old,guessmode,field_
  real(pReal), intent(in), dimension(3,3) :: delta_aim
 
  real(pReal), intent(in) :: timeinc, timeinc_old, guessmode
- real(pReal), intent(inout), dimension(res(1),res(2),res(3),3,3) :: field_lastInc,field
- integer(pInt) :: i,j,k
- real(pReal), dimension(3,3) :: temp33_real
+ real(pReal), intent(inout), dimension(3,3,res(1),res(2),res(3)) :: field_lastInc,field
  
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   temp33_Real = Field(i,j,k,1:3,1:3)
-   Field(i,j,k,1:3,1:3) = Field(i,j,k,1:3,1:3) &                                                             ! decide if guessing along former trajectory or apply homogeneous addon
-                   + guessmode * (field(i,j,k,1:3,1:3) - Field_lastInc(i,j,k,1:3,1:3))*timeinc/timeinc_old&  ! guessing... 
-                   + (1.0_pReal-guessmode) * delta_aim                                ! if not guessing, use prescribed average deformation where applicable
-   Field_lastInc(i,j,k,1:3,1:3) = temp33_Real 
- enddo; enddo; enddo
- end subroutine Utilities_forwardField
+ if (guessmode == 1.0_pReal) then
+   field = field + (field-field_lastInc) * timeinc/timeinc_old
+   field_lastInc = (field + field_lastInc * timeinc/timeinc_old) /(1.0_pReal + timeinc/timeinc_old)
+ else
+   field_lastInc = field
+   field = field + spread(spread(spread(delta_aim,3,res(1)),4,res(2)),5,res(3))
+ endif
+
+end subroutine Utilities_forwardField
  
 real(pReal) function Utilities_getFilter(k)
 
@@ -614,9 +620,7 @@ subroutine Utilities_destroy()
 
   implicit none
   
-  if (debugDivergence) then
-    call fftw_destroy_plan(plan_divergence)
-  endif
+  if (debugDivergence) call fftw_destroy_plan(plan_divergence)
   
   if (debugFFTW) then
     call fftw_destroy_plan(plan_scalarField_forth)

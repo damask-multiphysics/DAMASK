@@ -17,7 +17,7 @@
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
 !--------------------------------------------------------------------------------------------------
-!* $Id$
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -84,8 +84,8 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    gotGeometry = .false.
  
  write(6,'(a)') ''
- write(6,'(a)') '<<<+-  DAMASK_spectral_interface init  -+>>>'
- write(6,'(a)') '$Id$'
+ write(6,'(a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
+ write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
 
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
