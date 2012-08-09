@@ -16,11 +16,16 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!##############################################################
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief input/output functions, partly depending on chosen solver
+!--------------------------------------------------------------------------------------------------
 module IO   
-!##############################################################
  use prec, only: pInt, pReal
  
  implicit none
@@ -60,6 +65,7 @@ module IO
  public ::  IO_open_inputFile, &
             IO_open_logFile
 #endif
+
 #ifdef Abaqus  
  public ::  IO_abaqus_hasNoPart
 #endif
@@ -67,6 +73,7 @@ module IO
  private :: IO_fixedFloatValue, &
             IO_lcInplace ,&
             hybridIA_reps
+
 #ifdef Abaqus 
  private :: abaqus_assembleInputFile
 #endif
@@ -192,13 +199,11 @@ subroutine IO_open_jobFile(myUnit,newExt)
  
 end subroutine IO_open_jobFile
 
+
 #ifndef Spectral
-!********************************************************************
-! open FEM inputfile to given myUnit
-! AP: 12.07.10 
-!   : changed the function to open *.inp_assembly, which is basically 
-!     the input file without comment lines and possibly assembled includes
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief open FEM input file to given unit
+!--------------------------------------------------------------------------------------------------
 subroutine IO_open_inputFile(myUnit,model)
 
  use DAMASK_interface, only: &
@@ -233,9 +238,9 @@ subroutine IO_open_inputFile(myUnit,model)
 end subroutine IO_open_inputFile
 
 
-!********************************************************************
-! open FEM logfile to given myUnit
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief open FEM log file to given Unit
+!--------------------------------------------------------------------------------------------------
 subroutine IO_open_logFile(myUnit)
 
  use DAMASK_interface, only: &
@@ -256,10 +261,10 @@ subroutine IO_open_logFile(myUnit)
 end subroutine IO_open_logFile
 #endif
 
-!********************************************************************
-! open (write) file related to current job
-! but with different extension to given myUnit
-!********************************************************************
+
+!--------------------------------------------------------------------------------------------------
+!> @brief open (write) file related to current job with given extension to given unit
+!--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobFile(myUnit,newExt)
 
  use DAMASK_interface,       only: getSolverWorkingDirectoryName,&
@@ -279,10 +284,9 @@ subroutine IO_write_jobFile(myUnit,newExt)
 end subroutine IO_write_jobFile
 
 
-!********************************************************************
-! open (write) binary file related to current job
-! but with different extension to given myUnit
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief open (write) binary file related to current job with given extension to given unit
+!--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobBinaryFile(myUnit,newExt,recMultiplier)
 
  use DAMASK_interface,                 only: getSolverWorkingDirectoryName, &
@@ -310,10 +314,9 @@ subroutine IO_write_jobBinaryFile(myUnit,newExt,recMultiplier)
 end subroutine IO_write_jobBinaryFile
 
 
-!********************************************************************
-! open (read) binary file related to restored job
-! and with different extension to given myUnit
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief open (read) binary file related to restored job with given extension to given unit
+!--------------------------------------------------------------------------------------------------
 subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
 
  use DAMASK_interface,                 only: getSolverWorkingDirectoryName
@@ -338,10 +341,11 @@ subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
  
 end subroutine IO_read_jobBinaryFile
 
+
 #ifdef Abaqus
-!***********************************************************
-! check if the input file for Abaqus contains part info
-!***********************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief check if the input file for Abaqus contains part info
+!--------------------------------------------------------------------------------------------------
 logical function IO_abaqus_hasNoPart(myUnit)
 
  implicit none
@@ -367,9 +371,9 @@ logical function IO_abaqus_hasNoPart(myUnit)
 620 end function IO_abaqus_hasNoPart
 #endif
 
-!********************************************************************
-! hybrid IA sampling of ODFfile
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief hybrid IA sampling of ODFfile
+!--------------------------------------------------------------------------------------------------
 function IO_hybridIA(Nast,ODFfileName)
 
  implicit none
@@ -510,9 +514,9 @@ function IO_hybridIA(Nast,ODFfileName)
 end function IO_hybridIA
 
 
-!********************************************************************
-! identifies lines without content
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief identifies lines without content
+!--------------------------------------------------------------------------------------------------
 logical pure function IO_isBlank(line)
 
  implicit none
@@ -530,9 +534,9 @@ logical pure function IO_isBlank(line)
 end function IO_isBlank
 
 
-!********************************************************************
-! get tagged content of line
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief get tagged content of line
+!--------------------------------------------------------------------------------------------------
 pure function IO_getTag(line,openChar,closeChar)
 
  implicit none
@@ -555,9 +559,10 @@ pure function IO_getTag(line,openChar,closeChar)
 
 end function IO_getTag
 
-!*********************************************************************
-!
-!*********************************************************************
+
+!--------------------------------------------------------------------------------------------------
+!> @brief count sections in given part
+!--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_countSections(myFile,part)
 
  implicit none
@@ -570,7 +575,7 @@ integer(pInt) function IO_countSections(myFile,part)
  IO_countSections = 0_pInt
  rewind(myFile)
 
- do while (IO_getTag(line,'<','>') /= part)      ! search for part
+ do while (IO_getTag(line,'<','>') /= part)              ! search for part
    read(myFile,'(a1024)',END=100) line
  enddo
 
@@ -585,9 +590,9 @@ integer(pInt) function IO_countSections(myFile,part)
 100 end function IO_countSections
  
 
-!*********************************************************************
-! return array of myTag counts within <part> for at most N[sections]
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief return array of myTag counts within <part> for at most N[sections]
+!--------------------------------------------------------------------------------------------------
 function IO_countTagInPart(myFile,part,myTag,Nsections)
 
  implicit none
@@ -622,7 +627,7 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
      section = section + 1_pInt
    if (section > 0) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
      if (tag == myTag) &                                  ! match
        counter(section) = counter(section) + 1_pInt
    endif   
@@ -633,9 +638,9 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
 end function IO_countTagInPart
 
 
-!*********************************************************************
-! return array of myTag presence within <part> for at most N[sections]
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief return array of myTag presence within <part> for at most N[sections]
+!--------------------------------------------------------------------------------------------------
 function IO_spotTagInPart(myFile,part,myTag,Nsections)
 
  implicit none
@@ -678,10 +683,9 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
 
 100 end function IO_spotTagInPart
 
-
-!*********************************************************************
-! return logical whether myTag is present within <part> before any [sections]
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief return logical whether myTag is present within <part> before any [sections]
+!--------------------------------------------------------------------------------------------------
 logical function IO_globalTagInPart(myFile,part,myTag)
 
  implicit none
@@ -723,11 +727,10 @@ logical function IO_globalTagInPart(myFile,part,myTag)
 100 end function IO_globalTagInPart
 
 
-!********************************************************************
-! locate at most N space-separated parts in line
-! return array containing number of parts in line and
-! the left/right positions of at most N to be used by IO_xxxVal
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief locate at most N space-separated parts in line return array containing number of parts 
+!> in line and the left/right positions of at most N to be used by IO_xxxVal
+!--------------------------------------------------------------------------------------------------
 pure function IO_stringPos(line,N)
 
  implicit none
@@ -761,9 +764,9 @@ pure function IO_stringPos(line,N)
 end function IO_stringPos
 
 
-!********************************************************************
-! read string value at myPos from line
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief read string value at myPos from line
+!--------------------------------------------------------------------------------------------------
  pure function IO_stringValue(line,positions,myPos)
  
  implicit none
@@ -784,9 +787,9 @@ end function IO_stringPos
 end function IO_stringValue
 
 
-!********************************************************************
-! read string value at myPos from fixed format line
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief read string value at myPos from fixed format line
+!--------------------------------------------------------------------------------------------------
 pure function IO_fixedStringValue (line,ends,myPos)
  
  implicit none
@@ -803,9 +806,9 @@ pure function IO_fixedStringValue (line,ends,myPos)
 end function IO_fixedStringValue
 
 
-!********************************************************************
-! read float value at myPos from line
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief read float value at myPos from line
+!--------------------------------------------------------------------------------------------------
 real(pReal) pure function IO_floatValue (line,positions,myPos)
  
  implicit none
@@ -824,9 +827,9 @@ real(pReal) pure function IO_floatValue (line,positions,myPos)
 end function IO_floatValue
 
 
-!********************************************************************
-! read float value at myPos from fixed format line
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief read float value at myPos from fixed format line
+!--------------------------------------------------------------------------------------------------
 real(pReal) pure function IO_fixedFloatValue (line,ends,myPos)
  
  implicit none
@@ -841,9 +844,9 @@ real(pReal) pure function IO_fixedFloatValue (line,ends,myPos)
 end function IO_fixedFloatValue
 
 
-!********************************************************************
-! read float x.y+z value at myPos from format line line
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief read float x.y+z value at myPos from format line line
+!--------------------------------------------------------------------------------------------------
 real(pReal) pure function IO_fixedNoEFloatValue (line,ends,myPos)
 
  implicit none
@@ -870,9 +873,9 @@ real(pReal) pure function IO_fixedNoEFloatValue (line,ends,myPos)
 end function IO_fixedNoEFloatValue
 
 
-!********************************************************************
-! read int value at myPos from line
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief read int value at myPos from line
+!--------------------------------------------------------------------------------------------------
 integer(pInt) pure function IO_intValue(line,positions,myPos)
 
  implicit none
@@ -891,9 +894,9 @@ integer(pInt) pure function IO_intValue(line,positions,myPos)
 end function IO_intValue
 
 
-!********************************************************************
-! read int value at myPos from fixed format line
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief read int value at myPos from fixed format line
+!--------------------------------------------------------------------------------------------------
 integer(pInt) pure function IO_fixedIntValue(line,ends,myPos)
  
  implicit none
@@ -908,9 +911,9 @@ integer(pInt) pure function IO_fixedIntValue(line,ends,myPos)
 end function IO_fixedIntValue
 
 
-!********************************************************************
-! change character in line to lower case
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief change character in line to lower case
+!--------------------------------------------------------------------------------------------------
 pure function IO_lc(line)
 
  implicit none
@@ -930,9 +933,9 @@ pure function IO_lc(line)
 end function IO_lc
 
 
-!********************************************************************
-! in place change of character in line to lower case
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief in place change of character in line to lower case
+!--------------------------------------------------------------------------------------------------
 subroutine IO_lcInplace(line)
 
  implicit none
@@ -955,9 +958,9 @@ subroutine IO_lcInplace(line)
  end subroutine IO_lcInplace
 
 
-!********************************************************************
-! read on in file to skip (at least) N chunks (may be over multiple lines)
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief read on in file to skip (at least) N chunks (may be over multiple lines)
+!--------------------------------------------------------------------------------------------------
 subroutine IO_skipChunks(myUnit,N)
 
  implicit none
@@ -979,9 +982,9 @@ subroutine IO_skipChunks(myUnit,N)
 100  end subroutine IO_skipChunks
 
 
-!********************************************************************
-! extract value from key=value pair and check whether key matches
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief extract value from key=value pair and check whether key matches
+!--------------------------------------------------------------------------------------------------
 character(len=300) pure function IO_extractValue(line,key)
  
  implicit none
@@ -1001,12 +1004,9 @@ character(len=300) pure function IO_extractValue(line,key)
 end function IO_extractValue
 
 
-!********************************************************************
-! count lines containig data up to next *keyword
-! AP: changed the function to neglect comment lines between keyword definitions.
-!   : is not changed back to the original version since *.inp_assembly does not
-!   : contain any comment lines (12.07.2010)
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief count lines containig data up to next *keyword
+!--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_countDataLines(myUnit)
 
  implicit none
@@ -1035,12 +1035,12 @@ integer(pInt) function IO_countDataLines(myUnit)
 end function IO_countDataLines
 
  
-!********************************************************************
-! count items in consecutive lines
-! Marc:      ints concatenated by "c" as last char or range of values a "to" b
-! Abaqus:    triplet of start,stop,inc
-! Spectral:  ints concatenated range of a "to" b, multiple entries with a "copies of" b
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief count items in consecutive lines depending on lines
+!> @details Marc:      ints concatenated by "c" as last char or range of values a "to" b
+!> Abaqus:    triplet of start,stop,inc
+!> Spectral:  ints concatenated range of a "to" b, multiple entries with a "copies of" b
+!--------------------------------------------------------------------------------------------------
 integer(pInt) function IO_countContinuousIntValues(myUnit)
 
  implicit none
@@ -1092,13 +1092,13 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
 100 end function IO_countContinuousIntValues
 
 
-!********************************************************************
-! return integer list corrsponding to items in consecutive lines.
+!--------------------------------------------------------------------------------------------------
+!> @brief return integer list corrsponding to items in consecutive lines.
 ! First integer in array is counter
-! Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
+!> @details Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
 ! Abaqus:    triplet of start,stop,inc or named set
 ! Spectral:  ints concatenated range of a "to" b, multiple entries with a "copies of" b
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
 function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
  implicit none
@@ -1163,7 +1163,7 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
    backspace(myUnit)
  enddo
  
-   !heck if the element values in the elset are auto generated
+   !check if the element values in the elset are auto generated
  backspace(myUnit)
  read(myUnit,'(A65536)',end=100) line
  myPos = IO_stringPos(line,maxNchunks)
@@ -1203,11 +1203,10 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 100 end function IO_continuousIntValues
 
 
-!********************************************************************
-! write error statements to standard out
-! and terminate the Marc run with exit #9xxx
-! in ABAQUS either time step is reduced or execution terminated
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief write error statements to standard out and terminate the Marc/spectral run with exit #9xxx
+!> in ABAQUS either time step is reduced or execution terminated
+!--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,e,i,g,ext_msg)
  implicit none
  integer(pInt),              intent(in) :: error_ID
@@ -1419,9 +1418,9 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
 end subroutine IO_error
 
 
-!********************************************************************
-! write warning statements to standard out
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief write warning statements to standard out
+!--------------------------------------------------------------------------------------------------
 subroutine IO_warning(warning_ID,e,i,g,ext_msg)
 
  implicit none
@@ -1483,11 +1482,10 @@ end subroutine IO_warning
 ! INTERNAL (HELPER) FUNCTIONS:
 
 #ifdef Abaqus 
-!********************************************************************
-! AP: 12.07.10
-!    create a new input file for abaqus simulations
-!    by removing all comment lines and including "include"s
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief create a new input file for abaqus simulations by removing all comment lines and 
+!> including "include"s
+!--------------------------------------------------------------------------------------------------
 recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
 
  use DAMASK_interface, only: getSolverWorkingDirectoryName
@@ -1541,9 +1539,9 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
 end function abaqus_assembleInputFile
 #endif
 
-!********************************************************************
-! hybrid IA repetition counter
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief hybrid IA repetition counter
+!--------------------------------------------------------------------------------------------------
 integer(pInt) function hybridIA_reps(dV_V,steps,C)
 
  implicit none

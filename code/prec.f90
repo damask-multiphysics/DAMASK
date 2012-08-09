@@ -16,24 +16,31 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!##############################################################
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief setting precision for real and int type, using double precision for real
+!--------------------------------------------------------------------------------------------------
 #ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER<1200
 #define LEGACY_COMPILER
 #endif
 #endif
 
+!--------------------------------------------------------------------------------------------------
 module prec
-!##############################################################
+
 
  implicit none
  private 
-!    *** Precision of real and integer variables ***
- integer,     parameter, public :: pReal = selected_real_kind(15,300)     ! 15 significant digits, up to 1e+-300
- integer,     parameter, public :: pInt  = selected_int_kind(9)           ! up to +- 1e9
- integer,     parameter, public :: pLongInt  = selected_int_kind(12)      ! should be 64bit
+
+ integer,     parameter, public :: pReal     = selected_real_kind(15,300)                           !< floating point number with 15 significant digits, up to 1e+-300 (double precision)
+ integer,     parameter, public :: pInt      = selected_int_kind(9)                                 !< integer representation with at least up to +- 1e9 (32 bit)
+ integer,     parameter, public :: pLongInt  = selected_int_kind(12)                                !< integer representation with at least up to +- 1e12 (64 bit)
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal
  real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
  
@@ -41,9 +48,9 @@ module prec
 ! from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html
 ! copy can be found in documentation/Code/Fortran
 #ifdef LEGACY_COMPILER
- real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                ! quiet NaN
+ real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< when using old compiler without standard check
 #else
- real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000', pReal)
+ real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000', pReal)                    !< quiet NaN for double precision
 #endif
 
  type, public :: p_vec
@@ -53,9 +60,11 @@ module prec
  public :: prec_init
  
 contains
-
+!--------------------------------------------------------------------------------------------------
+!> @brief reporting precision and checking if DAMASK_NaN is set correctly
+!--------------------------------------------------------------------------------------------------
 subroutine prec_init
- use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  
  implicit none
 
