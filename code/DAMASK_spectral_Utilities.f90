@@ -357,6 +357,7 @@ subroutine Utilities_fourierConvolution(fieldAim)
 
  write(6,'(a)') ''
  write(6,'(a)') '... doing convolution .................'
+ write(6,'(a)') ''
   
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)
@@ -536,6 +537,7 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   
   write(6,'(a)') ''
   write(6,'(a)') '... evaluating constitutive response .................'
+  write(6,'(a)') ''
   
   if (ForwardData) then
     CPFEM_mode = 1_pInt
