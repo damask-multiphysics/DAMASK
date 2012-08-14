@@ -613,32 +613,33 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
           ! --- wind forward ---
           
           if (crystallite_converged(g,i,e)) then
-#ifndef _OPENMP
-            if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
-                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-              write(6,'(a,f12.8,a,f12.8,a)') '<< CRYST >> winding forward from ', &
-                crystallite_subFrac(g,i,e),' to current crystallite_subfrac ', &
-                crystallite_subFrac(g,i,e)+crystallite_subStep(g,i,e),' in crystallite_stressAndItsTangent'
-              write(6,*)
-            endif
-#endif
-            crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
             formerSubStep = crystallite_subStep(g,i,e)
+            crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
             !$OMP FLUSH(crystallite_subFrac)
             crystallite_subStep(g,i,e) = min( 1.0_pReal - crystallite_subFrac(g,i,e), &
                                               stepIncreaseCryst * crystallite_subStep(g,i,e) )
             !$OMP FLUSH(crystallite_subStep)
-            if (crystallite_subStep(g,i,e) > subStepMinCryst) then
+            if (crystallite_subStep(g,i,e) > 0.0_pReal) then
               crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)                       ! wind forward...
               crystallite_subF0(1:3,1:3,g,i,e) = crystallite_subF(1:3,1:3,g,i,e)                        ! ...def grad
+              !$OMP FLUSH(crystallite_subF0)
               crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_Fp(1:3,1:3,g,i,e)                         ! ...plastic def grad
               crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e)) ! only needed later on for stiffness calculation
               crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_Lp(1:3,1:3,g,i,e)                         ! ...plastic velocity gradient
               constitutive_subState0(g,i,e)%p = constitutive_state(g,i,e)%p                             ! ...microstructure
               crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                       ! ...2nd PK stress
-              !$OMP FLUSH(crystallite_subF0)
-            elseif (formerSubStep > subStepMinCryst) then                                               ! this crystallite just converged
+              crystallite_todo(g,i,e) = .true.
+#ifndef _OPENMP
+              if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
+                  .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+                         .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+                write(6,'(a,f12.8,a,f12.8,a)') '<< CRYST >> winding forward from ', &
+                  crystallite_subFrac(g,i,e)-formerSubStep,' to current crystallite_subfrac ', &
+                  crystallite_subFrac(g,i,e),' in crystallite_stressAndItsTangent'
+                write(6,*)
+              endif
+#endif
+            elseif (formerSubStep > 0.0_pReal) then                                                     ! this crystallite just converged
               if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt) then
                 !$OMP CRITICAL (distributionCrystallite)
                   debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
@@ -651,18 +652,21 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
           
           else
             crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                  ! cut step in half and restore...
+            !$OMP FLUSH(crystallite_subStep)
             crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e)                         ! ...temperature
             crystallite_Fp(1:3,1:3,g,i,e) = crystallite_subFp0(1:3,1:3,g,i,e)                           ! ...plastic def grad
             crystallite_invFp(1:3,1:3,g,i,e) = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
+            !$OMP FLUSH(crystallite_invFp)
             crystallite_Lp(1:3,1:3,g,i,e) = crystallite_subLp0(1:3,1:3,g,i,e)                           ! ...plastic velocity grad
             constitutive_state(g,i,e)%p = constitutive_subState0(g,i,e)%p                               ! ...microstructure
             crystallite_Tstar_v(1:6,g,i,e) = crystallite_subTstar0_v(1:6,g,i,e)                         ! ...2nd PK stress
                                                                                                         ! cant restore dotState here, since not yet calculated in first cutback after initialization
-            !$OMP FLUSH(crystallite_invFp)
+            crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                      ! still on track or already done (beyond repair)
 #ifndef _OPENMP
-            if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
+            if (crystallite_todo(g,i,e) &
+                .and. iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
                 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
               write(6,'(a,f12.8)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
                                      crystallite_subStep(g,i,e)
               write(6,*)
@@ -672,8 +676,6 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
 
           ! --- prepare for integration ---
           
-          !$OMP FLUSH(crystallite_subStep)
-          crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                        ! still on track or already done (beyond repair)
           if (crystallite_todo(g,i,e)) then
             crystallite_subF(1:3,1:3,g,i,e) = crystallite_subF0(1:3,1:3,g,i,e) &
                                             + crystallite_subStep(g,i,e) &
@@ -2724,7 +2726,6 @@ use numerics, only:     nStress, &
                         aTol_crystalliteStress, &
                         rTol_crystalliteStress, &
                         iJacoLpresiduum, &
-                        relevantStrain, &
                         numerics_integrationMode
 use debug, only:        debug_level, &
                         debug_crystallite, &
@@ -2801,7 +2802,8 @@ real(pReal)                         p_hydro, &                    ! volumetric p
                                     steplength0, & 
                                     steplength, & 
                                     steplength_max, & 
-                                    dt                            ! time increment
+                                    dt, &                         ! time increment
+                                    aTol
 logical                             error                         ! flag indicating an error
 integer(pInt)                       NiterationStress, &           ! number of stress integrations
                                     dummy, &
@@ -2935,13 +2937,10 @@ LpLoop: do
   !* update current residuum and check for convergence of loop
   
   residuum = Lpguess - Lp_constitutive
-  if (.not.(any(residuum /= residuum)) .and. &                      ! exclude any NaN in residuum
-       ( maxval(abs(residuum)) < aTol_crystalliteStress .or. &      ! below absolute tolerance .or.
-         ( any(abs(dt * Lpguess) > relevantStrain) .and. &          ! worth checking? .and.
-             maxval(abs(residuum / Lpguess), abs(dt*Lpguess) > relevantStrain) < rTol_crystalliteStress & ! below relative tolerance
-         ) &
-       ) &
-      ) then
+  aTol = max(rTol_crystalliteStress * maxval(max(abs(Lpguess),abs(Lp_constitutive))), &     ! absolute tolerance from largest acceptable relative error
+             aTol_crystalliteStress)                                                        ! minimum lower cutoff
+  if (.not. any(residuum /= residuum) &                                                     ! no convergence if NaN in residuum
+      .and. maxval(abs(residuum)) < aTol ) then                                             ! converged if all below absolute tolerance...
     exit LpLoop
   endif
   
