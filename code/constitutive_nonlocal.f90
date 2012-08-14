@@ -99,7 +99,8 @@ constitutive_nonlocal_totalNslip                                     ! total num
 integer(pInt), dimension(:,:), allocatable, private :: &
 constitutive_nonlocal_Nslip, &                                       ! number of active slip systems for each family and instance
 constitutive_nonlocal_slipFamily, &                                  ! lookup table relating active slip system to slip family for each instance
-constitutive_nonlocal_slipSystemLattice                              ! lookup table relating active slip system index to lattice slip system index for each instance
+constitutive_nonlocal_slipSystemLattice, &                           ! lookup table relating active slip system index to lattice slip system index for each instance
+constitutive_nonlocal_colinearSystem                                 ! colinear system to the active slip system (only valid for fcc!)
 
 real(pReal), dimension(:), allocatable, private :: &
 constitutive_nonlocal_CoverA, &                                      ! c/a ratio for hex type lattice
@@ -640,6 +641,9 @@ constitutive_nonlocal_compatibility = 0.0_pReal
 allocate(constitutive_nonlocal_peierlsStress(maxTotalNslip,2,maxNinstance))
 constitutive_nonlocal_peierlsStress = 0.0_pReal
 
+allocate(constitutive_nonlocal_colinearSystem(maxTotalNslip,maxNinstance))
+constitutive_nonlocal_colinearSystem = 0_pInt
+
 do i = 1,maxNinstance
   
   myStructure = constitutive_nonlocal_structure(i)                                                                                  ! lattice structure of this instance
@@ -815,6 +819,14 @@ do i = 1,maxNinstance
           = constitutive_nonlocal_interactionSlipSlip(lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s1,i), &
                                                                                   constitutive_nonlocal_slipSystemLattice(s2,i), &
                                                                                   myStructure), i)
+      
+      !*** colinear slip system (only makes sense for fcc like it is defined here)
+      
+      if (lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s1,i), &
+                                      constitutive_nonlocal_slipSystemLattice(s2,i), &
+                                      myStructure) == 3_pInt) then
+        constitutive_nonlocal_colinearSystem(s1,i) = s2
+      endif
   
     enddo
 
@@ -1614,7 +1626,6 @@ integer(pInt)                               myInstance, &             ! current 
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),10) :: &
                                             deltaRho, &                     ! density increment
                                             deltaRhoRemobilization, &       ! density increment by remobilization
-                                            deltaRhoSingle2DipoleStress, &  ! density increment by dipole formation (by stress change)
                                             deltaRhoDipole2SingleStress     ! density increment by dipole dissociation (by stress change)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                             rhoSgl                        ! current single dislocation densities (positive/negative screw and edge without dipoles)
@@ -1719,7 +1730,7 @@ forall (c = 1_pInt:2_pInt) &
 
 
 !****************************************************************************
-!*** assign the rates of dislocation densities to deltaState
+!*** assign the changes in the dislocation densities to deltaState
 
 deltaRho = 0.0_pReal
 deltaRho = deltaRhoRemobilization &
@@ -2163,14 +2174,23 @@ forall (c=1_pInt:2_pInt) &
 
 rhoDotThermalAnnihilation = 0.0_pReal
 
+! edge annihilation by thermally activate climb
 D = constitutive_nonlocal_Dsd0(myInstance) * exp(-constitutive_nonlocal_Qsd(myInstance) / (kB * Temperature))
-
 vClimb =  constitutive_nonlocal_atomicVolume(myInstance) * D / ( kB * Temperature ) &
           * constitutive_nonlocal_Gmod(myInstance) / ( 2.0_pReal * pi * (1.0_pReal-constitutive_nonlocal_nu(myInstance)) ) &
           * 2.0_pReal / ( dUpper(1:ns,1) + dLower(1:ns,1) )
-          
-rhoDotThermalAnnihilation(1:ns,9) = - 4.0_pReal * rhoDip(1:ns,1) * vClimb / (dUpper(1:ns,1) - dLower(1:ns,1))                       ! edge climb
-rhoDotThermalAnnihilation(1:ns,10) = 0.0_pReal                                                                                      !!! cross slipping still has to be implemented !!!
+rhoDotThermalAnnihilation(1:ns,9) = - 4.0_pReal * rhoDip(1:ns,1) * vClimb / (dUpper(1:ns,1) - dLower(1:ns,1))
+
+! annihilation of screw dipoles: we assume that all screws annihilate instantaneously by cross-slipping on the colinear system
+! (so right now this is actually an athermal process, could be enriched by a thermally activated probability for cross-slip)
+! annihilated screw dipoles leave edge jogs behind on the colinear system
+if (myStructure == 1_pInt) then ! only fcc
+  rhoDotThermalAnnihilation(1:ns,10) = -rhoDip(1:ns,2) / timestep
+  forall (s = 1:ns, constitutive_nonlocal_colinearSystem(s,myInstance) > 0_pInt) &
+    rhoDotThermalAnnihilation(constitutive_nonlocal_colinearSystem(s,myInstance),1:2) = -rhoDotThermalAnnihilation(s,10) &
+                                                      * 0.25_pReal * sqrt(rhoForest(s)) * (dUpper(s,2) + dLower(s,2))
+endif
+
 
 
 !****************************************************************************
@@ -2209,8 +2229,8 @@ endif
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole formation by glide', rhoDotSingle2DipoleGlide * timestep
     write(6,'(a,/,2(12x,12(e12.5,1x),/))') '<< CONST >> athermal dipole annihilation', &
                                             rhoDotAthermalAnnihilation(1:ns,1:2) * timestep
-    write(6,'(a,/,2(12x,12(e12.5,1x),/))') '<< CONST >> thermally activated dipole annihilation', &
-                                            rhoDotThermalAnnihilation(1:ns,9:10) * timestep
+    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> thermally activated dipole annihilation', &
+                                            rhoDotThermalAnnihilation * timestep
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> total density change', rhoDot * timestep
     write(6,'(a,/,10(12x,12(f12.7,1x),/))') '<< CONST >> relative density change', &
                                             rhoDot(1:ns,1:8) * timestep / (abs(rhoSgl)+1.0e-10), &
