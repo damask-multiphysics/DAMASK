@@ -261,7 +261,7 @@ subroutine numerics_init
        case ('myfilter')
              myfilter = IO_stringValue(line,positions,2_pInt)
        case ('petsc_options')
-             petsc_options = IO_stringValue(line,positions,2_pInt)
+             petsc_options = trim(line(positions(4):))
        case ('rotation_tol')
              rotation_tol = IO_floatValue(line,positions,2_pInt)
        case ('divergence_correction')

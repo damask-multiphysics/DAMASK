@@ -62,6 +62,7 @@ program DAMASK_spectral_Driver
    debugGeneral
  
  use DAMASK_spectral_SolverBasic
+ use DAMASK_spectral_SolverBasicPETSC
  use DAMASK_spectral_SolverAL
  
  implicit none
@@ -276,6 +277,9 @@ program DAMASK_spectral_Driver
    case (DAMASK_spectral_SolverBasic_label)
      call basic_init()
      
+   case (DAMASK_spectral_SolverBasicPETSC_label)
+     call BasicPETSC_init()
+     
    case (DAMASK_spectral_SolverAL_label)
      call AL_init()
      
@@ -359,6 +363,14 @@ program DAMASK_spectral_Driver
                 temperature_bc    = loadCases(currentLoadCase)%temperature, &
                 rotation_BC       = loadCases(currentLoadCase)%rotation)
            
+          case (DAMASK_spectral_SolverBasicPETSC_label)
+            solres = BasicPETSC_solution (&
+               guessmode,timeinc,timeinc_old, &
+                P_BC              = loadCases(currentLoadCase)%P, &
+                F_BC              = loadCases(currentLoadCase)%deformation, &
+                temperature_bc    = loadCases(currentLoadCase)%temperature, &
+                rotation_BC       = loadCases(currentLoadCase)%rotation)
+           
           case (DAMASK_spectral_SolverAL_label)
             solres = AL_solution (&
                guessmode,timeinc,timeinc_old, &
@@ -395,6 +407,9 @@ program DAMASK_spectral_Driver
  
    case (DAMASK_spectral_SolverBasic_label)
      call basic_destroy()
+     
+   case (DAMASK_spectral_SolverBasicPETSC_label)
+     call BasicPETSC_destroy()
      
    case (DAMASK_spectral_SolverAL_label)
      call AL_destroy()

@@ -279,20 +279,23 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math
                  homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o 
 
 ifeq "$(SOLVER)" "NEW"
-COMPILED_FILES += DAMASK_spectral_Utilities.o DAMASK_spectral_SolverBasic.o DAMASK_spectral_SolverAL.o
+COMPILED_FILES += DAMASK_spectral_Utilities.o DAMASK_spectral_SolverBasic.o DAMASK_spectral_SolverAL.o DAMASK_spectral_SolverBasicPETSC.o
 
 DAMASK_spectral.exe: DAMASK_spectral_Driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_Driver.o \
   $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
 
-DAMASK_spectral_Driver.o: DAMASK_spectral_Driver.f90 DAMASK_spectral_SolverBasic.o DAMASK_spectral_SolverAL.o
+DAMASK_spectral_Driver.o: DAMASK_spectral_Driver.f90 DAMASK_spectral_SolverBasic.o DAMASK_spectral_SolverAL.o DAMASK_spectral_SolverBasicPETSC.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_Driver.f90 $(SUFFIX)
 
 DAMASK_spectral_SolverAL.o:    DAMASK_spectral_SolverAL.f90\
                                DAMASK_spectral_Utilities.o
   
 DAMASK_spectral_SolverBasic.o: DAMASK_spectral_SolverBasic.f90\
+                               DAMASK_spectral_Utilities.o
+  
+DAMASK_spectral_SolverBasicPETSC.o: DAMASK_spectral_SolverBasicPETSC.f90\
                                DAMASK_spectral_Utilities.o
 
 DAMASK_spectral_Utilities.o:   DAMASK_spectral_Utilities.f90\

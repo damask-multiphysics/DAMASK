@@ -610,9 +610,9 @@ real(pReal) function Utilities_getFilter(k)
       Utilities_getFilter = 1.0_pReal
       
     case ('cosine')
-      Utilities_getFilter = 0.125_pReal*(1.0_pReal + cos(pi*k(3)*geomdim(3)/(res(3)/2_pInt + 1_pInt))) &
-                           *(1.0_pReal + cos(pi*k(2)*geomdim(2)/(res(2)/2_pInt + 1_pInt))) &
-                           *(1.0_pReal + cos(pi*k(1)*geomdim(1)/(res(1)/2_pInt + 1_pInt)))
+      Utilities_getFilter = (1.0_pReal + cos(pi*k(3)/res(3))) &
+                           *(1.0_pReal + cos(pi*k(2)/res(2))) &
+                           *(1.0_pReal + cos(pi*k(1)/res(1)))/8.0_pReal
     
   end select 
 
