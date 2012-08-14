@@ -172,10 +172,7 @@ class Test():
     refFile.close()
     refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+1))
     curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+1))
-    refNonZero = refArray[refArray.nonzero()]
-    curNonZero = curArray[curArray.nonzero()]
-    err = abs((refNonZero/curNonZero)-1.)                                     # relative tolerance
-    max_err = numpy.max(err)
+    max_err=numpy.max(abs(refArray[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))                                        
     print ' ********\n * maximum relative error',max_err,'\n ********'
     return max_err
     
