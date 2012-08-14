@@ -473,7 +473,9 @@ subroutine debug_info
        endif
      enddo
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
+   endif
      
+   if (iand(debug_level(debug_CPFEM),debug_levelBasic) /= 0) then
      write(6,*)
      write(6,*)
      write(6,*) 'Extreme values of returned stress and jacobian'
