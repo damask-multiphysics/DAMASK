@@ -126,7 +126,8 @@ constitutive_nonlocal_viscosity, &                                   ! viscosity
 constitutive_nonlocal_fattack, &                                     ! attack frequency in Hz
 constitutive_nonlocal_rhoSglScatter, &                               ! standard deviation of scatter in initial dislocation density
 constitutive_nonlocal_surfaceTransmissivity, &                       ! transmissivity at free surface
-constitutive_nonlocal_grainboundaryTransmissivity                    ! transmissivity at grain boundary (identified by different texture)
+constitutive_nonlocal_grainboundaryTransmissivity, &                 ! transmissivity at grain boundary (identified by different texture)
+constitutive_nonlocal_CFLfactor                                      ! safety factor for CFL flux condition
 
 real(pReal), dimension(:,:,:), allocatable, private :: &
 constitutive_nonlocal_Cslip_66                                       ! elasticity matrix in Mandel notation for each instance
@@ -332,6 +333,7 @@ allocate(constitutive_nonlocal_rhoSglScatter(maxNinstance))
 allocate(constitutive_nonlocal_surfaceTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_grainboundaryTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_shortRangeStressCorrection(maxNinstance))
+allocate(constitutive_nonlocal_CFLfactor(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
 constitutive_nonlocal_C12 = 0.0_pReal
@@ -358,6 +360,7 @@ constitutive_nonlocal_fattack = 0.0_pReal
 constitutive_nonlocal_rhoSglScatter = 0.0_pReal
 constitutive_nonlocal_surfaceTransmissivity = 1.0_pReal
 constitutive_nonlocal_grainboundaryTransmissivity = -1.0_pReal
+constitutive_nonlocal_CFLfactor = 2.0_pReal
 constitutive_nonlocal_shortRangeStressCorrection = .true.
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
@@ -500,6 +503,8 @@ do                                                                              
         constitutive_nonlocal_surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
       case('grainboundarytransmissivity')
         constitutive_nonlocal_grainboundaryTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
+      case('cflfactor')
+        constitutive_nonlocal_CFLfactor(i) = IO_floatValue(line,positions,2_pInt)
       case('shortrangestresscorrection')
         constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case default
@@ -593,6 +598,8 @@ enddo
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_grainboundaryTransmissivity(i) > 1.0_pReal) call IO_error(211_pInt,&
                                                          ext_msg='grainboundaryTransmissivity ('//constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_CFLfactor(i) < 0.0_pReal)                   call IO_error(211_pInt,ext_msg='CFLfactor (' &
+                                                                             //constitutive_nonlocal_label//')')
   
   
   !*** determine total number of active slip systems
@@ -1940,23 +1947,6 @@ forall (t = 1_pInt:4_pInt) &
 
 
 !****************************************************************************
-!*** check CFL (Courant-Friedrichs-Lewy) condition for flux
-
-if (any(abs(gdot) > 0.0_pReal .and. 2.0_pReal * abs(v) * timestep > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then      ! safety factor 2.0 (we use the reference volume and are for simplicity here)
-#ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
-    write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
-    write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ',maxval(abs(v)),' at a timestep of ',timestep
-    write(6,'(a)') '<< CONST >> enforcing cutback !!!'
-  endif
-#endif
-  constitutive_nonlocal_dotState = DAMASK_NaN
-  return
-endif
-
-
-
-!****************************************************************************
 !*** calculate limits for stable dipole height
 
 do s = 1_pInt,ns   ! loop over slip systems
@@ -1995,7 +1985,25 @@ rhoDotFlux = 0.0_pReal
 
 if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                                                                    ! only for nonlocal plasticity
   
-  !*** take care of the definition of lattice_st = lattice_sd x lattice_sn !!!
+
+  !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
+
+  if (any( abs(gdot) > 0.0_pReal &                                                                                                ! any active slip system ...
+          .and. constitutive_nonlocal_CFLfactor(myInstance) * abs(v) * timestep &
+              > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                                                        ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
+#ifndef _OPENMP
+    if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
+      write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
+      write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ',maxval(abs(v)),' at a timestep of ',timestep
+      write(6,'(a)') '<< CONST >> enforcing cutback !!!'
+    endif
+#endif
+    constitutive_nonlocal_dotState = DAMASK_NaN                                                                                   ! -> return NaN and, hence, enforce cutback
+    return
+  endif
+  
+
+  !*** be aware of the definition of lattice_st = lattice_sd x lattice_sn !!!
   !*** opposite sign to our p vector in the (s,p,n) triplet !!!
   
   m(1:3,1:ns,1) =  lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,myInstance), myStructure)
@@ -2228,7 +2236,7 @@ endif
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation flux', rhoDotFlux(1:ns,1:8) * timestep
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole formation by glide', rhoDotSingle2DipoleGlide * timestep
     write(6,'(a,/,2(12x,12(e12.5,1x),/))') '<< CONST >> athermal dipole annihilation', &
-                                            rhoDotAthermalAnnihilation(1:ns,1:2) * timestep
+                                            rhoDotAthermalAnnihilation(1:ns,9:10) * timestep
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> thermally activated dipole annihilation', &
                                             rhoDotThermalAnnihilation * timestep
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> total density change', rhoDot * timestep
