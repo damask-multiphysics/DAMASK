@@ -27,7 +27,6 @@
 module homogenization
 
  use prec, only: pInt,pReal,p_vec
- use   IO, only: IO_write_jobBinaryFile  
  
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
@@ -78,7 +77,8 @@ subroutine homogenization_init(Temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: math_I3
  use debug, only: debug_level, debug_homogenization, debug_levelBasic
- use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat, IO_write_jobFile
+ use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat, IO_write_jobFile, &
+               IO_write_jobBinaryIntFile 
  use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
  use material
  use constitutive, only: constitutive_maxSizePostResults
@@ -207,7 +207,7 @@ subroutine homogenization_init(Temperature)
 
 !--------------------------------------------------------------------------------------------------
 ! write state size file out
- call IO_write_jobBinaryFile(777,'sizeStateHomog',size(homogenization_sizeState))
+ call IO_write_jobBinaryIntFile(777,'sizeStateHomog',size(homogenization_sizeState))
  write (777,rec=1) homogenization_sizeState
  close(777)
  
@@ -338,7 +338,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                 ! iterate over elements to be processed
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                               ! iterate over IPs of this element to be processed
-     
+
      ! initialize restoration points of grain...
      forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p  ! ...microstructures
      crystallite_partionedTemperature0(1:myNgrains,i,e) = materialpoint_Temperature(i,e)            ! ...temperatures
@@ -348,7 +348,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                                                  crystallite_dPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) ! ...stiffness
      crystallite_partionedF0(1:3,1:3,1:myNgrains,i,e) = crystallite_F0(1:3,1:3,1:myNgrains,i,e)     ! ...def grads
      crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = crystallite_Tstar0_v(1:6,1:myNgrains,i,e) ! ...2nd PK stress
-     
+
      ! initialize restoration points of ...
      if (homogenization_sizeState(i,e) > 0_pInt) &
        homogenization_subState0(i,e)%p = homogenization_state0(i,e)%p                               ! ...internal homogenization state

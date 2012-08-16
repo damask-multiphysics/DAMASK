@@ -873,7 +873,9 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    GeometryFile
  use IO, only: &
    IO_read_jobBinaryFile ,&
+   IO_read_jobBinaryIntFile ,&
    IO_write_jobBinaryFile, &
+   IO_write_jobBinaryIntFile, &
    IO_write_jobFile, &
    IO_error
  use math, only: &
@@ -895,82 +897,87 @@ function mesh_regrid(adaptive,resNewInput,minRes)
                                                            deltaF, deltaF_lastInc
  real(pReal),   dimension(:,:),    allocatable :: & 
    coordinatesNew, &
-   coordinatesLinear 
-   
+   coordinatesLinear     
  real(pReal),   dimension(:,:,:),    allocatable :: & 
-   material_phase, material_phaseNew, &
-   F_Linear, F_Linear_New 
-   
+   F_Linear, F_Linear_New, &
+   stateHomog
+ real(pReal),   dimension (:,:,:,:),        allocatable :: &
+   coordinates, &
+   Tstar,           TstarNew, &
+   stateConst 
  real(pReal),   dimension(:,:,:,:,:),    allocatable :: & 
    F,                  FNew, &
    Fp,                FpNew, &
    Lp,                LpNew, &
    dcsdE,          dcsdENew, &
    F_lastInc,   F_lastIncNew
-
  real(pReal),   dimension (:,:,:,:,:,:,:),  allocatable :: &
    dPdF,            dPdFNew
- real(pReal),   dimension (:,:,:,:),        allocatable :: &
-   coordinates, &
-   Tstar,           TstarNew, &
-   stateHomog, &
-   stateConst 
- integer(pInt), dimension(:,:), allocatable :: &
-   sizeStateConst,  sizeStateHomog
 
-  if (adaptive) then
-    if (present(resNewInput)) then
-      if (any (resNewInput<1)) call IO_error(890_pInt, ext_msg = 'resNewInput')
-    else
-      call IO_error(890_pInt, ext_msg = 'resNewInput')
+ integer(pInt), dimension(:,:), allocatable :: &
+   sizeStateHomog
+ integer(pInt), dimension(:,:,:), allocatable :: &
+   material_phase, material_phaseNew, &
+   sizeStateConst
+   
+ write(6,*) 'Regridding geometry'
+ if (adaptive) then
+   write(6,*) 'adaptive resolution determination'
+   if (present(minRes)) then
+     if (all(minRes /= -1_pInt)) &                                                                  !the f2py way to tell it is present
+       write(6,'(a,3(i12))') ' given minimum resolution ', minRes
    endif
-  endif
+   if (present(resNewInput)) then
+     if (any (resNewInput<1)) call IO_error(890_pInt, ext_msg = 'resNewInput')                      !the f2py way to tell it is not present
+     write(6,'(a,3(i12))') ' target resolution ', resNewInput
+   else
+     call IO_error(890_pInt, ext_msg = 'resNewInput')
+   endif
+ endif
+ 
 !---------------------------------------------------------
-  allocate(F(res(1),res(2),res(3),3,3))
-  call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getSolverJobName()),size(F))
-  read (777,rec=1) F
-  close (777)
+ allocate(F(res(1),res(2),res(3),3,3))
+ call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',trim(getSolverJobName()),size(F))
+ read (777,rec=1) F
+ close (777)
  
 ! ----read in average deformation-------------------------
-  call IO_read_jobBinaryFile(777,'F_aim',trim(getSolverJobName()),size(Favg))
-  read (777,rec=1) Favg
-  close (777)
+ call IO_read_jobBinaryFile(777,'F_aim',trim(getSolverJobName()),size(Favg))
+ read (777,rec=1) Favg
+ close (777)
 
-  allocate(coordinates(res(1),res(2),res(3),3))
-  call deformed_fft(res,geomdim,Favg,1.0_pReal,F,coordinates)
- 
 ! ----Store coordinates into a linear list--------------
-  allocate(coordinatesLinear(3,mesh_NcpElems))
-  
-  ielem = 0_pInt
-  do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
-    ielem = ielem + 1_pInt
-    coordinatesLinear(1:3,ielem) = coordinates(i,j,k,1:3)
-  enddo; enddo; enddo
-  deallocate(coordinates)
+ allocate(coordinates(res(1),res(2),res(3),3))
+ call deformed_fft(res,geomdim,Favg,1.0_pReal,F,coordinates)
+ allocate(coordinatesLinear(3,mesh_NcpElems))
+ ielem = 0_pInt
+ do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
+   ielem = ielem + 1_pInt
+   coordinatesLinear(1:3,ielem) = coordinates(i,j,k,1:3)
+ enddo; enddo; enddo
+ deallocate(coordinates)
 
- ! ----For 2D /3D case----------------------------------                            
+! ----sanity check 2D /3D case----------------------------------                            
  if (res(3)== 1_pInt) then
    spatialDim = 2_pInt
    if (present (minRes)) then
-     if (minRes(1) >1_pInt .and. minRes(2) > 1_pInt) then
+     if (minRes(1) > 0_pInt .or. minRes(2) > 0_pInt) then
         if (minRes(3) /= 1_pInt .or. &
            mod(minRes(1),2_pInt) /= 0_pInt .or. &
-           mod(minRes(2),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '2D minRes')                      ! as f2py has problems with present, use pyf file for initialization to -1
+           mod(minRes(2),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '2D minRes')                       ! as f2py has problems with present, use pyf file for initialization to -1
    endif; endif
  else
    spatialDim = 3_pInt
    if (present (minRes)) then
-     if (all(minRes >1_pInt)) then
+     if (any(minRes > 0_pInt)) then
         if (mod(minRes(1),2_pInt) /= 0_pInt.or. &
             mod(minRes(2),2_pInt) /= 0_pInt .or. &
             mod(minRes(3),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '3D minRes')                      ! as f2py has problems with present, use pyf file for initialization to -1
    endif; endif
  endif
-   
- geomdimNew =  math_mul33x3(Favg,geomdim)
-!---- Automatic detection based on current geom -----------------
 
+!---- Automatic detection based on current geom -----------------
+ geomdimNew =  math_mul33x3(Favg,geomdim)
  if (adaptive) then
    ratio = floor(real(resNewInput,pReal) * (geomdimNew/geomdim), pInt)
    
@@ -1009,7 +1016,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      endif
    enddo 
  else 
-  resNew = resNewInput
+  resNew = res
  endif
 
  mesh_regrid = resNew
@@ -1031,12 +1038,12 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(coordinatesNew)
 
  
-!----- write out indices--------------------------------------------
+!----- write out indices periodic-------------------------------------------
  write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(maxval(indices),pReal)))
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
- call IO_write_jobFile(777,'idx')                                ! make it a general open-write file
+ call IO_write_jobFile(777,'IDX')                                ! make it a general open-write file
  write(777, '(A)') '1 header'
  write(777, '(A)') 'Numbered indices as per the large set'
  do i = 1_pInt, NpointsNew
@@ -1045,16 +1052,16 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  enddo
  close(777)
  
+ 
+ !----- calculalte and write out indices non periodic-------------------------------------------
  do i = 1_pInt, NpointsNew
    indices(i) = indices(i) / 3_pInt**spatialDim +1_pInt        ! +1 b'coz index count starts from '0'
  enddo 
-
-!----- write out indices--------------------------------------------
  write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(maxval(indices),pReal)))
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
- call IO_write_jobFile(777,'idx2')                                ! make it a general open-write file
+ call IO_write_jobFile(777,'idx')                                ! make it a general open-write file
  write(777, '(A)') '1 header'
  write(777, '(A)') 'Numbered indices as per the small set'
  do i = 1_pInt, NpointsNew
@@ -1062,13 +1069,12 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    if(mod(i,resNew(1)) == 0_pInt) write(777,'(A)') ''
  enddo
  close(777)
- 
-!------Adjusting format string ---------------------
+
+
+ !------ write out new geom file ---------------------
  write(N_Digits, '(I16.16)') 1_pInt+int(log10(real(maxval(mesh_element(4,1:mesh_NcpElems)),pReal)),pInt)
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
-
- !------ write out new geom file ---------------------
  open(777,file=trim(getSolverWorkingDirectoryName())//trim(GeometryFile),status='REPLACE')
  write(777, '(A)') '3 header'
  write(777, '(A, I8, A, I8, A, I8)') 'resolution  a ', resNew(1), '  b ', resNew(2), '  c ', resNew(3)
@@ -1079,48 +1085,46 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    if(mod(i,resNew(1)) == 0_pInt) write(777,'(A)') ''
  enddo
  close(777)
-! ----------------------------------------------------
+ 
+!---relocate F and F_lastInc and set them average to old average  (data from spectral method)------------------------------
  allocate(F_Linear(3,3,mesh_NcpElems))
  allocate(F_Linear_New(3,3,NpointsNew))
  allocate(FNew(resNew(1),resNew(2),resNew(3),3,3))
  
-  ielem = 0_pInt
-  do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
-   ielem = ielem + 1_pInt 
-    F_Linear(1:3,1:3, ielem) = F(i,j,k,1:3,1:3)
-  enddo; enddo; enddo
+ ielem = 0_pInt
+ do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
+  ielem = ielem + 1_pInt 
+   F_Linear(1:3,1:3, ielem) = F(i,j,k,1:3,1:3)
+ enddo; enddo; enddo
  
-  do i=1_pInt, NpointsNew
-    F_Linear_New(1:3,1:3,i) = F_Linear(1:3,1:3,indices(i))  ! -- mapping old to new ...based on indices
-  enddo
+ do i=1_pInt, NpointsNew
+   F_Linear_New(1:3,1:3,i) = F_Linear(1:3,1:3,indices(i))  ! -- mapping old to new ...based on indices
+ enddo
   
-  ielem = 0_pInt
-  do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
-   ielem = ielem + 1_pInt 
-   FNew(i,j,k,1:3,1:3) = F_Linear_New(1:3,1:3,ielem)
-  enddo; enddo; enddo
+ ielem = 0_pInt
+ do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
+  ielem = ielem + 1_pInt 
+  FNew(i,j,k,1:3,1:3) = F_Linear_New(1:3,1:3,ielem)
+ enddo; enddo; enddo
 
-  do i=1_pInt,3_pInt; do j=1_pInt,3_pInt
-    FavgNew(i,j) = real(sum(FNew(1:resNew(1),1:resNew(2),1:resNew(3),i,j))/ NpointsNew,pReal)
-  enddo; enddo
+ do i=1_pInt,3_pInt; do j=1_pInt,3_pInt
+   FavgNew(i,j) = real(sum(FNew(1:resNew(1),1:resNew(2),1:resNew(3),i,j))/ NpointsNew,pReal)
+ enddo; enddo
 
-  deltaF  = Favg - FavgNew
+ deltaF  = Favg - FavgNew
   
-  do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
-   FNew(i,j,k,1:3,1:3) = FNew(i,j,k,1:3,1:3) + deltaF
-  enddo; enddo; enddo
+ do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
+  FNew(i,j,k,1:3,1:3) = FNew(i,j,k,1:3,1:3) + deltaF
+ enddo; enddo; enddo
   
-  call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(FNew))
-  write (777,rec=1) FNew
-  close (777)
+ call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(FNew))
+ write (777,rec=1) FNew
+ close (777)
 
-  deallocate(F_Linear)
-  deallocate(F_Linear_New)
-  deallocate(F)
-  deallocate(FNew)
- 
-!---set F_lastInc to homogeneous deformation------------------------------
-
+ deallocate(F_Linear)
+ deallocate(F_Linear_New)
+ deallocate(F)
+ deallocate(FNew)
  allocate(F_lastInc(res(1),res(2),res(3),3,3))
  allocate(F_lastIncNew(resNew(1),resNew(2),resNew(3),3,3))
  allocate(F_Linear(3,3,mesh_NcpElems))
@@ -1136,34 +1140,34 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  read (777,rec=1) Favg_LastInc
  close (777)
  
-  ielem = 0_pInt
-   do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
-    ielem = ielem + 1_pInt 
-     F_Linear(1:3,1:3, ielem) = F_lastInc(i,j,k,1:3,1:3)
-   enddo; enddo; enddo
+ ielem = 0_pInt
+ do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
+  ielem = ielem + 1_pInt 
+  F_Linear(1:3,1:3, ielem) = F_lastInc(i,j,k,1:3,1:3)
+ enddo; enddo; enddo
    
  ! -- mapping old to new ...based on indices
-   do i=1,NpointsNew
-     F_Linear_New(1:3,1:3,i) = F_Linear(1:3,1:3,indices(i))
-   enddo
+ do i=1,NpointsNew
+   F_Linear_New(1:3,1:3,i) = F_Linear(1:3,1:3,indices(i))
+ enddo
   
-   ielem = 0_pInt
-   do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
-    ielem = ielem + 1_pInt 
-    F_lastIncNew(i,j,k,1:3,1:3) = F_Linear_New(1:3,1:3,ielem)
-   enddo; enddo; enddo
+ ielem = 0_pInt
+ do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
+  ielem = ielem + 1_pInt 
+  F_lastIncNew(i,j,k,1:3,1:3) = F_Linear_New(1:3,1:3,ielem)
+ enddo; enddo; enddo
    
  ! -- calculating the Favg_lastincNew 
  
-    do i=1_pInt,3_pInt; do j=1_pInt,3_pInt
-      Favg_LastIncNew(i,j) = real(sum(F_lastIncNew(1:resNew(1),1:resNew(2),1:resNew(3),i,j))/ NpointsNew,pReal)
-    enddo; enddo  
+ do i=1_pInt,3_pInt; do j=1_pInt,3_pInt
+   Favg_LastIncNew(i,j) = real(sum(F_lastIncNew(1:resNew(1),1:resNew(2),1:resNew(3),i,j))/ NpointsNew,pReal)
+ enddo; enddo  
  
-  deltaF_lastInc  = Favg_LastInc - Favg_LastIncNew
+ deltaF_lastInc  = Favg_LastInc - Favg_LastIncNew
 
-    do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
-  F_LastIncNew(i,j,k,1:3,1:3) = F_LastIncNew(i,j,k,1:3,1:3) + deltaF_lastInc
-  enddo; enddo; enddo
+ do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
+   F_LastIncNew(i,j,k,1:3,1:3) = F_LastIncNew(i,j,k,1:3,1:3) + deltaF_lastInc
+ enddo; enddo; enddo
    
  call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_LastIncNew))
  write (777,rec=1) F_LastIncNew
@@ -1172,22 +1176,27 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(F_Linear_New)
  deallocate(F_lastInc)
  deallocate(F_lastIncNew)
- !-------------------------------------------------------------------
+ 
+! relocating data of material subroutine ---------------------------------------------------------
  allocate(material_phase    (1,1, mesh_NcpElems))
  allocate(material_phaseNew (1,1, NpointsNew))
- call IO_read_jobBinaryFile(777,'recordedPhase',trim(getSolverJobName()),size(material_phase))
+ call IO_read_jobBinaryIntFile(777,'recordedPhase',trim(getSolverJobName()),size(material_phase))
  read (777,rec=1) material_phase
  close (777)
  do i = 1, NpointsNew
    material_phaseNew(1,1,i) = material_phase(1,1,indices(i))
  enddo
-
- call IO_write_jobBinaryFile(777,'recordedPhase',size(material_phaseNew))
+ do i = 1, mesh_NcpElems
+   if (all(material_phaseNew(1,1,:) /= material_phase(1,1,i))) then
+     write(6,*) 'mismatch in regridding'
+     write(6,*) material_phase(1,1,i), 'not found in material_phaseNew'
+   endif
+ enddo
+ call IO_write_jobBinaryIntFile(777,'recordedPhase',size(material_phaseNew))
  write (777,rec=1) material_phaseNew
  close (777) 
  deallocate(material_phase)
  deallocate(material_phaseNew)
- 
 !---------------------------------------------------------------------------
  allocate(F    (3,3,1,1, mesh_NcpElems))
  allocate(FNew (3,3,1,1, NpointsNew))
@@ -1218,7 +1227,6 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  close (777) 
  deallocate(Fp)
  deallocate(FpNew)
- 
 !------------------------------------------------------------------------
  allocate(Lp       (3,3,1,1,mesh_NcpElems))
  allocate(LpNew  (3,3,1,1,NpointsNew)) 
@@ -1233,7 +1241,6 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  close (777)
  deallocate(Lp)
  deallocate(LpNew)
- 
 !----------------------------------------------------------------------------
  allocate(dcsdE       (6,6,1,1,mesh_NcpElems)) 
  allocate(dcsdENew (6,6,1,1,NpointsNew)) 
@@ -1248,7 +1255,6 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  close (777)
  deallocate(dcsdE)
  deallocate(dcsdENew)
- 
 !---------------------------------------------------------------------------
  allocate(dPdF       (3,3,3,3,1,1,mesh_NcpElems))
  allocate(dPdFNew (3,3,3,3,1,1,NpointsNew)) 
@@ -1263,7 +1269,6 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  close (777)
  deallocate(dPdF)
  deallocate(dPdFNew)
- 
 !---------------------------------------------------------------------------
  allocate(Tstar        (6,1,1,mesh_NcpElems))
  allocate(TstarNew  (6,1,1,NpointsNew)) 
@@ -1279,18 +1284,18 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(Tstar)
  deallocate(TstarNew)
  
-!---------------------------------------------------------------------------- 
- allocate(sizeStateConst(1,mesh_NcpElems))
- call IO_read_jobBinaryFile(777,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
+! for the state, we first have to know the size------------------------------------------------------------------ 
+ allocate(sizeStateConst(1,1,mesh_NcpElems))
+ call IO_read_jobBinaryIntFile(777,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
  read (777,rec=1) sizeStateConst
  close (777)
- maxsize = maxval(sizeStateConst(1,1:mesh_NcpElems))
+ maxsize = maxval(sizeStateConst(1,1,1:mesh_NcpElems))
  allocate(StateConst      (1,1,mesh_NcpElems,maxsize))
 
  call IO_read_jobBinaryFile(777,'convergedStateConst',trim(getSolverJobName()))
  k = 0_pInt
  do i =1, mesh_NcpElems
-   do j = 1,sizeStateConst(1,i)
+   do j = 1,sizeStateConst(1,1,i)
      k = k+1_pInt
      read(777,rec=k) StateConst(1,1,i,j)
    enddo
@@ -1299,7 +1304,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  call IO_write_jobBinaryFile(777,'convergedStateConst')
  k = 0_pInt
  do i = 1,NpointsNew
-   do j = 1,sizeStateConst(1,indices(i))
+   do j = 1,sizeStateConst(1,1,indices(i))
      k=k+1_pInt
      write(777,rec=k) StateConst(1,1,indices(i),j)
    enddo
@@ -1307,31 +1312,29 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  close (777)
  deallocate(sizeStateConst)
  deallocate(StateConst)
-
 !---------------------------------------------------------------------------- 
  allocate(sizeStateHomog(1,mesh_NcpElems))
- call IO_read_jobBinaryFile(777,'sizeStateHomog',trim(getSolverJobName()),size(sizeStateHomog))
+ call IO_read_jobBinaryIntFile(777,'sizeStateHomog',trim(getSolverJobName()),size(sizeStateHomog))
  read (777,rec=1) sizeStateHomog
  close (777)
  maxsize = maxval(sizeStateHomog(1,1:mesh_NcpElems))
- allocate(stateHomog      (1,1,mesh_NcpElems,maxsize))
+ allocate(stateHomog      (1,mesh_NcpElems,maxsize))
 
  call IO_read_jobBinaryFile(777,'convergedStateHomog',trim(getSolverJobName()))
  k = 0_pInt
  do i =1, mesh_NcpElems
    do j = 1,sizeStateHomog(1,i)
      k = k+1_pInt
-     read(777,rec=k) stateHomog(1,1,i,j)
+     read(777,rec=k) stateHomog(1,i,j)
    enddo
  enddo
  close(777)
-
  call IO_write_jobBinaryFile(777,'convergedStateHomog')
  k = 0_pInt
  do i = 1,NpointsNew
    do j = 1,sizeStateHomog(1,indices(i))
      k=k+1_pInt
-     write(777,rec=k) stateHomog(1,1,indices(i),j)
+     write(777,rec=k) stateHomog(1,indices(i),j)
    enddo
  enddo
  close (777)
@@ -1339,6 +1342,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(stateHomog)
   
  deallocate(indices)
+ write(6,*) 'finished regridding'
  
 end function mesh_regrid
 
@@ -4254,13 +4258,6 @@ FE_ipNeighbor(1:FE_NipNeighbors(8),1:FE_Nips(8),8) = &  ! element 117
     ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(10),FE_Nips(10)])
 
 end subroutine mesh_build_FEdata
-end module mesh
 
-   ! if (allocated(randInit)) deallocate(randInit)
-   ! if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
-   ! if (allocated(calcMode)) deallocate(calcMode)
-   ! if (allocated(FE_nodesAtIP)) deallocate(FE_nodesAtIP)
-   ! if (allocated(FE_ipNeighbor))deallocate(FE_ipNeighbor)
-   ! if (allocated(FE_subNodeParent)) deallocate(FE_subNodeParent)
-   ! if (allocated(FE_subNodeOnIPFace)) deallocate(FE_subNodeOnIPFace)
+end module mesh
 

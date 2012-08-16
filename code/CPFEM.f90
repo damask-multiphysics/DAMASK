@@ -120,7 +120,8 @@ subroutine CPFEM_init
                                                   debug_CPFEM, &
                                                   debug_levelBasic, &
                                                   debug_levelExtensive
-  use IO, only:                                   IO_read_jobBinaryFile
+  use IO, only:                                   IO_read_jobBinaryFile,&
+                                                  IO_read_jobBinaryIntFile
   use FEsolving, only:                            parallelExecution, &
                                                   symmetricSolver, &
                                                   restartRead, &
@@ -155,7 +156,7 @@ subroutine CPFEM_init
       !$OMP END CRITICAL (write2out)
     endif
 
-    call IO_read_jobBinaryFile(777,'recordedPhase',modelName,size(material_phase))
+    call IO_read_jobBinaryIntFile(777,'recordedPhase',modelName,size(material_phase))
     read (777,rec=1) material_phase
     close (777)
 

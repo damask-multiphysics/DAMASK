@@ -29,7 +29,6 @@
 MODULE constitutive
 
 use prec, only: pInt, p_vec
-use   IO, only: IO_write_jobBinaryFile
 
 implicit none
 type(p_vec),  dimension(:,:,:), allocatable :: &
@@ -89,7 +88,8 @@ subroutine constitutive_init
  use IO,       only: IO_error, &
                      IO_open_file, &
                      IO_open_jobFile_stat, &
-                     IO_write_jobFile
+                     IO_write_jobFile, &
+                     IO_write_jobBinaryIntFile
  use mesh,     only: mesh_maxNips, &
                      mesh_NcpElems, &
                      mesh_element,FE_Nips
@@ -414,7 +414,7 @@ endif
 !$OMP END PARALLEL DO
 
 !----- write out state size file----------------
-call IO_write_jobBinaryFile(777,'sizeStateConst', size(constitutive_sizeState))
+call IO_write_jobBinaryIntFile(777,'sizeStateConst', size(constitutive_sizeState))
 write (777,rec=1) constitutive_sizeState
 close(777)
 !-----------------------------------------------
