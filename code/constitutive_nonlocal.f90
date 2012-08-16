@@ -129,12 +129,6 @@ constitutive_nonlocal_surfaceTransmissivity, &                       ! transmiss
 constitutive_nonlocal_grainboundaryTransmissivity, &                 ! transmissivity at grain boundary (identified by different texture)
 constitutive_nonlocal_CFLfactor                                      ! safety factor for CFL flux condition
 
-real(pReal), dimension(:,:,:), allocatable, private :: &
-constitutive_nonlocal_Cslip_66                                       ! elasticity matrix in Mandel notation for each instance
-
-real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
-constitutive_nonlocal_Cslip_3333                                     ! elasticity matrix for each instance
-
 real(pReal), dimension(:,:), allocatable, private :: &
 constitutive_nonlocal_rhoSglEdgePos0, &                              ! initial edge_pos dislocation density per slip system for each family and instance
 constitutive_nonlocal_rhoSglEdgeNeg0, &                              ! initial edge_neg dislocation density per slip system for each family and instance
@@ -149,25 +143,30 @@ constitutive_nonlocal_burgers, &                                     ! absolute 
 constitutive_nonlocal_interactionSlipSlip                            ! coefficients for slip-slip interaction for each interaction type and instance
 
 real(pReal), dimension(:,:,:), allocatable, private :: &
+constitutive_nonlocal_Cslip_66, &                                    ! elasticity matrix in Mandel notation for each instance
 constitutive_nonlocal_minimumDipoleHeightPerSlipFamily, &            ! minimum stable edge/screw dipole height for each family and instance
 constitutive_nonlocal_minimumDipoleHeight, &                         ! minimum stable edge/screw dipole height for each slip system and instance
 constitutive_nonlocal_peierlsStressPerSlipFamily, &                  ! Peierls stress (edge and screw) 
-constitutive_nonlocal_peierlsStress                                  ! Peierls stress (edge and screw) 
-
-real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
-constitutive_nonlocal_rhoDotFlux                                     ! dislocation convection term
-
-real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
-constitutive_nonlocal_compatibility                                  ! slip system compatibility between me and my neighbors
-
-real(pReal), dimension(:,:,:), allocatable, private :: &
+constitutive_nonlocal_peierlsStress, &                               ! Peierls stress (edge and screw) 
 constitutive_nonlocal_forestProjectionEdge, &                        ! matrix of forest projections of edge dislocations for each instance
 constitutive_nonlocal_forestProjectionScrew, &                       ! matrix of forest projections of screw dislocations for each instance
 constitutive_nonlocal_interactionMatrixSlipSlip                      ! interaction matrix of the different slip systems for each instance
 
 real(pReal), dimension(:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_lattice2slip, &                                ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
-constitutive_nonlocal_accumulatedShear                               ! accumulated shear per slip system up to the start of the FE increment
+constitutive_nonlocal_accumulatedShear, &                            ! accumulated shear per slip system up to the start of the FE increment
+constitutive_nonlocal_rhoDotEdgeJogs
+
+real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
+constitutive_nonlocal_Cslip_3333, &                                  ! elasticity matrix for each instance
+constitutive_nonlocal_rhoDotFlux, &                                  ! dislocation convection term
+constitutive_nonlocal_rhoDotMultiplication, &
+constitutive_nonlocal_rhoDotSingle2DipoleGlide, &
+constitutive_nonlocal_rhoDotAthermalAnnihilation, &
+constitutive_nonlocal_rhoDotThermalAnnihilation
+
+real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
+constitutive_nonlocal_compatibility                                  ! slip system compatibility between me and my neighbors
 
 logical, dimension(:), allocatable, private :: &
 constitutive_nonlocal_shortRangeStressCorrection                     ! flag indicating the use of the short range stress correction by a excess density gradient term
@@ -639,8 +638,18 @@ constitutive_nonlocal_lattice2slip = 0.0_pReal
 allocate(constitutive_nonlocal_accumulatedShear(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_accumulatedShear = 0.0_pReal
 
-allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 10, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 8, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_rhoDotMultiplication(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_rhoDotSingle2DipoleGlide(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_rhoDotAthermalAnnihilation(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_rhoDotThermalAnnihilation(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_rhoDotEdgeJogs(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_rhoDotFlux = 0.0_pReal
+constitutive_nonlocal_rhoDotMultiplication = 0.0_pReal
+constitutive_nonlocal_rhoDotSingle2DipoleGlide = 0.0_pReal
+constitutive_nonlocal_rhoDotAthermalAnnihilation = 0.0_pReal
+constitutive_nonlocal_rhoDotThermalAnnihilation = 0.0_pReal
+constitutive_nonlocal_rhoDotEdgeJogs = 0.0_pReal
 
 allocate(constitutive_nonlocal_compatibility(2,maxTotalNslip, maxTotalNslip, FE_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_compatibility = 0.0_pReal
@@ -2133,10 +2142,6 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
   enddo ! neighbor loop  
 endif
 
-if (numerics_integrationMode == 1_pInt) then
-  constitutive_nonlocal_rhoDotFlux(1:ns,1:10,g,ip,el) = rhoDotFlux(1:ns,1:10)                                                       ! save flux calculation for output (if in central integration mode)
-endif
-
 
 
 !****************************************************************************
@@ -2211,6 +2216,17 @@ rhoDot = rhoDotFlux &
        + rhoDotSingle2DipoleGlide &
        + rhoDotAthermalAnnihilation &
        + rhoDotThermalAnnihilation 
+
+if (numerics_integrationMode == 1_pInt) then                                       ! save rates for output if in central integration mode
+  constitutive_nonlocal_rhoDotFlux(1:ns,1:8,g,ip,el) = rhoDotFlux(1:ns,1:8)
+  constitutive_nonlocal_rhoDotMultiplication(1:ns,1:2,g,ip,el) = rhoDotMultiplication(1:ns,[1,3])
+  constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,1:2,g,ip,el) = rhoDotSingle2DipoleGlide(1:ns,9:10)
+  constitutive_nonlocal_rhoDotAthermalAnnihilation(1:ns,1:2,g,ip,el) = rhoDotAthermalAnnihilation(1:ns,9:10)
+  constitutive_nonlocal_rhoDotThermalAnnihilation(1:ns,1:2,g,ip,el) = rhoDotThermalAnnihilation(1:ns,9:10)
+  constitutive_nonlocal_rhoDotEdgeJogs(1:ns,g,ip,el) = &
+           2.0_pReal * rhoDotThermalAnnihilation(constitutive_nonlocal_colinearSystem(1:ns,myInstance),1)
+endif
+
 
 if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < - constitutive_nonlocal_aTolRho(myInstance)) &
    .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < - constitutive_nonlocal_aTolRho(myInstance))) then
@@ -2940,6 +2956,7 @@ dUpper(1:ns,2) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_
                / (4.0_pReal * pi * abs(tau))
 forall (c = 1_pInt:2_pInt) &
   dUpper(1:ns,c) = min(1.0_pReal / sqrt(sum(abs(rhoSgl),c) + sum(rhoDip,c)), dUpper(1:ns,c))
+dUpper = max(dUpper,dLower)
 
 
 !*** dislocation motion
@@ -3130,55 +3147,43 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
     
     case ('rho_dot_gen')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) =   sum(abs(gdot),2) * sqrt(rhoForest)  &
-                                                      / constitutive_nonlocal_lambda0(1:ns,myInstance) &
-                                                      / constitutive_nonlocal_burgers(1:ns,myInstance)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotMultiplication(1:ns,1,g,ip,el) &
+                                                         + constitutive_nonlocal_rhoDotMultiplication(1:ns,2,g,ip,el)
       cs = cs + ns
 
     case ('rho_dot_gen_edge')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) =   sum(abs(gdot(1:ns,3:4)),2) * sqrt(rhoForest)  &
-                                                      / constitutive_nonlocal_lambda0(1:ns,myInstance) &
-                                                      / constitutive_nonlocal_burgers(1:ns,myInstance)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotMultiplication(1:ns,1,g,ip,el)
       cs = cs + ns
 
     case ('rho_dot_gen_screw')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) =   sum(abs(gdot(1:ns,1:2)),2) * sqrt(rhoForest)  &
-                                                      / constitutive_nonlocal_lambda0(1:ns,myInstance) &
-                                                      / constitutive_nonlocal_burgers(1:ns,myInstance)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotMultiplication(1:ns,2,g,ip,el)
       cs = cs + ns
       
     case ('rho_dot_sgl2dip')
-      do c=1_pInt,2_pInt                                                                                                                      ! dipole formation by glide
-        constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_postResults(cs+1:cs+ns) + &
-            2.0_pReal * dUpper(1:ns,c) / constitutive_nonlocal_burgers(1:ns,myInstance) &
-                      * (  2.0_pReal * (  rhoSgl(1:ns,2_pInt*c-1_pInt) * abs(gdot(1:ns,2*c)) &
-                                        + rhoSgl(1:ns,2_pInt*c) * abs(gdot(1:ns,2_pInt*c-1_pInt))) &                                               ! was single hitting single
-                         + 2.0_pReal * (  abs(rhoSgl(1:ns,2_pInt*c+3_pInt)) * abs(gdot(1:ns,2_pInt*c)) &
-                                        + abs(rhoSgl(1:ns,2_pInt*c+4_pInt)) * abs(gdot(1:ns,2_pInt*c-1_pInt))))                                         ! was single hitting immobile/used single
-      enddo
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,1,g,ip,el) &
+                                                         + constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,2,g,ip,el)
       cs = cs + ns
     
     case ('rho_dot_ann_ath')
-      do c=1_pInt,2_pInt
-        constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_postResults(cs+1:cs+ns) + &
-            2.0_pReal * dLower(1:ns,c) / constitutive_nonlocal_burgers(1:ns,myInstance) &
-                      * (  2.0_pReal * (  rhoSgl(1:ns,2_pInt*c-1_pInt) * abs(gdot(1:ns,2_pInt*c)) &
-                                        + rhoSgl(1:ns,2_pInt*c) * abs(gdot(1:ns,2_pInt*c-1_pInt))) &                                               ! was single hitting single
-                         + 2.0_pReal * (  abs(rhoSgl(1:ns,2_pInt*c+3_pInt)) * abs(gdot(1:ns,2_pInt*c)) &
-                                        + abs(rhoSgl(1:ns,2_pInt*c+4_pInt)) * abs(gdot(1:ns,2_pInt*c-1_pInt))) &                                        ! was single hitting immobile/used single
-                         + rhoDip(1:ns,c) * (abs(gdot(1:ns,2_pInt*c-1_pInt)) + abs(gdot(1:ns,2_pInt*c))))                                          ! single knocks dipole constituent
-      enddo
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotAthermalAnnihilation(1:ns,1,g,ip,el) & 
+                                                         + constitutive_nonlocal_rhoDotAthermalAnnihilation(1:ns,2,g,ip,el)
       cs = cs + ns
       
     case ('rho_dot_ann_the') 
-      D = constitutive_nonlocal_Dsd0(myInstance) * exp(-constitutive_nonlocal_Qsd(myInstance) / (kB * Temperature))
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotThermalAnnihilation(1:ns,1,g,ip,el) & 
+                                                         + constitutive_nonlocal_rhoDotThermalAnnihilation(1:ns,2,g,ip,el)
+      cs = cs + ns
 
-      vClimb =  constitutive_nonlocal_atomicVolume(myInstance) * D / (kB * Temperature) &
-          * constitutive_nonlocal_Gmod(myInstance) / (2.0_pReal * pi * (1.0_pReal-constitutive_nonlocal_nu(myInstance))) &
-          * 2.0_pReal / (dUpper(1:ns,1) + dLower(1:ns,1))
-          
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = 4.0_pReal * rhoDip(1:ns,1) * vClimb / (dUpper(1:ns,1) - dLower(1:ns,1))
-      ! !!! cross-slip of screws missing !!!
+    case ('rho_dot_ann_the_edge') 
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotThermalAnnihilation(1:ns,1,g,ip,el) 
+      cs = cs + ns
+
+    case ('rho_dot_ann_the_screw') 
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotThermalAnnihilation(1:ns,2,g,ip,el)
+      cs = cs + ns
+
+    case ('rho_dot_edgejogs') 
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotEdgeJogs(1:ns,g,ip,el)
       cs = cs + ns
 
     case ('rho_dot_flux')
