@@ -38,7 +38,9 @@ module IO
             IO_open_jobFile, &
             IO_write_jobFile, &
             IO_write_jobBinaryFile, &
+            IO_write_jobBinaryIntFile, &
             IO_read_jobBinaryFile, &
+            IO_read_jobBinaryIntFile, &
             IO_hybridIA, &
             IO_isBlank, &
             IO_getTag, &
@@ -285,7 +287,8 @@ end subroutine IO_write_jobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open (write) binary file related to current job with given extension to given unit
+!> @brief open (write) binary file of pReal array related to current job with given extension to 
+!> given unit
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobBinaryFile(myUnit,newExt,recMultiplier)
 
@@ -315,7 +318,39 @@ end subroutine IO_write_jobBinaryFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief open (read) binary file related to restored job with given extension to given unit
+!> @brief open (write) binary file of pInt array related to current job with given extension to 
+!> given unit
+!--------------------------------------------------------------------------------------------------
+subroutine IO_write_jobBinaryIntFile(myUnit,newExt,recMultiplier)
+
+ use DAMASK_interface,                 only: getSolverWorkingDirectoryName, &
+                                             getSolverJobName
+ 
+ implicit none
+ integer(pInt),      intent(in)           :: myUnit
+ integer(pInt),      intent(in), optional :: recMultiplier
+ character(len=*),   intent(in)           :: newExt
+
+ integer(pInt)                            :: myStat
+ character(len=1024)                      :: path
+
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ if (present(recMultiplier)) then
+   open(myUnit,status='replace',form='unformatted',access='direct', &
+                                                   recl=pInt*recMultiplier,iostat=myStat,file=path)
+ else
+   open(myUnit,status='replace',form='unformatted',access='direct', &
+                                                   recl=pInt,iostat=myStat,file=path)
+ endif
+
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ 
+end subroutine IO_write_jobBinaryIntFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief open (read) binary file of pReal array related to restored job with given extension to 
+!> given unit
 !--------------------------------------------------------------------------------------------------
 subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
 
@@ -340,6 +375,35 @@ subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
  if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
  
 end subroutine IO_read_jobBinaryFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief open (read) binary file of pInt array related to restored job with given extension to 
+!> given unit
+!--------------------------------------------------------------------------------------------------
+subroutine IO_read_jobBinaryIntFile(myUnit,newExt,jobName,recMultiplier)
+
+ use DAMASK_interface,                 only: getSolverWorkingDirectoryName
+ 
+ implicit none
+ integer(pInt),      intent(in)           :: myUnit
+ integer(pInt),      intent(in), optional :: recMultiplier
+ character(len=*),   intent(in)           :: newExt, jobName
+
+ integer(pInt)                            :: myStat
+ character(len=1024)                      :: path
+
+ path = trim(getSolverWorkingDirectoryName())//trim(jobName)//'.'//newExt
+ if (present(recMultiplier)) then
+   open(myUnit,status='old',form='unformatted',access='direct', & 
+                                               recl=pInt*recMultiplier,iostat=myStat,file=path)
+ else
+   open(myUnit,status='old',form='unformatted',access='direct', &
+                                               recl=pInt,iostat=myStat,file=path)
+ endif
+ if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
+ 
+end subroutine IO_read_jobBinaryIntFile
 
 
 #ifdef Abaqus
