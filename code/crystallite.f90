@@ -2867,7 +2867,7 @@ if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
 #endif
   return
 endif
-A = math_mul33x33(transpose(invFp_current), math_mul33x33(transpose(Fg_new),math_mul33x33(Fg_new,invFp_current)))
+A = math_mul33x33(Fg_new,invFp_current)                                    ! intermediate tensor needed later to calculate dFe_dLp
  
 
 !* start LpLoop with normal step length
@@ -2893,12 +2893,12 @@ LpLoop: do
 #endif
     return
   endif
-   
-  A = math_mul33x33(Fg_new,invFp_current)                                    ! intermediate tensor needed later to calculate dFe_dLp
+  
+
+  !* calculate 2nd Piola-Kirchhoff stress tensor
+
   B = math_I3 - dt*Lpguess
   Fe = math_mul33x33(A,B)                                                    ! current elastic deformation tensor
-  
-  !* calculate 2nd Piola-Kirchhoff stress tensor
   call constitutive_TandItsTangent(Tstar, dT_dFe3333, Fe, g,i,e)             ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
   Tstar_v = math_Mandel33to6(Tstar)
   p_hydro = sum(Tstar_v(1:3)) / 3.0_pReal
@@ -3006,7 +3006,7 @@ LpLoop: do
           Lpguess = Lpguess_old
           residuum = residuum_old
         endif
-        steplength_max = steplength - 1.0_pReal                       ! limit acceleration
+        steplength_max = max(steplength - 1.0_pReal, 1.0_pReal)       ! limit acceleration
         steplength = steplength0                                      ! grinding halt
         jacoCounter = 0_pInt                                          ! reset counter for Jacobian update (we want to do an update next time!)
         if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
@@ -3033,7 +3033,7 @@ LpLoop: do
     dR_dLp = math_identity2nd(9_pInt) - &
              math_mul99x99(dLp_dT_constitutive, math_mul99x99(dT_dFe_constitutive , dFe_dLp))
     inv_dR_dLp = 0.0_pReal
-    call math_invert(9_pInt,dR_dLp,inv_dR_dLp,dummy,error)               ! invert dR/dLp --> dLp/dR
+    call math_invert(9_pInt,dR_dLp,inv_dR_dLp,dummy,error)             ! invert dR/dLp --> dLp/dR
     if (error) then
 #ifndef _OPENMP
       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
