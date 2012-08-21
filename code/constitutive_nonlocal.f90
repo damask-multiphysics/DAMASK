@@ -1418,7 +1418,9 @@ if (Temperature > 0.0_pReal) then
       v(s) = sign(v(s),tau(s))
       if (present(dv_dtau)) then
         dv_dtau(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
-                   * (abs(v(s)) * (dtPeierls_dtau + dtSolidSolution_dtau + 1.0_pReal / (mobility * tauEff(s)*tauEff(s))) &
+                   * (abs(v(s)) * (  dtPeierls_dtau / meanfreepath_P &
+                                   + dtSolidSolution_dtau / meanfreepath_S &
+                                   + 1.0_pReal / (mobility * tauEff(s)*tauEff(s))) &
                       + activationVolume_P / (kB * Temperature) * exp(-tauEff(s) * activationVolume_P / (kB * Temperature)))
       endif
 
@@ -1437,6 +1439,9 @@ endif
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tau / MPa', tau / 1e6_pReal
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauEff / MPa', tauEff / 1e6_pReal
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> v / 1e-3m/s', v * 1e3
+    if (present(dv_dtau)) then
+      write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtau', dv_dtau
+    endif
   endif
 #endif
 
