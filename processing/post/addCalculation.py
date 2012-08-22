@@ -29,9 +29,9 @@ class extendableOption(Option):
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) with derived values according to user defined arithmetic operation between column(s).
-Columns can be specified either by label or index.
+Columns can be specified either by label or index. Use ';' for ',' in functions.
 
-Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + #ip.z#**2 )"
+Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round(#ip.z#;3)**2 )"
 """ + string.replace('$Id$','\n','\\n')
 )
 
@@ -48,6 +48,10 @@ parser.set_defaults(formulas= [])
 
 if len(options.labels) != len(options.formulas):
   parser.error('number of labels (%i) and formulas (%i) do not match'%(len(options.labels),len(options.formulas)))
+  
+for i in xrange(len(options.formulas)):
+  options.formulas[i]=options.formulas[i].replace(';',',')
+
 # ------------------------------------------ setup file handles ---------------------------------------  
 
 files = []
