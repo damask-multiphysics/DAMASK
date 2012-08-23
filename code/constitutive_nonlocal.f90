@@ -115,6 +115,7 @@ constitutive_nonlocal_atomicVolume, &                                ! atomic vo
 constitutive_nonlocal_Dsd0, &                                        ! prefactor for self-diffusion coefficient
 constitutive_nonlocal_Qsd, &                                         ! activation enthalpy for diffusion
 constitutive_nonlocal_aTolRho, &                                     ! absolute tolerance for dislocation density in state integration
+constitutive_nonlocal_significantRho, &                              ! density considered significant
 constitutive_nonlocal_R, &                                           ! cutoff radius for dislocation stress
 constitutive_nonlocal_doublekinkwidth, &                             ! width of a doubkle kink in multiples of the burgers vector length b
 constitutive_nonlocal_solidSolutionEnergy, &                         ! activation energy for solid solution in J
@@ -317,6 +318,7 @@ allocate(constitutive_nonlocal_atomicVolume(maxNinstance))
 allocate(constitutive_nonlocal_Dsd0(maxNinstance))
 allocate(constitutive_nonlocal_Qsd(maxNinstance))
 allocate(constitutive_nonlocal_aTolRho(maxNinstance))
+allocate(constitutive_nonlocal_significantRho(maxNinstance))
 allocate(constitutive_nonlocal_Cslip_66(6,6,maxNinstance))
 allocate(constitutive_nonlocal_Cslip_3333(3,3,3,3,maxNinstance))
 allocate(constitutive_nonlocal_R(maxNinstance))
@@ -344,6 +346,7 @@ constitutive_nonlocal_atomicVolume = 0.0_pReal
 constitutive_nonlocal_Dsd0 = -1.0_pReal
 constitutive_nonlocal_Qsd = 0.0_pReal
 constitutive_nonlocal_aTolRho = 0.0_pReal
+constitutive_nonlocal_significantRho = 0.0_pReal
 constitutive_nonlocal_nu = 0.0_pReal
 constitutive_nonlocal_Cslip_66 = 0.0_pReal
 constitutive_nonlocal_Cslip_3333 = 0.0_pReal
@@ -469,15 +472,17 @@ do                                                                              
         constitutive_nonlocal_Dsd0(i) = IO_floatValue(line,positions,2_pInt)
       case('selfdiffusionenergy','qsd')
         constitutive_nonlocal_Qsd(i) = IO_floatValue(line,positions,2_pInt)
-      case('atol_rho')
+      case('atol_rho','absolutetolerancerho','absolutetolerance_rho','absolutetolerancedensity','absolutetolerance_density')
         constitutive_nonlocal_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
+      case('significantrho','significant_rho','significantdensity','significant_density')
+        constitutive_nonlocal_significantRho(i) = IO_floatValue(line,positions,2_pInt)
       case ('interaction_slipslip')
         forall (it = 1_pInt:lattice_maxNinteraction) &
           constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
-      case('peierlsstressedge')
+      case('peierlsstressedge','peierlsstress_edge')
         forall (f = 1_pInt:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
-      case('peierlsstressscrew')
+      case('peierlsstressscrew','peierlsstress_screw')
         forall (f = 1_pInt:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
       case('doublekinkwidth')
@@ -572,6 +577,8 @@ enddo
   if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                        call IO_error(211_pInt,ext_msg='selfDiffusionEnergy (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_aTolRho(i) <= 0.0_pReal)                    call IO_error(211_pInt,ext_msg='aTol_rho (' &
+                                                                             //constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_significantRho(i) < 0.0_pReal)              call IO_error(211_pInt,ext_msg='significantRho (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_doublekinkwidth(i) <= 0.0_pReal)            call IO_error(211_pInt,ext_msg='doublekinkwidth (' &
                                                                              //constitutive_nonlocal_label//')')
@@ -1129,6 +1136,14 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
   rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)                                                        ! ensure positive dipole densities
 
 
+!*** below significantRho, density quickly drops to zero
+
+rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(instance)**4.0_pReal)**0.25_pReal &
+               - constitutive_nonlocal_significantRho(instance), rhoSgl)
+rhoDip = (rhoDip**4.0_pReal + constitutive_nonlocal_significantRho(instance)**4.0_pReal)**0.25_pReal &
+       - constitutive_nonlocal_significantRho(instance)
+
+
 
 !*** calculate the forest dislocation density
 !*** (= projection of screw and edge dislocations)
@@ -1501,8 +1516,9 @@ integer(pInt)                               myInstance, &               ! curren
                                             s, &                        ! index of my current slip system
                                             sLattice                    ! index of my current slip system according to lattice order
 real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              ! derivative of Lp with respect to Tstar (3x3x3x3 matrix)
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
+                                            rhoSgl                      ! single dislocation densities (including used) 
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
-                                            rhoSgl, &                   ! single dislocation densities (including used) 
                                             v, &                        ! velocity
                                             dv_dtau                     ! velocity derivative with respect to the shear stress
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
@@ -1526,7 +1542,15 @@ ns = constitutive_nonlocal_totalNslip(myInstance)
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
   rhoSgl(s,t) = max(state%p((t-1_pInt)*ns+s), 0.0_pReal)
+forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
+  rhoSgl(s,t) = state%p((t-1_pInt)*ns+s)
 tauBack = state%p(12_pInt*ns+1:13_pInt*ns)
+
+
+!*** below significantRho, density quickly drops to zero
+
+rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
+               - constitutive_nonlocal_significantRho(myInstance), rhoSgl)
 
 
 !*** get effective resolved shear stress
@@ -1557,14 +1581,14 @@ endif
 
 !*** Bauschinger effect
 
-forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, state%p((t-1)*ns+s) * v(s,t-4_pInt) < 0.0_pReal) &
-  rhoSgl(s,t-4_pInt) = rhoSgl(s,t-4_pInt) + abs(state%p((t-1_pInt)*ns+s))
+forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, rhoSgl(s,t) * v(s,t-4_pInt) < 0.0_pReal) &
+  rhoSgl(s,t-4_pInt) = rhoSgl(s,t-4_pInt) + abs(rhoSgl(s,t))
 
 
 !*** Calculation of gdot and its tangent
 
-gdotTotal = sum(rhoSgl * v, 2) * constitutive_nonlocal_burgers(1:ns,myInstance)
-dgdotTotal_dtau = sum(rhoSgl * dv_dtau, 2) * constitutive_nonlocal_burgers(1:ns,myInstance) 
+gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * constitutive_nonlocal_burgers(1:ns,myInstance)
+dgdotTotal_dtau = sum(rhoSgl(1:ns,1:4) * dv_dtau, 2) * constitutive_nonlocal_burgers(1:ns,myInstance) 
 
 
 !*** Calculation of Lp and its tangent
@@ -1691,6 +1715,15 @@ forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
 forall (c = 1_pInt:2_pInt) &
   dUpperOld(1_pInt:ns,c) = state(g,ip,el)%p((16_pInt+c)*ns+1_pInt:(17_pInt+c)*ns)
+
+
+
+!*** below significantRho, density quickly drops to zero
+
+rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
+               - constitutive_nonlocal_significantRho(myInstance), rhoSgl)
+rhoDip = (rhoDip**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
+       - constitutive_nonlocal_significantRho(myInstance)
 
 
 
@@ -1932,6 +1965,15 @@ tauThreshold = state(g,ip,el)%p(11_pInt*ns+1_pInt:12_pInt*ns)
 tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
 forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+
+
+!*** below significantRho, density quickly drops to zero
+
+rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
+               - constitutive_nonlocal_significantRho(myInstance), rhoSgl)
+rhoDip = (rhoDip**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
+       - constitutive_nonlocal_significantRho(myInstance)
+
 
 
 !*** sanity check for timestep
@@ -2233,22 +2275,6 @@ if (numerics_integrationMode == 1_pInt) then                                    
 endif
 
 
-if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < - constitutive_nonlocal_aTolRho(myInstance)) &
-   .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < - constitutive_nonlocal_aTolRho(myInstance))) then
-#ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
-    write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
-    write(6,'(a)') '<< CONST >> enforcing cutback !!!'
-  endif
-#endif
-  constitutive_nonlocal_dotState = DAMASK_NaN
-  return
-else
-  constitutive_nonlocal_dotState(1:10_pInt*ns) = reshape(rhoDot,(/10_pInt*ns/))
-endif
-
-
-
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
@@ -2267,6 +2293,21 @@ endif
     write(6,*)
   endif
 #endif
+
+
+if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -constitutive_nonlocal_significantRho(myInstance)) &
+   .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < -constitutive_nonlocal_significantRho(myInstance))) then
+#ifndef _OPENMP
+  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
+    write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
+    write(6,'(a)') '<< CONST >> enforcing cutback !!!'
+  endif
+#endif
+  constitutive_nonlocal_dotState = DAMASK_NaN
+  return
+else
+  constitutive_nonlocal_dotState(1:10_pInt*ns) = reshape(rhoDot,(/10_pInt*ns/))
+endif
 
 endfunction
 
@@ -2590,6 +2631,12 @@ forall (t = 5_pInt:8_pInt) &
   rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1_pInt)*ns+1_pInt:t*ns)
 
 
+!*** below significantRho, density quickly drops to zero
+
+rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(instance)**4.0_pReal)**0.25_pReal &
+               - constitutive_nonlocal_significantRho(instance), rhoSgl)
+
+
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
 !*** zero for material points of local plasticity
@@ -2674,7 +2721,7 @@ ipLoop: do neighboring_ip = 1_pInt,FE_Nips(mesh_element(2,neighboring_el))
               !* and add up the stress contributions from egde and screw excess on these slip systems (if significant)
       
               do s = 1_pInt,neighboring_ns
-                if (all(abs(neighboring_rhoExcess(:,:,s)) < constitutive_nonlocal_aTolRho(instance))) then
+                if (all(abs(neighboring_rhoExcess(:,:,s)) < constitutive_nonlocal_significantRho(instance))) then
                   cycle                                                                             ! not significant
                 endif
                 
@@ -2696,7 +2743,7 @@ ipLoop: do neighboring_ip = 1_pInt,FE_Nips(mesh_element(2,neighboring_el))
                 zsquare = z * z
 
                 do j = 1_pInt,2_pInt
-                  if (abs(neighboring_rhoExcess(1,j,s)) < constitutive_nonlocal_aTolRho(instance)) then
+                  if (abs(neighboring_rhoExcess(1,j,s)) < constitutive_nonlocal_significantRho(instance)) then
                     cycle 
                   elseif (j > 1_pInt) then
                     x = connection_neighboringSlip(1) + sign(0.5_pReal * segmentLength, &
@@ -2736,7 +2783,7 @@ ipLoop: do neighboring_ip = 1_pInt,FE_Nips(mesh_element(2,neighboring_el))
                 
                 x = connection_neighboringSlip(1)   ! have to restore this value, because position might have been adapted for edge deads before
                 do j = 1_pInt,2_pInt
-                  if (abs(neighboring_rhoExcess(2,j,s)) < constitutive_nonlocal_aTolRho(instance)) then
+                  if (abs(neighboring_rhoExcess(2,j,s)) < constitutive_nonlocal_significantRho(instance)) then
                     cycle 
                   elseif (j > 1_pInt) then
                     y = connection_neighboringSlip(2) + sign(0.5_pReal * segmentLength, &
@@ -2799,7 +2846,7 @@ ipLoop: do neighboring_ip = 1_pInt,FE_Nips(mesh_element(2,neighboring_el))
                                    + state(g,ip,el)%p((2_pInt*c+3_pInt)*ns+s)    ! negative deads (here we use symmetry: if this has negative sign it is treated as positive density at positive position instead of negative density at negative position)
 
               do s = 1_pInt,ns
-                if (all(abs(rhoExcessDead(:,s)) < constitutive_nonlocal_aTolRho(instance))) then
+                if (all(abs(rhoExcessDead(:,s)) < constitutive_nonlocal_significantRho(instance))) then
                   cycle                                                                             ! not significant
                 endif
                 sigma = 0.0_pReal                                                                   ! all components except for sigma13 are zero
@@ -2922,14 +2969,27 @@ constitutive_nonlocal_postResults = 0.0_pReal
 
 !* short hand notations for state variables
 
-forall (t = 1_pInt:8_pInt) rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1_pInt)*ns+1_pInt:t*ns)
-forall (c = 1_pInt:2_pInt) rhoDip(1:ns,c) = state(g,ip,el)%p((7_pInt+c)*ns+1_pInt:(8_pInt+c)*ns)
+forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
+  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1_pInt)*ns+s), 0.0_pReal)
+forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
+  rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
+forall (c = 1_pInt:2_pInt) &
+  rhoDip(1:ns,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+1_pInt:(8_pInt+c)*ns), 0.0_pReal)
 rhoForest = state(g,ip,el)%p(10_pInt*ns+1:11_pInt*ns)
 tauThreshold = state(g,ip,el)%p(11_pInt*ns+1:12_pInt*ns)
 tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
 forall (t = 1_pInt:8_pInt) rhoDotSgl(1:ns,t) = dotState%p((t-1_pInt)*ns+1_pInt:t*ns)
 forall (c = 1_pInt:2_pInt) rhoDotDip(1:ns,c) = dotState%p((7_pInt+c)*ns+1_pInt:(8_pInt+c)*ns)
 forall (t = 1_pInt:4_pInt) v(1:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+
+
+!*** below significantRho, density quickly drops to zero
+
+rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
+               - constitutive_nonlocal_significantRho(myInstance), rhoSgl)
+rhoDip = (rhoDip**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
+       - constitutive_nonlocal_significantRho(myInstance)
+
 
 
 !* Calculate shear rate
@@ -3016,11 +3076,11 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_edge_pos_mobile')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(1:ns)
       cs = cs + ns
       
     case ('rho_sgl_edge_pos_immobile')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,5)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(4*ns+1:5*ns)
       cs = cs + ns
       
     case ('rho_sgl_edge_neg')
@@ -3028,15 +3088,15 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_edge_neg_mobile')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,2)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(ns+1:2*ns)
       cs = cs + ns
       
     case ('rho_sgl_edge_neg_immobile')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,6)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(5*ns+1:6*ns)
       cs = cs + ns
       
     case ('rho_dip_edge')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDip(1:ns,1)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(8*ns+1:9*ns)
       cs = cs + ns
       
     case ('rho_screw')
@@ -3060,11 +3120,11 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
       
     case ('rho_sgl_screw_pos_mobile')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(2*ns+1:3*ns)
       cs = cs + ns
       
     case ('rho_sgl_screw_pos_immobile')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,7)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(6*ns+1:7*ns)
       cs = cs + ns
       
     case ('rho_sgl_screw_neg')
@@ -3072,15 +3132,15 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
       cs = cs + ns
 
     case ('rho_sgl_screw_neg_mobile')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,4)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(3*ns+1:4*ns)
       cs = cs + ns
 
     case ('rho_sgl_screw_neg_immobile')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,8)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(7*ns+1:8*ns)
       cs = cs + ns
 
     case ('rho_dip_screw')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDip(1:ns,2)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(9*ns+1:10*ns)
       cs = cs + ns
       
     case ('excess_rho')
