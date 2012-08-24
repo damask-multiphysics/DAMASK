@@ -937,6 +937,7 @@ pure subroutine Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
 
  implicit none
 
+
  logical, intent(out) :: error
  integer(pInt), intent(in) :: dimen
  integer(pInt), intent(out) :: NegHDK
@@ -1061,6 +1062,7 @@ pure subroutine Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
     AbsA       = ABS(A(I,I))
     LogAbsDetA = LogAbsDetA + LOG10(AbsA)
  ENDDO
+
 
  error = .false.
 
@@ -1932,16 +1934,16 @@ endif
 end function math_sampleGaussOri
  
 
-!********************************************************************
-!   draw a random sample from Fiber component
-!   with noise (in radians)
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief draw a random sample from Fiber component with noise (in radians)
+!--------------------------------------------------------------------------------------------------
 function math_sampleFiberOri(alpha,beta,noise)
 
  implicit none
 
  real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
- real(pReal), dimension(2) :: alpha,beta, rnd
+ real(pReal), dimension(2), intent(in) :: alpha,beta
+ real(pReal), dimension(6) :: rnd
  real(pReal), dimension(3,3) :: oRot,fRot,pRot
  real(pReal) :: noise, scatter, cos2Scatter, angle
  integer(pInt), dimension(2,3), parameter :: rotMap = reshape((/2_pInt,3_pInt,&
@@ -1974,34 +1976,40 @@ function math_sampleFiberOri(alpha,beta,noise)
  end if
 
 ! ---# rotation matrix about fiber axis (random angle) #---
- call halton(1_pInt,rnd)
- fRot = math_AxisAngleToR(fiberInS,rnd(1)*2.0_pReal*pi)
+ do
+   call halton(6_pInt,rnd)
+   fRot = math_AxisAngleToR(fiberInS,rnd(1)*2.0_pReal*pi)
 
 ! ---# rotation about random axis perpend to fiber #---
-! random axis pependicular to fiber axis 
- call halton(2_pInt,axis)
- if (fiberInS(3) /= 0.0_pReal) then
+! random axis pependicular to fiber axis
+
+   axis(1:2) = rnd(2:3)
+   if (fiberInS(3) /= 0.0_pReal) then
      axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))/fiberInS(3)
- else if(fiberInS(2) /= 0.0_pReal) then
+   else if(fiberInS(2) /= 0.0_pReal) then
      axis(3)=axis(2)
      axis(2)=-(axis(1)*fiberInS(1)+axis(3)*fiberInS(3))/fiberInS(2)
- else if(fiberInS(1) /= 0.0_pReal) then
+   else if(fiberInS(1) /= 0.0_pReal) then
      axis(3)=axis(1)
      axis(1)=-(axis(2)*fiberInS(2)+axis(3)*fiberInS(3))/fiberInS(1)
- end if
+   end if
 
-! scattered rotation angle 
- do
-   call halton(2_pInt,rnd)
-     angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(1))
-     if (rnd(2) <= exp(-1.0_pReal*(angle/scatter)**2.0_pReal)) exit
+! scattered rotation angle
+   if (noise > 0.0_pReal) then
+     angle = acos(cos2Scatter+(1.0_pReal-cos2Scatter)*rnd(4))
+     if (rnd(5) <= exp(-1.0_pReal*(angle/scatter)**2.0_pReal)) exit
+   else
+     angle = 0.0_pReal
+     exit
+   end if
  enddo
- call halton(1_pInt,rnd)
- if (rnd(1) <= 0.5) angle = -angle
+
+ if (rnd(6) <= 0.5) angle = -angle
+ 
  pRot = math_AxisAngleToR(axis,angle)
 
 ! ---# apply the three rotations #---
- math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot))) 
+ math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot)))
 
 end function math_sampleFiberOri
 
@@ -3645,6 +3653,7 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
                                                     call fftw_free(divergence_fftw)                        ! call c_f_pointer(field_fftw, field_fourier, [res1_red ,res(2),res(3),vec_tens,3])
 end subroutine divergence_fft
 
+
           
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
@@ -3710,6 +3719,7 @@ subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
 
 end subroutine divergence_fdm
 #endif
+
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
 subroutine tensor_avg(res,tensor,avg)
