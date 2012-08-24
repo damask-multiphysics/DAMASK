@@ -1136,14 +1136,6 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
   rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)                                                        ! ensure positive dipole densities
 
 
-!*** below significantRho, density quickly drops to zero
-
-rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(instance)**4.0_pReal)**0.25_pReal &
-               - constitutive_nonlocal_significantRho(instance), rhoSgl)
-rhoDip = (rhoDip**4.0_pReal + constitutive_nonlocal_significantRho(instance)**4.0_pReal)**0.25_pReal &
-       - constitutive_nonlocal_significantRho(instance)
-
-
 
 !*** calculate the forest dislocation density
 !*** (= projection of screw and edge dislocations)
@@ -1547,11 +1539,6 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
 tauBack = state%p(12_pInt*ns+1:13_pInt*ns)
 
 
-!*** below significantRho, density quickly drops to zero
-
-rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
-               - constitutive_nonlocal_significantRho(myInstance), rhoSgl)
-
 
 !*** get effective resolved shear stress
 
@@ -1715,15 +1702,6 @@ forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
 forall (c = 1_pInt:2_pInt) &
   dUpperOld(1_pInt:ns,c) = state(g,ip,el)%p((16_pInt+c)*ns+1_pInt:(17_pInt+c)*ns)
-
-
-
-!*** below significantRho, density quickly drops to zero
-
-rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
-               - constitutive_nonlocal_significantRho(myInstance), rhoSgl)
-rhoDip = (rhoDip**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
-       - constitutive_nonlocal_significantRho(myInstance)
 
 
 
@@ -1967,14 +1945,6 @@ forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
 
 
-!*** below significantRho, density quickly drops to zero
-
-rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
-               - constitutive_nonlocal_significantRho(myInstance), rhoSgl)
-rhoDip = (rhoDip**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
-       - constitutive_nonlocal_significantRho(myInstance)
-
-
 
 !*** sanity check for timestep
 
@@ -2026,10 +1996,9 @@ dUpper = max(dUpper,dLower)
 !*** calculate dislocation multiplication
 
 rhoDotMultiplication = 0.0_pReal
-where (rhoSgl(1:ns,3:4) > 0.0_pReal) &
-  rhoDotMultiplication(1:ns,1:2) = spread(0.5_pReal * sum(abs(gdot(1:ns,3:4)),2) * sqrt(rhoForest)  &
-                                                    / constitutive_nonlocal_lambda0(1:ns,myInstance) &
-                                                    / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 2)
+rhoDotMultiplication(1:ns,1:2) = spread(0.5_pReal * sum(abs(gdot(1:ns,3:4)),2) * sqrt(rhoForest)  &
+                                                  / constitutive_nonlocal_lambda0(1:ns,myInstance) &
+                                                  / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 2)
 rhoDotMultiplication(1:ns,3:4) = rhoDotMultiplication(1:ns,1:2)
 
 
@@ -2631,12 +2600,6 @@ forall (t = 5_pInt:8_pInt) &
   rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1_pInt)*ns+1_pInt:t*ns)
 
 
-!*** below significantRho, density quickly drops to zero
-
-rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(instance)**4.0_pReal)**0.25_pReal &
-               - constitutive_nonlocal_significantRho(instance), rhoSgl)
-
-
 
 !*** calculate the dislocation stress of the neighboring excess dislocation densities
 !*** zero for material points of local plasticity
@@ -2981,14 +2944,6 @@ tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
 forall (t = 1_pInt:8_pInt) rhoDotSgl(1:ns,t) = dotState%p((t-1_pInt)*ns+1_pInt:t*ns)
 forall (c = 1_pInt:2_pInt) rhoDotDip(1:ns,c) = dotState%p((7_pInt+c)*ns+1_pInt:(8_pInt+c)*ns)
 forall (t = 1_pInt:4_pInt) v(1:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
-
-
-!*** below significantRho, density quickly drops to zero
-
-rhoSgl = sign((rhoSgl**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
-               - constitutive_nonlocal_significantRho(myInstance), rhoSgl)
-rhoDip = (rhoDip**4.0_pReal + constitutive_nonlocal_significantRho(myInstance)**4.0_pReal)**0.25_pReal &
-       - constitutive_nonlocal_significantRho(myInstance)
 
 
 
