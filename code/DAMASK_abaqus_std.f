@@ -101,6 +101,7 @@ end module DAMASK_interface
 #include "mesh.f90"
 #include "material.f90"
 #include "lattice.f90"
+#include "constitutive_none.f90"
 #include "constitutive_j2.f90"
 #include "constitutive_phenopowerlaw.f90"
 #include "constitutive_titanmod.f90"
