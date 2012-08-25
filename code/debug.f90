@@ -1,7 +1,7 @@
-! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
+! Copyright 2011,2012 Max-Planck-Institut für Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the Düsseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -16,11 +16,16 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
+!--------------------------------------------------------------------------------------------------
 !* $Id$
-!##############################################################
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Reading in and interpretating the debugging settings for the various modules
+!--------------------------------------------------------------------------------------------------
 module debug
-!##############################################################
  use prec, only: &
    pInt, &
    pReal, &
@@ -44,10 +49,10 @@ module debug
    debug_debug                   =  1_pInt, &
    debug_math                    =  2_pInt, &
    debug_FEsolving               =  3_pInt, &
-   debug_mesh                    =  4_pInt, &                                                       ! stores debug level for mesh part of DAMASK
-   debug_material                =  5_pInt, &                                                       ! stores debug level for material part of DAMASK
-   debug_lattice                 =  6_pInt, &                                                       ! stores debug level for lattice part of DAMASK
-   debug_constitutive            =  7_pInt, &                                                       ! stores debug level for constitutive part of DAMASK
+   debug_mesh                    =  4_pInt, &                                                       !< stores debug level for mesh part of DAMASK bitwise coded
+   debug_material                =  5_pInt, &                                                       !< stores debug level for material part of DAMASK bitwise coded
+   debug_lattice                 =  6_pInt, &                                                       !< stores debug level for lattice part of DAMASK bitwise coded
+   debug_constitutive            =  7_pInt, &                                                       !< stores debug level for constitutive part of DAMASK bitwise coded
    debug_crystallite             =  8_pInt, &
    debug_homogenization          =  9_pInt, &
    debug_CPFEM                   = 10_pInt, &

@@ -16,11 +16,14 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!##############################################################
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief reading in of data when doing a restart
+!--------------------------------------------------------------------------------------------------
 module FEsolving
-!##############################################################
  use prec, only: &
    pInt, &
    pReal
@@ -37,15 +40,15 @@ module FEsolving
    theDelta     = 0.0_pReal
    
  logical, public :: & 
-   outdatedFFN1      = .false., &
-   symmetricSolver   = .false., &
-   restartWrite      = .false., &
-   restartRead       = .false., &
-   terminallyIll     = .false., &
-   parallelExecution = .true.,  & 
-   lastMode          = .true.,  &
-   lastIncConverged  = .false., &
-   outdatedByNewInc  = .false., &
+   outdatedFFN1      = .false., &                                                                   !< toDo
+   symmetricSolver   = .false., &                                                                   !< use a symmetric solver (FEM)
+   restartWrite      = .false., &                                                                   !< write current state to enable restart
+   restartRead       = .false., &                                                                   !< restart information to continue calculation from saved state
+   terminallyIll     = .false., &                                                                   !< at least one material point is terminally ill
+   parallelExecution = .true.,  &                                                                   !< OpenMP multicore calculation
+   lastMode          = .true.,  &                                                                   !< toDo
+   lastIncConverged  = .false., &                                                                   !< toDo
+   outdatedByNewInc  = .false., &                                                                   !< toDo
    cutBack           = .false.
 
  integer(pInt), dimension(:,:), allocatable, public :: &
@@ -64,10 +67,9 @@ module FEsolving
 
 contains
 
-!***********************************************************
-! determine whether a symmetric solver is used
-! and whether restart is requested
-!***********************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief determine whether a symmetric solver is used and whether restart is requested
+!--------------------------------------------------------------------------------------------------
 subroutine FE_init
  
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
@@ -114,21 +116,21 @@ subroutine FE_init
    call IO_warning(warning_ID=34_pInt)
    restartInc = 1_pInt
  endif
- restartRead = restartInc > 1_pInt                           ! only read in if "true" restart requested
+ restartRead = restartInc > 1_pInt                                                                  ! only read in if "true" restart requested
 #else
  call IO_open_inputFile(fileunit,modelName)
  rewind(fileunit)
  do
    read (fileunit,'(a1024)',END=100) line
    positions = IO_stringPos(line,maxNchunks)
-   tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
+   tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                               ! extract key
    select case(tag)
      case ('solver')
-       read (fileunit,'(a1024)',END=100) line  ! next line
+       read (fileunit,'(a1024)',END=100) line                                                       ! next line
        positions = IO_stringPos(line,maxNchunks)
        symmetricSolver = (IO_intValue(line,positions,2_pInt) /= 1_pInt)
      case ('restart')
-       read (fileunit,'(a1024)',END=100) line  ! next line
+       read (fileunit,'(a1024)',END=100) line                                                       ! next line
        positions = IO_stringPos(line,maxNchunks)
        restartWrite = iand(IO_intValue(line,positions,1_pInt),1_pInt) > 0_pInt
        restartRead  = iand(IO_intValue(line,positions,1_pInt),2_pInt) > 0_pInt
