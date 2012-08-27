@@ -743,6 +743,8 @@ do i = 1,maxNinstance
             'rho_dot_gen_edge', &
             'rho_dot_gen_screw', &
             'rho_dot_sgl2dip', &
+            'rho_dot_sgl2dip_edge', &
+            'rho_dot_sgl2dip_screw', &
             'rho_dot_ann_ath', &
             'rho_dot_ann_the', &
             'rho_dot_ann_the_edge', &
@@ -3185,6 +3187,14 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
     case ('rho_dot_sgl2dip')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,1,g,ip,el) &
                                                          + constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,2,g,ip,el)
+      cs = cs + ns
+    
+    case ('rho_dot_sgl2dip_edge')
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,1,g,ip,el)
+      cs = cs + ns
+    
+    case ('rho_dot_sgl2dip_screw')
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,2,g,ip,el)
       cs = cs + ns
     
     case ('rho_dot_ann_ath')
