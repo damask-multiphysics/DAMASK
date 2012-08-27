@@ -3212,7 +3212,7 @@ function math_divergenceFDM(geomdim,order,field)
                                                                                           + (/1_pInt,1_pInt,1_pInt/)
      do l = 1_pInt, vec_tens
        math_divergenceFDM(i+1_pInt,j+1_pInt,k+1_pInt,l) = math_divergenceFDM(i+1_pInt,j+1_pInt,k+1_pInt,l) &
-                                                        + FDcoefficient(m,order) * &
+                                                        + FDcoefficient(m,order+1_pInt) * &
                 ((field(coordinates(1,1),coordinates(1,2),coordinates(1,3),l,1)- &
                   field(coordinates(2,1),coordinates(2,2),coordinates(2,3),l,1))*real(res(1),pReal)/geomdim(1) +&
                  (field(coordinates(3,1),coordinates(3,2),coordinates(3,3),l,2)- &
