@@ -170,7 +170,7 @@ for file in files:
 
   for datatype,labels in active.items():                                  # loop over vector,tensor
     for label in labels:                                                  # loop over all requested curls
-      curl[datatype][label] = damask.core.math.curl_fft(resolution,dimension,datainfo[datatype]['len']//3,values[datatype][label])
+      curl[datatype][label] = damask.core.math.curlFFT(dimension,values[datatype][label])
 
 # ------------------------------------------ process data ---------------------------------------  
 

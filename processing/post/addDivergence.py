@@ -187,9 +187,9 @@ for file in files:
     for label in labels:                                                  # loop over all requested divergencies
       for accuracy in options.accuracy:
         if accuracy == 'FFT':
-          divergence[datatype][label][accuracy] = damask.core.math.divergence_fft(resolution,dimension,datainfo[datatype]['len']//3,values[datatype][label])
+          divergence[datatype][label][accuracy] = damask.core.math.divergenceFFT(dimension,values[datatype][label])
         else:
-          divergence[datatype][label][accuracy] = damask.core.math.divergence_fdm(resolution,dimension,datainfo[datatype]['len']//3,eval(accuracy)//2-1,values[datatype][label])
+          divergence[datatype][label][accuracy] = damask.core.math.divergenceFDM(dimension,eval(accuracy)//2-1,values[datatype][label])
 # ------------------------------------------ process data ---------------------------------------  
 
   table.data_rewind()

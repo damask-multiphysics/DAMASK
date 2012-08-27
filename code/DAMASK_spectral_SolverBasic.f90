@@ -7,9 +7,6 @@
 !> @brief Basic scheme solver
 !--------------------------------------------------------------------------------------------------
 module DAMASK_spectral_SolverBasic
- 
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- 
  use prec, only: & 
    pInt, &
    pReal
@@ -44,7 +41,8 @@ module DAMASK_spectral_SolverBasic
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine basic_init()
-   
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
+ 
  use IO, only: &
    IO_read_JobBinaryFile, &
    IO_write_JobBinaryFile
@@ -148,11 +146,11 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
    math_mul33x33 ,&
    math_rotate_backward33, &
    math_transpose33, &
-   math_mul3333xx33, &
-   deformed_fft
+   math_mul3333xx33
  use mesh, only: &
    res,&
-   geomdim
+   geomdim, &
+   deformed_fft
  use IO, only: &
    IO_write_JobBinaryFile
    

@@ -430,8 +430,7 @@ for filename in args:
 
 
   values = numpy.array(sorted([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],
-                              key=lambda x:(x[locol+0],x[locol+1],x[locol+2])),             # sort with z as fastest and x as slowest index
-                       'd')       
+                              key=lambda x:(x[locol+0],x[locol+1],x[locol+2])),'d')             # sort with z as fastest and x as slowest index
 
   N = len(values)
   grid = [{},{},{}]
@@ -457,20 +456,20 @@ for filename in args:
   if options.undeformed:
     defgrad_av = numpy.eye(3)
   else:
-    defgrad_av = damask.core.math.tensor_avg(res,numpy.reshape(values[:,column['tensor'][options.defgrad]:
-                                                                        column['tensor'][options.defgrad]+9],
-                                                                                (res[0],res[1],res[2],3,3)))
+    defgrad_av = damask.core.math.tensorAvg(numpy.reshape(values[:,column['tensor'][options.defgrad]:
+                                                                   column['tensor'][options.defgrad]+9],
+                                                                             (res[0],res[1],res[2],3,3)))
   if options.linearreconstruction:
-    centroids = damask.core.math.deformed_linear(res,dim,defgrad_av,
+    centroids = damask.core.mesh.deformed_linear(res,dim,defgrad_av,
                                               numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                      column['tensor'][options.defgrad]+9],
                                                                      (res[0],res[1],res[2],3,3)))
   else:
-    centroids = damask.core.math.deformed_fft(res,dim,defgrad_av,options.scaling,
+    centroids = damask.core.mesh.deformed_fft(res,dim,defgrad_av,options.scaling,
                                               numpy.reshape(values[:,column['tensor'][options.defgrad]:
                                                                      column['tensor'][options.defgrad]+9],
                                                                      (res[0],res[1],res[2],3,3)))
-  ms = damask.core.math.mesh_regular_grid(res,dim,defgrad_av,centroids)
+  ms = damask.core.mesh.mesh_regular_grid(res,dim,defgrad_av,centroids)
   fields =  {\
              'tensor': {},\
              'vector': {},\

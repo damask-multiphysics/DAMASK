@@ -7,7 +7,6 @@
 !> @brief Utilities used by the different spectral solver variants
 !--------------------------------------------------------------------------------------------------
 module DAMASK_spectral_Utilities
- 
  use prec, only: &
    pReal, &
    pInt
@@ -78,7 +77,7 @@ contains
 !> Initializes FFTW.
 !--------------------------------------------------------------------------------------------------
 subroutine Utilities_init()
-
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use numerics, only: &                        
    DAMASK_NumThreadsInt, &
    fftw_planner_flag, &
@@ -258,7 +257,7 @@ subroutine Utilities_forwardFFT(row,column)
 !--------------------------------------------------------------------------------------------------
 ! call function to calculate divergence from math (for post processing) to check results
   if (debugDivergence) &
-    call divergence_fft(res,virt_dim,3_pInt,field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_post)
+    divergence_post = math_divergenceFFT(virt_dim,field_real(1:res(1),1:res(2),1:res(3),1:3,1:3))      ! padding
   
 !--------------------------------------------------------------------------------------------------
 ! doing the FT

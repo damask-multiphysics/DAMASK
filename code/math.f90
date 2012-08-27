@@ -143,7 +143,45 @@ real(pReal), dimension(4,36), parameter, private :: &
             qsort, &
             math_range, &
             math_identity2nd, &
-            math_civita
+            math_civita, &
+            math_identity4th, &
+            math_vectorproduct, &
+            math_tensorproduct, &
+            math_mul3x3, &
+            math_mul6x6, &
+            math_mul33xx33, &
+            math_mul3333xx33, &
+            math_mul3333xx3333, &
+            math_mul33x33, &
+            math_mul66x66, &
+            math_mul99x99, &
+            math_mul33x3, &
+            math_mul33x3_complex, &
+            math_mul66x6 , &
+            math_qConj, &
+            math_qRot, &
+            math_transpose33, &
+            math_inv33, &
+            math_invert33, &
+            math_invSym3333, &
+            math_invert, &
+            math_symmetric33, &
+            math_symmetric66, &
+            math_skew33, &
+            math_deviatoric33, &
+            math_equivStrain33
+#ifdef Spectral
+ public  :: math_curlFFT, &
+            math_divergenceFFT, &
+            math_divergenceFDM, &
+            math_tensorAvg, &
+            math_logstrainSpat, &
+            math_logstrainMat, &
+            math_cauchy, &
+            math_nearestNeighborSearch
+ private :: mesh_location, &
+            mesh_index
+#endif
             
  private :: math_partition, &
             math_delta, &
@@ -881,9 +919,9 @@ function math_invSym3333(A)
 
 end function math_invSym3333
 
-!**************************************************************************
-! Gauss elimination to invert matrix of arbitrary dimension
-!**************************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief  Gauss elimination to invert matrix of arbitrary dimension
+!--------------------------------------------------------------------------------------------------
 pure subroutine math_invert(dimen,A, InvA, AnzNegEW, error)
 
 !   Invertieren einer dimen x dimen - Matrix
@@ -911,13 +949,12 @@ pure subroutine math_invert(dimen,A, InvA, AnzNegEW, error)
 end subroutine math_invert
 
 
-! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!--------------------------------------------------------------------------------------------------
+!> @brief Solves a linear EQS  A * X = B with the GAUSS-Algorithm
+!  For numerical stabilization using a pivot search in rows and columns
+!--------------------------------------------------------------------------------------------------
 pure subroutine Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
 
-!   Solves a linear EQS  A * X = B with the GAUSS-Algorithm
-!   For numerical stabilization using a pivot search in rows and columns
-!
 !   input parameters
 !   A(dimen,dimen) = matrix A
 !   B(dimen,dimen) = right side B
@@ -1155,42 +1192,10 @@ pure function math_equivStrain33(m)
 
 end function math_equivStrain33
 
-!********************************************************************
-subroutine math_equivStrain33_field(res,tensor,vm)
-!********************************************************************
-!calculate von Mises equivalent of tensor field
-!
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: tensor
- ! output variables
- real(pReal), intent(out),  dimension(res(1),res(2),res(3)) :: vm
- ! other variables
- integer(pInt) :: i, j, k
- real(pReal), dimension(3,3) :: deviator, delta = 0.0_pReal
- real(pReal) :: J_2
  
- delta(1,1) = 1.0_pReal
- delta(2,2) = 1.0_pReal
- delta(3,3) = 1.0_pReal
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   deviator = tensor(i,j,k,1:3,1:3) - 1.0_pReal/3.0_pReal*tensor(i,j,k,1,1)*tensor(i,j,k,2,2)*tensor(i,j,k,3,3)*delta
-   J_2 = deviator(1,1)*deviator(2,2)&
-       + deviator(2,2)*deviator(3,3)&
-       + deviator(1,1)*deviator(3,3)&
-       - (deviator(1,2))**2.0_pReal&
-       - (deviator(2,3))**2.0_pReal&
-       - (deviator(1,3))**2.0_pReal
-   vm(i,j,k) = sqrt(3.0_pReal*J_2)
- enddo; enddo; enddo
-
-end subroutine math_equivStrain33_field
-
-
-!********************************************************************
-! determinant of a 33 matrix
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief determinant of a 33 matrix
+!--------------------------------------------------------------------------------------------------
 pure function math_det33(m)
 
  implicit none
@@ -1638,9 +1643,9 @@ pure function math_AxisAngleToR(axis,omega)
 end function math_AxisAngleToR
 
 
-!****************************************************************
-! quaternion (w+ix+jy+kz) from axis and angle (in radians)  
-!****************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief quaternion (w+ix+jy+kz) from axis and angle (in radians)
+!--------------------------------------------------------------------------------------------------
 pure function math_AxisAngleToQuaternion(axis,omega)
 
  implicit none
@@ -1750,9 +1755,9 @@ pure function math_QuaternionToAxisAngle(Q)
 end function math_QuaternionToAxisAngle
 
 
-!********************************************************************
-! Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
+!--------------------------------------------------------------------------------------------------
 pure function math_QuaternionToRodrig(Q)
 
  use prec, only: DAMASK_NaN
@@ -2048,9 +2053,9 @@ pure function math_symmetricEulers(sym,Euler)
 end function math_symmetricEulers
 
 
-!********************************************************************
-!   draw a random sample from Gauss variable
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief draw a random sample from Gauss variable
+!--------------------------------------------------------------------------------------------------
 function math_sampleGaussVar(meanvalue, stddev, width)
 
 implicit none
@@ -2299,8 +2304,8 @@ pure subroutine math_hi(M,HI1M,HI2M,HI3M)
 end subroutine math_hi
 
 
-!*******************************************************************************
-! GET_SEED returns a seed for the random number generator.
+!--------------------------------------------------------------------------------------------------
+!> @brief GET_SEED returns a seed for the random number generator.
 !
 !  The seed depends on the current time, and ought to be (slightly)
 !  different every millisecond. Once the seed is obtained, a random
@@ -2315,7 +2320,7 @@ end subroutine math_hi
 !
 !  Modified: 29 April 2005
 !  Author: Franz Roters
-!
+!--------------------------------------------------------------------------------------------------
 subroutine get_seed(seed)
  implicit none
 
@@ -2424,7 +2429,7 @@ end subroutine halton
 !
 !  Modified: 29 April 2005
 !  Author:  Franz Roters
-
+!--------------------------------------------------------------------------------------------------
 subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
  implicit none
 
@@ -2591,7 +2596,7 @@ end subroutine halton_seed_set
 !
 !  Modified: 29 April 2005
 !  Author: Franz RotersA
-
+!--------------------------------------------------------------------------------------------------
 subroutine i_to_halton (seed, base, ndim, r)
 
  use IO, only: IO_error
@@ -2918,491 +2923,14 @@ pure function math_rotate_forward3333(tensor,rot_tensor)
 end function math_rotate_forward3333
 
 
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!  Functions below are taken from the old postprocessingMath.f90
-!  mostly they are used in combination with f2py to build fortran 
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-! put the next two funtions into mesh?
-function mesh_location(idx,resolution)
- ! small helper functions for indexing
- ! CAREFULL, index and location runs from 0 to N-1 (python style)
-
-   integer(pInt), intent(in) :: idx
-   integer(pInt), intent(in), dimension(3) :: resolution
-   integer(pInt), dimension(3) :: mesh_location
-   mesh_location = (/modulo(idx/ resolution(3) / resolution(2),resolution(1)), &
-                     modulo(idx/ resolution(3),                resolution(2)), &
-                     modulo(idx,                               resolution(3))/)
-
-end function mesh_location
- 
-
- function mesh_index(location,resolution)
- ! small helper functions for indexing
- ! CAREFULL, index and location runs from 0 to N-1 (python style)
-   integer(pInt), intent(in), dimension(3) :: resolution, location
-   integer(pInt) :: mesh_index
-   
-   mesh_index = modulo(location(3), resolution(3))     +&
-               (modulo(location(2), resolution(2)))*resolution(3) +&
-               (modulo(location(1), resolution(1)))*resolution(3)*resolution(2)
-
-end function mesh_index
-
-
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-! Routine to calculate the mismatch between volume of reconstructed (compatible
-! cube and determinant of defgrad at the FP
-
- use debug, only: debug_math, &
-                  debug_level, &
-                  debug_levelBasic
- 
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal),   intent(in), dimension(3) :: geomdim
- real(pReal),   intent(in), dimension(res(1),       res(2),       res(3),       3,3) :: defgrad
- real(pReal),   intent(in), dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3)   :: nodes
- ! output variables
- real(pReal),  intent(out), dimension(res(1),       res(2),       res(3))            :: volume_mismatch
- ! other variables
- real(pReal),   dimension(8,3) ::  coords
- integer(pInt) i,j,k
- real(pReal) vol_initial
-
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   print*, 'Calculating volume mismatch'
-   print '(a,3(e12.5))', ' Dimension: ', geomdim
-   print '(a,3(i5))',   ' Resolution:', res
- endif
-
- vol_initial = geomdim(1)*geomdim(2)*geomdim(3)/(real(res(1)*res(2)*res(3), pReal))
- do k = 1_pInt,res(3)
-   do j = 1_pInt,res(2)
-     do i = 1_pInt,res(1)
-       coords(1,1:3) = nodes(i,       j,       k       ,1:3)
-       coords(2,1:3) = nodes(i+1_pInt,j,       k       ,1:3)
-       coords(3,1:3) = nodes(i+1_pInt,j+1_pInt,k       ,1:3)
-       coords(4,1:3) = nodes(i,       j+1_pInt,k       ,1:3)
-       coords(5,1:3) = nodes(i,       j,       k+1_pInt,1:3)
-       coords(6,1:3) = nodes(i+1_pInt,j,       k+1_pInt,1:3)
-       coords(7,1:3) = nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3)
-       coords(8,1:3) = nodes(i,       j+1_pInt,k+1_pInt,1:3)
-       volume_mismatch(i,j,k) = abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(8,1:3),coords(4,1:3))) &
-                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(8,1:3),coords(5,1:3))) &
-                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(3,1:3),coords(4,1:3))) &
-                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(3,1:3),coords(2,1:3))) &
-                              + abs(math_volTetrahedron(coords(7,1:3),coords(5,1:3),coords(2,1:3),coords(6,1:3))) &
-                              + abs(math_volTetrahedron(coords(7,1:3),coords(5,1:3),coords(2,1:3),coords(1,1:3)))
-       volume_mismatch(i,j,k) = volume_mismatch(i,j,k)/math_det33(defgrad(i,j,k,1:3,1:3))
- enddo; enddo; enddo
- volume_mismatch = volume_mismatch/vol_initial
-
-end subroutine volume_compare
-
-
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-! Routine to calculate the mismatch between the vectors from the central point to
-! the corners of reconstructed (combatible) volume element and the vectors calculated by deforming 
-! the initial volume element with the  current deformation gradient 
-
- use debug, only: debug_math, &
-                  debug_level, &
-                  debug_levelBasic
- 
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in), dimension(3)   :: geomdim
- real(pReal), intent(in),  dimension(res(1),       res(2),       res(3),       3,3) :: defgrad
- real(pReal), intent(in),  dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3)   :: nodes
- real(pReal), intent(in),  dimension(res(1),       res(2),       res(3),       3)   :: centroids
- ! output variables
- real(pReal), intent(out), dimension(res(1),       res(2),       res(3))            :: shape_mismatch
- ! other variables
- real(pReal), dimension(8,3) :: coords_initial
- integer(pInt) i,j,k
-
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   print*, 'Calculating shape mismatch'
-   print '(a,3(e12.5))', ' Dimension: ', geomdim
-   print '(a,3(i5))',   ' Resolution:', res
- endif
-
- coords_initial(1,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
-                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
-                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
- coords_initial(2,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
-                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
-                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
- coords_initial(3,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
-                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
-                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
- coords_initial(4,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
-                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
-                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
- coords_initial(5,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
-                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
-                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
- coords_initial(6,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
-                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
-                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
- coords_initial(7,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
-                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
-                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
- coords_initial(8,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
-                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
-                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
- do i=1_pInt,8_pInt
- enddo
- do k = 1_pInt,res(3)
-   do j = 1_pInt,res(2)
-     do i = 1_pInt,res(1)
-       shape_mismatch(i,j,k) = &
-           sqrt(sum((nodes(i,       j,       k,       1:3) - centroids(i,j,k,1:3)&
-                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(1,1:3)))**2.0_pReal))&
-         + sqrt(sum((nodes(i+1_pInt,j,       k,       1:3) - centroids(i,j,k,1:3)&
-                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(2,1:3)))**2.0_pReal))&
-         + sqrt(sum((nodes(i+1_pInt,j+1_pInt,k,       1:3) - centroids(i,j,k,1:3)&
-                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(3,1:3)))**2.0_pReal))&
-         + sqrt(sum((nodes(i,       j+1_pInt,k,       1:3) - centroids(i,j,k,1:3)&
-                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(4,1:3)))**2.0_pReal))&
-         + sqrt(sum((nodes(i,       j,       k+1_pInt,1:3) - centroids(i,j,k,1:3)&
-                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(5,1:3)))**2.0_pReal))&
-         + sqrt(sum((nodes(i+1_pInt,j,       k+1_pInt,1:3) - centroids(i,j,k,1:3)&
-                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(6,1:3)))**2.0_pReal))&
-         + sqrt(sum((nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) - centroids(i,j,k,1:3)&
-                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(7,1:3)))**2.0_pReal))&
-         + sqrt(sum((nodes(i,       j+1_pInt,k+1_pInt,1:3) - centroids(i,j,k,1:3)&
-                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(8,1:3)))**2.0_pReal))
- enddo; enddo; enddo
-
-end subroutine shape_compare
-
-
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-! Routine to build mesh of (distorted) cubes for given coordinates (= center of the cubes)
-!
- use debug, only: debug_math, &
-                  debug_level, &
-                  debug_levelBasic
- 
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in), dimension(3)   :: geomdim
- real(pReal), intent(in), dimension(3,3) :: defgrad_av
- real(pReal), intent(in), dimension(res(1),       res(2),       res(3),       3) :: centroids
- ! output variables
- real(pReal),intent(out), dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3) :: nodes
- ! variables with dimension depending on input
- real(pReal),             dimension(res(1)+2_pInt,res(2)+2_pInt,res(3)+2_pInt,3) :: wrappedCentroids
- ! other variables
- integer(pInt) :: i,j,k,n
- integer(pInt), dimension(3), parameter :: diag = 1_pInt
- integer(pInt), dimension(3)            :: shift = 0_pInt, lookup = 0_pInt, me = 0_pInt
- integer(pInt), dimension(3,8) :: neighbor = reshape((/ &
-                                     0_pInt, 0_pInt, 0_pInt, &
-                                     1_pInt, 0_pInt, 0_pInt, &
-                                     1_pInt, 1_pInt, 0_pInt, &
-                                     0_pInt, 1_pInt, 0_pInt, &
-                                     0_pInt, 0_pInt, 1_pInt, &
-                                     1_pInt, 0_pInt, 1_pInt, &
-                                     1_pInt, 1_pInt, 1_pInt, &
-                                     0_pInt, 1_pInt, 1_pInt  &
-                                    /), &
-                                    (/3,8/))
-
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   print*, 'Meshing cubes around centroids' 
-   print '(a,3(e12.5))', ' Dimension: ', geomdim
-   print '(a,3(i5))',   ' Resolution:', res
- endif
-
- nodes = 0.0_pReal
- wrappedCentroids = 0.0_pReal
- wrappedCentroids(2_pInt:res(1)+1_pInt,2_pInt:res(2)+1_pInt,2_pInt:res(3)+1_pInt,1:3) = centroids
-
- do k = 0_pInt,res(3)+1_pInt
-   do j = 0_pInt,res(2)+1_pInt
-     do i = 0_pInt,res(1)+1_pInt
-       if (k==0_pInt .or. k==res(3)+1_pInt .or. &                               ! z skin
-           j==0_pInt .or. j==res(2)+1_pInt .or. &                               ! y skin
-           i==0_pInt .or. i==res(1)+1_pInt      ) then                          ! x skin
-         me = (/i,j,k/)                                              ! me on skin
-         shift = sign(abs(res+diag-2_pInt*me)/(res+diag),res+diag-2_pInt*me)
-         lookup = me-diag+shift*res
-   wrappedCentroids(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = &
-                                           centroids(lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt,1:3) - &
-                                           matmul(defgrad_av, shift*geomdim)
-       endif
- enddo; enddo; enddo
- do k = 0_pInt,res(3)
-   do j = 0_pInt,res(2)
-     do i = 0_pInt,res(1)
-       do n = 1_pInt,8_pInt
- nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = &
-                                nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) + wrappedCentroids(i+1_pInt+neighbor(1_pInt,n), &
-                                                                                         j+1_pInt+neighbor(2,n), &
-                                                                                         k+1_pInt+neighbor(3,n),1:3)
- enddo; enddo; enddo; enddo
- nodes = nodes/8.0_pReal
-
-end subroutine mesh_regular_grid
- 
-
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-! Routine to calculate coordinates in current configuration for given defgrad
-! using linear interpolation (blurres out high frequency defomation)
-!
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in), dimension(3)   :: geomdim
- real(pReal), intent(in), dimension(3,3) :: defgrad_av
- real(pReal), intent(in), dimension(     res(1),res(2),res(3),3,3) :: defgrad
- ! output variables
- real(pReal), intent(out), dimension(    res(1),res(2),res(3),3)   :: coord
- ! variables with dimension depending on input
- real(pReal),              dimension(  8,res(1),res(2),res(3),3)   :: coord_avgOrder
- ! other variables
- real(pReal), dimension(3) ::  myStep, fones = 1.0_pReal, parameter_coords, negative, positive, offset_coords
- integer(pInt), dimension(3) :: rear, init, ones = 1_pInt, oppo, me
- integer(pInt) i, j, k, s, o 
- integer(pInt), dimension(3,8) :: corner = reshape([ &
-                                              0_pInt, 0_pInt, 0_pInt,&
-                                              1_pInt, 0_pInt, 0_pInt,&
-                                              1_pInt, 1_pInt, 0_pInt,&
-                                              0_pInt, 1_pInt, 0_pInt,&
-                                              1_pInt, 1_pInt, 1_pInt,&
-                                              0_pInt, 1_pInt, 1_pInt,&
-                                              0_pInt, 0_pInt, 1_pInt,&
-                                              1_pInt, 0_pInt, 1_pInt &
-                                                  ],[3,8])
- integer(pInt), dimension(3,8) :: step = reshape([&
-                                            1_pInt, 1_pInt, 1_pInt,&
-                                           -1_pInt, 1_pInt, 1_pInt,& 
-                                           -1_pInt,-1_pInt, 1_pInt,&
-                                            1_pInt,-1_pInt, 1_pInt,&
-                                           -1_pInt,-1_pInt,-1_pInt,&
-                                            1_pInt,-1_pInt,-1_pInt,&
-                                            1_pInt, 1_pInt,-1_pInt,&
-                                           -1_pInt, 1_pInt,-1_pInt & 
-                                                ], [3,8])
- integer(pInt), dimension(3,6) :: order = reshape([ &
-                                            1_pInt, 2_pInt, 3_pInt,&
-                                            1_pInt, 3_pInt, 2_pInt,&
-                                            2_pInt, 1_pInt, 3_pInt,&
-                                            2_pInt, 3_pInt, 1_pInt,&
-                                            3_pInt, 1_pInt, 2_pInt,&
-                                            3_pInt, 2_pInt, 1_pInt &
-                                                ], [3,6])
-
- coord_avgOrder = 0.0_pReal
- 
- do s = 0_pInt, 7_pInt                               ! corners (from 0 to 7)
-   init = corner(:,s+1_pInt)*(res-ones) +ones
-   oppo = corner(:,mod((s+4_pInt),8_pInt)+1_pInt)*(res-ones) +ones
-
-   do o=1_pInt,6_pInt                                ! orders (from 1 to 6)
-     coord = 0_pReal
-     do k = init(order(3,o)), oppo(order(3,o)), step(order(3,o),s+1_pInt)
-       rear(order(2,o)) = init(order(2,o))
-       do j = init(order(2,o)), oppo(order(2,o)), step(order(2,o),s+1_pInt)
-         rear(order(1,o)) = init(order(1,o))
-         do i = init(order(1,o)), oppo(order(1,o)), step(order(1,o),s+1_pInt)
-           me(order(1:3,o)) = [i,j,k]
-           if ( all(me==init)) then
-             coord(me(1),me(2),me(3),1:3) = geomdim * (matmul(defgrad_av,real(corner(1:3,s+1),pReal)) + &
-                           matmul(defgrad(me(1),me(2),me(3),1:3,1:3),0.5_pReal*real(step(1:3,s+1_pInt)/res,pReal)))
-           else
-             myStep = (me-rear)*geomdim/res
-             coord(me(1),me(2),me(3),1:3) = coord(rear(1),rear(2),rear(3),1:3) + &
-                                           0.5_pReal*matmul(defgrad(me(1),me(2),me(3),1:3,1:3) + &
-                                                   defgrad(rear(1),rear(2),rear(3),1:3,1:3),myStep)
-           endif
-           rear = me
-     enddo; enddo; enddo
-     coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) = &
-        coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) + coord/6.0_pReal
-   enddo
-   offset_coords = coord_avgOrder(s+1,1,1,1,1:3)
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     coord_avgOrder(s+1,i,j,k,1:3) = coord_avgOrder(s+1,i,j,k,1:3) - offset_coords
-   enddo; enddo; enddo
- enddo
- 
- do k = 0_pInt, res(3)-1_pInt
-   do j = 0_pInt, res(2)-1_pInt
-     do i = 0_pInt, res(1)-1_pInt
-       parameter_coords = (2.0_pReal*real([i,j,k]+1,pReal)-real(res,pReal))/(real(res,pReal))
-       positive = fones + parameter_coords
-       negative = fones - parameter_coords
-       coord(i+1_pInt,j+1_pInt,k+1_pInt,1:3)&
-              =(coord_avgOrder(1,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*negative(3)&
-              + coord_avgOrder(2,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*negative(3)&
-              + coord_avgOrder(3,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*negative(3)&
-              + coord_avgOrder(4,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*negative(3)&
-              + coord_avgOrder(5,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*positive(3)&
-              + coord_avgOrder(6,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*positive(3)&
-              + coord_avgOrder(7,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*positive(3)&
-              + coord_avgOrder(8,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*positive(3))*0.125_pReal
-  enddo; enddo; enddo
-
- offset_coords = matmul(defgrad(1,1,1,1:3,1:3),geomdim/real(res, pReal)/2.0_pReal) - coord(1,1,1,1:3)
- do k = 1_pInt, res(3)
-   do j = 1_pInt, res(2)
-     do i = 1_pInt, res(1)
-     coord(i,j,k,1:3) = coord(i,j,k,1:3)+ offset_coords
- enddo; enddo; enddo
- 
-end subroutine deformed_linear
 
 #ifdef Spectral
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-! Routine to calculate coordinates in current configuration for given defgrad
-! using integration in Fourier space (more accurate than deformed(...))
-!
- use IO, only: IO_error
- use numerics, only: fftw_timelimit, fftw_planner_flag  
- use debug, only: debug_math, &
-                  debug_level, &
-                  debug_levelBasic
- 
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in), dimension(3)   :: geomdim
- real(pReal), intent(in), dimension(3,3) :: defgrad_av
- real(pReal), intent(in)                 :: scaling
- real(pReal), intent(in),  dimension(res(1),              res(2),res(3),3,3) :: defgrad
- ! output variables
- real(pReal), intent(out), dimension(res(1),              res(2),res(3),3)   :: coords
-! allocatable arrays for fftw c routines
- type(C_PTR) :: fftw_forth, fftw_back
- type(C_PTR) :: coords_fftw, defgrad_fftw
- real(pReal),    dimension(:,:,:,:,:), pointer :: defgrad_real
- complex(pReal), dimension(:,:,:,:,:), pointer :: defgrad_fourier
- real(pReal),    dimension(:,:,:,:),   pointer :: coords_real
- complex(pReal), dimension(:,:,:,:),   pointer :: coords_fourier
- ! other variables
- integer(pInt) :: i, j, k, m, res1_red
- integer(pInt), dimension(3) :: k_s
- real(pReal), dimension(3)   :: step, offset_coords, integrator
-
- integrator = geomdim / 2.0_pReal / pi                                                                   ! see notes where it is used
- 
- if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   print*, 'Restore geometry using FFT-based integration'
-   print '(a,3(e12.5))', ' Dimension: ', geomdim
-   print '(a,3(i5))',   ' Resolution:', res
- endif
-
- res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
- step = geomdim/real(res, pReal)
-
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
- call fftw_set_timelimit(fftw_timelimit)
- defgrad_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*9_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
- call c_f_pointer(defgrad_fftw, defgrad_real,   [res(1)+2_pInt,res(2),res(3),3_pInt,3_pInt])
- call c_f_pointer(defgrad_fftw, defgrad_fourier,[res1_red     ,res(2),res(3),3_pInt,3_pInt])
- coords_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*3_pInt,C_SIZE_T))        !C_SIZE_T is of type integer(8)
- call c_f_pointer(coords_fftw, coords_real,     [res(1)+2_pInt,res(2),res(3),3_pInt])
- call c_f_pointer(coords_fftw, coords_fourier,  [res1_red     ,res(2),res(3),3_pInt])
- fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),9_pInt,&                      ! dimensions , length in each dimension in reversed order
-                          defgrad_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
-                       defgrad_fourier,(/res(3),res(2) ,res1_red/),&
-                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)   
-
- fftw_back  = fftw_plan_many_dft_c2r(3_pInt,(/res(3),res(2) ,res(1)/),3_pInt,&
-                        coords_fourier,(/res(3),res(2) ,res1_red/),&
-                                     1_pInt,  res(3)*res(2)* res1_red,&
-                           coords_real,(/res(3),res(2) ,res(1)+2_pInt/),&
-                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
-
-
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   defgrad_real(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
- enddo; enddo; enddo
-
- call fftw_execute_dft_r2c(fftw_forth, defgrad_real, defgrad_fourier)
-
- !remove highest frequency in each direction
- if(res(1)>1_pInt) &
-   defgrad_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
-                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(res(2)>1_pInt) &
-   defgrad_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
-                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(res(3)>1_pInt) &
-   defgrad_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
-                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
-                                               
- coords_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
- do k = 1_pInt, res(3)
-   k_s(3) = k-1_pInt
-   if(k > res(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-res(3)
-   do j = 1_pInt, res(2)
-     k_s(2) = j-1_pInt
-     if(j > res(2)/2_pInt+1_pInt) k_s(2) = k_s(2)-res(2)
-     do i = 1_pInt, res1_red
-       k_s(1) = i-1_pInt
-       do m = 1_pInt,3_pInt
-         coords_fourier(i,j,k,m) = sum(defgrad_fourier(i,j,k,m,1:3)*cmplx(0.0_pReal,real(k_s,pReal)*integrator,pReal))
-      enddo
-      if (k_s(3) /= 0_pInt .or. k_s(2) /= 0_pInt .or. k_s(1) /= 0_pInt) &
-        coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3) / real(-sum(k_s*k_s),pReal)
-!       if(i/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&                          ! substituting division by (on the fly calculated) xi * 2pi * img by multiplication with reversed img/real part
-!                - defgrad_fourier(i,j,k,1:3,1)*cmplx(0.0_pReal,integrator(1)/real(k_s(1),pReal),pReal)
-!       if(j/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
-!                - defgrad_fourier(i,j,k,1:3,2)*cmplx(0.0_pReal,integrator(2)/real(k_s(2),pReal),pReal)
-!       if(k/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
-!                - defgrad_fourier(i,j,k,1:3,3)*cmplx(0.0_pReal,integrator(3)/real(k_s(3),pReal),pReal)
- enddo; enddo; enddo
-
- call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
- coords_real = coords_real/real(res(1)*res(2)*res(3),pReal)
-
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   coords(i,j,k,1:3) = coords_real(i,j,k,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
- enddo; enddo; enddo
-
- offset_coords = matmul(defgrad(1,1,1,1:3,1:3),step/2.0_pReal) - scaling*coords(1,1,1,1:3)
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     coords(i,j,k,1:3) =  scaling*coords(i,j,k,1:3) + offset_coords + matmul(defgrad_av,&
-                                                    (/step(1)*real(i-1_pInt,pReal),&
-                                                      step(2)*real(j-1_pInt,pReal),&
-                                                      step(3)*real(k-1_pInt,pReal)/))
-
- enddo; enddo; enddo
-
- call fftw_destroy_plan(fftw_forth)
- call fftw_destroy_plan(fftw_back)
- call fftw_free(defgrad_fftw) 
- call fftw_free(coords_fftw)
- 
-end subroutine deformed_fft
-
-
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine curl_fft(res,geomdim,vec_tens,field,curl)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-! calculates curl field using differentation in Fourier space
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates curl field using differentation in Fourier space
 ! use vec_tens to decide if tensor (3) or vector (1)
+!--------------------------------------------------------------------------------------------------
+function math_curlFFT(geomdim,field)
 
  use IO, only: IO_error
  use numerics, only: fftw_timelimit, fftw_planner_flag  
@@ -3412,14 +2940,12 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  
  implicit none
  ! input variables
- integer(pInt), intent(in), dimension(3) :: res
  real(pReal), intent(in), dimension(3) :: geomdim
- integer(pInt), intent(in) :: vec_tens
- real(pReal), intent(in),  dimension(res(1),              res(2),res(3),vec_tens,3) :: field
- ! output variables
- real(pReal), intent(out), dimension(res(1),              res(2),res(3),vec_tens,3) :: curl
+ real(pReal), intent(in),  dimension(:,:,:,:,:) :: field
+ ! function
+ real(pReal), dimension(size(field,1),size(field,2),size(field,3),size(field,4),size(field,5)) :: math_curlFFT
  ! variables with dimension depending on input
- real(pReal),              dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3) :: xi
+ real(pReal),              dimension(size(field,1)/2_pInt+1_pInt,size(field,2),size(field,3),3) :: xi
  ! allocatable arrays for fftw c routines
  type(C_PTR) :: fftw_forth, fftw_back
  type(C_PTR) :: field_fftw, curl_fftw
@@ -3429,8 +2955,12 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
  complex(pReal), dimension(:,:,:,:,:), pointer :: curl_fourier
  ! other variables
  integer(pInt) i, j, k, l, res1_red
- integer(pInt), dimension(3) :: k_s
+ integer(pInt), dimension(3) :: k_s,res
  real(pReal) :: wgt
+ integer(pInt) :: vec_tens
+ 
+ res =  [size(field,1),size(field,2),size(field,3)]
+ vec_tens = size(field,4)
 
  if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating curl of vector/tensor field'
@@ -3504,27 +3034,22 @@ subroutine curl_fft(res,geomdim,vec_tens,field,curl)
 
  call fftw_execute_dft_c2r(fftw_back, curl_fourier, curl_real)
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   curl(i,j,k,1:vec_tens,1:3) = curl_real(i,j,k,1:vec_tens,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
+   math_curlFFT(i,j,k,1:vec_tens,1:3) = curl_real(i,j,k,1:vec_tens,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
- curl = curl * wgt
- call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
- call c_f_pointer(C_NULL_PTR, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])                       ! let all pointers point on NULL-Type
- call c_f_pointer(C_NULL_PTR, field_fourier,[res1_red     ,res(2),res(3),vec_tens,3_pInt])
- call c_f_pointer(C_NULL_PTR, curl_real,    [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
- call c_f_pointer(C_NULL_PTR, curl_fourier, [res1_red     ,res(2),res(3),vec_tens,3_pInt])
- if(.not. (c_associated(C_LOC(field_real(1,1,1,1,1))) .and. c_associated(C_LOC(field_fourier(1,1,1,1,1)))))&                     ! Check if pointers are deassociated and free memory   
-                                                      call fftw_free(field_fftw)                           ! This procedure ensures that optimization do not mix-up lines, because a 
- if(.not.(c_associated(C_LOC(curl_real(1,1,1,1,1))) .and. c_associated(C_LOC(curl_fourier(1,1,1,1,1)))))&                        ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
-                                                      call fftw_free(curl_fftw)                            ! call c_f_pointer(field_fftw, field_fourier, [res1_red ,res(2),res(3),vec_tens,3])
-end subroutine curl_fft
+ math_curlFFT = math_curlFFT * wgt
+ call fftw_destroy_plan(fftw_forth)
+ call fftw_destroy_plan(fftw_back)
+ call fftw_free(field_fftw) 
+ call fftw_free(curl_fftw)         
 
+end function math_curlFFT
  
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-! calculates divergence field using integration in Fourier space
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates divergence field using integration in Fourier space
 ! use vec_tens to decide if tensor (3) or vector (1)
+!--------------------------------------------------------------------------------------------------
+function math_divergenceFFT(geomdim,field)
  
  use IO, only: IO_error
  use numerics, only: fftw_timelimit, fftw_planner_flag  
@@ -3534,14 +3059,13 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
                   
  implicit none
  ! input variables
- integer(pInt), intent(in), dimension(3) :: res
+
  real(pReal), intent(in), dimension(3)   :: geomdim
- integer(pInt), intent(in) :: vec_tens
- real(pReal), intent(in),  dimension(res(1),    res(2),res(3),vec_tens,3) :: field
- ! output variables
- real(pReal), intent(out), dimension(res(1),    res(2),res(3),vec_tens) :: divergence
+ real(pReal), intent(in),  dimension(:,:,:,:,:) :: field
+ ! function
+ real(pReal), dimension(size(field,1),size(field,2),size(field,3),size(field,4)) :: math_divergenceFFT
  ! variables with dimension depending on input
- real(pReal),    dimension(res(1)/2_pInt+1_pInt,res(2),res(3),3) :: xi
+ real(pReal),    dimension(size(field,1)/2_pInt+1_pInt,size(field,2),size(field,3),3) :: xi
  ! allocatable arrays for fftw c routines
  type(C_PTR) :: fftw_forth, fftw_back
  type(C_PTR) :: field_fftw, divergence_fftw
@@ -3552,7 +3076,11 @@ subroutine divergence_fft(res,geomdim,vec_tens,field,divergence)
  ! other variables
  integer(pInt) :: i, j, k, l, res1_red
  real(pReal) :: wgt
- integer(pInt), dimension(3) :: k_s
+ integer(pInt), dimension(3) :: k_s, res
+ integer(pInt)  :: vec_tens
+ 
+ res =  [size(field,1),size(field,2),size(field,3)]
+ vec_tens = size(field,4)
 
  if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
@@ -3619,50 +3147,47 @@ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
  call fftw_execute_dft_c2r(fftw_back, divergence_fourier, divergence_real)
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   divergence(i,j,k,1:vec_tens) = divergence_real(i,j,k,1:vec_tens)                                 ! ensure that data is aligned properly (fftw_alloc)
+   math_divergenceFFT(i,j,k,1:vec_tens) = divergence_real(i,j,k,1:vec_tens)                                 ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
- divergence = divergence * wgt
- call fftw_destroy_plan(fftw_forth); call fftw_destroy_plan(fftw_back)
- call c_f_pointer(C_NULL_PTR, field_real,        [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])     ! let all pointers point on NULL-Type
- call c_f_pointer(C_NULL_PTR, field_fourier,     [res1_red     ,res(2),res(3),vec_tens,3_pInt])
- call c_f_pointer(C_NULL_PTR, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
- call c_f_pointer(C_NULL_PTR, divergence_fourier,[res1_red     ,res(2),res(3),vec_tens])
- if(.not. (c_associated(C_LOC(field_real(1,1,1,1,1))) .and. c_associated(C_LOC(field_fourier(1,1,1,1,1)))))&                     ! Check if pointers are deassociated and free memory   
-                                                      call fftw_free(field_fftw)                           ! This procedure ensures that optimization do not mix-up lines, because a 
- if(.not.(c_associated(C_LOC(divergence_real(1,1,1,1))) .and. c_associated(C_LOC(divergence_fourier(1,1,1,1)))))&            ! simple fftw_free(field_fftw) could be done immediately after the last line where field_fftw appears, e.g:
-                                                    call fftw_free(divergence_fftw)                        ! call c_f_pointer(field_fftw, field_fourier, [res1_red ,res(2),res(3),vec_tens,3])
-end subroutine divergence_fft
+ math_divergenceFFT = math_divergenceFFT * wgt
+ call fftw_destroy_plan(fftw_forth)
+ call fftw_destroy_plan(fftw_back)
+ call fftw_free(field_fftw) 
+ call fftw_free(divergence_fftw)
 
+end function math_divergenceFFT
 
           
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-! calculates divergence field using FDM with variable accuracy
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates divergence field using FDM with variable accuracy
 ! use vec_tes to decide if tensor (3) or vector (1)
+!--------------------------------------------------------------------------------------------------
+function math_divergenceFDM(geomdim,order,field)
  
  use debug, only: debug_math, &
                   debug_level, &
                   debug_levelBasic
  
  implicit none
- integer(pInt), intent(in), dimension(3) :: res
- integer(pInt), intent(in)               :: vec_tens
- integer(pInt), intent(inout)            :: order
+ integer(pInt), intent(in)            :: order
  real(pReal), intent(in), dimension(3)   :: geomdim
- real(pReal), intent(in), dimension(res(1),res(2),res(3),vec_tens,3) :: field
- ! output variables
- real(pReal), intent(out), dimension(res(1),res(2),res(3),vec_tens) :: divergence
+ real(pReal),   intent(in), dimension(:,:,:,:,:) :: field
+ ! function
+ real(pReal), dimension(size(field,1),size(field,2),size(field,3),size(field,4))  :: math_divergenceFDM
  ! other variables
  integer(pInt), dimension(6,3) :: coordinates
- integer(pInt) i, j, k, m, l
- real(pReal), dimension(4,4), parameter :: FDcoefficient = reshape((/ & 
+ integer(pInt) i, j, k, m, l, vec_tens
+ integer(pInt), dimension(3) :: res
+ real(pReal), dimension(4,4), parameter :: FDcoefficient = reshape([ &
                     1.0_pReal/2.0_pReal,       0.0_pReal,           0.0_pReal,             0.0_pReal,& !from http://en.wikipedia.org/wiki/Finite_difference_coefficients
                     2.0_pReal/3.0_pReal,-1.0_pReal/12.0_pReal,      0.0_pReal,             0.0_pReal,&
                     3.0_pReal/4.0_pReal,-3.0_pReal/20.0_pReal,1.0_pReal/ 60.0_pReal,       0.0_pReal,&
-                    4.0_pReal/5.0_pReal,-1.0_pReal/ 5.0_pReal,4.0_pReal/105.0_pReal,-1.0_pReal/280.0_pReal/),&
-                               (/4,4/))
+                    4.0_pReal/5.0_pReal,-1.0_pReal/ 5.0_pReal,4.0_pReal/105.0_pReal,-1.0_pReal/280.0_pReal],&
+                               [4,4])
+ 
+ res =  [size(field,1),size(field,2),size(field,3)]
+ vec_tens = size(field,4)
                                
  if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    print*, 'Calculating divergence of tensor/vector field using FDM'
@@ -3670,10 +3195,9 @@ subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
    print '(a,3(i5))',   ' Resolution:', res
  endif
 
- divergence = 0.0_pReal
- order = order + 1_pInt
+ math_divergenceFDM = 0.0_pReal
  do k = 0_pInt, res(3)-1_pInt; do j = 0_pInt, res(2)-1_pInt; do i = 0_pInt, res(1)-1_pInt
-   do m = 1_pInt, order
+   do m = 1_pInt, order + 1_pInt
      coordinates(1,1:3) = mesh_location(mesh_index((/i+m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
                                                                                           + (/1_pInt,1_pInt,1_pInt/)
      coordinates(2,1:3) = mesh_location(mesh_index((/i-m,j,k/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
@@ -3687,7 +3211,8 @@ subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
      coordinates(6,1:3) = mesh_location(mesh_index((/i,j,k-m/),(/res(1),res(2),res(3)/)),(/res(1),res(2),res(3)/))&
                                                                                           + (/1_pInt,1_pInt,1_pInt/)
      do l = 1_pInt, vec_tens
-       divergence(i+1_pInt,j+1_pInt,k+1_pInt,l) = divergence(i+1_pInt,j+1_pInt,k+1_pInt,l) + FDcoefficient(m,order) * &
+       math_divergenceFDM(i+1_pInt,j+1_pInt,k+1_pInt,l) = math_divergenceFDM(i+1_pInt,j+1_pInt,k+1_pInt,l) &
+                                                        + FDcoefficient(m,order) * &
                 ((field(coordinates(1,1),coordinates(1,2),coordinates(1,3),l,1)- &
                   field(coordinates(2,1),coordinates(2,2),coordinates(2,3),l,1))*real(res(1),pReal)/geomdim(1) +&
                  (field(coordinates(3,1),coordinates(3,2),coordinates(3,3),l,2)- &
@@ -3698,125 +3223,13 @@ subroutine divergence_fdm(res,geomdim,vec_tens,order,field,divergence)
    enddo
  enddo; enddo; enddo
 
-end subroutine divergence_fdm
-#endif
+end function math_divergenceFDM
 
-
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine tensor_avg(res,tensor,avg)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!calculate average of tensor field
-!
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in), dimension(res(1),res(2),res(3),3,3) ::tensor
- ! output variables
- real(pReal), intent(out), dimension(3,3) :: avg
- ! other variables
- real(pReal) wgt
- integer(pInt) m,n
- 
- wgt = 1.0_pReal/real(res(1)*res(2)*res(3), pReal)
-
- do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
-    avg(m,n) = sum(tensor(1:res(1),1:res(2),1:res(3),m,n)) * wgt   
- enddo; enddo
-
-end subroutine tensor_avg
- 
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine logstrain_spat(res,defgrad,logstrain_field)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!calculate logarithmic strain in spatial configuration for given defgrad field
-!
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: defgrad
- ! output variables
- real(pReal), intent(out), dimension(res(1),res(2),res(3),3,3) :: logstrain_field
- ! other variables
- real(pReal), dimension(3,3) ::  temp33_Real, temp33_Real2
- real(pReal), dimension(3,3,3) :: eigenvectorbasis
- real(pReal), dimension(3) ::  eigenvalue
- integer(pInt) :: i, j, k
- logical :: errmatinv
- 
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   call math_pDecomposition(defgrad(i,j,k,1:3,1:3),temp33_Real2,temp33_Real,errmatinv)  !store R in temp33_Real
-   temp33_Real2 = math_inv33(temp33_Real)
-   temp33_Real = math_mul33x33(defgrad(i,j,k,1:3,1:3),temp33_Real2)       ! v = F o inv(R), store in temp33_Real2
-   call math_spectral1(temp33_Real,eigenvalue(1),              eigenvalue(2),              eigenvalue(3),&
-                                   eigenvectorbasis(1,1:3,1:3),eigenvectorbasis(2,1:3,1:3),eigenvectorbasis(3,1:3,1:3))
-   eigenvalue = log(sqrt(eigenvalue))
-   logstrain_field(i,j,k,1:3,1:3) = eigenvalue(1)*eigenvectorbasis(1,1:3,1:3)+&
-                                    eigenvalue(2)*eigenvectorbasis(2,1:3,1:3)+&
-                                    eigenvalue(3)*eigenvectorbasis(3,1:3,1:3)
- enddo; enddo; enddo
-
-end subroutine logstrain_spat
- 
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine logstrain_mat(res,defgrad,logstrain_field)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!calculate logarithmic strain in material configuration for given defgrad field
-!
- implicit none
-  ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: defgrad
- ! output variables
- real(pReal), intent(out), dimension(res(1),res(2),res(3),3,3) :: logstrain_field
- ! other variables
- real(pReal), dimension(3,3) ::  temp33_Real, temp33_Real2
- real(pReal), dimension(3,3,3) :: eigenvectorbasis
- real(pReal), dimension(3) ::  eigenvalue
- integer(pInt) :: i, j, k
- logical :: errmatinv
- 
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   call math_pDecomposition(defgrad(i,j,k,1:3,1:3),temp33_Real,temp33_Real2,errmatinv)  !store U in temp33_Real
-   call math_spectral1(temp33_Real,eigenvalue(1),              eigenvalue(2),              eigenvalue(3),&
-                                   eigenvectorbasis(1,1:3,1:3),eigenvectorbasis(2,1:3,1:3),eigenvectorbasis(3,1:3,1:3))
-   eigenvalue = log(sqrt(eigenvalue))
-   logstrain_field(i,j,k,1:3,1:3) = eigenvalue(1)*eigenvectorbasis(1,1:3,1:3)+&
-                                    eigenvalue(2)*eigenvectorbasis(2,1:3,1:3)+&
-                                    eigenvalue(3)*eigenvectorbasis(3,1:3,1:3)
- enddo; enddo; enddo
-
-end subroutine logstrain_mat
- 
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-subroutine calculate_cauchy(res,defgrad,p_stress,c_stress)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!calculate cauchy stress for given PK1 stress and defgrad field
-!
- implicit none
- ! input variables
- integer(pInt), intent(in), dimension(3) :: res
- real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: defgrad
- real(pReal), intent(in),  dimension(res(1),res(2),res(3),3,3) :: p_stress
- ! output variables
- real(pReal), intent(out),  dimension(res(1),res(2),res(3),3,3) :: c_stress
- ! other variables
- real(pReal) :: jacobi
- integer(pInt) :: i, j, k
-
- c_stress = 0.0_pReal
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   jacobi = math_det33(defgrad(i,j,k,1:3,1:3))
-   c_stress(i,j,k,1:3,1:3) = matmul(p_stress(i,j,k,1:3,1:3),transpose(defgrad(i,j,k,1:3,1:3)))/jacobi
- enddo; enddo; enddo
-
-end subroutine calculate_cauchy
-
-#ifdef Spectral
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+!--------------------------------------------------------------------------------------------------
+!> @brief Obtain the nearest neighbor in domain set for all points in querySet
+!--------------------------------------------------------------------------------------------------
 subroutine math_nearestNeighborSearch(spatialDim, Favg, geomdim, queryPoints, domainPoints, querySet, domainSet, indices)
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-! Obtain the nearest neighbor in domain set for all points in querySet
-!                                                 
+
  use kdtree2_module
  use IO, only: &
    IO_error
@@ -3837,10 +3250,10 @@ subroutine math_nearestNeighborSearch(spatialDim, Favg, geomdim, queryPoints, do
  integer(pInt)                             :: i,j, l,m,n
  type(kdtree2), pointer                    :: tree
  type(kdtree2_result), dimension(1)        :: Results
-   
+
  if (size(querySet(:,1))  /= spatialDim)  call IO_error(407_pInt,ext_msg='query set')
  if (size(domainSet(:,1)) /= spatialDim)  call IO_error(407_pInt,ext_msg='domain set')
- 
+
 
  i = 0_pInt
  if(spatialDim == 2_pInt) then
@@ -3862,12 +3275,156 @@ subroutine math_nearestNeighborSearch(spatialDim, Favg, geomdim, queryPoints, do
  tree => kdtree2_create(domainSetLarge,sort=.true.,rearrange=.true.)
 
  do j = 1_pInt, queryPoints
-   call kdtree2_n_nearest(tp=tree, qv=querySet(1:spatialDim,j),nn=1_pInt, results = Results)   
+   call kdtree2_n_nearest(tp=tree, qv=querySet(1:spatialDim,j),nn=1_pInt, results = Results)
    indices(j) = Results(1)%idx
  enddo
  indices = indices -1_pInt                                                                          ! let them run from 0 to domainPoints -1
- 
+
 end subroutine math_nearestNeighborSearch
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!  Functions below are taken from the old postprocessingMath.f90
+!  mostly they are used in combination with f2py to build fortran
+! they now reside in mesh.f90 and should be removed from here soon
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+! put the next two funtions into mesh?
+function mesh_location(idx,resolution)
+ ! small helper functions for indexing
+ ! CAREFULL, index and location runs from 0 to N-1 (python style)
+
+   integer(pInt), intent(in) :: idx
+   integer(pInt), intent(in), dimension(3) :: resolution
+   integer(pInt), dimension(3) :: mesh_location
+   mesh_location = (/modulo(idx/ resolution(3) / resolution(2),resolution(1)), &
+                     modulo(idx/ resolution(3),                resolution(2)), &
+                     modulo(idx,                               resolution(3))/)
+
+end function mesh_location
+
+
+ function mesh_index(location,resolution)
+ ! small helper functions for indexing
+ ! CAREFULL, index and location runs from 0 to N-1 (python style)
+   integer(pInt), intent(in), dimension(3) :: resolution, location
+   integer(pInt) :: mesh_index
+
+   mesh_index = modulo(location(3), resolution(3))     +&
+               (modulo(location(2), resolution(2)))*resolution(3) +&
+               (modulo(location(1), resolution(1)))*resolution(3)*resolution(2)
+
+end function mesh_index
 #endif
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate average of tensor field
+!--------------------------------------------------------------------------------------------------
+function math_tensorAvg(field)
+ implicit none
+ ! input variables
+ real(pReal), intent(in), dimension(:,:,:,:,:) :: field
+ ! output variables
+ real(pReal), dimension(3,3) :: math_tensorAvg
+ ! other variables
+ real(pReal) :: wgt
+ integer(pInt) :: m,n
+ integer(pInt), dimension(3) :: res
+
+ res = [size(field,1),size(field,2),size(field,3)]
+ 
+ wgt = 1.0_pReal/real(res(1)*res(2)*res(3), pReal)
+
+ do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt
+   math_tensorAvg(m,n) = sum(field(1:res(1),1:res(2),1:res(3),m,n)) * wgt
+ enddo; enddo
+
+end function math_tensorAvg
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate logarithmic strain in spatial configuration for given F field
+!--------------------------------------------------------------------------------------------------
+function math_logstrainSpat(F)
+ implicit none
+ ! input variables
+ real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
+ ! output variables
+ real(pReal) ,  dimension(size(F,1),size(F,2),size(F,3),3,3) :: math_logstrainSpat
+ ! other variables
+ integer(pInt), dimension(3) :: res
+ real(pReal), dimension(3,3) ::  temp33_Real, temp33_Real2
+ real(pReal), dimension(3,3,3) :: eigenvectorbasis
+ real(pReal), dimension(3) ::  eigenvalue
+ integer(pInt) :: i, j, k
+ logical :: errmatinv
+ 
+ res = [size(F,1),size(F,2),size(F,3)]
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   call math_pDecomposition(F(i,j,k,1:3,1:3),temp33_Real2,temp33_Real,errmatinv)  !store R in temp33_Real
+   temp33_Real2 = math_inv33(temp33_Real)
+   temp33_Real = math_mul33x33(F(i,j,k,1:3,1:3),temp33_Real2)       ! v = F o inv(R), store in temp33_Real2
+   call math_spectral1(temp33_Real,eigenvalue(1),              eigenvalue(2),              eigenvalue(3),&
+                                   eigenvectorbasis(1,1:3,1:3),eigenvectorbasis(2,1:3,1:3),eigenvectorbasis(3,1:3,1:3))
+   eigenvalue = log(sqrt(eigenvalue))
+   math_logstrainSpat(i,j,k,1:3,1:3) = eigenvalue(1)*eigenvectorbasis(1,1:3,1:3)+&
+                                    eigenvalue(2)*eigenvectorbasis(2,1:3,1:3)+&
+                                    eigenvalue(3)*eigenvectorbasis(3,1:3,1:3)
+ enddo; enddo; enddo
+
+end function math_logstrainSpat
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate logarithmic strain in material configuration for given F field
+!--------------------------------------------------------------------------------------------------
+function math_logstrainMat(F)
+ implicit none
+  ! input variables
+ real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
+ ! output variables
+ real(pReal) ,  dimension(size(F,1),size(F,2),size(F,3),3,3) :: math_logstrainMat
+ ! other variables
+ integer(pInt), dimension(3) :: res
+ real(pReal), dimension(3,3) ::  temp33_Real, temp33_Real2
+ real(pReal), dimension(3,3,3) :: eigenvectorbasis
+ real(pReal), dimension(3) ::  eigenvalue
+ integer(pInt) :: i, j, k
+ logical :: errmatinv
+ 
+  res = [size(F,1),size(F,2),size(F,3)]
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   call math_pDecomposition(F(i,j,k,1:3,1:3),temp33_Real,temp33_Real2,errmatinv)  !store U in temp33_Real
+   call math_spectral1(temp33_Real,eigenvalue(1),              eigenvalue(2),              eigenvalue(3),&
+                                   eigenvectorbasis(1,1:3,1:3),eigenvectorbasis(2,1:3,1:3),eigenvectorbasis(3,1:3,1:3))
+   eigenvalue = log(sqrt(eigenvalue))
+   math_logstrainMat(i,j,k,1:3,1:3) = eigenvalue(1)*eigenvectorbasis(1,1:3,1:3)+&
+                                    eigenvalue(2)*eigenvectorbasis(2,1:3,1:3)+&
+                                    eigenvalue(3)*eigenvectorbasis(3,1:3,1:3)
+ enddo; enddo; enddo
+
+end function math_logstrainMat
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate cauchy stress for given PK1 stress and F field
+!--------------------------------------------------------------------------------------------------
+function math_cauchy(F,P)
+ implicit none
+ ! input variables
+ real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
+ real(pReal), intent(in),  dimension(:,:,:,:,:)   :: P
+ ! output variables
+ real(pReal) ,  dimension(size(F,1),size(F,2),size(F,3),3,3) :: math_cauchy
+ ! other variables
+ integer(pInt), dimension(3) :: res
+ real(pReal) :: jacobi
+ integer(pInt) :: i, j, k
+
+ res = [size(F,1),size(F,2),size(F,3)]
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   jacobi = math_det33(F(i,j,k,1:3,1:3))
+   math_cauchy(i,j,k,1:3,1:3) = matmul(P(i,j,k,1:3,1:3),transpose(F(i,j,k,1:3,1:3)))/jacobi
+ enddo; enddo; enddo
+
+end function math_cauchy
 
 end module math

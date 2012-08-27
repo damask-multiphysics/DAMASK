@@ -133,8 +133,8 @@ for file in files:
     defgrad[x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
 
     # ------------------------------------------ process value field ----------------------------
-  defgrad_av = damask.core.math.tensor_avg(res,defgrad)
-  centroids = damask.core.math.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
+  defgrad_av = damask.core.math.tensorAvg(defgrad)
+  centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
 
 # ------------------------------------------ process data ---------------------------------------  
 

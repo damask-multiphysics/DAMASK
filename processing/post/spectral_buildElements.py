@@ -136,9 +136,9 @@ for file in files:
 
 # ------------------------------------------ process value field ----------------------------
 
-  defgrad_av = damask.core.math.tensor_avg(res,defgrad)
-  centroids = damask.core.math.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
-  nodes = damask.core.math.mesh_regular_grid(res,geomdim,defgrad_av,centroids)
+  defgrad_av = damask.core.math.tensorAvg(defgrad)
+  centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
+  nodes = damask.core.mesh.mesh_regular_grid(res,geomdim,defgrad_av,centroids)
 
 
 # ------------------------------------------ process data ---------------------------------------  

@@ -8,7 +8,6 @@
 !--------------------------------------------------------------------------------------------------
 program DAMASK_spectral_Driver
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- 
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
    loadCaseFile, &

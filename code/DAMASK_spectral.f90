@@ -83,7 +83,8 @@ program DAMASK_spectral
    mesh_NcpElems, &
    wgt, &
    geomdim, &
-   virt_dim
+   virt_dim, &
+   deformed_FFT
    
  use CPFEM, only: &
    CPFEM_general, &
@@ -801,8 +802,7 @@ program DAMASK_spectral
 !--------------------------------------------------------------------------------------------------
 ! call function to calculate divergence from math (for post processing) to check results
          if (debugDivergence) &
-           call divergence_fft(res,virt_dim,3_pInt,&
-                               P_real(1:res(1),1:res(2),1:res(3),1:3,1:3),divergence_post)      ! padding
+           divergence_post = math_divergenceFFT(virt_dim,P_real(1:res(1),1:res(2),1:res(3),1:3,1:3))      ! padding
               
 !--------------------------------------------------------------------------------------------------
 ! doing the FT because it simplifies calculation of average stress in real space also

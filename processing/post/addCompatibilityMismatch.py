@@ -144,11 +144,11 @@ for file in files:
     idx += 1
     defgrad[x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
   
-  defgrad_av = damask.core.math.tensor_avg(res,defgrad)
-  centroids = damask.core.math.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
-  nodes = damask.core.math.mesh_regular_grid(res,geomdim,defgrad_av,centroids)
-  if not options.noShape:   shape_mismatch = damask.core.math.shape_compare( res,geomdim,defgrad,nodes,centroids)
-  if not options.noVolume: volume_mismatch = damask.core.math.volume_compare(res,geomdim,defgrad,nodes)
+  defgrad_av = damask.core.math.tensorAvg(defgrad)
+  centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
+  nodes = damask.core.mesh.mesh_regular_grid(res,geomdim,defgrad_av,centroids)
+  if not options.noShape:   shape_mismatch = damask.core.mesh.shape_compare( res,geomdim,defgrad,nodes,centroids)
+  if not options.noVolume: volume_mismatch = damask.core.mesh.volume_compare(res,geomdim,defgrad,nodes)
 
 # ------------------------------------------ process data ---------------------------------------  
 

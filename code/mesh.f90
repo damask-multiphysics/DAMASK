@@ -28,6 +28,7 @@
 !--------------------------------------------------------------------------------------------------
 
 module mesh     
+ use, intrinsic :: iso_c_binding
  use prec, only: pReal, pInt
 
  implicit none
@@ -96,6 +97,7 @@ module mesh
  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
 
 #ifdef Spectral
+ include 'fftw3.f03'
  real(pReal),   dimension(3), public :: geomdim, virt_dim                                           ! physical dimension of volume element per direction
  integer(pInt), dimension(3), public :: res
  real(pReal),   public  :: wgt
@@ -279,7 +281,12 @@ module mesh
             mesh_build_ipVolumes, &
             mesh_build_ipCoordinates
 #ifdef Spectral
- public  :: mesh_regrid
+ public  :: mesh_regrid, &
+            mesh_regular_grid, &
+            deformed_linear, &
+            deformed_fft, &
+            volume_compare, &
+            shape_compare
 #endif
 
  private :: &
@@ -858,6 +865,203 @@ function mesh_spectral_getHomogenization(fileUnit)
    call IO_error(error_ID = 842_pInt, ext_msg='mesh_spectral_getHomogenization')
    
 end function mesh_spectral_getHomogenization
+!--------------------------------------------------------------------------------------------------
+!> @brief Count overall number of nodes and elements in mesh and stores them in
+!! 'mesh_Nelems' and 'mesh_Nnodes'
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_count_nodesAndElements()
+ 
+ implicit none
+ mesh_Nelems = res(1)*res(2)*res(3)
+ mesh_Nnodes = (1_pInt + res(1))*(1_pInt + res(2))*(1_pInt + res(3))
+
+end subroutine mesh_spectral_count_nodesAndElements
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Count overall number of CP elements in mesh and stores them in 'mesh_NcpElems'
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_count_cpElements
+
+ implicit none
+
+ mesh_NcpElems = mesh_Nelems
+ 
+end subroutine mesh_spectral_count_cpElements
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Maps elements from FE ID to internal (consecutive) representation.
+!! Allocates global array 'mesh_mapFEtoCPelem'
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_map_elements
+
+ implicit none
+ integer(pInt) :: i
+
+ allocate (mesh_mapFEtoCPelem(2_pInt,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
+
+ forall (i = 1_pInt:mesh_NcpElems) &
+   mesh_mapFEtoCPelem(1:2,i) = i
+
+end subroutine mesh_spectral_map_elements
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Maps node from FE ID to internal (consecutive) representation.
+!! Allocates global array 'mesh_mapFEtoCPnode'
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_map_nodes
+
+ implicit none
+ integer(pInt) :: i
+
+ allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
+
+ forall (i = 1_pInt:mesh_Nnodes) &
+   mesh_mapFEtoCPnode(1:2,i) = i
+ 
+end subroutine mesh_spectral_map_nodes
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
+!! Allocates global arrays 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
+!! and mesh_maxNsubNodes
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_count_cpSizes
+ 
+ implicit none
+ integer(pInt) :: t
+ 
+ t = FE_mapElemtype('C3D8R')                                                                        ! fake 3D hexahedral 8 node 1 IP element
+
+ mesh_maxNnodes =       FE_Nnodes(t)
+ mesh_maxNips =         FE_Nips(t)
+ mesh_maxNipNeighbors = FE_NipNeighbors(t)
+ mesh_maxNsubNodes =    FE_NsubNodes(t)
+
+end subroutine mesh_spectral_count_cpSizes
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Store x,y,z coordinates of all nodes in mesh.
+!! Allocates global arrays 'mesh_node0' and 'mesh_node'
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_build_nodes()
+
+ use IO,   only: &
+  IO_error
+
+ implicit none
+ integer(pInt) :: n
+
+ allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
+ allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
+ 
+ forall (n = 0_pInt:mesh_Nnodes-1_pInt)
+   mesh_node0(1,n+1_pInt) = &
+           geomdim(1) * real(mod(n,(res(1)+1_pInt) ),pReal) &
+                                                   / real(res(1),pReal)
+   mesh_node0(2,n+1_pInt) = &
+           geomdim(2) * real(mod(n/(res(1)+1_pInt),(res(2)+1_pInt)),pReal) &
+                                                   / real(res(2),pReal)
+   mesh_node0(3,n+1_pInt) = &
+           geomdim(3) * real(mod(n/(res(1)+1_pInt)/(res(2)+1_pInt),(res(3)+1_pInt)),pReal) &
+                                                   / real(res(3),pReal)
+ end forall 
+
+ mesh_node = mesh_node0                                                                             !why?
+
+end subroutine mesh_spectral_build_nodes
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Store FEid, type, material, texture, and node list per element.
+!! Allocates global array 'mesh_element'
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_build_elements(myUnit)
+
+ use IO, only: &
+   IO_checkAndRewind, &
+   IO_lc, &
+   IO_stringValue, &
+   IO_stringPos, &
+   IO_error, &
+   IO_continuousIntValues, &
+   IO_intValue, &
+   IO_countContinuousIntValues
+
+ implicit none
+ integer(pInt), intent(in) :: myUnit
+
+ integer(pInt), parameter :: maxNchunks = 7_pInt
+ integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt) :: e, i, headerLength = 0_pInt, maxIntCount
+ integer(pInt), dimension(:), allocatable :: microstructures
+ integer(pInt), dimension(1,1) :: dummySet = 0_pInt
+ character(len=65536) :: line,keyword
+ character(len=64), dimension(1) :: dummyName = ''
+
+ call IO_checkAndRewind(myUnit)
+
+ read(myUnit,'(a65536)') line
+ myPos = IO_stringPos(line,2_pInt)
+ keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
+ if (keyword(1:4) == 'head') then
+   headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
+ else
+   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_build_elements')
+ endif
+ 
+ rewind(myUnit)
+ do i = 1_pInt, headerLength
+   read(myUnit,'(a65536)') line
+ enddo
+
+ maxIntCount = 0_pInt
+ i = 1_pInt
+
+ do while (i > 0_pInt)
+   i = IO_countContinuousIntValues(myUnit)
+   maxIntCount = max(maxIntCount, i)
+ enddo
+
+ rewind (myUnit)
+ do i=1_pInt,headerLength                                                                           ! skip header
+   read(myUnit,'(a65536)') line
+ enddo
+
+ allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
+ allocate (microstructures (1_pInt+maxIntCount))             ; microstructures = 2_pInt
+ 
+ e = 0_pInt
+ do while (e < mesh_NcpElems .and. microstructures(1) > 0_pInt)                                     ! fill expected number of elements, stop at end of data (or blank line!)
+   microstructures = IO_continuousIntValues(myUnit,maxIntCount,dummyName,dummySet,0_pInt)           ! get affected elements
+   do i = 1_pInt,microstructures(1_pInt)
+     e = e+1_pInt                                                                                   ! valid element entry
+     mesh_element( 1,e) = e                                                                         ! FE id
+     mesh_element( 2,e) = FE_mapElemtype('C3D8R')                                                   ! elem type
+     mesh_element( 3,e) = homog                                                                     ! homogenization
+     mesh_element( 4,e) = microstructures(1_pInt+i)                                                 ! microstructure
+     mesh_element( 5,e) = e + (e-1_pInt)/res(1) + &
+                                       ((e-1_pInt)/(res(1)*res(2)))*(res(1)+1_pInt)                 ! base node
+     mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
+     mesh_element( 7,e) = mesh_element(5,e) + res(1) + 2_pInt
+     mesh_element( 8,e) = mesh_element(5,e) + res(1) + 1_pInt
+     mesh_element( 9,e) = mesh_element(5,e) +(res(1) + 1_pInt) * (res(2) + 1_pInt)                  ! second floor base node
+     mesh_element(10,e) = mesh_element(9,e) + 1_pInt
+     mesh_element(11,e) = mesh_element(9,e) + res(1) + 2_pInt
+     mesh_element(12,e) = mesh_element(9,e) + res(1) + 1_pInt
+     mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                         !needed for statistics
+     mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
+   enddo
+ enddo
+
+ deallocate(microstructures)
+ if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
+
+end subroutine mesh_spectral_build_elements
 
 
 !--------------------------------------------------------------------------------------------------
@@ -880,7 +1084,6 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    IO_error
  use math, only: &
    math_nearestNeighborSearch, &
-   deformed_FFT, &
    math_mul33x3
  character(len=1024):: formatString, N_Digits
  logical, intent(in)                                    :: adaptive                                  ! if true, choose adaptive grid based on resNewInput, otherwise keep it constant
@@ -1347,203 +1550,454 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 end function mesh_regrid
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of nodes and elements in mesh and stores them in
-!! 'mesh_Nelems' and 'mesh_Nnodes'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count_nodesAndElements()
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to build mesh of (distorted) cubes for given coordinates (= center of the cubes)
+!
+ use debug, only: debug_math, &
+                  debug_level, &
+                  debug_levelBasic
  
  implicit none
- mesh_Nelems = res(1)*res(2)*res(3)
- mesh_Nnodes = (1_pInt + res(1))*(1_pInt + res(2))*(1_pInt + res(3))
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in), dimension(3,3) :: defgrad_av
+ real(pReal), intent(in), dimension(res(1),       res(2),       res(3),       3) :: centroids
+ ! output variables
+ real(pReal),intent(out), dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3) :: nodes
+ ! variables with dimension depending on input
+ real(pReal),             dimension(res(1)+2_pInt,res(2)+2_pInt,res(3)+2_pInt,3) :: wrappedCentroids
+ ! other variables
+ integer(pInt) :: i,j,k,n
+ integer(pInt), dimension(3), parameter :: diag = 1_pInt
+ integer(pInt), dimension(3)            :: shift = 0_pInt, lookup = 0_pInt, me = 0_pInt
+ integer(pInt), dimension(3,8) :: neighbor = reshape((/ &
+                                     0_pInt, 0_pInt, 0_pInt, &
+                                     1_pInt, 0_pInt, 0_pInt, &
+                                     1_pInt, 1_pInt, 0_pInt, &
+                                     0_pInt, 1_pInt, 0_pInt, &
+                                     0_pInt, 0_pInt, 1_pInt, &
+                                     1_pInt, 0_pInt, 1_pInt, &
+                                     1_pInt, 1_pInt, 1_pInt, &
+                                     0_pInt, 1_pInt, 1_pInt  &
+                                    /), &
+                                    (/3,8/))
 
-end subroutine mesh_spectral_count_nodesAndElements
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
+   print*, 'Meshing cubes around centroids'
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
+ endif
 
+ nodes = 0.0_pReal
+ wrappedCentroids = 0.0_pReal
+ wrappedCentroids(2_pInt:res(1)+1_pInt,2_pInt:res(2)+1_pInt,2_pInt:res(3)+1_pInt,1:3) = centroids
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of CP elements in mesh and stores them in 'mesh_NcpElems'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count_cpElements
+ do k = 0_pInt,res(3)+1_pInt
+   do j = 0_pInt,res(2)+1_pInt
+     do i = 0_pInt,res(1)+1_pInt
+       if (k==0_pInt .or. k==res(3)+1_pInt .or. &                               ! z skin
+           j==0_pInt .or. j==res(2)+1_pInt .or. &                               ! y skin
+           i==0_pInt .or. i==res(1)+1_pInt      ) then                          ! x skin
+         me = (/i,j,k/)                                              ! me on skin
+         shift = sign(abs(res+diag-2_pInt*me)/(res+diag),res+diag-2_pInt*me)
+         lookup = me-diag+shift*res
+   wrappedCentroids(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = &
+                                           centroids(lookup(1)+1_pInt,lookup(2)+1_pInt,lookup(3)+1_pInt,1:3) - &
+                                           matmul(defgrad_av, shift*geomdim)
+       endif
+ enddo; enddo; enddo
+ do k = 0_pInt,res(3)
+   do j = 0_pInt,res(2)
+     do i = 0_pInt,res(1)
+       do n = 1_pInt,8_pInt
+ nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) = &
+                                nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) + wrappedCentroids(i+1_pInt+neighbor(1_pInt,n), &
+                                                                                         j+1_pInt+neighbor(2,n), &
+                                                                                         k+1_pInt+neighbor(3,n),1:3)
+ enddo; enddo; enddo; enddo
+ nodes = nodes/8.0_pReal
 
- implicit none
+end subroutine mesh_regular_grid
 
- mesh_NcpElems = mesh_Nelems
  
-end subroutine mesh_spectral_count_cpElements
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate coordinates in current configuration for given defgrad
+! using linear interpolation (blurres out high frequency defomation)
+!
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in), dimension(3,3) :: defgrad_av
+ real(pReal), intent(in), dimension(     res(1),res(2),res(3),3,3) :: defgrad
+ ! output variables
+ real(pReal), intent(out), dimension(    res(1),res(2),res(3),3)   :: coord
+ ! variables with dimension depending on input
+ real(pReal),              dimension(  8,res(1),res(2),res(3),3)   :: coord_avgOrder
+ ! other variables
+ real(pReal), dimension(3) ::  myStep, fones = 1.0_pReal, parameter_coords, negative, positive, offset_coords
+ integer(pInt), dimension(3) :: rear, init, ones = 1_pInt, oppo, me
+ integer(pInt) i, j, k, s, o
+ integer(pInt), dimension(3,8) :: corner = reshape([ &
+                                              0_pInt, 0_pInt, 0_pInt,&
+                                              1_pInt, 0_pInt, 0_pInt,&
+                                              1_pInt, 1_pInt, 0_pInt,&
+                                              0_pInt, 1_pInt, 0_pInt,&
+                                              1_pInt, 1_pInt, 1_pInt,&
+                                              0_pInt, 1_pInt, 1_pInt,&
+                                              0_pInt, 0_pInt, 1_pInt,&
+                                              1_pInt, 0_pInt, 1_pInt &
+                                                  ],[3,8])
+ integer(pInt), dimension(3,8) :: step = reshape([&
+                                            1_pInt, 1_pInt, 1_pInt,&
+                                           -1_pInt, 1_pInt, 1_pInt,&
+                                           -1_pInt,-1_pInt, 1_pInt,&
+                                            1_pInt,-1_pInt, 1_pInt,&
+                                           -1_pInt,-1_pInt,-1_pInt,&
+                                            1_pInt,-1_pInt,-1_pInt,&
+                                            1_pInt, 1_pInt,-1_pInt,&
+                                           -1_pInt, 1_pInt,-1_pInt &
+                                                ], [3,8])
+ integer(pInt), dimension(3,6) :: order = reshape([ &
+                                            1_pInt, 2_pInt, 3_pInt,&
+                                            1_pInt, 3_pInt, 2_pInt,&
+                                            2_pInt, 1_pInt, 3_pInt,&
+                                            2_pInt, 3_pInt, 1_pInt,&
+                                            3_pInt, 1_pInt, 2_pInt,&
+                                            3_pInt, 2_pInt, 1_pInt &
+                                                ], [3,6])
+
+ coord_avgOrder = 0.0_pReal
+
+ do s = 0_pInt, 7_pInt                               ! corners (from 0 to 7)
+   init = corner(:,s+1_pInt)*(res-ones) +ones
+   oppo = corner(:,mod((s+4_pInt),8_pInt)+1_pInt)*(res-ones) +ones
+
+   do o=1_pInt,6_pInt                                ! orders (from 1 to 6)
+     coord = 0_pReal
+     do k = init(order(3,o)), oppo(order(3,o)), step(order(3,o),s+1_pInt)
+       rear(order(2,o)) = init(order(2,o))
+       do j = init(order(2,o)), oppo(order(2,o)), step(order(2,o),s+1_pInt)
+         rear(order(1,o)) = init(order(1,o))
+         do i = init(order(1,o)), oppo(order(1,o)), step(order(1,o),s+1_pInt)
+           me(order(1:3,o)) = [i,j,k]
+           if ( all(me==init)) then
+             coord(me(1),me(2),me(3),1:3) = geomdim * (matmul(defgrad_av,real(corner(1:3,s+1),pReal)) + &
+                           matmul(defgrad(me(1),me(2),me(3),1:3,1:3),0.5_pReal*real(step(1:3,s+1_pInt)/res,pReal)))
+           else
+             myStep = (me-rear)*geomdim/res
+             coord(me(1),me(2),me(3),1:3) = coord(rear(1),rear(2),rear(3),1:3) + &
+                                           0.5_pReal*matmul(defgrad(me(1),me(2),me(3),1:3,1:3) + &
+                                                   defgrad(rear(1),rear(2),rear(3),1:3,1:3),myStep)
+           endif
+           rear = me
+     enddo; enddo; enddo
+     coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) = &
+        coord_avgOrder(s+1_pInt,1:res(1),1:res(2),1:res(3),1:3) + coord/6.0_pReal
+   enddo
+   offset_coords = coord_avgOrder(s+1,1,1,1,1:3)
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     coord_avgOrder(s+1,i,j,k,1:3) = coord_avgOrder(s+1,i,j,k,1:3) - offset_coords
+   enddo; enddo; enddo
+ enddo
+
+ do k = 0_pInt, res(3)-1_pInt
+   do j = 0_pInt, res(2)-1_pInt
+     do i = 0_pInt, res(1)-1_pInt
+       parameter_coords = (2.0_pReal*real([i,j,k]+1,pReal)-real(res,pReal))/(real(res,pReal))
+       positive = fones + parameter_coords
+       negative = fones - parameter_coords
+       coord(i+1_pInt,j+1_pInt,k+1_pInt,1:3)&
+              =(coord_avgOrder(1,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*negative(3)&
+              + coord_avgOrder(2,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*negative(3)&
+              + coord_avgOrder(3,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*negative(3)&
+              + coord_avgOrder(4,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*negative(3)&
+              + coord_avgOrder(5,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*positive(2)*positive(3)&
+              + coord_avgOrder(6,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*positive(2)*positive(3)&
+              + coord_avgOrder(7,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *negative(1)*negative(2)*positive(3)&
+              + coord_avgOrder(8,i+1_pInt,j+1_pInt,k+1_pInt,1:3) *positive(1)*negative(2)*positive(3))*0.125_pReal
+  enddo; enddo; enddo
+
+ offset_coords = matmul(defgrad(1,1,1,1:3,1:3),geomdim/real(res, pReal)/2.0_pReal) - coord(1,1,1,1:3)
+ do k = 1_pInt, res(3)
+   do j = 1_pInt, res(2)
+     do i = 1_pInt, res(1)
+     coord(i,j,k,1:3) = coord(i,j,k,1:3)+ offset_coords
+ enddo; enddo; enddo
+
+end subroutine deformed_linear
 
 
-!--------------------------------------------------------------------------------------------------
-!> @brief Maps elements from FE ID to internal (consecutive) representation.
-!! Allocates global array 'mesh_mapFEtoCPelem'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_map_elements
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate coordinates in current configuration for given defgrad
+! using integration in Fourier space (more accurate than deformed(...))
+!
+ use IO, only: IO_error
+ use numerics, only: fftw_timelimit, fftw_planner_flag
+ use debug, only: debug_math, &
+                  debug_level, &
+                  debug_levelBasic
+ use math, only:  PI
 
  implicit none
- integer(pInt) :: i
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in), dimension(3,3) :: defgrad_av
+ real(pReal), intent(in)                 :: scaling
+ real(pReal), intent(in),  dimension(res(1),              res(2),res(3),3,3) :: defgrad
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),              res(2),res(3),3)   :: coords
+! allocatable arrays for fftw c routines
+ type(C_PTR) :: fftw_forth, fftw_back
+ type(C_PTR) :: coords_fftw, defgrad_fftw
+ real(pReal),    dimension(:,:,:,:,:), pointer :: defgrad_real
+ complex(pReal), dimension(:,:,:,:,:), pointer :: defgrad_fourier
+ real(pReal),    dimension(:,:,:,:),   pointer :: coords_real
+ complex(pReal), dimension(:,:,:,:),   pointer :: coords_fourier
+ ! other variables
+ integer(pInt) :: i, j, k, m, res1_red
+ integer(pInt), dimension(3) :: k_s
+ real(pReal), dimension(3)   :: step, offset_coords, integrator
 
- allocate (mesh_mapFEtoCPelem(2_pInt,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
+ integrator = geomdim / 2.0_pReal / pi                                                                   ! see notes where it is used
 
- forall (i = 1_pInt:mesh_NcpElems) &
-   mesh_mapFEtoCPelem(1:2,i) = i
-
-end subroutine mesh_spectral_map_elements
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Maps node from FE ID to internal (consecutive) representation.
-!! Allocates global array 'mesh_mapFEtoCPnode'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_map_nodes
-
- implicit none
- integer(pInt) :: i
-
- allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
-
- forall (i = 1_pInt:mesh_Nnodes) &
-   mesh_mapFEtoCPnode(1:2,i) = i
- 
-end subroutine mesh_spectral_map_nodes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
-!! Allocates global arrays 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
-!! and mesh_maxNsubNodes
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count_cpSizes
- 
- implicit none
- integer(pInt) :: t
- 
- t = FE_mapElemtype('C3D8R')                                                                        ! fake 3D hexahedral 8 node 1 IP element
-
- mesh_maxNnodes =       FE_Nnodes(t)
- mesh_maxNips =         FE_Nips(t)
- mesh_maxNipNeighbors = FE_NipNeighbors(t)
- mesh_maxNsubNodes =    FE_NsubNodes(t)
-
-end subroutine mesh_spectral_count_cpSizes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store x,y,z coordinates of all nodes in mesh.
-!! Allocates global arrays 'mesh_node0' and 'mesh_node'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_nodes()
-
- use IO,   only: &
-  IO_error
-
- implicit none
- integer(pInt) :: n
-
- allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
- allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
- 
- forall (n = 0_pInt:mesh_Nnodes-1_pInt)
-   mesh_node0(1,n+1_pInt) = &
-           geomdim(1) * real(mod(n,(res(1)+1_pInt) ),pReal) &
-                                                   / real(res(1),pReal)
-   mesh_node0(2,n+1_pInt) = &
-           geomdim(2) * real(mod(n/(res(1)+1_pInt),(res(2)+1_pInt)),pReal) &
-                                                   / real(res(2),pReal)
-   mesh_node0(3,n+1_pInt) = &
-           geomdim(3) * real(mod(n/(res(1)+1_pInt)/(res(2)+1_pInt),(res(3)+1_pInt)),pReal) &
-                                                   / real(res(3),pReal)
- end forall 
-
- mesh_node = mesh_node0                                                                             !why?
-
-end subroutine mesh_spectral_build_nodes
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Store FEid, type, material, texture, and node list per element.
-!! Allocates global array 'mesh_element'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_elements(myUnit)
-
- use IO, only: &
-   IO_checkAndRewind, &
-   IO_lc, &
-   IO_stringValue, &
-   IO_stringPos, &
-   IO_error, &
-   IO_continuousIntValues, &
-   IO_intValue, &
-   IO_countContinuousIntValues
-
- implicit none
- integer(pInt), intent(in) :: myUnit
-
- integer(pInt), parameter :: maxNchunks = 7_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
- integer(pInt) :: e, i, headerLength = 0_pInt, maxIntCount
- integer(pInt), dimension(:), allocatable :: microstructures
- integer(pInt), dimension(1,1) :: dummySet = 0_pInt
- character(len=65536) :: line,keyword
- character(len=64), dimension(1) :: dummyName = ''
-
- call IO_checkAndRewind(myUnit)
-
- read(myUnit,'(a65536)') line
- myPos = IO_stringPos(line,2_pInt)
- keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
- if (keyword(1:4) == 'head') then
-   headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
- else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_build_elements')
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
+   print*, 'Restore geometry using FFT-based integration'
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
  endif
  
- rewind(myUnit)
- do i = 1_pInt, headerLength
-   read(myUnit,'(a65536)') line
- enddo
+ res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
+ step = geomdim/real(res, pReal)
 
- maxIntCount = 0_pInt
- i = 1_pInt
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
+ call fftw_set_timelimit(fftw_timelimit)
+ defgrad_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*9_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
+ call c_f_pointer(defgrad_fftw, defgrad_real,   [res(1)+2_pInt,res(2),res(3),3_pInt,3_pInt])
+ call c_f_pointer(defgrad_fftw, defgrad_fourier,[res1_red     ,res(2),res(3),3_pInt,3_pInt])
+ coords_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*3_pInt,C_SIZE_T))        !C_SIZE_T is of type integer(8)
+ call c_f_pointer(coords_fftw, coords_real,     [res(1)+2_pInt,res(2),res(3),3_pInt])
+ call c_f_pointer(coords_fftw, coords_fourier,  [res1_red     ,res(2),res(3),3_pInt])
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),9_pInt,&                      ! dimensions , length in each dimension in reversed order
+                          defgrad_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
+                       defgrad_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)
 
- do while (i > 0_pInt)
-   i = IO_countContinuousIntValues(myUnit)
-   maxIntCount = max(maxIntCount, i)
- enddo
-
- rewind (myUnit)
- do i=1_pInt,headerLength                                                                           ! skip header
-   read(myUnit,'(a65536)') line
- enddo
-
- allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)) ; mesh_element = 0_pInt
- allocate (microstructures (1_pInt+maxIntCount))             ; microstructures = 2_pInt
+ fftw_back  = fftw_plan_many_dft_c2r(3_pInt,(/res(3),res(2) ,res(1)/),3_pInt,&
+                        coords_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,&
+                           coords_real,(/res(3),res(2) ,res(1)+2_pInt/),&
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
  
- e = 0_pInt
- do while (e < mesh_NcpElems .and. microstructures(1) > 0_pInt)                                     ! fill expected number of elements, stop at end of data (or blank line!)
-   microstructures = IO_continuousIntValues(myUnit,maxIntCount,dummyName,dummySet,0_pInt)           ! get affected elements
-   do i = 1_pInt,microstructures(1_pInt)
-     e = e+1_pInt                                                                                   ! valid element entry
-     mesh_element( 1,e) = e                                                                         ! FE id
-     mesh_element( 2,e) = FE_mapElemtype('C3D8R')                                                   ! elem type
-     mesh_element( 3,e) = homog                                                                     ! homogenization
-     mesh_element( 4,e) = microstructures(1_pInt+i)                                                 ! microstructure
-     mesh_element( 5,e) = e + (e-1_pInt)/res(1) + &
-                                       ((e-1_pInt)/(res(1)*res(2)))*(res(1)+1_pInt)                 ! base node
-     mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
-     mesh_element( 7,e) = mesh_element(5,e) + res(1) + 2_pInt
-     mesh_element( 8,e) = mesh_element(5,e) + res(1) + 1_pInt
-     mesh_element( 9,e) = mesh_element(5,e) +(res(1) + 1_pInt) * (res(2) + 1_pInt)                  ! second floor base node
-     mesh_element(10,e) = mesh_element(9,e) + 1_pInt
-     mesh_element(11,e) = mesh_element(9,e) + res(1) + 2_pInt
-     mesh_element(12,e) = mesh_element(9,e) + res(1) + 1_pInt
-     mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                         !needed for statistics
-     mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
+ 
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   defgrad_real(i,j,k,1:3,1:3) = defgrad(i,j,k,1:3,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
+ enddo; enddo; enddo
+
+ call fftw_execute_dft_r2c(fftw_forth, defgrad_real, defgrad_fourier)
+
+ !remove highest frequency in each direction
+ if(res(1)>1_pInt) &
+   defgrad_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(2)>1_pInt) &
+   defgrad_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(3)>1_pInt) &
+   defgrad_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+
+ coords_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ do k = 1_pInt, res(3)
+   k_s(3) = k-1_pInt
+   if(k > res(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-res(3)
+   do j = 1_pInt, res(2)
+     k_s(2) = j-1_pInt
+     if(j > res(2)/2_pInt+1_pInt) k_s(2) = k_s(2)-res(2)
+     do i = 1_pInt, res1_red
+       k_s(1) = i-1_pInt
+       do m = 1_pInt,3_pInt
+         coords_fourier(i,j,k,m) = sum(defgrad_fourier(i,j,k,m,1:3)*cmplx(0.0_pReal,real(k_s,pReal)*integrator,pReal))
+      enddo
+      if (k_s(3) /= 0_pInt .or. k_s(2) /= 0_pInt .or. k_s(1) /= 0_pInt) &
+        coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3) / real(-sum(k_s*k_s),pReal)
+!       if(i/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&                          ! substituting division by (on the fly calculated) xi * 2pi * img by multiplication with reversed img/real part
+!                - defgrad_fourier(i,j,k,1:3,1)*cmplx(0.0_pReal,integrator(1)/real(k_s(1),pReal),pReal)
+!       if(j/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
+!                - defgrad_fourier(i,j,k,1:3,2)*cmplx(0.0_pReal,integrator(2)/real(k_s(2),pReal),pReal)
+!       if(k/=1_pInt) coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3)&
+!                - defgrad_fourier(i,j,k,1:3,3)*cmplx(0.0_pReal,integrator(3)/real(k_s(3),pReal),pReal)
+ enddo; enddo; enddo
+
+ call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
+ coords_real = coords_real/real(res(1)*res(2)*res(3),pReal)
+
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   coords(i,j,k,1:3) = coords_real(i,j,k,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
+ enddo; enddo; enddo
+
+ offset_coords = matmul(defgrad(1,1,1,1:3,1:3),step/2.0_pReal) - scaling*coords(1,1,1,1:3)
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     coords(i,j,k,1:3) =  scaling*coords(i,j,k,1:3) + offset_coords + matmul(defgrad_av,&
+                                                    (/step(1)*real(i-1_pInt,pReal),&
+                                                      step(2)*real(j-1_pInt,pReal),&
+                                                      step(3)*real(k-1_pInt,pReal)/))
+
+ enddo; enddo; enddo
+ 
+ call fftw_destroy_plan(fftw_forth)
+ call fftw_destroy_plan(fftw_back)
+ call fftw_free(defgrad_fftw)
+ call fftw_free(coords_fftw)
+
+end subroutine deformed_fft
+
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate the mismatch between volume of reconstructed (compatible
+! cube and determinant of defgrad at the FP
+
+ use debug, only: debug_math, &
+                  debug_level, &
+                  debug_levelBasic
+ use math, only:  PI, &
+                  math_det33, &
+                  math_volTetrahedron
+
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal),   intent(in), dimension(3) :: geomdim
+ real(pReal),   intent(in), dimension(res(1),       res(2),       res(3),       3,3) :: defgrad
+ real(pReal),   intent(in), dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3)   :: nodes
+ ! output variables
+ real(pReal),  intent(out), dimension(res(1),       res(2),       res(3))            :: volume_mismatch
+ ! other variables
+ real(pReal),   dimension(8,3) ::  coords
+ integer(pInt) i,j,k
+ real(pReal) vol_initial
+
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
+   print*, 'Calculating volume mismatch'
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
+ endif
+
+ vol_initial = geomdim(1)*geomdim(2)*geomdim(3)/(real(res(1)*res(2)*res(3), pReal))
+ do k = 1_pInt,res(3)
+   do j = 1_pInt,res(2)
+     do i = 1_pInt,res(1)
+       coords(1,1:3) = nodes(i,       j,       k       ,1:3)
+       coords(2,1:3) = nodes(i+1_pInt,j,       k       ,1:3)
+       coords(3,1:3) = nodes(i+1_pInt,j+1_pInt,k       ,1:3)
+       coords(4,1:3) = nodes(i,       j+1_pInt,k       ,1:3)
+       coords(5,1:3) = nodes(i,       j,       k+1_pInt,1:3)
+       coords(6,1:3) = nodes(i+1_pInt,j,       k+1_pInt,1:3)
+       coords(7,1:3) = nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3)
+       coords(8,1:3) = nodes(i,       j+1_pInt,k+1_pInt,1:3)
+       volume_mismatch(i,j,k) = abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(8,1:3),coords(4,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(8,1:3),coords(5,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(3,1:3),coords(4,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(1,1:3),coords(3,1:3),coords(2,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(5,1:3),coords(2,1:3),coords(6,1:3))) &
+                              + abs(math_volTetrahedron(coords(7,1:3),coords(5,1:3),coords(2,1:3),coords(1,1:3)))
+       volume_mismatch(i,j,k) = volume_mismatch(i,j,k)/math_det33(defgrad(i,j,k,1:3,1:3))
+ enddo; enddo; enddo
+ volume_mismatch = volume_mismatch/vol_initial
+
+end subroutine volume_compare
+
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate the mismatch between the vectors from the central point to
+! the corners of reconstructed (combatible) volume element and the vectors calculated by deforming
+! the initial volume element with the  current deformation gradient
+
+ use debug, only: debug_math, &
+                  debug_level, &
+                  debug_levelBasic
+
+ implicit none
+ ! input variables
+ integer(pInt), intent(in), dimension(3) :: res
+ real(pReal), intent(in), dimension(3)   :: geomdim
+ real(pReal), intent(in),  dimension(res(1),       res(2),       res(3),       3,3) :: defgrad
+ real(pReal), intent(in),  dimension(res(1)+1_pInt,res(2)+1_pInt,res(3)+1_pInt,3)   :: nodes
+ real(pReal), intent(in),  dimension(res(1),       res(2),       res(3),       3)   :: centroids
+ ! output variables
+ real(pReal), intent(out), dimension(res(1),       res(2),       res(3))            :: shape_mismatch
+ ! other variables
+ real(pReal), dimension(8,3) :: coords_initial
+ integer(pInt) i,j,k
+
+ if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
+   print*, 'Calculating shape mismatch'
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
+ endif
+ 
+ coords_initial(1,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(2,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(3,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(4,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           -geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(5,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(6,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           -geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(7,1:3) = (/+geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ coords_initial(8,1:3) = (/-geomdim(1)/2.0_pReal/real(res(1),pReal),&
+                           +geomdim(2)/2.0_pReal/real(res(2),pReal),&
+                           +geomdim(3)/2.0_pReal/real(res(3),pReal)/)
+ do i=1_pInt,8_pInt
    enddo
- enddo
+ do k = 1_pInt,res(3)
+   do j = 1_pInt,res(2)
+     do i = 1_pInt,res(1)
+       shape_mismatch(i,j,k) = &
+           sqrt(sum((nodes(i,       j,       k,       1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(1,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i+1_pInt,j,       k,       1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(2,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i+1_pInt,j+1_pInt,k,       1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(3,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i,       j+1_pInt,k,       1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(4,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i,       j,       k+1_pInt,1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(5,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i+1_pInt,j,       k+1_pInt,1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(6,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i+1_pInt,j+1_pInt,k+1_pInt,1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(7,1:3)))**2.0_pReal))&
+         + sqrt(sum((nodes(i,       j+1_pInt,k+1_pInt,1:3) - centroids(i,j,k,1:3)&
+                    - matmul(defgrad(i,j,k,1:3,1:3), coords_initial(8,1:3)))**2.0_pReal))
+ enddo; enddo; enddo
 
- deallocate(microstructures)
- if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
-
-end subroutine mesh_spectral_build_elements
+end subroutine shape_compare
 #endif
 
 

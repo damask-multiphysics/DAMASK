@@ -26,22 +26,22 @@ try:
   core.numerics.init                 = core.numerics.numerics_init
   core.debug.init                    = core.debug.debug_init
   core.math.init                     = core.math.math_init
-  #core.math.volumeMismatch           = core.math.math_volumeMismatch
-  #core.math.shapeMismatch            = core.math.math_shapeMismatch
-  #core.math.deformedCoordsLin        = core.math.math_deformedCoordsLin
-  #core.math.deformedCoordsFFT        = core.math.math_deformedCoordsFFT
-  #core.math.curlFFT                  = core.math.math_curlFFT
-  #core.math.divergenceFFT            = core.math.math_divergenceFFT
-  #core.math.divergenceFDM            = core.math.math_divergenceFDM
-  #core.math.tensorAvg                = core.math.math_tensorAvg
-  #core.math.logStrainSpat            = core.math.math_logStrainSpat
-  #core.math.logStrainMat             = core.math.math_logStrainMat
-  #core.math.cauchyStress             = core.math.math_cauchyStress
+  core.math.curlFFT                  = core.math.math_curlFFT
+  core.math.divergenceFFT            = core.math.math_divergenceFFT
+  core.math.divergenceFDM            = core.math.math_divergenceFDM
   #core.math.periodicNearestNeighbor  = core.math.math_periodicNearestNeighbor
+  core.math.tensorAvg                = core.math.math_tensorAvg
+  core.math.logstrainSpat            = core.math.math_logstrainSpat
+  core.math.logstrainMat             = core.math.math_logstrainMat
+  core.math.cauchy                   = core.math.math_cauchy
   core.FEsolving.init                = core.FEsolving.FE_init
   core.mesh.init                     = core.mesh.mesh_init
   core.mesh.regrid                   = core.mesh.mesh_regrid
+  #core.mesh.volumeMismatch           = core.mesh.mesh_volumeMismatch
+  #core.mesh.shapeMismatch            = core.mesh.mesh_shapeMismatch
   #core.mesh.nodesAroundCentroids     = core.mesh.mesh_spectral_nodesAroundCentroids
+  #core.mesh.deformedCoordsLin        = core.mesh.mesh_deformedCoordsLin
+  #core.mesh.deformedCoordsFFT        = core.mesh.mesh_deformedCoordsFFT
 except ImportError:
   sys.stderr.write('\nWARNING: Core module (Fortran code) not available, try to run setup_processing.py\nError Message when importing core.so: \n\n')
   core = None # from http://www.python.org/dev/peps/pep-0008/

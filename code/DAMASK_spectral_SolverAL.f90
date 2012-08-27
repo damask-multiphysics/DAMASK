@@ -7,9 +7,6 @@
 !> @brief AL scheme solver
 !--------------------------------------------------------------------------------------------------
 module DAMASK_spectral_SolverAL
- 
- use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- 
  use prec, only: & 
    pInt, &
    pReal
@@ -81,8 +78,9 @@ module DAMASK_spectral_SolverAL
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-  subroutine AL_init()
-      
+subroutine AL_init()
+  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
+ 
     use IO, only: &
       IO_read_JobBinaryFile, &
       IO_write_JobBinaryFile
@@ -224,11 +222,11 @@ module DAMASK_spectral_SolverAL
      update_gamma
    use math, only: &
      math_mul33x33 ,&
-     math_rotate_backward33, &
-     deformed_fft
+     math_rotate_backward33
    use mesh, only: &
      res,&
-     geomdim
+     geomdim,&
+     deformed_fft
    use IO, only: &
      IO_write_JobBinaryFile
      
