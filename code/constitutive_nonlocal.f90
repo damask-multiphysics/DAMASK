@@ -745,6 +745,9 @@ do i = 1,maxNinstance
             'rho_dot_sgl2dip', &
             'rho_dot_ann_ath', &
             'rho_dot_ann_the', &
+            'rho_dot_ann_the_edge', &
+            'rho_dot_ann_the_screw', &
+            'rho_dot_edgejogs', &
             'rho_dot_flux', &
             'rho_dot_flux_edge', &
             'rho_dot_flux_screw', &
