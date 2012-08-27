@@ -68,9 +68,9 @@ if len(options.shift) < 3:
 options.packing = numpy.array(options.packing)
 options.shift = numpy.array(options.shift)
 
-prefix = 'averagedDown%ix%ix%i'%(options.packing[0],options.packing[1],options.packing[2])
+prefix = 'averagedDown%ix%ix%i_'%(options.packing[0],options.packing[1],options.packing[2])
 if numpy.any(options.shift != 0):
-  prefix += '_shift%+i%+i%+i'%(options.shift[0],options.shift[1],options.shift[2])
+  prefix += 'shift%+i%+i%+i_'%(options.shift[0],options.shift[1],options.shift[2])
 
 # ------------------------------------------ setup file handles ---------------------------------------  
 
@@ -79,8 +79,10 @@ if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
 else:
   for name in filenames:
+    name = os.path.relpath(name)
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(os.path.dirname(name)+os.sep+prefix+'_'+os.path.basename(name),'w')})
+      files.append({'name':name, 'input':open(name),
+                    'output':open(os.path.join(os.path.dirname(name),prefix+os.path.basename(name)),'w')})
 
 
 # ------------------------------------------ loop over input files ---------------------------------------  
