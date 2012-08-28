@@ -111,14 +111,6 @@ program DAMASK_spectral
    materialpoint_results
 
  implicit none
-
-#ifdef PETSC
-#include <finclude/petscsys.h>
-#include <finclude/petscvec.h>
-#include <finclude/petscsnes.h>
-#include <finclude/petscvec.h90>
-#include <finclude/petscsnes.h90>
-#endif
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
  real(pReal), dimension(9) :: & 
@@ -530,6 +522,7 @@ program DAMASK_spectral
    close (777)
    coordinates = 0.0 ! change it later!!!
    CPFEM_mode = 2_pInt
+   if (debugRestart) write(6,'(a)') 'Data read in'
  endif
  ielem = 0_pInt
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
@@ -544,6 +537,7 @@ program DAMASK_spectral
                         0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
    C = C + dPdF 
  enddo; enddo; enddo
+ if (debugGeneral) write(6,'(a)') 'First call to CPFEM finished'
  C = C * wgt
  
 !--------------------------------------------------------------------------------------------------
@@ -596,6 +590,7 @@ program DAMASK_spectral
  if (appendToOutFile) then
    open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',&
                                    form='UNFORMATTED', position='APPEND', status='OLD')
+   if (debugRestart) write(6,'(a)') 'Result File opened for appending'
  else
    open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',&
                                    form='UNFORMATTED',status='REPLACE')
@@ -713,7 +708,7 @@ program DAMASK_spectral
                  j = j + 1_pInt
                  c_reduced(k,j) = temp99_Real(n,m)
          endif; enddo; endif; enddo
-         call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                         ! invert reduced stiffness
+         call math_invert(size_reduced,c_reduced, s_reduced, errmatinv)                             ! invert reduced stiffness
          if(errmatinv) call IO_error(error_ID=400_pInt)
          temp99_Real = 0.0_pReal                                                                    ! build full compliance
          k = 0_pInt

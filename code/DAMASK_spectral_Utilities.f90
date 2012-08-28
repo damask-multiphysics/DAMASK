@@ -23,7 +23,7 @@ module DAMASK_spectral_Utilities
    IO_error
  
  implicit none
-
+ 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
  type(C_PTR),   private                                        :: plan_forward, plan_backward                                                        ! plans for fftw
@@ -209,7 +209,6 @@ subroutine Utilities_updateGamma(C)
    memory_efficient
   
  implicit none
-
  real(pReal), dimension(3,3,3,3), intent(in) :: C
  real(pReal), dimension(3,3) :: temp33_Real, xiDyad
  real(pReal) :: filter
@@ -242,6 +241,8 @@ end subroutine Utilities_updateGamma
 subroutine Utilities_forwardFFT(row,column)
  use mesh, only : &
    virt_dim
+ use math, only: &
+   math_divergenceFFT
   
   implicit none
   integer(pInt), intent(in), optional :: row, column
@@ -298,7 +299,6 @@ end subroutine Utilities_forwardFFT
 subroutine Utilities_backwardFFT(row,column)
 
   implicit none
-  
   integer(pInt), intent(in), optional :: row, column
   integer(pInt) ::  i, j, k, m, n
   
@@ -347,7 +347,6 @@ subroutine Utilities_fourierConvolution(fieldAim)
    memory_efficient
     
  implicit none  
-  
  real(pReal), dimension(3,3), intent(in) :: fieldAim
  real(pReal), dimension(3,3) :: xiDyad, temp33_Real
  real(pReal) :: filter
@@ -393,7 +392,7 @@ end subroutine Utilities_fourierConvolution
 !> @brief calculate root mean square of divergence of field_fourier
 !--------------------------------------------------------------------------------------------------
 real(pReal) function Utilities_divergenceRMS()
- 
+  implicit none
   integer(pInt) :: i, j, k 
   real(pReal) :: err_div_RMS, err_real_div_RMS, err_post_div_RMS,&
                  err_div_max, err_real_div_max
@@ -458,24 +457,27 @@ end function Utilities_divergenceRMS
 !> @brief calculates mask compliance
 !--------------------------------------------------------------------------------------------------
 function Utilities_maskedCompliance(rot_BC,mask_stressVector,C)
-
+ 
+ implicit none
  real(pReal), dimension(3,3,3,3) :: Utilities_maskedCompliance
  real(pReal), dimension(3,3,3,3), intent(in) :: C
- integer(pInt) :: i, j, k, m, n 
+ integer(pInt) :: j, k, m, n 
  real(pReal), dimension(3,3), intent(in) :: rot_BC
  logical, dimension(9), intent(in) :: mask_stressVector
  real(pReal), dimension(3,3,3,3) :: C_lastInc
  real(pReal), dimension(9,9) :: temp99_Real   
  integer(pInt) :: size_reduced = 0_pInt 
- real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced                                  ! reduced compliance and stiffness (only for stress BC)
+ real(pReal), dimension(:,:), allocatable ::  s_reduced, c_reduced, sTimesC                         ! reduced compliance and stiffness (only for stress BC)
  logical :: errmatinv
+ character(len=1024):: formatString
  
  size_reduced = count(mask_stressVector)
  if(size_reduced > 0_pInt )then
    allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
    allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
+   allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
 
-   C_lastInc = math_rotate_forward3333(C,rot_BC)                                                    ! calculate stiffness from former inc
+   C_lastInc = math_rotate_forward3333(C*0.95_pReal+0.5_pReal*C_ref,rot_BC)                         ! calculate stiffness from former inc
    temp99_Real = math_Plain3333to99(C_lastInc)
    k = 0_pInt                                                                                       ! build reduced stiffness
    do n = 1_pInt,9_pInt
@@ -487,7 +489,7 @@ function Utilities_maskedCompliance(rot_BC,mask_stressVector,C)
            j = j + 1_pInt
            c_reduced(k,j) = temp99_Real(n,m)
    endif; enddo; endif; enddo
-   call math_invert(size_reduced, c_reduced, s_reduced, i, errmatinv)                               ! invert reduced stiffness
+   call math_invert(size_reduced, c_reduced, s_reduced, errmatinv)                                  ! invert reduced stiffness
    if(errmatinv) call IO_error(error_ID=400_pInt)
    temp99_Real = 0.0_pReal                                                                          ! build full compliance
     k = 0_pInt
@@ -500,12 +502,26 @@ function Utilities_maskedCompliance(rot_BC,mask_stressVector,C)
             j = j + 1_pInt
             temp99_Real(n,m) = s_reduced(k,j)
    endif; enddo; endif; enddo
+   sTimesC = matmul(c_reduced,s_reduced)
+   do m=1_pInt, size_reduced
+     do n=1_pInt, size_reduced
+       if(m==n .and. abs(sTimesC(m,n)) > (1.0_pReal + 10.0e-12_pReal)) errmatinv = .true.
+       if(m/=n .and. abs(sTimesC(m,n)) > (0.0_pReal + 10.0e-12_pReal)) errmatinv = .true.
+     enddo
+   enddo
+   if(debugGeneral .or. errmatinv) then
+     write(formatString, '(I16.16)') size_reduced
+     formatString = '(a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
+     write(6,trim(formatString),advance='no') 'C * S', transpose(matmul(c_reduced,s_reduced))
+     write(6,trim(formatString),advance='no') 'S', transpose(s_reduced)
+   endif
+   if(errmatinv) call IO_error(error_ID=400_pInt)
    deallocate(c_reduced)
    deallocate(s_reduced)
+   deallocate(sTimesC)
  else
    temp99_real = 0.0_pReal
  endif
-
  Utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
 
 end function Utilities_maskedCompliance 
@@ -520,7 +536,6 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   use FEsolving, only: restartWrite
   
   implicit none
-  
   real(pReal), dimension(res(1),res(2),res(3)) :: temperature
   real(pReal), dimension(res(1),res(2),res(3),3) :: coordinates
   
@@ -578,9 +593,8 @@ end subroutine Utilities_constitutiveResponse
 
 
 subroutine Utilities_forwardField(delta_aim,timeinc,timeinc_old,guessmode,field_lastInc,field)
- 
+ implicit none
  real(pReal), intent(in), dimension(3,3) :: delta_aim
-
  real(pReal), intent(in) :: timeinc, timeinc_old, guessmode
  real(pReal), intent(inout), dimension(3,3,res(1),res(2),res(3)) :: field_lastInc,field
  
@@ -620,7 +634,6 @@ end function Utilities_getFilter
 subroutine Utilities_destroy()
 
   implicit none
-  
   if (debugDivergence) call fftw_destroy_plan(plan_divergence)
   
   if (debugFFTW) then

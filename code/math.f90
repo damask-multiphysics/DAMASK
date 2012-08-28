@@ -184,8 +184,7 @@ real(pReal), dimension(4,36), parameter, private :: &
 #endif
             
  private :: math_partition, &
-            math_delta, &
-            Gauss
+            math_delta
  
 contains
 
@@ -286,7 +285,6 @@ subroutine math_init
 
 end subroutine math_init
  
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Quicksort algorithm for two-dimensional integer arrays
@@ -919,188 +917,42 @@ function math_invSym3333(A)
 
 end function math_invSym3333
 
-!--------------------------------------------------------------------------------------------------
-!> @brief  Gauss elimination to invert matrix of arbitrary dimension
-!--------------------------------------------------------------------------------------------------
-pure subroutine math_invert(dimen,A, InvA, AnzNegEW, error)
 
-!   Invertieren einer dimen x dimen - Matrix
-!   A        = Matrix A
-!   InvA     = Inverse of A
-!   AnzNegEW = Number of negative Eigenvalues of A
-!   error      = false: Inversion done.
-!              = true:  Inversion stopped in SymGauss because of dimishing
-!                       Pivotelement
+!--------------------------------------------------------------------------------------------------
+!> @brief invert matrix of arbitrary dimension
+!--------------------------------------------------------------------------------------------------
+subroutine math_invert(myDim,A, InvA, error)
 
  implicit none
 
- integer(pInt), intent(in) :: dimen
- real(pReal), dimension(dimen,dimen), intent(in)  :: A
- real(pReal), dimension(dimen,dimen), intent(out) :: InvA
- integer(pInt), intent(out) :: AnzNegEW
+ integer(pInt), intent(in)  :: myDim
+ real(pReal), dimension(myDim,myDim), intent(in)  :: A
+
+
+ integer(pInt) :: ierr
+ integer(pInt), dimension(myDim)       :: ipiv
+ real(pReal),   dimension(myDim)       :: work
+ 
+ real(pReal), dimension(myDim,myDim), intent(out) :: invA
  logical, intent(out) :: error
- real(pReal) :: LogAbsDetA
- real(pReal), dimension(dimen,dimen) :: B
-
- InvA = math_identity2nd(dimen)
- B = A
- CALL Gauss(dimen,B,InvA,LogAbsDetA,AnzNegEW,error)
-
+ 
+ invA = A 
+#if(FLOAT==8)
+ call dgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
+ call dgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
+#elif(FLOAT==4)
+ call sgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
+ call sgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
+#else
+ NO SUITABLE PRECISION SELECTED, COMPILATION ABORTED
+#endif
+ if (ierr == 0_pInt) then 
+   error = .false.
+ else
+   error = .true.
+ endif
+ 
 end subroutine math_invert
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Solves a linear EQS  A * X = B with the GAUSS-Algorithm
-!  For numerical stabilization using a pivot search in rows and columns
-!--------------------------------------------------------------------------------------------------
-pure subroutine Gauss (dimen,A,B,LogAbsDetA,NegHDK,error)
-
-!   input parameters
-!   A(dimen,dimen) = matrix A
-!   B(dimen,dimen) = right side B
-!
-!   output parameters
-!   B(dimen,dimen) = Matrix containing unknown vectors X
-!   LogAbsDetA    = 10-Logarithm of absolute value of determinatns of A
-!   NegHDK        = Number of negative Maindiagonal coefficients resulting 
-!                   Vorwaertszerlegung
-!   error           = false: EQS is solved
-!                   = true : Matrix A is singular.
-!
-!   A and B will be changed!
-
- implicit none
-
-
- logical, intent(out) :: error
- integer(pInt), intent(in) :: dimen
- integer(pInt), intent(out) :: NegHDK
- real(pReal), intent(out) :: LogAbsDetA
- real(pReal), intent(inout), dimension(dimen,dimen) ::  A, B
- logical :: SortX
- integer(pInt) :: PivotZeile, PivotSpalte, StoreI, I, IP1, J, K, L
- integer(pInt), dimension(dimen) :: XNr
- real(pReal) :: AbsA, PivotWert, EpsAbs, Quote
- real(pReal), dimension(dimen) :: StoreA, StoreB
-
- error = .true.; NegHDK = 1_pInt; SortX = .false.
-
-!   Unbekanntennumerierung
-
- DO  I = 1_pInt, dimen
-    XNr(I) = I
- ENDDO
-
-!   Genauigkeitsschranke und Bestimmung des groessten Pivotelementes
-
- PivotWert   = ABS(A(1,1))
- PivotZeile  = 1_pInt
- PivotSpalte = 1_pInt
-
- do  I = 1_pInt, dimen; do  J = 1_pInt, dimen
-        AbsA = ABS(A(I,J))
-        IF (AbsA .GT. PivotWert) THEN
-            PivotWert   = AbsA
-            PivotZeile  = I
-            PivotSpalte = J
-        ENDIF
- enddo; enddo
-
- IF (PivotWert .LT. 0.0000001_pReal) RETURN   ! Pivotelement = 0?
-
- EpsAbs = PivotWert * 0.1_pReal ** PRECISION(1.0_pReal)
-
-!   V O R W A E R T S T R I A N G U L A T I O N
-
- DO  I = 1_pInt, dimen - 1_pInt
-!     Zeilentausch?
-    IF (PivotZeile .NE. I) THEN
-        StoreA(I:dimen)       = A(I,I:dimen)
-        A(I,I:dimen)          = A(PivotZeile,I:dimen)
-        A(PivotZeile,I:dimen) = StoreA(I:dimen)
-        StoreB(1:dimen)        = B(I,1:dimen)
-        B(I,1:dimen)           = B(PivotZeile,1:dimen)
-        B(PivotZeile,1:dimen)  = StoreB(1:dimen)
-        SortX                = .TRUE.
-    ENDIF
-!     Spaltentausch?
-    IF (PivotSpalte .NE. I) THEN
-        StoreA(1:dimen)        = A(1:dimen,I)
-        A(1:dimen,I)           = A(1:dimen,PivotSpalte)
-        A(1:dimen,PivotSpalte) = StoreA(1:dimen)
-        StoreI                = XNr(I)
-        XNr(I)                = XNr(PivotSpalte)
-        XNr(PivotSpalte)      = StoreI
-        SortX                 = .TRUE.
-    ENDIF
-!     Triangulation
-    DO  J = I + 1_pInt, dimen
-        Quote = A(J,I) / A(I,I)
-        DO  K = I + 1_pInt, dimen
-            A(J,K) = A(J,K) - Quote * A(I,K)
-        ENDDO
-        DO  K = 1_pInt, dimen
-            B(J,K) = B(J,K) - Quote * B(I,K)
-        ENDDO
-    ENDDO
-!     Bestimmung des groessten Pivotelementes
-    IP1         = I + 1_pInt
-    PivotWert   = ABS(A(IP1,IP1))
-    PivotZeile  = IP1
-    PivotSpalte = IP1
-    DO  J = IP1, dimen
-        DO  K = IP1, dimen
-            AbsA = ABS(A(J,K))
-            IF (AbsA .GT. PivotWert) THEN
-                PivotWert   = AbsA
-                PivotZeile  = J
-                PivotSpalte = K
-            ENDIF
-        ENDDO
-    ENDDO
-
-    IF (PivotWert .LT. EpsAbs) RETURN   ! Pivotelement = 0?
-
- ENDDO
-
-!   R U E C K W A E R T S A U F L O E S U N G
-
- DO  I = dimen, 1_pInt, -1_pInt
-    DO  L = 1_pInt, dimen
-        DO  J = I + 1_pInt, dimen
-            B(I,L) = B(I,L) - A(I,J) * B(J,L)
-        ENDDO
-        B(I,L) = B(I,L) / A(I,I)
-    ENDDO
- ENDDO
-
-!   Sortieren der Unbekanntenvektoren?
-
- IF (SortX) THEN
-    DO  L = 1_pInt, dimen
-        StoreA(1:dimen) = B(1:dimen,L)
-        DO  I = 1_pInt, dimen
-            J      = XNr(I)
-            B(J,L) = StoreA(I)
-        ENDDO
-    ENDDO
- ENDIF
-
-!   Determinante
-
- LogAbsDetA = 0.0_pReal
- NegHDK     = 0_pInt
-
- DO  I = 1_pInt, dimen
-    IF (A(I,I) .LT. 0.0_pReal) NegHDK = NegHDK + 1_pInt
-    AbsA       = ABS(A(I,I))
-    LogAbsDetA = LogAbsDetA + LOG10(AbsA)
- ENDDO
-
-
- error = .false.
-
-end subroutine Gauss
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1270,7 +1122,6 @@ pure function math_Plain9to33(v9)
  forall (i=1_pInt:9_pInt) math_Plain9to33(mapPlain(1,i),mapPlain(2,i)) = v9(i)
 
 end function math_Plain9to33
-
 
 
 !--------------------------------------------------------------------------------------------------
@@ -2110,7 +1961,11 @@ subroutine math_spectralDecompositionSym33(M,values,vectors,error)
  real(pReal), dimension((64+2)*3) :: work                          ! block size of 64 taken from http://www.netlib.org/lapack/double/dsyev.f
 
  vectors = M                                                       ! copy matrix to input (doubles as output) array
- call DSYEV('V','U',3,vectors,3,values,work,(64+2)*3,info)
+#if(FLOAT==8)
+ call dsyev('V','U',3,vectors,3,values,work,(64+2)*3,info)
+#elif(FLOAT==4)
+ call ssyev('V','U',3,vectors,3,values,work,(64+2)*3,info)
+#endif
  error = (info == 0_pInt)
 
 end subroutine

@@ -375,7 +375,7 @@ function homogenization_RGC_updateState(&
  integer(pInt), dimension (4) :: intFaceN,intFaceP,faceID
  integer(pInt), dimension (3) :: nGDim,iGr3N,iGr3P,stresLoc
  integer(pInt), dimension (2) :: residLoc
- integer(pInt) homID,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ival,ipert,iGrain,nGrain
+ integer(pInt) homID,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain
  real(pReal), dimension (3,3,homogenization_maxNgrains) :: R,pF,pR,D,pD
  real(pReal), dimension (3,homogenization_maxNgrains)   :: NN,pNN
  real(pReal), dimension (3)   :: normP,normN,mornP,mornN
@@ -740,7 +740,7 @@ function homogenization_RGC_updateState(&
 !* -------------------------------------------------------------------------------------------------------------
 !*** Computing the update of the state variable (relaxation vectors) using the Jacobian matrix
  allocate(jnverse(3_pInt*nIntFaceTot,3_pInt*nIntFaceTot)); jnverse = 0.0_pReal
- call math_invert(3_pInt*nIntFaceTot,jmatrix,jnverse,ival,error)             ! Compute the inverse of the overall Jacobian matrix
+ call math_invert(size(jmatrix,1),jmatrix,jnverse,error)                              ! Compute the inverse of the overall Jacobian matrix
  
 !* Debugging the inverse Jacobian matrix
  if (iand(debug_level(debug_homogenization), debug_levelExtensive) /= 0_pInt) then

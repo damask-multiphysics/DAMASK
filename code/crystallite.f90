@@ -666,7 +666,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
             if (crystallite_todo(g,i,e) &
                 .and. iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
                 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+                .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
               write(6,'(a,f12.8)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
                                      crystallite_subStep(g,i,e)
               write(6,*)
@@ -2771,49 +2771,50 @@ real(pReal), optional, intent(in) :: timeFraction                 ! fraction of 
 logical                             crystallite_integrateStress   ! flag indicating if integration suceeded
 
 !*** local variables ***!
-real(pReal), dimension(3,3)::       Fg_new, &                     ! deformation gradient at end of timestep
-                                    Fp_current, &                 ! plastic deformation gradient at start of timestep
-                                    Fp_new, &                     ! plastic deformation gradient at end of timestep
-                                    Fe_new, &                     ! elastic deformation gradient at end of timestep
-                                    invFp_new, &                  ! inverse of Fp_new
-                                    invFp_current, &              ! inverse of Fp_current
-                                    Lpguess, &                    ! current guess for plastic velocity gradient
-                                    Lpguess_old, &                ! known last good guess for plastic velocity gradient
-                                    Lp_constitutive, &            ! plastic velocity gradient resulting from constitutive law
-                                    residuum, &                   ! current residuum of plastic velocity gradient
-                                    residuum_old, &               ! last residuum of plastic velocity gradient
-                                    deltaLp, &                    ! direction of next guess
-                                    gradientR, &                  ! derivative of the residuum norm
-                                    Tstar,&                       ! 2nd Piola-Kirchhoff Stress
+real(pReal), dimension(3,3)::       Fg_new, &                                                       ! deformation gradient at end of timestep
+                                    Fp_current, &                                                   ! plastic deformation gradient at start of timestep
+                                    Fp_new, &                                                       ! plastic deformation gradient at end of timestep
+                                    Fe_new, &                                                       ! elastic deformation gradient at end of timestep
+                                    invFp_new, &                                                    ! inverse of Fp_new
+                                    invFp_current, &                                                ! inverse of Fp_current
+                                    Lpguess, &                                                      ! current guess for plastic velocity gradient
+                                    Lpguess_old, &                                                  ! known last good guess for plastic velocity gradient
+                                    Lp_constitutive, &                                              ! plastic velocity gradient resulting from constitutive law
+                                    residuum, &                                                     ! current residuum of plastic velocity gradient
+                                    residuum_old, &                                                 ! last residuum of plastic velocity gradient
+                                    deltaLp, &                                                      ! direction of next guess
+                                    gradientR, &                                                    ! derivative of the residuum norm
+                                    Tstar,&                                                         ! 2nd Piola-Kirchhoff Stress
                                     A,&
                                     B, &
-                                    Fe                            ! elastic deformation gradient
-real(pReal), dimension(6)::         Tstar_v                       ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
-real(pReal), dimension(9,9)::       dLp_dT_constitutive, &        ! partial derivative of plastic velocity gradient calculated by constitutive law
-                                    dT_dFe_constitutive, &        ! partial derivative of 2nd Piola-Kirchhoff stress calculated by constitutive law
-                                    dFe_dLp, &                    ! partial derivative of elastic deformation gradient
-                                    dR_dLp, &                     ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
-                                    inv_dR_dLp                    ! inverse of dRdLp
-real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                 ! partial derivative of 2nd Piola-Kirchhoff stress
-                                    dFe_dLp3333                   ! partial derivative of elastic deformation gradient
-real(pReal)                         p_hydro, &                    ! volumetric part of 2nd Piola-Kirchhoff Stress
-                                    det, &                        ! determinant
+                                    Fe                                                              ! elastic deformation gradient
+real(pReal), dimension(6)::         Tstar_v                                                         ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
+real(pReal), dimension(9)::         work                                                            ! needed for matrix inversion by LAPACK
+integer(pInt), dimension(9) ::      ipiv                                                            ! needed for matrix inversion by LAPACK
+real(pReal), dimension(9,9) ::      dLp_dT_constitutive, &                                          ! partial derivative of plastic velocity gradient calculated by constitutive law
+                                    dT_dFe_constitutive, &                                          ! partial derivative of 2nd Piola-Kirchhoff stress calculated by constitutive law
+                                    dFe_dLp, &                                                      ! partial derivative of elastic deformation gradient
+                                    dR_dLp, &                                                       ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
+                                    inv_dR_dLp                                                      ! inverse of dRdLp
+real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
+                                    dFe_dLp3333                                                     ! partial derivative of elastic deformation gradient
+real(pReal)                         p_hydro, &                                                      ! volumetric part of 2nd Piola-Kirchhoff Stress
+                                    det, &                                                          ! determinant
                                     expectedImprovement, &
                                     steplength0, & 
                                     steplength, & 
                                     steplength_max, & 
                                     dt, &                         ! time increment
                                     aTol
-logical                             error                         ! flag indicating an error
-integer(pInt)                       NiterationStress, &           ! number of stress integrations
-                                    dummy, &
+logical                             error                                                           ! flag indicating an error
+integer(pInt)                       NiterationStress, &                                             ! number of stress integrations
                                     k, &
                                     l, &
                                     m, &
                                     n, &
                                     o, &
                                     p, &
-                                    jacoCounter                   ! counter to check for Jacobian update
+                                    jacoCounter                                                     ! counter to check for Jacobian update
 integer(pLongInt)                   tick, &
                                     tock, &
                                     tickrate, &
@@ -2893,7 +2894,7 @@ LpLoop: do
 #endif
     return
   endif
-  
+   
 
   !* calculate 2nd Piola-Kirchhoff stress tensor
 
@@ -3025,15 +3026,23 @@ LpLoop: do
   if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
     dFe_dLp3333 = 0.0_pReal
     do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-      dFe_dLp3333(p,o,1:3,p) = A(o,1:3)                                ! dFe_dLp(i,j,k,l) = -dt * A(i,k) delta(j,l)
+      dFe_dLp3333(p,o,1:3,p) = A(o,1:3)                                                            ! dFe_dLp(i,j,k,l) = -dt * A(i,k) delta(j,l)
     enddo; enddo
     dFe_dLp3333 = -dt * dFe_dLp3333
     dFe_dLp = math_Plain3333to99(dFe_dLp3333)
     dT_dFe_constitutive = math_Plain3333to99(dT_dFe3333)
     dR_dLp = math_identity2nd(9_pInt) - &
-             math_mul99x99(dLp_dT_constitutive, math_mul99x99(dT_dFe_constitutive , dFe_dLp))
-    inv_dR_dLp = 0.0_pReal
-    call math_invert(9_pInt,dR_dLp,inv_dR_dLp,dummy,error)             ! invert dR/dLp --> dLp/dR
+             math_mul99x99(dLp_dT_constitutive, math_mul99x99(dT_dFe_constitutive , dFe_dLp))    
+    inv_dR_dLp = dR_dLp                                                                             ! will be changed in first call to LAPACK
+#if(FLOAT==8)
+    call dgetrf(9,9,inv_dR_dLp,9,ipiv,error)                                                        ! invert dR/dLp --> dLp/dR
+    call dgetri(9,inv_dR_dLp,9,ipiv,work,9,error)
+#elif(FLOAT==4)
+    call sgetrf(9,9,inv_dR_dLp,9,ipiv,error)                                                        ! invert dR/dLp --> dLp/dR
+    call sgetri(9,inv_dR_dLp,9,ipiv,work,9,error)
+#else
+    NO SUITABLE PRECISION SELECTED, COMPILATION ABORTED
+#endif
     if (error) then
 #ifndef _OPENMP
       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
