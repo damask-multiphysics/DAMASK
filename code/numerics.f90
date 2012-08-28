@@ -112,11 +112,11 @@ subroutine numerics_init
                                              IO_floatValue, &
                                              IO_intValue, &
                                              IO_warning
-#ifndef Marc                                                                                        ! Use the standard conforming module file for omp if not using Marc
+#ifdef Spectral                                                                                     ! Use the standard conforming module file for omp if using the spectral solver
 !$ use OMP_LIB, only: omp_set_num_threads
 #endif
  implicit none
-#ifdef Marc                                                                                         ! use the non F90 standard include file because some versions of Marc crash when using the module
+#ifndef Spectral                                                                                   ! use the non F90 standard include file because some versions of Marc and Abaqus crash when using the module
 !$ include "omp_lib.h"
 #endif
  integer(pInt), parameter ::                 fileunit = 300_pInt ,&
