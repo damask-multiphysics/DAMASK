@@ -26,7 +26,7 @@
 !> @brief setting precision for real and int type depending on makros "FLOAT" and "INT"
 !--------------------------------------------------------------------------------------------------
 #ifdef __INTEL_COMPILER
-#if __INTEL_COMPILER<1100
+#if __INTEL_COMPILER<1200
 #define LEGACY_COMPILER
 #endif
 #endif
@@ -45,7 +45,7 @@ module prec
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7F800001', pReal)                            !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
 #endif
 #elif (FLOAT==8)
- integer,     parameter, public :: pReal     =  8                                                   !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
+ integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
 #ifdef LEGACY_COMPILER
  real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
 #else
