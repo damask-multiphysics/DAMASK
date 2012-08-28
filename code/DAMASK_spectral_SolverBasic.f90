@@ -5,6 +5,8 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Basic scheme solver
+!> @details this solver follows closely the original large strain formulation presented by
+!> Suquet. The iterative procedure is solved using a fix-point iteration
 !--------------------------------------------------------------------------------------------------
 module DAMASK_spectral_SolverBasic
  use prec, only: & 
@@ -35,7 +37,7 @@ module DAMASK_spectral_SolverBasic
  real(pReal), private,dimension(3,3,3,3) :: &
    C = 0.0_pReal
  
- contains
+contains
  
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
@@ -76,7 +78,7 @@ subroutine basic_init()
 #include "compilation_info.f90"
  write(6,'(a)') ''
   
-   
+
  allocate (F          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (F_lastInc  (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (P          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)

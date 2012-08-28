@@ -242,10 +242,6 @@ subroutine numerics_init
              err_stress_tolrel = IO_floatValue(line,positions,2_pInt)
        case ('err_stress_tolabs')
              err_stress_tolabs = IO_floatValue(line,positions,2_pInt)
-       case ('err_f_tol')
-             err_f_tol = IO_floatValue(line,positions,2_pInt)
-       case ('err_p_tol')
-             err_p_tol = IO_floatValue(line,positions,2_pInt)
        case ('itmax')
              itmax = IO_intValue(line,positions,2_pInt)
        case ('itmin')
@@ -256,23 +252,34 @@ subroutine numerics_init
              fftw_timelimit = IO_floatValue(line,positions,2_pInt)
        case ('fftw_plan_mode')
              fftw_plan_mode = IO_stringValue(line,positions,2_pInt)
-       case ('myspectralsolver')
-             myspectralsolver = IO_stringValue(line,positions,2_pInt)
        case ('myfilter')
              myfilter = IO_stringValue(line,positions,2_pInt)
-       case ('petsc_options')
-             petsc_options = trim(line(positions(4):))
        case ('rotation_tol')
              rotation_tol = IO_floatValue(line,positions,2_pInt)
        case ('divergence_correction')
              divergence_correction = IO_intValue(line,positions,2_pInt)  > 0_pInt
        case ('update_gamma')
              update_gamma = IO_intValue(line,positions,2_pInt)  > 0_pInt
+#ifdef PETSc
+       case ('petsc_options')
+             petsc_options = trim(line(positions(4):))
+       case ('myspectralsolver')
+             myspectralsolver = IO_stringValue(line,positions,2_pInt)
+       case ('err_f_tol')
+             err_f_tol = IO_floatValue(line,positions,2_pInt)
+       case ('err_p_tol')
+             err_p_tol = IO_floatValue(line,positions,2_pInt)
+#endif 
+#ifndef PETSc
+       case ('myspectralsolver', 'petsc_options','err_f_tol', 'err_p_tol')
+             call IO_warning(41_pInt,ext_msg=tag)
+#endif
 #endif
 #ifndef Spectral
       case ('err_div_tol','err_stress_tolrel','err_stress_tolabs',&
             'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode','myspectralsolver', &
-            'rotation_tol','divergence_correction','update_gamma','petsc_options','myfilter')
+            'rotation_tol','divergence_correction','update_gamma','petsc_options','myfilter', &
+            'err_f_tol', 'err_p_tol')
              call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default 
@@ -354,8 +361,7 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' err_div_tol:            ',err_div_tol
    write(6,'(a24,1x,es8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
    write(6,'(a24,1x,es8.1)')   ' err_stress_tolabs:      ',err_stress_tolabs
-   write(6,'(a24,1x,es8.1)')   ' err_f_tol:              ',err_f_tol
-   write(6,'(a24,1x,es8.1)')   ' err_p_tol:              ',err_p_tol
+
    write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
    write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
    write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
@@ -365,13 +371,18 @@ subroutine numerics_init
      write(6,'(a24,1x,es8.1)') ' fftw_timelimit:         ',fftw_timelimit
    endif
    write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
-   write(6,'(a24,1x,a)')       ' myspectralsolver:       ',trim(myspectralsolver)
+
    write(6,'(a24,1x,a)')       ' myfilter:               ',trim(myfilter)
-   write(6,'(a24,1x,a)')       ' PetSc_options:          ',trim(petsc_options)
    write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
    write(6,'(a24,1x,es8.1)')   ' rotation_tol:           ',rotation_tol
    write(6,'(a24,1x,L8,/)')    ' divergence_correction:  ',divergence_correction
    write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
+#ifdef PETSc
+   write(6,'(a24,1x,es8.1)')   ' err_f_tol:              ',err_f_tol
+   write(6,'(a24,1x,es8.1)')   ' err_p_tol:              ',err_p_tol
+   write(6,'(a24,1x,a)')       ' myspectralsolver:       ',trim(myspectralsolver)
+   write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
+#endif
 #endif
 
  !*  sanity check
@@ -425,6 +436,10 @@ subroutine numerics_init
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
+#ifdef PETSc
+ if (err_f_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_f_tol')
+ if (err_p_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_p_tol')
+#endif
 #endif
  if (fixedSeed <= 0_pInt) then
    write(6,'(a,/)') ' Random is random!'

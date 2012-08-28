@@ -99,7 +99,7 @@ LIB_DIRS  +=-L$(FFTWROOT)/lib
 ifeq "$(SOLVER)" "NEW"
 ifdef PETSC_DIR
 include ${PETSC_DIR}/conf/variables
-INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSC
+INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSc
 LIBRARIES    +=${PETSC_WITH_EXTERNAL_LIB}
 endif
 endif
@@ -277,15 +277,20 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math
                  constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o crystallite.o \
                  homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o 
 
+
 ifeq "$(SOLVER)" "NEW"
-COMPILED_FILES += DAMASK_spectral_Utilities.o DAMASK_spectral_SolverBasic.o DAMASK_spectral_SolverAL.o DAMASK_spectral_SolverBasicPETSC.o
+ifdef PETSC_DIR
+PETSC_FILES = DAMASK_spectral_SolverAL.o DAMASK_spectral_SolverBasicPETSC.o
+endif
+
+COMPILED_FILES += DAMASK_spectral_Utilities.o DAMASK_spectral_SolverBasic.o $(PETSC_FILES)
 
 DAMASK_spectral.exe: DAMASK_spectral_Driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_Driver.o \
   $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
 
-DAMASK_spectral_Driver.o: DAMASK_spectral_Driver.f90 DAMASK_spectral_SolverBasic.o DAMASK_spectral_SolverAL.o DAMASK_spectral_SolverBasicPETSC.o
+DAMASK_spectral_Driver.o: DAMASK_spectral_Driver.f90 DAMASK_spectral_SolverBasic.o $(PETSC_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_Driver.f90 $(SUFFIX)
 
 DAMASK_spectral_SolverAL.o:    DAMASK_spectral_SolverAL.f90\

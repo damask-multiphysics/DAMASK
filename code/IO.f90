@@ -1420,8 +1420,11 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
  case (890_pInt)
    msg = 'invalid input for regridding'
-
-
+ case (891_pInt)
+   msg = 'unknown solver type selected'
+ case (892_pInt)
+   msg = 'unknown filter type selected'
+   
  !* Error messages related to parsing of Abaqus input file
 
  case (900_pInt)
@@ -1501,6 +1504,8 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
    msg = 'could not get $DAMASK_NUM_THREADS'
  case (40_pInt)
    msg = 'Found Spectral solver parameter '
+ case (41_pInt)
+   msg = 'Found PETSc solver parameter '
  case (47_pInt)
    msg = 'No valid parameter for FFTW given, using FFTW_PATIENT'
  case (101_pInt)

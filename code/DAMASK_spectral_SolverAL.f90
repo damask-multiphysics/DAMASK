@@ -18,7 +18,6 @@ module DAMASK_spectral_SolverAL
    solutionState
  
  implicit none
-#ifdef PETSC
 #include <finclude/petscsys.h>
 #include <finclude/petscvec.h>
 #include <finclude/petscdmda.h>
@@ -30,7 +29,6 @@ module DAMASK_spectral_SolverAL
 #include <finclude/petscvec.h90>
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
-#endif
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverAL_label = 'AL'
@@ -80,7 +78,7 @@ module DAMASK_spectral_SolverAL
 !--------------------------------------------------------------------------------------------------
 subroutine AL_init()
   use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- 
+      
     use IO, only: &
       IO_read_JobBinaryFile, &
       IO_write_JobBinaryFile

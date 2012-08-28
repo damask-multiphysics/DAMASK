@@ -18,7 +18,6 @@ module DAMASK_spectral_SolverBasicPETSC
    solutionState
  
  implicit none
-#ifdef PETSC
 #include <finclude/petscsys.h>
 #include <finclude/petscvec.h>
 #include <finclude/petscdmda.h>
@@ -30,7 +29,6 @@ module DAMASK_spectral_SolverBasicPETSC
 #include <finclude/petscvec.h90>
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
-#endif
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasicPETSC_label = 'basicpetsc'

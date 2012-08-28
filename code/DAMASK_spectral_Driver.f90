@@ -61,8 +61,10 @@ program DAMASK_spectral_Driver
    debugGeneral
  
  use DAMASK_spectral_SolverBasic
+#ifdef PETSc
  use DAMASK_spectral_SolverBasicPETSC
  use DAMASK_spectral_SolverAL
+#endif
  
  implicit none
  
@@ -276,13 +278,17 @@ program DAMASK_spectral_Driver
    case (DAMASK_spectral_SolverBasic_label)
      call basic_init()
      
+#ifdef PETSc
    case (DAMASK_spectral_SolverBasicPETSC_label)
      call BasicPETSC_init()
      
    case (DAMASK_spectral_SolverAL_label)
      call AL_init()
-     
+#endif
+   case default
+      call IO_error(error_ID = 891, ext_msg = trim(myspectralsolver))
  end select 
+ 
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (appendToOutFile) then
@@ -352,7 +358,7 @@ program DAMASK_spectral_Driver
        write(6,'(a)') '##################################################################'
        write(6,'(A,I5.5,A,es12.5)') 'Increment ', totalIncsCounter, ' Time ',time
        
-       select case (myspectralsolver)
+       select case(myspectralsolver)
        
          case (DAMASK_spectral_SolverBasic_label)
            solres = basic_solution (&
@@ -361,7 +367,7 @@ program DAMASK_spectral_Driver
                 F_BC              = loadCases(currentLoadCase)%deformation, &
                 temperature_bc    = loadCases(currentLoadCase)%temperature, &
                 rotation_BC       = loadCases(currentLoadCase)%rotation)
-           
+#ifdef PETSc
           case (DAMASK_spectral_SolverBasicPETSC_label)
             solres = BasicPETSC_solution (&
                guessmode,timeinc,timeinc_old, &
@@ -377,7 +383,7 @@ program DAMASK_spectral_Driver
                 F_BC              = loadCases(currentLoadCase)%deformation, &
                 temperature_bc    = loadCases(currentLoadCase)%temperature, &
                 rotation_BC       = loadCases(currentLoadCase)%rotation)
-           
+#endif
        end select 
  
        write(6,'(a)') ''
@@ -406,13 +412,13 @@ program DAMASK_spectral_Driver
  
    case (DAMASK_spectral_SolverBasic_label)
      call basic_destroy()
-     
+#ifdef PETSc
    case (DAMASK_spectral_SolverBasicPETSC_label)
      call BasicPETSC_destroy()
      
    case (DAMASK_spectral_SolverAL_label)
      call AL_destroy()
-     
+#endif 
  end select
  
  write(6,'(a)') ''

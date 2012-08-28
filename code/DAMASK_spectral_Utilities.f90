@@ -627,6 +627,9 @@ real(pReal) function Utilities_getFilter(k)
                            *(1.0_pReal + cos(pi*k(2)/res(2))) &
                            *(1.0_pReal + cos(pi*k(1)/res(1)))/8.0_pReal
     
+    case default
+      call IO_error(error_ID = 892_pInt, ext_msg = trim(myfilter))
+    
   end select 
 
 end function Utilities_getFilter
