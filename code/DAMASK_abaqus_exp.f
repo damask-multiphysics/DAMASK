@@ -37,8 +37,17 @@
 !
 !********************************************************************
 
-#include "prec.f90"
+#ifndef INT
+#define INT 4
+#endif
+
+#ifndef FLOAT
+#define FLOAT 8
+#endif
+
 #define Abaqus
+
+#include "prec.f90"
 
 module DAMASK_interface
 
@@ -134,7 +143,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
            stressNew(*), stateNew(*), &
            enerInternNew(*), enerInelasNew(*)
 
- character*80 cmname
+ character(80) cmname
 
 
  call vumatXtrArg ( jblock(1), &
@@ -193,7 +202,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
  dimension enerInelasNew(nblock),stateNew(nblock,nstatev),enerInternNew(nblock)
  dimension nElement(nblock),nMatPoint(nblock)
 
- character*80 cmname
+ character(80) cmname
  real(pReal), dimension (3,3) :: pstress                ! not used, but needed for call of cpfem_general
  real(pReal), dimension (3,3,3,3) :: dPdF               ! not used, but needed for call of cpfem_general
 ! local variables
@@ -213,7 +222,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
-         write(6,'(i8,x,i2,x,a)') nElement(n),nMatPoint(n),'first call special case..!'; call flush(6)
+         write(6,'(i8,1x,i2,1x,a)') nElement(n),nMatPoint(n),'first call special case..!'; call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
 
@@ -222,7 +231,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
-         write (6,'(i8,x,i2,x,a)') nElement(n),nMatPoint(n),'lastIncConverged + outdated'; call flush(6)
+         write (6,'(i8,1x,i2,1x,a)') nElement(n),nMatPoint(n),'lastIncConverged + outdated'; call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
 
@@ -244,7 +253,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
    if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
      !$OMP CRITICAL (write2out)
-       write(6,'(a16,x,i2,x,a,i8,x,i5,a)') 'computationMode',computationMode,'(',nElement(n),nMatPoint(n),')'; call flush(6)
+       write(6,'(a16,1x,i2,1x,a,i8,1x,i5,a)') 'computationMode',computationMode,'(',nElement(n),nMatPoint(n),')'; call flush(6)
      !$OMP END CRITICAL (write2out)
    endif
   

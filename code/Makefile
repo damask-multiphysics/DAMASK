@@ -194,12 +194,7 @@ endif
 #   pointers:                Checking for certain disassociated or uninitialized pointers or unallocated allocatable objects.
 #   uninit:                  Checking for uninitialized variables.
 #-heap-arrays:            should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
-#
-#OPTIONS FOR TYPE DEBUGGING
-#-real-size 32:           set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
-#-integer-size 16:        set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
 ###################################################################################################
-
 
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
@@ -263,14 +258,18 @@ endif
 #
 #OPTIONS FOR DEGUBBING DURING RUNTIME
 #-fcheck-bounds:              check if an array index is too small (<1) or too large!
-#
-#OPTIONS FOR TYPE DEBUGGING
-#-fdefault-real-8:           set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
-#-fdefault-integer-8:        set precision to 8 bytes for standard integer (=4 for pInt)
 ##################################################################################################
 
-COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) -DSpectral
-COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) -DSpectral
+PRECISION_ifort :=-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4
+#-real-size 32:           set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
+#-integer-size 16:        set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
+PRECISION_gfortran :=-fdefault-real-8 -fdefault-integer-4 -DFLOAT=8 -DINT=4
+#-fdefault-real-8:           set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
+#-fdefault-integer-8:        set precision to 8 bytes for standard integer (=4 for pInt)
+
+###################################################################################################
+COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
+COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
 ###################################################################################################
 COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \

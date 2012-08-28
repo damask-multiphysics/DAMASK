@@ -1,7 +1,7 @@
 ! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the D√ºsseldorf Advanced MAterial Simulation Kit.
+! the Düsseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -54,9 +54,18 @@
 !             - concom: lovl, ncycle, inc, incsub
 !             - creeps: timinc
 !********************************************************************
-!
-#include "prec.f90"
+
+#ifndef INT
+#define INT 4
+#endif
+
+#ifndef FLOAT
+#define FLOAT 8
+#endif
+
 #define Marc
+
+#include "prec.f90"
 
 module DAMASK_interface
  use prec, only: pInt

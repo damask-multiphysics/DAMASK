@@ -37,9 +37,17 @@
 !
 !********************************************************************
 
-#include "prec.f90"
+#ifndef INT
+#define INT 4
+#endif
+
+#ifndef FLOAT
+#define FLOAT 8
+#endif
+
 #define Abaqus
 
+#include "prec.f90"
 
 module DAMASK_interface
 
@@ -146,7 +154,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
 
  implicit none
- CHARACTER*80 CMNAME
+ CHARACTER(80) CMNAME
  integer(pInt) ndi, nshr, ntens, nstatv, nprops, noel, npt,&
                kslay, kspt, kstep, kinc
  real(pReal) STRESS(NTENS),STATEV(NSTATV),&
@@ -185,7 +193,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         lastMode = .false.                                               ! pretend last step was collection
         calcMode = .false.                                               ! pretend last step was collection
         !$OMP CRITICAL (write2out)
-        write (6,'(i8,x,i2,x,a)') noel,npt,'<< UMAT >> start of analysis..!'; call flush(6)
+        write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> start of analysis..!'; call flush(6)
         !$OMP END CRITICAL (write2out)
     else if (kinc - theInc > 1) then                                     ! >> restart of broken analysis <<
         lastIncConverged = .false.                                       ! no Jacobian backup
@@ -193,7 +201,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         lastMode = .true.                                                ! pretend last step was calculation
         calcMode = .true.                                                ! pretend last step was calculation
         !$OMP CRITICAL (write2out)
-        write (6,'(i8,x,i2,x,a)') noel,npt,'<< UMAT >> restart of analysis..!'; call flush(6)
+        write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> restart of analysis..!'; call flush(6)
         !$OMP END CRITICAL (write2out)
     else                                                                 ! >> just the next inc <<
         lastIncConverged = .true.                                        ! request Jacobian backup
@@ -201,7 +209,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         lastMode = .true.                                                ! assure last step was calculation
         calcMode = .true.                                                ! assure last step was calculation
         !$OMP CRITICAL (write2out)
-        write (6,'(i8,x,i2,x,a)') noel,npt,'<< UMAT >> new increment..!'; call flush(6)
+        write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> new increment..!'; call flush(6)
         !$OMP END CRITICAL (write2out)
     endif
     
@@ -212,7 +220,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
     cycleCounter = -1                                                   ! first calc step increments this to cycle = 0
     calcMode = .true.                                                   ! pretend last step was calculation
     !$OMP CRITICAL (write2out)
-    write(6,'(i8,x,i2,x,a)') noel,npt,'<< UMAT >> cutback detected..!'; call flush(6)
+    write(6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> cutback detected..!'; call flush(6)
     !$OMP END CRITICAL (write2out)
 
  endif                                                                  ! convergence treatment end
@@ -220,7 +228,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                        ! ping pong (calc <--> collect)
 
  if ( calcMode(npt,cp_en) ) then                                        ! now calc
-    if ( lastMode /= calcMode(npt,cp_en) ) then                         ! first after ping pong
+    if ( lastMode .neqv. calcMode(npt,cp_en) ) then                         ! first after ping pong
         call debug_reset()                                              ! resets debugging
         outdatedFFN1 = .false.
         cycleCounter = cycleCounter + 1
@@ -232,7 +240,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         computationMode = 2                                                ! plain calc
     endif
  else                                                                  ! now collect
-    if ( lastMode /= calcMode(npt,cp_en) .and. &
+    if ( lastMode .neqv. calcMode(npt,cp_en) .and. &
          .not. terminallyIll) then
         call debug_info()                                              ! first after ping pong reports debugging
     endif
@@ -254,7 +262,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
    !$OMP CRITICAL (write2out)
-     write(6,'(a16,x,i2,x,a,i8,a,i8,x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
+     write(6,'(a16,1x,i2,1x,a,i8,a,i8,1x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
    !$OMP END CRITICAL (write2out)
  endif
    
