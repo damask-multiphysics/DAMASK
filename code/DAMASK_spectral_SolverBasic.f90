@@ -169,7 +169,8 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
    Utilities_constitutiveResponse
      
  use FEsolving, only: &
-   restartWrite
+   restartWrite, &
+   terminallyIll
  
  implicit none
 !--------------------------------------------------------------------------------------------------
@@ -248,6 +249,7 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
 ! evaluate constitutive response
    call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,timeinc,&
                                  P,C,P_av,ForwardData,rotation_BC)
+   basic_solution%termIll = terminallyIll
    ForwardData = .False.
    
 !--------------------------------------------------------------------------------------------------
@@ -267,7 +269,7 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
    call Utilities_backwardFFT()
    F = F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(F),order=[3,4,5,1,2])                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
    basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)
-   if (basic_solution%converged .and. iter > itmin) exit  
+   if ((basic_solution%converged .and. iter > itmin) .or. basic_solution%termIll) exit  
  enddo convergenceLoop
 
 end function basic_solution

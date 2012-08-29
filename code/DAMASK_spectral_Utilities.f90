@@ -56,7 +56,7 @@ module DAMASK_spectral_Utilities
  type solutionState 
    logical ::        converged       = .false.   
    logical ::        regrid          = .false.   
-   logical ::        term_ill        = .false.   
+   logical ::        termIll         = .false.   
  end type solutionState
 
  type boundaryCondition
