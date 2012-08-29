@@ -282,7 +282,7 @@ subroutine constitutive_j2_init(myFile)
      end select
   
      if (mySize > 0_pInt) then                               ! any meaningful output found
-       constitutive_j2_sizePostResult(j,i) = mySize
+       constitutive_j2_sizePostResult(o,i) = mySize
        constitutive_j2_sizePostResults(i) = &
        constitutive_j2_sizePostResults(i) + mySize
      endif
