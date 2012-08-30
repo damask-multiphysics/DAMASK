@@ -47,7 +47,8 @@ subroutine basic_init()
  
  use IO, only: &
    IO_read_JobBinaryFile, &
-   IO_write_JobBinaryFile
+   IO_write_JobBinaryFile, &
+   IO_intOut
  
  use FEsolving, only: &
    restartInc
@@ -95,8 +96,8 @@ subroutine basic_init()
                             - geomdim/real(2_pInt*res,pReal)
    enddo; enddo; enddo
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
-   if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
-                                               restartInc - 1_pInt,' from file' 
+   if (debugRestart) write(6,'(a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+                             'Reading values of increment', restartInc - 1_pInt, 'from file' 
    call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
                                                   trim(getSolverJobName()),size(F))
    read (777,rec=1) F
@@ -154,8 +155,9 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
    geomdim, &
    deformed_fft
  use IO, only: &
-   IO_write_JobBinaryFile
-   
+   IO_write_JobBinaryFile, &
+   IO_intOut
+
  use DAMASK_spectral_Utilities, only: &
    boundaryCondition, &
    field_real, &
@@ -240,7 +242,7 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
 ! report begin of new iteration
    write(6,'(a)') ''
    write(6,'(a)') '=================================================================='
-   write(6,'(3(a,i6.6))') ' Iter. ',itmin,' < ',iter,' < ',itmax + 1_pInt
+   write(6,'(3(a,'//IO_intOut(itmax)//'))') ' Iter.', itmin, '<',iter, '<', itmax + 1_pInt
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
                                                                         math_transpose33(F_aim)
    F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
@@ -279,7 +281,6 @@ end function basic_solution
 !> @brief convergence check for basic scheme based on div of P and deviation from stress aim
 !--------------------------------------------------------------------------------------------------
 logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
-
  use numerics, only: &
    itmin, &
    err_div_tol, &
@@ -292,7 +293,6 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
    math_transpose33
     
  implicit none
-  
  real(pReal), dimension(3,3), intent(in) :: &
    pAvgDiv,&
    pAvgStress

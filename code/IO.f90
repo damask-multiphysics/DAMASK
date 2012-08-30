@@ -62,7 +62,8 @@ module IO
             IO_countContinuousIntValues, &
             IO_continuousIntValues, &
             IO_error, &
-            IO_warning
+            IO_warning, &
+            IO_intOut
 #ifndef Spectral
  public ::  IO_open_inputFile, &
             IO_open_logFile
@@ -1267,6 +1268,17 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 100 end function IO_continuousIntValues
 
 
+pure function IO_intOut(intToPrint)
+  implicit none
+  character(len=64) :: N_Digits
+  character(len=64) :: IO_intOut
+  integer(pInt), intent(in) :: intToPrint
+  
+  write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(intToPrint)),pInt)
+  IO_intOut = '1x,I'//trim(N_Digits)//'.'//trim(N_Digits)//',1x'
+
+end function IO_intOut
+
 !--------------------------------------------------------------------------------------------------
 !> @brief write error statements to standard out and terminate the Marc/spectral run with exit #9xxx
 !> in ABAQUS either time step is reduced or execution terminated
@@ -1384,8 +1396,6 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
 
  !* errors related to spectral solver
 
- case (808_pInt)
-   msg = 'precision not suitable for FFTW'
  case (809_pInt)
    msg = 'initializing FFTW'
  case (831_pInt)

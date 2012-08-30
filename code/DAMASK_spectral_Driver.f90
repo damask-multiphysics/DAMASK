@@ -31,7 +31,8 @@ program DAMASK_spectral_Driver
    IO_error, &
    IO_lc, &
    IO_read_jobBinaryFile, &
-   IO_write_jobBinaryFile
+   IO_write_jobBinaryFile, &
+   IO_intOut
       
  use math
  
@@ -390,9 +391,11 @@ program DAMASK_spectral_Driver
        write(6,'(a)') '=================================================================='
        if(solres%converged) then
          convergedCounter = convergedCounter + 1_pInt
-         write(6,'(A,I5.5,A)') 'increment ', totalIncsCounter, ' converged'
+         write(6,'(A,'//IO_intOut(totalIncsCounter)//',A)') &
+                                     'increment', totalIncsCounter, 'converged'
        else
-         write(6,'(A,I5.5,A)') 'increment ', totalIncsCounter, ' NOT converged'
+         write(6,'(A,'//IO_intOut(totalIncsCounter)//',A)') &
+                                     'increment', totalIncsCounter, 'NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
        endif
 

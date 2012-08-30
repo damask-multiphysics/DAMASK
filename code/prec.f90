@@ -38,6 +38,9 @@ module prec
  private 
 
 #if (FLOAT==4)
+#ifdef Spectral
+ SPECTRAL SOLVER DOES NOT SUPPORT SINGLE PRECISION, STOPING COMPILATION
+#endif
  integer,     parameter, public :: pReal = 4                                                        !< floating point single precition (was selected_real_kind(6,37), number with 6 significant digits, up to 1e+-37)
 #ifdef LEGACY_COMPILER
  real(pReal), parameter, public :: DAMASK_NaN = Z'7F800001'                                         !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
@@ -51,12 +54,16 @@ module prec
 #else
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000', pReal)                    !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
 #endif
+#else
+ NO SUITABLE PRECISION SELECTED, STOPING COMPILATION
 #endif
 
 #if (INT==4)
  integer,     parameter, public :: pInt  = 4                                                        !< integer representation 32 bit (was selected_int_kind(9), number with at least up to +- 1e9)
 #elif (INT==8)
  integer,     parameter, public :: pInt  = 8                                                        !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
+#else
+ NO SUITABLE PRECISION SELECTED, STOPING COMPILATION
 #endif
 
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)

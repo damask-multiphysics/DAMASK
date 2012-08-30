@@ -903,15 +903,20 @@ function math_invSym3333(A)
 
  real(pReal),dimension(3,3,3,3),intent(in) :: A
 
- integer(pInt) :: ierr1, ierr2
+ integer(pInt) :: ierr
  integer(pInt), dimension(6)   :: ipiv6
  real(pReal),   dimension(6,6) :: temp66_Real
  real(pReal),   dimension(6)   :: work6
 
  temp66_real = math_Mandel3333to66(A)
- call dgetrf(6,6,temp66_real,6,ipiv6,ierr1)
- call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr2)
- if (ierr1*ierr2 == 0_pInt) then
+#if(FLOAT==8)
+ call dgetrf(6,6,temp66_real,6,ipiv6,ierr)
+ call dgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
+#elif(FLOAT==4)
+ call sgetrf(6,6,temp66_real,6,ipiv6,ierr)
+ call sgetri(6,temp66_real,6,ipiv6,work6,6,ierr)
+#endif
+ if (ierr == 0_pInt) then
    math_invSym3333 = math_Mandel66to3333(temp66_real)
  else
    call IO_error(400_pInt, ext_msg = 'math_invSym3333')
@@ -945,8 +950,6 @@ subroutine math_invert(myDim,A, InvA, error)
 #elif(FLOAT==4)
  call sgetrf(myDim,myDim,invA,myDim,ipiv,ierr)
  call sgetri(myDim,InvA,myDim,ipiv,work,myDim,ierr)
-#else
- NO SUITABLE PRECISION SELECTED, COMPILATION ABORTED
 #endif
  if (ierr == 0_pInt) then 
    error = .false.
@@ -2770,7 +2773,6 @@ function math_curlFFT(geomdim,field)
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
 
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
  call fftw_set_timelimit(fftw_timelimit)
  field_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
  call c_f_pointer(field_fftw, field_real,   [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
@@ -2890,7 +2892,6 @@ function math_divergenceFFT(geomdim,field)
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
 
-if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
  call fftw_set_timelimit(fftw_timelimit)
  field_fftw = fftw_alloc_complex(int(res1_red*res(2)*res(3)*vec_tens*3_pInt,C_SIZE_T))              !C_SIZE_T is of type integer(8)
  call c_f_pointer(field_fftw, field_real,             [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
