@@ -125,6 +125,7 @@ constitutive_nonlocal_p, &                                           ! parameter
 constitutive_nonlocal_q, &                                           ! parameter for kinetic law (Kocks,Argon,Ashby)
 constitutive_nonlocal_viscosity, &                                   ! viscosity for dislocation glide in Pa s
 constitutive_nonlocal_fattack, &                                     ! attack frequency in Hz
+constitutive_nonlocal_vmax, &                                        ! maximum allowed velocity
 constitutive_nonlocal_rhoSglScatter, &                               ! standard deviation of scatter in initial dislocation density
 constitutive_nonlocal_surfaceTransmissivity, &                       ! transmissivity at free surface
 constitutive_nonlocal_grainboundaryTransmissivity, &                 ! transmissivity at grain boundary (identified by different texture)
@@ -330,6 +331,7 @@ allocate(constitutive_nonlocal_p(maxNinstance))
 allocate(constitutive_nonlocal_q(maxNinstance))
 allocate(constitutive_nonlocal_viscosity(maxNinstance))
 allocate(constitutive_nonlocal_fattack(maxNinstance))
+allocate(constitutive_nonlocal_vmax(maxNinstance))
 allocate(constitutive_nonlocal_rhoSglScatter(maxNinstance))
 allocate(constitutive_nonlocal_surfaceTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_grainboundaryTransmissivity(maxNinstance))
@@ -359,6 +361,7 @@ constitutive_nonlocal_p = 1.0_pReal
 constitutive_nonlocal_q = 1.0_pReal
 constitutive_nonlocal_viscosity = 0.0_pReal
 constitutive_nonlocal_fattack = 0.0_pReal
+constitutive_nonlocal_vmax = 0.0_pReal
 constitutive_nonlocal_rhoSglScatter = 0.0_pReal
 constitutive_nonlocal_surfaceTransmissivity = 1.0_pReal
 constitutive_nonlocal_grainboundaryTransmissivity = -1.0_pReal
@@ -501,6 +504,8 @@ do                                                                              
         constitutive_nonlocal_viscosity(i) = IO_floatValue(line,positions,2_pInt)
       case('attackfrequency','fattack')
         constitutive_nonlocal_fattack(i) = IO_floatValue(line,positions,2_pInt)
+      case('maximumvelocity','vmax')
+        constitutive_nonlocal_vmax(i) = IO_floatValue(line,positions,2_pInt)
       case('rhosglscatter')
         constitutive_nonlocal_rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
       case('surfacetransmissivity')
@@ -596,6 +601,8 @@ enddo
   if (constitutive_nonlocal_viscosity(i) <= 0.0_pReal)                  call IO_error(211_pInt,ext_msg='viscosity (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_fattack(i) <= 0.0_pReal)                    call IO_error(211_pInt,ext_msg='attackFrequency (' &
+                                                                             //constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_vmax(i) <= 0.0_pReal)                       call IO_error(211_pInt,ext_msg='maximumVelocity (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_rhoSglScatter(i) < 0.0_pReal)               call IO_error(211_pInt,ext_msg='rhoSglScatter (' &
                                                                              //constitutive_nonlocal_label//')')
@@ -1387,12 +1394,16 @@ if (Temperature > 0.0_pReal) then
       activationVolume_P = activationLength_P * jumpWidth_P * constitutive_nonlocal_burgers(s,instance)
       criticalStress_P = constitutive_nonlocal_peierlsStress(s,c,instance)
       activationEnergy_P = criticalStress_P * activationVolume_P
-      tauRel_P = tauEff(s) / criticalStress_P
+      tauRel_P = min(1.0_pReal, tauEff(s) / criticalStress_P)       ! ensure that the activation probability cannot become greater than one
       tPeierls = 1.0_pReal / constitutive_nonlocal_fattack(instance) &
                            * exp(activationEnergy_P / (kB * Temperature) * (1.0_pReal - tauRel_P**p)**q)
       if (present(dv_dtau)) then
-        dtPeierls_dtau = tPeierls * p * q * activationVolume_P / (kB * Temperature) &
-                                  * (1.0_pReal - tauRel_P**p)**(q-1.0_pReal) * tauRel_P**(p-1.0_pReal) 
+        if (tauEff(s) < criticalStress_P) then
+          dtPeierls_dtau = tPeierls * p * q * activationVolume_P / (kB * Temperature) &
+                                    * (1.0_pReal - tauRel_P**p)**(q-1.0_pReal) * tauRel_P**(p-1.0_pReal) 
+        else
+          dtPeierls_dtau = 0.0_pReal
+        endif
       endif
 
 
@@ -1406,12 +1417,16 @@ if (Temperature > 0.0_pReal) then
       activationVolume_S = activationLength_S * jumpWidth_S * constitutive_nonlocal_burgers(s,instance)
       activationEnergy_S = constitutive_nonlocal_solidSolutionEnergy(instance)
       criticalStress_S = activationEnergy_S / activationVolume_S
-      tauRel_S = tauEff(s) / criticalStress_S
+      tauRel_S = min(1.0_pReal, tauEff(s) / criticalStress_S)       ! ensure that the activation probability cannot become greater than one
       tSolidSolution = 1.0_pReal / constitutive_nonlocal_fattack(instance) &
                                  * exp(activationEnergy_S / (kB * Temperature) * (1.0_pReal - tauRel_S**p)**q)
       if (present(dv_dtau)) then
-        dtSolidSolution_dtau = tSolidSolution * p * q * activationVolume_S / (kB * Temperature) &
-                                              * (1.0_pReal - tauRel_S**p)**(q-1.0_pReal) * tauRel_S**(p-1.0_pReal) 
+        if (tauEff(s) < criticalStress_S) then
+          dtSolidSolution_dtau = tSolidSolution * p * q * activationVolume_S / (kB * Temperature) &
+                                                * (1.0_pReal - tauRel_S**p)**(q-1.0_pReal) * tauRel_S**(p-1.0_pReal) 
+        else
+          dtSolidSolution_dtau = 0.0_pReal
+        endif
       endif
 
 
@@ -1427,14 +1442,25 @@ if (Temperature > 0.0_pReal) then
       
       v(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
            * (1.0_pReal - exp(-tauEff(s) * activationVolume_P / (kB * Temperature)))
-      v(s) = sign(v(s),tau(s))
       if (present(dv_dtau)) then
         dv_dtau(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
-                   * (abs(v(s)) * (  dtPeierls_dtau / meanfreepath_P &
-                                   + dtSolidSolution_dtau / meanfreepath_S &
-                                   + 1.0_pReal / (mobility * tauEff(s)*tauEff(s))) &
+                   * (v(s) * (  dtPeierls_dtau / meanfreepath_P + dtSolidSolution_dtau / meanfreepath_S &
+                              + 1.0_pReal / (mobility * tauEff(s)*tauEff(s))) &
                       + activationVolume_P / (kB * Temperature) * exp(-tauEff(s) * activationVolume_P / (kB * Temperature)))
       endif
+
+      
+      !* relativistic correction
+
+      if (present(dv_dtau)) then
+        dv_dtau(s) = dv_dtau(s) * exp( -v(s) / constitutive_nonlocal_vmax(instance))
+      endif
+      v(s) = constitutive_nonlocal_vmax(instance) * (1.0_pReal - exp( -v(s) / constitutive_nonlocal_vmax(instance)))
+
+
+      !* adopt sign from resolved stress
+
+      v(s) = sign(v(s),tau(s))
 
     endif
   enddo
@@ -2244,8 +2270,7 @@ if (numerics_integrationMode == 1_pInt) then                                    
   constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,1:2,g,ip,el) = rhoDotSingle2DipoleGlide(1:ns,9:10)
   constitutive_nonlocal_rhoDotAthermalAnnihilation(1:ns,1:2,g,ip,el) = rhoDotAthermalAnnihilation(1:ns,9:10)
   constitutive_nonlocal_rhoDotThermalAnnihilation(1:ns,1:2,g,ip,el) = rhoDotThermalAnnihilation(1:ns,9:10)
-  constitutive_nonlocal_rhoDotEdgeJogs(1:ns,g,ip,el) = &
-           2.0_pReal * rhoDotThermalAnnihilation(constitutive_nonlocal_colinearSystem(1:ns,myInstance),1)
+  constitutive_nonlocal_rhoDotEdgeJogs(1:ns,g,ip,el) = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
 endif
 
 
@@ -2269,8 +2294,8 @@ endif
 #endif
 
 
-if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -constitutive_nonlocal_significantRho(myInstance)) &
-   .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < -constitutive_nonlocal_significantRho(myInstance))) then
+if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -constitutive_nonlocal_aTolRho(myInstance)) &
+   .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < -constitutive_nonlocal_aTolRho(myInstance))) then
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
