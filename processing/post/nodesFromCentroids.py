@@ -38,18 +38,21 @@ def index(location,res):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
-Calculates current coordinates and nodal displacement from IP/FP based deformation gradient.
+Calculates current nodal coordinates and nodal displacement from IP/FP based data.
 
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-c','--coordinates', dest='coords', type='string',\
-                                        help='column heading for coordinates [%default]')
-parser.add_option('-d','--defgrad',     dest='defgrad', type='string', \
-                                        help='heading of columns containing tensor field values')
+parser.add_option('-d','--deformed',   dest='deformedCentroids', type='string',\
+                                       help='column heading for position of deformed center of element/IP [%default]')
+parser.add_option('-u','--undeformed', dest='undeformedCentroids', type='string',\
+                                       help='column heading for position of undeformed center of element/IP [%default]')
+parser.add_option('-f','--defgrad',    dest='defgrad', type='string',\
+                                       help='column heading for position of deformation gradient [%default]')
 
-parser.set_defaults(coords  = 'ip')
-parser.set_defaults(defgrad = 'f' )
+parser.set_defaults(deformedCentroids    = 'ip_deformed')
+parser.set_defaults(undeformedCentroids  = 'ip')
+parser.set_defaults(defgrad              = 'f')
 
 (options,filenames) = parser.parse_args()
 
@@ -75,7 +78,7 @@ for file in files:
 
 # --------------- figure out dimension and resolution 
   try:
-    locationCol = table.labels.index('%s.x'%options.coords)                 # columns containing location data
+    locationCol = table.labels.index('%s.x'%options.undeformedCentroids)    # columns containing location data
   except ValueError:
     print 'no coordinate data found...'
     continue
@@ -108,37 +111,49 @@ for file in files:
   
 # --------------- figure out columns to process
 
+  key = '%s.x' %options.deformedCentroids
+  if key not in table.labels:
+    sys.stderr.write('column %s not found...\n'%key)
+  else:
+    columnDeformed = table.labels.index(key)
+  
+  key = '%s.x' %options.undeformedCentroids
+  if key not in table.labels:
+    sys.stderr.write('column %s not found...\n'%key)
+  else:
+    columnUndeformed = table.labels.index(key)  
+  
   key = '1_%s' %options.defgrad
   if key not in table.labels:
     sys.stderr.write('column %s not found...\n'%key)
   else:
-    column = table.labels.index(key)
-    
-
+    columnDefgrad = table.labels.index(key)
 # ------------------------------------------ read value field ---------------------------------------  
 
-  defgrad = numpy.array([0.0 for i in xrange(N*9)]).reshape(list(res)+[3,3])
+  deformedCentroids   = numpy.array([0.0 for i in xrange(N*3)]).reshape(list(res)+[3])
+  undeformedCentroids = numpy.array([0.0 for i in xrange(N*3)]).reshape(list(res)+[3])
+  defgrad             = numpy.array([0.0 for i in xrange(N*9)]).reshape(list(res)+[3,3])
 
   table.data_rewind()
   table.data_read()
-  inc = table.data[table.labels.index('inc')]
+  inc = int(eval(table.data[table.labels.index('inc')]))
 
   table.data_rewind()
   idx = 0
   while table.data_read():                                                  # read next data line of ASCII table
     (x,y,z) = location(idx,res)                                             # figure out (x,y,z) position from line count
     idx += 1
-    defgrad[x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
-
+    deformedCentroids[x,y,z]   = numpy.array(map(float,table.data[columnDeformed:columnDeformed+3]),'d')
+    undeformedCentroids[x,y,z] = numpy.array(map(float,table.data[columnUndeformed:columnUndeformed+3]),'d')
+    defgrad[x,y,z] = numpy.array(map(float,table.data[columnDefgrad:columnDefgrad+9]),'d').reshape(3,3)
 
   file['input'].close()                                                     # close input ASCII table
 
 
 # ------------------------------------------ process value field ----------------------------
-
-  defgrad_av = damask.core.math.tensorAvg(defgrad)
-  centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
-  nodes = damask.core.mesh.mesh_regular_grid(res,geomdim,defgrad_av,centroids)
+  defgrad_av = damask.core.math.math_tensorAvg(defgrad)
+  nodesDeformed   = damask.core.mesh.mesh_regular_grid(res,geomdim,defgrad_av,deformedCentroids)
+  nodesUndeformed = damask.core.mesh.mesh_regular_grid(res,geomdim,numpy.identity(3,'d'),undeformedCentroids)
 
 
 # ------------------------------------------ process data ---------------------------------------  
@@ -148,7 +163,7 @@ for file in files:
 
   table.labels_append('inc elem node ip grain ')   # extend ASCII header with new labels
   table.labels_append(['node.%s'%(coord) for coord in 'x','y','z'])   # extend ASCII header with new labels
-  table.labels_append(['Displacement %s'%(coord) for coord in 'X','Y','Z'])   # extend ASCII header with new labels
+  table.labels_append(['Displacement%s'%(coord) for coord in 'X','Y','Z'])   # extend ASCII header with new labels
   table.head_write()
 
   ielem = 0
@@ -156,7 +171,7 @@ for file in files:
     for y in xrange(res[1]+1):
       for x in xrange(res[0]+1):
         ielem +=1
-        entry = [inc,0,ielem,0,0,'\t'.join([str(a) for a in(nodes[x][y][z])]),'\t'.join([str(a) for a in (nodes[x][y][z] - (x,y,z)*(geomdim/res))])]
+        entry = [inc,0,ielem,0,0,'\t'.join([str(a) for a in(nodesUndeformed[x][y][z])]),'\t'.join([str(a) for a in (nodesUndeformed[x][y][z] - nodesDeformed[x][y][z])])]
         table.data_append(entry)
         table.data_write()                                                 # output processed line
         table.data_clear()

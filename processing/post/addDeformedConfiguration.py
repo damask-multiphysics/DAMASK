@@ -48,9 +48,12 @@ parser.add_option('-c','--coordinates', dest='coords', type='string',\
                                         help='column heading for coordinates [%default]')
 parser.add_option('-d','--defgrad',     dest='defgrad', type='string', \
                                         help='heading of columns containing tensor field values')
-
+parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',\
+                  help='use linear reconstruction of geometry [%default]')
+                  
 parser.set_defaults(coords  = 'ip')
 parser.set_defaults(defgrad = 'f' )
+parser.set_defaults(linearreconstruction = False)
 
 (options,filenames) = parser.parse_args()
 
@@ -115,7 +118,7 @@ for file in files:
     sys.stderr.write('column %s not found...\n'%key)
   else:
     defgrad = numpy.array([0.0 for i in xrange(N*9)]).reshape(list(res)+[3,3])
-    table.labels_append(['%s_deformed'%(coord) for coord in 'x','y','z'])   # extend ASCII header with new labels
+    table.labels_append(['ip_deformed.%s'%(coord) for coord in 'x','y','z'])   # extend ASCII header with new labels
     column = table.labels.index(key)
         
 # ------------------------------------------ assemble header ---------------------------------------  
@@ -134,8 +137,10 @@ for file in files:
 
     # ------------------------------------------ process value field ----------------------------
   defgrad_av = damask.core.math.tensorAvg(defgrad)
-  centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
-
+  if options.linearreconstruction:
+    centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
+  else:
+    centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
 # ------------------------------------------ process data ---------------------------------------  
 
   table.data_rewind()
