@@ -220,27 +220,29 @@ subroutine math_init
  if (allocated(randInit)) deallocate(randInit)
  allocate(randInit(randSize))
  if (fixedSeed > 0_pInt) then
-   randInit(1:randSize) = int(fixedSeed)                      ! fixedSeed is of type pInt, randInit not
+   randInit(1:randSize) = int(fixedSeed)                                                            ! fixedSeed is of type pInt, randInit not
    call random_seed(put=randInit)
  else
    call random_seed()
+   call random_seed(get = randInit)
+   randInit(2:randSize) = randInit(1)
+   call random_seed(put = randInit)
  endif
-
- call random_seed(get=randInit)
 
  do i = 1_pInt, 4_pInt
    call random_number(randTest(i))
  enddo
 
  !$OMP CRITICAL (write2out)
- write(6,*) 'value of random seed:    ', randInit(1)
  write(6,*) 'size of random seed:     ', randSize
+ do i =1, randSize
+   write(6,*) 'value of random seed:    ', i, randInit(i)
+ enddo
  write(6,'(a,4(/,26x,f17.14))') ' start of random sequence: ', randTest
  write(6,*) ''
  !$OMP END CRITICAL (write2out)
 
- call random_seed(put=randInit)
- call random_seed(get=randInit)
+ call random_seed(put = randInit)
 
  call halton_seed_set(int(randInit(1), pInt))
  call halton_ndim_set(3_pInt)
@@ -2157,64 +2159,6 @@ pure subroutine math_hi(M,HI1M,HI2M,HI3M)
 ! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
 
 end subroutine math_hi
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief GET_SEED returns a seed for the random number generator.
-!
-!  The seed depends on the current time, and ought to be (slightly)
-!  different every millisecond. Once the seed is obtained, a random
-!  number generator should be called a few times to further process
-!  the seed.
-!
-!  Parameters:
-!  Output, integer SEED, a pseudorandom seed value.
-!
-!  Modified: 27 June 2000
-!  Author:  John Burkardt
-!
-!  Modified: 29 April 2005
-!  Author: Franz Roters
-!--------------------------------------------------------------------------------------------------
-subroutine get_seed(seed)
- implicit none
-
- integer(pInt) :: seed
- real(pReal) ::  temp = 0.0_pReal
- character(len = 10) :: time
- character(len = 8) :: today
- integer(pInt) :: values(8)
- character(len = 5) :: zone
-
- call date_and_time (today, time, zone, values)
-
- temp = temp + real(values(2)- 1_pInt, pReal) / 11.0_pReal
- temp = temp + real(values(3)- 1_pInt, pReal) / 30.0_pReal
- temp = temp + real(values(5),         pReal) / 23.0_pReal
- temp = temp + real(values(6),         pReal) / 59.0_pReal
- temp = temp + real(values(7),         pReal) / 59.0_pReal
- temp = temp + real(values(8),         pReal) / 999.0_pReal
- temp = temp / 6.0_pReal
-
- if (temp <= 0.0_pReal) then
-   temp = 1.0_pReal / 3.0_pReal
- else if (1.0_pReal <= temp) then
-   temp = 2.0_pReal / 3.0_pReal
- end if
-
- seed = int(real(huge(1_pInt),pReal)*temp, pInt)
-!
-!  Never use a seed of 0 or maximum integer.
-!
- if (seed == 0_pInt) then
-   seed = 1_pInt
- end if
-
- if (seed == huge(1_pInt)) then
-   seed = seed -1_pInt
- end if
-
-end subroutine get_seed
 
 
 !--------------------------------------------------------------------------------------------------
