@@ -129,7 +129,8 @@ constitutive_nonlocal_vmax, &                                        ! maximum a
 constitutive_nonlocal_rhoSglScatter, &                               ! standard deviation of scatter in initial dislocation density
 constitutive_nonlocal_surfaceTransmissivity, &                       ! transmissivity at free surface
 constitutive_nonlocal_grainboundaryTransmissivity, &                 ! transmissivity at grain boundary (identified by different texture)
-constitutive_nonlocal_CFLfactor                                      ! safety factor for CFL flux condition
+constitutive_nonlocal_CFLfactor, &                                   ! safety factor for CFL flux condition
+constitutive_nonlocal_fEdgeMultiplication                            ! factor that determines how much edge dislocations contribute to multiplication (0...1)
 
 real(pReal), dimension(:,:), allocatable, private :: &
 constitutive_nonlocal_rhoSglEdgePos0, &                              ! initial edge_pos dislocation density per slip system for each family and instance
@@ -337,6 +338,7 @@ allocate(constitutive_nonlocal_surfaceTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_grainboundaryTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_shortRangeStressCorrection(maxNinstance))
 allocate(constitutive_nonlocal_CFLfactor(maxNinstance))
+allocate(constitutive_nonlocal_fEdgeMultiplication(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
 constitutive_nonlocal_C12 = 0.0_pReal
@@ -366,6 +368,7 @@ constitutive_nonlocal_rhoSglScatter = 0.0_pReal
 constitutive_nonlocal_surfaceTransmissivity = 1.0_pReal
 constitutive_nonlocal_grainboundaryTransmissivity = -1.0_pReal
 constitutive_nonlocal_CFLfactor = 2.0_pReal
+constitutive_nonlocal_fEdgeMultiplication = 0.0_pReal
 constitutive_nonlocal_shortRangeStressCorrection = .true.
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
@@ -514,6 +517,8 @@ do                                                                              
         constitutive_nonlocal_grainboundaryTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
       case('cflfactor')
         constitutive_nonlocal_CFLfactor(i) = IO_floatValue(line,positions,2_pInt)
+      case('fedgemultiplication','edgemultiplicationfactor','edgemultiplication')
+        constitutive_nonlocal_fEdgeMultiplication(i) = IO_floatValue(line,positions,2_pInt)
       case('shortrangestresscorrection')
         constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case default
@@ -612,6 +617,9 @@ enddo
   if (constitutive_nonlocal_grainboundaryTransmissivity(i) > 1.0_pReal) call IO_error(211_pInt,&
                                                          ext_msg='grainboundaryTransmissivity ('//constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_CFLfactor(i) < 0.0_pReal)                   call IO_error(211_pInt,ext_msg='CFLfactor (' &
+                                                                             //constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_fEdgeMultiplication(i) < 0.0_pReal .or. constitutive_nonlocal_fEdgeMultiplication(i) > 1.0_pReal) &
+                                                                       call IO_error(211_pInt,ext_msg='edgemultiplicationfactor ('&
                                                                              //constitutive_nonlocal_label//')')
   
   
@@ -1146,7 +1154,8 @@ forall (t = 5_pInt:8_pInt) &
   rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1_pInt)*ns+1_pInt:t*ns)
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
   rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)                                                        ! ensure positive dipole densities
-
+where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoSgl = 0.0_pReal
+where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoDip = 0.0_pReal
 
 
 !*** calculate the forest dislocation density
@@ -1509,6 +1518,7 @@ use material, only: homogenization_maxNgrains, &
                     phase_plasticityInstance
 use lattice,  only: lattice_Sslip, &
                     lattice_Sslip_v
+use mesh,     only: mesh_ipVolume
 
 implicit none
 
@@ -1568,6 +1578,7 @@ forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
 forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
   rhoSgl(s,t) = state%p((t-1_pInt)*ns+s)
 tauBack = state%p(12_pInt*ns+1:13_pInt*ns)
+where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoSgl = 0.0_pReal
 
 
 
@@ -1656,7 +1667,8 @@ use math,     only: pi, &
                     math_mul6x6
 use lattice,  only: lattice_Sslip_v
 use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips
+                    mesh_maxNips, &
+                    mesh_ipVolume
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_plasticityInstance
@@ -1733,6 +1745,8 @@ forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
 forall (c = 1_pInt:2_pInt) &
   dUpperOld(1_pInt:ns,c) = state(g,ip,el)%p((16_pInt+c)*ns+1_pInt:(17_pInt+c)*ns)
+where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoSgl = 0.0_pReal
+where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoDip = 0.0_pReal
 
 
 
@@ -1974,6 +1988,8 @@ tauThreshold = state(g,ip,el)%p(11_pInt*ns+1_pInt:12_pInt*ns)
 tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
 forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoSgl = 0.0_pReal
+where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoDip = 0.0_pReal
 
 
 
@@ -2027,10 +2043,9 @@ dUpper = max(dUpper,dLower)
 !*** calculate dislocation multiplication
 
 rhoDotMultiplication = 0.0_pReal
-rhoDotMultiplication(1:ns,1:2) = spread(0.5_pReal * sum(abs(gdot(1:ns,3:4)),2) * sqrt(rhoForest)  &
-                                                  / constitutive_nonlocal_lambda0(1:ns,myInstance) &
-                                                  / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 2)
-rhoDotMultiplication(1:ns,3:4) = rhoDotMultiplication(1:ns,1:2)
+rhoDotMultiplication(1:ns,1:4) = spread( &
+    (sum(abs(gdot(1:ns,1:2)),2) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(abs(gdot(1:ns,3:4)),2)) &
+  * sqrt(rhoForest) / constitutive_nonlocal_lambda0(1:ns,myInstance) / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 4)
 
 
 
@@ -2119,6 +2134,8 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
         neighboring_rhoSgl(1_pInt:ns,t) = max(state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
       forall (t = 5_pInt:8_pInt) &
         neighboring_rhoSgl(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
+      where (abs(neighboring_rhoSgl) * mesh_ipVolume(neighboring_ip,neighboring_el) ** 0.667_pReal < 1.0_pReal) &
+        neighboring_rhoSgl = 0.0_pReal
       normal_neighbor2me_defConf = math_det33(Favg) &
                   * math_mul33x3(math_inv33(transpose(Favg)), mesh_ipAreaNormal(1:3,neighboring_n,neighboring_ip,neighboring_el))   ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
       normal_neighbor2me = math_mul33x3(transpose(neighboring_Fe), normal_neighbor2me_defConf) / math_det33(neighboring_Fe)         ! interface normal in the lattice configuration of my neighbor
@@ -2416,12 +2433,12 @@ do n = 1_pInt,Nneighbors
   !* PHASE BOUNDARY
   !* If we encounter a different nonlocal "cpfem" phase at the neighbor, 
   !* we consider this to be a real "physical" phase boundary, so completely incompatible.
-  !* If the neighboring "cpfem" phase has a local plasticity, 
+  !* If one of the two "CPFEM" phases has a local plasticity law, 
   !* we do not consider this to be a phase boundary, so completely compatible.
   
   neighboring_phase = material_phase(1,neighboring_i,neighboring_e)
   if (neighboring_phase /= my_phase) then
-    if (.not. phase_localPlasticity(neighboring_phase)) then
+    if (.not. phase_localPlasticity(neighboring_phase) .and. .not. phase_localPlasticity(my_phase)) then
       forall(s1 = 1_pInt:ns) &
         compatibility(1:2,s1,s1,n) = 0.0_pReal ! = sqrt(0.0)
     endif
@@ -2891,7 +2908,8 @@ use math,     only: math_mul6x6, &
                     math_mul33x33, &
                     pi
 use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips
+                    mesh_maxNips, &
+                    mesh_ipVolume
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_plasticityInstance, &
@@ -2974,6 +2992,8 @@ tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
 forall (t = 1_pInt:8_pInt) rhoDotSgl(1:ns,t) = dotState%p((t-1_pInt)*ns+1_pInt:t*ns)
 forall (c = 1_pInt:2_pInt) rhoDotDip(1:ns,c) = dotState%p((7_pInt+c)*ns+1_pInt:(8_pInt+c)*ns)
 forall (t = 1_pInt:4_pInt) v(1:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoSgl = 0.0_pReal
+where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < 1.0_pReal) rhoDip = 0.0_pReal
 
 
 
