@@ -91,6 +91,7 @@ bin_link = { \
                 'spectral_randomSeeding.py',
                 'spectral_layeredGeom.py',
                 'spectral_geomPack.py',
+                'spectral_geomUnpack.py',
                 'spectral_voronoiTessellation.py',
                 'OIMang_hex2cub.py',
                 ],

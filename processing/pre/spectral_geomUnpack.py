@@ -40,9 +40,14 @@ mappings = {
 
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-compress geometry files with ranges "a to b" and/or multiples "n of x".
-""" + string.replace('$Id$','\n','\\n')
+Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
+""" + string.replace('$Id: spectral_geomCanvas.py 1576 2012-06-26 18:08:50Z MPIE\p.eisenlohr $','\n','\\n')
 )
+
+parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
+                  help='output geom file with two-dimensional data arrangement')
+
+parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
 
@@ -99,6 +104,9 @@ for file in files:
     print 'no dimension info found.'
     continue
 
+  format = {True:  info['resolution'][0],
+            False: 1}[options.twoD]
+
   if file['name'] != 'STDIN':
     print 'resolution: %s'%(' x '.join(map(str,info['resolution'])))
     print 'dimension:  %s'%(' x '.join(map(str,info['dimension'])))
@@ -122,43 +130,18 @@ for file in files:
 
   file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
 
-# ------------------------------------------ pack input ---------------------------------------  
+# ------------------------------------------ unpack input ---------------------------------------  
 
-  type = ''
-  former = -1
-  start = -1
-  reps = 0
-
+  wordsWritten = 0
   for line in content:
-    for current in map(int,line.split()):
-      print 'current',current,'former',former
-      if current == former+1 and start+reps == former+1:   
-        type = 'to'
-        reps += 1
-      elif current == former and start == former:
-        type = 'of'
-        reps += 1
-      else:
-        output = {'': '',
-                  '.':  str(former)+'\n',
-                  'to': '%i to %i\n'%(former-reps+1,former),
-                  'of': '%i of %i\n'%(reps,former),
-                  }[type]
-        file['output'].write(output)
-        print 'did output',type,output
-        type = '.'
-        start = current
-        reps = 1
+    words = map(str.lower,line.split())
+    if len(words) > 1:        # any packing keywords?
+      if (words[1] == 'to'): words = map(str,range(int(words[0]),int(words[2])+1))
+      if (words[1] == 'of'): words = [words[2]]*int(words[0])
 
-      former = current
-      
-# write out last item...
-
-  output = {'.':  str(former),
-            'to': '%i to %i'%(former-reps+1,former),
-            'of': '%i of %i'%(reps,former),
-            }[type]
-  file['output'].write(output+'\n')
+    for word in words:
+      wordsWritten += 1
+      file['output'].write(word+{True:'\n',False:' '}[wordsWritten%format == 0])    # newline every format words
 
 # ------------------------------------------ output finalization ---------------------------------------  
 
