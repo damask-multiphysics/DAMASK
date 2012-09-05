@@ -2065,7 +2065,10 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
 #ifndef _OPENMP
     if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
-      write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ',maxval(abs(v)),' at a timestep of ',timestep
+      write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
+        maxval(abs(v), abs(gdot) > 0.0_pReal .and. constitutive_nonlocal_CFLfactor(myInstance) * abs(v) * timestep &
+                                                 > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el))), &
+                                   ' at a timestep of ',timestep
       write(6,'(a)') '<< CONST >> enforcing cutback !!!'
     endif
 #endif
