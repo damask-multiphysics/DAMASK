@@ -69,6 +69,7 @@ class MPIEspectral_result:    # mimic py_post result object
   _increments = []
   _times = []
   increment = 0
+  startingIncrement = 0
   position = 0
   time = 0.0                              # this is a dummy at the moment, we need to parse the load file and figure out what time a particular increment corresponds to
   N_nodes = 0
@@ -93,6 +94,7 @@ class MPIEspectral_result:    # mimic py_post result object
     self.N_loadcases  = self._keyedPackedArray('loadcases',count=1,type='i',default=1)[0]
     self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i',default=1)
     self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
+    self.startingIncrement = self._keyedPackedArray('startingIncrement',count=1,type='i',default=0)[0]
     #self._increments[0] -= 1                                                 # delete zero'th entry (might be needed for older spectralOuts
     self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d',default=0.0)
     self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i',default=0)
@@ -119,6 +121,7 @@ class MPIEspectral_result:    # mimic py_post result object
       'actual   file size: %i'%self.filesize,
       'expected file size: %i'%(self.dataOffset+self.N_increments*(8+self.N_elements*self.N_element_scalars*8)),
       'positions in file : %i'%self.N_positions,
+      'starting increment: %i'%self.startingIncrement,
       ]
     )
 
