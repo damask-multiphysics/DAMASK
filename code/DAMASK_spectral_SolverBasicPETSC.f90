@@ -352,7 +352,7 @@ subroutine BasicPETSC_init()
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
    F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC))) ! S = 0.0 for no bc
-   err_stress = maxval(mask_stress * (P_av - params%P_BC))     ! mask = 0.0 for no bc
+   err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))     ! mask = 0.0 for no bc
    F_aim_lab = math_rotate_backward33(F_aim,params%rotation_BC) 
    
 !--------------------------------------------------------------------------------------------------

@@ -370,7 +370,7 @@ subroutine AL_init()
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
    F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC))) ! S = 0.0 for no bc
-   err_stress = maxval(mask_stress * (P_av - params%P_BC))     ! mask = 0.0 for no bc
+   err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))     ! mask = 0.0 for no bc
 
    
  !--------------------------------------------------------------------------------------------------
@@ -379,7 +379,7 @@ subroutine AL_init()
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
      temp33_Real = math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) + math_I3
      residual_F(1:3,1:3,i,j,k) = temp33_Real
-     field_real(i,j,k,1:3,1:3) = math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k)-F(1:3,1:3,i,j,k))
+     field_real(i,j,k,1:3,1:3) = -math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k)-F(1:3,1:3,i,j,k))
    enddo; enddo; enddo
    
  !--------------------------------------------------------------------------------------------------

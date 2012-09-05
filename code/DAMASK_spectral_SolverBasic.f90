@@ -257,7 +257,7 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
    F_aim = F_aim - math_mul3333xx33(S, ((P_av - P_BC%values))) !S = 0.0 for no bc
-   err_stress = maxval(P_BC%maskFloat * (P_av - P_BC%values))     ! mask = 0.0 for no bc
+   err_stress = maxval(abs(P_BC%maskFloat * (P_av - P_BC%values)))     ! mask = 0.0 for no bc
    F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                            ! boundary conditions from load frame into lab (Fourier) frame
  
 !--------------------------------------------------------------------------------------------------
