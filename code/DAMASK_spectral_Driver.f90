@@ -207,18 +207,19 @@ program DAMASK_spectral_Driver
        case('guessreset','dropguessing')
          loadCases(currentLoadCase)%followFormerTrajectory = .false.                                              ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of currentLoadCase given in euler angles
-         l = 0_pInt                                                                                 ! assuming values given in radians
-         k = 1_pInt                                                                                 ! assuming keyword indicating degree/radians
+         l = 0_pInt                                                                                 ! assuming values given in degrees
+         k = 0_pInt                                                                                 ! assuming keyword indicating degree/radians
          select case (IO_lc(IO_stringValue(line,positions,i+1_pInt)))
+           case('rad','radian')
+             l = 1_pInt
+             k = 1_pInt
            case('deg','degree')
              l = 1_pInt                                                                             ! for conversion from degree to radian           
-           case('rad','radian') 
            case default               
-             k = 0_pInt                                                                             ! immediately readingk in angles, assuming radians
          end select
-         forall(j = 1_pInt:3_pInt)  temp33_Real(j,1) = &
-                                        IO_floatValue(line,positions,i+k+j) * real(l,pReal) * inRad
-         loadCases(currentLoadCase)%rotation = math_EulerToR(temp33_Real(:,1))
+         forall(j = 1_pInt:3_pInt)  temp_valueVector(j) = IO_floatValue(line,positions,i+k+j)
+         if (k == 1_pInt) temp_valueVector(1:3) = temp_valueVector(1:3) * inRad                     ! convert to rad
+         loadCases(currentLoadCase)%rotation = math_EulerToR(temp_valueVector(1:3))                 ! convert rad Eulers to rotation matrix
        case('rotation','rot')                                                                       ! assign values for the rotation of currentLoadCase matrix
          temp_valueVector = 0.0_pReal
          forall (j = 1_pInt:9_pInt) temp_valueVector(j) = IO_floatValue(line,positions,i+j)
