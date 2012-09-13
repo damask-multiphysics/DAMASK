@@ -109,10 +109,10 @@ for file in files:
     
   if resolution == [0,0,0]:
     print 'no resolution info found.'
-    sys.exit(1)
+    continue
   if dimension == [0.0,0.0,0.0]:
     print 'no dimension info found.'
-    sys.exit(1)
+    continue
 
   if file['name'] != 'STDIN':
     print 'resolution: %s'%(' x '.join(map(str,resolution_blown)))
