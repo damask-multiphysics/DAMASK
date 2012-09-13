@@ -38,7 +38,7 @@ mappings = {
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Multiplies a spectral geometry description independently in x, y, and z direction at fixed dimension.
-""" + string.replace('$Id: spectral_geomCrop.py 1449 2012-04-24 11:31:18Z MPIE\t.elachkar $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-f', '--factor', dest='factor', type='int', nargs = 3, \
