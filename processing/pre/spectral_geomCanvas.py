@@ -157,7 +157,7 @@ for file in files:
   translate_y = [i - options.offset[1] for i in yindex]
   translate_z = [i - options.offset[2] for i in zindex]
   microstructure_cropped[min(translate_x):(max(translate_x)+1),min(translate_y):(max(translate_y)+1),min(translate_z):(max(translate_z)+1)] = microstructure[min(xindex):(max(xindex)+1),min(yindex):(max(yindex)+1),min(zindex):(max(zindex)+1)]
-  formatwidth = int(math.floor(math.log10(microstructure.max()+1)))
+  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
 
             
 # ------------------------------------------ assemble header ---------------------------------------  

@@ -159,7 +159,7 @@ for file in files:
     
   microstructure += options.microstructure                                          # shift microstructure indices
 
-  formatwidth = int(math.floor(math.log10(microstructure.max()+1)))
+  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
   i = 0
   for z in xrange(info['resolution'][2]):
     for y in xrange(info['resolution'][1]):
