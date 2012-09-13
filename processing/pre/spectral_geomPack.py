@@ -131,7 +131,6 @@ for file in files:
 
   for line in content:
     for current in map(int,line.split()):
-      print 'current',current,'former',former
       if current == former+1 and start+reps == former+1:   
         type = 'to'
         reps += 1
@@ -145,7 +144,6 @@ for file in files:
                   'of': '%i of %i\n'%(reps,former),
                   }[type]
         file['output'].write(output)
-        print 'did output',type,output
         type = '.'
         start = current
         reps = 1
