@@ -30,11 +30,11 @@ module DAMASK_interface
 
  implicit none
  private
- logical,                       public  :: &
+ logical,  protected,                     public  :: &
    appendToOutFile = .false.                                                                        !< Append to existing spectralOut file (in case of restart, not in case of regridding)
- integer(pInt),                 public  :: &
+ integer(pInt),      protected,           public  :: &
    spectralRestartInc = 1_pInt                                                                      !< Increment at which calculation starts
- character(len=1024),           public  :: &
+ character(len=1024),   protected,        public  :: &
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
 
