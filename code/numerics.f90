@@ -51,7 +51,7 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 rTol_crystalliteTemperature=  1.0e-6_pReal, &                       !< relative tolerance in crystallite temperature loop 
                                 rTol_crystalliteStress     =  1.0e-6_pReal, &                       !< relative tolerance in crystallite stress loop
                                 aTol_crystalliteStress     =  1.0e-8_pReal, &                       !< absolute tolerance in crystallite stress loop, Default 1.0e-8: residuum is in Lp and hence strain is on this order
-                                
+                                numerics_unitlength        =  1.0_pReal, &                          !< determines the physical length of one computational length unit
                                 absTol_RGC                 =  1.0e+4_pReal, &                       !< absolute tolerance of RGC residuum
                                 relTol_RGC                 =  1.0e-3_pReal, &                       !< relative tolerance of RGC residuum
                                 absMax_RGC                 =  1.0e+10_pReal, &                      !< absolute maximum of RGC residuum
@@ -203,6 +203,8 @@ subroutine numerics_init
              numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
        case ('analyticjaco')
              analyticJaco = IO_intValue(line,positions,2_pInt) > 0_pInt
+       case ('unitlength')
+             numerics_unitlength = IO_floatValue(line,positions,2_pInt)
 
        !* RGC parameters: 
        
@@ -331,7 +333,8 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
    write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
    write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
-   write(6,'(a24,1x,L8,/)')   ' analytic Jacobian:      ',analyticJaco
+   write(6,'(a24,1x,L8)')     ' analytic Jacobian:      ',analyticJaco
+   write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
  
    write(6,'(a24,1x,i8)')     ' nHomog:                 ',nHomog
    write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
@@ -415,6 +418,8 @@ subroutine numerics_init
  if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='aTol_crystalliteStress')
  if (any(numerics_integrator <= 0_pInt) .or. any(numerics_integrator >= 6_pInt)) &
                                            call IO_error(301_pInt,ext_msg='integrator')
+ if (numerics_unitlength <= 0.0_pReal)     call IO_error(301_pInt,ext_msg='unitlength')
+  
 
  !* RGC parameters
  if (absTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absTol_RGC')
