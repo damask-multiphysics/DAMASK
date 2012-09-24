@@ -237,7 +237,8 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
   !*** variables and functions from other modules ***!
   use prec, only:           pInt
   use numerics, only:       defgradTolerance, &
-                            iJacoStiffness
+                            iJacoStiffness, &
+                            numerics_unitlength
   use debug, only:          debug_level, &
                             debug_CPFEM, &
                             debug_levelBasic, &
@@ -611,11 +612,11 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
       CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
       CPFEM_calc_done = .false.
 #ifndef Marc
-      mesh_ipCenterOfGravity(1:3,IP,cp_en) = coords(1:3,1)
+      mesh_ipCenterOfGravity(1:3,IP,cp_en) = numerics_unitlength * coords(1:3,1)
 #else
       do node = 1,FE_Nnodes(mesh_element(2,cp_en))
         FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
-        mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + coords(1:3,node)
+        mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + numerics_unitlength * coords(1:3,node)
       enddo
 #endif
 
