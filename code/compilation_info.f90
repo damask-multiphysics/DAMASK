@@ -14,4 +14,4 @@
 #endif
 write(6,*) 'Compiled on ', __DATE__,' at ',__TIME__
 write(6,*)
-call flush(6)
+flush(6)
