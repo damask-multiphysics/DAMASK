@@ -952,6 +952,7 @@ subroutine mesh_spectral_build_nodes()
 
  use IO,   only: &
   IO_error
+ use numerics, only: numerics_unitlength
 
  implicit none
  integer(pInt) :: n
@@ -960,13 +961,13 @@ subroutine mesh_spectral_build_nodes()
  allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
  
  forall (n = 0_pInt:mesh_Nnodes-1_pInt)
-   mesh_node0(1,n+1_pInt) = &
+   mesh_node0(1,n+1_pInt) = numerics_unitlength * &
            geomdim(1) * real(mod(n,(res(1)+1_pInt) ),pReal) &
                                                    / real(res(1),pReal)
-   mesh_node0(2,n+1_pInt) = &
+   mesh_node0(2,n+1_pInt) = numerics_unitlength * &
            geomdim(2) * real(mod(n/(res(1)+1_pInt),(res(2)+1_pInt)),pReal) &
                                                    / real(res(2),pReal)
-   mesh_node0(3,n+1_pInt) = &
+   mesh_node0(3,n+1_pInt) = numerics_unitlength * &
            geomdim(3) * real(mod(n/(res(1)+1_pInt)/(res(2)+1_pInt),(res(3)+1_pInt)),pReal) &
                                                    / real(res(3),pReal)
  end forall 
@@ -2305,6 +2306,7 @@ subroutine mesh_marc_build_nodes(myUnit)
                  IO_stringPos, &
                  IO_fixedIntValue, &
                  IO_fixedNoEFloatValue
+use numerics, only: numerics_unitlength
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -2329,7 +2331,7 @@ subroutine mesh_marc_build_nodes(myUnit)
      do i=1_pInt,mesh_Nnodes
        read (myUnit,610,END=670) line
        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1_pInt))
-       forall (j = 1_pInt:3_pInt) mesh_node0(j,m) = IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
+       forall (j = 1_pInt:3_pInt) mesh_node0(j,m) = numerics_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
      enddo
      exit
    endif
@@ -2946,6 +2948,7 @@ subroutine mesh_abaqus_build_nodes(myUnit)
                  IO_error, &
                  IO_countDataLines, &
                  IO_intValue
+use numerics, only: numerics_unitlength
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -2985,7 +2988,7 @@ subroutine mesh_abaqus_build_nodes(myUnit)
        read (myUnit,610,END=670) line
        myPos = IO_stringPos(line,maxNchunks)
        m = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt))
-       forall (j=1_pInt:3_pInt) mesh_node0(j,m) = IO_floatValue(line,myPos,j+1_pInt)
+       forall (j=1_pInt:3_pInt) mesh_node0(j,m) = numerics_unitlength * IO_floatValue(line,myPos,j+1_pInt)
      enddo
    endif
  enddo
