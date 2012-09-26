@@ -118,7 +118,8 @@ for file in files:
     sys.stderr.write('column %s not found...\n'%key)
   else:
     defgrad = numpy.array([0.0 for i in xrange(N*9)]).reshape(list(res)+[3,3])
-    table.labels_append(['ip_deformed.%s'%(coord) for coord in 'x','y','z'])   # extend ASCII header with new labels
+    table.labels_append(['%s_coords'%(coord+1) for coord in xrange(3)])   # extend ASCII header with new labels
+
     column = table.labels.index(key)
         
 # ------------------------------------------ assemble header ---------------------------------------  

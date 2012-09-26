@@ -85,19 +85,44 @@ Builds an ang file out of ASCII table.
 )
 
 
-parser.add_option('--coords',            dest='coords', type='string', \
+parser.add_option('--coords',           dest='coords', type='string', \
                                         help='label of coords in ASCII table')
-parser.set_defaults(norm = 'ip')
-
-
+parser.add_option('--eulerangles',      dest='eulerangles', type='string', \
+                                        help='label of euler angles in ASCII table')
+parser.add_option('--defgrad',          dest='defgrad', type='string', \
+                                        help='label of deformation gradient in ASCII table')
+parser.add_option('-n','--normal',      dest='normal', type='float', nargs=3, \
+                                        help='normal of slices to visualize')
+parser.add_option('-u','--up',          dest='up', type='float', nargs=3,
+                                        help='up direction of slices to visualize')
+parser.add_option('-r','--resolution',  dest='res', type='int', nargs=3,
+                                        help='up direction of slices to visualize')
+parser.add_option('-c','--center',      dest='center', type='float', nargs=3,
+                                        help='center of ang file in cube, negative for center')
+parser.set_defaults(coords = 'coords')
+parser.set_defaults(eulerangles = 'eulerangles')
+parser.set_defaults(defgrad = 'f')
+parser.set_defaults(normal = ['0.0','0.0','1.0'])
+parser.set_defaults(up = ['1.0','0.0','0.0'])
+parser.set_defaults(center = ['-1.0','-1.0','-1.0'])
+parser.set_defaults(res = ['16','16','1'])
 (options,filenames) = parser.parse_args()
 
 datainfo = {
              'vector':     {'len':3,
+                            'label':[]},
+             'tensor':     {'len':9,
                             'label':[]}
            }
            
-datainfo['vector']['label'] += ['eulerangles']
+datainfo['vector']['label'].append(options.coords)
+datainfo['vector']['label'].append(options.eulerangles)
+datainfo['tensor']['label'].append(options.defgrad)
+
+print options.res[0]
+print options.res[1]
+print options.res[2]
+
 # ------------------------------------------ setup file handles ---------------------------------------  
 
 files = []
@@ -118,8 +143,10 @@ for file in files:
   table.head_read()                                                         # read ASCII header info
 
 # --------------- figure out dimension and resolution 
+
   try:
     locationCol = table.labels.index('ip.x')                                # columns containing location data
+    
   except ValueError:
     print 'no coordinate data found...'
     continue
@@ -146,7 +173,6 @@ for file in files:
   active = {}
   column = {}
   values = {}
-  divergence   = {}
 
   head = []
   for datatype,info in datainfo.items():
@@ -159,8 +185,6 @@ for file in files:
         if datatype not in active:     active[datatype] = []
         if datatype not in column:     column[datatype] = {}
         if datatype not in values:     values[datatype] = {}
-        if datatype not in divergence: divergence[datatype] = {}
-        if label not in divergence[datatype]: divergence[datatype][label] = {}
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
         values[datatype][label] = numpy.array([0.0 for i in xrange(N*datainfo[datatype]['len'])])
@@ -168,27 +192,71 @@ for file in files:
 # ------------------------------------------ read value field ---------------------------------------  
 
   table.data_rewind()
-  print values['vector']['eulerangles']
-  print numpy.shape(values['vector']['eulerangles'])
   idx = 0
   while table.data_read():                                                  # read next data line of ASCII table
     for datatype,labels in active.items():                                  # loop over vector,tensor
       for label in labels:                                                  # loop over all requested curls
-        values[datatype][label][idx:idx+3]= numpy.array(map(float,table.data[column[datatype][label]:
+        begin = idx*datainfo[datatype]['len']
+        end = begin + datainfo[datatype]['len']
+        values[datatype][label][begin:end]= numpy.array(map(float,table.data[column[datatype][label]:
                                              column[datatype][label]+datainfo[datatype]['len']]),'d')
-        idx+=3
-  for z in xrange(resolution[2]):
-    fileOut=open(os.path.join(os.path.dirname(name),os.path.splitext(os.path.basename(name))[0]+'_%s.ang'%z),'w')
-    for line in getHeader(resolution[0],resolution[1],1.0):
+    idx+=1
+  hexagonal  = True
+  if hexagonal: 
+    scale = math.sin(1.0/3.0*math.pi)
+  else: 
+    scale = 1.0
+
+  res0 = int(float(options.res[0])/scale)
+
+  print 'res0', res0
+  print  'res 1', options.res[1]
+ 
+  if hexagonal: 
+    NpointsSlice = res0//2*(int(options.res[1])-1)+(res0-res0//2)*int(options.res[1])
+  else:
+    NpointsSlice = res0*int(options.res[1])
+
+  print NpointsSlice
+  z = numpy.array(options.normal,dtype='float')
+  z = z/numpy.linalg.norm(z)
+  x = numpy.array(options.up,dtype='float')
+  x = x/numpy.linalg.norm(x)
+  y = numpy.cross(z,x)
+  x = numpy.cross(y,z)
+  x = x/numpy.linalg.norm(x)
+
+  Favg = damask.core.math.tensorAvg(values['tensor']['%s'%(options.defgrad)].reshape(resolution[0],resolution[1],resolution[2],3,3))
+  mySlice = numpy.zeros(NpointsSlice*3)
+  eulerangles = values['vector']['%s'%options.eulerangles].reshape([3,N],order='F')
+  for i in xrange(int(options.res[2])):
+    idx = 0
+    shift = 0
+    offset =  numpy.array([0.5,0.5,0.5],dtype='float')/[float(options.res[0]),float(options.res[1]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]
+    for j in xrange(res0):
+      if hexagonal: 
+        res1=int(options.res[1])-j%2
+        myOffset = offset +float(j%2)* numpy.array([0.0,0.5,0.0],dtype='float')/[float(options.res[0]),float(options.res[1]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]
+      else:
+        res1=int(options.res[1])
+        myOffset = offset
+      for k in xrange(res1):
+        mySlice[idx*3:idx*3+3] = numpy.dot(numpy.array([x,y,z],dtype='float'),
+            numpy.array([j,k,i],dtype='float'))/[float(res0),float(options.res[0]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]\
+            + myOffset
+        idx+=1
+    mySlice = mySlice.reshape([3,NpointsSlice],order='F')
+    indices=damask.core.math.math_nearestNeighborSearch(3,Favg,numpy.array(
+      dimension,dtype='float'),NpointsSlice,N,mySlice,values['vector']['%s'%options.coords].reshape([3,N],order='F'))/27
+    fileOut=open(os.path.join(os.path.dirname(name),os.path.splitext(os.path.basename(name))[0]+'_%s.ang'%i),'w')
+    for line in getHeader(res0,res1,1.0):
       fileOut.write(line + '\n')
-    
+  
     # write data
-    for counter in xrange(resolution[0]*resolution[1]):
-      print z*resolution[0]*resolution[1]*3+counter*3,' - ',z*resolution[0]*resolution[1]*3+counter*3+3
-      fileOut.write(''.join(['%10.5f'%positiveRadians(angle) for angle in values['vector']['eulerangles'][z*resolution[0]*resolution[1]*3+counter*3:z*resolution[0]*resolution[1]*3+counter*3+3]])+
-           ''.join(['%10.5f'%coord for coord in [counter%resolution[0],counter//resolution[1]]])+
+    for idx in xrange(NpointsSlice):
+      fileOut.write(''.join(['%10.5f'%positiveRadians(angle) for angle in eulerangles[:,indices[idx]]])+
+           ' %10.5f %10.5f'%(mySlice[1,idx],mySlice[0,idx])+
            ' 100.0 1.0 0 1 1.0\n')
-      counter += 1
-    
+
     fileOut.close()
 
