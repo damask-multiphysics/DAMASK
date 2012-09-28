@@ -36,11 +36,12 @@ mappings = {
         'dimension':  lambda x: float(x),
         'origin':     lambda x: float(x),
         'homogenization': lambda x: int(x),
+        'maxgraincount': lambda x: int(x),
           }
 
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
+Unpack geometry files containing ranges "a to b" and/or "n copies of x" multiples (exclusively in one line).
 """ + string.replace('$Id: spectral_geomCanvas.py 1576 2012-06-26 18:08:50Z MPIE\p.eisenlohr $','\n','\\n')
 )
 
@@ -84,6 +85,7 @@ for file in files:
           'dimension':  [0.0,0.0,0.0],
           'origin':     [0.0,0.0,0.0],
           'homogenization': 1,
+          'maxgraincount': 0,
          }
 
   new_header = []
@@ -108,9 +110,9 @@ for file in files:
             False: 1}[options.twoD]
 
   if file['name'] != 'STDIN':
-    print 'resolution: %s'%(' x '.join(map(str,info['resolution'])))
-    print 'dimension:  %s'%(' x '.join(map(str,info['dimension'])))
-    print 'origin:     %s'%(' : '.join(map(str,info['origin'])))
+    print 'resolution:    %s'%(' x '.join(map(str,info['resolution'])))
+    print 'dimension:     %s'%(' x '.join(map(str,info['dimension'])))
+    print 'origin:        %s'%(' : '.join(map(str,info['origin'])))
 
   new_header.append("resolution\ta %i\tb %i\tc %i\n"%( 
     info['resolution'][0],
@@ -125,7 +127,12 @@ for file in files:
     info['origin'][1],
     info['origin'][2]))
   new_header.append("homogenization\t%i\n"%info['homogenization'])
-
+  new_header.append("maxGrainCount\t%i\n"%info['maxgraincount'])
+  if info['maxgraincount'] != 0:
+    digits = 1+int(math.log10(int(info['maxgraincount'])))
+  else:
+    digits = 1+int(math.log10(int(info['resolution'][0]*info['resolution'][1]*info['resolution'][2])))
+  print digits
 # ------------------------------------------ assemble header ---------------------------------------  
 
   file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
@@ -137,11 +144,11 @@ for file in files:
     words = map(str.lower,line.split())
     if len(words) > 1:        # any packing keywords?
       if (words[1] == 'to'): words = map(str,range(int(words[0]),int(words[2])+1))
-      if (words[1] == 'of'): words = [words[2]]*int(words[0])
+      if (words[1] == 'copies' and words[2] == 'of'): words = [words[3]]*int(words[0])
 
     for word in words:
       wordsWritten += 1
-      file['output'].write(word+{True:'\n',False:' '}[wordsWritten%format == 0])    # newline every format words
+      file['output'].write(word.zfill(digits)+{True:'\n',False:' '}[wordsWritten%format == 0])    # newline every format words
 
 # ------------------------------------------ output finalization ---------------------------------------  
 

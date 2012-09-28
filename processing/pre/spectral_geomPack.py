@@ -36,11 +36,12 @@ mappings = {
         'dimension':  lambda x: float(x),
         'origin':     lambda x: float(x),
         'homogenization': lambda x: int(x),
+        'maxgraincount': lambda x: int(x),
           }
 
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-compress geometry files with ranges "a to b" and/or multiples "n of x".
+compress geometry files with ranges "a to b" and/or multiples "n copies of x".
 """ + string.replace('$Id$','\n','\\n')
 )
 
@@ -79,6 +80,7 @@ for file in files:
           'dimension':  [0.0,0.0,0.0],
           'origin':     [0.0,0.0,0.0],
           'homogenization': 1,
+          'maxgraincount': 0,
          }
 
   new_header = []
@@ -117,6 +119,7 @@ for file in files:
     info['origin'][1],
     info['origin'][2]))
   new_header.append("homogenization\t%i\n"%info['homogenization'])
+  new_header.append("maxGrainCount\t%i\n"%info['maxgraincount'])
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
@@ -141,7 +144,7 @@ for file in files:
         output = {'': '',
                   '.':  str(former)+'\n',
                   'to': '%i to %i\n'%(former-reps+1,former),
-                  'of': '%i of %i\n'%(reps,former),
+                  'of': '%i copies of %i\n'%(reps,former),
                   }[type]
         file['output'].write(output)
         type = '.'
@@ -154,7 +157,7 @@ for file in files:
 
   output = {'.':  str(former),
             'to': '%i to %i'%(former-reps+1,former),
-            'of': '%i of %i'%(reps,former),
+            'of': '%i copies of %i'%(reps,former),
             }[type]
   file['output'].write(output+'\n')
 
