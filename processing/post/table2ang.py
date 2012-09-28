@@ -93,19 +93,24 @@ parser.add_option('--defgrad',          dest='defgrad', type='string', \
                                         help='label of deformation gradient in ASCII table')
 parser.add_option('-n','--normal',      dest='normal', type='float', nargs=3, \
                                         help='normal of slices to visualize')
+parser.add_option('-s','--size',        dest='size', type='float', nargs=3, \
+                                        help='physical size of ang file')
 parser.add_option('-u','--up',          dest='up', type='float', nargs=3,
                                         help='up direction of slices to visualize')
-parser.add_option('-r','--resolution',  dest='res', type='int', nargs=3,
-                                        help='up direction of slices to visualize')
+parser.add_option('-r','--resolution',  dest='res', type='float',
+                                        help='scaling factor for resolution')
+parser.add_option('--hexagonal',   dest='hex', action='store_true',
+                                        help='use in plane hexagonal grid')
 parser.add_option('-c','--center',      dest='center', type='float', nargs=3,
                                         help='center of ang file in cube, negative for center')
 parser.set_defaults(coords = 'coords')
 parser.set_defaults(eulerangles = 'eulerangles')
 parser.set_defaults(defgrad = 'f')
-parser.set_defaults(normal = ['0.0','0.0','1.0'])
-parser.set_defaults(up = ['1.0','0.0','0.0'])
-parser.set_defaults(center = ['-1.0','-1.0','-1.0'])
-parser.set_defaults(res = ['16','16','1'])
+parser.set_defaults(normal = [0.0,0.0,1.0])
+parser.set_defaults(size = [1.0,1.0,0.0])
+parser.set_defaults(up = [1.0,0.0,0.0])
+parser.set_defaults(center = [-1.0,-1.0,-1.0])
+parser.set_defaults(res = 1.0)
 (options,filenames) = parser.parse_args()
 
 datainfo = {
@@ -118,10 +123,6 @@ datainfo = {
 datainfo['vector']['label'].append(options.coords)
 datainfo['vector']['label'].append(options.eulerangles)
 datainfo['tensor']['label'].append(options.defgrad)
-
-print options.res[0]
-print options.res[1]
-print options.res[2]
 
 # ------------------------------------------ setup file handles ---------------------------------------  
 
@@ -169,7 +170,8 @@ for file in files:
   N = resolution.prod()
   print '\t%s @ %s'%(dimension,resolution)
   
-  # --------------- figure out columns to process
+
+ # --------------- figure out columns to process
   active = {}
   column = {}
   values = {}
@@ -201,55 +203,69 @@ for file in files:
         values[datatype][label][begin:end]= numpy.array(map(float,table.data[column[datatype][label]:
                                              column[datatype][label]+datainfo[datatype]['len']]),'d')
     idx+=1
-  hexagonal  = True
-  if hexagonal: 
-    scale = math.sin(1.0/3.0*math.pi)
-  else: 
-    scale = 1.0
 
-  res0 = int(float(options.res[0])/scale)
-
-  print 'res0', res0
-  print  'res 1', options.res[1]
+  stepSize = 0.0
+  for i in xrange(3): stepSize+=dimension[i]/resolution[i]/3.0/options.res
+  print 'step size', stepSize
  
+  hexagonal  = False
   if hexagonal: 
-    NpointsSlice = res0//2*(int(options.res[1])-1)+(res0-res0//2)*int(options.res[1])
-  else:
-    NpointsSlice = res0*int(options.res[1])
+    stepSize0 = stepSize * math.sin(1.0/3.0*math.pi)
+  else: 
+    stepSize0 = stepSize
 
-  print NpointsSlice
+  print 'step Size in x direction', stepSize0
+
+  angRes = int(options.size[0]/stepSize0),\
+           int(options.size[1]/stepSize),\
+           max(int(options.size[2]/stepSize),1)
+  print 'resolution of ang file', angRes
+
+  if hexagonal: 
+    NpointsSlice = angRes[0]//2*(angRes[1]-1)+(angRes[0]-angRes[0]//2)*angRes[1]
+  else:
+    NpointsSlice = angRes[0]*angRes[1]
+
   z = numpy.array(options.normal,dtype='float')
   z = z/numpy.linalg.norm(z)
   x = numpy.array(options.up,dtype='float')
   x = x/numpy.linalg.norm(x)
   y = numpy.cross(z,x)
   x = numpy.cross(y,z)
-  x = x/numpy.linalg.norm(x)
+  print 'x unit vector', x, 'with norm ', numpy.linalg.norm(x)
+  print 'y unit vector', y, 'with norm ', numpy.linalg.norm(y)
+  print 'z unit vector', z, 'with norm ', numpy.linalg.norm(z)
+  Favg = damask.core.math.tensorAvg(values['tensor']['%s'%(options.defgrad)].\
+                         reshape(resolution[0],resolution[1],resolution[2],3,3))
 
-  Favg = damask.core.math.tensorAvg(values['tensor']['%s'%(options.defgrad)].reshape(resolution[0],resolution[1],resolution[2],3,3))
+  coordTransform = numpy.array([x,y,z])
+  print 'rotation matrix', coordTransform
+
   mySlice = numpy.zeros(NpointsSlice*3)
   eulerangles = values['vector']['%s'%options.eulerangles].reshape([3,N],order='F')
-  for i in xrange(int(options.res[2])):
+
+  offset = ((dimension - options.size)/2.0 + (dimension/angRes)/2.0)/options.res
+  print 'offset', offset
+ # offset =  numpy.array([0.5,0.5,0.5],dtype='float')/[float(options.res[0]),float(options.res[1]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]
+  for i in xrange(angRes[2]):
     idx = 0
-    shift = 0
-    offset =  numpy.array([0.5,0.5,0.5],dtype='float')/[float(options.res[0]),float(options.res[1]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]
-    for j in xrange(res0):
+    for j in xrange(angRes[0]):
       if hexagonal: 
-        res1=int(options.res[1])-j%2
-        myOffset = offset +float(j%2)* numpy.array([0.0,0.5,0.0],dtype='float')/[float(options.res[0]),float(options.res[1]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]
+        res1=angRes[1]-j%2
+        #myOffset = offset +float(j%2)* numpy.array([0.0,0.5,0.0],dtype='float')/[float(options.res[0]),float(options.res[1]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]
+        myOffset = offset +float(j%2)* numpy.array([0.0,0.5*stepSize,0.0],dtype='float')
       else:
-        res1=int(options.res[1])
+        res1=angRes[1]
         myOffset = offset
       for k in xrange(res1):
-        mySlice[idx*3:idx*3+3] = numpy.dot(numpy.array([x,y,z],dtype='float'),
-            numpy.array([j,k,i],dtype='float'))/[float(res0),float(options.res[0]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]\
-            + myOffset
+        mySlice[idx*3:idx*3+3] = numpy.dot(coordTransform,[j*stepSize0,k*stepSize,i*stepSize]+myOffset)
+        #print mySlice[idx*3:idx*3+3]
         idx+=1
     mySlice = mySlice.reshape([3,NpointsSlice],order='F')
     indices=damask.core.math.math_nearestNeighborSearch(3,Favg,numpy.array(
       dimension,dtype='float'),NpointsSlice,N,mySlice,values['vector']['%s'%options.coords].reshape([3,N],order='F'))/27
-    fileOut=open(os.path.join(os.path.dirname(name),os.path.splitext(os.path.basename(name))[0]+'_%s.ang'%i),'w')
-    for line in getHeader(res0,res1,1.0):
+    fileOut=open(os.path.join(os.path.dirname(name),os.path.splitext(os.path.basename(name))[0]+'_%s.ang'%(angRes[2]-i-1)),'w')
+    for line in getHeader(angRes[0],angRes[1],angRes[2]):
       fileOut.write(line + '\n')
   
     # write data
