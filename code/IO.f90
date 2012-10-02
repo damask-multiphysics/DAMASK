@@ -1267,17 +1267,17 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
 100 end function IO_continuousIntValues
 
-
 pure function IO_intOut(intToPrint)
   implicit none
-  character(len=64) :: N_Digits
-  character(len=64) :: IO_intOut
+  character(len=16) :: N_Digits
+  character(len=34) :: IO_intOut
   integer(pInt), intent(in) :: intToPrint
   
   write(N_Digits, '(I16.16)') 1_pInt + int(log10(real(intToPrint)),pInt)
-  IO_intOut = '1x,I'//trim(N_Digits)//'.'//trim(N_Digits)//',1x'
+  IO_intOut = 'I'//trim(N_Digits)//'.'//trim(N_Digits)
 
 end function IO_intOut
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief write error statements to standard out and terminate the Marc/spectral run with exit #9xxx
@@ -1426,6 +1426,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'not a rotation defined for loadcase rotation'
  case (847_pInt)
    msg = 'updating of gamma operator not possible if it is pre calculated'
+ case (850_pInt)
+   msg = 'max number of cut back exceeded'
  case (880_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
  case (890_pInt)
